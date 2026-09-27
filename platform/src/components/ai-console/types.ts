@@ -102,6 +102,16 @@ export function supportsEveryRole(roles: readonly AiRole[]): boolean {
   return AI_ROLES.every(role => roles.includes(role))
 }
 
+/**
+ * A revalidation may retain the last confirmed catalog under AIC-R017. A
+ * first validation (or a replacement credential) has no confirmation time
+ * and must remain unavailable until the server confirms it.
+ */
+export function hasCurrentProviderConfirmation(connection: ProviderConnectionDto): boolean {
+  return connection.validationState === 'validated'
+    || (connection.validationState === 'validating' && Boolean(connection.lastValidatedAt))
+}
+
 export function formatCheckedAt(value: string | null): string {
   if (!value) return 'Not checked yet'
   const parsed = new Date(value)

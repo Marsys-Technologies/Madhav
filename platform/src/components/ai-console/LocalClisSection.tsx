@@ -19,12 +19,13 @@ interface Props {
   state?: AiConsoleStateDto
   clis: CliCardDto[]
   loading: boolean
+  error: boolean
   mutationPending: boolean
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
 }
 
-export function LocalClisSection({ state, clis, loading, mutationPending, mutate, onSelectDefault }: Props) {
+export function LocalClisSection({ state, clis, loading, error, mutationPending, mutate, onSelectDefault }: Props) {
   async function testCli(cli: CliCardDto) {
     try {
       await mutate(`/api/ai-console/clis/${cli.cliId}/validate`, { method: 'POST', body: JSON.stringify({}) }, `${cli.productName} validation completed.`)
@@ -39,8 +40,8 @@ export function LocalClisSection({ state, clis, loading, mutationPending, mutate
   return (
     <section className="aic-section" aria-labelledby="aic-cli-heading">
       <div className="aic-section-head"><div><h2 id="aic-cli-heading">Local CLIs</h2><p className="aic-section-copy">Use administrator-granted subscriptions available to this local server. Authentication material is never copied into Madhav.</p></div></div>
-      {defaultMissing && cliDefault && <div className="aic-broken"><strong>Broken default.</strong> {cliDefault.cliId} / {cliDefault.modelId ?? 'Built-in default'} is not currently reachable or authorized. Choose another default.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable local CLI choice</span><AiChoiceRadio choice={cliDefault} checked disabled unavailable label={`${cliDefault.cliId} ${cliDefault.modelId ?? 'Built-in default'}`} onSelect={onSelectDefault} /></div></div>}
-      {loading ? <div className="aic-empty">Checking local CLI access…</div> : clis.length === 0 ? <div className="aic-empty">No local CLI products are registered on this server.</div> : (
+      {!error && defaultMissing && cliDefault && <div className="aic-broken"><strong>Broken default.</strong> {cliDefault.cliId} / {cliDefault.modelId ?? 'Built-in default'} is not currently reachable or authorized. Choose another default.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable local CLI choice</span><AiChoiceRadio choice={cliDefault} checked disabled unavailable label={`${cliDefault.cliId} ${cliDefault.modelId ?? 'Built-in default'}`} onSelect={onSelectDefault} /></div></div>}
+      {error ? <div className="aic-error" role="alert">Local CLI access could not be loaded. Refresh the page to try again.</div> : loading ? <div className="aic-empty">Checking local CLI access…</div> : clis.length === 0 ? <div className="aic-empty">No local CLI products are registered on this server.</div> : (
         <div className="aic-grid">{clis.map(cli => {
           const isPrivate = cli.state === 'not_granted'
           const models = isPrivate ? [] : cli.models

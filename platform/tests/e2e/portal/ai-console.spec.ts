@@ -7,14 +7,27 @@ const READY = Boolean(SESSION_COOKIE) && ENABLED
 const CAPTURE = process.env.AI_CONSOLE_CAPTURE_SCREENSHOTS === 'true'
 
 const connectionId = '11111111-1111-4111-8111-111111111111'
+const validConnectionId = '33333333-3333-4333-8333-333333333333'
+const configurationId = '22222222-2222-4222-8222-222222222222'
 const safeConsoleState = {
   connections: [{ id: connectionId, providerId: 'openai', name: 'Personal OpenAI', maskedSuffix: '•••1234',
     validationState: 'invalid', lastValidatedAt: null, lastCheckedAt: '2026-09-27T10:00:00.000Z',
-    lastErrorCode: 'AI_CONNECTION_INVALID', deletedAt: null }],
+    lastErrorCode: 'AI_CONNECTION_INVALID', deletedAt: null },
+  { id: validConnectionId, providerId: 'anthropic', name: 'Research Anthropic', maskedSuffix: '•••9876',
+    validationState: 'validated', lastValidatedAt: '2026-09-27T10:00:00.000Z', lastCheckedAt: '2026-09-27T10:00:00.000Z',
+    lastErrorCode: null, deletedAt: null }],
   models: [{ connectionId, modelId: 'removed-model', displayName: 'Removed model',
     compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false,
-    supportsStructuredOutput: true, available: false }],
-  configurations: [],
+    supportsStructuredOutput: true, available: false },
+  { connectionId: validConnectionId, modelId: 'claude-safe', displayName: 'Claude Safe',
+    compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false,
+    supportsStructuredOutput: true, available: true }],
+  configurations: [{ id: configurationId, name: 'Research quartet', version: 1, deletedAt: null, roles: {
+    synthesizer: { kind: 'provider_model', connectionId: validConnectionId, modelId: 'claude-safe' },
+    planner: { kind: 'provider_model', connectionId: validConnectionId, modelId: 'claude-safe' },
+    deep_planner: { kind: 'provider_model', connectionId: validConnectionId, modelId: 'claude-safe' },
+    worker: { kind: 'provider_model', connectionId: validConnectionId, modelId: 'claude-safe' },
+  } }],
   defaultChoice: { kind: 'provider_model', connectionId, modelId: 'removed-model' },
   validationDisclosure: 'Testing this connection makes a tiny generation request and may incur a tiny provider charge.',
 }
@@ -30,8 +43,41 @@ test.describe('AI Console — safe local UI contract', () => {
 
   test.beforeEach(async ({ context, page }) => {
     await context.addCookies([{ name: 'session', value: SESSION_COOKIE!, domain: 'localhost', path: '/' }])
+    await page.route('**/api/ai-console/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ dependencies: { configurations: [], conversations: [], defaultAffected: false } }) }))
     await page.route('**/api/ai-console/clis', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(safeCliState) }))
     await page.route('**/api/ai-console', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(safeConsoleState) }))
+  })
+
+  test('opens every dialog family inside the native token scope and restores its trigger', async ({ page }) => {
+    await page.goto('/ai-console')
+
+    const add = page.getByRole('button', { name: /add connection/i })
+    await add.click()
+    let dialog = page.getByRole('dialog')
+    await expect(dialog).toHaveClass(/pp-root/)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(add).toBeFocused()
+
+    const card = page.getByText('Research quartet').locator('xpath=ancestor::article')
+    const edit = card.getByRole('button', { name: 'Edit' })
+    await edit.click()
+    dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('textbox', { name: /configuration name/i })).toHaveValue('Research quartet')
+    await page.keyboard.press('Escape')
+    await expect(edit).toBeFocused()
+
+    const duplicate = card.getByRole('button', { name: /duplicate/i })
+    await duplicate.click()
+    await expect(page.getByRole('dialog')).toHaveClass(/pp-root/)
+    await page.keyboard.press('Escape')
+    await expect(duplicate).toBeFocused()
+
+    const remove = card.getByRole('button', { name: 'Delete' })
+    await remove.click()
+    await expect(page.getByRole('alertdialog')).toHaveClass(/pp-root/)
+    await page.keyboard.press('Escape')
+    await expect(remove).toBeFocused()
   })
 
   test('renders the three sections, invalid credential, broken default, and disclosure-safe CLIs', async ({ page }, testInfo) => {
@@ -54,6 +100,14 @@ test.describe('AI Console — safe local UI contract', () => {
     const add = page.getByRole('button', { name: /add connection/i })
     await expect(add).toBeVisible()
     expect((await add.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    await add.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toHaveClass(/pp-root/)
+    const box = await dialog.boundingBox()
+    expect(box?.x).toBe(0)
+    expect(box?.width).toBe(390)
+    expect(Math.round((box?.y ?? 0) + (box?.height ?? 0))).toBe(844)
+    await expect(dialog.getByRole('button', { name: 'Save' })).toHaveCSS('min-height', '44px')
     if (CAPTURE) await page.screenshot({ path: testInfo.outputPath('ai-console-mobile.png'), fullPage: true })
   })
 })

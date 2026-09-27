@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import axe from 'axe-core'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { AIConsole } from '../AIConsole'
@@ -38,13 +40,26 @@ function response(body: unknown, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
 }
 
-function setup(overrides?: Partial<typeof state>) {
+interface SetupOptions {
+  aggregateError?: boolean
+  cliError?: boolean
+  duplicateNameError?: boolean
+}
+
+function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
   const current = { ...state, ...overrides }
   const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
   vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
     calls.push([url, init])
-    if (String(url) === '/api/ai-console/clis') return response(cliState)
+    if (String(url) === '/api/ai-console/clis') return options.cliError
+      ? response({ error: 'AI_CLI_UNREACHABLE' }, 503)
+      : response(cliState)
+    if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
+    if (String(url) === '/api/ai-console/configurations' && init?.method === 'POST'
+      && options.duplicateNameError && String(init.body).includes('duplicateFrom')) {
+      return response({ error: 'name_conflict' }, 409)
+    }
     return response(current)
   }))
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -97,11 +112,48 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/tiny provider charge/i)).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/acknowledge/i)
+    const error = await within(dialog).findByRole('alert')
+    expect(error).toHaveTextContent(/acknowledge/i)
+    const acknowledgement = within(dialog).getByRole('checkbox')
+    expect(acknowledgement.id).toBe('aic-charge-acknowledgement')
+    expect(acknowledgement).toHaveAttribute('aria-invalid', 'true')
+    expect(acknowledgement).toHaveAttribute('aria-describedby', error.id)
     expect(calls.some(([url]) => String(url).endsWith('/validate'))).toBe(false)
-    fireEvent.click(within(dialog).getByRole('checkbox'))
+    fireEvent.click(acknowledgement)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
     await waitFor(() => expect(calls.some(([url]) => String(url).endsWith('/validate'))).toBe(true))
+  })
+
+  it('associates each provider editor error only with its exact repair control', async () => {
+    const user = userEvent.setup()
+    setup()
+    await user.click(await screen.findByRole('button', { name: /add connection/i }))
+    const dialog = await screen.findByRole('dialog')
+    const name = within(dialog).getByRole('textbox', { name: /connection name/i })
+    const key = dialog.querySelector('#aic-api-key') as HTMLInputElement
+    const acknowledgement = within(dialog).getByRole('checkbox')
+    const save = within(dialog).getByRole('button', { name: 'Save' })
+
+    await user.click(save)
+    let error = await within(dialog).findByRole('alert')
+    expect(name).toHaveAttribute('aria-describedby', error.id)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(key).not.toHaveAttribute('aria-describedby')
+    expect(acknowledgement).not.toHaveAttribute('aria-describedby')
+
+    await user.type(name, 'Second connection')
+    await user.click(save)
+    error = await within(dialog).findByRole('alert')
+    expect(key).toHaveAttribute('aria-describedby', error.id)
+    expect(key).toHaveAttribute('aria-invalid', 'true')
+    expect(name).not.toHaveAttribute('aria-describedby')
+
+    await user.type(key, 'credential-placeholder')
+    await user.click(save)
+    error = await within(dialog).findByRole('alert')
+    expect(acknowledgement).toHaveAttribute('aria-describedby', error.id)
+    expect(acknowledgement).toHaveAttribute('aria-invalid', 'true')
+    expect(key).not.toHaveAttribute('aria-describedby')
   })
 
   it('uses four roles only, source before model, fill-all convenience, and disables incomplete save', async () => {
@@ -139,11 +191,133 @@ describe('AI Console', () => {
     expect((screen.getByRole('radio', { name: /99999999.*removed-model/i }) as HTMLInputElement).checked).toBe(true)
   })
 
+  it('keeps portalled add, edit, duplicate, and delete dialogs inside the Paripraśna token scope and restores focus on Escape', async () => {
+    const user = userEvent.setup()
+    setup()
+    const add = await screen.findByRole('button', { name: /add connection/i })
+    await user.click(add)
+    let dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveClass('pp-root', 'aic-dialog')
+    const dialogAxe = await axe.run(dialog, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+    })
+    expect(dialogAxe.violations.filter(item => item.impact === 'critical' || item.impact === 'serious')).toEqual([])
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(add).toHaveFocus()
+
+    const edit = screen.getByRole('button', { name: 'Edit' })
+    await user.click(edit)
+    dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveClass('pp-root', 'aic-dialog')
+    expect(within(dialog).getByRole('textbox', { name: /configuration name/i })).toHaveValue('Research quartet')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(edit).toHaveFocus()
+
+    const duplicate = screen.getByRole('button', { name: /duplicate/i })
+    await user.click(duplicate)
+    dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveClass('pp-root', 'aic-dialog')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(duplicate).toHaveFocus()
+
+    const card = screen.getByText('Research quartet').closest('article')!
+    const remove = within(card).getByRole('button', { name: 'Delete' })
+    await user.click(remove)
+    const alert = await screen.findByRole('alertdialog')
+    expect(alert).toHaveClass('pp-root', 'aic-dialog')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(remove).toHaveFocus()
+  })
+
+  it('renders aggregate and CLI failures only in their own resource sections without false empty or broken states', async () => {
+    const aggregateFailure = setup(undefined, { aggregateError: true })
+    expect(await screen.findAllByText(/provider connections could not be loaded/i)).toHaveLength(1)
+    expect(screen.getByText('Claude Code')).toBeTruthy()
+    expect(screen.queryByText(/no provider connections yet/i)).toBeNull()
+    expect(screen.queryByText(/no custom configurations yet/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /add connection|new configuration/i })).toBeNull()
+    expect(aggregateFailure.calls).toBeTruthy()
+    cleanup()
+
+    setup(undefined, { cliError: true })
+    await screen.findByText('Personal OpenAI')
+    expect(screen.getByText(/local cli access could not be loaded/i)).toBeTruthy()
+    expect(screen.queryByText(/no local cli products/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /test local cli/i })).toBeNull()
+    const configuration = screen.getByText('Research quartet').closest('article')!
+    expect(within(configuration).queryByText(/needs repair/i)).toBeNull()
+    expect(within(configuration).getByRole('radio')).not.toBeDisabled()
+    cleanup()
+
+    const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
+    setup({ configurations: [{ ...state.configurations[0], roles: {
+      synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget,
+    } }] }, { cliError: true })
+    const cliConfiguration = (await screen.findByText('Research quartet')).closest('article')!
+    expect(within(cliConfiguration).getByText('CLI availability unavailable')).toBeTruthy()
+    expect(within(cliConfiguration).getByText('Local CLI availability could not be verified')).toBeTruthy()
+    expect(within(cliConfiguration).queryByText(/needs repair/i)).toBeNull()
+    expect(within(cliConfiguration).queryByText(/role choices are unavailable/i)).toBeNull()
+    expect(within(cliConfiguration).getByRole('button', { name: 'Edit' })).toBeDisabled()
+    expect(within(cliConfiguration).getByRole('radio')).toBeDisabled()
+  })
+
+  it('uses retained validation evidence while validating and blocks a first or replaced credential with no confirmation', async () => {
+    setup({ connections: [{ ...state.connections[0], validationState: 'validating' }] })
+    const retainedDirect = await screen.findByRole('radio', { name: /personal openai gpt safe/i })
+    expect(retainedDirect).not.toBeDisabled()
+    const retainedConfiguration = screen.getByText('Research quartet').closest('article')!
+    expect(within(retainedConfiguration).getByRole('radio')).not.toBeDisabled()
+    cleanup()
+
+    setup({ connections: [{ ...state.connections[0], validationState: 'validating', lastValidatedAt: null }] })
+    const unknownDirect = await screen.findByRole('radio', { name: /personal openai gpt safe/i })
+    expect(unknownDirect).toBeDisabled()
+    const unknownConfiguration = screen.getByText('Research quartet').closest('article')!
+    expect(within(unknownConfiguration).getByText(/needs repair/i)).toBeTruthy()
+    expect(within(unknownConfiguration).getByRole('radio')).toBeDisabled()
+  })
+
+  it('associates duplicate-name server errors only with the duplicate name repair control', async () => {
+    const user = userEvent.setup()
+    setup(undefined, { duplicateNameError: true })
+    await user.click(await screen.findByRole('button', { name: /duplicate/i }))
+    const dialog = await screen.findByRole('dialog')
+    const name = within(dialog).getByRole('textbox', { name: /configuration name/i })
+    await user.click(within(dialog).getByRole('button', { name: 'Duplicate' }))
+    const error = await within(dialog).findByRole('alert')
+    expect(error).toHaveTextContent(/name is already in use/i)
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(name).toHaveAttribute('aria-describedby', error.id)
+  })
+
+  it('renders a populated four-role configuration accessibly with no serious or critical axe violations', async () => {
+    setup()
+    const card = (await screen.findByText('Research quartet')).closest('article')!
+    for (const role of ['Synthesizer', 'Planner', 'Deep Planner', 'Worker']) {
+      expect(within(card).getByText(role)).toBeTruthy()
+    }
+    const results = await axe.run(document.body, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+    })
+    expect(results.violations.filter(item => item.impact === 'critical' || item.impact === 'serious')).toEqual([])
+  })
+
   it('contains the mobile target, scoped selector, focus, and reduced-motion contracts', () => {
     const css = readFileSync(resolve(process.cwd(), 'src/components/ai-console/ai-console.css'), 'utf8')
     expect(css).toContain('.pp-root .aic-')
     expect(css).toMatch(/min-height:\s*44px/)
     expect(css).toContain(':focus-visible')
     expect(css).toContain('prefers-reduced-motion: reduce')
+    expect(css).toContain('.pp-root.aic-dialog')
+    expect(css).toMatch(/left:\s*0\s*!important/)
+    expect(css).toMatch(/right:\s*0\s*!important/)
+    expect(css).toMatch(/width:\s*100%\s*!important/)
+    expect(css).toMatch(/aic-disclosure input:focus-visible/)
+    expect(css).toMatch(/\.pp-root\.aic-dialog[^}]*transition-duration:\s*\.01ms/s)
   })
 })

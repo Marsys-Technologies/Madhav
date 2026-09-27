@@ -96,9 +96,8 @@ export function AIConsole() {
   }, 'Default AI updated.')
 
   const state = stateQuery.data
-  const clis = cliQuery.data?.clis ?? []
+  const clis = cliQuery.isSuccess ? cliQuery.data.clis : []
   const loading = stateQuery.isLoading || cliQuery.isLoading
-  const error = stateQuery.isError || cliQuery.isError
 
   return (
     <div className="pp-root min-h-full">
@@ -111,12 +110,11 @@ export function AIConsole() {
           </p>
         </header>
 
-        {error && <div className="aic-error" role="alert">AI Console could not be loaded. Refresh the page to try again.</div>}
-
         <div className="aic-sections" aria-busy={loading}>
           <ProviderConnectionsSection
             state={state}
-            loading={loading}
+            loading={stateQuery.isLoading}
+            error={stateQuery.isError}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
@@ -124,7 +122,9 @@ export function AIConsole() {
           <CustomConfigurationsSection
             state={state}
             clis={clis}
-            loading={loading}
+            loading={stateQuery.isLoading}
+            error={stateQuery.isError}
+            cliStatus={cliQuery.isLoading ? 'loading' : cliQuery.isError ? 'error' : 'ready'}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
@@ -132,7 +132,8 @@ export function AIConsole() {
           <LocalClisSection
             state={state}
             clis={clis}
-            loading={loading}
+            loading={cliQuery.isLoading}
+            error={cliQuery.isError}
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { AiChoiceRadio } from './AiChoiceRadio'
 import {
-  AI_ROLES, PROVIDER_LABELS, ROLE_LABELS, choicesEqual,
+  AI_ROLES, PROVIDER_LABELS, ROLE_LABELS, choicesEqual, hasCurrentProviderConfirmation,
   type AiChoice, type AiConsoleStateDto, type AiRole, type CliCardDto, type ConfigurationDto,
   type ConsoleMutation, type RoleTarget,
 } from './types'
@@ -15,6 +15,8 @@ interface Props {
   state?: AiConsoleStateDto
   clis: CliCardDto[]
   loading: boolean
+  error: boolean
+  cliStatus: 'loading' | 'error' | 'ready'
   mutationPending: boolean
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
@@ -29,28 +31,41 @@ function sourceFor(target: RoleTarget) {
   return target.kind === 'provider_model' ? `provider:${target.connectionId}` : `cli:${target.cliId}`
 }
 
-function configurationUsable(configuration: ConfigurationDto, state: AiConsoleStateDto | undefined, clis: CliCardDto[]) {
-  if (configuration.deletedAt) return false
-  return AI_ROLES.every(role => {
+type ConfigurationAvailability = 'usable' | 'unusable' | 'unknown'
+
+function configurationAvailability(
+  configuration: ConfigurationDto,
+  state: AiConsoleStateDto | undefined,
+  clis: CliCardDto[],
+  cliStatus: Props['cliStatus'],
+): ConfigurationAvailability {
+  if (configuration.deletedAt) return 'unusable'
+  let unknown = false
+  const usable = AI_ROLES.every(role => {
     const target = configuration.roles[role]
     if (target.kind === 'provider_model') {
       const connection = state?.connections.find(item => item.id === target.connectionId)
       const model = state?.models.find(item => item.connectionId === target.connectionId && item.modelId === target.modelId)
-      return connection?.validationState === 'validated' && !connection.deletedAt && model?.available === true && model.compatibleRoles.includes(role)
+      return Boolean(connection && hasCurrentProviderConfirmation(connection) && !connection.deletedAt && model?.available === true && model.compatibleRoles.includes(role))
     }
+    if (cliStatus !== 'ready') { unknown = true; return true }
     const cli = clis.find(item => item.cliId === target.cliId)
     return cli?.state === 'reachable' && cli.models.some(model => model.modelId === target.modelId && model.compatibleRoles.includes(role))
   })
+  return !usable ? 'unusable' : unknown ? 'unknown' : 'usable'
 }
 
-export function CustomConfigurationsSection({ state, clis, loading, mutationPending, mutate, onSelectDefault }: Props) {
+interface ConfigurationFieldError { message: string; target: 'name' | 'roles' | 'form' }
+
+export function CustomConfigurationsSection({ state, clis, loading, error, cliStatus, mutationPending, mutate, onSelectDefault }: Props) {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editing, setEditing] = useState<ConfigurationDto | null>(null)
   const [name, setName] = useState('')
   const [drafts, setDrafts] = useState<Drafts>(EMPTY_DRAFTS)
-  const [fieldError, setFieldError] = useState('')
+  const [fieldError, setFieldError] = useState<ConfigurationFieldError | null>(null)
   const [duplicateTarget, setDuplicateTarget] = useState<ConfigurationDto | null>(null)
   const [duplicateName, setDuplicateName] = useState('')
+  const [duplicateError, setDuplicateError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<ConfigurationDto | null>(null)
   const [deleteSummary, setDeleteSummary] = useState('')
   const configurationDefault = state?.defaultChoice?.kind === 'custom_configuration' ? state.defaultChoice : null
@@ -59,12 +74,13 @@ export function CustomConfigurationsSection({ state, clis, loading, mutationPend
     !configuration.deletedAt || configurationDefault?.configurationId === configuration.id), [state, configurationDefault])
 
   const sources = useMemo(() => {
-    const providerSources = (state?.connections ?? []).filter(connection => !connection.deletedAt && connection.validationState === 'validated')
+    const providerSources = (state?.connections ?? []).filter(connection => !connection.deletedAt && hasCurrentProviderConfirmation(connection))
       .map(connection => ({ value: `provider:${connection.id}`, label: `${connection.name} · ${PROVIDER_LABELS[connection.providerId]}` }))
-    const cliSources = clis.filter(cli => cli.state === 'reachable')
+    const cliSources = cliStatus === 'ready' ? clis.filter(cli => cli.state === 'reachable')
       .map(cli => ({ value: `cli:${cli.cliId}`, label: cli.productName }))
+      : []
     return [...providerSources, ...cliSources]
-  }, [state, clis])
+  }, [state, clis, cliStatus])
 
   function modelOptions(source: string, role: AiRole) {
     const [kind, id] = source.split(':', 2)
@@ -80,13 +96,13 @@ export function CustomConfigurationsSection({ state, clis, loading, mutationPend
   }
 
   function openNew() {
-    setEditing(null); setName(''); setDrafts(EMPTY_DRAFTS()); setFieldError(''); setEditorOpen(true)
+    setEditing(null); setName(''); setDrafts(EMPTY_DRAFTS()); setFieldError(null); setEditorOpen(true)
   }
 
   function openEdit(configuration: ConfigurationDto) {
     const next = EMPTY_DRAFTS()
     for (const role of AI_ROLES) next[role] = { source: sourceFor(configuration.roles[role]), model: encodeModel(configuration.roles[role].modelId) }
-    setEditing(configuration); setName(configuration.name); setDrafts(next); setFieldError(''); setEditorOpen(true)
+    setEditing(configuration); setName(configuration.name); setDrafts(next); setFieldError(null); setEditorOpen(true)
   }
 
   function updateDraft(role: AiRole, field: keyof RoleDraft, value: string) {
@@ -119,7 +135,7 @@ export function CustomConfigurationsSection({ state, clis, loading, mutationPend
   }
 
   async function saveConfiguration() {
-    if (!complete) { setFieldError('Name the configuration and choose a compatible source and model for all four roles.'); return }
+    if (!complete) { setFieldError({ message: 'Name the configuration and choose a compatible source and model for all four roles.', target: name.trim() ? 'roles' : 'name' }); return }
     const roles = Object.fromEntries(AI_ROLES.map(role => [role, targetFor(role)])) as Record<AiRole, RoleTarget>
     try {
       await mutate(editing ? `/api/ai-console/configurations/${editing.id}` : '/api/ai-console/configurations', {
@@ -127,7 +143,10 @@ export function CustomConfigurationsSection({ state, clis, loading, mutationPend
         body: JSON.stringify(editing ? { name: name.trim(), expectedVersion: editing.version, roles } : { name: name.trim(), roles }),
       }, editing ? 'Configuration updated.' : 'Configuration created.')
       setEditorOpen(false)
-    } catch (error) { setFieldError(error instanceof Error ? error.message : 'The request could not be completed safely.') }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The request could not be completed safely.'
+      setFieldError({ message, target: message.includes('name is already in use') ? 'name' : 'form' })
+    }
   }
 
   async function duplicateConfiguration() {
@@ -135,7 +154,8 @@ export function CustomConfigurationsSection({ state, clis, loading, mutationPend
     try {
       await mutate('/api/ai-console/configurations', { method: 'POST', body: JSON.stringify({ name: duplicateName.trim(), duplicateFrom: duplicateTarget.id }) }, 'Configuration duplicated.')
       setDuplicateTarget(null)
-    } catch (error) { setFieldError(error instanceof Error ? error.message : 'The request could not be completed safely.') }
+      setDuplicateError('')
+    } catch (error) { setDuplicateError(error instanceof Error ? error.message : 'The request could not be completed safely.') }
   }
 
   async function previewDelete(configuration: ConfigurationDto) {
@@ -161,38 +181,40 @@ export function CustomConfigurationsSection({ state, clis, loading, mutationPend
 
   return (
     <section className="aic-section" aria-labelledby="aic-config-heading">
-      <div className="aic-section-head"><div><h2 id="aic-config-heading">Custom configurations</h2><p className="aic-section-copy">Name a complete routing configuration and choose an exact validated model for each of Madhav’s four roles.</p></div><button className="aic-button" data-primary="true" type="button" onClick={openNew}><Plus aria-hidden="true" className="inline size-4" /> New configuration</button></div>
-      {defaultMissing && configurationDefault && <div className="aic-broken"><strong>Broken default.</strong> Configuration {configurationDefault.configurationId} is no longer available. Choose another default.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable configuration</span><AiChoiceRadio choice={configurationDefault} checked disabled unavailable label={configurationDefault.configurationId} onSelect={onSelectDefault} /></div></div>}
-      {loading ? <div className="aic-empty">Loading custom configurations…</div> : configurations.length === 0 ? <div className="aic-empty">No custom configurations yet. Create one when you want different models to handle different roles.</div> : (
+      <div className="aic-section-head"><div><h2 id="aic-config-heading">Custom configurations</h2><p className="aic-section-copy">Name a complete routing configuration and choose an exact validated model for each of Madhav’s four roles.</p></div>{!error && state && <button className="aic-button" data-primary="true" type="button" onClick={openNew}><Plus aria-hidden="true" className="inline size-4" /> New configuration</button>}</div>
+      {!error && defaultMissing && configurationDefault && <div className="aic-broken"><strong>Broken default.</strong> Configuration {configurationDefault.configurationId} is no longer available. Choose another default.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable configuration</span><AiChoiceRadio choice={configurationDefault} checked disabled unavailable label={configurationDefault.configurationId} onSelect={onSelectDefault} /></div></div>}
+      {error ? <div className="aic-error" role="alert">Custom configurations could not be loaded. Refresh the page to try again.</div> : loading ? <div className="aic-empty">Loading custom configurations…</div> : configurations.length === 0 ? <div className="aic-empty">No custom configurations yet. Create one when you want different models to handle different roles.</div> : (
         <div className="aic-grid">{configurations.map(configuration => {
-          const usable = configurationUsable(configuration, state, clis)
+          const availability = configurationAvailability(configuration, state, clis, cliStatus)
+          const usable = availability === 'usable'
           const choice = { kind: 'custom_configuration' as const, configurationId: configuration.id }
           const checked = choicesEqual(state?.defaultChoice ?? null, choice)
+          const requiresCliState = AI_ROLES.some(role => configuration.roles[role].kind === 'local_cli')
           return <article className="aic-card" key={configuration.id}>
             <div className="aic-card-head">
-              <div className="aic-card-title-row"><div><span className="aic-provider-name">Configuration · v{configuration.version}</span><h3>{configuration.name}</h3></div>{!usable && <span className="aic-status"><AlertCircle aria-hidden="true" />Needs repair</span>}</div>
+              <div className="aic-card-title-row"><div><span className="aic-provider-name">Configuration · v{configuration.version}</span><h3>{configuration.name}</h3></div>{availability === 'unusable' && <span className="aic-status"><AlertCircle aria-hidden="true" />Needs repair</span>}{availability === 'unknown' && <span className="aic-status"><AlertCircle aria-hidden="true" />CLI availability unavailable</span>}</div>
               <div className="aic-role-grid">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{targetLabel(configuration.roles[role])}</span></div>)}</div>
-              {!configuration.deletedAt && <div className="aic-actions"><button className="aic-button" type="button" onClick={() => openEdit(configuration)}>Edit</button><button className="aic-button" type="button" onClick={() => { setDuplicateTarget(configuration); setDuplicateName(`${configuration.name} copy`); setFieldError('') }}><Copy aria-hidden="true" className="inline size-3" /> Duplicate</button><button className="aic-button" data-danger="true" type="button" onClick={() => previewDelete(configuration)}>Delete</button></div>}
+              {!configuration.deletedAt && <div className="aic-actions"><button className="aic-button" type="button" disabled={requiresCliState && cliStatus !== 'ready'} onClick={() => openEdit(configuration)}>Edit</button><button className="aic-button" type="button" onClick={() => { setDuplicateTarget(configuration); setDuplicateName(`${configuration.name} copy`); setDuplicateError('') }}><Copy aria-hidden="true" className="inline size-3" /> Duplicate</button><button className="aic-button" data-danger="true" type="button" onClick={() => previewDelete(configuration)}>Delete</button></div>}
             </div>
-            <div className="aic-model-list"><div className="aic-model-row" data-default={checked}><div><span className="aic-model-name">Use this configuration</span><span className="aic-model-id">{usable ? 'All four roles are currently available' : 'One or more exact role choices are unavailable'}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || mutationPending} unavailable={checked && !usable} label={configuration.name} onSelect={onSelectDefault} /></div></div>
+            <div className="aic-model-list"><div className="aic-model-row" data-default={checked}><div><span className="aic-model-name">Use this configuration</span><span className="aic-model-id">{usable ? 'All four roles are currently available' : availability === 'unknown' ? 'Local CLI availability could not be verified' : 'One or more exact role choices are unavailable'}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || mutationPending} unavailable={checked && !usable} label={configuration.name} onSelect={onSelectDefault} /></div></div>
           </article>
         })}</div>
       )}
 
-      <Dialog open={editorOpen} onOpenChange={setEditorOpen}><DialogContent className="aic-dialog">
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}><DialogContent className="pp-root aic-dialog">
         <DialogHeader><DialogTitle>{editing ? 'Edit custom configuration' : 'New custom configuration'}</DialogTitle><DialogDescription>Choose a source first, then one compatible model for each role. Configurations save only when all four roles are complete.</DialogDescription></DialogHeader>
         <div className="aic-form">
-          <div className="aic-field"><label htmlFor="aic-config-name">Configuration name</label><input id="aic-config-name" value={name} onChange={event => setName(event.target.value)} aria-invalid={Boolean(fieldError) || undefined} aria-describedby={fieldError ? 'aic-config-error' : undefined} /></div>
-          {AI_ROLES.map(role => <div className="aic-editor-role" role="group" aria-labelledby={`aic-${role}-label`} key={role}><span id={`aic-${role}-label`}>{ROLE_LABELS[role]}</span><div className="aic-field"><label htmlFor={`aic-${role}-source`}>Source <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-source`} value={drafts[role].source} aria-invalid={Boolean(fieldError) && !drafts[role].source || undefined} aria-describedby={fieldError ? 'aic-config-error' : undefined} onChange={event => updateDraft(role, 'source', event.target.value)}><option value="">Choose source</option>{sources.map(source => <option key={source.value} value={source.value}>{source.label}</option>)}</select></div><div className="aic-field"><label htmlFor={`aic-${role}-model`}>Model <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-model`} value={drafts[role].model} disabled={!drafts[role].source} aria-invalid={Boolean(fieldError) && !drafts[role].model || undefined} aria-describedby={fieldError ? 'aic-config-error' : undefined} onChange={event => updateDraft(role, 'model', event.target.value)}><option value="">Choose model</option>{modelOptions(drafts[role].source, role).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div></div>)}
+          <div className="aic-field"><label htmlFor="aic-config-name">Configuration name</label><input id="aic-config-name" value={name} onChange={event => { setName(event.target.value); if (fieldError?.target === 'name') setFieldError(null) }} aria-invalid={fieldError?.target === 'name' || undefined} aria-describedby={fieldError?.target === 'name' ? 'aic-config-error' : undefined} /></div>
+          {AI_ROLES.map(role => <div className="aic-editor-role" role="group" aria-labelledby={`aic-${role}-label`} key={role}><span id={`aic-${role}-label`}>{ROLE_LABELS[role]}</span><div className="aic-field"><label htmlFor={`aic-${role}-source`}>Source <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-source`} value={drafts[role].source} aria-invalid={fieldError?.target === 'roles' && !drafts[role].source || undefined} aria-describedby={fieldError?.target === 'roles' && !drafts[role].source ? 'aic-config-error' : undefined} onChange={event => { updateDraft(role, 'source', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose source</option>{sources.map(source => <option key={source.value} value={source.value}>{source.label}</option>)}</select></div><div className="aic-field"><label htmlFor={`aic-${role}-model`}>Model <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-model`} value={drafts[role].model} disabled={!drafts[role].source} aria-invalid={fieldError?.target === 'roles' && !drafts[role].model || undefined} aria-describedby={fieldError?.target === 'roles' && !drafts[role].model ? 'aic-config-error' : undefined} onChange={event => { updateDraft(role, 'model', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose model</option>{modelOptions(drafts[role].source, role).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div></div>)}
           <button className="aic-button" type="button" disabled={!canFillAll} onClick={fillAllRoles}>Use this model for every role</button>
-          {fieldError && <p id="aic-config-error" className="aic-field-error" role="alert">{fieldError}</p>}
+          {fieldError && <p id="aic-config-error" className="aic-field-error" role="alert">{fieldError.message}</p>}
         </div>
         <DialogFooter><button className="aic-button" type="button" onClick={() => setEditorOpen(false)}>Cancel</button><button className="aic-button" data-primary="true" type="button" disabled={!complete || mutationPending} onClick={saveConfiguration}>{mutationPending ? 'Working…' : 'Save configuration'}</button></DialogFooter>
       </DialogContent></Dialog>
 
-      <Dialog open={duplicateTarget !== null} onOpenChange={open => { if (!open) setDuplicateTarget(null) }}><DialogContent className="aic-dialog"><DialogHeader><DialogTitle>Duplicate configuration</DialogTitle><DialogDescription>Create an independent copy with a new name.</DialogDescription></DialogHeader><div className="aic-field"><label htmlFor="aic-duplicate-name">Configuration name</label><input id="aic-duplicate-name" value={duplicateName} onChange={event => setDuplicateName(event.target.value)} /></div>{fieldError && <p className="aic-field-error" role="alert">{fieldError}</p>}<DialogFooter><button className="aic-button" type="button" onClick={() => setDuplicateTarget(null)}>Cancel</button><button className="aic-button" data-primary="true" type="button" disabled={!duplicateName.trim() || mutationPending} onClick={duplicateConfiguration}>Duplicate</button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={duplicateTarget !== null} onOpenChange={open => { if (!open) { setDuplicateTarget(null); setDuplicateError('') } }}><DialogContent className="pp-root aic-dialog"><DialogHeader><DialogTitle>Duplicate configuration</DialogTitle><DialogDescription>Create an independent copy with a new name.</DialogDescription></DialogHeader><div className="aic-field"><label htmlFor="aic-duplicate-name">Configuration name</label><input id="aic-duplicate-name" value={duplicateName} onChange={event => { setDuplicateName(event.target.value); setDuplicateError('') }} aria-invalid={Boolean(duplicateError) || undefined} aria-describedby={duplicateError ? 'aic-duplicate-error' : undefined} /></div>{duplicateError && <p id="aic-duplicate-error" className="aic-field-error" role="alert">{duplicateError}</p>}<DialogFooter><button className="aic-button" type="button" onClick={() => setDuplicateTarget(null)}>Cancel</button><button className="aic-button" data-primary="true" type="button" disabled={!duplicateName.trim() || mutationPending} onClick={duplicateConfiguration}>Duplicate</button></DialogFooter></DialogContent></Dialog>
 
-      <AlertDialog open={deleteTarget !== null} onOpenChange={open => { if (!open) setDeleteTarget(null) }}><AlertDialogContent className="aic-dialog"><AlertDialogHeader><AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle><AlertDialogDescription>{deleteSummary} No other configuration will be substituted.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={mutationPending} onClick={confirmDelete}>Delete configuration</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={deleteTarget !== null} onOpenChange={open => { if (!open) setDeleteTarget(null) }}><AlertDialogContent className="pp-root aic-dialog"><AlertDialogHeader><AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle><AlertDialogDescription>{deleteSummary} No other configuration will be substituted.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={mutationPending} onClick={confirmDelete}>Delete configuration</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </section>
   )
 }
