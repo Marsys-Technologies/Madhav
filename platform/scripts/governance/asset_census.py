@@ -1046,6 +1046,12 @@ def capability_scan(caps_dir: str, tables: list[str]) -> dict:
 # Every layer's capability modules: a field is dark only if NO retrieval capability, of any layer, reads it
 # (an L4 capability reads chart_facts as readily as an L1 one). Tests and `__tests__` are not capabilities.
 CAPS_ROOT = "platform/src/lib/retrieval/registry/layers"
+# W2-3 C3 (gate review §5): the MCP server is a second serving plane. Its tools
+# (`platform-mcp/src/tools/**`) run SQL directly, and so do the `platform-mcp/src/lib/**` modules those
+# tools import (`lib/kala_envelope.ts`, imported by five `tools/kala_views/*` tools, reads
+# kala_field_skill). The registry layers alone called ga_prashna_judgment "dark" while
+# `tools/register_p1_synthesis.ts` serves it. Every root is scanned; a missing one leaves R23 unmeasured.
+CAPS_ROOTS = (CAPS_ROOT, "platform-mcp/src/tools", "platform-mcp/src/lib")
 _SQL_STOP = re.compile(r"\b(?:ORDER\s+BY|GROUP\s+BY|LIMIT|OFFSET|UNION|RETURNING|FROM|WINDOW|HAVING)\b|;", re.I)
 _ALIAS_STOP = {"where", "join", "left", "right", "inner", "outer", "full", "cross", "on", "order", "group", "limit",
                "offset", "union", "as", "using", "natural", "lateral", "window", "having", "returning", "for"}
@@ -1077,10 +1083,18 @@ def _ts_literals(src: str) -> list[str]:
 _CAPS_LITERALS: dict[tuple, list[str]] = {}
 
 
-def capability_sql(caps_root: str = CAPS_ROOT) -> dict[str, list[str]]:
-    """R23: capability module (path under `caps_root`) -> its SQL-bearing literals (a FROM or JOIN in them).
-    A missing directory raises `Unknown`: "no capability reads it" is never inferred from a scan that did
-    not run (R222 / N3's rule, at field grain)."""
+def capability_sql(caps_root: str | None = None) -> dict[str, list[str]]:
+    """R23: serving module -> its SQL-bearing literals (a FROM or JOIN in them). With no `caps_root`, every
+    serving root in `CAPS_ROOTS` (C3): registry-layer modules keyed by their path under the registry root
+    (unchanged), every other root's modules keyed `<root>/<path>`. With `caps_root`, that one root, keyed by
+    the path under it. A missing directory raises `Unknown`: "no capability reads it" is never inferred from a
+    scan that did not run (R222 / N3's rule, at field grain)."""
+    if caps_root is None:
+        out: dict[str, list[str]] = {}
+        for i, root in enumerate(CAPS_ROOTS):
+            out.update(capability_sql(root) if i == 0 else
+                       {f"{root}/{k}": v for k, v in capability_sql(root).items()})
+        return out
     d = ROOT / caps_root
     if not d.is_dir():
         raise Unknown(f"no capability directory at {caps_root}")
@@ -1091,8 +1105,11 @@ def capability_sql(caps_root: str = CAPS_ROOT) -> dict[str, list[str]]:
         st = f.stat()
         key = (str(f), st.st_mtime_ns, st.st_size)          # re-read only a module that changed
         if key not in _CAPS_LITERALS:
+            # C3: SELECT-only literals are kept too — `\`SELECT a, b \` + \`FROM t \`` puts the select list in
+            # the literal BEFORE the FROM, and `field_reach` reads it from there; dropping it here made the
+            # concatenated form read as zero columns / no query at all.
             _CAPS_LITERALS[key] = [x for x in _ts_literals(f.read_text(encoding="utf-8", errors="replace"))
-                                   if re.search(r"\b(?:FROM|JOIN)\b", x, re.I)]
+                                   if re.search(r"\b(?:FROM|JOIN|SELECT)\b", x, re.I)]
         lits = _CAPS_LITERALS[key]
         if lits:
             out[str(f.relative_to(d))] = lits

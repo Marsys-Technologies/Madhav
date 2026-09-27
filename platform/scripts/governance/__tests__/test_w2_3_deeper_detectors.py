@@ -782,3 +782,61 @@ def test_r241_a_guard_helper_raising_on_populated_output_holds_its_callers_delet
     assert v == verdict, notes
     if verdict == ac.FAIL:
         assert "raise RuntimeError in the guard helper _assert_empty" in notes[0], notes
+
+
+# ─────────── W2-3 C3 (gate review §5): the MCP server's tools and their lib are a serving surface too ───────────
+
+def _two_planes(monkeypatch, tmp_path, mcp_files):
+    reg = _caps_tree(tmp_path / "registry", {"L1_x/get_other.ts": "query(`SELECT a FROM t_other WHERE chart_id = $1`)\n"})
+    tools = _caps_tree(tmp_path / "mcp_tools", mcp_files)
+    lib = _caps_tree(tmp_path / "mcp_lib", {"kala_envelope.ts": "query(`SELECT skill FROM t_lib_only`)\n"})
+    monkeypatch.setattr(ac, "CAPS_ROOTS", (reg, tools, lib), raising=False)
+    monkeypatch.setattr(ac, "CAPS_ROOT", reg)
+    return tools, lib
+
+
+def test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark(monkeypatch, tmp_path):
+    """ga_prashna_judgment's shape: no retrieval-registry module reads t_m, but an MCP tool
+    (`tools/register_p1_synthesis.ts`: `FROM ga_prashna_judgment gj`) does, and a tool-imported MCP lib module
+    reads t_lib_only. Both are served: modules found, the tool's selected columns exposed. A query split as
+    `SELECT … ` + `FROM t_concat …` is read too (its SELECT-only literal used to be dropped before the look-back).
+    Fails without the fix: the scan read the registry layers only, so every table here read dark."""
+    tools, lib = _two_planes(monkeypatch, tmp_path, {
+        "register_p1_synthesis.ts": "query(`SELECT gj.verdict, gj.chart_id FROM t_m gj WHERE gj.chart_id = $1`)\n",
+        "retrieval/register_windows.ts": ("const sql =\n  `SELECT citation_string, status ` +\n"
+                                          "  `FROM t_concat ` +\n  `WHERE citation_string IN ($1)`\n"),
+        "__tests__/x.test.ts": "query(`SELECT * FROM t_m`)\n"})
+    caps = _REAL_CAPABILITY_SQL()
+    fr = ac.field_reach("t_m", ["chart_id", "verdict", "notes"], caps)
+    assert fr["modules"] == [f"{tools}/register_p1_synthesis.ts"] and fr["exposed"] == {"verdict", "chart_id"}, fr
+    assert ac.field_reach("t_lib_only", ["skill"], caps)["modules"] == [f"{lib}/kala_envelope.ts"]
+    # bg_gochara_citation_resolution's shape: the select list and the FROM in two concatenated literals
+    fc = ac.field_reach("t_concat", ["citation_string", "status", "chunk_id"], caps)
+    assert fc["modules"] == [f"{tools}/retrieval/register_windows.ts"] and fc["exposed"] == {"citation_string", "status"}, fc
+    assert ac.field_reach("t_other", ["a"], caps)["modules"] == ["L1_x/get_other.ts"]          # registry keys unchanged
+
+
+def test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark(monkeypatch, tmp_path):
+    """If the MCP tools directory is absent the scan did not run over a serving plane: Unknown (R23 reads
+    'unmeasured'), never an 'all dark' inferred from half a surface."""
+    reg = _caps_tree(tmp_path / "registry", {"L1_x/get_other.ts": "query(`SELECT a FROM t_other`)\n"})
+    monkeypatch.setattr(ac, "CAPS_ROOTS", (reg, str(tmp_path / "no_mcp_tools")), raising=False)
+    with pytest.raises(ac.Unknown):
+        _REAL_CAPABILITY_SQL()
+
+
+@LIVE
+def test_live_c3_mcp_served_tables_are_found_and_the_two_genuinely_dark_stay_dark():
+    """Live catalog + the real serving planes: the 7 tables the gate review found read by MCP code are served
+    (ga_prashna_judgment by tools/register_p1_synthesis.ts; kala_field_skill by lib/kala_envelope.ts); kala_field
+    and bodha_signal_embeddings stay dark (read by no serving module)."""
+    caps = ac.capability_sql()
+    tabs = ["ga_prashna_judgment", "bg_dignity_reference", "reference_nakshatra", "bg_transit_rules",
+            "bg_gochara_citation_resolution", "gochara_resonance_map", "kala_field_skill", "kala_field",
+            "bodha_signal_embeddings"]
+    cat = ac.catalog(tabs)
+    mods = {t: ac.field_reach(t, cat["cols"][t], caps)["modules"] for t in tabs}
+    assert "platform-mcp/src/tools/register_p1_synthesis.ts" in mods["ga_prashna_judgment"], mods
+    assert "platform-mcp/src/lib/kala_envelope.ts" in mods["kala_field_skill"], mods
+    assert all(mods[t] for t in tabs[:7]), mods
+    assert mods["kala_field"] == [] and mods["bodha_signal_embeddings"] == [], mods
