@@ -1330,6 +1330,45 @@ def test_check_fails_when_a_fake_producer_is_appended_beside_a_real_one(
     assert target in out
 
 
+def test_check_fails_when_a_fake_producer_is_placed_first_and_every_fake_is_named(
+    tmp_path, monkeypatch, capsys
+):
+    """B3 (review-4 corrections), bypass3b + "every producer": a fabricated
+    producer placed BEFORE an already-covered SCU's real producers, plus a
+    second, differently-named fabricated producer appended to a SECOND covered
+    SCU (a derived-tier one, `scu.catalog.get_divisionals`). Both SCUs must fail
+    and both fake producers must be named — the check validates every producer
+    of every SCU, of every tier, not the first valid one. Mutation this catches:
+    restoring the first-valid-producer short-circuit (unbound producers ignored,
+    loop stops at the first covering one)."""
+    payload = _load_real_committed_artifact()
+    first = "scu.bodha.mechanism.network"
+    second = "scu.catalog.get_divisionals"
+    assert payload["scus"][first]["producers"] and payload["scus"][second]["producers"]
+    payload["scus"][first]["producers"].insert(
+        0, {"asset_id": "zz_fake_first", "disposition": "reviewed_output", "source_ref": "x"}
+    )
+    payload["scus"][second]["producers"].append(
+        {
+            "asset_id": "zz_fake_sq",
+            "table": "no_such_table_xyz",
+            "source_ref": "nope.ts:1-2",
+            "disposition": "derived_from_source_query",
+        }
+    )
+
+    artifact_path = tmp_path / "producer_provenance.derived.json"
+    artifact_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(cp, "DERIVED_OUTPUT_PATH", artifact_path)
+
+    exit_code = cp.main(["--check"])
+    out = capsys.readouterr().out
+    assert exit_code != 0
+    lines = out.splitlines()
+    assert any(first in ln and "'zz_fake_first'" in ln for ln in lines)
+    assert any(second in ln and "'zz_fake_sq'" in ln for ln in lines)
+
+
 def test_check_fails_when_a_real_claim_is_copied_onto_the_wrong_scu(tmp_path, monkeypatch, capsys):
     """T1 (B_REVIEW4 test gap): the per-SCU binding is correct today (bypass1/
     bypass2 in the gate's own probes), but nothing in this suite pinned it —

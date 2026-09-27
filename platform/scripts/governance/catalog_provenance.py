@@ -12,8 +12,14 @@ Scope (NIKASHA_WAVE1_EXECUTION_PROMPT_v1_0.md §4):
   B-2  the closure:      `--closure` (writes CLOSURE_REPORT.md)
   B-3  the reader scan:  `--reader-scan` (writes BUILD_DEPENDENCIES_READER_SCAN.md;
                           read-only grep, never drops or alters `build_dependencies`)
-  B-4  the `--check` gate: exits non-zero when any SCU has neither a reviewed nor a
-                          derived producer and no `no_detector` reason.
+  B-4  the `--check` gate: reads the committed artifact + the snapshot; exits
+                          non-zero when the artifact's SCU set differs from the
+                          catalog's, when ANY producer of ANY tier on ANY SCU is
+                          not bound to what the snapshot declares for that SCU,
+                          when a snapshot-declared producer is missing, or when an
+                          SCU has no covering producer (route evidence never
+                          covers) and no exact-match closed-set `no_detector`
+                          reason the snapshot does not contradict.
 
 Honest tiers (CLAUDE.md §N.7/§N.8; wave1 prompt §2.6):
   - A machine-derived producer is `disposition: derived_from_source_query` (parsed out
