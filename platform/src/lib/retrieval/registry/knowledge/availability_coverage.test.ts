@@ -167,6 +167,40 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
   return loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [...rows] }), new Date('2026-09-17T00:05:00.000Z'))
 }
 
+describe('graha_portrait / query_planet — R3 proof typing (strength group)', () => {
+  const GA_POSITIONS = adjacentProducerReceipt('ga_positions', '474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f')
+  const GA_DASHAS = adjacentProducerReceipt('ga_dashas', '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14')
+  const GA_YOGA = adjacentProducerReceipt('ga_yoga', 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246')
+
+  it.each([
+    { scuId: 'scu.catalog.graha_portrait', bindingId: 'registry:marsys://tool/L2/graha_portrait', receipts: [GA_POSITIONS, GA_DASHAS], legName: 'get_yoga_dosha', legMarker: "'bhadra_flag', 'panchaka_flag'" },
+    { scuId: 'scu.catalog.query_planet', bindingId: 'registry:marsys://tool/L1/query_planet', receipts: [GA_POSITIONS, GA_YOGA], legName: 'get_dispositors', legMarker: "'graha_dispositor_chain'" },
+  ])('becomes available only once every leg resolves, and names the one leg that fails ($scuId)', async ({ scuId, bindingId, receipts, legName, legMarker }) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      requirements: [expect.objectContaining({ kind: 'derived', scope: 'chart' })],
+    })])
+
+    const available = await overlayFor([transitProbeAnchor(), ...receipts])
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available', available_binding_ids: [bindingId], gaps: [],
+    })
+
+    // Withhold one leg's own source-query success and confirm only that leg is named — the
+    // other legs, all independently resolvable, never collapse into a false "everything dark".
+    const failing = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes(legMarker)) throw new Error('leg source unavailable')
+      return { rows: [transitProbeAnchor(), ...receipts] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    const entry = failing.availability.find((candidate) => candidate.scu_id === scuId)!
+    expect(entry.state).toBe('dark')
+    expect(entry.gaps.length).toBeGreaterThan(0)
+    for (const gap of entry.gaps) expect(gap, legName).toContain(`registry:marsys://tool/L1/${legName}:`)
+  })
+})
+
 describe('first-slice availability coverage', () => {
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
@@ -1271,6 +1305,18 @@ describe('first-slice availability coverage', () => {
       sqlMarker: "fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])",
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120',
     },
+    {
+      // R3 proof typing (review §4, strength group): a fresh ga_strength producer receipt
+      // covers only graha_shadbala_total, not the full 21-category selectable surface, so a
+      // producer_output claim could never honestly promote this route. get_strength now reads
+      // its own served-generation-fenced rows directly (get_strength.ts) and is proven the
+      // same way as the other direct chart_facts reads above.
+      scuId: 'scu.catalog.get_strength',
+      bindingId: 'registry:marsys://tool/L1/get_strength',
+      contractId: 'source-query:get-strength:v1',
+      sqlMarker: "'graha_shadbala_cheshta'",
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES',
+    },
   ])('probes $scuId against the selected chart and its served build set, with honest zero-row availability', async ({
     scuId, bindingId, contractId, sqlMarker, handlerRef,
   }) => {
@@ -1334,31 +1380,6 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('keeps get_strength dark when a fresh ga_strength receipt covers only one selectable category', async () => {
-    const scu = findScu('scu.catalog.get_strength')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
-      binding_id: 'registry:marsys://tool/L1/get_strength',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('all 21 selectable strength fact categories'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
-        'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
-      ]),
-    })])
-
-    // This receipt is fresh and pins the exact reviewed ga_strength SHA, but
-    // the digest covers only graha_shadbala_total, not the route's selectable
-    // 21-category surface or its frame-context position lookup.
-    const overlay = await overlayFor([
-      adjacentProducerReceipt('ga_strength', '7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3'),
-    ])
-    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      state: 'dark',
-      available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
-    })
-  })
 
   it('activates each concrete primary binding from its own exact contract and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)

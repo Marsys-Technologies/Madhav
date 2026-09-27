@@ -4174,6 +4174,41 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
       'platform/supabase/migrations/463_bodha_spine_bundles.sql:36-50',
     ],
   },
+  {
+    // R3 proof typing (review §4, "strength group"): the strength group (get_strength,
+    // graha_portrait, query_planet) was uncontracted with no proof kind at all. get_strength
+    // reads all 21 strength fact_categories from chart_facts directly, fenced to the served
+    // generation (RC-1/RC-2, get_strength.ts). The probe exercises exactly the default,
+    // unfiltered read every caller shares before any optional ayanamsha_id/graha_key/frame
+    // narrowing — the same convention as get-ayurdaya/get-sensitive-degrees.
+    contract_id: 'source-query:get-strength:v1',
+    descriptor_name: 'get_strength',
+    capability_uri: 'marsys://tool/L1/get_strength',
+    scope: 'chart',
+    parameter_binding: 'chart_and_served_builds',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND build_id = ANY($2::uuid[])
+             AND fact_category = ANY(ARRAY[
+               'graha_shadbala_cheshta', 'graha_shadbala_dig', 'graha_shadbala_drik',
+               'graha_shadbala_kala', 'graha_shadbala_naisargika', 'graha_shadbala_sthana',
+               'graha_shadbala_total', 'graha_vimsopaka_dasavarga', 'graha_vimsopaka_saptavarga',
+               'graha_vimsopaka_shadvarga', 'graha_vimsopaka_shodasavarga', 'vimsopaka_bala_per_graha',
+               'graha_saptavargaja_bala_component', 'graha_ishta_phala', 'graha_kashta_phala',
+               'pranic_strength_per_graha', 'graha_in_house_composite_strength',
+               'graha_composite_state_classification', 'graha_special_state_rollup',
+               'graha_yoga_karaka_flag', 'graha_tri_deva_role_strength'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:150-170',
+    ],
+  },
 ]
 
 const CONTRACT_BY_ID = new Map(CONTRACTS.map((contract) => [contract.contract_id, contract]))

@@ -81,15 +81,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/src/app/api/pariprashna/route.ts',
     ],
   },
-  get_strength: {
-    reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40',
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202',
-      'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
-    ],
-  },
 }
 
 const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapabilityDeclaration['primary_binding_details']>>> = {
@@ -130,7 +121,53 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
   },
 }
 
+// R3 proof typing (review §4, "strength group"): graha_portrait and query_planet are pure
+// in-process assemblies over already-contracted L1/L2 leaves (§N.6.4 sanctioned synthesizers;
+// B.10 — zero new computation). Every leg call is individually non-fatal (callHandler/try-catch
+// in each file), but each is part of the descriptor's own explicit promised field list, so the
+// composite is gated on all of them rather than exposing a synthesizer that could report
+// "assembled" while its dignity chain, shadbala, or dasha section silently degraded to empty.
+const GRAHA_PORTRAIT_LEGS = [
+  'registry:marsys://tool/L1/get_positions',
+  'registry:marsys://tool/L1/get_dignity',
+  'registry:marsys://tool/L1/get_strength',
+  'registry:marsys://tool/L1/get_avasthas',
+  'registry:marsys://tool/L1/get_yoga_dosha',
+  'registry:marsys://tool/L1/get_dashas',
+  'registry:marsys://tool/L2/query_signals',
+  'registry:marsys://tool/L2/traverse_chart_graph',
+] as const
+
+const QUERY_PLANET_LEGS = [
+  'registry:marsys://tool/L1/get_positions',
+  'registry:marsys://tool/L1/get_dignity',
+  'registry:marsys://tool/L1/get_strength',
+  'registry:marsys://tool/L1/get_avasthas',
+  'registry:marsys://tool/L1/get_aspects',
+  'registry:marsys://tool/L1/get_yoga_dosha',
+  'registry:marsys://tool/L1/get_yoga_firings',
+  'registry:marsys://tool/L1/get_dispositors',
+] as const
+
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  graha_portrait: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: GRAHA_PORTRAIT_LEGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts',
+    }],
+  },
+  query_planet: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: QUERY_PLANET_LEGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts',
+    }],
+  },
   // The MCP alias already consumes this exact handler query through editorial.ts. Bind that
   // same reviewed probe to the raw registry descriptor explicitly rather than renaming the
   // alias-oriented contract into an ambiguous source-query owner.
