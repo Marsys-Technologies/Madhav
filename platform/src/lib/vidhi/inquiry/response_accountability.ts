@@ -79,6 +79,11 @@ function citedHandles(text: string): string[] {
   return uniqueSorted([...text.matchAll(CITATION_MARKER_RE)].map((match) => match[1]!.toUpperCase()))
 }
 
+/** Register handles cited in a text span (`[[F7]]` or the Portal `⟦cite: F7⟧` family). */
+export function inquiryCitedHandles(text: string): string[] {
+  return citedHandles(text)
+}
+
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort()
 }
