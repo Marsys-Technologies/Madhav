@@ -91,7 +91,8 @@ function enforceModelOutputLimit(parsed: ReturnType<typeof validateMachineOutput
   if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0) {
     throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
   }
-  const measured = parsed.reportedOutputTokens ?? Math.max(
+  const measured = Math.max(
+    parsed.reportedOutputTokens ?? 0,
     encode(parsed.text).length,
     parsed.structured === undefined ? 0 : encode(JSON.stringify(parsed.structured)).length,
   )

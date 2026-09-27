@@ -59,9 +59,11 @@ tracked executors.
 - Every flag-on role request carries an explicit governed `maxOutputTokens`.
   The CLI runner retains its independent 1 MiB raw transport envelope. Only
   after strict JSON/JSONL parsing does the executor enforce model output: it
-  uses authoritative reported output usage when present, otherwise the
-  installed `gpt-tokenizer` over parsed text/structured candidate. An overflow
-  rejects the whole result before any event or partial output is returned.
+  always runs the installed `gpt-tokenizer` over parsed text and structured
+  semantic output, then enforces the maximum of those local counts and reported
+  output usage. Missing, zero, one-token, or understated CLI usage can never
+  suppress local measurement. An overflow rejects the whole result before any
+  event or partial output is returned.
 - The admission release is idempotent and attached to all pre-stream setup,
   writer/on-finish, persistence, stream error, cancellation, and normal terminal
   paths. It remains held while streaming.
@@ -87,6 +89,9 @@ routing metadata.
 
 - Refreshed round-three native/Consult/continuation cleanup, CLI transport,
   parsed-token limits, preflight and tracked execution aggregate: 100 pass.
+- Refreshed round-four CLI runner/parser/executor aggregate: 47 pass, including
+  generate and stream rejection for zero/one-token under-reporting, structured
+  semantic output, multibyte text, and honestly larger reported usage.
 - Full Vitest aggregate: 13,196 pass, 732 skipped, 2 todo.
 - TypeScript: `npx tsc --noEmit --skipLibCheck` passes.
 - Full ESLint: zero errors and 587 repository-baseline warnings. Scoped

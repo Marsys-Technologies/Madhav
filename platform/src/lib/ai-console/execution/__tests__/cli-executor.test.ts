@@ -60,30 +60,49 @@ describe('CLI role executor', () => {
     await expect(reader.read()).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
   })
 
-  it('uses the installed tokenizer for unreported multibyte model output', async () => {
+  it('rejects underreported zero-token oversized text before generate or stream exposes output', async () => {
+    const answer = 'substantial semantic answer '.repeat(80)
+    const localTokens = encode(answer).length
+    const runExecution = vi.fn().mockResolvedValue({ stdout: JSON.stringify({
+      type: 'result', subtype: 'success', is_error: false, result: answer, usage: { output_tokens: 0 },
+    }), exitCode: 0, signal: null })
+    const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
+
+    await expect(executor.generate({ ...request, maxOutputTokens: localTokens - 1 }))
+      .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+    const reader = executor.stream({ ...request, maxOutputTokens: localTokens - 1 }).getReader()
+    await expect(reader.read()).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+  })
+
+  it('rejects underreported one-token multibyte output in generate and stream', async () => {
     const answer = 'नमस्ते 🌕 — ज्योतिषीय उत्तर'
     const estimatedTokens = encode(answer).length
     const runExecution = vi.fn().mockResolvedValue({ stdout: JSON.stringify({
-      type: 'result', subtype: 'success', is_error: false, result: answer, usage: {},
+      type: 'result', subtype: 'success', is_error: false, result: answer, usage: { output_tokens: 1 },
     }), exitCode: 0, signal: null })
     const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
 
     await expect(executor.generate({ ...request, maxOutputTokens: estimatedTokens - 1 }))
       .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+    const reader = executor.stream({ ...request, maxOutputTokens: estimatedTokens - 1 }).getReader()
+    await expect(reader.read()).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
     await expect(executor.generate({ ...request, maxOutputTokens: estimatedTokens }))
       .resolves.toMatchObject({ text: answer })
   })
 
-  it('counts an unreported structured candidate before schema validation can return it', async () => {
+  it('counts an underreported structured candidate before generate or stream can return it', async () => {
     const structured = { answer: 'private '.repeat(200) }
     const runExecution = vi.fn().mockResolvedValue({ stdout: JSON.stringify({
-      type: 'result', subtype: 'success', is_error: false, result: 'ok', structured_output: structured, usage: {},
+      type: 'result', subtype: 'success', is_error: false, result: 'ok', structured_output: structured,
+      usage: { output_tokens: 1 },
     }), exitCode: 0, signal: null })
     const executor = createCliRoleExecutor(execution(), { runner: { runExecution } as unknown as CliRunner })
     const schema = { type: 'object' as const, properties: { answer: { type: 'string' as const } }, required: ['answer'] }
 
     await expect(executor.generate({ ...request, responseSchema: schema, maxOutputTokens: 2 }))
       .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+    const reader = executor.stream({ ...request, responseSchema: schema, maxOutputTokens: 2 }).getReader()
+    await expect(reader.read()).rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
   })
 
   it('fails tool-bearing work locally before spawning', async () => {
