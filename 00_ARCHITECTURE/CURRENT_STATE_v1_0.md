@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.81
+version: 6.82
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,20 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.82 (2026-09-27, JATAKA-PHASE-A-HARDENING-20260927): Native-authorized narrow Phase-A
+    integrity hardening under CCD-014 and the hardening addendum, lease
+    MADHAV-JATAKA-PHASE-A-HARDENING-20260927 (claimed 3bd118621/078a9ba41). Implemented and
+    mock-tested on local branch codex/jataka-chart-workspace: item 1 (Samīkṣā confirm/dismiss and
+    conversation branches refuse correction history; message parts bound to their conversation),
+    item 3 (one shared readiness gate for consult, continue, regenerate and Paripraśna; unresolved
+    failed runs never masked; a failed small refresh stays Ready with a non-blocking warning),
+    item 4 (server-enforced birthplace coordinate and timezone plausibility), item 5 (persistence-
+    boundary recheck before each write, refusal mapping, migration 1121 trigger authored and NOT
+    applied). Item 2 (context staleness) STOPPED per its own condition: current-query consumers
+    live in excluded python-sidecar, platform-mcp and lib/retrieval surfaces. Full unit 12,782 PASS,
+    tsc PASS, scoped lint 0 errors (no regression), migration guard PASS, drift 79 / schema 42
+    identical to baseline. Not pushed; no PR, merge, deploy, migration application, database
+    access, Task 9 or L3 Kāla/Pūrṇa change.
   - v6.81 (2026-09-27, JATAKA-CHART-WORKSPACE-IMPL-20260927): Claude Code implemented and
     mock-tested corrected-plan Tasks 1–8 of the Jātaka chart workspace on local branch
     codex/jataka-chart-workspace (8 task commits + one review fix pass, e18a619f9) under lease
@@ -5974,6 +5988,11 @@ block (post-rebuild era), and proceeds.
 > Task 9 and full browser/recompute acceptance remain **BLOCKED** on the approved local-environment
 > prerequisites. Native decisions pending: gating `/api/pariprashna/samiksha/confirm` and
 > `/api/conversations/[id]/branches` (outside the allowlist) and the correction preservation boundary.
+> **Status (2026-09-27, JATAKA-PHASE-A-HARDENING-20260927):** Phase-A hardening items 1, 3, 4 and 5
+> implemented and mock-tested locally (not pushed); migration `1121` authored, not applied. Item 2
+> (context staleness for `event_chart_state_index` and predictions) **STOPPED**: its current-query
+> consumers are in excluded python-sidecar, platform-mcp and `lib/retrieval` surfaces. Task 9 remains
+> **BLOCKED**.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP
@@ -9430,10 +9449,10 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: JATAKA-CHART-WORKSPACE-IMPL-20260927
-  predecessor_session: JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927
+  last_session_id: JATAKA-PHASE-A-HARDENING-20260927
+  predecessor_session: JATAKA-CHART-WORKSPACE-IMPL-20260927
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Jataka corrected-plan Tasks 1-8 are implemented and mock-tested on local branch codex/jataka-chart-workspace (head e18a619f9 before the close record). Migration 1120 is authored, not applied. Full unit suite 12,699 PASS, tsc PASS, migration guard PASS. Drift 79 is the identical finding set and schema 42 the same count as baseline. Lease MADHAV-JATAKA-CHART-WORKSPACE-IMPL-20260927 released at 8161da879. Task 9 remains blocked on the safe local-environment gate. Not pushed; no external action."
+  last_session_drift_verdict: "Jataka Phase-A hardening items 1, 3, 4 and 5 are implemented and mock-tested on local branch codex/jataka-chart-workspace; item 2 stopped on excluded consumers. Migration 1121 is authored, not applied. Full unit 12,782 PASS, tsc PASS, scoped lint no regression, migration guard PASS. Drift 79 and schema 42 are the identical finding sets of baseline. Not pushed; no external action."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9441,7 +9460,7 @@ current_state:
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
   jataka_chart_workspace_amendment: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
   jataka_chart_workspace_plan: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
-  next_jataka_objective: "Native reviews the Tasks 1-8 evidence report and rules on (a) gating samiksha/confirm and conversation branches for correction-archived conversations, (b) the correction preservation boundary for event_chart_state_index and confirmed/denied predictions. Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0 seed/snapshot gate passes."
+  next_jataka_objective: "Native reviews the Phase-A hardening report and rules on item 2 (context staleness needs the excluded python-sidecar, platform-mcp and lib/retrieval consumers), the excluded reading doors (mcp prashna_ask, chat/build) and the deferred minors. Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0 seed/snapshot gate passes; migrations 1120 and 1121 stay unapplied until separately authorized."
   next_product_strategy_objective: "Run exact-head CI and independent final review on the immutable Wave 7 metadata-only candidate without later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
 ```
 
@@ -9456,6 +9475,9 @@ disposable database and L0 seed/snapshot are absent; that missing evidence remai
 a waived acceptance criterion. The active L3 Kāla and Pūrṇa Anveṣaṇa campaigns are unchanged.
 As of JATAKA-CHART-WORKSPACE-IMPL-20260927, Tasks 1–8 are implemented and mock-tested on the local
 branch (not pushed), migration 1120 is authored but unapplied, and Task 9 remains blocked.
+As of JATAKA-PHASE-A-HARDENING-20260927, Phase-A hardening items 1, 3, 4 and 5 are implemented and
+mock-tested locally, migration 1121 is authored but unapplied, and item 2 is stopped pending a native
+ruling on its excluded consumers.
 
 At the final source-candidate checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route

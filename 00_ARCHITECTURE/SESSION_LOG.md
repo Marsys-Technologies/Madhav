@@ -42142,3 +42142,328 @@ session_close:
     - "Native review of the Tasks 1-8 evidence report; Task 9 once the environment gate passes."
   handoff_notes: "Local branch codex/jataka-chart-workspace only; not pushed, no PR, not deployed, production not accessed. Migration 1120 authored, not applied. Amendment stays ACTIVE until the native receives the evidence report (amendment §8)."
 ```
+
+## JATAKA-PHASE-A-HARDENING-20260927 — 2026-09-27
+
+```yaml
+session_open:
+  session_id: JATAKA-PHASE-A-HARDENING-20260927
+  cowork_thread_name: "Madhav — Jātaka Phase-A Integrity Hardening"
+  agent_name: claude-opus-5-5
+  agent_version: claude-opus-5-5
+  tool: "Claude Code"
+  tool_profile: null
+  worktree_path: /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
+  step_number_or_layer: "Jātaka chart workspace — Phase-A integrity hardening (items 1-5)"
+  predecessor_session: JATAKA-CHART-WORKSPACE-IMPL-20260927
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-JATAKA-PHASE-A-HARDENING-20260927
+    lease_status_verified: true
+    lease_verified_at: 2026-09-27T15:55:55+05:30
+    coordination_commit: 078a9ba41
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    ccd_consumed: [CCD-013]
+    ccd_appended: [CCD-014]
+    stale_surfaces_disregarded:
+      - .conductor-state.json
+      - .gemini/project_state.md
+      - local main mirror of CAMPAIGN_COORDINATION.md
+  governing_authority:
+    native_authorization: "2026-09-27 native message accepting Tasks 1-8 and authorizing the narrow Phase-A integrity-hardening follow-up"
+    amendment: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
+    addendum: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A_HARDENING_ADDENDUM_v1_0.md
+    decision: CCD-014
+    coordination_requests: [JATAKA-REQ-01, JATAKA-REQ-02]
+    migration_reservation: platform/supabase/migrations/1121_jataka_correction_archive_write_guard.sql
+    plan: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
+  mandatory_reading_confirmation:
+    - {file: CLAUDECODE_BRIEF.md, fingerprint_sha256: 6e1e5f97df7ebe8c822e2f4523dd5c2dbaefb0e0662272ce112190bca2036bf4, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: CLAUDE.md, fingerprint_sha256: a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: AGENTS.md, fingerprint_sha256: 6dfd1e86e84c441b2654c2790bfe7ae64f02c50521352cbc2ff9bd9ce32c3a63, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: platform/AGENTS.md, fingerprint_sha256: 54334de2815d43f29a4277ed0d31ca4169e9eecb1ec9094e50f990bda35c0834, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/AGENTS.md, fingerprint_sha256: 355a902cd548bf783cb96879b275594edfc1de1a0eaa39bbcab94b85c19a3a86, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, fingerprint_sha256: fcf36ce6b9701b79bba55c0482fe96567269306e384760c9611742177840efb8, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, fingerprint_sha256: 414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, fingerprint_sha256: 45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: c9270018485aa6133db07ac12c5700f22ede5ee94b2a2ddde763e955c74448b6, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, fingerprint_sha256: 759f8adc616074b6bdc9e597a9ea3c15472ecc75871ccee0474bd4ac0690082e, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_LOG.md, fingerprint_sha256: c6495b54c587280450460a61f3dc46037ca9f30555e027326a3bccd3e2a11c28, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md, fingerprint_sha256: 70dcde5e1805b1762e607cc46247a5e3e6f7f2d83582b9c636bb5a49afba7530, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A_HARDENING_ADDENDUM_v1_0.md, fingerprint_sha256: a20d2d352544d33f540673c1c1e9e3596e24d09dbf00860628921bfa3f5d75c8, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: platform/docs/superpowers/specs/2026-09-27-jataka-chart-workspace-design.md, fingerprint_sha256: 1f906c74e9f4e7e62f842c4101efe2dee74b998aab8c49227b84fcdae3aacfee, read_at: 2026-09-27T15:55:55+05:30}
+    - {file: platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md, fingerprint_sha256: 09e2b962433c3b6c23515971566ec8239f41d8a3c865a98044beac2deeb395aa, read_at: 2026-09-27T15:55:55+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - platform/src/app/api/pariprashna/samiksha/confirm/**
+      - platform/src/app/api/conversations/**
+      - platform/src/lib/pipelines/shared/onfinish_writethrough.ts
+      - platform/src/lib/pipelines/shared/run_adapter_dispatch.ts
+      - platform/src/lib/pipelines/**/__tests__/**
+      - platform/src/lib/pariprashna/pipeline/persistence_stage.ts
+      - platform/src/app/api/pariprashna/route.ts
+      - platform/src/lib/conversations/**
+      - platform/src/lib/conversations.ts
+      - platform/src/lib/charts/**
+      - platform/src/components/profile/**
+      - platform/src/app/api/chat/consult/**
+      - platform/src/app/api/charts/**
+      - platform/src/app/clients/**
+      - platform/src/components/clients/EditClientForm.tsx
+      - platform/src/components/clients/NewClientForm.tsx
+      - platform/src/components/clients/__tests__/**
+      - platform/src/app/api/chat/__tests__/**
+      - platform/src/app/api/pariprashna/__tests__/**
+      - platform/tests/unit/chat-v2/**
+      - platform/tests/pariprashna/**
+      - platform/supabase/migrations/1121_jataka_correction_archive_write_guard.sql
+      - platform/tests/unit/migrations/jataka_correction_archive_write_guard.test.ts
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A_HARDENING_ADDENDUM_v1_0.md
+      - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    must_not_touch:
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - platform/migrations/**
+      - "platform/supabase/migrations/[!1]*"
+      - "platform/supabase/migrations/1[!1]*"
+      - "platform/supabase/migrations/11[!2]*"
+      - "platform/supabase/migrations/112[!01]*"
+      - "platform/supabase/migrations/1120*"
+      - "platform/supabase/migrations/1121[!_]*"
+      - "platform/supabase/migrations/1121_[!j]*"
+      - platform/src/lib/retrieval/registry/knowledge/**
+      - platform/src/lib/retrieval/**
+      - platform/src/components/consume/ConsumeChat.tsx
+      - platform/src/components/chat/Composer.tsx
+      - CLAUDECODE_BRIEF.md
+      - CLAUDE.md
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
+      - platform/tests/e2e/**
+      - platform/.env*
+      - frozen WriterBase, runner/asset_runner transaction and build-state contracts
+      - L3 Kāla and Pūrṇa source, state, evidence, branches, worktrees and migration ranges
+      - production or shared database, ports 55432/55433, deployment, traffic, rebuild, migration application
+      - shared checkout /Users/Dev/Vibe-Coding/Apps/Madhav
+      - plan Task 9
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No Macro Plan revision or health-crisis/mental-health serving change occurs in this local hardening session."
+      acknowledged: true
+  red_team_due: false
+  notes: "Native-authorized Phase-A hardening under CCD-014 and the hardening addendum. Migration 1120 (already committed) is intentionally not re-touched; 1121 is the only migration this session may author, never apply. Item 2 (context staleness) is gated by its own stop condition: a consumer inventory found current-query readers in platform/python-sidecar (mi_pramana.py:324, mi_gunanaka.py:110, mi_pariksha.py:460, brahmagyan/mimamsa/lel_intake.py:1553) and Pūrṇa territory (retrieval/registry/knowledge/source_query_availability.ts:3490), so the session stops and reports rather than implementing a partial truth."
+```
+
+Claude Code carried out the native-authorized narrow Phase-A integrity hardening of the Jātaka chart
+workspace in the isolated worktree, under lease `MADHAV-JATAKA-PHASE-A-HARDENING-20260927` (claimed
+`3bd118621`, times corrected `078a9ba41`, released `48c95a197`), CCD-014 (`369abd57c`), `JATAKA-REQ-02`
+and the hardening addendum. Commits on local branch `codex/jataka-chart-workspace` (not pushed):
+`730fb335c` Samīkṣā confirm/dismiss and branches locked for correction history, `c2194464e` one
+readiness gate for every reading door, `868494206` computation-safe birthplace edits, `5478a54e3`
+persistence-boundary recheck, `49ab2d31e` migration 1121 write guard (authored, not applied),
+`c0c32a619` atomic retitle lock; review fix pass `d096dfceb` (unresolved failed runs never masked,
+one aggregate query), `fc53602ff` + `a3f85765d` (re-check before each persistence write, refusal and
+trigger-error mapping), `7930e4fd6` (Samīkṣā message part bound to its conversation), `47d17b79f`
+(server timezone plausibility), `e48da9bfc` (continue and regenerate gated on readiness), `4949e679e`
+(EOF whitespace).
+
+Item 2 (context staleness for `event_chart_state_index` and predictions) STOPPED under its own
+condition: the current-query consumers are in excluded surfaces (python-sidecar `mi_*` writers and
+`brahmagyan/mimamsa`, `l5_*` writers, platform-mcp `mimamsa_outcome`/`register_p1_aliases`/
+`mimamsa_lel_intake`, and `lib/retrieval` L5_mimamsa + `source_query_availability`). Nothing was
+implemented for it. Excluded reading doors reported, not changed: MCP `prashna_ask` (Pūrṇa-owned, no
+readiness gate) and super-admin `chat/build` (neither check).
+
+Evidence: full unit suite 1,176 files / 12,782 tests PASS (0 failed); Task 10 set 14 files / 254 tests
+PASS; extra Jātaka/Paripraśna suites 145 files / 1,414 tests PASS; `tsc --noEmit` PASS; scoped lint over
+97 changed files 0 errors / 70 warnings, identical to base; migration guard PASS; `git diff --check
+f95a8a4ca..HEAD` PASS; drift 79 and schema 42 identical finding sets to the Tasks 1–8 close. Every
+new behavior was test-first; the two persistence race tests and the capture re-check were
+mutation-checked. An independent reviewer (Opus) graded the first hardening pass not-ready with six
+Important findings; all six were fixed with RED→GREEN tests.
+
+In-session scope amendment (GIP §C.4(a)): `platform/src/lib/pariprashna/pipeline/safety_gate.ts` (the
+Paripraśna reading door, required by item 3 but omitted from the handshake's may_touch; recorded at
+close, not at the time of the change) and `platform/src/app/dashboard/__tests__/dashboard.test.tsx`
+(test-only default empty mock). The close was validated against
+`schema_reports/JATAKA_PHASE_A_HARDENING_20260927_OPEN_AMENDED.yaml`, which adds only those two paths;
+the original handshake file is unmodified.
+
+Task 9 and acceptance criterion 11 remain BLOCKED on the approved local-environment prerequisites.
+Not pushed; no PR; nothing deployed; production was not accessed; migrations 1120 and 1121 were not
+applied.
+
+### Next session objective
+
+Native reviews the Phase-A hardening report and rules on item 2 (context staleness needs the excluded
+python-sidecar, platform-mcp and `lib/retrieval` consumers), the excluded reading doors and the deferred
+minors. Task 9 starts only after the amendment's Firebase test project, disposable PostgreSQL and L0
+seed/snapshot gate passes.
+
+```yaml
+session_close:
+  session_id: JATAKA-PHASE-A-HARDENING-20260927
+  closed_at: 2026-09-27T16:45:00+05:30
+  tool: Claude Code
+  files_touched:
+    - {path: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A_HARDENING_ADDENDUM_v1_0.md", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/app/api/charts/[id]/__tests__/route.patch.location.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/app/api/chat/__tests__/consult_reports_repoint.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/__tests__/cr118_chart_id_plan_regression.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/__tests__/no_leakage_consult.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/__tests__/no_leakage_runtime_canary_consult.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/__tests__/onfinish_parity.golden.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/__tests__/synthesis_guidance_consult.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/__tests__/archived-read-only.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/__tests__/readiness-gate.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/__tests__/reading-door-parity.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/app/api/chat/consult/continue/__tests__/archived-read-only.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/continue/route.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/regenerate/__tests__/archived-read-only.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/regenerate/route.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/chat/consult/route.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/conversations/[id]/branches/route.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/conversations/__tests__/branches.archived_read_only.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/app/api/pariprashna/__tests__/route.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/api/pariprashna/samiksha/confirm/__tests__/archived-read-only.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/app/api/pariprashna/samiksha/confirm/route.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/app/dashboard/__tests__/dashboard.test.tsx", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/components/clients/EditClientForm.tsx", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/components/clients/NewClientForm.tsx", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/components/clients/__tests__/EditClientForm.test.tsx", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/components/profile/ChartReadinessBand.tsx", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/components/profile/__tests__/ChartReadinessBand.test.tsx", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/__tests__/readiness.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/__tests__/recomputeChart.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/__tests__/updateChart.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/readiness.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/readinessCopy.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/readingGate.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/lib/charts/recomputeChart.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/charts/updateChart.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/conversations.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/conversations/__tests__/archiveContext.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/conversations/__tests__/writeGuard.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/lib/conversations/readOnly.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/conversations/writeGuard.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/lib/pariprashna/pipeline/persistence_stage.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/pariprashna/pipeline/safety_gate.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/pipelines/shared/__tests__/legacy_write_guard_binding.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/lib/pipelines/shared/__tests__/onfinish_write_guard.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/lib/pipelines/shared/onfinish_writethrough.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/pipelines/shared/run_adapter_dispatch.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/supabase/migrations/1121_jataka_correction_archive_write_guard.sql", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/tests/pariprashna/receipt/wire_persisted_byte_agreement.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/tests/unit/chat-v2/regenerate_route.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/tests/unit/chat-v2/safety_gate_consult_door.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/tests/unit/migrations/jataka_correction_archive_write_guard.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_LOG.md", mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    current_state:
+      - change: current_close_pointer_rotated
+        rationale: "v6.82 records Phase-A hardening items 1, 3, 4 and 5 implemented locally, item 2 stopped on excluded consumers, migration 1121 authored and unapplied, and Task 9 still blocked."
+    cross_cutting_decision_register:
+      - change: appended_CCD-014
+        rationale: "Records the native-authorized Phase-A hardening authority (committed 369abd57c) with CAPABILITY_MANIFEST fingerprint rotation."
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  code_review_pass:
+    reviewer: independent fresh-context reviewer (claude-opus), hardening range 369abd57c..c0c32a619
+    verdict_before_fixes: not_ready
+    fixed: [persistence_guard_single_early_check, samiksha_message_part_bypass, earlier_failed_run_masked, server_timezone_plausibility_missing, readiness_sql_grows_with_history, consult_continue_and_regenerate_ungated]
+    fix_commits: [d096dfceb, fc53602ff, a3f85765d, 7930e4fd6, 47d17b79f, e48da9bfc]
+    not_fixed_reported: [mcp_prashna_ask_ungated_purna_owned, chat_build_ungated_outside_scope]
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_JATAKA-PHASE-A-HARDENING-20260927-FINAL_20260927T110658Z.md
+    divergences_found: 79
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: null
+    violations_found: 42
+  handshake_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    tool_profile: null
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/schema_reports/JATAKA_PHASE_A_HARDENING_20260927_OPEN.yaml
+    violations_found: 0
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: [CCD-014]
+    ccd_consumed: [CCD-013]
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    migration_request: JATAKA-REQ-02
+    migration_file: platform/supabase/migrations/1121_jataka_correction_archive_write_guard.sql
+    migration_applied: false
+    lease_id: MADHAV-JATAKA-PHASE-A-HARDENING-20260927
+    lease_claim_commit: 3bd118621
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: 48c95a19732057c2456cb8f1e4c55ca32e14740a
+    next_session_can_resume_from:
+      - CLAUDECODE_BRIEF.md
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A_HARDENING_ADDENDUM_v1_0.md
+      - platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+  scope_amendments:
+    - amended_at: 2026-09-27T16:40:00+05:30
+      protocol: GOVERNANCE_INTEGRITY_PROTOCOL §C.4(a)
+      paths:
+        - platform/src/lib/pariprashna/pipeline/safety_gate.ts
+        - platform/src/app/dashboard/__tests__/dashboard.test.tsx
+      rationale: "safety_gate.ts is the Paripraśna reading door; item 3 (every reading door uses the shared readiness gate) required replacing its inline readiness check with checkReadingReadiness (commit c2194464e). It was omitted from the handshake's may_touch and is recorded here at close rather than at the time of the change. dashboard.test.tsx is test-only: the readiness resolver's added aggregate query needed a default empty mock result; no assertion was weakened."
+      amended_handshake: 00_ARCHITECTURE/schema_reports/JATAKA_PHASE_A_HARDENING_20260927_OPEN_AMENDED.yaml
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered:
+    - halt_id: item_2_context_staleness
+      reason: "Enforcing context staleness for event_chart_state_index and predictions requires the current-query consumers in excluded surfaces (platform/python-sidecar mi_pramana, mi_gunanaka, mi_pariksha, mi_abhilekha, mi_bhavisya, brahmagyan/mimamsa lel_intake/outcome/prediction_ledger, l5_* writers; platform-mcp mimamsa_outcome, register_p1_aliases, mimamsa_lel_intake; lib/retrieval L5_mimamsa and source_query_availability). Stopped and reported per the authorization; no partial implementation."
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: JATAKA-PHASE-A-HARDENING-20260927
+      obligation_addressed: true
+      evidence: "No Macro Plan revision or health-crisis/mental-health serving change occurred."
+  known_residuals:
+    - finding_id: inherited_schema_baseline
+      severity: MEDIUM
+      booking_reference: "42 schema violations, identical finding set to the Tasks 1-8 close; none introduced by this session."
+    - finding_id: inherited_drift_baseline
+      severity: MEDIUM
+      booking_reference: "79 drift findings, identical normalized finding set to the Tasks 1-8 close; none introduced by this session."
+    - finding_id: item_2_context_staleness_stopped
+      severity: MEDIUM
+      booking_reference: "event_chart_state_index and confirmed/denied predictions carry no context-staleness enforcement; needs native authority over excluded python-sidecar, platform-mcp and lib/retrieval consumers."
+    - finding_id: excluded_reading_doors
+      severity: MEDIUM
+      booking_reference: "mcp prashna_ask (Pūrṇa-owned) has no readiness gate; chat/build (super-admin) has neither the correction lock nor the readiness gate. Outside this session's scope; reported."
+    - finding_id: local_environment_gate
+      severity: MEDIUM
+      booking_reference: "Plan Task 9 and acceptance criterion 11 remain blocked until approved test Firebase credentials, a workstream-owned disposable PostgreSQL instance and an approved L0 seed/snapshot exist."
+    - finding_id: sql_mock_tested_only
+      severity: MEDIUM
+      booking_reference: "Readiness SQL, the message-part binding query and migration 1121 are mock/regex-tested only (no database authorized); live proof belongs to Task 9."
+    - finding_id: deferred_review_minors
+      severity: LOW
+      booking_reference: "finish('ok') after a refusal; legacy consult discards the write-through result; retry:true for failed/partial/not-built; label-only place fix rejected without a Maps key; stale throughput counts as valid; small runs block in-flight readings; trigger privileges/RLS and tuple-lock cost; recompute test timezone unchanged; isKnownZone duplicate."
+  close_criteria_met: true
+  unblocks:
+    - "Native review of the Phase-A hardening report and a ruling on item 2's excluded consumers; Task 9 once the environment gate passes."
+  handoff_notes: "Local branch codex/jataka-chart-workspace only; not pushed, no PR, not deployed, production not accessed. Migrations 1120 and 1121 authored, not applied."
+```
