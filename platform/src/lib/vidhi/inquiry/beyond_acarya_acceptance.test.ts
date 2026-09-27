@@ -41,8 +41,8 @@ const historicalV6 = {
 // successors on divergent branches (this branch's own R0-R3 v7, and protected main's Jātaka
 // Phase-A3 v7 — both cite v6 as predecessor). Protected main's v7 is canonical and stays
 // byte-identical at the root path; this branch's own v7-v11 chain is preserved as historical
-// fork evidence under historical_fork_v7_v11/ (manifest: platform/docs/evidence/
-// PURNA_V7_LINEAGE_FORK_MANIFEST_v1_0.md; fork-preservation assertions live in
+// fork evidence under historical_fork_v7_v11/ (manifest:
+// historical_fork_v7_v11/LINEAGE_FORK_MANIFEST_v1_0.md; fork-preservation assertions live in
 // beyond_acarya_v7_lineage_fork.test.ts, not here). historicalV7 below is main's real,
 // now-immutable v7 — the predecessor of the new canonical v8 created at this boundary.
 const historicalV7 = {
@@ -92,10 +92,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // R4 local integration boundary: capability_content_hash/report_hash move again once more
     // for the merged source tree (PR #2739's Jātaka readiness-gate/staleness-exclusion source
     // plus this branch's R0-R3 build-fence/byte-limit/proof-typing/residual-classification
-    // work). PLACEHOLDER_R4_REPORT_HASH — replaced with the real evaluator output against the
-    // final merged+regenerated snapshot before this merge is committed; never left as a
-    // fabricated value (see the R4 boundary report for the real, computed hash).
-    expect(report.report_hash).toBe('PLACEHOLDER_R4_REPORT_HASH')
+    // work) — no denominator changed (see the metrics assertions above and the v8 pin test
+    // below; identical to v7's own metrics).
+    expect(report.report_hash).toBe('sha256:d272acc46e93c030b8bef6d3f62802034b501cf65e8d42196c93988eac9153c0')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -301,7 +300,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
   // R4 local integration boundary (native ruling, 2026-09-28): protected main's v7 is now the
   // canonical predecessor of the new v8 below. It stays immutable exactly like v2-v6 — this
   // branch's OWN divergent v7-v11 fork is preserved separately (historical_fork_v7_v11/,
-  // manifest at platform/docs/evidence/PURNA_V7_LINEAGE_FORK_MANIFEST_v1_0.md) and is never
+  // manifest at historical_fork_v7_v11/LINEAGE_FORK_MANIFEST_v1_0.md) and is never
   // treated as this file's canonical lineage; see beyond_acarya_v7_lineage_fork.test.ts.
   it('keeps the v7 source-successor artifact immutable after the R4 main-integration advance', () => {
     const artifactBytes = readFileSync(new URL(
@@ -384,9 +383,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // PLACEHOLDER_R4_CANDIDATE_SHA — replaced with the real R4 candidate commit SHA (this
-      // merge's own commit, once created) before the merge is committed.
-      evaluated_source_revision: 'PLACEHOLDER_R4_CANDIDATE_SHA',
+      // The main-integration merge commit whose tree this report was evaluated against
+      // (9285326ca), not the later G-ARTIFACT commit that regenerates census/goldens on top.
+      evaluated_source_revision: '9285326caa394f76ea6849fd3fe0309bc6d90239',
     })
   })
 })
