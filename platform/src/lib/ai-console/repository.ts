@@ -1,5 +1,5 @@
 import 'server-only'
-import { isDeepStrictEqual, inspect } from 'node:util'
+import { isDeepStrictEqual, inspect, types as utilTypes } from 'node:util'
 import type { PoolClient } from 'pg'
 import { z } from 'zod'
 import { query, withTransaction } from '@/lib/db/client'
@@ -9,7 +9,7 @@ import { AiConsoleError, AiErrorCodeSchema } from './errors'
 import {
   AI_ROLES, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
   ProviderIdSchema, RoleAssignmentsSchema, RoutingSnapshotSchema, SafeProviderConnectionSchema,
-  type AiChoiceRef, type AiRole, type RoleTarget, type SafeProviderConnection,
+  type AiChoiceRef, type AiRole, type RoleAssignments, type RoleTarget, type SafeProviderConnection,
 } from './types'
 
 type Client = Pick<PoolClient, 'query'>
@@ -17,6 +17,32 @@ type Row = Record<string, unknown>
 const nameSchema = z.string().trim().min(1).max(120)
 const safeColumns = 'id,provider_id,name,masked_suffix,validation_state'
 const notFound = () => new AiConsoleError('AI_CHOICE_BROKEN')
+/**
+ * One lock order for the entire owned graph: user advisory lock, then row locks.
+ * Save/select/duplicate, validation, deletion, history and CLI authorization all
+ * enter here before touching rows. Hash collisions only add serialization.
+ * No external/model execution may wait inside this transaction.
+ */
+async function withUserTransaction<T>(userId: string, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  return withTransaction(async client => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:user:' || $1::text, 0))", [userId])
+    return work(client)
+  })
+}
+async function assertAssignments(client: Client, userId: string, assignments: RoleAssignments) {
+  const distinct = new Map<string, { target: RoleTarget; roles: AiRole[] }>()
+  for (const role of AI_ROLES) {
+    const target = assignments[role]
+    const key = JSON.stringify([target.kind, target.kind === 'provider_model' ? target.connectionId : target.cliId, target.modelId])
+    const group = distinct.get(key) ?? { target, roles: [] }
+    group.roles.push(role)
+    distinct.set(key, group)
+  }
+  for (const key of [...distinct.keys()].sort()) {
+    const group = distinct.get(key)!
+    await assertTarget(client, userId, group.target, group.roles)
+  }
+}
 function required<T>(rows: T[]): T { if (!rows.length) throw notFound(); return rows[0] }
 function safeConnection(row: Row): SafeProviderConnection {
   return SafeProviderConnectionSchema.parse({ id: row.id, providerId: row.provider_id,
@@ -76,7 +102,7 @@ async function assertChoice(client: Client, userId: string, choice: AiChoiceRef)
   const rows = (await client.query(`SELECT role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles
     WHERE user_id=$1 AND configuration_id=$2 ORDER BY role`, [userId, choice.configurationId])).rows
   const assignments = RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowChoice(row)])))
-  for (const role of AI_ROLES) await assertTarget(client, userId, assignments[role], [role])
+  await assertAssignments(client, userId, assignments)
 }
 
 /** Explicit SQL projections also retain tombstones so broken references are explainable. */
@@ -103,7 +129,7 @@ export async function listAiConsoleState(userId: string) {
 
 export async function createConnection(userId: string, input: unknown, encrypted: EncryptedCredential) {
   const data = z.object({ providerId: ProviderIdSchema, name: nameSchema }).strict().parse(input)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     const row = required((await client.query(`INSERT INTO ai_provider_connections
       (user_id,provider_id,name,credential_ciphertext,credential_nonce,credential_tag,wrapped_dek,wrap_nonce,wrap_tag,kek_version,masked_suffix,keyed_fingerprint)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING ${safeColumns}`,
@@ -114,7 +140,7 @@ export async function createConnection(userId: string, input: unknown, encrypted
 }
 export async function renameConnection(userId: string, connectionId: string, name: string) {
   const parsed = nameSchema.parse(name)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     const row = required((await client.query(`UPDATE ai_provider_connections SET name=$3,updated_at=now()
       WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING ${safeColumns}`, [userId, connectionId, parsed])).rows)
     await writeAiAudit(client, userId, { event: 'connection_renamed', connectionId })
@@ -122,7 +148,7 @@ export async function renameConnection(userId: string, connectionId: string, nam
   })
 }
 export async function replaceConnectionCredential(userId: string, connectionId: string, encrypted: EncryptedCredential) {
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     const row = required((await client.query(`UPDATE ai_provider_connections SET
       credential_ciphertext=$3,credential_nonce=$4,credential_tag=$5,wrapped_dek=$6,wrap_nonce=$7,wrap_tag=$8,
       kek_version=$9,masked_suffix=$10,keyed_fingerprint=$11,credential_version=credential_version+1,
@@ -143,7 +169,7 @@ const ValidationSchema = z.object({
 }).strict().refine(v => v.state !== 'validated' || !!v.models?.length)
 export async function storeConnectionValidation(userId: string, connectionId: string, input: unknown) {
   const result = ValidationSchema.parse(input)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     const row = await ownedConnection(client, userId, connectionId)
     if (Number(row.credential_version) !== result.credentialVersion) throw notFound()
     const validity = result.state === 'validated' ? 'valid' : result.state === 'invalid' ? 'invalid' : row.credential_validity
@@ -167,7 +193,7 @@ export async function storeConnectionValidation(userId: string, connectionId: st
 const ConfigurationInput = z.object({ id: z.string().uuid().optional(), expectedVersion: z.number().int().positive().optional(),
   name: nameSchema, roles: RoleAssignmentsSchema }).strict().refine(v => !v.id || !!v.expectedVersion)
 async function persistConfiguration(client: Client, userId: string, data: z.infer<typeof ConfigurationInput>, duplicate = false) {
-  for (const role of AI_ROLES) await assertTarget(client, userId, data.roles[role], [role])
+  await assertAssignments(client, userId, data.roles)
   const row = data.id ? required((await client.query(`UPDATE ai_custom_configurations SET name=$3,version=version+1
     WHERE user_id=$1 AND id=$2 AND version=$4 AND deleted_at IS NULL RETURNING id,name,version`,
   [userId, data.id, data.name, data.expectedVersion])).rows)
@@ -186,11 +212,11 @@ async function persistConfiguration(client: Client, userId: string, data: z.infe
 }
 export async function saveConfiguration(userId: string, input: unknown) {
   const data = ConfigurationInput.parse(input)
-  return withTransaction(client => persistConfiguration(client, userId, data))
+  return withUserTransaction(userId, client => persistConfiguration(client, userId, data))
 }
 export async function duplicateConfiguration(userId: string, configurationId: string, name: string) {
   const parsed = nameSchema.parse(name)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     required((await client.query('SELECT id FROM ai_custom_configurations WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR NO KEY UPDATE', [userId, configurationId])).rows)
     const rows = (await client.query('SELECT role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 AND configuration_id=$2', [userId, configurationId])).rows
     return persistConfiguration(client, userId, { name: parsed, roles: RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowChoice(row)]))) }, true)
@@ -198,7 +224,7 @@ export async function duplicateConfiguration(userId: string, configurationId: st
 }
 export async function setUserDefault(userId: string, input: unknown) {
   const choice = AiChoiceRefSchema.parse(input)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     await assertChoice(client, userId, choice)
     await client.query(`INSERT INTO ai_user_defaults(user_id,kind,connection_id,model_id,configuration_id,cli_id)
       VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(user_id) DO UPDATE SET kind=excluded.kind,connection_id=excluded.connection_id,
@@ -210,7 +236,7 @@ export async function setUserDefault(userId: string, input: unknown) {
 }
 export async function setConversationSelection(userId: string, conversationId: string, input: unknown) {
   const selection = ConversationAiSelectionSchema.parse(input)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     await ownedConversation(client, userId, conversationId)
     if (selection.kind === 'explicit') await assertChoice(client, userId, selection.choice)
     await client.query(`INSERT INTO ai_conversation_selections(conversation_id,user_id,kind,connection_id,model_id,configuration_id,cli_id)
@@ -223,7 +249,7 @@ export async function setConversationSelection(userId: string, conversationId: s
 }
 
 export async function getConversationSelection(userId: string, conversationId: string) {
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     await ownedConversation(client, userId, conversationId)
     const row = (await client.query(`SELECT kind,connection_id,model_id,configuration_id,cli_id
       FROM ai_conversation_selections WHERE user_id=$1 AND conversation_id=$2`, [userId, conversationId])).rows[0]
@@ -243,14 +269,16 @@ export async function previewChoiceDependencies(userId: string, input: unknown) 
   if (configurationId && !ids.includes(configurationId)) ids.push(configurationId)
   const defaults = await query(`SELECT kind,connection_id,model_id,configuration_id,cli_id FROM ai_user_defaults
     WHERE user_id=$1 AND (connection_id=$2 OR configuration_id=ANY($3::uuid[]) OR cli_id=$4)`, [userId, connectionId, ids, cliId])
-  const conversations = await query(`SELECT conversation_id FROM ai_conversation_selections WHERE user_id=$1
-    AND (connection_id=$2 OR configuration_id=ANY($3::uuid[]) OR cli_id=$4 OR (kind='default' AND $5::boolean))`,
+  const conversations = await query(`SELECT c.id AS conversation_id FROM conversations c LEFT JOIN ai_conversation_selections s
+    ON s.conversation_id=c.id AND s.user_id=c.user_id WHERE c.user_id=$1
+    AND (s.connection_id=$2 OR s.configuration_id=ANY($3::uuid[]) OR s.cli_id=$4
+      OR ((s.conversation_id IS NULL OR s.kind='default') AND $5::boolean))`,
   [userId, connectionId, ids, cliId, !!defaults.rows.length])
   return { configurations: configs.rows, defaultAffected: !!defaults.rows.length, conversations: conversations.rows }
 }
 export async function deleteConnection(userId: string, connectionId: string, confirmed: boolean) {
   if (confirmed !== true) throw new AiConsoleError('AI_PERMISSION_DENIED')
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     required((await client.query(`UPDATE ai_provider_connections SET deleted_at=now(),updated_at=now()
       WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING id`, [userId, connectionId])).rows)
     await invalidateCatalog(client, userId, connectionId)
@@ -259,7 +287,7 @@ export async function deleteConnection(userId: string, connectionId: string, con
 }
 export async function deleteConfiguration(userId: string, configurationId: string, confirmed: boolean) {
   if (confirmed !== true) throw new AiConsoleError('AI_PERMISSION_DENIED')
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     const row = required((await client.query(`UPDATE ai_custom_configurations SET deleted_at=now(),version=version+1
       WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING version`, [userId, configurationId])).rows)
     await writeAiAudit(client, userId, { event: 'configuration_deleted', configurationId, configurationVersion: Number(row.version) })
@@ -279,27 +307,45 @@ export async function loadConnectionCredential(userId: string, connectionId: str
   return record
 }
 
+export interface CliInvocationHandle {
+  readonly pid: number
+  cancel(): void | Promise<void>
+}
+
 /**
- * Pre-spawn critical section only. start must synchronously spawn/acquire a handle,
- * never await model completion. The returned handle must not be a Promise.
- * Revocation and start serialize while the exact grant, active user and host are locked.
+ * Synchronous process creation/handle acquisition only; never await model completion.
+ * The handle stays outside the transaction so failure after spawn (including COMMIT)
+ * cancels the started process exactly once. No callback or transaction retry occurs.
  */
-export async function withCliInvocationAuthorization<T>(userId: string, cliId: string, start: () => T extends PromiseLike<unknown> ? never : T): Promise<T> {
+export async function withCliInvocationAuthorization(userId: string, cliId: string, start: () => CliInvocationHandle): Promise<CliInvocationHandle> {
   const cli = CliIdSchema.parse(cliId)
-  return withTransaction(async client => {
-    const rows = (await client.query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
-      JOIN ai_cli_installations i ON i.cli_id=g.cli_id WHERE g.user_id=$1 AND g.cli_id=$2
-      AND g.revoked_at IS NULL AND p.status='active' AND i.validation_state='reachable' FOR SHARE OF g,p,i`, [userId, cli])).rows
-    if (!rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
-    return start()
-  })
+  if (typeof start !== 'function' || utilTypes.isAsyncFunction(start)) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  let started: CliInvocationHandle | undefined
+  try {
+    return await withUserTransaction(userId, async client => {
+      const rows = (await client.query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
+        JOIN ai_cli_installations i ON i.cli_id=g.cli_id WHERE g.user_id=$1 AND g.cli_id=$2
+        AND g.revoked_at IS NULL AND p.status='active' AND i.validation_state='reachable' FOR SHARE OF g,p,i`, [userId, cli])).rows
+      if (!rows.length) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      const handle = start()
+      // Retain any cancellable result before checking the rest of its contract.
+      if (handle && typeof handle === 'object' && typeof handle.cancel === 'function') started = handle
+      if (!started || 'then' in started || !Number.isSafeInteger(started.pid) || started.pid <= 0) {
+        throw new AiConsoleError('AI_EXECUTION_FAILED')
+      }
+      return started
+    })
+  } catch (error) {
+    try { await started?.cancel() } catch { /* Preserve the original authorization/commit error. */ }
+    throw error
+  }
 }
 
 /** Administrator-only grant persistence, with authorization and safe audit in one transaction. */
 export async function setCliGrant(actorId: string, userId: string, cliId: string, granted: boolean): Promise<void> {
   const cli = CliIdSchema.parse(cliId)
   z.boolean().parse(granted)
-  return withTransaction(async client => {
+  return withUserTransaction(userId, async client => {
     const actor = await client.query(`SELECT id FROM profiles WHERE id=$1 AND status='active' AND role='super_admin' FOR SHARE`, [actorId])
     if (!actor.rows.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
     const target = await client.query('SELECT id FROM profiles WHERE id=$1 FOR SHARE', [userId])
@@ -320,7 +366,7 @@ export async function setCliGrant(actorId: string, userId: string, cliId: string
 
 export async function insertRoutingSnapshot(input: unknown): Promise<string> {
   const snapshot = RoutingSnapshotSchema.parse(input)
-  return withTransaction(async client => {
+  return withUserTransaction(snapshot.userId, async client => {
     if (snapshot.conversationId) await ownedConversation(client, snapshot.userId, snapshot.conversationId)
     const inserted = await client.query(`INSERT INTO ai_turn_routing_snapshots
       (user_id,correlation_id,source,conversation_id,selection,resolved_choice,configuration_version,roles)
@@ -344,7 +390,7 @@ const ReceiptSchema = z.object({ userId: z.string().min(1), snapshotId: z.string
 }).strict().refine(r => r.phase === 'start' ? r.status === 'started' && !r.errorCode : r.status !== 'started' && (r.status !== 'succeeded' || !r.errorCode))
 export async function insertRoleInvocationReceipt(input: unknown): Promise<void> {
   const receipt = ReceiptSchema.parse(input)
-  return withTransaction(async client => {
+  return withUserTransaction(receipt.userId, async client => {
     const owner = (await client.query('SELECT id FROM ai_turn_routing_snapshots WHERE user_id=$1 AND id=$2', [receipt.userId, receipt.snapshotId])).rows
     if (!owner.length) throw new AiConsoleError('AI_PERMISSION_DENIED')
     if (receipt.phase === 'terminal') {

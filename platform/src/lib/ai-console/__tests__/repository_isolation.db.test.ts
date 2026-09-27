@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { Pool } from 'pg'
+import { Pool, type PoolClient } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import * as repo from '../repository'
 import { AI_ROLES, type RoleAssignments } from '../types'
@@ -30,6 +30,64 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
   const snapshot = (correlationId: string) => ({ userId: user, correlationId, source: 'pariprashna', conversationId: conversation,
     selection: { kind: 'default' }, resolvedChoice: choice(), configurationVersion: null,
     roles: Object.fromEntries(AI_ROLES.map(role => [role, { ...choice(), providerId: 'openai' }])) })
+
+  /** Real, distinct clients; pause COMMIT after all first-operation locks are held. */
+  async function blockedUntilCommit(first: () => Promise<unknown>, second: () => Promise<unknown>) {
+    const clients = await Promise.all([pool.connect(), pool.connect(), pool.connect()])
+    const [firstClient, secondClient, observer] = clients
+    let releaseCommit!: () => void
+    const allowCommit = new Promise<void>(resolve => { releaseCommit = resolve })
+    let reachedCommit!: () => void
+    const atCommit = new Promise<void>(resolve => { reachedCommit = resolve })
+    let failFirst!: (error: unknown) => void
+    const firstFailure = new Promise<never>((_, reject) => { failFirst = reject })
+    let nextClient = 0
+    const proxy = (client: PoolClient, pause: boolean) => ({
+      query: async (sql: string, params?: unknown[]) => {
+        if (pause && sql === 'COMMIT') { reachedCommit(); await allowCommit }
+        return client.query(sql, params)
+      },
+      release() {}, // Real clients are released by this test helper's finally.
+    })
+    const owner = poolGlobal.__pgPool
+    poolGlobal.__pgPool = {
+      connect: async () => {
+        if (nextClient >= 2) throw new Error('Unexpected third transaction in two-client test')
+        return proxy(clients[nextClient], nextClient++ === 0)
+      },
+    } as unknown as Pool
+    let firstResult: Promise<unknown> | undefined
+    let secondResult: Promise<unknown> | undefined
+    try {
+      const firstPid = (await firstClient.query('SELECT pg_backend_pid() AS pid')).rows[0].pid as number
+      const secondPid = (await secondClient.query('SELECT pg_backend_pid() AS pid')).rows[0].pid as number
+      firstResult = first()
+      void firstResult.catch(failFirst)
+      await Promise.race([atCommit, firstFailure])
+      let secondSettled = false
+      secondResult = second()
+      void secondResult.then(() => { secondSettled = true }, () => { secondSettled = true })
+      const deadline = Date.now() + 3000
+      let blockers: number[] = []
+      while (Date.now() < deadline) {
+        blockers = (await observer.query('SELECT pg_blocking_pids($1::int) AS blockers', [secondPid])).rows[0].blockers
+        if (blockers.includes(firstPid)) break
+        if (secondSettled) break
+        await new Promise(resolve => setTimeout(resolve, 5))
+      }
+      expect(blockers).toContain(firstPid)
+      expect(secondSettled).toBe(false)
+      releaseCommit()
+      await Promise.all([firstResult, secondResult])
+      expect(secondSettled).toBe(true)
+    } finally {
+      releaseCommit()
+      await Promise.allSettled([firstResult, secondResult].filter(Boolean))
+      poolGlobal.__pgPool = owner
+      await Promise.all(clients.map(client => client.query('ROLLBACK')))
+      clients.forEach(client => client.release())
+    }
+  }
 
   beforeAll(async () => {
     const url = new URL(databaseUrl!)
@@ -99,6 +157,57 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await repo.setUserDefault(user, { kind: 'custom_configuration', configurationId })
     expect(await repo.getConversationSelection(user, conversation)).toEqual({ kind: 'explicit', choice: choice() })
   })
+  it('serializes save versus select and duplicate with deterministic two-client barriers', async () => {
+    const config = await repo.saveConfiguration(user, { name: 'Lock order', roles: roles() })
+    await blockedUntilCommit(
+      () => repo.saveConfiguration(user, { id: config.id, expectedVersion: 1, name: 'Lock order revised', roles: roles() }),
+      () => repo.setUserDefault(user, { kind: 'custom_configuration', configurationId: config.id }),
+    )
+    await blockedUntilCommit(
+      () => repo.duplicateConfiguration(user, config.id, 'Lock order duplicate'),
+      () => repo.saveConfiguration(user, { id: config.id, expectedVersion: 2, name: 'Lock order final', roles: roles() }),
+    )
+    expect((await pool.query('SELECT version FROM ai_custom_configurations WHERE user_id=$1 AND id=$2', [user, config.id])).rows[0].version).toBe('3')
+    await repo.setUserDefault(user, { kind: 'custom_configuration', configurationId })
+    await repo.deleteConfiguration(user, config.id, true)
+    const duplicate = (await pool.query('SELECT id FROM ai_custom_configurations WHERE user_id=$1 AND name=$2', [user, 'Lock order duplicate'])).rows[0].id
+    await repo.deleteConfiguration(user, duplicate, true)
+  })
+  it('serializes swapped A/B role assignments independently of role order', async () => {
+    const secondId = (await repo.createConnection(user, { providerId: 'openai', name: 'Second for locks' }, encrypted())).id
+    await repo.storeConnectionValidation(user, secondId, { credentialVersion: 1, state: 'validated',
+      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES] }] })
+    const second = { ...choice(), connectionId: secondId }
+    const ab = { synthesizer: choice(), planner: second, deep_planner: choice(), worker: second }
+    const ba = { synthesizer: second, planner: choice(), deep_planner: second, worker: choice() }
+    const one = await repo.saveConfiguration(user, { name: 'Order AB', roles: ab })
+    const two = await repo.saveConfiguration(user, { name: 'Order BA', roles: ba })
+    await blockedUntilCommit(
+      () => repo.saveConfiguration(user, { id: one.id, expectedVersion: 1, name: 'Order AB swapped', roles: ba }),
+      () => repo.saveConfiguration(user, { id: two.id, expectedVersion: 1, name: 'Order BA swapped', roles: ab }),
+    )
+    for (const config of [one, two]) await repo.deleteConfiguration(user, config.id, true)
+  })
+  it('includes absent/default selections only when their owner’s default is affected', async () => {
+    const absent = randomUUID()
+    const explicit = randomUUID()
+    const foreign = randomUUID()
+    await pool.query('INSERT INTO conversations(id,user_id) VALUES($1,$4),($2,$4),($3,$5)', [absent, explicit, foreign, user, other])
+    const otherConnection = (await repo.createConnection(user, { providerId: 'openai', name: 'Independent override' }, encrypted())).id
+    await repo.storeConnectionValidation(user, otherConnection, { credentialVersion: 1, state: 'validated',
+      models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES] }] })
+    const override = { ...choice(), connectionId: otherConnection }
+    await repo.setConversationSelection(user, explicit, { kind: 'explicit', choice: override })
+    await repo.setUserDefault(user, choice())
+    const affected = (await repo.previewChoiceDependencies(user, choice())).conversations.map(row => row.conversation_id)
+    expect(affected).toContain(absent)
+    expect(affected).not.toContain(explicit)
+    expect(affected).not.toContain(foreign)
+    await repo.setUserDefault(user, override)
+    expect((await repo.previewChoiceDependencies(user, choice())).conversations.map(row => row.conversation_id)).not.toContain(absent)
+    await repo.setUserDefault(user, { kind: 'custom_configuration', configurationId })
+    await pool.query('DELETE FROM conversations WHERE user_id=$1 AND id=ANY($2::uuid[])', [user, [absent, explicit]])
+  })
   it('deduplicates concurrent snapshots and ordered receipts, rejecting changed history', async () => {
     const ids = await Promise.all([repo.insertRoutingSnapshot(snapshot('same-turn')), repo.insertRoutingSnapshot(snapshot('same-turn'))])
     expect(ids[0]).toBe(ids[1])
@@ -132,17 +241,14 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await repo.setCliGrant(admin, user, 'codex', true)
     await repo.setCliGrant(admin, user, 'codex', false)
     let starts = 0
-    await expect(repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 1 } })).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+    await expect(repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 1, cancel() {} } })).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
     expect(starts).toBe(0)
     await repo.setCliGrant(admin, user, 'codex', true)
-    let revoke: Promise<void> | undefined
-    await repo.withCliInvocationAuthorization(user, 'codex', () => {
-      starts++
-      revoke = repo.setCliGrant(admin, user, 'codex', false)
-      return { pid: 2 }
-    })
-    await revoke
-    await expect(repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 3 } })).rejects.toBeDefined()
+    await blockedUntilCommit(
+      () => repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 2, cancel() {} } }),
+      () => repo.setCliGrant(admin, user, 'codex', false),
+    )
+    await expect(repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 3, cancel() {} } })).rejects.toBeDefined()
     expect(starts).toBe(1)
     const hidden = (await repo.listAiConsoleState(other)).clis[0]
     expect(hidden.detected_product).toBeNull()

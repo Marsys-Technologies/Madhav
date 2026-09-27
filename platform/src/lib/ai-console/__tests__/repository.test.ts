@@ -176,13 +176,94 @@ describe('owned AI configuration repository', () => {
   it('starts only after grant locking and commits after immediate handle acquisition', async () => {
     validTransport()
     respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
-    const handle = { pid: 42 }
+    const handle = { pid: 42, cancel: vi.fn() }
     const result = await repository.withCliInvocationAuthorization('alice', 'codex', () => {
       expect(calls().at(-1)?.sql).toContain('FOR SHARE')
       return handle
     })
     expect(result).toBe(handle)
+    expect(handle.cancel).not.toHaveBeenCalled()
     expect(calls().at(-1)?.sql).toBe('COMMIT')
+  })
+  it('cancels a started process exactly once when COMMIT fails and preserves that error', async () => {
+    const commitError = new Error('commit failed')
+    execute.mockImplementation(async (sql: string) => {
+      if (sql === 'COMMIT') throw commitError
+      return { rows: sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : [] }
+    })
+    const cancel = vi.fn(() => { throw new Error('cancel failed') })
+    const start = vi.fn(() => ({ pid: 42, cancel }))
+    await expect(repository.withCliInvocationAuthorization('alice', 'codex', start)).rejects.toBe(commitError)
+    expect(start).toHaveBeenCalledOnce()
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(calls().filter(c => c.sql === 'BEGIN')).toHaveLength(1)
+  })
+  it('rejects async callbacks before invocation and requires a concrete handle statically', async () => {
+    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
+    let invoked = false
+    const asyncStart = async () => { invoked = true; return { pid: 42, cancel() {} } }
+    // @ts-expect-error a Promise is not a synchronous cancellable process handle
+    await expect(repository.withCliInvocationAuthorization('alice', 'codex', asyncStart)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(invoked).toBe(false)
+    expect(execute).not.toHaveBeenCalled()
+    if (false) {
+      // @ts-expect-error void callbacks cannot transfer ownership of a started process
+      void repository.withCliInvocationAuthorization('alice', 'codex', () => {})
+    }
+  })
+  it.each([undefined, null, {}, { pid: 0, cancel() {} }, { pid: 42 }, { pid: 42, cancel() {}, then() {} }])(
+    'rejects malformed or thenable process handles at runtime (%j)', async value => {
+      respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
+      await expect(repository.withCliInvocationAuthorization('alice', 'codex', () => value as repository.CliInvocationHandle)).rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+      expect(calls().at(-1)?.sql).toBe('ROLLBACK')
+    },
+  )
+  it('locks the user graph before any row lock or mutation across its entry points', async () => {
+    const actions = [
+      () => repository.createConnection('alice', { providerId: 'openai', name: 'Personal' }, encrypted),
+      () => repository.renameConnection('alice', connectionId, 'Name'),
+      () => repository.replaceConnectionCredential('alice', connectionId, encrypted),
+      () => repository.storeConnectionValidation('alice', connectionId, { credentialVersion: 1, state: 'invalid' }),
+      () => repository.saveConfiguration('alice', { name: 'Graph', roles: assignments }),
+      () => repository.duplicateConfiguration('alice', configurationId, 'Copy'),
+      () => repository.setUserDefault('alice', { kind: 'custom_configuration', configurationId }),
+      () => repository.setConversationSelection('alice', conversationId, { kind: 'default' }),
+      () => repository.deleteConnection('alice', connectionId, true),
+      () => repository.deleteConfiguration('alice', configurationId, true),
+      () => repository.setCliGrant('admin', 'alice', 'codex', false),
+    ]
+    for (const action of actions) {
+      execute.mockClear()
+      await action().catch(() => {})
+      expect(calls()[0].sql).toBe('BEGIN')
+      expect(calls()[1].sql).toContain('pg_advisory_xact_lock')
+      expect(calls()[1].params).toEqual(['alice'])
+    }
+  })
+  it('validates distinct role targets in canonical order, independent of role assignment order', async () => {
+    const second = { ...choice, connectionId: configurationId }
+    for (const targets of [
+      { synthesizer: second, planner: choice, deep_planner: second, worker: choice },
+      { synthesizer: choice, planner: second, deep_planner: choice, worker: second },
+    ]) {
+      validTransport()
+      execute.mockClear()
+      await repository.saveConfiguration('alice', { name: 'Ordered', roles: targets })
+      expect(calls().filter(c => c.sql.includes('FROM ai_provider_connections')).map(c => c.params[1])).toEqual([connectionId, configurationId])
+    }
+  })
+  it('previews implicit Default conversations while excluding explicit overrides', async () => {
+    respond(sql => sql.includes('FROM ai_user_defaults') ? [{ kind: 'provider_model', connection_id: connectionId }] : undefined)
+    await repository.previewChoiceDependencies('alice', choice)
+    const statement = calls().find(c => c.sql.includes('ai_conversation_selections'))!
+    expect(statement.sql).toContain('FROM conversations c LEFT JOIN ai_conversation_selections s')
+    expect(statement.sql).toContain('c.user_id=$1')
+    expect(statement.sql).toContain("(s.conversation_id IS NULL OR s.kind='default') AND $5::boolean")
+    expect(statement.params[4]).toBe(true)
+    execute.mockClear()
+    respond(() => [])
+    await repository.previewChoiceDependencies('alice', choice)
+    expect(calls().find(c => c.sql.includes('ai_conversation_selections'))?.params[4]).toBe(false)
   })
   it('reads default conversation selection only after an ownership check', async () => {
     expect(repository).toHaveProperty('getConversationSelection')
