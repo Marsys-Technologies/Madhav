@@ -116,7 +116,7 @@ export const REGISTER_CITATION_INSTRUCTION = `
 
 ---
 EVIDENCE CITATIONS: evidence rows carry a "_cite" handle such as "F7". Whenever a paragraph of
-your reading interprets a row, cite that row's handle inline in the same paragraph as [[F7]]
+your reading interprets a row, cite that row's handle inline in the same paragraph as ⟦cite: F7⟧
 (several handles may appear in one paragraph when you interpret rows jointly). Interpret every
 material row you are shown. Cite only handles that appear in <evidence>; never invent a handle.`
 

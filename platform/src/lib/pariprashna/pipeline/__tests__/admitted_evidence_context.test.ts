@@ -76,6 +76,29 @@ describe('Portal synthesis sees the admitted, register-annotated evidence (R2C.1
   it('leaves the prompt unchanged and reports no handles without admitted evidence', async () => {
     const { context } = await build(false)
     expect(context.visibleCitationHandles).toBeNull()
+    expect(context.registerHandleLabels).toBeNull()
     expect(context.systemContentWithSummary).not.toContain('ADMITTED INQUIRY EVIDENCE')
+  })
+
+  it('teaches the model the bracket-cite form the live citation stream actually resolves (R2C.3b)', async () => {
+    const { context } = await build(true)
+    expect(context.systemContentWithSummary).toContain('\u27E6cite: F7\u27E7')
+    expect(context.systemContentWithSummary).not.toMatch(/as \[\[F7\]\]/)
+  })
+
+  it('gives every visible handle a real reader label and materiality-graded resolution, keyed for the live citation stream (R2C.3b)', async () => {
+    const { context, evidence } = await build(true)
+    const register = buildInquiryFactRegister(evidence.contract, evidence.payloads, snapshot)
+    const handles = context.visibleCitationHandles!
+    expect(context.registerHandleLabels).not.toBeNull()
+    expect(context.registerHandleLabels!.size).toBe(handles.length)
+    for (const [factId, handle] of inquiryFindingCitationHandles(register)) {
+      if (!handles.includes(handle)) continue
+      const fact = register.facts.find((f) => f.fact_id === factId)!
+      const label = context.registerHandleLabels!.get(handle)!
+      expect(label.reader_label).toBe(fact.meaning.label)
+      expect(label.rationale).toBe(fact.meaning.rationale)
+      expect(label.materiality).toBe(fact.materiality)
+    }
   })
 })
