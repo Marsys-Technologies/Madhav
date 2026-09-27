@@ -114,6 +114,27 @@ def _chart_scoped(count_sql: str) -> bool:
     return bool(_PARAM_1.search(count_sql or ""))
 
 
+def _count_tables(count_sql: str) -> list[str]:
+    """R42: the relations a count_sql reads (FROM / JOIN targets, in order, de-duplicated). One
+    table is a plain count; several is a multi-table count (a sum or a join) whose total must be
+    compared like-for-like and never presented as the target table's own rows; NONE is a constant
+    (`SELECT 0 AS count`, bo_samvada) — a figure that cannot vary is not a measurement."""
+    q = re.sub(r"--[^\n]*", "", count_sql or "")
+    out: list[str] = []
+    for t in re.findall(r"\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_.]*)", q, re.I):
+        t = t.split(".")[-1].lower()
+        if t not in out:
+            out.append(t)
+    return out
+
+
+# R42: the build-record states that mean "a build completed and wrote these rows". `stale` is a
+# completed build whose upstream has since moved (R45 grades staleness, W2-2); `error`,
+# `incomplete`, `dormant` and `building` are not completions, so their rows_written — whatever it
+# equals — is not a completed build agreeing with the live data.
+COMPLETED_STATES = ("lit", "stale")
+
+
 def _bind_chart(q: str, chart_id: str) -> str:
     """Bind `$1` to the chart scope as a quoted literal (the engine's own binding). Raises `Unknown`
     for a phantom chart id, a malformed one, or a `count_sql` with any OTHER unbound parameter —
@@ -907,6 +928,14 @@ def measure(layer_key: str) -> dict:
             measured=f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}")
 
         live = counts.get(aid)
+        ctables = _count_tables(r["count_sql"])
+        multi = len(ctables) > 1 or (bool(ctables) and r["target_table"] not in ctables)
+        # R42: say what the live figure IS. On a multi-table asset it is the count_sql total across
+        # every table it reads — compared like-for-like with rows_written (the writer's own total
+        # across the same tables, e.g. mi_kula.py:302 `len(_FAMILIES) + len(_CONTROLS)`) — and never
+        # presented as the target table's own rows (that figure is appended below, as context).
+        basis = (f"count_sql total over {len(ctables)} table(s): {', '.join(ctables)}" if multi
+                 else "count_sql over the target table")
         t, rec_scope = _build_record(thru.get(aid, {}), _chart_scoped(r["count_sql"]), CHART_ID)
         rw = t.get("rows_written", "")
         if aid in count_errors:
@@ -927,14 +956,27 @@ def measure(layer_key: str) -> dict:
                 m["Build.completion"] = dict(
                     v=NO_DET, measured="NO_DETECTOR — no count_sql registered for a writer-backed asset with "
                                        f"asset_kind='{r['asset_kind']}'; completion cannot be measured")
+        elif not ctables:
+            # R42: a count_sql that reads no relation is a constant — it cannot disagree with anything.
+            m["Build.completion"] = dict(v=NO_DET, measured=f"NO_DETECTOR — count_sql reads no table (a constant "
+                                                           f"{live}); completion cannot be measured")
         elif rw == "":
             m["Build.completion"] = dict(v=FAIL, measured=f"live={live} and no build record at all ({rec_scope})")
+        elif t.get("state") not in COMPLETED_STATES:
+            m["Build.completion"] = dict(v=FAIL, measured=f"build record state='{t.get('state')}' is not a completed "
+                                                         f"build (rows_written={rw}, live={live}, {rec_scope}) — see "
+                                                         "Build.history")
         elif int(rw) == 0 and live > 0:
             m["Build.completion"] = dict(v=FAIL, measured=f"build record says rows_written=0 against live={live} ({rec_scope})")
         elif int(rw) == 0 and live == 0:
             m["Build.completion"] = dict(v=PASS, measured=f"live=0 and rows_written=0 — consistent (empty by design or service) ({rec_scope})")
+        elif int(rw) != live:
+            # R42: the pre-fix final branch read PASS for ANY rows_written > 0 — it never compared
+            # (mi_kula's "15 vs 11 scored PASS" was that branch; 15 vs anything would have passed).
+            m["Build.completion"] = dict(v=FAIL, measured=f"build record rows_written={rw} disagrees with "
+                                                         f"live={live} ({basis}; {rec_scope})")
         else:
-            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw}, live={live} ({rec_scope})")
+            m["Build.completion"] = dict(v=PASS, measured=f"rows_written={rw} = live={live} ({basis}; {rec_scope})")
 
         # D6: `_grade_earn_cost` feature-detects `duration_seconds` (absent everywhere today,
         # migration 1094 not applied) and grades NO_DETECTOR for both measurements when it is —
@@ -980,6 +1022,11 @@ def measure(layer_key: str) -> dict:
             except Unknown as exc:
                 dc = {}
                 m["Complete.depth"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+
+            if multi and isinstance(dc.get("rows"), int) and m["Build.completion"]["v"] in (PASS, FAIL):
+                # R42: the target table's own rows, stated as context — never the compared figure.
+                m["Build.completion"]["measured"] += (f"; target_table {tbl} alone: {dc['rows']} row(s), "
+                                                      "whole table — context, not the compared figure")
 
             keys = cat["keys"].get(tbl, [])
             if keys:
@@ -1085,6 +1132,7 @@ def measure(layer_key: str) -> dict:
         m["Reach.fields"] = dict(v=NOT_GENERIC, measured="field-level exposure census is per-capability; not generic")
 
         assets.append(dict(asset_id=aid, layer=layer_key, scoring=cfg["scoring"], live_rows=live,
+                           live_rows_basis=(basis if live is not None else None), count_sql_tables=ctables,
                            target_table=tbl, has_writer=r["has_writer"], writer_files=files,
                            catalog_status=r["catalog_status"], measurements=m))
 

@@ -177,8 +177,11 @@ def _pg_like_psql(values: dict):
         out = []
         for part in sql.split(" UNION ALL "):
             m = re.search(r"SELECT '([^']+)' a,", part)
-            tbl = re.search(r"FROM ([a-z_]+)", part.split(",", 1)[1] if m else part).group(1)
-            v = values[tbl](part) if callable(values[tbl]) else values[tbl]
+            mt = re.search(r"FROM ([a-z_]+)", part.split(",", 1)[1] if m else part)
+            if mt is None:                                   # a constant count_sql: its literal
+                v = re.search(r"\(SELECT (\d+)", part).group(1)
+            else:
+                v = values[mt.group(1)](part) if callable(values[mt.group(1)]) else values[mt.group(1)]
             out.append([m.group(1), str(v)] if m else [str(v)])
         return out
     return fake
@@ -422,3 +425,63 @@ def test_r225_measure_with_the_instrument_present_reads_no_detector_and_closes_n
 def test_r225_the_default_is_the_safe_value():
     earn, cost = ac._grade_earn_cost(attempt=None, instrument_present=True, baseline=None)
     assert earn["v"] == ac.NO_DET and cost["v"] == ac.NO_DET
+
+
+# ─────────────────────────── R42: Build.completion compares, like with like ───────────────────────────
+
+_KULA_SQL = ("SELECT (SELECT count(*) FROM mimamsa_signal_families) + "
+             "(SELECT count(*) FROM mimamsa_negative_controls) AS count")
+
+
+def _completion(monkeypatch, tmp_path, count_sql, live, rec, target="t_main", depth_rows=3, floor=None):
+    reg = {"mi_x": _reg_row("mi_x", target, count_sql=count_sql, target_floor=floor)}
+    _stub_layer(monkeypatch, tmp_path, reg, tables={target: (["a"], [])} if target else None,
+                thru={"mi_x": {"": rec}} if rec is not None else {})
+    monkeypatch.setattr(ac, "depth_census",
+                        lambda t, c: dict(columns=1, rows=depth_rows, full=["a"], never=[], note=""))
+    first = (ac._count_tables(count_sql) or ["none"])[0]
+    monkeypatch.setattr(ac, "psql", _pg_like_psql({first: live}))
+    return ac.measure("L5")
+
+
+def test_r42_a_disagreeing_build_record_fails(monkeypatch, tmp_path):
+    """rows_written=15 against a live count of 11 on a single-table asset. Fails without the fix:
+    the final branch read PASS for any rows_written > 0 — it never compared."""
+    c = _completion(monkeypatch, tmp_path, "SELECT count(*) FROM t_main", 11, _rec(15))
+    res = _m(c, "mi_x", "Build.completion")
+    assert res["v"] == ac.FAIL and "rows_written=15 disagrees with live=11" in res["measured"], res
+
+
+def test_r42_multi_table_compares_the_total_like_for_like_and_states_the_target_alone(monkeypatch, tmp_path):
+    """mi_kula's shape: count_sql sums two tables (11 + 4); the writer reports the same two-table
+    total (15). Like-for-like they agree — and the verdict says so, naming both tables and the
+    target table's own 11 rows as context, so '15' is never presented as the target's rows."""
+    c = _completion(monkeypatch, tmp_path, _KULA_SQL, 15, _rec(15), target="mimamsa_signal_families",
+                    depth_rows=11)
+    res = _m(c, "mi_x", "Build.completion")
+    assert res["v"] == ac.PASS, res
+    assert "count_sql total over 2 table(s): mimamsa_signal_families, mimamsa_negative_controls" in res["measured"]
+    assert "mimamsa_signal_families alone: 11 row(s)" in res["measured"], res
+    a = next(x for x in c["assets"] if x["asset_id"] == "mi_x")
+    assert a["count_sql_tables"] == ["mimamsa_signal_families", "mimamsa_negative_controls"]
+
+
+def test_r42_multi_table_disagreement_fails(monkeypatch, tmp_path):
+    c = _completion(monkeypatch, tmp_path, _KULA_SQL, 11, _rec(15), target="mimamsa_signal_families",
+                    depth_rows=11)
+    assert _m(c, "mi_x", "Build.completion")["v"] == ac.FAIL
+
+
+def test_r42_a_constant_count_sql_measures_nothing(monkeypatch, tmp_path):
+    """bo_samvada's `SELECT 0 AS count` reads no table; it cannot disagree with any build record."""
+    c = _completion(monkeypatch, tmp_path, "SELECT 0 AS count", 0, _rec(1), target="vw_x")
+    res = _m(c, "mi_x", "Build.completion")
+    assert res["v"] == ac.NO_DET and "reads no table" in res["measured"], res
+
+
+def test_r42_rows_left_by_a_failed_build_are_not_a_completion(monkeypatch, tmp_path):
+    """A build record in state 'error' whose rows_written happens to equal the live count is not a
+    completed build agreeing with the data."""
+    c = _completion(monkeypatch, tmp_path, "SELECT count(*) FROM t_main", 7, _rec(7, state="error"))
+    res = _m(c, "mi_x", "Build.completion")
+    assert res["v"] == ac.FAIL and "state='error'" in res["measured"], res
