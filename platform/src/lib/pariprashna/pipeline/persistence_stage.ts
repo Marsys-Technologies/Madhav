@@ -86,7 +86,7 @@ import {
 } from './reading_parts'
 import { computeTurnReceiptProvenance } from './receipt_stage'
 import type { CitationGateOutcome } from './validation_stage'
-import { checkConversationWritable } from '@/lib/conversations/writeGuard'
+import { checkConversationWritable, PersistenceRefusedError, persistenceRefusalOf } from '@/lib/conversations/writeGuard'
 
 /**
  * MSR snippet resolver (read-only). Copy of the consult route's helper — this
@@ -369,6 +369,14 @@ export async function runPersistenceStage(args: {
       writeGuard: () => checkConversationWritable({ conversationId, chartId }),
       persistence: {
         writeMessages: async (writeArgs) => {
+          // The write guard ran once before this closure; a correction can
+          // still commit between the writes below. Each re-check throws a
+          // refusal that the non-fatal catches re-throw, and the shared
+          // write-through turns it into a refused turn (no ledger, no stamp).
+          const assertStillWritable = async () => {
+            const guard = await checkConversationWritable({ conversationId, chartId })
+            if (!guard.ok) throw new PersistenceRefusedError(guard.code, guard.message)
+          }
           // History rows — legacy path, UNCHANGED (see scope-decision comment
           // above). `writeArgs.messages` (== persistMsgs, history + assistant)
           // is deliberately NOT used here — the assistant row is written
@@ -413,6 +421,7 @@ export async function runPersistenceStage(args: {
           // Best-effort and strictly non-fatal, same discipline as every
           // other splice in this file: a completeness-record fault must
           // never cost the reader their reading.
+          await assertStillWritable()
           const lastUserHistoryMsg = [...historyMsgs].reverse().find((m) => m.role === 'user')
           if (lastUserHistoryMsg?.id) {
             try {
@@ -435,6 +444,7 @@ export async function runPersistenceStage(args: {
                 )
               }
             } catch (err) {
+              if (persistenceRefusalOf(err)) throw err
               console.error('[pariprashna] canonical user-turn write failed (non-fatal)', err)
             }
           }
@@ -615,6 +625,7 @@ export async function runPersistenceStage(args: {
             metadata: metadataWithReceipt,
           }
 
+          await assertStillWritable()
           let canonicalOk = true
           try {
             // P2-D (PPR-10, FD-9): durability-envelope wrapper around the
@@ -657,6 +668,7 @@ export async function runPersistenceStage(args: {
             }
             if (!durableOutcome.result) throw durableOutcome.error ?? new Error('writeTurnDurable: no result and no error')
           } catch (err) {
+            if (persistenceRefusalOf(err)) throw err
             console.error('[pariprashna] canonical writeTurn failed', err)
             canonicalOk = false
           }
@@ -674,6 +686,7 @@ export async function runPersistenceStage(args: {
           // Strictly non-fatal and strictly after the turn is committed: a
           // ledger fault must never cost the reader their reading.
           if (canonicalOk && predictionCandidatesFound.length > 0) {
+            await assertStillWritable()
             try {
               const capture = await captureDetectedCandidates({
                 chartId,

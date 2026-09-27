@@ -9,8 +9,10 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn(async () => ({ rows: [] })) }))
+vi.mock('@/lib/charts/readingGate', () => ({ checkReadingReadiness: vi.fn(async () => ({ ok: true })) }))
 
 import { runOnFinishWriteThrough, type OnFinishWriteThroughDeps, type OnFinishWriteThroughOpts } from '../onfinish_writethrough'
+import { PersistenceRefusedError } from '@/lib/conversations/writeGuard'
 
 function deps(guard: OnFinishWriteThroughDeps['writeGuard']) {
   return {
@@ -93,4 +95,26 @@ describe('runOnFinishWriteThrough — write guard', () => {
     await runOnFinishWriteThrough(opts([]), d)
     expect(order).toEqual(['guard', 'write'])
   })
+
+  it.each([
+    ['a refusal raised by a later re-check inside persistence', () => new PersistenceRefusedError('CONVERSATION_ARCHIVED_READ_ONLY', 'historical')],
+    ['the database write guard (migration 1121)', () => Object.assign(new Error('CONVERSATION_ARCHIVED_READ_ONLY: conversation x is correction-archived history'), { code: '23514' })],
+  ])('treats %s as a refusal: no ledger, no calibration stamp, not persisted', async (_label, makeError) => {
+    const d = deps(async () => ({ ok: true }))
+    ;(d.persistence.writeMessages as ReturnType<typeof vi.fn>).mockRejectedValue(makeError())
+    const parts: Array<{ type: string; data: unknown }> = []
+    const result = await runOnFinishWriteThrough(opts(parts), d)
+    expect(result).toMatchObject({ persisted: false, refusal: { code: 'CONVERSATION_ARCHIVED_READ_ONLY' } })
+    expect(d.predictionLedger).not.toHaveBeenCalled()
+    expect(d.title.generate).not.toHaveBeenCalled()
+    expect(parts.some((p) => p.type === 'data-title')).toBe(false)
+  })
+
+  it('keeps the existing best-effort behaviour for an ordinary persistence error', async () => {
+    const d = deps(async () => ({ ok: true }))
+    ;(d.persistence.writeMessages as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('connection reset'))
+    const result = await runOnFinishWriteThrough(opts([]), d)
+    expect(result).toEqual({ persisted: true })
+  })
 })
+

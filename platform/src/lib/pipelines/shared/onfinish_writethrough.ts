@@ -38,6 +38,7 @@ import type { UIMessage } from 'ai'
 
 import { costPart, citationPart, correctionPart, outOfDomainPart, persistencePart, predictionCandidatePart, titlePart } from '@/lib/streams/data_parts'
 import { extractCitations } from '@/lib/citations/citation_data_part'
+import { persistenceRefusalOf } from '@/lib/conversations/readOnly'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { recordCalibrationStamp } from '@/lib/predictions/calibration_producer'
@@ -257,8 +258,7 @@ export async function runOnFinishWriteThrough(
     console.error('[onfinish_writethrough] write guard failed', err)
     guard = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', message: 'This reading could not be saved safely.' }
   }
-  if (!guard.ok) {
-    const refusal = { code: guard.code, message: guard.message }
+  const refuse = (refusal: { code: string; message: string }): OnFinishWriteThroughResult => {
     opts.writer.write({
       type: 'data-persistence',
       data: persistencePart({ conversation_id: opts.conversationId, message_id: '', status: 'error' }),
@@ -270,6 +270,7 @@ export async function runOnFinishWriteThrough(
     }
     return { persisted: false, refusal }
   }
+  if (!guard.ok) return refuse({ code: guard.code, message: guard.message })
 
   // 1. data-cost — Observatory cost tile.
   if (opts.synthUsage) {
@@ -328,6 +329,10 @@ export async function runOnFinishWriteThrough(
       }),
     })
   } catch (err) {
+    // A refusal raised inside persistence (a later re-check, or migration
+    // 1121's trigger) stops the ledger, title and calibration stamp below.
+    const refusal = persistenceRefusalOf(err)
+    if (refusal) return refuse(refusal)
     console.error('[onfinish_writethrough] persistence failed', err)
   }
 

@@ -536,10 +536,10 @@ describe('Jātaka chart workspace — Paripraśna write gates', () => {
 
 describe('Jātaka chart workspace — persistence-boundary race (deterministic)', () => {
   // These turns must reach persistence, so synthesis produces real text.
-  async function useTextSynthesis() {
+  async function useTextSynthesis(text = 'Your tenth house is strongly placed this year.') {
     const { runAgenticLoop } = await import('@/lib/synthesis/agentic_loop')
     vi.mocked(runAgenticLoop).mockImplementation(async function* () {
-      yield { type: 'text_delta', text: 'Your tenth house is strongly placed this year.' }
+      yield { type: 'text_delta', text }
     } as never)
     return () => vi.mocked(runAgenticLoop).mockImplementation((() => emptyAdapterEvents()) as never)
   }
@@ -582,6 +582,100 @@ describe('Jātaka chart workspace — persistence-boundary race (deterministic)'
 
     dbQuery.mockImplementation(original)
     restoreSynthesis()
+  })
+
+  it('a correction that commits after the first guard (during the history write) still stops the canonical write', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { query } = await import('@/lib/db/client')
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    const { writeTurn } = await import('@/lib/pariprashna/store/writer')
+    const dbQuery = vi.mocked(query)
+    const original = dbQuery.getMockImplementation()!
+    let corrected = false
+    dbQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (corrected && /FROM conversations WHERE id/.test(sql)) {
+        return { rows: [{ chart_id: CHART, archive_reason: 'chart_details_changed' }] } as never
+      }
+      return original(sql, params)
+    })
+    vi.mocked(writeTurn).mockClear()
+    // The correction commits while the history rows are being written — after the
+    // write-through's first guard has already passed.
+    vi.mocked(writeConversationMessages).mockImplementationOnce(async () => {
+      corrected = true
+      mockReadinessState.value = 'building'
+      return { verified: true, messageIds: [] }
+    })
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    try {
+      const { events } = await runRoute('What does my chart say about work?')
+
+      expect(vi.mocked(writeConversationMessages)).toHaveBeenCalled()
+      expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+    } finally {
+      dbQuery.mockImplementation(original)
+      mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
+  })
+
+  const PREDICTIVE_TEXT =
+    'You will likely receive a promotion at work between March 2027 and June 2027, during the Jupiter period.'
+
+  it('a turn with a prediction captures it for review when nothing changes (control)', async () => {
+    const restoreSynthesis = await useTextSynthesis(PREDICTIVE_TEXT)
+    const { captureDetectedCandidates } = await import('@/lib/pariprashna/samiksha/capture')
+    vi.mocked(captureDetectedCandidates).mockClear()
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    try {
+      await runRoute('When will my career rise?')
+      expect(vi.mocked(captureDetectedCandidates)).toHaveBeenCalled()
+    } finally {
+      restoreSynthesis()
+    }
+  })
+
+  it('a correction that commits during the canonical write stops the Samīkṣā capture', async () => {
+    const restoreSynthesis = await useTextSynthesis(PREDICTIVE_TEXT)
+    const { query } = await import('@/lib/db/client')
+    const { writeTurn } = await import('@/lib/pariprashna/store/writer')
+    const { captureDetectedCandidates } = await import('@/lib/pariprashna/samiksha/capture')
+    const dbQuery = vi.mocked(query)
+    const original = dbQuery.getMockImplementation()!
+    const originalWriteTurn = vi.mocked(writeTurn).getMockImplementation()
+    let corrected = false
+    dbQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (corrected && /FROM conversations WHERE id/.test(sql)) {
+        return { rows: [{ chart_id: CHART, archive_reason: 'chart_details_changed' }] } as never
+      }
+      return original(sql, params)
+    })
+    vi.mocked(captureDetectedCandidates).mockClear()
+    // The correction commits while the assistant row is being written.
+    vi.mocked(writeTurn).mockImplementation((async (message: { role: string }, parts: unknown) => {
+      if (message.role === 'assistant') {
+        corrected = true
+        mockReadinessState.value = 'building'
+      }
+      return originalWriteTurn ? originalWriteTurn(message as never, parts as never) : (undefined as never)
+    }) as never)
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    try {
+      const { events } = await runRoute('When will my career rise?')
+      expect(corrected).toBe(true)
+      expect(vi.mocked(captureDetectedCandidates)).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+    } finally {
+      dbQuery.mockImplementation(original)
+      if (originalWriteTurn) vi.mocked(writeTurn).mockImplementation(originalWriteTurn)
+      mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
   })
 
   it('without a correction the same turn persists normally', async () => {

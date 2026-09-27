@@ -1,7 +1,13 @@
 import 'server-only'
 import { query } from '@/lib/db/client'
 import { checkReadingReadiness } from '@/lib/charts/readingGate'
-import { CONVERSATION_ARCHIVED_READ_ONLY, isCorrectionArchived } from '@/lib/conversations/readOnly'
+import {
+  ARCHIVED_WRITE_REFUSED_MESSAGE,
+  CONVERSATION_ARCHIVED_READ_ONLY,
+  isCorrectionArchived,
+} from '@/lib/conversations/readOnly'
+
+export { PersistenceRefusedError, persistenceRefusalOf } from '@/lib/conversations/readOnly'
 
 /**
  * Persistence-boundary write guard (Jātaka chart workspace).
@@ -17,9 +23,6 @@ export type ConversationWriteGuardResult =
   | { ok: true }
   | { ok: false; code: 'CONVERSATION_ARCHIVED_READ_ONLY' | 'CHART_RECOMPUTE_REQUIRED'; message: string }
 
-const ARCHIVED_MESSAGE =
-  'This reading was not saved: the chart details were corrected while it was being prepared, and earlier readings are now read-only history.'
-
 export async function checkConversationWritable(args: {
   conversationId: string
   chartId: string
@@ -31,7 +34,7 @@ export async function checkConversationWritable(args: {
     )
     const row = rows[0]
     if (row && (isCorrectionArchived(row) || row.chart_id !== args.chartId)) {
-      return { ok: false, code: CONVERSATION_ARCHIVED_READ_ONLY, message: ARCHIVED_MESSAGE }
+      return { ok: false, code: CONVERSATION_ARCHIVED_READ_ONLY, message: ARCHIVED_WRITE_REFUSED_MESSAGE }
     }
     const gate = await checkReadingReadiness(args.chartId)
     if (!gate.ok) return { ok: false, code: gate.code, message: gate.message }

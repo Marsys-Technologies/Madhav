@@ -27,3 +27,34 @@ export function archivedReadOnlyResponse() {
     retry: false,
   })
 }
+
+export const ARCHIVED_WRITE_REFUSED_MESSAGE =
+  'This reading was not saved: the chart details were corrected while it was being prepared, and earlier readings are now read-only history.'
+
+/**
+ * Thrown from inside a persistence step when a re-check refuses the write.
+ * Carries the same code/message pair the write guard returns.
+ */
+export class PersistenceRefusedError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'PersistenceRefusedError'
+  }
+}
+
+/**
+ * Maps an error thrown by a persistence step to a refusal, or null for an
+ * ordinary failure. Recognises a re-check refusal and migration 1121's trigger
+ * (check_violation whose message starts with CONVERSATION_ARCHIVED_READ_ONLY).
+ */
+export function persistenceRefusalOf(err: unknown): { code: string; message: string } | null {
+  if (err instanceof PersistenceRefusedError) return { code: err.code, message: err.message }
+  const e = err as { code?: unknown; message?: unknown } | null
+  if (e && e.code === '23514' && typeof e.message === 'string' && e.message.startsWith(CONVERSATION_ARCHIVED_READ_ONLY)) {
+    return { code: CONVERSATION_ARCHIVED_READ_ONLY, message: ARCHIVED_WRITE_REFUSED_MESSAGE }
+  }
+  return null
+}
