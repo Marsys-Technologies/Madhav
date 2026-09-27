@@ -198,6 +198,18 @@ describe('owned AI configuration repository', () => {
     expect(cancel).toHaveBeenCalledOnce()
     expect(calls().filter(c => c.sql === 'BEGIN')).toHaveLength(1)
   })
+  it('preserves typed adapter completion and output on the identical returned handle', async () => {
+    respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
+    const handle = { pid: 42, cancel: vi.fn(), completion: Promise.resolve('complete'), output: 'adapter output' }
+    const result = await repository.withCliInvocationAuthorization('alice', 'codex', () => handle)
+    // These assignments must compile without casts: the adapter keeps its own handle type.
+    const completion: Promise<string> = result.completion
+    const output: string = result.output
+    expect(result).toBe(handle)
+    await expect(completion).resolves.toBe('complete')
+    expect(output).toBe('adapter output')
+    expect(handle.cancel).not.toHaveBeenCalled()
+  })
   it('rejects async callbacks before invocation and requires a concrete handle statically', async () => {
     respond(sql => sql.includes('ai_cli_grants') ? [{ cli_id: 'codex' }] : undefined)
     let invoked = false

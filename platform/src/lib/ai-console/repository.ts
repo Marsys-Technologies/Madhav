@@ -317,10 +317,10 @@ export interface CliInvocationHandle {
  * The handle stays outside the transaction so failure after spawn (including COMMIT)
  * cancels the started process exactly once. No callback or transaction retry occurs.
  */
-export async function withCliInvocationAuthorization(userId: string, cliId: string, start: () => CliInvocationHandle): Promise<CliInvocationHandle> {
+export async function withCliInvocationAuthorization<T extends CliInvocationHandle>(userId: string, cliId: string, start: () => T): Promise<T> {
   const cli = CliIdSchema.parse(cliId)
   if (typeof start !== 'function' || utilTypes.isAsyncFunction(start)) throw new AiConsoleError('AI_EXECUTION_FAILED')
-  let started: CliInvocationHandle | undefined
+  let started: T | undefined
   try {
     return await withUserTransaction(userId, async client => {
       const rows = (await client.query(`SELECT g.cli_id FROM ai_cli_grants g JOIN profiles p ON p.id=g.user_id
