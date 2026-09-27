@@ -1,0 +1,258 @@
+L0: assets 40 -> 40
+   base {'FAIL': 39, 'N/A': 68, 'NOT_GENERIC': 80, 'NO_DETECTOR': 120, 'PARTIAL': 50, 'PASS': 413}
+   head {'FAIL': 43, 'N/A': 69, 'NOT_GENERIC': 80, 'NO_DETECTOR': 122, 'PARTIAL': 50, 'PASS': 406}
+L1: assets 19 -> 19
+   base {'ERRORED': 19, 'FAIL': 1, 'N/A': 4, 'NOT_GENERIC': 38, 'NO_DETECTOR': 57, 'PARTIAL': 45, 'PASS': 185}
+   head {'FAIL': 7, 'N/A': 5, 'NOT_GENERIC': 38, 'NO_DETECTOR': 61, 'PARTIAL': 45, 'PASS': 212}
+L2: assets 23 -> 23
+   base {'ERRORED': 22, 'FAIL': 8, 'N/A': 1, 'NOT_GENERIC': 46, 'NO_DETECTOR': 69, 'PARTIAL': 51, 'PASS': 233}
+   head {'FAIL': 15, 'N/A': 5, 'NOT_GENERIC': 46, 'NO_DETECTOR': 70, 'PARTIAL': 51, 'PASS': 265}
+L3: assets 21 -> 21
+   base {'ERRORED': 17, 'FAIL': 38, 'N/A': 31, 'NOT_GENERIC': 42, 'NO_DETECTOR': 63, 'PARTIAL': 28, 'PASS': 157}
+   head {'FAIL': 55, 'N/A': 13, 'NOT_GENERIC': 42, 'NO_DETECTOR': 83, 'PARTIAL': 28, 'PASS': 174}
+L4: assets 9 -> 9
+   base {'ERRORED': 9, 'FAIL': 18, 'N/A': 2, 'NOT_GENERIC': 18, 'NO_DETECTOR': 27, 'PARTIAL': 16, 'PASS': 80}
+   head {'FAIL': 27, 'NOT_GENERIC': 18, 'NO_DETECTOR': 29, 'PARTIAL': 16, 'PASS': 87}
+L5: assets 14 -> 15
+   base {'ERRORED': 11, 'FAIL': 21, 'N/A': 10, 'NOT_GENERIC': 28, 'NO_DETECTOR': 42, 'PARTIAL': 15, 'PASS': 129}
+   head {'FAIL': 31, 'N/A': 29, 'NOT_GENERIC': 30, 'NO_DETECTOR': 57, 'PARTIAL': 15, 'PASS': 122}
+
+### R222 N2 unrecognised writer (N/A->NO_DETECTOR): 26
+    L3 ka_dasha_kala Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_dasha_kala') was recognised in writers/; the contract was never scanned (see Build.re
+    L3 ka_dasha_kala Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_dasha_kala') was recognised in writers/; the idempotency pattern was never scanned (s
+    L3 ka_gochara_resonance Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_gochara_resonance') was recognised in writers/; the contract was never scanned (see B
+    L3 ka_gochara_resonance Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_gochara_resonance') was recognised in writers/; the idempotency pattern was never sca
+    L3 ka_kota_chakra Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_kota_chakra') was recognised in writers/; the contract was never scanned (see Build.r
+    L3 ka_kota_chakra Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_kota_chakra') was recognised in writers/; the idempotency pattern was never scanned (
+    L3 ka_kshetra Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_kshetra') was recognised in writers/; the contract was never scanned (see Build.regis
+    L3 ka_kshetra Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_kshetra') was recognised in writers/; the idempotency pattern was never scanned (see 
+    L3 ka_moorti_nirnaya Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_moorti_nirnaya') was recognised in writers/; the contract was never scanned (see Buil
+    L3 ka_moorti_nirnaya Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_moorti_nirnaya') was recognised in writers/; the idempotency pattern was never scanne
+    L3 ka_muhurta_seva Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_muhurta_seva') was recognised in writers/; the contract was never scanned (see Build.
+    L3 ka_muhurta_seva Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_muhurta_seva') was recognised in writers/; the idempotency pattern was never scanned 
+    L3 ka_sudarshana_varsha Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_sudarshana_varsha') was recognised in writers/; the contract was never scanned (see B
+    L3 ka_sudarshana_varsha Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_sudarshana_varsha') was recognised in writers/; the idempotency pattern was never sca
+    L3 ka_tithi_pravesha Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_tithi_pravesha') was recognised in writers/; the contract was never scanned (see Buil
+    L3 ka_tithi_pravesha Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_tithi_pravesha') was recognised in writers/; the idempotency pattern was never scanne
+    L3 ka_tulana Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_tulana') was recognised in writers/; the contract was never scanned (see Build.regist
+    L3 ka_tulana Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_tulana') was recognised in writers/; the idempotency pattern was never scanned (see B
+    L3 ka_vedha_gochara Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_vedha_gochara') was recognised in writers/; the contract was never scanned (see Build
+    L3 ka_vedha_gochara Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ka_vedha_gochara') was recognised in writers/; the idempotency pattern was never scanned
+    L4 ph_rectification Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ph_rectification') was recognised in writers/; the contract was never scanned (see Build
+    L4 ph_rectification Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('ph_rectification') was recognised in writers/; the idempotency pattern was never scanned
+    L5 mi_bhara Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('mi_bhara') was recognised in writers/; the contract was never scanned (see Build.registe
+    L5 mi_bhara Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('mi_bhara') was recognised in writers/; the idempotency pattern was never scanned (see Bu
+    L5 mi_sankalpa Build.contract: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('mi_sankalpa') was recognised in writers/; the contract was never scanned (see Build.regi
+    L5 mi_sankalpa Idem.pattern: N/A -> NO_DETECTOR | NO_DETECTOR — registry says has_writer=true but no @register('mi_sankalpa') was recognised in writers/; the idempotency pattern was never scanned (see
+### R222 N5 empty table (PASS->NO_DETECTOR): 7
+    L0 bg_sarvatobhadra_grid Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 10 cols): column population cannot be measured on no rows
+    L1 ga_prashna Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 17 cols): column population cannot be measured on no rows
+    L1 ga_vargas Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 31 cols): column population cannot be measured on no rows
+    L5 mi_abhilekha Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 9 cols): column population cannot be measured on no rows
+    L5 mi_sankalpa Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 28 cols): column population cannot be measured on no rows
+    L5 mi_seva Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 4 cols): column population cannot be measured on no rows
+    L5 mi_vistara Complete.depth: PASS -> NO_DETECTOR | NO_DETECTOR — table empty (0 rows, 12 cols): column population cannot be measured on no rows
+### R222 N5 identity on empty table (PASS->NO_DETECTOR): 7
+    L0 bg_sarvatobhadra_grid Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (school_tag, cell_kind, cell_index, table_version) is vacuous on 0 rows
+    L1 ga_prashna Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (chart_id, ayanamsha_id) is vacuous on 0 rows
+    L1 ga_vargas Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (id) is vacuous on 0 rows
+    L5 mi_abhilekha Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (chart_id, journal_id) is vacuous on 0 rows
+    L5 mi_sankalpa Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (chart_id, intervention_class, rite_or_activity_class, elected_window) is vacuous on 0 rows
+    L5 mi_seva Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (user_id, channel_id) is vacuous on 0 rows
+    L5 mi_vistara Vocab.identity: PASS -> NO_DETECTOR | NO_DETECTOR — table empty: uniqueness under (export_id) is vacuous on 0 rows
+### R224: asset newly measured (lel_events): 17
+    L5 lel_events Build.completion: <absent-asset> -> FAIL | live=63 and no build record at all (chart 482012f1)
+    L5 lel_events Build.contract: <absent-asset> -> N/A | no writer, and the registry agrees (has_writer=false) — nothing to scan
+    L5 lel_events Build.count_integrity: <absent-asset> -> PASS | count_sql=yes, integrity_check_sql=yes
+    L5 lel_events Build.dag: <absent-asset> -> PASS | 0 edge(s), all resolvable
+    L5 lel_events Build.dep_liveness: <absent-asset> -> N/A | no declared dependencies
+    L5 lel_events Build.exercised: <absent-asset> -> N/A | never run, and it has no writer — consistent
+    L5 lel_events Build.history: <absent-asset> -> N/A | never run; check 7 owns this
+    L5 lel_events Build.registered: <absent-asset> -> N/A | no writer, and the registry agrees (service or static)
+    L5 lel_events Build.target: <absent-asset> -> N/A | no target_table; asset_kind='data', has_writer=False
+    L5 lel_events Carr.detector: <absent-asset> -> NO_DETECTOR | no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics
+    L5 lel_events Complete.width: <absent-asset> -> NOT_GENERIC | no declared universe for this asset — declaring one is the first width gap
+    L5 lel_events Cost.baseline: <absent-asset> -> NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run
+    L5 lel_events Count.floor: <absent-asset> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=63)
+    L5 lel_events Dens.served: <absent-asset> -> N/A | 0 module(s): none; declaring density_contract: 0
+    L5 lel_events Earn.build_record: <absent-asset> -> NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run
+    L5 lel_events Idem.pattern: <absent-asset> -> N/A | no writer, and the registry agrees (has_writer=false) — nothing to scan
+    L5 lel_events Reach.fields: <absent-asset> -> NOT_GENERIC | field-level exposure census is per-capability; not generic
+### R231 chart bound: measured (ERRORED->PASS): 46
+    L1 ga_ayurdaya Build.completion: ERRORED -> PASS | rows_written=130 = live=130 (count_sql over the target table; chart 482012f1)
+    L1 ga_dashas Build.completion: ERRORED -> PASS | rows_written=483870 = live=483870 (count_sql over the target table; chart 482012f1)
+    L1 ga_medical Build.completion: ERRORED -> PASS | rows_written=45 = live=45 (count_sql over the target table; chart 482012f1)
+    L1 ga_nakshatra Build.completion: ERRORED -> PASS | rows_written=2847 = live=2847 (count_sql over the target table; chart 482012f1)
+    L1 ga_panchanga Build.completion: ERRORED -> PASS | rows_written=437 = live=437 (count_sql over the target table; chart 482012f1)
+    L1 ga_positions Build.completion: ERRORED -> PASS | rows_written=1205 = live=1205 (count_sql over the target table; chart 482012f1)
+    L1 ga_prashna Build.completion: ERRORED -> PASS | rows_written=0 = live=0 (count_sql total over 2 table(s): ga_prashna_lagna, ga_prashna_judgment; chart 482012f1); zero rows declared complete by targe
+    L1 ga_sade_sati Build.completion: ERRORED -> PASS | rows_written=6287 = live=6287 (count_sql over the target table; chart 482012f1)
+    L1 ga_sensitive Build.completion: ERRORED -> PASS | rows_written=8775 = live=8775 (count_sql over the target table; chart 482012f1)
+    L1 ga_sensitive_degree Build.completion: ERRORED -> PASS | rows_written=335 = live=335 (count_sql over the target table; chart 482012f1)
+    L1 ga_tajaka Build.completion: ERRORED -> PASS | rows_written=240 = live=240 (count_sql over the target table; chart 482012f1)
+    L1 ga_transit_anchors Build.completion: ERRORED -> PASS | rows_written=45 = live=45 (count_sql over the target table; chart 482012f1)
+    L1 ga_vastu Build.completion: ERRORED -> PASS | rows_written=40 = live=40 (count_sql over the target table; chart 482012f1)
+    L1 ga_vichara Build.completion: ERRORED -> PASS | rows_written=8524 = live=8524 (count_sql over the target table; chart 482012f1)
+    L1 ga_yoga Build.completion: ERRORED -> PASS | rows_written=53 = live=53 (count_sql over the target table; chart 482012f1)
+    L2 bo_anveshana Build.completion: ERRORED -> PASS | rows_written=4437 = live=4437 (count_sql total over 2 table(s): bodha_discoveries, bodha_anomalies; chart 482012f1); target_table bodha_discoveries al
+    L2 bo_arudha Build.completion: ERRORED -> PASS | rows_written=25 = live=25 (count_sql over the target table; chart 482012f1)
+    L2 bo_cgm_motifs Build.completion: ERRORED -> PASS | rows_written=600 = live=600 (count_sql over the target table; chart 482012f1)
+    L2 bo_cgm_paths Build.completion: ERRORED -> PASS | rows_written=45 = live=45 (count_sql over the target table; chart 482012f1)
+    L2 bo_chart_gestalt Build.completion: ERRORED -> PASS | rows_written=5 = live=5 (count_sql over the target table; chart 482012f1)
+    L2 bo_drishti Build.completion: ERRORED -> PASS | rows_written=60 = live=60 (count_sql over the target table; chart 482012f1)
+    L2 bo_grounding Build.completion: ERRORED -> PASS | rows_written=50731 = live=50731 (count_sql over the target table; chart 482012f1)
+    L2 bo_laksana Build.completion: ERRORED -> PASS | rows_written=50529 = live=50529 (count_sql over the target table; chart 482012f1)
+    L2 bo_laksana_rerank Build.completion: ERRORED -> PASS | rows_written=11094 = live=11094 (count_sql over the target table; chart 482012f1)
+    L2 bo_nakshatra_semantic Build.completion: ERRORED -> PASS | rows_written=45 = live=45 (count_sql over the target table; chart 482012f1)
+    L2 bo_pramana_mapa Build.completion: ERRORED -> PASS | rows_written=1 = live=1 (count_sql over the target table; chart 482012f1)
+    L2 bo_pratijna Build.completion: ERRORED -> PASS | rows_written=135 = live=135 (count_sql over the target table; chart 482012f1)
+    L2 bo_samskara Build.completion: ERRORED -> PASS | rows_written=50678 = live=50678 (count_sql over the target table; chart 482012f1)
+    L2 bo_special_lagna Build.completion: ERRORED -> PASS | rows_written=20 = live=20 (count_sql over the target table; chart 482012f1)
+    L2 bo_sudarshana Build.completion: ERRORED -> PASS | rows_written=45 = live=45 (count_sql over the target table; chart 482012f1)
+    L2 bo_vargottama_dhana Build.completion: ERRORED -> PASS | rows_written=14 = live=14 (count_sql over the target table; chart 482012f1)
+    L2 bo_yantra_mechanism Build.completion: ERRORED -> PASS | rows_written=615 = live=615 (count_sql over the target table; chart 482012f1)
+    L3 ka_gochara_resonance Build.completion: ERRORED -> PASS | rows_written=765 = live=765 (count_sql over the target table; chart 482012f1)
+    L3 ka_jivana_parva Build.completion: ERRORED -> PASS | rows_written=100 = live=100 (count_sql over the target table; chart 482012f1)
+    L3 ka_kota_chakra Build.completion: ERRORED -> PASS | rows_written=585 = live=585 (count_sql over the target table; chart 482012f1)
+    L3 ka_moorti_nirnaya Build.completion: ERRORED -> PASS | rows_written=71 = live=71 (count_sql over the target table; chart 482012f1)
+    L3 ka_sudarshana_varsha Build.completion: ERRORED -> PASS | rows_written=120 = live=120 (count_sql over the target table; chart 482012f1)
+    L3 ka_taranga Build.completion: ERRORED -> PASS | rows_written=92412 = live=92412 (count_sql over the target table; chart 482012f1)
+    L3 ka_tithi_pravesha Build.completion: ERRORED -> PASS | rows_written=120 = live=120 (count_sql over the target table; chart 482012f1)
+    L3 ka_vedha_gochara Build.completion: ERRORED -> PASS | rows_written=177 = live=177 (count_sql over the target table; chart 482012f1)
+    L3 ka_yojaka Build.completion: ERRORED -> PASS | rows_written=50678 = live=50678 (count_sql over the target table; chart 482012f1)
+    L4 ph_phaladesa Build.completion: ERRORED -> PASS | rows_written=13 = live=13 (count_sql over the target table; chart 482012f1)
+    L4 ph_pratikara Build.completion: ERRORED -> PASS | rows_written=536 = live=536 (count_sql over the target table; chart 482012f1)
+    L4 ph_rectification Build.completion: ERRORED -> PASS | rows_written=186 = live=186 (count_sql total over 2 table(s): phala_rectification, phala_rectification_best; chart 482012f1); target_table phala_recti
+    L5 mi_abhilekha Build.completion: ERRORED -> PASS | rows_written=0 = live=0 (count_sql over the target table; chart 482012f1); zero rows declared complete by target_floor=0
+    L5 mi_jivanaghatana Build.completion: ERRORED -> PASS | rows_written=63 = live=63 (count_sql over the target table; chart 482012f1)
+### R231+R56 floor now measured (absent->FAIL): 16
+    L1 ga_vargas Count.floor: <absent> -> FAIL | live=0, floor=22092, delta=-22092
+    L1 ga_yoga Count.floor: <absent> -> FAIL | live=53, floor=63, delta=-10
+    L2 bo_laksana Count.floor: <absent> -> FAIL | live=50529, floor=60000, delta=-9471
+    L2 bo_samskara Count.floor: <absent> -> FAIL | live=50678, floor=60000, delta=-9322
+    L3 ka_bhavishya_lekha Count.floor: <absent> -> FAIL | live=0, floor=100, delta=-100
+    L3 ka_gochara Count.floor: <absent> -> FAIL | live=0, floor=83, delta=-83
+    L3 ka_kala_darshana Count.floor: <absent> -> FAIL | live=0, floor=750, delta=-750
+    L3 ka_kalasutra Count.floor: <absent> -> FAIL | live=0, floor=335403, delta=-335403
+    L3 ka_kota_chakra Count.floor: <absent> -> FAIL | live=585, floor=588, delta=-3
+    L3 ka_kshetra Count.floor: <absent> -> FAIL | live=8570075, floor=8599775, delta=-29700
+    L3 ka_moorti_nirnaya Count.floor: <absent> -> FAIL | live=71, floor=72, delta=-1
+    L3 ka_sangam Count.floor: <absent> -> FAIL | live=0, floor=14868, delta=-14868
+    L3 ka_vighnakara Count.floor: <absent> -> FAIL | live=0, floor=536, delta=-536
+    L4 ph_nimitta Count.floor: <absent> -> FAIL | live=4, floor=139, delta=-135
+    L4 ph_sankrama Count.floor: <absent> -> FAIL | live=155, floor=2510, delta=-2355
+    L4 ph_suddha_sodhana Count.floor: <absent> -> FAIL | live=4, floor=139, delta=-135
+### R231+R56 floor now measured (absent->PASS): 45
+    L1 ga_ayurdaya Count.floor: <absent> -> PASS | live=130, floor=130, delta=+0
+    L1 ga_condition Count.floor: <absent> -> PASS | count_sql total=2970, floor=2880, delta=+90
+    L1 ga_dashas Count.floor: <absent> -> PASS | live=483870, floor=471767, delta=+12103
+    L1 ga_medical Count.floor: <absent> -> PASS | live=45, floor=45, delta=+0
+    L1 ga_nakshatra Count.floor: <absent> -> PASS | live=2847, floor=1813, delta=+1034
+    L1 ga_panchanga Count.floor: <absent> -> PASS | live=437, floor=437, delta=+0
+    L1 ga_positions Count.floor: <absent> -> PASS | live=1205, floor=1205, delta=+0
+    L1 ga_sade_sati Count.floor: <absent> -> PASS | live=6287, floor=6120, delta=+167
+    L1 ga_sensitive Count.floor: <absent> -> PASS | live=8775, floor=8775, delta=+0
+    L1 ga_sensitive_degree Count.floor: <absent> -> PASS | live=335, floor=335, delta=+0
+    L1 ga_strength Count.floor: <absent> -> PASS | count_sql total=14141, floor=13621, delta=+520
+    L1 ga_structural Count.floor: <absent> -> PASS | count_sql total=102037, floor=98446, delta=+3591
+    L1 ga_tajaka Count.floor: <absent> -> PASS | live=240, floor=240, delta=+0
+    L1 ga_transit_anchors Count.floor: <absent> -> PASS | live=45, floor=45, delta=+0
+    L1 ga_vastu Count.floor: <absent> -> PASS | live=40, floor=40, delta=+0
+    L1 ga_vichara Count.floor: <absent> -> PASS | live=8524, floor=8249, delta=+275
+    L2 bo_anveshana Count.floor: <absent> -> PASS | count_sql total=4437, floor=500, delta=+3937
+    L2 bo_arudha Count.floor: <absent> -> PASS | live=25, floor=15, delta=+10
+    L2 bo_bimba Count.floor: <absent> -> PASS | live=385, floor=140, delta=+245
+    L2 bo_cdlm_summary Count.floor: <absent> -> PASS | live=5, floor=1, delta=+4
+    L2 bo_cgm_paths Count.floor: <absent> -> PASS | live=45, floor=9, delta=+36
+    L2 bo_chart_gestalt Count.floor: <absent> -> PASS | live=5, floor=1, delta=+4
+    L2 bo_drishti Count.floor: <absent> -> PASS | live=60, floor=60, delta=+0
+    L2 bo_karanajala Count.floor: <absent> -> PASS | live=849, floor=300, delta=+549
+    L2 bo_laksana_rerank Count.floor: <absent> -> PASS | live=11094, floor=1, delta=+11093
+    L2 bo_nakshatra_semantic Count.floor: <absent> -> PASS | live=45, floor=45, delta=+0
+    L2 bo_pramana_mapa Count.floor: <absent> -> PASS | live=1, floor=1, delta=+0
+    L2 bo_sangati Count.floor: <absent> -> PASS | count_sql total=475, floor=70, delta=+405
+    L2 bo_special_lagna Count.floor: <absent> -> PASS | live=20, floor=20, delta=+0
+    L2 bo_sudarshana Count.floor: <absent> -> PASS | live=45, floor=45, delta=+0
+    L2 bo_upaya Count.floor: <absent> -> PASS | count_sql total=180, floor=180, delta=+0
+    L2 bo_vargottama_dhana Count.floor: <absent> -> PASS | live=14, floor=10, delta=+4
+    L2 bo_yantra_mechanism Count.floor: <absent> -> PASS | live=615, floor=1, delta=+614
+    L3 ka_avadhi Count.floor: <absent> -> PASS | live=1169, floor=1169, delta=+0
+    L3 ka_gochara_resonance Count.floor: <absent> -> PASS | live=765, floor=762, delta=+3
+    L3 ka_jivana_parva Count.floor: <absent> -> PASS | live=100, floor=100, delta=+0
+    L3 ka_sudarshana_varsha Count.floor: <absent> -> PASS | live=120, floor=120, delta=+0
+    L3 ka_taranga Count.floor: <absent> -> PASS | live=92412, floor=92412, delta=+0
+    L3 ka_tithi_pravesha Count.floor: <absent> -> PASS | live=120, floor=120, delta=+0
+    L3 ka_vedha_gochara Count.floor: <absent> -> PASS | live=177, floor=176, delta=+1
+    L3 ka_yojaka Count.floor: <absent> -> PASS | live=50678, floor=50104, delta=+574
+    L4 ph_muhurta Count.floor: <absent> -> PASS | live=134, floor=134, delta=+0
+    L4 ph_phaladesa Count.floor: <absent> -> PASS | live=13, floor=13, delta=+0
+    L4 ph_pratikara Count.floor: <absent> -> PASS | live=536, floor=536, delta=+0
+    L4 ph_rectification Count.floor: <absent> -> PASS | count_sql total=186, floor=186, delta=+0
+### R42 completed-state guard (ERRORED->FAIL): 11
+    L3 ka_avadhi Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=1169, live=1169, chart 482012f1) — see Build.history
+    L3 ka_kshetra Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=1183134, live=8570075, chart 482012f1) — see Build.history
+    L5 mi_adhilepa Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=112270, live=112270, chart 482012f1) — see Build.history; target_table mimamsa_load_
+    L5 mi_bhara Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=0, live=7, chart 482012f1) — see Build.history
+    L5 mi_bhavisya Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=278, live=278, chart 482012f1) — see Build.history; target_table mimamsa_predictions
+    L5 mi_darshana Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=115, live=115, chart 482012f1) — see Build.history; target_table mimamsa_insight_uni
+    L5 mi_gunanaka Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=9, live=13, chart 482012f1) — see Build.history; target_table mimamsa_multipliers al
+    L5 mi_pariksha Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=1664, live=1664, chart 482012f1) — see Build.history; target_table mimamsa_qa_eval a
+    L5 mi_pramana Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=63, live=63, chart 482012f1) — see Build.history; target_table mimamsa_calibration a
+    L5 mi_sambandha Build.completion: ERRORED -> FAIL | build record state='error' is not a completed build (rows_written=24, live=24, chart 482012f1) — see Build.history
+    L5 mi_sankalpa Build.completion: ERRORED -> FAIL | build record state='dormant' is not a completed build (rows_written=0, live=0, chart 482012f1) — see Build.history
+### R42 constant count_sql (PASS->NO_DETECTOR): 1
+    L2 bo_samvada Build.completion: PASS -> NO_DETECTOR | NO_DETECTOR — count_sql reads no table (a constant 0); completion cannot be measured
+### R42 rows_written vs live compared (ERRORED->FAIL): 13
+    L1 ga_condition Build.completion: ERRORED -> FAIL | build record rows_written=45 disagrees with live=2970 (count_sql total over 2 table(s): ga_condition_composite, chart_facts; chart 482012f1); target_t
+    L1 ga_strength Build.completion: ERRORED -> FAIL | build record rows_written=13715 disagrees with live=14141 (count_sql total over 1 table(s): chart_facts; chart 482012f1)
+    L1 ga_structural Build.completion: ERRORED -> FAIL | build record rows_written=106707 disagrees with live=102037 (count_sql total over 2 table(s): chart_facts, fact_category_ownership; chart 482012f1)
+    L2 bo_bimba Build.completion: ERRORED -> FAIL | build record rows_written=255 disagrees with live=385 (count_sql over the target table; chart 482012f1)
+    L2 bo_cdlm_summary Build.completion: ERRORED -> FAIL | build record rows_written=70 disagrees with live=5 (count_sql over the target table; chart 482012f1)
+    L2 bo_karanajala Build.completion: ERRORED -> FAIL | build record rows_written=864 disagrees with live=849 (count_sql over the target table; chart 482012f1)
+    L2 bo_sangati Build.completion: ERRORED -> FAIL | build record rows_written=535 disagrees with live=475 (count_sql total over 2 table(s): bodha_cdlm_cells, bodha_triangulation; chart 482012f1); target
+    L2 bo_upaya Build.completion: ERRORED -> FAIL | build record rows_written=240 disagrees with live=180 (count_sql total over 2 table(s): bodha_rm_resonances, bodha_rm_remedy_prescriptions; chart 4820
+    L4 ph_muhurta Build.completion: ERRORED -> FAIL | build record rows_written=139 disagrees with live=134 (count_sql over the target table; chart 482012f1)
+    L4 ph_nimitta Build.completion: ERRORED -> FAIL | build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)
+    L4 ph_pramana Build.completion: ERRORED -> FAIL | build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)
+    L4 ph_sankrama Build.completion: ERRORED -> FAIL | build record rows_written=2510 disagrees with live=155 (count_sql over the target table; chart 482012f1)
+    L4 ph_suddha_sodhana Build.completion: ERRORED -> FAIL | build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)
+### R42 rows_written vs live compared (PASS->FAIL): 4
+    L0 bg_cohort Build.completion: PASS -> FAIL | build record rows_written=10000 disagrees with live=110000 (count_sql total over 2 table(s): bg_synthetic_cohort, bg_synthetic_cohort_md; global); tar
+    L0 bg_formula_constants Build.completion: PASS -> FAIL | build record rows_written=10 disagrees with live=17 (count_sql over the target table; global)
+    L0 bg_medical_mappings Build.completion: PASS -> FAIL | build record rows_written=60 disagrees with live=21 (count_sql over the target table; global)
+    L0 bg_transit_rules Build.completion: PASS -> FAIL | build record rows_written=104 disagrees with live=76 (count_sql over the target table; global)
+### R48 declared floor=0 -> N/A (was absent): 17
+    L1 ga_prashna Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+    L2 bo_cgm_motifs Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=600)
+    L2 bo_grounding Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=50731)
+    L2 bo_pratijna Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=135)
+    L3 ka_dasha_kala Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=unmeasured)
+    L3 ka_tulana Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=unmeasured)
+    L5 mi_abhilekha Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+    L5 mi_adhilepa Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=112270)
+    L5 mi_bhara Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=7)
+    L5 mi_bhavisya Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=278)
+    L5 mi_darshana Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=115)
+    L5 mi_gunanaka Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=13)
+    L5 mi_jivanaghatana Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=63)
+    L5 mi_pariksha Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=1664)
+    L5 mi_pramana Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=63)
+    L5 mi_sambandha Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=24)
+    L5 mi_sankalpa Count.floor: <absent> -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+### R48 floor=0 vacuous PASS -> N/A: 5
+    L0 bg_sarvatobhadra_grid Count.floor: PASS -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+    L2 bo_samvada Count.floor: PASS -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+    L5 mi_kula Count.floor: PASS -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=15)
+    L5 mi_seva Count.floor: PASS -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+    L5 mi_vistara Count.floor: PASS -> N/A | target_floor=0: the registry declares zero rows complete — there is no floor to breach (live=0)
+### R52 non-emptiness (ERRORED->FAIL): 8
+    L1 ga_vargas Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=22092); build recor
+    L3 ka_bhavishya_lekha Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=100); build record 
+    L3 ka_gochara Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=83); build record r
+    L3 ka_kala_darshana Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=750); build record 
+    L3 ka_kalasutra Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=335403); build reco
+    L3 ka_sangam Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=14868); build recor
+    L3 ka_vighnakara Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=536); build record 
+    L4 ph_sodhana Build.completion: ERRORED -> FAIL | empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=none); build record
+
+### text-only changes (verdict unchanged): {('L0', 'Build.completion'): 36, ('L0', 'Count.floor'): 12, ('L0', 'Build.contract'): 4, ('L0', 'Idem.pattern'): 4, ('L3', 'Build.completion'): 4, ('L5', 'Build.completion'): 3}

@@ -1,0 +1,229 @@
+=== mutation R224-M1 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (48 -> 47 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r224_registry_measures_an_active_asset_outside_the_prefix
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r224_build_record_is_read_for_the_measured_population_not_the_prefix
+2 failed, 1 skipped in 0.07s
+--- reverted (byte-identical)
+--- after revert:
+154 passed, 6 skipped, 21 deselected in 0.95s
+=== mutation R224-M1-live on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (48 -> 47 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r224_registry_measures_an_active_asset_outside_the_prefix
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r224_build_record_is_read_for_the_measured_population_not_the_prefix
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_r224_population_is_127_and_includes_lel_events
+3 failed in 9.18s
+--- reverted (byte-identical)
+--- after revert:
+154 passed, 6 skipped, 21 deselected in 0.93s
+=== mutation R224-M2 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (60 -> 53 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r224_build_record_is_read_for_the_measured_population_not_the_prefix
+1 failed, 1 passed, 1 skipped in 0.06s
+--- reverted (byte-identical)
+--- after revert:
+154 passed, 6 skipped, 21 deselected in 1.03s
+=== mutation R231-M1 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (44 -> 13 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_chart_scoped_count_sql_is_bound_and_measured
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_the_build_record_is_the_bound_charts_not_another_charts
+2 failed, 4 passed, 2 skipped in 0.07s
+--- reverted (byte-identical)
+--- after revert:
+158 passed, 7 skipped, 21 deselected in 0.94s
+=== mutation R231-M1-live on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (44 -> 13 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_chart_scoped_count_sql_is_bound_and_measured
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_the_build_record_is_the_bound_charts_not_another_charts
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_r231_every_l4_count_sql_is_measured_for_the_canonical_chart
+3 failed, 5 passed in 11.01s
+--- reverted (byte-identical)
+--- after revert:
+158 passed, 7 skipped, 21 deselected in 0.98s
+=== mutation R231-M2 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (85 -> 92 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_the_build_record_is_the_bound_charts_not_another_charts
+1 failed, 5 passed, 2 skipped in 0.06s
+--- reverted (byte-identical)
+--- after revert:
+158 passed, 7 skipped, 21 deselected in 0.93s
+=== mutation R223-M1 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (125 -> 117 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r223_psql_converts_the_real_timeout_expired
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r223_a_real_timeout_in_one_check_grades_errored_and_the_layer_completes
+2 failed, 6 passed, 2 skipped in 2.17s
+--- reverted (byte-identical)
+--- after revert:
+160 passed, 7 skipped, 21 deselected in 3.02s
+=== mutation R223-M2 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (28 -> 30 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r223_psql_converts_the_real_timeout_expired
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r223_a_real_timeout_in_one_check_grades_errored_and_the_layer_completes
+2 failed, 6 passed, 2 skipped in 2.19s
+--- reverted (byte-identical)
+--- after revert:
+160 passed, 7 skipped, 21 deselected in 2.91s
+=== mutation R222-N1 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (140 -> 146 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n1_a_count_sql_returning_null_is_errored_and_closes_nothing
+1 failed, 15 passed, 2 skipped in 2.12s
+--- reverted (byte-identical)
+--- after revert:
+168 passed, 7 skipped, 21 deselected in 2.97s
+=== mutation R222-N2 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (132 -> 122 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n2_an_unrecognised_writer_is_no_detector_and_closes_nothing
+1 failed, 15 passed, 2 skipped in 2.11s
+--- reverted (byte-identical)
+--- after revert:
+168 passed, 7 skipped, 21 deselected in 2.90s
+=== mutation R222-N3 on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (42 -> 17 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n3_a_missing_capability_directory_is_no_detector_and_closes_nothing
+1 failed, 15 passed, 2 skipped in 2.10s
+--- reverted (byte-identical)
+--- after revert:
+168 passed, 7 skipped, 21 deselected in 2.97s
+=== mutation R222-N5-depth on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (56 -> 25 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n5_an_empty_table_is_no_detector_on_depth_and_closes_nothing
+1 failed, 15 passed, 2 skipped in 2.09s
+--- reverted (byte-identical)
+--- after revert:
+168 passed, 7 skipped, 21 deselected in 2.91s
+=== mutation R222-N5-identity on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (38 -> 33 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n5_an_empty_table_is_no_detector_on_depth_and_closes_nothing
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n5_identity_on_an_empty_table_probes_when_depth_errored
+2 failed, 14 passed, 2 skipped in 2.11s
+--- reverted (byte-identical)
+--- after revert:
+168 passed, 7 skipped, 21 deselected in 2.91s
+=== mutation R222-N1-absent on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (95 -> 20 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r222_n1_a_genuinely_absent_count_sql_is_na_only_when_nothing_is_built
+1 failed, 15 passed, 2 skipped in 2.13s
+--- reverted (byte-identical)
+--- after revert:
+168 passed, 7 skipped, 21 deselected in 2.92s
+=== mutation R225-M1-callsite-True on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (120 -> 119 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r225_measure_with_the_instrument_present_reads_no_detector_and_closes_nothing
+1 failed, 31 passed, 2 skipped in 2.13s
+--- reverted (byte-identical)
+--- after revert:
+170 passed, 7 skipped, 21 deselected in 2.98s
+=== mutation R225-M2-F1b-shape-with-unsafe-default on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (120 -> 79 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r225_measure_with_the_instrument_present_reads_no_detector_and_closes_nothing
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r225_the_default_is_the_safe_value
+FAILED platform/scripts/governance/__tests__/test_a3_earn_cost_grading.py::test_case_attempt_linkage_unwired_is_the_default_measure_call_shape
+3 failed, 29 passed, 2 skipped in 2.12s
+--- reverted (byte-identical)
+--- after revert:
+2 failed, 168 passed, 7 skipped, 21 deselected in 2.92s
+=== mutation R225-M3-F1b-shape-safe-default on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (120 -> 79 chars)
+32 passed, 2 skipped in 2.09s
+--- reverted (byte-identical)
+--- after revert:
+170 passed, 7 skipped, 21 deselected in 3.02s
+=== mutation R42-M1-no-compare on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (29 -> 19 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r42_a_disagreeing_build_record_fails
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r42_multi_table_disagreement_fails
+2 failed, 21 passed, 2 skipped in 2.12s
+--- reverted (byte-identical)
+--- after revert:
+175 passed, 7 skipped, 21 deselected in 2.95s
+=== mutation R42-M2-no-state-guard on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (52 -> 19 chars)
+__________ test_r42_rows_left_by_a_failed_build_are_not_a_completion ___________
+tmp_path = PosixPath('/private/var/folders/2w/v235h80n7m5bkmmbpfylbrh80000gr/T/pytest-of-Dev/pytest-694/test_r42_rows_left_by_a_failed0')
+    def test_r42_rows_left_by_a_failed_build_are_not_a_completion(monkeypatch, tmp_path):
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r42_rows_left_by_a_failed_build_are_not_a_completion
+1 failed, 22 passed, 2 skipped in 2.11s
+--- reverted (byte-identical)
+--- after revert:
+175 passed, 7 skipped, 21 deselected in 2.96s
+=== mutation R42-M3-constant-measured on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (25 -> 19 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r42_a_constant_count_sql_measures_nothing
+1 failed, 22 passed, 2 skipped in 2.11s
+--- reverted (byte-identical)
+--- after revert:
+175 passed, 7 skipped, 21 deselected in 2.98s
+=== mutation R42-M4-no-basis on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (88 -> 21 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r42_multi_table_compares_the_total_like_for_like_and_states_the_target_alone
+1 failed, 22 passed, 2 skipped in 2.09s
+--- reverted (byte-identical)
+--- after revert:
+175 passed, 7 skipped, 21 deselected in 3.02s
+=== mutation R52-M1-no-nonemptiness on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (68 -> 19 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_emptying_a_table_never_reads_pass[0-None]
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_emptying_a_table_never_reads_pass[0-5]
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_emptying_a_table_never_reads_pass[0-164575]
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_emptying_a_table_never_reads_pass[8579-None]
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_emptying_a_table_never_reads_pass[8579-5]
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_emptying_a_table_never_reads_pass[8579-164575]
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_the_truncate_plant_flips_toward_fail_never_toward_pass
+7 failed, 24 passed, 2 skipped in 2.15s
+--- reverted (byte-identical)
+--- after revert:
+183 passed, 7 skipped, 21 deselected in 2.96s
+=== mutation R52-M2-floor0-ignored on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (68 -> 23 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r52_zero_rows_pass_only_under_the_registry_declaration
+1 failed, 30 passed, 2 skipped in 2.12s
+--- reverted (byte-identical)
+--- after revert:
+183 passed, 7 skipped, 21 deselected in 3.03s
+=== mutation R56-M1-errored-absent on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (143 -> 163 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r56_an_unmeasurable_parameterised_count_emits_errored_not_absent
+1 failed, 32 passed, 3 skipped in 2.13s
+--- reverted (byte-identical)
+--- after revert:
+185 passed, 8 skipped, 21 deselected in 3.03s
+=== mutation R56-M2-unbound-live-absent on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (44 -> 13 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_chart_scoped_count_sql_is_bound_and_measured
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r231_the_build_record_is_the_bound_charts_not_another_charts
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_r231_every_l4_count_sql_is_measured_for_the_canonical_chart
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r56_a_multi_table_chart_scoped_count_is_graded_against_the_floor
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_r56_the_differentials_three_breaches_are_reported
+5 failed, 31 passed in 11.93s
+--- reverted (byte-identical)
+--- after revert:
+185 passed, 8 skipped, 21 deselected in 3.06s
+=== mutation R48-M1-no-count-absent on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (144 -> 164 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r48_a_declared_floor_without_a_count_sql_is_no_detector_not_absent
+1 failed, 35 passed, 4 skipped in 2.11s
+--- reverted (byte-identical)
+--- after revert:
+188 passed, 9 skipped, 21 deselected in 2.99s
+=== mutation R48-M2-zero-floor-vacuous-pass on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (20 -> 13 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r48_a_zero_floor_is_a_declaration_not_a_vacuous_pass
+1 failed, 35 passed, 4 skipped in 2.12s
+--- reverted (byte-identical)
+--- after revert:
+188 passed, 9 skipped, 21 deselected in 2.96s
+=== mutation R48-M3-L3-absent-live on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (116 -> 151 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r48_a_declared_floor_without_a_count_sql_is_no_detector_not_absent
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r48_a_zero_floor_is_a_declaration_not_a_vacuous_pass
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_r48_every_l3_asset_declaring_a_floor_gets_a_verdict
+3 failed, 37 passed in 30.48s
+--- reverted (byte-identical)
+--- after revert:
+188 passed, 9 skipped, 21 deselected in 3.02s
+=== mutation R48-M4-nondigit on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (137 -> 47 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r48_a_non_integer_floor_is_no_detector
+1 failed, 36 passed, 4 skipped in 2.15s
+--- reverted (byte-identical)
+--- after revert:
+189 passed, 9 skipped, 21 deselected in 2.91s

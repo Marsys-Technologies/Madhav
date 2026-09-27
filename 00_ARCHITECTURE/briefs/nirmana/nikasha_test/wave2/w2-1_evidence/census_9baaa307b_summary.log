@@ -1,0 +1,55 @@
+L0 Brahmagyan (fidelity): 40 assets · 36 registered ids vs 34 has_writer=true
+  build scope: 65 global run(s), of which 0 touched this layer  ← the global path never exercises it
+  !! registered with a writer and NEVER run by the orchestrator: ['bg_sign_medical']
+  FAIL 39 · PARTIAL/NO_DETECTOR 170 · ERRORED 0 · assets measured 40
+    FAIL Build.completion: 10 — bg_ephemeris, bg_gochara_citation_resolution, bg_muhurta_lattice, bg_ontology, bg_reference, bg_sign_medical…
+    FAIL Build.exercised: 1 — bg_sign_medical
+    FAIL Build.registered: 2 — bg_nakshatra_medical, bg_transit_engine
+    FAIL Count.floor: 1 — bg_parihara_rules
+    FAIL Dens.served: 24 — bg_class_lifetime_counts, bg_class_priors, bg_compendium_index, bg_dasha_systems, bg_dignity_reference, bg_doshas…
+    FAIL Vocab.alias: 1 — bg_ontology
+census written: ../census/base_L0.json
+rc=2
+L1 Ganita (contribution): 19 assets · 19 registered ids vs 19 has_writer=true
+  build scope: 65 global run(s), of which 551 touched this layer
+  FAIL 1 · PARTIAL/NO_DETECTOR 102 · ERRORED 19 · assets measured 19
+  !! 19 check(s) errored (R41: degraded, not layer-aborting) — never counted as PASS; see each asset's measurements for the exception
+    FAIL Build.history: 1 — ga_positions
+census written: ../census/base_L1.json
+rc=2
+L2 Bodha (contribution): 23 assets · 23 registered ids vs 23 has_writer=true
+  build scope: 64 global run(s), of which 593 touched this layer
+  FAIL 8 · PARTIAL/NO_DETECTOR 120 · ERRORED 22 · assets measured 23
+  !! 22 check(s) errored (R41: degraded, not layer-aborting) — never counted as PASS; see each asset's measurements for the exception
+    FAIL Dens.served: 8 — bo_bimba, bo_cgm_motifs, bo_cgm_paths, bo_karanajala, bo_pramana_mapa, bo_samvada…
+census written: ../census/base_L2.json
+rc=2
+L3 Kala (contribution): 21 assets · 11 registered ids vs 21 has_writer=true
+  population: 21 active of 23 registry rows for this layer — excluded (inactive/dead): ka_gochara_sweep, ka_gochara_v3_century_materialize
+  build scope: 65 global run(s), of which 539 touched this layer
+  FAIL 38 · PARTIAL/NO_DETECTOR 91 · ERRORED 17 · assets measured 21
+  !! 17 check(s) errored (R41: degraded, not layer-aborting) — never counted as PASS; see each asset's measurements for the exception
+    FAIL Build.dep_liveness: 7 — ka_bhavishya_lekha, ka_jivana_parva, ka_kala_darshana, ka_kalasutra, ka_taranga, ka_tulana…
+    FAIL Build.history: 2 — ka_avadhi, ka_kshetra
+    FAIL Build.registered: 10 — ka_dasha_kala, ka_gochara_resonance, ka_kota_chakra, ka_kshetra, ka_moorti_nirnaya, ka_muhurta_seva…
+    FAIL Dens.served: 19 — ka_avadhi, ka_bhavishya_lekha, ka_dasha_kala, ka_gochara, ka_graha_sancara, ka_jivana_parva…
+census written: ../census/base_L3.json
+rc=2
+L4 Phala (contribution): 9 assets · 8 registered ids vs 9 has_writer=true
+  build scope: 65 global run(s), of which 346 touched this layer
+  FAIL 18 · PARTIAL/NO_DETECTOR 43 · ERRORED 9 · assets measured 9
+  !! 9 check(s) errored (R41: degraded, not layer-aborting) — never counted as PASS; see each asset's measurements for the exception
+    FAIL Build.dep_liveness: 9 — ph_muhurta, ph_nimitta, ph_phaladesa, ph_pramana, ph_pratikara, ph_rectification…
+    FAIL Build.registered: 1 — ph_rectification
+    FAIL Dens.served: 8 — ph_muhurta, ph_phaladesa, ph_pramana, ph_pratikara, ph_rectification, ph_sankrama…
+census written: ../census/base_L4.json
+rc=2
+L5 Mimamsa (contribution): 14 assets · 12 registered ids vs 14 has_writer=true
+  build scope: 65 global run(s), of which 446 touched this layer
+  FAIL 21 · PARTIAL/NO_DETECTOR 57 · ERRORED 11 · assets measured 14
+  !! 11 check(s) errored (R41: degraded, not layer-aborting) — never counted as PASS; see each asset's measurements for the exception
+    FAIL Build.dep_liveness: 11 — mi_abhilekha, mi_adhilepa, mi_bhara, mi_bhavisya, mi_darshana, mi_gunanaka…
+    FAIL Build.history: 8 — mi_adhilepa, mi_bhara, mi_bhavisya, mi_darshana, mi_gunanaka, mi_pariksha…
+    FAIL Build.registered: 2 — mi_bhara, mi_sankalpa
+census written: ../census/base_L5.json
+rc=2
