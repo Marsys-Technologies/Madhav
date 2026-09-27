@@ -93,6 +93,91 @@ PASS, FAIL, PARTIAL, NO_DET, NA, NOT_GENERIC = "PASS", "FAIL", "PARTIAL", "NO_DE
 # because "the detector broke" and "the defect is fixed" are different facts.
 ERRORED = "ERRORED"
 
+# ─────────────────────────── R78/R79/D4: the declarative criterion registry ───────────────────────────
+# D4 ruling (nikasha_test/DECISIONS_RECOMMENDATIONS_v2_0.md §D4, adopted 2026-09-27): "obligation
+# identity comes first; the id is derived from it." A gap row is identified by (asset, scope,
+# criterion), where `criterion` is an entry in this declarative registry — replacing the criterion
+# strings that used to be built inline as bare `m["Gate.check"] = ...` assignments through
+# `measure()` with nothing anywhere naming them as a closed, registered set. Each entry carries:
+#   gate          — one of the nine gates (§4 of ASSET_ELEVATION_TEMPLATE_v2_0.md)
+#   check         — the specific claim within that gate; the criterion string is always
+#                   f"{gate}.{check}" — the census's own pre-existing id form, unchanged
+#   applicability — one line: when this criterion applies
+#   detector      — "asset_census.py:measure()" for every criterion the census itself auto-measures
+#                   on every run, or the literal string "NONE" for a criterion that exists so a
+#                   hand-written gap row has somewhere registered to point at, but that nothing in
+#                   this script currently measures automatically (D4: "a registered criterion with
+#                   detector: NONE yields NO_DETECTOR rows on every run ... which is the visible
+#                   'detector wanted' state" — never registering a bare, undetected claim; the
+#                   NONE binding IS the honest, visible form of "wanted, not yet built").
+#   revision      — an integer, bumped whenever a criterion's applicability or detector binding
+#                   changes in a way that would make an old measurement under the same string
+#                   mean something different (not bumped by this registry's initial authoring).
+#
+# R78 does not change what measure() computes — every criterion below with detector="asset_census.py:measure()"
+# is exactly the string that function already assigns into `m[...]`; this registry is the census
+# READING itself as a closed set (D4 finding #5: "no declarative criterion list exists ... a
+# NO_DETECTOR row for a declared, unbound criterion is the honest form, not a forbidden one").
+#
+# A specific proof is a distinct criterion from its generic placeholder (D4: `Carr.D1` ≠
+# `Carr.detector`; `Completeness.depth.dasha_link` ≠ `Complete.depth`; `Earn.service_state` ≠
+# `Earn.build_record`) and is never merged by family alias at runtime — the four family aliases
+# named in R79/D4 (`Vocab.rule1.alias`→`Vocab.alias`, `Dens.density_contract`→`Dens.served`,
+# `Carr.D1|D2|D3`→`Carr.detector`, `Completeness.*`→`Complete.*`) are one-time crosswalk entries
+# consumed only by the R81 migration script, and are NOT registered here as runtime equivalences.
+CRITERION_REGISTRY: dict[str, dict] = {
+    # ── auto-measured every run (detector = this module's own measure()) ──
+    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure)", detector="asset_census.py:measure()", revision=1),
+    "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", revision=1),
+    "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", revision=1),
+    "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", revision=1),
+    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", revision=1),
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists", detector="asset_census.py:measure()", revision=2),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS
+    "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", revision=1),
+    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", revision=1),
+    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", revision=1),
+    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", revision=1),
+    "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", revision=1),
+    # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
+    # ASSET_ELEVATION_TEMPLATE_v2_0.md §4 (Ldgr/Idem/Earn/Null/Vocab/Carr/Narr/Dens/Build) — they
+    # are pre-existing census criteria this registry catalogs as-is (T5_LEDGER_DRIFT.md already
+    # lists Cost.baseline and Complete.depth among the ledger's census criteria). R78 is scoped to
+    # registering what exists, not to reconciling the gate taxonomy against T4, which is out of
+    # this row's scope and left as an out-of-scope finding in the wave report.
+    "Cost.baseline":         dict(gate="Cost",  check="baseline",         applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", revision=1),
+    "Count.floor":           dict(gate="Count", check="floor",            applicability="declares target_floor and a count_sql", detector="asset_census.py:measure()", revision=1),
+    "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", revision=1),
+    "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", revision=1),
+    "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", revision=1),
+    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", revision=1),
+    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", revision=2),
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches at least one served capability module", detector="asset_census.py:measure()", revision=1),
+    "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", revision=1),
+    "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", revision=1),
+    # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
+    # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
+    # onto, each strictly MORE SPECIFIC than the generic auto-measured placeholder it sits beside
+    # (Carr.D1/D2/D3 vs Carr.detector; Completeness.depth.dasha_link vs Complete.depth;
+    # Earn.service_state vs Earn.build_record) — registered so a hand row has somewhere to point,
+    # never auto-measured because no in-repo detector exists for the specific claim yet.
+    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset restates a value from a cited source (source correspondence)", detector="NONE", revision=1),
+    "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact", detector="NONE", revision=1),
+    "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset computes a value that a second method could re-derive", detector="NONE", revision=1),
+    "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", revision=1),
+    "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)", detector="NONE", revision=1),
+}
+
+
+def registered_criterion(crit: str) -> dict | None:
+    """R78/R79: the one lookup every criterion string in this script (or a hand gap row) resolves
+    through. Returns the registry entry, or None if `crit` is not a registered criterion at all —
+    the D4 rule that "hand-written gap rows use a registered criterion; if the gap has none, the
+    author registers one line first" is enforced by callers treating None as a hard stop, not by
+    this function inventing a default entry."""
+    return CRITERION_REGISTRY.get(crit)
+
+
+
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
 # and `--layer all` census unrunnable on production. Configurable via env so an operator pointed
