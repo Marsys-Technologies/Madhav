@@ -7,12 +7,13 @@ import { PendingRequestsTable } from './PendingRequestsTable'
 import { UsersTable } from './UsersTable'
 import { AuditLogPanel } from './AuditLogPanel'
 import { ChartsTab } from './ChartsTab'
+import { AiAccessTab } from './AiAccessTab'
 import type { AdminAccessRequest, AdminUser } from './types'
 import type { AuditLogEntry } from '@/app/api/admin/audit-log/route'
 
-type Tab = 'pending' | 'users' | 'charts' | 'audit'
+type Tab = 'pending' | 'users' | 'charts' | 'ai-access' | 'audit'
 
-const TABS: { id: Tab; label: string }[] = [
+const BASE_TABS: { id: Tab; label: string }[] = [
   { id: 'pending', label: 'Pending Requests' },
   { id: 'users',   label: 'Users' },
   { id: 'charts',  label: 'Charts' },
@@ -28,7 +29,12 @@ async function fetchJson<T>(url: string): Promise<T> {
 export function AdminClient({ currentUserId }: { currentUserId: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const activeTab = (searchParams.get('tab') as Tab | null) ?? 'pending'
+  const aiAccessEnabled = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
+  const tabs = aiAccessEnabled
+    ? [...BASE_TABS.slice(0, 3), { id: 'ai-access' as const, label: 'AI Access' }, ...BASE_TABS.slice(3)]
+    : BASE_TABS
+  const requestedTab = searchParams.get('tab')
+  const activeTab: Tab = tabs.some(tab => tab.id === requestedTab) ? requestedTab as Tab : 'pending'
 
   function setTab(tab: Tab) {
     router.push(`/admin?tab=${tab}`, { scroll: false })
@@ -78,7 +84,7 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
 
       {/* Tab bar */}
       <div className="flex border-b border-[rgba(var(--brand-gold-rgb),0.18)]">
-        {TABS.map(tab => (
+        {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setTab(tab.id)}
@@ -130,6 +136,17 @@ export function AdminClient({ currentUserId }: { currentUserId: string }) {
           <ChartsTab
             users={usersQuery.data?.users ?? []}
             onGrantMutated={auditQuery.refetch}
+          />
+        )
+      )}
+
+      {activeTab === 'ai-access' && aiAccessEnabled && (
+        usersQuery.isError ? (
+          <p className="text-sm text-red-400">Could not load users.</p>
+        ) : (
+          <AiAccessTab
+            users={usersQuery.data?.users ?? []}
+            onAuditRefetch={() => auditQuery.refetch()}
           />
         )
       )}
