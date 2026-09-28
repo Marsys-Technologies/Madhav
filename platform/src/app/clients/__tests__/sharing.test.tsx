@@ -7,8 +7,8 @@
  * AC.4: No tier/depth UI in the sharing panel.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, fireEvent, waitFor, act } from '@testing-library/react'
 import type { DbLike } from '@/lib/auth/authorizeChartAccess'
 
 vi.mock('server-only', () => ({}))
@@ -24,6 +24,10 @@ vi.mock('@/lib/firebase/server', () => ({ getServerUser: mockGetServerUser }))
 beforeEach(() => {
   mockQuery.mockReset()
   mockGetServerUser.mockReset()
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 function makeRequest(method: string, urlSuffix = '', body?: unknown): Request {
@@ -186,6 +190,31 @@ describe('/api/clients/[id]/grants DELETE', () => {
 // ── SharingPanel UI ─────────────────────────────────────────────────────────
 
 describe('SharingPanel — UI grant/revoke flow (AC.3)', () => {
+  it('loads grants once when using the browser fetch implementation', async () => {
+    let resolveInitialFetch: ((response: Response) => void) | undefined
+    const initialFetch = new Promise<Response>((resolve) => {
+      resolveInitialFetch = resolve
+    })
+    const fetcher = vi.fn()
+      .mockReturnValueOnce(initialFetch)
+      .mockReturnValue(new Promise<Response>(() => {}))
+    vi.stubGlobal('fetch', fetcher)
+
+    const { SharingPanel } = await import('@/components/sharing/SharingPanel')
+    render(<SharingPanel chartId="chart-1" />)
+
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
+    await act(async () => {
+      resolveInitialFetch?.(new Response(JSON.stringify({ grants: [] }), { status: 200 }))
+      await initialFetch
+    })
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+
   it('renders empty state when no grants', async () => {
     const { SharingPanel } = await import('@/components/sharing/SharingPanel')
     const { getByTestId } = render(<SharingPanel chartId="chart-1" initialGrants={[]} />)
