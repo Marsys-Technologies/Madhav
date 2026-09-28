@@ -160,3 +160,38 @@ writes, escalated for re-verification BEFORE use (PRAMĀṆIN), never silently.
 Chart 482012f1 enumeration relaunched detached (pid 77985) at 2026-09-29
 ~04:55 IST; chart 1c826d5a queued after it. RSS to be sampled during the
 run.
+
+## ADK-0028 compliance — local century enumeration CLOSED (2026-09-29 ~05:15 IST)
+
+Native directive ADK-0028 / escalation E-021 (recorded at commits `3a7a3f245`,
+`800057a73`): the native deliberately killed the local century-horizon
+enumeration processes; local century-scale enumeration is PROHIBITED; the
+century rebuild runs ONLY via the Cloud Run Job `brahma-build-pipeline-job`
+AFTER PR #2731 is merged and deployed. Verified at 2026-09-29 05:14 IST: no
+enumeration or candidate-build processes are running (the relaunch recorded
+above, pid 77985, is dead); only the native's own 5433 cloud-sql-proxy exists
+and was left untouched. Nothing was relaunched after the directive; none will
+be. This evidence file's local-rehearsal plan (steps 2–7 of the pre-directive
+record) is SUPERSEDED by ADK-0028 §3's amended standing sequence:
+merge-readiness packet (done, `2be432ce4`, verdict HOLDING) → native
+merge/deploy of #2731 → DEPLOY_SHA verification → century rebuild via Cloud
+Run Job → Link-2 evidence / gates (b)(c) / PRAMĀṆIN / (a)–(k) on the
+Cloud-Run-built candidate → flips with soak trigger #0.
+
+Tooling disposition (honest record): the `--bodies` chunked-enumeration flag
+(prepared during the memory-defect mitigation work above) was committed as
+`45f150bb9` — default behavior byte-identical; subset-equivalence proven by
+test (`test_bodies_subset_equivalence`; battery 383 passed on disposable DBs).
+It is TOOLING ONLY: it changes no production surface, launches nothing, and
+any use in the Cloud Run path still requires PRAMĀṆIN re-verification of the
+amended application set before the '4.1' build (amendment-revalidation
+discipline, ADK-0019 §3 pattern). Chart 2's superseded narrow-horizon '4.0'
+candidate rows remain in production as-is per ADK-0028 §4 (deliberate
+retention, candidate-only, nothing published); the pre-2020 served-query
+statement (§N.6) is deferred to the Cloud-Run-build evidence round, where the
+century candidate will exist to answer it with real rows.
+
+Light-work closure this session: D-01a allowlist refresh verified against the
+gate (`check_no_local_aspect_dict.py`: 0 new violations, 3 allowlisted, PASS)
+and committed as `25f5dd6cb` — clears one of the five CI failures in the
+merge-readiness packet.
