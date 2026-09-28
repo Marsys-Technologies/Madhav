@@ -138,6 +138,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # The regular serving image is distinct from Dockerfile.pipeline. Building it
@@ -1297,6 +1298,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
@@ -1375,6 +1377,9 @@ jobs:
             MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
+            MARSYS_FLAG_AI_CONSOLE_BYOK=true
+            MARSYS_AI_ACTIVE_KEK_VERSION=V1
+            MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=false
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
@@ -1392,6 +1397,8 @@ jobs:
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:2
+            MARSYS_AI_KEK_V1=marsys-ai-kek-v1:1
+            MARSYS_AI_FINGERPRINT_SECRET=marsys-ai-fingerprint-secret:1
 
       - name: Resolve web candidate URL
         id: web-candidate-url

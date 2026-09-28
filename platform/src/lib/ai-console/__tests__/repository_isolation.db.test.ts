@@ -101,8 +101,14 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
       CREATE TABLE conversations(id uuid PRIMARY KEY,user_id text NOT NULL REFERENCES profiles(id),chart_id uuid REFERENCES charts(id),module text,title text);
       CREATE TABLE admin_audit_log(actor_id text,action text,target_user_id text,detail jsonb);`)
     const migration = readFileSync(resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql'), 'utf8')
+    const repairMigration = readFileSync(resolve(__dirname, '../../../../migrations/1125_ai_snapshot_shape_operator_precedence.sql'), 'utf8')
     const client = await pool.connect()
-    try { await client.query('BEGIN'); await client.query(migration); await client.query('COMMIT') }
+    try {
+      await client.query('BEGIN')
+      await client.query(migration)
+      await client.query(repairMigration)
+      await client.query('COMMIT')
+    }
     catch (error) { await client.query('ROLLBACK'); throw error }
     finally { client.release() }
     await pool.query("INSERT INTO profiles(id,role) VALUES($1,'guest'),($2,'guest'),($3,'super_admin')", [user, other, admin])
@@ -267,19 +273,19 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await pool.query("UPDATE profiles SET status='active' WHERE id=$1", [user])
   })
   it('blocks revoke-before-start and serializes concurrent revoke against immediate spawn', async () => {
-    await pool.query("INSERT INTO ai_cli_installations(cli_id,validation_state) VALUES('codex','reachable')")
-    await expect(repo.setCliGrant(other, user, 'codex', true)).rejects.toBeDefined()
-    await repo.setCliGrant(admin, user, 'codex', true)
-    await repo.setCliGrant(admin, user, 'codex', false)
+    await pool.query("INSERT INTO ai_cli_installations(cli_id,validation_state) VALUES('claude_code','reachable')")
+    await expect(repo.setCliGrant(other, user, 'claude_code', true)).rejects.toBeDefined()
+    await repo.setCliGrant(admin, user, 'claude_code', true)
+    await repo.setCliGrant(admin, user, 'claude_code', false)
     let starts = 0
-    await expect(repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 1, cancel() {} } })).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+    await expect(repo.withCliInvocationAuthorization(user, 'claude_code', () => { starts++; return { pid: 1, cancel() {} } })).rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
     expect(starts).toBe(0)
-    await repo.setCliGrant(admin, user, 'codex', true)
+    await repo.setCliGrant(admin, user, 'claude_code', true)
     await blockedUntilCommit(
-      () => repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 2, cancel() {} } }),
-      () => repo.setCliGrant(admin, user, 'codex', false),
+      () => repo.withCliInvocationAuthorization(user, 'claude_code', () => { starts++; return { pid: 2, cancel() {} } }),
+      () => repo.setCliGrant(admin, user, 'claude_code', false),
     )
-    await expect(repo.withCliInvocationAuthorization(user, 'codex', () => { starts++; return { pid: 3, cancel() {} } })).rejects.toBeDefined()
+    await expect(repo.withCliInvocationAuthorization(user, 'claude_code', () => { starts++; return { pid: 3, cancel() {} } })).rejects.toBeDefined()
     expect(starts).toBe(1)
     const hidden = (await repo.listAiConsoleState(other)).clis[0]
     expect(hidden.detected_product).toBeNull()
@@ -294,12 +300,12 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     expect(dependencies.conversations).toEqual([{ conversation_id: conversation }])
     await expect(repo.deleteConnection(user, connectionId, false)).rejects.toBeDefined()
     await repo.deleteConnection(user, connectionId, true)
-    expect((await repo.listAiConsoleState(user)).defaultChoice).toEqual({ kind: 'custom_configuration', configurationId })
+    expect((await repo.listAiConsoleState(user)).defaultChoice).toEqual(choice())
     await expect(repo.setUserDefault(user, { kind: 'custom_configuration', configurationId })).rejects.toBeDefined()
     await repo.deleteConfiguration(user, configurationId, true)
     const events = (await pool.query('SELECT event FROM ai_configuration_audit_log WHERE user_id=$1', [user])).rows.map(row => row.event)
     expect(events).toEqual(expect.arrayContaining(['connection_renamed', 'connection_credential_replaced', 'configuration_duplicated']))
     const adminAudit = (await pool.query('SELECT detail FROM admin_audit_log WHERE target_user_id=$1', [user])).rows
-    expect(adminAudit.every(row => JSON.stringify(row.detail) === '{"cliId":"codex"}')).toBe(true)
+    expect(adminAudit.every(row => JSON.stringify(row.detail) === '{"cliId":"claude_code"}')).toBe(true)
   })
 })

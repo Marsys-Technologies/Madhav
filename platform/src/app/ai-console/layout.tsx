@@ -4,6 +4,7 @@ import { getServerUserWithProfile } from '@/lib/auth/access-control'
 import { getFlag } from '@/lib/config'
 import { AppShell } from '@/components/shared/AppShell'
 import { ZoneRoot } from '@/components/shared/ZoneRoot'
+import { BuildHeader } from '@/components/build/BuildHeader'
 
 export const metadata: Metadata = {
   title: 'AI Console — MARSYS-JIS',
@@ -19,8 +20,11 @@ export default async function AiConsoleLayout({ children }: { children: React.Re
       <AppShell
         user={ctx.user}
         profile={ctx.profile}
-        breadcrumb={[{ label: 'AI Console', current: true }]}
+        breadcrumb={ctx.profile.role === 'super_admin'
+          ? [{ label: 'Cockpit', href: '/cockpit' }, { label: 'AI Console', current: true }]
+          : [{ label: 'AI Console', current: true }]}
       >
+        {ctx.profile.role === 'super_admin' && <BuildHeader showAiConsole />}
         {children}
       </AppShell>
     </ZoneRoot>

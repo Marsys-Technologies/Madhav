@@ -36,6 +36,44 @@ beforeEach(() => {
 })
 
 describe('CLI validation', () => {
+  it('discovers and persists a subscription model catalog without retaining provider secrets', async () => {
+    const catalogDefinition: CliDefinition = {
+      ...definition,
+      id: 'kimi_code', productName: 'Kimi Code', candidates: ['/fixed/kimi'], supportedVersion: '2.0.2',
+      authStatusArgs: undefined,
+      modelCatalog: { args: ['provider', 'list', '--json'], format: 'kimi_provider_json' },
+      supportsStructuredOutput: false,
+      execution: { args: ['acp'], modelFlag: [], outputFormat: 'kimi_acp_json', transport: 'kimi_acp' },
+    }
+    const kimiIdentity = { ...identity, cliId: 'kimi_code' as const }
+    const runModelCatalogValidation = vi.fn().mockResolvedValue([
+      { modelId: 'kimi-code/k3', displayName: 'K3' },
+      { modelId: 'kimi-code/k3-256k', displayName: 'K3-256k' },
+    ])
+    const confirmValidation = vi.fn()
+    const runner = { inspectInstallation: vi.fn().mockReturnValue(kimiIdentity), confirmValidation,
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: '2.0.2', exitCode: 0, signal: null }),
+      runAuthValidation: vi.fn(), runModelCatalogValidation,
+      runProbeValidation: vi.fn().mockResolvedValue({ stdout: JSON.stringify({ text: 'OK' }),
+        exitCode: 0, signal: null }) } as unknown as CliRunner
+
+    const result = await validateCli('alice', 'kimi_code', undefined,
+      { runner, registry: { kimi_code: catalogDefinition } })
+
+    expect(runModelCatalogValidation).toHaveBeenCalledWith('alice', 'kimi_code', undefined)
+    expect(runner.runAuthValidation).not.toHaveBeenCalled()
+    expect(result).toMatchObject({ state: 'reachable', modelCount: 3 })
+    const persisted = vi.mocked(repository.storeCliValidation).mock.calls[0][1]
+    expect(persisted.models).toEqual([
+      expect.objectContaining({ modelId: CLI_BUILTIN_MODEL_DB_ID, isBuiltinDefault: true }),
+      expect.objectContaining({ modelId: 'kimi-code/k3', displayName: 'K3', isBuiltinDefault: false }),
+      expect.objectContaining({ modelId: 'kimi-code/k3-256k', displayName: 'K3-256k', isBuiltinDefault: false }),
+    ])
+    expect(confirmValidation).toHaveBeenCalledWith('kimi_code', kimiIdentity, '2.0.2',
+      [null, 'kimi-code/k3', 'kimi-code/k3-256k'])
+    expect(JSON.stringify(persisted)).not.toContain('secret')
+  })
+
   it('grant-gates before detection, discards auth identity, and persists one built-in default', async () => {
     const version = vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1', exitCode: 0, signal: null })
     const auth = vi.fn().mockResolvedValue({ stdout: '{"account":"private@example.com"}', exitCode: 0, signal: null })
@@ -48,7 +86,7 @@ describe('CLI validation', () => {
     expect(repository.markCliValidationStarted).toHaveBeenCalledWith('codex')
     expect(auth).toHaveBeenCalledWith('alice', 'codex', undefined)
     expect(probe).toHaveBeenCalledWith('alice', 'codex', 'Reply with exactly OK.', undefined)
-    expect(confirmValidation).toHaveBeenCalledWith('codex', identity, '0.155.1')
+    expect(confirmValidation).toHaveBeenCalledWith('codex', identity, '0.155.1', [null])
     expect(result).toEqual({ cliId: 'codex', productName: 'Codex CLI', state: 'reachable',
       detectedVersion: '0.155.1', modelCount: 1 })
     const persisted = vi.mocked(repository.storeCliValidation).mock.calls[0][1]
@@ -152,8 +190,20 @@ describe('CLI validation', () => {
   it('strictly parses only demonstrated machine output shapes', () => {
     expect(validateMachineOutput('codex_jsonl', '{"type":"item.completed","item":{"type":"agent_message","text":"hello"}}\n{"type":"turn.completed","usage":{}}')).toMatchObject({ text: 'hello' })
     expect(validateMachineOutput('claude_json', '{"type":"result","subtype":"success","is_error":false,"result":"hello","usage":{"input_tokens":2,"output_tokens":3}}')).toMatchObject({ text: 'hello', usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 } })
+    expect(validateMachineOutput('antigravity_stream_json', [
+      JSON.stringify({ event: 'init', init: { cwd: '/tmp/isolated', permission_mode: 'always-proceed', tools: [] } }),
+      JSON.stringify({ event: 'step_update', step_update: { step_type: 'agent_response', state: 'DONE', text_delta: 'hello' } }),
+      JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: 'hello',
+        usage: { input_tokens: 2, output_tokens: 3, total_tokens: 5 } } }),
+    ].join('\n'))).toMatchObject({ text: 'hello', usage: { inputTokens: 2, outputTokens: 3, totalTokens: 5 } })
+    expect(validateMachineOutput('kimi_acp_json', '{"text":"hello"}')).toMatchObject({ text: 'hello' })
     expect(() => validateMachineOutput('codex_jsonl', '{broken')).toThrow()
     expect(() => validateMachineOutput('claude_json', '{"result":"hello","is_error":true}')).toThrow()
+    expect(() => validateMachineOutput('antigravity_stream_json', [
+      JSON.stringify({ event: 'init', init: { cwd: '/tmp', permission_mode: 'always-proceed', tools: [] } }),
+      JSON.stringify({ event: 'step_update', step_update: { step_type: 'tool', state: 'DONE' } }),
+      JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: 'unsafe' } }),
+    ].join('\n'))).toThrow()
   })
 
   it.each([

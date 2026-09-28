@@ -6,10 +6,12 @@ import { lstat, mkdtemp, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { isDeepStrictEqual } from 'node:util'
+import { StringDecoder } from 'node:string_decoder'
 import { AiConsoleError } from '../errors'
 import { withCliInvocationAuthorization, type CliInvocationHandle } from '../repository'
 import { CliIdSchema, type CliId } from '../types'
-import { buildExecutionArgs, CLI_REGISTRY, type CliDefinition } from './registry'
+import { buildExecutionArgs, CLI_REGISTRY, validateCliModelId, type CliDefinition } from './registry'
+import { parseCliModelCatalog, type CliDiscoveredModel } from './catalog'
 
 export interface CliProcessResult {
   readonly stdout: string
@@ -77,11 +79,17 @@ interface PreparedCliProcess {
   readonly cwd: string
 }
 
+type CliStarter = (prepared: PreparedCliProcess, signal?: AbortSignal) => StartedCliProcess
+type CliRevalidator = (userId: string, cliId: CliId, signal: AbortSignal | undefined,
+  runner: CliRunner, registry: Registry) => Promise<void>
+
 export interface CliRunner {
   inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity>
-  confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string): Promise<void>
+  confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string,
+    modelIds: readonly (string | null)[]): Promise<void>
   runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliProcessResult>
   runAuthValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliProcessResult>
+  runModelCatalogValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliDiscoveredModel[]>
   runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal): Promise<CliProcessResult>
   runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
     responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }): Promise<CliProcessResult>
@@ -96,12 +104,17 @@ class GovernedCliRunner implements CliRunner {
   private readonly activeByCli = new Map<CliId, number>()
   private readonly queue: QueueItem[] = []
   private readonly validationIdentities = new Map<CliId, CliInstallationIdentity>()
-  private readonly confirmedIdentities = new Map<CliId, { identity: CliInstallationIdentity; version: string }>()
+  private readonly confirmedIdentities = new Map<CliId, { identity: CliInstallationIdentity; version: string;
+    modelIds: ReadonlySet<string | null> }>()
+  private readonly revalidationFlights = new Map<string, Promise<void>>()
+  private readonly revalidate: CliRevalidator
 
-  constructor(options: { registry?: Registry; limits?: Partial<CliRunLimits>; environment?: NodeJS.ProcessEnv } = {}) {
+  constructor(options: { registry?: Registry; limits?: Partial<CliRunLimits>; environment?: NodeJS.ProcessEnv;
+    revalidate?: CliRevalidator } = {}) {
     this.registry = options.registry ?? CLI_REGISTRY
     this.limits = Object.freeze({ ...DEFAULT_LIMITS, ...options.limits })
     this.environment = options.environment ?? process.env
+    this.revalidate = options.revalidate ?? revalidateCliForExecution
     if (Object.values(this.limits).some(value => !Number.isSafeInteger(value) || value <= 0)) {
       throw new AiConsoleError('AI_EXECUTION_FAILED')
     }
@@ -114,7 +127,8 @@ class GovernedCliRunner implements CliRunner {
     return identity
   }
 
-  async confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string): Promise<void> {
+  async confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string,
+    modelIds: readonly (string | null)[]): Promise<void> {
     const definition = this.definition(cliId)
     if (!definition.execution || version !== definition.supportedVersion || identity.cliId !== definition.id) {
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
@@ -124,7 +138,11 @@ class GovernedCliRunner implements CliRunner {
       this.invalidateIdentity(cliId, identity)
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
     }
-    this.confirmedIdentities.set(cliId, Object.freeze({ identity, version }))
+    if (!modelIds.length || !modelIds.includes(null)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    const validatedModels = modelIds.map(modelId => modelId === null ? null : validateConfirmedModelId(modelId))
+    if (new Set(validatedModels).size !== validatedModels.length) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    this.confirmedIdentities.set(cliId, Object.freeze({ identity, version,
+      modelIds: new Set(validatedModels) }))
   }
 
   async runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
@@ -142,30 +160,51 @@ class GovernedCliRunner implements CliRunner {
     return { ...result, stdout: '' }
   }
 
+  async runModelCatalogValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
+    const catalog = this.invocableDefinition(cliId).modelCatalog
+    if (!catalog) throw new AiConsoleError('AI_CLI_AUTH_UNAVAILABLE')
+    const result = await this.runFixedAuthorized(userId, cliId, catalog.args, '', signal,
+      undefined, 'validation')
+    // Provider-list output may contain credentials. Parse it inside the runner
+    // boundary and return only validated identifiers and display names.
+    return parseCliModelCatalog(catalog.format, result.stdout)
+  }
+
   async runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal) {
     const definition = this.invocableDefinition(cliId)
-    return await this.runFixedAuthorized(userId, cliId, buildExecutionArgs(definition, null), stdin, signal,
+    if (definition.execution.transport === 'kimi_acp') {
+      return await this.runFixedAuthorized(userId, cliId, buildExecutionArgs(definition, null), stdin, signal,
+        undefined, 'validation', (prepared, invocationSignal) => this.startKimiAcp(prepared, null, invocationSignal))
+    }
+    return await this.runFixedAuthorized(userId, cliId, buildExecutionArgs(definition, null),
+      encodeCliStdin(definition, stdin), signal,
       undefined, 'validation')
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
     responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
     const definition = this.invocableDefinition(cliId)
-    // No approved CLI exposes a machine-readable model catalog. Until one does,
-    // the sole catalog entry is the built-in default represented by null.
-    if (input.modelId !== null) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    await this.ensureConfirmed(userId, cliId, input.signal)
+    const confirmed = this.confirmedIdentities.get(cliId)
+    if (!confirmed) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    if (!confirmed.modelIds.has(input.modelId)) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
     const schemaJson = input.responseSchema === undefined ? undefined : JSON.stringify(input.responseSchema)
     const schemaOption = schemaJson === undefined ? {}
       : definition.id === 'codex' ? { schemaPath: '__SCHEMA__' }
-        : definition.id === 'claude_code' ? { schemaPath: schemaJson } : {}
+        : definition.id === 'claude_code' || definition.id === 'gemini_antigravity'
+          ? { schemaPath: schemaJson } : {}
     const args = buildExecutionArgs(definition, input.modelId, schemaOption)
-    return await this.runFixedAuthorized(userId, cliId, args, input.stdin, input.signal,
+    if (definition.execution.transport === 'kimi_acp') {
+      return await this.runFixedAuthorized(userId, cliId, args, input.stdin, input.signal,
+        undefined, 'execution', (prepared, signal) => this.startKimiAcp(prepared, input.modelId, signal))
+    }
+    return await this.runFixedAuthorized(userId, cliId, args, encodeCliStdin(definition, input.stdin), input.signal,
       definition.id === 'codex' ? schemaJson : undefined, 'execution')
   }
 
   private async runFixedAuthorized(userId: string, cliId: CliId, args: readonly string[], stdin: string,
     signal: AbortSignal | undefined, schemaJson: string | undefined,
-    purpose: 'execution' | 'validation'): Promise<CliProcessResult> {
+    purpose: 'execution' | 'validation', starter?: CliStarter): Promise<CliProcessResult> {
     const release = await this.acquire(cliId, signal)
     let prepared: PreparedCliProcess | undefined
     let transferred = false
@@ -177,7 +216,7 @@ class GovernedCliRunner implements CliRunner {
       const handle = await withCliInvocationAuthorization(userId, cliId,
         () => {
           if (!prepared) throw new AiConsoleError('AI_EXECUTION_FAILED')
-          const started = this.start(prepared!, signal)
+          const started = starter ? starter(prepared!, signal) : this.start(prepared!, signal)
           transferred = true
           return started
         }, purpose, async () => {
@@ -202,9 +241,33 @@ class GovernedCliRunner implements CliRunner {
     if (this.confirmedIdentities.get(cliId)?.identity === identity) this.confirmedIdentities.delete(cliId)
   }
 
+  private async ensureConfirmed(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
+    if (this.confirmedIdentities.has(cliId)) return
+    const key = `${userId}:${cliId}`
+    let flight = this.revalidationFlights.get(key)
+    if (!flight) {
+      flight = this.revalidate(userId, cliId, signal, this, this.registry)
+      this.revalidationFlights.set(key, flight)
+      void flight.finally(() => {
+        if (this.revalidationFlights.get(key) === flight) this.revalidationFlights.delete(key)
+      }).catch(() => undefined)
+    }
+    try { await flight }
+    catch (error) {
+      if (error instanceof AiConsoleError && (error.code === 'AI_CLI_NOT_GRANTED'
+        || (signal?.aborted && error.code === 'AI_EXECUTION_FAILED'))) throw error
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
+    if (!this.confirmedIdentities.has(cliId)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  }
+
   inspectForTests() { return { active: this.active, queued: this.queue.length } }
 
   private definition(cliId: CliId): CliDefinition {
+    if (this.environment.NODE_ENV === 'production'
+      && this.environment.MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED !== 'true') {
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
     const parsed = CliIdSchema.parse(cliId)
     const definition = this.registry[parsed]
     if (!definition) throw new AiConsoleError('AI_CLI_NOT_INSTALLED')
@@ -407,6 +470,186 @@ class GovernedCliRunner implements CliRunner {
       },
     })
   }
+
+  private startKimiAcp(prepared: PreparedCliProcess, modelId: string | null,
+    signal?: AbortSignal): StartedCliProcess {
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    let child: ChildProcessWithoutNullStreams
+    try {
+      child = spawn(prepared.executable, prepared.processArgs, {
+        shell: false, detached: true, cwd: prepared.cwd, env: safeEnvironment(this.environment),
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+    } catch { throw new AiConsoleError('AI_CLI_UNREACHABLE') }
+    if (!child.pid) {
+      child.on('error', () => undefined)
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
+
+    let settled = false
+    let finalizing = false
+    let terminalError: AiConsoleError | undefined
+    let sessionId: string | undefined
+    let answer = ''
+    let stdoutBytes = 0
+    let stderrBytes = 0
+    let lineBuffer = ''
+    const decoder = new StringDecoder('utf8')
+    const lifecycle: { timeout?: NodeJS.Timeout; termination?: Promise<void> } = {}
+    let resolveCompletion!: (value: CliProcessResult) => void
+    let rejectCompletion!: (error: AiConsoleError) => void
+    const completion = new Promise<CliProcessResult>((resolvePromise, rejectPromise) => {
+      resolveCompletion = resolvePromise; rejectCompletion = rejectPromise
+    })
+    void completion.catch(() => undefined)
+
+    const groupExists = () => {
+      try { process.kill(-child.pid!, 0); return true }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false
+        if ((error as NodeJS.ErrnoException).code === 'EPERM') return true
+        throw error
+      }
+    }
+    const signalGroup = (killSignal: NodeJS.Signals) => {
+      try { process.kill(-child.pid!, killSignal) }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error }
+    }
+    const terminateGroup = () => {
+      if (lifecycle.termination) return lifecycle.termination
+      lifecycle.termination = (async () => {
+        signalGroup('SIGTERM')
+        const escalationAt = Date.now() + this.limits.killGraceMs
+        while (groupExists()) {
+          if (Date.now() >= escalationAt) signalGroup('SIGKILL')
+          await new Promise(resolvePoll => setTimeout(resolvePoll, Math.min(10, this.limits.killGraceMs)))
+        }
+      })()
+      return lifecycle.termination
+    }
+    const cleanup = async () => {
+      if (lifecycle.timeout) clearTimeout(lifecycle.timeout)
+      signal?.removeEventListener('abort', onAbort)
+      child.stdout.removeAllListeners(); child.stderr.removeAllListeners(); child.stdin.removeAllListeners()
+      child.removeAllListeners('close'); child.removeAllListeners('exit'); child.removeAllListeners('error')
+      child.on('error', () => undefined)
+      try { await rm(prepared.cwd, { recursive: true, force: true }) }
+      catch { terminalError ??= new AiConsoleError('AI_EXECUTION_FAILED') }
+    }
+    const finish = (error?: AiConsoleError) => {
+      if (settled || finalizing) return
+      finalizing = true
+      terminalError ??= error
+      void (async () => {
+        try { await terminateGroup() } catch { terminalError ??= new AiConsoleError('AI_EXECUTION_FAILED') }
+        settled = true
+        await cleanup()
+        if (terminalError) { rejectCompletion(terminalError); return }
+        resolveCompletion({ stdout: JSON.stringify({ text: answer }), exitCode: 0, signal: null })
+      })()
+    }
+    const fail = (error: AiConsoleError) => finish(error)
+    const onAbort = () => fail(new AiConsoleError('AI_EXECUTION_FAILED'))
+    const send = (value: unknown) => {
+      if (settled || finalizing || child.stdin.destroyed) return
+      const payload = `${JSON.stringify(value)}\n`
+      if (Buffer.byteLength(payload, 'utf8') > this.limits.stdinBytes) {
+        fail(new AiConsoleError('AI_CLI_OUTPUT_LIMIT')); return
+      }
+      child.stdin.write(payload)
+    }
+    const prompt = () => send({ jsonrpc: '2.0', id: 5, method: 'session/prompt', params: {
+      sessionId, prompt: [{ type: 'text', text: prepared.stdinBytes.toString('utf8') }],
+    } })
+    const handle = (raw: unknown) => {
+      if (!raw || typeof raw !== 'object') { fail(new AiConsoleError('AI_EXECUTION_FAILED')); return }
+      const message = raw as Record<string, unknown>
+      if (message.method === 'session/request_permission' && message.id !== undefined) {
+        send({ jsonrpc: '2.0', id: message.id, result: { outcome: { outcome: 'cancelled' } } })
+        return
+      }
+      if (message.method === 'session/update') {
+        const params = message.params as Record<string, unknown> | undefined
+        const update = params?.update as Record<string, unknown> | undefined
+        if (!params || params.sessionId !== sessionId || !update || typeof update.sessionUpdate !== 'string') {
+          fail(new AiConsoleError('AI_EXECUTION_FAILED')); return
+        }
+        if (update.sessionUpdate === 'agent_message_chunk') {
+          const content = update.content as Record<string, unknown> | undefined
+          if (!content || content.type !== 'text' || typeof content.text !== 'string') {
+            fail(new AiConsoleError('AI_EXECUTION_FAILED')); return
+          }
+          answer += content.text
+          if (Buffer.byteLength(answer, 'utf8') > this.limits.stdoutBytes) fail(new AiConsoleError('AI_CLI_OUTPUT_LIMIT'))
+        } else if (update.sessionUpdate.includes('tool_call')) {
+          fail(new AiConsoleError('AI_ROLE_INCOMPATIBLE'))
+        }
+        return
+      }
+      if (message.id === 1) {
+        const result = message.result as Record<string, unknown> | undefined
+        if (result?.protocolVersion !== 1) { fail(new AiConsoleError('AI_CLI_UNREACHABLE')); return }
+        send({ jsonrpc: '2.0', id: 2, method: 'session/new', params: { cwd: prepared.cwd, mcpServers: [] } })
+      } else if (message.id === 2) {
+        const result = message.result as Record<string, unknown> | undefined
+        if (!result || typeof result.sessionId !== 'string') { fail(new AiConsoleError('AI_CLI_UNREACHABLE')); return }
+        sessionId = result.sessionId
+        send({ jsonrpc: '2.0', id: 3, method: 'session/set_config_option', params: {
+          sessionId, configId: 'mode', value: 'plan',
+        } })
+      } else if (message.id === 3) {
+        if (message.error) { fail(new AiConsoleError('AI_CLI_UNREACHABLE')); return }
+        if (modelId === null) prompt()
+        else send({ jsonrpc: '2.0', id: 4, method: 'session/set_config_option', params: {
+          sessionId, configId: 'model', value: modelId,
+        } })
+      } else if (message.id === 4) {
+        if (message.error) { fail(new AiConsoleError('AI_MODEL_UNAVAILABLE')); return }
+        prompt()
+      } else if (message.id === 5) {
+        const result = message.result as Record<string, unknown> | undefined
+        if (result?.stopReason !== 'end_turn' || !answer) { fail(new AiConsoleError('AI_EXECUTION_FAILED')); return }
+        finish()
+      } else if (message.id !== undefined || message.method !== undefined) {
+        fail(new AiConsoleError('AI_EXECUTION_FAILED'))
+      }
+    }
+
+    child.stdout.on('data', (chunk: Buffer) => {
+      stdoutBytes += chunk.byteLength
+      if (stdoutBytes > this.limits.stdoutBytes) { fail(new AiConsoleError('AI_CLI_OUTPUT_LIMIT')); return }
+      lineBuffer += decoder.write(chunk)
+      let newline = lineBuffer.indexOf('\n')
+      while (newline >= 0) {
+        const line = lineBuffer.slice(0, newline).trim(); lineBuffer = lineBuffer.slice(newline + 1)
+        if (line) {
+          try { handle(JSON.parse(line)) } catch { fail(new AiConsoleError('AI_EXECUTION_FAILED')); return }
+        }
+        newline = lineBuffer.indexOf('\n')
+      }
+    })
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderrBytes += chunk.byteLength
+      if (stderrBytes > this.limits.stderrBytes) fail(new AiConsoleError('AI_CLI_OUTPUT_LIMIT'))
+    })
+    child.on('error', () => fail(new AiConsoleError('AI_CLI_UNREACHABLE')))
+    child.on('close', () => {
+      if (!settled && !finalizing) fail(new AiConsoleError('AI_CLI_UNREACHABLE'))
+    })
+    lifecycle.timeout = setTimeout(() => fail(new AiConsoleError('AI_CLI_TIMEOUT')), this.limits.timeoutMs)
+    lifecycle.timeout.unref?.()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    child.stdin.on('error', () => fail(new AiConsoleError('AI_CLI_UNREACHABLE')))
+    send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+      protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'Madhav', version: '1' },
+    } })
+
+    let cancelled = false
+    return Object.freeze({ pid: child.pid, completion, cancel: () => {
+      if (cancelled || settled || finalizing) return
+      cancelled = true; fail(new AiConsoleError('AI_EXECUTION_FAILED'))
+    } })
+  }
 }
 
 async function captureInstallationIdentity(definition: CliDefinition): Promise<CliInstallationIdentity> {
@@ -514,6 +757,25 @@ function safeEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     if (typeof value === 'string' && value.length > 0 && !value.includes('\0')) env[key] = value
   }
   return env
+}
+
+function validateConfirmedModelId(modelId: string): string {
+  const parsed = validateCliModelId(modelId)
+  if (!parsed) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  return parsed
+}
+
+function encodeCliStdin(definition: CliDefinition, prompt: string): string {
+  return definition.execution?.transport === 'antigravity_stream_json'
+    ? `${JSON.stringify({ event: 'user', message: { content: prompt } })}\n`
+    : prompt
+}
+
+async function revalidateCliForExecution(userId: string, cliId: CliId, signal: AbortSignal | undefined,
+  runner: CliRunner, registry: Registry): Promise<void> {
+  const { validateCli } = await import('./validation')
+  const result = await validateCli(userId, cliId, signal, { runner, registry })
+  if (result.state !== 'reachable') throw new AiConsoleError('AI_CLI_UNREACHABLE')
 }
 
 export function createCliRunner(options: ConstructorParameters<typeof GovernedCliRunner>[0] = {}): CliRunner {

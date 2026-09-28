@@ -25,11 +25,11 @@ describe('admin CLI grants route', () => {
     expect((await route.GET(new Request('http://localhost'), context)).status).toBe(403)
   })
 
-  it('never reports a detect-only CLI as host-reachable from stale database state', async () => {
-    mocks.list.mockResolvedValueOnce([{ cli_id: 'codex', granted_at: new Date(), revoked_at: null,
+  it('reports an executable catalog CLI as host-reachable', async () => {
+    mocks.list.mockResolvedValueOnce([{ cli_id: 'kimi_code', granted_at: new Date(), revoked_at: null,
       host_state: 'reachable' }])
     expect(await (await route.GET(new Request('http://localhost'), context)).json()).toEqual({ grants: [{
-      cliId: 'codex', productName: 'Codex CLI', granted: true, hostState: 'unavailable',
+      cliId: 'kimi_code', productName: 'Kimi Code', granted: true, hostState: 'reachable',
     }] })
   })
 
