@@ -72,7 +72,7 @@ Gochara ─────windows───────► Saṅgam
 - ~~The switch is pre-authorized~~ **Superseded 2026-09-29 by F-0 (ADK-0027).**
 
 **Update, 2026-09-29 (ADK-0027, commit `33b725778`):**
-- **What happened.** The switch on chart `482012f1` ran at 19:22:58 UTC under the old authorization, before F-0 arrived. The lane traced the risk itself and reversed it at 19:29 UTC: authority back to `'3.0'`, 4,415 `'4.0'` windows deleted, integrity checks (a)–(k) green in both time zones, served output byte-identical to before. For those six minutes, the chart's Gochara answers came through code that could not read `'4.0'`.
+- **What happened.** The switch on chart `482012f1` ran at 19:22:58 UTC under the old authorization, before F-0 arrived. The lane traced the risk itself and reversed it at 19:29 UTC: authority back to `'3.0'`, 4,415 `'4.0'` windows deleted, integrity checks (a)–(k) green in both time zones, served output byte-identical to before. For those six minutes the hazard was live, but nothing consumed it: the Gochara session checked read-only and found no rows in `query_plan_log` or `audit_events` for 19:22–19:30 UTC, no MCP requests, and no reading, chat or transit requests to the web app. Chart `1c826d5a` was never switched.
 - **`'4.0'` is retired as a label.** Both charts move to a new full-century generation under a new label.
 - **Standing sequence (the lane's plan until the native rules otherwise):**
   1. rebuild the candidate on the full century, both charts, and re-run all evidence and gates;
