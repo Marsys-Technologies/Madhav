@@ -67,7 +67,8 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 }))
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
-import { POST, readBoundedRequestBody } from '../route'
+import { POST } from '../route'
+import { readBoundedRequestBody } from '../bounded_body'
 import { compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes as realAuthorizationHashes, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
