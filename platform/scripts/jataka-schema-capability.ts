@@ -1,6 +1,6 @@
 /**
- * Arm or close the temporary public-schema capability used only by the
- * explicitly authorised Jataka 1120-1123 production migration window.
+ * Arm or close the temporary public-schema capability used only by an
+ * explicitly authorised, exact-set protected production migration window.
  */
 import { Pool } from 'pg'
 import { migratorProxyConfig } from './data-plane-protected-cutover'
@@ -14,7 +14,7 @@ export async function setJatakaSchemaCapability(
   databaseUrl = process.env[MIGRATOR_URL],
 ): Promise<void> {
   if (!databaseUrl) {
-    throw new Error(`${MIGRATOR_URL} is required for the temporary Jataka schema capability.`)
+    throw new Error(`${MIGRATOR_URL} is required for the temporary protected public-schema capability.`)
   }
 
   const pool = new Pool({ ...migratorProxyConfig(databaseUrl), max: 1 })
@@ -31,7 +31,7 @@ export async function setJatakaSchemaCapability(
     if (actor.rows[0]?.session_user !== 'data_plane_migrator'
       || actor.rows[0]?.current_user !== 'data_plane_migrator'
       || !actor.rows[0]?.schema_owner_member) {
-      throw new Error('Jataka schema capability requires the direct protected data_plane_migrator route.')
+      throw new Error('Protected public-schema capability requires the direct protected data_plane_migrator route.')
     }
 
     await client.query('BEGIN')
@@ -73,7 +73,7 @@ export async function setJatakaSchemaCapability(
              has_schema_privilege('amjis_app', 'public', 'USAGE') AS can_use
     `)
     if (final.rows[0]?.can_create !== (action === 'grant') || !final.rows[0]?.can_use) {
-      throw new Error(`Jataka schema capability did not ${action === 'grant' ? 'arm' : 'close'}.`)
+      throw new Error(`Protected public-schema capability did not ${action === 'grant' ? 'arm' : 'close'}.`)
     }
     await client.query('COMMIT')
   } catch (error) {
@@ -88,11 +88,11 @@ export async function setJatakaSchemaCapability(
 if (require.main === module) {
   const action = process.argv[2]
   if (action !== 'grant' && action !== 'revoke') {
-    console.error('Use grant or revoke for the Jataka schema capability action.')
+    console.error('Use grant or revoke for the protected public-schema capability action.')
     process.exitCode = 1
   } else {
     setJatakaSchemaCapability(action)
-      .then(() => process.stdout.write(`Jataka schema capability ${action} complete.\n`))
+      .then(() => process.stdout.write(`Protected public-schema capability ${action} complete.\n`))
       .catch((error) => { console.error(error); process.exitCode = 1 })
   }
 }

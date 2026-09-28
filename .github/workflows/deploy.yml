@@ -51,6 +51,11 @@ on:
         type: boolean
         required: false
         default: false
+      ai_console_schema_migration:
+        description: 'Explicitly authorize the temporary protected schema window for exact AI Console migration 1124'
+        type: boolean
+        required: false
+        default: false
 
 # CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
 #   - pull_request  -> the `build-check` job only, which builds with `push: false`
@@ -919,18 +924,18 @@ jobs:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
-  # JATAKA CCD-019: migrations 1120-1123 alter application-owned tables but
-  # also create indexes, a function and triggers in the protected public schema.
+  # JATAKA CCD-019 / AI Console BYOK: migrations 1120-1124 alter
+  # application-owned tables but also create objects in the protected public schema.
   # The ordinary migration role intentionally has USAGE without CREATE. This
   # exact-set, manual-only protected job opens the minimum capability window and
   # closes it on every exit; no service may deploy until the close succeeds.
   jataka-protected-migrations:
-    name: Apply Protected Jataka Migrations
+    name: Apply Protected Public-Schema Migrations
     needs: [changes, migration-state, privileged-bootstrap]
     if: >-
       always() &&
       github.event_name == 'workflow_dispatch' &&
-      inputs.jataka_schema_migration == true &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true) &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
       needs.migration-state.outputs.data_plane == 'marked' &&
@@ -960,7 +965,7 @@ jobs:
             echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
             exit 1
           fi
-          echo "Applying protected Jataka migrations from immutable source SHA $ACTUAL_SHA"
+          echo "Applying protected public-schema migrations from immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -991,7 +996,7 @@ jobs:
             exit 1
           fi
 
-      - name: Set up Node.js for protected Jataka migrations
+      - name: Set up Node.js for protected public-schema migrations
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -1004,19 +1009,35 @@ jobs:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: cd platform && npx tsx scripts/validate-migration-database-routes.ts --prod
 
-      - name: Grant temporary Jataka schema capability
+      - name: Grant temporary public-schema capability
         env:
           DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && npx tsx scripts/jataka-schema-capability.ts grant
 
-      - name: Apply exact Jataka migrations
+      - name: Apply exact protected public-schema migrations
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          APPLY_JATAKA_SCHEMA_MIGRATIONS: ${{ inputs.jataka_schema_migration }}
+          APPLY_AI_CONSOLE_SCHEMA_MIGRATION: ${{ inputs.ai_console_schema_migration }}
         run: |
-          cd platform && npx tsx scripts/migrate.ts --only \
-            1120_jataka_conversation_archive_context.sql,1121_jataka_correction_archive_write_guard.sql,1122_jataka_chart_context_staleness.sql,1123_jataka_context_staleness_deferred_surfaces.sql
+          migrations=()
+          if [ "$APPLY_JATAKA_SCHEMA_MIGRATIONS" = "true" ]; then
+            migrations+=(1120_jataka_conversation_archive_context.sql)
+            migrations+=(1121_jataka_correction_archive_write_guard.sql)
+            migrations+=(1122_jataka_chart_context_staleness.sql)
+            migrations+=(1123_jataka_context_staleness_deferred_surfaces.sql)
+          fi
+          if [ "$APPLY_AI_CONSOLE_SCHEMA_MIGRATION" = "true" ]; then
+            migrations+=(1124_ai_console_byok_routing.sql)
+          fi
+          if [ "${#migrations[@]}" -eq 0 ]; then
+            echo "::error::No protected public-schema migration was explicitly authorized."
+            exit 1
+          fi
+          only="$(IFS=,; echo "${migrations[*]}")"
+          cd platform && npx tsx scripts/migrate.ts --only "$only"
 
-      - name: Revoke temporary Jataka schema capability
+      - name: Revoke temporary public-schema capability
         if: ${{ always() }}
         env:
           DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
