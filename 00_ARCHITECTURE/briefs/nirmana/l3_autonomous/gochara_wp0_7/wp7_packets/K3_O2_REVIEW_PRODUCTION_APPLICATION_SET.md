@@ -227,3 +227,144 @@ state.
 3. Observation 3 (conjunct (i) vacuity) dispositioned — fix or disclose.
 
 — K3/O-2, 2026-09-28
+
+---
+
+# K3/O-2 RE-REVIEW (2026-09-28, HEAD `db03a2927`) — remediation of the BLOCK above + the E-020 fix chain
+
+Scope of this pass: commits `419aca944` (K3-F1), `9ef81897c` (K3-F2),
+`3c7bf6947` (E-020 date convention + conjunct-(d) skip), `1fc8fd2d7`
+(migration 1150), `007853c2c`/`db03a2927` (wording + apply evidence), the
+updated runbook/checklist text, and the retained run artifacts. The original
+BLOCK section above stands as written; this section decides whether it lifts.
+
+## RE-REVIEW VERDICT: NO BLOCKING FINDINGS — the block lifts
+
+Both original findings are genuinely closed, the E-020 chain is a data fix
+plus a detector correctness fix (not a relaxation), and nothing in the
+remediation introduces a new hole that I would block on. Conditions and
+observations below.
+
+## K3-F1 — CLOSED, verified against code and data
+
+- The key is now `"kakshya_cell_crossing"` and the pinning test
+  (`test_step06b_windows_projection.py:229-245`) regression-asserts that all
+  eight enumerator relations are map keys — the test now catches the defect
+  class instead of locking it in.
+- The stderr WARNING on non-zero `contacts_unmapped_*` and the retained run
+  reports close the visibility hole that made the original defect silent.
+- I re-ran my reproduction: `contacts_unmapped_relation = 0` in the retained
+  run report (`.run/wp10_tranche2/link3_step06b_runreport_482012f1.json`;
+  138,837 read, 4,415 written, 0 collapsed dupes), and the shift ledgers and
+  zero-length stderr files exist as claimed.
+- I independently verified the "amplitude-neutral" claim the commit message
+  makes: all 94,203 kakshya contacts in the real payload are zero-width
+  instants (`t_in == t_exact == t_out`), inert under
+  `linear_no_box_decay` (every t satisfies `t<=t_in or t>=t_out`). The only
+  non-zero-width boundary rows in the payload (two Venus sign_ingress rows)
+  have `t_out == t_in < t_exact` and are likewise inert. The fix changes the
+  breakpoint set, not λ values — the small window-count deltas (4,417→4,415 /
+  3,955→3,947) are explained by the date shifts moving rows across dedupe
+  keys, consistent with the evidence.
+
+## K3-F2 — CLOSED, verified against code
+
+- `ledger.clear_windows_on_reversal()` carries the triple guard (v1/'3.0'
+  untouchable; manifest must be candidate/rolled_back; refuses while the
+  generation is the served authority) and `step08_flip.py --reverse` now runs
+  authority→'3.0' → rollback → windows cleanup in ONE transaction — a failure
+  anywhere rolls the whole reversal back, so no half-reversed state.
+- Post-reversal the integrity contract reads GREEN again by construction:
+  zero '4.0' rows remain, so conjuncts (a)/(f) have nothing to bind; conjunct
+  (k) is out of scope once authority is '3.0'. The test extension
+  (`test_step08_flip_and_reverse` + `test_clear_windows_on_reversal_refusals`)
+  covers the refusals, the cleanup, the post-reversal integrity GREEN, and
+  the burned-label refusal (exit 8).
+- The reversal drill (flip → reverse on the disposable production copy,
+  4,417 windows deleted, v1/'3.0' untouched) and the updated checklist text
+  (3-step reverse, burned-label, half-flip rule, conjunct-(i) vacuity note —
+  `step09_soak_checklist.md:57-108`) close every sub-item of my original
+  finding and observations 4–5.
+- Disclosed residual (accepted, not blocking): a reversal after step 9 leaves
+  Kṣetra's `(generation, id)` provenance edges dangling at deleted '4.0' rows.
+  The docstring now states this. The native should be aware the earlier
+  "rows still exist but are no longer served" framing is superseded — the
+  rows are now deleted.
+
+## E-020 chain — scrutinized, no new blocking risk
+
+- **Date-convention fix** (`JD_UNIX_EPOCH = 2440587.5`, `date_of_jd` a true
+  inverse of `jd_of` via `fromtimestamp(..., tz=UTC)`): correct. I reproduced
+  the gate-(b) claim independently over the real payload (138,837 contacts ×
+  3 instants = 416,511 conversions): shift distribution is exactly {0, +1},
+  and every +1 shift falls in UTC hours 0–11 — matching the claimed
+  00:00–11:59 UTC / 05:30–17:29 IST scope and the corrected disclosure
+  wording. The contact-level figures in the evidence (0: 137,464 / +1:
+  140,209 over both charts' t_exact) are consistent with my per-instant
+  reproduction.
+- **Conjunct-(d) outside-era skip**: the skip is bounded, counted
+  (`peaks_refined_outside_era`: 2 / 5), and disclosed; era rows are unaffected,
+  so no window coverage is lost — only month/day granularity rows for 7 peaks,
+  each of which the adjacent component represents. Not a silent activity
+  omission. The claim that the defect predates E-020 (convention-independent)
+  is credible from the mechanism (±7-day refine argmax vs era clipping).
+- **`legacy_semantics.py:1331,1342` second copy**: I checked the consumer
+  question explicitly — the only production writer of hierarchies,
+  `ka_gochara_v3_century_materialize.py:345`, imports
+  `build_resolution_hierarchy` from `services.gochara_v3.resolution_hierarchy`,
+  NOT from `legacy_semantics`; no non-test code consumes the changed copy
+  (step06b merely mirrors it). No served-path behavior change. Non-blocking
+  observation R1 below.
+- **Migration 1150 is exactly a detector correctness fix.** I compared old vs
+  new conjunct-(e) semantics: under a UTC session the two forms accept/reject
+  identically (half-open horizon: `date(lower)` inside, `date(upper)` the
+  tolerated boundary day under both; anything strictly outside RED under
+  both). The new form only removes the session-TimeZone dependence
+  (Asia/Kolkata false-positives) — nothing that was RED in a UTC session
+  becomes GREEN. All other conjuncts byte-identical; the DO gate-probe pins
+  that. Production apply evidence (ledger row id 885, triple match,
+  dual-timezone GREEN, dry-run pending set unchanged) is internally
+  consistent.
+
+## Verification I ran myself (this pass)
+
+- Payload census + module-level reproduction of the kakshya mapping
+  (unmapped 94,203 → 0 after the fix; zero-width inertness proof).
+- Old-vs-new date-convention shift histogram over all 416,511 chart-1
+  contact instants (exactly {0,+1}, +1 confined to UTC hours 0–11).
+- `pytest tests/l3/gochara/test_step06b_windows_projection.py -q` at HEAD:
+  **12 passed, 4 skipped** (the 4 skips are the disposable-DB tests, DBs not
+  running here). The DB-backed battery (381 passed claim) was not re-run by
+  this reviewer — no disposable containers were up; I note this honestly.
+- Old-vs-new conjunct-(e) equivalence reasoning (above); I did not query
+  production — nothing in this pass required it.
+
+## Non-blocking observations carried forward / new
+
+1. (R1) `legacy_semantics.py` documents itself as a *faithful reproduction*
+   of the served-path functions; the E-020 edit makes
+   `build_resolution_hierarchy` intentionally diverge from
+   `resolution_hierarchy.py`'s noon anchor with only an inline comment. No
+   served-path consumer exists today, but a future consumer reading the
+   module header's "reproduced faithfully" promise would inherit the
+   corrected bucketing silently. Name the divergence in the module docstring.
+2. Conjunct (i) remains vacuous for step06b's bare-string `active_sentences`
+   — now disclosed in the soak checklist; a real fix (row shape or conjunct
+   re-scope) belongs to a later lane. Carried, non-blocking.
+3. The two non-zero-width Venus sign_ingress payload rows with
+   `t_out == t_in < t_exact` (35 µs) look like an enumeration edge case
+   (zero-width span with the exact 35 µs past the edge). Inert under M-1 and
+   immaterial to the flip, but worth a ticket for the kernel lane.
+4. Kṣetra dangling-edge consequence of the new reversal cleanup is disclosed
+   but should be echoed into the K-1 packet notes so a post-soak reversal
+   doesn't surprise that consumer.
+
+## What would make me block again
+
+Nothing outstanding. The flip may proceed through steps 7–10 under the stated
+gates: step06b production write of the corrected projection, step-7 gates with
+the regenerated delta reports attached, the per-chart flip with the 24h soak
+and pre-authorized reversal (now integrity-clean), and the step-9 birth-epoch
+gate on chart 2.
+
+— K3/O-2, re-review 2026-09-28 (HEAD db03a2927)
