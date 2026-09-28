@@ -1,0 +1,121 @@
+# Task 13 Report — native Paripraśna exact four-role routing
+
+## Outcome
+
+Implemented the private `AI_CONSOLE_BYOK` serving branch for native Paripraśna,
+authenticated Consult, and Consult continuation while preserving legacy paths
+when the flag is off.
+
+The flag-on authority order is server-owned. One per-user advisory-lock
+transaction now covers active-owner and chart authority, first-turn
+conversation/selection initialization or existing-selection equality, exact
+resolution, and immutable snapshot insert. A concurrent picker/default update
+therefore occurs wholly before or after the turn decision; a failed first-turn
+resolution rolls back the conversation and selection together. Only after that
+transaction commits does one non-price BYOK admission create four nonoptional
+tracked executors.
+
+## Role routing
+
+- Planner and deterministic Deep Planner receive distinct injected executors.
+- Planner structured repair reuses the same selected executor as a separate
+  invocation. AIC-R031 is implemented as one server-only typed validation
+  failure with a private bounded candidate: only that discriminator or a local
+  parse/schema failure may enter repair. Provider, authorization, rate, billing,
+  and abort failures never repair. The candidate cannot be serialized, logged,
+  audited, persisted, or returned.
+- Worker is injected into long-history planner compression, durable summary,
+  interpretation generation/repair, and title generation. Optional failures
+  retain their existing explicit omission, waiver, or deterministic title
+  fallback; no alternate AI is called.
+- Synthesizer is one pull-driven no-tools stream over gathered evidence. Native
+  Paripraśna maps text/reasoning/finish into its existing events; Consult maps
+  the same exact executor into its existing AI-SDK wire and shared on-finish
+  contract. A flag-on synthesis failure is fatal and cannot become empty
+  success.
+
+## Lifecycle hardening
+
+- Native response streaming now owns a turn-local abort controller combined
+  with the request signal. Cancelling the response reader aborts the exact
+  tracked role stream, then waits for delegate shutdown and the cancelled
+  terminal receipt before its sole finalizer releases admission. A replacement
+  admission cannot enter during cleanup, no later Worker/title work starts, and
+  no write occurs after close.
+- Authenticated Consult and continuation wrap their actual returned response
+  bodies with the same turn-owned cancellation discipline. Direct/custom
+  success, setup failure, mid-stream writer failure, on-finish failure, and
+  deferred reader cancellation all retain admission through cleanup. The
+  flag-off Consult adapter request and AI-SDK event vocabulary remain unchanged.
+- The combined `AbortSignal` reaches planner-history compression, Planner/Deep
+  Planner primary and repair, durable summary, interpretation primary and
+  repair, title, and Synthesizer/Consult/continuation. Every optional model call
+  checks cancellation before it starts; cancellation does not trigger repair.
+- Complete client UI message history is structurally validated and measured as
+  normalized UTF-8 bytes before any flag-on preflight or role call. Assistant,
+  system, reasoning, data, and tool-shaped parts therefore cannot bypass the
+  cap. Hydrated evidence plus attachments are measured again in UTF-8 bytes
+  before consuming stages.
+- Every flag-on role request carries an explicit governed `maxOutputTokens`.
+  The CLI runner retains its independent 1 MiB raw transport envelope. Only
+  after strict JSON/JSONL parsing does the executor enforce model output: it
+  always runs the installed `gpt-tokenizer` over parsed text and structured
+  semantic output, then enforces the maximum of those local counts and reported
+  output usage. Missing, zero, one-token, or understated CLI usage can never
+  suppress local measurement. An overflow rejects the whole result before any
+  event or partial output is returned.
+- The admission release is idempotent and attached to all pre-stream setup,
+  writer/on-finish, persistence, stream error, cancellation, and normal terminal
+  paths. It remains held while streaming.
+- Tracked stream cancellation marks intent before waiting for the start receipt,
+  prevents a late delegate start, cancels an in-flight pull, and commits one
+  cancelled terminal. Continuation cancels every unfinished reader in `finally`.
+
+## Invocation receipts and persistence
+
+Amended unapplied migration 1120 and the repository contract with a
+server-generated `invocation_id`. Each actual `generate` or `stream` writes a
+start before delegate entry and one succeeded, failed, or cancelled terminal.
+Multiple same-role Worker and repair invocations can coexist. Receipt payloads
+contain only snapshot, role, invocation, phase/status, and normalized safe error
+code.
+
+Persistence uses server-derived Synthesizer identity and records
+`ai_routing_snapshot_id`; no runtime binding, credential version, prompt,
+output, tool arguments/results, or client model claim is persisted in the new
+routing metadata.
+
+## Verification
+
+- Refreshed round-three native/Consult/continuation cleanup, CLI transport,
+  parsed-token limits, preflight and tracked execution aggregate: 100 pass.
+- Refreshed round-four CLI runner/parser/executor aggregate: 47 pass, including
+  generate and stream rejection for zero/one-token under-reporting, structured
+  semantic output, multibyte text, and honestly larger reported usage.
+- Full Vitest aggregate: 13,196 pass, 732 skipped, 2 todo.
+- TypeScript: `npx tsc --noEmit --skipLibCheck` passes.
+- Full ESLint: zero errors and 587 repository-baseline warnings. Scoped
+  changed-file ESLint excluding the pre-existing warning-heavy Consult monolith
+  has zero warnings; Consult retains 62 pre-existing warnings and gained none.
+- `git diff --check`: passes.
+- Migration number guard: passes with repository baseline warnings only; next
+  allocatable migration remains 1121. Migration contract: 9 pass; disposable
+  PostgreSQL migration suite: 13 prerequisite-skipped.
+- Added real-client concurrency tests for picker serialization and first-turn
+  rollback; they are present but remain unqualified until the disposable local
+  PostgreSQL prerequisite is supplied.
+- Credential/log scan: no new credential value, prompt/output, runtime binding,
+  structured candidate, or raw provider error persistence/logging path found.
+
+## Unqualified
+
+- PostgreSQL-backed migration/isolation tests are skipped without their DB
+  prerequisite; no shared or production database was touched.
+- No real provider, local CLI, Firebase login, account, credential, or shared
+  authentication flow was exercised.
+- Exact external monetary cost is intentionally unqualified. The BYOK admission
+  path applies rate, concurrency, and request/evidence/output hard caps without
+  fabricating provider or subscription pricing.
+- No deployment, push, PR, merge, or external runtime qualification occurred.
+- Migration 1120 still requires the independently assigned migration review
+  required by the execution brief.

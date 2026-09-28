@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, fireEvent } from '@testing-library/react'
 import { AppShell } from '@/components/shared/AppShell'
 import { BuildHeader } from '@/components/build/BuildHeader'
@@ -127,6 +127,24 @@ describe('AppShell', () => {
     )
     const cockpitLink = container.querySelector('a[href="/cockpit"]')
     expect(cockpitLink).toBeNull()
+  })
+
+  it('shows AI Console to active roles only when the exact public flag is true', () => {
+    const original = process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK
+    try {
+      process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK = 'false'
+      const hidden = render(<AppShell user={BASE_USER} profile={{ role: 'guest' }} />)
+      expect(hidden.container.querySelector('a[href="/ai-console"]')).toBeNull()
+      hidden.unmount()
+
+      process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK = 'true'
+      const visible = render(<AppShell user={BASE_USER} profile={{ role: 'guest' }} />)
+      expect(visible.getByRole('link', { name: 'AI Console' })).toBeTruthy()
+      visible.unmount()
+    } finally {
+      if (original === undefined) delete process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK
+      else process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK = original
+    }
   })
 
   it('places Information at the bottom rail and reveals Atlas as its first item', () => {

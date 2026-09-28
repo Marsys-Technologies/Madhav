@@ -14,14 +14,15 @@ import {
   Map,
   MenuIcon,
   Settings2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 import { auth } from '@/lib/firebase/client'
 import { Sigil } from '@/components/brand/Sigil'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
-  NAV_ITEMS as NAV_DESCRIPTORS,
   normalizeRole,
+  visibleNavItems,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
 import { cn } from '@/lib/utils'
@@ -47,26 +48,15 @@ function MoonCrescentIcon({ className }: { className?: string }) {
   )
 }
 
-const NAV_ITEMS: {
-  key: string
-  href: string
-  label: string
-  icon: LucideIcon | React.ComponentType<{ className?: string }>
-  roles: readonly string[]
-}[] = NAV_DESCRIPTORS.map(({ key, href, label, roles }) => ({
-  key,
-  href,
-  label,
-  roles,
-  icon: {
-    roster: LayoutGrid,
-    panchang: MoonCrescentIcon,
-    cockpit: Gauge,
-    audit: FileSearch,
-    performance: ChartColumn,
-    admin: Settings2,
-  }[key] as LucideIcon | React.ComponentType<{ className?: string }>,
-}))
+const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: string }>> = {
+  roster: LayoutGrid,
+  panchang: MoonCrescentIcon,
+  cockpit: Gauge,
+  'ai-console': SlidersHorizontal,
+  audit: FileSearch,
+  performance: ChartColumn,
+  admin: Settings2,
+}
 
 export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   const pathname = usePathname()
@@ -83,9 +73,9 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
   }
 
   const effectiveRole = normalizeRole(profile.role)
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(effectiveRole)
-  )
+  const visibleItems = visibleNavItems(effectiveRole, {
+    aiConsoleByok: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true',
+  })
   const informationItems = visibleInformationNavItems(effectiveRole)
   const informationActive = pathname.startsWith('/information')
 
@@ -120,7 +110,8 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
           >
             <Sigil size={28} />
           </Link>
-          {visibleItems.map(({ key, href, label, icon: Icon }) => {
+          {visibleItems.map(({ key, href, label }) => {
+            const Icon = NAV_ICONS[key]
             const isActive =
               href === '/dashboard'
                 ? pathname === '/dashboard' || pathname === '/'

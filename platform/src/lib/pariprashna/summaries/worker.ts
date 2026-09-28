@@ -28,6 +28,7 @@ import type { QueryRequest } from '@/lib/adapters/types'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import type { SummarizeInput, SummarizerWorker } from './types'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 const SUMMARY_SYSTEM_PROMPT =
   `You are compressing the earlier turns of an in-progress Jyotish consultation ` +
@@ -42,7 +43,23 @@ const SUMMARY_SYSTEM_PROMPT =
 export class LlmSummarizerWorker implements SummarizerWorker {
   private modelIdUsed: string | null = null
 
+  constructor(private readonly executor?: RoleExecutor, private readonly options?: {
+    abortSignal?: AbortSignal
+    maxOutputTokens?: number
+  }) {}
+
   async summarize(input: SummarizeInput): Promise<string> {
+    if (this.executor) {
+      if (this.options?.abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      const result = await this.executor.generate({
+        systemPrompt: SUMMARY_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: input.renderedText.trim() || '(no prior turns to summarize)' }],
+        abortSignal: this.options?.abortSignal,
+        maxOutputTokens: this.options?.maxOutputTokens,
+      })
+      this.modelIdUsed = this.executor.descriptor.modelId ?? null
+      return result.text.trim()
+    }
     const modelId = await getEffectiveModel(DEFAULT_STACK_ID, 'worker', 'primary')
     this.modelIdUsed = modelId
 

@@ -24,11 +24,12 @@ import {
   Info,
   Map,
   Settings2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
 import {
-  NAV_ITEMS as NAV_DESCRIPTORS,
   normalizeRole,
+  visibleNavItems,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
 import {
@@ -52,35 +53,20 @@ function MoonCrescentIcon({ className }: { className?: string }) {
   )
 }
 
-interface NavItem {
-  key: string
-  href: string
-  label: string
-  icon: LucideIcon | React.ComponentType<{ className?: string }>
-  roles: readonly string[]
-}
-
 interface AppShellRailProps {
   user: { uid: string; email?: string; name?: string }
   profile: { role: 'super_admin' | 'guest'; status?: string }
 }
 
-const NAV_ICONS: Record<string, NavItem['icon']> = {
+const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: string }>> = {
   roster: LayoutGrid,
   panchang: MoonCrescentIcon,
   cockpit: Gauge,
+  'ai-console': SlidersHorizontal,
   audit: FileSearch,
   performance: ChartColumn,
   admin: Settings2,
 }
-
-const NAV_ITEMS: NavItem[] = NAV_DESCRIPTORS.map(({ key, href, label, roles }) => ({
-  key,
-  href,
-  label,
-  roles,
-  icon: NAV_ICONS[key],
-}))
 
 export function AppShellRail({ user, profile }: AppShellRailProps) {
   const pathname = usePathname()
@@ -100,9 +86,9 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
   // Normalize legacy 'client' → 'guest' (per Unit 2c) before role-gating.
   const effectiveRole = normalizeRole(profile.role)
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(effectiveRole)
-  )
+  const visibleItems = visibleNavItems(effectiveRole, {
+    aiConsoleByok: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true',
+  })
   const informationItems = visibleInformationNavItems(effectiveRole)
   const informationActive = pathname.startsWith('/information')
 
@@ -170,7 +156,8 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
       {/* Nav links */}
       <div className="relative flex flex-1 flex-col gap-0.5 w-full px-2">
-        {visibleItems.map(({ key, href, label, icon: Icon }, index) => {
+        {visibleItems.map(({ key, href, label }, index) => {
+          const Icon = NAV_ICONS[key]
           const isActive = href === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
             : pathname.startsWith(href)

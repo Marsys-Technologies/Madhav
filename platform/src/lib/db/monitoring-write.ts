@@ -12,15 +12,17 @@ import 'server-only'
 import { getStorageClient } from '@/lib/storage'
 import { getModelMeta } from '@/lib/models/registry'
 import type {
-  LlmCallLogRow,
+  LlmCallLogWriteInput,
   QueryPlanLogRow,
   ToolExecutionLogRow,
   ContextAssemblyLogRow,
   ObservatoryQueryEventInput,
 } from './monitoring-types'
+import type { SafeAiRoutingParameters, SafeMcpExternalSynthesis } from '@/lib/ai-console/observability'
+import { SafeAiRoutingParametersSchema, SafeMcpExternalSynthesisSchema } from '@/lib/ai-console/observability'
 
 export async function writeLlmCallLog(
-  row: Omit<LlmCallLogRow, 'id' | 'created_at'>
+  row: LlmCallLogWriteInput
 ): Promise<void> {
   try {
     await getStorageClient().query(
@@ -139,7 +141,7 @@ export async function writeToolExecutionLog(
 export async function writeContextAssemblyLog(
   _row: Omit<ContextAssemblyLogRow, 'id' | 'created_at' | 'total_tokens'>
 ): Promise<void> {
-  // no-op
+  void _row
 }
 
 export function resolveProvider(modelId: string): string {
@@ -243,5 +245,88 @@ export async function writeObservatoryQueryEvent(
     )
   } catch (err) {
     console.warn('[mon] writeObservatoryQueryEvent failed:', err)
+  }
+}
+
+async function authoritativeRoutingCost(event: SafeAiRoutingParameters): Promise<{
+  cost: number
+  pricingVersionId: string
+} | null> {
+  if (event.provider === 'cli' || event.input_tokens === null || event.output_tokens === null) return null
+  const result = await getStorageClient().query<{
+    pricing_version_id: string
+    token_class: string
+    price_per_million_usd: number
+  }>(`SELECT pricing_version_id, token_class, price_per_million_usd
+      FROM llm_pricing_versions
+      WHERE provider=$1 AND model=$2 AND effective_from <= $3
+        AND (effective_to IS NULL OR effective_to > $3)
+        AND token_class IN ('input','output')`,
+  [event.provider, event.model_id, event.started_at])
+  const prices = new Map(result.rows.map(row => [row.token_class, row]))
+  const input = prices.get('input')
+  const output = prices.get('output')
+  if (!input || !output) return null
+  return {
+    cost: (event.input_tokens / 1_000_000) * input.price_per_million_usd
+      + (event.output_tokens / 1_000_000) * output.price_per_million_usd,
+    pricingVersionId: input.pricing_version_id,
+  }
+}
+
+/** Strict BYOK usage writer. The caller has already committed the durable terminal receipt. */
+export async function writeAiRoutingUsageEvent(input: SafeAiRoutingParameters): Promise<void> {
+  try {
+    const event = SafeAiRoutingParametersSchema.parse(input)
+    let priced: Awaited<ReturnType<typeof authoritativeRoutingCost>> = null
+    try { priced = await authoritativeRoutingCost(event) } catch { /* Unknown pricing stays null. */ }
+    await getStorageClient().query(
+      `INSERT INTO llm_usage_events
+        (conversation_id,prompt_id,user_id,provider,model,pipeline_stage,
+         prompt_text,response_text,system_prompt,parameters,input_tokens,output_tokens,
+         cache_read_tokens,cache_write_tokens,reasoning_tokens,computed_cost_usd,
+         pricing_version_id,latency_ms,status,error_code,started_at,finished_at,channel)
+       VALUES($1,$2,$3,$4,$5,$6,NULL,NULL,NULL,$7,$8,$9,NULL,NULL,NULL,$10,$11,$12,$13,$14,$15,$16,$17)
+       ON CONFLICT(prompt_id) DO NOTHING`,
+      [
+        event.conversation_id,
+        event.invocation_id,
+        event.user_id,
+        event.provider,
+        event.model_id ?? 'built-in-default',
+        event.role,
+        JSON.stringify(event),
+        event.input_tokens,
+        event.output_tokens,
+        priced?.cost ?? null,
+        priced?.pricingVersionId ?? null,
+        event.latency_ms,
+        event.terminal_status,
+        event.error_code,
+        event.started_at,
+        event.finished_at,
+        event.source === 'pariprashna' ? 'web' : event.source,
+      ],
+    )
+  } catch {
+    console.warn('[ai-console] Observatory role write failed')
+  }
+}
+
+/** Non-usage marker for MCP host synthesis. No model, provider, token or cost is attributed. */
+export async function writeMcpExternalSynthesisEvent(input: SafeMcpExternalSynthesis): Promise<void> {
+  try {
+    const event = SafeMcpExternalSynthesisSchema.parse(input)
+    await getStorageClient().query(
+      `INSERT INTO llm_call_log
+        (query_id,conversation_id,call_stage,model_id,provider,input_tokens,output_tokens,
+         reasoning_tokens,latency_ms,cost_usd,fallback_used,error_code,payload)
+       VALUES($1,$2,$3,NULL,NULL,NULL,NULL,NULL,NULL,NULL,$4,NULL,$5)
+       ON CONFLICT (query_id,call_stage) WHERE call_stage='external_synthesis_handoff' DO NOTHING`,
+      [event.correlation_id, event.conversation_id, event.call_stage, event.fallback_used,
+        JSON.stringify(event)],
+    )
+  } catch {
+    console.warn('[ai-console] Observatory external-synthesis write failed')
   }
 }

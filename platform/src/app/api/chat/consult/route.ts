@@ -126,6 +126,13 @@ import { getPersonaForSynthesis } from '@/lib/personas'
 // run_adapter_dispatch.ts`. The route is now a thin selector: auth + chart
 // resolution + planner-context + dispatch().
 import { runAdapterDispatch } from '@/lib/pipelines/shared'
+import { getConversationSelection } from '@/lib/ai-console/repository'
+import { AiConsoleError } from '@/lib/ai-console/errors'
+import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
+import {
+  BYOK_MAX_OUTPUT_TOKENS, isByokEvidencePayloadWithinLimit, validateByokUiMessages,
+} from '@/lib/limits/byok_admission'
+import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 
 // ── Trace helpers ─────────────────────────────────────────────────────────────
 
@@ -272,7 +279,8 @@ export async function POST(request: Request) {
     return res.badRequest('Invalid JSON body')
   }
 
-  const { chartId, messages } = body
+  const { chartId } = body
+  let { messages } = body
   let { conversationId } = body
 
   if (!chartId || !messages) {
@@ -284,33 +292,46 @@ export async function POST(request: Request) {
     return res.badRequest('INVALID_CHART_ID: chartId must be a valid UUID')
   }
 
+  const byokEnabled = configService.getFlag('AI_CONSOLE_BYOK')
+  if (byokEnabled) {
+    try { messages = await validateByokUiMessages(messages) }
+    catch (error) {
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: 400 })
+    }
+  }
+
   // Resolve synthesis model from stack. Stack takes precedence over the legacy
   // `model` field. Unknown/missing stacks fall back to the default NIM stack.
   const VALID_STACKS = Object.keys(STACK_ROUTING) as ModelStack[]
   // E.3: provider override — URL param ?provider=<stack> or MARSYS_FORCE_PROVIDER env.
   // Takes lowest precedence: only applied when the client sent no explicit stack.
-  const providerOverride = (
-    (!body.stack && new URL(request.url).searchParams.get('provider')) ||
-    (!body.stack && process.env.MARSYS_FORCE_PROVIDER) ||
-    null
-  )
-  const selectedStack: ModelStack = VALID_STACKS.includes(body.stack as ModelStack)
-    ? (body.stack as ModelStack)
-    : (providerOverride && VALID_STACKS.includes(providerOverride as ModelStack)
-        ? (providerOverride as ModelStack)
-        : DEFAULT_STACK_ID)
-  const [stackSynthPrimary, stackSynthFallback] = await Promise.all([
-    getEffectiveModel(selectedStack, 'synthesis', 'primary', request),
-    getEffectiveModel(selectedStack, 'synthesis', 'fallback', request),
-  ])
+  const providerOverride = byokEnabled ? null
+    : ((!body.stack && new URL(request.url).searchParams.get('provider'))
+      || (!body.stack && process.env.MARSYS_FORCE_PROVIDER) || null)
+  const providerOverrideValid = providerOverride && VALID_STACKS.includes(providerOverride as ModelStack)
+  const selectedStack: ModelStack | 'byok' = byokEnabled
+    ? 'byok'
+    : VALID_STACKS.includes(body.stack as ModelStack)
+      ? (body.stack as ModelStack)
+      : (providerOverrideValid
+          ? (providerOverride as ModelStack) : DEFAULT_STACK_ID)
+  const [stackSynthPrimary, stackSynthFallback] = byokEnabled
+    ? ['', '']
+    : await Promise.all([
+        getEffectiveModel(selectedStack as ModelStack, 'synthesis', 'primary', request),
+        getEffectiveModel(selectedStack as ModelStack, 'synthesis', 'fallback', request),
+      ])
   // Backward-compat: if the legacy `model` field is a known model ID AND no
   // stack was sent (old client), honour it directly so sessions mid-upgrade
   // don't silently switch models on the user.
-  const modelId =
-    !body.stack && isValidModelId(body.model ?? '')
+  let modelId =
+    !byokEnabled && !body.stack && isValidModelId(body.model ?? '')
       ? (body.model as string)
       : stackSynthPrimary
-  const modelMeta = getModelMeta(modelId) ?? getModelMeta(DEFAULT_MODEL_ID)!
+  let modelMeta: { provider: string; maxInputTokens?: number; maxOutputTokens?: number } = byokEnabled
+    ? { provider: 'byok', maxInputTokens: 128_000, maxOutputTokens: 16_384 }
+    : getModelMeta(modelId) ?? getModelMeta(DEFAULT_MODEL_ID)!
   const style: ConsumeStyle = ALLOWED_STYLES.includes(body.style as ConsumeStyle)
     ? (body.style as ConsumeStyle)
     : 'acharya'
@@ -331,15 +352,15 @@ export async function POST(request: Request) {
   // surfaces the working MCP tools use. The `reports` lookup is removed, not
   // re-pointed. DO NOT resurrect the `reports` table.
   let chartResult: Awaited<ReturnType<typeof query<{ id: string; name: string; birth_date: string; birth_time: string; birth_place: string; client_id: string }>>>
-  let profileResult: Awaited<ReturnType<typeof query<{ role: string }>>>
+  let profileResult: Awaited<ReturnType<typeof query<{ role: string; status: string }>>>
   try {
     ;[chartResult, profileResult] = await Promise.all([
       query<{ id: string; name: string; birth_date: string; birth_time: string; birth_place: string; client_id: string }>(
         'SELECT id, name, birth_date, birth_time, birth_place, client_id FROM charts WHERE id=$1',
         [chartId]
       ),
-      query<{ role: string }>(
-        'SELECT role FROM profiles WHERE id=$1',
+      query<{ role: string; status: string }>(
+        'SELECT role,status FROM profiles WHERE id=$1',
         [user.uid]
       ),
     ])
@@ -356,6 +377,9 @@ export async function POST(request: Request) {
   if (!chartResult.rows[0]) return res.notFound('chart')
   const chart = chartResult.rows[0]
   const role = profileResult.rows[0]?.role
+  if (byokEnabled && profileResult.rows[0]?.status !== 'active') {
+    return Response.json(new AiConsoleError('AI_PERMISSION_DENIED').toJSON(), { status: 403 })
+  }
   const isSuperAdmin = role === 'super_admin'
 
   // Unit 2c (Stream B): single authorization brain. Replaces inline
@@ -401,12 +425,14 @@ export async function POST(request: Request) {
     // BUG-1: eager insert before streaming so turn-2 can always find the row.
     // ON CONFLICT DO NOTHING makes this idempotent on retry.
     try {
-      await insertConversationWithId({
-        id: conversationId,
-        chartId,
-        userId: user.uid,
-        module: 'consume',
-      })
+      if (!byokEnabled) {
+        await insertConversationWithId({
+          id: conversationId,
+          chartId,
+          userId: user.uid,
+          module: 'consume',
+        })
+      }
     } catch (err) {
       const msg = String(err).toLowerCase()
       if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) {
@@ -418,6 +444,40 @@ export async function POST(request: Request) {
 
   const finalConversationId = conversationId
 
+  let byokRuntime: ByokTurnRuntime | undefined
+  const byokCorrelationId = byokEnabled ? crypto.randomUUID() : undefined
+  if (byokEnabled) {
+    try {
+      const selection = isFirstTurn
+        ? { kind: 'default' as const }
+        : await getConversationSelection(user.uid, finalConversationId)
+      byokRuntime = await prepareByokTurn({
+        userId: user.uid,
+        role: isSuperAdmin ? 'super_admin' : 'guest',
+        chartId,
+        conversationId: finalConversationId,
+        isFirstTurn,
+        turnId: byokCorrelationId!,
+        requestedSelection: selection,
+        questionChars: messages.flatMap(message => message.parts ?? [])
+          .filter(part => part.type === 'text')
+          .reduce((total, part) => total + ((part as { text?: string }).text?.length ?? 0), 0),
+        source: 'consult',
+      })
+      modelId = byokRuntime.displayModelId
+      const synth = byokRuntime.safeSnapshot.roles.synthesizer
+      modelMeta = {
+        provider: synth.kind === 'provider_model' ? synth.providerId : synth.cliId,
+        maxInputTokens: 128_000,
+        maxOutputTokens: 16_384,
+      }
+    } catch (error) {
+      byokRuntime?.releaseAdmission()
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
+    }
+  }
+
   try {
   const lastUserMessage = messages.filter(m => m.role === 'user').at(-1)
   const queryText = (lastUserMessage?.parts ?? []).filter(p => p.type === 'text').map(p => (p as { type: string; text?: string }).text ?? '').join(' ').trim()
@@ -426,6 +486,9 @@ export async function POST(request: Request) {
   const attachmentParts = body.attachments?.length
     ? await resolveAttachments(body.attachments)
     : []
+  if (byokRuntime && !isByokEvidencePayloadWithinLimit({ messages, attachmentParts })) {
+    throw new AiConsoleError('AI_EXECUTION_FAILED')
+  }
 
   const manifest = await loadManifest('00_ARCHITECTURE/CAPABILITY_MANIFEST.json', '00_ARCHITECTURE/manifest_overrides.yaml')
 
@@ -510,6 +573,7 @@ export async function POST(request: Request) {
     console.warn('[consume:v2] safety gate withheld the reading:', safetyDecision.action)
     const safetyStream = createUIMessageStream({
       execute: ({ writer }) => {
+        try {
         const textId = 'text-0'
         writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
         writer.write({ type: 'text-start', id: textId } as never)
@@ -530,6 +594,9 @@ export async function POST(request: Request) {
           }),
         } as never)
         writer.write({ type: 'finish', finishReason: 'stop' } as never)
+        } finally {
+          byokRuntime?.releaseAdmission()
+        }
       },
     })
     return createUIMessageStreamResponse({ stream: safetyStream })
@@ -548,13 +615,19 @@ export async function POST(request: Request) {
     }))
     .filter(m => m.content.length > 0)
 
-  const preAllocatedQueryId = crypto.randomUUID()
-  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
-    getEffectiveModel(selectedStack, 'planner_fast', 'primary', request),
-    getEffectiveModel(selectedStack, 'planner_fast', 'fallback', request),
-    getEffectiveModel(selectedStack, 'planner_deep', 'primary', request),
-    getEffectiveModel(selectedStack, 'planner_deep', 'fallback', request),
-  ])
+  const preAllocatedQueryId = byokCorrelationId ?? crypto.randomUUID()
+  const descriptorModel = (executor: ByokTurnRuntime['executors']['planner']): string =>
+    executor.descriptor.modelId ?? ('cliId' in executor.descriptor
+      ? `${executor.descriptor.cliId}:built-in-default` : 'selected-model')
+  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = byokRuntime
+    ? [descriptorModel(byokRuntime.executors.planner), undefined,
+        descriptorModel(byokRuntime.executors.deep_planner), undefined]
+    : await Promise.all([
+        getEffectiveModel(selectedStack as ModelStack, 'planner_fast', 'primary', request),
+        getEffectiveModel(selectedStack as ModelStack, 'planner_fast', 'fallback', request),
+        getEffectiveModel(selectedStack as ModelStack, 'planner_deep', 'primary', request),
+        getEffectiveModel(selectedStack as ModelStack, 'planner_deep', 'fallback', request),
+      ])
 
   // UQE-9 — atomic per-request step_seq counter. Declared before the planner
   // emits its trace step so all subsequent stages share one counter.
@@ -583,6 +656,13 @@ export async function POST(request: Request) {
     undefined,
     deepPlannerModelId,
     deepPlannerFallbackModelId,
+    byokRuntime ? {
+      plannerExecutor: byokRuntime.executors.planner,
+      deepPlannerExecutor: byokRuntime.executors.deep_planner,
+      workerExecutor: byokRuntime.executors.worker,
+      abortSignal: request.signal,
+      maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
+    } : undefined,
   )
 
   if (plannerOutcome.outcome === 'clarification_needed') {
@@ -591,6 +671,7 @@ export async function POST(request: Request) {
     // uses (data-clarification custom part). No plan is built; no LLM synthesis runs.
     const clarStream = createUIMessageStream({
       execute: ({ writer }) => {
+        try {
         writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
         writer.write({
           type: 'data-clarification',
@@ -601,6 +682,9 @@ export async function POST(request: Request) {
           }),
         } as never)
         writer.write({ type: 'finish', finishReason: 'stop' } as never)
+        } finally {
+          byokRuntime?.releaseAdmission()
+        }
       },
     })
     return createUIMessageStreamResponse({ stream: clarStream })
@@ -610,6 +694,7 @@ export async function POST(request: Request) {
     // Typed, honest planner fault. Log the real reason server-side; the client
     // sees a clean canonical error envelope (NEVER the raw internal parse error).
     console.error('[consume:v2] planner fault:', plannerOutcome.reason, 'retryable=', plannerOutcome.retryable)
+    byokRuntime?.releaseAdmission()
     return plannerOutcome.retryable
       // Transient (provider) fault — the same request may succeed on retry.
       ? errorResponse('SYSTEM_LLM_ERROR', 'The planner service is temporarily unavailable. Please retry.', 503, { retry: true })
@@ -1264,6 +1349,11 @@ export async function POST(request: Request) {
   // Unit 4.refactor_pipeline_shim — adapter dispatch body now lives in
   // `lib/pipelines/shared/run_adapter_dispatch.ts`. The route is a thin
   // selector: auth + chart resolution + planner-context + dispatch().
+  if (byokRuntime) {
+    if (!isByokEvidencePayloadWithinLimit({ messages, attachmentParts, bundle, validToolResults })) {
+      throw new AiConsoleError('AI_EXECUTION_FAILED')
+    }
+  }
   return await runAdapterDispatch({
     requestStartedAt: setupStart,
     userUid: user.uid,
@@ -1297,6 +1387,8 @@ export async function POST(request: Request) {
     orientation,
     completenessReceipt,
     judgmentFlags,
+    byokRuntime,
+    abortSignal: request.signal,
   })
   // (formerly route.ts L899–1319: STACK_TO_ADAPTER mapping → adapter chat
   // request assembly → Gemini cache → createUIMessageStream → B.11 citation
@@ -1304,8 +1396,14 @@ export async function POST(request: Request) {
   // behaviour byte-identical.)
 
 } catch (pipelineError) {
+  byokRuntime?.releaseAdmission()
   const msg = pipelineError instanceof Error ? pipelineError.message : String(pipelineError)
   console.error('[consume:v2] pre-stream error:', msg)
+  if (byokRuntime) {
+    const safe = pipelineError instanceof AiConsoleError
+      ? pipelineError : new AiConsoleError('AI_EXECUTION_FAILED')
+    return Response.json(safe.toJSON(), { status: 400 })
+  }
   return res.internal(msg)
 }
 }

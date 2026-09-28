@@ -95,6 +95,30 @@ export interface PrashnaAskPlanOutcome {
   persistence?: { status: string; job_id?: string; detail: string }
 }
 
+export interface PrashnaAskEvidenceOutcome {
+  ok: true
+  trace_id: string
+  chart_id: string
+  outcome: 'plan' | 'safety_withheld'
+  schema_version: 'madhav.evidence.v1'
+  synthesis: { mode: 'external'; performed_by_madhav: false }
+  question: string
+  plan: unknown
+  results: unknown[]
+  completeness: unknown
+  judgment_flags: string[]
+  response_accountability: unknown
+  routing: {
+    selection: unknown
+    resolvedChoice: unknown
+    configurationVersion: number | null
+    roles: Record<'planner' | 'deep_planner' | 'worker', unknown>
+  }
+  inquiry_contract?: { status?: 'INCOMPLETE' | 'COMPLETE' | 'BLOCKED' }
+  persistence?: { status: string; job_id?: string; detail: string }
+  safety_response?: string
+}
+
 export interface PrashnaAskClarificationOutcome {
   ok: true
   trace_id: string
@@ -121,6 +145,7 @@ export interface PrashnaAskErrorOutcome {
 
 export type PrashnaAskEngineResponse =
   | PrashnaAskPlanOutcome
+  | PrashnaAskEvidenceOutcome
   | PrashnaAskClarificationOutcome
   | PrashnaAskErrorOutcome
 
@@ -148,7 +173,7 @@ export interface CallPrashnaAskEngineInput {
   /** Correlates the internal lifecycle request to the authenticated job row. */
   jobId?: string
   question: string
-  principal: { userUid: string; keyId: string }
+  principal: { userUid: string; keyId: string; authKind: 'api_key' | 'oauth' }
   /** Managed jobs always provide the persisted format. Optionality preserves
    * compatibility for direct/internal callers predating the durable-job path. */
   responseFormat?: 'digest' | 'summary' | 'standard' | 'narrative' | 'full'
@@ -263,6 +288,7 @@ export async function callPrashnaAskEngine(
         'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
         'X-MCP-User': input.principal.userUid,
         'X-MCP-Key-Id': input.principal.keyId,
+        'X-MCP-Auth-Kind': input.principal.authKind,
       },
       body: JSON.stringify({
         chart_id: input.chartId,

@@ -74,8 +74,10 @@ export async function runEvidenceStage(args: {
   toolsAuthorized: string[]
   orientationPromise: Promise<ChartOrientation | null>
   inquiryContract?: InquiryContract | null
+  abortSignal?: AbortSignal
 }): Promise<EvidenceStageOutput> {
   const { em, request, chartId, userUid, plan, queryPlan, manifest, toolsAuthorized, orientationPromise } = args
+  const abortSignal = args.abortSignal ?? request.signal
 
   em.phase({ phase: 'retrieve', status: 'start', pass_id: PASS_ONE })
   // V3-E-016: `chartId` scopes which native-bound corpus assets may enter this
@@ -91,7 +93,7 @@ export async function runEvidenceStage(args: {
 
   const toolResults = await Promise.all(
     toolsAuthorized.map(async (toolName): Promise<ToolBundle | null> => {
-      if (request.signal.aborted) return null
+      if (abortSignal.aborted) return null
       const activityLabel = resolveActivityLabel(toolName)
       em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'running' })
       const t = getToolByName(toolName) as RetrievalTool | undefined
@@ -177,7 +179,7 @@ export async function runEvidenceStage(args: {
     }
 
     let pass = PASS_ONE + 1
-    while (inquiryContract.iteration < inquiryContract.max_iterations && !request.signal.aborted) {
+    while (inquiryContract.iteration < inquiryContract.max_iterations && !abortSignal.aborted) {
       const item = inquiryContract.plan_items.find((candidate) => candidate.state === 'ready'
         && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
       if (!item?.binding_id) break

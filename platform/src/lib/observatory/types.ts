@@ -133,7 +133,7 @@ export interface BreakdownsQueryInput {
  *  (large payloads). The single-event endpoint returns the full row. */
 export interface ObservatoryEventListRow {
   event_id: string
-  conversation_id: string
+  conversation_id: string | null
   conversation_name: string | null
   prompt_id: string
   user_id: string

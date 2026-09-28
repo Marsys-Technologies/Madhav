@@ -99,6 +99,20 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
   mockGetToolByName: vi.fn(),
 }))
+const { mockAuthorizeMcpByokPrincipal, mockPrepareMcpByokRuntime } = vi.hoisted(() => ({
+  mockAuthorizeMcpByokPrincipal: vi.fn(),
+  mockPrepareMcpByokRuntime: vi.fn(),
+}))
+const { mockObserveMcpExternalSynthesis } = vi.hoisted(() => ({
+  mockObserveMcpExternalSynthesis: vi.fn(),
+}))
+vi.mock('@/lib/mcp/prashna_ask/byok_preflight', () => ({
+  authorizeMcpByokPrincipal: mockAuthorizeMcpByokPrincipal,
+  prepareMcpByokRuntime: mockPrepareMcpByokRuntime,
+}))
+vi.mock('@/lib/ai-console/observability', () => ({
+  observeMcpExternalSynthesis: mockObserveMcpExternalSynthesis,
+}))
 const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
 vi.mock('@/lib/vidhi/inquiry/managed_job_store', () => ({ getManagedPrashnaJob: managedInquiry.getJob }))
@@ -234,6 +248,9 @@ beforeEach(() => {
   knowledgeState.overlay = null
   knowledgeState.overlaySequence = []
   knowledgeState.overlayLoadCount = 0
+  configService.setFlag('AI_CONSOLE_BYOK', false)
+  mockAuthorizeMcpByokPrincipal.mockResolvedValue({ role: 'guest' })
+  mockObserveMcpExternalSynthesis.mockReturnValue(undefined)
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -337,6 +354,191 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
     expect(body.persistence.status).toBe('caller_required')
 
     safetyFlagState.on = false
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
+  it('rejects a revoked or mismatched credential before any managed-job or routing read', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    mockAuthorizeMcpByokPrincipal.mockRejectedValue(new Error('credential revoked'))
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'must stop before job lookup',
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000098',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000098',
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(401)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledOnce()
+    expect(managedInquiry.getJob).not.toHaveBeenCalled()
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('rejects a forged managed job before snapshot preflight or any model call', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    managedInquiry.getJob.mockResolvedValue(null)
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'forged managed request',
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000099',
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(401)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledOnce()
+    expect(managedInquiry.getJob).toHaveBeenCalledWith({
+      job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
+      principal_uid: 'owner-uid',
+      principal_key_id: 'mcp_test_KEY001',
+    })
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(mockAuthorizeMcpByokPrincipal.mock.invocationCallOrder[0])
+      .toBeLessThan(managedInquiry.getJob.mock.invocationCallOrder[0])
+  })
+
+  it('reads an authorized managed job before repeating authority in atomic routing preparation', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000097'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000097'
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors: {}, releaseAdmission: vi.fn(), safeSnapshot: {},
+    })
+    mockCallPipelinePlanner.mockResolvedValue({
+      outcome: 'clarification_needed', question: 'Which period?', missing_scope_dims: [], suggested_options: [],
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'authorized managed request',
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(200)
+    expect(mockAuthorizeMcpByokPrincipal.mock.invocationCallOrder[0])
+      .toBeLessThan(managedInquiry.getJob.mock.invocationCallOrder[0])
+    expect(managedInquiry.getJob.mock.invocationCallOrder[0])
+      .toBeLessThan(mockPrepareMcpByokRuntime.mock.invocationCallOrder[0])
+    expect(mockPrepareMcpByokRuntime.mock.invocationCallOrder[0])
+      .toBeLessThan(mockCallPipelinePlanner.mock.invocationCallOrder[0])
+  })
+
+  it('uses the mapped Default executors and returns evidence without invoking Madhav synthesis', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const releaseAdmission = vi.fn()
+    const executors = {
+      planner: { execute: vi.fn() },
+      deep_planner: { execute: vi.fn() },
+      worker: { execute: vi.fn() },
+    }
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors, releaseAdmission,
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'Give me the evidence.' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    const lines = await readNdjson(res)
+    const final = lines.at(-1)
+
+    expect(mockPrepareMcpByokRuntime).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'owner-uid', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: CHART,
+    }))
+    expect(mockCallPipelinePlanner.mock.calls[0]?.[10]).toEqual({
+      plannerExecutor: executors.planner,
+      deepPlannerExecutor: executors.deep_planner,
+      workerExecutor: executors.worker,
+      abortSignal: expect.any(AbortSignal),
+    })
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(final).toMatchObject({
+      event: 'final', schema_version: 'madhav.evidence.v1',
+      synthesis: { mode: 'external', performed_by_madhav: false },
+      question: 'Give me the evidence.',
+    })
+    expect(final).not.toHaveProperty('reading')
+    expect((final?.routing as { roles: object }).roles).not.toHaveProperty('synthesizer')
+    expect(releaseAdmission).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not delay the final MCP envelope when handoff telemetry never settles', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    mockObserveMcpExternalSynthesis.mockReturnValue(new Promise<void>(() => undefined))
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors: {}, releaseAdmission: vi.fn(),
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+
+    const response = await POST(makeReq(
+      { chart_id: CHART, question: 'Return evidence without telemetry delay.' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    const lines = await Promise.race([
+      readNdjson(response),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('telemetry blocked MCP')), 100)),
+    ])
+
+    expect(lines.at(-1)).toMatchObject({ event: 'final', synthesis: { mode: 'external' } })
+    expect(mockObserveMcpExternalSynthesis).toHaveBeenCalledOnce()
+  })
+
+  it('logs only a stable code, trace, and allowlisted tool for BYOK retrieval failures', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const releaseAdmission = vi.fn()
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1',
+      executors: { planner: { execute: vi.fn() }, deep_planner: { execute: vi.fn() }, worker: { execute: vi.fn() } },
+      releaseAdmission,
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['safe_tool']))
+    mockGetToolByName.mockReturnValue({
+      name: 'safe_tool', version: '1.0', dispatch_units: 1,
+      retrieve: vi.fn().mockRejectedValue(new Error('provider-secret-value must not be logged')),
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const res = await POST(makeReq(
+        { chart_id: CHART, question: 'Trigger a safe retrieval failure.' },
+        { 'x-mcp-auth-kind': 'api_key' },
+      ))
+      await readNdjson(res)
+      const rendered = errorSpy.mock.calls.map(args => args.map(String).join(' ')).join('\n')
+      expect(rendered).toContain('MCP_TOOL_DISPATCH_FAILED')
+      expect(rendered).toContain('tool=safe_tool')
+      expect(rendered).not.toContain('provider-secret-value')
+    } finally {
+      errorSpy.mockRestore()
+    }
+    expect(releaseAdmission).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -1511,7 +1713,10 @@ describe('POST /api/mcp/prashna_ask — shared chart readiness gate (Jātaka Pha
     ['throw', true],
   ])('a %s chart is refused before planning, retrieval, synthesis or spend (retryable=%s)', async (state, retryable) => {
     readinessState.value = state
-    const res = await POST(makeReq({ chart_id: CHART, question: 'What does my career look like?' }))
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'What does my career look like?' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
     expect(res.status).toBe(409)
     const body = await res.json()
     expect(body.ok).toBe(false)
@@ -1523,6 +1728,19 @@ describe('POST /api/mcp/prashna_ask — shared chart readiness gate (Jātaka Pha
     expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
     expect(mockSynthesizeReading).not.toHaveBeenCalled()
     expect(mockGetToolByName).not.toHaveBeenCalled()
+  })
+
+  it('authorizes a flag-on caller but refuses an unready chart before BYOK admission', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    readinessState.value = 'building'
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'What does my career look like?' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    expect(res.status).toBe(409)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledTimes(1)
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
   })
 
   it('a denied chart is still refused by authorization first, without consulting readiness', async () => {

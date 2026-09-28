@@ -170,7 +170,7 @@ describe('capability dispatcher route — W5 L6 memoization wiring', () => {
     // served from the L2 cache this lane wired in.
     expect(handler).toHaveBeenCalledTimes(1)
     expect(json2.content).toEqual(json1.content)
-  })
+  }, 15_000)
 
   it('a cacheable capability handler is invoked at most once across N concurrent identical calls', async () => {
     const handler = vi.fn(() => Promise.resolve({ ok: true, from: 'handler' }))

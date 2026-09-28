@@ -1,4 +1,6 @@
 export type FeatureFlag =
+  // AI Console BYOK — additive local rollout; deliberate cutover required.
+  | 'AI_CONSOLE_BYOK'
   | 'PANEL_MODE_ENABLED'
   | 'LLM_CHECKPOINTS_ENABLED'
   // BHISMA-B1 §6.2 — retired: BUNDLE_AUGMENTER_ENABLED, MSR_RERANKER_ENABLED,
@@ -422,6 +424,7 @@ export type FeatureFlag =
   | 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
+  AI_CONSOLE_BYOK: false,
   PANEL_MODE_ENABLED: true,
   LLM_CHECKPOINTS_ENABLED: false,
   VALIDATOR_FAILURE_HALT: true,

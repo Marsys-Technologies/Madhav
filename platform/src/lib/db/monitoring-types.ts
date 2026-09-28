@@ -16,8 +16,8 @@ export interface LlmCallLogRow {
   query_id: string
   conversation_id: string | null
   call_stage: LlmCallStage | string
-  model_id: string
-  provider: string
+  model_id: string | null
+  provider: string | null
   input_tokens: number | null
   output_tokens: number | null
   reasoning_tokens: number | null
@@ -33,6 +33,13 @@ export interface LlmCallLogRow {
   prompt_template_version?: string | null
   parent_call_id?: string | null
   created_at: string
+}
+
+/** Normal Madhav-executed call writes always carry a concrete model/provider. */
+export type LlmCallLogWriteInput = Omit<LlmCallLogRow,
+  'id' | 'created_at' | 'model_id' | 'provider'> & {
+  model_id: string
+  provider: string
 }
 
 export interface QueryPlanLogRow {

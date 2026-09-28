@@ -58,6 +58,8 @@ import { resolveProvider } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
 import { getStorageClient } from '@/lib/storage'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
+import { isStructuredOutputValidationError } from '@/lib/ai-console/execution/structured-output-error'
 
 import type { SignificantJudgment } from './detect'
 import { MIN_INTERPRETATION_CANDIDATES, type InterpretationSetEntry } from './schema'
@@ -511,6 +513,43 @@ const INTERPRETATION_SETS_REPAIR_NOTE =
   'Reply again with ONLY a JSON object matching this EXACT shape — the top-level key MUST be ' +
   '"sets", not "judgments" or anything else. No prose, no markdown fences, nothing before or ' +
   'after the JSON.'
+
+/** Exact Worker-backed caller for BYOK turns; one separate receipt per attempt. */
+export function createInterpretationCaller(executor: RoleExecutor, options?: {
+  abortSignal?: AbortSignal
+  maxOutputTokens?: number
+}): InterpretationLlmCaller {
+  return async (judgments) => {
+    const invoke = async (repairNote?: string, invalidCandidate?: string) => {
+      if (options?.abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      const result = await executor.generate({
+        systemPrompt: systemPrompt(),
+        messages: [
+          { role: 'user', content: userMessage(judgments) },
+          ...(invalidCandidate ? [{ role: 'assistant' as const, content: invalidCandidate }] : []),
+          ...(repairNote ? [{ role: 'user' as const, content: repairNote }] : []),
+        ],
+        temperature: 0,
+        reasoning: 'disable',
+        responseSchema: RESPONSE_SCHEMA,
+        abortSignal: options?.abortSignal,
+        maxOutputTokens: options?.maxOutputTokens,
+      })
+      return result.text
+    }
+    let candidate: string
+    try { candidate = await invoke() }
+    catch (error) {
+      if (!isStructuredOutputValidationError(error)) throw error
+      candidate = error.candidateText()
+    }
+    try { return parseAndValidateSets(candidate) }
+    catch {
+      const repaired = await invoke(INTERPRETATION_SETS_REPAIR_NOTE, candidate)
+      return parseAndValidateSets(repaired)
+    }
+  }
+}
 
 async function defaultCaller(
   judgments: readonly SignificantJudgment[],

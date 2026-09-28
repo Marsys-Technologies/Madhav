@@ -19,10 +19,10 @@ import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 const MAX_TURNS = 2
 const MAX_TOKENS_PER_TURN = 1000
-const MAX_TOKENS_PER_TURN_CHARS = MAX_TOKENS_PER_TURN * 4
 const HISTORY_BUDGET_TOKENS = 2000
 const SUMMARY_TARGET_TOKENS = 512
 const SUMMARY_TARGET_CHARS = SUMMARY_TARGET_TOKENS * 4
@@ -63,6 +63,8 @@ async function summarizeHistory(
   turns: PlannerHistoryTurn[],
   workerModelId: string,
   queryId?: string,
+  workerExecutor?: RoleExecutor,
+  abortSignal?: AbortSignal,
 ): Promise<string> {
   const dialogue = turns
     .map(t => `${t.role.toUpperCase()}: ${t.content}`)
@@ -81,6 +83,16 @@ async function summarizeHistory(
   let usage: { inputTokens?: number; outputTokens?: number } | undefined
   let errorCode: string | null = null
   try {
+    if (workerExecutor) {
+      if (abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      const result = await workerExecutor.generate({
+        systemPrompt: '',
+        messages: [{ role: 'user', content: prompt }],
+        maxOutputTokens: SUMMARY_TARGET_TOKENS,
+        abortSignal,
+      })
+      return truncateToTokens(result.text.trim(), SUMMARY_TARGET_TOKENS)
+    }
     const interaction = await runAdapter({
       callType: 'worker',
       modelOverride: { modelId: workerModelId },
@@ -94,7 +106,7 @@ async function summarizeHistory(
     errorCode = err instanceof Error ? err.message : String(err)
     throw err
   } finally {
-    if (queryId) {
+    if (queryId && !workerExecutor) {
       const latency_ms = Date.now() - start
       void writeLlmCallLog({
         query_id: queryId,
@@ -163,6 +175,8 @@ export async function buildPlannerContext(
   conversationHistory: Array<{ role: string; content: string }>,
   workerModelId: string,
   queryId?: string,
+  workerExecutor?: RoleExecutor,
+  abortSignal?: AbortSignal,
 ): Promise<PlannerContext> {
   const queryTokens = estimateTokens(query)
 
@@ -186,7 +200,7 @@ export async function buildPlannerContext(
   const rawCombined = turnsTokens(recent)
 
   if (rawCombined > HISTORY_BUDGET_TOKENS) {
-    const summary = await summarizeHistory(recent, workerModelId, queryId)
+    const summary = await summarizeHistory(recent, workerModelId, queryId, workerExecutor, abortSignal)
     const summaryTokens = estimateTokens(summary)
     return {
       query,

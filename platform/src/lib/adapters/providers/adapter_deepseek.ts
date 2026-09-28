@@ -9,7 +9,7 @@ import { MarkerBuffer } from '../buffer'
 export const adapterDeepseek: Adapter = {
   providerId: 'deepseek',
 
-  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+  prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel): StreamTextOptions {
     const wantsThinking =
       req.reasoning !== 'disable' &&
       meta.quirks.request_transforms?.thinking_mode === 'toggle'
@@ -33,7 +33,7 @@ export const adapterDeepseek: Adapter = {
     }
 
     return {
-      model: deepseek(meta.id),
+      model: injectedModel ?? deepseek(meta.id),
       system: req.systemPrompt,
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

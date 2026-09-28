@@ -46,6 +46,8 @@ import { writePlanAlternatives } from '@/lib/db/trace/plan_alternatives_writer'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
+import { isStructuredOutputValidationError } from '@/lib/ai-console/execution/structured-output-error'
 import {
   buildPlannerCapabilityKnowledgeProjection,
   getPinnedCapabilityKnowledgeSnapshot,
@@ -346,6 +348,13 @@ export async function callPipelinePlanner(
   suppliedScopeTuple?: ScopeTuple,
   deepPlannerModelId?: string,
   deepFallbackModelId?: string,
+  byok?: {
+    plannerExecutor: RoleExecutor
+    deepPlannerExecutor: RoleExecutor
+    workerExecutor: RoleExecutor
+    abortSignal?: AbortSignal
+    maxOutputTokens?: number
+  },
 ): Promise<PlannerOutcome> {
   // ── Step 1: deterministic scope classification (BEFORE the LLM call) ────────
   // W4 core step 1. Runs on the raw incoming query text. A low-confidence /
@@ -400,9 +409,15 @@ export async function callPipelinePlanner(
 
   const knowledgeSnapshot = getPinnedCapabilityKnowledgeSnapshot()
   const planningPolicy = selectInquiryPlanningPolicy(scopeTuple.depth)
-  const selectedPlannerModelId = planningPolicy.callType === 'planner_deep'
-    ? (deepPlannerModelId ?? plannerModelId)
-    : plannerModelId
+  const selectedExecutor = byok
+    ? (planningPolicy.callType === 'planner_deep' ? byok.deepPlannerExecutor : byok.plannerExecutor)
+    : undefined
+  const selectedPlannerModelId = selectedExecutor
+    ? (selectedExecutor.descriptor.modelId ?? ('cliId' in selectedExecutor.descriptor
+        ? `${selectedExecutor.descriptor.cliId}:built-in-default` : 'selected-model'))
+    : planningPolicy.callType === 'planner_deep'
+      ? (deepPlannerModelId ?? plannerModelId)
+      : plannerModelId
   const selectedFallbackModelId = planningPolicy.callType === 'planner_deep'
     ? (deepFallbackModelId ?? fallbackModelId)
     : fallbackModelId
@@ -412,7 +427,8 @@ export async function callPipelinePlanner(
     0,
   )
 
-  const ctx = await buildPlannerContext(query, conversationHistory, selectedPlannerModelId, queryId)
+  const ctx = await buildPlannerContext(query, conversationHistory, selectedPlannerModelId, queryId,
+    byok?.workerExecutor, byok?.abortSignal)
 
   const userPayload = {
     native_id: nativeId,
@@ -457,11 +473,38 @@ export async function callPipelinePlanner(
   })
 
   const start = Date.now()
-  let interaction: Awaited<ReturnType<typeof runAdapter>> | undefined
+  let interaction: { finalText?: string; usage: { inputTokens: number; outputTokens: number } } | undefined
   let lastErr: unknown
   let activeModelId = selectedPlannerModelId
   let fallbackWasUsed = false
-  for (let attempt = 0; attempt <= MAX_PLANNER_RETRIES; attempt++) {
+  if (selectedExecutor) {
+    try {
+      if (byok?.abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      const result = await selectedExecutor.generate({
+        systemPrompt: getSystemPrompt(),
+        messages: [
+          ...(detectM9Query(query) ? buildM9FewShotMessages(capabilityKnowledge) : []),
+          { role: 'user', content: userMessage },
+        ],
+        temperature: 0,
+        reasoning: planningPolicy.reasoning,
+        responseSchema: PipelinePlanInputJsonSchema,
+        abortSignal: byok?.abortSignal,
+        maxOutputTokens: byok?.maxOutputTokens,
+      })
+      interaction = { finalText: result.text, usage: {
+        inputTokens: result.usage.inputTokens ?? 0,
+        outputTokens: result.usage.outputTokens ?? 0,
+      } }
+    } catch (error) {
+      if (isStructuredOutputValidationError(error)) {
+        interaction = { finalText: error.candidateText(), usage: { inputTokens: 0, outputTokens: 0 } }
+      } else {
+      return { outcome: 'fault', reason: 'Selected planner execution failed.', retryable: false }
+      }
+    }
+  }
+  for (let attempt = 0; !selectedExecutor && attempt <= MAX_PLANNER_RETRIES; attempt++) {
     activeModelId = (attempt > 0 && selectedFallbackModelId && (isRateLimitError(lastErr) || isServerError(lastErr)))
       ? selectedFallbackModelId
       : selectedPlannerModelId
@@ -587,7 +630,7 @@ export async function callPipelinePlanner(
   }
   const latency_ms = Date.now() - start
 
-  if (queryId) {
+  if (queryId && !selectedExecutor) {
     void writeLlmCallLog({
       query_id: queryId,
       conversation_id: null,
@@ -609,7 +652,7 @@ export async function callPipelinePlanner(
   }
 
   // OBS-S1: Observatory per-call telemetry (planner stage)
-  {
+  if (!selectedExecutor) {
     const obsStartedAt = new Date(start)
     const obsFinishedAt = new Date(start + latency_ms)
     const obsUsage: TokenUsage = {
@@ -703,23 +746,44 @@ export async function callPipelinePlanner(
       'planner schema — no prose, no markdown code fences, and nothing before or after ' +
       'the JSON object.'
 
-    let repairInteraction: Awaited<ReturnType<typeof runAdapter>> | undefined
+    let repairInteraction: { finalText?: string } | undefined
     try {
-      repairInteraction = await runAdapter({
-        callType: planningPolicy.callType,
-        modelOverride: { modelId: activeModelId },
-        systemPrompt: getSystemPrompt(),
-        messages: [
-          ...(detectM9Query(query) ? buildM9FewShotMessages(capabilityKnowledge) : []),
-          { role: 'user', content: userMessage },
-          { role: 'assistant', content: rawText || '(empty response)' },
-          { role: 'user', content: REPAIR_INSTRUCTION },
-        ],
-        temperature: 0,
-        disableSdkRetry: true,
-        reasoning: planningPolicy.reasoning,
-        responseSchema: PipelinePlanInputJsonSchema,
-      })
+      if (selectedExecutor) {
+        if (byok?.abortSignal?.aborted) {
+          return { outcome: 'fault', reason: 'Selected planner execution cancelled.', retryable: false }
+        }
+        const result = await selectedExecutor.generate({
+          systemPrompt: getSystemPrompt(),
+          messages: [
+            ...(detectM9Query(query) ? buildM9FewShotMessages(capabilityKnowledge) : []),
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: rawText || '(empty response)' },
+            { role: 'user', content: REPAIR_INSTRUCTION },
+          ],
+          temperature: 0,
+          reasoning: planningPolicy.reasoning,
+          responseSchema: PipelinePlanInputJsonSchema,
+          abortSignal: byok?.abortSignal,
+          maxOutputTokens: byok?.maxOutputTokens,
+        })
+        repairInteraction = { finalText: result.text }
+      } else {
+        repairInteraction = await runAdapter({
+          callType: planningPolicy.callType,
+          modelOverride: { modelId: activeModelId },
+          systemPrompt: getSystemPrompt(),
+          messages: [
+            ...(detectM9Query(query) ? buildM9FewShotMessages(capabilityKnowledge) : []),
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: rawText || '(empty response)' },
+            { role: 'user', content: REPAIR_INSTRUCTION },
+          ],
+          temperature: 0,
+          disableSdkRetry: true,
+          reasoning: planningPolicy.reasoning,
+          responseSchema: PipelinePlanInputJsonSchema,
+        })
+      }
     } catch (repairErr) {
       const reason = `LLM planner repair-retry call failed: ${repairErr instanceof Error ? repairErr.message : String(repairErr)}`
       emitTrace?.({
@@ -742,6 +806,7 @@ export async function callPipelinePlanner(
       return { outcome: 'fault', reason, retryable: true }
     }
 
+    if (!repairInteraction) return { outcome: 'fault', reason: 'Planner repair produced no result.', retryable: false }
     const repairAttempt = tryBuildPlan(repairInteraction.finalText ?? '')
     if (!repairAttempt.ok) {
       const reason = `LLM planner returned unparseable output after one repair-retry: ${repairAttempt.reason}`

@@ -1,7 +1,21 @@
 import type { JSONSchema7 } from 'json-schema'
+import type { LanguageModelV3 } from '@ai-sdk/provider'
 import type { CallType, ModelStack, Provider } from '@/lib/models/registry'
+import type { ProviderId } from '@/lib/ai-console/types'
 
 export type { JSONSchema7 as JSONSchema }
+
+/** Safe, serializable identity for a request-owned model. Never add credential data here. */
+export interface SafeRuntimeModelDescriptor {
+  readonly providerId: ProviderId
+  readonly connectionId: string
+  readonly modelId: string
+}
+
+/** Server-only model seam. The model itself must be non-enumerable and non-serializable. */
+export interface RuntimeAdapterBinding extends SafeRuntimeModelDescriptor {
+  readonly model: LanguageModelV3
+}
 
 export interface ProviderQuirks {
   /** How chain-of-thought reasoning surfaces in model output. */
@@ -24,6 +38,10 @@ export interface QueryRequest {
   callType: CallType
   stack?: ModelStack
   modelOverride?: { modelId: string }
+
+  /** BYOK-only exact model. Must always be paired with the matching safe descriptor. */
+  runtimeBinding?: RuntimeAdapterBinding
+  runtimeDescriptor?: SafeRuntimeModelDescriptor
 
   systemPrompt: string
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
