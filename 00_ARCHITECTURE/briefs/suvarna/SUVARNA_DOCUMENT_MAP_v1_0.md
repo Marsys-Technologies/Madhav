@@ -25,7 +25,7 @@ Branches: **S** = `strategy/suvarna-plan` · **N** = `campaign/nikasha-test` · 
 |---|---|---|---|
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_1.md` | S | draft, review pass 1 | The master plan: end state, standard, tracks, gates, decisions |
 | `briefs/suvarna/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` | S | draft | How it runs: isolation, swarm, queue, builds, autonomy, cost |
-| `briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` | S | draft (in preparation) | Sangam, Kshetra, Gochara: current state, target, effort |
+| `briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` | S | draft | Sangam, Kshetra, Gochara: current state, target, effort |
 | `briefs/suvarna/SUVARNA_DOCUMENT_MAP_v1_0.md` | S | living | This map |
 | `briefs/suvarna/SUVARNA_REVIEW_PACKAGE_v1_0.md` | S | draft | The brief for the independent reviewer |
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_0.md` | S | superseded by v1.1 | History |
@@ -118,7 +118,16 @@ Branches: **S** = `strategy/suvarna-plan` · **N** = `campaign/nikasha-test` · 
 
 ## 7 · The L3 focus families (existing documents)
 
-To be completed from the three reconciliation reports. They will list every brief, stage plan, review and decision log for Sangam, Kshetra and Gochara, with branch and status.
+| Document | Branch | Role |
+|---|---|---|
+| `briefs/suvarna/l3_recon/GOCHARA_RECON.md` | S | reconciliation; §2 lists every Gochara workstream, branch, brief and decision log |
+| `briefs/suvarna/l3_recon/SANGAM_RECON.md` | S | reconciliation; §2 lists the stage-3/stage-4 work, PR #2735 and the D-K review |
+| `briefs/suvarna/l3_recon/KSHETRA_RECON.md` | S | reconciliation; §2 lists every Kṣetra branch, the W7 dependency and the unstarted stage 3 |
+| Live Gochara workstream: `CLAUDECODE_BRIEF*.md`, ADK decision log, WP0–WP7 plan | `l3/gochara-autonomous-wp0-7` (PR #2731) | live; not Suvarṇa's to edit |
+| Saṅgam stage 3 | `sangam/stage3` (PR #2735, draft) | unmerged |
+| Kṣetra briefs and stage plans | merged to `main` as documents | stage 3 authorized 2026-09-24, not started |
+
+**The review bundle** (not committed; assembled for the independent reviewer): `/Users/Dev/suvarna-review-bundle/` and `/Users/Dev/suvarna-review-bundle.zip` — 40 files, each listed in `MANIFEST.txt` with its origin branch and sha256.
 
 ## 8 · Still to be written, in the order needed
 
