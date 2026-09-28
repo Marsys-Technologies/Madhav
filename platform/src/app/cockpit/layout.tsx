@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
+import { getFlag } from '@/lib/config'
 import { AppShell } from '@/components/shared/AppShell'
 import { BuildHeader } from '@/components/build/BuildHeader'
 import { FreshnessIndicator } from '@/components/build/FreshnessIndicator'
@@ -27,7 +28,7 @@ export default async function CockpitLayout({ children }: { children: React.Reac
       breadcrumb={[{ label: 'Cockpit', current: true }]}
     >
       {/* BuildHeader nav strip sits below the AppShell breadcrumb — two-row header */}
-      <BuildHeader />
+      <BuildHeader showAiConsole={getFlag('AI_CONSOLE_BYOK')} />
       {children}
       {generatedAt && (
         <footer className="border-t border-border px-4 py-2 flex justify-end">

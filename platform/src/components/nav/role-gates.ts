@@ -6,8 +6,8 @@
  *
  * Roles:
  *   - super_admin: full instrument operator. Jātakas + Panchang + Cockpit +
- *     AI Console (when enabled) + Audit + Performance + Admin. Observatory
- *     lives inside Cockpit.
+ *     Audit + Performance + Admin. AI Console and Observatory live inside
+ *     Cockpit.
  *   - guest: legacy 'client' role rolled into 'guest' per Unit 2c. Sees their
  *     owned + granted charts, Panchang, and AI Console when it is enabled.
  *
@@ -49,7 +49,9 @@ export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   { key: 'roster',      href: '/dashboard',   label: 'Jātakas',     roles: ['super_admin', 'guest'] },
   { key: 'panchang',    href: '/panchang',    label: 'Panchang',    roles: ['super_admin', 'guest'] },
   { key: 'cockpit',     href: '/cockpit',     label: 'Cockpit',     roles: ['super_admin'], admin: true },
-  { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['super_admin', 'guest'], feature: 'aiConsoleByok' },
+  // Super Admin reaches AI Console through Cockpit's section menu. Guests keep
+  // this direct entry because Cockpit itself is an admin-only surface.
+  { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['guest'], feature: 'aiConsoleByok' },
   { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
   { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },
@@ -88,6 +90,16 @@ export function visibleInformationNavItems(
   return INFORMATION_NAV_ITEMS.filter((item) =>
     (item.roles as readonly string[]).includes(normalized)
   )
+}
+
+/** Cockpit remains the selected parent while one of its child instruments is open. */
+export function isNavItemActive(key: string, href: string, pathname: string): boolean {
+  if (key === 'roster') return pathname === '/dashboard' || pathname === '/'
+  if (key === 'cockpit') {
+    return pathname.startsWith('/cockpit') || pathname.startsWith('/ai-console')
+      || pathname.startsWith('/observatory')
+  }
+  return pathname.startsWith(href)
 }
 
 export function isAdminSurface(href: string): boolean {

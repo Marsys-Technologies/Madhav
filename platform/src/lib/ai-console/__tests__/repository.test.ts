@@ -648,13 +648,14 @@ describe('atomic routing resolution read', () => {
     expect(calls().some(c => c.sql.includes('FROM ai_cli_installations') || c.sql.includes('FROM ai_cli_models'))).toBe(false)
   })
 
-  it('rejects stale reachable state for a detect-only CLI before reading host state', async () => {
+  it('grant-gates an executable catalog CLI before reading installation or model state', async () => {
     respond(sql => sql.includes('FROM profiles') ? [{ id: 'alice' }] : undefined)
     const selected = { kind: 'explicit' as const,
-      choice: { kind: 'local_cli' as const, cliId: 'codex' as const, modelId: null } }
+      choice: { kind: 'local_cli' as const, cliId: 'kimi_code' as const, modelId: null } }
     await expect(repository.loadRoutingResolution('alice', selected))
-      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
-    expect(calls().some(c => c.sql.includes('FROM ai_cli_'))).toBe(false)
+      .rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+    expect(calls().some(c => c.sql.includes('FROM ai_cli_grants'))).toBe(true)
+    expect(calls().some(c => c.sql.includes('FROM ai_cli_installations') || c.sql.includes('FROM ai_cli_models'))).toBe(false)
   })
 
   it.each([

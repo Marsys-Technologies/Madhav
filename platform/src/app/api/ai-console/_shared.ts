@@ -199,7 +199,16 @@ export async function readCliId(context: CliContext) {
   return parsed.data
 }
 
-const date = (value: unknown) => value == null ? null : z.string().datetime({ offset: true }).parse(value instanceof Date ? value.toISOString() : value)
+const date = (value: unknown) => {
+  if (value == null) return null
+  if (value instanceof Date) return value.toISOString()
+  const raw = z.string().min(1).parse(value)
+  const alreadyIso = z.string().datetime({ offset: true }).safeParse(raw)
+  if (alreadyIso.success) return alreadyIso.data
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) throw new RequestError(500, 'invalid_timestamp')
+  return parsed.toISOString()
+}
 const text = (value: unknown) => z.string().min(1).parse(value)
 const nullableText = (value: unknown) => value == null ? null : text(value)
 

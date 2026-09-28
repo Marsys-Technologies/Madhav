@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import {
   normalizeRole,
+  isNavItemActive,
   visibleNavItems,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
@@ -158,9 +159,7 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
       <div className="relative flex flex-1 flex-col gap-0.5 w-full px-2">
         {visibleItems.map(({ key, href, label }, index) => {
           const Icon = NAV_ICONS[key]
-          const isActive = href === '/dashboard'
-            ? pathname === '/dashboard' || pathname === '/'
-            : pathname.startsWith(href)
+          const isActive = isNavItemActive(key, href, pathname)
           return (
             <motion.div
               key={key}
