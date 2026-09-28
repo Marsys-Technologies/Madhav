@@ -640,14 +640,36 @@ def write_windows(conn, chart_id: str, generation: str,
     # parents (era) first, then month, then day — the insert order resolves
     # the documentary parent linkage (migration 567).
     ordered = sorted(rows, key=lambda r: {"era": 0, "month": 1, "day": 2}[r["resolution"]])
+    # Adjacent components can each retain a peak whose refine_peak_to_day
+    # lands on the same calendar day (and, clipped to era bounds, the same
+    # month), producing rows identical under uq_kala_gochara_windows_natural_key
+    # (chart, class, window_start, peak_date, milestone_id, resolution,
+    # generation). Keep the first in insert order; children of a skipped row
+    # re-point to the retained row's id.
+    seen_natural: dict[tuple, int] = {}
+    skipped_dupes = 0
     with conn.cursor() as cur:
         for row in ordered:
+            natural = (row["event_class"], row["window_start"],
+                       row["peak_date"], row["milestone_id"] or "",
+                       row["resolution"] or "")
+            if natural in seen_natural:
+                id_by_key[row["window_key"]] = seen_natural[natural]
+                skipped_dupes += 1
+                continue
             cur.execute(
                 f"INSERT INTO kala_gochara_windows ({', '.join(cols)})"
                 f" VALUES ({placeholders}) RETURNING id",
                 _values(row))
-            id_by_key[row["window_key"]] = cur.fetchone()[0]
-    return len(ordered)
+            rid = cur.fetchone()[0]
+            id_by_key[row["window_key"]] = rid
+            seen_natural[natural] = rid
+    if skipped_dupes:
+        print(f"write_windows: {skipped_dupes} projected row(s) shared a "
+              "natural key with an already-written row (adjacent-component "
+              "peak collapse to the same date); first occurrence kept, "
+              "children re-pointed", file=sys.stderr)
+    return len(ordered) - skipped_dupes
 
 
 def update_manifest_windows_count(conn, chart_id: str, generation: str,
