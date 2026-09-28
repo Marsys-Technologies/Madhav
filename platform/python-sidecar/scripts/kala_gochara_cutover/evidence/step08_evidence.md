@@ -54,3 +54,16 @@ escalates.
   `keepalives=1/30/10/5`); no server-side setting was changed, and each
   failed attempt rolled back cleanly (zero '4.0' rows, manifest still
   candidate — verified after each).
+
+## 2026-09-28T19:29:44Z — REVERSED
+
+{
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "generation": "4.0",
+  "action": "reversed",
+  "authority": "3.0",
+  "manifest_id": "d54d899b-7923-4b0d-92c5-0ff499f4a0bf",
+  "manifest_status": "rolled_back",
+  "windows_deleted": 4415,
+  "label_burned": "a rolled_back manifest refuses re-publication \u2014 a re-attempt builds under a NEW generation label"
+}

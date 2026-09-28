@@ -70,3 +70,70 @@ escalates.
 **Evaluation #1 verdict: GREEN — no abort trigger fired; soak continues.**
 
 <!-- Run outcomes are appended below by the step scripts (--evidence). -->
+
+## 2026-09-28T19:29Z — SOAK ABORTED: F-0 safety reversal executed (hazard LIVE)
+
+**Trigger observed:** native directive F-0 — origin/main's deployed serving
+code has zero '4.0' references; the '4.0'-aware serving code exists only on
+this branch (PR #2731 open/conflicting). F-0's hazard: "production serves
+'4.0' data through code that has no '4.0' branch." The 24h soak is ABORTED by
+this reversal; no midpoint/end evaluations will run.
+
+**Hazard determination (read-only, `git show origin/main:…`):**
+
+- `platform-mcp/src/tools/retrieval/register_gochara_windows.ts` (origin/main)
+  **:640-643** — `AUTHORITATIVE_GENERATION_FILTER`:
+  `AND kala_gochara_windows.generation = COALESCE((SELECT
+  authoritative_generation FROM kala_gochara_authority WHERE chart_id =
+  kala_gochara_windows.chart_id), 'v1')`. The deployed serving path DOES read
+  the authority table. With authority='4.0', main's code selects the 4,415
+  '4.0' rows for chart 482012f1 — the filter's own comment ("Today this is a
+  no-op … the authority table is empty everywhere") stopped holding at the
+  flip.
+- Same file, origin/main **:573-597** — `buildSourceCitation`: branches for
+  '3.0' and `g3_*` only; '4.0' falls through to the v1 else-branch →
+  **false provenance** ("ka_gochara_sweep writer … generation=v1") on every
+  served '4.0' row — exactly the defect class MR-03 fixed for '3.0'.
+- Same file, origin/main **:937-967** — MR-02 coverage source:
+  `isV3Authority = authGen === '3.0' || authGen.startsWith('g3_')` → '4.0'
+  takes the **v1 branch** (retired `ka_gochara_sweep` substep history, wrong
+  key format).
+- This branch's version of the same file carries the '4.0'-aware code
+  (446 insertions incl. manifest-driven generation resolution and the '4.0'
+  era_slice_key disclosure); **not deployed** (PR #2731).
+
+**Verdict: hazard LIVE** — deployed code reads the authority table and would
+serve '4.0' rows through non-'4.0'-aware code immediately. Per the F-0
+decision rule, `step08_flip.py --reverse` executed at once (pre-authorized
+safety restoration; authority stays '3.0' until F-0's preconditions hold).
+
+**Reversal command:** `PRODUCTION_TRANCHE_2_AUTHORIZED=true
+step08_flip.py --dsn <prod via own proxy 55440, fresh amjis-pipeline-db-url
+per connection> --chart-id 482012f1-710e-4a25-994a-93821f5871aa
+--generation 4.0 --flipped-by "l3/gochara-autonomous-wp0-7 (F-0 safety
+reversal)" --reverse --evidence` → **exit 0** (2026-09-28T19:29Z), output:
+`action=reversed, authority='3.0', manifest=d54d899b rolled_back,
+windows_deleted=4415`. The K3-F2 machinery ran as rehearsed: authority
+re-pointed FIRST, manifest rolled_back, coverage+contacts deleted by
+`ledger.rollback()`, the chart's '4.0' windows scoped-deleted by
+`clear_windows_on_reversal` (guard satisfied: authority no longer '4.0',
+manifest no longer published). **Burned label:** manifest d54d899b refuses
+re-publication; any re-attempt builds under a NEW generation label ('4.1').
+
+**Post-reversal production state (verified read-only):**
+authority `'3.0'` ✓ · manifest `rolled_back` ✓ · '4.0' windows **0** ✓ ·
+'4.0' contacts **0** and coverage **0** for the chart (rollback-deleted) ✓ ·
+v1 = 38,287 / '3.0' = 1,830 unchanged ✓ · chart 2 authority '3.0', zero
+'4.0' rows ✓.
+
+**Post-reversal integrity evaluation:** full (a)–(k) (post-1150 registry
+text) = **t under session default (UTC) AND t under `SET
+TimeZone='Asia/Kolkata'`** — conjuncts (a)/(f) GREEN again with the orphan
+windows gone, exactly as the reversal machinery requires. Conjunct-(i)
+vacuity note above stands.
+
+**Escalation:** this section IS the escalation record. Link 3 chart 1 is
+reversed; chart 2 never started. The served surface is again exactly the
+pre-Link-3 state. The '4.0' candidate build (contacts/coverage) was deleted
+by the rollback — a future flip after F-0's preconditions hold requires a
+fresh candidate build under a new generation label.
