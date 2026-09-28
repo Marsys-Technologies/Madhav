@@ -132,9 +132,13 @@ describe('Protected public-schema migration workflow contract', () => {
       '1122_jataka_chart_context_staleness.sql',
       '1123_jataka_context_staleness_deferred_surfaces.sql',
       '1124_ai_console_byok_routing.sql',
+      '1125_ai_snapshot_shape_operator_precedence.sql',
     ]) {
       expect(apply?.run).toContain(migration)
     }
+    expect(apply?.run?.indexOf('1124_ai_console_byok_routing.sql')).toBeLessThan(
+      apply?.run?.indexOf('1125_ai_snapshot_shape_operator_precedence.sql') ?? -1,
+    )
     expect(apply?.run).toContain('migrate.ts --only "$only"')
     expect(revoke?.if).toContain('always()')
     expect(revoke?.run).toContain('jataka-schema-capability.ts revoke')

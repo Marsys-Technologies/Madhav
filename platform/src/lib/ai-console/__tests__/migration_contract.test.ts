@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const path = resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql')
+const repairPath = resolve(__dirname, '../../../../migrations/1125_ai_snapshot_shape_operator_precedence.sql')
 const tables = ['ai_provider_connections', 'ai_connection_models', 'ai_custom_configurations',
   'ai_custom_configuration_roles', 'ai_user_defaults', 'ai_cli_installations', 'ai_cli_models',
   'ai_cli_grants', 'ai_conversation_selections', 'ai_turn_routing_snapshots',
@@ -34,6 +35,12 @@ describe('AI Console governed persistence contract', () => {
     expect(text.match(/CREATE TABLE IF NOT EXISTS/g)).toHaveLength(12)
     for (const table of tables) expect(text).toContain(`CREATE TABLE IF NOT EXISTS ${table}`)
     expect(text).not.toMatch(/INSERT INTO (?:public\.)?asset_registry/)
+  })
+  it('keeps the snapshot repair inside the runner transaction without privilege escalation', () => {
+    const text = readFileSync(repairPath, 'utf8')
+    expect(text).toContain('CREATE OR REPLACE FUNCTION ai_snapshot_shape')
+    expect(text).not.toMatch(/^\s*(?:BEGIN|START TRANSACTION|COMMIT|ROLLBACK|END)\s*;/im)
+    expect(text).not.toMatch(/SECURITY\s+DEFINER/i)
   })
   it('serializes deferred checks without upgrading FK key-share locks', () => {
     const text = sql()
