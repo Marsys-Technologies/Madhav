@@ -1,8 +1,11 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_FOLLOWUP_FENCE_AND_SUCCESSOR_ENVELOPE
-version: 1.0
-status: KICKOFF_READY_NOT_STARTED
+version: 1.1
+status: ACTIVE_LOCAL_SOURCE_EXECUTION
 date: 2026-09-28
+native_authority: Native source-execution authorization for the complete follow-up campaign (both packets),
+  2026-09-28. Local only: no push, PR, merge, deployment, production, database, migration, rebuild or live collection.
+baseline_verified_at_head: 75794b894b62c6f122b3536f5cb5aaf4c5b97e2f   # tsc clean; snapshot 5aa26443, census 1a231d17 fresh; pin-lint 0 new; 541 focused tests green
 lineage: follows PR #2742 (Pūrṇa Anveṣaṇa source candidate), squash-merged to protected main
 lineage_record:
   r5a_publication_and_ci: COMPLETE   # PR #2742 opened, CI repaired, independently reviewed, accepted by the Native at head d5c4c1f27
