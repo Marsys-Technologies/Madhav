@@ -58,7 +58,7 @@ describe('strict AI routing monitoring writers', () => {
       schema_version: 'madhav.external-synthesis.v1',
       correlation_id: '10000000-0000-4000-8000-000000000006', conversation_id: null,
       user_id: 'user-1', call_stage: 'external_synthesis_handoff', external_synthesis: true,
-      performed_by_madhav: false, status: 'not_observed', fallback_used: false,
+      performed_by_madhav: false, status: 'not_observed', fallback_used: null,
     }
     await writeMcpExternalSynthesisEvent(marker)
 

@@ -89,13 +89,15 @@ export function projectRoleInvocationObservation(
     ? snapshot.resolvedChoice.configurationId : null
   const isProvider = 'providerId' in descriptor
   const modelId = descriptor.modelId
-  if (isProvider && (roleTarget.kind !== 'provider_model'
-    || roleTarget.connectionId !== descriptor.connectionId
-    || roleTarget.providerId !== descriptor.providerId || roleTarget.modelId !== modelId)) {
-    throw new Error('Executor descriptor does not match the immutable routing snapshot.')
-  }
-  if (!isProvider && (roleTarget.kind !== 'local_cli'
-    || roleTarget.cliId !== descriptor.cliId || roleTarget.modelId !== modelId)) {
+  const fallbackUsed = isProvider
+    ? roleTarget.kind !== 'provider_model'
+      || roleTarget.connectionId !== descriptor.connectionId
+      || roleTarget.providerId !== descriptor.providerId
+      || roleTarget.modelId !== modelId
+    : roleTarget.kind !== 'local_cli'
+      || roleTarget.cliId !== descriptor.cliId
+      || roleTarget.modelId !== modelId
+  if (fallbackUsed) {
     throw new Error('Executor descriptor does not match the immutable routing snapshot.')
   }
   const input = terminal.usage?.inputTokens ?? null
@@ -129,7 +131,7 @@ export function projectRoleInvocationObservation(
     total_tokens: total,
     retry_count: terminal.retryCount,
     error_code: terminal.errorCode,
-    fallback_used: false,
+    fallback_used: fallbackUsed,
   })
 }
 
@@ -151,7 +153,7 @@ export const SafeMcpExternalSynthesisSchema = z.object({
   external_synthesis: z.literal(true),
   performed_by_madhav: z.literal(false),
   status: z.literal('not_observed'),
-  fallback_used: z.literal(false),
+  fallback_used: z.null(),
 }).strict()
 export type SafeMcpExternalSynthesis = z.infer<typeof SafeMcpExternalSynthesisSchema>
 
@@ -167,7 +169,7 @@ export function observeMcpExternalSynthesis(snapshot: SafeRoutingSnapshot): void
       external_synthesis: true,
       performed_by_madhav: false,
       status: 'not_observed',
-      fallback_used: false,
+      fallback_used: null,
     })
     void writeMcpExternalSynthesisEvent(event).catch(() => {
       console.warn('[ai-console] Observatory external-synthesis observation failed')

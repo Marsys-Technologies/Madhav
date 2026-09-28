@@ -98,7 +98,7 @@ describe('safe AI routing observations', () => {
     expect(externalWrite.mock.calls[0][0]).toEqual({
       schema_version: 'madhav.external-synthesis.v1', correlation_id: ids.correlation,
       conversation_id: null, user_id: 'user-1', call_stage: 'external_synthesis_handoff',
-      external_synthesis: true, performed_by_madhav: false, status: 'not_observed', fallback_used: false,
+      external_synthesis: true, performed_by_madhav: false, status: 'not_observed', fallback_used: null,
     })
     expect(externalWrite.mock.calls[0][0]).not.toHaveProperty('model')
   })
