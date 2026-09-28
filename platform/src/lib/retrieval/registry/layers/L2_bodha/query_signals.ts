@@ -65,7 +65,7 @@ import {
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
-import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -254,7 +254,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
   required_inputs: ['chart_id'],
 
   input_schema: {
-    build_id: { type: 'string', description: "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced." },
+    build_id: BUILD_FENCE_INPUT,
     chart_id: {
       type: 'string',
       description: 'Chart UUID (<chart_uuid>). Required.',

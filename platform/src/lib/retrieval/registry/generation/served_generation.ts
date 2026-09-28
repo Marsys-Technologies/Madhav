@@ -403,6 +403,13 @@ export function resolvedRowsBuildId(generation: ChartServedGeneration, assetId: 
  */
 export type BuildFence = string | readonly string[]
 
+/** The declared `build_id` input shared by every tool that accepts a served-generation fence, so
+ *  planned dispatch (which injects the overlay's served set) and composing callers use one shape. */
+export const BUILD_FENCE_INPUT = {
+  type: 'string',
+  description: "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+} as const
+
 /**
  * The three states a build-fence argument can resolve to (R3 boundary, native ruling
  * "explicit-empty build-fence semantics"). These are NOT interchangeable:
