@@ -943,6 +943,14 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     expect(res.status).toBe(413)
   })
 
+  it('refuses a large body that leads with certify but parses as another action (duplicate action key)', async () => {
+    mocks.verify.mockClear()
+    const body = `{"action":"certify","action":"start","scope_tuple":{"pad":"${'x'.repeat(OVER_SMALL)}"}}`
+    const res = await POST(textBody(body))
+    expect(res.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
   it('admits a large body that leads with the certify action (up to the certify limit)', async () => {
     primeTerminal(finalized())
     const res = await POST(textBody(JSON.stringify({

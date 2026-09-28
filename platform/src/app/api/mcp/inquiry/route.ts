@@ -216,6 +216,12 @@ export async function POST(request: Request) {
   if (!bounded.ok) return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
   let rawBody: unknown
   try { rawBody = JSON.parse(bounded.text) } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }
+  // The large limit is for certify only. JSON.parse honors the LAST duplicate key, so the leading-
+  // action prefix check alone cannot prove the parsed action; re-check it on what will be used.
+  if (Buffer.byteLength(bounded.text, 'utf8') > MAX_NON_CERTIFY_REQUEST_BYTES
+    && (rawBody as { action?: unknown } | null)?.action !== 'certify') {
+    return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
+  }
   const parsedBody = BodySchema.safeParse(rawBody)
   if (!parsedBody.success) return response({ ok: false, error: 'INVALID_REQUEST' }, 400)
   const body: Body = parsedBody.data

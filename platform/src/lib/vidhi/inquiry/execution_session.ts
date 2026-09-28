@@ -176,7 +176,7 @@ export class ManagedInquiryExecutionSession {
     const fingerprintSource = args.bundle === undefined
       ? { not_dispatched: true, gap_reason: args.gap_reason ?? null }
       : args.bundle
-    const observed = recordInquiryExecution(this.contract, {
+    let observed = recordInquiryExecution(this.contract, {
       item_id: args.plan_item_id,
       disposition: args.disposition,
       evidence_refs: [`managed:${stableFingerprint(fingerprintSource)}`],
@@ -185,6 +185,17 @@ export class ManagedInquiryExecutionSession {
       ...(args.request_position_path ? { request_position_path: args.request_position_path } : {}),
       ...(args.evidence_frontier?.length ? { evidence_frontier: args.evidence_frontier } : {}),
     })
+    if (args.bundle === undefined) {
+      // A never-dispatched item is terminal. recordInquiryExecution re-readies a failed item for
+      // retry while iterations remain, but retrying something that was never authorized would
+      // strand the lifecycle (finalizeWhenNoReady refuses while any item is ready).
+      observed = {
+        ...observed,
+        plan_items: observed.plan_items.map((item) => item.item_id === args.plan_item_id
+          ? { ...item, state: 'observed' as const }
+          : item),
+      }
+    }
     const nextHash = `managed:${stableFingerprint(randomUUID())}`
     await commitInquiryObservation({
       row: this.row,
