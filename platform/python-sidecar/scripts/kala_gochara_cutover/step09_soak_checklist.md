@@ -17,6 +17,14 @@ If **any** of the following holds at any of the three integrity evaluations
 `step08_flip.py --reverse` **immediately**, without waiting for the soak to
 complete and without further authorization:
 
+0. **Served-surface provenance (F-0, ADK-0027 precondition 1 — added
+   2026-09-29):** within minutes of the flip, a read-only served-windows
+   query must return `'4.x'` rows carrying the `'4.x'` manifest provenance
+   (not v1 provenance, not the wrong coverage path). If the served surface
+   does not show the flipped generation honestly, execute `--reverse`
+   immediately — this is exactly the live hazard that forced the 2026-09-28
+   reversal: deployed serving code without a `'4.0'` branch served `'4.0'`
+   rows with false v1 provenance.
 1. Any integrity conjunct (a)–(k) of `ka_gochara` `integrity_check_sql` is
    RED at any evaluation.
 2. Cockpit count ≠ `count_sql` (any drift between display and relation).

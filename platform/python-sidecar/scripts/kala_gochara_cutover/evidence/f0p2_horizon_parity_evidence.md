@@ -130,3 +130,33 @@ fresh (same commands, same label '4.1', same horizon). The chart-2 '4.0'
 clear rehearsal was consumed by the container loss and will be re-run after
 rebuild if needed for the record (it is GREEN on record above; the
 production-queued operation is unchanged).
+
+## Second interruption + root-cause assessment + mitigation (2026-09-29)
+
+The relaunched pair died again at 2 h 20 m wall, both processes SIGKILLed
+(exit −1, empty stderr) in the same instant; the container survived. System
+log shows CPUs coming back online (`arm_cpu_init(): cpu N online`) at that
+moment — the machine went through a **sleep/wake cycle** and the pair was
+killed in that window (first incident also coincided with a manual interrupt
+of the harness session). Contributing factor, measured in code:
+`step06_enumerate_episodes.py` accumulates ALL episodes in one in-memory
+list (`episodes.extend(eps)` per body, dedupe + `json.dump(indent=2)` at the
+end). At century scale that is ~13.5M episode dicts per chart (10× the
+decade run's 1.35M) — an estimated 20–30 GB RSS per process; two concurrent
+processes under sleep-transition memory pressure is a plausible kill vector.
+The decade-scale production run never faced this (1.35M episodes ≈ 33 min).
+
+**Mitigation (no semantics change):** enumerations now run **one chart at a
+time**, detached from the harness process tree (`caffeinate -i nohup … &
+disown`), so sleep/wake or session interrupts do not propagate. Per-body
+chunked enumeration was considered and REJECTED without a ruling: dedupe is
+provably body-local, but any enumerator change is reviewed code
+(K3/O-2-verified application set) and would require re-verification;
+sequential single-chart runs keep the byte-identical reviewed code path.
+Cost: ~11 h total instead of ~5.5 h. If the single-chart run also dies on
+memory, the fallback is a `--bodies` flag + per-body incremental payload
+writes, escalated for re-verification BEFORE use (PRAMĀṆIN), never silently.
+
+Chart 482012f1 enumeration relaunched detached (pid 77985) at 2026-09-29
+~04:55 IST; chart 1c826d5a queued after it. RSS to be sampled during the
+run.
