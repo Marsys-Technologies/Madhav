@@ -33,16 +33,29 @@ describe('user CLI routes', () => {
     expect(body.clis[1].models[0].modelId).toBeNull()
   })
 
-  it('masks a stale reachable catalog for a detect-only CLI', async () => {
+  it('normalizes the raw PostgreSQL timestamptz string returned by the shared DB parser', async () => {
     mocks.list.mockResolvedValueOnce({ connections: [], models: [], configurations: [], roles: [], defaultChoice: null,
-      clis: [{ cli_id: 'codex', granted_at: new Date(), revoked_at: null, detected_product: 'Codex CLI',
-        detected_version: '0.155.1', validation_state: 'reachable', last_checked_at: new Date('2026-09-27T00:00:00Z') }],
-      cliModels: [{ cli_id: 'codex', model_id: '__madhav_builtin_default__', display_name: 'Built-in default',
+      clis: [{ cli_id: 'codex', granted_at: '2026-09-28 06:57:37.901441+00', revoked_at: null,
+        detected_product: 'Codex CLI', detected_version: '0.155.1', validation_state: 'reachable',
+        last_checked_at: '2026-09-28 06:58:02.621422+00' }],
+      cliModels: [],
+    })
+
+    const body = await (await route.GET()).json()
+    expect(body.clis[0].lastCheckedAt).toBe('2026-09-28T06:58:02.621Z')
+  })
+
+  it('projects a validated Kimi subscription catalog now that its adapter is executable', async () => {
+    mocks.list.mockResolvedValueOnce({ connections: [], models: [], configurations: [], roles: [], defaultChoice: null,
+      clis: [{ cli_id: 'kimi_code', granted_at: new Date(), revoked_at: null, detected_product: 'Kimi Code',
+        detected_version: '2.0.2', validation_state: 'reachable', last_checked_at: new Date('2026-09-27T00:00:00Z') }],
+      cliModels: [{ cli_id: 'kimi_code', model_id: '__madhav_builtin_default__', display_name: 'Built-in default',
         compatible_roles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supports_tools: false,
         supports_structured_output: true, available: true, is_builtin_default: true }],
     })
     const body = await (await route.GET()).json()
-    expect(body.clis[0]).toMatchObject({ cliId: 'codex', state: 'needs_attention', models: [] })
+    expect(body.clis[0]).toMatchObject({ cliId: 'kimi_code', state: 'reachable',
+      models: [expect.objectContaining({ modelId: null, isBuiltinDefault: true })] })
   })
 
   it('uses active-user auth, closed IDs, request cancellation, and the shared validation admission', async () => {

@@ -2,6 +2,7 @@ import { chmod, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AiConsoleError } from '../../errors'
 import type { CliDefinition } from '../registry'
 const authorization = vi.hoisted(() => ({ invoke: vi.fn() }))
 const synchronousFileReads = vi.hoisted(() => ({ reject: false, calls: 0 }))
@@ -65,12 +66,52 @@ describe('governed CLI runner', () => {
     await expect(readFile(value.cwd)).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
+  it('sends Antigravity prompts as stream JSON over stdin instead of argv', async () => {
+    const { definition } = await fixture(`
+      let input=''; process.stdin.on('data', c => input += c); process.stdin.on('end', () => {
+        const event=JSON.parse(input); process.stdout.write(JSON.stringify({event:'result',result:{
+          status:'SUCCESS',response:JSON.stringify({event,argv:process.argv.slice(2)})}}))
+      })`)
+    const antigravity = { ...definition, id: 'gemini_antigravity' as const,
+      execution: { args: ['--input-format', 'stream-json'], modelFlag: ['--model'],
+        structuredSchemaFlag: ['--json-schema'], outputFormat: 'antigravity_stream_json' as const,
+        transport: 'antigravity_stream_json' as const } }
+    const runner = createCliRunner({ registry: { gemini_antigravity: antigravity } })
+    const result = await runner.runProbeValidation('alice', 'gemini_antigravity', 'private prompt')
+    const envelope = JSON.parse(JSON.parse(result.stdout).result.response)
+    expect(envelope.event).toEqual({ event: 'user', message: { content: 'private prompt' } })
+    expect(envelope.argv).toEqual(['--input-format', 'stream-json'])
+    const identity = await runner.inspectInstallation('gemini_antigravity')
+    await runner.confirmValidation('gemini_antigravity', identity, '1.0.0', [null])
+    const generated = await runner.runExecution('alice', 'gemini_antigravity', {
+      modelId: null, stdin: 'structured prompt', responseSchema: { type: 'object' },
+    })
+    const generatedEnvelope = JSON.parse(JSON.parse(generated.stdout).result.response)
+    expect(generatedEnvelope.argv).toEqual([
+      '--input-format', 'stream-json', '--json-schema', '{"type":"object"}',
+    ])
+  })
+
   it('discards successful auth-status output at the runner boundary', async () => {
     const { definition } = await fixture('process.stdout.write("private@example.com")')
     const result = await createCliRunner({ registry: { codex: definition } })
       .runAuthValidation('alice', 'codex')
     expect(result).toEqual({ stdout: '', exitCode: 0, signal: null })
     expect(JSON.stringify(result)).not.toContain('private@example.com')
+  })
+
+  it('sanitizes model-catalog output inside the runner boundary', async () => {
+    const catalog = JSON.stringify({
+      providers: { 'managed:kimi-code': { type: 'kimi', apiKey: 'private-token' } },
+      models: { 'kimi-code/k3': { provider: 'managed:kimi-code', model: 'k3', displayName: 'K3' } },
+    })
+    const { definition } = await fixture(`process.stdout.write(${JSON.stringify(catalog)})`)
+    const kimi = { ...definition, id: 'kimi_code' as const,
+      modelCatalog: { args: ['provider', 'list', '--json'], format: 'kimi_provider_json' as const } }
+    const result = await createCliRunner({ registry: { kimi_code: kimi } })
+      .runModelCatalogValidation('alice', 'kimi_code')
+    expect(result).toEqual([{ modelId: 'kimi-code/k3', displayName: 'K3' }])
+    expect(JSON.stringify(result)).not.toContain('private-token')
   })
 
   it('rejects missing, world-writable, unsafe-parent, and escaping-symlink executables', async () => {
@@ -110,6 +151,18 @@ describe('governed CLI runner', () => {
     await expect(readFile(marker)).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
+  it('fails closed before inspecting or spawning CLIs in production unless the host opt-in is explicit', async () => {
+    const { root, definition } = await fixture(`require('node:fs').writeFileSync(process.argv[2],'invoked')`)
+    const marker = join(root, 'production-invoked.txt')
+    const production = { ...definition, versionArgs: [marker] }
+    const runner = createCliRunner({ registry: { codex: production }, environment: {
+      ...process.env, NODE_ENV: 'production', MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED: 'false',
+    } })
+    await expect(runner.inspectInstallation('codex')).rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    await expect(runner.runVersionValidation('alice', 'codex')).rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    await expect(readFile(marker)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
   it('caps multibyte stdout and never returns stderr', async () => {
     const { definition } = await fixture('process.stderr.write("raw-secret"); process.stdout.write("💥".repeat(20))')
     const runner = createCliRunner({ registry: { codex: definition }, limits: { stdoutBytes: 20, stderrBytes: 8 } })
@@ -123,7 +176,7 @@ describe('governed CLI runner', () => {
     const { definition } = await fixture(`process.stdout.write(${JSON.stringify(envelope)})`)
     const runner = createCliRunner({ registry: { codex: definition } })
     const identity = await runner.inspectInstallation('codex')
-    await runner.confirmValidation('codex', identity, '1.0.0')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
 
     await expect(runner.runExecution('alice', 'codex', {
       modelId: null, stdin: '', maxOutputTokens: 1,
@@ -168,10 +221,68 @@ describe('governed CLI runner', () => {
   it('rejects non-catalog model IDs and oversized stdin before spawning', async () => {
     const { definition } = await fixture('process.stdout.write("spawned")')
     const runner = createCliRunner({ registry: { codex: definition }, limits: { stdinBytes: 8 } })
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
     await expect(runner.runExecution('alice', 'codex', { modelId: 'invented', stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
     await expect(runner.runProbeValidation('alice', 'codex', '123456789'))
       .rejects.toMatchObject({ code: 'AI_CLI_OUTPUT_LIMIT' })
+  })
+
+  it('executes only concrete model IDs sealed into the successful validation', async () => {
+    const { definition } = await fixture('process.stdout.write(JSON.stringify(process.argv.slice(2)))')
+    const runner = createCliRunner({ registry: { codex: definition } })
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null, 'approved-model'])
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'approved-model', stdin: '' }))
+      .resolves.toMatchObject({ stdout: '["run","-m","approved-model"]' })
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'unapproved-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+  })
+
+  it('runs Kimi over ACP in plan mode, with no MCP servers, and denies tool permission', async () => {
+    const { definition } = await fixture(`
+      const readline=require('node:readline'); const rl=readline.createInterface({input:process.stdin});
+      let promptRequest; const seen={argv:process.argv.slice(2)};
+      const send=value=>process.stdout.write(JSON.stringify(value)+'\\n');
+      rl.on('line', line=>{ const message=JSON.parse(line);
+        if(message.method==='initialize') send({jsonrpc:'2.0',id:message.id,result:{protocolVersion:1,
+          agentCapabilities:{},agentInfo:{name:'Fake Kimi',version:'2.0.2'}}});
+        else if(message.method==='session/new') { seen.cwd=message.params.cwd; seen.mcp=message.params.mcpServers;
+          send({jsonrpc:'2.0',id:message.id,result:{sessionId:'safe-session',configOptions:[
+            {type:'select',id:'model',currentValue:'kimi-code/k3',options:[{value:'kimi-code/k3',name:'K3'}]},
+            {type:'select',id:'mode',currentValue:'default',options:[{value:'plan',name:'Plan'}]}]}}); }
+        else if(message.method==='session/set_config_option') { seen[message.params.configId]=message.params.value;
+          send({jsonrpc:'2.0',id:message.id,result:{configOptions:[]}}); }
+        else if(message.method==='session/prompt') { promptRequest=message; seen.prompt=message.params.prompt;
+          send({jsonrpc:'2.0',id:99,method:'session/request_permission',params:{sessionId:'safe-session',
+            options:[{optionId:'allow_once',name:'Allow once',kind:'allow_once'}]}}); }
+        else if(message.id===99) { seen.permission=message.result;
+          send({jsonrpc:'2.0',method:'session/update',params:{sessionId:'safe-session',update:{
+            sessionUpdate:'agent_message_chunk',content:{type:'text',text:JSON.stringify(seen)}}}});
+          send({jsonrpc:'2.0',id:promptRequest.id,result:{stopReason:'end_turn'}}); }
+      });`)
+    const kimi = { ...definition, id: 'kimi_code' as const,
+      execution: { args: ['acp'], modelFlag: [], outputFormat: 'kimi_acp_json' as const,
+        transport: 'kimi_acp' as const } }
+    const runner = createCliRunner({ registry: { kimi_code: kimi } })
+    const probe = await runner.runProbeValidation('alice', 'kimi_code', 'probe prompt')
+    expect(JSON.parse(probe.stdout).text).toContain('probe prompt')
+    const identity = await runner.inspectInstallation('kimi_code')
+    await runner.confirmValidation('kimi_code', identity, '1.0.0', [null, 'kimi-code/k3'])
+
+    const result = await runner.runExecution('alice', 'kimi_code', {
+      modelId: 'kimi-code/k3', stdin: 'private prompt',
+    })
+    const normalized = JSON.parse(result.stdout)
+    const seen = JSON.parse(normalized.text)
+    expect(seen.argv).toEqual(['acp'])
+    expect(seen.mcp).toEqual([])
+    expect(seen.mode).toBe('plan')
+    expect(seen.model).toBe('kimi-code/k3')
+    expect(seen.prompt).toEqual([{ type: 'text', text: 'private prompt' }])
+    expect(seen.permission).toEqual({ outcome: { outcome: 'cancelled' } })
+    expect(seen.cwd).toMatch(/madhav-ai-cli-/)
   })
 
   it('reassembles fragmented stdout and maps nonzero exit or signal without exposing stderr', async () => {
@@ -196,7 +307,7 @@ describe('governed CLI runner', () => {
     const { executable, definition } = await fixture('process.stdout.write("original")')
     const runner = createCliRunner({ registry: { codex: definition } })
     const identity = await runner.inspectInstallation('codex')
-    await runner.confirmValidation('codex', identity, '1.0.0')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
     await writeFile(executable, '#!/usr/bin/env node\nprocess.stdout.write("swapped")')
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
@@ -208,7 +319,7 @@ describe('governed CLI runner', () => {
     synchronousFileReads.reject = true
     const identity = await runner.inspectInstallation('codex')
     expect(identity.entrypoint.sha256).toMatch(/^[a-f0-9]{64}$/)
-    await runner.confirmValidation('codex', identity, '1.0.0')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
     await runner.inspectInstallation('codex')
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .resolves.toMatchObject({ stdout: 'ok' })
@@ -224,7 +335,7 @@ describe('governed CLI runner', () => {
       allowedRealpathPrefixes: [`${await realpath(root)}/`] } }
     const runner = createCliRunner({ registry: { codex: interpreted } })
     const identity = await runner.inspectInstallation('codex')
-    await runner.confirmValidation('codex', identity, '1.0.0')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
     await writeFile(interpreter, '#!/usr/bin/env node\nprocess.stdout.write("swapped-launcher")')
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
@@ -236,8 +347,37 @@ describe('governed CLI runner', () => {
     await expect(runner.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
     const identity = await runner.inspectInstallation('codex')
-    await expect(runner.confirmValidation('codex', identity, '2.0.0'))
+    await expect(runner.confirmValidation('codex', identity, '2.0.0', [null]))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+  })
+
+  it('rehydrates executable identity and the model allowlist before first execution after restart', async () => {
+    const { definition } = await fixture('process.stdout.write(JSON.stringify(process.argv.slice(2)))')
+    const revalidate = vi.fn(async (_userId, cliId, _signal, target) => {
+      const identity = await target.inspectInstallation(cliId)
+      await target.confirmValidation(cliId, identity, '1.0.0', [null, 'approved-model'])
+    })
+    const runner = createCliRunner({ registry: { codex: definition }, revalidate })
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'approved-model', stdin: '' }))
+      .resolves.toMatchObject({ stdout: '["run","-m","approved-model"]' })
+    expect(revalidate).toHaveBeenCalledOnce()
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'approved-model', stdin: '' }))
+      .resolves.toMatchObject({ stdout: '["run","-m","approved-model"]' })
+    expect(revalidate).toHaveBeenCalledOnce()
+  })
+
+  it('preserves revoked permission and caller abort errors during restart revalidation', async () => {
+    const { definition } = await fixture('process.stdout.write("must-not-run")')
+    const revoked = createCliRunner({ registry: { codex: definition },
+      revalidate: vi.fn().mockRejectedValue(new AiConsoleError('AI_CLI_NOT_GRANTED')) })
+    await expect(revoked.runExecution('alice', 'codex', { modelId: null, stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+
+    const controller = new AbortController(); controller.abort()
+    const aborted = createCliRunner({ registry: { codex: definition },
+      revalidate: vi.fn().mockRejectedValue(new AiConsoleError('AI_EXECUTION_FAILED')) })
+    await expect(aborted.runExecution('alice', 'codex', { modelId: null, stdin: '', signal: controller.signal }))
+      .rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
   })
 
   it('honors abort before admission and while queued behind the per-CLI cap', async () => {
@@ -264,7 +404,8 @@ describe('governed CLI runner', () => {
     const descendantDefinition = { ...definition, execution: { ...definition.execution!, args: [pidFile] } }
     const controller = new AbortController()
     const runner = createCliRunner({ registry: { codex: descendantDefinition }, limits: { killGraceMs: 20 } })
-    const identity = await runner.inspectInstallation('codex'); await runner.confirmValidation('codex', identity, '1.0.0')
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
     const running = runner.runExecution('alice', 'codex', { modelId: null, stdin: '', signal: controller.signal })
     let childPid = 0
     // Parallel Vitest workers can delay process startup on a busy host; give

@@ -46,7 +46,7 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
       return { cliId: id, productName: definition.productName, state: write.state, modelCount: 0,
         errorCode: write.errorCode }
     }
-    if (!definition.execution || !definition.authStatusArgs) {
+    if (!definition.execution || (!definition.authStatusArgs && !definition.modelCatalog)) {
       try { await runner.inspectInstallation(id) }
       catch (error) {
         const safe = normalizeAiError(error, { source: 'cli' })
@@ -82,9 +82,14 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
       return { cliId: id, productName: definition.productName, state, modelCount: 0, errorCode: safe.code }
     }
 
+    let discoveredModels: Awaited<ReturnType<CliRunner['runModelCatalogValidation']>> = []
     try {
-      // Output may contain account identity. Success/failure is the only retained fact.
-      await runner.runAuthValidation(userId, id, signal)
+      if (definition.modelCatalog) {
+        discoveredModels = await runner.runModelCatalogValidation(userId, id, signal)
+      } else {
+        // Output may contain account identity. Success/failure is the only retained fact.
+        await runner.runAuthValidation(userId, id, signal)
+      }
     } catch (error) {
       if (superseded) throw error
       if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
@@ -103,9 +108,13 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
       const model = { modelId: CLI_BUILTIN_MODEL_DB_ID, displayName: 'Built-in default',
         compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
         supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: true }
+      const models = [model, ...discoveredModels.map(discovered => ({ ...discovered,
+        compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
+        supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: false }))]
       const completedEpoch = await publish({ state: 'reachable', detectedProduct: definition.productName,
-        detectedVersion: version, models: [model] })
-      try { await runner.confirmValidation(id, installationIdentity, version) }
+        detectedVersion: version, models })
+      try { await runner.confirmValidation(id, installationIdentity, version,
+        [null, ...discoveredModels.map(discovered => discovered.modelId)]) }
       catch {
         await publish({ state: 'needs_attention', detectedProduct: definition.productName,
           detectedVersion: version, errorCode: 'AI_CLI_UNREACHABLE' }, completedEpoch)
@@ -113,7 +122,7 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
           detectedVersion: version, modelCount: 0, errorCode: 'AI_CLI_UNREACHABLE' }
       }
       return { cliId: id, productName: definition.productName, state: 'reachable',
-        detectedVersion: version, modelCount: 1 }
+        detectedVersion: version, modelCount: models.length }
     } catch (error) {
       if (superseded) throw error
       if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
@@ -144,6 +153,13 @@ function cliErrorCode(code: string): 'AI_CLI_NOT_INSTALLED' | 'AI_CLI_AUTH_UNAVA
 const UsageSchema = z.object({ input_tokens: z.number().int().nonnegative().optional(),
   output_tokens: z.number().int().nonnegative().optional() }).passthrough()
 export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
+  if (format === 'kimi_acp_json') {
+    let raw: unknown
+    try { raw = JSON.parse(stdout) } catch { throw new AiConsoleError('AI_EXECUTION_FAILED') }
+    const parsed = z.object({ text: z.string().min(1) }).strict().safeParse(raw)
+    if (!parsed.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    return { text: parsed.data.text, usage: { inputTokens: null, outputTokens: null, totalTokens: null } }
+  }
   if (format === 'claude_json') {
     let raw: unknown
     try { raw = JSON.parse(stdout) } catch { throw new AiConsoleError('AI_EXECUTION_FAILED') }
@@ -156,6 +172,47 @@ export function validateMachineOutput(format: CliOutputFormat, stdout: string) {
       usage: { inputTokens, outputTokens,
         totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens },
       reportedOutputTokens: parsed.data.usage?.output_tokens }
+  }
+
+  if (format === 'antigravity_stream_json') {
+    const lines = stdout.split(/\r?\n/).filter(Boolean)
+    let initialized = false
+    let completed = false
+    let text = ''
+    let inputTokens: number | null = null
+    let outputTokens: number | null = null
+    let totalTokens: number | null = null
+    for (const line of lines) {
+      let raw: unknown
+      try { raw = JSON.parse(line) } catch { throw new AiConsoleError('AI_EXECUTION_FAILED') }
+      const envelope = z.object({ event: z.enum(['init', 'step_update', 'result']) }).passthrough().safeParse(raw)
+      if (!envelope.success || completed) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      if (envelope.data.event === 'init') {
+        const init = z.object({ init: z.object({ cwd: z.string(), permission_mode: z.string(),
+          tools: z.array(z.unknown()) }).passthrough() }).passthrough().safeParse(raw)
+        if (!init.success || initialized) throw new AiConsoleError('AI_EXECUTION_FAILED')
+        initialized = true
+      } else if (envelope.data.event === 'step_update') {
+        const step = z.object({ step_update: z.object({
+          step_type: z.enum(['user_input', 'agent_response']), state: z.string(),
+        }).passthrough() }).passthrough().safeParse(raw)
+        if (!initialized || !step.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+      } else {
+        const result = z.object({ result: z.object({ status: z.literal('SUCCESS'), response: z.string().min(1),
+          usage: UsageSchema.extend({ total_tokens: z.number().int().nonnegative().optional() }).optional(),
+        }).passthrough() }).passthrough().safeParse(raw)
+        if (!initialized || !result.success) throw new AiConsoleError('AI_EXECUTION_FAILED')
+        text = result.data.result.response
+        inputTokens = result.data.result.usage?.input_tokens ?? null
+        outputTokens = result.data.result.usage?.output_tokens ?? null
+        totalTokens = result.data.result.usage?.total_tokens
+          ?? (inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens)
+        completed = true
+      }
+    }
+    if (!initialized || !completed || !text) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    return { text, usage: { inputTokens, outputTokens, totalTokens },
+      reportedOutputTokens: outputTokens ?? undefined }
   }
 
   let text = ''

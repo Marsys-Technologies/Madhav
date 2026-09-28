@@ -6,6 +6,7 @@ import type { CliRunner } from '../../cli/runner'
 import { StructuredOutputValidationError } from '../structured-output-error'
 import { encode } from 'gpt-tokenizer'
 import { safeExecutionFailureFacts } from '../execution-facts'
+import { CLI_REGISTRY } from '../../cli/registry'
 
 function execution(overrides: Partial<ResolvedRoleExecution> = {}): ResolvedRoleExecution {
   return {
@@ -19,8 +20,9 @@ const request = { systemPrompt: 'system', messages: [{ role: 'user' as const, co
 describe('CLI role executor', () => {
   it('rejects a registered detect-only CLI as unreachable', () => {
     expect(() => createCliRoleExecutor(execution({ target: {
-      kind: 'local_cli', cliId: 'codex', modelId: null,
-    } }))).toThrowError(expect.objectContaining({ code: 'AI_CLI_UNREACHABLE' }))
+      kind: 'local_cli', cliId: 'kimi_code', modelId: null,
+    } }), { registry: { kimi_code: { ...CLI_REGISTRY.kimi_code, execution: undefined } } }))
+      .toThrowError(expect.objectContaining({ code: 'AI_CLI_UNREACHABLE' }))
   })
 
   it('is selected by the common executor factory', () => {

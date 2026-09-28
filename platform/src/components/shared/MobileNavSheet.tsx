@@ -22,6 +22,7 @@ import { Sigil } from '@/components/brand/Sigil'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
   normalizeRole,
+  isNavItemActive,
   visibleNavItems,
   visibleInformationNavItems,
 } from '@/components/nav/role-gates'
@@ -112,10 +113,7 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
           </Link>
           {visibleItems.map(({ key, href, label }) => {
             const Icon = NAV_ICONS[key]
-            const isActive =
-              href === '/dashboard'
-                ? pathname === '/dashboard' || pathname === '/'
-                : pathname.startsWith(href)
+            const isActive = isNavItemActive(key, href, pathname)
             return (
               <Link
                 key={key}
