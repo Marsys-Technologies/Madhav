@@ -1,7 +1,7 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_FOLLOWUP_FENCE_AND_SUCCESSOR_ENVELOPE
-version: 1.2
-status: LOCAL_SOURCE_COMPLETE_AWAITING_NATIVE_PUBLICATION_AUTHORIZATION
+version: 1.3
+status: ACTIVE_REMEDIATION_BEFORE_CONDITIONAL_PUBLICATION
 date: 2026-09-28
 native_authority: Native source-execution authorization for the complete follow-up campaign (both packets),
   2026-09-28. Local only: no push, PR, merge, deployment, production, database, migration, rebuild or live collection.
@@ -16,9 +16,9 @@ lineage_record:
 base_main_sha: 205a62618182a73f45a9bee34f8ffff8cdce8892
 worktree: /Users/Dev/.codex/worktrees/purna-followup-v1/Madhav
 branch: codex/purna-followup-fence-and-successor-envelope
-source_execution_authorized: false         # the local source execution is complete; nothing further is authorized without a fresh Native ruling
-push_authorized: false
-pr_change_authorized: false
+source_execution_authorized: true          # reopened by the Native's remediation ruling (2026-09-28): local source, ordinary merge of main, conditional push/PR/CI repair
+push_authorized: conditional      # only after every publication condition in the remediation ruling is met
+pr_change_authorized: conditional
 merge_authorized: false
 production_authorized: false
 database_write_authorized: false
@@ -260,3 +260,18 @@ items are recorded above. Untouched: `kala_*`/`ka_*`/`l3_*`, the frozen orchestr
 
 **Next authority required.** A fresh explicit Native authorization to publish this follow-up (push the branch and
 open the PR, plus CI repair and independent review); merging is a separate later authorization.
+
+
+## Reopened — remediation before conditional publication (2026-09-28)
+
+The closeout record above declared `LOCAL_SOURCE_COMPLETE_AWAITING_NATIVE_PUBLICATION_AUTHORIZATION` at
+HEAD `3e15dbfa3` while carrying unresolved MEDIUM findings. That claim was premature: this brief's own
+definition of done forbids an unresolved HIGH or MEDIUM finding. The Native reopened the work to (1) make the
+successor entitlement server-authoritative (the scope tuple's entitlement is caller/planner supplied on raw MCP
+and cannot be a privilege detector), (2) replace the constant `cost_exhausted: false` on Portal and raw with one
+deterministic, persisted, shared successor cost model, (3) terminalize every raw-door refusal, and (4) resolve
+or regrade the remaining LOW findings. The earlier record is preserved unedited; it is superseded, not erased.
+Main also advanced (PRs #2746, #2747; zero path overlap, reconfirmed) and is integrated by an ordinary merge.
+Publication (push + one PR into main, CI repair) is authorized only after every condition in the ruling passes;
+merge, deployment, production, database, migration, rebuild, live collection and candidate validation remain
+prohibited.
