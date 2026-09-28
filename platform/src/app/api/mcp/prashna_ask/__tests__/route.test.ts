@@ -600,7 +600,10 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(mockSynthesizeReading.mock.calls.at(-1)?.[0]?.citeRegisterFindings).toBe(true)
   })
 
-  it('continues into an evidence-admitted successor using only request-authorized tools, and carries the chain', async () => {
+  // The two "legacy" tests below drive a MOCKED session whose contract carries no `successor` receipt,
+  // so they pin the pre-envelope tool-set path only. The envelope path (admit, refuse, recovery, no
+  // bypass) is proven against the real compiler and lifecycle in route.successor_envelope.test.ts.
+  it('legacy (envelope-less) successor contract: continues using only request-authorized tools, and carries the chain', async () => {
     const jobId = 'aaaaaaaa-1111-4000-8000-000000000012'
     const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000012'
     const scope = {
@@ -664,7 +667,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
   })
 
-  it('never dispatches an evidence-admitted successor item outside the request-authorized tool set', async () => {
+  it('legacy (envelope-less) successor contract: never dispatches an item outside the request-authorized tool set', async () => {
     const jobId = 'aaaaaaaa-1111-4000-8000-000000000013'
     const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000013'
     const scope = {

@@ -10,6 +10,7 @@ import {
   type InquiryPaginationReceipt,
 } from './index'
 import type { DiscoveredEvidenceFrontier } from './evidence_frontier'
+import { MAX_SUCCESSOR_DEPTH, type SuccessorAdmissionDecision, type SuccessorAdmissionLiveContext } from './authorization_envelope'
 import {
   commitInquiryObservation,
   commitInquiryFinalization,
@@ -24,7 +25,8 @@ import {
 } from './lifecycle_store'
 
 const EVIDENCE_SUCCESSOR_REASON = 'evidence-admitted successor issued'
-const MAX_MANAGED_SUCCESSOR_CHAIN = 4
+// One ceiling for the whole lineage, shared with the authorization envelope's depth limit.
+const MAX_MANAGED_SUCCESSOR_CHAIN = MAX_SUCCESSOR_DEPTH
 
 /**
  * The one successor identity a managed parent can ever have. Deterministic, so a worker that
@@ -172,6 +174,8 @@ export class ManagedInquiryExecutionSession {
     request_position_path?: string
     /** Capabilities this served observation calls for (RC-5.4); admitted only via a successor. */
     evidence_frontier?: readonly DiscoveredEvidenceFrontier[]
+    /** The dispatch-time envelope decision for a successor item (admit or refuse); receipted with the observation. */
+    successor_dispatch?: SuccessorAdmissionDecision
   }): Promise<void> {
     const fingerprintSource = args.bundle === undefined
       ? { not_dispatched: true, gap_reason: args.gap_reason ?? null }
@@ -184,6 +188,7 @@ export class ManagedInquiryExecutionSession {
       pagination: args.pagination,
       ...(args.request_position_path ? { request_position_path: args.request_position_path } : {}),
       ...(args.evidence_frontier?.length ? { evidence_frontier: args.evidence_frontier } : {}),
+      ...(args.successor_dispatch ? { successor_dispatch: args.successor_dispatch } : {}),
     })
     if (args.bundle === undefined) {
       // A never-dispatched item is terminal. recordInquiryExecution re-readies a failed item for
@@ -213,7 +218,11 @@ export class ManagedInquiryExecutionSession {
         pagination: args.pagination,
         // Retaining the accepted bundle is what lets a recovered worker
         // synthesize with prior evidence instead of re-dispatching it.
-        payload: { tool_name: args.tool_name, bundle: args.bundle },
+        payload: {
+          tool_name: args.tool_name,
+          bundle: args.bundle,
+          ...(args.successor_dispatch ? { admission: args.successor_dispatch } : {}),
+        },
       },
     })
     this.contract = observed
@@ -236,6 +245,8 @@ export class ManagedInquiryExecutionSession {
   async continueWithEvidenceSuccessor(args: {
     snapshot: CapabilityKnowledgeSnapshot
     overlay: ChartCapabilityOverlay
+    /** The door's server-held state for the shared authorization envelope; omitting it refuses every item. */
+    admission?: SuccessorAdmissionLiveContext
   }): Promise<boolean> {
     if (this.row.status !== 'INCOMPLETE' || this.row.current_jti_hash === 'terminal') return false
     if (this.contract.plan_items.some((item) => item.state === 'ready')) return false
@@ -245,7 +256,7 @@ export class ManagedInquiryExecutionSession {
       parentFinal = closeInquiryForEvidenceSuccessor(this.contract)
       successor = compileInquirySuccessorContract({
         snapshot: args.snapshot, overlay: args.overlay, parent_inquiry_id: this.row.inquiry_id,
-        parent: parentFinal, cross_capability_only: true,
+        parent: parentFinal, cross_capability_only: true, ...(args.admission ? { admission: args.admission } : {}),
       })
     } catch {
       return false
