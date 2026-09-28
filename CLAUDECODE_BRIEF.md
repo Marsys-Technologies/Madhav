@@ -1,7 +1,7 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_FOLLOWUP_FENCE_AND_SUCCESSOR_ENVELOPE
-version: 1.3
-status: ACTIVE_REMEDIATION_BEFORE_CONDITIONAL_PUBLICATION
+version: 1.4
+status: LOCAL_SOURCE_COMPLETE_PUBLICATION_AUTHORIZED
 date: 2026-09-28
 native_authority: Native source-execution authorization for the complete follow-up campaign (both packets),
   2026-09-28. Local only: no push, PR, merge, deployment, production, database, migration, rebuild or live collection.
@@ -17,8 +17,8 @@ base_main_sha: 205a62618182a73f45a9bee34f8ffff8cdce8892
 worktree: /Users/Dev/.codex/worktrees/purna-followup-v1/Madhav
 branch: codex/purna-followup-fence-and-successor-envelope
 source_execution_authorized: true          # reopened by the Native's remediation ruling (2026-09-28): local source, ordinary merge of main, conditional push/PR/CI repair
-push_authorized: conditional      # only after every publication condition in the remediation ruling is met
-pr_change_authorized: conditional
+push_authorized: true             # conditional publication authority: every publication condition passed (see the remediation closeout)
+pr_change_authorized: true
 merge_authorized: false
 production_authorized: false
 database_write_authorized: false
@@ -275,3 +275,51 @@ Main also advanced (PRs #2746, #2747; zero path overlap, reconfirmed) and is int
 Publication (push + one PR into main, CI repair) is authorized only after every condition in the ruling passes;
 merge, deployment, production, database, migration, rebuild, live collection and candidate validation remain
 prohibited.
+
+
+## Remediation closeout (supersedes the earlier closeout's residual list) — `LOCAL_SOURCE_COMPLETE_PUBLICATION_AUTHORIZED`
+
+The three MEDIUM findings that reopened this brief are resolved, verified by independent review rounds, and
+covered by mutation-checked tests on the real compiler and lifecycle:
+
+1. **Entitlement is server-authoritative.** `effective_entitlement {tier, source}` is derived from the door's
+   verified chart permission (`authorizeChartAccess` / `authorizeTurn`; BYOK reads its real level from
+   `authorizeChartAccess`, it is no longer assumed): all -> native, view -> the least-privileged tier (so no
+   successor), denied/unknown/missing -> none. The scope tuple, planner, stored state and client can only narrow.
+   It is stored with its source in the envelope and every decision, bound into the authorization hash, and
+   re-derived from the live permission at dispatch (dispatch takes the minimum of live grant, stored grant and
+   scope; a malformed stored tier, including prototype keys, grants nothing).
+2. **One shared, deterministic successor cost model.** Unit: the registry dispatch unit (`SUCCESSOR_COST_UNIT`).
+   Ceiling: 12 units per lineage, clamped to the platform constant. A hash-chained `SuccessorCostLedger` on each
+   contract is appended in the same transition as the observation it pays for (every page, retry and attempt that
+   reached the tool; refusals cost nothing; an unverifiable receipt is charged as the whole budget). A
+   generation's ledger is embedded in its successor's `parent_contract`, and dispatch verifies the successor
+   receipt's own seal and parent-state hash and that every stamped dispatch has a charge, so deleting or
+   rewriting a ledger is as detectable as editing one. The request-level `cost_exhausted` input is refuse-only and
+   optional; Portal and raw no longer assert a constant.
+3. **Every successor refusal is terminal on every door.** One shared post-evaluation gate
+   (`refineSuccessorAdmission`) turns an admitted item whose tool/binding vanished, or whose arguments are
+   unauthorized (new stable code `successor_arguments_not_authorized`), into the same named, receipted, uncharged
+   refusal; refused items terminalize identically and carry no evidence ref (door-parity projection asserted on
+   all three doors). Ordinary non-successor items keep their plain 409s.
+
+Also resolved: composite `chart_id` validation (any hex UUID); the shared `BUILD_FENCE_INPUT` declaration is
+frozen; `query_planet` failed legs no longer read as empty findings; BYOK permission is read, not assumed.
+
+**Remaining LOW residuals (none blocks publication):** `BUILD_FENCE_INPUT` keeps its `string` schema type (the
+derived input contracts and acceptance lineage pin it; runtime accepts scalar or array); raw returns 401 for a
+request-level chart-permission denial before any lifecycle mutation (deliberate: a denied principal must not
+write state); a refused raw item still passes reserve -> mark-dispatched (the store's commit requires it), so a
+crash in that window is ambiguous and fail-closed rather than retriable; `args_authorized` is structurally
+guaranteed (not independently verified) on Portal and managed, and Portal's principal/owner comparison cannot
+fail (the contract is in-process); a deterministic partial composite is re-dispatched until the iteration budget
+is spent (bounded); the managed door records the capability URI as `tool_name` for an admitted successor
+(cosmetic); read-only relies on snapshot membership plus the descriptor predicate because real descriptors carry
+no positive read-only annotation; view-only principals receive no successors (intended: least privilege).
+
+**Compatibility.** Successors issued before the envelope (no parent envelope, or no recorded effective
+entitlement) fail closed; this is tested synthetically. This source has not been deployed under this follow-up.
+
+**Evidence at close** (fresh, after integrating `origin/main` at `88e639777`): `tsc` clean; snapshot and census
+current; pin-lint 0 new; full platform suite and real `next build` recorded in the PR description; CI-mode secret
+scan and branch-only gitleaks clean; candidate validation remains `NOT_RUN`.
