@@ -135,3 +135,13 @@ describe('query_planet partial source failures (generation resolved)', () => {
     expect(console.error).toHaveBeenCalled()
   })
 })
+
+describe('query_planet chart_id validation', () => {
+  it.each(['not-a-uuid', '', '1c826d5a', "482012f1-710e-4a25-994a-93821f5871aa'; DROP TABLE charts"])('rejects %j as a caller error, not a served-generation outage', async (chartId) => {
+    const { content, is_error } = await run({ chart_id: chartId })
+    expect(is_error).toBe(true)
+    expect(content['code'] === 'invalid_chart_id' || content['error'] === 'chart_id is required').toBe(true)
+    expect(mockResolve).not.toHaveBeenCalled()
+    for (const cap of LEGS) expect(cap.handler).not.toHaveBeenCalled()
+  })
+})

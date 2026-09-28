@@ -91,3 +91,12 @@ describe('splitByGenerationClass', () => {
     expect(() => splitByGenerationClass(table, ['brand_new_section'], false)).toThrow(/brand_new_section/)
   })
 })
+
+describe('shared build-fence declaration', () => {
+  it('is frozen so no descriptor can mutate the one declaration every binding shares', async () => {
+    const { BUILD_FENCE_INPUT } = await import('./served_generation')
+    expect(Object.isFrozen(BUILD_FENCE_INPUT)).toBe(true)
+    expect(() => { (BUILD_FENCE_INPUT as unknown as Record<string, unknown>)['type'] = 'array' }).toThrow()
+    expect(BUILD_FENCE_INPUT.type).toBe('string')
+  })
+})

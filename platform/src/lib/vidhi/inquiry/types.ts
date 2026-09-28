@@ -1,5 +1,5 @@
 import type { ExecutionChannel } from '../../retrieval/registry/knowledge/types'
-import type { AuthorizationEnvelope, SuccessorAdmissionDecision } from './authorization_envelope'
+import type { AuthorizationEnvelope, SuccessorAdmissionDecision, SuccessorCostLedger } from './authorization_envelope'
 
 export const INQUIRY_CONTRACT_VERSION = '1.3.0' as const
 
@@ -254,6 +254,12 @@ export interface InquiryContract {
    * bound into `execution_plan_hash`. Absent only on contracts issued before it existed.
    */
   readonly authorization_envelope?: AuthorizationEnvelope
+  /**
+   * What this generation's successor dispatches have cost so far (hash-chained; appended in the same
+   * transition as the observation each charge pays for). Execution history, not authority: the
+   * ceiling it is checked against lives in the hash-bound envelope and the platform constant.
+   */
+  readonly successor_cost_ledger?: SuccessorCostLedger
 }
 
 export interface InquiryObservation {

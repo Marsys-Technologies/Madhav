@@ -25,7 +25,8 @@ export function buildSuccessorAdmissionLive(args: {
   chart_permission: 'all' | 'view' | 'deny' | null
   /** Capabilities the request's own safety pass excluded (names or URIs). Empty for a door with no such pass. */
   excluded_capabilities?: readonly string[]
-  cost_exhausted: boolean
+  /** Door-level request cost stop (refuse-only). A door with no such cap omits it. */
+  cost_exhausted?: boolean
 }): SuccessorAdmissionLiveContext {
   const excluded = args.excluded_capabilities ?? []
   return {
@@ -40,6 +41,8 @@ export function buildSuccessorAdmissionLive(args: {
     tool_exists: (uri) => getToolByName(uri) !== undefined,
     is_capability_denied: (uri) => filterLeakedCapabilities([uri]).length === 0
       || applyCapabilityExclusion([uri], excluded).stripped.length > 0,
-    cost_exhausted: args.cost_exhausted,
+    // The unit the managed door's CostCapTracker charges: a descriptor's dispatch_units, default 1.
+    dispatch_units: (uri) => getCapability(uri)?.dispatch_units ?? 1,
+    ...(args.cost_exhausted !== undefined ? { cost_exhausted: args.cost_exhausted } : {}),
   }
 }

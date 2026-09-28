@@ -48,6 +48,13 @@ export const SUCCESSOR_ADMISSION_VERSION = 'inquiry-successor-admission-v1' as c
 export const MAX_SUCCESSOR_DEPTH = 4
 /** Evidence-admitted frontier items a whole lineage may admit. */
 export const MAX_ADMITTED_SUCCESSOR_ITEMS = 8
+/**
+ * The campaign's deterministic successor cost unit is the registry dispatch unit (the same unit the
+ * managed door's request-level CostCapTracker charges: a descriptor's `dispatch_units`, default 1).
+ * A whole lineage (every generation, every pagination page) may spend at most this many.
+ */
+export const SUCCESSOR_COST_UNIT = 'registry_dispatch_unit' as const
+export const MAX_SUCCESSOR_DISPATCH_UNITS = 12
 /** Iterations a whole lineage may spend (the compiler's own per-contract hard cap). */
 export const MAX_CHAIN_ITERATIONS = 64
 /** Undirected snapshot-edge hops within which a target counts as graph-relevant to a planned SCU. */
@@ -74,6 +81,28 @@ export type SuccessorAdmissionCode =
   | 'successor_depth_exceeded'
   | 'successor_iteration_limit_exceeded'
   | 'successor_cost_limit_exceeded'
+  | 'successor_arguments_not_authorized'
+
+/**
+ * The server-authoritative entitlement for successor authorization. It is derived from the door's
+ * own verified chart-permission result — never from a scope tuple, a planner, or a request field —
+ * and is recorded (with its source) in the envelope, in every decision, and in the authorization hash.
+ */
+export type EffectiveEntitlementTier = 'native' | 'public_disclosed' | 'none'
+export interface EffectiveEntitlement {
+  readonly tier: EffectiveEntitlementTier
+  readonly source: 'chart_permission_all' | 'chart_permission_view' | 'chart_permission_unverified'
+}
+
+/**
+ * Full (owner-equivalent) permission authorizes the native tier; view-only authorizes only the
+ * least-privileged tier; denial, absence or anything unrecognized authorizes nothing.
+ */
+export function effectiveEntitlementForPermission(permission: 'all' | 'view' | 'deny' | null | undefined): EffectiveEntitlement {
+  if (permission === 'all') return { tier: 'native', source: 'chart_permission_all' }
+  if (permission === 'view') return { tier: 'public_disclosed', source: 'chart_permission_view' }
+  return { tier: 'none', source: 'chart_permission_unverified' }
+}
 
 export interface AuthorizationEnvelopeEntry {
   readonly entry_id: string
@@ -92,6 +121,8 @@ export interface AuthorizationEnvelopeLimits {
   readonly max_successor_depth: number
   readonly max_admitted_successor_items: number
   readonly max_chain_iterations: number
+  /** Successor cost ceiling in SUCCESSOR_COST_UNIT for the whole lineage. */
+  readonly max_successor_dispatch_units: number
 }
 
 export interface AuthorizationEnvelope {
@@ -100,7 +131,10 @@ export interface AuthorizationEnvelope {
   readonly execution_channel: ExecutionChannel
   readonly presentation_transport: InquiryPresentationTransport
   readonly capability_content_hash: string
+  /** The semantic scope entitlement (classifier/caller supplied). It may only NARROW; it never grants. */
   readonly scope_entitlement: string
+  /** The server-derived authority actually granted (see EffectiveEntitlement). */
+  readonly effective_entitlement: EffectiveEntitlement
   readonly limits: AuthorizationEnvelopeLimits
   readonly entries: readonly AuthorizationEnvelopeEntry[]
   /** Hash of the envelope this one was derived from; null for the plan-time root. */
@@ -115,7 +149,14 @@ export interface SuccessorAdmissionLimitState {
   readonly max_chain_iterations: number
   readonly admitted_items: number
   readonly max_admitted_items: number
+  /** Request-level cost stop reported by the door (refuse-only input; it can never create an admission). */
   readonly cost_exhausted: boolean
+  /** The shared successor cost model: unit, lineage budget, spent, this candidate's price, what is left. */
+  readonly cost_unit: typeof SUCCESSOR_COST_UNIT
+  readonly budget_units: number
+  readonly consumed_units: number
+  readonly candidate_units: number
+  readonly remaining_units: number
 }
 
 export interface SuccessorAdmissionDecision {
@@ -136,6 +177,8 @@ export interface SuccessorAdmissionDecision {
   readonly source_scu_id: string | null
   readonly envelope_hash: string | null
   readonly envelope_entry_id: string | null
+  /** The effective (server-derived) entitlement this decision was made under, with its source. */
+  readonly entitlement: EffectiveEntitlement
   readonly limit_state: SuccessorAdmissionLimitState
   readonly decision_hash: string
 }
@@ -183,8 +226,17 @@ export interface SuccessorAdmissionLiveContext {
    * list of removed names cannot cover it.
    */
   readonly is_capability_denied: (capabilityUri: string) => boolean
-  /** The door's cost cap has already tripped. */
-  readonly cost_exhausted: boolean
+  /**
+   * The registry dispatch units one dispatch of this capability costs (the unit the managed door's
+   * request-level CostCapTracker charges). A non-positive or non-integer answer refuses on cost.
+   */
+  readonly dispatch_units: (capabilityUri: string) => number
+  /**
+   * The door's request-level cost cap has already tripped. Refuse-only: it can add a refusal but
+   * can never create an admission, and a door with no such cap simply omits it. The successor
+   * budget is enforced independently from the contract's own ledger.
+   */
+  readonly cost_exhausted?: boolean
 }
 
 /**
@@ -196,6 +248,7 @@ export interface SuccessorAdmissionLiveContext {
 const UNIVERSAL_DOMAINS: ReadonlySet<string> = new Set(['all', 'cross_domain'])
 
 const ENTITLEMENT_RANK: Readonly<Record<string, number>> = {
+  none: 0,
   native: 3,
   research: 2,
   public_disclosed: 1,
@@ -214,6 +267,93 @@ const ENVELOPE_LIMITS: AuthorizationEnvelopeLimits = {
   max_successor_depth: MAX_SUCCESSOR_DEPTH,
   max_admitted_successor_items: MAX_ADMITTED_SUCCESSOR_ITEMS,
   max_chain_iterations: MAX_CHAIN_ITERATIONS,
+  max_successor_dispatch_units: MAX_SUCCESSOR_DISPATCH_UNITS,
+}
+
+/** The lower of two tiers; anything unrecognized collapses to `none`. */
+export function lowerEntitlementTier(left: string, right: string): string {
+  const a = ENTITLEMENT_RANK[left]
+  const b = ENTITLEMENT_RANK[right]
+  if (a === undefined || b === undefined) return 'none'
+  return a <= b ? left : right
+}
+
+// ── Successor cost ledger ────────────────────────────────────────────────────────────────────
+// A lineage's spend is a hash-chained ledger carried on each contract: one entry per dispatch, appended
+// in the SAME transition as the observation it pays for (so exactly once, and a crash before that
+// commit leaves an ambiguous, fail-closed item rather than a replayable one). A generation's ledger
+// is immutable once its successor embeds it as `parent_contract`, so a new generation can never
+// reset its lineage's budget.
+export interface SuccessorCostLedgerEntry {
+  readonly seq: number
+  readonly item_id: string
+  readonly scu_id: string
+  readonly units: number
+  readonly decision_hash: string
+  readonly entry_hash: string
+}
+
+export interface SuccessorCostLedger {
+  readonly ledger_version: 'inquiry-successor-cost-ledger-v1'
+  readonly unit: typeof SUCCESSOR_COST_UNIT
+  readonly entries: readonly SuccessorCostLedgerEntry[]
+  readonly consumed_units: number
+  readonly ledger_hash: string
+}
+
+function ledgerEntryHash(previous: string, entry: Omit<SuccessorCostLedgerEntry, 'entry_hash'>): string {
+  return stableFingerprint({ previous, entry })
+}
+
+function ledgerHash(entries: readonly SuccessorCostLedgerEntry[]): string {
+  return stableFingerprint({ ledger_version: 'inquiry-successor-cost-ledger-v1', entries: entries.map((entry) => entry.entry_hash) })
+}
+
+export function appendSuccessorCharge(
+  ledger: SuccessorCostLedger | undefined,
+  charge: { item_id: string; scu_id: string; units: number; decision_hash: string },
+): SuccessorCostLedger {
+  const previous = ledger?.entries.at(-1)?.entry_hash ?? 'genesis'
+  const body = { seq: (ledger?.entries.length ?? 0) + 1, ...charge }
+  const entries = [...(ledger?.entries ?? []), { ...body, entry_hash: ledgerEntryHash(previous, body) }]
+  return {
+    ledger_version: 'inquiry-successor-cost-ledger-v1',
+    unit: SUCCESSOR_COST_UNIT,
+    entries,
+    consumed_units: entries.reduce((total, entry) => total + entry.units, 0),
+    ledger_hash: ledgerHash(entries),
+  }
+}
+
+/** Recompute the chain, the total and the hash; any edit, deletion or reorder fails. */
+export function verifySuccessorCostLedger(ledger: SuccessorCostLedger): boolean {
+  let previous = 'genesis'
+  let total = 0
+  for (const [index, entry] of ledger.entries.entries()) {
+    const { entry_hash: recorded, ...body } = entry
+    if (entry.seq !== index + 1 || !Number.isInteger(entry.units) || entry.units < 1) return false
+    if (recorded !== ledgerEntryHash(previous, body)) return false
+    previous = recorded
+    total += entry.units
+  }
+  return ledger.unit === SUCCESSOR_COST_UNIT && ledger.consumed_units === total && ledger.ledger_hash === ledgerHash(ledger.entries)
+}
+
+/**
+ * Units a lineage has spent so far, summed over this contract's and every ancestor's ledger.
+ * `null` means a ledger failed verification: the caller must treat the budget as exhausted.
+ */
+export function lineageConsumedUnits(contract: { successor_cost_ledger?: SuccessorCostLedger; successor?: { parent_contract: unknown } }): number | null {
+  let total = 0
+  let current: typeof contract | undefined = contract
+  for (let depth = 0; current && depth <= MAX_SUCCESSOR_DEPTH + 1; depth += 1) {
+    if (current.successor_cost_ledger) {
+      if (!verifySuccessorCostLedger(current.successor_cost_ledger)) return null
+      total += current.successor_cost_ledger.consumed_units
+    }
+    current = current.successor?.parent_contract as typeof contract | undefined
+  }
+  return total
 }
 
 export function authorizationEnvelopeHash(envelope: Omit<AuthorizationEnvelope, 'envelope_hash'> | AuthorizationEnvelope): string {
@@ -264,6 +404,8 @@ export function buildAuthorizationEnvelope(args: {
   chart_id: string
   execution_channel: ExecutionChannel
   scope: { readonly domains: readonly string[]; readonly entitlement: string }
+  /** Server-derived (see effectiveEntitlementForPermission); a scope tuple can only narrow it. */
+  effective_entitlement: EffectiveEntitlement
   planned_scu_ids: readonly string[]
   /** Planned SCUs whose plan items are executable; only these anchor relevance. */
   anchor_scu_ids: readonly string[]
@@ -289,7 +431,7 @@ export function buildAuthorizationEnvelope(args: {
     const eligible = scu.bindings.filter((binding) => isInquiryServerDispatchEligible(binding, transport))
     const binding = selectBindingForMode(eligible, undefined)
     if (!binding) continue
-    if (!entitlementTierPermitted(scu.entitlement, args.scope.entitlement)) continue
+    if (!entitlementTierPermitted(scu.entitlement, lowerEntitlementTier(args.effective_entitlement.tier, args.scope.entitlement))) continue
     const near = scusWithinHops(graph, scuId, ENVELOPE_RELEVANCE_HOPS)
     const anchorScus = [...anchors].filter((anchor) => near.has(anchor)).sort()
     const domainOverlap = scu.domains.some((domain) => UNIVERSAL_DOMAINS.has(domain) || scopeDomains.has(domain))
@@ -313,6 +455,7 @@ export function buildAuthorizationEnvelope(args: {
     presentation_transport: transport,
     capability_content_hash: args.snapshot.content_hash,
     scope_entitlement: args.scope.entitlement,
+    effective_entitlement: args.effective_entitlement,
     limits: ENVELOPE_LIMITS,
     entries,
     parent_envelope_hash: null,
@@ -335,6 +478,7 @@ export function deriveSuccessorEnvelope(
     presentation_transport: parent.presentation_transport,
     capability_content_hash: parent.capability_content_hash,
     scope_entitlement: parent.scope_entitlement,
+    effective_entitlement: parent.effective_entitlement,
     limits: parent.limits,
     entries: parent.entries.filter((entry) => !consumed.has(entry.scu_id)),
     parent_envelope_hash: parent.envelope_hash,
@@ -377,8 +521,11 @@ function refusedWithoutReceipt(itemId: string, scuId: string, live: SuccessorAdm
     envelope_hash: null, envelope_entry_id: null,
     limit_state: {
       successor_depth: 0, max_successor_depth: MAX_SUCCESSOR_DEPTH, chain_iterations: 0, max_chain_iterations: MAX_CHAIN_ITERATIONS,
-      admitted_items: 0, max_admitted_items: MAX_ADMITTED_SUCCESSOR_ITEMS, cost_exhausted: live.cost_exhausted,
+      admitted_items: 0, max_admitted_items: MAX_ADMITTED_SUCCESSOR_ITEMS, cost_exhausted: live.cost_exhausted === true,
+      cost_unit: SUCCESSOR_COST_UNIT, budget_units: MAX_SUCCESSOR_DISPATCH_UNITS, consumed_units: 0, candidate_units: 0,
+      remaining_units: MAX_SUCCESSOR_DISPATCH_UNITS,
     },
+    entitlement: effectiveEntitlementForPermission(live.chart_permission),
   })
 }
 
@@ -409,6 +556,7 @@ export const SUCCESSOR_DENY_ALL_LIVE: SuccessorAdmissionLiveContext = {
   describe: () => undefined,
   tool_exists: () => false,
   is_capability_denied: () => true,
+  dispatch_units: () => 0,
   cost_exhausted: true,
 }
 
@@ -427,6 +575,11 @@ export function evaluateSuccessorAdmission(input: {
   live: SuccessorAdmissionLiveContext
   /** Items of the SAME generation already admitted before this one (the ceiling counts the whole batch). */
   admitted_in_batch?: number
+  /**
+   * Units this generation's OWN ledger has charged so far (dispatch time; `null` = that ledger failed
+   * verification). Compile time passes nothing: no dispatch has happened yet.
+   */
+  own_ledger_units?: number | null
 }): SuccessorAdmissionDecision {
   const { envelope, snapshot, candidate, contract, live } = input
   const chainBase = chainState(contract)
@@ -436,16 +589,14 @@ export function evaluateSuccessorAdmission(input: {
     max_successor_depth: Math.min(envelope?.limits.max_successor_depth ?? MAX_SUCCESSOR_DEPTH, MAX_SUCCESSOR_DEPTH),
     max_admitted_successor_items: Math.min(envelope?.limits.max_admitted_successor_items ?? MAX_ADMITTED_SUCCESSOR_ITEMS, MAX_ADMITTED_SUCCESSOR_ITEMS),
     max_chain_iterations: Math.min(envelope?.limits.max_chain_iterations ?? MAX_CHAIN_ITERATIONS, MAX_CHAIN_ITERATIONS),
+    max_successor_dispatch_units: Math.min(envelope?.limits.max_successor_dispatch_units ?? MAX_SUCCESSOR_DISPATCH_UNITS, MAX_SUCCESSOR_DISPATCH_UNITS),
   }
-  const limitState: SuccessorAdmissionLimitState = {
-    successor_depth: chain.depth,
-    max_successor_depth: limits.max_successor_depth,
-    chain_iterations: chain.iterations,
-    max_chain_iterations: limits.max_chain_iterations,
-    admitted_items: chain.admitted,
-    max_admitted_items: limits.max_admitted_successor_items,
-    cost_exhausted: live.cost_exhausted,
-  }
+  // The shared successor cost model. A ledger that fails verification, or a price that is not a positive
+  // integer, is not "free": it exhausts the budget.
+  const lineageUnits = lineageConsumedUnits(contract)
+  const ownUnits = input.own_ledger_units === undefined ? 0 : input.own_ledger_units
+  const consumedUnits = lineageUnits === null || ownUnits === null ? null : lineageUnits + ownUnits
+  const costLedgerValid = consumedUnits !== null
   // A capped pagination frontier of a capability the (hash-bound) parent plan already contains is
   // authorized by that plan, not by an envelope entry — but it must still clear every other condition.
   const planContinuation = candidate.binding_id !== null
@@ -458,6 +609,25 @@ export function evaluateSuccessorAdmission(input: {
   const scu = snapshot.scus.find((candidateScu) => candidateScu.scu_id === candidate.scu_id)
   const binding = scu?.bindings.find((candidateBinding) => candidateBinding.binding_id === (planContinuation ? candidate.binding_id : entry?.binding_id))
   const capabilityUri = planContinuation ? binding?.capability_uri ?? null : entry?.capability_uri ?? null
+  const rawUnits = capabilityUri ? live.dispatch_units(capabilityUri) : NaN
+  const candidateUnits = Number.isInteger(rawUnits) && rawUnits >= 1 ? rawUnits : null
+  // The effective entitlement is what the door's own verified permission grants RIGHT NOW; a stored
+  // envelope may record a narrower or equal grant, but nothing stored can widen it.
+  const effectiveNow = effectiveEntitlementForPermission(live.chart_permission)
+  const limitState: SuccessorAdmissionLimitState = {
+    successor_depth: chain.depth,
+    max_successor_depth: limits.max_successor_depth,
+    chain_iterations: chain.iterations,
+    max_chain_iterations: limits.max_chain_iterations,
+    admitted_items: chain.admitted,
+    max_admitted_items: limits.max_admitted_successor_items,
+    cost_exhausted: live.cost_exhausted === true,
+    cost_unit: SUCCESSOR_COST_UNIT,
+    budget_units: limits.max_successor_dispatch_units,
+    consumed_units: consumedUnits ?? limits.max_successor_dispatch_units,
+    candidate_units: candidateUnits ?? 0,
+    remaining_units: costLedgerValid && candidateUnits !== null ? Math.max(limits.max_successor_dispatch_units - (consumedUnits ?? 0), 0) : 0,
+  }
   const base = {
     decision_version: SUCCESSOR_ADMISSION_VERSION,
     authority: planContinuation ? 'parent_plan_continuation' : 'envelope_entry',
@@ -470,6 +640,7 @@ export function evaluateSuccessorAdmission(input: {
     source_scu_id: candidate.source_scu_id ?? null,
     envelope_hash: envelope?.envelope_hash ?? null,
     envelope_entry_id: entry?.entry_id ?? null,
+    entitlement: effectiveNow,
     limit_state: limitState,
   } as const
   const refuse = (code: SuccessorAdmissionCode) => seal(code === 'successor_safety_excluded'
@@ -519,13 +690,22 @@ export function evaluateSuccessorAdmission(input: {
   }
   // 5 — the caller's chart permission (the door's own authorization result) and entitlement tier.
   if (live.chart_permission !== 'all' && live.chart_permission !== 'view') return refuse('successor_chart_access_not_verified')
-  if (!entitlementTierPermitted(scu.entitlement, contract.scope_tuple.entitlement)) return refuse('successor_entitlement_not_permitted')
+  // The tier a capability must fit under is the LOWEST of: what the door's verified permission grants
+  // right now, what the (hash-bound) envelope was granted, and the semantic scope (which only narrows).
+  // Nothing caller-, planner- or storage-supplied can raise it above the live server-derived grant.
+  const grantedTier = lowerEntitlementTier(
+    lowerEntitlementTier(effectiveNow.tier, envelope?.effective_entitlement.tier ?? effectiveNow.tier),
+    contract.scope_tuple.entitlement,
+  )
+  if (!entitlementTierPermitted(scu.entitlement, grantedTier)) return refuse('successor_entitlement_not_permitted')
   // 7 — the request's own safety and no-leakage exclusions still apply to a successor.
   if (live.is_capability_denied(capabilityUri)) return refuse('successor_safety_excluded')
   // 6 — depth, iteration and cost ceilings.
   if (chain.depth + 1 > limits.max_successor_depth) return refuse('successor_depth_exceeded')
   if (chain.iterations >= limits.max_chain_iterations) return refuse('successor_iteration_limit_exceeded')
-  if (live.cost_exhausted || chain.admitted >= limits.max_admitted_successor_items) return refuse('successor_cost_limit_exceeded')
+  if (live.cost_exhausted === true || chain.admitted >= limits.max_admitted_successor_items) return refuse('successor_cost_limit_exceeded')
+  // The successor budget: unverifiable ledger, unpriced candidate, or a price above what is left all refuse.
+  if (!costLedgerValid || candidateUnits === null || candidateUnits > limitState.remaining_units) return refuse('successor_cost_limit_exceeded')
   return seal({ ...base, decision: 'admit', code: 'successor_admitted' })
 }
 
@@ -569,6 +749,11 @@ export function evaluateSuccessorItemForDispatch(args: {
     },
     contract: parent,
     live: args.live,
+    // What THIS generation has already been charged, from its own hash-chained ledger; an
+    // unverifiable ledger is `null` and exhausts the budget.
+    own_ledger_units: args.contract.successor_cost_ledger
+      ? (verifySuccessorCostLedger(args.contract.successor_cost_ledger) ? args.contract.successor_cost_ledger.consumed_units : null)
+      : 0,
     admitted_in_batch: (() => {
       const decisions = successor.admission_decisions ?? []
       const position = decisions.findIndex((entry) => entry.scu_id === item.scu_id)
@@ -601,4 +786,13 @@ export function terminalizeRefusedSuccessorItem(contract: InquiryContract, itemI
       ? { ...candidate, state: 'observed' as const }
       : candidate),
   }
+}
+
+/**
+ * Turn an admission into a definitive refusal for a reason only the door can see after the evaluator
+ * admitted (unauthorized or tampered arguments, a binding that vanished between evaluation and
+ * dispatch). The refusal carries the same receipt fields, so every door records it identically.
+ */
+export function refuseAdmittedSuccessor(decision: SuccessorAdmissionDecision, code: SuccessorAdmissionCode): SuccessorAdmissionDecision {
+  return seal({ ...withoutDecisionHash(decision), decision: 'refuse', code })
 }

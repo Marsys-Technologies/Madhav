@@ -7,7 +7,7 @@ import generatedSnapshot from '../../../../generated/capability_knowledge.snapsh
 import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay, ExecutionChannel } from '../../../retrieval/registry/knowledge/types'
 import { closeInquiryForEvidenceSuccessor, compileInquiryContract, compileInquirySuccessorContract, recordInquiryExecution } from '../compiler'
 import { deriveEvidenceFrontier } from '../evidence_frontier'
-import type { SuccessorAdmissionDecision } from '../authorization_envelope'
+import { evaluateSuccessorItemForDispatch, type SuccessorAdmissionDecision } from '../authorization_envelope'
 import type { InquiryContract } from '../types'
 
 export const SCENARIO_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
@@ -38,6 +38,7 @@ export function compileScenarioRoot(channel: ExecutionChannel = 'platform_intern
   return compileInquiryContract({
     snapshot: SCENARIO_SNAPSHOT, overlay: SCENARIO_OVERLAY, chart_id: SCENARIO_CHART_ID, question: SCENARIO_QUESTION,
     scope_tuple: SCENARIO_SCOPE as never, execution_channel: channel,
+    server_authorization: { chart_permission: 'all' },
     temporal_anchor_date: new Date().toISOString().slice(0, 10), temporal_anchor_source: 'request_context_clock',
   })
 }
@@ -68,6 +69,7 @@ export function projectDecision(decision: SuccessorAdmissionDecision) {
     frontier_rule_id: decision.frontier_rule_id,
     source_scu_id: decision.source_scu_id,
     envelope_entry_id: decision.envelope_entry_id,
+    entitlement: decision.entitlement,
     limit_state: decision.limit_state,
   }
 }
@@ -78,7 +80,17 @@ export function projectDecision(decision: SuccessorAdmissionDecision) {
  * trigger source item carries a cancellation-active row), close the parent, compile the successor
  * with a permissive live state, and project the decision for the scenario's target.
  */
-export function expectedAdmitProjection() {
+function permissiveScenarioLive(parent: InquiryContract) {
+  return {
+    transport: 'portal' as const, chart_id: parent.chart_id, principal_subject: 'p', owner_principal_subject: 'p', chart_permission: 'all' as const,
+    overlay_version: parent.chart_availability_version, build_id: parent.chart_build_id,
+    describe: (uri: string) => ({ uri, mutation: false, calibration_context_only: false }), tool_exists: () => true,
+    is_capability_denied: () => false, dispatch_units: () => 1,
+  }
+}
+
+/** The scenario's successor, compiled through the shared path, plus the parent it came from. */
+function scenarioSuccessor() {
   const { contract, entry, source } = scenarioFixture('platform_internal')
   let observed = contract
   for (const item of contract.plan_items.filter((candidate) => candidate.state === 'ready' && candidate.binding_id !== null)) {
@@ -94,12 +106,35 @@ export function expectedAdmitProjection() {
   const parent = closeInquiryForEvidenceSuccessor(observed)
   const successor = compileInquirySuccessorContract({
     snapshot: SCENARIO_SNAPSHOT, overlay: SCENARIO_OVERLAY, parent_inquiry_id: 'scenario-expectation', parent, cross_capability_only: true,
-    admission: {
-      transport: 'portal', chart_id: parent.chart_id, principal_subject: 'p', owner_principal_subject: 'p', chart_permission: 'all',
-      overlay_version: parent.chart_availability_version, build_id: parent.chart_build_id,
-      describe: (uri) => ({ uri, mutation: false, calibration_context_only: false }), tool_exists: () => true,
-      is_capability_denied: () => false, cost_exhausted: false,
-    },
+    admission: permissiveScenarioLive(parent),
   })
+  return { successor, entry }
+}
+
+/** The compile-time receipt projection every door must produce for the scenario's admitted successor. */
+export function expectedAdmitProjection() {
+  const { successor, entry } = scenarioSuccessor()
   return projectDecision(successor.plan_items.find((item) => item.scu_id === entry.scu_id)!.successor_admission!)
+}
+
+/**
+ * The DISPATCH-time receipt projection: the successor's ready items dispatched in plan order, each
+ * charging the shared cost ledger as it goes (so the k-th item sees the k-1 charges before it). Every
+ * door dispatches in plan order, so every door must stamp exactly these fields.
+ */
+export function expectedDispatchProjection() {
+  const { successor, entry } = scenarioSuccessor()
+  let current = successor
+  let projected: ReturnType<typeof projectDecision> | null = null
+  for (const item of successor.plan_items.filter((candidate) => candidate.state === 'ready' && candidate.binding_id !== null)) {
+    const decision = evaluateSuccessorItemForDispatch({
+      contract: current, item_id: item.item_id, snapshot: SCENARIO_SNAPSHOT, live: permissiveScenarioLive(current),
+    })!
+    current = recordInquiryExecution(current, {
+      item_id: item.item_id, disposition: 'served', evidence_refs: [`raw:dispatch:${item.item_id}`],
+      pagination: { semantics: 'none', exhausted: true, next: null }, successor_dispatch: decision,
+    })
+    if (item.scu_id === entry.scu_id) projected = projectDecision(decision)
+  }
+  return projected!
 }

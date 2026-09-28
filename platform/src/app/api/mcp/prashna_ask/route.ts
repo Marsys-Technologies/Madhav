@@ -338,8 +338,7 @@ export async function POST(request: Request) {
 
   let role: 'guest' | 'super_admin'
   // What this door's own chart authorization returned; the shared successor envelope reads the
-  // result itself. The BYOK preflight only proves access (it throws otherwise) and reports no
-  // level, so it is recorded as the least privilege that still admits: `view`.
+  // result itself (BYOK included: its level is read from authorizeChartAccess, never assumed).
   let chartPermission: 'all' | 'view' | 'deny' | null = null
   if (byokEnabled) {
     if (!authorizedByokRole) {
@@ -360,6 +359,16 @@ export async function POST(request: Request) {
       }
     }
     role = authorizedByokRole
+    // The BYOK preflight proves access (it throws otherwise) but reports no level. Read the level from
+    // the same chart-access brain the non-BYOK branch uses, instead of assuming one; a denial here
+    // fails closed exactly as it does there.
+    chartPermission = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    if (chartPermission === 'deny') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
+        { status: 401 },
+      )
+    }
   } else {
     // ── Per-call chart-access authorization (same brain as the primitives route) ─
     role = await resolveMcpPrincipalRole(userUid)
@@ -784,6 +793,7 @@ export async function POST(request: Request) {
           scope_tuple: plan.scope_tuple!,
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
+          server_authorization: { chart_permission: chartPermission },
           temporal_anchor_date: nowContextDate,
           temporal_anchor_source: 'request_context_clock',
           planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
@@ -1257,7 +1267,7 @@ export async function POST(request: Request) {
           // The lifecycle owner is read from the durable row the session holds, so the principal
           // check compares the acting request against what the row is actually scoped to.
           owner_principal_subject: managedInquirySession?.principalUid ?? '',
-          chart_permission: userUid && chartId ? chartPermission ?? (byokEnabled ? 'view' : null) : null,
+          chart_permission: userUid && chartId ? chartPermission : null,
           excluded_capabilities: postPlanSafety.excluded_capabilities,
           cost_exhausted: costCapTripped !== null,
         })

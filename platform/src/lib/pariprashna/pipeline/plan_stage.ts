@@ -129,6 +129,12 @@ export async function runPlanStage(args: {
   safetyDecision: SafetyDecision
   runtime?: TurnRuntime
   abortSignal?: AbortSignal
+  /**
+   * What `authorizeTurn` returned for this caller on this chart. It alone decides the successor
+   * envelope's effective entitlement (the scope tuple can only narrow); absent means unverified,
+   * which yields an empty envelope.
+   */
+  chartPermission?: 'all' | 'view' | 'deny' | null
 }): Promise<StageResult<PlanStageOutput>> {
   const { em, request, messages, identity, params, runtime } = args
   const abortSignal = args.abortSignal ?? request.signal
@@ -366,6 +372,7 @@ export async function runPlanStage(args: {
           scope_tuple: plan.scope_tuple!,
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
+          server_authorization: { chart_permission: args.chartPermission ?? null },
           temporal_anchor_date: temporalAnchorDate,
           temporal_anchor_source: 'request_context_clock',
           planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),

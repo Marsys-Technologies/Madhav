@@ -16,6 +16,7 @@ import {
   MAX_SUCCESSOR_DEPTH,
   authorizationEnvelopeHash,
   buildAuthorizationEnvelope,
+  effectiveEntitlementForPermission,
   deriveSuccessorEnvelope,
   evaluateSuccessorAdmission,
   evaluateSuccessorItemForDispatch,
@@ -41,6 +42,7 @@ const SCOPE = { intent: 'timing', domains: ['general'], width: 'narrow', depth: 
 function compile(question = 'What is my current dasha?', scope = SCOPE): InquiryContract {
   return compileInquiryContract({
     snapshot, chart_id: CHART_ID, question, scope_tuple: scope as never, temporal_anchor_date: '2026-09-27',
+    server_authorization: { chart_permission: 'all' },
   })
 }
 
@@ -69,7 +71,7 @@ function liveFor(contract: InquiryContract, overrides: Partial<SuccessorAdmissio
     describe: (uri) => bindings.has(uri) ? { uri, mutation: false, calibration_context_only: false, mcp_annotations: { readOnly: true } } : undefined,
     tool_exists: (uri) => bindings.has(uri),
     is_capability_denied: () => false,
-    cost_exhausted: false,
+    dispatch_units: () => 1,
     ...overrides,
   }
 }
@@ -141,15 +143,15 @@ describe('envelope construction (plan time, before any evidence)', () => {
     const scope = { domains: ['career'], entitlement: 'native' }
     const anchors = fixture().contract.plan_items.map((item) => item.scu_id)
     const args = { chart_id: CHART_ID, execution_channel: 'platform_internal' as const, scope, planned_scu_ids: anchors, anchor_scu_ids: anchors }
-    expect(buildAuthorizationEnvelope({ snapshot: isolated, ...args }).entries).toEqual([])
-    expect(buildAuthorizationEnvelope({ snapshot, ...args }).entries.length).toBeGreaterThan(0)
+    expect(buildAuthorizationEnvelope({ effective_entitlement: effectiveEntitlementForPermission('all'), snapshot: isolated, ...args }).entries).toEqual([])
+    expect(buildAuthorizationEnvelope({ effective_entitlement: effectiveEntitlementForPermission('all'), snapshot, ...args }).entries.length).toBeGreaterThan(0)
   })
 
   it('narrows to nothing when the caller scope entitlement is below the capability tier', () => {
     const args = { snapshot, chart_id: CHART_ID, execution_channel: 'platform_internal' as const, planned_scu_ids: [], anchor_scu_ids: [] }
-    expect(buildAuthorizationEnvelope({ ...args, scope: { domains: ['general'], entitlement: 'native' } }).entries.length).toBeGreaterThan(0)
+    expect(buildAuthorizationEnvelope({effective_entitlement: effectiveEntitlementForPermission('all'),  ...args, scope: { domains: ['general'], entitlement: 'native' } }).entries.length).toBeGreaterThan(0)
     for (const tier of ['public_disclosed', 'restricted', 'reference', 'unknown_tier']) {
-      expect(buildAuthorizationEnvelope({ ...args, scope: { domains: ['general'], entitlement: tier } }).entries, tier).toEqual([])
+      expect(buildAuthorizationEnvelope({effective_entitlement: effectiveEntitlementForPermission('all'),  ...args, scope: { domains: ['general'], entitlement: tier } }).entries, tier).toEqual([])
     }
   })
 
@@ -253,7 +255,8 @@ describe('shared evaluator: each condition fails independently with its own name
   it('(5) chart access not verified, or entitlement tier not permitted -> distinct codes', () => {
     expect(evaluate(base, { live: { chart_permission: 'deny' } })).toMatchObject({ code: 'successor_chart_access_not_verified' })
     expect(evaluate(base, { live: { chart_permission: null } })).toMatchObject({ code: 'successor_chart_access_not_verified' })
-    expect(evaluate(base, { live: { chart_permission: 'view' } })).toMatchObject({ decision: 'admit' })
+    // view-only authorizes only the least-privileged tier, which no successor capability fits.
+    expect(evaluate(base, { live: { chart_permission: 'view' } })).toMatchObject({ code: 'successor_entitlement_not_permitted' })
     const narrowedScope = { ...base.contract, scope_tuple: { ...base.contract.scope_tuple, entitlement: 'public_disclosed' } }
     expect(evaluate(base, { contract: narrowedScope })).toMatchObject({ code: 'successor_entitlement_not_permitted' })
   })
@@ -404,7 +407,7 @@ describe('evaluator hardening (review findings)', () => {
   })
 
   it('a stored envelope can only tighten the platform ceilings, never loosen them', () => {
-    const inflated = { ...base.contract.authorization_envelope!, limits: { max_successor_depth: 99, max_admitted_successor_items: 99, max_chain_iterations: 9999 } }
+    const inflated = { ...base.contract.authorization_envelope!, limits: { max_successor_depth: 99, max_admitted_successor_items: 99, max_chain_iterations: 9999, max_successor_dispatch_units: 9999 } }
     const sealed = { ...inflated, envelope_hash: authorizationEnvelopeHash(inflated) }
     const decision = evaluate(base, { envelope: sealed, contract: { iteration: MAX_CHAIN_ITERATIONS } })
     expect(decision).toMatchObject({ code: 'successor_iteration_limit_exceeded' })

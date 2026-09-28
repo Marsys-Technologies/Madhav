@@ -15,6 +15,7 @@ import {
   SCENARIO_SNAPSHOT as SNAPSHOT,
   compileScenarioRoot,
   expectedAdmitProjection,
+  expectedDispatchProjection,
   projectDecision,
   scenarioFixture,
 } from '@/lib/vidhi/inquiry/__fixtures__/successor_envelope_scenario'
@@ -24,6 +25,8 @@ const state = vi.hoisted(() => ({
   dispatched: [] as string[],
   triggerUri: '',
   deniedUri: '',
+  permission: 'all' as 'all' | 'view' | 'deny',
+  units: undefined as number | undefined,
   // Bound after the static imports resolve: importing the fixture inside a mock factory would
   // deadlock on the module graph that itself imports the mocked bridge.
   toolResult: (() => { throw new Error('unbound') }) as (name: string, args: Record<string, unknown>) => Record<string, unknown>,
@@ -32,7 +35,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/registry', () => ({
-  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false, display: { reader_label_key: 'examining_chart' } }),
+  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false, display: { reader_label_key: 'examining_chart' }, ...(state.units === undefined ? {} : { dispatch_units: state.units }) }),
 }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => ({
   assertPinnedCapabilityKnowledgeCurrent: () => SNAPSHOT,
@@ -60,7 +63,7 @@ vi.mock('@/lib/charts/readiness', () => ({
   getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
   isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
 }))
-vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn().mockResolvedValue('all') }))
+vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: async () => state.permission }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn().mockResolvedValue('fake-model') }))
 vi.mock('@/lib/models/registry', () => {
@@ -108,6 +111,7 @@ import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admis
 import { managedEvidenceSuccessorInquiryId, ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { POST } from '../route'
+import { verifySuccessorCostLedger } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 state.toolResult = w5DoorParityToolResult
@@ -144,6 +148,8 @@ beforeEach(() => {
   state.dispatched = []
   state.triggerUri = ''
   state.deniedUri = ''
+  state.permission = 'all'
+  state.units = undefined
   state.store!.rows.clear()
   state.store!.reservations.clear()
   state.store!.evidence.length = 0
@@ -179,7 +185,7 @@ describe('managed door: envelope-admitted successor (real compiler + real lifecy
     expect(item.successor_dispatch).toMatchObject({ decision: 'admit', code: 'successor_admitted', scu_id: entry.scu_id })
     // Door parity: the same pinned contract and frontier produce the shared receipt projection.
     expect(projectDecision(item.successor_admission!)).toEqual(expectedAdmitProjection())
-    expect(projectDecision(item.successor_dispatch!)).toEqual(expectedAdmitProjection())
+    expect(projectDecision(item.successor_dispatch!)).toEqual(expectedDispatchProjection())
     // The durable evidence receipt carries the admission alongside the bundle.
     const receipt = state.store!.evidence.find((candidate) => candidate.inquiry_id === successor.inquiry_id && candidate.plan_item_id === item.item_id)!
     expect((receipt.evidence_jsonb as { admission?: { decision: string; decision_hash: string } }).admission)
@@ -206,38 +212,42 @@ describe('managed door: envelope-admitted successor (real compiler + real lifecy
   })
 })
 
+/** Worker 1: runs the parent, hands off to a durable successor through the REAL session, then dies. */
+async function handOffAsWorkerOne(contract: InquiryContract, sourceUri: string): Promise<boolean> {
+  const session = await ManagedInquiryExecutionSession.open({
+    inquiry_id: INQUIRY_ID, principal_uid: PRINCIPAL, contract, expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+  })
+  for (const item of contract.plan_items.filter((candidate) => candidate.state === 'ready' && candidate.binding_id)) {
+    expect(await session.beginAction(item.item_id)).toBe('acquired')
+    const bundle = item.binding_id === `registry:${sourceUri}`
+      ? { results: [{ content: JSON.stringify({ rows: [{ yoga: 'Raja', fired: true, bhanga_active: true }] }) }] }
+      : { results: [{ content: JSON.stringify({ rows: [{ id: 'x' }], more_available: false }) }] }
+    await session.persistAcceptedObservation({
+      plan_item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id!,
+      tool_name: item.binding_id!.slice('registry:'.length), bundle, disposition: 'served',
+      pagination: { semantics: 'none', exhausted: true, next: null }, invocation_args: item.args,
+      evidence_frontier: deriveEvidenceFrontier({ contract: session.currentContract, item_id: item.item_id, evidence_payload: bundle, snapshot: SNAPSHOT }),
+    })
+  }
+  const handedOff = await session.continueWithEvidenceSuccessor({
+    snapshot: SNAPSHOT, overlay: OVERLAY,
+    admission: buildSuccessorAdmissionLive({
+      transport: 'managed_mcp', chart_id: CHART, overlay: OVERLAY, principal_subject: PRINCIPAL, owner_principal_subject: PRINCIPAL,
+      chart_permission: 'all',
+    }),
+  })
+  // The stranding condition the route must handle: a successor generation with first-time ready items.
+  expect(session.currentContract.successor).toBeDefined()
+  expect(session.readyActionIds.length).toBeGreaterThan(0)
+  expect(session.currentContract.plan_items.filter((item) => item.state === 'ready').every((item) => item.observation === null)).toBe(true)
+  return handedOff
+}
+
 describe('managed door: recovered worker resuming a successor generation', () => {
-  /** Worker 1: runs the parent, hands off to a durable successor through the REAL session, then dies. */
+  /** Worker 1 hands off (see handOffAsWorkerOne), then dies. */
   async function workerOneHandsOff() {
     const base = fixture()
-    const { contract, sourceUri } = base
-    const session = await ManagedInquiryExecutionSession.open({
-      inquiry_id: INQUIRY_ID, principal_uid: PRINCIPAL, contract, expires_at: new Date(Date.now() + 3_600_000).toISOString(),
-    })
-    for (const item of contract.plan_items.filter((candidate) => candidate.state === 'ready' && candidate.binding_id)) {
-      expect(await session.beginAction(item.item_id)).toBe('acquired')
-      const bundle = item.binding_id === `registry:${sourceUri}`
-        ? { results: [{ content: JSON.stringify({ rows: [{ yoga: 'Raja', fired: true, bhanga_active: true }] }) }] }
-        : { results: [{ content: JSON.stringify({ rows: [{ id: 'x' }], more_available: false }) }] }
-      await session.persistAcceptedObservation({
-        plan_item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id!,
-        tool_name: item.binding_id!.slice('registry:'.length), bundle, disposition: 'served',
-        pagination: { semantics: 'none', exhausted: true, next: null }, invocation_args: item.args,
-        evidence_frontier: deriveEvidenceFrontier({ contract: session.currentContract, item_id: item.item_id, evidence_payload: bundle, snapshot: SNAPSHOT }),
-      })
-    }
-    const handedOff = await session.continueWithEvidenceSuccessor({
-      snapshot: SNAPSHOT, overlay: OVERLAY,
-      admission: buildSuccessorAdmissionLive({
-        transport: 'managed_mcp', chart_id: CHART, overlay: OVERLAY, principal_subject: PRINCIPAL, owner_principal_subject: PRINCIPAL,
-        chart_permission: 'all', cost_exhausted: false,
-      }),
-    })
-    expect(handedOff).toBe(true)
-    // The stranding condition the route must handle: a successor generation with first-time ready items.
-    expect(session.currentContract.successor).toBeDefined()
-    expect(session.readyActionIds.length).toBeGreaterThan(0)
-    expect(session.currentContract.plan_items.filter((item) => item.state === 'ready').every((item) => item.observation === null)).toBe(true)
+    expect(await handOffAsWorkerOne(base.contract, base.sourceUri)).toBe(true)
     return base
   }
 
@@ -312,5 +322,86 @@ describe('managed door: recovered worker resuming a successor generation', () =>
     expect(dispatchCount(targetUri)).toBe(0)
     expect(successorRow()!.status).toBe('BLOCKED')
     expect(successorRow()!.current_jti_hash).toBe('terminal')
+  })
+})
+
+describe('managed door: server-authoritative entitlement', () => {
+  it('a view-only permission yields an empty envelope, so no successor is admitted (whatever scope the planner declared)', async () => {
+    const { sourceUri, targetUri, entry } = fixture()
+    state.triggerUri = sourceUri
+    state.permission = 'view'
+    await finalEvent(await post())
+
+    expect(dispatchCount(targetUri)).toBe(0)
+    const root = state.store!.rows.get(INQUIRY_ID)!.contract_jsonb
+    expect(root.scope_tuple.entitlement).toBe('native')
+    expect(root.authorization_envelope!.entries).toEqual([])
+    expect(root.authorization_envelope!.effective_entitlement).toEqual({ tier: 'public_disclosed', source: 'chart_permission_view' })
+    const item = successorRow()!.contract_jsonb.plan_items.find((candidate) => candidate.scu_id === entry.scu_id)!
+    expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_capability_not_authorized_for_request' })
+    expect(item.state).toBe('observed')
+  })
+
+  it('revalidates at dispatch: a recovered worker whose principal now holds only view refuses the successor item', async () => {
+    const { contract, sourceUri, targetUri } = fixture()
+    void sourceUri
+    // Worker 1 (full permission) hands off to the successor and dies.
+    const handedOff = await handOffAsWorkerOne(contract, sourceUri)
+    expect(handedOff).toBe(true)
+    state.permission = 'view'
+    state.dispatched = []
+    await finalEvent(await post())
+    expect(dispatchCount(targetUri)).toBe(0)
+    const item = successorRow()!.contract_jsonb.plan_items.find((candidate) => candidate.successor_dispatch)!
+    expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_entitlement_not_permitted', entitlement: { tier: 'public_disclosed' } })
+  })
+})
+
+describe('managed door: the shared successor cost model', () => {
+  it('charges each dispatched successor item once, persisted, and a recovered worker neither resets nor double-charges it', async () => {
+    const { sourceUri } = fixture()
+    state.triggerUri = sourceUri
+    state.units = 2
+    await finalEvent(await post())
+    const ledger = successorRow()!.contract_jsonb.successor_cost_ledger!
+    const dispatched = successorRow()!.contract_jsonb.plan_items.filter((item) => item.successor_dispatch?.decision === 'admit')
+    expect(dispatched.length).toBeGreaterThan(0)
+    expect(ledger.entries).toHaveLength(dispatched.length)
+    expect(ledger.consumed_units).toBe(dispatched.length * 2)
+    expect(verifySuccessorCostLedger(ledger)).toBe(true)
+
+    // A later recovery of the completed lifecycle dispatches nothing and adds no charge.
+    state.dispatched = []
+    await finalEvent(await post())
+    expect(state.dispatched).toEqual([])
+    expect(successorRow()!.contract_jsonb.successor_cost_ledger).toEqual(ledger)
+  })
+
+  it('refuses a priced-out successor with successor_cost_limit_exceeded (budget 12, price 13): terminal, undispatched, uncharged', async () => {
+    const { sourceUri, targetUri, entry } = fixture()
+    state.triggerUri = sourceUri
+    state.units = 13
+    await finalEvent(await post())
+    expect(dispatchCount(targetUri)).toBe(0)
+    const item = successorRow()!.contract_jsonb.plan_items.find((candidate) => candidate.scu_id === entry.scu_id)!
+    expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_cost_limit_exceeded' })
+    expect(item.successor_admission).toMatchObject({ code: 'successor_cost_limit_exceeded', limit_state: { budget_units: 12, consumed_units: 0, candidate_units: 13, remaining_units: 12 } })
+    expect(successorRow()!.contract_jsonb.successor_cost_ledger).toBeUndefined()
+  })
+
+  it('an in-flight ambiguous successor dispatch is failed closed and cannot be replayed to obtain more budget', async () => {
+    const { contract, sourceUri, targetUri } = fixture()
+    await handOffAsWorkerOne(contract, sourceUri)
+    const session = await ManagedInquiryExecutionSession.open({
+      inquiry_id: INQUIRY_ID, principal_uid: PRINCIPAL, contract: compileRoot(), expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+    })
+    const inFlight = session.currentContract.plan_items.find((item) => item.state === 'ready')!
+    expect(await session.beginAction(inFlight.item_id)).toBe('acquired')
+    state.store!.expireLeases()
+    state.dispatched = []
+    await finalEvent(await post())
+    expect(dispatchCount(targetUri)).toBe(0)
+    expect(successorRow()!.status).toBe('BLOCKED')
+    expect(successorRow()!.contract_jsonb.successor_cost_ledger).toBeUndefined()
   })
 })

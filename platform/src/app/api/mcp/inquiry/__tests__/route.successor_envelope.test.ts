@@ -15,6 +15,7 @@ import {
   SCENARIO_SCOPE,
   SCENARIO_SNAPSHOT,
   expectedAdmitProjection,
+  expectedDispatchProjection,
   projectDecision,
   scenarioFixture,
 } from '@/lib/vidhi/inquiry/__fixtures__/successor_envelope_scenario'
@@ -23,6 +24,9 @@ const state = vi.hoisted(() => ({
   dispatched: [] as string[],
   triggerUri: '',
   deniedUri: '',
+  permission: 'all' as 'all' | 'view' | 'deny',
+  units: undefined as number | undefined,
+  toolMissing: '',
   paginate: false,
   snapshot: null as unknown,
   overlay: null as unknown,
@@ -32,11 +36,11 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@/lib/mcp/service_token', () => ({ validateMcpServiceRequest: async () => true }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
-vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn().mockResolvedValue('all') }))
+vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: async () => state.permission }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/registry', () => ({
-  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false }),
+  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false, ...(state.units === undefined ? {} : { dispatch_units: state.units }) }),
 }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => ({
   assertPinnedCapabilityKnowledgeCurrent: () => state.snapshot,
@@ -48,7 +52,7 @@ vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   TOOL_NAME_TO_URI: {},
   resolveToolUri: (name: string) => (name.startsWith('marsys://') ? name : undefined),
-  getToolByName: (name: string) => ({
+  getToolByName: (name: string) => name === state.toolMissing ? undefined : ({
     retrieve: async (_query: unknown, args: Record<string, unknown>) => {
       state.dispatched.push(name)
       const base = state.toolResult(name, state.paginate ? args : { ...args, offset: 1 })
@@ -74,6 +78,7 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', async () => {
 })
 
 import { POST } from '../route'
+import { verifySuccessorCostLedger } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 state.toolResult = w5DoorParityToolResult
@@ -115,6 +120,9 @@ beforeEach(() => {
   state.triggerUri = ''
   state.deniedUri = ''
   state.paginate = false
+  state.permission = 'all'
+  state.units = undefined
+  state.toolMissing = ''
   state.snapshot = SCENARIO_SNAPSHOT
   state.overlay = SCENARIO_OVERLAY
   state.store!.rows.clear()
@@ -218,9 +226,14 @@ describe('raw MCP: successor envelope (real compiler, real tokens)', () => {
     expect(item.successor_admission!.decision).toBe('admit')
     // The compile-time decision AND, after execution, the dispatch-time decision carry the same fields.
     expect(projectDecision(item.successor_admission!)).toEqual(expectedAdmitProjection())
-    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
-    const dispatched = executed.body.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!.successor_dispatch!
-    expect(projectDecision(dispatched)).toEqual(expectedAdmitProjection())
+    // Dispatch every ready item in plan order (as every door does), so the shared cost ledger has
+    // charged exactly what the shared expectation charged before this item.
+    let step2 = continued.body
+    while (step2.next_action_ids.length > 0) {
+      step2 = (await call({ action: 'execute', lifecycle_token: step2.lifecycle_token, action_id: step2.next_action_ids[0] })).body
+    }
+    const dispatched = step2.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!.successor_dispatch!
+    expect(projectDecision(dispatched)).toEqual(expectedDispatchProjection())
   })
 })
 
@@ -261,5 +274,164 @@ describe('raw MCP: a capped same-capability pagination frontier stays explicitly
     const done = executed.body.contract.plan_items.find((item) => item.item_id === pageItem.item_id)!
     expect(done.successor_dispatch).toMatchObject({ decision: 'admit', code: 'successor_admitted' })
     expect(done.observation?.disposition).toBe('served')
+  })
+})
+
+// ── Remediation: server-authoritative entitlement, shared cost model, terminal refusals ─────────────
+const startBody = () => ({ action: 'start', chart_id: SCENARIO_CHART_ID, question: SCENARIO_QUESTION, scope_tuple: SCENARIO_SCOPE, temporal_anchor_date: new Date().toISOString().slice(0, 10) })
+const targetItem = (contract: InquiryContract, scuId: string) => contract.plan_items.find((candidate) => candidate.scu_id === scuId)!
+const contractOf = (inquiryId: string) => state.store!.rows.get(inquiryId)!.contract_jsonb
+
+describe('raw MCP: entitlement is server-authoritative', () => {
+  it('a caller that declares scope entitlement native cannot self-upgrade a view-only permission', async () => {
+    const { sourceUri, targetUri, entry } = scenarioFixture('mcp_full')
+    state.permission = 'view'
+    const step = await runToFinalize(sourceUri)
+    const contract = contractOf(step.inquiry_id)
+    expect(contract.scope_tuple.entitlement).toBe('native') // what the caller declared...
+    expect(contract.authorization_envelope!.entries).toEqual([]) // ...grants nothing
+    expect(contract.authorization_envelope!.effective_entitlement).toEqual({ tier: 'public_disclosed', source: 'chart_permission_view' })
+
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const item = targetItem(continued.body.contract, entry.scu_id)
+    expect(item.successor_admission).toMatchObject({ decision: 'refuse', code: 'successor_capability_not_authorized_for_request' })
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before)
+    expect(state.dispatched).not.toContain(targetUri)
+  })
+
+  it('revalidates at dispatch: a grant that drops from full to view-only between continue and execute refuses', async () => {
+    const { sourceUri, targetUri, entry } = scenarioFixture('mcp_full')
+    const step = await runToFinalize(sourceUri)
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const item = targetItem(continued.body.contract, entry.scu_id)
+    expect(item.successor_admission).toMatchObject({ decision: 'admit', entitlement: { tier: 'native' } })
+    state.permission = 'view'
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before)
+    expect(state.dispatched).not.toContain(targetUri)
+    const done = executed.body.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!
+    expect(done.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_entitlement_not_permitted', entitlement: { tier: 'public_disclosed', source: 'chart_permission_view' } })
+    expect(done.state).toBe('observed')
+  })
+})
+
+describe('raw MCP: the shared successor cost model', () => {
+  it('a priced-out successor is refused with successor_cost_limit_exceeded at compile and never dispatched', async () => {
+    const { sourceUri, targetUri, entry } = scenarioFixture('mcp_full')
+    const step = await runToFinalize(sourceUri)
+    state.units = 13 // above the 12-unit lineage ceiling
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const item = targetItem(continued.body.contract, entry.scu_id)
+    expect(item.successor_admission).toMatchObject({ decision: 'refuse', code: 'successor_cost_limit_exceeded', limit_state: { budget_units: 12, consumed_units: 0, candidate_units: 13 } })
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before)
+    expect(state.dispatched).not.toContain(targetUri)
+    expect(contractOf(continued.body.inquiry_id).successor_cost_ledger).toBeUndefined()
+  })
+
+  it('charges each dispatched successor item exactly once, persisted in the durable row, and a replay cannot charge again', async () => {
+    const { sourceUri } = scenarioFixture('mcp_full')
+    state.units = 2
+    const step = await runToFinalize(sourceUri)
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const admitted = continued.body.contract.plan_items.filter((item) => item.successor_admission?.decision === 'admit')
+    let cursor = continued.body
+    const firstToken = cursor.lifecycle_token
+    const firstAction = cursor.next_action_ids[0]!
+    while (cursor.next_action_ids.length > 0) {
+      cursor = (await call({ action: 'execute', lifecycle_token: cursor.lifecycle_token, action_id: cursor.next_action_ids[0] })).body
+    }
+    const ledger = contractOf(continued.body.inquiry_id).successor_cost_ledger!
+    expect(admitted.length).toBeGreaterThan(0)
+    expect(ledger.entries).toHaveLength(admitted.length)
+    expect(ledger.consumed_units).toBe(admitted.length * 2)
+    expect(verifySuccessorCostLedger(ledger)).toBe(true)
+    // Replaying the first (already consumed) token dispatches nothing and charges nothing.
+    const before = state.dispatched.length
+    const replay = await call({ action: 'execute', lifecycle_token: firstToken, action_id: firstAction })
+    expect(replay.status).toBe(409)
+    expect(state.dispatched.length).toBe(before)
+    expect(contractOf(continued.body.inquiry_id).successor_cost_ledger!.consumed_units).toBe(admitted.length * 2)
+  })
+})
+
+describe('raw MCP: every successor refusal is terminal', () => {
+  it('a live binding that vanished after admission is refused, terminal, and the lifecycle can still finalize', async () => {
+    const { sourceUri, targetUri, entry } = scenarioFixture('mcp_full')
+    const step = await runToFinalize(sourceUri)
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const item = targetItem(continued.body.contract, entry.scu_id)
+    expect(item.successor_admission!.decision).toBe('admit')
+    state.toolMissing = targetUri
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before)
+    const done = executed.body.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!
+    expect(done).toMatchObject({ state: 'observed', observation: { disposition: 'failed', gap_reason: 'successor_capability_not_in_catalogue' } })
+    expect(done.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_capability_not_in_catalogue' })
+    // Drain any other ready item, then the lifecycle reports its honest state instead of stranding.
+    let cursor = executed.body
+    while (cursor.next_action_ids.length > 0) {
+      cursor = (await call({ action: 'execute', lifecycle_token: cursor.lifecycle_token, action_id: cursor.next_action_ids[0] })).body
+    }
+    const finalized = await POST(request({ action: 'finalize', lifecycle_token: cursor.lifecycle_token }))
+    expect(finalized.status).toBe(200)
+    expect((await finalized.json() as { closure: { status: string } }).closure.status).toMatch(/COMPLETE|BLOCKED|INCOMPLETE/)
+  })
+
+  it('tampered or unauthorized arguments on a successor item are a terminal refusal, not a stranded 409', async () => {
+    const { sourceUri, targetUri, entry } = scenarioFixture('mcp_full')
+    const step = await runToFinalize(sourceUri)
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const item = targetItem(continued.body.contract, entry.scu_id)
+    // Edit ONLY the authorization copy's `args` (its hash projection uses `authorization_args`, so every hash
+    // gate still passes): the client-visible args no longer match the server-held plan.
+    const row = state.store!.rows.get(continued.body.inquiry_id)!
+    state.store!.rows.set(row.inquiry_id, {
+      ...row,
+      authorization_jsonb: {
+        ...row.authorization_jsonb,
+        plan_items: row.authorization_jsonb.plan_items.map((candidate) => candidate.item_id === item.item_id
+          ? { ...candidate, args: { ...candidate.args, chart_id: 'not-the-authorized-chart' } } : candidate),
+      },
+    })
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before)
+    expect(state.dispatched).not.toContain(targetUri)
+    const done = executed.body.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!
+    expect(done).toMatchObject({ state: 'observed', observation: { disposition: 'failed', gap_reason: 'successor_arguments_not_authorized' } })
+    expect(done.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_arguments_not_authorized' })
+    expect(executed.body.next_action_ids).not.toContain(item.item_id)
+    // No replay opportunity: the consumed token is dead.
+    const replay = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(replay.status).toBe(409)
+    expect(state.dispatched.length).toBe(before)
+  })
+
+  it('a non-successor item with tampered arguments is still a plain request error (unchanged behavior)', async () => {
+    const start = await call(startBody())
+    const first = start.body.next_action_ids[0]!
+    const row = state.store!.rows.get(start.body.inquiry_id)!
+    state.store!.rows.set(row.inquiry_id, {
+      ...row,
+      authorization_jsonb: {
+        ...row.authorization_jsonb,
+        plan_items: row.authorization_jsonb.plan_items.map((candidate) => candidate.item_id === first ? { ...candidate, args: { ...candidate.args, chart_id: 'x' } } : candidate),
+      },
+    })
+    const executed = await call({ action: 'execute', lifecycle_token: start.body.lifecycle_token, action_id: first })
+    expect(executed.status).toBe(409)
+    expect(executed.body.error).toBe('INQUIRY_ARGS_NOT_AUTHORIZED')
+    expect(state.dispatched).toEqual([])
   })
 })

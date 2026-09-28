@@ -45,7 +45,7 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
-import { evaluateSuccessorItemForDispatch, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { evaluateSuccessorItemForDispatch, refuseAdmittedSuccessor, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { readBoundedRequestBody } from './bounded_body'
 import {
@@ -120,10 +120,6 @@ const PUBLIC_ERROR_CODES = new Set([
 async function chartPermissionOf(uid: string, chartId: string): Promise<'all' | 'view' | 'deny'> {
   const role = await resolveMcpPrincipalRole(uid)
   return authorizeChartAccess({ principal: { uid, role }, chartId, db: { query } })
-}
-
-async function entitled(uid: string, chartId: string): Promise<boolean> {
-  return (await chartPermissionOf(uid, chartId)) !== 'deny'
 }
 
 function nextReady(contract: InquiryContract): string[] {
@@ -235,7 +231,8 @@ export async function POST(request: Request) {
   try {
     const key = loadInquiryLifecycleSigningKeyRing()
     if (body.action === 'start') {
-      if (!(await entitled(principalUid, body.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
+      const startPermission = await chartPermissionOf(principalUid, body.chart_id)
+      if (startPermission === 'deny') return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
       // Accept both classifier and canonical compiler scope vocabularies. The
       // compiler owns their deterministic normalization and semantic hash.
       const scope = InquiryScopeInputSchema.parse(body.scope_tuple)
@@ -244,6 +241,9 @@ export async function POST(request: Request) {
       const contract = compileInquiryContract({
         snapshot, overlay, chart_id: body.chart_id, question: body.question,
         scope_tuple: scope, ai_proposal: body.ai_proposal, execution_channel: 'mcp_full',
+        // The successor envelope's effective entitlement comes from THIS authorization result; the
+        // caller-supplied scope tuple above can only narrow it.
+        server_authorization: { chart_permission: startPermission },
         temporal_anchor_date: body.temporal_anchor_date,
         // The raw door makes no model call: any AI decomposition is the caller's (RC-5.3).
         planning_provenance: deterministicCompilerProvenance(body.ai_proposal !== undefined),
@@ -318,28 +318,39 @@ export async function POST(request: Request) {
       // A successor item is authorized by the shared envelope, recomputed HERE from the server-held
       // contract (`row`, never a client value) plus this request's own live state. A refusal is
       // recorded as a terminal named gap below; it never dispatches.
-      const admission = contract.successor || (row.parent_inquiry_id ?? null) !== null
+      let admission = contract.successor || (row.parent_inquiry_id ?? null) !== null
         ? evaluateSuccessorItemForDispatch({
           contract, item_id: item.item_id, snapshot,
           live: buildSuccessorAdmissionLive({
             transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
             principal_subject: principalUid, owner_principal_subject: row.principal_uid,
             chart_permission: row.chart_id === claims.chart_id ? chartPermission : null,
-            // The raw door has no per-request call-count cap (it is bounded by the iteration budget
-            // and the per-result byte limit); there is no cost state to report here.
-            cost_exhausted: false,
+            // No door-level cost cap exists on raw; the shared successor budget (the contract's own
+            // ledger) is enforced by the evaluator, so nothing is asserted here.
           }),
           expect_successor: (row.parent_inquiry_id ?? null) !== null,
         })
         : null
-      if (admission?.decision !== 'refuse'
-        && (!binding || !isInquiryServerDispatchEligible(binding, 'raw_mcp')
-          || !isInquirySafeRegistryDescriptor(binding, descriptor) || !tool)) {
-        return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
+      const gatesPass = Boolean(binding && isInquiryServerDispatchEligible(binding, 'raw_mcp')
+        && isInquirySafeRegistryDescriptor(binding, descriptor) && tool)
+      if (admission === null) {
+        // An ordinary (non-successor) item that cannot run is a request error, exactly as before.
+        if (!gatesPass || !binding) return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
+      } else if (admission.decision === 'admit' && !gatesPass) {
+        // The envelope admitted, but the live binding is gone: a definitive refusal, recorded terminally.
+        admission = refuseAdmittedSuccessor(admission, 'successor_capability_not_in_catalogue')
       }
-      if (!binding) return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
-      const invocationArgs = authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)
-      if (!invocationArgs) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
+      const authorizedInvocationArgs = binding
+        ? authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)
+        : null
+      if (!authorizedInvocationArgs) {
+        if (admission === null) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
+        // Unauthorized or tampered arguments on a successor item are a definitive, terminal refusal too.
+        if (admission.decision === 'admit') admission = refuseAdmittedSuccessor(admission, 'successor_arguments_not_authorized')
+      }
+      // Only a refused successor item ever proceeds without authorized args; it never dispatches, so the
+      // stored arguments are used solely to hash the terminal receipt.
+      const invocationArgs = authorizedInvocationArgs ?? item.args
 
       const reservationHash = `reserved:${hashJti(randomUUID())}`
       const reservation = await reserveInquiryAction({
@@ -412,10 +423,12 @@ export async function POST(request: Request) {
       // the client later presents for certification hashes to the ref committed here
       // (in-memory values such as undefined fields or Dates do not survive the wire).
       raw = JSON.parse(serialized)
-      const pagination = deriveInquiryPaginationReceipt(binding, raw, invocationArgs)
+      const pagination = admission?.decision === 'refuse'
+        ? { semantics: binding?.pagination ?? 'none', exhausted: true, next: null }
+        : deriveInquiryPaginationReceipt(binding!, raw, invocationArgs)
       let observed = recordInquiryExecution(contract, {
         item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
-        pagination, request_position_path: binding.pagination_contract?.request_position_path,
+        pagination, request_position_path: binding?.pagination_contract?.request_position_path,
         // A served result may warrant a different capability (RC-5.4); it is pursued only
         // through the governed `continue` successor, never dispatched ad hoc.
         evidence_frontier: disposition === 'served'
@@ -454,7 +467,6 @@ export async function POST(request: Request) {
             transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
             principal_subject: principalUid, owner_principal_subject: row.principal_uid,
             chart_permission: row.chart_id === claims.chart_id ? chartPermission : null,
-            cost_exhausted: false,
           }),
         })
       } catch (error) {

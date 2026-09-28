@@ -258,6 +258,7 @@ export async function POST(request: Request): Promise<Response> {
         // ── Plan: query text → planner → budgets → floors → NO-LEAKAGE. ──────
         const planned = await runPlanStage({
           em, request, messages, identity, params, safetyDecision, runtime, abortSignal: turnSignal,
+          chartPermission: authorized.value.chartPermission,
         })
         if (planned.halted) return finish(planned.status)
         if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')

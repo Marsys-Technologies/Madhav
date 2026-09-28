@@ -59,6 +59,7 @@ import {
   unavailableComponents,
   type ComponentClassification,
   componentFailures,
+  isChartUuid,
 } from '../../generation/composite_fence'
 import { getPositionsCapability } from '../L1_ganita/get_positions'
 import { getDignityCapability } from '../L1_ganita/get_dignity'
@@ -211,6 +212,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] as string
     const grahaInput = args['graha'] as string
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
+    if (!isChartUuid(chart_id)) return { content: { error: 'chart_id must be a UUID', code: 'invalid_chart_id' }, is_error: true }
     if (!grahaInput) return { content: { error: 'graha is required' }, is_error: true }
 
     let grahaCode: string

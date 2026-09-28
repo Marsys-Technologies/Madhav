@@ -6,7 +6,7 @@
  * shared authorization envelope (Packet B) admits it, recomputed at dispatch from server-held state —
  * and the final contract carries its parent so the fact register accounts for the whole chain.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import { w5DoorParityPlan, w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 import { buildInquiryFactRegister } from '@/lib/vidhi/inquiry/response_accountability'
@@ -16,11 +16,12 @@ import {
   SCENARIO_OVERLAY as OVERLAY,
   SCENARIO_SNAPSHOT as SNAPSHOT,
   expectedAdmitProjection,
+  expectedDispatchProjection,
   projectDecision,
   scenarioFixture,
 } from '@/lib/vidhi/inquiry/__fixtures__/successor_envelope_scenario'
 
-const state = vi.hoisted(() => ({ triggerTool: '' as string, dispatched: [] as string[], paginate: false }))
+const state = vi.hoisted(() => ({ triggerTool: '' as string, dispatched: [] as string[], paginate: false, units: undefined as number | undefined }))
 
 vi.mock('@/lib/bundle/bundle_hydrator', () => ({
   hydrateBundle: async () => ({ assets: [], floor_enforced: false, total_bytes: 0, total_tokens: 0 }),
@@ -30,7 +31,7 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => ({
   loadChartCapabilityOverlay: async () => OVERLAY,
 }))
 vi.mock('@/lib/retrieval/registry', () => ({
-  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false, display: { reader_label_key: 'examining_chart' } }),
+  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false, display: { reader_label_key: 'examining_chart' }, ...(state.units === undefined ? {} : { dispatch_units: state.units }) }),
 }))
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/qos/dispatch_queue', () => ({
@@ -93,6 +94,8 @@ const planTools = (contract: InquiryContract) =>
   [...new Set(contract.plan_items.flatMap((item) => item.binding_id ? [item.binding_id.slice('registry:'.length)] : []))]
 
 describe('Portal evidence-driven successor', () => {
+  beforeEach(() => { state.units = undefined })
+
   it('continues into the admitted capability when the request is authorized for it, and keeps the chain', async () => {
     const { contract, source, targetUri } = setup()
     state.triggerTool = source
@@ -126,7 +129,7 @@ describe('Portal evidence-driven successor', () => {
     expect(item.observation?.disposition).toBe('served')
     // Door parity: the same pinned contract and frontier produce the shared receipt projection.
     expect(projectDecision(item.successor_admission!)).toEqual(expectedAdmitProjection())
-    expect(projectDecision(item.successor_dispatch!)).toEqual(expectedAdmitProjection())
+    expect(projectDecision(item.successor_dispatch!)).toEqual(expectedDispatchProjection())
   })
 
   it('never dispatches a successor the request safety pass excluded; it names the gap with the decision code', async () => {
@@ -182,5 +185,48 @@ describe('Portal evidence-driven successor', () => {
     } finally {
       state.paginate = false
     }
+  })
+
+  it('revalidates entitlement at dispatch: a contract issued under full permission is refused when the live grant is view-only', async () => {
+    const { contract, source, targetUri } = setup()
+    state.triggerTool = source
+    state.dispatched = []
+    const { out } = await run(contract, planTools(contract), { chartPermission: 'view' })
+    expect(state.dispatched).not.toContain(targetUri)
+    const item = out.inquiryContract!.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+    expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_entitlement_not_permitted', entitlement: { tier: 'public_disclosed', source: 'chart_permission_view' } })
+    expect(item.state).toBe('observed')
+  })
+
+  it('a denied or absent permission admits nothing and dispatches nothing', async () => {
+    for (const permission of ['deny', null] as const) {
+      const { contract, source, targetUri } = setup()
+      state.triggerTool = source
+      state.dispatched = []
+      const { out } = await run(contract, planTools(contract), { chartPermission: permission })
+      expect(state.dispatched, String(permission)).not.toContain(targetUri)
+      const item = out.inquiryContract!.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+      expect(item.successor_dispatch, String(permission)).toMatchObject({ decision: 'refuse', code: 'successor_chart_access_not_verified' })
+    }
+  })
+
+  it('charges the shared successor ledger once per dispatched item, and refuses a priced-out successor without charging it', async () => {
+    const { contract, source, targetUri } = setup()
+    state.triggerTool = source
+    state.dispatched = []
+    state.units = 2
+    const charged = (await run(contract, planTools(contract))).out.inquiryContract!
+    const dispatched = charged.plan_items.filter((item) => item.successor_dispatch?.decision === 'admit')
+    expect(dispatched.length).toBeGreaterThan(0)
+    expect(charged.successor_cost_ledger!.entries).toHaveLength(dispatched.length)
+    expect(charged.successor_cost_ledger!.consumed_units).toBe(dispatched.length * 2)
+
+    state.dispatched = []
+    state.units = 13 // above the 12-unit ceiling
+    const priced = (await run(contract, planTools(contract))).out.inquiryContract!
+    expect(state.dispatched).not.toContain(targetUri)
+    const item = priced.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+    expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_cost_limit_exceeded' })
+    expect(priced.successor_cost_ledger).toBeUndefined()
   })
 })

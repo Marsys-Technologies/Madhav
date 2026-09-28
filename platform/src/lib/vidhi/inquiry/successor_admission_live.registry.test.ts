@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '@/lib/retrieval/registry/catalog'
 import { isInquirySafeRegistryDescriptor } from './execution_policy'
 import { EVIDENCE_FRONTIER_RULES } from './evidence_frontier'
-import { buildAuthorizationEnvelope } from './authorization_envelope'
+import { buildAuthorizationEnvelope, effectiveEntitlementForPermission } from './authorization_envelope'
 import { buildSuccessorAdmissionLive } from './successor_admission_live'
 import { SCENARIO_CHART_ID, SCENARIO_SNAPSHOT } from './__fixtures__/successor_envelope_scenario'
 
@@ -17,13 +17,13 @@ describe('successor envelope targets resolve in the real registry', () => {
     for (const channel of ['platform_internal', 'mcp_full'] as const) {
       const envelope = buildAuthorizationEnvelope({
         snapshot: SCENARIO_SNAPSHOT, chart_id: SCENARIO_CHART_ID, execution_channel: channel,
-        scope: { domains: ['general'], entitlement: 'native' }, planned_scu_ids: [], anchor_scu_ids: [],
+        scope: { domains: ['general'], entitlement: 'native' }, effective_entitlement: effectiveEntitlementForPermission('all'), planned_scu_ids: [], anchor_scu_ids: [],
       })
       expect(envelope.entries.length, channel).toBeGreaterThan(0)
       const live = buildSuccessorAdmissionLive({
         transport: channel === 'platform_internal' ? 'portal' : 'raw_mcp', chart_id: SCENARIO_CHART_ID,
         overlay: { overlay_version: null, build_id: null }, principal_subject: 'p', owner_principal_subject: 'p',
-        chart_permission: 'all', cost_exhausted: false,
+        chart_permission: 'all',
       })
       for (const entry of envelope.entries) {
         const descriptor = live.describe(entry.capability_uri)

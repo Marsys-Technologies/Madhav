@@ -28,7 +28,9 @@ import { challengeInquirySelection } from './omission_challenger'
 import {
   authorizationEnvelopeHash,
   buildAuthorizationEnvelope,
+  appendSuccessorCharge,
   deriveSuccessorEnvelope,
+  effectiveEntitlementForPermission,
   evaluateSuccessorAdmission,
   SUCCESSOR_DENY_ALL_LIVE,
   type SuccessorAdmissionDecision,
@@ -453,6 +455,12 @@ export function compileInquiryContract(args: {
   temporal_anchor_source?: InquiryArgumentResolutionReceipt['source']
   /** How the AI proposal was produced; recorded on the contract, never hashed. */
   planning_provenance?: InquiryPlanningProvenance
+  /**
+   * What the door's OWN verified chart authorization returned for this principal. It alone decides
+   * the successor envelope's effective entitlement; the scope tuple (caller/planner supplied) can
+   * only narrow. Omitted means unverified: the envelope is empty and no successor can be admitted.
+   */
+  server_authorization?: { readonly chart_permission: 'all' | 'view' | 'deny' | null }
 }): InquiryContract {
   const question = normalizeQuestion(args.question)
   const normalization = normalizeInquiryScope(args.scope_tuple)
@@ -606,6 +614,7 @@ export function compileInquiryContract(args: {
     chart_id: args.chart_id,
     execution_channel: executionChannel,
     scope: { domains: scope.domains, entitlement: scope.entitlement },
+    effective_entitlement: effectiveEntitlementForPermission(args.server_authorization?.chart_permission),
     planned_scu_ids: unique([...obligations.flatMap((obligation) => obligation.scu_ids), ...plan.map((item) => item.scu_id)]),
     anchor_scu_ids: unique(plan.filter((item) => item.binding_id !== null).map((item) => item.scu_id)),
   })
@@ -971,6 +980,19 @@ export function recordInquiryExecution(
       plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
         ? { ...candidate, successor_dispatch: args.successor_dispatch }
         : candidate),
+      // A dispatch the envelope admitted is PAID FOR here, in the same transition as its observation
+      // (so exactly once): every page, every retry, every attempt that reached the tool. A refusal
+      // dispatched nothing and costs nothing.
+      ...(args.successor_dispatch.decision === 'admit'
+        ? {
+          successor_cost_ledger: appendSuccessorCharge(observed.successor_cost_ledger, {
+            item_id: item.item_id,
+            scu_id: item.scu_id,
+            units: args.successor_dispatch.limit_state.candidate_units,
+            decision_hash: args.successor_dispatch.decision_hash,
+          }),
+        }
+        : {}),
     }
   }
   return observed

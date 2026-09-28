@@ -33,6 +33,7 @@ import {
   unavailableComponents,
   type ComponentClassification,
   componentFailures,
+  isChartUuid,
 } from '../../generation/composite_fence'
 import { getPositionsCapability } from './get_positions'
 import { getDignityCapability } from './get_dignity'
@@ -137,6 +138,7 @@ export const queryPlanetCapability: CapabilityDescriptor = {
       const chartId = args.chart_id as string
       const planetInput = args.planet as string
       if (!chartId) return { content: { error: 'chart_id is required' }, is_error: true }
+      if (!isChartUuid(chartId)) return { content: { error: 'chart_id must be a UUID', code: 'invalid_chart_id' }, is_error: true }
       if (!planetInput) return { content: { error: 'planet is required' }, is_error: true }
 
       let code: string
