@@ -645,9 +645,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     try {
       generation = await resolveChartServedGeneration(chart_id, null)
     } catch (error) {
+      console.error('[judgment_query] served-generation resolution failed', error)
       return {
         content: {
-          error: `judgment_query: served-generation resolution failed; refusing unfenced fact reads: ${String(error)}`,
+          error: `judgment_query: served-generation resolution failed; refusing unfenced fact reads`,
           code: 'served_generation_resolution_failed',
           chart_id,
         },

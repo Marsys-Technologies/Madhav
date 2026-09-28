@@ -28,6 +28,12 @@ describe('raw inquiry lifecycle MCP surface', () => {
     })
   })
 
+  it('serializes the certify body with `action` as its first key (the server admits large bodies only that way)', async () => {
+    await handlers.get('inquiry_certify')?.({ lifecycle_token: 'final-token', response_text: 'Answer [[F1]]', evidence_payloads: [{ rows: [] }] })
+    const sent = vi.mocked(callInquiryLifecycle).mock.calls.at(-1)![1]
+    expect(JSON.stringify(sent).startsWith('{"action":"certify"')).toBe(true)
+  })
+
   it('rejects certification bodies the server would refuse, before any platform call', async () => {
     vi.mocked(callInquiryLifecycle).mockClear()
     await expect(handlers.get('inquiry_certify')?.({ lifecycle_token: 'final-token', response_text: '', evidence_payloads: [] })).rejects.toThrow()

@@ -67,6 +67,7 @@ describe('judgment mandatory served-generation fence', () => {
       code: 'served_generation_resolution_failed',
       chart_id: CHART_ID,
     })
+    expect(JSON.stringify(result.content)).not.toContain('receipts unavailable')
     expect(queryMock).toHaveBeenCalledTimes(1)
   })
 

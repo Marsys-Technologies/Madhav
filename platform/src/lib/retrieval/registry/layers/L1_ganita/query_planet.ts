@@ -144,7 +144,8 @@ export const queryPlanetCapability: CapabilityDescriptor = {
           generationFenceNote = 'no served generation resolved for this chart — shadbala/yoga-firing reads fell back to unfenced current rows'
         }
       } catch (error) {
-        generationFenceNote = `served-generation resolution failed (${String(error)}) — shadbala/yoga-firing reads fell back to unfenced current rows`
+        console.error('[query_planet] served-generation resolution failed', error)
+        generationFenceNote = 'served-generation resolution failed — shadbala/yoga-firing reads fell back to unfenced current rows'
       }
 
       const [positions, dignity, strength, avasthas, aspects, yogaDosha, yogaFirings, dispositors] = await Promise.all([

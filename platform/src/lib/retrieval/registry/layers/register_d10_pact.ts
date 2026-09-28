@@ -235,9 +235,10 @@ export const pactQueryCapability: CapabilityDescriptor = {
       }
       buildIds = generation.served_build_ids
     } catch (error) {
+      console.error('[pact_query] served-generation resolution failed', error)
       return {
         content: {
-          error: `pact_query: served-generation resolution failed; refusing unfenced fact reads: ${String(error)}`,
+          error: `pact_query: served-generation resolution failed; refusing unfenced fact reads`,
           code: 'served_generation_resolution_failed', chart_id,
         },
         is_error: true,

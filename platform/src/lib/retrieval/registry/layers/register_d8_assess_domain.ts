@@ -708,9 +708,10 @@ async function runAssessDomain(
   try {
     generation = await resolveChartServedGeneration(chart_id, null)
   } catch (error) {
+    console.error(`[assess_${requested_domain_key}] served-generation resolution failed`, error)
     return {
       content: {
-        error: `assess_${requested_domain_key}: served-generation resolution failed; refusing unfenced fact reads: ${String(error)}`,
+        error: `assess_${requested_domain_key}: served-generation resolution failed; refusing unfenced fact reads`,
         code: 'served_generation_resolution_failed',
         chart_id,
       },

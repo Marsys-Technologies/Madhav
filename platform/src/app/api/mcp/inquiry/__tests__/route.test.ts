@@ -916,6 +916,41 @@ describe('raw MCP inquiry certification (RC-6.4)', () => {
     expect(mocks.verify).not.toHaveBeenCalled()
   })
 
+  // Security review: the certify-sized cap (~33.5 MB) applied to every action. Only a body that
+  // leads with "action":"certify" may exceed the small non-certify limit.
+  function textBody(text: string): Request {
+    const bytes = new TextEncoder().encode(text)
+    return new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1' },
+      body: new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(bytes); controller.close() } }),
+      duplex: 'half',
+    } as RequestInit)
+  }
+  const OVER_SMALL = 300 * 1024 // above the 256 KiB non-certify limit, far below the certify limit
+
+  it('refuses a body over the small limit for every non-certify action, header omitted', async () => {
+    mocks.verify.mockClear()
+    for (const action of ['start', 'execute', 'finalize', 'continue']) {
+      const res = await POST(textBody(JSON.stringify({ action, lifecycle_token: 't', pad: 'x'.repeat(OVER_SMALL) })))
+      expect(res.status, action).toBe(413)
+    }
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  it('refuses a large body that does not lead with the certify action, even if it mentions it later', async () => {
+    const res = await POST(textBody(JSON.stringify({ pad: 'x'.repeat(OVER_SMALL), action: 'certify', lifecycle_token: 't' })))
+    expect(res.status).toBe(413)
+  })
+
+  it('admits a large body that leads with the certify action (up to the certify limit)', async () => {
+    primeTerminal(finalized())
+    const res = await POST(textBody(JSON.stringify({
+      action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [{ pad: 'x'.repeat(OVER_SMALL) }],
+    })))
+    expect(res.status).not.toBe(413)
+  })
+
   it('accepts a valid request just below the limit and rejects invalid JSON below the limit', async () => {
     // "Just below the limit" at the readBoundedRequestBody layer itself (see the dedicated
     // unit tests below for the exact-boundary cases) — here, a well-formed, ordinary-sized
@@ -988,6 +1023,42 @@ describe('readBoundedRequestBody', () => {
   function streamedRequest(chunks: readonly string[]): Request {
     return new Request('http://localhost/x', { method: 'POST', body: streamOf(chunks), duplex: 'half' } as RequestInit)
   }
+
+  describe('two-tier escalation', () => {
+    const allowCertify = (prefix: string) => prefix.startsWith('{"action":"certify"')
+    const tier = { initialBytes: 20, prefixBytes: 32, allow: allowCertify }
+
+    it('passes a body within the initial limit without consulting escalation', async () => {
+      const allow = vi.fn(() => false)
+      const result = await readBoundedRequestBody(streamedRequest(['{"a":1}']), 100, { ...tier, allow })
+      expect(result.ok).toBe(true)
+      expect(allow).not.toHaveBeenCalled()
+    })
+
+    it('refuses an unadmitted body at the initial limit, cancelling the stream', async () => {
+      const allow = vi.fn(() => false)
+      const result = await readBoundedRequestBody(streamedRequest(['{"action":"start",', '"x":"' + 'a'.repeat(40) + '"}']), 100, { ...tier, allow })
+      expect(result).toEqual({ ok: false, reason: 'too_large' })
+      expect(allow).toHaveBeenCalledTimes(1)
+    })
+
+    it('admits a body once, up to the maximum, when the prefix qualifies', async () => {
+      const allow = vi.fn(allowCertify)
+      const body = '{"action":"certify","x":"' + 'a'.repeat(40) + '"}'
+      const ok = await readBoundedRequestBody(streamedRequest([body.slice(0, 10), body.slice(10)]), 100, { ...tier, allow })
+      expect(ok).toEqual({ ok: true, text: body })
+      expect(allow).toHaveBeenCalledTimes(1)
+      const tooBig = await readBoundedRequestBody(streamedRequest(['{"action":"certify","x":"' + 'a'.repeat(200) + '"}']), 100, tier)
+      expect(tooBig).toEqual({ ok: false, reason: 'too_large' })
+    })
+
+    it('hands escalation only the leading bytes even when one chunk is far larger', async () => {
+      let seen = ''
+      await readBoundedRequestBody(streamedRequest(['{"action":"certify","x":"' + 'a'.repeat(60) + '"}']), 200, { ...tier, allow: (prefix) => { seen = prefix; return true } })
+      expect(seen.length).toBeLessThanOrEqual(32)
+      expect(seen.startsWith('{"action":"certify"')).toBe(true)
+    })
+  })
 
   it('reads a body with no size problem in full', async () => {
     const result = await readBoundedRequestBody(streamedRequest(['hello ', 'world']), 100)

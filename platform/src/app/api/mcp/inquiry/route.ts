@@ -72,8 +72,14 @@ const AiProposalSchema = z.object({
 const MAX_RESULT_BYTES = 512 * 1024
 const MAX_CERTIFY_PAYLOADS = 64
 // Bound the certify body before it is parsed: every committed payload at its maximum size, the
-// answer, and envelope overhead. Execution bodies are far smaller.
+// answer, and envelope overhead.
 const MAX_REQUEST_BYTES = MAX_CERTIFY_PAYLOADS * MAX_RESULT_BYTES + 1024 * 1024
+// Every other action is small by schema (question <= 4000 chars, lifecycle token <= 16 KiB, a
+// bounded AI proposal), so it gets a small limit; only a body whose first key is
+// `"action":"certify"` may use the large one. The MCP client serializes `action` first.
+const MAX_NON_CERTIFY_REQUEST_BYTES = 256 * 1024
+const CERTIFY_PREFIX_BYTES = 4096
+const CERTIFY_LEADING_ACTION = /^\s*\{\s*"action"\s*:\s*"certify"\s*[,}]/
 // Bound certification work: each cited span re-hashes the findings it cites.
 const MAX_CERTIFY_CITED_SPANS = 256
 const MAX_CERTIFY_CITATIONS = 2048
@@ -202,7 +208,11 @@ export async function POST(request: Request) {
   if (Number(request.headers.get('content-length') ?? 0) > MAX_REQUEST_BYTES) {
     return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
   }
-  const bounded = await readBoundedRequestBody(request, MAX_REQUEST_BYTES)
+  const bounded = await readBoundedRequestBody(request, MAX_REQUEST_BYTES, {
+    initialBytes: MAX_NON_CERTIFY_REQUEST_BYTES,
+    prefixBytes: CERTIFY_PREFIX_BYTES,
+    allow: (prefix) => CERTIFY_LEADING_ACTION.test(prefix),
+  })
   if (!bounded.ok) return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
   let rawBody: unknown
   try { rawBody = JSON.parse(bounded.text) } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }

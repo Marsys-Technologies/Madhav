@@ -94,5 +94,7 @@ describe('query_planet served-generation fence', () => {
     const content = result.content as Record<string, unknown>
     expect(content['generation_fence']).toMatchObject({ fenced: false })
     expect((content['generation_fence'] as Record<string, unknown>)['note']).toContain('resolution failed')
+    // The underlying error stays server-side; callers get a fixed disclosure only.
+    expect(JSON.stringify(content)).not.toContain('db unreachable')
   })
 })

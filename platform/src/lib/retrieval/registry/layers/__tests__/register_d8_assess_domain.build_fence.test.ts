@@ -119,6 +119,7 @@ describe('assess_* served-generation fence', () => {
     const result = await run('assess_marriage')
     expect(result.is_error).toBe(true)
     expect(result.content).toMatchObject({ code: 'served_generation_resolution_failed' })
+    expect(JSON.stringify(result.content)).not.toContain('receipts unavailable')
     expect(domainReadingHandler).not.toHaveBeenCalled()
   })
 

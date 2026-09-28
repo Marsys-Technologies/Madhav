@@ -208,7 +208,8 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
         generationFenceNote = 'no served generation resolved for this chart — strength reads fell back to unfenced current rows'
       }
     } catch (error) {
-      generationFenceNote = `served-generation resolution failed (${String(error)}) — strength reads fell back to unfenced current rows`
+      console.error('[graha_portrait] served-generation resolution failed', error)
+      generationFenceNote = 'served-generation resolution failed — strength reads fell back to unfenced current rows'
     }
 
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA

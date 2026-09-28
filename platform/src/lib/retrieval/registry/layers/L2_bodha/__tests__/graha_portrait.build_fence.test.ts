@@ -83,5 +83,6 @@ describe('graha_portrait served-generation fence', () => {
     const content = result.content as Record<string, unknown>
     expect(content['generation_fence']).toMatchObject({ fenced: false })
     expect((content['generation_fence'] as Record<string, unknown>)['note']).toContain('resolution failed')
+    expect(JSON.stringify(content)).not.toContain('db unreachable')
   })
 })
