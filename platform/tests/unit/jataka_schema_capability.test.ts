@@ -49,7 +49,7 @@ vi.mock('pg', () => ({
 
 const { setJatakaSchemaCapability } = await import('../../scripts/jataka-schema-capability')
 
-describe('Jataka temporary schema capability', () => {
+describe('Protected public-schema temporary capability', () => {
   beforeEach(() => {
     harness.queries.length = 0
     harness.canCreate = false
@@ -100,7 +100,7 @@ describe('Jataka temporary schema capability', () => {
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
 type WorkflowJob = { needs?: string[]; if?: string; environment?: string; steps?: WorkflowStep[] }
 
-describe('Jataka protected migration workflow contract', () => {
+describe('Protected public-schema migration workflow contract', () => {
   const workflow = load(readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')) as {
     on: { workflow_dispatch: { inputs: Record<string, unknown> } }
     jobs: Record<string, WorkflowJob>
@@ -108,21 +108,34 @@ describe('Jataka protected migration workflow contract', () => {
 
   it('requires explicit manual authorization and the protected environment', () => {
     expect(workflow.on.workflow_dispatch.inputs.jataka_schema_migration).toBeTruthy()
+    expect(workflow.on.workflow_dispatch.inputs.ai_console_schema_migration).toBeTruthy()
     const job = workflow.jobs['jataka-protected-migrations']
     expect(job.environment).toBe('data-plane-production-cutover')
     expect(job.if).toContain("github.event_name == 'workflow_dispatch'")
     expect(job.if).toContain('inputs.jataka_schema_migration == true')
+    expect(job.if).toContain('inputs.ai_console_schema_migration == true')
   })
 
   it('pins the exact migration set between a grant and an always-run revoke', () => {
     const steps = workflow.jobs['jataka-protected-migrations'].steps ?? []
-    const grant = steps.find((step) => step.name === 'Grant temporary Jataka schema capability')
-    const apply = steps.find((step) => step.name === 'Apply exact Jataka migrations')
-    const revoke = steps.find((step) => step.name === 'Revoke temporary Jataka schema capability')
+    const grant = steps.find((step) => step.name === 'Grant temporary public-schema capability')
+    const apply = steps.find((step) => step.name === 'Apply exact protected public-schema migrations')
+    const revoke = steps.find((step) => step.name === 'Revoke temporary public-schema capability')
     expect(grant?.env?.DATA_PLANE_MIGRATOR_DATABASE_URL).toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
     expect(grant?.run).toContain('jataka-schema-capability.ts grant')
     expect(apply?.env?.DATABASE_URL).toContain('PROD_DATABASE_URL')
-    expect(apply?.run).toContain('1120_jataka_conversation_archive_context.sql,1121_jataka_correction_archive_write_guard.sql,1122_jataka_chart_context_staleness.sql,1123_jataka_context_staleness_deferred_surfaces.sql')
+    expect(apply?.env?.APPLY_JATAKA_SCHEMA_MIGRATIONS).toContain('jataka_schema_migration')
+    expect(apply?.env?.APPLY_AI_CONSOLE_SCHEMA_MIGRATION).toContain('ai_console_schema_migration')
+    for (const migration of [
+      '1120_jataka_conversation_archive_context.sql',
+      '1121_jataka_correction_archive_write_guard.sql',
+      '1122_jataka_chart_context_staleness.sql',
+      '1123_jataka_context_staleness_deferred_surfaces.sql',
+      '1124_ai_console_byok_routing.sql',
+    ]) {
+      expect(apply?.run).toContain(migration)
+    }
+    expect(apply?.run).toContain('migrate.ts --only "$only"')
     expect(revoke?.if).toContain('always()')
     expect(revoke?.run).toContain('jataka-schema-capability.ts revoke')
   })
