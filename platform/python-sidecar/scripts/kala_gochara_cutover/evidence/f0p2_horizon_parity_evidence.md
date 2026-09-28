@@ -110,3 +110,23 @@ GREEN. This is the exact operation queued for production chart 2 before the
 (refine ON, orb 5.0°, ephe `.run/se1`), payloads →
 `.run/wp10_tranche2/f0p2_episodes_<chart>.json` / `f0p2_coverage_<chart>.json`,
 logs `f0p2_enum_<chart>.log/.stderr`. Expected ~5–6 h each.
+
+## Interruption + relaunch (2026-09-29, honest record)
+
+The first century-enenumeration pair (tasks launched ~51 min earlier, both
+workers verified healthy at ~99% CPU) was **terminated externally** when the
+user manually interrupted a foreground wait — both processes exited with
+code −1 and empty stderr simultaneously, and the disposable container
+`gochara-f0p2-rehearsal` was removed from the machine in the same window
+(the own proxy on 55440 was also stopped). No payload files were written
+(the enumerator writes outputs only at completion); no partial DB state —
+enumeration is read-only against the DB. Nothing was lost except compute
+time; no production surface was involved at any point.
+
+Recovery: the rehearsal DB rebuild is now scripted (`.run/f0p2_rebuild_rehearsal.sh`,
+idempotent, 19 s — counts re-verified: rm 1,595 / mn 148 / kvg 344 / facts
+283,016 / '3.0' windows 1,830) and both century enumerations were relaunched
+fresh (same commands, same label '4.1', same horizon). The chart-2 '4.0'
+clear rehearsal was consumed by the container loss and will be re-run after
+rebuild if needed for the record (it is GREEN on record above; the
+production-queued operation is unchanged).
