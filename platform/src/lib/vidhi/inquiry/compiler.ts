@@ -219,7 +219,9 @@ function executionPlanAuthorizationProjection(planItems: readonly InquiryPlanIte
     blocked_reason: item.blocked_reason,
     // Only successor items carry an envelope decision; omitting it otherwise keeps every
     // non-successor plan's authorization projection byte-identical.
-    ...(item.successor_admission ? { successor_admission_hash: item.successor_admission.decision_hash } : {}),
+    // The WHOLE decision is hashed (not its self-declared hash field), so editing any decision
+    // field changes the authorization hash.
+    ...(item.successor_admission ? { successor_admission: item.successor_admission } : {}),
   }))
 }
 

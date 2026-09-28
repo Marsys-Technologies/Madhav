@@ -45,6 +45,8 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
+import { evaluateSuccessorItemForDispatch } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { readBoundedRequestBody } from './bounded_body'
 import {
   buildStructuredResponseAccountability,
@@ -305,10 +307,28 @@ export async function POST(request: Request) {
       const binding = scu?.bindings.find((candidate) => candidate.binding_id === item.binding_id)
       const tool = getToolByName(uri)
       const descriptor = getCapability(uri)
-      if (!binding || !isInquiryServerDispatchEligible(binding, 'raw_mcp')
-        || !isInquirySafeRegistryDescriptor(binding, descriptor) || !tool) {
+      // A successor item is authorized by the shared envelope, recomputed HERE from the server-held
+      // contract (`row`, never a client value) plus this request's own live state. A refusal is
+      // recorded as a terminal named gap below; it never dispatches.
+      const admission = contract.successor
+        ? evaluateSuccessorItemForDispatch({
+          contract, item_id: item.item_id, snapshot,
+          live: buildSuccessorAdmissionLive({
+            transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
+            principal_subject: principalUid, owner_principal_subject: row.principal_uid,
+            // The lifecycle row was read under this principal's chart-scoped RLS context and the
+            // token's chart was checked against it above.
+            chart_access_verified: row.chart_id === claims.chart_id,
+            cost_exhausted: false,
+          }),
+        })
+        : null
+      if (admission?.decision !== 'refuse'
+        && (!binding || !isInquiryServerDispatchEligible(binding, 'raw_mcp')
+          || !isInquirySafeRegistryDescriptor(binding, descriptor) || !tool)) {
         return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
       }
+      if (!binding) return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
       const invocationArgs = authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)
       if (!invocationArgs) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
 
@@ -343,9 +363,16 @@ export async function POST(request: Request) {
       let gapReason: string | undefined
       const traceId = randomUUID()
       try {
-        raw = await tool.retrieve({ chart_id: claims.chart_id, domains: contract.scope_tuple.domains }, invocationArgs)
-        disposition = classifyInquiryResult(binding, raw)
-        if (disposition === 'failed') gapReason = 'TOOL_FAILURE_ENVELOPE'
+        if (admission?.decision === 'refuse') {
+          // Never dispatched: the receipt records the decision's own stable code.
+          disposition = 'failed'
+          gapReason = admission.code
+          raw = { ok: false, error: admission.code, trace_id: traceId }
+        } else {
+          raw = await tool!.retrieve({ chart_id: claims.chart_id, domains: contract.scope_tuple.domains }, invocationArgs)
+          disposition = classifyInquiryResult(binding, raw)
+          if (disposition === 'failed') gapReason = 'TOOL_FAILURE_ENVELOPE'
+        }
       } catch (error) {
         disposition = 'failed'
         gapReason = 'TOOL_DISPATCH_FAILED'
@@ -377,7 +404,7 @@ export async function POST(request: Request) {
       // (in-memory values such as undefined fields or Dates do not survive the wire).
       raw = JSON.parse(serialized)
       const pagination = deriveInquiryPaginationReceipt(binding, raw, invocationArgs)
-      const observed = recordInquiryExecution(contract, {
+      let observed = recordInquiryExecution(contract, {
         item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
         pagination, request_position_path: binding.pagination_contract?.request_position_path,
         // A served result may warrant a different capability (RC-5.4); it is pursued only
@@ -385,7 +412,18 @@ export async function POST(request: Request) {
         evidence_frontier: disposition === 'served'
           ? deriveEvidenceFrontier({ contract, item_id: item.item_id, evidence_payload: raw, snapshot })
           : [],
+        ...(admission ? { successor_dispatch: admission } : {}),
       })
+      if (admission?.decision === 'refuse') {
+        // A refused item is terminal. recordInquiryExecution re-readies a failed item for retry while
+        // iterations remain, but retrying something that was never authorized would strand the lifecycle.
+        observed = {
+          ...observed,
+          plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
+            ? { ...candidate, state: 'observed' as const }
+            : candidate),
+        }
+      }
       const remaining = observed.iteration >= observed.max_iterations ? [] : nextReady(observed)
       const issued = issueInquiryLifecycleToken({
         sub: principalSubject, inquiry_id: row.inquiry_id, chart_id: row.chart_id,
@@ -399,7 +437,7 @@ export async function POST(request: Request) {
         row, expected_jti_hash: reservation.reservation_hash, next_jti_hash: hashJti(issued.claims.jti), contract: observed,
         evidence: { plan_item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id,
           canonical_args_hash: stableFingerprint(invocationArgs), raw_result_hash: stableFingerprint(raw), disposition,
-          pagination, payload: { trace_id: traceId, result_bytes: Buffer.byteLength(serialized) } },
+          pagination, payload: { trace_id: traceId, result_bytes: Buffer.byteLength(serialized), ...(admission ? { admission } : {}) } },
       })
       return response({ ok: true, inquiry_id: row.inquiry_id, evidence_receipt_id: receiptId, raw_result: raw, disposition, pagination, contract: observed, lifecycle_token: issued.token, next_action_ids: issued.claims.next_action_ids })
     }
@@ -412,6 +450,12 @@ export async function POST(request: Request) {
         parentFinal = closeInquiryForEvidenceSuccessor(row.contract_jsonb)
         successor = compileInquirySuccessorContract({
           snapshot, overlay: currentOverlay, parent_inquiry_id: row.inquiry_id, parent: parentFinal,
+          admission: buildSuccessorAdmissionLive({
+            transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
+            principal_subject: principalUid, owner_principal_subject: row.principal_uid,
+            chart_access_verified: row.chart_id === claims.chart_id,
+            cost_exhausted: false,
+          }),
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
