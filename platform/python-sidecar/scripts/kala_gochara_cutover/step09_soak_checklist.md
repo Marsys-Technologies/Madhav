@@ -6,8 +6,33 @@ Sheet: A-3 (tranche 2, `PRODUCTION_TRANCHE_2_AUTHORIZED`).
 ## Soak checklist (production, after step 8)
 
 - [ ] Soak window declared in the evidence header (start/end timestamps) before
-      it begins; no minimum duration is asserted at preparation time — the
-      tranche records the actual window.
+      it begins; **minimum soak duration is 24 hours** — the declared window
+      must span at least 24 h and the declared minimum is recorded in the
+      header itself.
+
+## Abort triggers (Link 3 native condition (a)) — IMMEDIATE reversal
+
+If **any** of the following holds at any of the three integrity evaluations
+(soak start, midpoint, end) **or at any time in between**, execute
+`step08_flip.py --reverse` **immediately**, without waiting for the soak to
+complete and without further authorization:
+
+1. Any integrity conjunct (a)–(k) of `ka_gochara` `integrity_check_sql` is
+   RED at any evaluation.
+2. Cockpit count ≠ `count_sql` (any drift between display and relation).
+3. Any guard-trigger refusal occurs that is **not** on the
+   expected-protection list.
+4. Either chart has a `'4.0'` window with `window_start` before its own
+   birth date (#2534 class, production detector).
+5. The §3 F-02 walkthroughs (ordinary quarter; marriage 2013) show episodes
+   without contacts.
+
+Reversal procedure: run `step08_flip.py --reverse` (re-point authority to
+`'3.0'`; manifest `rolled_back`), **record** the reversal in
+`evidence/step09_evidence.md` (trigger observed, timestamps, query
+outputs/screenshots, reversal command + exit code, post-reversal authority
+state), then **escalate** to the native. Reversal under these triggers needs
+no further authorization; it is pre-authorized by Link 3 condition (a).
 - [ ] Walkthroughs §3 F-02 re-run: ordinary quarter and marriage 2013 show
       episodes with contacts and coverage (step 8's gate, re-run under soak
       traffic).
