@@ -1082,3 +1082,52 @@ def test_stale_overlay_refused_exit_7(wp6_enum_schema, tmp_path):
                 "UPDATE kala_vedha_gochara SET detail = jsonb_set(detail,"
                 " '{upstream_fingerprint}', %s::jsonb) WHERE chart_id = %s",
                 (json.dumps(current_fingerprint(conn)), E2E_CHART))
+
+
+@requires_swieph
+def test_bodies_subset_equivalence(wp6_enum_schema, tmp_path):
+    """--bodies chunked runs concatenate EXACTLY to the full run's payload for
+    those bodies (F-0 P2 century-scale memory mitigation): dedupe groups key
+    on the pinned §3.2 contact_id which includes body, so no group spans a
+    chunk boundary."""
+    for sub in ("full", "a", "b"):
+        (tmp_path / sub).mkdir()
+    full = _run_driver(tmp_path / "full")
+    assert full.returncode == 0, full.stderr
+    part_a = _run_driver(tmp_path / "a", "--bodies", "Sun,Saturn,Jupiter,Rahu")
+    assert part_a.returncode == 0, part_a.stderr
+    part_b = _run_driver(tmp_path / "b", "--bodies", "Mercury,Venus,Mars,Ketu")
+    assert part_b.returncode == 0, part_b.stderr
+
+    def eps(p):
+        return json.loads((p / "eps.json").read_text())
+
+    def key(e):
+        return (e["body"], e["target_type"], e["target_ref"], e["relation"],
+                str(e.get("aspect_deg")), e["t_exact"])
+
+    full_keys = {key(e) for e in eps(tmp_path / "full")}
+    chunk_keys = {key(e) for e in eps(tmp_path / "a")} | \
+        {key(e) for e in eps(tmp_path / "b")}
+    assert chunk_keys == full_keys
+    assert {e["body"] for e in eps(tmp_path / "a")} == {
+        "Sun", "Saturn", "Jupiter", "Rahu"}
+    rep = json.loads(part_a.stdout)
+    assert rep["bodies_enumerated"] == ["Sun", "Saturn", "Jupiter", "Rahu"]
+    # coverage partitions are body-scoped, so the union is exact too
+    cov_a = json.loads((tmp_path / "a" / "cov.json").read_text())
+    cov_b = json.loads((tmp_path / "b" / "cov.json").read_text())
+    cov_full = json.loads((tmp_path / "full" / "cov.json").read_text())
+    pkey = lambda c: (c["partition_kind"], c["partition_key"])  # noqa: E731
+    assert {pkey(c) for c in cov_a} | {pkey(c) for c in cov_b} == \
+        {pkey(c) for c in cov_full}
+
+
+@requires_swieph
+def test_bodies_subset_validation(wp6_enum_schema, tmp_path):
+    # exit-3 paths refuse before any payload write, so the missing payload
+    # parent dir is not touched; point them at tmp_path itself.
+    r = _run_driver(tmp_path, "--bodies", "Pluto")
+    assert r.returncode == 3 and "--bodies" in r.stderr
+    r = _run_driver(tmp_path, "--bodies", "Sun,Sun")
+    assert r.returncode == 3 and "duplicates" in r.stderr

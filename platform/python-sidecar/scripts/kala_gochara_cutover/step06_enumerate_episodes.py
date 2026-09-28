@@ -959,6 +959,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-refine", action="store_true",
                         help="keep spline-stage instants (synthetic-curve use "
                              "only — never for a real enumeration)")
+    parser.add_argument("--bodies", default=None,
+                        help="comma-separated subset of PERSISTED_BODIES to "
+                             "enumerate in this run (memory-bounded chunked "
+                             "runs; default: all — byte-identical behaviour). "
+                             "Dedupe groups key on the pinned §3.2 contact_id, "
+                             "which includes body, so per-body payloads "
+                             "concatenate exactly (F-0 P2 century-scale runs).")
     parser.add_argument("--episodes-out", required=True)
     parser.add_argument("--coverage-out", required=True)
     args = parser.parse_args(argv)
@@ -973,6 +980,19 @@ def main(argv: list[str] | None = None) -> int:
     if h_end <= h_start:
         print("ERROR: horizon end must be after start", file=sys.stderr)
         return 3
+
+    if args.bodies is None:
+        bodies = list(PERSISTED_BODIES)
+    else:
+        bodies = [b.strip() for b in args.bodies.split(",") if b.strip()]
+        unknown = [b for b in bodies if b not in PERSISTED_BODIES]
+        if unknown or not bodies:
+            print(f"ERROR: --bodies must be a non-empty subset of "
+                  f"{list(PERSISTED_BODIES)}; got {bodies}", file=sys.stderr)
+            return 3
+        if len(set(bodies)) != len(bodies):
+            print(f"ERROR: --bodies has duplicates: {bodies}", file=sys.stderr)
+            return 3
 
     def _jd(dt: datetime) -> float:
         utc = dt.astimezone(UTC)
@@ -1037,7 +1057,7 @@ def main(argv: list[str] | None = None) -> int:
     searched: dict[str, dict[str, list[str]]] = {}
     backends: dict[str, dict] = {}
     no_exact_total = 0
-    for body in PERSISTED_BODIES:
+    for body in bodies:
         index, backend = build_body_index(body, start_pad, end_pad, args.ephe_path)
         backends[body] = backend
         eps, stats = enumerate_body(
@@ -1078,7 +1098,7 @@ def main(argv: list[str] | None = None) -> int:
         "convention_id": convention_id,
         "horizon": horizon_text,
         "candidate_flags": {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg},
-        "bodies_enumerated": list(PERSISTED_BODIES),
+        "bodies_enumerated": bodies,
         "moon_channel": "separate: Moon served on demand with moon_on_demand "
                         "coverage (M-3/R7); never persisted by this driver",
         "resonance_rows": len(map_rows),
