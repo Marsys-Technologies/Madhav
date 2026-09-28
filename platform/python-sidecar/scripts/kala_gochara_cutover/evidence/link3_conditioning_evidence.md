@@ -481,3 +481,71 @@ PRAMĀṆIN re-verification of the amended detector (1150) and its production
 apply via `migrate.ts`, re-run of PRAMĀṆIN's pass on the regenerated
 projection, and K3/O-2 re-review under condition (d). The flip remains
 unauthorized and unperformed.
+
+## 2026-09-28 — Migration 1150 PRODUCTION APPLY (E-020 (e) closure; PRODUCTION_MIGRATION_AUTHORIZED, PRAMĀṆIN-passed)
+
+Authorization: native's `PRODUCTION_MIGRATION_AUTHORIZED` for migration 1150
+only, unconditional-on-this-side after the GREEN/GREEN dual-timezone
+disposable rehearsal and PRAMĀṆIN's full re-derivation pass (old conjunct
+text RED under Asia/Kolkata, new text GREEN under both, triple recomputed and
+matching, number 1150 free across all refs).
+
+**Access discipline:** own cloud-sql-proxy on `127.0.0.1:55440`
+(`madhav-astrology:asia-south1:amjis-postgres`, ADC; the listener was
+started for this apply and killed afterwards — port confirmed closed); fresh
+`amjis-pipeline-db-url` credentials fetched from Secret Manager immediately
+before EACH connection (rotation happened — no cached string used), host:port
+rewritten to the proxy and the `host=` query parameter stripped (it points at
+the cloudsql socket dir); the native's 5433 session never touched.
+
+**Apply mechanism:** `migrate.ts` cannot restrict itself to a single file
+here — `--only 1150…` would jump the known unapplied predecessors
+1071/1072/1086 and the runner refuses by design (`--only would jump
+unapplied predecessor migration(s)`), and 1071/1072/1086 must NOT be
+touched. Per the authorization's fallback clause the file was applied with
+its `_migrations_applied` row recorded **in the same transaction**:
+
+```
+BEGIN;
+  <1150 file contents>            → UPDATE 1; DO (gate probe PASS)
+  INSERT INTO _migrations_applied (filename, sha256, sql_identity)
+    VALUES ('1150_wp10_ka_gochara_conjunct_e_utc_date_compare.sql',
+            'c64c89b1dcadb9d56c050b33a068a515b74d5c176d1aa9d54c84d253d3c05709',
+            'bd2e61f5611e586772ce84d3affef590429f234f777ec61633412e48d4c9b64c');
+COMMIT;
+```
+
+Triple recomputed immediately before applying via `migrate.ts`'s own
+`sqlIdentityOf` + sha256 over the on-disk file: **both MATCH** the authorized
+values. psql output: `BEGIN / UPDATE 1 / DO / INSERT 0 1 / COMMIT`
+(`ON_ERROR_STOP=1`; any failure would have rolled back before COMMIT).
+
+**Pre-state (read-only, verified immediately before):** authority `3.0` on
+both charts; windows v1=38,287 / 3.0=1,830 / zero '4.0'; registry held the
+1091 conjunct-(e) text (`window_start::timestamptz` present, UTC date-compare
+absent); two '4.0' candidate manifests; no 1150 ledger row; production
+default TimeZone = UTC.
+
+**Post-verify:**
+- Ledger row present: id 885,
+  `1150_wp10_ka_gochara_conjunct_e_utc_date_compare.sql`, applied_at
+  2026-09-28 16:20:33 UTC, sha256/sql_identity exactly as above.
+- `npx tsx scripts/migrate.ts --dry-run` against production (fresh creds):
+  `Dry run — would apply: 1071_kala_gochara_windows_generation_guard.sql,
+  1072_kala_b1_registry_truth_and_sweep_protection.sql,
+  1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql` —
+  **1150 NOT pending**; the three known pendings untouched. (Two non-fatal
+  `[migration-hash-disclosure]` warnings for ws2_l0 files are pre-existing
+  Dvārapāla RULING 73 disclosed residuals, unrelated to this apply.)
+- Registry text now carries the UTC date-compare form (the one remaining
+  `::timestamptz` occurrence is the prose mention inside the amended
+  conjunct's own comment — same as rehearsal).
+- **Full (a)–(k) integrity check against production with the NEW registry
+  text: GREEN under the session default timezone (UTC) AND under
+  `SET TimeZone='Asia/Kolkata'`** — both `t`. Conjunct (e) alone: `t` under
+  both (vacuously true at present — zero '4.0' windows in production — and
+  now timezone-independent). No conjunct regressed: the stored check is the
+  conjunction of (a)–(k), and it evaluates `t`.
+
+**Scope honored:** this ONE migration only; no other production write of any
+kind. Proxy torn down after the checks; helper script and temp files removed.
