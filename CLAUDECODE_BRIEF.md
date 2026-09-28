@@ -1,24 +1,23 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_ANVESANA_RESUMPTION
-version: 1.3
-status: ACTIVE_R4_LOCAL_CANDIDATE_ACCEPTANCE
-candidate_disposition: R4_LOCAL_CANDIDATE_READY_CANDIDATE_VALIDATION_NOT_RUN
+version: 1.4
+status: ACTIVE_R5A_CANDIDATE_PUBLICATION_AND_REVIEW
+candidate_disposition: PR_CANDIDATE_UNDER_REVIEW_CANDIDATE_VALIDATION_NOT_RUN
 date: 2026-09-28
-native_authority: R0-R3 source execution authorized 2026-09-27; R4 local integration and candidate
-  acceptance authorized by the Native on 2026-09-28 ("Native authorizes R4 local integration and
-  candidate acceptance for Pūrṇa Anveṣaṇa within the following boundary..."); a narrow R4
-  current-main refresh (PR #2740) authorized by the Native on 2026-09-28, explicitly not expanding
-  authority into R5.
+native_authority: R0-R3 source execution authorized 2026-09-27; R4 local integration, candidate
+  acceptance and a narrow current-main refresh authorized 2026-09-28; R5A (candidate publication,
+  pull-request creation, CI repair and independent review only) authorized by the Native on
+  2026-09-28.
 source_execution_authorized: true
 r4_local_integration_authorized: true
 r4_candidate_acceptance_authorized: true
+r5a_candidate_publication_authorized: true
 r3_source_complete_sha: 71ed6bbfda22ec2b23ba85f79158232cff4cd445
 first_main_integration_sha: 9285326caa394f76ea6849fd3fe0309bc6d90239
-r4_candidate_sha_before_refresh: 9c6c01e912581fe890ab2594906cd719f472b03e
-refreshed_main_integration_sha: 110be90304a6e833ee72f52e3a4203e775699b10
-local_candidate_sha: 110be90304a6e833ee72f52e3a4203e775699b10
-push_authorized: false
-pr_change_authorized: false
+r4_local_candidate_sha: ac226f4fce790616d9e58e2c235497ca071650cc
+pull_request: https://github.com/Marsys-Technologies/Madhav/pull/2742
+push_authorized: true   # R5A: this branch only, ordinary pushes, never force
+pr_change_authorized: true   # R5A: PR #2742 only; PR #2704 and #2705 are untouchable
 merge_to_protected_main_authorized: false
 production_authorized: false
 database_write_authorized: false
@@ -26,7 +25,7 @@ migration_authorized: false
 producer_rebuild_authorized: false
 deployment_authorized: false
 live_collection_authorized: false
-r5_authorized: false
+r5b_or_later_authorized: false
 product_completion_claim_authorized: false
 worktree: /Users/Dev/.codex/worktrees/purna-anvesana-resumption-v2/Madhav
 branch: codex/purna-anvesana-resumption-v2
@@ -38,6 +37,26 @@ frozen_base: 6b26f3ff05ee0aba3cdd964bce62292496ae6b62
 This file governs Claude Code whenever it opens this branch. It intentionally replaces the L3 root
 brief **only on the isolated Pūrṇa branch**. L3 and all other campaigns remain outside this
 worktree and outside this authority.
+
+## R5A (2026-09-28) — publication and review
+
+The Native authorized R5A: publish the candidate, open one pull request against `main`, repair
+branch-caused CI, and run an independent review — nothing further. **Still prohibited:** merging
+the PR; closing or modifying PR #2704 or #2705; production credentials; database writes, repair
+migrations or migration application; producer rebuilds; deployment; live collection; R5B or later;
+product-completion, live, empirical or production-acceptance claims. The branch is kept current
+with protected main through ordinary merge commits only — never a force-push or history rewrite.
+
+State: branch pushed; PR #2742 open against `main`. CI found one branch-caused failure (a
+Next.js-illegal export from the inquiry route module, fixed by extracting `bounded_body.ts` and
+proven with a real `next build`). Protected main then advanced by PRs #2741, #2743 (BYOK routing)
+and #2744; merged with six semantic conflict resolutions and a regenerated census. Independent
+security and semantic reviews found no HIGH defect; the semantic review's three MED findings
+(managed successor gap, Portal citation delivery, fenced-probe/unfenced-read) were each verified
+and fixed with tests, the last requiring the canonical acceptance successor
+`BEYOND_ACARYA_ACCEPTANCE_v9.json` (predecessor v8, all six metrics unchanged).
+`candidate_validation` remains `NOT_RUN`: local deterministic suites are not candidate, live,
+empirical or production validation.
 
 ## Current authority
 

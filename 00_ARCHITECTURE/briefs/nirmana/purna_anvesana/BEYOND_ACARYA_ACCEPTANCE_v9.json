@@ -1,0 +1,76 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v9",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "R5A-REVIEW-FIX-SERVED-FENCE",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v8.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:0556249e1b779895b5927acfd6b45ec8ad6508ae3f8fb8d78e620b92550429da",
+        "report_hash": "sha256:d272acc46e93c030b8bef6d3f62802034b501cf65e8d42196c93988eac9153c0"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-09-28",
+    "evaluated_source_revision": "1995ff17855907b338c6d4f049a9309a810e3508",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-09-28T00:58:21.000Z",
+        "snapshot_file_sha256": "sha256:3e38e5fd75de0223db6d153d3b81711db2c3ea118f7133cc734e46f9aba55edf",
+        "capability_content_hash": "sha256:5aa264439b7eb730b6e71a3cb7e8325e212c9dec9584ab85cb70833c71491f02",
+        "source_catalog_fingerprint": "sha256:657da9ab51d12f4dcce5c8208af6aa4868d6025429a888a11a55c7cd92ab3995",
+        "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
+        "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a"
+    },
+    "capability_content_hash": "sha256:5aa264439b7eb730b6e71a3cb7e8325e212c9dec9584ab85cb70833c71491f02",
+    "report_hash": "sha256:827fb97b792780ab91d011c0a51cb72774a00e1e7d20f8cd9efda004d07adb74",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "R5A review-fix successor (PR #2742). An independent semantic review found that availability probes for the leaf tools proved a served-generation-fenced read while inquiry-dispatched calls read unfenced rows. Fix: the capability overlay carries its served build set, the compiler injects it as build_id into every plan item whose binding declares that input, and get_kp_cusps, get_yoga_firings, get_divisionals, query_signals, query_domain_reading and yoga_activation_by_dasha now declare the build_id input they already honored. All six metrics are identical to v8 (novel_combination_suite 5/13/0-missing, omission_rate 0/25, route_coverage 34/34, semantic_edge_coverage 9/9, long_inquiry_closure 1/1, abstention_quality 3/3); no SCU, edge, proof kind or availability disposition changed. Only capability_content_hash, report_hash and source_catalog_fingerprint moved, fully explained by the added build_id declarations. Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}

@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "ed43f34be688eee7dcc84391f52dd568b9b4542efdd3a3ebd7708f659bb6b84c",
+  "content_sha256": "90bce208f068f33abdad428ef61eb20308481488571a89549df2253b9da9789e",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -869,6 +869,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha filter (default: 'LAHIRI').",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence for the bodha_msr_signals read: one build UUID or an array. Inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -4558,6 +4562,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "chart_id": {
             "description": "Chart UUID",
             "required": true,
@@ -4767,6 +4775,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -5948,6 +5960,10 @@
             "description": "Filter to firings with an active bhanga (cancellation) rule.",
             "type": "boolean"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "chart_id": {
             "description": "Chart UUID. Required.",
             "required": true,
@@ -6523,6 +6539,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha').",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -7254,6 +7274,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha').",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -20825,7 +20849,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-28T00:49:51.000Z",
+  "generated_at": "2026-09-28T00:59:39.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20847,7 +20871,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "6a1695f2b656f030aa858a696d4b431776ecaa3d0c37888474a109c16b9afc6a"
+        "sha256": "f1e21c3df13aeb54389cfeb863622dda635f928ccc6a8cdb8ef1cff41ee99d42"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21478,11 +21502,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "4648e7a5d0c5d2a1c0b919cd9bdfb44360978a8a7a40169d1c0cf048a9e357c1"
+            "sha256": "0eb69270a5a8847e36ae05a673a53613f403c45cbebf8633f054fd7c3e5fad41"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
-            "sha256": "035f8e6ee2d4843db2c0515acc86b60bb1637914ed0c7d4ebe02325709f4dcee"
+            "sha256": "01f6df015e278923ec61e403cf6c097e32099eb7cc510cc9125a47e7b092a2f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/pagination_review.ts",
@@ -21518,7 +21542,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "cf324ac06a53a35cd89884b3a698ddf7230ff2e33bace71a144c23c694c81097"
+            "sha256": "66fe0dcf219d82c47e14a427eca773430d4e950eed1d597fda923b5f95a6bbed"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21786,7 +21810,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "c155c3f62f134148462e90486cf2317e5d0cd40f47148f6abf99e2dbee74ca0a"
+            "sha256": "b79edfb0dc92c0f28c0d205e8440abe52c356db93b363bb97a717c3ece4108f0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -21802,7 +21826,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "517ff3cf7fbfeb95055c60aa161d88cbededd7d45ddd4ccbf46e0c9d4950d461"
+            "sha256": "ce52df133580f0d7d368f5b09a2de8978d0ca990f089796b0431eaea8042f125"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
@@ -21870,7 +21894,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "413c3af03a27e1545f39ef2153d9a9ce7a92db036670aa6a0f2ba6c7f25e5013"
+            "sha256": "00059628d9ecc617277cc97293b22355a2661b1afc2ab3d1aa518a011076cf01"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -21918,7 +21942,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
-            "sha256": "45c7a4aea0a23db7fcdfe6f5774fb6ab218f8a0c78720291aa100879b307504b"
+            "sha256": "01ac9261216c163477b9bd089eb6f22610b0638316c7c631dd03b9e2132ef33a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
@@ -21966,7 +21990,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "fbd6d70b2e33a436d8ca50c294abbeddb26cac570dbbfe0fa3ad721e1352cd4d"
+            "sha256": "9806675feab7107fd6dc9b9e0320cd5d3ba2064859ed9ec4d5d75f564d3180ef"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -22166,7 +22190,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "5de639b3f6d13ee4f8faea830cbe9d40019eb698679f2fdb4e1020f5b4223c99"
+            "sha256": "b3c898ef234f08eb4ac6e300699265697deb8ceb1dcce182da414fdf9f4a7866"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
@@ -22238,7 +22262,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "64bacd5d31596011ce1ffc09d6c8c3714638cf55daf1d42668399364de75b3cb"
+        "sha256": "753e6738429deafd202b71454122afc8df394dccda49990cb90cf7605074892a"
       },
       {
         "id": "service_effect_contracts",
@@ -22263,5 +22287,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "d98fec2ed1418dca0032d67496ae151c2f3a2fca"
+  "source_revision": "1995ff17855907b338c6d4f049a9309a810e3508"
 }

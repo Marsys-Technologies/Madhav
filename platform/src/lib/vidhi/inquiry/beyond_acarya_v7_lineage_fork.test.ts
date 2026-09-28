@@ -100,6 +100,22 @@ describe('BEYOND_ACARYA_ACCEPTANCE v7 lineage fork (R4 local integration)', () =
       .not.toBe('sha256:be8f246c32f9caddd19403e92d2d17a6f275c2b3a2abbb4e366276b95a5bb046')
   })
 
+  it('continues the canonical chain v7 -> v8 -> v9 without touching the historical fork', () => {
+    const v8 = readJson('BEYOND_ACARYA_ACCEPTANCE_v8.json')
+    const v9 = readJson('BEYOND_ACARYA_ACCEPTANCE_v9.json')
+    expect(sha256File('BEYOND_ACARYA_ACCEPTANCE_v8.json'))
+      .toBe('sha256:551da8df072df9135895deffa0c630f63d5d3d4a44b03766d20bcabc1b15e6d5')
+    expect(v9.predecessor).toMatchObject({
+      artifact: 'BEYOND_ACARYA_ACCEPTANCE_v8.json',
+      capability_content_hash: v8.capability_content_hash,
+      report_hash: v8.report_hash,
+    })
+    // The fork's own v8/v9 live only under historical_fork_v7_v11/ and are never a predecessor here.
+    expect((v9.predecessor as { report_hash: string }).report_hash)
+      .not.toBe('sha256:bba7a5b811dc75fbe41c1395626089489dcb1402826005d997e48dee5d6d602f')
+    expect(v9).toMatchObject({ candidate_validation: 'NOT_RUN', verdict: 'ACCEPTED_SOURCE_LOCAL' })
+  })
+
   it('does not overwrite any earlier historical artifact (v1-v6 byte-identical, unaffected by the fork reconciliation)', () => {
     const historical: Record<string, string> = {
       'BEYOND_ACARYA_ACCEPTANCE_v2.json': 'sha256:33595346209c3f31b7123f5dbb002712e3ca5de52b06cfc1b7170a4ac70543e0',
