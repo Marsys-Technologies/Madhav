@@ -21,7 +21,7 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
 import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
-import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 function isZodiacSign(v: unknown): v is ZodiacSign {
   return typeof v === 'string' && (ZODIAC_SIGNS as readonly string[]).includes(v)
@@ -43,7 +43,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
     'matching the house_from_frame/houseCountedFrom convention used elsewhere in this registry). ' +
     'Contains a large, paginated row set per chart.',
   input_schema: {
-    build_id: { type: 'string', description: "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced." },
+    build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
     varga:        { type: 'string', description: 'Varga code (e.g. D9, D10, D12). Omit for all.' },

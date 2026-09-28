@@ -50,6 +50,10 @@ export function classifyInquiryResult(
   for (const object of nestedValues(raw)) {
     if (object['is_error'] === true || object['ok'] === false || object['success'] === false) return 'failed'
     if (typeof object['error'] === 'string' && object['error'].trim()) return 'failed'
+    // A composite that withheld or failed a component (query_planet / graha_portrait) has NOT
+    // produced the evidence its obligation asked for: never present it as served.
+    if (Array.isArray(object['components_unavailable']) && object['components_unavailable'].length > 0) return 'failed'
+    if (Array.isArray(object['component_failures']) && object['component_failures'].length > 0) return 'failed'
   }
   const semanticCount = semanticInquiryResultCount(binding, raw)
   if (semanticCount !== null) return semanticCount > 0 ? 'served' : 'empty'

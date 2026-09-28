@@ -25,8 +25,21 @@ import type { InquiryPaginationReceipt } from './pagination'
 import { traverseCapabilityGraph, sourceBackedEdge } from './graph_traversal'
 import { normalizeInquiryScope } from './intent_normalization'
 import { challengeInquirySelection } from './omission_challenger'
+import {
+  authorizationEnvelopeHash,
+  buildAuthorizationEnvelope,
+  MAX_SUCCESSOR_DISPATCH_UNITS,
+  appendSuccessorCharge,
+  deriveSuccessorEnvelope,
+  effectiveEntitlementForPermission,
+  evaluateSuccessorAdmission,
+  SUCCESSOR_DENY_ALL_LIVE,
+  verifySuccessorDecision,
+  type SuccessorAdmissionDecision,
+  type SuccessorAdmissionLiveContext,
+} from './authorization_envelope'
 
-export const INQUIRY_COMPILER_VERSION = '2.2.0'
+export const INQUIRY_COMPILER_VERSION = '2.3.0'
 
 const TRANSIT_SCU_ID = 'scu.catalog.query_planet_transit'
 const CURRENT_TRANSIT_SNAPSHOT_SCU_ID = 'scu.catalog.query_current_transit_snapshot'
@@ -208,6 +221,11 @@ function executionPlanAuthorizationProjection(planItems: readonly InquiryPlanIte
     depends_on: item.depends_on,
     state: item.blocked_reason ? 'blocked' as const : 'ready' as const,
     blocked_reason: item.blocked_reason,
+    // Only successor items carry an envelope decision; omitting it otherwise keeps every
+    // non-successor plan's authorization projection byte-identical.
+    // The WHOLE decision is hashed (not its self-declared hash field), so editing any decision
+    // field changes the authorization hash.
+    ...(item.successor_admission ? { successor_admission: item.successor_admission } : {}),
   }))
 }
 
@@ -439,6 +457,12 @@ export function compileInquiryContract(args: {
   temporal_anchor_source?: InquiryArgumentResolutionReceipt['source']
   /** How the AI proposal was produced; recorded on the contract, never hashed. */
   planning_provenance?: InquiryPlanningProvenance
+  /**
+   * What the door's OWN verified chart authorization returned for this principal. It alone decides
+   * the successor envelope's effective entitlement; the scope tuple (caller/planner supplied) can
+   * only narrow. Omitted means unverified: the envelope is empty and no successor can be admitted.
+   */
+  server_authorization?: { readonly chart_permission: 'all' | 'view' | 'deny' | null }
 }): InquiryContract {
   const question = normalizeQuestion(args.question)
   const normalization = normalizeInquiryScope(args.scope_tuple)
@@ -585,11 +609,23 @@ export function compileInquiryContract(args: {
     planning_budget: budgetReceipt,
     material_frontier: materialFrontier,
   })
+  // The envelope is computed here, from the pinned snapshot and the compiled plan only — before any
+  // evidence exists — and bound into the authorization hash so it cannot be edited after issue.
+  const authorizationEnvelope = buildAuthorizationEnvelope({
+    snapshot: args.snapshot,
+    chart_id: args.chart_id,
+    execution_channel: executionChannel,
+    scope: { domains: scope.domains, entitlement: scope.entitlement },
+    effective_entitlement: effectiveEntitlementForPermission(args.server_authorization?.chart_permission),
+    planned_scu_ids: unique([...obligations.flatMap((obligation) => obligation.scu_ids), ...plan.map((item) => item.scu_id)]),
+    anchor_scu_ids: unique(plan.filter((item) => item.binding_id !== null).map((item) => item.scu_id)),
+  })
   const executionPlanHash = stableFingerprint({
     semantic_contract_hash: semanticContractHash,
     chart_id: args.chart_id,
     execution_channel: executionChannel,
     plan_items: executionPlanAuthorizationProjection(plan),
+    authorization_envelope_hash: authorizationEnvelope.envelope_hash,
   })
   const contractId = stableFingerprint({ semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash })
   return {
@@ -623,6 +659,7 @@ export function compileInquiryContract(args: {
     graph_traversal: traversal,
     omission_challenge: challenge,
     planning_budget: budgetReceipt,
+    authorization_envelope: authorizationEnvelope,
     ...(args.planning_provenance ? { planning_provenance: args.planning_provenance } : {}),
   }
 }
@@ -645,6 +682,12 @@ export function compileInquirySuccessorContract(args: {
    * past its own iteration budget; that continuation stays the caller's explicit choice.
    */
   cross_capability_only?: boolean
+  /**
+   * The door's server-held live state. Every admitted frontier item is evaluated by the shared
+   * authorization envelope with it (Packet B). Omitting it fails closed: every item is refused as
+   * outside the request's authority, so a door that forgets it is inert, never over-permissive.
+   */
+  admission?: SuccessorAdmissionLiveContext
 }): InquiryContract {
   if (!args.parent_inquiry_id) throw new Error('INQUIRY_SUCCESSOR_PARENT_ID_REQUIRED')
   if (args.parent.status === 'COMPLETE') throw new Error('INQUIRY_SUCCESSOR_PARENT_COMPLETE')
@@ -671,8 +714,33 @@ export function compileInquirySuccessorContract(args: {
   const inheritedAnchor = args.parent.plan_items
     .map((item) => item.argument_resolution?.temporal_anchor_date ?? null)
     .find((anchor): anchor is string => anchor !== null) ?? undefined
-  const plan = planFor(args.snapshot, obligations, args.parent.chart_id, args.parent.question,
+  const plannedWithoutDecisions = planFor(args.snapshot, obligations, args.parent.chart_id, args.parent.question,
     args.parent.scope_tuple, presentationTransport, inheritedAnchor, 'caller_temporal_anchor', args.overlay)
+  const admissionDecisions: SuccessorAdmissionDecision[] = []
+  for (const { frontier } of admitted) {
+    const source = args.parent.plan_items.find((item) => item.item_id === frontier.discovered_from)
+    const planItem = plannedWithoutDecisions.find((item) => item.scu_id === frontier.scu_id)
+    admissionDecisions.push(evaluateSuccessorAdmission({
+      envelope: args.admission ? args.parent.authorization_envelope : undefined,
+      snapshot: args.snapshot,
+      candidate: {
+        scu_id: frontier.scu_id,
+        binding_id: planItem?.binding_id ?? null,
+        frontier_id: frontier.frontier_id,
+        frontier_rule_id: frontier.rule_id ?? null,
+        source_item_id: frontier.discovered_from,
+        source_scu_id: source?.scu_id ?? null,
+        source_served: source?.observation?.disposition === 'served' && (source.observation.evidence_refs.length ?? 0) > 0,
+      },
+      contract: args.parent,
+      live: args.admission ?? SUCCESSOR_DENY_ALL_LIVE,
+      admitted_in_batch: admissionDecisions.filter((entry) => entry.decision === 'admit').length,
+    }))
+  }
+  const plan = plannedWithoutDecisions.map((item) => {
+    const decision = admissionDecisions.find((candidate) => candidate.scu_id === item.scu_id)
+    return decision ? { ...item, successor_admission: decision } : item
+  })
   const successorObligations = obligations.map((obligation) => {
     const items = plan.filter((item) => item.obligation_ids.includes(obligation.obligation_id))
     if (items.length === 0 || items.some((item) => item.state !== 'blocked')) return obligation
@@ -692,7 +760,9 @@ export function compileInquirySuccessorContract(args: {
     admitted_frontier: admitted.map(({ frontier, evidence_refs }) => ({
       frontier_id: frontier.frontier_id, scu_id: frontier.scu_id, discovered_from: frontier.discovered_from,
       reason: frontier.reason, ...(frontier.source_ref ? { source_ref: frontier.source_ref } : {}), evidence_refs,
+      ...(frontier.rule_id ? { rule_id: frontier.rule_id } : {}),
     })),
+    admission_decisions: admissionDecisions,
   }
   const successor: InquirySuccessorReceipt = { ...successorBase, successor_hash: stableFingerprint(successorBase) }
   const semanticContractHash = stableFingerprint({
@@ -703,9 +773,21 @@ export function compileInquirySuccessorContract(args: {
     graph_traversal: args.parent.graph_traversal, omission_challenge: args.parent.omission_challenge,
     planning_budget: args.parent.planning_budget, material_frontier: [], successor,
   })
+  // The successor's own envelope can only shrink: it carries the parent's entries minus every
+  // capability this lineage has now planned or admitted, so widening cannot recurse.
+  const successorEnvelope = args.parent.authorization_envelope
+    ? deriveSuccessorEnvelope(args.parent.authorization_envelope, {
+      consumed_scu_ids: unique([
+        ...args.parent.plan_items.map((item) => item.scu_id),
+        ...args.parent.obligations.flatMap((obligation) => obligation.scu_ids),
+        ...plan.map((item) => item.scu_id),
+      ]),
+    })
+    : undefined
   const executionPlanHash = stableFingerprint({ semantic_contract_hash: semanticContractHash,
     chart_id: args.parent.chart_id, execution_channel: args.parent.execution_channel,
-    plan_items: executionPlanAuthorizationProjection(plan) })
+    plan_items: executionPlanAuthorizationProjection(plan),
+    ...(successorEnvelope ? { authorization_envelope_hash: successorEnvelope.envelope_hash } : {}) })
   return {
     contract_version: INQUIRY_CONTRACT_VERSION, compiler_version: INQUIRY_COMPILER_VERSION,
     contract_id: stableFingerprint({ semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash }),
@@ -720,6 +802,7 @@ export function compileInquirySuccessorContract(args: {
     iteration: 0, max_iterations: args.max_iterations === undefined ? Math.min(Math.max(plan.length + 4, 4), 64) : Math.max(1, Math.min(args.max_iterations, 64)),
     scope_normalization: args.parent.scope_normalization, graph_traversal: args.parent.graph_traversal,
     omission_challenge: args.parent.omission_challenge, planning_budget: args.parent.planning_budget, successor,
+    ...(successorEnvelope ? { authorization_envelope: successorEnvelope } : {}),
   }
 }
 
@@ -770,6 +853,9 @@ export function inquiryAuthorizationHashes(contract: InquiryContract): {
     chart_id: contract.chart_id,
     execution_channel: contract.execution_channel,
     plan_items: executionPlanAuthorizationProjection(contract.plan_items),
+    // Recomputed from the envelope's content, never read from its stored hash field, so an
+    // edited envelope changes the authorization hash instead of riding on a stale one.
+    ...(contract.authorization_envelope ? { authorization_envelope_hash: authorizationEnvelopeHash(contract.authorization_envelope) } : {}),
   })
   return {
     semantic_contract_hash: semanticContractHash,
@@ -833,14 +919,14 @@ export function applyInquiryObservations(contract: InquiryContract, observations
         materiality: discovered.materiality,
         reason: discovered.reason,
         disposition: contract.iteration + 1 >= contract.max_iterations ? 'capped' : 'open',
+        ...(discovered.rule_id ? { rule_id: discovered.rule_id } : {}),
       })
     }
   }
   return { ...contract, obligations, plan_items: planItems, material_frontier: [...existingFrontier.values()], iteration: contract.iteration + 1, status: 'INCOMPLETE', status_reasons: ['finalization_required'] }
 }
 
-/** Apply one server-observed execution and authorize only a verified continuation/retry. */
-export function recordInquiryExecution(
+function recordInquiryExecutionCore(
   contract: InquiryContract,
   args: {
     item_id: string
@@ -851,7 +937,9 @@ export function recordInquiryExecution(
     request_position_path?: string
     /** Cross-capability frontier derived from this observation's evidence
      *  (evidence_frontier.ts). Admitted only for a served observation. */
-    evidence_frontier?: readonly { scu_id: string; materiality: 'required' | 'supporting'; reason: string }[]
+    evidence_frontier?: readonly { scu_id: string; materiality: 'required' | 'supporting'; reason: string; rule_id?: string }[]
+    /** The dispatch-time envelope decision for a successor item; stamped in the same transition. */
+    successor_dispatch?: SuccessorAdmissionDecision
   },
 ): InquiryContract {
   const item = contract.plan_items.find((candidate) => candidate.item_id === args.item_id)
@@ -888,6 +976,44 @@ export function recordInquiryExecution(
     }
   }
   return observed
+}
+
+/**
+ * Apply one server-observed execution and authorize only a verified continuation/retry, then stamp
+ * and PAY FOR a successor dispatch. The stamp and the charge are applied to EVERY outcome of the core
+ * transition (including its early returns), so charging never depends on which control-flow branch the
+ * observation happened to take.
+ */
+export function recordInquiryExecution(
+  contract: InquiryContract,
+  args: Parameters<typeof recordInquiryExecutionCore>[1],
+): InquiryContract {
+  const observed = recordInquiryExecutionCore(contract, args)
+  const decision = args.successor_dispatch
+  if (!decision) return observed
+  const item = observed.plan_items.find((candidate) => candidate.item_id === args.item_id)!
+  // A dispatch the envelope admitted is PAID FOR here, in the same transition as its observation (so
+  // exactly once): every page, every retry, every attempt that reached the tool. A refusal dispatched
+  // nothing and costs nothing. A receipt that does not verify, or carries an unusable price, is never
+  // a free dispatch: it is charged as the whole budget.
+  const priced = verifySuccessorDecision(decision) && Number.isInteger(decision.limit_state.candidate_units)
+    && decision.limit_state.candidate_units >= 1
+  return {
+    ...observed,
+    plan_items: observed.plan_items.map((candidate) => candidate.item_id === args.item_id
+      ? { ...candidate, successor_dispatch: decision }
+      : candidate),
+    ...(decision.decision === 'admit'
+      ? {
+        successor_cost_ledger: appendSuccessorCharge(observed.successor_cost_ledger, {
+          item_id: item.item_id,
+          scu_id: item.scu_id,
+          units: priced ? decision.limit_state.candidate_units : MAX_SUCCESSOR_DISPATCH_UNITS,
+          decision_hash: decision.decision_hash,
+        }),
+      }
+      : {}),
+  }
 }
 
 export function validateInquiryContract(contract: InquiryContract): InquiryValidationResult {

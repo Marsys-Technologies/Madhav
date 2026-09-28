@@ -38,7 +38,7 @@
  */
 import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
-import { classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
@@ -217,7 +217,7 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
     ayanamsha_id: { type: 'string', description: "Ayanamsha for the chart_facts lookup (default 'lahiri_chitrapaksha')." },
     mode:         { type: 'string', description: "'sav_bav_gating' (default) or 'kakshya_windows'.", enum: ['sav_bav_gating', 'kakshya_windows'] },
-    build_id:     { type: 'string', description: "RC-7: served-generation build fence for sav_bav_gating (generation/served_generation.ts). Omit for the chart's current unfenced rows." },
+    build_id: BUILD_FENCE_INPUT,
     // sav_bav_gating facets
     sign_number:  { type: 'number', description: 'sav_bav_gating: filter to one sidereal sign (1=Aries..12=Pisces). Omit for all 12.' },
     house:        { type: 'number', description: 'sav_bav_gating: filter by house number (1-12) instead of sign; resolved via the chart LAGNA sign.' },

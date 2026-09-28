@@ -86,6 +86,8 @@ function structuredObjects(payload: unknown): Record<string, unknown>[] {
 }
 
 export interface DiscoveredEvidenceFrontier {
+  /** The frontier rule that matched the observed evidence. Explicit so admission never parses prose. */
+  readonly rule_id?: string
   readonly scu_id: string
   readonly materiality: 'required' | 'supporting'
   readonly reason: string
@@ -119,6 +121,7 @@ export function deriveEvidenceFrontier(args: {
     for (const scuId of rule.target_scu_ids) {
       if (scuId === item.scu_id || planned.has(scuId) || !known.has(scuId) || discovered.has(scuId)) continue
       discovered.set(scuId, {
+        rule_id: rule.rule_id,
         scu_id: scuId,
         materiality,
         reason: `${rule.rule_id}: observed in ${item.item_id} (${item.scu_id})`,

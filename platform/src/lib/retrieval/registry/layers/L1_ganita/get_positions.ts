@@ -60,6 +60,8 @@ function isZodiacSign(v: string | null): v is ZodiacSign {
   return v !== null && (ZODIAC_SIGNS as readonly string[]).includes(v)
 }
 
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+
 export const getPositionsCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_positions',
   type: 'tool',
@@ -92,6 +94,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
     '(bhava-junction flag per graha — not an upagraha, no house_d1) via ' +
     'categories:["sandhi_flag"].',
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id: {
       type: 'string',
       description: 'UUID of the chart (<chart_uuid> from asset_registry)',
@@ -179,6 +182,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
       }
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
       const planet = (args.planet as string | undefined)?.trim() || undefined
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_positions', chartId)
+      const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
 
       const params: unknown[] = [chartId, categories]
       let sql = `
@@ -191,6 +197,10 @@ export const getPositionsCapability: CapabilityDescriptor = {
       if (args.ayanamsha_id) {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
+      }
+      if (buildIds) {
+        sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
+        params.push(buildIds)
       }
       if (planet) {
         // W4-loop-1 (E-5 group2): chart_facts.fact_subject stores 3-letter graha CODES
@@ -236,7 +246,7 @@ export const getPositionsCapability: CapabilityDescriptor = {
       if (frame !== 'lagna' && rows.length > 0) {
         try {
           const { sign: referenceSign, ayanamsha_frame_sensitivity } =
-            await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+            await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha, ...(buildIds ? { build_id: buildIds } : {}) })
           ayanamshaFrameSensitivity = ayanamsha_frame_sensitivity
 
           const houseRows = rows.filter(r => r.fact_key === 'house_d1')
@@ -259,8 +269,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
             const signResult = await query<{ ayanamsha_id: string; fact_subject: string; fact_value_text: string | null }>(
               `SELECT ayanamsha_id, fact_subject, fact_value_text FROM chart_facts
                WHERE chart_id = $1 AND fact_key = 'sign'
-                 AND ayanamsha_id = ANY($2::text[]) AND fact_subject = ANY($3::text[])`,
-              [chartId, ayanamshaIds, subjects],
+                 AND ayanamsha_id = ANY($2::text[]) AND fact_subject = ANY($3::text[])
+                 ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+              buildIds ? [chartId, ayanamshaIds, subjects, buildIds] : [chartId, ayanamshaIds, subjects],
             )
             const signByKey = new Map<string, ZodiacSign>()
             for (const r of signResult.rows ?? []) {

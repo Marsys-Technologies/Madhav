@@ -233,3 +233,17 @@ describe('inquiry pagination receipts', () => {
     )).toEqual({ semantics: 'none', exhausted: true, next: null })
   })
 })
+
+describe('classifyInquiryResult: composites that withheld or failed a component are not served', () => {
+  it.each([
+    ['components_unavailable', { content: JSON.stringify({ planet: { code: 'SAT' }, components_unavailable: [{ component: 'shadbala', code: 'no_served_generation', reason: 'x' }] }) }],
+    ['component_failures', { content: JSON.stringify({ position: { rows: [1] }, component_failures: [{ component: 'strength', code: 'component_read_failed' }] }) }],
+  ])('%s -> failed', (_label, entry) => {
+    expect(classifyInquiryResult(undefined, { results: [entry] })).toBe('failed')
+  })
+
+  it('empty failure lists do not change a served composite', () => {
+    const raw = { results: [{ content: JSON.stringify({ position: { rows: [1] }, components_unavailable: [], component_failures: [] }) }] }
+    expect(classifyInquiryResult(undefined, raw)).toBe('served')
+  })
+})
