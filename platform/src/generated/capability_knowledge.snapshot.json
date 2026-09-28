@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-28T00:58:21.000Z",
-  "content_hash": "sha256:5aa264439b7eb730b6e71a3cb7e8325e212c9dec9584ab85cb70833c71491f02",
-  "source_catalog_fingerprint": "sha256:657da9ab51d12f4dcce5c8208af6aa4868d6025429a888a11a55c7cd92ab3995",
+  "generated_at": "2026-09-28T08:13:39.000Z",
+  "content_hash": "sha256:9b47461d6716337149dd636cc2d6bed3a7506d86bc15aea51c727d9ba1955f58",
+  "source_catalog_fingerprint": "sha256:c25c7054e950458670605467787ef003ae5608361674f471ce0e114bdbb2874c",
   "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
@@ -4450,6 +4450,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -4500,6 +4501,7 @@
           "capability_uri": "marsys://tool/L1/get_aspects",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -4897,6 +4899,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -4946,6 +4949,7 @@
           "capability_uri": "marsys://tool/L1/get_avasthas",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -6400,6 +6404,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -6450,6 +6455,7 @@
           "capability_uri": "marsys://tool/L1/get_dignity",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -6590,6 +6596,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -6639,6 +6646,7 @@
           "capability_uri": "marsys://tool/L1/get_dispositors",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -8361,6 +8369,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "frame",
@@ -8429,6 +8438,7 @@
           "capability_uri": "marsys://tool/L1/get_positions",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "frame": "string:optional",
@@ -10695,6 +10705,7 @@
       "inputs": [
         "all",
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "facet",
@@ -10747,6 +10758,7 @@
           "input_contract": {
             "all": "boolean:optional",
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "facet": "string:optional",
@@ -32980,6 +32992,7 @@
         "about_from",
         "about_to",
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "cross_subsystem_only",
         "depth",
@@ -33039,6 +33052,7 @@
             "about_from": "object:optional",
             "about_to": "object:optional",
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "cross_subsystem_only": "boolean:optional",
             "depth": "number:optional",
