@@ -43,6 +43,12 @@ export interface PariprashnaStream {
   conversationId?: string | null
 }
 
+export interface PariprashnaReadiness {
+  state: string
+  percent: number
+  label: string
+}
+
 /** Truncates a user question into a sidebar-row-length auto-generated title (§10.1). */
 function autoTitle(userText: string): string {
   const trimmed = userText.trim()
@@ -96,22 +102,30 @@ function DevFixturePicker({ onPick, disabled }: { onPick: (mode: FixtureMode) =>
  * The two hosts are distinct components so each calls exactly one transport
  * hook (React hook rules) and both render the same `<PariprashnaSurface>`.
  */
-export function PariprashnaApp({ chartPin, chartId }: { chartPin: ChartPin; chartId?: string }) {
+export function PariprashnaApp({
+  chartPin,
+  chartId,
+  readiness,
+}: {
+  chartPin: ChartPin
+  chartId?: string
+  readiness?: PariprashnaReadiness
+}) {
   const liveEnabled = process.env.NEXT_PUBLIC_PARIPRASHNA_LIVE === '1' && !!chartId
   if (liveEnabled && chartId) {
     // Chart identity owns the entire live session. A keyed remount resets the
     // AI-choice acknowledgement alongside transport state before the new
     // chart can submit.
-    return <PariprashnaAppLive key={chartId} chartPin={chartPin} chartId={chartId} />
+    return <PariprashnaAppLive key={chartId} chartPin={chartPin} chartId={chartId} readiness={readiness} />
   }
-  return <PariprashnaAppFixture chartPin={chartPin} />
+  return <PariprashnaAppFixture chartPin={chartPin} readiness={readiness} />
 }
 
 /** Fixture-replay host (default): canned event streams, no backend — no real
  *  chart id, so `chartId` is left undefined (see `AnswerRegion`'s guard). */
-function PariprashnaAppFixture({ chartPin }: { chartPin: ChartPin }) {
+function PariprashnaAppFixture({ chartPin, readiness }: { chartPin: ChartPin; readiness?: PariprashnaReadiness }) {
   const stream = useFixtureStream()
-  return <PariprashnaSurface chartPin={chartPin} chartId="fixture-chart" stream={stream} showDevPicker isFixtureHost />
+  return <PariprashnaSurface chartPin={chartPin} chartId="fixture-chart" readiness={readiness} stream={stream} showDevPicker isFixtureHost />
 }
 
 /**
@@ -122,7 +136,15 @@ function PariprashnaAppFixture({ chartPin }: { chartPin: ChartPin }) {
  * see the P2-C build report for how that mapping was discovered). `mode` is
  * ignored here entirely; it exists only for the fixture host.
  */
-function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId: string }) {
+function PariprashnaAppLive({
+  chartPin,
+  chartId,
+  readiness,
+}: {
+  chartPin: ChartPin
+  chartId: string
+  readiness?: PariprashnaReadiness
+}) {
   const live = useLiveStream(chartId)
   const stream = useMemo<PariprashnaStream>(
     () => ({
@@ -138,7 +160,7 @@ function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId
     }),
     [live],
   )
-  return <PariprashnaSurface chartPin={chartPin} chartId={chartId} stream={stream} showDevPicker={false} isFixtureHost={false} />
+  return <PariprashnaSurface chartPin={chartPin} chartId={chartId} readiness={readiness} stream={stream} showDevPicker={false} isFixtureHost={false} />
 }
 
 /**
@@ -149,6 +171,7 @@ function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId
 function PariprashnaSurface({
   chartPin,
   chartId,
+  readiness,
   stream,
   showDevPicker,
   isFixtureHost,
@@ -157,6 +180,7 @@ function PariprashnaSurface({
   /** Real chart id (live host only) — threaded down to `AnswerRegion` so it
    *  can mount `LogToSamiksha` with a genuine chart scope (lane P2-A / G2-A). */
   chartId: string
+  readiness?: PariprashnaReadiness
   stream: PariprashnaStream
   showDevPicker: boolean
   isFixtureHost: boolean
@@ -402,6 +426,35 @@ function PariprashnaSurface({
             style={{ background: 'var(--pp-surface)', border: '1px solid var(--pp-rule)', minHeight: '70vh' }}
           >
             <ThreadHeader chartPin={chartPin} />
+            {readiness && readiness.state !== 'ready' && (
+              <div
+                role="status"
+                data-testid="pp-readiness-notice"
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-2.5"
+                style={{
+                  borderBottom: '1px solid var(--pp-rule)',
+                  background: 'var(--pp-panel)',
+                  color: 'var(--pp-ink-dim)',
+                  fontSize: 12,
+                  lineHeight: 1.45,
+                }}
+              >
+                <span
+                  style={{
+                    color: 'var(--pp-gold)',
+                    fontSize: 10,
+                    letterSpacing: '0.16em',
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Chart readiness · {readiness.percent}%
+                </span>
+                <span>
+                  Paripraśna will use the available material. Responses may be incomplete until the chart is fully built.
+                </span>
+              </div>
+            )}
             <ArrivalLine arrival={arrival} />
             {state.turns.length === 0 ? (
               <EmptyState examplePrompts={EXAMPLE_PROMPTS} onPick={(text) => handleSubmit(text, 'adaptive')} />
