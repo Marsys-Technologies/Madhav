@@ -551,3 +551,149 @@ Link 2 (enumeration + candidate build) is GREEN on both rehearsal charts
 under ADK-0022 null-and-disclose. Production was NOT touched; the
 production Link 2 re-run proceeds only after PRAMĀṆIN re-verifies naming
 this run.
+
+## 2026-09-28T00:21:46Z — GREEN
+
+```json
+{
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "generation": "4.0",
+  "convention_id": "sha256:38218e65c6f918eaaa5cbb814235c624a65e888e6f838d5942fe0ea815c10296",
+  "manifest_id": "d54d899b-7923-4b0d-92c5-0ff499f4a0bf",
+  "build_id": "wp10-step6-1790554869",
+  "contacts_written": 138837,
+  "coverage_rows_written": 48,
+  "input_generation_vector": {
+    "activity_shape": "linear_no_box",
+    "moon_channel": "separate",
+    "nodal_drishti": "removed",
+    "sade_sati_mode": "testimony",
+    "kakshya_bindu_interim": true,
+    "overlay_stamps": true,
+    "vedha_exceptions": "m8_rows",
+    "orb_max_deg": 5.0,
+    "orb_ruling": "M-1 fallback no-box \u00d7 5.0\u00b0 (unratified)",
+    "delta_report": ".run/wp10_tranche2/link2_delta_report_482012f1.md",
+    "vedha_upstream_freshness": "fresh",
+    "moorti_upstream_freshness": "fresh",
+    "vedha_upstream_fingerprint": {
+      "algorithm": "sha256/canonical-json/v1",
+      "bg_transit_rules": "b78cd26fe30a1911066d0e8aa80738595d39610d0467cf6cf03404967ba5db61",
+      "n_transit_rules": 42,
+      "bg_vedha_malefic_scale": "6b4ee79a218b27249b6c9c84d20a01c08d2d8ab236522958a99f4cf218e28466",
+      "n_malefic_scale_rows": 5
+    },
+    "moorti_upstream_fingerprint": {
+      "algorithm": "sha256/canonical-json/v1",
+      "bg_transit_moorti": "6d3c0d58a3668145c7bd85a2c15197fcebcb1588511cfa62046bc01793f0ad89",
+      "n_moorti_rows": 27
+    }
+  }
+}
+```
+
+## 2026-09-28T00:57:36Z — GREEN
+
+```json
+{
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "generation": "4.0",
+  "convention_id": "sha256:38218e65c6f918eaaa5cbb814235c624a65e888e6f838d5942fe0ea815c10296",
+  "manifest_id": "4dc6c74c-4efa-4dc7-86ff-d31b1b038359",
+  "build_id": "wp10-step6-1790557021",
+  "contacts_written": 138836,
+  "coverage_rows_written": 48,
+  "input_generation_vector": {
+    "activity_shape": "linear_no_box",
+    "moon_channel": "separate",
+    "nodal_drishti": "removed",
+    "sade_sati_mode": "testimony",
+    "kakshya_bindu_interim": true,
+    "overlay_stamps": true,
+    "vedha_exceptions": "m8_rows",
+    "orb_max_deg": 5.0,
+    "orb_ruling": "M-1 fallback no-box \u00d7 5.0\u00b0 (unratified)",
+    "delta_report": ".run/wp10_tranche2/link2_delta_report_1c826d5a.md",
+    "vedha_upstream_freshness": "fresh",
+    "moorti_upstream_freshness": "fresh",
+    "vedha_upstream_fingerprint": {
+      "algorithm": "sha256/canonical-json/v1",
+      "bg_transit_rules": "b78cd26fe30a1911066d0e8aa80738595d39610d0467cf6cf03404967ba5db61",
+      "n_transit_rules": 42,
+      "bg_vedha_malefic_scale": "6b4ee79a218b27249b6c9c84d20a01c08d2d8ab236522958a99f4cf218e28466",
+      "n_malefic_scale_rows": 5
+    },
+    "moorti_upstream_fingerprint": {
+      "algorithm": "sha256/canonical-json/v1",
+      "bg_transit_moorti": "6d3c0d58a3668145c7bd85a2c15197fcebcb1588511cfa62046bc01793f0ad89",
+      "n_moorti_rows": 27
+    }
+  }
+}
+```
+
+## 2026-09-28 — Link 2 production re-run (ADK-0022, commit 91eb3b9f6) — RUN and GREEN, both charts
+
+After PRAMĀṆIN verified the ADK-0022 package (`91eb3b9f6`), Link 2 was executed
+against production under `PRODUCTION_TRANCHE_2_AUTHORIZED=true`: own
+cloud-sql-proxy on 127.0.0.1:55440 (the stale prior-window listener was killed
+and replaced), fresh `amjis-pipeline-db-url` credentials fetched from Secret
+Manager immediately before each connection, the native's 5433 session never
+touched. The pre-dedupe payload `prod_episodes_482012f1.json` was NOT reused;
+both enumerations ran fresh.
+
+**Pre-run gates (all PASS, read-only):** zero `'4.0'` rows in
+`kala_gochara_contacts` / `_coverage` / `_convention` / `_publication` /
+`_windows`; windows `v1`=38,287 (md5 7c92025246d9fc870471789b5ab58876) /
+`3.0`=1,830 (md5 85578c77dde8b8bd13d8dcea71ab237a); authority `3.0` both
+charts (md5 034c31bbfc285ce9808387884af36278); `kala_gochara_generation_guard`
++ windows triggers and `kala_gochara_convention_immutable` present; §12.9
+`check_overlay_freshness` = house_vedha FRESH, moorti FRESH, both charts.
+(Recorded in `.run/wp10_tranche2/link2_prerun_state_20260928.txt`.)
+
+**Chart 1 `482012f1-…871aa`:**
+- Enumeration (exit 0, 33.3 min; log `.run/wp10_tranche2/link2_enum_482012f1.log`):
+  765 resonance rows → 1,140 targets (493 resolved / 647 unavailable),
+  1,353,278 episodes → **138,837 contacts** (1,214,441 dropped over 138,767
+  duplicate groups, 100% deeper_tie), **46,353 citation-divergent groups
+  nulled** (ADK-0022), 1,452 without-exact excluded, 48 coverage partitions,
+  refine ON, swieph ×8, fingerprints b78cd26f…/6b4ee79a…/6d3c0d58….
+  Payload: 138,697 citation-NULL / 140 present; 138,767 `.dropped_refs.json`
+  entries. Rehearsal-exact.
+- Candidate build (exit 0, 43 s; log `.run/wp10_tranche2/link2_build_482012f1.log`):
+  §12.9 gate FRESH (both overlays); convention `sha256:38218e65…10296`;
+  manifest `d54d899b-7923-4b0d-92c5-0ff499f4a0bf`, status `candidate`
+  (NOT published); **contacts_written 138,837; coverage 48**. No
+  UniqueViolation — the ADK-0022 dedupe holds at production scale.
+
+**Chart 2 `1c826d5a-…f75a`:**
+- Enumeration (exit 0, 32.8 min; log `.run/wp10_tranche2/link2_enum_1c826d5a.log`):
+  753 resonance rows → 1,131 targets (493 resolved / 638 unavailable),
+  1,353,288 episodes → **138,836 contacts**, **46,354 citation-divergent
+  groups nulled**, 1,098 without-exact excluded, 48 coverage partitions,
+  same fingerprints. Payload: 138,696 citation-NULL / 140 present; 138,766
+  `.dropped_refs.json` entries. Rehearsal-exact.
+- Candidate build (exit 0, 40 s; log `.run/wp10_tranche2/link2_build_1c826d5a.log`):
+  §12.9 gate FRESH; same convention id; manifest
+  `4dc6c74c-4efa-4dc7-86ff-d31b1b038359`, status `candidate`;
+  **contacts_written 138,836; coverage 48**.
+
+**Post-run verification (read-only; `.run/wp10_tranche2/link2_final_state_20260928.txt`):**
+- `'4.0'` contacts: 138,837 (482012f1) / 138,836 (1c826d5a); citation-NULL
+  138,697 / 138,696 in the database (matches payloads exactly).
+- `'4.0'` coverage: 48 / 48. Publications: both `candidate`, content_digest
+  `sha256:unpublished-candidate` — **nothing published, no authority flip**
+  (Link 3 remains separately conditioned).
+- Content digests of new rows: contacts md5 0f38c343b158a849dd5df04d5c7935f3
+  (482012f1) / 5fb0e780b39bc7318445bf433023f1aa (1c826d5a); coverage md5
+  cd03f9dc0551789ec0c481142b042c3d / d25d3ad397aba77144e503dac8b253fe.
+- Untouched: windows `v1`=38,287 (md5 unchanged 7c920252…) / `3.0`=1,830 (md5
+  unchanged 85578c77…); zero `'4.0'` windows; authority `3.0` both charts;
+  §12.9 overlays re-checked FRESH both charts post-run.
+- Delta-report pointers recorded in both input generation vectors
+  (`.run/wp10_tranche2/link2_delta_report_<chart>.md`); the §4.11 reports
+  themselves belong to step06b, outside Link 2's scope.
+
+**Verdict: Link 2 GREEN end-to-end on production — fresh ADK-0022
+enumeration + candidate-scoped '4.0' build for both charts, all gates passed,
+published generations byte-identical, authority still '3.0'.**
