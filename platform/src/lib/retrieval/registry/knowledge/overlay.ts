@@ -20,7 +20,10 @@ export function compileChartCapabilityOverlay(args: {
   writer_inventory_hash?: string | null
   evidence: readonly ChartCapabilityEvidence[]
   generated_at?: string
+  /** The chart's served build set (generation/served_generation.ts), when one resolved. */
+  served_build_ids?: readonly string[]
 }): ChartCapabilityOverlay {
+  const servedBuildIds = args.served_build_ids?.length ? [...new Set(args.served_build_ids)].sort() : null
   const evidenceByScu = new Map(args.evidence.map((item) => [item.scu_id, item]))
   const availability: ChartCapabilityAvailability[] = args.snapshot.scus.map((scu) => {
     const evidence = evidenceByScu.get(scu.scu_id)
@@ -55,6 +58,7 @@ export function compileChartCapabilityOverlay(args: {
     code_revision: args.code_revision ?? null,
     writer_inventory_hash: args.writer_inventory_hash ?? null,
     availability,
+    ...(servedBuildIds ? { served_build_ids: servedBuildIds } : {}),
   })
   return deepFreeze({
     chart_id: args.chart_id,
@@ -66,6 +70,7 @@ export function compileChartCapabilityOverlay(args: {
     writer_inventory_hash: args.writer_inventory_hash ?? null,
     generated_at: args.generated_at ?? new Date().toISOString(),
     availability,
+    ...(servedBuildIds ? { served_build_ids: servedBuildIds } : {}),
   })
 }
 

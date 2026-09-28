@@ -95,8 +95,8 @@ describe('F-160 — fetchVargaRatification: can-fail (the §N.8 requirement)', (
       CHART, LAHIRI, 'wealth', 'D2', [{ role: 'karaka', code: 'JUP' }], BUILD_ID,
     )
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain('build_id = $5::uuid')
-    expect(params).toEqual([CHART, LAHIRI, 'wealth', ['JUP'], BUILD_ID])
+    expect(String(sql)).toContain('build_id = ANY($5::uuid[])')
+    expect(params).toEqual([CHART, LAHIRI, 'wealth', ['JUP'], [BUILD_ID]])
   })
 
   it('no chart_vichara row at all (asset not built) reads as the honest no_row unknown, ok:true', async () => {

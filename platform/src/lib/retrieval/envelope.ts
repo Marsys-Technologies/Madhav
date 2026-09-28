@@ -1174,6 +1174,12 @@ export const JUDGMENT_FLAG_CODES = [
   // value it already emits (as a plain string, unconverted this wave) is always a VALID
   // code, not an orphaned literal outside the closed vocabulary. ──
   'chart_rebuilt_mid_provenance_stamp_refreshed',
+  // ── served-generation disclosure (generation/served_generation.ts): an asset whose chart
+  // receipt does not resolve is excluded from every fenced read. ──
+  'served_generation_unresolved_assets',
+  // A composed leg resolved its own served generation and it differs from the composite's
+  // (a build landed mid-request): the response mixes two generations and says so.
+  'served_generation_changed_mid_request',
   // ── coordination placeholders for parallel W3 lanes (do not rename — see brief) ──
   'chart_header_unresolved', // W3-L1 (chart_header fail-loud)
   'cursor_filter_mismatch', // W3-L4 (cursor-fingerprint)

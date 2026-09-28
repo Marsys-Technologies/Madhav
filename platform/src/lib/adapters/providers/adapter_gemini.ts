@@ -5,6 +5,19 @@ import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
 import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../types'
 
+// Documented maximum thinking budgets for thinking_budget (2.5-series) models. A model not
+// listed keeps its configured budget as its ceiling rather than an invented number.
+const GEMINI_MAX_THINKING_BUDGET: ReadonlyArray<readonly [prefix: string, budget: number]> = [
+  ['gemini-2.5-flash-lite', 24576],
+  ['gemini-2.5-flash', 24576],
+  ['gemini-2.5-pro', 32768],
+]
+
+function maxThinkingBudget(modelId: string, configured: number): number {
+  const documented = GEMINI_MAX_THINKING_BUDGET.find(([prefix]) => modelId.startsWith(prefix))?.[1]
+  return Math.max(configured, documented ?? configured)
+}
+
 const SAFETY_BLOCK_NONE = [
   { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
   { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -32,10 +45,22 @@ export const adapterGemini: Adapter = {
     const requestTransforms = meta.quirks.request_transforms as
       | { thinking_budget?: number; thinking_level?: 'minimal' | 'low' | 'medium' | 'high' }
       | undefined
+    // reasoning: 'disable' → lowest accepted; 'enable' → the model's maximum (a deep planning
+    // request must be able to raise thinking above a lower configured default — RC-5.1);
+    // 'auto' / unset → the registry-configured default.
+    const configuredBudget = requestTransforms?.thinking_budget ?? 24576
     const thinkingConfig: Record<string, unknown> =
       requestTransforms?.thinking_level !== undefined
-        ? { thinkingLevel: req.reasoning === 'disable' ? 'low' : requestTransforms.thinking_level }
-        : { thinkingBudget: req.reasoning === 'disable' ? 0 : requestTransforms?.thinking_budget ?? 24576 }
+        ? {
+            thinkingLevel: req.reasoning === 'disable' ? 'low'
+              : req.reasoning === 'enable' ? 'high'
+                : requestTransforms.thinking_level,
+          }
+        : {
+            thinkingBudget: req.reasoning === 'disable' ? 0
+              : req.reasoning === 'enable' ? maxThinkingBudget(meta.id, configuredBudget)
+                : configuredBudget,
+          }
 
     const googleOptions: Record<string, unknown> = {
       safetySettings: SAFETY_BLOCK_NONE,

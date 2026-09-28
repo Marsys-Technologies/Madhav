@@ -26,6 +26,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
+import { resolveChartServedGeneration, servedGenerationIdentity } from '../../generation/served_generation'
 import { getPositionsCapability } from './get_positions'
 import { getDignityCapability } from './get_dignity'
 import { getStrengthCapability } from './get_strength'
@@ -125,14 +126,36 @@ export const queryPlanetCapability: CapabilityDescriptor = {
       const name = GRAHA_CODE_TO_NAME[code] ?? planetInput
       const baseArgs: FactRow = { chart_id: chartId, ...(args.ayanamsha_id ? { ayanamsha_id: args.ayanamsha_id } : {}) }
 
+      // RC-7 follow-up: best-effort served-generation fence for the two legs that support it
+      // (get_strength, get_yoga_firings). A resolution failure here does not fail the whole
+      // composite — query_planet is a display-oriented entity view, not an evidentiary verdict
+      // tool (contrast pact_query's hard fail) — it falls back to each leg's own unfenced
+      // "current rows" read, exactly as documented on get_strength's build_id parameter, and
+      // discloses which mode actually ran via `generation_fence` below (never silently claims
+      // fencing that didn't happen).
+      let buildIds: readonly string[] | null = null
+      let generationFenceNote = 'served-generation resolution not attempted'
+      try {
+        const generation = await resolveChartServedGeneration(chartId, null)
+        if (servedGenerationIdentity(generation)) {
+          buildIds = generation.served_build_ids
+          generationFenceNote = 'shadbala and yoga-firing reads fenced to the chart\'s served build set'
+        } else {
+          generationFenceNote = 'no served generation resolved for this chart — shadbala/yoga-firing reads fell back to unfenced current rows'
+        }
+      } catch (error) {
+        console.error('[query_planet] served-generation resolution failed', error)
+        generationFenceNote = 'served-generation resolution failed — shadbala/yoga-firing reads fell back to unfenced current rows'
+      }
+
       const [positions, dignity, strength, avasthas, aspects, yogaDosha, yogaFirings, dispositors] = await Promise.all([
         callHandler(getPositionsCapability, { ...baseArgs, planet: planetInput, categories: ['graha_position'] }),
         callHandler(getDignityCapability, baseArgs),
-        callHandler(getStrengthCapability, { ...baseArgs, graha_key: code }),
+        callHandler(getStrengthCapability, { ...baseArgs, graha_key: code, ...(buildIds ? { build_id: buildIds } : {}) }),
         callHandler(getAvasthsCapability, baseArgs),
         callHandler(getAspectsCapability, baseArgs),
         callHandler(getYogaDoshaCapability, { ...baseArgs, type: 'yoga' }),
-        callHandler(getYogaFiringsCapability, { chart_id: chartId, fired: true }),
+        callHandler(getYogaFiringsCapability, { chart_id: chartId, fired: true, ...(buildIds ? { build_id: buildIds } : {}) }),
         callHandler(getDispositorsCapability, baseArgs),
       ])
 
@@ -188,6 +211,12 @@ export const queryPlanetCapability: CapabilityDescriptor = {
           dispositor: {
             rows: dispositorRows,
             note: dispositorRows.length === 0 ? 'no dispositor-chain rows matched this graha by text heuristic — see get_dispositors directly' : undefined,
+          },
+          generation_fence: {
+            fenced: buildIds !== null,
+            build_ids: buildIds,
+            note: generationFenceNote,
+            unfenced_facets: ['position', 'dignity', 'avasthas', 'aspects', 'yogas.catalog_label', 'dispositor'],
           },
           ...(sourceErrors.length > 0 ? { judgment_flags: ['partial_source_error'], source_errors: sourceErrors } : {}),
         },

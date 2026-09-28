@@ -1,6 +1,7 @@
 import { BEYOND_ACARYA_ACCEPTANCE_CASES, BEYOND_ACARYA_CORPUS_VERSION, type BeyondAcaryaAcceptanceCase } from '../../src/lib/vidhi/inquiry/beyond_acarya_acceptance.corpus'
 import type { InquiryResponseAccountability } from '../../src/lib/vidhi/inquiry/types'
 import { stableFingerprint } from '../../src/lib/retrieval/registry/knowledge/stable'
+import { inquiryCitedHandles } from '../../src/lib/vidhi/inquiry/response_accountability'
 import { createHash } from 'node:crypto'
 import { FROZEN_PRODUCT_CASES } from './product_cases'
 
@@ -290,6 +291,13 @@ export function validateResponseAccountability(value: unknown, answer: string | 
   const factIds = new Set(facts.map((fact) => fact.fact_id as string))
   const factsById = new Map(facts.map((fact) => [fact.fact_id as string, fact]))
   const partIds = new Set(parts.map((part) => part.part_id as string))
+  // Citation handles are defined by fact-id order over the register's findings (F1..Fn),
+  // re-derived here rather than trusted from the supplied order.
+  const handleByFactId = new Map(facts
+    .filter((fact) => fact.kind === 'finding')
+    .map((fact) => fact.fact_id as string)
+    .sort()
+    .map((factId, index) => [factId, `F${index + 1}`]))
   const { register_hash: registerHash, ...registerProjection } = register
   const { receipt_hash: receiptHash, ...coverageProjection } = coverage
   const delivered = new Set<string>()
@@ -337,7 +345,8 @@ export function validateResponseAccountability(value: unknown, answer: string | 
           || !isString(fact.normalized_content)
           || !isString(part.content)
           || !answer?.includes(part.content)
-          || !part.content.includes(fact.normalized_content)
+          || !(part.content.includes(fact.normalized_content)
+            || inquiryCitedHandles(part.content).includes(handleByFactId.get(factId) ?? ''))
           || (kind === 'finding_interpretation' && partFactIds.length !== 1)
           || (kind === 'conjoint_interpretation' && partFactIds.length < 2)) invalidDelivery = true
         else interpretationMapped.add(factId)

@@ -87,10 +87,12 @@ import { enforceTurnLimits } from '@/lib/limits'
 import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { adoptInquiryPlanItems, annotateInquiryEvidenceForSynthesis, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
 import { ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
+import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { getManagedPrashnaJob } from '@/lib/vidhi/inquiry/managed_job_store'
+import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { AiConsoleError, normalizeAiError } from '@/lib/ai-console/errors'
 import {
   authorizeMcpByokPrincipal,
@@ -777,6 +779,7 @@ export async function POST(request: Request) {
           execution_channel: 'platform_internal',
           temporal_anchor_date: nowContextDate,
           temporal_anchor_source: 'request_context_clock',
+          planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
@@ -1173,17 +1176,24 @@ export async function POST(request: Request) {
           if (managedInquirySession && managedItem && managedBinding) {
             // The lifecycle CAS/receipt is committed before the progress event
             // below acknowledges this dispatch to the managed worker.
-            await managedInquirySession.persistAcceptedObservation({
-              plan_item_id: managedItem.item_id,
-              obligation_ids: managedItem.obligation_ids,
-              scu_id: managedItem.scu_id,
-              binding_id: managedItem.binding_id!,
-              tool_name: toolName,
-              bundle,
-              disposition: classifyInquiryResult(managedBinding, bundle),
-              pagination: deriveInquiryPaginationReceipt(managedBinding, bundle, managedItem.args),
-              invocation_args: managedItem.args,
-            })
+            {
+              const managedDisposition = classifyInquiryResult(managedBinding, bundle)
+              await managedInquirySession.persistAcceptedObservation({
+                plan_item_id: managedItem.item_id,
+                obligation_ids: managedItem.obligation_ids,
+                scu_id: managedItem.scu_id,
+                binding_id: managedItem.binding_id!,
+                tool_name: toolName,
+                bundle,
+                disposition: managedDisposition,
+                pagination: deriveInquiryPaginationReceipt(managedBinding, bundle, managedItem.args),
+                invocation_args: managedItem.args,
+                request_position_path: managedBinding.pagination_contract?.request_position_path,
+                evidence_frontier: managedDisposition === 'served' && inquirySnapshot
+                  ? deriveEvidenceFrontier({ contract: managedInquirySession.currentContract, item_id: managedItem.item_id, evidence_payload: bundle, snapshot: inquirySnapshot })
+                  : [],
+              })
+            }
           }
           toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - toolStart })
           if (!retainToolResult(toolName, bundle)) {
@@ -1220,20 +1230,54 @@ export async function POST(request: Request) {
       // same item. It must therefore use the same reservation → dispatch →
       // evidence-CAS path as page one; stopping here would let the outer job
       // claim completion while the persisted Inquiry remains incomplete.
-      if (managedInquirySession && inquirySnapshot) {
+      /**
+       * Drain ready registry items — continuations of items already dispatched, and, with
+       * `firstTime`, a successor's own items which have never been dispatched at all
+       * (mirrors the Portal door's evidence-driven successor, evidence_stage.ts). Once a
+       * successor item receives its first observation, its own continuation pages satisfy
+       * `observation !== null` on their own, so `firstTime` need not stay true across pages.
+       */
+      const drainManagedReadyActions = async (firstTime = false): Promise<void> => {
+        if (!managedInquirySession || !inquirySnapshot) return
         while (managedInquirySession.readyActionIds.length > 0
           && managedInquirySession.currentContract.iteration < managedInquirySession.currentContract.max_iterations
           && costCapTripped === null) {
           const item = managedInquirySession.currentContract.plan_items.find((candidate) => candidate.state === 'ready'
-            && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
+            && (firstTime || candidate.observation !== null) && candidate.binding_id?.startsWith('registry:'))
           if (!item?.binding_id) break
           const capabilityUri = item.binding_id.slice('registry:'.length)
           const toolName = dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
           const tool = toolName ? getToolByName(toolName) : undefined
           const binding = bindingForInquiryItem(inquirySnapshot, managedInquirySession.currentContract, item.item_id)
           if (!toolName || !tool || !binding) {
-            judgmentFlags.push('managed_inquiry_continuation_unavailable')
-            break
+            if (!firstTime || item.observation !== null) {
+              judgmentFlags.push('managed_inquiry_continuation_unavailable')
+              break
+            }
+            // A successor's own item names a capability this request never authorized. Never
+            // dispatch it; record the same named gap the Portal door records so the lifecycle
+            // terminalizes instead of stranding a ready item.
+            const begin = await managedInquirySession.beginAction(item.item_id)
+            if (begin !== 'acquired') {
+              judgmentFlags.push(begin === 'ambiguous' ? 'managed_inquiry_dispatch_ambiguous' : 'managed_inquiry_action_in_progress')
+              if (begin === 'ambiguous') await managedInquirySession.failClosedAmbiguity(item.item_id)
+              break
+            }
+            await managedInquirySession.persistAcceptedObservation({
+              plan_item_id: item.item_id,
+              obligation_ids: item.obligation_ids,
+              scu_id: item.scu_id,
+              binding_id: item.binding_id,
+              tool_name: capabilityUri,
+              bundle: undefined,
+              disposition: 'failed',
+              gap_reason: 'successor_capability_not_authorized_for_request',
+              pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+              invocation_args: item.args,
+              request_position_path: binding?.pagination_contract?.request_position_path,
+            })
+            judgmentFlags.push('managed_inquiry_successor_capability_not_authorized')
+            continue
           }
           const check = tracker.checkAndRecordCall(tool.dispatch_units)
           if (check.stopped) {
@@ -1254,17 +1298,24 @@ export async function POST(request: Request) {
           const started = Date.now()
           try {
             const bundle = await tool.retrieve(queryPlanLike, item.args)
-            await managedInquirySession.persistAcceptedObservation({
-              plan_item_id: item.item_id,
-              obligation_ids: item.obligation_ids,
-              scu_id: item.scu_id,
-              binding_id: item.binding_id,
-              tool_name: toolName,
-              bundle,
-              disposition: classifyInquiryResult(binding, bundle),
-              pagination: deriveInquiryPaginationReceipt(binding, bundle, item.args),
-              invocation_args: item.args,
-            })
+            {
+              const continuationDisposition = classifyInquiryResult(binding, bundle)
+              await managedInquirySession.persistAcceptedObservation({
+                plan_item_id: item.item_id,
+                obligation_ids: item.obligation_ids,
+                scu_id: item.scu_id,
+                binding_id: item.binding_id,
+                tool_name: toolName,
+                bundle,
+                disposition: continuationDisposition,
+                pagination: deriveInquiryPaginationReceipt(binding, bundle, item.args),
+                invocation_args: item.args,
+                request_position_path: binding.pagination_contract?.request_position_path,
+                evidence_frontier: continuationDisposition === 'served' && inquirySnapshot
+                  ? deriveEvidenceFrontier({ contract: managedInquirySession.currentContract, item_id: item.item_id, evidence_payload: bundle, snapshot: inquirySnapshot })
+                  : [],
+              })
+            }
             toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
             if (!retainToolResult(toolName, bundle)) {
               if (!unservedTools.includes(toolName)) unservedTools.push(toolName)
@@ -1288,6 +1339,26 @@ export async function POST(request: Request) {
             toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
           }
           emitProgress(toolName)
+        }
+      }
+
+      if (managedInquirySession && inquirySnapshot) {
+        await drainManagedReadyActions()
+        // R2B.4b: served evidence may call for a capability the plan never authorized. Continue
+        // through ONE durable successor generation, using only tools this request authorized —
+        // an admitted capability outside that set fails closed, named, on the successor's own
+        // plan item, exactly as the Portal door's in-process successor does.
+        if (managedInquirySession.currentContract.status === 'INCOMPLETE'
+          && managedInquirySession.readyActionIds.length === 0
+          && costCapTripped === null) {
+          const currentOverlayForSuccessor = await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id)
+          const becameSuccessor = currentOverlayForSuccessor.overlay_version === managedInquirySession.currentContract.chart_availability_version
+            && currentOverlayForSuccessor.build_id === managedInquirySession.currentContract.chart_build_id
+            && await managedInquirySession.continueWithEvidenceSuccessor({ snapshot: inquirySnapshot, overlay: currentOverlayForSuccessor })
+          if (becameSuccessor) {
+            judgmentFlags.push('managed_inquiry_evidence_successor')
+            await drainManagedReadyActions(true)
+          }
         }
         if (await terminalizeManagedIterationCap()) {
           // The lifecycle is now durably BLOCKED; it is safe for the outer job
@@ -1447,7 +1518,7 @@ export async function POST(request: Request) {
       // `status: 'partial'`) and a dedicated `synthesis_skipped_cost_cap`
       // judgment flag disclose exactly what happened — never a silent drop.
       const synthesisCapCheck = !byokEnabled && costCapTripped === null ? tracker.checkAndRecordCall() : null
-      let synthesis: { reading: string | null; model_id: string | null; judgment_flags: string[] }
+      let synthesis: { reading: string | null; model_id: string | null; judgment_flags: string[]; visible_citation_handles?: string[] | null }
       if (byokEnabled) {
         synthesis = { reading: null, model_id: null, judgment_flags: [] }
       } else if (costCapTripped !== null || synthesisCapCheck?.stopped) {
@@ -1465,6 +1536,11 @@ export async function POST(request: Request) {
           encoder.encode(JSON.stringify({ event: 'progress', tools_dispatched_count: toolEventLog.length, cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs }, elapsed_ms: Date.now() - dispatchLoopStart, last_tool: 'synthesis' }) + '\n'),
         )
         const { synthesizeReading } = await import('@/lib/pipeline/prashna_ask_synthesis')
+        // The model is shown display copies annotated with register citation handles; the
+        // canonical bundles (and their evidence hashes) feed the accountability register below.
+        const citedEvidence = inquiryContract
+          ? annotateInquiryEvidenceForSynthesis(inquiryContract, toolResults.map((result) => result.bundle), inquirySnapshot ?? undefined)
+          : null
         synthesis = await synthesizeReading({
           // Guaranteed non-empty by POST's own guard clause before this closure
           // ever runs — TS can't carry that narrowing across the function
@@ -1473,7 +1549,10 @@ export async function POST(request: Request) {
           question: question ?? '',
           queryClass: plan.query_class ?? 'unknown',
           queryIntentSummary: plan.query_intent_summary ?? '',
-          evidence: toolResults,
+          evidence: citedEvidence
+            ? toolResults.map((result, index) => ({ ...result, bundle: citedEvidence.payloads[index] as typeof result.bundle }))
+            : toolResults,
+          citeRegisterFindings: citedEvidence !== null,
           unresolvedTools,
           emptyResultTools,
           strippedLeakedCapabilities: leakedTools,
@@ -1494,6 +1573,7 @@ export async function POST(request: Request) {
             response_text: byokEnabled ? null : synthesis.reading,
             evidence_payloads: toolResults.map((result) => result.bundle),
             knowledge_snapshot: inquirySnapshot ?? undefined,
+            ...(synthesis.visible_citation_handles ? { synthesis_visible_handles: synthesis.visible_citation_handles } : {}),
           })
         : null
 

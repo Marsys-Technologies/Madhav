@@ -74,7 +74,7 @@ import { runValidationStage } from '@/lib/pariprashna/pipeline/validation_stage'
 import { emitCompletenessReceipt } from '@/lib/pariprashna/pipeline/receipt_stage'
 import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stage'
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
-import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
+import { buildStructuredResponseAccountability, restoreRegisterCitationMarkers } from '@/lib/vidhi/inquiry'
 import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { isByokEvidencePayloadWithinLimit, validateByokUiMessages } from '@/lib/limits/byok_admission'
 
@@ -325,6 +325,15 @@ export async function POST(request: Request): Promise<Response> {
           conversationId,
           safetyDecision: postPlanSafety,
           lengthTier: params.lengthTier,
+          // Synthesis is shown the inquiry's admitted evidence, register-annotated, so the fact
+          // register describes what the model actually saw (RC-6.2 Portal).
+          ...(evidence.inquiryContract
+            ? { admittedEvidence: {
+                contract: evidence.inquiryContract,
+                payloads: evidence.validToolResults,
+                snapshot: getPinnedCapabilityKnowledgeSnapshot(),
+              } }
+            : {}),
           ...(runtime.kind === 'byok' ? {
             workerExecutor: runtime.executors.worker,
             abortSignal: turnSignal,
@@ -390,9 +399,14 @@ export async function POST(request: Request): Promise<Response> {
         }
         const responseAccountability = evidence.inquiryContract
           ? buildStructuredResponseAccountability(evidence.inquiryContract, {
-              response_text: accumulatedText,
+              // The live rewriter already turned register sentinels into `[n]` markers; give
+              // accountability the handles those markers stood for (no-op when the flag is off).
+              response_text: restoreRegisterCitationMarkers(accumulatedText, synthesized.value.resolvedCitations),
               evidence_payloads: evidence.validToolResults,
               knowledge_snapshot: getPinnedCapabilityKnowledgeSnapshot(),
+              ...(synthesisContext.visibleCitationHandles
+                ? { synthesis_visible_handles: synthesisContext.visibleCitationHandles }
+                : {}),
             })
           : null
 

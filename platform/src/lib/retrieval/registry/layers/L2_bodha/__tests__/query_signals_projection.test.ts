@@ -134,10 +134,10 @@ describe('query_signals — projection facet (WP-1.3(g) / LCA-7)', () => {
     )
     expect(pageCalls).toHaveLength(2) // a cache key without build_id would have returned the second call from BUILD_A
     for (const [sql, params] of buildScopedCalls) {
-      expect(String(sql)).toMatch(/m\.build_id = \$\d+::uuid/)
-      expect(params).toEqual(expect.arrayContaining([expect.stringMatching(/^([12])\1{7}-/)]))
+      expect(String(sql)).toMatch(/m\.build_id = ANY\(\$\d+::uuid\[\]\)/)
+      expect(params).toEqual(expect.arrayContaining([[expect.stringMatching(/^([12])\1{7}-/)]]))
     }
-    expect((pageCalls[0]?.[1] as unknown[])).toContain(BUILD_A)
-    expect((pageCalls[1]?.[1] as unknown[])).toContain(BUILD_B)
+    expect((pageCalls[0]?.[1] as unknown[])).toContainEqual([BUILD_A])
+    expect((pageCalls[1]?.[1] as unknown[])).toContainEqual([BUILD_B])
   })
 })

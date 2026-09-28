@@ -55,6 +55,17 @@ function mockBuildPages(state: {
         rows: buildId ? (state.rowsByBuild[buildId] ?? []).slice(offset, offset + fetchLimit) : [],
       }] })
     }
+    if (sql.includes('FROM asset_provenance_receipts receipt') && sql.includes('AS rows_build_id')) {
+      // Served-generation resolver: the natal strength facts are written by ga_vargas under
+      // its own run, which is not the ga_dashas run.
+      return Promise.resolve({ rows: [{
+        asset_id: 'ga_vargas', partition_key: '__whole_asset__', receipt_version: 'v1',
+        receipt_build_id: 'build-vargas', rows_build_id: 'build-vargas', receipt_state: 'proven',
+        freshness_state: 'fresh', output_digest_spec_sha256: 'a'.repeat(64), spec_active: true,
+        receipt_run_state: 'completed', receipt_asset_present: true, receipt_disposition: 'build',
+        observed_at: '2026-09-07T00:00:00Z',
+      }] })
+    }
     if (sql.includes('FROM chart_facts')) {
       natalCalls.push({ sql, params })
       return Promise.resolve({ rows: [{
@@ -174,7 +185,7 @@ describe('get_dashas build-pinned cursor pagination', () => {
     expect(queryMock).toHaveBeenCalledTimes(1) // no natal enrichment or secondary count after mismatch
   })
 
-  it('fences serve-time natal dignity and shadbala enrichment to the selected dasha build', async () => {
+  it('fences serve-time natal dignity and shadbala enrichment to the served build set, not the dasha run', async () => {
     const row = { ...dasha('a'), lord_graha: 'Venus' }
     const database = mockBuildPages({
       eligibleBuild: 'build-a',
@@ -185,9 +196,96 @@ describe('get_dashas build-pinned cursor pagination', () => {
 
     expect(result.is_error).toBe(false)
     expect(database.natalCalls).toHaveLength(1)
-    expect(database.natalCalls[0]?.sql).toContain('build_id = $5::uuid')
-    expect(database.natalCalls[0]?.sql).not.toContain('build_id = $5::text')
-    expect(database.natalCalls[0]?.params.at(-1)).toBe('build-a')
+    expect(database.natalCalls[0]?.sql).toContain('build_id = ANY($5::uuid[])')
+    expect(database.natalCalls[0]?.sql).not.toContain('build_id = $5::uuid')
+    expect(database.natalCalls[0]?.params.at(-1)).toEqual(['build-vargas'])
+  })
+
+  // R3 boundary ("explicit-empty build-fence semantics"): the native ruling names this exact
+  // enrichment as the display-only counterpart to the evidentiary leaf-tool refusal tests —
+  // when the served generation resolves to zero build ids, binding
+  // `build_id = ANY($5::uuid[])` to `[]` would silently match zero rows and look identical to
+  // "this graha genuinely has no dignity/shadbala facts". The fix must skip that query
+  // entirely and disclose the real reason via `natal_condition_source`, never claim
+  // 're-derived@serve' for a pass that never ran.
+  it('discloses (never silently claims re-derived) when the served generation resolves to zero build ids', async () => {
+    const row = { ...dasha('a'), lord_graha: 'Venus' }
+    const pageCalls: Array<{ params: readonly unknown[]; sql: string }> = []
+    const natalCalls: Array<{ params: readonly unknown[]; sql: string }> = []
+    queryMock.mockImplementation((sql: string, params: unknown[] = []) => {
+      if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
+      if (sql.includes('replacement_fence AS')) {
+        pageCalls.push({ sql, params })
+        return Promise.resolve({ rows: [{
+          replacement_in_progress: false,
+          eligible_build_id: 'build-a',
+          rows: [row],
+        }] })
+      }
+      if (sql.includes('FROM asset_provenance_receipts receipt') && sql.includes('AS rows_build_id')) {
+        // No receipt resolves for this chart — served_build_ids comes back empty, distinct
+        // from a resolution error (that path is covered by the "resolution failed" branch).
+        return Promise.resolve({ rows: [] })
+      }
+      if (sql.includes('FROM chart_facts')) {
+        natalCalls.push({ sql, params })
+        return Promise.resolve({ rows: [{
+          ayanamsha_id: 'lahiri_chitrapaksha', fact_subject: 'D1_VEN',
+          dignity_state: 'own', shadbala_rupa: null,
+        }] })
+      }
+      if (sql.startsWith('SELECT MAX(level_n)')) return Promise.resolve({ rows: [{ max_level: 3 }] })
+      throw new Error(`unexpected query: ${sql}`)
+    })
+
+    const result = await getDashasCapability.handler(args({ build_id: 'build-a' }), undefined)
+    const content = result.content as Record<string, unknown>
+
+    expect(result.is_error).toBe(false)
+    // The natal chart_facts re-derivation query must never run against an empty build fence.
+    expect(natalCalls).toHaveLength(0)
+    const servedRow = (content.rows as Array<Record<string, unknown>>)[0]!
+    expect(servedRow['lord_natal_dignity_d1']).toBeNull()
+    expect(servedRow['lord_natal_shadbala_total']).toBeNull()
+    expect(servedRow['natal_condition_source']).toBe('unavailable:no_served_generation')
+    expect(servedRow['natal_condition_source']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
+    // Independent review finding: the envelope-level `natal_condition_provenance` marker
+    // (emitted once per response, distinct from each row's own `natal_condition_source`) had
+    // been left as a hardcoded literal, so a budget-constrained caller reading only the
+    // envelope would see a false "successfully re-derived" claim even though every row was
+    // actually unavailable. It must track the same real state as the per-row field.
+    expect(content['natal_condition_provenance']).toBe('unavailable:no_served_generation')
+    expect(content['natal_condition_provenance']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
+  })
+
+  it('discloses (never silently claims re-derived) when served-generation resolution itself throws', async () => {
+    const row = { ...dasha('a'), lord_graha: 'Venus' }
+    queryMock.mockImplementation((sql: string) => {
+      if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
+      if (sql.includes('replacement_fence AS')) {
+        return Promise.resolve({ rows: [{
+          replacement_in_progress: false,
+          eligible_build_id: 'build-a',
+          rows: [row],
+        }] })
+      }
+      if (sql.includes('FROM asset_provenance_receipts receipt') && sql.includes('AS rows_build_id')) {
+        return Promise.reject(new Error('receipts unavailable'))
+      }
+      if (sql.startsWith('SELECT MAX(level_n)')) return Promise.resolve({ rows: [{ max_level: 3 }] })
+      throw new Error(`unexpected query: ${sql}`)
+    })
+
+    const result = await getDashasCapability.handler(args({ build_id: 'build-a' }), undefined)
+    const content = result.content as Record<string, unknown>
+
+    expect(result.is_error).toBe(false)
+    const servedRow = (content.rows as Array<Record<string, unknown>>)[0]!
+    expect(servedRow['lord_natal_dignity_d1']).toBeNull()
+    expect(servedRow['natal_condition_source']).toBe('unavailable:resolution_failed')
+    expect(servedRow['natal_condition_source']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
+    expect(content['natal_condition_provenance']).toBe('unavailable:resolution_failed')
+    expect(content['natal_condition_provenance']).not.toBe('chart_facts:re-derived@serve (WP-1.8/R-43)')
   })
 
   it('rejects fractional and huge finite pagination before issuing SQL, while safely flooring usable values', async () => {

@@ -71,9 +71,9 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(contentOf(result)['build_id']).toBe(BUILD_ID)
     expect(mockQuery).toHaveBeenCalledTimes(2)
     for (const [sql, params] of mockQuery.mock.calls) {
-      expect(String(sql)).toMatch(/build_id = \$\d+::text/)
-      expect(String(sql)).toMatch(/build_id_uuid = \$\d+::uuid/)
-      expect(params).toContain(BUILD_ID)
+      expect(String(sql)).toMatch(/build_id = ANY\(\$\d+::text\[\]\)/)
+      expect(String(sql)).toMatch(/build_id_uuid = ANY\(\$\d+::uuid\[\]\)/)
+      expect(params).toContainEqual([BUILD_ID])
     }
   })
 
@@ -185,5 +185,13 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(contentOf(result)['next_offset']).toBe(300)
     expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
       .toEqual({ semantics: 'offset', exhausted: false, next: 300 })
+  })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    mockQuery.mockReset()
+    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined)
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(mockQuery).not.toHaveBeenCalled()
   })
 })

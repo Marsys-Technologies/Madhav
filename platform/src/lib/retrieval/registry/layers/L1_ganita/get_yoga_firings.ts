@@ -32,6 +32,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { YOGA_SCUS } from '../../knowledge/editorial'
+import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const MAX_LIMIT = 50
 
@@ -122,6 +123,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
   ].join(' '),
 
   input_schema: {
+    build_id: { type: 'string', description: "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced." },
     chart_id:          { type: 'string',  description: 'Chart UUID. Required.', required: true },
     fired:             { type: 'boolean', description: 'Filter by fired status (default: true — only fired yogas). Pass false for non-firings, omit-as-null via all=true.' },
     all:               { type: 'boolean', description: 'If true, ignore the fired filter and return fired + non-fired rows.' },
@@ -158,7 +160,11 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-    const build_id = args['build_id'] ? String(args['build_id']) : null
+    // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_yoga_firings', chart_id)
+    const build_ids = buildFence.kind === 'resolved' ? buildFence.build_ids : null
+    const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
     const all               = args['all'] === true
     const fired             = args['fired'] === undefined ? true : args['fired'] === true
@@ -172,7 +178,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
     const filters: string[] = ['f.chart_id = $1']
     const params: unknown[] = [chart_id]
     let p = 2
-    if (build_id)                    { filters.push(`f.build_id = $${p++}::uuid`);    params.push(build_id) }
+    if (build_ids)                   { filters.push(`f.build_id = ANY($${p++}::uuid[])`); params.push(build_ids) }
     if (!all)                       { filters.push(`f.fired = $${p++}`);             params.push(fired) }
     if (ayanamsha_id)               { filters.push(`f.ayanamsha_id = $${p++}`);      params.push(ayanamsha_id) }
     if (bhanga_active !== null)     { filters.push(`f.bhanga_active = $${p++}`);     params.push(bhanga_active) }

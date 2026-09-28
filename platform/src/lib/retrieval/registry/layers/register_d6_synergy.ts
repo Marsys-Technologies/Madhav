@@ -48,7 +48,11 @@ const synergyPipelineTool: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L0',
   name: 'synergy_pipeline',
-  scope: 'global',
+  // R3 boundary review follow-up: required_inputs names chart_id required (never defaulted,
+  // per the description below) and the pipeline's own router/grounding/graph chain operates
+  // per-chart — 'global' had the same defect independent review found and synergy_cross_layer
+  // already fixed in this same file; corrected here to match.
+  scope: 'per_chart',
 
   description: [
     'D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain',
@@ -97,6 +101,95 @@ const synergyPipelineTool: CapabilityDescriptor = {
     readOnly: true,
     destructive: false,
   },
+
+  // R3 boundary ("genuine per-mode proof typing"): dry_run:true and the executed (default)
+  // mode are genuinely DIFFERENT proof kinds, not just different availability requirements —
+  // dry_run returns static, always-available route/plan metadata computed with zero I/O
+  // (proof_kind 'plan', proven by snapshot registration alone, exactly like intent_classify/
+  // route); the executed mode dispatches runWholeChartRead('holistic', ...) — genuinely
+  // chart-scoped answer evidence composed from query_ucd, query_domain_reading,
+  // query_signals, traverse_chart_graph, query_contradictions (dry_run's own `stages` list
+  // above), PLUS query_convergence_windows and query_life_arc — runTemporalStep
+  // (synergy/orchestrator.ts) dispatches all THREE L3 temporal legs
+  // (query_temporal_activation, query_convergence_windows, query_life_arc) for
+  // queryClass 'holistic'/'predictive', not query_temporal_activation alone (an
+  // independent review of the first version of this contract caught the two-leg omission —
+  // re-derived directly from runTemporalStep's own source rather than trusting dry_run's
+  // `stages` list, which only ever documented the non-temporal legs). This is unlike
+  // synergy_cross_layer's 'cross_domain' mode, which this same file's derived contract for
+  // synergy_cross_layer correctly excludes the whole temporal step from. Authored directly
+  // (bypassing auto-derivation, which supports exactly one proof_kind per descriptor) so the
+  // two modes can carry independent proof — content below matches the fields
+  // deriveDeclaration() would have produced for the single-binding v1 shape (previously
+  // entirely uncontracted, always dark — see the R3 boundary review), plus the new per-mode
+  // structure.
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.synergy_pipeline',
+    version: 2,
+    label: 'Synergy Pipeline',
+    description: 'D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain into a single introspectable capability descriptor. dry_run=true (the plan mode) returns the planned route/grounding stages with zero I/O; the executed default mode dispatches the real router→grounding→graph+assets→MARO chain, grounding the result against L1 chart_facts and passing it through the MARO normalizer for the declared model family. Not LLM-facing for end-user queries — consumed by the D8 eval harness and integration smoke tests for pipeline-completeness verification. chart_id is required and must be a valid chart UUID — never defaulted. Evidence use: frame and reconcile domain evidence before downstream interpretation.',
+    kind: 'datum',
+    domains: ['cross_domain'],
+    concepts: ['domain_assessment', 'evidence_reconciliation', 'judgment_support', 'synergy_pipeline'],
+    intents: ['assess', 'reconcile'],
+    horizons: ['current', 'natal'],
+    scope: 'chart',
+    inputs: ['chart_id', 'dry_run', 'model_family', 'query'],
+    outputs: ['assessment_findings', 'evidence_references', 'reconciled_evidence'],
+    primary_binding_uri: 'marsys://tool/synergy/pipeline',
+    additional_bindings: [{
+      binding_id: 'registry:marsys://tool/synergy/pipeline#dry_run',
+      kind: 'registry_capability',
+      relation: 'provides',
+      capability_uri: 'marsys://tool/synergy/pipeline',
+      input_contract: { chart_id: 'string:required', query: 'string:required', dry_run: 'boolean:required' },
+      output_contract: { content: 'ToolResult.content' },
+      pagination: 'none',
+      pagination_verified: null,
+      executable: true,
+      execution_channels: ['platform_internal'],
+      mode_selector: [{ argument: 'dry_run', equals: true }],
+      fixed_args: { dry_run: true },
+      proof_kind: 'plan',
+      route_evidence: 'CapabilityDescriptor:marsys://tool/synergy/pipeline#dry_run',
+    }],
+    edges: [],
+    provenance_requirements: ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
+    freshness_policy: 'Must resolve against the active compatible chart build.',
+    entitlement: 'native',
+    safety_notes: ['Read-only evidence surface; planner must not interpret returned chart facts.'],
+    known_gaps: [],
+    availability_contracts: [
+      {
+        binding_id: 'registry:marsys://tool/synergy/pipeline',
+        requirements: [{
+          kind: 'derived',
+          scope: 'chart',
+          required_binding_ids: [
+            'registry:marsys://tool/L2/query_ucd',
+            'registry:marsys://tool/L2/query_domain_reading',
+            'registry:marsys://tool/L2/query_signals',
+            'registry:marsys://tool/L2/traverse_chart_graph',
+            'registry:marsys://tool/L2/query_contradictions',
+            'registry:marsys://tool/L3/query_temporal_activation',
+            'registry:marsys://tool/L3/query_convergence_windows',
+            'registry:marsys://tool/L3/query_life_arc',
+          ],
+          source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead:runTemporalStep (queryClass=holistic)',
+        }],
+      },
+      {
+        binding_id: 'registry:marsys://tool/synergy/pipeline#dry_run',
+        requirements: [{
+          kind: 'snapshot_resource',
+          proof: 'registered_in_pinned_snapshot',
+          scope: 'global',
+          source_ref: 'platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts#synergyPipelineTool.handler:dry_run',
+        }],
+      },
+    ],
+    editorial: true,
+  }],
 
   async handler(args: Record<string, unknown>) {
     const chart_id = args['chart_id']
@@ -168,7 +261,10 @@ const synergyCrossLayerTool: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L0',
   name: 'synergy_cross_layer',
-  scope: 'global',
+  // R3 proof typing (review §4): required_inputs names chart_id required, and every
+  // composed leg (runWholeChartRead) is chart-scoped — 'global' misrepresented reality and
+  // blocked an honest derived availability contract (its legs cannot be global AND chart).
+  scope: 'per_chart',
 
   description: [
     'D6 cross-layer signal reconciliation. Accepts a chart_id and a set of signals',

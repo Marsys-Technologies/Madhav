@@ -52,6 +52,7 @@ import {
   extractCandidateSignalIds,
   fetchCandidateSignalLabels,
   buildTurnCitationResolver,
+  mergeRegisterHandleLabels,
 } from './citation_resolver'
 import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { ChartOrientation } from '@/lib/retrieval/orientation'
@@ -91,6 +92,11 @@ import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams 
 import { PASS_ONE } from './evidence_stage'
 import { ReadingPartsAssembler, type OpenBlock } from './reading_parts'
 import type { LegacyQueryPlan } from './plan_stage'
+import { formatEvidenceBlock, REGISTER_CITATION_INSTRUCTION } from '@/lib/pipeline/prashna_ask_synthesis'
+import { inquiryFindingCitationHandles } from '@/lib/vidhi/inquiry/response_accountability'
+import { annotateInquiryEvidenceForSynthesis, visibleInquiryCitationHandles } from '@/lib/vidhi/inquiry/response_accountability'
+import type { InquiryContract } from '@/lib/vidhi/inquiry/types'
+import type { CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge/types'
 
 /**
  * deep_dive raises the agentic-loop iteration cap so the model can retrieve
@@ -125,11 +131,24 @@ export interface SynthesisContext {
   /** The full system prefix (bundle + guidance + durable-summary splice). */
   systemContentWithSummary: string
   /**
+   * Register citation handles present in the admitted inquiry evidence actually placed in the
+   * prompt (post-budget); null when no admitted evidence was supplied (R2C.1 Portal).
+   */
+  visibleCitationHandles: string[] | null
+  /**
    * The trimmed history the adapter messages are built from. Computed HERE and
    * carried forward rather than recomputed in `runSynthesisStage`: the
    * pre-decomposition closure called `convertToModelMessages` exactly once.
    */
   trimmedConversationHistory: ModelMessage[]
+  /**
+   * R2C.3b: register-citation ([[Fn]] / ⟦cite: Fn⟧) reader labels for every finding in
+   * the admitted evidence's fact register, keyed by handle — so the live citation stream
+   * (`runSynthesisStage`) can resolve a cited handle to the SAME finding the model was shown,
+   * synchronously and with no second DB round-trip (the register is already fully computed
+   * here). Null when no admitted evidence was supplied.
+   */
+  registerHandleLabels: ReadonlyMap<string, { reader_label: string; rationale: string; materiality: 'required' | 'supporting' }> | null
 }
 
 /**
@@ -206,6 +225,17 @@ export async function assembleSynthesisContext(args: {
   safetyDecision?: SafetyDecision
   /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
   lengthTier?: LengthTier
+  /**
+   * The inquiry's admitted evidence (the evidence-stage payloads the fact register is built
+   * from). When supplied, synthesis is shown register-annotated display copies of exactly that
+   * evidence and asked to cite what it interprets, so delivery is provable against what the
+   * model saw (RC-6.2 Portal). Omitted → prompt unchanged.
+   */
+  admittedEvidence?: {
+    readonly contract: InquiryContract
+    readonly payloads: readonly ToolBundle[]
+    readonly snapshot?: CapabilityKnowledgeSnapshot
+  }
   workerExecutor?: RoleExecutor
   abortSignal?: AbortSignal
   maxOutputTokens?: number
@@ -337,6 +367,40 @@ export async function assembleSynthesisContext(args: {
       .join('\n\n---\n\n')
   }
 
+  // ── ADMITTED INQUIRY EVIDENCE (R2C.1 Portal) — untrusted content, so it is placed before
+  // the injection clause and the safety policy below, inside its own container. ─────────
+  let visibleCitationHandles: string[] | null = null
+  let registerHandleLabels: SynthesisContext['registerHandleLabels'] = null
+  if (args.admittedEvidence) {
+    const annotated = annotateInquiryEvidenceForSynthesis(
+      args.admittedEvidence.contract, args.admittedEvidence.payloads, args.admittedEvidence.snapshot,
+    )
+    const { block } = formatEvidenceBlock(args.admittedEvidence.payloads.map((payload, index) => ({
+      tool_name: payload.tool_name,
+      bundle: annotated.payloads[index] as ToolBundle,
+    })))
+    visibleCitationHandles = visibleInquiryCitationHandles(block)
+    const handleByFactId = inquiryFindingCitationHandles(annotated.register)
+    const labels = new Map<string, { reader_label: string; rationale: string; materiality: 'required' | 'supporting' }>()
+    for (const fact of annotated.register.facts) {
+      const handle = handleByFactId.get(fact.fact_id)
+      if (!handle) continue
+      labels.set(handle, { reader_label: fact.meaning.label, rationale: fact.meaning.rationale, materiality: fact.materiality })
+    }
+    registerHandleLabels = labels
+    const evidenceSection = `ADMITTED INQUIRY EVIDENCE (the evidence this reading is accountable for):
+${block}`
+    // The ⟦cite: Fn⟧ syntax is taught only when the rewriter that resolves/redacts it is armed
+    // (same flag as the appendix above): otherwise the raw sentinel would leak into reader
+    // prose. With the flag off the evidence is still shown, but interpretation is not
+    // citation-provable, so the response receipt reports it honestly rather than certifying it.
+    systemContentWithSummary = [
+      systemContentWithSummary,
+      injectionContained ? containRetrievedEvidence(evidenceSection) : evidenceSection,
+      isFirstPaintCitationsEnabled() ? REGISTER_CITATION_INSTRUCTION.trim() : '',
+    ].filter(Boolean).join('\n\n---\n\n')
+  }
+
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety
   // policy, so the ordering downstream-of-untrusted-content reads:
@@ -367,7 +431,7 @@ export async function assembleSynthesisContext(args: {
     )
   }
 
-  return { systemContentWithSummary, trimmedConversationHistory }
+  return { systemContentWithSummary, trimmedConversationHistory, visibleCitationHandles, registerHandleLabels }
 }
 
 export interface SynthesisStageOutput {
@@ -728,6 +792,9 @@ export async function runSynthesisStage(args: {
   if (citationRewriteEnabled) {
     const candidateIds = extractCandidateSignalIds({ validToolResults: args.validToolResults ?? [] })
     const { labels, faulted } = await fetchCandidateSignalLabels(queryPlan.chart_id, candidateIds)
+    // R2C.3b: register-citation handles (F1, F2, ...) resolve against THIS turn's own admitted
+    // fact register — additive to (never replacing) the signal/fact-id label map above.
+    mergeRegisterHandleLabels(labels, args.context.registerHandleLabels)
     if (faulted) {
       // §N.8: a degraded prefetch (DB/infra fault on one or more source
       // tables) is distinguishable from the honest "nothing to resolve"

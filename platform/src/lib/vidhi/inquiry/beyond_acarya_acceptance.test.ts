@@ -31,11 +31,31 @@ const historicalV5 = {
 } as const
 // Jātaka Phase-A3: v6 becomes an immutable historical predecessor (like v2-v5) now that v7
 // exists as the current executable report — see the "keeps the v6 source-successor immutable"
-// and "pins the v7 source-successor artifact" tests below.
+// and "keeps the v7 source-successor immutable" tests below.
 const historicalV6 = {
   capability_content_hash: 'sha256:0a2a675d0098390453d77ba0119b87fad865728e908290eaee6cc84fc465bc36',
   report_hash: 'sha256:bfe04932a3358e9142b09e89902c02eaf9b020a389075ccd92b424a397b480c0',
   artifact_hash: 'sha256:04579974349aed1377b26755b4a737dcb4cd14adee808b773e6cc986a956aec5',
+} as const
+// R4 local integration (native ruling, 2026-09-28): v6 forked into two independent "v7"
+// successors on divergent branches (this branch's own R0-R3 v7, and protected main's Jātaka
+// Phase-A3 v7 — both cite v6 as predecessor). Protected main's v7 is canonical and stays
+// byte-identical at the root path; this branch's own v7-v11 chain is preserved as historical
+// fork evidence under historical_fork_v7_v11/ (manifest:
+// historical_fork_v7_v11/LINEAGE_FORK_MANIFEST_v1_0.md; fork-preservation assertions live in
+// beyond_acarya_v7_lineage_fork.test.ts, not here). historicalV7 below is main's real,
+// now-immutable v7 — the predecessor of the new canonical v8 created at this boundary.
+const historicalV7 = {
+  capability_content_hash: 'sha256:6a595916dda6ba2b23c2c567c97cc50ddc1d218c353ea56aa383ffceb62dad7b',
+  report_hash: 'sha256:7bdef36180d6734a5ce495a6a0458928c07fd501c049600a187d850814945001',
+  artifact_hash: 'sha256:1bbf5912d64f6f5eff05c5c8416d209cd00cafd3a009cb43fc4d2d5a00b21f15',
+} as const
+// R4 local integration's canonical successor of main's v7; immutable since the R5A review-fix
+// successor (v9) superseded it.
+const historicalV8 = {
+  capability_content_hash: 'sha256:0556249e1b779895b5927acfd6b45ec8ad6508ae3f8fb8d78e620b92550429da',
+  report_hash: 'sha256:d272acc46e93c030b8bef6d3f62802034b501cf65e8d42196c93988eac9153c0',
+  artifact_hash: 'sha256:551da8df072df9135895deffa0c630f63d5d3d4a44b03766d20bcabc1b15e6d5',
 } as const
 
 function withoutScu(
@@ -76,7 +96,11 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    expect(report.report_hash).toBe('sha256:7bdef36180d6734a5ce495a6a0458928c07fd501c049600a187d850814945001')
+    // R5A review-fix boundary: capability_content_hash/report_hash move once more, for the
+    // build_id fence declarations that let inquiry-dispatched reads inherit the served
+    // generation — no denominator changed (see the metrics assertions above and the v9 pin
+    // test below; identical to v7 and v8's own metrics).
+    expect(report.report_hash).toBe('sha256:827fb97b792780ab91d011c0a51cb72774a00e1e7d20f8cd9efda004d07adb74')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -279,15 +303,19 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v7 source-successor artifact to the current executable report without claiming live acceptance (Jātaka Phase-A3)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  // R4 local integration boundary (native ruling, 2026-09-28): protected main's v7 is now the
+  // canonical predecessor of the new v8 below. It stays immutable exactly like v2-v6 — this
+  // branch's OWN divergent v7-v11 fork is preserved separately (historical_fork_v7_v11/,
+  // manifest at historical_fork_v7_v11/LINEAGE_FORK_MANIFEST_v1_0.md) and is never
+  // treated as this file's canonical lineage; see beyond_acarya_v7_lineage_fork.test.ts.
+  it('keeps the v7 source-successor artifact immutable after the R4 main-integration advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v7.json',
       import.meta.url,
-    ), 'utf8')) as Record<string, unknown>
-    const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
-    const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
-    const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
 
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV7.artifact_hash)
     expect(artifact).toMatchObject({
       schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v7',
       predecessor: {
@@ -295,6 +323,53 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
         capability_content_hash: historicalV6.capability_content_hash,
         report_hash: historicalV6.report_hash,
+      },
+      capability_content_hash: historicalV7.capability_content_hash,
+      report_hash: historicalV7.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: 'ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b',
+    })
+  })
+
+  it('keeps the v8 source-successor artifact immutable after the R5A review-fix advance', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v8.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV8.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v8',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v7.json',
+        acceptance_version: 'beyond-acarya-source-acceptance-v2',
+        capability_content_hash: historicalV7.capability_content_hash,
+        report_hash: historicalV7.report_hash,
+      },
+      capability_content_hash: historicalV8.capability_content_hash,
+      report_hash: historicalV8.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '9285326caa394f76ea6849fd3fe0309bc6d90239',
+    })
+  })
+
+  it('pins the v9 source-successor artifact to the current executable report without claiming live acceptance (R5A review-fix)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v9.json',
+      import.meta.url,
+    ), 'utf8')) as Record<string, unknown>
+    const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
+    const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
+    const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
+
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v9',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v8.json',
+        acceptance_version: 'beyond-acarya-source-acceptance-v2',
+        capability_content_hash: historicalV8.capability_content_hash,
+        report_hash: historicalV8.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -337,7 +412,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: 'ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b',
+      // The review-fix source commit (1995ff178) whose tree this report was evaluated against,
+      // not the later G-ARTIFACT commit that regenerates the census and this successor.
+      evaluated_source_revision: '1995ff17855907b338c6d4f049a9309a810e3508',
     })
   })
 })

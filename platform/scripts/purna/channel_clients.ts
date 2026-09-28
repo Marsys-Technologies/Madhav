@@ -239,6 +239,9 @@ export async function collectPortalCase(input: {
 
 export async function parsePortalSse(stream: ReadableStream<Uint8Array>, signal?: AbortSignal): Promise<{ truncated: boolean; inquiryId: string | null; answer: string; payload: Json }> {
   const reader = stream.getReader(); const decoder = new TextDecoder(); let buffer = ''; let answer = ''; let inquiryId: string | null = null; let closed = false; let payload: Json = {}
+  // Subject-keyed `grade` evidence (receipt_stage.ts). Never flat-merged: each grade carries its
+  // own subject/grade/detail, and a later grade would otherwise overwrite an earlier envelope.
+  const grades: Record<string, { grade: unknown; detail: unknown }> = {}
   // `fetch` resolves when the SSE headers arrive. Its AbortSignal alone does
   // not interrupt a subsequently stalled body reader, so bind the same
   // collector deadline to the reader itself.
@@ -253,6 +256,10 @@ export async function parsePortalSse(stream: ReadableStream<Uint8Array>, signal?
       for (const frame of frames) {
         const line = frame.split('\n').find((candidate) => candidate.startsWith('data: ')); if (!line) continue
         let event: Json; try { event = record(JSON.parse(line.slice(6))) } catch { continue }
+        if (event.type === 'grade' && typeof event.subject === 'string') {
+          grades[event.subject] = { grade: event.grade, detail: event.detail }
+          continue
+        }
         // The terminal event is intentionally minimal. Preserve receipt and other
         // evidence emitted earlier rather than replacing the accumulated payload.
         payload = event.receipt && typeof event.receipt === 'object'
@@ -267,7 +274,34 @@ export async function parsePortalSse(stream: ReadableStream<Uint8Array>, signal?
     signal?.removeEventListener('abort', cancel)
     reader.releaseLock()
   }
-  return { truncated: !closed, inquiryId, answer, payload }
+  return { truncated: !closed, inquiryId, answer, payload: withPortalGrades(payload, grades) }
+}
+
+function parsedGradeDetail(grade: { detail: unknown } | undefined): unknown | null {
+  if (!grade || typeof grade.detail !== 'string') return null
+  try {
+    const parsed: unknown = JSON.parse(grade.detail)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Lift the Portal's grade evidence into the collected payload. Inquiry completion comes only
+ * from the inquiry-contract grade: `turn.close: ok` reports transport success, not closure, so a
+ * stream without that grade is recorded as unreported rather than complete. An accountability
+ * detail that does not parse is recorded as absent (fail closed), never as an empty envelope.
+ */
+function withPortalGrades(payload: Json, grades: Record<string, { grade: unknown; detail: unknown }>): Json {
+  const contractGrade = grades['inquiry_contract']?.grade
+  return {
+    ...payload,
+    status: typeof contractGrade === 'string' ? contractGrade : 'portal_inquiry_closure_unreported',
+    response_accountability: parsedGradeDetail(grades['response_accountability']),
+    inquiry_door_parity: parsedGradeDetail(grades['inquiry_door_parity']),
+    portal_grades: Object.fromEntries(Object.entries(grades).map(([subject, value]) => [subject, value.grade])),
+  }
 }
 
 function normalize(input: { test: AcceptanceCase; expectedRevision: string; source: 'candidate' | 'live' }, door: AcceptanceDoor, payload: unknown, calls: number, inquiryId: string | null, answerOverride?: string): CollectedCase {

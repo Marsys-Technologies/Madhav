@@ -526,9 +526,9 @@ describe('resolveAddress — optional immutable build fence', () => {
     const calls = vi.mocked(query).mock.calls.filter(([sql]) => String(sql).includes('FROM chart_facts'))
     expect(calls.length).toBeGreaterThan(1)
     for (const [sql, params] of calls) {
-      expect(String(sql)).toMatch(/build_id = \$\d+::uuid/)
+      expect(String(sql)).toMatch(/build_id = ANY\(\$\d+::uuid\[\]\)/)
       expect(String(sql)).not.toMatch(/build_id = \$\d+::text/)
-      expect(params).toContain(BUILD_ID)
+      expect(params).toContainEqual([BUILD_ID])
     }
   })
 
@@ -541,9 +541,9 @@ describe('resolveAddress — optional immutable build fence', () => {
 
     const call = vi.mocked(query).mock.calls.find(([sql]) => String(sql).includes('FROM chart_divisionals'))
     expect(call).toBeTruthy()
-    expect(String(call?.[0])).toContain('build_id = $5::text')
-    expect(String(call?.[0])).toContain('build_id_uuid = $5::uuid')
-    expect(call?.[1]).toEqual([NATIVE_CHART_ID, AYANAMSHA, 'D9', 'Venus', BUILD_ID])
+    expect(String(call?.[0])).toContain('build_id = ANY($5::text[])')
+    expect(String(call?.[0])).toContain('build_id_uuid = ANY($5::uuid[])')
+    expect(call?.[1]).toEqual([NATIVE_CHART_ID, AYANAMSHA, 'D9', 'Venus', [BUILD_ID]])
   })
 
   it('preserves the legacy unfenced query shape for callers that omit build_id', async () => {

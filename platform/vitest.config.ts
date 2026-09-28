@@ -128,7 +128,8 @@ const SHARED_EXCLUDE = [
       'tests/manifest/compressor_gating.test.ts',
       'tests/pipeline/manifest_compressor.test.ts',
       // Group K — classical corpus / brahmagyan.texts (re-enable: DB corpus populated)
-      'tests/classical/classical_attribution_lookup.test.ts',
+      // classical_attribution_lookup.test.ts RE-ENABLED (Purna R3): the lookup now fails
+      // closed with CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE and needs no DB corpus.
       'tests/classical/classical_pipeline_integration.test.ts',
 
       // Group L — build API routes (extended Group F; re-enable: Gate-2 build job wired)

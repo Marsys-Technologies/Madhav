@@ -63,6 +63,8 @@ export const REVIEWED_FULL_PROFILE_TOOL_NAMES = [
   'gochara_election_avoidance_get',
   'gochara_forecast_get',
   'graha_portrait',
+  'inquiry_certify',
+  'inquiry_continue',
   'inquiry_execute_next',
   'inquiry_finalize',
   'inquiry_start',

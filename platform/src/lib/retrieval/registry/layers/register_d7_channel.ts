@@ -657,16 +657,15 @@ const classicalAttributionLookupCapability: CapabilityDescriptor = {
   scope: 'per_chart',
 
   description: [
-    'Fetch classical text attributions for MSR signals in a chart.',
-    'Each attribution links an MSR signal (signal_id) to a classical text passage',
-    '(text_key, title, author, chapter, verse_range, content) with an attribution_type',
-    '(confirms | contradicts | partial | extends | silent) and confidence score.',
-    'Provides the classical grounding for Bodha layer signals.',
-    'Required: chart_id + signal_ids (array of signal_id strings).',
-    'Optional: attribution_type filter, confidence_tier filter (HIGH|MEDIUM|LOW).',
-    'emits_references: returns signal_id + attribution_id references.',
-    'No audience-tier gating — tier gating is serve-time only.',
-    'Registry equivalent of lib/retrieve/classical_attribution_lookup_tool.ts (D7 gap fill).',
+    'UNAVAILABLE — fails closed. Per-signal classical attributions (an MSR signal linked to a',
+    'classical passage with an attribution_type and confidence) were read from the',
+    'classical_attributions store, which was dropped in WS-0 with no queryable replacement.',
+    'Every call therefore returns CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE instead of an',
+    'unmeasured "silent" verdict for each signal. For classical grounding use the classical',
+    'corpus surface (query_classical_texts; MCP ref_classical_citation_get), which returns',
+    'verse text with receipt-pinned pagination.',
+    'Input contract retained for callers: chart_id + signal_ids; optional attribution_type',
+    'and confidence_tier (HIGH|MEDIUM|LOW).',
   ].join(' '),
 
   input_schema: {
@@ -762,7 +761,19 @@ const classicalAttributionLookupCapability: CapabilityDescriptor = {
         is_error: false,
       }
     } catch (err) {
-      return { content: { error: String(err), chart_id }, is_error: true }
+      if (typeof err === 'object' && err !== null
+        && 'code' in err && err.code === 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE') {
+        return {
+          content: {
+            code: 'CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE',
+            error: err instanceof Error ? err.message : 'Classical attribution source unavailable.',
+            chart_id,
+            signal_ids,
+          },
+          is_error: true,
+        }
+      }
+      return { content: { code: 'CLASSICAL_ATTRIBUTION_LOOKUP_FAILED', error: String(err), chart_id }, is_error: true }
     }
   },
 }

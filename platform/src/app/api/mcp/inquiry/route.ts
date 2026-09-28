@@ -43,6 +43,15 @@ import {
   markInquiryActionDispatched,
   reserveInquiryAction,
 } from '@/lib/vidhi/inquiry/lifecycle_store'
+import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
+import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
+import { readBoundedRequestBody } from './bounded_body'
+import {
+  buildStructuredResponseAccountability,
+  inquiryCitedHandles,
+  stripInquiryCitationMarkers,
+  successorChain,
+} from '@/lib/vidhi/inquiry/response_accountability'
 
 export const maxDuration = 60
 
@@ -60,6 +69,23 @@ const AiProposalSchema = z.object({
   hypotheses: z.array(z.string().trim().min(1).max(500)).max(16),
 }).strict()
 
+const MAX_RESULT_BYTES = 512 * 1024
+const MAX_CERTIFY_PAYLOADS = 64
+// Bound the certify body before it is parsed: every committed payload at its maximum size, the
+// answer, and envelope overhead.
+const MAX_REQUEST_BYTES = MAX_CERTIFY_PAYLOADS * MAX_RESULT_BYTES + 1024 * 1024
+// Every other action is small by schema (question <= 4000 chars, lifecycle token <= 16 KiB, a
+// bounded AI proposal), so it gets a small limit; only a body whose first key is
+// `"action":"certify"` may use the large one. The MCP client serializes `action` first.
+const MAX_NON_CERTIFY_REQUEST_BYTES = 256 * 1024
+const CERTIFY_PREFIX_BYTES = 4096
+const CERTIFY_LEADING_ACTION = /^\s*\{\s*"action"\s*:\s*"certify"\s*[,}]/
+// Bound certification work: each cited span re-hashes the findings it cites.
+const MAX_CERTIFY_CITED_SPANS = 256
+const MAX_CERTIFY_CITATIONS = 2048
+// A cited span must carry some interpretation of its own, not markers alone.
+const MIN_INTERPRETATION_CHARS = 24
+
 const BodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('start'), chart_id: z.string().uuid(),
@@ -73,10 +99,15 @@ const BodySchema = z.discriminatedUnion('action', [
   }).strict(),
   z.object({ action: z.literal('finalize'), lifecycle_token: z.string().min(1).max(16384) }).strict(),
   z.object({ action: z.literal('continue'), lifecycle_token: z.string().min(1).max(16384) }).strict(),
+  // Server-side certification of an externally synthesized answer (RC-6.4 raw). Read-only.
+  z.object({
+    action: z.literal('certify'), lifecycle_token: z.string().min(1).max(16384),
+    response_text: z.string().min(1).max(200_000),
+    evidence_payloads: z.array(z.unknown()).max(MAX_CERTIFY_PAYLOADS),
+  }).strict(),
 ])
 type Body = z.infer<typeof BodySchema>
 
-const MAX_RESULT_BYTES = 512 * 1024
 const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_TOKEN_MALFORMED', 'INQUIRY_TOKEN_INVALID_SIGNATURE', 'INQUIRY_TOKEN_WRONG_AUDIENCE',
   'INQUIRY_TOKEN_UNKNOWN_KID', 'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
@@ -171,8 +202,26 @@ export async function POST(request: Request) {
   const principalKeyId = request.headers.get('x-mcp-key-id')
   if (!principalUid || !principalKeyId) return response({ ok: false, error: 'X-MCP-User and X-MCP-Key-Id headers required' }, 401)
   const principalSubject = `${principalUid}:${principalKeyId}`
+  // Early-rejection optimization only: an honestly oversized Content-Length lets us refuse
+  // before reading a single byte. It is never trusted as the enforcement mechanism itself —
+  // see readBoundedRequestBody (./bounded_body) for the actual, unbypassable limit.
+  if (Number(request.headers.get('content-length') ?? 0) > MAX_REQUEST_BYTES) {
+    return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
+  }
+  const bounded = await readBoundedRequestBody(request, MAX_REQUEST_BYTES, {
+    initialBytes: MAX_NON_CERTIFY_REQUEST_BYTES,
+    prefixBytes: CERTIFY_PREFIX_BYTES,
+    allow: (prefix) => CERTIFY_LEADING_ACTION.test(prefix),
+  })
+  if (!bounded.ok) return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
   let rawBody: unknown
-  try { rawBody = await request.json() } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }
+  try { rawBody = JSON.parse(bounded.text) } catch { return response({ ok: false, error: 'INVALID_JSON' }, 400) }
+  // The large limit is for certify only. JSON.parse honors the LAST duplicate key, so the leading-
+  // action prefix check alone cannot prove the parsed action; re-check it on what will be used.
+  if (Buffer.byteLength(bounded.text, 'utf8') > MAX_NON_CERTIFY_REQUEST_BYTES
+    && (rawBody as { action?: unknown } | null)?.action !== 'certify') {
+    return response({ ok: false, error: 'INQUIRY_REQUEST_TOO_LARGE' }, 413)
+  }
   const parsedBody = BodySchema.safeParse(rawBody)
   if (!parsedBody.success) return response({ ok: false, error: 'INVALID_REQUEST' }, 400)
   const body: Body = parsedBody.data
@@ -190,6 +239,8 @@ export async function POST(request: Request) {
         snapshot, overlay, chart_id: body.chart_id, question: body.question,
         scope_tuple: scope, ai_proposal: body.ai_proposal, execution_channel: 'mcp_full',
         temporal_anchor_date: body.temporal_anchor_date,
+        // The raw door makes no model call: any AI decomposition is the caller's (RC-5.3).
+        planning_provenance: deterministicCompilerProvenance(body.ai_proposal !== undefined),
       })
       const inquiryId = randomUUID()
       const ready = nextReady(contract)
@@ -216,6 +267,7 @@ export async function POST(request: Request) {
     if (!row || !authorization || !authorizationHashes) {
       return response({ ok: false, error: 'INQUIRY_TOKEN_REPLAYED_OR_STALE' }, 409)
     }
+    if (body.action === 'certify') return certifyExternalAnswer(body, claims, row)
     if (row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash ||
       row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash ||
       row.capability_compatibility_version !== claims.compatibility_version || row.revision !== claims.revision ||
@@ -320,10 +372,19 @@ export async function POST(request: Request) {
         raw = { ok: false, error: gapReason, trace_id: traceId, result_hash: oversizedHash }
         serialized = JSON.stringify(raw)
       }
+      // Commit, derive from, and hand back exactly the JSON the client receives, so a payload
+      // the client later presents for certification hashes to the ref committed here
+      // (in-memory values such as undefined fields or Dates do not survive the wire).
+      raw = JSON.parse(serialized)
       const pagination = deriveInquiryPaginationReceipt(binding, raw, invocationArgs)
       const observed = recordInquiryExecution(contract, {
         item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
         pagination, request_position_path: binding.pagination_contract?.request_position_path,
+        // A served result may warrant a different capability (RC-5.4); it is pursued only
+        // through the governed `continue` successor, never dispatched ad hoc.
+        evidence_frontier: disposition === 'served'
+          ? deriveEvidenceFrontier({ contract, item_id: item.item_id, evidence_payload: raw, snapshot })
+          : [],
       })
       const remaining = observed.iteration >= observed.max_iterations ? [] : nextReady(observed)
       const issued = issueInquiryLifecycleToken({
@@ -401,4 +462,91 @@ export async function POST(request: Request) {
     console.error('[mcp:inquiry] request failed', { traceId, error })
     return response({ ok: false, error: 'INQUIRY_REQUEST_FAILED', trace_id: traceId }, 500)
   }
+}
+
+/**
+ * Certify an externally synthesized answer against the server's own record (RC-6.4 raw).
+ *
+ * The raw door hands evidence to the client and lets the client write the answer, so a
+ * client-built accountability envelope is only self-attested. Certification rebuilds the fact
+ * register and coverage receipt server-side from the FINALIZED contract the server committed and
+ * from payloads the client proves it received (each must hash to a `raw:` evidence ref the
+ * server committed). It is read-only: nothing is reserved, consumed, or written.
+ */
+function certifyExternalAnswer(
+  body: Extract<Body, { action: 'certify' }>,
+  claims: ReturnType<typeof verifyInquiryLifecycleToken>,
+  row: NonNullable<Awaited<ReturnType<typeof getInquiryLifecycle>>>,
+) {
+  // Only the last token issued before the lifecycle went terminal may certify it, and only once
+  // terminal. That token is whichever one closed it — a finalize, or an execute that failed
+  // closed — so a BLOCKED closure is certifiable too (it simply cannot certify complete).
+  if (row.current_jti_hash !== 'terminal' || claims.revision !== row.revision - 1
+    || row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash
+    || row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash
+    || row.contract_jsonb.semantic_contract_hash !== row.semantic_contract_hash
+    || row.contract_jsonb.execution_plan_hash !== row.execution_plan_hash
+    || row.contract_jsonb.contract_id !== row.authorization_jsonb.contract_id) {
+    return response({ ok: false, error: 'INQUIRY_CERTIFICATION_NOT_AUTHORIZED' }, 409)
+  }
+  const final = row.contract_jsonb
+  const snapshot = assertPinnedCapabilityKnowledgeCurrent()
+  if (snapshot.content_hash !== final.capability_content_hash) {
+    return response({ ok: false, error: 'CAPABILITY_KNOWLEDGE_STALE' }, 409)
+  }
+  // A successor answer accounts for its parents' evidence too (the register inherits it).
+  const committedHashes = new Set(successorChain(final).flatMap((member) => [
+    ...member.obligations.flatMap((obligation) => obligation.evidence_refs),
+    ...member.plan_items.flatMap((item) => item.observation?.evidence_refs ?? []),
+  ]).filter((ref) => ref.startsWith('raw:')).map((ref) => ref.slice('raw:'.length)))
+  const supplied = new Map<string, unknown>()
+  for (const payload of body.evidence_payloads) {
+    if (Buffer.byteLength(JSON.stringify(payload) ?? '') > MAX_RESULT_BYTES) {
+      return response({ ok: false, error: 'INQUIRY_CERTIFICATION_PAYLOAD_TOO_LARGE' }, 400)
+    }
+    const hash = stableFingerprint(payload)
+    if (!committedHashes.has(hash)) return response({ ok: false, error: 'INQUIRY_CERTIFICATION_EVIDENCE_UNCOMMITTED' }, 409)
+    if (supplied.has(hash)) return response({ ok: false, error: 'INQUIRY_CERTIFICATION_EVIDENCE_DUPLICATED' }, 400)
+    supplied.set(hash, payload)
+  }
+  const citedSpans = body.response_text.split(/\n{2,}/)
+    .map((span) => ({ span, handles: inquiryCitedHandles(span) }))
+    .filter((entry) => entry.handles.length > 0)
+  if (citedSpans.length > MAX_CERTIFY_CITED_SPANS
+    || citedSpans.reduce((total, entry) => total + entry.handles.length, 0) > MAX_CERTIFY_CITATIONS) {
+    return response({ ok: false, error: 'INQUIRY_CERTIFICATION_TOO_MANY_CITATIONS' }, 400)
+  }
+  const missingEvidence = [...committedHashes].filter((hash) => !supplied.has(hash)).sort()
+  const envelope = buildStructuredResponseAccountability(final, {
+    response_text: body.response_text,
+    evidence_payloads: [...supplied.values()],
+    knowledge_snapshot: snapshot,
+  })
+  const receipt = envelope.response_coverage_receipt
+  // Certification attests evidence COVERAGE: every committed payload was delivered and every
+  // required finding is cited by a span that says something of its own. Whether that prose is
+  // faithful to the evidence it cites is not decidable here; the independent judge owns it.
+  const uncertifiedReasons = [
+    ...(receipt.status === 'COMPLETE' ? [] : [`coverage_${receipt.status.toLowerCase()}`]),
+    ...(missingEvidence.length ? ['committed_evidence_missing'] : []),
+    ...(citedSpans.some(({ span }) => stripInquiryCitationMarkers(span).replace(/[^\p{L}\p{N}]/gu, '').length < MIN_INTERPRETATION_CHARS)
+      ? ['citation_without_interpretation'] : []),
+  ]
+  return response({
+    ok: true,
+    inquiry_id: row.inquiry_id,
+    coverage_certified: uncertifiedReasons.length === 0,
+    certification: {
+      attests: 'evidence_coverage',
+      does_not_attest: 'faithfulness of the prose to the evidence it cites (independent judgment)',
+      uncertified_reasons: uncertifiedReasons,
+      contract_id: final.contract_id,
+      contract_status: final.status,
+      chart_build_id: final.chart_build_id,
+      response_text_hash: stableFingerprint(body.response_text),
+      coverage_receipt_hash: receipt.receipt_hash,
+      missing_committed_evidence: missingEvidence,
+    },
+    response_accountability: envelope,
+  })
 }

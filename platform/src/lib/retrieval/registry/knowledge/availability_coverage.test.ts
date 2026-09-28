@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../catalog'
 import { compileCapabilityKnowledge } from './compiler'
 import { loadChartCapabilityOverlay, type OverlayQueryRow } from './overlay_loader'
+import { getSourceQueryAvailabilityContract } from './source_query_availability'
+import { SPINE_SOURCE_ASSET_IDS } from '../../spine/constants'
 import type { CapabilityKnowledgeSnapshot, ProducerOutputAvailabilityRequirement } from './types'
 
 const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-17T00:00:00.000Z') as CapabilityKnowledgeSnapshot
@@ -28,11 +30,11 @@ const FIRST_SLICE = {
     'scu.catalog.query_contradictions',
     'scu.catalog.query_domain_reading',
     'scu.catalog.judgment_query',
-  ],
-  deliberately_dark: [
     'scu.catalog.assess_career',
+    'scu.catalog.assess_health',
     'scu.catalog.assess_marriage',
   ],
+  deliberately_dark: [],
 } as const
 
 function findScu(scuId: string) {
@@ -48,8 +50,13 @@ function producerRequirements(scuId: string): ProducerOutputAvailabilityRequirem
 
 function receipt(requirement: ProducerOutputAvailabilityRequirement): OverlayQueryRow {
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
     asset_id: requirement.asset_id,
     chart_id: CHART_ID,
     build_id: BUILD_ID,
@@ -65,8 +72,13 @@ function receipt(requirement: ProducerOutputAvailabilityRequirement): OverlayQue
 
 function adjacentProducerReceipt(assetId: string, specSha256: string): OverlayQueryRow {
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
     asset_id: assetId,
     chart_id: CHART_ID,
     build_id: BUILD_ID,
@@ -86,8 +98,13 @@ function globalProducerReceipt(
   overrides: Partial<OverlayQueryRow> = {},
 ): OverlayQueryRow {
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
     asset_id: assetId,
     chart_id: null,
     build_id: null,
@@ -103,17 +120,25 @@ function globalProducerReceipt(
 }
 
 function transitProbeAnchor(): OverlayQueryRow {
+  // The anchor row carries the service-probe evidence and one resolved chart receipt for an
+  // asset no SCU requires, so the chart has a served generation (chart-context source
+  // queries require one) without supplying producer evidence to any binding under test.
   return {
-    active_build_id: BUILD_ID,
-    active_build_status: 'completed',
-    asset_id: '',
-    chart_id: null,
-    build_id: null,
+    partition_key: '__whole_asset__',
+    receipt_build_id: BUILD_ID,
+    rows_build_id: BUILD_ID,
+    spec_active: true,
+    receipt_run_state: 'completed',
+    receipt_asset_present: true,
+    receipt_disposition: 'build',
+    asset_id: 'ga_served_generation_anchor',
+    chart_id: CHART_ID,
+    build_id: BUILD_ID,
     receipt_version: 'first-slice-probe-fixture',
-    receipt_state: 'unknown',
-    output_digest_spec_sha256: null,
+    receipt_state: 'proven',
+    output_digest_spec_sha256: 'f'.repeat(64),
     observed_at: '2026-09-17T00:00:00.000Z',
-    freshness_state: null,
+    freshness_state: 'fresh',
     unknown_reasons: [],
     freshness_reasons: [],
     service_probe_evidence: [{
@@ -142,10 +167,113 @@ async function overlayFor(rows: readonly OverlayQueryRow[]) {
   return loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [...rows] }), new Date('2026-09-17T00:05:00.000Z'))
 }
 
+describe('compose_large_n — R3 proof typing (direct-DB composite)', () => {
+  it('becomes available only once every surface leg resolves, and names the one leg that fails', async () => {
+    const scu = findScu('scu.catalog.compose_large_n')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/synthesis/compose_large_n',
+      requirements: [expect.objectContaining({ kind: 'derived', scope: 'chart' })],
+    })])
+
+    const gestaltReceipt = adjacentProducerReceipt('bo_chart_gestalt', '2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e')
+    const available = await overlayFor([transitProbeAnchor(), gestaltReceipt])
+    expect(available.availability.find((entry) => entry.scu_id === 'scu.catalog.compose_large_n')).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/synthesis/compose_large_n'], gaps: [],
+    })
+
+    // Withhold query_cgm_paths's own source-query success and confirm only that leg is named.
+    const failing = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('bodha_cgm_paths') || sql.includes('bodha_cgm_dispositor')) throw new Error('leg source unavailable')
+      return { rows: [transitProbeAnchor(), gestaltReceipt] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    const entry = failing.availability.find((candidate) => candidate.scu_id === 'scu.catalog.compose_large_n')!
+    expect(entry.state).toBe('dark')
+    expect(entry.gaps.length).toBeGreaterThan(0)
+    for (const gap of entry.gaps) expect(gap).toContain('registry:marsys://tool/L2/query_cgm_paths:')
+  })
+})
+
+describe('pact_query / synergy_cross_layer — R3 proof typing (direct-DB composites)', () => {
+  it('pact_query becomes available only once judgment_query resolves, and stays scoped to that one leg', async () => {
+    const scu = findScu('scu.catalog.pact_query')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-PACT/pact_query',
+      requirements: [expect.objectContaining({
+        kind: 'derived', scope: 'chart',
+        required_binding_ids: ['registry:marsys://tool/L-JUDGMENT/judgment_query'],
+      })],
+    })])
+    const available = await overlayFor([transitProbeAnchor()])
+    expect(available.availability.find((entry) => entry.scu_id === 'scu.catalog.pact_query')).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/L-PACT/pact_query'], gaps: [],
+    })
+  })
+
+  it('synergy_cross_layer becomes available only once every cross_domain leg resolves, and names the one leg that fails', async () => {
+    const scu = findScu('scu.catalog.synergy_cross_layer')
+    expect(scu.scope).toBe('chart')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/synergy/cross_layer',
+      requirements: [expect.objectContaining({ kind: 'derived', scope: 'chart' })],
+    })])
+
+    const available = await overlayFor([transitProbeAnchor()])
+    expect(available.availability.find((entry) => entry.scu_id === 'scu.catalog.synergy_cross_layer')).toMatchObject({
+      state: 'available', available_binding_ids: ['registry:marsys://tool/synergy/cross_layer'], gaps: [],
+    })
+
+    // Withhold query_ucd's own source-query success and confirm only that leg is named.
+    const failing = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('FROM vw_chart_digest')) throw new Error('leg source unavailable')
+      return { rows: [transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    const entry = failing.availability.find((candidate) => candidate.scu_id === 'scu.catalog.synergy_cross_layer')!
+    expect(entry.state).toBe('dark')
+    expect(entry.gaps.length).toBeGreaterThan(0)
+  })
+})
+
+describe('graha_portrait / query_planet — R3 proof typing (strength group)', () => {
+  const GA_POSITIONS = adjacentProducerReceipt('ga_positions', '474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f')
+  const GA_DASHAS = adjacentProducerReceipt('ga_dashas', '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14')
+  const GA_YOGA = adjacentProducerReceipt('ga_yoga', 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246')
+
+  it.each([
+    { scuId: 'scu.catalog.graha_portrait', bindingId: 'registry:marsys://tool/L2/graha_portrait', receipts: [GA_POSITIONS, GA_DASHAS], legName: 'get_yoga_dosha', legMarker: "'bhadra_flag', 'panchaka_flag'" },
+    { scuId: 'scu.catalog.query_planet', bindingId: 'registry:marsys://tool/L1/query_planet', receipts: [GA_POSITIONS, GA_YOGA], legName: 'get_dispositors', legMarker: "'graha_dispositor_chain'" },
+  ])('becomes available only once every leg resolves, and names the one leg that fails ($scuId)', async ({ scuId, bindingId, receipts, legName, legMarker }) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: bindingId,
+      requirements: [expect.objectContaining({ kind: 'derived', scope: 'chart' })],
+    })])
+
+    const available = await overlayFor([transitProbeAnchor(), ...receipts])
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      state: 'available', available_binding_ids: [bindingId], gaps: [],
+    })
+
+    // Withhold one leg's own source-query success and confirm only that leg is named — the
+    // other legs, all independently resolvable, never collapse into a false "everything dark".
+    const failing = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes(legMarker)) throw new Error('leg source unavailable')
+      return { rows: [transitProbeAnchor(), ...receipts] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    const entry = failing.availability.find((candidate) => candidate.scu_id === scuId)!
+    expect(entry.state).toBe('dark')
+    expect(entry.gaps.length).toBeGreaterThan(0)
+    for (const gap of entry.gaps) expect(gap, legName).toContain(`registry:marsys://tool/L1/${legName}:`)
+  })
+})
+
 describe('first-slice availability coverage', () => {
   it('accounts for every remaining first-slice route with either a concrete contract or an evidence-backed dark disposition', () => {
     const all = [...FIRST_SLICE.concrete, ...FIRST_SLICE.deliberately_dark]
-    expect(all).toHaveLength(14)
+    expect(all).toHaveLength(15)
     expect(new Set(all).size).toBe(all.length)
 
     for (const scuId of FIRST_SLICE.concrete) {
@@ -186,14 +314,156 @@ describe('first-slice availability coverage', () => {
 
   it.each([
     'scu.catalog.assess_career',
+    'scu.catalog.assess_health',
     'scu.catalog.assess_marriage',
-  ])('records the exact missing mandatory composite legs for %s', (scuId) => {
-    expect(findScu(scuId).availability_dispositions).toEqual([expect.objectContaining({
-      missing_binding_ids: [
-        'registry:marsys://tool/L2/query_domain_reading',
-        'registry:marsys://tool/L3/query_temporal_activation',
-        'registry:marsys://tool/L2/query_contradictions',
+  ])('requires every exact source-backed composite leg, including the fenced evidence legs, for %s', (scuId) => {
+    const scu = findScu(scuId)
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: `registry:${scu.primary_binding_uri}`,
+      requirements: [expect.objectContaining({
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: [
+          'registry:marsys://tool/L2/query_domain_reading',
+          'registry:marsys://tool/L3/query_temporal_activation',
+          'registry:marsys://tool/L2/query_contradictions',
+          'registry:marsys://tool/L1/get_yoga_firings',
+          'registry:marsys://tool/L2/query_signals',
+        ],
+      })],
+    })])
+  })
+
+  it('makes every assess_* route available only while each of its legs earns its own evidence, and names the leg that fails', async () => {
+    const legReceipts = [
+      adjacentProducerReceipt('bo_drishti', 'fd76f79e2f1b6a6659ef5d7bad4f5a422515fee85ab9245ac0e52fc58f9b81d2'),
+      adjacentProducerReceipt('bo_sangati', 'f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc'),
+      adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
+      // assess_wealth's own reviewed producer receipts (required in addition to the legs).
+      adjacentProducerReceipt('bo_cdlm_summary', 'f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497'),
+      adjacentProducerReceipt('bo_vargottama_dhana', '8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec'),
+    ]
+    const gaYoga = adjacentProducerReceipt('ga_yoga', 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246')
+    const load = (failingSql: string | null, receipts = [...legReceipts, gaYoga]) =>
+      loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+        if (failingSql && sql.includes(failingSql)) throw new Error('leg source unavailable')
+        return { rows: [...receipts] }
+      }, new Date('2026-09-17T00:05:00.000Z'))
+    const assessScus = ['scu.catalog.assess_career', 'scu.catalog.assess_health', 'scu.catalog.assess_marriage']
+
+    const wealthBinding = 'registry:marsys://tool/L-DOMAIN/assess_wealth'
+    const wealthAvailable = (overlay: Awaited<ReturnType<typeof load>>) => overlay.availability
+      .find((entry) => entry.scu_id === 'scu.finance.prosperity_assessment')!.available_binding_ids.includes(wealthBinding)
+
+    const baseline = await load(null)
+    for (const scuId of assessScus) {
+      expect(baseline.availability.find((entry) => entry.scu_id === scuId), scuId).toMatchObject({ state: 'available', gaps: [] })
+    }
+    expect(wealthAvailable(baseline)).toBe(true)
+
+    const failures = [
+      { leg: 'registry:marsys://tool/L2/query_domain_reading', overlay: await load('FROM bodha_question_lenses') },
+      { leg: 'registry:marsys://tool/L3/query_temporal_activation', overlay: await load('FROM kala_activation') },
+      { leg: 'registry:marsys://tool/L2/query_contradictions', overlay: await load('FROM bodha_contradictions') },
+      { leg: 'registry:marsys://tool/L2/query_signals', overlay: await load('FROM information_schema') },
+      { leg: 'registry:marsys://tool/L1/get_yoga_firings', overlay: await load(null, legReceipts) },
+    ]
+    for (const { leg, overlay } of failures) {
+      for (const scuId of assessScus) {
+        const entry = overlay.availability.find((candidate) => candidate.scu_id === scuId)!
+        expect(entry.state, `${scuId} with ${leg} failing`).toBe('dark')
+        expect(entry.gaps.length).toBeGreaterThan(0)
+        // Only the failing leg is named: every other leg still earns its evidence.
+        for (const gap of entry.gaps) expect(gap).toContain(`Derived availability leg ${leg}:`)
+      }
+      // assess_wealth runs the same handler: its producer receipts alone never promote it.
+      expect(wealthAvailable(overlay), `assess_wealth with ${leg} failing`).toBe(false)
+    }
+  })
+
+  it('attaches the existing exact source-query contract to the yoga-dasha bridge', () => {
+    const scu = findScu('scu.catalog.yoga_activation_by_dasha')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-TIMING/yoga_activation_by_dasha',
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:yoga-activation-by-dasha:v1',
+        capability_uri: 'marsys://tool/L-TIMING/yoga_activation_by_dasha',
+      })],
+    })])
+  })
+
+  it('requires every source-backed spine leg plus its own cache-read probe because a stale or missing cache recomputes the full chain', () => {
+    const scu = findScu('scu.catalog.query_spine_bundle')
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-SPINE/query_spine_bundle',
+      requirements: [
+        expect.objectContaining({
+          kind: 'derived',
+          scope: 'chart',
+          required_binding_ids: [
+            'registry:marsys://tool/L2/query_signals',
+            'registry:marsys://tool/L3/query_temporal_activation',
+            'registry:marsys://tool/L4/query_predictive_anchors',
+            'registry:marsys://tool/L5/query_calibration',
+          ],
+        }),
+        expect.objectContaining({
+          kind: 'source_query',
+          contract_id: 'source-query:query-spine-bundle:v1',
+          capability_uri: 'marsys://tool/L-SPINE/query_spine_bundle',
+          scope: 'chart',
+        }),
       ],
+    })])
+    const contract = getSourceQueryAvailabilityContract('source-query:query-spine-bundle:v1')!
+    expect(contract.parameter_binding).toBe('chart_with_active_build_context')
+    expect(contract.sql).toContain('FROM bodha_spine_bundles')
+    expect(contract.sql).toContain('FROM asset_throughput')
+    expect(contract.sql).not.toContain('$2')
+    for (const assetId of SPINE_SOURCE_ASSET_IDS) expect(contract.sql).toContain(`'${assetId}'`)
+  })
+
+  it('keeps query_spine_bundle dark when its persisted-bundle source cannot be read even though every leg can', async () => {
+    const healthy = await loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [transitProbeAnchor()] }), new Date('2026-09-17T00:05:00.000Z'))
+    expect(healthy.availability.find((entry) => entry.scu_id === 'scu.catalog.query_spine_bundle')).toMatchObject({
+      available_binding_ids: ['registry:marsys://tool/L-SPINE/query_spine_bundle'],
+    })
+    const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+      if (sql.includes('FROM bodha_spine_bundles')) throw new Error('spine cache unavailable')
+      return { rows: [transitProbeAnchor()] }
+    }, new Date('2026-09-17T00:05:00.000Z'))
+    expect(overlay.availability.find((entry) => entry.scu_id === 'scu.catalog.query_spine_bundle')).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+    })
+  })
+
+  it('probes both the ontology and chart-scoped coverage sources for LEL intake without reading either payload', () => {
+    const scu = findScu('scu.catalog.lel_intake_checklist')
+    const requirement = scu.availability_contracts?.[0]?.requirements[0]
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: 'source-query:lel-intake-checklist:v1',
+      capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+      scope: 'chart',
+    })
+    const contract = getSourceQueryAvailabilityContract('source-query:lel-intake-checklist:v1')
+    expect(contract?.empty_semantics).toBe('query_success_is_available')
+    expect(contract?.sql).toContain('FROM brahma_event_ontology')
+    expect(contract?.sql).toContain('FROM life_events')
+    expect(contract?.sql).toContain('WHERE chart_id = $1::uuid')
+    expect(contract?.sql).toContain('LIMIT 0')
+  })
+
+  it('contracts query_sutravali_rules_for_planet now that its sidecar route param-binding bug is fixed (R3 boundary, packet 4)', () => {
+    const scu = findScu('scu.catalog.query_sutravali_rules_for_planet')
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L0/query_sutravali_rules_for_planet',
+      requirements: [expect.objectContaining({ kind: 'source_query', contract_id: 'source-query:query-sutravali-rules-for-planet:v1', scope: 'global' })],
     })])
   })
 
@@ -227,7 +497,7 @@ describe('first-slice availability coverage', () => {
     expect(noActiveBuild.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [expect.stringContaining('requires an active completed build context')],
+      gaps: [expect.stringContaining('requires a served chart generation')],
     })
 
     const sourceFailed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
@@ -857,7 +1127,7 @@ describe('first-slice availability coverage', () => {
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
       calls.push({ sql, params })
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
     expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
@@ -876,7 +1146,7 @@ describe('first-slice availability coverage', () => {
     expect(sourceCall?.params).toEqual([])
 
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       if (sql.includes(`FROM ${relation}`) && sqlMarkers.every((marker) => sql.includes(marker))) {
         throw new Error('permission denied')
       }
@@ -911,7 +1181,7 @@ describe('first-slice availability coverage', () => {
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     const available = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql, params = []) => {
       calls.push({ sql, params })
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
     expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
@@ -935,7 +1205,7 @@ describe('first-slice availability coverage', () => {
     expect(sourceCall?.params).toEqual([CHART_ID])
 
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
-      if (sql.includes('WITH latest_build AS')) return { rows: [transitProbeAnchor()] }
+      if (sql.includes('WITH service_probe_evidence AS')) return { rows: [transitProbeAnchor()] }
       if (sql.includes('FROM phala_pramana')) throw new Error('permission denied')
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
@@ -949,7 +1219,7 @@ describe('first-slice availability coverage', () => {
     expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} requires an active completed build context for the selected chart.`],
+      gaps: [`${contractId} requires a served chart generation for the selected chart.`],
     })
   })
 
@@ -1107,7 +1377,29 @@ describe('first-slice availability coverage', () => {
       sqlMarker: "fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])",
       handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120',
     },
-  ])('probes $scuId against the selected chart and active build, with honest zero-row availability', async ({
+    {
+      // R3 proof typing (review §4, strength group): a fresh ga_strength producer receipt
+      // covers only graha_shadbala_total, not the full 21-category selectable surface, so a
+      // producer_output claim could never honestly promote this route. get_strength now reads
+      // its own served-generation-fenced rows directly (get_strength.ts) and is proven the
+      // same way as the other direct chart_facts reads above.
+      scuId: 'scu.catalog.get_strength',
+      bindingId: 'registry:marsys://tool/L1/get_strength',
+      contractId: 'source-query:get-strength:v1',
+      sqlMarker: "'graha_shadbala_cheshta'",
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES',
+    },
+    {
+      // R3 proof typing (review §4, per-mode facets): "available" here means the default
+      // sav_bav_gating mode is provable; kakshya_windows is a live sidecar fetch outside this
+      // contract's scope (see the contract's own review note).
+      scuId: 'scu.catalog.get_av_transit_gating',
+      bindingId: 'registry:marsys://tool/L1/get_av_transit_gating',
+      contractId: 'source-query:get-av-transit-gating:v1',
+      sqlMarker: 'FROM lagna CROSS JOIN bindu',
+      handlerRef: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating',
+    },
+  ])('probes $scuId against the selected chart and its served build set, with honest zero-row availability', async ({
     scuId, bindingId, contractId, sqlMarker, handlerRef,
   }) => {
     const scu = findScu(scuId)
@@ -1121,7 +1413,17 @@ describe('first-slice availability coverage', () => {
         source_ref: expect.stringContaining(handlerRef),
       })],
     })])
-    expect(scu.availability_dispositions ?? []).toEqual([])
+    // get_av_transit_gating carries one deliberately_dark disposition for its OTHER
+    // (kakshya_windows) binding — R3 per-mode proof typing — which must not affect this
+    // contract's own (sav_bav_gating) binding_id above.
+    if (scuId === 'scu.catalog.get_av_transit_gating') {
+      expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+        binding_id: 'registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows',
+        status: 'deliberately_dark',
+      })])
+    } else {
+      expect(scu.availability_dispositions ?? []).toEqual([])
+    }
 
     const calls: Array<{ sql: string; params: readonly unknown[] }> = []
     let initialQuery = true
@@ -1133,19 +1435,25 @@ describe('first-slice availability coverage', () => {
       }
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
+    // get_av_transit_gating's kakshya_windows binding is deliberately dark (R3 per-mode
+    // proof typing) — its own diagnostic gap must be visible here, but must NOT have
+    // affected `state`/`available_binding_ids` above, which is the whole point of the test.
+    const kakshyaDiagnosticGap = scuId === 'scu.catalog.get_av_transit_gating'
+      ? [expect.stringMatching(/kakshya_windows.*deliberately dark/)]
+      : []
     expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'available',
       available_binding_ids: [bindingId],
       asset_receipts: [],
-      gaps: [],
+      gaps: kakshyaDiagnosticGap,
     })
 
     const sourceCall = calls.find((call) => call.sql.includes(sqlMarker))
     expect(sourceCall).toBeDefined()
     expect(sourceCall?.sql).toContain('FROM chart_facts')
     expect(sourceCall?.sql).toContain('chart_id = $1::uuid')
-    expect(sourceCall?.sql).toContain('build_id = $2::uuid')
-    expect(sourceCall?.params).toEqual([CHART_ID, BUILD_ID])
+    expect(sourceCall?.sql).toContain('build_id = ANY($2::uuid[])')
+    expect(sourceCall?.params).toEqual([CHART_ID, [BUILD_ID]])
 
     initialQuery = true
     const failed = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
@@ -1156,45 +1464,23 @@ describe('first-slice availability coverage', () => {
       if (sql.includes(sqlMarker)) throw new Error('permission denied')
       return { rows: [] }
     }, new Date('2026-09-17T00:05:00.000Z'))
+    // kakshyaDiagnosticGap (declared above) is always appended, regardless of whether
+    // sav_bav_gating itself passed or failed here — it is an independent binding's own
+    // disposition, not derived from sav_bav_gating's outcome.
     expect(failed.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} could not execute its authenticated source query.`],
+      gaps: [`${contractId} could not execute its authenticated source query.`, ...kakshyaDiagnosticGap],
     })
 
     const noBuild = await loadChartCapabilityOverlay(snapshot, CHART_ID, async () => ({ rows: [] }))
     expect(noBuild.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
-      gaps: [`${contractId} cannot bind the selected chart to an active completed build.`],
+      gaps: [`${contractId} cannot bind the selected chart to a served chart generation.`, ...kakshyaDiagnosticGap],
     })
   })
 
-  it('keeps get_strength dark when a fresh ga_strength receipt covers only one selectable category', async () => {
-    const scu = findScu('scu.catalog.get_strength')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
-      binding_id: 'registry:marsys://tool/L1/get_strength',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('all 21 selectable strength fact categories'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
-        'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
-      ]),
-    })])
-
-    // This receipt is fresh and pins the exact reviewed ga_strength SHA, but
-    // the digest covers only graha_shadbala_total, not the route's selectable
-    // 21-category surface or its frame-context position lookup.
-    const overlay = await overlayFor([
-      adjacentProducerReceipt('ga_strength', '7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3'),
-    ])
-    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      state: 'dark',
-      available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
-    })
-  })
 
   it('activates each concrete primary binding from its own exact contract and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
@@ -1254,6 +1540,29 @@ describe('first-slice availability coverage', () => {
         state: 'dark',
         available_binding_ids: [],
       })
+      return
+    }
+    if ([
+      'scu.catalog.assess_career',
+      'scu.catalog.assess_health',
+      'scu.catalog.assess_marriage',
+    ].includes(scuId)) {
+      // A composite cannot remain available when one of its declared child handlers cannot
+      // earn its own evidence: the mandatory temporal leg, or the firings-authoritative leg.
+      for (const [failing, leg] of [
+        ['FROM kala_activation', 'registry:marsys://tool/L3/query_temporal_activation'],
+        ['FROM ga_yoga_firings', 'registry:marsys://tool/L1/get_yoga_firings'],
+      ] as const) {
+        const overlay = await loadChartCapabilityOverlay(snapshot, CHART_ID, async (sql) => {
+          if (sql.includes(failing)) throw new Error('leg source unavailable')
+          return { rows: [transitProbeAnchor()] }
+        }, new Date('2026-09-17T00:05:00.000Z'))
+        expect(overlay.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+          state: 'dark',
+          available_binding_ids: [],
+          gaps: expect.arrayContaining([expect.stringContaining(`Derived availability leg ${leg}:`)]),
+        })
+      }
       return
     }
     if (scuId === 'scu.catalog.judgment_query') {

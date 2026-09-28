@@ -411,6 +411,31 @@ export async function fetchCandidateSignalLabels(
   return { labels, faulted }
 }
 
+/**
+ * Merge this turn's register-citation handle labels (F1, F2, ... — the fact register the
+ * synthesis prompt actually showed, computed once in assembleSynthesisContext with no DB call)
+ * into the signal/fact-id label map the live citation stream resolves against (R2C.3b). Purely
+ * additive: an id already resolved by the DB prefetch above is never overwritten, so this can
+ * never weaken an existing resolution — only add coverage for handles the prefetch has no
+ * shape for at all.
+ */
+export function mergeRegisterHandleLabels(
+  labels: Map<string, CandidateSignalLabel>,
+  registerHandleLabels: ReadonlyMap<string, { reader_label: string; rationale: string; materiality: 'required' | 'supporting' }> | null,
+): Map<string, CandidateSignalLabel> {
+  if (!registerHandleLabels) return labels
+  for (const [handle, finding] of registerHandleLabels) {
+    if (labels.has(handle)) continue
+    labels.set(handle, {
+      reader_label: finding.reader_label,
+      grade: finding.materiality === 'required' ? 'primary' : 'supporting',
+      source_table: 'inquiry_fact_register',
+      source_column: 'handle',
+    })
+  }
+  return labels
+}
+
 /** Build a synchronous CitationResolver from a pre-fetched label map. */
 export function buildTurnCitationResolver(
   labels: ReadonlyMap<string, CandidateSignalLabel>,

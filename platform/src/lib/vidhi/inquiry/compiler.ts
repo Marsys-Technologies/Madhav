@@ -3,6 +3,7 @@ import { assertOverlayCompatibility } from '../../retrieval/registry/knowledge/o
 import { isInquiryServerDispatchEligible, presentationTransportForInquiry, type InquiryPresentationTransport } from './execution_policy'
 import { searchSemanticCapabilities } from '../../retrieval/registry/knowledge/query'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
+import { bindingProofKind, selectBindingForMode } from '../../retrieval/registry/knowledge/proof_kind'
 import {
   INQUIRY_CONTRACT_VERSION,
   type AiInquiryProposal,
@@ -13,6 +14,7 @@ import {
   type InquiryObligation,
   type InquiryPlanningBudget,
   type InquiryPlanningBudgetReceipt,
+  type InquiryPlanningProvenance,
   type InquiryPlanItem,
   type InquiryScopeTuple,
   type InquirySuccessorReceipt,
@@ -339,16 +341,26 @@ function planFor(
         isInquiryServerDispatchEligible(candidate, presentationTransport))
       const aggregateTransitBinding = channelBindings
         .find((candidate) => candidate.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID)
+      // R3 boundary ("genuine per-mode proof typing"): selectBindingForMode generalizes the
+      // old `primary ?? channelBindings[0]` fallback into a mode-aware selector — today no
+      // obligation carries mode-specific intended args, so this is byte-identical to the old
+      // heuristic for every current SCU (none declare mode_selector); it exists so a future
+      // obligation/AI-decomposition that DOES name a specific mode (e.g.
+      // get_av_transit_gating's kakshya_windows) is routed to the binding that actually
+      // proves it, instead of always falling through to the SCU's default binding.
       const binding = aggregateTransitBinding
-        ?? channelBindings.find((candidate) => candidate.relation === 'primary')
-        ?? channelBindings[0]
-        ?? null
-      const itemArgs: Record<string, unknown> = {}
+        ?? selectBindingForMode(channelBindings, undefined)
+      const itemArgs: Record<string, unknown> = { ...(binding?.fixed_args ?? {}) }
       if (binding?.input_contract['chart_id']) itemArgs['chart_id'] = chartId
       if (binding?.input_contract['question']) itemArgs['question'] = question
       if (binding?.input_contract['query']) itemArgs['query'] = question
       if (binding?.input_contract['domain']) itemArgs['domain'] = scope.domains[0]
       if (binding?.input_contract['domains']) itemArgs['domains'] = scope.domains
+      // Served-generation fence: availability was proven against the overlay's served build set,
+      // so a binding that accepts a build fence reads exactly that set, on every door.
+      if (binding?.input_contract['build_id'] && overlay?.served_build_ids?.length) {
+        itemArgs['build_id'] = [...overlay.served_build_ids]
+      }
       if (binding?.input_contract['as_of_date'] && validTemporalAnchorDate(temporalAnchorDate)) {
         itemArgs['as_of_date'] = temporalAnchorDate
       }
@@ -371,7 +383,14 @@ function planFor(
         : unresolvedRequired.length > 0
           ? `Required binding arguments are unresolved: ${unresolvedRequired.join(', ')}.`
           : !overlayAllowsBinding
-            ? availability?.gaps.join('; ') || 'The chart/build overlay does not prove this binding available.'
+            ? availability?.state === 'resource_ok'
+              // RC-7 / R3 per-mode: a plan/resource/discovery BINDING is available as a
+              // resource but carries no chart evidence, so it can never satisfy an answer
+              // obligation. Reads the selected binding's own effective proof kind, not the
+              // SCU's — a sibling answer binding on the same SCU never reaches this branch
+              // (overlayAllowsBinding only fails here because THIS binding is non-answer).
+              ? `${scuId} is a ${binding ? bindingProofKind(scu, binding) : 'non-answer'} capability: available as a resource, never admitted as answer evidence.`
+              : availability?.gaps.join('; ') || 'The chart/build overlay does not prove this binding available.'
             : null
       if (executable && binding) {
         const duplicateIndex = plan.findIndex((item) => item.binding_id === binding.binding_id
@@ -418,6 +437,8 @@ export function compileInquiryContract(args: {
   /** Explicit request-time anchor; the compiler never reads the wall clock. */
   temporal_anchor_date?: string
   temporal_anchor_source?: InquiryArgumentResolutionReceipt['source']
+  /** How the AI proposal was produced; recorded on the contract, never hashed. */
+  planning_provenance?: InquiryPlanningProvenance
 }): InquiryContract {
   const question = normalizeQuestion(args.question)
   const normalization = normalizeInquiryScope(args.scope_tuple)
@@ -602,6 +623,7 @@ export function compileInquiryContract(args: {
     graph_traversal: traversal,
     omission_challenge: challenge,
     planning_budget: budgetReceipt,
+    ...(args.planning_provenance ? { planning_provenance: args.planning_provenance } : {}),
   }
 }
 
@@ -616,6 +638,13 @@ export function compileInquirySuccessorContract(args: {
   parent_inquiry_id: string
   parent: InquiryContract
   max_iterations?: number
+  /**
+   * Admit only frontier for a DIFFERENT capability than the observation that discovered it
+   * (evidence-driven widening, RC-5.4). A door that continues automatically sets this so a
+   * capped pagination frontier — the same capability's next page — can never carry an inquiry
+   * past its own iteration budget; that continuation stays the caller's explicit choice.
+   */
+  cross_capability_only?: boolean
 }): InquiryContract {
   if (!args.parent_inquiry_id) throw new Error('INQUIRY_SUCCESSOR_PARENT_ID_REQUIRED')
   if (args.parent.status === 'COMPLETE') throw new Error('INQUIRY_SUCCESSOR_PARENT_COMPLETE')
@@ -625,6 +654,7 @@ export function compileInquirySuccessorContract(args: {
     .flatMap((frontier) => {
       const source = args.parent.plan_items.find((item) => item.item_id === frontier.discovered_from)
       if (!source || source.observation?.disposition !== 'served' || source.observation.evidence_refs.length === 0) return []
+      if (args.cross_capability_only && source.scu_id === frontier.scu_id) return []
       if (!args.snapshot.scus.some((scu) => scu.scu_id === frontier.scu_id)) return []
       return [{ frontier, evidence_refs: unique(source.observation.evidence_refs).sort() }]
     })
@@ -785,7 +815,11 @@ export function applyInquiryObservations(contract: InquiryContract, observations
   const existingFrontier = new Map(contract.material_frontier.map((item) => [item.scu_id, item]))
   for (const observation of observations) {
     const observedItem = contract.plan_items.find((item) => item.item_id === observation.item_id)
-    if ((observation.discovered_frontier?.length ?? 0) === 0 && observedItem) {
+    // Only a frontier for the observed item's OWN capability (its next page) keeps that SCU's
+    // pagination frontier open; evidence-discovered frontier for other SCUs does not.
+    const continuesOwnScu = observedItem !== undefined
+      && (observation.discovered_frontier ?? []).some((discovered) => discovered.scu_id === observedItem.scu_id)
+    if (!continuesOwnScu && observedItem) {
       const existing = existingFrontier.get(observedItem.scu_id)
       if (existing?.discovered_from === observation.item_id && existing.disposition === 'open') {
         existingFrontier.set(observedItem.scu_id, { ...existing, disposition: 'absorbed' })
@@ -815,20 +849,25 @@ export function recordInquiryExecution(
     gap_reason?: string
     pagination: InquiryPaginationReceipt
     request_position_path?: string
+    /** Cross-capability frontier derived from this observation's evidence
+     *  (evidence_frontier.ts). Admitted only for a served observation. */
+    evidence_frontier?: readonly { scu_id: string; materiality: 'required' | 'supporting'; reason: string }[]
   },
 ): InquiryContract {
   const item = contract.plan_items.find((candidate) => candidate.item_id === args.item_id)
   if (!item) throw new Error('INQUIRY_UNKNOWN_PLAN_ITEM')
   const materiality = contract.obligations.some((obligation) => item.obligation_ids.includes(obligation.obligation_id)
     && obligation.materiality === 'required') ? 'required' as const : 'supporting' as const
+  const discoveredFrontier = [
+    ...(args.pagination.exhausted ? [] : [{ scu_id: item.scu_id, materiality, reason: `Pagination frontier remains open (${String(args.pagination.next)}).` }]),
+    ...(args.disposition === 'served' ? (args.evidence_frontier ?? []).filter((entry) => entry.scu_id !== item.scu_id) : []),
+  ]
   let observed = applyInquiryObservations(contract, [{
     item_id: item.item_id,
     disposition: args.disposition,
     evidence_refs: args.evidence_refs,
     gap_reason: args.gap_reason,
-    ...(args.pagination.exhausted ? {} : {
-      discovered_frontier: [{ scu_id: item.scu_id, materiality, reason: `Pagination frontier remains open (${String(args.pagination.next)}).` }],
-    }),
+    ...(discoveredFrontier.length ? { discovered_frontier: discoveredFrontier } : {}),
   }])
   if (!args.pagination.exhausted && args.pagination.next !== 'unproven' && args.pagination.next !== null) {
     if (!args.request_position_path) return observed
@@ -978,9 +1017,15 @@ export function finalizeInquiryContract(contract: InquiryContract): InquiryContr
   if (materialGaps.length) reasons.push(`${materialGaps.length} required obligations failed or are dark`)
   if (openFrontier.length) reasons.push(`${openFrontier.length} material frontier items open`)
   if (cappedFrontier.length) reasons.push(`${cappedFrontier.length} material frontier items capped before exhaustion proof`)
-  const exhausted = cappedFrontier.length > 0
+  // An evidence-discovered frontier (evidence_frontier.ts) names a capability this contract has
+  // no plan item for, so it can only be pursued by an evidence-admitted successor contract.
+  const successorOnlyFrontier = openFrontier.filter((item) => item.reason.startsWith('evidence_')
+    && !contract.plan_items.some((planItem) => planItem.scu_id === item.scu_id))
+  if (successorOnlyFrontier.length) reasons.push(`${successorOnlyFrontier.length} evidence-discovered frontier items require a successor contract`)
+  const iterationExhausted = cappedFrontier.length > 0
     || (contract.iteration >= contract.max_iterations && (pending.length > 0 || materialGaps.length > 0 || openFrontier.length > 0))
-  if (exhausted) reasons.push('iteration cap reached before material frontier closure')
+  if (iterationExhausted) reasons.push('iteration cap reached before material frontier closure')
+  const exhausted = iterationExhausted || successorOnlyFrontier.length > 0
   return {
     ...contract,
     status: reasons.length === 0 ? 'COMPLETE' : exhausted ? 'BLOCKED' : 'INCOMPLETE',

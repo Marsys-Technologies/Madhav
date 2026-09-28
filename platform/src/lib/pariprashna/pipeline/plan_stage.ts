@@ -41,6 +41,7 @@ import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } fr
 import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
+import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import type { TurnRuntime } from './turn_runtime'
 import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 
@@ -367,6 +368,7 @@ export async function runPlanStage(args: {
           execution_channel: 'platform_internal',
           temporal_anchor_date: temporalAnchorDate,
           temporal_anchor_source: 'request_context_clock',
+          planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)

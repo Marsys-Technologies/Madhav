@@ -397,3 +397,38 @@ describe('selectRowsWithinBudget — unit-level bearing ranking (RC-08)', () => 
     expect(droppedDissentCount).toBe(5 - keptCount)
   })
 })
+
+describe('synthesizeReading — register citation handles (R2C.1)', () => {
+  it('asks for handle citations and reports exactly the handles that survived the evidence budget', async () => {
+    mockQuery.mockResolvedValue({ rows: [CHART_ROW] })
+    mockGetEffectiveModel.mockResolvedValue('synthesis-model')
+    mockRunAdapter.mockResolvedValue({ finalText: 'Interpreted [[F1]].' })
+    // One small cited row and many large cited rows: the budget keeps some, drops others.
+    const big = 'x'.repeat(40_000)
+    const rows = [
+      { _cite: 'F1', significance: 10, note: 'small' },
+      ...Array.from({ length: 12 }, (_, index) => ({ _cite: `F${index + 2}`, significance: 1, blob: big })),
+    ]
+    const result = await synthesizeReading(baseInput({
+      evidence: [{ tool_name: 'query_signals', bundle: { results: rows } }],
+      citeRegisterFindings: true,
+    }))
+
+    const request = mockRunAdapter.mock.calls[0]![0] as { systemPrompt: string; messages: { content: string }[] }
+    expect(request.systemPrompt).toContain('EVIDENCE CITATIONS')
+    expect(result.visible_citation_handles).toContain('F1')
+    const shown = request.messages[0]!.content
+    for (const handle of result.visible_citation_handles ?? []) expect(shown).toContain(`"_cite": "${handle}"`)
+    expect((result.visible_citation_handles ?? []).length).toBeLessThan(rows.length)
+  })
+
+  it('reports no handles and adds no instruction when citations are off', async () => {
+    mockQuery.mockResolvedValue({ rows: [CHART_ROW] })
+    mockGetEffectiveModel.mockResolvedValue('synthesis-model')
+    mockRunAdapter.mockResolvedValue({ finalText: 'A reading.' })
+    const result = await synthesizeReading(baseInput())
+    const request = mockRunAdapter.mock.calls[0]![0] as { systemPrompt: string }
+    expect(request.systemPrompt).not.toContain('EVIDENCE CITATIONS')
+    expect(result.visible_citation_handles).toBeNull()
+  })
+})

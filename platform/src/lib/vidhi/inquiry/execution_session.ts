@@ -1,15 +1,20 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge/types'
 import {
+  closeInquiryForEvidenceSuccessor,
+  compileInquirySuccessorContract,
   failInquiryForAmbiguousDispatch,
   recordInquiryExecution,
   type InquiryContract,
   type InquiryPaginationReceipt,
 } from './index'
+import type { DiscoveredEvidenceFrontier } from './evidence_frontier'
 import {
   commitInquiryObservation,
   commitInquiryFinalization,
   createInquiryLifecycle,
+  createInquirySuccessorLifecycle,
   failCloseAmbiguousInquiryAction,
   getInquiryLifecycle,
   listInquiryEvidence,
@@ -17,6 +22,20 @@ import {
   reserveInquiryAction,
   type InquiryLifecycleRow,
 } from './lifecycle_store'
+
+const EVIDENCE_SUCCESSOR_REASON = 'evidence-admitted successor issued'
+const MAX_MANAGED_SUCCESSOR_CHAIN = 4
+
+/**
+ * The one successor identity a managed parent can ever have. Deterministic, so a worker that
+ * recovers the job after the successor transition resumes that exact lifecycle instead of
+ * treating the terminal parent as the job's final result.
+ */
+export function managedEvidenceSuccessorInquiryId(parentInquiryId: string): string {
+  const hex = createHash('sha256').update(`managed-evidence-successor:${parentInquiryId}`).digest('hex')
+  const variant = ((parseInt(hex[16]!, 16) & 0x3) | 0x8).toString(16)
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
 
 /**
  * Server-only continuation state for a managed Prashna job.  The job's
@@ -37,7 +56,7 @@ export class ManagedInquiryExecutionSession {
     expires_at: string
   }): Promise<ManagedInquiryExecutionSession> {
     const existing = await getInquiryLifecycle(args.inquiry_id, args.principal_uid, args.contract.chart_id)
-    if (existing) return new ManagedInquiryExecutionSession(existing, existing.contract_jsonb)
+    if (existing) return ManagedInquiryExecutionSession.resumeChain(existing, args.principal_uid)
 
     const initialHash = `managed:${stableFingerprint(randomUUID())}`
     try {
@@ -53,9 +72,21 @@ export class ManagedInquiryExecutionSession {
       // A competing recovered worker may have created the row after our first
       // read. Resolve that exact durable identity; never replace it.
       const recovered = await getInquiryLifecycle(args.inquiry_id, args.principal_uid, args.contract.chart_id)
-      if (recovered) return new ManagedInquiryExecutionSession(recovered, recovered.contract_jsonb)
+      if (recovered) return ManagedInquiryExecutionSession.resumeChain(recovered, args.principal_uid)
       throw error
     }
+  }
+
+  /** Follow a terminal parent to the evidence successor it handed its work to, if any. */
+  private static async resumeChain(row: InquiryLifecycleRow, principalUid: string): Promise<ManagedInquiryExecutionSession> {
+    let current = row
+    for (let depth = 0; depth < MAX_MANAGED_SUCCESSOR_CHAIN; depth += 1) {
+      if (current.current_jti_hash !== 'terminal' || !(current.contract_jsonb.status_reasons ?? []).includes(EVIDENCE_SUCCESSOR_REASON)) break
+      const successor = await getInquiryLifecycle(managedEvidenceSuccessorInquiryId(current.inquiry_id), principalUid, current.chart_id)
+      if (!successor) break
+      current = successor
+    }
+    return new ManagedInquiryExecutionSession(current, current.contract_jsonb)
   }
 
   get inquiryId(): string { return this.row.inquiry_id }
@@ -65,7 +96,16 @@ export class ManagedInquiryExecutionSession {
   }
 
   async recoveredEvidence(): Promise<Array<{ tool_name: string; bundle: unknown }>> {
-    const evidence = await listInquiryEvidence(this.row.inquiry_id, this.row.principal_uid, this.row.chart_id)
+    // A successor's answer accounts for its parents' evidence too (the register inherits it).
+    const inquiryIds = [this.row.inquiry_id]
+    let parentId = this.row.parent_inquiry_id
+    while (parentId && inquiryIds.length <= MAX_MANAGED_SUCCESSOR_CHAIN) {
+      inquiryIds.unshift(parentId)
+      const parent = await getInquiryLifecycle(parentId, this.row.principal_uid, this.row.chart_id)
+      parentId = parent?.parent_inquiry_id ?? null
+    }
+    const evidence = (await Promise.all(inquiryIds.map((inquiryId) =>
+      listInquiryEvidence(inquiryId, this.row.principal_uid, this.row.chart_id)))).flat()
     return evidence.flatMap((receipt) => {
       const payload = receipt.evidence_jsonb
       if (!payload || typeof payload !== 'object') return []
@@ -120,19 +160,42 @@ export class ManagedInquiryExecutionSession {
     scu_id: string
     binding_id: string
     tool_name: string
+    /** `undefined` records an item that was never dispatched (e.g. its capability was not
+     *  authorized for this request): the receipt is retained, but no result enters recovered evidence. */
     bundle: unknown
     disposition: 'served' | 'empty' | 'failed'
     pagination: InquiryPaginationReceipt
     gap_reason?: string
     invocation_args: Readonly<Record<string, unknown>>
+    /** The binding's pagination request path. Without it a proven continuation cannot be
+     *  re-readied, and the managed door would stop after the first page (RC-5.5). */
+    request_position_path?: string
+    /** Capabilities this served observation calls for (RC-5.4); admitted only via a successor. */
+    evidence_frontier?: readonly DiscoveredEvidenceFrontier[]
   }): Promise<void> {
-    const observed = recordInquiryExecution(this.contract, {
+    const fingerprintSource = args.bundle === undefined
+      ? { not_dispatched: true, gap_reason: args.gap_reason ?? null }
+      : args.bundle
+    let observed = recordInquiryExecution(this.contract, {
       item_id: args.plan_item_id,
       disposition: args.disposition,
-      evidence_refs: [`managed:${stableFingerprint(args.bundle)}`],
+      evidence_refs: [`managed:${stableFingerprint(fingerprintSource)}`],
       ...(args.gap_reason ? { gap_reason: args.gap_reason } : {}),
       pagination: args.pagination,
+      ...(args.request_position_path ? { request_position_path: args.request_position_path } : {}),
+      ...(args.evidence_frontier?.length ? { evidence_frontier: args.evidence_frontier } : {}),
     })
+    if (args.bundle === undefined) {
+      // A never-dispatched item is terminal. recordInquiryExecution re-readies a failed item for
+      // retry while iterations remain, but retrying something that was never authorized would
+      // strand the lifecycle (finalizeWhenNoReady refuses while any item is ready).
+      observed = {
+        ...observed,
+        plan_items: observed.plan_items.map((item) => item.item_id === args.plan_item_id
+          ? { ...item, state: 'observed' as const }
+          : item),
+      }
+    }
     const nextHash = `managed:${stableFingerprint(randomUUID())}`
     await commitInquiryObservation({
       row: this.row,
@@ -145,7 +208,7 @@ export class ManagedInquiryExecutionSession {
         scu_id: args.scu_id,
         binding_id: args.binding_id,
         canonical_args_hash: stableFingerprint(args.invocation_args),
-        raw_result_hash: stableFingerprint(args.bundle),
+        raw_result_hash: stableFingerprint(fingerprintSource),
         disposition: args.disposition,
         pagination: args.pagination,
         // Retaining the accepted bundle is what lets a recovered worker
@@ -161,6 +224,44 @@ export class ManagedInquiryExecutionSession {
       revision: this.row.revision + 1,
       current_jti_hash: nextHash,
     }
+  }
+
+  /**
+   * Hand the remaining evidence-admitted work to one durable successor (RC-5.4) instead of
+   * finalizing. Only a cross-capability frontier discovered from served evidence qualifies — a
+   * capped pagination frontier never carries the job past its own budget. The parent is
+   * terminalized and the successor created atomically, under the deterministic successor id.
+   * Returns false, changing nothing, when no successor is admissible.
+   */
+  async continueWithEvidenceSuccessor(args: {
+    snapshot: CapabilityKnowledgeSnapshot
+    overlay: ChartCapabilityOverlay
+  }): Promise<boolean> {
+    if (this.row.status !== 'INCOMPLETE' || this.row.current_jti_hash === 'terminal') return false
+    if (this.contract.plan_items.some((item) => item.state === 'ready')) return false
+    let parentFinal: InquiryContract
+    let successor: InquiryContract
+    try {
+      parentFinal = closeInquiryForEvidenceSuccessor(this.contract)
+      successor = compileInquirySuccessorContract({
+        snapshot: args.snapshot, overlay: args.overlay, parent_inquiry_id: this.row.inquiry_id,
+        parent: parentFinal, cross_capability_only: true,
+      })
+    } catch {
+      return false
+    }
+    const created = await createInquirySuccessorLifecycle({
+      parent: this.row,
+      expected_parent_jti_hash: this.row.current_jti_hash,
+      parent_final_contract: parentFinal,
+      inquiry_id: managedEvidenceSuccessorInquiryId(this.row.inquiry_id),
+      contract: successor,
+      jti_hash: `managed:${stableFingerprint(randomUUID())}`,
+      expires_at: this.row.expires_at,
+    })
+    this.row = created
+    this.contract = created.contract_jsonb
+    return true
   }
 
   async finalizeWhenNoReady(): Promise<InquiryContract> {
