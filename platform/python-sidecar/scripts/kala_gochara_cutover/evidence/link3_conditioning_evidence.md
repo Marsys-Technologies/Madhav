@@ -105,6 +105,15 @@ Method (production read-only; writes only on a disposable copy):
    disclosed in the output):
    - `.run/wp10_tranche2/link3_class_context_482012f1.json`
    - `.run/wp10_tranche2/link3_class_context_1c826d5a.json`
+
+   Log hygiene (honest record, per PRAMĀṆIN's review): the step06a logs are
+   incomplete. `.run/wp10_tranche2/link3_step06a_482012f1.log` is empty and
+   `link3_step06a_1c826d5a.log` contains only a failed-attempt traceback
+   (wrong-socket connect — an unquoted DSN substitution silently produced an
+   empty DSN and psycopg fell back to `/tmp/.s.PGSQL.5432`). Both JSONs are
+   genuine outputs, produced by an **unlogged retry** after that failure
+   (the retry ran under the fixed, quoted-DSN invocation; its terminal output
+   confirmed `exit=0` and the context source line above).
 3. Disposable Postgres 17 (`127.0.0.1:55435`, db `gochara_link3`) restored
    from a production dump (contacts 277673; windows 40117; publication 2;
    gochara_resonance_map 1595; kala_vedha_gochara 344;
@@ -138,9 +147,25 @@ refine (`refine_peak_to_day`) onto the same calendar day — first observed as
 a UniqueViolation on `(exam_outcome, 2027-07-30, day, 4.0)`. Fix in
 `write_windows` (`step06b_windows_projection.py`): natural-key dedupe, first
 occurrence in insert order kept, children of a skipped row re-pointed to the
-retained row's id, skip count printed to stderr. Existing battery re-run
-after the fix: **645 passed, 85 skipped, 0 failures** (same invocation as the
-campaign battery; the step06b file alone: 9 passed, 4 skipped).
+retained row's id, skip count printed to stderr.
+
+Battery figures after the fix (two DIFFERENT scopes — do not conflate;
+correction per PRAMĀṆIN's review, which caught this section originally
+labelling the wider scope as "the campaign battery"):
+
+- **Wider gochara-related selection** — `pytest tests/l3/gochara/
+  tests/l3/test_s4_05_health_adverse_class.py
+  services/ka_gochara_resonance/tests/ tests/test_l1_sensitive_points.py
+  tests/test_ga5_writer.py tests/test_gochara_intensity.py
+  tests/test_gochara_grammar.py -q` → **645 passed, 85 skipped, 0 failures**.
+  This is the run quoted against the fix above; it is broader than the
+  campaign battery.
+- **Documented campaign battery** — `pytest tests/l3/gochara -q` at HEAD
+  `47d6905d5` (377 collected): PRAMĀṆIN reproduced **359 passed, 18 skipped,
+  0 failures**; my re-run in a partially torn-down environment (some
+  disposable DBs already stopped) gave 297 passed, 80 skipped, 0 failures —
+  the skip delta is environment-dependent (disposable-DB reachability gates
+  those tests), and both runs have zero failures.
 
 Production itself was never written: no candidate manifest, no '4.0' rows, no
 authority change. The flip remains unauthorized and unperformed.
