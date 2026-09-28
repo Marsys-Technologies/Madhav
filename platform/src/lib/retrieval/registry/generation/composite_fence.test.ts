@@ -100,3 +100,11 @@ describe('shared build-fence declaration', () => {
     expect(BUILD_FENCE_INPUT.type).toBe('string')
   })
 })
+
+describe('isChartUuid', () => {
+  it('accepts any hex UUID (test and eval ids included) and rejects everything else', async () => {
+    const { isChartUuid } = await import('./composite_fence')
+    for (const ok of ['482012f1-710e-4a25-994a-93821f5871aa', '1c826d5a-0000-0000-0000-000000000000', 'AAAAAAAA-1111-4000-8000-00000000000B']) expect(isChartUuid(ok), ok).toBe(true)
+    for (const bad of ['', 'not-a-uuid', '1c826d5a', "482012f1-710e-4a25-994a-93821f5871aa'; DROP", 42, null, undefined]) expect(isChartUuid(bad), String(bad)).toBe(false)
+  })
+})

@@ -132,6 +132,9 @@ describe('query_planet partial source failures (generation resolved)', () => {
     expect(content['component_failures']).toEqual([{ component: 'shadbala', code: 'component_read_failed' }])
     expect(JSON.stringify(content)).not.toMatch(/permission denied|chart_facts" permission/)
     expect(content).toHaveProperty('position') // the other components still serve
+    // The failed section says it FAILED; it never reads as an empty finding.
+    expect((content['shadbala'] as { note: string }).note).toMatch(/component read failed.*NOT an empty finding/)
+    expect((content['position'] as { note?: string }).note ?? '').not.toMatch(/component read failed/)
     expect(console.error).toHaveBeenCalled()
   })
 })

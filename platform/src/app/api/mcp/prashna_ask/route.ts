@@ -1408,7 +1408,7 @@ export async function POST(request: Request) {
         // never pick them up and they would strand. Their authorization is re-derived exactly as
         // it is for a live successor — nothing is replayed (beginAction refuses an already
         // dispatched item) and nothing bypasses the envelope.
-        await drainManagedReadyActions(managedInquirySession.currentContract.successor !== undefined)
+        await drainManagedReadyActions(managedInquirySession.currentContract.successor !== undefined || (managedInquirySession.parentInquiryId ?? null) !== null)
         // R2B.4b: served evidence may call for a capability the plan never authorized. Continue
         // through ONE durable successor generation, using only tools this request authorized —
         // an admitted capability outside that set fails closed, named, on the successor's own

@@ -80,6 +80,7 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', async () => {
 
 import { POST } from '../route'
 import { verifySuccessorCostLedger } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { buildInquiryDoorParityProjection } from '@/lib/vidhi/inquiry/door_parity'
 import { w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 state.toolResult = w5DoorParityToolResult
@@ -172,6 +173,12 @@ describe('raw MCP: successor envelope (real compiler, real tokens)', () => {
     expect(done.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_safety_excluded' })
     expect(done.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_safety_excluded' })
     // Terminal: nothing left ready, so the lifecycle can be finalized rather than stranded.
+    // Door parity of the refused obligation: no evidence ref, failed, on EVERY door (the parity projection is graded).
+    const refusedCoverage = buildInquiryDoorParityProjection(executed.body.contract).obligation_coverage
+      .filter((entry) => item.obligation_ids.includes(entry.obligation_id))
+    expect(refusedCoverage.length).toBeGreaterThan(0)
+    for (const entry of refusedCoverage) expect(entry).toMatchObject({ disposition: 'failed', evidence_present: false, evidence_hashes: [] })
+
     expect(executed.body.next_action_ids).not.toContain(item.item_id)
   })
 

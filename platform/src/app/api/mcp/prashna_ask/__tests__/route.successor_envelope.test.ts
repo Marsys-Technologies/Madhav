@@ -113,6 +113,7 @@ import { managedEvidenceSuccessorInquiryId, ManagedInquiryExecutionSession } fro
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { POST } from '../route'
 import { verifySuccessorCostLedger } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { buildInquiryDoorParityProjection } from '@/lib/vidhi/inquiry/door_parity'
 import { w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 state.toolResult = w5DoorParityToolResult
@@ -209,6 +210,12 @@ describe('managed door: envelope-admitted successor (real compiler + real lifecy
     expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_safety_excluded' })
     expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_safety_excluded' })
     // Never-dispatched: the receipt exists but nothing entered recovered evidence.
+    // Door parity of the refused obligation: no evidence ref, failed, on EVERY door (the parity projection is graded).
+    const refusedCoverage = buildInquiryDoorParityProjection(successor.contract_jsonb).obligation_coverage
+      .filter((entry) => item.obligation_ids.includes(entry.obligation_id))
+    expect(refusedCoverage.length).toBeGreaterThan(0)
+    for (const entry of refusedCoverage) expect(entry).toMatchObject({ disposition: 'failed', evidence_present: false, evidence_hashes: [] })
+
     const receipt = state.store!.evidence.find((candidate) => candidate.inquiry_id === successor.inquiry_id && candidate.plan_item_id === item.item_id)!
     expect((receipt.evidence_jsonb as { bundle?: unknown }).bundle).toBeUndefined()
   })

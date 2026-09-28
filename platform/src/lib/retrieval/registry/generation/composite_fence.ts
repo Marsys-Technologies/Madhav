@@ -56,7 +56,8 @@ const REASON: Record<UnavailableComponentCode, string> = {
     'no served generation is resolved for this chart; component withheld rather than read from unfenced current rows',
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+// Any hex UUID (the same acceptance Postgres and the rest of the repo apply), not only RFC-versioned ones.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** True for a well-formed chart UUID. A malformed id is a caller error, not a served-generation outage. */
 export function isChartUuid(value: unknown): value is string {

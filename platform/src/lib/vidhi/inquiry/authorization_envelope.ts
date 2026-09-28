@@ -534,7 +534,11 @@ function envelopeIntactForLimits(envelope: AuthorizationEnvelope | undefined): b
 }
 
 function isReadOnlyDescriptor(binding: SemanticCapabilityBinding, descriptor: LiveDescriptor | undefined): boolean {
+  // Refuses on any explicit mutation marker (shared predicate, plus `mutation` again for clarity) and on an
+  // explicit readOnly:false. An ABSENT annotation is accepted: real read-only descriptors carry none, so
+  // read-only rests on snapshot membership (the snapshot compiler excludes mutating descriptors) plus this check.
   return isInquirySafeRegistryDescriptor(binding, descriptor) && descriptor?.mcp_annotations?.readOnly !== false
+    && descriptor?.mutation !== true
 }
 
 function seal(body: Omit<SuccessorAdmissionDecision, 'decision_hash'>): SuccessorAdmissionDecision {

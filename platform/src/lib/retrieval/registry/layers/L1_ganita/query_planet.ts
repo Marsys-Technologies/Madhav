@@ -203,6 +203,8 @@ export const queryPlanetCapability: CapabilityDescriptor = {
         avasthas.failed && 'avasthas', aspects.failed && 'aspects', (yogaDosha.failed || yogaFirings.failed) && 'yogas',
         dispositors.failed && 'dispositor',
       ].filter((c): c is string => Boolean(c)))]
+      // A leg that FAILED is not an empty finding: its section says so (the failure is also in `component_failures`).
+      const FAILED_NOTE = 'component read failed (see component_failures) — this is NOT an empty finding'
       const sourceErrors = failedComponents.map((component) => ({ component, code: 'component_read_failed' as const }))
 
       return {
@@ -211,23 +213,23 @@ export const queryPlanetCapability: CapabilityDescriptor = {
           planet: { input: planetInput, code, name },
           position: {
             rows: positions.rows,
-            note: positions.rows.length === 0 ? 'no graha_position row found for this planet' : undefined,
+            note: positions.failed ? FAILED_NOTE : positions.rows.length === 0 ? 'no graha_position row found for this planet' : undefined,
           },
           dignity: {
             rows: dignityRows,
-            note: dignityRows.length === 0 ? 'no dignity rows matched this graha by fact_subject/text heuristic — see get_dignity directly' : undefined,
+            note: dignity.failed ? FAILED_NOTE : dignityRows.length === 0 ? 'no dignity rows matched this graha by fact_subject/text heuristic — see get_dignity directly' : undefined,
           },
           shadbala: {
             rows: strength.rows,
-            note: strength.rows.length === 0 ? 'no shadbala rows found for this planet (graha_key filter)' : undefined,
+            note: strength.failed ? FAILED_NOTE : strength.rows.length === 0 ? 'no shadbala rows found for this planet (graha_key filter)' : undefined,
           },
           avasthas: {
             rows: avasthaRows,
-            note: avasthaRows.length === 0 ? 'no avastha rows matched this graha by fact_subject/text heuristic — see get_avasthas directly' : undefined,
+            note: avasthas.failed ? FAILED_NOTE : avasthaRows.length === 0 ? 'no avastha rows matched this graha by fact_subject/text heuristic — see get_avasthas directly' : undefined,
           },
           aspects: {
             rows: aspectRows,
-            note: 'best-effort text-match filter over get_aspects rows (that capability does not expose a fact_subject column) — a miss here does not prove the graha has no aspects; see get_aspects for the unfiltered set.' + (aspectRows.length === 0 ? ' No rows matched.' : ''),
+            note: aspects.failed ? FAILED_NOTE : 'best-effort text-match filter over get_aspects rows (that capability does not expose a fact_subject column) — a miss here does not prove the graha has no aspects; see get_aspects for the unfiltered set.' + (aspectRows.length === 0 ? ' No rows matched.' : ''),
           },
           functional_nature: {
             note: 'included within the dignity facet above (graha_functional_class_per_ascendant category, when present in dignity.rows).',
@@ -236,11 +238,11 @@ export const queryPlanetCapability: CapabilityDescriptor = {
             firings_authoritative: yogaFiringRows,
             catalog_label: yogaLabelRows,
             note: 'firings_authoritative rows come from get_yoga_firings (fired=true, constituent_planets match); catalog_label rows are single-pass chart_facts yoga_label matches from get_yoga_dosha (§N.6 point 1 — never conflate the two counts).' +
-              (yogaFiringRows.length === 0 && yogaLabelRows.length === 0 ? ' No rows matched either source for this graha.' : ''),
+              ((yogaDosha.failed || yogaFirings.failed) ? ` ${FAILED_NOTE}.` : yogaFiringRows.length === 0 && yogaLabelRows.length === 0 ? ' No rows matched either source for this graha.' : ''),
           },
           dispositor: {
             rows: dispositorRows,
-            note: dispositorRows.length === 0 ? 'no dispositor-chain rows matched this graha by text heuristic — see get_dispositors directly' : undefined,
+            note: dispositors.failed ? FAILED_NOTE : dispositorRows.length === 0 ? 'no dispositor-chain rows matched this graha by text heuristic — see get_dispositors directly' : undefined,
           },
           components_unavailable: [],
           component_failures: componentFailures(sourceErrors.map((entry) => entry.component)),

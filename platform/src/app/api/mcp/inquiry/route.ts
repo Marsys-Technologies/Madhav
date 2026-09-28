@@ -386,7 +386,7 @@ export async function POST(request: Request) {
           // Never dispatched: the receipt records the decision's own stable code.
           disposition = 'failed'
           gapReason = admission.code
-          // Deterministic body (no per-request trace id): the same refusal hashes identically everywhere.
+          // Deterministic body (no per-request trace id) so the receipt's result hash is reproducible.
           raw = { ok: false, error: admission.code, not_dispatched: true }
         } else {
           raw = await tool!.retrieve({ chart_id: claims.chart_id, domains: contract.scope_tuple.domains }, invocationArgs)
@@ -435,7 +435,9 @@ export async function POST(request: Request) {
         ? { semantics: binding?.pagination ?? 'none', exhausted: true, next: null }
         : deriveInquiryPaginationReceipt(binding!, raw, invocationArgs)
       let observed = recordInquiryExecution(contract, {
-        item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
+        item_id: item.item_id, disposition,
+        // A refused (never-dispatched) item produced no evidence: no ref, exactly as on Portal and managed.
+        evidence_refs: admission?.decision === 'refuse' ? [] : [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
         pagination, request_position_path: binding?.pagination_contract?.request_position_path,
         // A served result may warrant a different capability (RC-5.4); it is pursued only
         // through the governed `continue` successor, never dispatched ad hoc.

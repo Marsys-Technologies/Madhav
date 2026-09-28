@@ -187,7 +187,9 @@ export class ManagedInquiryExecutionSession {
     let observed = recordInquiryExecution(this.contract, {
       item_id: args.plan_item_id,
       disposition: args.disposition,
-      evidence_refs: [`managed:${stableFingerprint(fingerprintSource)}`],
+      // A never-dispatched item produced no evidence: it carries NO evidence ref on any door (so the
+      // door-parity projection reads the same refusal identically everywhere).
+      evidence_refs: args.bundle === undefined ? [] : [`managed:${stableFingerprint(fingerprintSource)}`],
       ...(args.gap_reason ? { gap_reason: args.gap_reason } : {}),
       pagination: args.pagination,
       ...(args.request_position_path ? { request_position_path: args.request_position_path } : {}),

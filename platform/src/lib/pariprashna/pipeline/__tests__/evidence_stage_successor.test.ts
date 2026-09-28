@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import { w5DoorParityPlan, w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 import { buildInquiryFactRegister } from '@/lib/vidhi/inquiry/response_accountability'
+import { buildInquiryDoorParityProjection } from '@/lib/vidhi/inquiry/door_parity'
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import {
   SCENARIO_CHART_ID as CHART_ID,
@@ -145,6 +146,12 @@ describe('Portal evidence-driven successor', () => {
     expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_safety_excluded' })
     // Same terminal shape as the managed and raw doors (a refused item is observed, never left ready).
     expect(item.state).toBe('observed')
+    // Door parity of the refused obligation: no evidence ref, failed, on EVERY door (the parity projection is graded).
+    const refusedCoverage = buildInquiryDoorParityProjection(final).obligation_coverage
+      .filter((entry) => item.obligation_ids.includes(entry.obligation_id))
+    expect(refusedCoverage.length).toBeGreaterThan(0)
+    for (const entry of refusedCoverage) expect(entry).toMatchObject({ disposition: 'failed', evidence_present: false, evidence_hashes: [] })
+
     expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_safety_excluded' })
   })
 
