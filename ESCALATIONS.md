@@ -772,3 +772,31 @@ applied migration file means editing it is **outside surrogate scope**.
 - Production untouched: authority remains '3.0' on both charts, '4.0' candidate
   rows are publications-status `candidate`, zero '4.0' windows in
   `kala_gochara_windows`.
+
+**E-020 DISPOSITION (native, 2026-09-28; recorded ADK-0026):** ADK-0025 is
+OVERRULED — conjunct (e) is a correct detector; the 39 horizon-edge dates are
+genuinely wrong data. Precedence rule (binding): when a detector catches data
+that is really wrong, fix the data, not the detector; honest-over-plausible
+outranks least-change. The lane's directed path: fix the date convention in
+the '4.0' writer path (jd_of/date_of_jd true inverses, midnight-UTC anchor
+2440587.5), regenerate windows and delta reports, reopen gate (b) under the
+falsifiable definition (every '4.0' date differing from '3.0' must differ by
+exactly +1 day and only for contacts with UTC time-of-day in [00:00, 12:00)),
+and author migration 1150 as a CORRECTNESS fix to conjunct (e)'s time-zone
+dependence (compare dates as dates in UTC).
+
+**Wording correction (ADK-0026 §6), amending this entry's :758 label and the
+root-cause text above without rewriting it:** the defect scope was understated
+as "midnight" — the real scope of the noon-UTC flooring defect was instants
+**00:00–11:59 UTC (05:30–17:29 IST) dated one day early**. Every document
+carrying the understated wording has been corrected (REVIEW_REQUEST_12_13_E012,
+REVIEW_REQUEST_PRODUCTION_APPLICATION_SET, link3_conditioning_evidence.md
+condition-(b) section).
+
+**Resolution state:** executed by the lane — see the E-020 remediation section
+of `platform/python-sidecar/scripts/kala_gochara_cutover/evidence/link3_conditioning_evidence.md`
+(writer fix + round-trip tests, regenerated projections and delta reports,
+gate-(b) shifted-row table, migration
+`1150_wp10_ka_gochara_conjunct_e_utc_date_compare.sql` with dual-timezone
+disposable rehearsal GREEN). Production apply of 1150 awaits PRAMĀṆIN's pass
+and will run through migrate.ts (never apply_migration.sh).

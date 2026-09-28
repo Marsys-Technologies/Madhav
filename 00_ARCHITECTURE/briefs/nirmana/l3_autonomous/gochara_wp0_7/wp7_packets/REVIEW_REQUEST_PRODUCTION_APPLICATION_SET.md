@@ -94,8 +94,12 @@ remains unratified and the writer refuses it.
      conjunct (g) reads a non-null value as foreign-writer contamination);
      decade-scoped `g3_%` consumers will not see '4.0' rows — the pinned
      contract's own boundary.
-  2. **Pinned date bucketing floors midnight peaks to the prior day**
-     (`int(jd − 2440588.0)`); midnight contacts read one day early.
+  2. **Date bucketing dated morning-UTC peaks one day early — FIXED
+     (E-020/ADK-0026).** Originally disclosed here as "`int(jd − 2440588.0)`;
+     midnight contacts read one day early" — that understated the defect: the
+     real scope was instants 00:00–11:59 UTC (05:30–17:29 IST) dated one day
+     early (wording corrected under ADK-0026 §6). The '4.0' writer path now
+     uses the true-inverse midnight-UTC convention.
   3. ~~Permission-system class context deferred~~ — **now RESOLVED on-branch
      by step06a** (ADK-0017 carried block 4); the production run consumes the
      wired context, not the rehearsal-synthetic one. The disclosure that

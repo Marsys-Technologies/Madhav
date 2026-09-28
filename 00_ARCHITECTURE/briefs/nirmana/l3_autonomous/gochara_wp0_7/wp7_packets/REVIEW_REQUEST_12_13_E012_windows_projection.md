@@ -67,11 +67,13 @@ synthetic stand-in. Five files, all on `l3/gochara-autonomous-wp0-7`:
   writer now never sets the column. Consequence: decade-scoped consumers that filter
   `era_slice_key LIKE 'g3_%'` will not see '4.0' rows — that is the pinned
   contract's own boundary, not a gap in the writer.
-- **Pinned date bucketing floors midnight peaks to the prior day.**
-  `int(jd - 2440588.0)` floors any `t_exact` at 00:00 local-of-jd onto the previous
-  date. This is the pinned convention, kept as-is; tests use noon `t_exact` values so
-  the peak lands on the expected date. Reviewers comparing against wall-clock dates
-  should know midnight contacts read one day early.
+- **Date bucketing dated morning-UTC peaks one day early (FIXED, E-020/ADK-0026).**
+  As originally disclosed here, `int(jd - 2440588.0)` floored at the noon-UTC
+  boundary; the defect scope was understated as "midnight peaks" — the real scope
+  was instants 00:00–11:59 UTC (05:30–17:29 IST) dated one day early
+  (wording corrected under ADK-0026 §6). The writer's `date_of_jd` /
+  `iso_date_of_jd` / `_jd_of_date` are now true inverses of `jd_of`
+  (midnight-UTC anchor 2440587.5, the overlays.py:34-52 pair's shape).
 - **Permission-system class context is deferred to the production set (ADK-0012).**
   The writer takes `--class-context-json`; in the branch-local tests the context names
   only `vimshottari`, and a class with contacts but no context entry is an **honest

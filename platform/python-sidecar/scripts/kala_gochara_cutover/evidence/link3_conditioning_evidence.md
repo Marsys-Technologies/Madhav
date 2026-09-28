@@ -33,16 +33,33 @@ each triggering **immediate** `step08_flip.py --reverse`, pre-authorized by
 Link 3 condition (a), with recording in `evidence/step09_evidence.md` and
 escalation to the native. No further work required.
 
-## (b) Midnight-flooring comparison ('3.0' writer vs step06b projection) — SAME
+## (b) Noon-boundary flooring comparison ('3.0' writer vs step06b projection) — SAME (historical; SUPERSEDED by E-020)
 
-Verdict: **SAME convention in both** — non-blocking; proceed.
+> **Wording correction (ADK-0026 §6):** this section originally said
+> "midnight-flooring" / "midnight peaks floor to the prior day". That
+> understated the defect: the real scope was instants **00:00–11:59 UTC
+> (05:30–17:29 IST) dated one day early**. Corrected here.
+>
+> **Status after E-020/ADK-0026:** the native ruled this "SAME" verdict
+> diagnosed a shared DEFECT, not a shared convention to keep — the '4.0'
+> writer path was fixed to the true-inverse midnight-UTC convention
+> (jd_of / date_of_jd / iso_date_of_jd / _jd_of_date, plus the
+> CARTOGRAPHER-found second copy at legacy_semantics.py:1331,1342) and gate
+> (b) was REOPENED under a falsifiable definition (see the E-020 remediation
+> section below). '3.0'/v1 producers (resolution_hierarchy.py `_EPOCH_JD`,
+> ka_gochara_v3_century_materialize.py) were deliberately NOT touched —
+> handed to the L3 plan as a finding (E-020 §2). The comparison below is the
+> historical pre-fix record.
 
-Code paths compared:
+Verdict (pre-fix): **SAME convention in both** — assessed non-blocking at the
+time; the native's E-020 disposition reversed that assessment.
+
+Code paths compared (pre-fix constants):
 
 - step06b (`scripts/kala_gochara_cutover/step06b_windows_projection.py`):
   `jd_of(dt) = dt.timestamp()/86400 + 2440587.5` (true Julian Day),
   `date_of_jd = date(1970,1,1) + timedelta(days=int(jd − 2440588.0))`,
-  `JD_UNIX_EPOCH = 2440588.0` (line 119).
+  `JD_UNIX_EPOCH = 2440588.0` (line 119). [All three corrected by E-020.]
 - '3.0' writer
   (`pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py:1515`
   `_jd_to_date`): identical formula `int(jd − 2440588.0)`; its peak/enter/exit
@@ -304,3 +321,163 @@ published-manifest, and v1/3.0 refusals; legal candidate-path delete).
 Per ADK-0024 §3: gates (b) and (c) must be re-verified against the corrected
 projection and PRAMĀṆIN must re-verify the regenerated delta reports before
 Link 3 executes. The flip itself remains unauthorized and unperformed.
+
+## 2026-09-28 — E-020 disposition executed (ADK-0026; overrules ADK-0025)
+
+Ruling: `00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md` ADK-0026. The
+migration-1091 conjunct (e) is a **correct detector**; the 39 horizon-edge
+dates (`window_start = 2019-12-31` against horizon `2020-01-01T00:00Z`) were
+genuinely wrong data. Root cause: the writer's `date_of_jd` floored at the
+**noon-UTC** anchor (`date(1970,1,1) + timedelta(days=int(jd − 2440588.0))`),
+dating instants 00:00–11:59 UTC (05:30–17:29 IST) one day early. Fix the
+data (the date convention), not the detector. All DB work on the same fresh
+disposable (`gochara-link3-disposable` :55445, rebuilt as in the ADK-0024
+section above, minimal `asset_registry` + migration 1091). Production
+READ-ONLY throughout; migration 1150's production apply is deferred to
+PRAMĀṆIN's pass (via `migrate.ts`, never `apply_migration.sh`).
+
+### (b) Code fixes — midnight-UTC true-inverse date convention
+
+- `step06b_windows_projection.py`: `JD_UNIX_EPOCH = 2440587.5` (was
+  2440588.0); `date_of_jd` is now
+  `datetime.fromtimestamp((jd − JD_UNIX_EPOCH) * 86400, tz=UTC).date()` — the
+  true inverse of `jd_of` (which was already 2440587.5-based), same shape as
+  `overlays.py:49-52`. `_jd_of_date` formula unchanged; with the corrected
+  constant it yields midnight-UTC JDs.
+- `services/gochara_kernel/legacy_semantics.py:1331,1342` (CARTOGRAPHER-found
+  second copy of the convention, inside `build_resolution_hierarchy`):
+  `int(peak_jd_true − 2440587.5)` / `2440587.5 + days`, with a disclosure
+  comment recording the intentional divergence from
+  `services/gochara_v3/resolution_hierarchy.py`'s noon convention.
+- **Not touched** (recorded as L3-plan findings, E-020 §2): the '3.0'
+  producer `resolution_hierarchy.py` (`_EPOCH_JD` noon anchor, :693) and
+  `ka_gochara_v3_century_materialize.py`, and the v1 producers — authority
+  stays '3.0'; changing them is outside this lane's grant.
+- New tests (all pass):
+  `test_jd_date_round_trip_true_inverses_e020` (every UTC hour across 4 dates
+  incl. horizon edge JD 2458849.5 → 2020-01-01, both directions);
+  `test_legacy_month_bounds_true_inverse_e020` (peak 2026-06-01 06:00Z →
+  month enter at midnight June 1, not noon May 31).
+
+### (c) Regeneration on the corrected convention (both charts, exit 0)
+
+Instrumented harness `tests/l3/gochara/e020_gateb_harness.py` wraps the
+writer's `_window_row` and logs every row whose old-convention date differs
+from the corrected one to a JSONL shift ledger; the projection it writes is
+identical to an uninstrumented run. Run reports:
+`.run/wp10_tranche2/link3_step06b_runreport_<chart>.json`; shift ledgers:
+`.run/wp10_tranche2/e020_gateb_shifts_<chart>.jsonl`; delta reports
+regenerated in place (`.run/wp10_tranche2/link2_delta_report_<chart>.md`).
+
+| chart | contacts read | unmapped (relation / no_class) | windows written (era/month/day) | collapsed dupes | peaks refined outside era | runtime |
+|---|---|---|---|---|---|---|
+| 482012f1 | 138,837 | 0 / 0 | **4,415** (1435/1490/1490) | 0 | 2 | ~2261 s |
+| 1c826d5a | 138,836 | 0 / 0 | **3,947** (1263/1342/1342) | 0 | 5 | ~2211 s |
+
+(Compare the ADK-0024 run: 4,417 / 3,955. The deltas are the date shifts
+moving rows across dedupe keys plus the outside-era skip below.)
+
+### Additional writer defect surfaced by gate (d) during this rehearsal
+
+Conjunct (d) (window well-formedness) initially failed on the corrected
+projection with **7 rows** (5 on 1c826d5a, 2 on 482012f1): month-tier rows
+inverted (`window_end < window_start`, e.g. birth_anchor [2027-04-01,
+2027-03-31]) or peak-escaped (`peak_date > window_end`, e.g. exam_outcome
+[2027-07-19, 2027-07-27] peak 2027-07-31). Root cause:
+`refine_peak_to_day`'s ±7-day argmax can land **outside** its own era
+component (the peak belongs to the adjacent component, which emits it with
+its own family); clipping that peak's calendar month against the
+non-overlapping era inverts or truncates the row. Convention-independent —
+reconstruction under the old noon anchor yields the identical inversions, so
+this predates E-020; the earlier RED attribution pinned conjunct (e)'s 39
+rows without decomposing (d). Fix (writer, `step06b_windows_projection.py`):
+when the refined peak falls outside `[enter_jd, exit_jd]` of its era, skip
+the month/day family and count it (`peaks_refined_outside_era` in the class
+report); era rows are unaffected and no peak is lost. Pinned by
+`test_refined_peak_outside_era_skips_month_day_family`. The '3.0' producer
+`resolution_hierarchy.py` has the same ±7d refine + R8.6 clip shape — L3-plan
+finding, untouched. After the fix: 0 malformed '4.0' rows (SQL conjunct-(d)
+form).
+
+### (d) Gate (b) — falsifiable comparison, contact level (GREEN)
+
+Exhaustive over all **277,673** '4.0' contacts on the disposable:
+new date = `(t_exact AT TIME ZONE 'UTC')::date`, old date =
+`DATE '1970-01-01' + int(epoch/86400 + 2440587.5 − 2440588.0)`.
+Shift distribution: **0: 137,464; +1: 140,209** — no other values.
+Violations (shift ∉ {0,+1}): **0**. +1-shifts with UTC time-of-day ≥ 12:00:
+**0**; 0-shifts with time-of-day < 12:00: **0**. Shifted per chart: 70,102
+(482012f1) / 70,107 (1c826d5a). Shifted by relation: kakshya 96,444 /
+nakshatra_ingress 28,620 / sign_ingress 13,237 / drishti 1,044 /
+conjunction 771 / return 93.
+
+### (d) Gate (b) — window level, from the shift ledgers (GREEN)
+
+Every ledger record has `shift_days == 1` and `0 ≤ time_of_day < 12h`, with
+exactly two records (482012f1, era `window_end`, jd 2462244.9999999925)
+whose ledger field reads 12.0 — the ledger stores `round(hours, 6)`; direct
+computation gives 2029-04-18 **11:59:59.999356 UTC**, inside the morning
+scope. Shifted field-records per chart per tier:
+
+| chart | era (start/end/peak) | month (start/end/peak) | day (start/end/peak) | total |
+|---|---|---|---|---|
+| 482012f1 | 700/728/683 | 989/1037/704 | 704/704/704 | 6,953 |
+| 1c826d5a | 648/626/634 | 923/940/665 | 665/665/665 | 6,431 |
+
+### The 39 horizon-edge rows — disposition
+
+Zero '4.0' rows with `window_start < 2020-01-01` (SQL, both charts). The
+corrected projection dates the former violators **2020-01-01**; they remain
+in the projection. SQL count of rows starting exactly 2020-01-01: 482012f1 —
+12 era + 7 month; 1c826d5a — 13 era + 11 month + 7 day — an **exact** match
+with the shift ledgers' horizon records (50 total). The 39 was the
+conjunct-(e) RED count on the earlier production-candidate projection, whose
+dedupe/collapse differed from this run; the current boundary set reconciles
+row-for-row between the independent instrumentation ledger and SQL.
+
+### (e) Migration 1150 — conjunct (e) amended to UTC date-compare
+
+`platform/migrations/1150_wp10_ka_gochara_conjunct_e_utc_date_compare.sql`:
+UPDATE of `asset_registry.integrity_check_sql` for `ka_gochara`; only
+conjunct (e) changes — `w.window_start < (lower(m.horizon) AT TIME ZONE
+'UTC')::date OR w.window_end > (upper(m.horizon) AT TIME ZONE 'UTC')::date`.
+The horizon is half-open `[lower, upper)`: a window dated `date(upper)` is
+the clipped boundary day, not an undisclosed claim, hence strict `>` on the
+upper comparison (the timezone-correct form of the original semantics).
+Gate-probe DO block asserts the new form present, the old `::timestamptz`
+casts gone (checked against the SQL with `--` comments stripped — the amended
+conjunct's own comment names the old cast as prose), and the flanking
+conjuncts intact. `npm run guard:migration-numbers` PASS; number verified
+free across all 1,087 origin refs in both migration dirs.
+Triple (via `migrate.ts`'s own `sqlIdentityOf`):
+filename `1150_wp10_ka_gochara_conjunct_e_utc_date_compare.sql`,
+sha256 `c64c89b1dcadb9d56c050b33a068a515b74d5c176d1aa9d54c84d253d3c05709`,
+sql_identity `bd2e61f5611e586772ce84d3affef590429f234f777ec61633412e48d4c9b64c`.
+
+**Dual-timezone rehearsal on the disposable** (1150 applied: UPDATE 1 + DO
+clean; stored text evaluated as-is):
+
+| TimeZone | conjunct (e) OLD (1091 form) | conjunct (e) NEW (1150 form) | full (a)–(k) OLD | full (a)–(k) NEW |
+|---|---|---|---|---|
+| UTC | t | t | t | **t** |
+| Asia/Kolkata | **f** | t | **f** | **t** |
+
+The old form's verdict depended on the session timezone (Asia/Kolkata shifts
+the window date's midnight by −05:30, re-dating morning windows and pushing
+the 50 horizon rows below the horizon) — exactly the defect ADK-0026 records.
+The amended detector is timezone-independent and GREEN on the corrected
+projection. Detector version: before = migration 1091 text; after = migration
+1150 text (rehearsal only — no production apply).
+
+### Battery
+
+`pytest tests/l3/gochara -q` with the WP6/remainder DSNs on the disposable
+containers: **381 passed, 0 failed, 0 skipped** (378 prior + 3 new E-020
+tests).
+
+### What remains before Link 3
+
+PRAMĀṆIN re-verification of the amended detector (1150) and its production
+apply via `migrate.ts`, re-run of PRAMĀṆIN's pass on the regenerated
+projection, and K3/O-2 re-review under condition (d). The flip remains
+unauthorized and unperformed.
