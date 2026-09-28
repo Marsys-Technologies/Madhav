@@ -116,7 +116,12 @@ _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
 _LEGACY_PATH = SIDECAR / "services" / "gochara_kernel" / "legacy_semantics.py"
 
 UTC = timezone.utc
-JD_UNIX_EPOCH = 2440588.0  # _dt.date(1970,1,1) anchor, resolution_hierarchy.py convention
+# E-020 / ADK-0026: the Unix-epoch JD anchor is 2440587.5 (1970-01-01T00:00Z,
+# midnight UTC) — matching overlays.py:34. The previous 2440588.0 (noon UTC)
+# made date_of_jd not the true inverse of jd_of: instants 00:00–11:59 UTC
+# (05:30–17:29 IST) were dated one day early (the 39 horizon-edge rows of
+# the conjunct-(e) RED).
+JD_UNIX_EPOCH = 2440587.5
 
 GENERATION_DEFAULT = "4.0"
 BASELINE_DEFAULT = "3.0"
@@ -187,9 +192,11 @@ def jd_of(dt: datetime) -> float:
 
 
 def date_of_jd(jd: float) -> date:
-    # resolution_hierarchy.py's own conversion (int() floor toward zero on the
-    # day count from the 1970 anchor).
-    return date(1970, 1, 1) + timedelta(days=int(jd - JD_UNIX_EPOCH))
+    # E-020 / ADK-0026: the true inverse of jd_of — the UTC calendar date of
+    # the instant (overlays.py:49-52 jd_to_date shape). The prior
+    # int(jd - 2440588.0) day-count floored at the noon-UTC boundary.
+    return datetime.fromtimestamp(
+        (jd - JD_UNIX_EPOCH) * 86400.0, tz=UTC).date()
 
 
 def iso_date_of_jd(jd: float) -> str:
@@ -387,11 +394,13 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         return [], {"event_class": class_ctx.event_class,
                     **class_ctx.factors_record(),
                     "components": 0, "peaks_admitted": 0, "peaks_retained": 0,
+                    "peaks_refined_outside_era": 0,
                     "era_windows": 0, "month_windows": 0, "day_windows": 0}
 
     rows: list[dict] = []
     admitted_total = 0
     retained_total = 0
+    refined_outside_era = 0
     components = find_components(eval_lambda, series, min_lambda)
     gate_details_seen: dict[str, dict] = {}
 
@@ -423,8 +432,21 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
 
         for cand in retained:
             peak_jd_true, _lam = leg.refine_peak_to_day(eval_lambda, cand.jd)
+            # E-020 rehearsal finding: refine_peak_to_day scans ±42 days around the
+            # coarse candidate and can land OUTSIDE this era component (the peak
+            # then belongs to the adjacent component, where it is emitted with its
+            # own family). Emitting month/day rows for such a peak clips the
+            # calendar month against a non-overlapping era and produces an inverted
+            # (window_end < window_start) or peak-escaped (peak_date > window_end)
+            # row — a conjunct-(d) violation. Skip the month/day family; the peak
+            # is not lost, it is represented in the era it actually falls in.
+            if not (enter_jd <= peak_jd_true <= exit_jd):
+                refined_outside_era += 1
+                continue
             # calendar-month bounds of the refined peak, clipped to the era
-            # (build_resolution_hierarchy, rh:621-632 + R8.6 clip).
+            # (build_resolution_hierarchy, rh:621-632 + R8.6 clip — with the
+            # E-020/ADK-0026 correction: bounds are midnight-UTC JDs, the true
+            # inverse of date_of_jd, not rh's noon-UTC anchor).
             d = date_of_jd(peak_jd_true)
             month_start = date(d.year, d.month, 1)
             next_month = (date(d.year + 1, 1, 1) if d.month == 12
@@ -432,6 +454,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
             month_end = next_month - timedelta(days=1)
 
             def _jd_of_date(dd: date) -> float:
+                # midnight-UTC JD of the civil date (jd_of(datetime(dd, UTC)))
                 return JD_UNIX_EPOCH + (dd - date(1970, 1, 1)).days
 
             month_key = f"month-{_uuid.uuid4()}"
@@ -453,9 +476,10 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         "components": len(components),
         "peaks_admitted": admitted_total,
         "peaks_retained": retained_total,
+        "peaks_refined_outside_era": refined_outside_era,
         "era_windows": len(components),
-        "month_windows": retained_total,
-        "day_windows": retained_total,
+        "month_windows": retained_total - refined_outside_era,
+        "day_windows": retained_total - refined_outside_era,
         "quality_gates_fired": sum(
             g.get("vedha_fired_count", 0) for g in gate_details_seen.values()),
     }

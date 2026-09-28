@@ -219,6 +219,36 @@ def test_h5_all_admitted_peaks_retained():
         (base + timedelta(days=120 * i)).date() for i in range(5))
 
 
+# ── unit: E-020 rehearsal finding — refined peak outside its era ─────────────
+
+
+def test_refined_peak_outside_era_skips_month_day_family(monkeypatch):
+    """refine_peak_to_day takes a ±7d argmax around the coarse candidate and can
+    land outside the era component (the peak then belongs to the adjacent
+    component, which emits it with its own family). Emitting month/day rows for
+    such a peak clips the calendar month against a non-overlapping era and
+    yields an inverted (window_end < window_start) or peak-escaped
+    (peak_date > window_end) row — a conjunct-(d) violation found in the E-020
+    rehearsal. The writer must skip the month/day family and count the skip."""
+    ctx = _ctx()
+    base = _dt("2026-01-15T12:00:00+00:00")
+    contacts = [_contact("c1", base)]
+    horizon = (w.jd_of(_dt("2025-12-01T00:00:00+00:00")),
+               w.jd_of(_dt("2026-04-01T00:00:00+00:00")))
+    escape_jd = w.jd_of(base + timedelta(days=60))  # far outside the era
+    monkeypatch.setattr(
+        w.leg, "refine_peak_to_day", lambda eval_fn, cand_jd: (escape_jd, 1.0))
+    rows, report = w.project_class_windows(ctx, contacts, horizon, _open_gates)
+    assert report["components"] == 1
+    assert report["peaks_retained"] == 1
+    assert report["peaks_refined_outside_era"] == 1
+    assert report["era_windows"] == 1
+    assert report["month_windows"] == 0
+    assert report["day_windows"] == 0
+    tiers = [r["resolution"] for r in rows]
+    assert tiers == ["era"]
+
+
 # ── unit: relation vocabulary + era slice key ────────────────────────────────
 
 
@@ -245,6 +275,53 @@ def test_relation_to_primitive_vocabulary():
         "station_retro_loop", "eclipse_degree",
     }
     assert enumerator_relations <= set(w.RELATION_TO_PRIMITIVE)
+
+
+def test_jd_date_round_trip_true_inverses_e020():
+    """E-020 / ADK-0026: date_of_jd is the exact inverse of jd_of — the UTC
+    calendar date of the instant (midnight-UTC anchor 2440587.5, not the old
+    noon-UTC 2440588.0 that dated instants 00:00–11:59 UTC (05:30–17:29 IST)
+    one day early)."""
+    from datetime import date as _date
+    # every UTC hour, across month boundaries and a leap day
+    for d0 in (_date(2020, 1, 1), _date(2020, 2, 28), _date(2026, 6, 15),
+               _date(2029, 12, 31)):
+        for hour in range(24):
+            t = datetime(d0.year, d0.month, d0.day, hour, tzinfo=UTC)
+            assert w.date_of_jd(w.jd_of(t)) == t.date(), (t, w.date_of_jd(w.jd_of(t)))
+            # inverse direction: jd_of(midnight UTC) is the date's midnight JD
+            jd_mid = w.jd_of(datetime(d0.year, d0.month, d0.day, tzinfo=UTC))
+            assert jd_mid == w.JD_UNIX_EPOCH + (d0 - _date(1970, 1, 1)).days
+            assert w.date_of_jd(jd_mid) == d0
+    # the E-020 horizon-edge case itself: JD 2458849.5 = 2020-01-01T00:00Z
+    assert w.jd_of(datetime(2020, 1, 1, tzinfo=UTC)) == 2458849.5
+    assert w.date_of_jd(2458849.5) == _date(2020, 1, 1)  # was 2019-12-31
+    assert w.iso_date_of_jd(2458849.5) == "2020-01-01"
+
+
+def test_legacy_month_bounds_true_inverse_e020():
+    """CARTOGRAPHER-found extension: legacy_semantics.build_resolution_hierarchy
+    carried a second copy of the noon-boundary month-bounds convention
+    (legacy_semantics.py:1331,1342). A peak at 06:00 UTC on the 1st of a
+    month must yield month bounds at midnight UTC of that month, not the
+    prior day's noon/noon+1."""
+    import math as _math
+    from datetime import date as _date
+    peak_dt = datetime(2026, 6, 1, 6, tzinfo=UTC)  # morning UTC — old code dated it 05-31
+    peak_jd = w.jd_of(peak_dt)
+    t0 = peak_jd - 42.0
+    eval_fn = lambda jd: 0.8 * _math.exp(-((jd - peak_jd) / 12.0) ** 2)  # noqa: E731
+    result = leg.build_resolution_hierarchy(eval_fn, t0, peak_jd + 42.0, 0.5)
+    assert result["month_windows"], "expected at least one month window"
+    midnight_jd = w.jd_of(datetime(2026, 6, 1, tzinfo=UTC))
+    june = [m for m in result["month_windows"]
+            if abs(m.peak_jd - peak_jd) <= 1.0]
+    assert june, "no month window for the June-1 06:00Z peak"
+    assert abs(june[0].enter_jd - midnight_jd) < 1e-6
+    # exit is R8.6-clipped to the era end here (the hump decays below
+    # threshold mid-June); the convention check is the enter bound — under
+    # the old noon anchor the peak was dated 05-31 and the month row opened
+    # at the era's enter_jd instead of midnight June 1.
 
 
 # ── unit: delta report honest nulls ──────────────────────────────────────────

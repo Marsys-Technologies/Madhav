@@ -1327,8 +1327,14 @@ def build_resolution_hierarchy(
         total_retained += len(retained)
         for cand in retained:
             peak_jd_true, peak_lambda_true = refine_peak_to_day(eval_fn, cand.jd)
-            # calendar-month bounds of the refined peak (rh:621-632)
-            days_since_epoch = int(peak_jd_true - 2440588.0)
+            # calendar-month bounds of the refined peak (rh:621-632), with the
+            # E-020/ADK-0026 correction: the UTC calendar date of the instant —
+            # midnight-UTC anchor 2440587.5, the true inverse of jd_of. The
+            # prior 2440588.0 (noon UTC) dated instants 00:00–11:59 UTC
+            # (05:30–17:29 IST) one day early. CARTOGRAPHER-found extension
+            # (E-020 named only the step06b sites); the '3.0' producer
+            # resolution_hierarchy.py keeps its own convention (L3 finding).
+            days_since_epoch = int(peak_jd_true - 2440587.5)
             # month clipping to the era window (R8.6, rh:705-707)
             d = _dt.date(1970, 1, 1) + _dt.timedelta(days=days_since_epoch)
             month_start = _dt.date(d.year, d.month, 1)
@@ -1339,7 +1345,8 @@ def build_resolution_hierarchy(
             month_end = next_month - _dt.timedelta(days=1)
 
             def _pydate_to_jd(dd: _dt.date) -> float:
-                return 2440588.0 + (dd - _dt.date(1970, 1, 1)).days
+                # midnight-UTC JD of the civil date (true inverse direction)
+                return 2440587.5 + (dd - _dt.date(1970, 1, 1)).days
 
             month_start_jd = max(_pydate_to_jd(month_start), era_record.enter_jd)
             month_end_jd = min(_pydate_to_jd(month_end), era_record.exit_jd)
