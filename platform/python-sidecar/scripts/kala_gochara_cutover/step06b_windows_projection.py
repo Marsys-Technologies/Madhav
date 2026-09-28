@@ -149,7 +149,7 @@ RELATION_TO_PRIMITIVE = {
     "drishti_contact": "drishti_contact",
     "sign_ingress": "sign_ingress",
     "nakshatra_ingress": "nakshatra_ingress_tara",
-    "kakshya_cell": "kakshya_cell_crossing",
+    "kakshya_cell_crossing": "kakshya_cell_crossing",
     "station_retro_loop": "station_retro_loop",
     "eclipse_degree": "eclipse_degree",
 }
@@ -669,7 +669,7 @@ def write_windows(conn, chart_id: str, generation: str,
               "natural key with an already-written row (adjacent-component "
               "peak collapse to the same date); first occurrence kept, "
               "children re-pointed", file=sys.stderr)
-    return len(ordered) - skipped_dupes
+    return len(ordered) - skipped_dupes, skipped_dupes
 
 
 def update_manifest_windows_count(conn, chart_id: str, generation: str,
@@ -972,9 +972,9 @@ def main(argv: list[str] | None = None) -> int:
             class_reports.append(rep)
 
         source = SOURCE_REHEARSAL if args.rehearse_synthetic else SOURCE_LIVE
-        n_written = write_windows(conn, args.chart_id, args.generation,
-                                  all_rows, source=source,
-                                  window_columns=window_columns)
+        n_written, skipped_dupes = write_windows(
+            conn, args.chart_id, args.generation,
+            all_rows, source=source, window_columns=window_columns)
         update_manifest_windows_count(conn, args.chart_id, args.generation,
                                       n_written)
         conn.commit()
@@ -1010,6 +1010,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.delta_report_out:
         Path(args.delta_report_out).write_text(delta_report)
 
+    if unmapped or unmapped_relation:
+        print(f"WARNING: contacts excluded from the activity function — "
+              f"contacts_unmapped_relation={unmapped_relation} (relation not in "
+              f"RELATION_TO_PRIMITIVE), contacts_unmapped_no_class={unmapped} "
+              f"(no resolved gochara_resonance_map row). A non-zero count is a "
+              f"reviewable finding — disclose it in the step evidence, never "
+              f"leave it silent.", file=sys.stderr)
     report = {
         "writer": "step06b_windows_projection",
         "chart_id": args.chart_id, "generation": args.generation,
@@ -1023,9 +1030,13 @@ def main(argv: list[str] | None = None) -> int:
         "classes_projected": len(class_reports),
         "skipped_classes": skipped_classes,
         "windows_written": n_written,
+        "windows_collapsed_dupes": skipped_dupes,
         "windows_by_tier": {
             tier: sum(1 for r in all_rows if r["resolution"] == tier)
             for tier in ("era", "month", "day")},
+        "windows_by_tier_basis": "pre-dedupe projection counts; "
+            "windows_written is post-dedupe, so "
+            "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",
         "class_reports": class_reports,
         "baseline_generation": args.baseline_generation,
         "baseline_windows_read": len(baseline_rows),

@@ -229,12 +229,22 @@ def test_relation_to_primitive_vocabulary():
         "drishti_contact": "drishti_contact",
         "sign_ingress": "sign_ingress",
         "nakshatra_ingress": "nakshatra_ingress_tara",
-        "kakshya_cell": "kakshya_cell_crossing",
+        "kakshya_cell_crossing": "kakshya_cell_crossing",
         "station_retro_loop": "station_retro_loop",
         "eclipse_degree": "eclipse_degree",
     }
     # every mapped primitive is a real ACTIVITY_PRIMITIVES member
     assert set(w.RELATION_TO_PRIMITIVE.values()) <= set(leg.ACTIVITY_PRIMITIVES)
+    # K3-F1 regression: every relation the contact enumerator can emit
+    # (contacts.py EXACT_SEPARATION_RELATIONS / BOUNDARY_RELATIONS plus the
+    # station/eclipse families) must be a KEY of this map — an unmapped key
+    # silently drops that relation family from the activity function.
+    enumerator_relations = {
+        "conjunction", "return", "drishti_contact",
+        "sign_ingress", "nakshatra_ingress", "kakshya_cell_crossing",
+        "station_retro_loop", "eclipse_degree",
+    }
+    assert enumerator_relations <= set(w.RELATION_TO_PRIMITIVE)
 
 
 # ── unit: delta report honest nulls ──────────────────────────────────────────
