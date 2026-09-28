@@ -1,8 +1,8 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_ANVESANA_RESUMPTION
-version: 1.4
-status: ACTIVE_R5A_CANDIDATE_PUBLICATION_AND_REVIEW
-candidate_disposition: PR_CANDIDATE_UNDER_REVIEW_CANDIDATE_VALIDATION_NOT_RUN
+version: 1.5
+status: R5A_COMPLETE_R5B_SOURCE_MERGE_AUTHORIZED_FOR_PR_2742
+candidate_disposition: PR_CANDIDATE_REVIEWED_CI_GREEN_CANDIDATE_VALIDATION_NOT_RUN
 date: 2026-09-28
 native_authority: R0-R3 source execution authorized 2026-09-27; R4 local integration, candidate
   acceptance and a narrow current-main refresh authorized 2026-09-28; R5A (candidate publication,
@@ -12,20 +12,23 @@ source_execution_authorized: true
 r4_local_integration_authorized: true
 r4_candidate_acceptance_authorized: true
 r5a_candidate_publication_authorized: true
+r5a_status: COMPLETE   # PR #2742 accepted by the Native at d5c4c1f27; CI green
+r5b_source_merge_authorized: true   # PR #2742 ONLY, once its head is clean and fully green
+r5b_source_merge_status: AUTHORIZED_NOT_YET_VERIFIED_IN_THIS_FILE   # completion is recorded only after the merge is verified, outside this file (protected main)
 r3_source_complete_sha: 71ed6bbfda22ec2b23ba85f79158232cff4cd445
 first_main_integration_sha: 9285326caa394f76ea6849fd3fe0309bc6d90239
 r4_local_candidate_sha: ac226f4fce790616d9e58e2c235497ca071650cc
 pull_request: https://github.com/Marsys-Technologies/Madhav/pull/2742
 push_authorized: true   # R5A: this branch only, ordinary pushes, never force
 pr_change_authorized: true   # R5A: PR #2742 only; PR #2704 and #2705 are untouchable
-merge_to_protected_main_authorized: false
+merge_to_protected_main_authorized: false   # except PR #2742 under r5b_source_merge_authorized
 production_authorized: false
 database_write_authorized: false
 migration_authorized: false
 producer_rebuild_authorized: false
 deployment_authorized: false
 live_collection_authorized: false
-r5b_or_later_authorized: false
+r5c_or_later_authorized: false
 product_completion_claim_authorized: false
 worktree: /Users/Dev/.codex/worktrees/purna-anvesana-resumption-v2/Madhav
 branch: codex/purna-anvesana-resumption-v2
@@ -37,6 +40,21 @@ frozen_base: 6b26f3ff05ee0aba3cdd964bce62292496ae6b62
 This file governs Claude Code whenever it opens this branch. It intentionally replaces the L3 root
 brief **only on the isolated Pūrṇa branch**. L3 and all other campaigns remain outside this
 worktree and outside this authority.
+
+## R5B (2026-09-28) — source merge of PR #2742 only
+
+The Native accepted R5A as complete (PR #2742, head `d5c4c1f27`, all required checks green) and
+authorized R5B: merge PR #2742 only, without auto-merge, after reconfirming the head is clean and
+fully green against current protected main. Main moved once more (PR #2745, deploy-workflow files
+only, no overlap); it was integrated with an ordinary merge commit and its files verified
+byte-identical to main. This file records the state at merge time; because protected main cannot
+be edited after the merge without another PR, **completion of the merge is not asserted here** —
+it is recorded in the closeout report and the follow-up kickoff package.
+
+**Not complete, and not claimed:** production deployment, empirical/candidate validation
+(`candidate_validation` remains `NOT_RUN`), and campaign or product completion. Still prohibited:
+deployment, production credentials, database writes, migration application, producer rebuilds,
+live collection, auto-merge, and any further merge.
 
 ## R5A (2026-09-28) — publication and review
 
