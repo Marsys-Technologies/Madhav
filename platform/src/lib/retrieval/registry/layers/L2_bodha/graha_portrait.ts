@@ -58,6 +58,7 @@ import {
   splitByGenerationClass,
   unavailableComponents,
   type ComponentClassification,
+  componentFailures,
 } from '../../generation/composite_fence'
 import { getPositionsCapability } from '../L1_ganita/get_positions'
 import { getDignityCapability } from '../L1_ganita/get_dignity'
@@ -95,7 +96,11 @@ type FactRow = Record<string, unknown>
 function unwrap(raw: unknown): { content: FactRow; is_error: boolean } {
   const r = raw as { content?: unknown; is_error?: boolean }
   const content = (r?.content ?? {}) as FactRow
-  return { content, is_error: Boolean(r?.is_error) }
+  // Leaf handlers never throw: they catch internally and return `{ is_error: true, content }`. An
+  // error result is a FAILED section, not an empty one, so it is surfaced as a throw the section's
+  // own catch turns into a fixed-code failure (the raw content is logged server-side only).
+  if (r?.is_error) throw new Error(typeof r.content === 'string' ? r.content : JSON.stringify(r.content))
+  return { content, is_error: false }
 }
 
 /**
@@ -442,7 +447,8 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
         notes,
         errors: Object.keys(errors).length > 0 ? errors : undefined,
         components_unavailable: fence.fenced ? [] : unavailableComponents(withhold, fence.code),
-        generation_fence: compositeGenerationFence(fence),
+        component_failures: componentFailures(Object.keys(errors)),
+        generation_fence: compositeGenerationFence(fence, fence.fenced ? undefined : withhold.length),
         provenance: {
           synthesis_of: [
             'marsys://tool/L1/get_positions', 'marsys://tool/L1/get_dignity',

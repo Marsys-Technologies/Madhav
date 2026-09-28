@@ -51,7 +51,7 @@ const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const SERVED = '11111111-1111-4111-8111-111111111111'
 const LEGS = [positions, dignity, strength, avasthas, aspects, yogaDosha, yogaFirings, dispositors]
 const SENSITIVE = Object.entries(QUERY_PLANET_COMPONENTS).filter(([, c]) => c.class === 'sensitive').map(([name]) => name).sort()
-const ENVELOPE_KEYS = new Set(['chart_id', 'generation_fence', 'components_unavailable', 'judgment_flags', 'source_errors'])
+const ENVELOPE_KEYS = new Set(['chart_id', 'generation_fence', 'components_unavailable', 'judgment_flags', 'source_errors', 'component_failures'])
 
 type Content = Record<string, unknown>
 const run = async (args: Record<string, unknown> = {}) =>
@@ -129,6 +129,7 @@ describe('query_planet partial source failures (generation resolved)', () => {
     expect(is_error).toBe(false)
     expect(content['judgment_flags']).toEqual(['partial_source_error'])
     expect(content['source_errors']).toEqual([{ component: 'shadbala', code: 'component_read_failed' }])
+    expect(content['component_failures']).toEqual([{ component: 'shadbala', code: 'component_read_failed' }])
     expect(JSON.stringify(content)).not.toMatch(/permission denied|chart_facts" permission/)
     expect(content).toHaveProperty('position') // the other components still serve
     expect(console.error).toHaveBeenCalled()

@@ -93,3 +93,21 @@ describe.each(LEAVES)('$name build fence', ({ capability, args, name }) => {
     for (const { sql } of generationScopedReads()) expect(sql).not.toContain('build_id')
   })
 })
+
+describe('get_positions frame re-basing fences its side lookups too', () => {
+  it('binds the served build set on the sign lookup and the reference-sign lookup, combined with ayanamsha_id and planet', async () => {
+    mockQuery.mockResolvedValue({ rows: [{ fact_key: 'house_d1', ayanamsha_id: 'lahiri_chitrapaksha', fact_subject: 'SAT', fact_value_text: 'Aries' }] })
+    const result = await getPositionsCapability.handler(
+      { chart_id: CHART_ID, frame: 'chandra', ayanamsha_id: 'lahiri_chitrapaksha', planet: 'SAT', build_id: [SERVED] }, undefined,
+    )
+    expect(result.is_error).toBe(false)
+    const reads = generationScopedReads()
+    // main page + sign lookup + reference-sign lookup: all three are chart_facts reads.
+    expect(reads.length).toBeGreaterThanOrEqual(3)
+    for (const { sql, params } of reads) {
+      const match = sql.match(/build_id = ANY\(\$(\d+)::uuid\[\]\)/)
+      expect(match, `unfenced read -> ${sql}`).not.toBeNull()
+      expect(params[Number(match![1]) - 1], sql).toEqual([SERVED])
+    }
+  })
+})

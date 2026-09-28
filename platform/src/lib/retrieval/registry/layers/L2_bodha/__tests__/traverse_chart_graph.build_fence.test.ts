@@ -9,8 +9,12 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }))
+const { mockQuery, mockResolveAddress } = vi.hoisted(() => ({ mockQuery: vi.fn(), mockResolveAddress: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
+vi.mock('@/lib/retrieval/address_resolver', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/retrieval/address_resolver')>()),
+  resolveAddress: mockResolveAddress,
+}))
 
 import { traverseChartGraphCapability } from '../traverse_chart_graph'
 
@@ -110,5 +114,22 @@ describe('traverse_chart_graph build fence', () => {
       { chart_id: CHART_ID, mode: 'neighbors', seed_node_ids: ['node-1'] }, undefined,
     )
     for (const { sql } of cgmReads()) expect(sql).not.toContain('build_id')
+  })
+})
+
+describe('traverse_chart_graph about-address resolution is fenced (the path graha_portrait uses)', () => {
+  it('neighbors + about: the resolver receives the served build set and every downstream CGM read carries it', async () => {
+    mockResolveAddress.mockResolvedValue({ entities: [{ kind: 'graha', graha: 'SAT' }], resolution_chain: [] })
+    await traverseChartGraphCapability.handler(
+      { chart_id: CHART_ID, mode: 'neighbors', about: 'graha:SAT', build_id: [SERVED] }, undefined,
+    )
+    expect(mockResolveAddress).toHaveBeenCalledWith(CHART_ID, 'graha:SAT', expect.objectContaining({ build_id: [SERVED] }))
+    const reads = cgmReads()
+    expect(reads.length).toBeGreaterThan(0)
+    for (const { sql, params } of reads) {
+      const placeholders = fencePlaceholders(sql)
+      expect(placeholders.length, sql).toBeGreaterThan(0)
+      for (const index of placeholders) expect(params[index - 1], sql).toEqual([SERVED])
+    }
   })
 })

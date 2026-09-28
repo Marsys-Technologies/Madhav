@@ -32,6 +32,7 @@ import {
   splitByGenerationClass,
   unavailableComponents,
   type ComponentClassification,
+  componentFailures,
 } from '../../generation/composite_fence'
 import { getPositionsCapability } from './get_positions'
 import { getDignityCapability } from './get_dignity'
@@ -240,6 +241,7 @@ export const queryPlanetCapability: CapabilityDescriptor = {
             note: dispositorRows.length === 0 ? 'no dispositor-chain rows matched this graha by text heuristic — see get_dispositors directly' : undefined,
           },
           components_unavailable: [],
+          component_failures: componentFailures(sourceErrors.map((entry) => entry.component)),
           generation_fence: compositeGenerationFence(fence),
           ...(sourceErrors.length > 0 ? { judgment_flags: ['partial_source_error'], source_errors: sourceErrors } : {}),
         },

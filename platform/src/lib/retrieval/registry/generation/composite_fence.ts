@@ -20,6 +20,17 @@ export interface UnavailableComponent {
   readonly reason: string
 }
 
+/** A component the composite tried to read under a valid fence but whose read failed. */
+export interface ComponentFailure {
+  readonly component: string
+  readonly code: 'component_read_failed'
+}
+
+/** The one failure list both composites emit (fixed code only; the raw error stays in the server log). */
+export function componentFailures(components: readonly string[]): ComponentFailure[] {
+  return components.map((component) => ({ component, code: 'component_read_failed' as const }))
+}
+
 export type CompositeFence =
   | { readonly fenced: true; readonly build_ids: readonly string[] }
   | { readonly fenced: false; readonly code: UnavailableComponentCode }
@@ -67,7 +78,7 @@ export function unavailableComponents(
 }
 
 /** The `generation_fence` disclosure: machine-readable in both states, fixed note text. */
-export function compositeGenerationFence(fence: CompositeFence): {
+export function compositeGenerationFence(fence: CompositeFence, withheldCount?: number): {
   fenced: boolean
   build_ids: readonly string[] | null
   code: UnavailableComponentCode | null
@@ -80,7 +91,14 @@ export function compositeGenerationFence(fence: CompositeFence): {
         code: null,
         note: "generation-sensitive components were read fenced to the chart's served build set",
       }
-    : { fenced: false, build_ids: null, code: fence.code, note: REASON[fence.code] }
+    : {
+        fenced: false,
+        build_ids: null,
+        code: fence.code,
+        note: withheldCount === 0
+          ? 'no served generation is resolved for this chart; no generation-sensitive component was requested, so nothing was withheld'
+          : REASON[fence.code],
+      }
 }
 
 /**

@@ -130,16 +130,43 @@ describe('graha_portrait without a valid served generation', () => {
 })
 
 describe('graha_portrait section failures (generation resolved)', () => {
-  it('reports a failing section by fixed code, never raw text, and still serves the others', async () => {
+  it('reports a throwing section by fixed code, never raw text, and still serves the others', async () => {
     mockResolve.mockResolvedValue({ served_build_ids: [SERVED] })
     strength.handler.mockRejectedValue(new Error('permission denied for relation chart_facts (role app_reader)'))
     const { content, is_error } = await run({ include: ['strength', 'position'] })
 
     expect(is_error).toBe(false)
     expect(content['errors']).toEqual({ strength: 'component_read_failed' })
+    expect(content['component_failures']).toEqual([{ component: 'strength', code: 'component_read_failed' }])
     expect((content['completeness'] as Record<string, string>)['strength']).toBe('error')
     expect(content).toHaveProperty('position')
     expect(JSON.stringify(content)).not.toMatch(/permission denied|app_reader/)
     expect(console.error).toHaveBeenCalled()
+  })
+
+  // Real leaf handlers never throw: they catch internally and RETURN { is_error: true, content }.
+  it.each([
+    ['dignity', { include: ['dignity'] }, () => dignity.handler.mockResolvedValue({ content: 'error: relation "chart_facts" permission denied', is_error: true })],
+    ['avasthas', { include: ['avasthas'] }, () => avasthas.handler.mockResolvedValue({ content: { error: 'db down: app_reader' }, is_error: true })],
+    ['dashas', { include: ['dashas'] }, () => dashas.handler.mockResolvedValue({ content: { error: 'ga_dashas_receipt_unavailable' }, is_error: true })],
+    ['cgm_neighborhood', { include: ['cgm_neighborhood'] }, () => traverse.handler.mockResolvedValue({ content: { error: 'no node for graha' }, is_error: true })],
+  ] as const)('a returned error result from %s is a FAILED section, not an empty one', async (section, args, arrange) => {
+    mockResolve.mockResolvedValue({ served_build_ids: [SERVED] })
+    arrange()
+    const { content, is_error } = await run({ ...args })
+
+    expect(is_error).toBe(false)
+    expect((content['errors'] as Record<string, string>)[section]).toBe('component_read_failed')
+    expect(content['component_failures']).toContainEqual({ component: section, code: 'component_read_failed' })
+    expect((content['completeness'] as Record<string, string>)[section]).toBe('error')
+    expect(content).not.toHaveProperty(section)
+    expect(JSON.stringify(content)).not.toMatch(/permission denied|app_reader|ga_dashas_receipt_unavailable|no node for graha/)
+  })
+
+  it('states honestly that nothing was withheld when no generation resolves but only a self-fenced section was requested', async () => {
+    mockResolve.mockResolvedValue({ served_build_ids: [] })
+    const { content } = await run({ include: ['dashas'] })
+    expect(content['components_unavailable']).toEqual([])
+    expect(JSON.stringify(content['generation_fence'])).toMatch(/nothing was withheld/)
   })
 })

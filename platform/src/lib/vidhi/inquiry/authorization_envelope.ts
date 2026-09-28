@@ -203,7 +203,8 @@ const ENVELOPE_LIMITS: AuthorizationEnvelopeLimits = {
 }
 
 export function authorizationEnvelopeHash(envelope: Omit<AuthorizationEnvelope, 'envelope_hash'> | AuthorizationEnvelope): string {
-  const { envelope_hash: _ignored, ...body } = envelope as AuthorizationEnvelope
+  const body: Record<string, unknown> = { ...envelope }
+  delete body['envelope_hash']
   return stableFingerprint(body)
 }
 
@@ -352,9 +353,14 @@ function seal(body: Omit<SuccessorAdmissionDecision, 'decision_hash'>): Successo
   return { ...body, decision_hash: stableFingerprint(body) }
 }
 
+function withoutDecisionHash(decision: SuccessorAdmissionDecision): Omit<SuccessorAdmissionDecision, 'decision_hash'> {
+  const body: Record<string, unknown> = { ...decision }
+  delete body['decision_hash']
+  return body as unknown as Omit<SuccessorAdmissionDecision, 'decision_hash'>
+}
+
 export function verifySuccessorDecision(decision: SuccessorAdmissionDecision): boolean {
-  const { decision_hash: recorded, ...body } = decision
-  return recorded === stableFingerprint(body)
+  return decision.decision_hash === stableFingerprint(withoutDecisionHash(decision))
     && (decision.decision === 'admit') === (decision.code === 'successor_admitted')
 }
 
@@ -506,8 +512,7 @@ export function evaluateSuccessorItemForDispatch(args: {
     const code: SuccessorAdmissionCode = stored?.decision === 'refuse' ? stored.code
       : decision.decision === 'refuse' ? decision.code
       : 'successor_capability_not_authorized_for_request'
-    const { decision_hash: _superseded, ...body } = decision
-    return seal({ ...body, decision: 'refuse', code })
+    return seal({ ...withoutDecisionHash(decision), decision: 'refuse', code })
   }
   return decision
 }

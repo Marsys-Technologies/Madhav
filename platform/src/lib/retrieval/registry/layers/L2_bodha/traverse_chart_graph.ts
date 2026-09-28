@@ -609,6 +609,7 @@ async function _neighborsMode(
       n.present_in_traditions_array
     FROM bodha_cgm_nodes n
     JOIN visited v ON n.node_id = v.node_id
+    ${buildIds ? `WHERE n.build_id = ANY($${buildParamIdx}::uuid[])` : ''}
     ORDER BY n.pagerank_score DESC NULLS LAST
   `
 
