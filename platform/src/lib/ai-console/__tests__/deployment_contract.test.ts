@@ -9,6 +9,7 @@ const snapshotRepair = readFileSync(
   resolve(repositoryRoot, 'platform/migrations/1125_ai_snapshot_shape_operator_precedence.sql'),
   'utf8',
 )
+const liveProbe = readFileSync(resolve(repositoryRoot, 'platform/scripts/probe/ask.ts'), 'utf8')
 
 describe('AI Console production deployment contract', () => {
   it('bakes the browser flag into both PR and production images', () => {
@@ -34,5 +35,9 @@ describe('AI Console production deployment contract', () => {
     expect(snapshotRepair).toContain('CREATE OR REPLACE FUNCTION ai_snapshot_shape')
     expect(workflow).toContain('migrations+=(1124_ai_console_byok_routing.sql)')
     expect(workflow).toContain('migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)')
+  })
+
+  it('keeps the standing Pariprashna probe on the mandatory account default', () => {
+    expect(liveProbe).toContain("ai_selection: { kind: 'default' }")
   })
 })

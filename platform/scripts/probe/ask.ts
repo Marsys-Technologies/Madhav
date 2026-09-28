@@ -303,6 +303,9 @@ async function main() {
       body: JSON.stringify({
         chartId: args.chartId,
         conversationId: args.conversationId,
+        // Mirror the feature-on picker contract: the standing probe always
+        // asks Pariprashna to resolve this account's configured default.
+        ai_selection: { kind: 'default' },
         reading_depth: 'auto',
         length_tier: 'standard',
         messages: [{ id: `${turnId}-user`, role: 'user', parts: [{ type: 'text', text: args.question }] }],
