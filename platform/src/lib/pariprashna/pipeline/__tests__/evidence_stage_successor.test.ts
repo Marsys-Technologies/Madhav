@@ -8,28 +8,17 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
-import generatedSnapshot from '@/generated/capability_knowledge.snapshot.json'
 import { w5DoorParityPlan, w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 import { buildInquiryFactRegister } from '@/lib/vidhi/inquiry/response_accountability'
-import { compileInquiryContract } from '@/lib/vidhi/inquiry/compiler'
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
-import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge/types'
-
-const CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
-const SNAPSHOT = generatedSnapshot as CapabilityKnowledgeSnapshot
-// Every platform-internal binding proven available, so only authorization limits dispatch.
-const OVERLAY: ChartCapabilityOverlay = {
-  chart_id: CHART_ID, overlay_version: 'sha256:successor-fixture-overlay',
-  capability_compatibility_version: SNAPSHOT.compatibility_version, catalog_content_hash: SNAPSHOT.content_hash,
-  build_id: 'generation:successor-fixture', code_revision: 'fixture', writer_inventory_hash: null,
-  generated_at: '2026-09-27T00:00:00.000Z',
-  availability: SNAPSHOT.scus.map((scu) => ({
-    scu_id: scu.scu_id, state: 'available' as const, build_status: 'served_generation', build_id: 'generation:successor-fixture',
-    freshness: 'fixture', gaps: [], asset_receipts: [],
-    available_binding_ids: scu.bindings.filter((binding) => binding.executable
-      && binding.execution_channels?.includes('platform_internal')).map((binding) => binding.binding_id),
-  })),
-}
+import {
+  SCENARIO_CHART_ID as CHART_ID,
+  SCENARIO_OVERLAY as OVERLAY,
+  SCENARIO_SNAPSHOT as SNAPSHOT,
+  expectedAdmitProjection,
+  projectDecision,
+  scenarioFixture,
+} from '@/lib/vidhi/inquiry/__fixtures__/successor_envelope_scenario'
 
 const state = vi.hoisted(() => ({ triggerTool: '' as string, dispatched: [] as string[], paginate: false }))
 
@@ -72,8 +61,6 @@ vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
 
 const { runEvidenceStage } = await import('../evidence_stage')
 
-const TARGETS = ['scu.yoga.firing_and_cancellation', 'scu.catalog.judgment_query']
-
 function emitter(): { em: PariprashnaEmitter; flags: Array<Record<string, unknown>> } {
   const flags: Array<Record<string, unknown>> = []
   return {
@@ -85,20 +72,8 @@ function emitter(): { em: PariprashnaEmitter; flags: Array<Record<string, unknow
 }
 
 function setup(): { contract: InquiryContract; source: string; targetUri: string } {
-  const contract = compileInquiryContract({
-    snapshot: SNAPSHOT, overlay: OVERLAY, chart_id: CHART_ID, question: 'What is my current dasha?',
-    scope_tuple: { intent: 'timing', domains: ['general'], width: 'narrow', depth: 'retrieval', horizon: 'current', intervention: 'none', entitlement: 'native' } as never,
-    execution_channel: 'platform_internal', temporal_anchor_date: '2026-09-27',
-  })
-  const planned = new Set([...contract.obligations.flatMap((o) => o.scu_ids), ...contract.plan_items.map((i) => i.scu_id)])
-  const target = TARGETS.find((scuId) => !planned.has(scuId))
-  const source = contract.plan_items.find((item) => item.state === 'ready' && item.binding_id
-    && contract.obligations.some((o) => item.obligation_ids.includes(o.obligation_id) && o.materiality === 'required'))
-  if (!target || !source?.binding_id) throw new Error('fixture has no unplanned rule target or required source')
-  const targetScu = SNAPSHOT.scus.find((scu) => scu.scu_id === target)!
-  const targetBinding = targetScu.bindings.find((binding) => binding.executable && binding.binding_id.startsWith('registry:')
-    && binding.execution_channels?.includes('platform_internal'))!
-  return { contract, source: source.binding_id.slice('registry:'.length), targetUri: targetBinding.binding_id.slice('registry:'.length) }
+  const { contract, sourceUri, targetUri } = scenarioFixture('platform_internal')
+  return { contract, source: sourceUri, targetUri }
 }
 
 async function run(contract: InquiryContract, toolsAuthorized: string[], extra: { chartAccessVerified?: boolean; excludedCapabilities?: string[] } = {}) {
@@ -149,6 +124,9 @@ describe('Portal evidence-driven successor', () => {
     expect(item.successor_admission).toMatchObject({ decision: 'admit', code: 'successor_admitted' })
     expect(item.successor_dispatch).toMatchObject({ decision: 'admit', code: 'successor_admitted', scu_id: item.scu_id })
     expect(item.observation?.disposition).toBe('served')
+    // Door parity: the same pinned contract and frontier produce the shared receipt projection.
+    expect(projectDecision(item.successor_admission!)).toEqual(expectedAdmitProjection())
+    expect(projectDecision(item.successor_dispatch!)).toEqual(expectedAdmitProjection())
   })
 
   it('never dispatches a successor the request safety pass excluded; it names the gap with the decision code', async () => {

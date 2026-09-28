@@ -7,24 +7,18 @@
  * ready item, no replayed dispatch, no bypassed authorization), and an in-flight ambiguous action.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import generatedSnapshot from '@/generated/capability_knowledge.snapshot.json'
-import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge/types'
+import {
+  SCENARIO_CHART_ID as CHART,
+  SCENARIO_OVERLAY as OVERLAY,
+  SCENARIO_QUESTION as QUESTION,
+  SCENARIO_SCOPE as SCOPE,
+  SCENARIO_SNAPSHOT as SNAPSHOT,
+  compileScenarioRoot,
+  expectedAdmitProjection,
+  projectDecision,
+  scenarioFixture,
+} from '@/lib/vidhi/inquiry/__fixtures__/successor_envelope_scenario'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-
-const CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
-const SNAPSHOT = generatedSnapshot as CapabilityKnowledgeSnapshot
-const OVERLAY: ChartCapabilityOverlay = {
-  chart_id: CHART, overlay_version: 'sha256:successor-route-overlay',
-  capability_compatibility_version: SNAPSHOT.compatibility_version, catalog_content_hash: SNAPSHOT.content_hash,
-  build_id: 'generation:successor-route', code_revision: 'fixture', writer_inventory_hash: null,
-  generated_at: '2026-09-27T00:00:00.000Z',
-  availability: SNAPSHOT.scus.map((scu) => ({
-    scu_id: scu.scu_id, state: 'available' as const, build_status: 'served_generation', build_id: 'generation:successor-route',
-    freshness: 'fixture', gaps: [], asset_receipts: [],
-    available_binding_ids: scu.bindings.filter((binding) => binding.executable
-      && binding.execution_channels?.includes('platform_internal')).map((binding) => binding.binding_id),
-  })),
-}
 
 const state = vi.hoisted(() => ({
   dispatched: [] as string[],
@@ -109,7 +103,7 @@ vi.mock('@/lib/pariprashna/safety/flag', () => ({ SAFETY_GATE_FLAG: 'x', isSafet
 
 import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
-import { compileInquiryContract, type InquiryContract } from '@/lib/vidhi/inquiry'
+import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { managedEvidenceSuccessorInquiryId, ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
@@ -118,30 +112,12 @@ import { w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_pa
 
 state.toolResult = w5DoorParityToolResult
 
-const SCOPE = { intent: 'dasha_timing', domains: ['general'], width: 'narrow', depth: 'standard', horizon: 'present', intervention: 'none', entitlement: 'native' }
-const QUESTION = 'What is my current dasha?'
-const TARGET_SCUS = ['scu.yoga.firing_and_cancellation', 'scu.catalog.judgment_query']
 const PRINCIPAL = 'owner-uid'
 const JOB_ID = 'aaaaaaaa-1111-4000-8000-000000000031'
 const INQUIRY_ID = 'bbbbbbbb-1111-4000-8000-000000000031'
 
-function compileRoot(): InquiryContract {
-  return compileInquiryContract({
-    snapshot: SNAPSHOT, overlay: OVERLAY, chart_id: CHART, question: QUESTION, scope_tuple: SCOPE as never,
-    execution_channel: 'platform_internal', temporal_anchor_date: new Date().toISOString().slice(0, 10),
-    temporal_anchor_source: 'request_context_clock',
-  })
-}
-
-function fixture() {
-  const contract = compileRoot()
-  const planned = new Set(contract.plan_items.map((item) => item.scu_id))
-  const entry = contract.authorization_envelope!.entries.find((candidate) => TARGET_SCUS.includes(candidate.scu_id) && !planned.has(candidate.scu_id))
-  const source = contract.plan_items.find((item) => item.state === 'ready' && item.binding_id
-    && contract.obligations.some((o) => item.obligation_ids.includes(o.obligation_id) && o.materiality === 'required'))
-  if (!entry || !source?.binding_id) throw new Error('fixture has no envelope entry or required source item')
-  return { contract, entry, source, sourceUri: source.binding_id.slice('registry:'.length), targetUri: entry.capability_uri }
-}
+const compileRoot = () => compileScenarioRoot('platform_internal')
+const fixture = () => scenarioFixture('platform_internal')
 
 function post(): Promise<Response> {
   return POST(new Request('http://localhost/api/mcp/prashna_ask', {
@@ -201,6 +177,9 @@ describe('managed door: envelope-admitted successor (real compiler + real lifecy
     expect(item.observation?.disposition).toBe('served')
     expect(item.successor_admission).toMatchObject({ decision: 'admit', code: 'successor_admitted', envelope_entry_id: entry.entry_id })
     expect(item.successor_dispatch).toMatchObject({ decision: 'admit', code: 'successor_admitted', scu_id: entry.scu_id })
+    // Door parity: the same pinned contract and frontier produce the shared receipt projection.
+    expect(projectDecision(item.successor_admission!)).toEqual(expectedAdmitProjection())
+    expect(projectDecision(item.successor_dispatch!)).toEqual(expectedAdmitProjection())
     // The durable evidence receipt carries the admission alongside the bundle.
     const receipt = state.store!.evidence.find((candidate) => candidate.inquiry_id === successor.inquiry_id && candidate.plan_item_id === item.item_id)!
     expect((receipt.evidence_jsonb as { admission?: { decision: string; decision_hash: string } }).admission)
