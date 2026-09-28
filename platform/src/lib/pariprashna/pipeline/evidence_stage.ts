@@ -33,7 +33,7 @@ import { bindingForInquiryItem, classifyInquiryResult, closeInquiryForEvidenceSu
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { getPinnedCapabilityKnowledgeSnapshot, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-import { evaluateSuccessorItemForDispatch, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { evaluateSuccessorItemForDispatch, refineSuccessorAdmission, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 
 /** The pass id every first-pass retrieval event carries. */
@@ -226,7 +226,7 @@ export async function runEvidenceStage(args: {
         const binding = bindingForInquiryItem(snapshot, contract, item.item_id)
         // In a successor generation the request's tool set is NOT the authority — the plan-time
         // envelope is. Its decision is recomputed here, never trusted from the compile.
-        const admission = contract.successor
+        let admission = contract.successor
           ? evaluateSuccessorItemForDispatch({
             contract, item_id: item.item_id, snapshot,
             // Chart, overlay and served build are re-read now, not carried over from compile time.
@@ -235,6 +235,13 @@ export async function runEvidenceStage(args: {
             live: successorLive(await loadChartCapabilityOverlay(snapshot, chartId).catch(() => ({ overlay_version: null, build_id: null }))),
           })
           : null
+        const toolName = admission
+          ? capabilityUri
+          : toolsAuthorized.find((name) => resolveToolUri(name) === capabilityUri)
+        const tool = toolName ? getToolByName(toolName) as RetrievalTool | undefined : undefined
+        // The envelope admitted but the live tool or binding is gone: a definitive, receipted refusal
+        // (same code and shape as the raw door), never an admit stamped on a dispatch that never happened.
+        admission = refineSuccessorAdmission(admission, { tool_present: Boolean(tool), binding_present: Boolean(binding), args_authorized: true })
         if (admission && admission.decision === 'refuse') {
           // Name the gap with the decision's own stable code instead of leaving a dangling ready action.
           skipped.add(item.item_id)
@@ -247,10 +254,6 @@ export async function runEvidenceStage(args: {
           }), item.item_id)
           continue
         }
-        const toolName = admission
-          ? capabilityUri
-          : toolsAuthorized.find((name) => resolveToolUri(name) === capabilityUri)
-        const tool = toolName ? getToolByName(toolName) as RetrievalTool | undefined : undefined
         if (!toolName || !tool || !binding) {
           if (!firstTime) break
           // Name the gap instead of leaving a dangling ready action: the capability is not among
@@ -261,7 +264,6 @@ export async function runEvidenceStage(args: {
             gap_reason: 'successor_capability_not_authorized_for_request',
             pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
             request_position_path: binding?.pagination_contract?.request_position_path,
-            ...(admission ? { successor_dispatch: admission } : {}),
           })
           continue
         }

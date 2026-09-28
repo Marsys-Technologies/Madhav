@@ -81,7 +81,7 @@ import {
   ensureDashaContextFloor,
 } from '@/lib/pipeline/compiled_floor_adapter'
 import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
-import { evaluateSuccessorItemForDispatch } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { evaluateSuccessorItemForDispatch, refineSuccessorAdmission } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
@@ -1285,7 +1285,7 @@ export async function POST(request: Request) {
           // envelope is, and its decision is recomputed here from the durable contract plus this
           // request's server-held state (never trusted from the compile, so a recovered worker
           // re-derives it identically).
-          const admission = managedInquirySession.currentContract.successor || (managedInquirySession.parentInquiryId ?? null) !== null
+          let admission = managedInquirySession.currentContract.successor || (managedInquirySession.parentInquiryId ?? null) !== null
             ? evaluateSuccessorItemForDispatch({
               contract: managedInquirySession.currentContract, item_id: item.item_id, snapshot: inquirySnapshot,
               live: successorLive(await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id).catch(() => ({ overlay_version: null, build_id: null }))),
@@ -1298,6 +1298,9 @@ export async function POST(request: Request) {
             ? capabilityUri
             : dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
           const tool = toolName ? getToolByName(toolName) : undefined
+          // The envelope admitted but the live tool or binding is gone: a definitive, receipted refusal
+          // (same code and shape as the raw and Portal doors), never an admit stamped on a non-dispatch.
+          admission = refineSuccessorAdmission(admission, { tool_present: Boolean(tool), binding_present: Boolean(binding), args_authorized: true })
           if ((admission && admission.decision === 'refuse') || !toolName || !tool || !binding) {
             if (!admission && (!firstTime || item.observation !== null)) {
               judgmentFlags.push('managed_inquiry_continuation_unavailable')

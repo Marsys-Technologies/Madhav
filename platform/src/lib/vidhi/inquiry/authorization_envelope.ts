@@ -247,19 +247,25 @@ export interface SuccessorAdmissionLiveContext {
  */
 const UNIVERSAL_DOMAINS: ReadonlySet<string> = new Set(['all', 'cross_domain'])
 
-const ENTITLEMENT_RANK: Readonly<Record<string, number>> = {
+// A null-prototype table: a stored tier such as `constructor` or `__proto__` must be UNKNOWN, not a
+// function that happens to compare false. Unknown always fails closed.
+const ENTITLEMENT_RANK: Readonly<Record<string, number>> = Object.freeze(Object.assign(Object.create(null) as Record<string, number>, {
   none: 0,
   native: 3,
   research: 2,
   public_disclosed: 1,
   reference: 1,
   restricted: 1,
+}))
+
+function tierRank(tier: unknown): number | undefined {
+  return typeof tier === 'string' && Object.hasOwn(ENTITLEMENT_RANK, tier) ? ENTITLEMENT_RANK[tier] : undefined
 }
 
 /** A capability tier is permitted when it does not exceed the caller's scope tier; unknown fails closed. */
 export function entitlementTierPermitted(capabilityTier: string, scopeTier: string): boolean {
-  const capability = ENTITLEMENT_RANK[capabilityTier]
-  const scope = ENTITLEMENT_RANK[scopeTier]
+  const capability = tierRank(capabilityTier)
+  const scope = tierRank(scopeTier)
   return capability !== undefined && scope !== undefined && capability <= scope
 }
 
@@ -270,11 +276,27 @@ const ENVELOPE_LIMITS: AuthorizationEnvelopeLimits = {
   max_successor_dispatch_units: MAX_SUCCESSOR_DISPATCH_UNITS,
 }
 
+const EFFECTIVE_TIERS: ReadonlySet<string> = new Set(['native', 'public_disclosed', 'none'])
+const EFFECTIVE_SOURCES: ReadonlySet<string> = new Set(['chart_permission_all', 'chart_permission_view', 'chart_permission_unverified'])
+
+/**
+ * The tier a stored envelope claims to have been granted. With no envelope there is nothing stored to
+ * bound the live grant (the plan-continuation authority); an envelope whose recorded entitlement is
+ * absent or malformed (unknown tier or source, wrong type) grants NOTHING — a stored value is trusted
+ * only after it validates against the closed unions.
+ */
+function storedGrantTier(envelope: AuthorizationEnvelope | undefined, live: string): string {
+  if (envelope === undefined) return live
+  const recorded = (envelope as { effective_entitlement?: { tier?: unknown; source?: unknown } }).effective_entitlement
+  if (!recorded || typeof recorded.tier !== 'string' || typeof recorded.source !== 'string') return 'none'
+  return EFFECTIVE_TIERS.has(recorded.tier) && EFFECTIVE_SOURCES.has(recorded.source) ? recorded.tier : 'none'
+}
+
 /** The lower of two tiers; anything unrecognized collapses to `none`. */
 export function lowerEntitlementTier(left: string, right: string): string {
-  const a = ENTITLEMENT_RANK[left]
-  const b = ENTITLEMENT_RANK[right]
-  if (a === undefined || b === undefined) return 'none'
+  const a = tierRank(left)
+  const b = tierRank(right)
+  if (a === undefined || b === undefined || !Number.isFinite(a) || !Number.isFinite(b)) return 'none'
   return a <= b ? left : right
 }
 
@@ -327,6 +349,7 @@ export function appendSuccessorCharge(
 
 /** Recompute the chain, the total and the hash; any edit, deletion or reorder fails. */
 export function verifySuccessorCostLedger(ledger: SuccessorCostLedger): boolean {
+  if (!ledger || !Array.isArray(ledger.entries)) return false
   let previous = 'genesis'
   let total = 0
   for (const [index, entry] of ledger.entries.entries()) {
@@ -353,7 +376,8 @@ export function lineageConsumedUnits(contract: { successor_cost_ledger?: Success
     }
     current = current.successor?.parent_contract as typeof contract | undefined
   }
-  return total
+  // A lineage deeper than the ceiling permits is unverifiable, not partially counted.
+  return current ? null : total
 }
 
 export function authorizationEnvelopeHash(envelope: Omit<AuthorizationEnvelope, 'envelope_hash'> | AuthorizationEnvelope): string {
@@ -504,6 +528,11 @@ function chainState(contract: ChainContract): { depth: number; iterations: numbe
   return { depth, iterations, admitted }
 }
 
+function envelopeIntactForLimits(envelope: AuthorizationEnvelope | undefined): boolean {
+  return envelope !== undefined && typeof envelope.limits === 'object' && envelope.limits !== null
+    && authorizationEnvelopeHash(envelope) === envelope.envelope_hash
+}
+
 function isReadOnlyDescriptor(binding: SemanticCapabilityBinding, descriptor: LiveDescriptor | undefined): boolean {
   return isInquirySafeRegistryDescriptor(binding, descriptor) && descriptor?.mcp_annotations?.readOnly !== false
 }
@@ -585,11 +614,18 @@ export function evaluateSuccessorAdmission(input: {
   const chainBase = chainState(contract)
   const chain = { ...chainBase, admitted: chainBase.admitted + (input.admitted_in_batch ?? 0) }
   // Ceilings a stored envelope declares can only tighten the platform's own, never loosen them.
+  // A stored ceiling is read only from an envelope that passes its own hash check, and only if it is a
+  // non-negative integer: anything else (NaN, a string, a negative) collapses to ZERO, never to "no limit".
+  const stored = envelopeIntactForLimits(envelope) ? envelope!.limits : undefined
+  const clampLimit = (recorded: unknown, platform: number): number => {
+    if (recorded === undefined) return platform
+    return typeof recorded === 'number' && Number.isInteger(recorded) && recorded >= 0 ? Math.min(recorded, platform) : 0
+  }
   const limits: AuthorizationEnvelopeLimits = {
-    max_successor_depth: Math.min(envelope?.limits.max_successor_depth ?? MAX_SUCCESSOR_DEPTH, MAX_SUCCESSOR_DEPTH),
-    max_admitted_successor_items: Math.min(envelope?.limits.max_admitted_successor_items ?? MAX_ADMITTED_SUCCESSOR_ITEMS, MAX_ADMITTED_SUCCESSOR_ITEMS),
-    max_chain_iterations: Math.min(envelope?.limits.max_chain_iterations ?? MAX_CHAIN_ITERATIONS, MAX_CHAIN_ITERATIONS),
-    max_successor_dispatch_units: Math.min(envelope?.limits.max_successor_dispatch_units ?? MAX_SUCCESSOR_DISPATCH_UNITS, MAX_SUCCESSOR_DISPATCH_UNITS),
+    max_successor_depth: clampLimit(stored?.max_successor_depth, MAX_SUCCESSOR_DEPTH),
+    max_admitted_successor_items: clampLimit(stored?.max_admitted_successor_items, MAX_ADMITTED_SUCCESSOR_ITEMS),
+    max_chain_iterations: clampLimit(stored?.max_chain_iterations, MAX_CHAIN_ITERATIONS),
+    max_successor_dispatch_units: clampLimit(stored?.max_successor_dispatch_units, MAX_SUCCESSOR_DISPATCH_UNITS),
   }
   // The shared successor cost model. A ledger that fails verification, or a price that is not a positive
   // integer, is not "free": it exhausts the budget.
@@ -694,7 +730,7 @@ export function evaluateSuccessorAdmission(input: {
   // right now, what the (hash-bound) envelope was granted, and the semantic scope (which only narrows).
   // Nothing caller-, planner- or storage-supplied can raise it above the live server-derived grant.
   const grantedTier = lowerEntitlementTier(
-    lowerEntitlementTier(effectiveNow.tier, envelope?.effective_entitlement.tier ?? effectiveNow.tier),
+    lowerEntitlementTier(effectiveNow.tier, storedGrantTier(envelope, effectiveNow.tier)),
     contract.scope_tuple.entitlement,
   )
   if (!entitlementTierPermitted(scu.entitlement, grantedTier)) return refuse('successor_entitlement_not_permitted')
@@ -731,6 +767,16 @@ export function evaluateSuccessorItemForDispatch(args: {
   if (!successor && !args.expect_successor) return null
   const item = args.contract.plan_items.find((candidate) => candidate.item_id === args.item_id)
   if (!successor || !item) return refusedWithoutReceipt(args.item_id, item?.scu_id ?? '', args.live)
+  // The lineage's own seals: the successor receipt hashes itself (and so its embedded parent, whose
+  // ledger is part of the shared budget), and records the parent's state hash. A deleted or rewritten
+  // ancestor ledger breaks these, which a per-ledger check alone cannot see (an ABSENT ledger reads as
+  // zero). Likewise this generation's own ledger must hold an entry for every dispatch it stamped.
+  const { successor_hash: recordedSuccessorHash, ...successorBody } = successor
+  const ledgerItemIds = new Set((args.contract.successor_cost_ledger?.entries ?? []).map((entry) => entry.item_id))
+  const lineageIntact = recordedSuccessorHash === stableFingerprint(successorBody)
+    && successor.parent_contract_state_hash === stableFingerprint(successor.parent_contract)
+    && args.contract.plan_items.every((candidate) => candidate.successor_dispatch?.decision !== 'admit' || ledgerItemIds.has(candidate.item_id))
+  if (!lineageIntact) return refusedWithoutReceipt(args.item_id, item.scu_id, args.live)
   const parent = successor.parent_contract
   const admitted = successor.admitted_frontier.find((frontier) => frontier.scu_id === item.scu_id)
   const stored = item.successor_admission
@@ -786,6 +832,23 @@ export function terminalizeRefusedSuccessorItem(contract: InquiryContract, itemI
       ? { ...candidate, state: 'observed' as const }
       : candidate),
   }
+}
+
+/**
+ * The one post-evaluation gate every door applies immediately before it would dispatch an ADMITTED
+ * successor item: the live tool and binding must still resolve and the arguments must still be the
+ * authorized ones. Anything else turns the admit into a definitive, receipted refusal (same codes,
+ * same receipt fields on every door) instead of an admit stamped on a dispatch that never happened.
+ * Refusals and non-successor items pass through untouched.
+ */
+export function refineSuccessorAdmission(
+  admission: SuccessorAdmissionDecision | null,
+  gates: { readonly tool_present: boolean; readonly binding_present: boolean; readonly args_authorized: boolean },
+): SuccessorAdmissionDecision | null {
+  if (admission === null || admission.decision !== 'admit') return admission
+  if (!gates.tool_present || !gates.binding_present) return refuseAdmittedSuccessor(admission, 'successor_capability_not_in_catalogue')
+  if (!gates.args_authorized) return refuseAdmittedSuccessor(admission, 'successor_arguments_not_authorized')
+  return admission
 }
 
 /**

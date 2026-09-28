@@ -16,6 +16,7 @@ import {
   evaluateSuccessorAdmission,
   evaluateSuccessorItemForDispatch,
   lineageConsumedUnits,
+  refineSuccessorAdmission,
   refuseAdmittedSuccessor,
   verifySuccessorCostLedger,
   verifySuccessorDecision,
@@ -132,6 +133,33 @@ describe('Stage 1 — entitlement is server-authoritative', () => {
       expect(run('view', widenedScope as InquiryContract)).toMatchObject({ code: 'successor_entitlement_not_permitted' })
     })
 
+    it.each(['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf', 'Native', '', 7, null] as const)(
+      'a re-sealed stored envelope recording the malformed tier %j grants nothing (and cannot discard the live grant)',
+      (tier) => {
+        const stored = { ...base.contract.authorization_envelope!, effective_entitlement: { tier: tier as never, source: 'chart_permission_all' as const } }
+        const resealed = { ...stored, envelope_hash: authorizationEnvelopeHash(stored) }
+        // Even a FULL live grant cannot rescue an envelope that recorded no valid grant.
+        expect(run('all', base.contract, resealed)).toMatchObject({ decision: 'refuse', code: 'successor_entitlement_not_permitted' })
+      },
+    )
+
+    it('an envelope with a missing or malformed effective_entitlement (e.g. issued before it existed) refuses instead of throwing', () => {
+      for (const recorded of [undefined, null, {}, { tier: 'native' }, { tier: 'native', source: 'made_up' }, 'native'] as const) {
+        const stored: Record<string, unknown> = { ...base.contract.authorization_envelope! }
+        if (recorded === undefined) delete stored['effective_entitlement']
+        else stored['effective_entitlement'] = recorded
+        stored['envelope_hash'] = authorizationEnvelopeHash(stored as never)
+        expect(() => run('all', base.contract, stored as never), JSON.stringify(recorded)).not.toThrow()
+        expect(run('all', base.contract, stored as never), JSON.stringify(recorded)).toMatchObject({ decision: 'refuse', code: 'successor_entitlement_not_permitted' })
+      }
+    })
+
+    it('the scope tuple narrows at dispatch: a live-full, stored-native grant is still cut down by a narrower declared scope', () => {
+      const narrowed = { ...base.contract, scope_tuple: { ...base.contract.scope_tuple, entitlement: 'public_disclosed' } }
+      expect(run('all', narrowed as InquiryContract)).toMatchObject({ code: 'successor_entitlement_not_permitted' })
+      expect(run('all', { ...base.contract, scope_tuple: { ...base.contract.scope_tuple, entitlement: 'constructor' } } as InquiryContract)).toMatchObject({ code: 'successor_entitlement_not_permitted' })
+    })
+
     it('an envelope edited without re-sealing authorizes nothing', () => {
       const edited = { ...base.contract.authorization_envelope!, effective_entitlement: { tier: 'native' as const, source: 'chart_permission_view' as const } }
       expect(run('all', base.contract, edited)).toMatchObject({ code: 'successor_capability_not_authorized_for_request' })
@@ -245,8 +273,19 @@ describe('Stage 2 — one shared, deterministic successor cost model', () => {
     const parent = successor.successor!.parent_contract
     const inflated = { ...parent.authorization_envelope!, limits: { ...parent.authorization_envelope!.limits, max_successor_dispatch_units: 10_000 } }
     const inflatedParent = { ...parent, authorization_envelope: { ...inflated, envelope_hash: authorizationEnvelopeHash(inflated) } }
+    // Rewriting an embedded parent breaks the successor receipt's own seal: refused outright.
     const widened = { ...successor, successor_cost_ledger: ledger, successor: { ...successor.successor!, parent_contract: inflatedParent } } as InquiryContract
-    expect(dispatch(widened)).toMatchObject({ code: 'successor_cost_limit_exceeded', limit_state: { budget_units: MAX_SUCCESSOR_DISPATCH_UNITS } })
+    expect(dispatch(widened)).toMatchObject({ decision: 'refuse', code: 'successor_receipt_incomplete' })
+    // And a re-sealed inflated ceiling handed straight to the evaluator is clamped to the platform constant.
+    const base = scenarioFixture('platform_internal')
+    const inflatedEnvelope = { ...base.contract.authorization_envelope!, limits: { ...base.contract.authorization_envelope!.limits, max_successor_dispatch_units: 10_000 } }
+    const sealed = { ...inflatedEnvelope, envelope_hash: authorizationEnvelopeHash(inflatedEnvelope) }
+    const spent = { ...base.contract, successor_cost_ledger: appendSuccessorCharge(undefined, { item_id: 'i', scu_id: 's', units: MAX_SUCCESSOR_DISPATCH_UNITS, decision_hash: 'h' }) } as InquiryContract
+    expect(evaluateSuccessorAdmission({
+      envelope: sealed, snapshot,
+      candidate: { scu_id: base.entry.scu_id, binding_id: base.entry.binding_id, frontier_id: 'f', frontier_rule_id: base.entry.admitting_rule_ids[0]!, source_item_id: base.source.item_id, source_scu_id: base.source.scu_id, source_served: true },
+      contract: spent, live: live(spent),
+    })).toMatchObject({ code: 'successor_cost_limit_exceeded', limit_state: { budget_units: MAX_SUCCESSOR_DISPATCH_UNITS } })
     ledger = appendSuccessorCharge(undefined, { item_id: 'x', scu_id: 'x', units: 1, decision_hash: 'x' })
     expect(verifySuccessorCostLedger(ledger)).toBe(true)
   })
@@ -274,5 +313,149 @@ describe('Stage 2 — one shared, deterministic successor cost model', () => {
     expect(ask({ cost_exhausted: false })).toMatchObject({ decision: 'admit' })
     expect(ask({ cost_exhausted: true })).toMatchObject({ code: 'successor_cost_limit_exceeded' })
     expect(stableFingerprint(ask({}).limit_state)).toBe(stableFingerprint(ask({ cost_exhausted: false }).limit_state))
+  })
+})
+
+describe('Stage 2 — recovery-relevant charging paths (real compiler, real generations)', () => {
+  const pageAdvance = { semantics: 'offset' as const, exhausted: false, next: 50 }
+  const dispatchOnce = (contract: InquiryContract, itemId: string, disposition: 'served' | 'failed', pagination: Parameters<typeof recordInquiryExecution>[1]['pagination'], price = 1) => {
+    const decision = evaluateSuccessorItemForDispatch({ contract, item_id: itemId, snapshot, live: live(contract, { dispatch_units: () => price }) })!
+    return { decision, contract: recordInquiryExecution(contract, {
+      item_id: itemId, disposition, evidence_refs: ['raw:x'], pagination, request_position_path: 'offset', successor_dispatch: decision,
+    }) }
+  }
+
+  it('a failed attempt is re-readied and re-charged (per-attempt policy), and a continuation page is charged by cursor advance', () => {
+    const { successor } = successorOf(compileWith('all'))
+    const item = successor.plan_items.find((candidate) => candidate.successor_admission?.decision === 'admit')!
+    // failed + exhausted pagination + iterations remaining => re-readied by the core transition
+    const first = dispatchOnce(successor, item.item_id, 'failed', { semantics: 'none', exhausted: true, next: null })
+    expect(first.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!.state).toBe('ready')
+    expect(first.contract.successor_cost_ledger!.consumed_units).toBe(1)
+    // the retry is a new dispatch: charged again
+    const retry = dispatchOnce(first.contract, item.item_id, 'served', pageAdvance)
+    expect(retry.contract.successor_cost_ledger!.consumed_units).toBe(2)
+    // the cursor actually advanced, and the next page is charged too
+    const advanced = retry.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!
+    expect(advanced.args).toMatchObject({ offset: 50 })
+    const page = dispatchOnce(retry.contract, item.item_id, 'served', { semantics: 'offset', exhausted: true, next: null })
+    expect(page.contract.successor_cost_ledger!.consumed_units).toBe(3)
+    expect(page.contract.successor_cost_ledger!.entries.map((entry) => entry.seq)).toEqual([1, 2, 3])
+  })
+
+  it('charges on EVERY outcome of the transition, including a proven cursor with no request path (an early return)', () => {
+    const { successor } = successorOf(compileWith('all'))
+    const item = successor.plan_items.find((candidate) => candidate.successor_admission?.decision === 'admit')!
+    const decision = evaluateSuccessorItemForDispatch({ contract: successor, item_id: item.item_id, snapshot, live: live(successor) })!
+    const observed = recordInquiryExecution(successor, {
+      item_id: item.item_id, disposition: 'served', evidence_refs: ['raw:x'], pagination: pageAdvance, successor_dispatch: decision, // no request_position_path
+    })
+    expect(observed.successor_cost_ledger!.consumed_units).toBe(1)
+    expect(observed.plan_items.find((candidate) => candidate.item_id === item.item_id)!.successor_dispatch).toEqual(decision)
+  })
+
+  it('an unverifiable or unpriced admit receipt is charged as the whole budget, never as free', () => {
+    const { successor } = successorOf(compileWith('all'))
+    const item = successor.plan_items.find((candidate) => candidate.successor_admission?.decision === 'admit')!
+    const real = evaluateSuccessorItemForDispatch({ contract: successor, item_id: item.item_id, snapshot, live: live(successor) })!
+    const forged = { ...real, limit_state: { ...real.limit_state, candidate_units: 0 } } // hash no longer matches
+    const observed = recordInquiryExecution(successor, { item_id: item.item_id, disposition: 'served', evidence_refs: ['raw:x'], pagination: { semantics: 'none', exhausted: true, next: null }, successor_dispatch: forged })
+    expect(observed.successor_cost_ledger!.consumed_units).toBe(MAX_SUCCESSOR_DISPATCH_UNITS)
+  })
+
+  it('a first-pass (non-successor) dispatch never charges', () => {
+    const root = compileWith('all')
+    const item = root.plan_items.find((candidate) => candidate.state === 'ready' && candidate.binding_id)!
+    const observed = recordInquiryExecution(root, { item_id: item.item_id, disposition: 'served', evidence_refs: ['raw:x'], pagination: { semantics: 'none', exhausted: true, next: null } })
+    expect(observed.successor_cost_ledger).toBeUndefined()
+    expect(observed.plan_items.find((candidate) => candidate.item_id === item.item_id)!.successor_dispatch).toBeUndefined()
+  })
+
+  it('budget exhaustion part-way through a batch: the item that no longer fits is refused at the exact boundary', () => {
+    const { successor } = successorOf(compileWith('all'))
+    const admitted = successor.plan_items.filter((candidate) => candidate.successor_admission?.decision === 'admit')
+    expect(admitted.length).toBeGreaterThanOrEqual(2)
+    // Each dispatch costs 7 of the 12: the first fits, the second (7 > 5 left) does not.
+    const first = dispatchOnce(successor, admitted[0]!.item_id, 'served', { semantics: 'none', exhausted: true, next: null }, 7)
+    expect(first.decision).toMatchObject({ decision: 'admit', limit_state: { remaining_units: 12, candidate_units: 7 } })
+    const second = evaluateSuccessorItemForDispatch({ contract: first.contract, item_id: admitted[1]!.item_id, snapshot, live: live(first.contract, { dispatch_units: () => 7 }) })!
+    expect(second).toMatchObject({ decision: 'refuse', code: 'successor_cost_limit_exceeded', limit_state: { consumed_units: 7, remaining_units: 5, candidate_units: 7 } })
+  })
+
+  it('a REAL second generation inherits the first generation\'s spend (compiled, not hand-built) and cannot reset it', () => {
+    const { successor: first } = successorOf(compileWith('all'))
+    const item = first.plan_items.find((candidate) => candidate.successor_admission?.decision === 'admit')!
+    // Charge 5 units and leave a served, capped same-capability page frontier behind.
+    const dispatched = dispatchOnce(first, item.item_id, 'served', pageAdvance, 5)
+    const closed = closeInquiryForEvidenceSuccessor({ ...dispatched.contract, max_iterations: dispatched.contract.iteration })
+    const second = compileInquirySuccessorContract({ snapshot, overlay: SCENARIO_OVERLAY, parent_inquiry_id: 'gen1', parent: closed, admission: live(closed) })
+    expect(second.successor!.parent_contract.successor_cost_ledger!.consumed_units).toBe(5)
+    expect(lineageConsumedUnits(second)).toBe(5)
+    const decision = second.plan_items.find((candidate) => candidate.successor_admission)!.successor_admission!
+    expect(decision.limit_state).toMatchObject({ consumed_units: 5, remaining_units: MAX_SUCCESSOR_DISPATCH_UNITS - 5 })
+    // ...and the next dispatch in generation two is priced against the SHARED remainder.
+    const at = evaluateSuccessorItemForDispatch({ contract: second, item_id: second.plan_items.find((candidate) => candidate.successor_admission)!.item_id, snapshot, live: live(second, { dispatch_units: () => 8 }) })!
+    expect(at).toMatchObject({ decision: 'refuse', code: 'successor_cost_limit_exceeded', limit_state: { consumed_units: 5, remaining_units: 7, candidate_units: 8 } })
+  })
+
+  describe('lineage seals (deletion is as detectable as editing)', () => {
+    it('a deleted OWN ledger (a stamped dispatch with no charge) refuses', () => {
+      const { successor } = successorOf(compileWith('all'))
+      const item = successor.plan_items.find((candidate) => candidate.successor_admission?.decision === 'admit')!
+      const { contract } = dispatchOnce(successor, item.item_id, 'served', { semantics: 'none', exhausted: true, next: null })
+      const stripped: Record<string, unknown> = { ...contract }
+      delete stripped['successor_cost_ledger']
+      expect(evaluateSuccessorItemForDispatch({ contract: stripped as unknown as InquiryContract, item_id: item.item_id, snapshot, live: live(contract) }))
+        .toMatchObject({ decision: 'refuse', code: 'successor_receipt_incomplete' })
+    })
+
+    it('a deleted or rewritten ANCESTOR ledger breaks the successor receipt seal and refuses', () => {
+      const { successor: first } = successorOf(compileWith('all'))
+      const item = first.plan_items.find((candidate) => candidate.successor_admission?.decision === 'admit')!
+      const dispatched = dispatchOnce(first, item.item_id, 'served', pageAdvance, 5)
+      const closed = closeInquiryForEvidenceSuccessor({ ...dispatched.contract, max_iterations: dispatched.contract.iteration })
+      const second = compileInquirySuccessorContract({ snapshot, overlay: SCENARIO_OVERLAY, parent_inquiry_id: 'gen1', parent: closed, admission: live(closed) })
+      const target = second.plan_items.find((candidate) => candidate.successor_admission)!
+      const evaluate = (contract: InquiryContract) => evaluateSuccessorItemForDispatch({ contract, item_id: target.item_id, snapshot, live: live(contract) })!
+      expect(evaluate(second)).toMatchObject({ decision: 'admit' })
+      const dropped: Record<string, unknown> = { ...second.successor!.parent_contract }
+      delete dropped['successor_cost_ledger']
+      const lowered = { ...second.successor!.parent_contract, successor_cost_ledger: appendSuccessorCharge(undefined, { item_id: 'x', scu_id: 'x', units: 1, decision_hash: 'x' }) }
+      for (const forgedParent of [dropped, lowered]) {
+        const forged = { ...second, successor: { ...second.successor!, parent_contract: forgedParent } } as unknown as InquiryContract
+        expect(evaluate(forged)).toMatchObject({ decision: 'refuse', code: 'successor_receipt_incomplete' })
+      }
+    })
+  })
+})
+
+describe('the shared post-evaluation dispatch gate', () => {
+  const base = scenarioFixture('platform_internal')
+  const admit = evaluateSuccessorAdmission({
+    envelope: base.contract.authorization_envelope, snapshot,
+    candidate: { scu_id: base.entry.scu_id, binding_id: base.entry.binding_id, frontier_id: 'f', frontier_rule_id: base.entry.admitting_rule_ids[0]!, source_item_id: base.source.item_id, source_scu_id: base.source.scu_id, source_served: true },
+    contract: base.contract, live: live(base.contract),
+  })
+  const open = { tool_present: true, binding_present: true, args_authorized: true }
+
+  it('passes an admit through only when the tool, binding and arguments all still hold', () => {
+    expect(refineSuccessorAdmission(admit, open)).toBe(admit)
+  })
+
+  it.each([
+    ['a vanished tool', { ...open, tool_present: false }, 'successor_capability_not_in_catalogue'],
+    ['a vanished binding', { ...open, binding_present: false }, 'successor_capability_not_in_catalogue'],
+    ['unauthorized arguments', { ...open, args_authorized: false }, 'successor_arguments_not_authorized'],
+  ] as const)('%s becomes a definitive, verifiable refusal', (_label, gates, code) => {
+    const refused = refineSuccessorAdmission(admit, gates)!
+    expect(refused).toMatchObject({ decision: 'refuse', code, scu_id: admit.scu_id, entitlement: admit.entitlement })
+    expect(verifySuccessorDecision(refused)).toBe(true)
+    expect(refused.decision_hash).not.toBe(admit.decision_hash)
+  })
+
+  it('leaves refusals and non-successor items untouched', () => {
+    expect(refineSuccessorAdmission(null, { ...open, tool_present: false })).toBeNull()
+    const refusal = refuseAdmittedSuccessor(admit, 'successor_cost_limit_exceeded')
+    expect(refineSuccessorAdmission(refusal, { ...open, tool_present: false })).toBe(refusal)
   })
 })

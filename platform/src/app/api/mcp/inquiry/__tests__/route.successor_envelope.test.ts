@@ -27,6 +27,7 @@ const state = vi.hoisted(() => ({
   permission: 'all' as 'all' | 'view' | 'deny',
   units: undefined as number | undefined,
   toolMissing: '',
+  toolFlaky: { uri: '', undefinedCalls: 0 },
   paginate: false,
   snapshot: null as unknown,
   overlay: null as unknown,
@@ -52,7 +53,7 @@ vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   TOOL_NAME_TO_URI: {},
   resolveToolUri: (name: string) => (name.startsWith('marsys://') ? name : undefined),
-  getToolByName: (name: string) => name === state.toolMissing ? undefined : ({
+  getToolByName: (name: string) => name === state.toolMissing || (name === state.toolFlaky.uri && state.toolFlaky.undefinedCalls-- > 0) ? undefined : ({
     retrieve: async (_query: unknown, args: Record<string, unknown>) => {
       state.dispatched.push(name)
       const base = state.toolResult(name, state.paginate ? args : { ...args, offset: 1 })
@@ -123,6 +124,7 @@ beforeEach(() => {
   state.permission = 'all'
   state.units = undefined
   state.toolMissing = ''
+  state.toolFlaky = { uri: '', undefinedCalls: 0 }
   state.snapshot = SCENARIO_SNAPSHOT
   state.overlay = SCENARIO_OVERLAY
   state.store!.rows.clear()
@@ -384,7 +386,33 @@ describe('raw MCP: every successor refusal is terminal', () => {
     }
     const finalized = await POST(request({ action: 'finalize', lifecycle_token: cursor.lifecycle_token }))
     expect(finalized.status).toBe(200)
-    expect((await finalized.json() as { closure: { status: string } }).closure.status).toMatch(/COMPLETE|BLOCKED|INCOMPLETE/)
+    const closure = (await finalized.json() as { closure: { status: string; status_reasons: string[] } }).closure
+    // Honest, not stranded: the refused obligation is reported as failed/dark, so the lifecycle is INCOMPLETE.
+    expect(closure.status).toBe('INCOMPLETE')
+    expect(closure.status_reasons).toEqual(['1 required obligations failed or are dark'])
+    const receipt = state.store!.evidence.find((candidate) => candidate.inquiry_id === continued.body.inquiry_id && candidate.plan_item_id === item.item_id)!
+    expect(receipt.disposition).toBe('failed')
+    expect((receipt.evidence_jsonb as { admission?: { code: string } }).admission?.code).toBe('successor_capability_not_in_catalogue')
+  })
+
+  it('an admitted item whose binding the route itself cannot resolve is refused by the shared gate: named, receipted, terminal, uncharged', async () => {
+    const { sourceUri, targetUri, entry } = scenarioFixture('mcp_full')
+    const step = await runToFinalize(sourceUri)
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    const item = targetItem(continued.body.contract, entry.scu_id)
+    // The route looks the tool up first (undefined once), then the shared evaluator finds it: evaluator ADMITS, route gate FAILS.
+    state.toolFlaky = { uri: targetUri, undefinedCalls: 1 }
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before)
+    const done = executed.body.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!
+    expect(done).toMatchObject({ state: 'observed', observation: { disposition: 'failed', gap_reason: 'successor_capability_not_in_catalogue' } })
+    expect(done.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_capability_not_in_catalogue' })
+    expect(contractOf(continued.body.inquiry_id).successor_cost_ledger).toBeUndefined()
+    const receipt = state.store!.evidence.find((candidate) => candidate.inquiry_id === continued.body.inquiry_id && candidate.plan_item_id === item.item_id)!
+    expect(receipt).toMatchObject({ disposition: 'failed' })
+    expect((receipt.evidence_jsonb as { admission?: { code: string } }).admission?.code).toBe('successor_capability_not_in_catalogue')
   })
 
   it('tampered or unauthorized arguments on a successor item are a terminal refusal, not a stranded 409', async () => {

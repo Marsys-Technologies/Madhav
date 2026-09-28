@@ -21,7 +21,7 @@ import {
   scenarioFixture,
 } from '@/lib/vidhi/inquiry/__fixtures__/successor_envelope_scenario'
 
-const state = vi.hoisted(() => ({ triggerTool: '' as string, dispatched: [] as string[], paginate: false, units: undefined as number | undefined }))
+const state = vi.hoisted(() => ({ triggerTool: '' as string, dispatched: [] as string[], paginate: false, units: undefined as number | undefined, flaky: { uri: '', allow: 0, calls: 0 } }))
 
 vi.mock('@/lib/bundle/bundle_hydrator', () => ({
   hydrateBundle: async () => ({ assets: [], floor_enforced: false, total_bytes: 0, total_tokens: 0 }),
@@ -45,7 +45,7 @@ vi.mock('@/lib/cache/index', () => ({
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   TOOL_NAME_TO_URI: {},
   resolveToolUri: (name: string) => name,
-  getToolByName: (name: string) => ({
+  getToolByName: (name: string) => name === state.flaky.uri && ++state.flaky.calls > state.flaky.allow ? undefined : ({
     name,
     version: 'successor-fixture-v1',
     dispatch_units: 1,
@@ -94,7 +94,7 @@ const planTools = (contract: InquiryContract) =>
   [...new Set(contract.plan_items.flatMap((item) => item.binding_id ? [item.binding_id.slice('registry:'.length)] : []))]
 
 describe('Portal evidence-driven successor', () => {
-  beforeEach(() => { state.units = undefined })
+  beforeEach(() => { state.units = undefined; state.flaky = { uri: '', allow: 0, calls: 0 } })
 
   it('continues into the admitted capability when the request is authorized for it, and keeps the chain', async () => {
     const { contract, source, targetUri } = setup()
@@ -228,5 +228,21 @@ describe('Portal evidence-driven successor', () => {
     const item = priced.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
     expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_cost_limit_exceeded' })
     expect(priced.successor_cost_ledger).toBeUndefined()
+  })
+
+  it('an admitted item whose live tool disappears before dispatch is refused by the shared gate: receipted, terminal, uncharged', async () => {
+    const { contract, source, targetUri } = setup()
+    state.triggerTool = source
+    state.dispatched = []
+    // Lookups of the target: #1 successor compile (evaluator), #2 dispatch-time evaluator, #3 the stage's own lookup -> gone.
+    state.flaky = { uri: targetUri, allow: 2, calls: 0 }
+    const { out } = await run(contract, planTools(contract))
+    expect(state.dispatched).not.toContain(targetUri)
+    const item = out.inquiryContract!.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+    expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_capability_not_in_catalogue' })
+    expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_capability_not_in_catalogue' })
+    expect(item.state).toBe('observed')
+    // Uncharged: no ledger entry pays for this item (a sibling successor item may legitimately have been charged).
+    expect((out.inquiryContract!.successor_cost_ledger?.entries ?? []).some((entry) => entry.item_id === item.item_id)).toBe(false)
   })
 })

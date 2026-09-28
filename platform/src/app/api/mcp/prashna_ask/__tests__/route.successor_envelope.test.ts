@@ -27,6 +27,7 @@ const state = vi.hoisted(() => ({
   deniedUri: '',
   permission: 'all' as 'all' | 'view' | 'deny',
   units: undefined as number | undefined,
+  flaky: { uri: '', allow: 0, calls: 0 },
   // Bound after the static imports resolve: importing the fixture inside a mock factory would
   // deadlock on the module graph that itself imports the mocked bridge.
   toolResult: (() => { throw new Error('unbound') }) as (name: string, args: Record<string, unknown>) => Record<string, unknown>,
@@ -89,7 +90,7 @@ vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   TOOL_NAME_TO_URI: {},
   resolveToolUri: (name: string) => (name.startsWith('marsys://') ? name : undefined),
-  getToolByName: (name: string) => ({
+  getToolByName: (name: string) => name === state.flaky.uri && ++state.flaky.calls > state.flaky.allow ? undefined : ({
     name, version: 'route-successor-v1', dispatch_units: 1,
     retrieve: async (_query: unknown, args: Record<string, unknown>) => {
       state.dispatched.push(name)
@@ -150,6 +151,7 @@ beforeEach(() => {
   state.deniedUri = ''
   state.permission = 'all'
   state.units = undefined
+  state.flaky = { uri: '', allow: 0, calls: 0 }
   state.store!.rows.clear()
   state.store!.reservations.clear()
   state.store!.evidence.length = 0
@@ -287,7 +289,9 @@ describe('managed door: recovered worker resuming a successor generation', () =>
     expect(dispatchCount(targetUri)).toBe(0)
     const stored = successorRow()!.contract_jsonb
     expect(stored.plan_items.some((item) => item.state === 'ready')).toBe(false)
-    expect(stored.plan_items.some((item) => item.observation?.gap_reason === 'successor_capability_not_authorized_for_request')).toBe(true)
+    // The successor receipt's own seal covers its embedded parent, so the rewritten envelope is caught
+    // before any per-item decision: refused outright, terminal, never dispatched.
+    expect(stored.plan_items.some((item) => item.observation?.gap_reason === 'successor_receipt_incomplete')).toBe(true)
   })
 
   it('a stored compile-time refusal is final: a recovered worker never upgrades it to an admission', async () => {
@@ -403,5 +407,21 @@ describe('managed door: the shared successor cost model', () => {
     expect(dispatchCount(targetUri)).toBe(0)
     expect(successorRow()!.status).toBe('BLOCKED')
     expect(successorRow()!.contract_jsonb.successor_cost_ledger).toBeUndefined()
+  })
+})
+
+describe('managed door: the shared post-evaluation gate', () => {
+  it('an admitted item whose live tool disappears before dispatch is refused: receipted, terminal, uncharged, undispatched', async () => {
+    const { sourceUri, targetUri, entry } = fixture()
+    state.triggerUri = sourceUri
+    // Lookups of the target: #1 successor compile (evaluator), #2 dispatch-time evaluator, #3 the drain's own lookup -> gone.
+    state.flaky = { uri: targetUri, allow: 2, calls: 0 }
+    await finalEvent(await post())
+    expect(dispatchCount(targetUri)).toBe(0)
+    const successor = successorRow()!
+    const item = successor.contract_jsonb.plan_items.find((candidate) => candidate.scu_id === entry.scu_id)!
+    expect(item).toMatchObject({ state: 'observed', observation: { disposition: 'failed', gap_reason: 'successor_capability_not_in_catalogue' } })
+    expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_capability_not_in_catalogue' })
+    expect((successor.contract_jsonb.successor_cost_ledger?.entries ?? []).some((charge) => charge.item_id === item.item_id)).toBe(false)
   })
 })

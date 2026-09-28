@@ -45,7 +45,7 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
-import { evaluateSuccessorItemForDispatch, refuseAdmittedSuccessor, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { appendSuccessorCharge, evaluateSuccessorItemForDispatch, refineSuccessorAdmission, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { readBoundedRequestBody } from './bounded_body'
 import {
@@ -336,21 +336,20 @@ export async function POST(request: Request) {
       if (admission === null) {
         // An ordinary (non-successor) item that cannot run is a request error, exactly as before.
         if (!gatesPass || !binding) return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
-      } else if (admission.decision === 'admit' && !gatesPass) {
-        // The envelope admitted, but the live binding is gone: a definitive refusal, recorded terminally.
-        admission = refuseAdmittedSuccessor(admission, 'successor_capability_not_in_catalogue')
       }
       const authorizedInvocationArgs = binding
         ? authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)
         : null
-      if (!authorizedInvocationArgs) {
-        if (admission === null) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
-        // Unauthorized or tampered arguments on a successor item are a definitive, terminal refusal too.
-        if (admission.decision === 'admit') admission = refuseAdmittedSuccessor(admission, 'successor_arguments_not_authorized')
-      }
+      if (!authorizedInvocationArgs && admission === null) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
+      // The shared post-evaluation gate: a vanished tool/binding or tampered arguments on an ADMITTED
+      // successor item become the same definitive, receipted refusal every door records.
+      admission = refineSuccessorAdmission(admission, {
+        tool_present: gatesPass, binding_present: Boolean(binding), args_authorized: Boolean(authorizedInvocationArgs),
+      })
       // Only a refused successor item ever proceeds without authorized args; it never dispatches, so the
-      // stored arguments are used solely to hash the terminal receipt.
-      const invocationArgs = authorizedInvocationArgs ?? item.args
+      // server-held contract's own arguments (never the mismatching authorization copy) are used solely to
+      // hash the terminal receipt, exactly as the managed door does.
+      const invocationArgs = authorizedInvocationArgs ?? currentItem.args
 
       const reservationHash = `reserved:${hashJti(randomUUID())}`
       const reservation = await reserveInquiryAction({
@@ -387,7 +386,8 @@ export async function POST(request: Request) {
           // Never dispatched: the receipt records the decision's own stable code.
           disposition = 'failed'
           gapReason = admission.code
-          raw = { ok: false, error: admission.code, trace_id: traceId }
+          // Deterministic body (no per-request trace id): the same refusal hashes identically everywhere.
+          raw = { ok: false, error: admission.code, not_dispatched: true }
         } else {
           raw = await tool!.retrieve({ chart_id: claims.chart_id, domains: contract.scope_tuple.domains }, invocationArgs)
           disposition = classifyInquiryResult(binding, raw)
@@ -402,7 +402,15 @@ export async function POST(request: Request) {
       const postDispatchOverlay = await loadChartCapabilityOverlay(snapshot, claims.chart_id)
       if (postDispatchOverlay.overlay_version !== claims.overlay_version || postDispatchOverlay.build_id !== claims.chart_build_id) {
         console.error('[mcp:inquiry] chart overlay changed during dispatch', { traceId, inquiryId: row.inquiry_id, itemId: item.item_id })
-        const blocked = failInquiryForOverlayDrift(contract)
+        // The tool DID run: a drift that lands after an admitted successor dispatch still pays for it.
+        const blocked = failInquiryForOverlayDrift(admission?.decision === 'admit'
+          ? {
+            ...contract,
+            successor_cost_ledger: appendSuccessorCharge(contract.successor_cost_ledger, {
+              item_id: item.item_id, scu_id: item.scu_id, units: admission.limit_state.candidate_units, decision_hash: admission.decision_hash,
+            }),
+          }
+          : contract)
         await commitInquiryFinalization({
           row,
           expected_jti_hash: reservation.reservation_hash,

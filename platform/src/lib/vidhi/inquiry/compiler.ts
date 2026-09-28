@@ -28,11 +28,13 @@ import { challengeInquirySelection } from './omission_challenger'
 import {
   authorizationEnvelopeHash,
   buildAuthorizationEnvelope,
+  MAX_SUCCESSOR_DISPATCH_UNITS,
   appendSuccessorCharge,
   deriveSuccessorEnvelope,
   effectiveEntitlementForPermission,
   evaluateSuccessorAdmission,
   SUCCESSOR_DENY_ALL_LIVE,
+  verifySuccessorDecision,
   type SuccessorAdmissionDecision,
   type SuccessorAdmissionLiveContext,
 } from './authorization_envelope'
@@ -924,8 +926,7 @@ export function applyInquiryObservations(contract: InquiryContract, observations
   return { ...contract, obligations, plan_items: planItems, material_frontier: [...existingFrontier.values()], iteration: contract.iteration + 1, status: 'INCOMPLETE', status_reasons: ['finalization_required'] }
 }
 
-/** Apply one server-observed execution and authorize only a verified continuation/retry. */
-export function recordInquiryExecution(
+function recordInquiryExecutionCore(
   contract: InquiryContract,
   args: {
     item_id: string
@@ -974,28 +975,45 @@ export function recordInquiryExecution(
         : candidate),
     }
   }
-  if (args.successor_dispatch) {
-    observed = {
-      ...observed,
-      plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
-        ? { ...candidate, successor_dispatch: args.successor_dispatch }
-        : candidate),
-      // A dispatch the envelope admitted is PAID FOR here, in the same transition as its observation
-      // (so exactly once): every page, every retry, every attempt that reached the tool. A refusal
-      // dispatched nothing and costs nothing.
-      ...(args.successor_dispatch.decision === 'admit'
-        ? {
-          successor_cost_ledger: appendSuccessorCharge(observed.successor_cost_ledger, {
-            item_id: item.item_id,
-            scu_id: item.scu_id,
-            units: args.successor_dispatch.limit_state.candidate_units,
-            decision_hash: args.successor_dispatch.decision_hash,
-          }),
-        }
-        : {}),
-    }
-  }
   return observed
+}
+
+/**
+ * Apply one server-observed execution and authorize only a verified continuation/retry, then stamp
+ * and PAY FOR a successor dispatch. The stamp and the charge are applied to EVERY outcome of the core
+ * transition (including its early returns), so charging never depends on which control-flow branch the
+ * observation happened to take.
+ */
+export function recordInquiryExecution(
+  contract: InquiryContract,
+  args: Parameters<typeof recordInquiryExecutionCore>[1],
+): InquiryContract {
+  const observed = recordInquiryExecutionCore(contract, args)
+  const decision = args.successor_dispatch
+  if (!decision) return observed
+  const item = observed.plan_items.find((candidate) => candidate.item_id === args.item_id)!
+  // A dispatch the envelope admitted is PAID FOR here, in the same transition as its observation (so
+  // exactly once): every page, every retry, every attempt that reached the tool. A refusal dispatched
+  // nothing and costs nothing. A receipt that does not verify, or carries an unusable price, is never
+  // a free dispatch: it is charged as the whole budget.
+  const priced = verifySuccessorDecision(decision) && Number.isInteger(decision.limit_state.candidate_units)
+    && decision.limit_state.candidate_units >= 1
+  return {
+    ...observed,
+    plan_items: observed.plan_items.map((candidate) => candidate.item_id === args.item_id
+      ? { ...candidate, successor_dispatch: decision }
+      : candidate),
+    ...(decision.decision === 'admit'
+      ? {
+        successor_cost_ledger: appendSuccessorCharge(observed.successor_cost_ledger, {
+          item_id: item.item_id,
+          scu_id: item.scu_id,
+          units: priced ? decision.limit_state.candidate_units : MAX_SUCCESSOR_DISPATCH_UNITS,
+          decision_hash: decision.decision_hash,
+        }),
+      }
+      : {}),
+  }
 }
 
 export function validateInquiryContract(contract: InquiryContract): InquiryValidationResult {
