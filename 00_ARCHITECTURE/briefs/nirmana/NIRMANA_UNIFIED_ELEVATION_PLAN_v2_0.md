@@ -2,7 +2,7 @@
 artifact: NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md
 canonical_id: NIRMANA_UNIFIED_ELEVATION_PLAN
 version: "2.1"
-status: NATIVE-RATIFIED — governing plan for the data-plane elevation programme
+status: SUPERSEDED — 2026-09-28, native decision; see NIRMANA_SUPERSESSION_RECORD_v1_0.md (was: NATIVE-RATIFIED — governing plan for the data-plane elevation programme)
 campaign_id: nirmana-elevation
 chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 produced_on: 2026-09-04
@@ -34,6 +34,8 @@ companions:
   - 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ELEVATION_PLAN_v6_1_AMENDMENT.md (doctrine)
   - 00_ARCHITECTURE/briefs/nirmana/CAMPAIGN_STATE.md (live position)
 ---
+
+> ⛔ **SUPERSEDED 2026-09-28 by native decision.** The Nirmāṇa elevation campaign is off and will not resume. Successor: the Nikaṣa engine, then an elevation campaign built on it. Assets Nirmāṇa froze are kept as the starting point, not as certification. Kept as history only — do not execute. Record: `00_ARCHITECTURE/briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`.
 
 # NIRMĀṆA DATA-PLANE ELEVATION — UNIFIED PROGRAMME PLAN v2.0
 

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.86
+version: 6.87
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.87 (2026-09-28, NIRMANA-SUPERSESSION-20260928): Native decision recorded — the Nirmāṇa
+    elevation campaign is OFF (did not meet the quality, depth and efficiency criteria) and will
+    not resume. Successor: the Nikaṣa engine (campaign/nikasha-test, PR #2736), then an elevation
+    campaign built on it. Nirmāṇa's 98 frozen assets (L0 40, L1 19, L2 22, L3 13, L5 4) are KEPT as
+    the starting point, NOT as certification — 97 of 98 carry open Nikaṣa gaps. NIRMANA_HOLD set in
+    every Nirmāṇa session worktree. Plan, execution prompt and campaign state marked SUPERSEDED.
+    Record: briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md.
   - v6.86 (2026-09-28, JATAKA-CONTROLLED-PROD-ROLLOUT-20260927): Controlled production
     rollout CLOSED under CCD-018/CCD-019. PRs #2739/#2740 merged; protected main and all live
     services are bound to acf8d2baed6345097dd28a34e533329be52046ec. Backup 1790545434667
@@ -6098,6 +6105,14 @@ block (post-rebuild era), and proceeds.
 ---
 
 ## §2 — Canonical state block
+
+> ⛔ **NIRMĀṆA ELEVATION CAMPAIGN — SUPERSEDED (2026-09-28, native decision).** Off; will not
+> resume. Do not run its conductor or layer supervisors (`NIRMANA_HOLD` is set). Successor: the
+> **Nikaṣa engine** (`/Users/Dev/madhav-nikasha`, `campaign/nikasha-test`, PR #2736; state in
+> `briefs/nirmana/nikasha_test/STATE.md` and `NIKASHA_CHANGE_REGISTER_v2_0.md`), then an elevation
+> campaign built on it. Nirmāṇa's 98 frozen assets are the starting point, not certification.
+> The engine campaign `campaign/nirmana-engine` is a different campaign and is NOT affected.
+> Record: `briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`.
 
 > 🟣 **JĀTAKA CHART WORKSPACE — PARALLEL LOCAL-EXECUTION EXCEPTION (2026-09-27, CCD-013).**
 > Native authorization permits Claude Code to implement, test and commit Tasks 1–8 of
