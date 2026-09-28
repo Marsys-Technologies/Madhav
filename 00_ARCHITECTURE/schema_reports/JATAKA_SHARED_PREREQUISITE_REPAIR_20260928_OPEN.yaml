@@ -1,0 +1,53 @@
+session_open:
+  session_id: JATAKA-SHARED-PREREQUISITE-REPAIR-20260928
+  cowork_thread_name: "Madhav — Jātaka Shared-Prerequisite Repair"
+  agent_name: gpt-5
+  agent_version: gpt-5
+  tool: "Codex"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/jataka-shared-asset-repair/Madhav
+  step_number_or_layer: "Jātaka chart workspace — shared-prerequisite repair"
+  predecessor_session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-JATAKA-BG-TRANSIT-REPAIR-20260928
+    lease_status_verified: true
+    lease_verified_at: 2026-09-28T05:15:00+05:30
+    coordination_commit: fad1e8fbd4e150a65c936626105ecd84893a1464
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    ccd_consumed: [CCD-018, CCD-019, CCD-020]
+    ccd_appended: [CCD-019, CCD-020]
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (COMPLETE)"]
+  mandatory_reading_confirmation: []
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - platform/src/lib/build/plan.ts
+      - platform/src/lib/build/runPreparation.ts
+      - platform/src/lib/build/__tests__/**
+      - platform/src/lib/charts/__tests__/**
+      - 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_SHARED_PREREQUISITE_REPAIR_ADDENDUM_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/schema_reports/JATAKA_SHARED_PREREQUISITE_REPAIR_20260928_OPEN.yaml
+      - 00_ARCHITECTURE/schema_reports/JATAKA_SHARED_PREREQUISITE_REPAIR_20260928_CLOSE.yaml
+    must_not_touch:
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - platform/supabase/migrations/**
+      - platform/migrations/**
+      - .github/workflows/**
+      - CLAUDECODE_BRIEF.md
+      - existing production charts and conversations
+      - unrelated shared production assets
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No Macro Plan or health-crisis serving change."
+      acknowledged: true
+  red_team_due: false
+  notes: "Native authorized a controlled production repair. Preserve rule 133; prove exact blockers; fix only healthy-service preflight semantics; use governed bounded probes/rebuilds after backup; rerun only blocked synthetic acceptance."

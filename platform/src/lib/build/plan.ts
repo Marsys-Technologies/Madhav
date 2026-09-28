@@ -58,6 +58,12 @@ export interface RegistryEntry {
   layer: string
   depends_on: AssetId[]
   estimated_seconds: number | null
+  /** Live registry classification used only for the narrow service-readiness exception. */
+  asset_kind?: 'data' | 'artifact' | 'service'
+  /** Probe-owned current health; never inferred from a historical throughput row. */
+  service_health?: string | null
+  /** Distinguishes self-test writers from legacy probe-only services. */
+  has_writer?: boolean
   // Optional so every pre-WP-3 caller that builds a RegistryEntry without it
   // keeps compiling unchanged; resolveBuildPlan treats a missing/undefined
   // domain as 'chart' (the conservative default -- never silently excludes an
@@ -322,9 +328,33 @@ export function preflight(
       const depState = throughput.get(dep)?.state
       const receipt = freshness?.get(dep)
       const registered = regMap.has(dep)
+      const depEntry = regMap.get(dep)
+      // Services have no relational output contract. A legacy probe-only
+      // service writes a real synthetic probe digest (only the relational spec
+      // is inapplicable); a WriterBase-backed service self-test has neither a
+      // relational output nor a relational spec. Accept only those two exact
+      // evidence shapes, paired with their earned success state and live
+      // service_health=healthy. Missing/stale/extra evidence still blocks.
+      const serviceUnknownReasons = new Set(receipt?.reasons ?? [])
+      const legacyProbeEvidence =
+        depEntry?.has_writer !== true &&
+        depState === 'service_ok' &&
+        serviceUnknownReasons.size === 1 &&
+        serviceUnknownReasons.has('output_digest_spec_unavailable')
+      const writerSelfTestEvidence =
+        depEntry?.has_writer === true &&
+        depState === 'lit' &&
+        serviceUnknownReasons.size === 2 &&
+        serviceUnknownReasons.has('output_digest_unavailable') &&
+        serviceUnknownReasons.has('output_digest_spec_unavailable')
+      const verifiedHealthyService =
+        depEntry?.asset_kind === 'service' &&
+        depEntry.service_health === 'healthy' &&
+        receipt?.state === 'unknown' &&
+        (legacyProbeEvidence || writerSelfTestEvidence)
       const ready = registered && (freshness === undefined
         ? (depState === undefined || READY_STATES.has(depState))
-        : (depState !== undefined && READY_STATES.has(depState) && receipt?.state === 'fresh'))
+        : (depState !== undefined && READY_STATES.has(depState) && (receipt?.state === 'fresh' || verifiedHealthyService)))
       if (ready) continue
 
       const effectiveState: AssetState | 'unknown' = !registered || depState === undefined
