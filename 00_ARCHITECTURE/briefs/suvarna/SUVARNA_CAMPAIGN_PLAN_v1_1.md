@@ -1,12 +1,12 @@
 ---
 artifact: SUVARNA_CAMPAIGN_PLAN
 canonical_id: SUVARNA_CAMPAIGN_PLAN
-version: "1.0"
-status: SUPERSEDED by SUVARNA_CAMPAIGN_PLAN_v1_1.md (2026-09-28, native review pass 1)
+version: "1.1"
+status: DRAFT — for native review (several review rounds expected before any execution)
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 decision_owner: Native (Abhisek Mohanty)
-supersedes: nothing directly. Succeeds the Nirmāṇa elevation campaign (see NIRMANA_SUPERSESSION_RECORD_v1_0.md, PR #2751).
+supersedes: SUVARNA_CAMPAIGN_PLAN_v1_0.md. Earlier: Succeeds the Nirmāṇa elevation campaign (see NIRMANA_SUPERSESSION_RECORD_v1_0.md, PR #2751).
 inherits:
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md                                  # tier 1 (sealed)
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md         # tier 2 (sealed)
@@ -18,6 +18,7 @@ uses: >
   the delta ledger (asset_gaps.jsonl), the certification ledger (asset_certs.jsonl), the change
   register (NIKASHA_CHANGE_REGISTER_v2_0.md) and the implementation plan (NIKASHA_IMPLEMENTATION_PLAN_v1_0.md).
 changelog:
+  - "1.1 (2026-09-28, native review pass 1): the stage sequence becomes parallel tracks with one join. Stage 0 dissolves into first items (hours, not days). The derivability work moves off the engine path into the parallel analysis track, bringing the engine-to-freeze estimate from 240–310 to 90–150 hours. L1–L5 run as dependency waves, not layer gates. New Track F for the L3 focus families (Sangam, Kshetra, Gochara). Companion documents added: execution architecture, L3 focus families, document map, review package."
   - "1.0 (2026-09-28): first full draft. Built on a fact baseline measured the same day (Appendix A)."
 ---
 
@@ -32,7 +33,7 @@ changelog:
 | **Suvarṇa** (सुवर्ण, gold) | The campaign. Elevates every data-plane asset, L0 → L5. |
 | **Nikaṣa** (निकष, touchstone) | The engine. The system that tests and certifies an asset: four tiers, inspector, tracker, ledgers, detectors. If decision N-2 is approved, it also takes in the build engine it depends on. |
 | **Strategic Suvarṇa** | This session. Plans, discusses, rules, writes briefs. Never executes. |
-| **Nikaṣa Engine** | The session that builds and freezes the engine (Stage 1). |
+| **Nikaṣa Engine** | The session that builds and freezes the engine (Track E). |
 | **Exec Suvarṇa** | The session that runs the elevation (Stages 2–4). |
 
 - Suvarṇa is what the touchstone tests. The engine is finished first; the campaign runs on it.
@@ -41,14 +42,15 @@ changelog:
 
 ### 0.2 · What this document is
 
-- The master plan. It fixes the end state, the standard, the stages, the gates and the operating model.
+- The master plan. It fixes the end state, the standard, the tracks, the gates and the operating model.
+- **Companions:** `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (how it runs), `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` (the three L3 families), `SUVARNA_DOCUMENT_MAP_v1_0.md` (every document in the campaign).
 - Each stage gets its own brief later. A brief never contradicts this plan; if it must, the plan is revised first (§10).
 - It is written to be reviewed. Every figure has a source in Appendix A.
 
 ### 0.3 · How to read it
 
 - §1–§3: where we are going, by what standard, from where.
-- §4–§5: the stages and what each contains.
+- §4–§5: the tracks, the join, and what each track contains.
 - §6: how the work is run.
 - §7–§8: what is outside our hands, and what only the native decides.
 - §9–§11: tracking, change control, risks.
@@ -197,7 +199,7 @@ One elevation definition. A fixed core for every asset. Declared additions where
 
 ### 3.4 · The change register
 
-Measured by counting rows, not by the header tally (which has drifted; see Stage 0).
+Measured by counting rows, not by the header tally (which has drifted; see §5.0).
 
 | | Rows |
 |---|---|
@@ -222,11 +224,11 @@ The engine is frozen when five tests pass in production tooling and every regist
 | T4 — works on a layer it wasn't built against | PARTIAL |
 | T5 — the pieces agree | FAIL |
 
-- **These have not been re-measured since the three waves of fixes.** Most defects behind T2 and T3 are now closed. A fresh scorecard is the first step of Stage 1.
+- **These have not been re-measured since the three waves of fixes.** Most defects behind T2 and T3 are now closed. A fresh scorecard is the first step of Track E.
 
 ### 3.6 · The documents
 
-- **Tiers 1–3:** sealed. A reopen agenda is ruled (D2, 2026-09-27): 32 clause fixes across the three documents, plus the derivability mechanisms (§5.1, E2).
+- **Tiers 1–3:** sealed. A reopen agenda is ruled (D2, 2026-09-27): 32 clause fixes across the three documents (§5.1, E2), plus the derivability mechanisms Track A will harvest (§5.2); both go into one reopen at J1.
 - **Tier 4:** draft, pending your acceptance.
 - **L0 layer instance** (v3.0): draft, pending your acceptance.
 - **Asset briefs:** 5 L0 pilots. No other layer has an instance or briefs.
@@ -248,220 +250,156 @@ The engine is frozen when five tests pass in production tooling and every regist
 
 ---
 
-## §4 · Stages and gates
+## §4 · The shape: parallel tracks, one join, dependency waves
 
 ```
- STAGE 0  Baseline governance ──────────────── gate G0 ─┐
-                                                          │
- STAGE 1  Nikaṣa Engine                                  │
-          E1 Tooling ──┐                                  │
-          E2 Doctrine ─┼── gate G1: ENGINE FREEZE ◄───────┘
-          E3 Build ────┤        (native ruling)
-          E4 Landing ──┘
-                          │
- STAGE 2  Suvarṇa L0 pilot ── gate G2: rollout go/no-go
-                          │
- STAGE 3  Suvarṇa L1 → L2 → L3 → L4 → L5
-          (each layer closes at its gate G3.Lx)
-                          │
- STAGE 4  Closure ─────── gate G4: campaign complete
+NOW ─┬─ TRACK E  Engine: tools · build engine · 32 clause fixes · bo_upaya · landing ─────┐
+     │                                                                                    │
+     ├─ TRACK A  Analysis, all six layers at once (read-only):                           ├─► JOIN J1
+     │           census · layer-instance drafts · asset briefs · dispositions · fix       │   one combined reopen
+     │           designs · harvest of what the tiers are missing                          │   (clause fixes + derivability)
+     │                                                                                    │   + ENGINE FREEZE (native)
+     └─ TRACK F  L3 focus families: Sangam · Kshetra · Gochara — algorithm and            │
+                 enrichment design, coordinated with the live Gochara workstream  ────────┘
+                                                                                          │
+     TRACK I  Implementation: fixes for every layer, in parallel lanes  ◄─────────────────┤
+              (tier-independent fixes may start before J1; certified only after it)       │
+                                                                                          │
+     TRACK B  Rebuild and certify: one wave per dependency level, in order,  ◄────────────┘
+              the moment a level's fixes are merged and its inputs are certified
+              ├─ checkpoint G2 after levels 0–2 (the wide top, mostly L0/L1): loop proven, cost measured
+              └─ layer closes as each layer's last asset certifies (native, batched)
+
+     CLOSURE  whole-plane re-measure · [TRANSFERS] hand-over · closure report (native)
 ```
 
-### 4.1 · Why this order
+### 4.1 · Why this shape
 
-- **Engine before campaign.** Elevating with an unfinished inspector is how false passes get through. Every wave so far found at least one path that could close a gap without a real measurement: a failed count query read as "not applicable", never-started build rows counted as runs, `ka_kshetra` passing on a refused rebuild, `bo_upaya` passing on a rebuild that cannot succeed.
-- **Doctrine inside the engine stage.** Test T5 ("the pieces agree") cannot pass while the sealed tiers contradict each other. So the reopen is part of finishing the engine, not a separate campaign.
-- **L0 alone first.** It is the reference layer: no chart scope, upstream of everything, all 40 assets kept, 5 pilot briefs already exist. It proves the whole loop at the lowest risk and gives a measured cost per asset.
-- **Layers in order after that.** Each layer feeds the next. Improving an upstream layer after a downstream one is elevated invalidates the downstream work.
+- **Only data forces order.** Analysis, design and coding do not change data, so they run across every layer at once. Only rebuilding has to follow the dependency map.
+- **The engine freezes before anything is certified.** Every wave of fixes so far found at least one path that could close a gap without a real measurement: a failed count query read as "not applicable", never-started build rows counted as runs, `ka_kshetra` passing on a refused rebuild, `bo_upaya` passing on a rebuild that cannot succeed. Certifying before the freeze would bake those in.
+- **One reopen, not six.** The clause fixes are already known. The derivability machinery is best discovered by drafting every layer's instance. So Track A harvests what is missing, and both go into one reopen per document at J1.
+- **Asset waves, not layer gates.** Many L3 assets need only L0 and L1. They rebuild as soon as those are certified, without waiting for L2.
+- **Fix first, walk once.** The dependency map is 27 levels deep and ends in a long thin chain. That chain is the critical path; parallelism cannot shorten it. So every asset's fixes land before it is rebuilt, and the chain is walked once (execution architecture §6).
+- **L0 still goes first**, because it sits at the top of the map. Its certification is the first proof that the full loop works: find, fix, rebuild, certify. That has never happened yet; there are zero certification records today.
 
 ### 4.2 · The gates
 
 | Gate | Passes when | Who rules |
 |---|---|---|
-| **G0** | Stage 0 items done (§5.0) | executor; native informed |
-| **G1** Engine freeze | T1–T5 pass in production tooling on `main`; the four freeze blockers closed or explicitly deferred with a written reason; the build engine deployed; tier 4 and the L0 instance accepted | **native** |
-| **G2** Rollout go | L0 CLOSED (§1.2); per-asset cost measured; the per-layer lifecycle (§5.3) confirmed or revised from L0's lessons | **native** |
-| **G3.Lx** Layer close | that layer CLOSED (§1.2) | **native** |
-| **G4** Campaign complete | §1.3 | **native** |
+| **J1 · Engine freeze** | T1–T5 pass in production tooling on `main`; the combined reopen is re-sealed (T1 → T2 → T3); tier 4 and the L0 instance are accepted; R24, R39 and R71 closed; R244 closed or deferred with withholding (N-6); the build engine deployed and its migrations verified | **native** |
+| **G2 · Loop proven** | dependency levels 0–2 certified; cost per asset measured; §5.4's lifecycle confirmed or revised | **native**; a checkpoint, not a stop, unless the native halts |
+| **G3.Lx · Layer close** | that layer CLOSED (§1.2) | **native**, batched |
+| **G4 · Campaign complete** | §1.3 | **native** |
 
 ---
 
-## §5 · Stage detail
+## §5 · Track detail
 
-Each stage below becomes its own brief before execution. The briefs are written here, in Strategic Suvarṇa.
+Each track becomes its own brief before execution. Briefs are written here, in Strategic Suvarṇa.
 
-### 5.0 · Stage 0 — Baseline governance (days)
+### 5.0 · First items (hours, not a stage)
 
-Small, mechanical, and all done from this session or with minimal execution.
+These are small and run first, alongside everything else.
 
-| Item | Why |
-|---|---|
-| Merge PR #2751 (Nirmāṇa supersession record) | A fresh session must find the decision first. |
-| Correct the register's header tallies, and make them computed rather than typed | The tally already drifted (190 vs 180 open). A typed total is a claim, not a measurement. |
-| Repair three register rows that break the table (R244, R246 extra column; R99 embedded pipe) | Tools that read the table misread them. |
-| Record Suvarṇa and this plan in `CURRENT_STATE` | Same reason as the first row. |
-| Relay R240 (`ka_gochara` registry/table mismatch) to the L3 Gochara workstream | They are changing `ka_gochara` in production now. |
-| Name the three sessions | Strategic Suvarṇa, Nikaṣa Engine, Exec Suvarṇa. |
-
-**G0 passes** when all six are done.
-
-### 5.1 · Stage 1 — Nikaṣa Engine (session "Nikaṣa Engine")
-
-Four workstreams. E1, E2 and E3 run in parallel. E4 runs throughout.
-
-#### E1 · Tooling — inspector, tracker, provenance, ledgers
-
-**Step 1: measure before changing.** Re-run T1–T5 on today's tooling. Publish a scorecard. Every later item is justified against it.
-
-**Step 2: close the remaining tooling rows.**
-
-| Group | Rows | Note |
+| Item | Why | Effort |
 |---|---|---|
-| Detector gaps | R245 (remaining blind spots), R248 (latent hand/machine collision), R249 (empty-by-design vs broken), R250 (unverified label), R223-class timeout edges | none live today; each lands with a failing-first test |
-| Data provenance | R226 (`--live` re-derive-and-diff), R229 (27 unowned tables), R228 (12 stale source references) | R226 must exist before retrieval code reads the provenance file |
-| Ledger identity | R251 (the rest of the crosswalk: 19 pilot rows, 42 unregistered criteria) | extends the wave-3 fold |
-| Waiting on others | R55 (needs migration 1094 deployed), R246 (needs the `bo_upaya` fix first) | sequenced by ruling |
-| Width universes | R22 (needs R06 from the reopen) | depends on E2 |
+| Relay R240 to the L3 Gochara workstream **today** | They are changing `ka_gochara` in production now | minutes |
+| Merge PR #2751 (Nirmāṇa supersession) | A fresh session must find the decision first | CI wait only |
+| Fix the register's header tallies and make them computed | They drifted (190 recorded vs 180 counted) | ~1 hour |
+| Repair the three rows that break the register table (R244, R246, R99) | Tools misread them | minutes |
+| Record Suvarṇa and this plan in `CURRENT_STATE` | Same reason as the supersession | minutes |
+| Name the sessions | Strategic Suvarṇa · Nikaṣa Engine · Exec Suvarṇa | — |
 
-**Step 3: prove it again.** Re-run T1–T5. Expect PASS on T1–T4. T5 waits on E2.
+### 5.1 · Track E — the engine (session "Nikaṣa Engine")
 
-- **Rough size:** 40–60 hours, from the register's own pricing plus the rows added since.
+Four workstreams, running in parallel.
 
-#### E2 · Doctrine — reopen and re-seal the tiers
+**E1 · Tooling.**
+1. **Measure before changing.** Re-run T1–T5 on today's tooling and publish the scorecard.
+2. **Close the remaining tooling rows:**
+   - detector gaps R245, R248, R249, R250;
+   - provenance: R226 (`--live` re-derive-and-diff), R228 (stale source references), R229 (unowned tables);
+   - ledger identity: R251 (the rest of the crosswalk);
+   - waiting on others: R55 (needs migration 1094) and R246 (needs the `bo_upaya` fix).
+3. **Prove it again.** Re-run T1–T5.
+- **Rough size:** 30–50 hours.
 
-**Why it is in the engine stage:** T5 fails while the tiers contradict each other (R71), and every layer instance would otherwise invent content the tiers do not supply (the 130 invention rows found on 2026-09-26).
+**E2 · The clause fixes.**
+- The 32 rows the D2 ruling already agreed, drafted per document and held for the combined reopen at J1.
+- **Rough size:** 20–30 hours.
 
-**The agenda has two parts:**
+**E3 · The build engine.**
+- Bring the `campaign/nirmana-engine` work under this track (N-2).
+- Land it: PR to `main`, review, deploy.
+- Apply and verify migrations 1094 and 1095.
+- Finish the carried items: A2b, A3b, R217.
+- C1 (crash and orphan handling) and C2 (stuck states): **not required for the freeze.** They reduce noise, so they run alongside Track B.
+- D1/P10 (R39): the engine judged by its own Build checks, last.
+- **Rough size:** 30–50 hours to the freeze; C1 and C2 afterwards.
 
-1. **Clause fixes** (D2 ruling, 32 rows). Stale counts, a missing review record, the [TRANSFERS] contradiction (R71), verdict spelling, the ruling-11 clause, and others. All already written.
-2. **Derivability mechanisms** (the C8 cluster, about 20 primary rows). Missing tier-level machinery that every layer instance needs:
+**E4 · Landing and the `bo_upaya` fix.**
+- Split PR #2736 into code and evidence PRs, retarget both to `main`, and add the inspector's tests to CI (N-3).
+- Fix `bo_upaya` as a sanctioned writer exception, if N-6 says so: about half a day. It unblocks R246, `ka_kshetra` (which reads from it) and the end of the withholding.
+- **Rough size:** 10–20 hours.
 
-| Row | Mechanism |
-|---|---|
-| R06, R10 | how a table with several producers is counted and owned |
-| R08, R09, R16 | per-asset carriage-check assignment |
-| R86 | reconciling the dependency graph across seed, migration pin and live registry |
-| R88 | per-layer switch behaviour |
-| R89 | which layer carries each presentation field |
-| R90 | per-layer ownership of coverage obligations |
-| R91 | which entity classes each layer emits and accepts |
-| R93 | the rule from evidence to disposition, and preserved kernels |
-| R101 | per-layer narrative content |
-| R105 | a minimum synergy / ablation harness |
-| R221 | re-scoping tier-3 §0.1 to the catalog-provenance model (D5 rev. 2.1) |
+- **Track E total to the freeze: roughly 90–150 hours of agent effort**, split across parallel lanes. The derivability work moves to Track A (below); it is not removed, only taken off the engine's path.
 
-- About 97 further "transcription" rows close with their primaries. They are verified when each layer instance is derived (Stage 3), not before.
+### 5.2 · Track A — analysis, all layers at once (session "Exec Suvarṇa")
 
-**The procedure, one document at a time, in the order T1 → T2 → T3:**
+Read-only. Runs across all six layers from day one.
 
-1. Strategic Suvarṇa prepares the closed agenda for that document from the register.
-2. **The native approves the agenda.** Nothing outside it is edited.
-3. A builder applies it in one pass.
-4. A fresh reviewer runs the cross-tier re-render check: every count, gate name and section reference the edit touched is checked across all tiers, the instances and the tracker.
-5. **The native signs the re-seal.** The version bumps once.
+For each layer:
+1. **Fresh census** with today's inspector. Provisional until J1; re-measured after it.
+2. **Layer-instance draft**, derived from the tiers and the census. Wherever the tiers do not supply what the draft needs, record it as a **tier gap**. Do not invent.
+3. **Asset briefs**, one per asset, with gap rows, proposed additions and opportunities.
+4. **A disposition per asset:** keep, fix, enrich, consolidate, retire.
+5. **Fix designs,** each marked **tier-independent** (can be built before J1) or **tier-dependent** (waits for the reopen).
 
-**After the three re-seals:**
+**Order inside the track:** tier gaps first, so J1 is not delayed; asset briefs second.
 
-- Refresh tier 4 against the re-sealed tiers. **The native accepts it.**
-- Refresh the L0 instance. **The native accepts it.**
-- Regenerate the five L0 pilot briefs from the accepted versions.
+**What it feeds:**
+- the tier-gap harvest → the combined reopen at J1;
+- fix designs → Track I.
 
-- **Rough size:** 160–190 hours. The largest part of Stage 1. Most of it is derivability mechanisms, not clause edits.
+- **Rough size:** the derivability work priced at about 157 hours in the register, plus briefs for 127 assets. Spread across up to six parallel analysts, with the Architect on the derivability mechanisms. Re-estimated after the first layer's drafts.
 
-#### E3 · The build engine
+### 5.3 · Track F — the L3 focus families
 
-The inspector judges what the orchestrator builds. The from-scratch runs in Stages 2–3 need the build engine's fixes live.
+Sangam, Kshetra and the Gochara family get dedicated algorithm and enrichment work, beyond conformance to the nine gates.
 
-| Item | Why |
-|---|---|
-| Decide ownership: fold the `campaign/nirmana-engine` work into the Nikaṣa Engine session (decision N-2) | With Nirmāṇa off, the build engine has no running campaign. |
-| Land it: PR to `main`, review, deploy | 200 commits, none live. Timing, error text, run-killer and cascade fixes do nothing until deployed. |
-| Apply and verify migrations 1094 (duration column) and 1095 (cascade backfill) | R55 and R38 wait on them. |
-| Finish the carried items: A2b, A3b, R217 (run-level error text) | Silent failures remain otherwise. |
-| C1 crash, orphan and reap; C2 stuck states | Noise in every build-history verdict until done. |
-| D1 / P10: the engine judged by the Build gate's own checks (R39) | Last, by design: it only makes sense once the asset contract stops moving. |
+- **Starts now,** in parallel with Tracks E and A.
+- **Led by the Architect** (Opus), with Analysts for the evidence work.
+- **Coordinated with the live L3 Gochara workstream.** Nothing it owns is touched until the two workstreams agree a hand-over.
+- **Its own document:** `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md`, which reconciles each family's current state and prices what "fully enriched" would take.
 
-- **Rough size:** 40–60 hours, most of it C1 and landing.
+### 5.4 · The per-asset lifecycle (Tracks I and B)
 
-#### E4 · Landing — one branch of record
+1. **Brief approved:** disposition, fixes, any asset-specific additions.
+2. **Implement** in a lane: writer, migration or registry change, with a failing-first test. This is the first stage allowed to change writers.
+3. **Gate review,** then merge to `suvarna/trunk`.
+4. **Wait for the wave:** every upstream asset certified, and every asset at this level merged.
+5. **Rebuild** in that level's wave, through the orchestrator.
+6. **Re-measure and certify.** Gap rows close only on PASS or justified N/A. Certification records are written. The tracker marks the asset ELEVATED.
+7. **If something upstream changes later,** this asset is re-measured, and rebuilt only if its output changed.
 
-- **Today nothing Nikaṣa built is on `main`.** A fresh checkout does not have the inspector.
-- **Proposed approach (decision N-3):**
-  1. Split PR #2736 into a code PR (tooling, tests, ledgers) and an evidence PR (census artefacts, reports).
-  2. Retarget both to `main`.
-  3. Add the inspector's test suites to CI.
-- After landing, every Nikaṣa change goes to `main` in small PRs.
-
-#### Gate G1 · Engine freeze
-
-Passes when:
-
-1. T1–T5 pass in production tooling on `main`;
-2. R24, R39 and R71 are closed;
-3. R244 (`bo_upaya`) is closed, or deferred with its withholding procedure in force (decision N-6);
-4. the build engine is deployed and its migrations verified;
-5. tier 4 and the L0 instance are accepted.
-
-**The native rules the freeze.**
-
-- **Stage 1 total, rough:** 240–310 hours. It will be re-estimated after E1's first scorecard.
-
-### 5.2 · Stage 2 — Suvarṇa L0 pilot (session "Exec Suvarṇa")
-
-**Goal:** prove the whole elevation loop end to end on one layer, and measure what it costs.
-
-**Steps:**
-
-1. Run the per-layer lifecycle (§5.3) on all 40 L0 assets.
-2. Rebuild L0 from scratch under the frozen engine. Re-measure. Every gap either closes or is explained.
-3. Write the first real certification records.
-4. Measure the effort per asset by kind (untouched, small fix, writer change, retire).
-5. Write the L0 close report, and the lessons that revise §5.3.
-
-**What makes L0 the right pilot:**
-
-- no chart scope (one reference build, not one per chart);
-- every downstream layer depends on it;
-- all 40 assets were kept from Nirmāṇa;
-- five briefs already exist.
-
-**Gate G2** passes when L0 is CLOSED and the per-asset cost is measured. The native decides the rollout pace from that measurement.
-
-### 5.3 · Stage 3 — the per-layer lifecycle (L1 → L5)
-
-The same seven steps for every layer.
-
-1. **Derive the layer instance** from the re-sealed tiers and the census. No invented content. Any gap is a tier defect, raised back to Strategic Suvarṇa. **The native accepts the instance.**
-2. **Write one brief per asset** (tier-4 instance). It holds the census-emitted gap rows, the proposed asset-specific additions and the opportunity rows.
-3. **Decide a disposition per asset.** Keep as is, fix, enrich, consolidate, retire.
-4. **Implement.** Writer, migration and registry changes. This is the first stage allowed to change writers.
-5. **Rebuild** through the orchestrator. Never by hand.
-6. **Re-measure and certify.** The inspector re-emits; gap rows close only on PASS or justified N/A; certification records are written; the tracker marks ELEVATED.
-7. **Close the layer.** From-scratch rebuild, clean re-measure, close report. **The native signs.**
-
-**Pace rules:**
-
-- Layers close strictly in order.
-- **Bounded pipelining.** While layer N is in steps 4–7, layer N+1 may run steps 1–2 (read-only). Layer N+1's step 4 waits for layer N's close.
-- **Nirmāṇa's kept assets** enter at step 2 with their current state. Their existing gap rows are the starting delta.
+**Nirmāṇa's kept assets** enter at step 1 with their current state; their open gaps are the starting delta.
 
 **What each layer brings:**
 
 | Layer | Known specifics |
 |---|---|
-| L1 Gaṇita | Chart-scoped. The census measures one chart; decide whether elevation certifies one chart or several (decision N-12). |
-| L2 Bodha | `bo_upaya`'s fix lands here if not earlier. Six chart-conditional rebuilds (R243) are recorded as such. 8 "writes nothing to its own table" assets need an N/A policy (R247). |
-| L3 Kāla | Coordinate with the live Gochara workstream (§7). `ka_kshetra` refuses to rebuild a populated chart. Six tables are empty for the canonical chart. `kala_field` holds 10.98 million rows; census and rebuild costs are highest here. |
-| L4 Phala | Nothing kept from Nirmāṇa. Three assets record 139 rows written against 4 present. |
-| L5 Mīmāṃsā | Calibration fills over time by design. `lel_events` has no writer (R236). |
+| L0 | Global, no chart. Top of the map. The first certifications. |
+| L1 | Chart-scoped. Canonical chart first (N-12). |
+| L2 | `bo_upaya`'s fix, if not already done in Track E. Six chart-conditional rebuilds (R243) are recorded as such. N/A policy for "writes nothing to its own table" assets (N-13). |
+| L3 | Track F's three families. Six tables empty for the canonical chart. `kala_field` holds 10.98 million rows, so the heaviest census and rebuild costs are here. |
+| L4 | Nothing kept from Nirmāṇa. Three assets record 139 rows written against 4 present. |
+| L5 | Calibration fills over time by design. `lel_events` has no writer (R236). |
 
-- **Stage 3 size:** unknown until L0 is measured. It is estimated at gate G2, not guessed now.
-
-### 5.4 · Stage 4 — Closure
+### 5.5 · Closure
 
 - Whole-plane re-measure against all 1,143 gate cells.
 - Hand every `[TRANSFERS]` obligation to its owning plane, as recorded pending work.
-- Retire leftover artefacts (dead tables such as `build_dependencies`, R219).
+- Retire leftover artefacts, such as the dead `build_dependencies` table (R219).
 - Closure report. **The native accepts it.**
 
 ---
@@ -478,16 +416,19 @@ Strategic Suvarṇa ──brief──► native approves ──► Nikaṣa Engi
 
 - **Strategic Suvarṇa** writes every brief, prepares every native decision and folds strategy changes into this plan.
 - **Execution sessions** run packets: build → report → gate review → corrections → fold. They never change this plan; they raise findings.
-- A new session is opened only when a stage or workstream needs its own context. The plan names it first.
+- A new session is opened only when a track needs its own context. The plan names it first.
+- **Isolation.** The campaign runs in its own folder (`/Users/Dev/suvarna/`), on its own branches (`suvarna/hq`, `suvarna/trunk`, lane branches), with its own hold switch. Other campaigns continue untouched. Details: execution architecture §2.
 
 ### 6.2 · Roles and models
 
-| Role | Model | Rule |
-|---|---|---|
-| Builder | Sonnet by default; Opus for high-risk packets (ledger writes, reopens, writer changes) | Implements one packet. Never reviews its own work. |
-| Gate reviewer | Opus, fresh context, read-only | Tries to break the claim. Rules ACCEPT / ACCEPT_WITH_CORRECTIONS / REJECT. |
-| Independent strategic reviewer | GPT-6 Astra or Kimi | Reviews plans, briefs and rulings before the native sees them. |
-| Delegated decider | Fable, only when the native delegates a named decision | Its ruling is recorded as delegated and shown to the native. |
+The full swarm is in the execution architecture (§3). In short:
+
+- **Opus 5.5** where judgement decides the outcome: conductor, steward (delegated decisions), architect (algorithms and derivability), gate reviewers.
+- **Sonnet 5** for volume: analysts and builders.
+- **Scripts** for bookkeeping: tallies, folds, dispatch, monitoring.
+- **Effort:** medium by default; high only for algorithm design, high-risk reviews and reopen drafting; low for mechanical roles.
+- **Independent reviewers** (GPT-6 Astra or Kimi) for plans, track briefs and rulings.
+- **A delegated decider** (Fable) only when the native delegates a named decision.
 
 ### 6.3 · Discipline (lessons already paid for)
 
@@ -520,9 +461,12 @@ Nikaṣa only read production. Suvarṇa changes writers and rebuilds assets.
 
 ### 6.6 · Effort and cost
 
-- Stage 1: 240–310 hours of build effort, rough (§5.1).
-- Stages 2–4: estimated at gate G2 from L0's measured cost.
-- Review effort is on top: about one gate review per packet, and more for high-risk packets.
+- **Track E to the freeze:** roughly 90–150 hours of agent effort, across parallel lanes (§5.1).
+- **Track A:** about 157 hours of derivability work plus briefs for 127 assets, spread across up to six analysts; re-estimated after the first layer.
+- **Track F:** priced in the L3 focus-families document.
+- **Tracks I and B:** estimated at G2 from measured cost per asset.
+- **Hours are agent effort, not calendar time.** Parallel lanes compress the calendar; the build chain does not compress (execution architecture §6).
+- **Review effort is on top:** one gate review per packet, deeper for high-risk packets.
 
 ---
 
@@ -530,7 +474,7 @@ Nikaṣa only read production. Suvarṇa changes writers and rebuilds assets.
 
 | Dependency | Owner | Needed by | Status | Action |
 |---|---|---|---|---|
-| Build engine landed and deployed | Nikaṣa Engine, if N-2 is approved | G1 | 200 commits, no PR | E3 |
+| Build engine landed and deployed | Nikaṣa Engine, if N-2 is approved | J1 | 200 commits, no PR | E3 |
 | Migrations 1094, 1095 in production | deploy pipeline | R55, R38 | not applied | E3 |
 | `bo_upaya` fix (restore the delete) | L2 writer owner; with Nirmāṇa off, Suvarṇa L2 by default | R246; lifting the withholding | direction ruled, handoff written | N-6 |
 | C1 crash and orphan handling | build engine | clean build-history verdicts | not started | E3 |
@@ -548,20 +492,23 @@ In the order they are needed.
 | ID | Decision | When | Recommendation |
 |---|---|---|---|
 | N-1 | Approve this plan (after review rounds) | now | — |
-| N-2 | Fold the build-engine work (`campaign/nirmana-engine`) into the Nikaṣa Engine session | Stage 1 start | Yes. It has no running campaign, and the engine freeze depends on it. |
-| N-3 | Landing approach for PR #2736: split into code and evidence, retarget to `main` | Stage 1 start | Yes. |
+| N-2 | Fold the build-engine work (`campaign/nirmana-engine`) into the Nikaṣa Engine session | now | Yes. It has no running campaign, and the engine freeze depends on it. |
+| N-3 | Landing approach for PR #2736: split into code and evidence, retarget to `main` | now | Yes. |
 | N-4 | Approve each reopen agenda: T1, then T2, then T3 | E2, three times | Review each as presented. |
 | N-5 | Sign each re-seal | E2, three times | — |
-| N-6 | `bo_upaya`: fix in Stage 1 as a sanctioned writer exception, or defer to Suvarṇa L2 with the withholding in force | Stage 1 | Fix in Stage 1. Half a day, and it unblocks R246 and ends the withholding. |
+| N-6 | `bo_upaya`: fix now (Track E) as a sanctioned writer exception, or defer to L2 with the withholding in force | now | Fix now. Half a day, and it unblocks R246 and ends the withholding. |
 | N-7 | Accept tier 4; accept the L0 instance | end of E2 | — |
-| N-8 | Engine freeze | G1 | — |
+| N-8 | Engine freeze | J1 | — |
 | N-9 | L0 pilot results and rollout pace | G2 | — |
-| N-10 | Accept each layer instance; sign each layer close | Stage 3, per layer | — |
+| N-10 | Accept each layer instance; sign each layer close | per layer, batched | — |
 | N-11 | Approve asset-specific addition classes (§2.3) | before L2, at the latest | Decide per class. |
 | N-12 | Elevation certifies the canonical chart only, or several charts | before L1 | Canonical chart first; multi-chart as a recorded addition. |
 | N-13 | N/A policy for "writes nothing to its own table" and "update-only" assets (R247) | before L2 | — |
 | N-14 | Data findings with owners outside the inspector: `lel_events` (R236), `build_dependencies` (R219), `ka_gochara` registry (R240) | per layer | — |
-| N-15 | Pace and budget: model routing, review depth, spend ceiling | Stage 1 start | — |
+| N-15 | Pace and budget: model routing, review depth, spend ceiling per track | now | Ceilings per track, reviewed weekly. |
+| N-17 | Track F: how Suvarṇa relates to the live L3 Gochara workstream — coordinate, or absorb it at a hand-over point | now | See the L3 focus-families document. |
+| N-18 | Isolation: approve the dedicated folder and branch model | now | Yes. |
+| N-19 | Approve the autonomy charter (granted, reserved, prohibited powers) | before execution | Review with the charter draft. |
 | N-16 | Nirmāṇa's database record: leave it reading "frozen", or supersede it with the privileged control writer | any time | Leave it. The decision is recorded in governance. |
 
 ---
@@ -574,7 +521,7 @@ In the order they are needed.
 - certification records;
 - open gap rows, by gate and layer;
 - open register rows, by severity;
-- T1–T5 status (Stage 1);
+- T1–T5 status (until J1);
 - effort spent against estimate, per stage.
 
 **Per-stage burn-down** of its own rows and gates.
@@ -600,14 +547,14 @@ In the order they are needed.
 
 | Risk | Signal | Mitigation |
 |---|---|---|
-| The engine stage never ends | E2 keeps growing | Closed agendas; transcription rows deferred to Stage 3; freeze criterion fixed in §4.2. |
+| The engine stage never ends | E2 keeps growing | Closed agendas; derivability harvested in parallel (Track A); transcription rows close as each layer instance is derived; freeze criterion fixed in §4.2. |
 | Another false pass | a gap closes, then the asset fails | Only PASS or justified N/A closes; R246 detector; mutation-proven tests; gate reviews. |
 | Collision with live workstreams | two sessions change one asset | Coordination rule (§7); check live work at every session start. |
-| Register drift | tallies disagree with rows | Computed tallies (Stage 0). |
+| Register drift | tallies disagree with rows | Computed tallies (§5.0). |
 | Environment fragility | stalls, dropped connections | §6.5 rules. |
 | Review fatigue | gates accept quickly | Fresh reviewer per packet; independent reviewers for plans and rulings. |
 | Scope creep from opportunities | layers slow down | Opportunities never block; ruled in batches. |
-| Stage 3 larger than expected | L0 cost per asset high | Estimate at G2 from measured data; the native sets the pace. |
+| Implementation larger than expected | measured cost per asset high at G2 | Re-estimate at G2 from measured data; the native sets the pace. |
 
 ---
 
