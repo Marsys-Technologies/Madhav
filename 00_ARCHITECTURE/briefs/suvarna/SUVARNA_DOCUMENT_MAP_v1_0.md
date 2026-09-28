@@ -26,7 +26,9 @@ Branches: **S** = `strategy/suvarna-plan` · **N** = `campaign/nikasha-test` · 
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_1.md` | S | draft, review pass 1 | The master plan: end state, standard, tracks, gates, decisions |
 | `briefs/suvarna/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` | S | draft v1.1 | How it runs: isolation, swarm, queue, builds, autonomy, cost, real-time visibility (§11) |
 | `control/suvarna/plan_model.json` | S | living | The plan in machine form: tracks, items, dependencies, decisions, done-detectors. Drives the tracker |
-| `platform/scripts/governance/suvarna_tracker/` | S | built, 34 tests | The real-time campaign tracker (event log, detectors, live dashboard) |
+| `platform/scripts/governance/suvarna_tracker/` | S | built, 36 tests | The real-time campaign tracker (event log, detectors, live dashboard) |
+| `briefs/suvarna/prompts/L3_{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_PROMPT_v1_0.md` | S | ready | Start prompts for the three L3 family sessions, which each seal a final brief and implement it (native, 2026-09-29) |
+| `briefs/l3_families/{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_v1_0.md` | family branches | to be written | The sealed final briefs; Suvarṇa's L3 analysis evaluates their latest versions |
 | `briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` | S | draft | Sangam, Kshetra, Gochara: current state, target, effort |
 | `briefs/suvarna/SUVARNA_DOCUMENT_MAP_v1_0.md` | S | living | This map |
 | `briefs/suvarna/SUVARNA_REVIEW_PACKAGE_v1_0.md` | S | draft | The brief for the independent reviewer |
