@@ -1278,7 +1278,7 @@ export async function POST(request: Request) {
           const admission = managedInquirySession.currentContract.successor || (managedInquirySession.parentInquiryId ?? null) !== null
             ? evaluateSuccessorItemForDispatch({
               contract: managedInquirySession.currentContract, item_id: item.item_id, snapshot: inquirySnapshot,
-              live: successorLive(await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id)),
+              live: successorLive(await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id).catch(() => ({ overlay_version: null, build_id: null }))),
               // The durable row's parent link is an independent lineage marker: a contract that says
               // it is a successor but carries no successor receipt is refused, never run as ordinary.
               expect_successor: (managedInquirySession.parentInquiryId ?? null) !== null,

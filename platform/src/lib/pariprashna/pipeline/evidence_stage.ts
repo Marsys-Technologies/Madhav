@@ -230,7 +230,9 @@ export async function runEvidenceStage(args: {
           ? evaluateSuccessorItemForDispatch({
             contract, item_id: item.item_id, snapshot,
             // Chart, overlay and served build are re-read now, not carried over from compile time.
-            live: successorLive(await loadChartCapabilityOverlay(snapshot, chartId)),
+            // An unreadable overlay is an unverifiable identity: it fails closed (named, per item)
+            // instead of rejecting the whole evidence stage.
+            live: successorLive(await loadChartCapabilityOverlay(snapshot, chartId).catch(() => ({ overlay_version: null, build_id: null }))),
           })
           : null
         if (admission && admission.decision === 'refuse') {

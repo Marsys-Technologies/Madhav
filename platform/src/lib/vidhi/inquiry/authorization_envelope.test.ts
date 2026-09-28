@@ -376,7 +376,7 @@ describe('successor compilation runs the envelope on every admitted item (real c
     const { parent, entry } = parentWithEvidence()
     const stripped = { ...parent, material_frontier: parent.material_frontier.map((frontier) => { const rest: Record<string, unknown> = { ...frontier }; delete rest['rule_id']; return rest }) }
     const successor = compileInquirySuccessorContract({
-      snapshot, parent_inquiry_id: 'parent-1', parent: stripped as InquiryContract, cross_capability_only: true, admission: liveFor(parent),
+      snapshot, parent_inquiry_id: 'parent-1', parent: stripped as unknown as InquiryContract, cross_capability_only: true, admission: liveFor(parent),
     })
     const item = successor.plan_items.find((candidate) => candidate.scu_id === entry.scu_id)!
     expect(item.successor_admission).toMatchObject({ decision: 'refuse', code: 'successor_receipt_incomplete' })
