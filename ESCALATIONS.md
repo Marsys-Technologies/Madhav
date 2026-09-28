@@ -708,3 +708,67 @@ seven as pending** (only 1071/1072 — cherry-picked-but-unapplied, do not apply
 and 1086 remain). **Per the native's ruling the seven migration files are FROZEN
 at their recorded sha256: any later edit fails the next deploy with
 `MigrationHashMismatchError`.**
+
+## E-020 — Link 3 blocked: migration 1091 conjunct (e) is RED on the real-data '4.0' projection
+
+**What:** During PRAMĀṆIN re-verification of the K3/O-2 BLOCK remediation
+(ADK-0024), the corrected step06b windows projection for both charts fails
+migration 1091 integrity conjunct (e) (`window_start` inside the manifest
+horizon) on exactly 39 rows:
+- chart `482012f1…`: 12 era-tier rows with `window_start = 2019-12-31`
+- chart `1c826d5a…`: 13 era + 7 month + 7 day rows with `window_start = 2019-12-31`
+vs the manifest horizon lower bound `2020-01-01T00:00Z`.
+
+**Root cause:** The pinned `int(jd − 2440588.0)` noon-UTC JD-day flooring (shared
+with generation '3.0', verified equivalent under gate (b)) maps the horizon
+lower bound JD 2458849.5 to `2019-12-31`. Components whose activity is above
+`min_lambda` at the horizon edge receive `enter = points[0]` = the horizon
+lower point; `date_of_jd` floors it one day early. Month and day tiers inherit
+via the era clip. The behavior is **pre-existing** — byte-identical in the stale
+projection — and surfaced only because the real-data candidate projection is now
+being evaluated against migration 1091's full (a)–(k) conjunct set for the first
+time.
+
+**Why this blocks the flip:** Link 3's `step09_soak_checklist.md` trigger #1
+orders an immediate `step08_flip.py --reverse` if any integrity conjunct (a)–(k)
+is RED. Flipping with these 39 rows would therefore self-trigger a reversal.
+Additionally, native condition (d) for Link 3 requires K3/O-2 independent review
+with no blocking finding; the unresolved (e)-RED is a blocking finding.
+
+**Why ADHIKĀRIN authority lapsed:** ADK-0025 ruled option (A) — re-scope
+conjunct (e) to tolerate exactly `window_start = date_of_jd(horizon_lower_jd)`
+at the horizon edge — as the least-change fix. However, the authoritative
+definition of conjunct (e) lives **inside the applied migration 1091 file**
+(`platform/migrations/1091_wp10_ka_gochara_registry_repin.sql:183`), which
+writes the conjunct text into `asset_registry.integrity_check_sql`. The living
+TS/Python integrity runners only execute the stored string; they contain no
+conjunct text of their own. ADK-0025 §1 explicitly conditioned branch-local
+authority on the conjunct living in a living runner; finding it inside the
+applied migration file means editing it is **outside surrogate scope**.
+
+**Native options (informational, not acted on):**
+1. Author a new migration (e.g. `1092_wp10_ka_gochara_conjunct_e_edge_rescope.sql`)
+   that updates `asset_registry.integrity_check_sql` for the affected registry
+   entries so conjunct (e) tolerates exactly the horizon-edge floor date. The
+   lane's disposable-DB rebuild recipe, corrected step06b outputs, and
+   per-conjunct (a)–(k) evaluation harness are retained in
+   `link3_conditioning_evidence.md` and ready to validate the re-scoped detector.
+2. Reject the re-scope and instead change the window-start edge convention in
+   the projection writer (e.g. clamp to horizon date or use an inclusive-date
+   boundary). This re-opens gate (b) (midnight/JD-day equivalence vs '3.0') and
+   requires regeneration of all windows and delta reports.
+3. Exclude horizon-edge components from the projection. This drops legitimate
+   boundary contacts and is not recommended.
+
+**Verified state awaiting native decision:**
+- K3-F1 and K3-F2 remediations are implemented, tested, and PRAMĀṆIN-verified
+  (`b2007db1d`).
+- Corrected step06b projection reproduced independently: 482012f1 → 4,417
+  windows, 1c826d5a → 3,955 windows, `contacts_unmapped_relation = 0`, mean raw
+  values match the regenerated delta reports.
+- Gates (b) and (c) remain verified for the corrected projection.
+- Full (a)–(k) evaluation shows only conjunct (e) RED, on exactly the 39 named
+  rows.
+- Production untouched: authority remains '3.0' on both charts, '4.0' candidate
+  rows are publications-status `candidate`, zero '4.0' windows in
+  `kala_gochara_windows`.
