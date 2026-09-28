@@ -1,7 +1,7 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_FOLLOWUP_FENCE_AND_SUCCESSOR_ENVELOPE
-version: 1.1
-status: ACTIVE_LOCAL_SOURCE_EXECUTION
+version: 1.2
+status: LOCAL_SOURCE_COMPLETE_AWAITING_NATIVE_PUBLICATION_AUTHORIZATION
 date: 2026-09-28
 native_authority: Native source-execution authorization for the complete follow-up campaign (both packets),
   2026-09-28. Local only: no push, PR, merge, deployment, production, database, migration, rebuild or live collection.
@@ -11,12 +11,12 @@ lineage_record:
   r5a_publication_and_ci: COMPLETE   # PR #2742 opened, CI repaired, independently reviewed, accepted by the Native at head d5c4c1f27
   r5b_source_merge: COMPLETE         # verified 2026-09-28: main 205a62618182a73f45a9bee34f8ffff8cdce8892, tree 231e9bdd67a8cfab2a1034ff9b5593d7e310b7dd == reviewed candidate 4f5d5a0dc tree
   production_deployment: NOT_COMPLETE
-  empirical_or_candidate_validation: NOT_COMPLETE   # candidate_validation NOT_RUN in BEYOND_ACARYA_ACCEPTANCE_v9.json
+  empirical_or_candidate_validation: NOT_COMPLETE   # candidate_validation NOT_RUN in BEYOND_ACARYA_ACCEPTANCE_v10.json (v9 is now an immutable pin)
   campaign_or_product_completion: NOT_COMPLETE
 base_main_sha: 205a62618182a73f45a9bee34f8ffff8cdce8892
 worktree: /Users/Dev/.codex/worktrees/purna-followup-v1/Madhav
 branch: codex/purna-followup-fence-and-successor-envelope
-source_execution_authorized: true          # local source + tests + local commits only, until the Native grants R5A for THIS follow-up
+source_execution_authorized: false         # the local source execution is complete; nothing further is authorized without a fresh Native ruling
 push_authorized: false
 pr_change_authorized: false
 merge_authorized: false
@@ -190,3 +190,73 @@ freshness green; pin-lint 0 new; full suite green; secret scan clean; an indepen
 with no unresolved HIGH/MED finding; branch clean, current with main; PR description drafted (not posted)
 covering objective, both packets, the envelope definition and residual risks, tests, and the authority
 ceiling. Then stop and request the exact next authority.
+
+
+## Closeout record (local source execution complete — awaiting Native publication authorization)
+
+Status: `LOCAL_SOURCE_COMPLETE_AWAITING_NATIVE_PUBLICATION_AUTHORIZATION`. Nothing was pushed; no PR exists.
+Both packets are implemented with red-then-green tests on branch
+`codex/purna-followup-fence-and-successor-envelope` (base main `205a62618`, still current at close).
+
+**Packet A — served-generation-safe composites.** `query_planet` and `graha_portrait` resolve the served
+generation once (`generation/composite_fence.ts`). With one, every chart-data leg is fenced to it; without
+one (none resolves, or resolution throws) no generation-sensitive leaf is called, each requested component
+is named in `components_unavailable` (`served_generation_unresolved` | `no_served_generation`, fixed reason
+text), `generation_fence` is retained, and the response is not a whole-tool error. Component audit in source:
+`QUERY_PLANET_COMPONENTS` / `GRAHA_PORTRAIT_COMPONENTS` (`independent` | `sensitive` | `self_fenced`; only the
+request-derived planet identity is independent, `get_dashas` is self-fenced, everything else is sensitive).
+Both tools also emit one shared `component_failures` list. `classifyInquiryResult` no longer counts a composite
+with withheld or failed components as `served`.
+
+**Packet B — one shared successor authorization envelope** (`platform/src/lib/vidhi/inquiry/authorization_envelope.ts`,
+live state in `successor_admission_live.ts`). Computed at plan time from the pinned snapshot and compiled plan
+only, stored on the contract, bound into `execution_plan_hash` (recomputed from content). Entries exist only for
+frontier-rule targets the plan does not contain that have a dispatchable binding on the door's channel, are
+within the scope entitlement tier, and are relevant (graph-adjacent to a planned SCU, or a universal/overlapping
+domain). The eight conditions are enforced by one evaluator with stable named codes: (1) `successor_capability_not_read_only`;
+(2) `successor_capability_not_in_catalogue`, `successor_channel_not_eligible`; (3) `successor_frontier_not_relevant`;
+(4) `successor_chart_mismatch`, `successor_principal_mismatch`, `successor_build_identity_mismatch`;
+(5) `successor_chart_access_not_verified`, `successor_entitlement_not_permitted`; (6) `successor_depth_exceeded`,
+`successor_iteration_limit_exceeded`, `successor_cost_limit_exceeded`; (7) `successor_safety_excluded`; (8)
+`successor_receipt_incomplete`; outside the envelope: `successor_capability_not_authorized_for_request`
+(unchanged). A capped same-capability pagination frontier is authorized by the hash-bound parent plan
+(`authority: parent_plan_continuation`) and still clears every other condition. Every door recomputes the decision
+at dispatch (`evaluateSuccessorItemForDispatch`); a stored refusal is final; refusals terminalize identically
+(`terminalizeRefusedSuccessorItem`) and are receipted on the plan item (`successor_dispatch`) and in the durable
+evidence payload. A recovered managed worker resumes a successor generation through the same drain (first-time
+items), never through the adopted plan tool set (which bypassed authorization).
+
+**Rejected alternatives.** (a) Letting the synthesizing model or a client name admissible capabilities — authority
+must be server-computed. (b) Evaluating only at compile time — live state (safety, cost, overlay, principal)
+changes; dispatch re-evaluates. (c) Widening the request tool set — the envelope is a separate, hash-bound grant.
+(d) Refusing at compile by blocking the plan item — kept ready-then-named-failed so the existing terminal named-gap
+shape and `successor_capability_not_authorized_for_request` behavior are preserved.
+
+**Residual risks / limitations (for the Native's review).** Entitlement (5) is checked against the contract's
+declared scope tier; no per-principal tier exists in the platform (CLAUDE.md §N.4), so on the raw door it is
+exactly as strong as plan compilation already was. Chart access is the door's actual `authorizeChartAccess` /
+`authorizeTurn` result; the BYOK managed preflight only proves access, so it is recorded as the least privilege
+that admits (`view`). The Portal and raw doors have no per-request call-count cost tracker, so the cost detector is
+live only on managed (and the batch/lineage ceilings); the envelope is small (≤3 rule targets), so the lineage
+ceilings are testable mainly with synthetic chains. Successors issued before this change (no parent envelope)
+now refuse every item (fail closed). Two LOW items were left: the raw door returns 409 (not a terminal record)
+when a refused item has no resolvable binding or unauthorized args; `authorizeMcpByokPrincipal` does not return a
+permission level.
+
+**Generated artifacts and why.** Capability snapshot regenerated (`sha256:9b47461d…`): exactly seven added optional
+`build_id` inputs (get_positions, get_dignity, get_avasthas, get_aspects, get_yoga_dosha, get_dispositors,
+traverse_chart_graph). Estate census regenerated against the final source commit. New immutable
+`BEYOND_ACARYA_ACCEPTANCE_v10.json` from the real evaluator (report hash `fe396729…`); v9 is now an immutable pin;
+all six denominators identical (5/13, 0/25, 34/34, 9/9, 1/1, 3/3); source-provenance only. Two route goldens
+rotated by content hashes only (verified semantically equal after masking and order-normalizing). Four pin-lint
+allowlist line anchors re-anchored, no new exemption.
+
+**Verification at close.** `tsc` clean; freshness gates current; pin-lint 0 new; full platform suite 1285 files /
+14,261 tests passed (81 files skipped: DB-backed); real `next build` (CI placeholder Firebase env) exit 0; CI-mode
+secret scan PASS; branch-only gitleaks: no leaks (a local full-worktree gitleaks reports the inherited baseline,
+which CI does not run). Three independent read-only review rounds (Packet A; Packet B security; Packet B
+semantics) plus a final full-delta security review; every HIGH/MED finding was fixed and re-verified; two LOW
+items are recorded above. Untouched: `kala_*`/`ka_*`/`l3_*`, the frozen orchestrator, migrations, `platform-mcp`.
+
+**Next authority required.** A fresh explicit Native authorization to publish this follow-up (push the branch and
+open the PR, plus CI repair and independent review); merging is a separate later authorization.
