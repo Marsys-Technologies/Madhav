@@ -309,6 +309,11 @@ export async function POST(request: Request): Promise<Response> {
           orientationPromise,
           inquiryContract,
           abortSignal: turnSignal,
+          // `authorizeTurn` above already verified this caller's access to this chart (fail-closed);
+          // the shared successor envelope takes that as an explicit input, plus the safety pass's
+          // exclusions, so a successor is held to everything the plan-time capabilities were.
+          chartAccessVerified: true,
+          excludedCapabilities: postPlanSafety.excluded_capabilities,
         })
         if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         if (runtime.kind === 'byok') {

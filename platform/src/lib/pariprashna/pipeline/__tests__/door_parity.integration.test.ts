@@ -59,6 +59,7 @@ vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
     retrieve: async (_query: unknown, args: Record<string, unknown>) => w5DoorParityToolResult(name, args),
   }),
 }))
+vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/qos/dispatch_queue', () => ({
   getSharedQosDispatchQueue: () => ({ submit: qosSubmit }),
 }))

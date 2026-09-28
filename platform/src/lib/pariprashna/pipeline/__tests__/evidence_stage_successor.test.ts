@@ -2,9 +2,9 @@
  * Portal evidence-driven successor (Pūrṇa R2B.4b / review RC-5.4).
  *
  * When a served observation calls for a capability the plan did not include, the Portal door
- * continues through one deterministic successor in the same request — using only tools the
- * request was already authorized for — and the final contract carries its parent so the fact
- * register accounts for the whole chain.
+ * continues through one deterministic successor in the same request — dispatching it only when the
+ * shared authorization envelope (Packet B) admits it, recomputed at dispatch from server-held state —
+ * and the final contract carries its parent so the fact register accounts for the whole chain.
  */
 import { describe, expect, it, vi } from 'vitest'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
@@ -41,8 +41,9 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => ({
   loadChartCapabilityOverlay: async () => OVERLAY,
 }))
 vi.mock('@/lib/retrieval/registry', () => ({
-  getCapability: () => ({ display: { reader_label_key: 'examining_chart' } }),
+  getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false, display: { reader_label_key: 'examining_chart' } }),
 }))
+vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/qos/dispatch_queue', () => ({
   getSharedQosDispatchQueue: () => ({ submit: async ({ run }: { run: () => Promise<unknown> }) => run() }),
 }))
@@ -100,16 +101,21 @@ function setup(): { contract: InquiryContract; source: string; targetUri: string
   return { contract, source: source.binding_id.slice('registry:'.length), targetUri: targetBinding.binding_id.slice('registry:'.length) }
 }
 
-async function run(contract: InquiryContract, toolsAuthorized: string[]) {
+async function run(contract: InquiryContract, toolsAuthorized: string[], extra: { chartAccessVerified?: boolean; excludedCapabilities?: string[] } = {}) {
   const { em, flags } = emitter()
   const out = await runEvidenceStage({
     em, request: new Request('http://localhost/api/pariprashna', { method: 'POST' }),
     chartId: CHART_ID, userUid: 'fixture-principal',
     plan: w5DoorParityPlan(), queryPlan: {} as never, manifest: {} as never,
     toolsAuthorized, orientationPromise: Promise.resolve(null), inquiryContract: contract,
+    chartAccessVerified: true,
+    ...extra,
   })
   return { out, flags }
 }
+
+const planTools = (contract: InquiryContract) =>
+  [...new Set(contract.plan_items.flatMap((item) => item.binding_id ? [item.binding_id.slice('registry:'.length)] : []))]
 
 describe('Portal evidence-driven successor', () => {
   it('continues into the admitted capability when the request is authorized for it, and keeps the chain', async () => {
@@ -129,16 +135,54 @@ describe('Portal evidence-driven successor', () => {
       .toBe(contract.obligations.length + final.obligations.length)
   })
 
-  it('never dispatches an admitted capability outside the request authorization; it names the gap', async () => {
+  it('dispatches an envelope-admitted successor even though the request tool set never contained it', async () => {
     const { contract, source, targetUri } = setup()
     state.triggerTool = source
     state.dispatched = []
-    const authorized = [...new Set(contract.plan_items.flatMap((item) => item.binding_id ? [item.binding_id.slice('registry:'.length)] : []))]
-      .filter((uri) => uri !== targetUri)
+    const authorized = planTools(contract).filter((uri) => uri !== targetUri)
     const { out } = await run(contract, authorized)
 
     const final = out.inquiryContract!
+    expect(state.dispatched).toContain(targetUri)
+    const item = final.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+    // Attributable: the compile-time decision and the dispatch-time decision are both on the item.
+    expect(item.successor_admission).toMatchObject({ decision: 'admit', code: 'successor_admitted' })
+    expect(item.successor_dispatch).toMatchObject({ decision: 'admit', code: 'successor_admitted', scu_id: item.scu_id })
+    expect(item.observation?.disposition).toBe('served')
+  })
+
+  it('never dispatches a successor the request safety pass excluded; it names the gap with the decision code', async () => {
+    const { contract, source, targetUri } = setup()
+    state.triggerTool = source
+    state.dispatched = []
+    const { out } = await run(contract, planTools(contract), { excludedCapabilities: [targetUri] })
+
+    const final = out.inquiryContract!
     expect(state.dispatched).not.toContain(targetUri)
+    expect(final.status).not.toBe('COMPLETE')
+    const item = final.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+    expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_safety_excluded' })
+    expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_safety_excluded' })
+  })
+
+  it('requires the route to have verified chart access; without it every successor item is refused', async () => {
+    const { contract, source, targetUri } = setup()
+    state.triggerTool = source
+    state.dispatched = []
+    const { out } = await run(contract, planTools(contract), { chartAccessVerified: false })
+    expect(state.dispatched).not.toContain(targetUri)
+    const item = out.inquiryContract!.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
+    expect(item.observation?.gap_reason).toBe('successor_chart_access_not_verified')
+  })
+
+  it('keeps the named gap for a capability outside the envelope (no envelope entry, no dispatch)', async () => {
+    const { contract, source, targetUri } = setup()
+    state.triggerTool = source
+    state.dispatched = []
+    const outside = { ...contract, authorization_envelope: { ...contract.authorization_envelope!, entries: [] } }
+    const { out } = await run(outside as InquiryContract, planTools(contract).filter((uri) => uri !== targetUri))
+    expect(state.dispatched).not.toContain(targetUri)
+    const final = out.inquiryContract!
     expect(final.status).not.toBe('COMPLETE')
     expect(final.plan_items.some((item) => item.observation?.gap_reason === 'successor_capability_not_authorized_for_request')).toBe(true)
   })
