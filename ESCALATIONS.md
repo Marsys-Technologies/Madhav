@@ -800,3 +800,38 @@ gate-(b) shifted-row table, migration
 `1150_wp10_ka_gochara_conjunct_e_utc_date_compare.sql` with dual-timezone
 disposable rehearsal GREEN). Production apply of 1150 awaits PRAMĀṆIN's pass
 and will run through migrate.ts (never apply_migration.sh).
+
+## E-021 — local century enumeration prohibited; rebuild path is Cloud Run after deploy (native directive, 2026-09-29)
+
+- **What:** The native deliberately killed both local `step06_enumerate_episodes.py`
+  century-horizon rehearsal processes (generation `'4.1'`, disposable DB on
+  localhost:55436). This was a deliberate stop, not an external interruption.
+  Timeline for the record: the first enumeration pair was launched under F-0
+  precondition-2 work (`8e1fed557`); that pair died when its driving session was
+  interrupted; the executor recorded the interruption and relaunched
+  (`ec4c35110`) **before** the native's directive existed; the native then killed
+  the relaunched pair and issued this directive. After the directive, nothing was
+  relaunched; the lane verified the kill and cleaned the environment (proxy 55440
+  and container `gochara-f0p2-rehearsal` removed; the native's 5433 proxy
+  untouched).
+- **Directive:** Do NOT relaunch century-scale enumeration locally. The century
+  rebuild (F-0 precondition 2) runs ONLY as an execution of the Cloud Run Job
+  `brahma-build-pipeline-job`, AFTER PR #2731 is merged and deployed (Cloud Run
+  addendum to F-0). Until then: light work only — the merge-readiness packet,
+  docs, tests on disposable DBs.
+- **Rationale (recorded as doctrine, ADK-0028):** heavy local enumeration is a
+  multi-hour resource claim on the native's machine and is superseded by the
+  Cloud Run execution path — the same defect class as `apply_migration.sh`
+  bypassing the ledger: an out-of-band path doing in-band work. Governed-path
+  execution outranks local convenience.
+- **Effect on the standing sequence (supersedes ADK-0027 §5 ordering):**
+  (i) merge-readiness packet now; (ii) native merges #2731 and deploys;
+  (iii) DEPLOY_SHA verification; (iv) century rebuild via Cloud Run Job;
+  (v) re-run Link-2 evidence / gates (b)(c) / PRAMĀṆIN / (a)–(k) on the
+  Cloud-Run-built candidate; (vi) flips with soak trigger #0 + 24h soaks.
+  Chart 2's superseded narrow-horizon `'4.0'` candidate rows remain in production
+  as-is (candidate-only, nothing published) until the `'4.1'` build replaces
+  them — deliberate retention, not drift.
+- **Decision needed from native:** none for this entry — it records a native
+  directive already given. Next native action in the sequence is the
+  merge-readiness packet review and the #2731 merge/deploy.
