@@ -122,6 +122,11 @@ export interface SuccessorAdmissionDecision {
   readonly decision_version: typeof SUCCESSOR_ADMISSION_VERSION
   readonly decision: 'admit' | 'refuse'
   readonly code: SuccessorAdmissionCode
+  /**
+   * What authorizes the item: an entry of the plan-time envelope, or — for a capped pagination
+   * frontier of a capability the hash-bound parent plan already contains — that plan itself.
+   */
+  readonly authority: 'envelope_entry' | 'parent_plan_continuation'
   readonly scu_id: string
   readonly binding_id: string | null
   readonly capability_uri: string | null
@@ -161,8 +166,12 @@ export interface SuccessorAdmissionLiveContext {
   readonly principal_subject: string
   /** The principal that owns the request / lifecycle. */
   readonly owner_principal_subject: string
-  /** The door re-verified this principal's access to this chart in this request. */
-  readonly chart_access_verified: boolean
+  /**
+   * The chart permission the door's own authorization returned for this principal in this request
+   * (`authorizeChartAccess` / `authorizeTurn`), never a boolean the door asserts. Only `all` and
+   * `view` admit; anything else, or an absent result, refuses.
+   */
+  readonly chart_permission: 'all' | 'view' | 'deny' | null
   readonly overlay_version: string | null
   readonly build_id: string | null
   /** Live registry view, so a stale or forged snapshot cannot turn an operation into evidence. */
@@ -178,7 +187,12 @@ export interface SuccessorAdmissionLiveContext {
   readonly cost_exhausted: boolean
 }
 
-/** Domain markers for capabilities that apply to every inquiry scope. */
+/**
+ * Domain markers for capabilities that apply to every inquiry scope. A universal-domain target is
+ * therefore never scope-gated by domain: for `yoga.firing_and_cancellation` and
+ * `judgment_query` the operative relevance gate is the frontier rule plus the served source item
+ * (condition 3 at evaluation), not the scope's domains. Only `get_dashas` is scope/graph gated here.
+ */
 const UNIVERSAL_DOMAINS: ReadonlySet<string> = new Set(['all', 'cross_domain'])
 
 const ENTITLEMENT_RANK: Readonly<Record<string, number>> = {
@@ -290,7 +304,8 @@ export function buildAuthorizationEnvelope(args: {
       domain_overlap: domainOverlap,
     })
   }
-  entries.sort((left, right) => left.scu_id.localeCompare(right.scu_id))
+  // Codepoint order, not locale order: the envelope hash must not depend on the runtime's ICU data.
+  entries.sort((left, right) => (left.scu_id < right.scu_id ? -1 : left.scu_id > right.scu_id ? 1 : 0))
   return sealEnvelope({
     envelope_version: AUTHORIZATION_ENVELOPE_VERSION,
     chart_id: args.chart_id,
@@ -353,6 +368,20 @@ function seal(body: Omit<SuccessorAdmissionDecision, 'decision_hash'>): Successo
   return { ...body, decision_hash: stableFingerprint(body) }
 }
 
+/** A refusal for a successor item whose lineage or plan item cannot be read (never `null`, never an admit). */
+function refusedWithoutReceipt(itemId: string, scuId: string, live: SuccessorAdmissionLiveContext): SuccessorAdmissionDecision {
+  return seal({
+    decision_version: SUCCESSOR_ADMISSION_VERSION, authority: 'envelope_entry', decision: 'refuse',
+    code: 'successor_receipt_incomplete', scu_id: scuId, binding_id: null, capability_uri: null,
+    frontier_id: null, frontier_rule_id: null, source_item_id: itemId, source_scu_id: null,
+    envelope_hash: null, envelope_entry_id: null,
+    limit_state: {
+      successor_depth: 0, max_successor_depth: MAX_SUCCESSOR_DEPTH, chain_iterations: 0, max_chain_iterations: MAX_CHAIN_ITERATIONS,
+      admitted_items: 0, max_admitted_items: MAX_ADMITTED_SUCCESSOR_ITEMS, cost_exhausted: live.cost_exhausted,
+    },
+  })
+}
+
 function withoutDecisionHash(decision: SuccessorAdmissionDecision): Omit<SuccessorAdmissionDecision, 'decision_hash'> {
   const body: Record<string, unknown> = { ...decision }
   delete body['decision_hash']
@@ -374,7 +403,7 @@ export const SUCCESSOR_DENY_ALL_LIVE: SuccessorAdmissionLiveContext = {
   chart_id: '',
   principal_subject: '',
   owner_principal_subject: '',
-  chart_access_verified: false,
+  chart_permission: null,
   overlay_version: null,
   build_id: null,
   describe: () => undefined,
@@ -399,7 +428,12 @@ export function evaluateSuccessorAdmission(input: {
 }): SuccessorAdmissionDecision {
   const { envelope, snapshot, candidate, contract, live } = input
   const chain = chainState(contract)
-  const limits = envelope?.limits ?? ENVELOPE_LIMITS
+  // Ceilings a stored envelope declares can only tighten the platform's own, never loosen them.
+  const limits: AuthorizationEnvelopeLimits = {
+    max_successor_depth: Math.min(envelope?.limits.max_successor_depth ?? MAX_SUCCESSOR_DEPTH, MAX_SUCCESSOR_DEPTH),
+    max_admitted_successor_items: Math.min(envelope?.limits.max_admitted_successor_items ?? MAX_ADMITTED_SUCCESSOR_ITEMS, MAX_ADMITTED_SUCCESSOR_ITEMS),
+    max_chain_iterations: Math.min(envelope?.limits.max_chain_iterations ?? MAX_CHAIN_ITERATIONS, MAX_CHAIN_ITERATIONS),
+  }
   const limitState: SuccessorAdmissionLimitState = {
     successor_depth: chain.depth,
     max_successor_depth: limits.max_successor_depth,
@@ -409,14 +443,24 @@ export function evaluateSuccessorAdmission(input: {
     max_admitted_items: limits.max_admitted_successor_items,
     cost_exhausted: live.cost_exhausted,
   }
-  const entry = envelope && authorizationEnvelopeHash(envelope) === envelope.envelope_hash
-    ? envelope.entries.find((candidateEntry) => candidateEntry.scu_id === candidate.scu_id)
+  // A capped pagination frontier of a capability the (hash-bound) parent plan already contains is
+  // authorized by that plan, not by an envelope entry — but it must still clear every other condition.
+  const planContinuation = candidate.binding_id !== null
+    && candidate.source_scu_id === candidate.scu_id
+    && contract.plan_items.some((item) => item.scu_id === candidate.scu_id && item.binding_id === candidate.binding_id)
+  const envelopeIntact = envelope !== undefined && authorizationEnvelopeHash(envelope) === envelope.envelope_hash
+  const entry = !planContinuation && envelopeIntact
+    ? envelope!.entries.find((candidateEntry) => candidateEntry.scu_id === candidate.scu_id)
     : undefined
+  const scu = snapshot.scus.find((candidateScu) => candidateScu.scu_id === candidate.scu_id)
+  const binding = scu?.bindings.find((candidateBinding) => candidateBinding.binding_id === (planContinuation ? candidate.binding_id : entry?.binding_id))
+  const capabilityUri = planContinuation ? binding?.capability_uri ?? null : entry?.capability_uri ?? null
   const base = {
     decision_version: SUCCESSOR_ADMISSION_VERSION,
+    authority: planContinuation ? 'parent_plan_continuation' : 'envelope_entry',
     scu_id: candidate.scu_id,
     binding_id: candidate.binding_id,
-    capability_uri: entry?.capability_uri ?? null,
+    capability_uri: capabilityUri,
     frontier_id: candidate.frontier_id ?? null,
     frontier_rule_id: candidate.frontier_rule_id ?? null,
     source_item_id: candidate.source_item_id ?? null,
@@ -425,46 +469,56 @@ export function evaluateSuccessorAdmission(input: {
     envelope_entry_id: entry?.entry_id ?? null,
     limit_state: limitState,
   } as const
-  const refuse = (code: SuccessorAdmissionCode) => seal({ ...base, decision: 'refuse', code })
+  const refuse = (code: SuccessorAdmissionCode) => seal(code === 'successor_safety_excluded'
+    // The wire carries a count-level fact, never the identity of a capability the safety pass removed.
+    ? { ...base, binding_id: null, capability_uri: null, envelope_entry_id: null, decision: 'refuse', code }
+    : { ...base, decision: 'refuse', code })
 
   // Outside the envelope (or no/forged envelope): the long-standing named gap.
-  if (!envelope || !entry) return refuse('successor_capability_not_authorized_for_request')
-  if (candidate.binding_id !== null && candidate.binding_id !== entry.binding_id) {
-    return refuse('successor_capability_not_authorized_for_request')
+  if (!planContinuation) {
+    if (!envelope || !entry) return refuse('successor_capability_not_authorized_for_request')
+    if (candidate.binding_id !== null && candidate.binding_id !== entry.binding_id) {
+      return refuse('successor_capability_not_authorized_for_request')
+    }
   }
-  // 8 — the receipt must be completable before anything else is trusted.
-  if (!candidate.frontier_id || !candidate.frontier_rule_id || !candidate.source_item_id
+  // 8 — the receipt must be completable before anything else is trusted. A rule id is required
+  // only when a rule proposed the capability (a pagination continuation has none).
+  if (!candidate.frontier_id || (!planContinuation && !candidate.frontier_rule_id) || !candidate.source_item_id
     || !candidate.source_scu_id || candidate.source_served !== true) {
     return refuse('successor_receipt_incomplete')
   }
   // 4 — identity: same chart, principal, overlay, served build and pinned catalogue.
-  if (live.chart_id !== contract.chart_id || envelope.chart_id !== contract.chart_id) return refuse('successor_chart_mismatch')
+  if (live.chart_id !== contract.chart_id || (envelope !== undefined && envelope.chart_id !== contract.chart_id)) return refuse('successor_chart_mismatch')
   if (live.principal_subject !== live.owner_principal_subject) return refuse('successor_principal_mismatch')
   if (live.overlay_version !== contract.chart_availability_version || live.build_id !== contract.chart_build_id
-    || snapshot.content_hash !== contract.capability_content_hash || envelope.capability_content_hash !== snapshot.content_hash) {
+    || snapshot.content_hash !== contract.capability_content_hash
+    || (envelope !== undefined && envelope.capability_content_hash !== snapshot.content_hash)) {
     return refuse('successor_build_identity_mismatch')
   }
   // 2 — present in the pinned catalogue AND the live registry, executable on the active channel.
-  const scu = snapshot.scus.find((candidateScu) => candidateScu.scu_id === entry.scu_id)
-  const binding = scu?.bindings.find((candidateBinding) => candidateBinding.binding_id === entry.binding_id)
-  const descriptor = live.describe(entry.capability_uri)
-  if (!scu || !binding || !descriptor || !live.tool_exists(entry.capability_uri)) return refuse('successor_capability_not_in_catalogue')
+  const descriptor = capabilityUri ? live.describe(capabilityUri) : undefined
+  if (!scu || !binding || !capabilityUri || !descriptor || !live.tool_exists(capabilityUri)) return refuse('successor_capability_not_in_catalogue')
   if (candidate.binding_id === null || !isInquiryServerDispatchEligible(binding, live.transport)) return refuse('successor_channel_not_eligible')
   // 1 — read-only, from the descriptor's own metadata and the shared safety predicate.
   if (!isReadOnlyDescriptor(binding, descriptor)) return refuse('successor_capability_not_read_only')
   // 3 — deterministic relevance: the rule must admit this entry and target this SCU, and the
-  // evidence must have come from a different SCU the contract itself planned and observed.
-  const rule = EVIDENCE_FRONTIER_RULES.find((candidateRule) => candidateRule.rule_id === candidate.frontier_rule_id)
+  // evidence must have come from a different SCU the contract itself planned and observed. (A
+  // plan continuation is relevant by construction: it IS the planned capability's next page.)
   const sourceItem = contract.plan_items.find((item) => item.item_id === candidate.source_item_id)
-  if (!rule || !entry.admitting_rule_ids.includes(rule.rule_id) || !rule.target_scu_ids.includes(entry.scu_id)
-    || !sourceItem || sourceItem.scu_id !== candidate.source_scu_id || sourceItem.scu_id === entry.scu_id) {
-    return refuse('successor_frontier_not_relevant')
+  if (planContinuation) {
+    if (!sourceItem || sourceItem.scu_id !== candidate.source_scu_id) return refuse('successor_frontier_not_relevant')
+  } else {
+    const rule = EVIDENCE_FRONTIER_RULES.find((candidateRule) => candidateRule.rule_id === candidate.frontier_rule_id)
+    if (!rule || !entry || !entry.admitting_rule_ids.includes(rule.rule_id) || !rule.target_scu_ids.includes(entry.scu_id)
+      || !sourceItem || sourceItem.scu_id !== candidate.source_scu_id || sourceItem.scu_id === entry.scu_id) {
+      return refuse('successor_frontier_not_relevant')
+    }
   }
-  // 5 — the caller's chart access (re-verified by the door) and entitlement tier.
-  if (!live.chart_access_verified) return refuse('successor_chart_access_not_verified')
+  // 5 — the caller's chart permission (the door's own authorization result) and entitlement tier.
+  if (live.chart_permission !== 'all' && live.chart_permission !== 'view') return refuse('successor_chart_access_not_verified')
   if (!entitlementTierPermitted(scu.entitlement, contract.scope_tuple.entitlement)) return refuse('successor_entitlement_not_permitted')
   // 7 — the request's own safety and no-leakage exclusions still apply to a successor.
-  if (live.is_capability_denied(entry.capability_uri)) return refuse('successor_safety_excluded')
+  if (live.is_capability_denied(capabilityUri)) return refuse('successor_safety_excluded')
   // 6 — depth, iteration and cost ceilings.
   if (chain.depth + 1 > limits.max_successor_depth) return refuse('successor_depth_exceeded')
   if (chain.iterations >= limits.max_chain_iterations) return refuse('successor_iteration_limit_exceeded')
@@ -483,11 +537,17 @@ export function evaluateSuccessorItemForDispatch(args: {
   item_id: string
   snapshot: CapabilityKnowledgeSnapshot
   live: SuccessorAdmissionLiveContext
+  /**
+   * True when an independent marker (the durable lifecycle row's parent link) says this contract is
+   * a successor. A contract that claims to be one but carries no successor receipt is refused, not
+   * treated as an ordinary contract.
+   */
+  expect_successor?: boolean
 }): SuccessorAdmissionDecision | null {
   const successor = args.contract.successor
-  if (!successor) return null
+  if (!successor && !args.expect_successor) return null
   const item = args.contract.plan_items.find((candidate) => candidate.item_id === args.item_id)
-  if (!item) return null
+  if (!successor || !item) return refusedWithoutReceipt(args.item_id, item?.scu_id ?? '', args.live)
   const parent = successor.parent_contract
   const admitted = successor.admitted_frontier.find((frontier) => frontier.scu_id === item.scu_id)
   const stored = item.successor_admission
@@ -515,4 +575,18 @@ export function evaluateSuccessorItemForDispatch(args: {
     return seal({ ...withoutDecisionHash(decision), decision: 'refuse', code })
   }
   return decision
+}
+
+/**
+ * A refused successor item is terminal: `recordInquiryExecution` re-readies a failed item while
+ * iterations remain, but retrying something that was never authorized would strand the lifecycle.
+ * Every door applies this same transition so refusals leave the same contract shape everywhere.
+ */
+export function terminalizeRefusedSuccessorItem(contract: InquiryContract, itemId: string): InquiryContract {
+  return {
+    ...contract,
+    plan_items: contract.plan_items.map((candidate) => candidate.item_id === itemId
+      ? { ...candidate, state: 'observed' as const }
+      : candidate),
+  }
 }

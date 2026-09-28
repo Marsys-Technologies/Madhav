@@ -92,6 +92,10 @@ export class ManagedInquiryExecutionSession {
   }
 
   get inquiryId(): string { return this.row.inquiry_id }
+  /** The durable lifecycle owner: the principal the row is scoped to (read from the row, not the request). */
+  get principalUid(): string { return this.row.principal_uid }
+  /** Non-null exactly when the durable row is an evidence successor: an independent marker of lineage. */
+  get parentInquiryId(): string | null { return this.row.parent_inquiry_id }
   get currentContract(): InquiryContract { return this.contract }
   get readyActionIds(): readonly string[] {
     return this.contract.plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id)

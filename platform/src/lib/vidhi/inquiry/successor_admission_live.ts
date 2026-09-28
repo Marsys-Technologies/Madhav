@@ -21,8 +21,8 @@ export function buildSuccessorAdmissionLive(args: {
   principal_subject: string
   /** The principal that owns the lifecycle / request the contract was issued to. */
   owner_principal_subject: string
-  /** The door verified this principal's access to this chart in this request. */
-  chart_access_verified: boolean
+  /** The permission the door's own chart authorization returned for this principal in this request. */
+  chart_permission: 'all' | 'view' | 'deny' | null
   /** Capabilities the request's own safety pass excluded (names or URIs). Empty for a door with no such pass. */
   excluded_capabilities?: readonly string[]
   cost_exhausted: boolean
@@ -33,7 +33,7 @@ export function buildSuccessorAdmissionLive(args: {
     chart_id: args.chart_id,
     principal_subject: args.principal_subject,
     owner_principal_subject: args.owner_principal_subject,
-    chart_access_verified: args.chart_access_verified,
+    chart_permission: args.chart_permission,
     overlay_version: args.overlay.overlay_version,
     build_id: args.overlay.build_id,
     describe: (uri) => getCapability(uri),

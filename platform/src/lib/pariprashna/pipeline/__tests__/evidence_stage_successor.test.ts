@@ -76,14 +76,14 @@ function setup(): { contract: InquiryContract; source: string; targetUri: string
   return { contract, source: sourceUri, targetUri }
 }
 
-async function run(contract: InquiryContract, toolsAuthorized: string[], extra: { chartAccessVerified?: boolean; excludedCapabilities?: string[] } = {}) {
+async function run(contract: InquiryContract, toolsAuthorized: string[], extra: { chartPermission?: 'all' | 'view' | 'deny' | null; excludedCapabilities?: string[] } = {}) {
   const { em, flags } = emitter()
   const out = await runEvidenceStage({
     em, request: new Request('http://localhost/api/pariprashna', { method: 'POST' }),
     chartId: CHART_ID, userUid: 'fixture-principal',
     plan: w5DoorParityPlan(), queryPlan: {} as never, manifest: {} as never,
     toolsAuthorized, orientationPromise: Promise.resolve(null), inquiryContract: contract,
-    chartAccessVerified: true,
+    chartPermission: 'all',
     ...extra,
   })
   return { out, flags }
@@ -140,6 +140,8 @@ describe('Portal evidence-driven successor', () => {
     expect(final.status).not.toBe('COMPLETE')
     const item = final.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
     expect(item.observation).toMatchObject({ disposition: 'failed', gap_reason: 'successor_safety_excluded' })
+    // Same terminal shape as the managed and raw doors (a refused item is observed, never left ready).
+    expect(item.state).toBe('observed')
     expect(item.successor_dispatch).toMatchObject({ decision: 'refuse', code: 'successor_safety_excluded' })
   })
 
@@ -147,7 +149,7 @@ describe('Portal evidence-driven successor', () => {
     const { contract, source, targetUri } = setup()
     state.triggerTool = source
     state.dispatched = []
-    const { out } = await run(contract, planTools(contract), { chartAccessVerified: false })
+    const { out } = await run(contract, planTools(contract), { chartPermission: 'deny' })
     expect(state.dispatched).not.toContain(targetUri)
     const item = out.inquiryContract!.plan_items.find((candidate) => candidate.binding_id === `registry:${targetUri}`)!
     expect(item.observation?.gap_reason).toBe('successor_chart_access_not_verified')

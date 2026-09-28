@@ -23,6 +23,9 @@ const state = vi.hoisted(() => ({
   dispatched: [] as string[],
   triggerUri: '',
   deniedUri: '',
+  paginate: false,
+  snapshot: null as unknown,
+  overlay: null as unknown,
   toolResult: (() => { throw new Error('unbound') }) as (name: string, args: Record<string, unknown>) => Record<string, unknown>,
   store: null as null | import('@/lib/vidhi/inquiry/__fixtures__/in_memory_lifecycle_store').InMemoryLifecycleStore,
 }))
@@ -36,8 +39,8 @@ vi.mock('@/lib/retrieval/registry', () => ({
   getCapability: (uri: string) => ({ uri, mutation: false, calibration_context_only: false }),
 }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => ({
-  assertPinnedCapabilityKnowledgeCurrent: () => SCENARIO_SNAPSHOT,
-  loadChartCapabilityOverlay: async () => SCENARIO_OVERLAY,
+  assertPinnedCapabilityKnowledgeCurrent: () => state.snapshot,
+  loadChartCapabilityOverlay: async () => state.overlay,
 }))
 vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
   filterLeakedCapabilities: (names: readonly string[]) => names.filter((name) => name !== state.deniedUri),
@@ -48,7 +51,7 @@ vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   getToolByName: (name: string) => ({
     retrieve: async (_query: unknown, args: Record<string, unknown>) => {
       state.dispatched.push(name)
-      const base = state.toolResult(name, { ...args, offset: 1 })
+      const base = state.toolResult(name, state.paginate ? args : { ...args, offset: 1 })
       if (name !== state.triggerUri) return base
       return { ...base, results: [{ content: JSON.stringify({ rows: [{ yoga: 'Raja', fired: true, bhanga_active: true }], more_available: false }) }] }
     },
@@ -74,6 +77,8 @@ import { POST } from '../route'
 import { w5DoorParityToolResult } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 state.toolResult = w5DoorParityToolResult
+state.snapshot = SCENARIO_SNAPSHOT
+state.overlay = SCENARIO_OVERLAY
 
 interface Step { ok: boolean; error?: string; inquiry_id: string; lifecycle_token: string; next_action_ids: string[]; contract: InquiryContract; disposition?: string }
 
@@ -109,6 +114,9 @@ beforeEach(() => {
   state.dispatched = []
   state.triggerUri = ''
   state.deniedUri = ''
+  state.paginate = false
+  state.snapshot = SCENARIO_SNAPSHOT
+  state.overlay = SCENARIO_OVERLAY
   state.store!.rows.clear()
   state.store!.reservations.clear()
   state.store!.evidence.length = 0
@@ -213,5 +221,45 @@ describe('raw MCP: successor envelope (real compiler, real tokens)', () => {
     const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: item.item_id })
     const dispatched = executed.body.contract.plan_items.find((candidate) => candidate.item_id === item.item_id)!.successor_dispatch!
     expect(projectDecision(dispatched)).toEqual(expectedAdmitProjection())
+  })
+})
+
+describe('raw MCP: a capped same-capability pagination frontier stays explicitly continuable', () => {
+  it('`continue` admits the planned capability\'s next page on the parent-plan authority and `execute` dispatches it', async () => {
+    const { W5_DOOR_PARITY_CHART_ID, W5_DOOR_PARITY_OVERLAY, W5_DOOR_PARITY_QUESTION, W5_DOOR_PARITY_SCOPE, W5_DOOR_PARITY_SNAPSHOT, w5DoorParityPlan } =
+      await import('@/lib/vidhi/inquiry/__fixtures__/door_parity')
+    const { managedPlanToAiInquiryProposal } = await import('@/lib/vidhi/inquiry/managed_bridge')
+    const scus = W5_DOOR_PARITY_SNAPSHOT.scus.map((scu) => ({
+      ...scu, bindings: scu.bindings.map((binding) => ({ ...binding, execution_channels: ['platform_internal'] as const })),
+    }))
+    const snapshot = { ...W5_DOOR_PARITY_SNAPSHOT, content_hash: 'sha256:raw-pagination-fixture', scus }
+    state.snapshot = snapshot
+    state.overlay = { ...W5_DOOR_PARITY_OVERLAY, catalog_content_hash: snapshot.content_hash, overlay_version: 'sha256:raw-pagination-overlay' }
+    state.paginate = true
+
+    const start = await call({
+      action: 'start', chart_id: W5_DOOR_PARITY_CHART_ID, question: W5_DOOR_PARITY_QUESTION,
+      scope_tuple: W5_DOOR_PARITY_SCOPE, ai_proposal: managedPlanToAiInquiryProposal(w5DoorParityPlan()),
+    })
+    expect(start.status).toBe(200)
+    let step = start.body
+    while (step.next_action_ids.length > 0) {
+      step = (await call({ action: 'execute', lifecycle_token: step.lifecycle_token, action_id: step.next_action_ids[0] })).body
+    }
+    const continued = await call({ action: 'continue', lifecycle_token: step.lifecycle_token })
+    expect(continued.status).toBe(200)
+    const successor = continued.body.contract
+    const pageItem = successor.plan_items.find((item) => item.successor_admission?.authority === 'parent_plan_continuation')!
+    expect(pageItem, 'a same-capability frontier item must be admitted on the parent plan').toBeDefined()
+    expect(pageItem.successor_admission).toMatchObject({ decision: 'admit', code: 'successor_admitted', envelope_entry_id: null })
+    expect(continued.body.next_action_ids).toContain(pageItem.item_id)
+
+    const before = state.dispatched.length
+    const executed = await call({ action: 'execute', lifecycle_token: continued.body.lifecycle_token, action_id: pageItem.item_id })
+    expect(executed.status).toBe(200)
+    expect(state.dispatched.length).toBe(before + 1)
+    const done = executed.body.contract.plan_items.find((item) => item.item_id === pageItem.item_id)!
+    expect(done.successor_dispatch).toMatchObject({ decision: 'admit', code: 'successor_admitted' })
+    expect(done.observation?.disposition).toBe('served')
   })
 })

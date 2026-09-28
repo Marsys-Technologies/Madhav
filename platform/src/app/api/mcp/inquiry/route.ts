@@ -45,7 +45,7 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
-import { evaluateSuccessorItemForDispatch } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { evaluateSuccessorItemForDispatch, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { readBoundedRequestBody } from './bounded_body'
 import {
@@ -117,9 +117,13 @@ const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_ACTIVE_LIMIT_REACHED', 'INQUIRY_CREATION_RATE_LIMITED',
 ])
 
-async function entitled(uid: string, chartId: string): Promise<boolean> {
+async function chartPermissionOf(uid: string, chartId: string): Promise<'all' | 'view' | 'deny'> {
   const role = await resolveMcpPrincipalRole(uid)
-  return (await authorizeChartAccess({ principal: { uid, role }, chartId, db: { query } })) !== 'deny'
+  return authorizeChartAccess({ principal: { uid, role }, chartId, db: { query } })
+}
+
+async function entitled(uid: string, chartId: string): Promise<boolean> {
+  return (await chartPermissionOf(uid, chartId)) !== 'deny'
 }
 
 function nextReady(contract: InquiryContract): string[] {
@@ -262,7 +266,10 @@ export async function POST(request: Request) {
       // KID is public JWT-header metadata. Never log the token, signature or key material.
       console.info('[mcp:inquiry] lifecycle token verified', { kid })
     })
-    if (!(await entitled(principalUid, claims.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
+    // The chart permission this request's own authorization returned; the shared successor envelope
+    // reads the result itself (see buildSuccessorAdmissionLive).
+    const chartPermission = await chartPermissionOf(principalUid, claims.chart_id)
+    if (chartPermission === 'deny') return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
     const row = await getInquiryLifecycle(claims.inquiry_id, principalUid, claims.chart_id)
     const authorization = row?.authorization_jsonb
     const authorizationHashes = authorization ? inquiryAuthorizationHashes(authorization) : null
@@ -299,6 +306,7 @@ export async function POST(request: Request) {
       const currentItem = contract.plan_items.find((candidate) => candidate.item_id === body.action_id && candidate.state === 'ready')
       const item = authorization.plan_items.find((candidate) => candidate.item_id === body.action_id)
       if (!currentItem || !item?.binding_id || currentItem.scu_id !== item.scu_id
+        || currentItem.binding_id !== item.binding_id
         || stableFingerprint(currentItem.obligation_ids) !== stableFingerprint(item.obligation_ids)) {
         return response({ ok: false, error: 'INQUIRY_ACTION_NOT_EXECUTABLE' }, 409)
       }
@@ -310,17 +318,18 @@ export async function POST(request: Request) {
       // A successor item is authorized by the shared envelope, recomputed HERE from the server-held
       // contract (`row`, never a client value) plus this request's own live state. A refusal is
       // recorded as a terminal named gap below; it never dispatches.
-      const admission = contract.successor
+      const admission = contract.successor || (row.parent_inquiry_id ?? null) !== null
         ? evaluateSuccessorItemForDispatch({
           contract, item_id: item.item_id, snapshot,
           live: buildSuccessorAdmissionLive({
             transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
             principal_subject: principalUid, owner_principal_subject: row.principal_uid,
-            // The lifecycle row was read under this principal's chart-scoped RLS context and the
-            // token's chart was checked against it above.
-            chart_access_verified: row.chart_id === claims.chart_id,
+            chart_permission: row.chart_id === claims.chart_id ? chartPermission : null,
+            // The raw door has no per-request call-count cap (it is bounded by the iteration budget
+            // and the per-result byte limit); there is no cost state to report here.
             cost_exhausted: false,
           }),
+          expect_successor: (row.parent_inquiry_id ?? null) !== null,
         })
         : null
       if (admission?.decision !== 'refuse'
@@ -414,16 +423,7 @@ export async function POST(request: Request) {
           : [],
         ...(admission ? { successor_dispatch: admission } : {}),
       })
-      if (admission?.decision === 'refuse') {
-        // A refused item is terminal. recordInquiryExecution re-readies a failed item for retry while
-        // iterations remain, but retrying something that was never authorized would strand the lifecycle.
-        observed = {
-          ...observed,
-          plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
-            ? { ...candidate, state: 'observed' as const }
-            : candidate),
-        }
-      }
+      if (admission?.decision === 'refuse') observed = terminalizeRefusedSuccessorItem(observed, item.item_id)
       const remaining = observed.iteration >= observed.max_iterations ? [] : nextReady(observed)
       const issued = issueInquiryLifecycleToken({
         sub: principalSubject, inquiry_id: row.inquiry_id, chart_id: row.chart_id,
@@ -453,7 +453,7 @@ export async function POST(request: Request) {
           admission: buildSuccessorAdmissionLive({
             transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
             principal_subject: principalUid, owner_principal_subject: row.principal_uid,
-            chart_access_verified: row.chart_id === claims.chart_id,
+            chart_permission: row.chart_id === claims.chart_id ? chartPermission : null,
             cost_exhausted: false,
           }),
         })

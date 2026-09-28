@@ -337,6 +337,10 @@ export async function POST(request: Request) {
   }
 
   let role: 'guest' | 'super_admin'
+  // What this door's own chart authorization returned; the shared successor envelope reads the
+  // result itself. The BYOK preflight only proves access (it throws otherwise) and reports no
+  // level, so it is recorded as the least privilege that still admits: `view`.
+  let chartPermission: 'all' | 'view' | 'deny' | null = null
   if (byokEnabled) {
     if (!authorizedByokRole) {
       try {
@@ -360,6 +364,7 @@ export async function POST(request: Request) {
     // ── Per-call chart-access authorization (same brain as the primitives route) ─
     role = await resolveMcpPrincipalRole(userUid)
     const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    chartPermission = perm
     if (perm === 'deny') {
       return NextResponse.json(
         buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
@@ -1249,11 +1254,10 @@ export async function POST(request: Request) {
           chart_id: chartId ?? '',
           overlay,
           principal_subject: userUid ?? '',
-          owner_principal_subject: userUid ?? '',
-          // `authorizeChartAccess` above denied the whole request otherwise (and a missing principal
-          // or chart was rejected before it); the shared envelope takes that verification as an
-          // explicit input and fails closed if either identity is somehow absent here.
-          chart_access_verified: Boolean(userUid && chartId),
+          // The lifecycle owner is read from the durable row the session holds, so the principal
+          // check compares the acting request against what the row is actually scoped to.
+          owner_principal_subject: managedInquirySession?.principalUid ?? '',
+          chart_permission: userUid && chartId ? chartPermission ?? (byokEnabled ? 'view' : null) : null,
           excluded_capabilities: postPlanSafety.excluded_capabilities,
           cost_exhausted: costCapTripped !== null,
         })
@@ -1271,10 +1275,13 @@ export async function POST(request: Request) {
           // envelope is, and its decision is recomputed here from the durable contract plus this
           // request's server-held state (never trusted from the compile, so a recovered worker
           // re-derives it identically).
-          const admission = managedInquirySession.currentContract.successor
+          const admission = managedInquirySession.currentContract.successor || (managedInquirySession.parentInquiryId ?? null) !== null
             ? evaluateSuccessorItemForDispatch({
               contract: managedInquirySession.currentContract, item_id: item.item_id, snapshot: inquirySnapshot,
               live: successorLive(await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id)),
+              // The durable row's parent link is an independent lineage marker: a contract that says
+              // it is a successor but carries no successor receipt is refused, never run as ordinary.
+              expect_successor: (managedInquirySession.parentInquiryId ?? null) !== null,
             })
             : null
           const toolName = admission && admission.decision === 'admit'

@@ -33,7 +33,7 @@ import { bindingForInquiryItem, classifyInquiryResult, closeInquiryForEvidenceSu
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { getPinnedCapabilityKnowledgeSnapshot, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-import { evaluateSuccessorItemForDispatch } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { evaluateSuccessorItemForDispatch, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
 import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 
 /** The pass id every first-pass retrieval event carries. */
@@ -79,10 +79,10 @@ export async function runEvidenceStage(args: {
   inquiryContract?: InquiryContract | null
   abortSignal?: AbortSignal
   /**
-   * The route verified this principal's access to this chart for this request (`authorizeTurn`
-   * runs before any stage). The shared successor envelope requires it as an explicit input.
+   * What the route's own chart authorization (`authorizeTurn`) returned for this principal. The
+   * shared successor envelope requires the result itself, not an assertion; absent refuses.
    */
-  chartAccessVerified?: boolean
+  chartPermission?: 'all' | 'view' | 'deny' | null
   /** Capabilities the request's own safety pass excluded; a successor is held to them too. */
   excludedCapabilities?: readonly string[]
 }): Promise<EvidenceStageOutput> {
@@ -203,7 +203,7 @@ export async function runEvidenceStage(args: {
         overlay,
         principal_subject: userUid,
         owner_principal_subject: userUid,
-        chart_access_verified: args.chartAccessVerified === true,
+        chart_permission: args.chartPermission ?? null,
         excluded_capabilities: args.excludedCapabilities ?? [],
         // The Portal door has no per-request call-count cap; an aborted request is its only cost stop.
         cost_exhausted: abortSignal.aborted,
@@ -236,13 +236,13 @@ export async function runEvidenceStage(args: {
         if (admission && admission.decision === 'refuse') {
           // Name the gap with the decision's own stable code instead of leaving a dangling ready action.
           skipped.add(item.item_id)
-          contract = recordInquiryExecution(contract, {
+          contract = terminalizeRefusedSuccessorItem(recordInquiryExecution(contract, {
             item_id: item.item_id, disposition: 'failed', evidence_refs: [],
             gap_reason: admission.code,
             pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
             request_position_path: binding?.pagination_contract?.request_position_path,
             successor_dispatch: admission,
-          })
+          }), item.item_id)
           continue
         }
         const toolName = admission

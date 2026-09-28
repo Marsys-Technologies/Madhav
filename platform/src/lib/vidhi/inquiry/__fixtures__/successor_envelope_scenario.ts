@@ -88,7 +88,7 @@ export function expectedAdmitProjection() {
     },
     contract: { ...contract, iteration: executed },
     live: {
-      transport: 'portal', chart_id: contract.chart_id, principal_subject: 'p', owner_principal_subject: 'p', chart_access_verified: true,
+      transport: 'portal', chart_id: contract.chart_id, principal_subject: 'p', owner_principal_subject: 'p', chart_permission: 'all',
       overlay_version: contract.chart_availability_version, build_id: contract.chart_build_id,
       describe: (uri) => ({ uri, mutation: false, calibration_context_only: false }), tool_exists: () => true,
       is_capability_denied: () => false, cost_exhausted: false,

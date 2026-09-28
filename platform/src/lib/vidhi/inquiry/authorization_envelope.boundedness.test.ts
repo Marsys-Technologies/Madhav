@@ -29,7 +29,7 @@ const MAXIMAL_EVIDENCE = {
 function live(contract: InquiryContract): SuccessorAdmissionLiveContext {
   return {
     transport: 'portal', chart_id: contract.chart_id, principal_subject: 'p', owner_principal_subject: 'p',
-    chart_access_verified: true, overlay_version: contract.chart_availability_version, build_id: contract.chart_build_id,
+    chart_permission: 'all', overlay_version: contract.chart_availability_version, build_id: contract.chart_build_id,
     describe: (uri) => ({ uri, mutation: false, calibration_context_only: false, mcp_annotations: { readOnly: true } }),
     tool_exists: () => true, is_capability_denied: () => false, cost_exhausted: false,
   }

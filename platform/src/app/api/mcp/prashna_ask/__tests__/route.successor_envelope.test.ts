@@ -230,7 +230,7 @@ describe('managed door: recovered worker resuming a successor generation', () =>
       snapshot: SNAPSHOT, overlay: OVERLAY,
       admission: buildSuccessorAdmissionLive({
         transport: 'managed_mcp', chart_id: CHART, overlay: OVERLAY, principal_subject: PRINCIPAL, owner_principal_subject: PRINCIPAL,
-        chart_access_verified: true, cost_exhausted: false,
+        chart_permission: 'all', cost_exhausted: false,
       }),
     })
     expect(handedOff).toBe(true)
@@ -284,7 +284,8 @@ describe('managed door: recovered worker resuming a successor generation', () =>
     const { targetUri, entry } = await workerOneHandsOff()
     const row = successorRow()!
     const forgedRefusal = { ...row.contract_jsonb.plan_items.find((item) => item.scu_id === entry.scu_id)!.successor_admission!, decision: 'refuse' as const, code: 'successor_cost_limit_exceeded' as const }
-    const { decision_hash: _old, ...body } = forgedRefusal
+    const body: Record<string, unknown> = { ...forgedRefusal }
+    delete body['decision_hash']
     const sealed = { ...body, decision_hash: stableFingerprint(body) }
     const edited = { ...row.contract_jsonb, plan_items: row.contract_jsonb.plan_items.map((item) => item.scu_id === entry.scu_id ? { ...item, successor_admission: sealed } : item) } as InquiryContract
     state.store!.rows.set(row.inquiry_id, { ...row, contract_jsonb: edited })

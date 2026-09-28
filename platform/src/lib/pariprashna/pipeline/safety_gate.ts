@@ -247,6 +247,8 @@ export interface AuthorizedTurn {
    * fails toward the stricter path; it is never read as "probably the native".
    */
   subjectKind: 'native_self' | 'cohort' | 'test' | null
+  /** What `authorizeChartAccess` returned for this caller on this chart (never `deny` here). */
+  chartPermission: 'all' | 'view'
 }
 
 /**
@@ -362,7 +364,7 @@ export async function authorizeTurn(args: {
     }
   }
 
-  return proceed({ isSuperAdmin, subjectKind: consentDecision.subject_kind })
+  return proceed({ isSuperAdmin, subjectKind: consentDecision.subject_kind, chartPermission: permission })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

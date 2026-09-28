@@ -18,6 +18,7 @@ import {
   buildAuthorizationEnvelope,
   deriveSuccessorEnvelope,
   evaluateSuccessorAdmission,
+  evaluateSuccessorItemForDispatch,
   verifySuccessorDecision,
   type SuccessorAdmissionLiveContext,
 } from './authorization_envelope'
@@ -62,7 +63,7 @@ function liveFor(contract: InquiryContract, overrides: Partial<SuccessorAdmissio
     chart_id: contract.chart_id,
     principal_subject: PRINCIPAL,
     owner_principal_subject: PRINCIPAL,
-    chart_access_verified: true,
+    chart_permission: 'all',
     overlay_version: contract.chart_availability_version,
     build_id: contract.chart_build_id,
     describe: (uri) => bindings.has(uri) ? { uri, mutation: false, calibration_context_only: false, mcp_annotations: { readOnly: true } } : undefined,
@@ -250,7 +251,9 @@ describe('shared evaluator: each condition fails independently with its own name
   })
 
   it('(5) chart access not verified, or entitlement tier not permitted -> distinct codes', () => {
-    expect(evaluate(base, { live: { chart_access_verified: false } })).toMatchObject({ code: 'successor_chart_access_not_verified' })
+    expect(evaluate(base, { live: { chart_permission: 'deny' } })).toMatchObject({ code: 'successor_chart_access_not_verified' })
+    expect(evaluate(base, { live: { chart_permission: null } })).toMatchObject({ code: 'successor_chart_access_not_verified' })
+    expect(evaluate(base, { live: { chart_permission: 'view' } })).toMatchObject({ decision: 'admit' })
     const narrowedScope = { ...base.contract, scope_tuple: { ...base.contract.scope_tuple, entitlement: 'public_disclosed' } }
     expect(evaluate(base, { contract: narrowedScope })).toMatchObject({ code: 'successor_entitlement_not_permitted' })
   })
@@ -371,11 +374,125 @@ describe('successor compilation runs the envelope on every admitted item (real c
 
   it('a successor item without an explicit rule id (legacy or forged frontier) is refused as receipt-incomplete', () => {
     const { parent, entry } = parentWithEvidence()
-    const stripped = { ...parent, material_frontier: parent.material_frontier.map(({ rule_id: _dropped, ...rest }) => rest) }
+    const stripped = { ...parent, material_frontier: parent.material_frontier.map((frontier) => { const rest: Record<string, unknown> = { ...frontier }; delete rest['rule_id']; return rest }) }
     const successor = compileInquirySuccessorContract({
       snapshot, parent_inquiry_id: 'parent-1', parent: stripped as InquiryContract, cross_capability_only: true, admission: liveFor(parent),
     })
     const item = successor.plan_items.find((candidate) => candidate.scu_id === entry.scu_id)!
     expect(item.successor_admission).toMatchObject({ decision: 'refuse', code: 'successor_receipt_incomplete' })
+  })
+})
+
+
+describe('evaluator hardening (review findings)', () => {
+  const base = fixture()
+
+  it('does not disclose which capability the safety pass removed: the refusal is redacted to the SCU and code', () => {
+    const decision = evaluate(base, { live: { is_capability_denied: () => true } })
+    expect(decision).toMatchObject({ code: 'successor_safety_excluded', binding_id: null, capability_uri: null, envelope_entry_id: null })
+    expect(verifySuccessorDecision(decision)).toBe(true)
+  })
+
+  it('a stored envelope can only tighten the platform ceilings, never loosen them', () => {
+    const inflated = { ...base.contract.authorization_envelope!, limits: { max_successor_depth: 99, max_admitted_successor_items: 99, max_chain_iterations: 9999 } }
+    const sealed = { ...inflated, envelope_hash: authorizationEnvelopeHash(inflated) }
+    const decision = evaluate(base, { envelope: sealed, contract: { iteration: MAX_CHAIN_ITERATIONS } })
+    expect(decision).toMatchObject({ code: 'successor_iteration_limit_exceeded' })
+    expect(decision.limit_state.max_chain_iterations).toBe(MAX_CHAIN_ITERATIONS)
+  })
+
+  it('depth boundary: the last generation below the ceiling admits, the ceiling itself refuses', () => {
+    const nest = (levels: number) => {
+      let contract = base.contract
+      for (let level = 0; level < levels; level += 1) {
+        contract = { ...base.contract, successor: { parent_contract: contract, admitted_frontier: [], admission_decisions: [] } } as unknown as InquiryContract
+      }
+      return contract
+    }
+    expect(evaluate(base, { contract: nest(MAX_SUCCESSOR_DEPTH - 1) })).toMatchObject({ decision: 'admit' })
+    expect(evaluate(base, { contract: nest(MAX_SUCCESSOR_DEPTH) })).toMatchObject({ code: 'successor_depth_exceeded' })
+  })
+
+  it('a capped same-capability pagination frontier is authorized by the parent plan, and still clears every other condition', () => {
+    const planned = base.contract.plan_items.find((item) => item.binding_id !== null)!
+    const continuation = { scu_id: planned.scu_id, binding_id: planned.binding_id, frontier_id: 'frontier-001', frontier_rule_id: null, source_item_id: planned.item_id, source_scu_id: planned.scu_id, source_served: true }
+    const admitted = evaluate(base, { candidate: continuation, envelope: null })
+    expect(admitted).toMatchObject({ decision: 'admit', authority: 'parent_plan_continuation', envelope_entry_id: null })
+    expect(verifySuccessorDecision(admitted)).toBe(true)
+    expect(evaluate(base, { candidate: continuation, envelope: null, live: { is_capability_denied: () => true } })).toMatchObject({ code: 'successor_safety_excluded' })
+    expect(evaluate(base, { candidate: continuation, envelope: null, live: { chart_permission: 'deny' } })).toMatchObject({ code: 'successor_chart_access_not_verified' })
+    expect(evaluate(base, { candidate: continuation, envelope: null, live: { cost_exhausted: true } })).toMatchObject({ code: 'successor_cost_limit_exceeded' })
+    expect(evaluate(base, { candidate: continuation, envelope: null, live: { describe: () => undefined } })).toMatchObject({ code: 'successor_capability_not_in_catalogue' })
+    // A same-SCU claim for a capability the parent plan does NOT contain is not a continuation.
+    expect(evaluate(base, { candidate: { ...continuation, scu_id: base.entry.scu_id, binding_id: base.entry.binding_id, source_scu_id: base.entry.scu_id }, envelope: null }))
+      .toMatchObject({ decision: 'refuse', code: 'successor_capability_not_authorized_for_request' })
+  })
+
+  it('a contract that claims to be a successor but carries no successor receipt is refused, never treated as ordinary', () => {
+    const item = base.contract.plan_items[0]!
+    expect(evaluateSuccessorItemForDispatch({ contract: base.contract, item_id: item.item_id, snapshot, live: liveFor(base.contract) })).toBeNull()
+    expect(evaluateSuccessorItemForDispatch({ contract: base.contract, item_id: item.item_id, snapshot, live: liveFor(base.contract), expect_successor: true }))
+      .toMatchObject({ decision: 'refuse', code: 'successor_receipt_incomplete' })
+    expect(evaluateSuccessorItemForDispatch({ contract: base.contract, item_id: 'item-999', snapshot, live: liveFor(base.contract), expect_successor: true }))
+      .toMatchObject({ decision: 'refuse' })
+  })
+
+  it('pre-envelope contracts hash exactly as before: no envelope and no admission add nothing to the authorization projection', () => {
+    const contract = base.contract
+    const legacy = { ...contract } as Record<string, unknown>
+    delete legacy['authorization_envelope']
+    const projection = (contract.plan_items).map((item) => ({
+      item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id,
+      args: item.authorization_args ?? item.args, argument_resolution: item.argument_resolution, depends_on: item.depends_on,
+      state: item.blocked_reason ? 'blocked' : 'ready', blocked_reason: item.blocked_reason,
+    }))
+    const hashes = inquiryAuthorizationHashes(legacy as unknown as InquiryContract)
+    expect(hashes.execution_plan_hash).toBe(stableFingerprint({
+      semantic_contract_hash: hashes.semantic_contract_hash, chart_id: contract.chart_id,
+      execution_channel: contract.execution_channel, plan_items: projection,
+    }))
+  })
+
+  it('a successor whose parent predates the envelope has no authority: every item is refused as outside the request authority', () => {
+    const { parent, entry } = (() => {
+      const base2 = fixture()
+      const rule = EVIDENCE_FRONTIER_RULES.find((candidate) => candidate.target_scu_ids.includes(base2.entry.scu_id))!
+      const payload = { rows: [{ bhanga_active: true, dignity_state: 'debilitated', activation_dasha_periods: ['p'], mechanism_class: 'm', houses: [7] }] }
+      const frontier = deriveEvidenceFrontier({ contract: base2.contract, item_id: base2.source.item_id, evidence_payload: payload, snapshot })
+      let observed = recordInquiryExecution(base2.contract, { item_id: base2.source.item_id, disposition: 'served', evidence_refs: ['raw:x'], pagination: { semantics: 'none', exhausted: true, next: null }, evidence_frontier: frontier })
+      for (const item of observed.plan_items.filter((candidate) => candidate.state === 'ready')) {
+        observed = recordInquiryExecution(observed, { item_id: item.item_id, disposition: 'served', evidence_refs: [`raw:${item.item_id}`], pagination: { semantics: 'none', exhausted: true, next: null } })
+      }
+      const closed = closeInquiryForEvidenceSuccessor(observed) as unknown as Record<string, unknown>
+      delete closed['authorization_envelope']
+      expect(rule.rule_id).toBeTruthy()
+      return { parent: closed as unknown as InquiryContract, entry: base2.entry }
+    })()
+    const successor = compileInquirySuccessorContract({ snapshot, parent_inquiry_id: 'legacy', parent, cross_capability_only: true, admission: liveFor(parent) })
+    const item = successor.plan_items.find((candidate) => candidate.scu_id === entry.scu_id)!
+    expect(item.successor_admission).toMatchObject({ decision: 'refuse', code: 'successor_capability_not_authorized_for_request' })
+  })
+
+  it('a multi-item successor records an independent decision per item', () => {
+    // Two targets fire from the same evidence; deny exactly one of them.
+    const base2 = fixture()
+    const payload = { rows: [{ bhanga_active: true, dignity_state: 'debilitated', activation_dasha_periods: ['p'], mechanism_class: 'm', houses: [7] }] }
+    const frontier = deriveEvidenceFrontier({ contract: base2.contract, item_id: base2.source.item_id, evidence_payload: payload, snapshot })
+    let observed = recordInquiryExecution(base2.contract, { item_id: base2.source.item_id, disposition: 'served', evidence_refs: ['raw:x'], pagination: { semantics: 'none', exhausted: true, next: null }, evidence_frontier: frontier })
+    for (const item of observed.plan_items.filter((candidate) => candidate.state === 'ready')) {
+      observed = recordInquiryExecution(observed, { item_id: item.item_id, disposition: 'served', evidence_refs: [`raw:${item.item_id}`], pagination: { semantics: 'none', exhausted: true, next: null } })
+    }
+    const parent = closeInquiryForEvidenceSuccessor(observed)
+    const entries = base2.contract.authorization_envelope!.entries
+    const targets = parent.material_frontier.filter((entry) => entries.some((candidate) => candidate.scu_id === entry.scu_id)).map((entry) => entry.scu_id)
+    expect(targets.length, 'the fixture must leave two envelope targets to split').toBeGreaterThanOrEqual(2)
+    const denyUri = entries.find((entry) => entry.scu_id === targets[0])!.capability_uri
+    const successor = compileInquirySuccessorContract({
+      snapshot, parent_inquiry_id: 'multi', parent, cross_capability_only: true,
+      admission: liveFor(parent, { is_capability_denied: (uri) => uri === denyUri }),
+    })
+    const codes = successor.plan_items.map((item) => item.successor_admission?.code)
+    expect(codes).toContain('successor_safety_excluded')
+    expect(codes).toContain('successor_admitted')
   })
 })
