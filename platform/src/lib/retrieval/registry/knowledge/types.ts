@@ -464,6 +464,8 @@ export interface ChartCapabilityOverlay {
   readonly writer_inventory_hash: string | null
   readonly generated_at: string
   readonly availability: readonly ChartCapabilityAvailability[]
+  /** Served build set the availability was proven against; the fence dispatched reads inherit. */
+  readonly served_build_ids?: readonly string[]
 }
 
 export interface KnowledgeIntegrityFinding {

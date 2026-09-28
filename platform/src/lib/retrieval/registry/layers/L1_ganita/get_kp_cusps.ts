@@ -102,6 +102,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
   ].join(' '),
 
   input_schema: {
+    build_id: { type: 'string', description: "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced." },
     chart_id:               { type: 'string',  description: 'Chart UUID. Required.', required: true },
     ayanamsha_id:           { type: 'string',  description: `Ayanamsha (default '${DEFAULT_AYANAMSHA}', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.` },
     include_graha_kp_lords: { type: 'boolean', description: 'If true, also return the per-graha KP lord chain (graha_kp_lords). Default false.' },

@@ -905,6 +905,7 @@ export async function loadChartCapabilityOverlay(
       snapshot, chart_id: chartId, build_id: build.build_id,
       code_revision: process.env['K_REVISION'] ?? process.env['GIT_SHA'] ?? null,
       evidence: evidenceForSnapshot(snapshot, rows, generation, build, serviceProbeRows(queryRows[0]?.service_probe_evidence), sourceQueryEvidence, now),
+      served_build_ids: generation.served_build_ids,
     })
   } catch (error) {
     console.error('[capability-overlay] availability evidence unavailable', error)

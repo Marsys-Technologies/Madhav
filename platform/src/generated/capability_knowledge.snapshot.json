@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-27T21:23:19.000Z",
-  "content_hash": "sha256:0556249e1b779895b5927acfd6b45ec8ad6508ae3f8fb8d78e620b92550429da",
-  "source_catalog_fingerprint": "sha256:943c437107dc570f23f5155bc70f2b3d988eb33903630fdbb11c5335ab8f3f4b",
+  "generated_at": "2026-09-28T00:58:21.000Z",
+  "content_hash": "sha256:5aa264439b7eb730b6e71a3cb7e8325e212c9dec9584ab85cb70833c71491f02",
+  "source_catalog_fingerprint": "sha256:657da9ab51d12f4dcce5c8208af6aa4868d6025429a888a11a55c7cd92ab3995",
   "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
   "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
@@ -6928,6 +6928,7 @@
           "capability_uri": "marsys://tool/L1/get_divisionals",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "graha": "string:optional",
             "limit": "number:optional",
@@ -7602,6 +7603,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "include_graha_kp_lords"
       ],
@@ -7647,6 +7649,7 @@
           "capability_uri": "marsys://tool/L1/get_kp_cusps",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "include_graha_kp_lords": "boolean:optional"
           },
@@ -17374,6 +17377,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "domain",
         "lens_limit",
@@ -17430,6 +17434,7 @@
           "capability_uri": "marsys://tool/L2/query_domain_reading",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "domain": "string:optional",
             "lens_limit": "number:optional",
@@ -27676,6 +27681,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "domain",
         "frame",
@@ -27733,6 +27739,7 @@
           "capability_uri": "marsys://tool/L2/query_signals",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "domain": "string:optional",
             "frame": "string:optional",
@@ -33174,6 +33181,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "dasha_period",
         "date_from",
@@ -33238,6 +33246,7 @@
           "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "dasha_period": "string:optional",
             "date_from": "string:optional",
@@ -34184,6 +34193,7 @@
             "all": "boolean:optional",
             "ayanamsha_id": "string:optional",
             "bhanga_active": "boolean:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "fired": "boolean:optional",
             "is_partial": "boolean:optional",

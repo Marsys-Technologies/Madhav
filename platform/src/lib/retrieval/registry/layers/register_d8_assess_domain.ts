@@ -66,6 +66,8 @@ import {
   type BuildFence,
   type ChartServedGeneration,
   type UnresolvedAssetGeneration,
+  classifyBuildFence,
+  explicitEmptyBuildFenceRefusal,
 } from '../generation/served_generation'
 // F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg. Before this, assess_*
 // consumed the OPERATIVE VARGA's dignity (D9 for relationship) but never the rāśi dignity/
@@ -1896,6 +1898,10 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
   required_inputs: ['chart_id'],
 
   input_schema: {
+    build_id: {
+      type: 'string',
+      description: "Served-generation build fence for the bodha_msr_signals read: one build UUID or an array. Inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads current rows unfenced.",
+    },
     chart_id: {
       type: 'string',
       description: 'Chart UUID (<chart_uuid>). Required.',
@@ -2005,6 +2011,15 @@ export const yogaActivationByDashaCapability: CapabilityDescriptor = {
       ]
       const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
       let p = 5
+
+      // Served-generation fence for the L2 signal side of the join (the L3 kala_activation side
+      // is L3-owned and joins on signal_id; it is not read or changed here).
+      const buildFence = classifyBuildFence(args['build_id'])
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('yoga_activation_by_dasha', chart_id)
+      if (buildFence.kind === 'resolved') {
+        conds.push(`m.build_id = ANY($${p++}::uuid[])`)
+        params.push(buildFence.build_ids)
+      }
 
       if (min_salience > 0) {
         conds.push(`m.computed_salience >= $${p++}`)

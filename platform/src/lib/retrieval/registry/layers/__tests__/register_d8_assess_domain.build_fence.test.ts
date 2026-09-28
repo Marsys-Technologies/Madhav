@@ -38,7 +38,7 @@ vi.mock('../L1_ganita/get_yoga_firings', () => ({
 }))
 
 import { clearRegistry, getCapability } from '../../index'
-import { registerD8AssessDomainCapabilities, buildVargaAnalysisDirect } from '../register_d8_assess_domain'
+import { registerD8AssessDomainCapabilities, buildVargaAnalysisDirect, yogaActivationByDashaCapability } from '../register_d8_assess_domain'
 import { ExplicitEmptyBuildFenceError } from '@/lib/retrieval/registry/generation/served_generation'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -196,5 +196,33 @@ describe('assess_* served-generation fence', () => {
     await run()
     await expect(buildVargaAnalysisDirect(CHART_ID, 'lahiri_chitrapaksha', 'wealth', []))
       .rejects.toThrow(ExplicitEmptyBuildFenceError)
+  })
+
+  // Review finding: yoga_activation_by_dasha joined bodha_msr_signals with no fence at all, while
+  // its availability was proven against the served generation.
+  describe('yoga_activation_by_dasha fence', () => {
+    it('fences the signal side of the join to the supplied build set', async () => {
+      installRouter([])
+      await yogaActivationByDashaCapability.handler({ chart_id: CHART_ID, build_id: [SERVED] }, undefined)
+      const call = queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM bodha_msr_signals m'))
+      expect(call).toBeDefined()
+      expect(String(call![0])).toMatch(/m\.build_id = ANY\(\$\d+::uuid\[\]\)/)
+      expect((call![1] as unknown[]).some((param) => Array.isArray(param) && param.length === 1 && param[0] === SERVED)).toBe(true)
+    })
+
+    it('refuses an explicit-empty fence without querying, never reading unfenced', async () => {
+      installRouter([])
+      const result = await yogaActivationByDashaCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined) as { is_error: boolean; content: { code: string } }
+      expect(result.is_error).toBe(true)
+      expect(result.content.code).toBe('explicit_empty_build_fence')
+      expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('FROM bodha_msr_signals m'))).toBe(false)
+    })
+
+    it('keeps the documented unfenced standalone read when no fence is supplied', async () => {
+      installRouter([])
+      await yogaActivationByDashaCapability.handler({ chart_id: CHART_ID }, undefined)
+      const call = queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM bodha_msr_signals m'))
+      expect(String(call![0])).not.toContain('m.build_id')
+    })
   })
 })
