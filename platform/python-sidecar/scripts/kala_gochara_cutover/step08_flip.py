@@ -19,11 +19,22 @@ script checks itself before flipping (any failure → exit 8, nothing written):
   * the ledger's publish refusal machinery is intact (published generations
     refuse delete-then-insert)
 
-Reversal (plan §9 step 8): re-point authority to '3.0'; manifest
-'rolled_back' — use --reverse. Disclosed consequence (runbook): a rollback
-after step 9 leaves Kṣetra's newer provenance edges pointing at '4.0' rows
-that still exist but are no longer served — coherent, preferable to deleting
-them, stated rather than discovered.
+Reversal (plan §9 step 8; K3-F2 / ADK-0024 §2): re-point authority to '3.0'
+FIRST; manifest 'rolled_back' (ledger.rollback() deletes the generation's
+coverage + contacts); then the reversed chart's '4.0' windows are
+scoped-deleted (ledger.clear_windows_on_reversal — the explicit
+EXPLICIT_CLEAR_OPS['ka_gochara'] windows op; refuses unless the manifest is
+candidate/rolled_back AND the generation is no longer the served authority).
+'v1'/'3.0' rows are untouchable on this path. Burned label: a rolled_back
+manifest refuses re-publication — a re-attempt builds under a NEW generation
+label. Post-reversal evidence must record a fresh integrity evaluation
+(conjuncts (a)/(f) GREEN again once the orphan windows are gone) and NOTE
+that conjunct (i) is vacuous for step06b's row shape (bare-string
+active_sentences) — the gate is not earned on an empty check. Flips are
+per-chart: a failed chart-2 flip does NOT roll back chart-1. Disclosed
+consequence (runbook): a rollback after step 9 leaves Kṣetra's newer
+provenance edges pointing at '4.0' rows that are deleted by this cleanup —
+stated rather than discovered.
 
 Usage:
     python3 step08_flip.py --dsn postgresql://... --chart-id <uuid> \
@@ -80,7 +91,10 @@ def main() -> int:
                 print("ERROR: no manifest to roll back", file=sys.stderr)
                 conn.close()
                 return 8
-            ledger.rollback(conn, args.chart_id, args.generation)
+            # K3-F2 / ADK-0024 §2 ordering: authority reversed FIRST, manifest
+            # rolled back, THEN the reversed chart's '4.0' windows are
+            # scoped-deleted — the cleanup's own guard refuses while the
+            # generation is still the served authority.
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE kala_gochara_authority "
@@ -88,10 +102,17 @@ def main() -> int:
                     "    flipped_by = %s, evidence_ref = %s "
                     "WHERE chart_id = %s",
                     (args.flipped_by, str(row[0]), args.chart_id))
+            ledger.rollback(conn, args.chart_id, args.generation)
+            n_windows_deleted = ledger.clear_windows_on_reversal(
+                conn, args.chart_id, args.generation)
             conn.commit()
             report = {"chart_id": args.chart_id, "generation": args.generation,
                       "action": "reversed", "authority": "3.0",
-                      "manifest_id": str(row[0]), "manifest_status": "rolled_back"}
+                      "manifest_id": str(row[0]), "manifest_status": "rolled_back",
+                      "windows_deleted": n_windows_deleted,
+                      "label_burned": "a rolled_back manifest refuses "
+                                      "re-publication — a re-attempt builds "
+                                      "under a NEW generation label"}
             print(json.dumps(report, indent=2))
             if args.evidence:
                 write_evidence(8, "REVERSED", json.dumps(report, indent=2))

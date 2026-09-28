@@ -33,8 +33,10 @@ except ImportError:  # ids.py not present in this checkout -> local fallback
 
 # C-1 clear order for the cockpit owner (plan §6.3/§6.4). `kala_gochara_windows`
 # is NOT this family's relation at WP6 — it is listed here because the cockpit
-# entry must delete in this dependency order across all three; this module only
-# executes the two owned relations (coverage, then contacts).
+# entry must delete in this dependency order across all three. This module
+# executes the windows delete only in one place: clear_windows_on_reversal(),
+# the guarded K3-F2 reversal cleanup (ADK-0024 §2); rollback()/clear_generation()
+# touch only the two owned relations (coverage, then contacts).
 CLEAR_OP_ORDER = (
     "kala_gochara_coverage",
     "kala_gochara_contacts",
@@ -606,6 +608,60 @@ def _delete_generation_rows(conn, chart_id: str, generation: str) -> None:
         "DELETE FROM kala_gochara_contacts WHERE chart_id = %s AND generation = %s",
         (chart_id, generation),
     )
+
+
+def clear_windows_on_reversal(conn, chart_id: str, generation: str) -> int:
+    """Scoped delete of the reversed chart's kala_gochara_windows rows
+    (K3-F2 / ADK-0024 §2). Without this, `step08_flip.py --reverse` leaves
+    orphan '4.0' windows whose coverage rows and candidate manifest are gone
+    — re-pinned conjuncts (a) and (f) then read the post-reversal state as
+    permanently RED.
+
+    Explicit, scoped op — the same statement as
+    EXPLICIT_CLEAR_OPS['ka_gochara'][2]
+    (`DELETE FROM kala_gochara_windows WHERE chart_id AND generation='4.0'`),
+    here parameterized by the reversed generation.
+
+    HARD GUARD (the ruling's condition): refuses unless
+      * the generation is a candidate-family generation — 'v1' and '3.0' are
+        untouchable here regardless of any other state; and
+      * the manifest exists with status 'candidate' or 'rolled_back' (a
+        published generation is the live or most-recent authority — its
+        windows are the served rows); and
+      * the generation is NOT the chart's currently served authority
+        (kala_gochara_authority). Reverse authority FIRST, windows cleanup
+        SECOND — a cleanup that can fire on a live authority is a guard
+        bypass.
+
+    Returns the number of window rows deleted."""
+    if generation in ("v1", "3.0"):
+        raise PublishedGenerationRefusal(
+            f"clear_windows_on_reversal refused: generation {generation!r} is "
+            "a prior served generation, not a candidate — 'v1'/'3.0' windows "
+            "are untouchable on the reversal path")
+    row = _manifest_row(conn, chart_id, generation)
+    if row is None:
+        raise ValueError(f"no manifest for chart {chart_id} generation {generation!r}")
+    if row[1] not in ("candidate", "rolled_back"):
+        raise PublishedGenerationRefusal(
+            f"clear_windows_on_reversal refused: manifest for generation "
+            f"{generation!r} has status {row[1]!r}, not 'candidate'/'rolled_back' "
+            "— a published generation's windows are the served rows")
+    auth = conn.execute(
+        "SELECT authoritative_generation FROM kala_gochara_authority "
+        "WHERE chart_id = %s",
+        (chart_id,),
+    ).fetchone()
+    if auth is not None and auth[0] == generation:
+        raise PublishedGenerationRefusal(
+            f"clear_windows_on_reversal refused: generation {generation!r} is "
+            f"the chart's SERVED authority — reverse authority first "
+            "(step08_flip.py --reverse), then clean up windows")
+    cur = conn.execute(
+        "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation),
+    )
+    return cur.rowcount
 
 
 def clear_generation(conn, chart_id: str, generation: str) -> str:

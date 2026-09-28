@@ -31,6 +31,7 @@ fallback to any other DSN.
 """
 from __future__ import annotations
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -571,6 +572,76 @@ def test_step08_flip_and_reverse(db):
     assert _scalar(db, "SELECT status FROM kala_gochara_publication "
                        "WHERE chart_id=%s AND generation='4.0'",
                    (CHART_A,)) == "rolled_back"
+    # K3-F2 / ADK-0024 §2: the reversal scoped-deletes the reversed chart's
+    # '4.0' windows; prior generations' windows are untouchable.
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation='4.0'", (CHART_A,)) == 0
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation='v1'", (CHART_A,)) == 3
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation='3.0'", (CHART_A,)) == 2
+    # Post-reversal integrity: with the orphan windows gone, conjuncts (a)/(f)
+    # read GREEN again (their run-time form via step 5's re-pinned check).
+    _apply_step05_repin(db)
+    assert _integrity(db) is True
+    # Burned label: the rolled_back manifest refuses re-publication — a
+    # re-attempt must build under a NEW generation label.
+    rf = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,
+                     "--flipped-by", "wp10-rehearsal")
+    assert rf.returncode == 8, (rf.returncode, rf.stdout, rf.stderr)
+    assert "rolled_back" in rf.stderr
+    assert _scalar(db, "SELECT authoritative_generation "
+                       "FROM kala_gochara_authority WHERE chart_id=%s",
+                   (CHART_A,)) == "3.0"
+
+
+def _load_ledger():
+    spec = importlib.util.spec_from_file_location(
+        "wp10_cutover_test_ledger",
+        SIDECAR / "services" / "gochara_kernel" / "ledger.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_clear_windows_on_reversal_refusals(db):
+    """K3-F2 guard: the scoped windows delete refuses every unsafe shape."""
+    _run_script("step04_apply_verify.py", "--dsn", DSN)
+    assert _step06(CHART_A).returncode == 0
+    _write_4_0_windows(CHART_A)
+    ledger = _load_ledger()
+    n_40 = _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation='4.0'", (CHART_A,))
+    assert n_40 > 0
+    # (c) prior served generations are untouchable regardless of state
+    for gen in ("v1", "3.0"):
+        with pytest.raises(ledger.PublishedGenerationRefusal):
+            ledger.clear_windows_on_reversal(db, CHART_A, gen)
+    # (b) a published manifest's windows are the served rows — flip, then the
+    # cleanup must refuse BOTH because the manifest is published AND because
+    # the generation is the served authority.
+    r = _run_script("step08_flip.py", "--dsn", DSN, "--chart-id", CHART_A,
+                    "--flipped-by", "wp10-rehearsal")
+    assert r.returncode == 0, r.stderr
+    with pytest.raises(ledger.PublishedGenerationRefusal):
+        ledger.clear_windows_on_reversal(db, CHART_A, "4.0")
+    # nothing was deleted by any refusal above
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation='4.0'", (CHART_A,)) == n_40
+    # (a) candidate manifest + NOT the served authority → the delete is legal
+    # (this is the reversal path's own post-rollback shape, exercised directly)
+    db.execute("UPDATE kala_gochara_authority SET authoritative_generation='3.0' "
+               "WHERE chart_id=%s", (CHART_A,))
+    db.execute("UPDATE kala_gochara_publication SET status='candidate' "
+               "WHERE chart_id=%s AND generation='4.0'", (CHART_A,))
+    deleted = ledger.clear_windows_on_reversal(db, CHART_A, "4.0")
+    assert deleted == n_40
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation='4.0'", (CHART_A,)) == 0
+    # 'v1'/'3.0' windows untouched throughout
+    assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
+                       "WHERE chart_id=%s AND generation IN ('v1','3.0')",
+                   (CHART_A,)) == 5
 
 
 # ── step 9 — birth-epoch detector (#2534 class) ─────────────────────────────
