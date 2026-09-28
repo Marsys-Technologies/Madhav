@@ -52,7 +52,7 @@ on:
         required: false
         default: false
       ai_console_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact AI Console migration 1124'
+        description: 'Explicitly authorize the temporary protected schema window for exact AI Console migrations 1124-1125'
         type: boolean
         required: false
         default: false
@@ -925,7 +925,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
-  # JATAKA CCD-019 / AI Console BYOK: migrations 1120-1124 alter
+  # JATAKA CCD-019 / AI Console BYOK: migrations 1120-1125 alter
   # application-owned tables but also create objects in the protected public schema.
   # The ordinary migration role intentionally has USAGE without CREATE. This
   # exact-set, manual-only protected job opens the minimum capability window and
@@ -1030,6 +1030,7 @@ jobs:
           fi
           if [ "$APPLY_AI_CONSOLE_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1124_ai_console_byok_routing.sql)
+            migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)
           fi
           if [ "${#migrations[@]}" -eq 0 ]; then
             echo "::error::No protected public-schema migration was explicitly authorized."

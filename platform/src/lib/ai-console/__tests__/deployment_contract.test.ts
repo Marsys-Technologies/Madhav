@@ -5,6 +5,10 @@ import { describe, expect, it } from 'vitest'
 const repositoryRoot = resolve(__dirname, '../../../../..')
 const workflow = readFileSync(resolve(repositoryRoot, '.github/workflows/deploy.yml'), 'utf8')
 const dockerfile = readFileSync(resolve(repositoryRoot, 'platform/Dockerfile'), 'utf8')
+const snapshotRepair = readFileSync(
+  resolve(repositoryRoot, 'platform/migrations/1125_ai_snapshot_shape_operator_precedence.sql'),
+  'utf8',
+)
 
 describe('AI Console production deployment contract', () => {
   it('bakes the browser flag into both PR and production images', () => {
@@ -24,5 +28,11 @@ describe('AI Console production deployment contract', () => {
   it('keeps subscription-backed local CLI processes disabled on the public host', () => {
     expect(workflow).toContain('MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=false')
     expect(workflow).not.toContain('MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=true')
+  })
+
+  it('applies AI Console schema functions only through the protected migration window', () => {
+    expect(snapshotRepair).toContain('CREATE OR REPLACE FUNCTION ai_snapshot_shape')
+    expect(workflow).toContain('migrations+=(1124_ai_console_byok_routing.sql)')
+    expect(workflow).toContain('migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)')
   })
 })

@@ -24,7 +24,9 @@ Keep both feature flags false while preparing the database:
 - `MARSYS_FLAG_AI_CONSOLE_BYOK=false`
 - `NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=false`
 
-Apply migration `1124_ai_console_byok_routing.sql` only to the approved disposable database, then run:
+Apply migrations `1124_ai_console_byok_routing.sql` and
+`1125_ai_snapshot_shape_operator_precedence.sql`, in that order, only to the
+approved disposable database, then run:
 
 ```text
 RUN_DB_TESTS=1 AI_CONSOLE_TEST_DATABASE_URL=postgresql://...@127.0.0.1:5432/ai_console_test_<name> npm run test -- src/lib/ai-console/__tests__/migration_db.test.ts src/lib/ai-console/__tests__/repository_isolation.db.test.ts
