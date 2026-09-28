@@ -74,6 +74,58 @@ describe('runAdapterDispatch BYOK branch', () => {
     expect(release).toHaveBeenCalledOnce()
   })
 
+  it('emits only the persistence refusal tail and releases BYOK admission once', async () => {
+    const release = vi.fn()
+    const stream = vi.fn(() => new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: 'text_delta', text: 'Answer' })
+        controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } })
+        controller.close()
+      },
+    }))
+    const executor = { descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,
+      connectionId: 'connection', modelId: 'model' }, generate: vi.fn(), stream }
+    const runtime = {
+      kind: 'byok', selection: { kind: 'default' }, plan: {}, safeSnapshot: {},
+      snapshotId: crypto.randomUUID(),
+      executors: { synthesizer: executor, planner: executor, deep_planner: executor, worker: executor },
+      displayModelId: 'model', releaseAdmission: release,
+    } as unknown as ByokTurnRuntime
+    mocks.onFinish.mockReset().mockResolvedValue({
+      persisted: false,
+      refusal: { code: 'CONVERSATION_ARCHIVED_READ_ONLY', message: 'This reading was not saved.' },
+    })
+    mocks.getAdapter.mockReset()
+
+    const response = await runAdapterDispatch({
+      requestStartedAt: 0, userUid: 'alice', finalConversationId: 'conversation', chartId: 'chart',
+      audienceTier: 'client', selectedStack: 'byok', isFirstTurn: false,
+      lelContextEnabled: true, style: 'acharya', modelId: 'model',
+      modelMeta: { provider: 'openai', maxInputTokens: 128_000 }, plannerModelId: 'planner',
+      plan: { query_class: 'predictive', synthesis_guidance: '' }, bundle: { assets: [] },
+      queryPlan: { tools_authorized: [] }, validToolResults: [], toolEventLog: [],
+      plannerLatencyMs: 1, composeBundleMs: 1, toolFetchMs: 1, queryId: 'query',
+      trimmedConversationHistory: [], queryText: 'Question', messages: [], emit: vi.fn(),
+      nextSeq: (() => { let n = 0; return () => ++n })(),
+      pendingStreamWriter: { onEvent: vi.fn(), onTextDelta: vi.fn(), clear: vi.fn() },
+      fetchMsrSnippets: vi.fn(async () => new Map()), byokRuntime: runtime,
+    }) as unknown as { stream: { execute(args: { writer: { write(event: unknown): void } }): Promise<void> } }
+    const events: Array<Record<string, unknown>> = []
+    await response.stream.execute({ writer: { write: event => events.push(event as Record<string, unknown>) } })
+
+    expect(events.some(event => event.type === 'finish')).toBe(false)
+    expect(events.filter(event => event.type === 'error')).toEqual([{
+      type: 'error',
+      errorText: JSON.stringify({
+        code: 'CONVERSATION_ARCHIVED_READ_ONLY',
+        message: 'This reading was not saved.',
+        retry: false,
+      }),
+    }])
+    expect(release).toHaveBeenCalledOnce()
+  })
+
   it('releases admission exactly once when initial writer setup fails before synthesis', async () => {
     const release = vi.fn()
     const executor = { descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,

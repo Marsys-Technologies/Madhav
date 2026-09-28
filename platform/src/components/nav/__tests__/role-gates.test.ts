@@ -11,7 +11,7 @@ describe('AI Console shared navigation descriptor', () => {
 
   it('produces the exact super-admin and guest order when enabled', () => {
     expect(visibleNavItems('super_admin', { aiConsoleByok: true }).map(item => item.label)).toEqual([
-      'Jātakas', 'Panchang', 'Cockpit', 'AI Console', 'AIOps', 'Audit', 'Performance', 'Admin',
+      'Jātakas', 'Panchang', 'Cockpit', 'AI Console', 'Audit', 'Performance', 'Admin',
     ])
     expect(visibleNavItems('guest', { aiConsoleByok: true }).map(item => item.label)).toEqual([
       'Jātakas', 'Panchang', 'AI Console',

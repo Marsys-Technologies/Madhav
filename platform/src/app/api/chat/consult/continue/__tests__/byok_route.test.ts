@@ -20,10 +20,15 @@ vi.mock('ai', async importOriginal => {
 vi.mock('@/lib/firebase/server', () => ({ getServerUser: vi.fn(async () => ({ uid: 'alice' })) }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn(async () => ({ rows: [{ role: 'guest', status: 'active' }] })) }))
 vi.mock('@/lib/conversations', () => ({ getConversation: vi.fn(async () => ({ chart_id: crypto.randomUUID() })) }))
+vi.mock('@/lib/charts/readingGate', () => ({ checkReadingReadiness: vi.fn(async () => ({ ok: true })) }))
 vi.mock('@/lib/persistence/conversation_writer', () => ({ loadConversationMessagesV2: mocks.loadMessages }))
-vi.mock('@/lib/errors', () => ({ res: {
-  unauthenticated: vi.fn(), badRequest: vi.fn(), dbError: vi.fn(), notFound: vi.fn(),
-} }))
+vi.mock('@/lib/errors', () => ({
+  errorResponse: vi.fn((code: string, message: string, status: number, extra?: object) =>
+    Response.json({ code, message, ...extra }, { status })),
+  res: {
+    unauthenticated: vi.fn(), badRequest: vi.fn(), dbError: vi.fn(), notFound: vi.fn(),
+  },
+}))
 vi.mock('@/lib/config', () => ({ configService: { getFlag: () => mocks.byok.on } }))
 vi.mock('@/lib/ai-console/repository', () => ({ getConversationSelection: vi.fn(async () => ({ kind: 'default' })) }))
 vi.mock('@/lib/pariprashna/pipeline/byok_preflight', () => ({ prepareByokTurn: mocks.prepare }))

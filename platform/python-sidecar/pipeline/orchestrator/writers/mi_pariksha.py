@@ -457,8 +457,13 @@ class MiParikshaWriter(WriterBase):
                 "       c.manifestation_channel, c.composite_score, "
                 "       p.driving_signals "
                 "FROM mimamsa_calibration c "
+                # Jātaka Phase-A2 (migration 1122): a context-staled prediction
+                # (superseded by a birth-details correction) must join as no
+                # match, not as a live driving_signals source — in the ON
+                # clause, so the calibration row itself is never dropped.
                 "LEFT JOIN mimamsa_predictions p "
                 "   ON p.chart_id = c.chart_id AND p.prediction_id = c.prediction_id "
+                "   AND p.chart_context_stale_at IS NULL "
                 "WHERE c.chart_id = %s",
                 (chart_id,),
             )

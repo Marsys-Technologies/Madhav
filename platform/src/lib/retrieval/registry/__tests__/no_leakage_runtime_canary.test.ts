@@ -64,6 +64,12 @@ vi.mock('@/lib/retrieval/registry/tool_name_bridge', async (importOriginal) => {
 
 vi.mock('@/lib/db/client', () => ({ query: vi.fn(async () => ({ rows: [] })) }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn(async () => 'all') }))
+// Jātaka chart workspace: every reading door admits only a Ready chart (shared
+// readiness gate) — this canary exercises a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn(async () => 'guest') }))
 vi.mock('@/lib/mcp/service_token', () => ({
   validateServiceToken: vi.fn(() => true),

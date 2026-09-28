@@ -53,8 +53,8 @@ conflict in favor of the spec and record the ruling before action.
 
 Only plan-required changes inside these surfaces:
 
-- `platform/migrations/1120_ai_console_byok_routing.sql`, or a later unclaimed cross-cutting
-  number at or above 1120 selected under the migration rule below.
+- `platform/migrations/1124_ai_console_byok_routing.sql`, selected as the next free
+  cross-cutting number after Jātaka claimed 1120–1123.
 - `platform/src/lib/ai-console/**`
 - `platform/src/app/api/ai-console/**`
 - `platform/src/app/ai-console/**`
@@ -90,7 +90,7 @@ Only plan-required changes inside these surfaces:
 
 `npm run migration:next` reported 1080 at setup, but 1070–1119 is reserved for L3. Immediately
 before Task 2, fetch and read the live coordination ledger and scan both migration directories.
-Use 1120 only if it is still unclaimed; otherwise use the next free number at or above 1120 and
+Migration 1124 is the next free number after the live scan found Jātaka claims at 1120–1123;
 update all plan references in the same implementation commit. This local work may proceed with a
 provisional non-conflicting number, but a remote coordination claim is a separate external side
 effect and is not authorized by this local brief.

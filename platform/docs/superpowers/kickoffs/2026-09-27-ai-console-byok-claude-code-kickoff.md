@@ -120,8 +120,8 @@ project-specific coverage; it does not replace the task-scoped reviewer.
   three-row internally scrolling composer.
 - Setup's numeric guard returned 1080, but active governance reserves 1070–1119 for L3. Before Task
   2, fetch/read the live coordination ledger and scan both migration directories. Use provisional
-  1120 only if unclaimed; otherwise the next free number at or above 1120. Update all plan references
-  in the migration commit. Do not write to the live coordination branch; that is an external action.
+  The live pre-merge scan found Jātaka claims at 1120–1123, so use 1124 and update all plan
+  references in the migration commit. Do not write to the live coordination branch; that is an external action.
 - Confirmed connection/configuration deletion tombstones the owned choice after dependency preview.
   Defaults, conversations, and history retain stable broken identity; never rewrite dependents or
   silently select an alternative.

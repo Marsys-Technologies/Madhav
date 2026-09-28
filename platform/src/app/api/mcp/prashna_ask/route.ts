@@ -59,6 +59,8 @@
  * builds the async job-handle wrapper around this call on the platform-mcp side.
  */
 
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
+import type { McpErrorEnvelope } from '@/lib/mcp/types'
 import 'server-only'
 import { NextResponse } from 'next/server'
 // Trigger capability registration for all layers (L0–L5) at module load — same
@@ -271,14 +273,15 @@ export async function POST(request: Request) {
     return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_inquiry_id must be a UUID' }), { status: 400 })
   }
   let authorizedManagedJob: Awaited<ReturnType<typeof getManagedPrashnaJob>> = null
+  let authorizedByokRole: 'guest' | 'super_admin' | null = null
   if (byokEnabled && body.managed_job_id && body.managed_inquiry_id) {
     try {
-      await authorizeMcpByokPrincipal({
+      authorizedByokRole = (await authorizeMcpByokPrincipal({
         userId: userUid,
         keyId,
         authKind: authKind as 'api_key' | 'oauth',
         chartId,
-      })
+      })).role
     } catch (error) {
       const normalized = normalizeAiError(error, { source: 'provider' })
       return NextResponse.json(buildErrorEnvelope({
@@ -329,8 +332,65 @@ export async function POST(request: Request) {
     suppliedScopeTuple = parsedTuple.data
   }
 
-  let byokRuntime: PreparedMcpByokRuntime | null = null
   let role: 'guest' | 'super_admin'
+  if (byokEnabled) {
+    if (!authorizedByokRole) {
+      try {
+        authorizedByokRole = (await authorizeMcpByokPrincipal({
+          userId: userUid,
+          keyId,
+          authKind: authKind as 'api_key' | 'oauth',
+          chartId,
+        })).role
+      } catch (error) {
+        const normalized = normalizeAiError(error, { source: 'provider' })
+        return NextResponse.json(buildErrorEnvelope({
+          error_class: 'auth',
+          message: normalized.message,
+          remediation: `AI Console: ${normalized.code}`,
+        }), { status: 401 })
+      }
+    }
+    role = authorizedByokRole
+  } else {
+    // ── Per-call chart-access authorization (same brain as the primitives route) ─
+    role = await resolveMcpPrincipalRole(userUid)
+    const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    if (perm === 'deny') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
+        { status: 401 },
+      )
+    }
+  }
+
+  // ── Shared chart readiness gate (Jātaka Phase-A2) ─────────────────────────────
+  // The same admission check as the web reading doors: only a Ready chart starts
+  // a reading. Evaluated before turn limits, safety, planning, retrieval,
+  // synthesis and the managed caller's persistence, and re-evaluated on every
+  // managed-job recovery (this route runs again). The code leads the message so
+  // it survives a job store that keeps only the message; `retryable` is true only
+  // for an actively progressing build or an unreadable readiness. This door has
+  // no conversation to continue, so the correction-history lock does not apply.
+  const readingGate = await checkReadingReadiness(chartId)
+  if (!readingGate.ok) {
+    const refusal: McpErrorEnvelope = {
+      ok: false,
+      trace_id: '',
+      error: {
+        class: 'chart_not_ready',
+        code: readingGate.code,
+        message: `${readingGate.code}: ${readingGate.message}`,
+        retryable: readingGate.retryable,
+        remediation: readingGate.retryable
+          ? 'Retry after the chart finishes computing.'
+          : 'Rebuild the chart in Nirmāṇa before starting a new reading.',
+      },
+    }
+    return NextResponse.json(refusal, { status: 409 })
+  }
+
+  let byokRuntime: PreparedMcpByokRuntime | null = null
   if (byokEnabled) {
     try {
       byokRuntime = await prepareMcpByokRuntime({
@@ -353,16 +413,6 @@ export async function POST(request: Request) {
           remediation: `AI Console: ${normalized.code}`,
         }),
         { status: normalized.code === 'AI_RATE_LIMITED' ? 429 : normalized.code === 'AI_PERMISSION_DENIED' ? 401 : 422 },
-      )
-    }
-  } else {
-    // ── Per-call chart-access authorization (same brain as the primitives route) ─
-    role = await resolveMcpPrincipalRole(userUid)
-    const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
-    if (perm === 'deny') {
-      return NextResponse.json(
-        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
-        { status: 401 },
       )
     }
   }

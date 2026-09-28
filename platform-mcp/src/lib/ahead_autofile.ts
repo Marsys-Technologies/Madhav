@@ -183,7 +183,11 @@ async function platformQueryExists(sourceCitation: string, principal: Principal)
         'X-MCP-Key-Id': principal.key_id,
       },
       body: JSON.stringify({
-        sql: 'SELECT 1 FROM brahma_prospective_ledger WHERE source_citation = $1 LIMIT 1',
+        // Jātaka Phase-A3 (migration 1123): exclude a match a correction has
+        // marked chart_context_stale_at — it was filed under former birth
+        // details, so a fresh filing under the corrected chart must not be
+        // treated as a duplicate of it.
+        sql: 'SELECT 1 FROM brahma_prospective_ledger WHERE source_citation = $1 AND chart_context_stale_at IS NULL LIMIT 1',
         params: [sourceCitation],
       }),
       signal: AbortSignal.timeout(8_000),

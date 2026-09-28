@@ -9,6 +9,10 @@ import {
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { configService } from '@/lib/config/index'
 import type { AudienceTier } from '@/lib/prompts/types'
+import { isCorrectionArchived } from '@/lib/conversations/readOnly'
+import { loadHistoricalConversationMessages } from '@/lib/conversations/historicalReading'
+import { HistoricalConversationView } from '@/components/consume/HistoricalConversationView'
+import '@/components/profile/jataka-workspace.css'
 
 export default async function ConsultConversationPage({
   params,
@@ -41,6 +45,14 @@ export default async function ConsultConversationPage({
     isSuperAdmin,
   })
   if (!conversation || conversation.chart_id !== id) notFound()
+
+  // Jātaka chart workspace: a conversation archived by a chart-details correction
+  // is historical, read-only material — render its transcript without a composer,
+  // so no client-side regression can reopen it for new turns.
+  if (isCorrectionArchived(conversation)) {
+    const historicalMessages = await loadHistoricalConversationMessages(conversationId)
+    return <HistoricalConversationView conversation={conversation} messages={historicalMessages} />
+  }
 
   // LCA-2 / WP-1.1: the legacy `reports` relation was RETIRED (DDL only in
   // platform/migrations/_archive; ABSENT from deployed Cloud SQL). The prior

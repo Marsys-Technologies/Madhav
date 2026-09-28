@@ -14,7 +14,7 @@
 
 - Implement behind `MARSYS_FLAG_AI_CONSOLE_BYOK` and `NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK`; default both to `false`. Flag-off behavior remains byte-compatible until local cutover.
 - Read the relevant installed Next.js 16 guides under `node_modules/next/dist/docs/` before writing App Router, route-handler, or caching code.
-- The numeric guard returned `1080` during execution setup on 2026-09-27, but active campaign governance reserves `1070–1119` for L3 Kāla and requires cross-cutting work at `1120+`. Use provisional migration `1120_ai_console_byok_routing.sql`; immediately before creation, re-read the live coordination ledger and existing migrations, move to the next free number at or above `1120` if needed, and update every plan reference in the same implementation commit. Do not consume the numerically-next reserved slot.
+- The numeric guard returned `1080` during execution setup on 2026-09-27, but active campaign governance reserves `1070–1119` for L3 Kāla and requires cross-cutting work at `1120+`. The live pre-merge scan found Jātaka claims at 1120–1123, so AI Console uses `1124_ai_console_byok_routing.sql`. Do not consume a reserved or previously claimed slot.
 - Use the `create-migration` skill for the migration and dispatch the required `migration-guard` reviewer after the file exists.
 - Never persist, return, snapshot, audit, trace, or log plaintext credentials, wrapped keys, nonces, tags, CLI auth material, full provider error bodies, prompts, or completions from validation probes.
 - Keep decryption and executable routing types in `server-only` modules. Client/API types contain identifiers, masks, validation state, and safe metadata only.
@@ -46,7 +46,7 @@
 
 | File | Action | Responsibility |
 |---|---|---|
-| `migrations/1120_ai_console_byok_routing.sql` | Create | Add encrypted connections, discovered models, named configurations/roles, defaults, CLI state/grants/catalog, conversation selections, turn snapshots/invocation receipts, and safe audit events |
+| `migrations/1124_ai_console_byok_routing.sql` | Create | Add encrypted connections, discovered models, named configurations/roles, defaults, CLI state/grants/catalog, conversation selections, turn snapshots/invocation receipts, and safe audit events |
 | `src/lib/ai-console/types.ts` | Create | Shared safe provider, role, choice, status, catalog, and snapshot types |
 | `src/lib/ai-console/errors.ts` | Create | Stable configuration/validation/execution error codes and safe normalization |
 | `src/lib/ai-console/crypto.ts` | Create | Versioned envelope encryption, keyed fingerprinting, masking, and redaction |
@@ -208,7 +208,7 @@ git commit -m "feat(ai-console): define routing contracts and cutover flag"
 ## Task 2: Add the governed persistence model
 
 **Files:**
-- Create: `migrations/1120_ai_console_byok_routing.sql` (or the next unclaimed number at or above `1120` reported by the live coordination check)
+- Create: `migrations/1124_ai_console_byok_routing.sql` (the next unclaimed number reported by the live coordination check)
 - Test: `src/lib/ai-console/__tests__/migration_contract.test.ts`
 - Test: `src/lib/ai-console/__tests__/migration_db.test.ts`
 
@@ -218,7 +218,7 @@ git commit -m "feat(ai-console): define routing contracts and cutover flag"
 cd platform && npm run migration:next
 ```
 
-The command reports the numeric maximum (`1080` at setup) but does not understand active campaign reservations. Re-read `origin/campaign-coordination` and both migration directories. Use `1120` only if it is still unclaimed; otherwise take the next free number at or above `1120` and update every plan reference before continuing.
+The command reports the numeric maximum (`1080` at setup) but does not understand active campaign reservations. The live pre-merge scan found Jātaka claims at 1120–1123, so the next free cross-directory number is `1124`; every AI Console reference is updated accordingly.
 
 - [ ] **Step 2: Use the `create-migration` skill and write a failing contract test**
 

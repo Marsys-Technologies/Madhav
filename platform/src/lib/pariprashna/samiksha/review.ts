@@ -59,9 +59,13 @@ export async function getCoverageStats(
   chartId: string,
   exec: LedgerExecutor = defaultExecutor,
 ): Promise<CoverageStats> {
+  // Jātaka Phase-A3 (migration 1123): this panel is the current pipeline's
+  // health snapshot, shown alongside the badge and the review lists it must
+  // stay consistent with — a claim a correction has marked
+  // chart_context_stale_at is excluded, same as those current-serving reads.
   const { rows } = await exec<{ lifecycle_status: string; n: string }>(
     `SELECT lifecycle_status, count(*)::text AS n FROM ${LEDGER_TABLE}
-      WHERE chart_id = $1 GROUP BY lifecycle_status`,
+      WHERE chart_id = $1 AND chart_context_stale_at IS NULL GROUP BY lifecycle_status`,
     [chartId],
   )
   const by: Record<string, number> = {}

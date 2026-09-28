@@ -6,6 +6,7 @@ import {
 } from '@/lib/conversations'
 import { archiveConversation, loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
 import { res } from '@/lib/errors'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 
 async function resolveAccess(userId: string) {
   const result = await query<{ role: string }>(
@@ -53,6 +54,9 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const isSuperAdmin = await resolveAccess(user.uid)
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
+    // Jātaka chart workspace: history archived by a chart-details correction is
+    // read-only — no rename, pin, (un)archive or folder move. GET still reads it.
+    if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 
     // Title update (existing behaviour)
     if (typeof body.title === 'string') {
@@ -109,6 +113,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     const isSuperAdmin = await resolveAccess(user.uid)
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
+    if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 
     // Soft delete: set archived_at. The conversation row and its messages are preserved.
     await archiveConversation(id)

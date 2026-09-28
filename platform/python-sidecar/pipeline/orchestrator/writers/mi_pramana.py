@@ -319,9 +319,15 @@ class MiPramanaWriter(WriterBase):
                 "nothing calibratable'."
             )
 
+        # Jātaka Phase-A2 (migration 1122): a chart-details correction preserves
+        # rows past their pending/due lifecycle, marking them
+        # chart_context_stale_at instead of deleting them (mi_bhavisya's own
+        # rebuild never touches them — real, native-verified outcomes). Exclude
+        # them from calibration input; the marker is orthogonal metadata, never
+        # a lifecycle_status/outcome rewrite.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
-                "SELECT * FROM mimamsa_predictions WHERE chart_id = %s",
+                "SELECT * FROM mimamsa_predictions WHERE chart_id = %s AND chart_context_stale_at IS NULL",
                 (chart_id,),
             )
             preds = cur.fetchall()

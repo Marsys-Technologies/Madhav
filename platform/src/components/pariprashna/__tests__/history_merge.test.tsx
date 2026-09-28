@@ -16,6 +16,11 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { makeInitialTurnState } from '../state/reducer'
 import type { ThreadState } from '../state/types'
 
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => (
+    <a href={href} {...rest}>{children}</a>
+  ),
+}))
 vi.mock('../ThreadHeader', () => ({ ThreadHeader: () => null }))
 vi.mock('../Transcript', () => ({ Transcript: () => null }))
 vi.mock('../EmptyState', () => ({ EmptyState: () => null }))
@@ -173,5 +178,55 @@ describe('PariprashnaApp history merge (V3-E-012a)', () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
     render(<PariprashnaApp chartPin={CHART_PIN} />)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('PariprashnaApp — chart-correction history (Jātaka chart workspace)', () => {
+  const rows = [
+    { id: 'conv-active', chart_id: 'c-1', title: 'Current reading', first_message_snippet: null, updated_at: '2026-08-21T00:00:00Z', created_at: '2026-08-21T00:00:00Z', archived_at: null, archive_reason: null },
+    { id: 'conv-historical', chart_id: 'c-1', title: 'Before the correction', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z', archived_at: '2026-09-27T00:00:00Z', archive_reason: 'chart_details_changed' },
+    { id: 'conv-manual', chart_id: 'c-1', title: 'Manually archived', first_message_snippet: null, updated_at: '2026-08-19T00:00:00Z', created_at: '2026-08-19T00:00:00Z', archived_at: '2026-09-01T00:00:00Z', archive_reason: null },
+  ]
+
+  function stubFetch() {
+    return vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: rows }) } as Response)
+  }
+
+  it('requests archived readings too', async () => {
+    const fetchMock = stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(String(fetchMock.mock.calls[0][0])).toContain('archived=true')
+    expect(String(fetchMock.mock.calls[0][0])).toContain('readingsOnly=true')
+  })
+
+  it('shows correction history as a Historical row linking to its read-only page', async () => {
+    stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getByText('Before the correction')).toBeInTheDocument())
+    const link = screen.getByRole('link', { name: /before the correction/i })
+    expect(link).toHaveAttribute('href', '/clients/c-1/consult/conv-historical')
+    expect(link).toHaveTextContent('Historical')
+    fireEvent.click(link)
+    expect(screen.queryByTestId('pp-sidebar-select-unavailable')).not.toBeInTheDocument()
+  })
+
+  it('never offers rename on a historical row', async () => {
+    stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getByText('Before the correction')).toBeInTheDocument())
+    fireEvent.doubleClick(screen.getByText('Before the correction'))
+    expect(screen.queryByDisplayValue('Before the correction')).not.toBeInTheDocument()
+  })
+
+  it('keeps manually archived readings hidden and active rows on the existing notice path', async () => {
+    stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2))
+    expect(screen.queryByText('Manually archived')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /current reading/i })).not.toBeInTheDocument()
+    const activeRow = screen.getAllByTestId('pp-sidebar-row').find((row) => row.dataset.threadId === 'conv-active')!
+    fireEvent.click(activeRow)
+    expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
   })
 })

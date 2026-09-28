@@ -7,7 +7,9 @@ import { buildTools } from '@/lib/claude/build-tools'
 import { buildSystemPrompt } from '@/lib/claude/system-prompts'
 import type { ModelMessage, UIMessage } from 'ai'
 import { insertConversationWithId, getConversation } from '@/lib/conversations'
-import { res } from '@/lib/errors'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
+import { errorResponse, res } from '@/lib/errors'
 
 export const maxDuration = 120
 
@@ -63,7 +65,6 @@ export async function POST(request: Request) {
 
   let conversationId = body.conversationId
   let isFirstTurn = false
-  let pendingConversationInsert: Promise<void> | null = null
 
   if (conversationId) {
     let existing: Awaited<ReturnType<typeof getConversation>>
@@ -75,18 +76,31 @@ export async function POST(request: Request) {
     if (!existing || existing.chart_id !== chartId) {
       return res.notFound('conversation')
     }
+    // Jātaka chart workspace: super-admin authority does not bypass chart
+    // integrity. Correction-archived history is read-only for this door too.
+    if (isCorrectionArchived(existing)) return archivedReadOnlyResponse()
   } else {
     conversationId = crypto.randomUUID()
     isFirstTurn = true
-    pendingConversationInsert = insertConversationWithId({
-      id: conversationId,
-      chartId,
-      userId: user.uid,
-      module: 'build',
-    })
+  }
+
+  // Jātaka chart workspace: the same authoritative Ready requirement as every
+  // other reading door, checked before a new conversation row is inserted and
+  // before any model call or generation.
+  const readingGate = await checkReadingReadiness(chartId)
+  if (!readingGate.ok) {
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
   }
 
   const finalConversationId = conversationId
+  const pendingConversationInsert: Promise<void> | null = isFirstTurn
+    ? insertConversationWithId({
+        id: finalConversationId,
+        chartId,
+        userId: user.uid,
+        module: 'build',
+      })
+    : null
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = streamText({

@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/date'
 import type { ChartWithMeta } from '@/lib/roster/types'
 
@@ -12,8 +11,6 @@ interface RosterTableViewProps {
   charts: ChartWithMeta[]
 }
 
-const GHOST_BTN = "border border-[rgba(212,175,55,0.22)] bg-transparent text-[rgba(212,175,55,0.55)] text-xs font-semibold uppercase tracking-[0.08em] rounded-md px-3 py-1.5 hover:text-[#fce29a] hover:border-[rgba(212,175,55,0.4)] transition-colors"
-
 export function RosterTableView({ charts }: RosterTableViewProps) {
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -22,7 +19,7 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
     return [...charts].sort((a, b) => {
       let cmp = 0
       if (sortKey === 'name') cmp = a.name.localeCompare(b.name)
-      else if (sortKey === 'buildPct') cmp = a.pyramidPercent - b.pyramidPercent
+      else if (sortKey === 'buildPct') cmp = a.readiness.percent - b.readiness.percent
       else if (sortKey === 'activity') {
         const ta = a.lastLayerActivity ? new Date(a.lastLayerActivity).getTime() : 0
         const tb = b.lastLayerActivity ? new Date(b.lastLayerActivity).getTime() : 0
@@ -66,14 +63,7 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
               className="bt-label bt-label-upper px-3 py-2 text-left"
               style={{ color: 'rgba(212,175,55,0.45)' }}
             >
-              Birth
-            </th>
-            <th
-              scope="col"
-              className="bt-label bt-label-upper px-3 py-2 text-left"
-              style={{ color: 'rgba(212,175,55,0.45)' }}
-            >
-              Current dasha
+              Birth details
             </th>
             <th
               scope="col"
@@ -86,7 +76,7 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
                 aria-label={`Sort by build percentage${sortKey === 'buildPct' ? `, currently ${sortDir}ending` : ''}`}
                 className="cursor-pointer select-none hover:text-[#d4af37] transition-colors"
               >
-                Build %{sortIndicator('buildPct')}
+                Build{sortIndicator('buildPct')}
               </button>
             </th>
             <th
@@ -103,70 +93,35 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
                 Last activity{sortIndicator('activity')}
               </button>
             </th>
-            <th
-              scope="col"
-              className="bt-label bt-label-upper px-3 py-2 text-left"
-              style={{ color: 'rgba(212,175,55,0.45)' }}
-            >
-              Actions
-            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[rgba(212,175,55,0.1)]">
           {sorted.map((c) => (
             <tr key={c.id} className="hover:bg-[rgba(212,175,55,0.04)] transition-colors">
               <td className="px-3 py-2">
-                <p className="bt-heading text-[#fce29a]">{c.name}</p>
+                <Link
+                  href={`/clients/${c.id}`}
+                  className="bt-heading inline-flex min-h-11 items-center rounded-sm text-[#fce29a] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4af37]"
+                >
+                  {c.name}
+                </Link>
               </td>
               <td className="px-3 py-2">
                 <p className="bt-label text-[rgba(212,175,55,0.6)]">{formatDate(c.birth_date)}</p>
                 <p className="bt-label text-[rgba(212,175,55,0.38)]">{c.birth_place}</p>
               </td>
-              <td className="px-3 py-2 bt-label text-[rgba(212,175,55,0.38)] italic">
-                —
-              </td>
-              <td className="whitespace-nowrap px-3 py-2 tabular-nums font-[var(--font-mono)] text-[#d4af37]">
-                {c.pyramidPercent}%
+              <td className="whitespace-nowrap px-3 py-2">
+                <span className="tabular-nums font-[var(--font-mono)] text-[#d4af37]">{c.readiness.percent}%</span>
+                <span className="bt-label ml-2 text-[rgba(212,175,55,0.55)]">{c.readiness.label}</span>
               </td>
               <td className="whitespace-nowrap px-3 py-2 bt-label text-[rgba(212,175,55,0.42)]">
                 {formatDate(c.lastLayerActivity)}
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex gap-1.5">
-                  {c.canBuild ? (
-                    <Link
-                      href={`/clients/${c.id}/nirmana`}
-                      className={cn(GHOST_BTN)}
-                      aria-label={`Nirmāṇa (build) — ${c.name}`}
-                    >
-                      Nirmāṇa
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      aria-label={`Nirmāṇa (build) — ${c.name} — view-only`}
-                      title="View-only — build restricted"
-                      data-testid="nirmana-disabled"
-                      className={cn(GHOST_BTN, 'cursor-not-allowed opacity-35')}
-                    >
-                      Nirmāṇa
-                    </button>
-                  )}
-                  <Link
-                    href={`/clients/${c.id}/pariprashna`}
-                    className={cn(GHOST_BTN)}
-                    aria-label={`Pariprashna (consult) — ${c.name}`}
-                  >
-                    Pariprashna
-                  </Link>
-                </div>
               </td>
             </tr>
           ))}
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-3 py-6 text-center text-[rgba(212,175,55,0.38)]">
+              <td colSpan={4} className="px-3 py-6 text-center text-[rgba(212,175,55,0.38)]">
                 No charts match the current filters.
               </td>
             </tr>

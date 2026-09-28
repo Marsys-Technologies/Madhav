@@ -938,7 +938,38 @@
         }
       }
     ],
-    "L5": []
+    "L5": [
+      {
+        "generation_id": "l5:fd4c102e3ce5:df295e3ac158",
+        "historical_snapshot_commit": "6b26f3ff05ee0aba3cdd964bce62292496ae6b62",
+        "pin": {
+          "asset_prefix": "mi_",
+          "convergence_commit": "fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5",
+          "non_writer_assets": [
+            "lel_events"
+          ],
+          "receipt_count": 15,
+          "writer_inventory_sha256": "df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc"
+        },
+        "superseded_by_generation_id": "l5:ed5ad601c5e5:9d222087056d",
+        "writer_digests": {
+          "mi_abhilekha": "d1a45475eb949534d9dc787616b092d5137c2496910fb0abceb69eb8ef556b3a",
+          "mi_adhilepa": "442cb6faf0e4f72c23f203640edb3aa08c1992e17d7b93b34a54a48c999446ba",
+          "mi_bhara": "70859171ff3cf2197ca7d988a3a358082af3935643b5e62fe5f7d09cceade97d",
+          "mi_bhavisya": "7725064c6d19eccbb3703760d6610cbd6d9cf3a6aec64a13cbf61c231c7d4090",
+          "mi_darshana": "61b71c468b131cc2521f81f582d877cf1cde90c36e8039841539775180996667",
+          "mi_gunanaka": "2d01a8fa6c19249612b66c6ef2659a128c31cbbe7bc68c13926690166c764061",
+          "mi_jivanaghatana": "ab15008f71f8a9ece4c94465bf8fd25f36937882782a2e3f5bf9620e6e2b04d1",
+          "mi_kula": "bd8a6258f4c7ea836a6f6aa16e303fd7fe53347c17aa6c10894544b293dbe244",
+          "mi_pariksha": "2494deb26f7fa30abc353fe8383a7e1f3bacc62570e3463c65d885df95519ca5",
+          "mi_pramana": "900b9d99f3f21a35acd9264a8b594a2e0c037dc5e3d77a8ec2cdc389892a134f",
+          "mi_sambandha": "fddee4ada7833637fbeb37f30d2550eca66fe2a3c3a9e2a7c9adad049b1ee258",
+          "mi_sankalpa": "127206a85deb371acd1b1ff60997c1bfa25ef5ad08ed4ff49b1edc2d19fb5b32",
+          "mi_seva": "a7c5ee05e9a18139aa41753c2bb7d08bf2b46cb0d5ad3a3c2de717ff4ff590eb",
+          "mi_vistara": "9954473182d3678534c82cf6c66b7ffd8f100377dc0c4dbda501fcc4b4c9085f"
+        }
+      }
+    ]
   },
   "layers": {
     "L0": {
@@ -1304,13 +1335,42 @@
       "writer_inventory_sha256": "e73988c0dd03174681e8e98ba7c6e6bdc77ca27b9e6a6a90458c814eba51c7ac"
     },
     "L5": {
+      "admission": {
+        "authority_commit": "463c1dd66796356380fe2cab3103ad68b0d08d21",
+        "authority_decision": "CCD-018",
+        "changed_assets": [
+          "mi_bhara",
+          "mi_gunanaka",
+          "mi_pariksha",
+          "mi_pramana"
+        ],
+        "delta_classifications": {
+          "mi_bhara": "approved_intentional_change",
+          "mi_gunanaka": "approved_intentional_change",
+          "mi_pariksha": "approved_intentional_change",
+          "mi_pramana": "approved_intentional_change"
+        },
+        "reason": "Jataka Phase-A3 added reviewed chart-context staleness filters to four L5 writers; CCD-018 authorizes correcting the release-blocking direct splice into an immutable successor before protected integration.",
+        "review_artifacts": [
+          {
+            "commit": "a97fc8ffb0268954fb4bf8c7fb7e838c4bf6e558",
+            "decision_binding": "**Reviewed technical head:** `ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b`.",
+            "path": "00_ARCHITECTURE/SESSION_LOG.md",
+            "sha256": "78273beef6032e0216916167f52b943e49605d6e11a7248f626d2b3205bf779f"
+          }
+        ],
+        "schema_version": "nirmana-analysis-layer-successor/v2",
+        "source_commit": "ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b"
+      },
       "asset_prefix": "mi_",
-      "convergence_commit": "fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5",
+      "convergence_commit": "ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b",
+      "generation_id": "l5:ed5ad601c5e5:9d222087056d",
       "non_writer_assets": [
         "lel_events"
       ],
       "receipt_count": 15,
-      "writer_inventory_sha256": "df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc"
+      "supersedes_generation_id": "l5:fd4c102e3ce5:df295e3ac158",
+      "writer_inventory_sha256": "9d222087056d2133991c52a53ca48ee20cafe06f5c9d3401565ad9e2436e99db"
     }
   },
   "version": "nirmana-analysis-layer-pins/v2"

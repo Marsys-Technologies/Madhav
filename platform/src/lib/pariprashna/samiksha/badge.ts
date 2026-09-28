@@ -45,9 +45,12 @@ export async function countBadge(
   chartId: string,
   exec: LedgerExecutor = defaultExecutor,
 ): Promise<number> {
+  // Jātaka Phase-A3 (migration 1123): a claim a correction has marked
+  // chart_context_stale_at was detected under former birth details — it must
+  // never inflate the "you have N things to review" badge.
   const { rows } = await exec<{ count: string }>(
     `SELECT count(*)::text AS count FROM ${LEDGER_TABLE}
-      WHERE chart_id = $1 AND lifecycle_status = ANY($2)`,
+      WHERE chart_id = $1 AND lifecycle_status = ANY($2) AND chart_context_stale_at IS NULL`,
     [chartId, BADGE_LIFECYCLE_STATES as unknown as string[]],
   )
   return Number(rows[0]?.count ?? 0)

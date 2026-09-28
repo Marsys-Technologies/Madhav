@@ -38,6 +38,7 @@ import type { UIMessage } from 'ai'
 
 import { costPart, citationPart, correctionPart, outOfDomainPart, persistencePart, predictionCandidatePart, titlePart } from '@/lib/streams/data_parts'
 import { extractCitations } from '@/lib/citations/citation_data_part'
+import { persistenceRefusalOf } from '@/lib/conversations/readOnly'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { recordCalibrationStamp } from '@/lib/predictions/calibration_producer'
@@ -197,7 +198,22 @@ export interface OnFinishWriteThroughOpts {
 }
 
 /** Injected I/O surfaces (mockable for tests). */
+/**
+ * Final authoritative recheck at the persistence boundary (Jātaka chart
+ * workspace): re-evaluated when the turn would be persisted, not only at
+ * admission. Required, so every caller must decide it explicitly.
+ */
+export type WriteGuard = () => Promise<
+  | { ok: true }
+  | { ok: false; code: string; message: string }
+>
+
+export type OnFinishWriteThroughResult =
+  | { persisted: true }
+  | { persisted: false; refusal: { code: string; message: string } }
+
 export interface OnFinishWriteThroughDeps {
+  writeGuard: WriteGuard
   persistence: PersistenceClient
   pricing: PricingClient
   contextAssemblyLog: ContextAssemblyLogWriter
@@ -231,7 +247,31 @@ export interface OnFinishWriteThroughDeps {
 export async function runOnFinishWriteThrough(
   opts: OnFinishWriteThroughOpts,
   deps: OnFinishWriteThroughDeps,
-): Promise<void> {
+): Promise<OnFinishWriteThroughResult> {
+  // 0. Final authoritative recheck — a chart correction may have committed while
+  // this turn streamed. A refusal (or a guard failure: fail closed) stops every
+  // write below: messages, bookkeeping, title, ledger and calibration stamp.
+  let guard: Awaited<ReturnType<WriteGuard>>
+  try {
+    guard = await deps.writeGuard()
+  } catch (err) {
+    console.error('[onfinish_writethrough] write guard failed', err)
+    guard = { ok: false, code: 'CHART_RECOMPUTE_REQUIRED', message: 'This reading could not be saved safely.' }
+  }
+  const refuse = (refusal: { code: string; message: string }): OnFinishWriteThroughResult => {
+    opts.writer.write({
+      type: 'data-persistence',
+      data: persistencePart({ conversation_id: opts.conversationId, message_id: '', status: 'error' }),
+    })
+    try {
+      void deps.pendingStreamWriter.clear()
+    } catch (err) {
+      console.error('[onfinish_writethrough] pending stream clear error', err)
+    }
+    return { persisted: false, refusal }
+  }
+  if (!guard.ok) return refuse({ code: guard.code, message: guard.message })
+
   // 1. data-cost — Observatory cost tile.
   if (opts.synthUsage) {
     try {
@@ -289,6 +329,10 @@ export async function runOnFinishWriteThrough(
       }),
     })
   } catch (err) {
+    // A refusal raised inside persistence (a later re-check, or migration
+    // 1121's trigger) stops the ledger, title and calibration stamp below.
+    const refusal = persistenceRefusalOf(err)
+    if (refusal) return refuse(refusal)
     console.error('[onfinish_writethrough] persistence failed', err)
   }
 
@@ -422,4 +466,6 @@ export async function runOnFinishWriteThrough(
   } catch (err) {
     console.error('[onfinish_writethrough] calibration stamp error', err)
   }
+
+  return { persisted: true }
 }

@@ -100,7 +100,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
       CREATE TABLE chart_grants(chart_id uuid REFERENCES charts(id),principal_id text REFERENCES profiles(id),permission text);
       CREATE TABLE conversations(id uuid PRIMARY KEY,user_id text NOT NULL REFERENCES profiles(id),chart_id uuid REFERENCES charts(id),module text,title text);
       CREATE TABLE admin_audit_log(actor_id text,action text,target_user_id text,detail jsonb);`)
-    const migration = readFileSync(resolve(__dirname, '../../../../migrations/1120_ai_console_byok_routing.sql'), 'utf8')
+    const migration = readFileSync(resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql'), 'utf8')
     const client = await pool.connect()
     try { await client.query('BEGIN'); await client.query(migration); await client.query('COMMIT') }
     catch (error) { await client.query('ROLLBACK'); throw error }

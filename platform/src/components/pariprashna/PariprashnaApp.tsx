@@ -200,7 +200,9 @@ function PariprashnaSurface({
     // live turn, not independent prior history — drop it rather than risk
     // a visible duplicate.
     const snapshotAtMs = Date.now()
-    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume&readingsOnly=true`)
+    // archived=true also returns chart-correction history (Jātaka chart workspace),
+    // shown as read-only Historical rows; manual archives stay hidden below.
+    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume&readingsOnly=true&archived=true`)
       .then((r) => (r.ok ? r.json() : null))
       .then(
         (data: {
@@ -211,20 +213,29 @@ function PariprashnaSurface({
             first_message_snippet: string | null
             updated_at: string
             created_at: string
+            archived_at?: string | null
+            archive_reason?: string | null
           }[]
         } | null) => {
           if (cancelled || !data?.conversations) return
           setPastReadings(
             data.conversations
-              .map((c) => ({
-                id: c.id,
-                chartId: c.chart_id,
-                chartName: chartPin.name,
-                title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
-                updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
-                active: false,
-                streaming: false,
-              }))
+              .filter((c) => !c.archived_at || c.archive_reason === 'chart_details_changed')
+              .map((c) => {
+                const historical = c.archive_reason === 'chart_details_changed'
+                return {
+                  id: c.id,
+                  chartId: c.chart_id,
+                  chartName: chartPin.name,
+                  title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
+                  updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
+                  active: false,
+                  streaming: false,
+                  archivedAt: c.archived_at ?? null,
+                  archiveReason: historical ? ('chart_details_changed' as const) : null,
+                  ...(historical ? { href: `/clients/${encodeURIComponent(c.chart_id)}/consult/${encodeURIComponent(c.id)}` } : {}),
+                }
+              })
               .filter((t) => t.updatedAtMs < snapshotAtMs),
           )
         },

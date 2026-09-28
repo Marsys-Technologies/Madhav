@@ -6,7 +6,8 @@
  *
  * Roles:
  *   - super_admin: full instrument operator. Jātakas + Panchang + Cockpit +
- *     AI Console (when enabled) + AIOps + Audit + Performance + Admin.
+ *     AI Console (when enabled) + Audit + Performance + Admin. Observatory
+ *     lives inside Cockpit.
  *   - guest: legacy 'client' role rolled into 'guest' per Unit 2c. Sees their
  *     owned + granted charts, Panchang, and AI Console when it is enabled.
  *
@@ -49,7 +50,6 @@ export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   { key: 'panchang',    href: '/panchang',    label: 'Panchang',    roles: ['super_admin', 'guest'] },
   { key: 'cockpit',     href: '/cockpit',     label: 'Cockpit',     roles: ['super_admin'], admin: true },
   { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['super_admin', 'guest'], feature: 'aiConsoleByok' },
-  { key: 'aiops',       href: '/aiops',       label: 'AIOps',       roles: ['super_admin'], admin: true },
   { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
   { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },

@@ -87,10 +87,11 @@ import { writeContextAssemblyLog } from '@/lib/db/monitoring-write'
 import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
 import { traceEmitter } from '@/lib/trace/emitter'
 
-import { runOnFinishWriteThrough } from './onfinish_writethrough'
+import { runOnFinishWriteThrough, type OnFinishWriteThroughResult } from './onfinish_writethrough'
 import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 import { AiConsoleError } from '@/lib/ai-console/errors'
+import { checkConversationWritable } from '@/lib/conversations/writeGuard'
 
 // ---------------------------------------------------------------------------
 // Context shape — everything the dispatch body needs from the route.
@@ -366,6 +367,15 @@ export function buildFirstVerdictEmission(
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
+
+/**
+ * Jātaka chart workspace: the final archive/readiness recheck the shared
+ * write-through runs at persistence time for the legacy consult door, bound to
+ * this dispatch's own conversation and chart and evaluated lazily.
+ */
+export function legacyConsultWriteGuard(ctx: Pick<RunAdapterDispatchCtx, 'finalConversationId' | 'chartId'>) {
+  return () => checkConversationWritable({ conversationId: ctx.finalConversationId, chartId: ctx.chartId })
+}
 
 export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Response> {
   const {
@@ -802,6 +812,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
       //   • data-correction / data-out-of-domain markers (D.3)
       //   • pendingStreamWriter.clear() (γ7)
       //   • blind-mode prediction-ledger append (PPL)
+      let writeThrough: OnFinishWriteThroughResult | undefined
       if (adapterAccumulatedText) {
         // Assign fresh UUIDs for all messages — client-side message IDs
         // (e.g. "yhJSXqHyqhawY9an") are not valid UUIDs and would fail
@@ -848,7 +859,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
         const byokTitle = isFirstTurn && byokRuntime && !turnSignal?.aborted
           ? await generateConversationTitle(persistMsgs, undefined, byokRuntime.executors.worker, turnSignal)
           : undefined
-        await runOnFinishWriteThrough(
+        writeThrough = await runOnFinishWriteThrough(
           {
             pipelineKind: 'agentic',
             queryId,
@@ -892,6 +903,8 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             emit,
           },
           {
+            // Jātaka chart workspace: final archive/readiness recheck at persistence.
+            writeGuard: legacyConsultWriteGuard({ finalConversationId, chartId }),
             persistence: {
               writeMessages: (args) => writeConversationMessages(args),
             },
@@ -931,48 +944,16 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           },
         )
       }
-      // W4 core step 4 — completeness receipt: emit near the end, after the floor tools ran
-      // and synthesis finished, so the client can render served/empty/dark coverage for the
-      // compiled B.11 floor (honest about the MCP↔web namespace gap via channel_note).
-      if (completenessReceipt) {
-        writer.write({
-          type: 'data-completeness',
-          data: completenessPart({
-            channel: completenessReceipt.channel,
-            served: completenessReceipt.served.map(s => ({ floor_item_id: s.floor_item_id, source: s.source })),
-            empty: completenessReceipt.empty.map(e => ({ floor_item_id: e.floor_item_id, empty_reason: e.empty_reason })),
-            dark: completenessReceipt.dark.map(d => ({ floor_item_id: d.floor_item_id, cr_row: d.cr_row, ...(d.note ? { note: d.note } : {}) })),
-            coverage: completenessReceipt.coverage,
-            channel_note: completenessReceipt.channel_note,
-          }),
-        })
-      }
-      // RC-02 (§H.1 crit-6, two-door parity) — judgment_flags disclosure. Emitted
-      // UNCONDITIONALLY (even when empty), same discipline as data-completeness above and
-      // per §N.6 ("an honest empty result is reported via flags, never silently omitted") —
-      // a caller can tell "checked, nothing to report" apart from "never checked". Starts
-      // from the flags the route aggregated BEFORE dispatch (currently just
-      // `no_leakage_capabilities_stripped` when the NO-LEAKAGE strip fired — the SAME flag
-      // string /api/mcp/prashna_ask surfaces for the identical underlying condition; see
-      // RunAdapterDispatchCtx.judgmentFlags), then appends web-channel-specific gate
-      // outcomes this module itself resolves. The citation gate has no MCP-door equivalent
-      // (prashna_ask's predictive-class synthesis does not cite) — these two flags are
-      // additive disclosure, not a claim of cross-door vocabulary overlap.
-      const judgmentFlags = [...(ctxJudgmentFlags ?? [])]
-      if (adapterCitationGateResult === 'WARN') judgmentFlags.push('citation_gate_warn')
-      if (adapterCitationGateResult === 'ERROR') judgmentFlags.push('citation_gate_error')
-      writer.write({
-        type: 'data-judgment-flags',
-        data: judgmentFlagsPart({ flags: judgmentFlags }),
+      writeLegacyTurnTail({
+        writer,
+        emit,
+        writeThrough,
+        completenessReceipt: completenessReceipt ?? null,
+        judgmentFlags: ctxJudgmentFlags ?? [],
+        citationGateResult: adapterCitationGateResult,
+        adapterStartMs,
+        queryId,
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      writer.write({ type: 'finish', finishReason: 'stop' } as any)
-      writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - adapterStartMs) })
-      writer.write({
-        type: 'data-observability',
-        data: observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` }),
-      })
-      emit({ event: 'done', query_id: queryId })
       } finally {
         byokRuntime?.releaseAdmission()
       }
@@ -1005,4 +986,76 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     statusText: response.statusText,
     headers: response.headers,
   })
+}
+
+/**
+ * The legacy consult turn's terminal sequence (Jātaka Phase-A2). When the
+ * shared write-through reports that the final archive/readiness recheck refused
+ * persistence, the client receives the stable refusal code in a stream `error`
+ * part (`errorText` is JSON `{code, message, retry}`) and never a successful
+ * `finish`; the observability trace still closes. Otherwise the receipt,
+ * judgment flags, `finish`, stage and observability parts are written as before.
+ */
+export function writeLegacyTurnTail(args: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  writer: { write: (part: any) => void }
+  emit: (event: Parameters<typeof traceEmitter.emitStep>[0]) => void
+  writeThrough: OnFinishWriteThroughResult | undefined
+  completenessReceipt: WebCompletenessReceipt | null
+  judgmentFlags: readonly string[]
+  citationGateResult?: string
+  adapterStartMs: number
+  queryId: string
+}): void {
+  const { writer, emit, writeThrough, completenessReceipt, judgmentFlags, citationGateResult, adapterStartMs, queryId } = args
+  if (writeThrough && !writeThrough.persisted) {
+    writer.write({
+      type: 'error',
+      errorText: JSON.stringify({ code: writeThrough.refusal.code, message: writeThrough.refusal.message, retry: false }),
+    })
+    emit({ event: 'done', query_id: queryId })
+    return
+  }
+  // W4 core step 4 — completeness receipt: emit near the end, after the floor tools ran
+  // and synthesis finished, so the client can render served/empty/dark coverage for the
+  // compiled B.11 floor (honest about the MCP↔web namespace gap via channel_note).
+  if (completenessReceipt) {
+    writer.write({
+      type: 'data-completeness',
+      data: completenessPart({
+        channel: completenessReceipt.channel,
+        served: completenessReceipt.served.map(s => ({ floor_item_id: s.floor_item_id, source: s.source })),
+        empty: completenessReceipt.empty.map(e => ({ floor_item_id: e.floor_item_id, empty_reason: e.empty_reason })),
+        dark: completenessReceipt.dark.map(d => ({ floor_item_id: d.floor_item_id, cr_row: d.cr_row, ...(d.note ? { note: d.note } : {}) })),
+        coverage: completenessReceipt.coverage,
+        channel_note: completenessReceipt.channel_note,
+      }),
+    })
+  }
+  // RC-02 (§H.1 crit-6, two-door parity) — judgment_flags disclosure. Emitted
+  // UNCONDITIONALLY (even when empty), same discipline as data-completeness above and
+  // per §N.6 ("an honest empty result is reported via flags, never silently omitted") —
+  // a caller can tell "checked, nothing to report" apart from "never checked". Starts
+  // from the flags the route aggregated BEFORE dispatch (currently just
+  // `no_leakage_capabilities_stripped` when the NO-LEAKAGE strip fired — the SAME flag
+  // string /api/mcp/prashna_ask surfaces for the identical underlying condition; see
+  // RunAdapterDispatchCtx.judgmentFlags), then appends web-channel-specific gate
+  // outcomes this module itself resolves. The citation gate has no MCP-door equivalent
+  // (prashna_ask's predictive-class synthesis does not cite) — these two flags are
+  // additive disclosure, not a claim of cross-door vocabulary overlap.
+  const flags = [...judgmentFlags]
+  if (citationGateResult === 'WARN') flags.push('citation_gate_warn')
+  if (citationGateResult === 'ERROR') flags.push('citation_gate_error')
+  writer.write({
+    type: 'data-judgment-flags',
+    data: judgmentFlagsPart({ flags }),
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  writer.write({ type: 'finish', finishReason: 'stop' } as any)
+  writer.write({ type: 'data-stage', data: stagePart('synthesis', 'done', Date.now() - adapterStartMs) })
+  writer.write({
+    type: 'data-observability',
+    data: observabilityPart({ query_id: queryId, trace_url: `/observatory/trace/${queryId}` }),
+  })
+  emit({ event: 'done', query_id: queryId })
 }

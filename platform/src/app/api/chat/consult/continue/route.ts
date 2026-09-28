@@ -4,8 +4,10 @@ import { streamText } from 'ai'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { getConversation } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
-import { res } from '@/lib/errors'
+import { errorResponse, res } from '@/lib/errors'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { resolveModel } from '@/lib/models/resolver'
@@ -69,6 +71,14 @@ export async function POST(request: Request) {
   }).catch(() => null)
 
   if (!conv) return res.notFound('conversation')
+  // Jātaka chart workspace: history archived by a chart-details correction is read-only.
+  if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
+
+  // Same shared readiness gate as the consult and Paripraśna doors.
+  const readingGate = await checkReadingReadiness(conv.chart_id)
+  if (!readingGate.ok) {
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
+  }
 
   // Load conversation messages for context.
   let uiMessages

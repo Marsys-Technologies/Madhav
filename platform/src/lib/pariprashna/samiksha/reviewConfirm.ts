@@ -54,9 +54,13 @@ export async function confirmDetectedCandidate(
   if (setBandIfMissing && probability != null) {
     const band = probabilityToBand(probability)
     // Only set when currently NULL, and only while still detected (freeze-safe).
+    // Jātaka Phase-A3: also excludes a chart-context-stale row — defense-in-
+    // depth alongside transitionLifecycle's own guard on the confirmed/open
+    // steps below, which is the real enforcement point.
     await exec(
       `UPDATE ${LEDGER_TABLE} SET confidence = $2::numrange
-        WHERE id = $1 AND lifecycle_status = 'detected' AND confidence IS NULL`,
+        WHERE id = $1 AND lifecycle_status = 'detected' AND confidence IS NULL
+          AND chart_context_stale_at IS NULL`,
       [rowId, toNumrangeLiteral(band)],
     )
   }

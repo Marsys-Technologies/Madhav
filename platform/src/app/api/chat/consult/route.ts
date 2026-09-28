@@ -41,6 +41,8 @@ import {
   insertConversationWithId,
   updateConversationTitle,
 } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { writeConversationMessages } from '@/lib/persistence/conversation_writer'
 import { createPendingStreamWriter } from '@/lib/persistence/pending_streams_writer'
 import { generateConversationTitle } from '@/lib/conversations/title'
@@ -404,7 +406,20 @@ export async function POST(request: Request) {
     if (!existing || existing.chart_id !== chartId) {
       return res.notFound('conversation')
     }
-  } else {
+    // Jātaka chart workspace: history archived by a chart-details correction is read-only.
+    if (isCorrectionArchived(existing)) return archivedReadOnlyResponse()
+  }
+
+  // Jātaka chart workspace: the same shared readiness gate as Paripraśna — only a
+  // Ready chart produces a new reading (fails closed if readiness is unreadable).
+  // Checked after the archive lock (which names the more specific reason) and
+  // before any conversation insert.
+  const readingGate = await checkReadingReadiness(chartId)
+  if (!readingGate.ok) {
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
+  }
+
+  if (!conversationId) {
     conversationId = crypto.randomUUID()
     isFirstTurn = true
     // BUG-1: eager insert before streaming so turn-2 can always find the row.

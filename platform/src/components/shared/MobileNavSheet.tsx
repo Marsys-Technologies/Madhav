@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut as firebaseSignOut } from 'firebase/auth'
 import {
-  Bot,
   ChartColumn,
   ChevronDown,
   FileSearch,
@@ -54,7 +53,6 @@ const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: s
   panchang: MoonCrescentIcon,
   cockpit: Gauge,
   'ai-console': SlidersHorizontal,
-  aiops: Bot,
   audit: FileSearch,
   performance: ChartColumn,
   admin: Settings2,
@@ -120,7 +118,7 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
                 : pathname.startsWith(href)
             return (
               <Link
-                key={href}
+                key={key}
                 href={href}
                 className={cn(
                   'flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',

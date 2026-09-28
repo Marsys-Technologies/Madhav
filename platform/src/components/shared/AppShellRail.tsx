@@ -19,7 +19,6 @@ import {
   LayoutGrid,
   Gauge,
   FileSearch,
-  Bot,
   ChartColumn,
   ChevronDown,
   Info,
@@ -64,7 +63,6 @@ const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: s
   panchang: MoonCrescentIcon,
   cockpit: Gauge,
   'ai-console': SlidersHorizontal,
-  aiops: Bot,
   audit: FileSearch,
   performance: ChartColumn,
   admin: Settings2,
@@ -165,7 +163,7 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
             : pathname.startsWith(href)
           return (
             <motion.div
-              key={href}
+              key={key}
               whileHover={reducedMotion ? {} : { x: 2 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               className="relative w-full"

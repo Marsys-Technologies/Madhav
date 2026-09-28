@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const path = resolve(__dirname, '../../../../migrations/1120_ai_console_byok_routing.sql')
+const path = resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql')
 const tables = ['ai_provider_connections', 'ai_connection_models', 'ai_custom_configurations',
   'ai_custom_configuration_roles', 'ai_user_defaults', 'ai_cli_installations', 'ai_cli_models',
   'ai_cli_grants', 'ai_conversation_selections', 'ai_turn_routing_snapshots',

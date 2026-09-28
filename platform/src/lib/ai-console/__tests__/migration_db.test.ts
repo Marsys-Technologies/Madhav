@@ -74,18 +74,18 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
       CREATE TABLE charts(id uuid PRIMARY KEY);
       CREATE TABLE conversations(id uuid PRIMARY KEY, user_id text NOT NULL REFERENCES profiles(id), chart_id uuid REFERENCES charts(id) ON DELETE CASCADE);
       CREATE TABLE _migrations_applied(filename text PRIMARY KEY);`)
-    const sql = readFileSync(resolve(__dirname, '../../../../migrations/1120_ai_console_byok_routing.sql'), 'utf8')
+    const sql = readFileSync(resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql'), 'utf8')
     // Model the canonical runner: DDL and tracking must roll back as one transaction.
     await expect(transaction(async client => {
       await client.query(sql)
-      await client.query("INSERT INTO _migrations_applied VALUES ('1120')")
+      await client.query("INSERT INTO _migrations_applied VALUES ('1124')")
       throw new Error('simulated failure before runner commit')
     })).rejects.toThrow('simulated failure before runner commit')
     expect((await pool.query('SELECT * FROM _migrations_applied')).rowCount).toBe(0)
     expect((await pool.query('SELECT count(*)::int AS n FROM pg_tables WHERE schemaname=$1 AND tablename LIKE $2', [schema, 'ai_%'])).rows[0].n).toBe(0)
     await transaction(async client => {
       await client.query(sql)
-      await client.query("INSERT INTO _migrations_applied VALUES ('1120')")
+      await client.query("INSERT INTO _migrations_applied VALUES ('1124')")
     })
     await transaction(client => client.query(sql))
     await pool.query('INSERT INTO profiles(id) VALUES($1),($2)', [user, otherUser])
