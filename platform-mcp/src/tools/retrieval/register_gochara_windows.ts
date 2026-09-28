@@ -1617,7 +1617,35 @@ export interface GocharaWindowFacets {
     day: number
     unavailable: number
   }
+  /** §N.6 / Link 3 conditioning (c) (ADK-0023): era_slice_key facet — a real
+   * per-row detector matching the facet's declaration in all three tools'
+   * density_contracts. by_key counts the non-null slice keys actually served;
+   * null_count counts rows with NO era slice. null_semantics is the honest
+   * disclosure a decade-faceted consumer needs: a null era slice is NOT "no
+   * windows in that decade". Present whenever null_count > 0, naming the
+   * reason per generation population. */
+  era_slice_key: {
+    by_key: Record<string, number>
+    null_count: number
+    null_semantics: string | null
+  }
 }
+
+// Link 3 conditioning (c) / ADK-0016 disclosure (i): generation '4.0' rows
+// DELIBERATELY carry era_slice_key NULL — migration 1091 conjunct (g) reads a
+// non-null era_slice_key inside '4.0' as century-writer contamination; era
+// slicing belongs to the g3_% generations only. A decade-filtered read over
+// '4.0' therefore returns silent empty BY CONSTRUCTION — a false negative
+// ("no windows that decade") unless disclosed. This string is that disclosure.
+const ERA_SLICE_NULL_SEMANTICS_4_0 =
+  "generation '4.0' rows deliberately carry no era_slice_key (migration 1091 " +
+  "conjunct (g): a non-null era_slice_key inside '4.0' is read as century-writer " +
+  "contamination — era slicing belongs to the g3_% generations). A null era " +
+  "slice is NOT 'no windows in that decade'; do not decade-filter '4.0' rows by " +
+  "era_slice_key — the empty result is a contract boundary, not an absence."
+const ERA_SLICE_NULL_SEMANTICS_LEGACY =
+  'rows without era_slice_key predate the g3 era-slicing writer (migration ' +
+  '556/559); a null era slice is NOT "no windows in that decade".'
 
 function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
   let calibrated = 0
@@ -1626,6 +1654,9 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
   let hasTermBreakdown = false
   const generationSet = new Set<string>()
   const resolutionFacet = { era: 0, month: 0, day: 0, unavailable: 0 }
+  const eraSliceByKey: Record<string, number> = {}
+  let eraSliceNull = 0
+  let eraSliceNullHas4 = false
 
   for (const row of rows) {
     if (row.calibration_state === 'empirically_calibrated') {
@@ -1638,6 +1669,14 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
     if (row.term_breakdown != null) hasTermBreakdown = true
     const gen = row.generation ?? 'v1'
     generationSet.add(gen)
+
+    const eraKey = row.era_slice_key ?? null
+    if (eraKey === null) {
+      eraSliceNull++
+      if (gen === '4.0') eraSliceNullHas4 = true
+    } else {
+      eraSliceByKey[eraKey] = (eraSliceByKey[eraKey] ?? 0) + 1
+    }
 
     const disclosure = deriveResolutionDisclosure(row)
     if (disclosure.resolution === 'era') resolutionFacet.era++
@@ -1661,6 +1700,12 @@ function computeWindowFacets(rows: GocharaWindowRow[]): GocharaWindowFacets {
     has_term_breakdown: hasTermBreakdown,
     generation_tier: generationTier,
     resolution: resolutionFacet,
+    era_slice_key: {
+      by_key: eraSliceByKey,
+      null_count: eraSliceNull,
+      null_semantics: eraSliceNull === 0 ? null :
+        eraSliceNullHas4 ? ERA_SLICE_NULL_SEMANTICS_4_0 : ERA_SLICE_NULL_SEMANTICS_LEGACY,
+    },
   }
 }
 
