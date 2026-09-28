@@ -390,10 +390,14 @@ export async function assembleSynthesisContext(args: {
     registerHandleLabels = labels
     const evidenceSection = `ADMITTED INQUIRY EVIDENCE (the evidence this reading is accountable for):
 ${block}`
+    // The ⟦cite: Fn⟧ syntax is taught only when the rewriter that resolves/redacts it is armed
+    // (same flag as the appendix above): otherwise the raw sentinel would leak into reader
+    // prose. With the flag off the evidence is still shown, but interpretation is not
+    // citation-provable, so the response receipt reports it honestly rather than certifying it.
     systemContentWithSummary = [
       systemContentWithSummary,
       injectionContained ? containRetrievedEvidence(evidenceSection) : evidenceSection,
-      REGISTER_CITATION_INSTRUCTION.trim(),
+      isFirstPaintCitationsEnabled() ? REGISTER_CITATION_INSTRUCTION.trim() : '',
     ].filter(Boolean).join('\n\n---\n\n')
   }
 

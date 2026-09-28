@@ -689,12 +689,12 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]),
       beginAction: vi.fn().mockResolvedValue('acquired'),
-      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id, disposition, gap_reason }: { plan_item_id: string; disposition: 'served' | 'empty' | 'failed'; gap_reason?: string }) => {
         const contract = requireInquiryContract(current)
         current = {
           ...contract,
           plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
-            ? { ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
+            ? { ...item, state: 'observed', observation: { disposition, evidence_refs: ['managed:receipt'], gap_reason: gap_reason ?? null } }
             : item),
         }
       }),
@@ -721,6 +721,14 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(lines.at(-1)?.event).toBe('final')
     expect(mockGetToolByName).not.toHaveBeenCalledWith('marsys://tool/L1/unauthorized')
     expect(session.continueWithEvidenceSuccessor).toHaveBeenCalledTimes(1)
+    // The unauthorized successor item is durably closed with the SAME named gap the Portal door
+    // records, without a dispatch and without any result entering recovered evidence.
+    const failure = session.persistAcceptedObservation.mock.calls.find(([args]) => args.plan_item_id === 'item-901')
+    expect(failure?.[0]).toMatchObject({
+      disposition: 'failed', gap_reason: 'successor_capability_not_authorized_for_request', bundle: undefined,
+    })
+    expect(session.beginAction).toHaveBeenCalledWith('item-901')
+    expect(session.readyActionIds).toEqual([])
   })
 
   it('records the planner slot, requested reasoning, and fallback model on the managed contract (RC-5.6)', async () => {

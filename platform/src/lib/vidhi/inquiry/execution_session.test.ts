@@ -116,6 +116,29 @@ describe('managed inquiry execution session', () => {
     }))
   })
 
+  it('records a never-dispatched item durably without putting any result into recovered evidence', async () => {
+    lifecycle.get.mockResolvedValueOnce(null)
+    const session = await ManagedInquiryExecutionSession.open({
+      inquiry_id: inquiryId, principal_uid: 'user-1', contract, expires_at: '2026-09-18T00:00:00.000Z',
+    })
+    expect(await session.beginAction('item-001')).toBe('acquired')
+    await session.persistAcceptedObservation({
+      plan_item_id: 'item-001', obligation_ids: ['obligation-1'], scu_id: 'scu.test',
+      binding_id: 'registry:marsys://tool/L1/test', tool_name: 'marsys://tool/L1/test', bundle: undefined,
+      disposition: 'failed', gap_reason: 'successor_capability_not_authorized_for_request',
+      pagination: { semantics: 'none', exhausted: true, next: null }, invocation_args: {},
+    })
+    const committed = lifecycle.commit.mock.calls.at(-1)![0] as { evidence: { raw_result_hash: string; disposition: string; payload: { bundle?: unknown } } }
+    expect(committed.evidence.disposition).toBe('failed')
+    expect(committed.evidence.raw_result_hash).toMatch(/^sha256:[0-9a-f]{64}$/)
+    // The persisted payload round-trips through JSON: an undefined bundle is dropped, so recovery
+    // (which requires a defined bundle) can never replay a fabricated result into synthesis.
+    const roundTripped = JSON.parse(JSON.stringify(committed.evidence.payload)) as { bundle?: unknown }
+    expect(roundTripped.bundle).toBeUndefined()
+    lifecycle.list.mockResolvedValueOnce([{ inquiry_id: inquiryId, revision: 1, evidence_jsonb: roundTripped }])
+    expect(await session.recoveredEvidence()).toEqual([])
+  })
+
   it('reuses an already-finalized lifecycle after an outer-job completion gap without a second finalization CAS', async () => {
     const terminal = { ...contract, status: 'COMPLETE' as const, plan_items: [{ ...contract.plan_items[0], state: 'observed' as const }] } as unknown as InquiryContract
     lifecycle.get.mockResolvedValueOnce(row('terminal', terminal))

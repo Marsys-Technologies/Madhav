@@ -739,3 +739,23 @@ describe('Wave 4 response accountability', () => {
     expect(envelope.response_coverage_receipt.resume_required).toBe(true)
   })
 })
+
+describe('restoreRegisterCitationMarkers (Portal rewriter → accountability)', () => {
+  it('turns resolved register markers back into handles accountability can read', async () => {
+    const { restoreRegisterCitationMarkers, inquiryCitedHandles } = await import('./response_accountability')
+    const text = 'Jupiter is strong [1] and the 10th lord is placed well [2][3].'
+    const restored = restoreRegisterCitationMarkers(text, [
+      { index: 1, signal_id: 'F7' }, { index: 2, signal_id: 'f12' }, { index: 3, signal_id: 'F3' },
+    ])
+    expect(inquiryCitedHandles(text)).toEqual([])
+    expect(inquiryCitedHandles(restored)).toEqual(['F12', 'F3', 'F7'])
+  })
+
+  it('leaves database signal ids, unresolved markers and other bracketed text alone', async () => {
+    const { restoreRegisterCitationMarkers } = await import('./response_accountability')
+    const text = 'See [1] and [2] and [11] and list item [4].'
+    expect(restoreRegisterCitationMarkers(text, [
+      { index: 1, signal_id: 'SIG.MSR.0042' }, { index: 2, signal_id: 'F2' },
+    ])).toBe('See [1] and ⟦cite: F2⟧ and [11] and list item [4].')
+  })
+})

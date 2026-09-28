@@ -74,7 +74,7 @@ import { runValidationStage } from '@/lib/pariprashna/pipeline/validation_stage'
 import { emitCompletenessReceipt } from '@/lib/pariprashna/pipeline/receipt_stage'
 import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stage'
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
-import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
+import { buildStructuredResponseAccountability, restoreRegisterCitationMarkers } from '@/lib/vidhi/inquiry'
 import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { isByokEvidencePayloadWithinLimit, validateByokUiMessages } from '@/lib/limits/byok_admission'
 
@@ -399,7 +399,9 @@ export async function POST(request: Request): Promise<Response> {
         }
         const responseAccountability = evidence.inquiryContract
           ? buildStructuredResponseAccountability(evidence.inquiryContract, {
-              response_text: accumulatedText,
+              // The live rewriter already turned register sentinels into `[n]` markers; give
+              // accountability the handles those markers stood for (no-op when the flag is off).
+              response_text: restoreRegisterCitationMarkers(accumulatedText, synthesized.value.resolvedCitations),
               evidence_payloads: evidence.validToolResults,
               knowledge_snapshot: getPinnedCapabilityKnowledgeSnapshot(),
               ...(synthesisContext.visibleCitationHandles

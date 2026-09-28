@@ -160,6 +160,8 @@ export class ManagedInquiryExecutionSession {
     scu_id: string
     binding_id: string
     tool_name: string
+    /** `undefined` records an item that was never dispatched (e.g. its capability was not
+     *  authorized for this request): the receipt is retained, but no result enters recovered evidence. */
     bundle: unknown
     disposition: 'served' | 'empty' | 'failed'
     pagination: InquiryPaginationReceipt
@@ -171,10 +173,13 @@ export class ManagedInquiryExecutionSession {
     /** Capabilities this served observation calls for (RC-5.4); admitted only via a successor. */
     evidence_frontier?: readonly DiscoveredEvidenceFrontier[]
   }): Promise<void> {
+    const fingerprintSource = args.bundle === undefined
+      ? { not_dispatched: true, gap_reason: args.gap_reason ?? null }
+      : args.bundle
     const observed = recordInquiryExecution(this.contract, {
       item_id: args.plan_item_id,
       disposition: args.disposition,
-      evidence_refs: [`managed:${stableFingerprint(args.bundle)}`],
+      evidence_refs: [`managed:${stableFingerprint(fingerprintSource)}`],
       ...(args.gap_reason ? { gap_reason: args.gap_reason } : {}),
       pagination: args.pagination,
       ...(args.request_position_path ? { request_position_path: args.request_position_path } : {}),
@@ -192,7 +197,7 @@ export class ManagedInquiryExecutionSession {
         scu_id: args.scu_id,
         binding_id: args.binding_id,
         canonical_args_hash: stableFingerprint(args.invocation_args),
-        raw_result_hash: stableFingerprint(args.bundle),
+        raw_result_hash: stableFingerprint(fingerprintSource),
         disposition: args.disposition,
         pagination: args.pagination,
         // Retaining the accepted bundle is what lets a recovered worker

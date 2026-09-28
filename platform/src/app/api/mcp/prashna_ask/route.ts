@@ -1250,8 +1250,34 @@ export async function POST(request: Request) {
           const tool = toolName ? getToolByName(toolName) : undefined
           const binding = bindingForInquiryItem(inquirySnapshot, managedInquirySession.currentContract, item.item_id)
           if (!toolName || !tool || !binding) {
-            judgmentFlags.push('managed_inquiry_continuation_unavailable')
-            break
+            if (!firstTime || item.observation !== null) {
+              judgmentFlags.push('managed_inquiry_continuation_unavailable')
+              break
+            }
+            // A successor's own item names a capability this request never authorized. Never
+            // dispatch it; record the same named gap the Portal door records so the lifecycle
+            // terminalizes instead of stranding a ready item.
+            const begin = await managedInquirySession.beginAction(item.item_id)
+            if (begin !== 'acquired') {
+              judgmentFlags.push(begin === 'ambiguous' ? 'managed_inquiry_dispatch_ambiguous' : 'managed_inquiry_action_in_progress')
+              if (begin === 'ambiguous') await managedInquirySession.failClosedAmbiguity(item.item_id)
+              break
+            }
+            await managedInquirySession.persistAcceptedObservation({
+              plan_item_id: item.item_id,
+              obligation_ids: item.obligation_ids,
+              scu_id: item.scu_id,
+              binding_id: item.binding_id,
+              tool_name: capabilityUri,
+              bundle: undefined,
+              disposition: 'failed',
+              gap_reason: 'successor_capability_not_authorized_for_request',
+              pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+              invocation_args: item.args,
+              request_position_path: binding?.pagination_contract?.request_position_path,
+            })
+            judgmentFlags.push('managed_inquiry_successor_capability_not_authorized')
+            continue
           }
           const check = tracker.checkAndRecordCall(tool.dispatch_units)
           if (check.stopped) {

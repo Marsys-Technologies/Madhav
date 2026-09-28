@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const flagState = { injection: false }
+const flagState = { injection: false, citations: false }
 vi.mock('@/lib/config/index', () => ({
   configService: {
-    getFlag: (name: string) => name === 'PARIPRASHNA_INJECTION_CONTAINMENT' ? flagState.injection : false,
+    getFlag: (name: string) => name === 'PARIPRASHNA_INJECTION_CONTAINMENT' ? flagState.injection
+      : name === 'PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED' ? flagState.citations : false,
     getValue: () => undefined,
   },
 }))
@@ -50,10 +51,11 @@ async function build(withEvidence: boolean) {
   return { context, evidence }
 }
 
-beforeEach(() => { flagState.injection = false })
+beforeEach(() => { flagState.injection = false; flagState.citations = false })
 
 describe('Portal synthesis sees the admitted, register-annotated evidence (R2C.1 Portal)', () => {
-  it('shows every register finding with its handle and asks for citations', async () => {
+  it('shows every register finding with its handle and asks for citations when the rewriter is armed', async () => {
+    flagState.citations = true
     const { context, evidence } = await build(true)
     const handles = [...inquiryFindingCitationHandles(buildInquiryFactRegister(evidence.contract, evidence.payloads, snapshot)).values()].sort()
     expect(handles.length).toBeGreaterThan(0)
@@ -61,6 +63,15 @@ describe('Portal synthesis sees the admitted, register-annotated evidence (R2C.1
     expect(context.systemContentWithSummary).toContain('ADMITTED INQUIRY EVIDENCE')
     expect(context.systemContentWithSummary).toContain('EVIDENCE CITATIONS')
     for (const handle of handles) expect(context.systemContentWithSummary).toContain(`"_cite": "${handle}"`)
+  })
+
+  it('never teaches the cite sentinel while the rewriter is off, so no raw sentinel can reach reader prose', async () => {
+    const { context, evidence } = await build(true)
+    const handles = [...inquiryFindingCitationHandles(buildInquiryFactRegister(evidence.contract, evidence.payloads, snapshot)).values()]
+    expect(context.systemContentWithSummary).toContain('ADMITTED INQUIRY EVIDENCE')
+    for (const handle of handles) expect(context.systemContentWithSummary).toContain(`"_cite": "${handle}"`)
+    expect(context.systemContentWithSummary).not.toContain('EVIDENCE CITATIONS')
+    expect(context.systemContentWithSummary).not.toContain('⟦cite:')
   })
 
   it('keeps the admitted evidence contained and upstream of the injection clause', async () => {
@@ -81,6 +92,7 @@ describe('Portal synthesis sees the admitted, register-annotated evidence (R2C.1
   })
 
   it('teaches the model the bracket-cite form the live citation stream actually resolves (R2C.3b)', async () => {
+    flagState.citations = true
     const { context } = await build(true)
     expect(context.systemContentWithSummary).toContain('\u27E6cite: F7\u27E7')
     expect(context.systemContentWithSummary).not.toMatch(/as \[\[F7\]\]/)

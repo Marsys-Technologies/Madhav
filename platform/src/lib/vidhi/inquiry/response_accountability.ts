@@ -94,6 +94,25 @@ export function inquiryCitedHandles(text: string): string[] {
   return citedHandles(text)
 }
 
+/**
+ * The Portal's live citation rewriter replaces each resolved `⟦cite: Fn⟧` sentinel with an inline
+ * `[n]` marker before the reader (and `accumulatedText`) ever sees it. Accountability reads register
+ * handles from the text, so it must be given the rewriter's own record of what each marker stood
+ * for: this restores exactly the register-handle citations (`Fn`) the rewriter resolved, and touches
+ * nothing else (database signal ids, unresolved sentinels and ordinary `[n]` text are left alone).
+ */
+export function restoreRegisterCitationMarkers(
+  text: string,
+  resolved: readonly { readonly index: number; readonly signal_id: string }[],
+): string {
+  let restored = text
+  for (const citation of resolved) {
+    if (!/^F[0-9]+$/i.test(citation.signal_id)) continue
+    restored = restored.split(`[${citation.index}]`).join(`⟦cite: ${citation.signal_id.toUpperCase()}⟧`)
+  }
+  return restored
+}
+
 function uniqueSorted(values: readonly string[]): string[] {
   return [...new Set(values)].sort()
 }
