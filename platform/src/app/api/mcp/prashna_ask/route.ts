@@ -1131,7 +1131,7 @@ export async function POST(request: Request) {
         // A recovered successor generation's items never take this plan-tool-set path: they are
         // dispatched only by the drain below, through the shared authorization envelope, so a
         // request tool set adopted from a stored contract can never stand in for the envelope.
-        if (managedInquirySession?.currentContract.successor) continue
+        if (managedInquirySession?.currentContract.successor || (managedInquirySession?.parentInquiryId ?? null) !== null) continue
 
         // Resolve BEFORE checking the cap — an unresolved tool name is not a real
         // dispatch attempt and must not consume a call-count slot from the budget.

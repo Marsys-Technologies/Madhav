@@ -425,9 +425,12 @@ export function evaluateSuccessorAdmission(input: {
   contract: Pick<InquiryContract, 'chart_id' | 'capability_content_hash' | 'chart_availability_version' | 'chart_build_id'
     | 'iteration' | 'successor' | 'plan_items' | 'scope_tuple'>
   live: SuccessorAdmissionLiveContext
+  /** Items of the SAME generation already admitted before this one (the ceiling counts the whole batch). */
+  admitted_in_batch?: number
 }): SuccessorAdmissionDecision {
   const { envelope, snapshot, candidate, contract, live } = input
-  const chain = chainState(contract)
+  const chainBase = chainState(contract)
+  const chain = { ...chainBase, admitted: chainBase.admitted + (input.admitted_in_batch ?? 0) }
   // Ceilings a stored envelope declares can only tighten the platform's own, never loosen them.
   const limits: AuthorizationEnvelopeLimits = {
     max_successor_depth: Math.min(envelope?.limits.max_successor_depth ?? MAX_SUCCESSOR_DEPTH, MAX_SUCCESSOR_DEPTH),
@@ -566,13 +569,22 @@ export function evaluateSuccessorItemForDispatch(args: {
     },
     contract: parent,
     live: args.live,
+    admitted_in_batch: (() => {
+      const decisions = successor.admission_decisions ?? []
+      const position = decisions.findIndex((entry) => entry.scu_id === item.scu_id)
+      return decisions.slice(0, Math.max(position, 0)).filter((entry) => entry.decision === 'admit').length
+    })(),
   })
   // A stored refusal is final; a stored admission must still verify.
   if (!stored || stored.decision === 'refuse' || !verifySuccessorDecision(stored)) {
     const code: SuccessorAdmissionCode = stored?.decision === 'refuse' ? stored.code
       : decision.decision === 'refuse' ? decision.code
       : 'successor_capability_not_authorized_for_request'
-    return seal({ ...withoutDecisionHash(decision), decision: 'refuse', code })
+    const body = withoutDecisionHash(decision)
+    // Whatever code wins, a safety refusal never carries the excluded capability's identity.
+    return seal(code === 'successor_safety_excluded'
+      ? { ...body, binding_id: null, capability_uri: null, envelope_entry_id: null, decision: 'refuse', code }
+      : { ...body, decision: 'refuse', code })
   }
   return decision
 }

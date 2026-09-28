@@ -705,10 +705,11 @@ export function compileInquirySuccessorContract(args: {
     .find((anchor): anchor is string => anchor !== null) ?? undefined
   const plannedWithoutDecisions = planFor(args.snapshot, obligations, args.parent.chart_id, args.parent.question,
     args.parent.scope_tuple, presentationTransport, inheritedAnchor, 'caller_temporal_anchor', args.overlay)
-  const admissionDecisions: SuccessorAdmissionDecision[] = admitted.map(({ frontier }) => {
+  const admissionDecisions: SuccessorAdmissionDecision[] = []
+  for (const { frontier } of admitted) {
     const source = args.parent.plan_items.find((item) => item.item_id === frontier.discovered_from)
     const planItem = plannedWithoutDecisions.find((item) => item.scu_id === frontier.scu_id)
-    return evaluateSuccessorAdmission({
+    admissionDecisions.push(evaluateSuccessorAdmission({
       envelope: args.admission ? args.parent.authorization_envelope : undefined,
       snapshot: args.snapshot,
       candidate: {
@@ -722,8 +723,9 @@ export function compileInquirySuccessorContract(args: {
       },
       contract: args.parent,
       live: args.admission ?? SUCCESSOR_DENY_ALL_LIVE,
-    })
-  })
+      admitted_in_batch: admissionDecisions.filter((entry) => entry.decision === 'admit').length,
+    }))
+  }
   const plan = plannedWithoutDecisions.map((item) => {
     const decision = admissionDecisions.find((candidate) => candidate.scu_id === item.scu_id)
     return decision ? { ...item, successor_admission: decision } : item

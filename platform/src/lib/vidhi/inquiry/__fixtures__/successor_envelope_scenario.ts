@@ -5,8 +5,9 @@
  */
 import generatedSnapshot from '../../../../generated/capability_knowledge.snapshot.json'
 import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay, ExecutionChannel } from '../../../retrieval/registry/knowledge/types'
-import { compileInquiryContract } from '../compiler'
-import { evaluateSuccessorAdmission, type SuccessorAdmissionDecision } from '../authorization_envelope'
+import { closeInquiryForEvidenceSuccessor, compileInquiryContract, compileInquirySuccessorContract, recordInquiryExecution } from '../compiler'
+import { deriveEvidenceFrontier } from '../evidence_frontier'
+import type { SuccessorAdmissionDecision } from '../authorization_envelope'
 import type { InquiryContract } from '../types'
 
 export const SCENARIO_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
@@ -73,26 +74,32 @@ export function projectDecision(decision: SuccessorAdmissionDecision) {
 
 /**
  * The receipt projection every door must produce for the scenario's admitted successor, derived
- * once from the shared evaluator over the scenario's root contract after every executable item was
- * served (the parent's iteration is the number of executable items, on every door).
+ * once from the shared compiler path: serve the scenario's root plan the way every door does (the
+ * trigger source item carries a cancellation-active row), close the parent, compile the successor
+ * with a permissive live state, and project the decision for the scenario's target.
  */
 export function expectedAdmitProjection() {
   const { contract, entry, source } = scenarioFixture('platform_internal')
-  const executed = contract.plan_items.filter((item) => item.binding_id !== null).length
-  const decision = evaluateSuccessorAdmission({
-    envelope: contract.authorization_envelope,
-    snapshot: SCENARIO_SNAPSHOT,
-    candidate: {
-      scu_id: entry.scu_id, binding_id: entry.binding_id, frontier_id: 'frontier-001',
-      frontier_rule_id: entry.admitting_rule_ids[0]!, source_item_id: source.item_id, source_scu_id: source.scu_id, source_served: true,
-    },
-    contract: { ...contract, iteration: executed },
-    live: {
-      transport: 'portal', chart_id: contract.chart_id, principal_subject: 'p', owner_principal_subject: 'p', chart_permission: 'all',
-      overlay_version: contract.chart_availability_version, build_id: contract.chart_build_id,
+  let observed = contract
+  for (const item of contract.plan_items.filter((candidate) => candidate.state === 'ready' && candidate.binding_id !== null)) {
+    const payload = item.item_id === source.item_id
+      ? { rows: [{ yoga: 'Raja', fired: true, bhanga_active: true }] }
+      : { rows: [{ id: 'x' }] }
+    observed = recordInquiryExecution(observed, {
+      item_id: item.item_id, disposition: 'served', evidence_refs: [`raw:${item.item_id}`],
+      pagination: { semantics: 'none', exhausted: true, next: null },
+      evidence_frontier: deriveEvidenceFrontier({ contract: observed, item_id: item.item_id, evidence_payload: payload, snapshot: SCENARIO_SNAPSHOT }),
+    })
+  }
+  const parent = closeInquiryForEvidenceSuccessor(observed)
+  const successor = compileInquirySuccessorContract({
+    snapshot: SCENARIO_SNAPSHOT, overlay: SCENARIO_OVERLAY, parent_inquiry_id: 'scenario-expectation', parent, cross_capability_only: true,
+    admission: {
+      transport: 'portal', chart_id: parent.chart_id, principal_subject: 'p', owner_principal_subject: 'p', chart_permission: 'all',
+      overlay_version: parent.chart_availability_version, build_id: parent.chart_build_id,
       describe: (uri) => ({ uri, mutation: false, calibration_context_only: false }), tool_exists: () => true,
       is_capability_denied: () => false, cost_exhausted: false,
     },
   })
-  return projectDecision(decision)
+  return projectDecision(successor.plan_items.find((item) => item.scu_id === entry.scu_id)!.successor_admission!)
 }

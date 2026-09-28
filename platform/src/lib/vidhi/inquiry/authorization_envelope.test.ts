@@ -387,6 +387,16 @@ describe('successor compilation runs the envelope on every admitted item (real c
 describe('evaluator hardening (review findings)', () => {
   const base = fixture()
 
+  it('the admitted-items ceiling counts the current generation\'s own batch, not only its ancestors', () => {
+    const rule = EVIDENCE_FRONTIER_RULES.find((candidate) => candidate.target_scu_ids.includes(base.entry.scu_id))!
+    const candidate = candidateFor(base.entry, base.source, rule.rule_id)
+    const run = (admittedInBatch: number) => evaluateSuccessorAdmission({
+      envelope: base.contract.authorization_envelope, snapshot, candidate, contract: base.contract, live: liveFor(base.contract), admitted_in_batch: admittedInBatch,
+    })
+    expect(run(MAX_ADMITTED_SUCCESSOR_ITEMS - 1)).toMatchObject({ decision: 'admit' })
+    expect(run(MAX_ADMITTED_SUCCESSOR_ITEMS)).toMatchObject({ code: 'successor_cost_limit_exceeded' })
+  })
+
   it('does not disclose which capability the safety pass removed: the refusal is redacted to the SCU and code', () => {
     const decision = evaluate(base, { live: { is_capability_denied: () => true } })
     expect(decision).toMatchObject({ code: 'successor_safety_excluded', binding_id: null, capability_uri: null, envelope_entry_id: null })
