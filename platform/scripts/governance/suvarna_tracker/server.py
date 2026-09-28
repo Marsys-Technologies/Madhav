@@ -338,11 +338,21 @@ def make_handler(engine: Engine):
     return Handler
 
 
+class _QuietServer(ThreadingHTTPServer):
+    """A browser closing a tab mid-request is normal, not an error: keep it out of the log so real errors stand out."""
+
+    def handle_error(self, request, client_address):
+        import sys
+        if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def serve(port: int, cfg: dict | None = None) -> tuple[ThreadingHTTPServer, Engine]:
     cfg = cfg or default_config()
     engine = Engine(cfg)
     engine.start()
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), make_handler(engine))
+    httpd = _QuietServer(("127.0.0.1", port), make_handler(engine))
     httpd.daemon_threads = True
     return httpd, engine
 

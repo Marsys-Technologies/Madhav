@@ -94,6 +94,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
                 out["status"] = last["state"]
             elif ds in ("running", "blocked"):
                 out["status"] = ds
+                out["soft"] = True  # the detector sees activity, but no role has claimed the item
         return out
 
     if item.get("done_by") == "decision":
@@ -130,6 +131,10 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         s = status[iid]
         open_deps = [d for d in it.get("depends_on", []) if status.get(d, {}).get("status") != "done"]
         s["deps_open"] = open_deps
+        # Activity a detector sees (e.g. a PR already open) does not make a gated item "running":
+        # while its dependencies are open, it is waiting on them.
+        if s.pop("soft", False) and open_deps:
+            s["status"] = "waiting"
         if s["status"] == "not_started":
             s["status"] = "ready" if not open_deps else "waiting"
 

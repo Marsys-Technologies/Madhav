@@ -21,7 +21,6 @@
     {"id": "FI-5", "track": "FIRST", "title": "Suvarṇa recorded in CURRENT_STATE on main", "depends_on": ["FI-2"], "detector": {"type": "main_file_contains", "path": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "pattern": "SUVAR[NṆ]A|Suvar[nṇ]a"}},
     {"id": "FI-6", "track": "FIRST", "title": "Sessions named: Strategic Suvarṇa · Nikaṣa Engine · Exec Suvarṇa", "depends_on": [], "done_by": "event"},
     {"id": "FI-7", "track": "FIRST", "title": "Native approves the plan (N-1)", "depends_on": [], "done_by": "decision", "decision": "N-1"},
-
     {"id": "E1.1", "track": "E", "lane": "E1 Tooling", "title": "Re-measure T1–T5 on today's tooling; publish the scorecard", "depends_on": ["FI-7"], "done_by": "event"},
     {"id": "E1.2", "track": "E", "lane": "E1 Tooling", "title": "Detector gaps closed (R245, R248, R249, R250)", "depends_on": ["E1.1"], "detector": {"type": "register_rows_closed", "rows": ["R245", "R248", "R249", "R250"]}},
     {"id": "E1.3", "track": "E", "lane": "E1 Tooling", "title": "Provenance rows closed (R226 --live, R228, R229)", "depends_on": ["E1.1"], "detector": {"type": "register_rows_closed", "rows": ["R226", "R228", "R229"]}},
@@ -40,7 +39,6 @@
     {"id": "N3", "track": "E", "lane": "E4 Landing", "title": "Landing approach approved (N-3)", "depends_on": [], "done_by": "decision", "decision": "N-3"},
     {"id": "E4.2", "track": "E", "lane": "E4 Landing", "title": "bo_upaya fixed — the rebuild succeeds (R244)", "depends_on": ["E4.2d"], "detector": {"type": "register_rows_closed", "rows": ["R244"]}},
     {"id": "E4.2d", "track": "E", "lane": "E4 Landing", "title": "bo_upaya: fix now or defer (N-6)", "depends_on": [], "done_by": "decision", "decision": "N-6"},
-
     {"id": "A.L0", "track": "A", "lane": "L0", "title": "L0 analysis: census · layer plan · briefs · fix designs", "depends_on": ["FI-7"], "done_by": "event", "steps": ["census", "instance", "briefs", "designs"]},
     {"id": "A.L1", "track": "A", "lane": "L1", "title": "L1 analysis: census · layer plan · briefs · fix designs", "depends_on": ["FI-7"], "done_by": "event", "steps": ["census", "instance", "briefs", "designs"]},
     {"id": "A.L2", "track": "A", "lane": "L2", "title": "L2 analysis: census · layer plan · briefs · fix designs", "depends_on": ["FI-7"], "done_by": "event", "steps": ["census", "instance", "briefs", "designs"]},
@@ -48,32 +46,34 @@
     {"id": "A.L4", "track": "A", "lane": "L4", "title": "L4 analysis: census · layer plan · briefs · fix designs", "depends_on": ["FI-7"], "done_by": "event", "steps": ["census", "instance", "briefs", "designs"]},
     {"id": "A.L5", "track": "A", "lane": "L5", "title": "L5 analysis: census · layer plan · briefs · fix designs", "depends_on": ["FI-7"], "done_by": "event", "steps": ["census", "instance", "briefs", "designs"]},
     {"id": "A.H", "track": "A", "lane": "Harvest", "title": "Tier-gap harvest: everything the founding documents are missing", "depends_on": ["A.L0", "A.L1", "A.L2", "A.L3", "A.L4", "A.L5"], "done_by": "event"},
-
     {"id": "F0.1", "track": "F", "lane": "F0 Contain", "title": "Gochara workstream acknowledges F-0 (deploy before switch)", "depends_on": ["FI-1"], "done_by": "event"},
     {"id": "F0.2", "track": "F", "lane": "F0 Contain", "title": "Hand-over point agreed with the Gochara workstream (N-17)", "depends_on": ["F0.1"], "done_by": "decision", "decision": "N-17"},
-    {"id": "F1.G", "track": "F", "lane": "Gochara", "title": "Gochara design: orchestrator writer, registry, horizon, resonance, overlays", "depends_on": ["FI-7"], "done_by": "event"},
+    {"id": "F0.3", "track": "F", "lane": "F0 Contain", "title": "Early '4.0' switch reversed and recorded (ADK-0027): switched 19:22, reversed 19:29 UTC", "depends_on": ["FI-1"], "done_by": "event"},
+    {"id": "F1.G", "track": "F", "lane": "Gochara", "title": "Gochara design: orchestrator writer for the new generation (R240), registry, resonance, overlays", "depends_on": ["FI-7"], "done_by": "event"},
     {"id": "F1.S", "track": "F", "lane": "Saṅgam", "title": "Saṅgam design: stage-3 fixes on its branch, tested against a real database", "depends_on": ["F-2"], "done_by": "event"},
     {"id": "F-2", "track": "F", "lane": "Saṅgam", "title": "Saṅgam: elevate, or retire into kala_field (F-2)", "depends_on": [], "done_by": "decision", "decision": "F-2"},
     {"id": "F1.K", "track": "F", "lane": "Kṣetra", "title": "Kṣetra design: stage-3 code fixes and the W7 design", "depends_on": ["FI-7"], "done_by": "event"},
-    {"id": "F2", "track": "F", "lane": "Gochara", "title": "Gochara on main: PR #2731 merged", "depends_on": ["F0.2"], "detector": {"type": "pr_merged", "pr": 2731}},
-    {"id": "F3.S", "track": "F", "lane": "Saṅgam", "title": "Saṅgam back in production on '4.0' (after F-3, the cascade lock)", "depends_on": ["F2", "F1.S", "J1.6"], "done_by": "event"},
-    {"id": "F3.K", "track": "F", "lane": "Kṣetra", "title": "Kṣetra rebuilt and published on '4.0' (after W7 or F-1)", "depends_on": ["F2", "F1.K", "J1.6"], "done_by": "event"},
+    {"id": "F2.1", "track": "F", "lane": "Gochara", "title": "Full-century candidate rebuilt on both charts under a new label; evidence and gates re-run", "depends_on": ["F0.1"], "done_by": "event"},
+    {"id": "F2.2", "track": "F", "lane": "Gochara", "title": "main merged into the Gochara branch; readiness packet delivered to the native (covers the rebuild too)", "depends_on": ["F0.1"], "done_by": "event"},
+    {"id": "F2", "track": "F", "lane": "Gochara", "title": "PR #2731 merged and deployed (the native's merge)", "depends_on": ["F0.2", "F2.1", "F2.2"], "detector": {"type": "pr_merged", "pr": 2731}},
+    {"id": "F2.3", "track": "F", "lane": "Gochara", "title": "Running code verified from the service's env.DEPLOY_SHA", "depends_on": ["F2"], "done_by": "event"},
+    {"id": "F2.4", "track": "F", "lane": "Gochara", "title": "Chart 482012f1 switched to the new generation; trigger #0 passed; soak complete", "depends_on": ["F2.3"], "done_by": "event"},
+    {"id": "F2.5", "track": "F", "lane": "Gochara", "title": "Chart 1c826d5a switched; soak complete", "depends_on": ["F2.4"], "done_by": "event"},
+    {"id": "F3.S", "track": "F", "lane": "Saṅgam", "title": "Saṅgam back in production on the new Gochara generation (after F-3, the cascade lock)", "depends_on": ["F2.4", "F1.S", "J1.6"], "done_by": "event"},
+    {"id": "F3.K", "track": "F", "lane": "Kṣetra", "title": "Kṣetra rebuilt and published on the new Gochara generation (after W7 or F-1)", "depends_on": ["F2.4", "F1.K", "J1.6"], "done_by": "event"},
     {"id": "F4", "track": "F", "lane": "All three", "title": "Enrichment to each family's documented target", "depends_on": ["F3.S", "F3.K"], "done_by": "event"},
-
     {"id": "J1.1", "track": "J1", "title": "Tier 1 re-sealed (combined agenda)", "depends_on": ["E2.1", "A.H"], "done_by": "event"},
     {"id": "J1.2", "track": "J1", "title": "Tier 2 re-sealed", "depends_on": ["J1.1"], "done_by": "event"},
     {"id": "J1.3", "track": "J1", "title": "Tier 3 re-sealed", "depends_on": ["J1.2"], "done_by": "event"},
     {"id": "J1.4", "track": "J1", "title": "Tier 4 accepted (N-7)", "depends_on": ["J1.3"], "done_by": "decision", "decision": "N-7"},
     {"id": "J1.5", "track": "J1", "title": "L0 layer instance accepted", "depends_on": ["J1.3"], "done_by": "event"},
     {"id": "J1.6", "track": "J1", "title": "ENGINE FREEZE — native ruling (N-8)", "depends_on": ["E1.7", "J1.4", "J1.5", "E3.3", "E4.1", "E4.2"], "done_by": "decision", "decision": "N-8", "gate": true},
-
     {"id": "I.L0", "track": "I", "lane": "L0", "title": "L0 fixes merged", "depends_on": ["A.L0"], "done_by": "event"},
     {"id": "I.L1", "track": "I", "lane": "L1", "title": "L1 fixes merged", "depends_on": ["A.L1"], "done_by": "event"},
     {"id": "I.L2", "track": "I", "lane": "L2", "title": "L2 fixes merged", "depends_on": ["A.L2"], "done_by": "event"},
     {"id": "I.L3", "track": "I", "lane": "L3", "title": "L3 fixes merged", "depends_on": ["A.L3"], "done_by": "event"},
     {"id": "I.L4", "track": "I", "lane": "L4", "title": "L4 fixes merged", "depends_on": ["A.L4"], "done_by": "event"},
     {"id": "I.L5", "track": "I", "lane": "L5", "title": "L5 fixes merged", "depends_on": ["A.L5"], "done_by": "event"},
-
     {"id": "B.W0", "track": "B", "title": "Levels 0–2 certified (the wide top: mostly L0 and L1)", "depends_on": ["J1.6", "I.L0", "I.L1"], "detector": {"type": "levels_elevated", "levels": [0, 2]}},
     {"id": "G2", "track": "B", "title": "Checkpoint G2 — loop proven, cost per asset measured", "depends_on": ["B.W0"], "done_by": "decision", "decision": "N-9", "gate": true},
     {"id": "B.W1", "track": "B", "title": "Levels 3–5 certified", "depends_on": ["B.W0", "I.L2"], "detector": {"type": "levels_elevated", "levels": [3, 5]}},
@@ -81,7 +81,6 @@
     {"id": "B.W3", "track": "B", "title": "Levels 12–16 certified (L2 into L3)", "depends_on": ["B.W2", "I.L3"], "detector": {"type": "levels_elevated", "levels": [12, 16]}},
     {"id": "B.W4", "track": "B", "title": "Levels 17–21 certified (L4)", "depends_on": ["B.W3", "I.L4"], "detector": {"type": "levels_elevated", "levels": [17, 21]}},
     {"id": "B.W5", "track": "B", "title": "Levels 22–26 certified (L5)", "depends_on": ["B.W4", "I.L5"], "detector": {"type": "levels_elevated", "levels": [22, 26]}},
-
     {"id": "CL.1", "track": "CLOSE", "title": "Whole-plane re-measure: all 1,143 gate cells", "depends_on": ["B.W5"], "done_by": "event"},
     {"id": "CL.2", "track": "CLOSE", "title": "[TRANSFERS] obligations handed to their planes", "depends_on": ["CL.1"], "done_by": "event"},
     {"id": "CL.3", "track": "CLOSE", "title": "Closure report accepted by the native", "depends_on": ["CL.2"], "done_by": "decision", "decision": "N-CLOSE", "gate": true}
@@ -111,7 +110,7 @@
     {"id": "F-2", "title": "Saṅgam: elevate, or retire into kala_field", "recommendation": "Decide first"},
     {"id": "F-3", "title": "The L2↔L3 cascade lock", "recommendation": "Before any L2 MSR rebuild"},
     {"id": "F-4", "title": "Kṣetra: stay at 6 classes", "recommendation": "Stay until correct"},
-    {"id": "F-5", "title": "Gochara: accept the 2020–2030 horizon", "recommendation": "Disclose now; century as enrichment"},
+    {"id": "F-5", "title": "Gochara: served horizon for the new generation", "recommendation": "Full century — settled by F-0 (ADK-0027)"},
     {"id": "F-6", "title": "Saṅgam: the Mode D design", "recommendation": "Decide with F-2"},
     {"id": "N-CLOSE", "title": "Accept the closure report", "recommendation": "—"}
   ]

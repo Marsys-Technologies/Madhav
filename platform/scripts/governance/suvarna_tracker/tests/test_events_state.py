@@ -186,3 +186,20 @@ def test_steps_progress_and_overall():
 def test_waiting_vs_ready():
     s = snap()
     assert status_of(s, "B")["status"] == "waiting" and status_of(s, "B")["deps_open"] == ["A"]
+
+
+def test_detector_activity_does_not_bypass_open_dependencies():
+    """An open PR on a gated item (e.g. #2731 before its preconditions) shows as waiting, not running."""
+    import datetime as dt
+    from suvarna_tracker.state import build_snapshot
+    model = {"tracks": [{"id": "T", "title": "t", "mode": "sequential"}], "decisions": [],
+             "items": [{"id": "A", "track": "T", "title": "a", "depends_on": [], "done_by": "event"},
+                       {"id": "B", "track": "T", "title": "b", "depends_on": ["A"], "detector": {"type": "pr_merged", "pr": 1}}]}
+    det = {"B": {"status": "running", "detail": "PR #1 open", "checked_at": "2026-09-29T00:00:00+00:00", "progress": None}}
+    snap = build_snapshot(model, [], det, {}, {}, dt.datetime(2026, 9, 29, tzinfo=dt.timezone.utc))
+    b = next(i for i in snap["tracks"][0]["items"] if i["id"] == "B")
+    assert b["status"] == "waiting" and b["detail"] == "PR #1 open" and "soft" not in b
+    # once A is done, the same detector reading shows as running
+    ev = [{"kind": "item", "actor": "x", "item": "A", "state": "done", "evidence": "e", "ts": "2026-09-29T00:00:00+00:00"}]
+    snap = build_snapshot(model, ev, det, {}, {}, dt.datetime(2026, 9, 29, tzinfo=dt.timezone.utc))
+    assert next(i for i in snap["tracks"][0]["items"] if i["id"] == "B")["status"] == "running"

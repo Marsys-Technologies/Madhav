@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_L3_FOCUS_FAMILIES
 canonical_id: SUVARNA_L3_FOCUS_FAMILIES
-version: "1.0"
+version: "1.1"
 status: DRAFT — for native review
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
@@ -11,6 +11,7 @@ evidence: >
   l3_recon/GOCHARA_RECON.md · l3_recon/KSHETRA_RECON.md · l3_recon/SANGAM_RECON.md.
   Figures below are theirs; effort figures are the researchers' estimates, in their own units.
 changelog:
+  - "1.1 (2026-09-29): Gochara brought up to date with the lane's ruling ADK-0027 (commit 33b725778). The lane switched the canonical chart to '4.0' at 19:22:58Z before F-0 arrived and reversed it at 19:29Z; '4.0' as a label is retired; F-0 is in force; the horizon default is now the full century (F-5 settled by F-0); §1.2 gains the seven-step standing sequence; Saṅgam and Kṣetra now wait on 'the new Gochara generation', not on '4.0'."
   - "1.0 (2026-09-28): first draft. Current state, target, gaps, effort and risk per family; the links between the three families; Track F's sequence; the rulings it needs."
 ---
 
@@ -22,7 +23,7 @@ changelog:
 
 | Family | What it is | State today, on the canonical chart `482012f1` |
 |---|---|---|
-| **Gochara** (transits) | Transit windows, vedha, resonance: when planets activate natal structure | Served generation `'3.0'` (914 rows, 1984–2084). A live workstream is one step from switching production to `'4.0'`; the serving code for `'4.0'` is not deployed. |
+| **Gochara** (transits) | Transit windows, vedha, resonance: when planets activate natal structure | Served generation `'3.0'` (914 rows, 1984–2084). The live workstream switched to `'4.0'` on 2026-09-28 at 19:22 UTC, found the serving code undeployed, and reversed it at 19:29 UTC. It now rebuilds on the full century under a new label, and switches only after PR #2731 is deployed (F-0). |
 | **Saṅgam** (convergence) | Where several timing systems agree on the same window | **0 rows.** Almost certainly wiped by a cascade when `bo_laksana` was rebuilt on 2026-09-08. The September elevation work is unmerged. |
 | **Kṣetra** (the timing field) | The combined field over life events: which event classes are active when | **Never successfully built.** 8.57 million rows left over from a crashed build, on a time axis shifted by about 15.9 years. Rebuilds are refused by design until versioned storage (W7) exists. |
 
@@ -68,13 +69,25 @@ Gochara ─────windows───────► Saṅgam
 - **Already in production:** guard triggers; migrations 1080–1084, 1087, 1091 and 1150; a registry re-pin; and a `'4.0'` candidate (138,837 contacts and 48 coverage rows per chart, unpublished).
 - **One production write failed tonight** (23:27 IST, lost connection) while writing the first `'4.0'` windows.
 - **What it will deliver:** `'4.0'` windows for 2020–2030, each citing its contact ids; authority switched on both charts after a 24-hour soak; the old `'2.0'` rows retired; eventually PR #2731 merged (kernel, vedha exceptions, serving code).
-- **The switch is pre-authorized** to run without coming back to you. Estimated 2–5 days to finish.
+- ~~The switch is pre-authorized~~ **Superseded 2026-09-29 by F-0 (ADK-0027).**
+
+**Update, 2026-09-29 (ADK-0027, commit `33b725778`):**
+- **What happened.** The switch on chart `482012f1` ran at 19:22:58 UTC under the old authorization, before F-0 arrived. The lane traced the risk itself and reversed it at 19:29 UTC: authority back to `'3.0'`, 4,415 `'4.0'` windows deleted, integrity checks (a)–(k) green in both time zones, served output byte-identical to before. For those six minutes, the chart's Gochara answers came through code that could not read `'4.0'`.
+- **`'4.0'` is retired as a label.** Both charts move to a new full-century generation under a new label.
+- **Standing sequence (the lane's plan until the native rules otherwise):**
+  1. rebuild the candidate on the full century, both charts, and re-run all evidence and gates;
+  2. merge `main` into the branch (a merge commit) and build the readiness packet;
+  3. report readiness to the native;
+  4. the native merges PR #2731 and deploys;
+  5. verify the running code from the service's `env.DEPLOY_SHA`;
+  6. switch `482012f1`, with trigger #0 (served rows carry the new generation, or reverse at once), then soak;
+  7. switch `1c826d5a`, then soak.
 
 ### 1.3 · Gaps that remain after the workstream finishes
 
-1. **Serving code not deployed.** `main`'s forecast tools have no `'4.0'` branch. A switch before PR #2731 is deployed would serve `'4.0'` data under v1 provenance. **No deploy-before-switch gate was found.**
+1. **Serving code not deployed.** `main`'s forecast tools have no `'4.0'` branch. A switch before PR #2731 is deployed would serve `'4.0'` data under v1 provenance. **No deploy-before-switch gate was found** (the gap was real: see the §1.2 update; now closed by F-0).
 2. **No normal build path.** The registered `ka_gochara` writer is unchanged and still writes the old `_v2` / `'2.0'` table. `'4.0'` comes only from hand-run cutover scripts, so no new chart can get it through the orchestrator.
-3. **The horizon shrinks** from about 100 years to 10 (2020–2030). The plan's own example (a 2013 marriage) falls outside it. The researcher found no disclosure of this.
+3. **The horizon shrinks** from about 100 years to 10 (2020–2030). The plan's own example (a 2013 marriage) falls outside it. The researcher found no disclosure of this. (Now addressed: F-0 makes the full century the default.)
 4. **The scoring loses variation.** In `'4.0'`, "promise" is 1.0 for all 27 classes; "permission" is a fixed value per class; the tārā factor is skipped; vedha data covers about 15 months of the 10 years.
 5. **Designed fixes not yet in production:**
    - resonance fixes R-1 to R-6 (154 targets built on negative results, 54 dangling yoga targets, every row falsely marked "resolved");
@@ -163,7 +176,7 @@ From the family's own design documents: a century-horizon, cited, orchestrator-b
 
 | Link | Consequence | Response |
 |---|---|---|
-| Gochara → Saṅgam, Kṣetra | Both pick up whichever Gochara generation is live on their next build. | Gochara settles first. Saṅgam and Kṣetra are rebuilt only on `'4.0'`, after it is deployed and served. |
+| Gochara → Saṅgam, Kṣetra | Both pick up whichever Gochara generation is live on their next build. | Gochara settles first. Saṅgam and Kṣetra are rebuilt only on the new Gochara generation, after it is deployed and served. |
 | `bo_laksana` → Saṅgam (cascade delete) | Every L2 re-elevation either wipes Saṅgam or is refused by it (R243). | A ruling or a foreign-key change **before** Suvarṇa rebuilds any L2 MSR signal asset (ruling F-3). |
 | `bo_upaya` → Kṣetra (phantom edge) | `bo_upaya`'s known failure would block Kṣetra for no reason. | Drop the edge. Fix `bo_upaya` anyway (N-6). |
 | Kṣetra → Gochara windows (undeclared read) | The orchestrator cannot order builds correctly. | Declare it. |
@@ -187,7 +200,7 @@ Hybrid, as in the rest of the plan: design runs in parallel now; production chan
 
 ### F1 · Design, in parallel (starts now, read-only and fixtures only)
 
-- **Gochara:** the orchestrator writer for `'4.0'`; registry and seed alignment; the horizon question; the resonance fixes; overlays; the bindu matrix and Moon channel.
+- **Gochara:** the orchestrator writer for the new generation; registry and seed alignment; the horizon question; the resonance fixes; overlays; the bindu matrix and Moon channel.
 - **Saṅgam:** fix stage 3's defects on its branch (target point, `peak_date`, grouping key, CI), with tests that touch a real test database.
 - **Kṣetra:** the stage-3 code fixes (axis, null scope, flag, L4 read, deterministic tables, dependency list); the W7 design, generalising Gochara's pattern.
 - **All three:** their Nikaṣa asset briefs (Track A).
@@ -199,8 +212,8 @@ Hybrid, as in the rest of the plan: design runs in parallel now; production chan
 
 ### F3 · Saṅgam and Kṣetra to production (after F2 and the rulings)
 
-- **Saṅgam:** rebuild `ka_yojaka` first, then `ka_sangam` on `'4.0'`. Only after ruling F-3 on the cascade lock.
-- **Kṣetra:** W7 (or the interim clear, per ruling F-1), then rebuild on `'4.0'` with the stage-3 fixes, then serving (`query_field_trajectory`).
+- **Saṅgam:** rebuild `ka_yojaka` first, then `ka_sangam` on the new Gochara generation. Only after ruling F-3 on the cascade lock.
+- **Kṣetra:** W7 (or the interim clear, per ruling F-1), then rebuild on the new Gochara generation with the stage-3 fixes, then serving (`query_field_trajectory`).
 
 ### F4 · Enrichment
 
@@ -218,10 +231,10 @@ Hybrid, as in the rest of the plan: design runs in parallel now; production chan
 
 | ID | Ruling | Needed by | Researcher's view |
 |---|---|---|---|
-| F-0 | Gochara: require a deploy-before-switch gate on the live workstream | **now** | Yes; the switch is pre-authorized, the serving code is not deployed |
+| F-0 | Gochara: require a deploy-before-switch gate on the live workstream | **now** | **Decided 2026-09-28 (yes); in force as ADK-0027** |
 | F-1 | Kṣetra: build W7 first, or authorize an interim archive-and-clear of ~11M rows (~6.7 GB, with a verified snapshot) | F3 | W7 generalised from Gochara's pattern, if the design confirms it; the interim clear only if W7 slips |
 | F-2 | Saṅgam: elevate it, or retire it into `kala_field` (ŚAḌ-DARŚANA) | before F1 investment | Decide first; it changes what F1 designs |
 | F-3 | The L2↔L3 cascade lock: foreign-key change, or a sequencing rule | before any L2 MSR rebuild | Needed by both Track F and the L2 work |
 | F-4 | Kṣetra: stay at 6 classes (ruling 1), or reopen it | F4 | Stay at 6 until the 6-class field is correct, published and served |
-| F-5 | Gochara: accept the 2020–2030 horizon for `'4.0'`, or require the century horizon before it counts as elevated | F2 | Disclose it now; restoring the century horizon is enrichment (F4) |
+| F-5 | Gochara: accept the 2020–2030 horizon for `'4.0'`, or require the century horizon before it counts as elevated | F2 | **Settled by F-0 (ADK-0027): full century is the default.** The lane stops and asks only if it finds a prior ruling that narrowed it |
 | F-6 | Saṅgam: the Mode D design (80% of rows, one set of windows repeated) | F1 | Decide with F-2 |
