@@ -59,6 +59,7 @@ import { query } from '@/lib/db/client'
 import type { DrillPointer, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag } from '../../envelope'
 import { grahaCodeOf } from '../../address_resolver'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, servedGenerationIdentity, type BuildFence } from '../generation/served_generation'
 
 // ── Classical dignity weighting for the CONFIRMATION stage (design §28.1's own weighting
 // discipline — deterministic, never an LLM judgment, never a fabricated probability;
@@ -77,13 +78,16 @@ interface VargaDignityRow {
 
 async function gradeGrahaInVarga(
   chartId: string, ayanamshaId: string, varga: string, graha: string, grahaCode: string, role: 'bhavesha' | 'karaka',
+  buildId?: BuildFence,
 ): Promise<VargaDignityRow> {
   try {
+    const buildIds = resolvedBuildFenceIds(buildId, 'register_d10_pact.gradeGrahaInVarga')
     const res = await query<{ fact_id: string; fact_value_text: string | null }>(
       `SELECT fact_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
-         AND fact_subject = $3 AND fact_key = 'dignity_state'`,
-      [chartId, ayanamshaId, `${varga}_${grahaCode}`],
+         AND fact_subject = $3 AND fact_key = 'dignity_state'
+         ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+      buildIds ? [chartId, ayanamshaId, `${varga}_${grahaCode}`, buildIds] : [chartId, ayanamshaId, `${varga}_${grahaCode}`],
     )
     const row = res.rows[0]
     if (!row) return { role, graha, varga, dignity_state: null, dignity_weight: null, fact_id: null }
@@ -93,7 +97,12 @@ async function gradeGrahaInVarga(
       dignity_weight: row.fact_value_text ? DIGNITY_WEIGHT[row.fact_value_text] ?? 0 : null,
       fact_id: row.fact_id,
     }
-  } catch {
+  } catch (error) {
+    // Structurally unreachable in practice — pact_query's own CONFIRMATION-stage gate
+    // (servedGenerationIdentity) guarantees buildId is never empty by the time it reaches
+    // here — but an explicit-empty fence must still surface, not degrade into a false
+    // "dignity absent" finding for a CONFIRMATION-stage grading that can halt the chain.
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { role, graha, varga, dignity_state: null, dignity_weight: null, fact_id: null }
   }
 }
@@ -208,6 +217,34 @@ export const pactQueryCapability: CapabilityDescriptor = {
     const stages: Array<Record<string, unknown>> = []
     const drill_pointers: DrillPointer[] = []
 
+    // CONFIRMATION's own direct chart_facts read is fenced to the chart's served generation
+    // (RC-1/RC-2, generation/served_generation.ts) — a hard error before any stage runs, never
+    // a fall-through to unfenced reads. PROMISE (judgment_query) resolves the identical
+    // chart-scoped generation independently inside its own handler.
+    let buildIds: readonly string[] | null
+    try {
+      const generation = await resolveChartServedGeneration(chart_id, null)
+      if (!servedGenerationIdentity(generation)) {
+        return {
+          content: {
+            error: 'pact_query: no chart receipt resolves to a served generation; refusing unfenced fact reads.',
+            code: 'no_served_generation', chart_id,
+          },
+          is_error: true,
+        }
+      }
+      buildIds = generation.served_build_ids
+    } catch (error) {
+      console.error('[pact_query] served-generation resolution failed', error)
+      return {
+        content: {
+          error: `pact_query: served-generation resolution failed; refusing unfenced fact reads`,
+          code: 'served_generation_resolution_failed', chart_id,
+        },
+        is_error: true,
+      }
+    }
+
     try {
       // ── Stage 1: PROMISE (delegates entirely to judgment_query — §28.1) ──
       const { judgmentQueryCapability } = await import('./register_d9_judgment')
@@ -272,7 +309,7 @@ export const pactQueryCapability: CapabilityDescriptor = {
       for (const { role, name } of grahasToConfirm) {
         const code = GRAHA_NAME_TO_CODE[name]
         if (!code) { judgment_flags.push(judgmentFlag('confirmation_graha_unrecognized', name)); continue }
-        const row = await gradeGrahaInVarga(chart_id, ayanamsha_id, operativeVarga, name, code, role)
+        const row = await gradeGrahaInVarga(chart_id, ayanamsha_id, operativeVarga, name, code, role, buildIds)
         if (row.fact_id) fact_ids.add(row.fact_id)
         vargaDignities.push(row)
       }

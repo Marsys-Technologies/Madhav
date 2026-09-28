@@ -4,7 +4,7 @@ version: 1.0-updated-STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
 status: CURRENT (updated in-place; next version will be v2.0)
 session: 35 (created); FIX_SESSION_003; FIX_SESSION_003_deferred; GAP_RESOLUTION_SESSION; UCN_MERGE_SESSION + corpus_integrity_pass (2026-04-19); STEP_5_MACRO_PLAN_CLOSURE (2026-04-23); STEP_5A_PROJECT_ARCHITECTURE_REFRESH (2026-04-24); STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24); Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_3 (2026-04-26)
 date_closed: 2026-04-18
-date_updated: 2026-08-22 (RC-1/RC-4, PARISESA-V4 — added MSR_v5_0 row to §1 L2.5 Holistic Synthesis, closing the §H.3.6 check_governance_stack_agreement finding on 'MSR_v5_0.md' missing from this registry; MSR_v3_0 demoted to SUPERSEDED). Prior: 2026-04-26 (Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_3 — Portal Build Tracker Session 3 of 3 COMPLETE; PORTAL_BUILD_TRACKER_PLAN_v0_1.md → IMPLEMENTED; all 28 ACs pass; 5 new build components + 4 stub pages implemented). Prior: 2026-04-24 (STEP_7 closure — CANONICAL_ARTIFACTS_v1_0.md + three governance scripts + three templates + DISAGREEMENT_REGISTER produced; .geminirules + .gemini/project_state.md re-authored per ND.1 adapted parity; FILE_REGISTRY bumped to v1_3; ND.1 global status flipped `open` → `addressed`). Prior: 2026-04-24 (STEP_5A closure — PROJECT_ARCHITECTURE_v2_2 CURRENT, v2.1 SUPERSEDED; FILE_REGISTRY bumped to v1_2). Prior: 2026-04-23 (STEP_5 closure — MP v2.0 CURRENT, MP v1.0 SUPERSEDED, MSR row corrected to MSR_v3_0, FILE_REGISTRY bumped to v1_1, governance-rebuild family registered)
+date_updated: 2026-09-27 (retired PlanTree historical pointer after Cockpit navigation consolidation; historical implementation note retained without advertising a deleted file as a live repository path). Prior: 2026-08-22 (RC-1/RC-4, PARISESA-V4 — added MSR_v5_0 row to §1 L2.5 Holistic Synthesis, closing the §H.3.6 check_governance_stack_agreement finding on 'MSR_v5_0.md' missing from this registry; MSR_v3_0 demoted to SUPERSEDED). Prior: 2026-04-26 (Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_3 — Portal Build Tracker Session 3 of 3 COMPLETE; PORTAL_BUILD_TRACKER_PLAN_v0_1.md → IMPLEMENTED; all 28 ACs pass; 5 new build components + 4 stub pages implemented). Prior: 2026-04-24 (STEP_7 closure — CANONICAL_ARTIFACTS_v1_0.md + three governance scripts + three templates + DISAGREEMENT_REGISTER produced; .geminirules + .gemini/project_state.md re-authored per ND.1 adapted parity; FILE_REGISTRY bumped to v1_3; ND.1 global status flipped `open` → `addressed`). Prior: 2026-04-24 (STEP_5A closure — PROJECT_ARCHITECTURE_v2_2 CURRENT, v2.1 SUPERSEDED; FILE_REGISTRY bumped to v1_2). Prior: 2026-04-23 (STEP_5 closure — MP v2.0 CURRENT, MP v1.0 SUPERSEDED, MSR row corrected to MSR_v3_0, FILE_REGISTRY bumped to v1_1, governance-rebuild family registered)
 scope: "Project-wide governance stack: version registry, confidence ledger, known-gaps consolidation, change-control protocol"
 architecture_ref: "§G.9 Governance"
 ---
@@ -988,7 +988,7 @@ M2 execution session. red_team_counter 2 → 3 → cadence FIRED → reset to 0 
 
 **Schema extension + tooling.** `two_pass_events_schema_v0_1.json` extended in-place (additive only; 3→6 event_types; `hypothesis_id`, `conflict_type`, `claude_severity_prior` fields added). `p6_uvc_consistency.py` PARTIAL_IMPL stub registered in STALENESS_REGISTER §4. `claude/cgm_contradicts_edges_v1_0.md` prompt registered in INDEX.json v1.0.
 
-**UI fix.** `platform/src/components/build/PlanTree.tsx` — React render-phase side-effect bug: `router.replace()` moved out of `setExpanded` updater into callback body; `expanded` added to `useCallback` dependency array.
+**UI fix (historical; component retired 2026-09-27).** The former PlanTree component's React render-phase side-effect bug was fixed by moving `router.replace()` out of the `setExpanded` updater into the callback body and adding `expanded` to the `useCallback` dependency array. The component was later removed during the Cockpit navigation consolidation, so this entry no longer represents a live repository path.
 
 **B.4 phase final close COMPLETE.** All 20 ACs (AC.0–AC.19) satisfied. B.4 eligible for close per RED_TEAM_M2B_PHASE_B4_v1_0.md.
 
@@ -1029,4 +1029,5 @@ onboarding files are committed by that authority; all remain available for nativ
 
 | Date | Change |
 |---|---|
+| 2026-09-27 | Retired the stale live-path formatting for the deleted PlanTree component while preserving the historical Exec_8 implementation record. |
 | 2026-04-28 | Phase 14F: L2 section flipped to ARCHIVED tombstone; CGM v2.0 → v9.0 (CURRENT); MSR v3.0 / 499 signals already CURRENT (no change needed). |

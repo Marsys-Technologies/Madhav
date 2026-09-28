@@ -115,11 +115,16 @@ async function selectCloseableIds(
     params.push(chartId)
     scope = ` AND chart_id = $${params.length}`
   }
+  // Jātaka Phase-A3 (migration 1123): a claim a correction has marked
+  // chart_context_stale_at reflects former birth details — the sweep must not
+  // mutate its lifecycle as though it were still a live, current-context
+  // prediction.
   const { rows } = await exec<{ id: string }>(
     `SELECT id FROM ${LEDGER_TABLE}
       WHERE lifecycle_status = 'open'
         AND "window" IS NOT NULL
-        AND upper("window") < $1::date${scope}
+        AND upper("window") < $1::date
+        AND chart_context_stale_at IS NULL${scope}
       ORDER BY upper("window"), id`,
     params,
   )
@@ -143,12 +148,16 @@ async function selectClosingSoon(
     params.push(chartId)
     scope = ` AND chart_id = $${params.length}`
   }
+  // Jātaka Phase-A3 (migration 1123): a "closing soon" notice must not
+  // surface a claim whose birth-details context a correction already
+  // superseded.
   const { rows } = await exec<LedgerRow>(
     `SELECT ${READ_COLS} FROM ${LEDGER_TABLE}
       WHERE lifecycle_status = 'open'
         AND "window" IS NOT NULL
         AND upper("window") >= $1::date
-        AND upper("window") <= ($1::date + $2::int)${scope}
+        AND upper("window") <= ($1::date + $2::int)
+        AND chart_context_stale_at IS NULL${scope}
       ORDER BY upper("window"), id`,
     params,
   )

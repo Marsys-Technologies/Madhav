@@ -187,6 +187,47 @@ describe('adapterGemini — real wire body (fetch-boundary, no ai/@ai-sdk/google
     expect(thinkingConfig?.thinkingBudget).toBeUndefined()
   })
 
+  test('reasoning=enable requests maximum thinking even when the configured default is lower (RC-5.1)', async () => {
+    // Before: only 'disable' was mapped, so 'enable' was identical to 'auto' and a deep
+    // planning request could never raise thinking above a model's configured default.
+    const levelMeta = makeMeta({
+      id: 'gemini-3.7-flash',
+      quirks: {
+        reasoning_via: 'native', streaming_required: false, tool_use_format: 'gemini',
+        structured_output_format: 'gemini_response_schema', cache_strategy: 'context_caching',
+        system_prompt_shape: 'system_message',
+        request_transforms: { safety_filter: 'block_none', thinking_level: 'low' },
+      },
+    })
+    // captureWireBody reads the first recorded request, so clear between captures.
+    const levelOf = async (reasoning: QueryRequest['reasoning']) => (fetchMock.mockClear(), (await captureWireBody(makeReq({ reasoning }), levelMeta))
+      .generationConfig as Record<string, unknown> | undefined)?.thinkingConfig as Record<string, unknown> | undefined
+    expect((await levelOf('auto'))?.thinkingLevel).toBe('low')
+    expect((await levelOf('enable'))?.thinkingLevel).toBe('high')
+
+    const budgetMeta = makeMeta({
+      id: 'gemini-2.5-flash',
+      quirks: {
+        reasoning_via: 'native', streaming_required: false, tool_use_format: 'gemini',
+        structured_output_format: 'gemini_response_schema', cache_strategy: 'context_caching',
+        system_prompt_shape: 'system_message',
+        request_transforms: { safety_filter: 'block_none', thinking_budget: 8192 },
+      },
+    })
+    const budgetOf = async (reasoning: QueryRequest['reasoning']) => (fetchMock.mockClear(), (await captureWireBody(makeReq({ reasoning }), budgetMeta))
+      .generationConfig as Record<string, unknown> | undefined)?.thinkingConfig as Record<string, unknown> | undefined
+    expect((await budgetOf('auto'))?.thinkingBudget).toBe(8192)
+    expect((await budgetOf('enable'))?.thinkingBudget).toBe(24576)
+    expect(await budgetOf('enable')).not.toEqual(await budgetOf('auto'))
+  })
+
+  test('reasoning=enable uses the gemini-2.5-pro documented maximum budget', async () => {
+    const body = await captureWireBody(makeReq({ reasoning: 'enable' }), makeMeta())
+    const thinkingConfig = (body.generationConfig as Record<string, unknown> | undefined)
+      ?.thinkingConfig as Record<string, unknown> | undefined
+    expect(thinkingConfig?.thinkingBudget).toBe(32768)
+  })
+
   test('thinking_budget model (gemini-2.5-pro) is unaffected — regression guard', async () => {
     const body = await captureWireBody(makeReq(), makeMeta())
     const thinkingConfig = (body.generationConfig as Record<string, unknown> | undefined)

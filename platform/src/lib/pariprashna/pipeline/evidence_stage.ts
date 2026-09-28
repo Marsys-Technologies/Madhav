@@ -29,9 +29,12 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 
 import { resolveActivityLabel } from './stage_context'
 import type { LegacyQueryPlan } from './plan_stage'
-import { bindingForInquiryItem, classifyInquiryResult, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, recordInquiryExecution, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { bindingForInquiryItem, classifyInquiryResult, closeInquiryForEvidenceSuccessor, compileInquirySuccessorContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, recordInquiryExecution, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { getPinnedCapabilityKnowledgeSnapshot, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import { evaluateSuccessorItemForDispatch, refineSuccessorAdmission, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 
 /** The pass id every first-pass retrieval event carries. */
 export const PASS_ONE = 1
@@ -74,8 +77,17 @@ export async function runEvidenceStage(args: {
   toolsAuthorized: string[]
   orientationPromise: Promise<ChartOrientation | null>
   inquiryContract?: InquiryContract | null
+  abortSignal?: AbortSignal
+  /**
+   * What the route's own chart authorization (`authorizeTurn`) returned for this principal. The
+   * shared successor envelope requires the result itself, not an assertion; absent refuses.
+   */
+  chartPermission?: 'all' | 'view' | 'deny' | null
+  /** Capabilities the request's own safety pass excluded; a successor is held to them too. */
+  excludedCapabilities?: readonly string[]
 }): Promise<EvidenceStageOutput> {
   const { em, request, chartId, userUid, plan, queryPlan, manifest, toolsAuthorized, orientationPromise } = args
+  const abortSignal = args.abortSignal ?? request.signal
 
   em.phase({ phase: 'retrieve', status: 'start', pass_id: PASS_ONE })
   // V3-E-016: `chartId` scopes which native-bound corpus assets may enter this
@@ -91,7 +103,7 @@ export async function runEvidenceStage(args: {
 
   const toolResults = await Promise.all(
     toolsAuthorized.map(async (toolName): Promise<ToolBundle | null> => {
-      if (request.signal.aborted) return null
+      if (abortSignal.aborted) return null
       const activityLabel = resolveActivityLabel(toolName)
       em.activity({ key: `retrieve:${toolName}`, label_key: activityLabel, pass_id: PASS_ONE, status: 'running' })
       const t = getToolByName(toolName) as RetrievalTool | undefined
@@ -173,57 +185,168 @@ export async function runEvidenceStage(args: {
         evidence_refs: [`retrieval:${event.name}:pass-${PASS_ONE}:${stableFingerprint(raw)}`],
         ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
         pagination, request_position_path: binding?.pagination_contract?.request_position_path,
+        // RC-5.4: a served observation may call for a different capability; it is pursued only
+        // through the evidence-admitted successor below, never dispatched ad hoc.
+        evidence_frontier: disposition === 'served'
+          ? deriveEvidenceFrontier({ contract: inquiryContract, item_id: item.item_id, evidence_payload: raw, snapshot })
+          : [],
       })
     }
 
     let pass = PASS_ONE + 1
-    while (inquiryContract.iteration < inquiryContract.max_iterations && !request.signal.aborted) {
-      const item = inquiryContract.plan_items.find((candidate) => candidate.state === 'ready'
-        && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
-      if (!item?.binding_id) break
-      const capabilityUri = item.binding_id.slice('registry:'.length)
-      const toolName = toolsAuthorized.find((name) => resolveToolUri(name) === capabilityUri)
-      const tool = toolName ? getToolByName(toolName) as RetrievalTool | undefined : undefined
-      const binding = bindingForInquiryItem(snapshot, inquiryContract, item.item_id)
-      if (!toolName || !tool || !binding) break
-      const started = Date.now()
-      try {
-        const raw = await getSharedQosDispatchQueue().submit({
-          principalId: userUid,
-          priorityClass: 'interactive',
-          units: tool.dispatch_units ?? 1,
-          // A continuation has distinct server-authorized cursor arguments.
-          // Execute it directly so request/shared cache normalization can never
-          // replay page one under a later page's authorization envelope.
-          run: () => tool.retrieve(queryPlan, item.args),
-        })
-        const ms = Date.now() - started
-        validToolResults.push(raw)
-        toolEventLog.push({ name: toolName, status: 'done', ms, ok_count: raw.results.length, err_count: 0 })
-        const disposition = classifyInquiryResult(binding, raw)
-        const pagination = deriveInquiryPaginationReceipt(binding, raw, item.args)
-        inquiryContract = recordInquiryExecution(inquiryContract, {
-          item_id: item.item_id, disposition,
-          evidence_refs: [`retrieval:${toolName}:pass-${pass}:${stableFingerprint(raw)}`],
-          ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
-          pagination, request_position_path: binding.pagination_contract?.request_position_path,
-        })
-      } catch {
-        const ms = Date.now() - started
-        toolEventLog.push({ name: toolName, status: 'error', ms, ok_count: 0, err_count: 1, error_kind: 'dispatch_error' })
-        inquiryContract = recordInquiryExecution(inquiryContract, {
-          item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
-          pagination: { semantics: binding.pagination, exhausted: true, next: null },
-          request_position_path: binding.pagination_contract?.request_position_path,
-        })
+    // The shared successor authorization envelope (Packet B): every successor dispatch is
+    // re-evaluated from the contract plus this request's own server-held state.
+    const successorLive = (overlay: { overlay_version: string | null; build_id: string | null }) =>
+      buildSuccessorAdmissionLive({
+        transport: 'portal',
+        chart_id: chartId,
+        overlay,
+        principal_subject: userUid,
+        owner_principal_subject: userUid,
+        chart_permission: args.chartPermission ?? null,
+        excluded_capabilities: args.excludedCapabilities ?? [],
+        // The Portal door has no per-request call-count cap; an aborted request is its only cost stop.
+        cost_exhausted: abortSignal.aborted,
+      })
+    /**
+     * Dispatch the contract's ready registry items — continuations of observed items, and a
+     * successor's first-time items — through the request's final authorized tool set only.
+     * An item whose tool is not authorized for this request stays undispatched, so its
+     * obligation closes honestly instead of bypassing the plan-time safety filters.
+     */
+    const executeReady = async (current: InquiryContract, firstTime: boolean): Promise<InquiryContract> => {
+      let contract = current
+      const skipped = new Set<string>()
+      while (contract.iteration < contract.max_iterations && !abortSignal.aborted) {
+        const item = contract.plan_items.find((candidate) => candidate.state === 'ready'
+          && (firstTime || candidate.observation !== null) && !skipped.has(candidate.item_id)
+          && candidate.binding_id?.startsWith('registry:'))
+        if (!item?.binding_id) break
+        const capabilityUri = item.binding_id.slice('registry:'.length)
+        const binding = bindingForInquiryItem(snapshot, contract, item.item_id)
+        // In a successor generation the request's tool set is NOT the authority — the plan-time
+        // envelope is. Its decision is recomputed here, never trusted from the compile.
+        let admission = contract.successor
+          ? evaluateSuccessorItemForDispatch({
+            contract, item_id: item.item_id, snapshot,
+            // Chart, overlay and served build are re-read now, not carried over from compile time.
+            // An unreadable overlay is an unverifiable identity: it fails closed (named, per item)
+            // instead of rejecting the whole evidence stage.
+            live: successorLive(await loadChartCapabilityOverlay(snapshot, chartId).catch(() => ({ overlay_version: null, build_id: null }))),
+          })
+          : null
+        const toolName = admission
+          ? capabilityUri
+          : toolsAuthorized.find((name) => resolveToolUri(name) === capabilityUri)
+        const tool = toolName ? getToolByName(toolName) as RetrievalTool | undefined : undefined
+        // The envelope admitted but the live tool or binding is gone: a definitive, receipted refusal
+        // (same code and shape as the raw door), never an admit stamped on a dispatch that never happened.
+        admission = refineSuccessorAdmission(admission, { tool_present: Boolean(tool), binding_present: Boolean(binding), args_authorized: true })
+        if (admission && admission.decision === 'refuse') {
+          // Name the gap with the decision's own stable code instead of leaving a dangling ready action.
+          skipped.add(item.item_id)
+          contract = terminalizeRefusedSuccessorItem(recordInquiryExecution(contract, {
+            item_id: item.item_id, disposition: 'failed', evidence_refs: [],
+            gap_reason: admission.code,
+            pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+            request_position_path: binding?.pagination_contract?.request_position_path,
+            successor_dispatch: admission,
+          }), item.item_id)
+          continue
+        }
+        if (!toolName || !tool || !binding) {
+          if (!firstTime) break
+          // Name the gap instead of leaving a dangling ready action: the capability is not among
+          // the tools this request was authorized (after every plan-time filter).
+          skipped.add(item.item_id)
+          contract = recordInquiryExecution(contract, {
+            item_id: item.item_id, disposition: 'failed', evidence_refs: [],
+            gap_reason: 'successor_capability_not_authorized_for_request',
+            pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+            request_position_path: binding?.pagination_contract?.request_position_path,
+          })
+          continue
+        }
+        const activityLabel = resolveActivityLabel(toolName)
+        em.activity({ key: `retrieve:${toolName}:pass-${pass}`, label_key: activityLabel, pass_id: pass, status: 'running' })
+        const started = Date.now()
+        try {
+          const raw = await getSharedQosDispatchQueue().submit({
+            principalId: userUid,
+            priorityClass: 'interactive',
+            units: tool.dispatch_units ?? 1,
+            // A continuation has distinct server-authorized cursor arguments.
+            // Execute it directly so request/shared cache normalization can never
+            // replay page one under a later page's authorization envelope.
+            run: () => tool.retrieve(queryPlan, item.args),
+          })
+          const ms = Date.now() - started
+          em.activity({ key: `retrieve:${toolName}:pass-${pass}`, label_key: activityLabel, pass_id: pass, status: 'done', count: raw.results.length, ms })
+          validToolResults.push(raw)
+          toolEventLog.push({ name: toolName, status: 'done', ms, ok_count: raw.results.length, err_count: 0 })
+          const disposition = classifyInquiryResult(binding, raw)
+          const pagination = deriveInquiryPaginationReceipt(binding, raw, item.args)
+          contract = recordInquiryExecution(contract, {
+            item_id: item.item_id, disposition,
+            evidence_refs: [`retrieval:${toolName}:pass-${pass}:${stableFingerprint(raw)}`],
+            ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+            pagination, request_position_path: binding.pagination_contract?.request_position_path,
+            evidence_frontier: disposition === 'served'
+              ? deriveEvidenceFrontier({ contract, item_id: item.item_id, evidence_payload: raw, snapshot })
+              : [],
+            ...(admission ? { successor_dispatch: admission } : {}),
+          })
+        } catch {
+          const ms = Date.now() - started
+          em.activity({ key: `retrieve:${toolName}:pass-${pass}`, label_key: activityLabel, pass_id: pass, status: 'error', ms })
+          toolEventLog.push({ name: toolName, status: 'error', ms, ok_count: 0, err_count: 1, error_kind: 'dispatch_error' })
+          contract = recordInquiryExecution(contract, {
+            item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
+            pagination: { semantics: binding.pagination, exhausted: true, next: null },
+            request_position_path: binding.pagination_contract?.request_position_path,
+            ...(admission ? { successor_dispatch: admission } : {}),
+          })
+        }
+        pass += 1
       }
-      pass += 1
+      return contract
     }
+
+    inquiryContract = await executeReady(inquiryContract, false)
     const currentOverlay = await loadChartCapabilityOverlay(snapshot, chartId)
-    inquiryContract = currentOverlay.overlay_version === inquiryContract.chart_availability_version
-      && currentOverlay.build_id === inquiryContract.chart_build_id
-      ? finalizeInquiryContract(inquiryContract)
-      : failInquiryForOverlayDrift(inquiryContract)
+    if (currentOverlay.overlay_version !== inquiryContract.chart_availability_version
+      || currentOverlay.build_id !== inquiryContract.chart_build_id) {
+      inquiryContract = failInquiryForOverlayDrift(inquiryContract)
+    } else {
+      // R2B.4b: when served evidence admitted a required capability the plan did not include,
+      // continue through ONE deterministic successor generation in this request. The successor
+      // carries its parent, so the fact register accounts for the whole chain.
+      let successor: InquiryContract | null = null
+      try {
+        if (!abortSignal.aborted) {
+          const parentFinal = closeInquiryForEvidenceSuccessor(inquiryContract)
+          successor = compileInquirySuccessorContract({
+            snapshot, overlay: currentOverlay,
+            parent_inquiry_id: `pariprashna:${parentFinal.contract_id}`, parent: parentFinal,
+            cross_capability_only: true,
+            admission: successorLive(currentOverlay),
+          })
+        }
+      } catch {
+        // No admissible cross-capability frontier: the parent closes on its own terms.
+        successor = null
+      }
+      if (successor) {
+        em.flag({
+          code: 'inquiry_evidence_successor',
+          level: 'info',
+          detail: `served evidence admitted ${successor.obligations.length} further capabilit${successor.obligations.length === 1 ? 'y' : 'ies'}`,
+        })
+        inquiryContract = finalizeInquiryContract(await executeReady(successor, true))
+      } else {
+        inquiryContract = finalizeInquiryContract(inquiryContract)
+      }
+    }
   }
 
   return { bundle, validToolResults, toolEventLog, completenessReceipt, orientation, inquiryContract }

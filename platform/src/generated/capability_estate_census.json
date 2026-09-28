@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "035c3f13795f5c612bc41f5708a3e4ac36782c7f86513a83f411222776dc486c",
+  "content_sha256": "a3eb4a6c8e31713cf3b5f9e3a85c3c708196c0b9621ad92729c1f2438cb43d7a",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -69,7 +69,7 @@
     "public_registrar_resolution": {
       "ambiguous": 0,
       "descriptor_denominator": 186,
-      "literal_public_names": 129,
+      "literal_public_names": 131,
       "method": "authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions",
       "name_only_unverified": 0,
       "not_exposed": 115,
@@ -103,8 +103,8 @@
         "L5": 15
       },
       "by_scope": {
-        "global": 73,
-        "per_chart": 113
+        "global": 71,
+        "per_chart": 115
       },
       "callable": 186,
       "output_schema_declared": 5,
@@ -842,6 +842,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts"
         ],
         "output_contract": null,
@@ -868,6 +869,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha filter (default: 'LAHIRI').",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence for the bodha_msr_signals read: one build UUID or an array. Inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -1252,6 +1257,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -2860,6 +2866,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -2904,6 +2911,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
@@ -3825,6 +3833,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of aspect categories.",
             "items": {
@@ -3889,6 +3901,10 @@
             "description": "Ayanamsha for the chart_facts lookup (default 'lahiri_chitrapaksha').",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "chart_id": {
             "description": "Chart UUID. Required.",
             "required": true,
@@ -3934,6 +3950,7 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts"
         ],
         "output_contract": null,
@@ -3968,6 +3985,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Filter by ayanamsha. Omit for all.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "categories": {
@@ -4434,6 +4455,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Explicit category list.",
             "items": {
@@ -4494,6 +4519,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of dispositor categories.",
             "items": {
@@ -4547,6 +4576,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Filter by ayanamsha. Omit for all.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -4758,6 +4791,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha (default 'krishnamurti', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -5004,6 +5041,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "categories": {
@@ -5363,6 +5404,10 @@
             "description": "Filter by ayanamsha_id. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of strength categories (default: all 21).",
             "items": {
@@ -5402,6 +5447,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
@@ -5857,6 +5903,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of categories.",
             "items": {
@@ -5933,6 +5983,10 @@
           "bhanga_active": {
             "description": "Filter to firings with an active bhanga (cancellation) rule.",
             "type": "boolean"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
           },
           "chart_id": {
             "description": "Chart UUID. Required.",
@@ -6084,7 +6138,6 @@
         "internal_route": "handler",
         "internal_route_evidence": [
           "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-          "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts"
         ],
         "output_contract": null,
@@ -6510,6 +6563,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha').",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -7243,6 +7300,10 @@
             "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha').",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "chart_id": {
             "description": "Chart UUID (<chart_uuid>). Required.",
             "required": true,
@@ -7507,6 +7568,10 @@
           },
           "ayanamsha_id": {
             "description": "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -9239,6 +9304,10 @@
             "description": "Question domain (e.g. wealth, career, spirituality, residence). Predictions whose event_class resolves into this domain (wealth clusters {wealth, residence}) lead the response; all other open predictions are still returned under other_domain_predictions.",
             "type": "string"
           },
+          "include_stale": {
+            "description": "A chart correction marks a filed prediction chart-context-stale (superseded by former birth details) rather than deleting it. Default false serves only current predictions. true also includes stale rows, each stamped with chart_context historical-context metadata — never silently indistinguishable from a current row.",
+            "type": "boolean"
+          },
           "limit": {
             "description": "Max predictions to scan (default 100).",
             "type": "number"
@@ -9462,6 +9531,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts"
         ],
         "output_contract": null,
@@ -10195,6 +10265,10 @@
           "domain": {
             "description": "Filter by domain (career, wealth, relationship, health, character, spirituality, other).",
             "type": "string"
+          },
+          "include_stale": {
+            "description": "A chart correction marks a preserved prediction chart-context-stale (superseded by former birth details) rather than deleting it. Default false serves only current predictions. true also includes stale rows, each stamped with chart_context historical-context metadata — never silently indistinguishable from a current row.",
+            "type": "boolean"
           },
           "lifecycle_status": {
             "description": "Filter by lifecycle status.",
@@ -11052,7 +11126,7 @@
       {
         "asset_id": "bg_ephemeris_engine",
         "contract_ref": {
-          "contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+          "contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
           "path": "platform/python-sidecar/scripts/nirmana_probe_contracts.json",
           "probe_type": "ephemeris_engine"
         },
@@ -20803,14 +20877,14 @@
       ]
     }
   },
-  "generated_at": "2026-09-20T04:49:36.000Z",
+  "generated_at": "2026-09-28T14:04:26.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
       {
         "id": "analysis_layer_pins",
         "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
-        "sha256": "3245aabc761e8daba0a9a3f883aba4d0467e9805b4ef1a0d12c983315328b520"
+        "sha256": "b2ab5aed9bcde68f6545b1dcccaab56bf8eaf33bbf9e08369bb6b15e1d03e14e"
       },
       {
         "id": "canonical_public_faces",
@@ -20825,7 +20899,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "5249fd5f74bdfe6d9b96fd4db594ebaee01b5c6d892b97001dc0c3dd69bc6c7e"
+        "sha256": "eb66c018343ec0fe84b3e64168db8bc8e626fe5550a73b25903c8fed20042962"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21190,7 +21264,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "b5077bc2219ee5a34b50fe80fac2c5c87e59ee9abd3eb3710bcd5df342379ed7"
+        "sha256": "5813ec102a9d65950d9598caf983a8badb557e6cbe67e62a8fe4d14575897657"
       },
       {
         "id": "public_registrar_source_set",
@@ -21318,11 +21392,11 @@
           },
           {
             "path": "platform-mcp/src/tools/register_inquiry_lifecycle.ts",
-            "sha256": "6a0a672462655d3ad026c94d9c83f2de604a99fc98848a39aa494ea135d823a7"
+            "sha256": "a436f00f28e0f714775d8710a057c8e68a8b30f411875e92d6155b6c829b0d75"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "4cdf3362c2dd80887dd954d0b675c126b3c9048ddf6f2487eafd136e1321f120"
+            "sha256": "4b16f99f35c42f4f049b0a2ea580084498d6058fd9910a3de2dbe599b21409c3"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -21342,7 +21416,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_prashna_ask.ts",
-            "sha256": "8b19df71374c6700524127b299d61d2ddec8c4ffbc89e136e96fab487d5cb0c6"
+            "sha256": "42ac3b59428603f6880087672c6c8a74fb90a474c96f320f964df8a0a5b27061"
           },
           {
             "path": "platform-mcp/src/tools/register_prashna_status.ts",
@@ -21390,7 +21464,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "1eb48857a46fe7d228f4940c93c57e59614b70c75283d23a564c38d41bcd979a"
+        "sha256": "2b0b19234dcb34a07b54b52ffca14ce1e710504af869bc87dcac84999e7537bf"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21400,11 +21474,11 @@
       {
         "id": "reviewed_full_profile_route_authority",
         "path": "platform-mcp/src/lib/mcp_full_route_authority.ts",
-        "sha256": "bca779f23a666f5beab92556f67e53e761d60660a97e3733d659a7db9b09ca2d"
+        "sha256": "40d428c36b0e4f23f9170dcd7a746efc8e2927e61ce3a5a5659dbec2abf65a65"
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 200,
+        "member_count": 203,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21431,20 +21505,28 @@
             "sha256": "7e1e716500db5f048024d0b63633381dfa64b492d0d28ec8e6c4a195b32a8c23"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/generation/composite_fence.ts",
+            "sha256": "90ce4c2a19c1a3362bdb9ce6de65b7fc42d0b8b50c0798b2d49f8352126c8599"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/generation/served_generation.ts",
+            "sha256": "77fa39b39f561547d3a87db912b0a11a349583bcf22456aee19fd2cc4a4257c9"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/index.ts",
             "sha256": "dfbe9856bfc456fbd9931c27b0d8630a30c3c5145a043f990c7fc5d548165db9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "7fc95176d5a0ba270dbc7aad8c6bfdee8efdcb1f39e9e49ac1ba51fd13a96d55"
+            "sha256": "aa0588f1f5a8337bac6245458c27f468c4a22ddfd94ed4b192e7476427afcd36"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "3cc54c35a91fe1c85481d4f80bb83676ecffa5ef8a243585484c0bd76cd720f7"
+            "sha256": "6046232e2674498db9e4cbc418a1141ef82a8bb62cb00887a612605dac125741"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "33ed6e4a945879c3b91d3521be04137a2547191d70bb1e0cb11af44147b86545"
+            "sha256": "887f92425ba10b389094d88ccc362714b1693f20e35ef1167964e68cabed926d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21452,11 +21534,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "7311ca52eee7e9fb69a38ed59fa7b2eae83adcac310d764e1b2579dc6a009c4d"
+            "sha256": "0eb69270a5a8847e36ae05a673a53613f403c45cbebf8633f054fd7c3e5fad41"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
-            "sha256": "035f8e6ee2d4843db2c0515acc86b60bb1637914ed0c7d4ebe02325709f4dcee"
+            "sha256": "01f6df015e278923ec61e403cf6c097e32099eb7cc510cc9125a47e7b092a2f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/pagination_review.ts",
@@ -21471,6 +21553,10 @@
             "sha256": "0cdf02438eacdf8c09d9e5abf3ecdd7f809c141a42244fa43367d2d620895980"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/knowledge/proof_kind.ts",
+            "sha256": "f4b48d2fe89b3cd901ecbb90ea5b09f019c0370644a57ac7f644e4c5c0cf984b"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/knowledge/query.ts",
             "sha256": "cc717510a979bbfe7947d0aa3cd3ed104180d42d53dfa0ac3eef0f4812e6725b"
           },
@@ -21480,7 +21566,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "f60268b91533058f2c4ce367ce1d7360db2fa0292269bbabbecc66b1fd1fc415"
+            "sha256": "0fc5c06fb234fe991e3da0b7a2f18d3b0245aefee28b2a72eb73be7ce0eaaa77"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21488,7 +21574,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "371801d1047348cbb85714784a3fb9767c35628f289826381ce9a6243c72dde4"
+            "sha256": "66fe0dcf219d82c47e14a427eca773430d4e950eed1d597fda923b5f95a6bbed"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21508,11 +21594,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts",
-            "sha256": "d2cd0746b4f3c6ddb0f792a0909d2ba027f228cbccbca65427f9600565d6556e"
+            "sha256": "574503c5f3ee8065491ceb28c14ceaaa496b9713a983a0f20aa72abafd2c3746"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
-            "sha256": "bd69952bd2318a83ca240f106890d1a0678922f3755a08bc08d0e2d142ca77ae"
+            "sha256": "b94ac96da418c28089adca1614132e862ad51a34a8a4a86fd48f381e8c7705d0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
@@ -21528,7 +21614,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts",
-            "sha256": "b4ac2c7fefb52b4a1b1f50da8951e5ef3eb39f7219264826d646e180c0830363"
+            "sha256": "ffeaa97b1b4aad6e189d9e1584978f8d87b199db177054086edb9cfab322f0a9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts",
@@ -21540,7 +21626,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
-            "sha256": "1eac54529a88c2ca14ff299f971876aa22bb957f06f3e966242ee40f52a2fb08"
+            "sha256": "e544f06651a97fb7eae2e31d1abfc61b45b9bd0a51b0861214115c64b4a0e203"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts",
@@ -21596,11 +21682,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
-            "sha256": "e4d37c87b40c582f90ebf6667a4143cd530905cc88cd283820e058dccdb70993"
+            "sha256": "ed73f343520371b07b1ea705294bb407ee215471f68e770cd5a3781357f94f25"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
-            "sha256": "a22c6c60478d597799d4c62084f070fcb73ee95dfe1775f87f24d94e2c9ee3f2"
+            "sha256": "635ee1734e201682defd5236517aaa07b9aed9664a2aeb97ae2f725e52d7a10d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
@@ -21628,7 +21714,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
-            "sha256": "0c349e4e98b931777ff917a633f6e11a6bf9cb4601ea47de367189153315e5c0"
+            "sha256": "8244bea5e0571ad17f8f9ed667949b0872a9122910eafd955c4df220438ca02e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts",
@@ -21704,15 +21790,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-            "sha256": "1fa2d6ccf260d0b8ff1cfddcc5e8be203ca1fde3b08138961ace1c1c579cdda1"
+            "sha256": "1b430efab124f5c304b7ff6b3788ee6a23cd86fad059833bedf1994ad4949a45"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-            "sha256": "ea0b8b672d7724baee3dc8f89f7e9e2c7e1cafe889ed41e0e13ff526839edcd5"
+            "sha256": "2f79d75d060d24169cb34405bc6f4706dacda149f5e4822a030501c23e8e0fae"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
-            "sha256": "a068c2bd692568ee6eb0e787c3a9b2549198f031be2ac3e57cf56312adc93f10"
+            "sha256": "24653dc1f1878ebfa601232df0a749a0b820bb2f8c52b1422549b516bf518258"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
@@ -21740,7 +21826,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "6c11436d75954ea0ad97a9321de6d0db9c0fa1f6fea8ae1ec7b7a8e5522be31d"
+            "sha256": "9c49767c6047e71f9c4b132c94601e8551a04e9cea0d9c65d4a948a17b93644f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -21748,15 +21834,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
-            "sha256": "38ef7f2ccdf9c705a6ce4f91bdc73e86a2db0f64a15f47ca36e49f0a17b83528"
+            "sha256": "22fd718f853ef35d037cd4fbc160515947af4ea10c3a8669d843cae3d46993b8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-            "sha256": "dfcc6d68d82b203f1986a837029e2726568bf47b4a8f880168b3b9a3064bb9c2"
+            "sha256": "180c8a5b991085e300fb9977d5ad0d328516b18ef375a6274ca97c945cbb6670"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "fda6339de00411d4d4f4fac84daad28435098cd35f29605df9f5b511d41cb487"
+            "sha256": "698e0eda76165653ab92b623b1097d5613ec53285b97b61eab3aeda2ec2caa76"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -21772,7 +21858,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "a6cb066551057a0acc6043baab2ca063c3aeb55e0c497fc0142418f031f82ab0"
+            "sha256": "16e98b3b5c107a3d7574ad0f8d48c77f4e77f04bc70c74dffaee007040a2feff"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
@@ -21788,7 +21874,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "cef3d2bf0fe79e71a1758d02556ceeb858873957622c8eae53ac0d910993e179"
+            "sha256": "24d57f7a9f1c5bb281bc62d1e0c73d9cebdc3bb7df62b089d73f8d87914b8953"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -21808,7 +21894,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
-            "sha256": "52a2d7cf962819ef2a37368d923c338941d20894322ffc4fa280ec7ac6bbc242"
+            "sha256": "564bbb75c6fc05485e1c3f88c4a3db0b7a02c8b9e1a178afa740d05b784a639d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
@@ -21836,11 +21922,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-            "sha256": "a0d67441815c6ac91c6c60235a0a9c0b109a7233e898be45b8de1dbf63fa5eec"
+            "sha256": "7b2aaecfe02df408dccff6bf23ae4536fa3e4d64a981ad6510d9af8a7cb03784"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "b1e76ad46075985869a525103da826f6314e76ea8304e4a704fcb7ca3252360f"
+            "sha256": "01017b721c20e79f3e6113f09ef90fa9776cf860d52dc16f7e85aeb372a8b03a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -21848,7 +21934,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "3420b6747309c60ef279b7d8514416825a22d850c20ca3c20230c660335549c2"
+            "sha256": "a5ea014254d4bdbd5f99c919785ce0bfe2aae24e5d1f0d4c3767e73b0b060b38"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -21856,7 +21942,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "c599258d512337148637231f65d5aec3664c935d4246c43c12aecb7297fa315d"
+            "sha256": "69602a32786364ed8381c77c1c06cdae75d653f8566a9f3a28df4da99f3a089c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -21880,7 +21966,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
-            "sha256": "d7708558faca91e961728abbb4979e2d2cb6eb84c74386cddee7de462a7f82f2"
+            "sha256": "da4887c732738afcc357ae6163f4ab8b2e50cd536b451eace2ddedd0be6c32f1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
@@ -21888,11 +21974,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
-            "sha256": "b67b91fe0b77f6957876d330522934ee75df69e14b1ea4960151c383355aea82"
+            "sha256": "820ec6846be3fb9d488859f42c77cf7c4dab3ac430ba32d1ceb130e68660daad"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "5109ae5f134dba5eacb4e42c775524d6fede4689279cbba493e1ac3dcbd93108"
+            "sha256": "b6de31d3dcd49127f5d392b17cb43f807059bef87e45970a911d1d3336add8d1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -21936,7 +22022,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "0448134480161364811bdd3013b004159bf12ae0a0f2bcfd3467cb27e8d09fba"
+            "sha256": "a00747d3fd8c98fd3b381a33d7b45c7dff9f3087f39d49129250b3ee96b90190"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -21952,7 +22038,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
-            "sha256": "c390d21ff3064697777336601af5f0d3706a5548a010fcefa8dafa15a7ed368b"
+            "sha256": "847b26a613568dd69bdf6286a751633dfc5ad820621a1dd2373ab200832290ac"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
@@ -22044,7 +22130,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
-            "sha256": "01b0a02ba3e715128804882044a18ce34cde35e20d7a4cc5dab6a575b25c6cfb"
+            "sha256": "d7468e39b70e6c8d459c79ef41e937a34d02352979abd17425381b5874efda35"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts",
@@ -22060,7 +22146,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts",
-            "sha256": "d295d381fca00f52324ac12e3c0fe8116f8e1240caf248384a5cd146334a992b"
+            "sha256": "62494adeda0d4d75fb583e61e8b19fc36317411b3e852a3810559f4a1519d69c"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts",
@@ -22068,7 +22154,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts",
-            "sha256": "fd968465ecff6e2e3342773dac5c00254294f26d934d8b9226b4958338a43bed"
+            "sha256": "d91bca4a45e12e1df13f946f940d442ff1a2073e11d247c2dc986eda4a19451e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts",
@@ -22108,7 +22194,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
-            "sha256": "a8d3c8da20529c12a41c43c799aaf7bd2bc734f3f573e0000d4b9d046e078be6"
+            "sha256": "b389ea2e268732e51cddd5898f7be9f35c8b6bf01ca24239726276f8d86943f4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts",
@@ -22116,11 +22202,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
-            "sha256": "3e1c82dfe00b2655afe7e1b0d8f2b3f361a7028f9fe0b2f9dd788fc0508ff4d0"
+            "sha256": "6eb6b66fac57465eba5548093dea9c3960175b483caa850c6a41ab6ecdc639d3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
-            "sha256": "9e7ec4bc61d9b821802e8795f3a827d67072d3e58c13017d8903791fbbeb3b61"
+            "sha256": "34e0139cbf7573ac4751ec7effd4678c002b8aeda1cd3410a4843dcffc8261f9"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
@@ -22128,19 +22214,19 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts",
-            "sha256": "e32f46b465de65b13ceb8fc8fe2bc1bf7f50cddbd126b8f5b71ee9477aea3ccd"
+            "sha256": "7c4a568a19b3ebcc50bb2cf19f4671e94249d4e5051a6a6cfe357a5539d5681f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "dc3012d90c88941e9a3c12513d383c821feda23c4b5bb32f18f065f7f9a8cbb9"
+            "sha256": "ac9290c8582fd3dcc26869323c332b4c2c1bae40cc272a537e2023f8f5761ce3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "c07a1fe9b83c98034d5e6c80397face2d2ec5445b51a9f08ca903a60e63ac615"
+            "sha256": "dd9dc1d1201781599582acd18d7870ab8cf851881d7065849ae01156619b4f7a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "5bdb211604ab97f07cc04bf2f5a52185e04497a4a3d2e13ee78c4aa5ea845c5d"
+            "sha256": "4bd6ced80dfd978d4e719d1f4d24a9460041e778b59da1e5ae0c788261790808"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22152,7 +22238,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/significator_condition.ts",
-            "sha256": "d911507022afae8564053ce26bb3c60ebb4989302dbcd43d5ba9ba79f5ee8e67"
+            "sha256": "12ec2505ab38d479c7b211850474435ca607adfb2b4802860780a1d8601b50c8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts",
@@ -22208,7 +22294,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f4f59fb8ec0b74743ff052960ac546aa512fafda51cfd40b648c681e77b0b01c"
+        "sha256": "6e140efa4b956b446066c039ac16d262a59d79e71406c863c25bf210a81b61da"
       },
       {
         "id": "service_effect_contracts",
@@ -22218,7 +22304,7 @@
       {
         "id": "service_probe_contracts",
         "path": "platform/python-sidecar/scripts/nirmana_probe_contracts.json",
-        "sha256": "6f144a500d15b1e037492e78f6b2f32f7dfe586bbab8e16c35a98c5844ac7a7b"
+        "sha256": "c2e48f0c3938664ed0bf0b5e2e64cfe23d81414db06678f868dc63b4cb8d7c1d"
       },
       {
         "id": "wave1_disposable_evidence",
@@ -22228,10 +22314,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "b5d3d88657a1ea07c94a69d9ffcee07a8e372318c07827ea6c1ffaa35e7efa8f"
+        "sha256": "fded9f0feb1f72b189e053c3a26ea681029738c962912e8b110b10d48c81194d"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "36d03067e9d5916c3436872897af02237f3591b1"
+  "source_revision": "0ed6557e26b13a4b2e5ba6cfbf6793864e06d822"
 }

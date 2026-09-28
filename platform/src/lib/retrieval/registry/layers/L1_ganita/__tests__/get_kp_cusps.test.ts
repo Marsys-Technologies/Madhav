@@ -49,9 +49,9 @@ describe('getKpCuspsCapability', () => {
     const result = await getKpCuspsCapability.handler({ chart_id: CHART_ID, build_id: buildId }, undefined)
 
     const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]]
-    expect(sql).toContain('AND build_id = $4::uuid')
+    expect(sql).toContain('AND build_id = ANY($4::uuid[])')
     expect(sql).not.toContain('AND build_id = $4::text')
-    expect(params).toEqual([CHART_ID, 'krishnamurti', expect.any(Array), buildId])
+    expect(params).toEqual([CHART_ID, 'krishnamurti', expect.any(Array), [buildId]])
     expect((result.content as Record<string, unknown>)['build_id']).toBe(buildId)
   })
 
@@ -122,5 +122,13 @@ describe('getKpCuspsCapability', () => {
     expect(getKpCuspsCapability.scope).toBe('per_chart')
     expect(getKpCuspsCapability.required_inputs).toContain('chart_id')
     expect(getKpCuspsCapability.grounds_to).toMatchObject({ l1_fact_ids: true })
+  })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    mockQuery.mockReset()
+    const result = await getKpCuspsCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined)
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(mockQuery).not.toHaveBeenCalled()
   })
 })

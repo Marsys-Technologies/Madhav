@@ -19,12 +19,20 @@ import {
   LayoutGrid,
   Gauge,
   FileSearch,
-  Bot,
   ChartColumn,
+  ChevronDown,
+  Info,
+  Map,
   Settings2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
-import { normalizeRole } from '@/components/nav/role-gates'
+import {
+  normalizeRole,
+  isNavItemActive,
+  visibleNavItems,
+  visibleInformationNavItems,
+} from '@/components/nav/role-gates'
 import {
   motion,
   AnimatePresence,
@@ -46,32 +54,28 @@ function MoonCrescentIcon({ className }: { className?: string }) {
   )
 }
 
-interface NavItem {
-  href: string
-  label: string
-  icon: LucideIcon | React.ComponentType<{ className?: string }>
-  roles: readonly string[]
-}
-
 interface AppShellRailProps {
   user: { uid: string; email?: string; name?: string }
   profile: { role: 'super_admin' | 'guest'; status?: string }
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard',   label: 'Jātakas',     icon: LayoutGrid,       roles: ['super_admin', 'guest'] },
-  { href: '/panchang',    label: 'Panchang',    icon: MoonCrescentIcon, roles: ['super_admin', 'guest'] },
-  { href: '/cockpit',     label: 'Cockpit',     icon: Gauge,            roles: ['super_admin'] },
-  { href: '/audit',       label: 'Audit',       icon: FileSearch,       roles: ['super_admin'] },
-  { href: '/aiops',       label: 'AIOps',       icon: Bot,              roles: ['super_admin'] },
-  { href: '/performance', label: 'Performance', icon: ChartColumn,      roles: ['super_admin'] },
-  { href: '/admin',       label: 'Admin',       icon: Settings2,        roles: ['super_admin'] },
-]
+const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: string }>> = {
+  roster: LayoutGrid,
+  panchang: MoonCrescentIcon,
+  cockpit: Gauge,
+  'ai-console': SlidersHorizontal,
+  audit: FileSearch,
+  performance: ChartColumn,
+  admin: Settings2,
+}
 
 export function AppShellRail({ user, profile }: AppShellRailProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
+  const [informationOpen, setInformationOpen] = useState(
+    pathname.startsWith('/information')
+  )
   const reducedMotion = useReducedMotion()
 
   async function handleSignOut() {
@@ -83,9 +87,11 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
   // Normalize legacy 'client' → 'guest' (per Unit 2c) before role-gating.
   const effectiveRole = normalizeRole(profile.role)
-  const visibleItems = NAV_ITEMS.filter((item) =>
-    (item.roles as readonly string[]).includes(effectiveRole)
-  )
+  const visibleItems = visibleNavItems(effectiveRole, {
+    aiConsoleByok: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true',
+  })
+  const informationItems = visibleInformationNavItems(effectiveRole)
+  const informationActive = pathname.startsWith('/information')
 
   const userInitial = (
     user.name?.[0] ?? user.email?.[0] ?? 'U'
@@ -151,13 +157,12 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
 
       {/* Nav links */}
       <div className="relative flex flex-1 flex-col gap-0.5 w-full px-2">
-        {visibleItems.map(({ href, label, icon: Icon }, index) => {
-          const isActive = href === '/dashboard'
-            ? pathname === '/dashboard' || pathname === '/'
-            : pathname.startsWith(href)
+        {visibleItems.map(({ key, href, label }, index) => {
+          const Icon = NAV_ICONS[key]
+          const isActive = isNavItemActive(key, href, pathname)
           return (
             <motion.div
-              key={href}
+              key={key}
               whileHover={reducedMotion ? {} : { x: 2 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               className="relative w-full"
@@ -204,8 +209,96 @@ export function AppShellRail({ user, profile }: AppShellRailProps) {
         })}
       </div>
 
-      {/* Avatar + sign-out */}
-      <div className="w-full px-2">
+      {/* Bottom navigation — Information stays immediately above the user menu. */}
+      <div className="w-full space-y-1 px-2">
+        {informationItems.length > 0 && (
+          <div className="w-full">
+            <div className="relative w-full">
+              {informationActive && (
+                <div
+                  className="absolute inset-0 rounded-lg"
+                  style={{
+                    background: 'rgba(212,175,55,0.14)',
+                    boxShadow: 'inset 0 0 0 1px rgba(212,175,55,0.28), inset 0 0 24px rgba(212,175,55,0.08)',
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                aria-label="Information"
+                aria-expanded={expanded && informationOpen}
+                aria-controls="app-shell-information-menu"
+                onClick={() => setInformationOpen((open) => !open)}
+                className={cn(
+                  'relative flex h-10 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors',
+                  informationActive
+                    ? 'text-[var(--brand-gold)]'
+                    : 'text-[rgba(212,175,55,0.50)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
+                )}
+              >
+                <Info className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+                <AnimatePresence>
+                  {expanded && (
+                    <motion.span
+                      key="information-label"
+                      initial={reducedMotion ? {} : { opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={reducedMotion ? {} : { opacity: 0, x: -6 }}
+                      transition={labelTransition}
+                      className="flex min-w-0 flex-1 items-center justify-between"
+                    >
+                      <span className="truncate tracking-wide">Information</span>
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={cn(
+                          'h-3.5 w-3.5 shrink-0 transition-transform',
+                          informationOpen && 'rotate-180'
+                        )}
+                      />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {expanded && informationOpen && (
+                <motion.div
+                  id="app-shell-information-menu"
+                  role="group"
+                  aria-label="Information menu"
+                  initial={reducedMotion ? {} : { height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={reducedMotion ? {} : { height: 0, opacity: 0 }}
+                  transition={reducedMotion ? { duration: 0 } : { duration: 0.16 }}
+                  className="overflow-hidden pb-1 pl-3 pt-0.5"
+                >
+                  {informationItems.map(({ href, label }) => {
+                    const isActive = pathname.startsWith(href)
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        aria-label={label}
+                        className={cn(
+                          'flex h-9 w-full items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors',
+                          isActive
+                            ? 'bg-[rgba(212,175,55,0.10)] text-[var(--brand-gold)]'
+                            : 'text-[rgba(212,175,55,0.48)] hover:bg-[rgba(212,175,55,0.07)] hover:text-[var(--brand-gold)]'
+                        )}
+                      >
+                        <Map className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                        <span className="truncate">{label}</span>
+                      </Link>
+                    )
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Avatar + sign-out */}
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label="User menu"

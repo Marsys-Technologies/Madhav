@@ -11,6 +11,20 @@ const migrationPath = path.resolve(
   'supabase/migrations/611_nirmana_l0_static_tables_integrity_contract.sql',
 )
 const migration = fs.existsSync(migrationPath) ? fs.readFileSync(migrationPath, 'utf8') : ''
+
+// L0 repair item 5 changed bg_vedha_malefic_scale's effect_description on all five
+// rows (each row now disambiguates the PG353 battle-context scale from Adh. XXVI's
+// other PG349 general-transit scale). That is exactly the "count-preserving semantic
+// mutation" migration 611's contract is built to refuse — so the governed reseal,
+// migration 1077, re-pins the detector to the new reviewed content. The DB tests
+// below apply 611 THEN 1077, which is the real deployed order; asserting against 611
+// alone would assert against a contract production no longer carries.
+const resealPath = path.resolve(
+  process.cwd(),
+  'supabase/migrations/1077_nirmana_l0_vedha_malefic_scale_integrity_reseal.sql',
+)
+const reseal = fs.existsSync(resealPath) ? fs.readFileSync(resealPath, 'utf8') : ''
+const RESEALED_VEDHA_DIGEST = '2c226c8f29553f1b9363bd2721916115ccf67400342a03cbdff199d5a6f3e1ea'
 const TEST_DATABASE_URL = process.env.NIRMANA_L0_STATIC_INTEGRITY_TEST_DATABASE_URL
 
 const CONTRACTS = [
@@ -49,6 +63,19 @@ describe('migration 611 — closed L0 static-table integrity contracts', () => {
       })
       expect(migration).toContain(contract.digest)
     }
+  })
+
+  it('carries a governed reseal for the content L0 repair item 5 changed', () => {
+    // 611 stays immutable and keeps pinning the PRE-repair digest; 1077 supersedes
+    // it. Both facts are asserted so a future edit to either file is caught.
+    expect(reseal).not.toBe('')
+    expect(reseal).toContain('migration 1077 refuses')
+    expect(reseal).toContain(RESEALED_VEDHA_DIGEST)
+    // the superseded digest is named in 1077's guard, so the reseal can only apply
+    // on top of exactly 611's contract and never onto an unknown one
+    const supersededDigest = CONTRACTS.find(c => c.assetId === 'bg_vedha_malefic_scale')!.digest
+    expect(reseal).toContain(supersededDigest)
+    expect(migration).not.toContain(RESEALED_VEDHA_DIGEST)
   })
 })
 
@@ -144,6 +171,18 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 611 — real PostgreSQL behavior'
     try {
       await client.query(migration)
       await client.query(migration)
+      // 611 alone now REFUSES the writer's output for bg_vedha_malefic_scale — that
+      // is the contract working, not a regression: L0 repair item 5 changed the
+      // content it pins. Asserted explicitly so the reseal below cannot mask a
+      // genuine future drift in the other two tables.
+      expect(await detectors(client)).toEqual({
+        bg_kota_chakra_rings: true,
+        bg_phaladeepika_latta: true,
+        bg_vedha_malefic_scale: false,
+      })
+      // applied exactly once: 1077's guard pins the PREDECESSOR contract by value,
+      // so a second application correctly refuses (verified against production).
+      await client.query(reseal)
       expect(await detectors(client)).toEqual({
         bg_kota_chakra_rings: true,
         bg_phaladeepika_latta: true,
@@ -158,6 +197,9 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 611 — real PostgreSQL behavior'
     const client = await connectPrepared()
     try {
       await client.query(migration)
+      // reseal first: without it bg_vedha_malefic_scale's detector is already false
+      // for a legitimate reason, and this test would pass vacuously for that table.
+      await client.query(reseal)
       const corruptions = [
         ["UPDATE bg_kota_chakra_rings SET ring_name='drift' WHERE ring_position=1", 'bg_kota_chakra_rings'],
         ["UPDATE bg_vedha_malefic_scale SET effect_grade='drift' WHERE malefic_count=1", 'bg_vedha_malefic_scale'],
@@ -180,6 +222,9 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 611 — real PostgreSQL behavior'
     const client = await connectPrepared()
     try {
       await client.query(migration)
+      // same reason as above: the malefic-scale half of this test is vacuous
+      // without the reseal, since its detector is already legitimately false.
+      await client.query(reseal)
       await client.query('BEGIN')
       await client.query('DELETE FROM bg_kota_chakra_rings WHERE ring_position=27')
       expect((await detectors(client)).bg_kota_chakra_rings).toBe(false)

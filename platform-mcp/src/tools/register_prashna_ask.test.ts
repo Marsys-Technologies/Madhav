@@ -417,6 +417,54 @@ describe('registerPrashnaAskTool', () => {
     expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error).toContain('planner fault')
   })
 
+  // Jātaka Phase-A2: the platform route refuses a chart that is not Ready with a
+  // stable, code-prefixed message. The durable job keeps that code; only an
+  // actively progressing build (retryable) keeps the job recoverable.
+  it('a not-Ready chart ends the durable job failed with the stable CHART_RECOMPUTE_REQUIRED code', async () => {
+    vi.spyOn(bridge, 'callPrashnaAskEngine').mockResolvedValue({
+      ok: false,
+      trace_id: '',
+      error: {
+        class: 'chart_not_ready',
+        message: 'CHART_RECOMPUTE_REQUIRED: The latest build of this chart failed.',
+        retryable: false,
+      },
+    })
+    const { server, getHandler } = makeMockServer()
+    registerPrashnaAskTool(server, makePrincipal(), 'full')
+    const result = await getHandler()(
+      { chart_id: CHART_ID, question: 'q', response_format: 'standard' }, makeExtra(),
+    ) as { structuredContent: { job_id: string } }
+    const jobId = result.structuredContent.job_id
+    await vi.waitFor(async () => {
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('failed')
+    })
+    expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error).toMatch(/^CHART_RECOMPUTE_REQUIRED: /)
+  })
+
+  it('a chart that is still building keeps the durable job recoverable rather than failing it', async () => {
+    const engine = vi.spyOn(bridge, 'callPrashnaAskEngine').mockResolvedValue({
+      ok: false,
+      trace_id: '',
+      error: {
+        class: 'chart_not_ready',
+        message: 'CHART_RECOMPUTE_REQUIRED: This chart is being recomputed.',
+        retryable: true,
+      },
+    })
+    const { server, getHandler } = makeMockServer()
+    registerPrashnaAskTool(server, makePrincipal(), 'full')
+    const result = await getHandler()(
+      { chart_id: CHART_ID, question: 'q', response_format: 'standard' }, makeExtra(),
+    ) as { structuredContent: { job_id: string } }
+    const jobId = result.structuredContent.job_id
+    await vi.waitFor(() => expect(engine).toHaveBeenCalledTimes(1))
+    await vi.waitFor(async () => {
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('running')
+    })
+    expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).not.toBe('failed')
+  })
+
   it('retries a bridge-generated ambiguous failure only after lease expiry and then succeeds', async () => {
     const engine = vi.spyOn(bridge, 'callPrashnaAskEngine')
       .mockResolvedValueOnce({

@@ -1,0 +1,18 @@
+=== POST-SEED TRIGGER STATE (tgenabled: O=enabled/origin, D=disabled) ===
+O|126
+=== session_replication_role ===
+origin
+
+=== LIVE FIRING PROOF (post-seed, guards must REFUSE) ===
+-- L1 guard on chart_facts:
+ERROR:  protected L1 INSERT requires direct data_plane_builder authentication
+CONTEXT:  PL/pgSQL function l1_data_plane_guard_active_mutation() line 15 at RAISE
+-- L2 guard on bodha_msr_signals:
+DELETE 0
+ERROR:  protected L2 INSERT requires direct data_plane_builder authentication
+CONTEXT:  PL/pgSQL function l2_data_plane_guard_active_mutation() line 16 at RAISE
+-- build_run_manifest guard:
+build_runs
+
+=== KALA_* TRIGGER COUNT (expected 0 — L3 write path carries no guard layer) ===
+0

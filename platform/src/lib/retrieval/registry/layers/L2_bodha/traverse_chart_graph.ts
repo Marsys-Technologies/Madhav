@@ -95,6 +95,7 @@ import {
   AddressResolutionError,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 // ── Mode type ─────────────────────────────────────────────────────────────────
 
@@ -148,6 +149,7 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
   required_inputs: ['chart_id'],
 
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id: {
       type: 'string',
       description: 'UUID of the chart (<chart_uuid>) to traverse. Required.',
@@ -301,7 +303,24 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
       }
     }
 
+    // Served-generation fence: honored by `neighbors` and `convergence` (the seedless fallback of
+    // `neighbors`). The other modes do not implement it, so they must refuse a supplied fence by
+    // name rather than accept it and silently read unfenced rows.
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('traverse_chart_graph', chart_id)
+    const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     const mode: TraversalMode = (args['mode'] as TraversalMode) ?? 'neighbors'
+    if (buildIds && mode !== 'neighbors' && mode !== 'convergence') {
+      return {
+        content: {
+          error: `traverse_chart_graph: mode "${mode}" does not support a build_id fence; refusing rather than reading unfenced rows.`,
+          code: 'build_fence_unsupported_for_mode',
+          chart_id,
+          mode,
+        },
+        is_error: true,
+      }
+    }
     const ayanamsha_id = args['ayanamsha_id'] as string | undefined
     const snapshot_type = args['snapshot_type'] as string | undefined
     const edge_types = args['edge_types'] as string[] | undefined
@@ -316,13 +335,13 @@ export const traverseChartGraphCapability: CapabilityDescriptor = {
     try {
       switch (mode) {
         case 'neighbors':
-          return await _neighborsMode(chart_id, args, ayanamsha_id, snapshot_type, edge_types, valence_filter, cross_subsystem_only, depth, direction, min_strength)
+          return await _neighborsMode(chart_id, args, ayanamsha_id, snapshot_type, edge_types, valence_filter, cross_subsystem_only, depth, direction, min_strength, buildIds)
 
         case 'paths':
           return await _pathsMode(chart_id, args, ayanamsha_id, snapshot_type, direction, min_strength)
 
         case 'convergence':
-          return await _convergenceMode(chart_id, ayanamsha_id, snapshot_type, top_k_hubs)
+          return await _convergenceMode(chart_id, ayanamsha_id, snapshot_type, top_k_hubs, buildIds)
 
         case 'contradictions':
           return await _contradictionsMode(chart_id, ayanamsha_id)
@@ -357,9 +376,13 @@ async function _resolveAboutToNodeIds(
   chartId: string,
   about: AddressExpression | string,
   ayanamshaId: string | undefined,
-  snapshotType: string | undefined
+  snapshotType: string | undefined,
+  buildIds: readonly string[] | null = null
 ): Promise<{ node_ids: string[]; chain: string[]; entities: ResolvedEntity[] }> {
-  const resolved = await resolveAddress(chartId, about, { ayanamsha_id: ayanamshaId ?? DEFAULT_AYANAMSHA })
+  const resolved = await resolveAddress(chartId, about, {
+    ayanamsha_id: ayanamshaId ?? DEFAULT_AYANAMSHA,
+    ...(buildIds ? { build_id: buildIds } : {}),
+  })
   const nodeIds: string[] = []
   for (const entity of resolved.entities) {
     let nodeType: string
@@ -388,7 +411,7 @@ async function _resolveAboutToNodeIds(
       throw new AddressResolutionError(`Cannot map resolved entity kind "${(entity as { kind: string }).kind}" to a bodha_cgm_nodes row.`)
     }
 
-    const { conds, params } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
+    const { conds, params } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType, buildIds)
     let pIdx = params.length + 1
     conds.push(`node_type = $${pIdx++}`)
     params.push(nodeType)
@@ -432,7 +455,8 @@ async function _neighborsMode(
   crossSubsystemOnly: boolean,
   depth: number,
   direction: TraversalDirection,
-  minStrength: number | undefined
+  minStrength: number | undefined,
+  buildIds: readonly string[] | null = null
 ): Promise<ToolResult> {
   const rawSeeds = (args['seed_node_ids'] as string[]) ?? []
   const semanticQuery = args['semantic_query'] as string | undefined
@@ -456,7 +480,7 @@ async function _neighborsMode(
     const chains: string[] = []
     const resolvedIds: string[] = []
     for (const a of rawAbout) {
-      const { node_ids, chain } = await _resolveAboutToNodeIds(chartId, _parseAbout(a), ayanamshaId, snapshotType)
+      const { node_ids, chain } = await _resolveAboutToNodeIds(chartId, _parseAbout(a), ayanamshaId, snapshotType, buildIds)
       resolvedIds.push(...node_ids)
       chains.push(...chain)
     }
@@ -470,7 +494,7 @@ async function _neighborsMode(
     // Without the Vertex SDK here, we surface the query as a fallback note
     // and return all hub nodes as seeds instead.
     // Full semantic-search path goes via bo_samskara/python-sidecar.
-    const hubSql = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
+    const hubSql = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType, buildIds)
     const hubRes = await query<{ node_id: string }>(
       `SELECT node_id FROM bodha_cgm_nodes
        WHERE ${hubSql.conds.join(' AND ')}
@@ -484,11 +508,13 @@ async function _neighborsMode(
 
   if (seedNodeIds.length === 0) {
     // No seeds + no semantic query → return top-hub summary
-    return await _convergenceMode(chartId, ayanamshaId, snapshotType, 10)
+    return await _convergenceMode(chartId, ayanamshaId, snapshotType, 10, buildIds)
   }
 
   // BFS via recursive CTE (up to `depth` hops)
-  const { conds: baseNodeConds, params: baseParams } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
+  const { conds: baseNodeConds, params: baseParams } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType, buildIds)
+  // The fence (when present) is the helper's last param, so its placeholder is params.length.
+  const buildParamIdx = buildIds ? baseParams.length : 0
   let pIdx = baseParams.length + 1
 
   // Parameterize the seed list
@@ -505,6 +531,9 @@ async function _neighborsMode(
   if (snapshotType) {
     // Already in node conditions; add for edge too
     edgeFilterClauses.push(`e.snapshot_type = $${ayanamshaId ? 3 : 2}`)
+  }
+  if (buildIds) {
+    edgeFilterClauses.push(`e.build_id = ANY($${buildParamIdx}::uuid[])`)
   }
   if (valenceFilter) {
     edgeFilterClauses.push(`e.valence = $${pIdx++}`)
@@ -580,6 +609,7 @@ async function _neighborsMode(
       n.present_in_traditions_array
     FROM bodha_cgm_nodes n
     JOIN visited v ON n.node_id = v.node_id
+    ${buildIds ? `WHERE n.build_id = ANY($${buildParamIdx}::uuid[])` : ''}
     ORDER BY n.pagerank_score DESC NULLS LAST
   `
 
@@ -588,7 +618,7 @@ async function _neighborsMode(
 
   // Fetch edges between visited nodes
   const edges = visitedIds.length > 0
-    ? await _fetchEdgesForNodes(chartId, visitedIds, ayanamshaId, snapshotType, edgeTypes, valenceFilter, crossSubsystemOnly, minStrength)
+    ? await _fetchEdgesForNodes(chartId, visitedIds, ayanamshaId, snapshotType, edgeTypes, valenceFilter, crossSubsystemOnly, minStrength, buildIds)
     : []
 
   return {
@@ -798,9 +828,10 @@ async function _convergenceMode(
   chartId: string,
   ayanamshaId: string | undefined,
   snapshotType: string | undefined,
-  topK: number
+  topK: number,
+  buildIds: readonly string[] | null = null
 ): Promise<ToolResult> {
-  const { conds, params } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
+  const { conds, params } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType, buildIds)
   let pIdx = params.length + 1
 
   const kPh = `$${pIdx++}`
@@ -841,7 +872,7 @@ async function _convergenceMode(
   // Subgraph summary
   let topologyRow: Record<string, unknown> | null = null
   {
-    const { conds: tc, params: tp } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType)
+    const { conds: tc, params: tp } = _buildNodeBaseConds(chartId, ayanamshaId, snapshotType, buildIds)
     const topoRes = await query<Record<string, unknown>>(
       `SELECT total_nodes, total_edges, top_5_hub_nodes_jsonb, top_5_central_nodes_jsonb,
               graph_density, hub_dominance_score, fragmentation_score, dispositor_cycle_jsonb
@@ -854,7 +885,7 @@ async function _convergenceMode(
   }
 
   const edges = hubIds.length > 0
-    ? await _fetchEdgesForNodes(chartId, hubIds, ayanamshaId, snapshotType)
+    ? await _fetchEdgesForNodes(chartId, hubIds, ayanamshaId, snapshotType, undefined, undefined, undefined, undefined, buildIds)
     : []
 
   return {
@@ -1078,7 +1109,8 @@ async function _subGraphsMode(
 function _buildNodeBaseConds(
   chartId: string,
   ayanamshaId: string | undefined,
-  snapshotType: string | undefined
+  snapshotType: string | undefined,
+  buildIds: readonly string[] | null = null
 ): { conds: string[]; params: unknown[] } {
   const conds: string[] = ['chart_id = $1']
   const params: unknown[] = [chartId]
@@ -1091,6 +1123,12 @@ function _buildNodeBaseConds(
   if (snapshotType) {
     conds.push(`snapshot_type = $${pIdx++}`)
     params.push(snapshotType)
+  }
+  // Served-generation fence, appended LAST so the fixed $1/$2/$3 positions callers reuse for the
+  // edge join stay valid; its own index is params.length after this helper returns.
+  if (buildIds) {
+    conds.push(`build_id = ANY($${pIdx++}::uuid[])`)
+    params.push(buildIds)
   }
 
   return { conds, params }
@@ -1108,13 +1146,18 @@ async function _fetchEdgesForNodes(
   edgeTypes?: string[],
   valenceFilter?: string,
   crossSubsystemOnly?: boolean,
-  minStrength?: number
+  minStrength?: number,
+  buildIds: readonly string[] | null = null
 ): Promise<Record<string, unknown>[]> {
   if (nodeIds.length === 0) return []
 
   const conds: string[] = ['e.chart_id = $1']
   const params: unknown[] = [chartId]
   let pIdx = 2
+  if (buildIds) {
+    conds.push(`e.build_id = ANY($${pIdx++}::uuid[])`)
+    params.push(buildIds)
+  }
 
   if (ayanamshaId) {
     conds.push(`e.ayanamsha_id = $${pIdx++}`)

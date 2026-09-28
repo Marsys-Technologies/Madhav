@@ -126,6 +126,50 @@ describe('Purna real three-door collector', () => {
     expect(row.observedRevision).toBe('candidate-a')
     expect(row.observedChartId).toBe(base.chartId)
   })
+  // The Portal emits accountability as subject-keyed `grade` events whose `detail` is a JSON
+  // string (receipt_stage.ts). A flat merge let each later grade overwrite the envelope, and the
+  // collector looked only for an object at `response_accountability` (RC-6.5).
+  function portalGradeStream(options: { envelope?: unknown; rawDetail?: string; contractGrade?: string }) {
+    const frames = [
+      { type: 'turn.open', chart_id: base.chartId },
+      ...(options.contractGrade ? [{ type: 'grade', subject: 'inquiry_contract', grade: options.contractGrade, detail: '5/5 required obligations dispositioned' }] : []),
+      ...(options.envelope !== undefined || options.rawDetail !== undefined
+        ? [{ type: 'grade', subject: 'response_accountability', grade: 'COMPLETE', detail: options.rawDetail ?? JSON.stringify(options.envelope) }]
+        : []),
+      { type: 'grade', subject: 'inquiry_door_parity', grade: 'MATCH', detail: JSON.stringify({ status: 'MATCH' }) },
+      { type: 'block.commit', text: 'Grounded Portal answer.' },
+      { type: 'turn.close', status: 'ok' },
+    ]
+    return new ReadableStream<Uint8Array>({ start(controller) {
+      controller.enqueue(new TextEncoder().encode(frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join('')))
+      controller.close()
+    } })
+  }
+  const portal = (stream: ReadableStream<Uint8Array>) => collectPortalCase({
+    ...base, endpoint: 'https://example.test', sessionCookie: 'session',
+    fetchImpl: async () => new Response(stream, { headers: { 'x-madhav-source-revision': 'candidate-a' } }),
+  })
+
+  it('reads the Portal accountability envelope from its grade event despite later grades', async () => {
+    const envelope = { accountability_version: 'inquiry-response-accountability-v1', response_coverage_receipt: { status: 'COMPLETE' } }
+    const row = await portal(portalGradeStream({ envelope, contractGrade: 'COMPLETE' }))
+    expect(row.responseAccountability).toEqual(envelope)
+    expect(row.answer).toBe('Grounded Portal answer.')
+    expect(row.terminal).toBe('complete')
+  })
+
+  it('never reads transport-level turn.close ok as inquiry completion', async () => {
+    const incomplete = await portal(portalGradeStream({ envelope: { response_coverage_receipt: { status: 'INCOMPLETE_RESUMABLE' } }, contractGrade: 'INCOMPLETE' }))
+    expect(incomplete.terminal).toBe('incomplete')
+    const unreported = await portal(portalGradeStream({ envelope: { response_coverage_receipt: { status: 'COMPLETE' } } }))
+    expect(unreported.terminal).toBe('incomplete')
+  })
+
+  it('fails closed on an unparseable accountability envelope', async () => {
+    const row = await portal(portalGradeStream({ rawDetail: '{not json', contractGrade: 'COMPLETE' }))
+    expect(row.responseAccountability).toBeNull()
+  })
+
   it('turns a stalled Portal connection into an explicit incomplete receipt', async () => {
     const fetchImpl: typeof fetch = async (_input, init) => await new Promise<Response>((_resolve, reject) => {
       init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })

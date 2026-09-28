@@ -32,6 +32,13 @@ coordination lease that produced it.
 | CCD-009 | 2026-08-20 | Claude Code | ACTIVE | Record the real-time owner authorization for a Claude-Code-driven PARIŚEṢA V4 Phase 0 truth-cut and bounded repair-wave session, closing the gap CCD-007 (Codex-scoped) and CCD-008 (close-mechanics-only, explicitly not exercising CCD-007) left open; no merge/deploy/data/infra exception granted. |
 | CCD-010 | 2026-09-12 | Codex | ACTIVE | Adopt Madhav Product Definition v3.0 as the final target for subsequent product planning; authorize its bounded documentation registration/local commit and one-time actual managed-profile exception. No application, campaign, data, deployment, product push or merge authority. |
 | CCD-011 | 2026-09-14 | Codex | ACTIVE | Record the native-delegated MADHAV PŪRṆA ANVEṢAṆA source campaign: inspect, design, implement, test, document, commit, push and open focused/stacked PRs in isolated worktrees, while prohibiting merge, deployment, shared/production migration application, production mutation, credentials/infrastructure, retirement, doctrine ratification and unsupported acceptance claims. |
+| CCD-012 | 2026-09-15 | Codex | ACTIVE | Supersede CCD-011's source-only ceiling for the governed Pūrṇa live-release wrap-up while retaining exact-candidate, safety, serialization, evidence and no-fabrication gates. |
+| CCD-013 | 2026-09-27 | Codex → Claude Code | ACTIVE | Authorize the isolated Jātaka chart-workspace workstream to implement and commit plan Tasks 1–8 locally under an exact file allowlist, reserve cross-cutting migration 1120 through JATAKA-REQ-01, and keep browser/full-recompute acceptance blocked until a non-production Firebase project, disposable local PostgreSQL database and approved L0 seed/snapshot exist. |
+| CCD-014 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A integrity-hardening follow-up (correction-history write doors, context staleness or stop-and-report, reading-door readiness parity, safe birthplace edits, persistence-boundary recheck) under the hardening addendum; reserve cross-cutting migration 1121 through JATAKA-REQ-02; Task 9 remains blocked. |
+| CCD-015 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the narrow Jātaka Phase-A2 integrity session (chart-context staleness end to end or stop-and-report per consumer, `prashna_ask` and `chat/build` reading-door gates, terminal/persistence/retry/stale/serving-impact correctness, migration 1121 security disposition) under the Phase-A2 addendum; reserve cross-cutting migration 1122 through JATAKA-REQ-03; Task 9 remains blocked. |
+| CCD-016 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize the Jātaka Phase-A3 source-integrity pass (chart-context staleness for brahma_mimamsa_prediction_ledger, brahma_prospective_ledger, mimamsa_calibration_snapshot; a reviewed technical head with independent review) and two separately governed source-evidence refreshes at that head (a narrow Nirmāṇa L5 successor re-pin; a Pūrṇa Beyond-Ācārya v7 successor preserving v6) under the Phase-A3 addendum; reserve cross-cutting migration 1123 through JATAKA-REQ-04; Task 9 remains blocked. |
+| CCD-017 | 2026-09-27 | Native → Claude Code | ACTIVE | Authorize a separately governed follow-up (Phase-A3 closed, not reopened) diagnosing and correcting the Nirmāṇa L0/L5 receipt-checker cross-layer coupling responsible for the two `nirmana-analysis-receipts.test.ts` failures the Phase-A3 close reported and did not fix; correction preferred over refreshing `L0_FROZEN_PINS`; no L0 evidence change, no further L5 re-pin unless L5 source identity genuinely changed, no database access, no Task 9. |
+| CCD-018 | 2026-09-27 | Native → Codex | ACTIVE | Authorize a controlled production rollout of the reviewed Jātaka chart-workspace candidate, superseding only the prior Task 9 non-production-environment ceiling: protected integration, recoverable production backup and restore proof, governed additive migrations 1120–1123, exact-revision deployment, and authenticated live acceptance using one newly created disposable test chart with at most one bounded correction/recompute; preserve all safety, isolation, evidence and no-existing-chart-mutation constraints. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -288,3 +295,221 @@ coordination lease that produced it.
 - **Supersession:** CCD-011 is superseded only where its explicit external-action ceiling conflicts
   with this scoped live-release delegation. Its evidence discipline, source history, security
   boundaries and all unrelated decisions remain in force.
+
+## CCD-013 — Jātaka chart-workspace parallel local-execution authority
+
+- **Date/tool/session:** 2026-09-27; Codex governance bridge handing execution to Claude Code;
+  `JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927`.
+- **Authority:** the native explicitly approved the recommended narrow governance amendment,
+  migration-number correction and corrected implementation plan after Claude Code stopped at the
+  active L3 scope, migration partition and safe-local-environment gates.
+- **Decision:** permit local source implementation, tests and commits for Tasks 1–8 of
+  `platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md` only in worktree
+  `/Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav` on branch
+  `codex/jataka-chart-workspace`, subject to the exact allowlist and stop conditions in
+  `briefs/jataka/JATAKA_CHART_WORKSPACE_PARALLEL_EXECUTION_AMENDMENT_v1_0.md`.
+- **Migration:** reserve `1120_jataka_conversation_archive_context.sql` through
+  `JATAKA-REQ-01` on authoritative `origin/campaign-coordination`, after a fresh protected-main and
+  complete open-PR migration sweep found no `1120+` claimant. Recheck immediately before creating
+  the file; the coordination record, not the numeric guard alone, governs the partition.
+- **Environment boundary:** Task 9 and browser/full-recompute acceptance remain blocked until a
+  non-production Firebase Admin credential, workstream-owned disposable local PostgreSQL database,
+  and approved L0 seed/snapshot are available. Do not copy the shared `.env.local`, use production,
+  reuse another session's database, or add a Firebase emulator path without a successor decision.
+- **Ceiling:** no push, PR, merge, deployment, production/shared migration application, database or
+  chart mutation, real-user edit, credential/secret/IAM/infrastructure action, frozen orchestrator
+  change, or foreign campaign/worktree/state mutation. Tasks 1–8 evidence cannot be represented as
+  completed local-browser acceptance.
+- **Coordination:** governance lease
+  `MADHAV-JATAKA-CHART-WORKSPACE-GOVERNANCE-20260927`; migration request `JATAKA-REQ-01`;
+  reservation commit `ed5f52294` on `origin/campaign-coordination`.
+- **Supersession:** none. L3 Kāla, Pūrṇa Anveṣaṇa and all prior CCD decisions remain in force.
+
+## CCD-014 — Jātaka Phase-A integrity-hardening follow-up
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `JATAKA-PHASE-A-HARDENING-20260927`.
+- **Authority:** the native accepted the Tasks 1–8 result as "implemented and mock-tested locally;
+  Task 9 and full browser/recompute acceptance remain blocked" and explicitly authorized a narrow
+  Phase-A integrity-hardening follow-up in the same worktree and branch.
+- **Decision:** permit local source changes, tests and local commits for the five hardening items
+  and the exact file scope in
+  `briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A_HARDENING_ADDENDUM_v1_0.md`. Chart-context staleness
+  proceeds only if every current-query consumer is enforceable inside that scope; otherwise the
+  session stops on that item and reports the exact excluded dependency.
+- **Migration:** reserve `1121_jataka_correction_archive_write_guard.sql` through `JATAKA-REQ-02`
+  (coordination commit `3bd118621`) after a fresh `origin/main` and complete open-PR sweep.
+  Authored only; never applied under this authority.
+- **Ceiling:** unchanged from CCD-013 — no Task 9, browser acceptance, push, PR, merge, deploy,
+  migration application, database access, credential/infrastructure action, `python-sidecar/**`
+  or frozen-contract change, or L3 Kāla / Pūrṇa mutation.
+- **Coordination:** lease `MADHAV-JATAKA-PHASE-A-HARDENING-20260927` on `origin/campaign-coordination`.
+- **Supersession:** none. Extends CCD-013; the parent Jātaka amendment is unchanged.
+
+## CCD-015 — Jātaka Phase-A2 integrity session
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `JATAKA-PHASE-A2-INTEGRITY-20260927`.
+- **Authority:** the native accepted the Phase-A hardening report at `695401d31` ("Items 1, 3, 4
+  and 5 are implemented and mock-tested. Item 2 and two reading doors remain open. Task 9 remains
+  blocked.") and authorized a new, narrowly governed Phase-A2 integrity session.
+- **Decision:** permit local source changes, tests and local commits for the work and exact file
+  scope in `briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A2_INTEGRITY_ADDENDUM_v1_0.md`: chart-context
+  staleness marked in the correction transaction and enforced at every identified current-query
+  consumer (named sidecar, retrieval and Pūrṇa files only — not blanket authority over those
+  trees); the MCP `prashna_ask` and super-admin `chat/build` reading doors; terminal-event,
+  persistence-result, retry, stale-readiness and serving-impact correctness; the migration 1121
+  security disposition. A consumer that needs a frozen or actively leased contract is reported,
+  and item 2 is then not claimed complete.
+- **Migration:** reserve `1122_jataka_chart_context_staleness.sql` through `JATAKA-REQ-03` after a
+  fresh `origin/main` (`6b26f3ff0`, max 1079) and complete open-PR sweep (21 PRs, 22 migration files,
+  max 1090). Authored only; never applied under this authority. 1121 stays unapplied.
+- **Ceiling:** no Task 9, browser acceptance, migration application, database or external-service
+  access, credentials, push, PR, merge, deploy, production data or real-user mutation; frozen
+  `WriterBase`, runner/`asset_runner` transaction contracts, governed `asset_registry` definitions,
+  unrelated writers and L3 Kāla implementation stay excluded.
+- **Coordination:** lease `MADHAV-JATAKA-PHASE-A2-INTEGRITY-20260927` on `origin/campaign-coordination`.
+- **Supersession:** none. Extends CCD-013 and CCD-014; the parent amendment and the Phase-A
+  addendum are unchanged.
+
+## CCD-016 — Jātaka Phase-A3 source-integrity pass and evidence refreshes
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927`.
+- **Authority:** the native accepted the Phase-A2 report at `7673c96b8` as source-local, mock-tested
+  evidence with four explicitly understood governance-artifact failures, and authorized a Phase-A3
+  source-integrity pass followed by two separately governed source-evidence refreshes at one exact
+  reviewed technical head.
+- **Decision:** permit local source changes, tests and local commits for the work and exact file scope
+  in `briefs/jataka/JATAKA_CHART_WORKSPACE_PHASE_A3_SOURCE_INTEGRITY_ADDENDUM_v1_0.md`: chart-context
+  staleness for the three deferred surfaces and their identified current-query consumers (named files
+  only — not blanket sidecar/MCP/retrieval/Pūrṇa/Nirmāṇa authority); establishing one reviewed
+  technical head with an independent fresh-context review; then, ONLY after that head is approved and
+  ONLY under their own narrow decision records, a Nirmāṇa L5 successor re-pin (source-provenance only)
+  and a Pūrṇa Beyond-Ācārya v7 successor (v6 preserved immutable, source-local only, does not reopen or
+  close the Pūrṇa campaign).
+- **Migration:** reserve `1123_jataka_context_staleness_deferred_surfaces.sql` through `JATAKA-REQ-04`
+  after a fresh `origin/main` (`6b26f3ff0`, max 1079) and complete open-PR sweep (21 PRs, max 1090).
+  Authored only; never applied under this authority. 1120, 1121 and 1122 stay unapplied.
+- **Ceiling:** no Task 9, browser acceptance, migration application, database or external-service
+  access, credentials, push, PR, merge, deploy, production data, real-user mutation, or chart rebuild;
+  no empirical/production acceptance claim; the Nirmāṇa re-pin is source-provenance only, never data/
+  value acceptance; the Pūrṇa v7 successor never reopens/closes that campaign.
+- **Coordination:** lease `MADHAV-JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927` on
+  `origin/campaign-coordination`.
+- **Supersession:** none. Extends CCD-013/014/015; the parent amendment and the Phase-A/Phase-A2
+  addenda are unchanged.
+
+## CCD-017 — Nirmāṇa L0/L5 receipt-checker coupling fix
+
+- **Date/tool/session:** 2026-09-27; Claude Code; `NIRMANA-L0-L5-COUPLING-FIX-20260927`.
+- **Authority:** native message starting from branch `codex/jataka-chart-workspace` at
+  `a97fc8ffb0268954fb4bf8c7fb7e838c4bf6e558` (Phase-A3 closed, not reopened; lease released and
+  remotely verified at `89cda9092`; migration 1123 unapplied; Beyond-Ācārya v7 complete, not
+  revisited; Task 9 blocked), authorizing a separately governed follow-up for the two remaining
+  `nirmana-analysis-receipts.test.ts` failures caused by `L0_FROZEN_PINS`.
+- **Decision:** permit local source changes, tests and local commits for the work and exact file
+  scope in `briefs/nirmana/NIRMANA_L0_L5_RECEIPT_COUPLING_FIX_ADDENDUM_v1_0.md`: diagnosis and
+  correction of the cross-layer coupling that lets a legitimate L5 successor trigger an L0
+  comparison/regeneration path; focused regression tests; necessary narrow generated-code or
+  governance updates. `L0_FROZEN_PINS` stays byte-for-byte unchanged unless evidence proves the
+  constant itself is incorrectly constructed; every historical L0 generation and binding is
+  preserved; genuine L0 or unreviewed-L5 drift must still fail closed.
+- **Migration:** none anticipated; if the investigation proves one necessary, this session stops
+  and reports rather than reserving one under this authority.
+- **Ceiling:** no L0 accepted-membership/hash/generation/receipt/evidence change; no further L5
+  re-pin unless the fix genuinely changes L5 source identity; no weakening/deleting the failing
+  assertions; no hand-edited generated JSON; no database access, migrations, rebuilds,
+  credentials, push, PR, merge, deployment, or production work; no Task 9. If the true fix
+  requires changing ratified L0 evidence rather than correcting cross-layer validation, this
+  session stops and reports without proceeding.
+- **Coordination:** lease `MADHAV-NIRMANA-L0-L5-COUPLING-FIX-20260927` on
+  `origin/campaign-coordination`.
+- **Supersession:** none. Phase-A3 (CCD-016) and its close remain unchanged and are not reopened.
+
+## CCD-018 — Jātaka controlled production rollout authority
+
+- **Date/tool/session:** 2026-09-27; Codex; `JATAKA-CONTROLLED-PROD-ROLLOUT-20260927`.
+- **Authority:** direct native instruction in the continuing Jātaka conversation: use a
+  controlled production rollout instead of creating a separate non-production Firebase and
+  database environment. This is a deployment and bounded live-verification authorization, not a
+  general production or infrastructure mandate.
+- **Decision:** permit the reviewed Jātaka chart-workspace candidate on branch
+  `codex/jataka-chart-workspace` to proceed through fresh source review, full required checks,
+  push, focused pull request, required independent review and repository-protected integration;
+  then through the established production deployment path at one exact accepted revision. Apply
+  additive migrations `1120`–`1123` only through the governed migration runner and only after a
+  current migration-collision sweep plus a fresh recoverable production backup and restore/rollback
+  proof. Run authenticated production acceptance with one newly created and clearly named
+  disposable test chart, including at most one bounded birth-detail correction and recompute.
+- **Evidence gate:** before release, record the exact protected-main candidate, migration inventory,
+  full verification results, backup identifier, restore/rollback proof and deployment mechanism.
+  After release, verify service health, deployed revision, migration state, authorization boundaries,
+  the dashboard-to-workspace flow, name-only edit behavior, correction confirmation, exactly one
+  same-chart recompute, historical-conversation read-only behavior, readiness-gated actions,
+  keyboard/responsive behavior and relevant production logs/database receipts. Local, CI or visible
+  UI evidence alone does not establish production acceptance.
+- **Safety and rollback:** never edit or rebuild an existing important production chart. Do not
+  expose, copy, rotate or persist credentials; do not broaden IAM, networking, database or Firebase
+  configuration. Stop on any backup/restore, migration, authorization, deploy-health, data-isolation
+  or acceptance failure. Application rollback uses the last healthy revision or a reviewed revert;
+  the additive migrations may remain only if backward-compatible and independently healthy. Keep
+  the disposable chart isolated and retain or delete it only according to an explicitly recorded,
+  recoverable disposition.
+- **Coordination:** exclusive production lease
+  `MADHAV-JATAKA-CONTROLLED-PROD-ROLLOUT-20260927`, remotely verified at
+  `origin/campaign-coordination@0812b50f1444127c5057d535b984f3889b68c05c` before any
+  production change.
+- **Prohibitions:** no administrator/ruleset/required-check bypass; no existing-user chart mutation;
+  no broad rebuild; no destructive schema/data operation; no unrelated database repair; no secret,
+  IAM or infrastructure change; no frozen orchestrator or L3 campaign mutation; no claim of
+  success without exact-revision live evidence.
+- **Supersession:** supersedes CCD-013 through CCD-017 only where they prohibit Task 9, production
+  access, push, PR, protected merge, governed migration application and deployment for this exact
+  rollout. Their source-integrity conclusions, file boundaries, migration identities, historical
+  evidence, safety constraints and all unrelated ceilings remain in force.
+
+## CCD-019 — Jātaka protected migration schema-capability exception
+
+- **Date/tool/session:** 2026-09-28; Codex; `JATAKA-CONTROLLED-PROD-ROLLOUT-20260927`.
+- **Authority:** direct native authorization after the protected deploy stopped before service
+  mutation because the ordinary `amjis_app` migration login had `USAGE` but not `CREATE` on the
+  protected `public` schema. This entry registers the exact exception already recorded and closed
+  in the controlled-rollout addendum.
+- **Decision:** permit one reviewed, protected workflow to grant `CREATE ON SCHEMA public` to
+  `amjis_app` only while applying migrations 1120–1123, revoke it on every exit path, and attest
+  the closed privilege state before service deployment. The completed run applied the four
+  migrations and confirmed `amjis_app` retained `USAGE=true`, `CREATE=false`.
+- **Ceiling:** no permanent grant, role membership, credential/IAM change, direct SQL application,
+  emergency override, different migration, unrelated database mutation or reuse of the exception.
+- **Supersession:** none. The exception is exhausted and closed.
+
+## CCD-020 — Jātaka shared-prerequisite repair and blocked-acceptance completion
+
+- **Date/tool/session:** 2026-09-28; Codex; `JATAKA-SHARED-PREREQUISITE-REPAIR-20260928`.
+- **Authority:** direct native instruction in the continuing Jātaka conversation to execute the
+  separately authorized controlled production repair after the rollout's recomputation blocker was
+  explained. This is a bounded repair-and-acceptance authority, not a broad data-plane mandate.
+- **Corrected diagnosis gate:** read-only production evidence must distinguish a current writer
+  failure from stale operational metadata and freshness receipts. Rule 133 and every cited
+  `gochara_resonance_map` row must be preserved. The historical FK error may not be treated as a
+  current failure without reproduction against the deployed writer.
+- **Decision:** permit the smallest tested planner/readiness correction required for healthy
+  service prerequisites; a focused protected PR and exact-revision deploy if source changes are
+  necessary; a fresh recoverable production backup; explicit governed probe/rebuild operations only
+  for the prerequisite identities proven to block the disposable chart; and one rerun of only the
+  previously blocked correction/context-transition acceptance on synthetic chart
+  `a0fa7e08-c758-4167-846b-b38054e5f768`.
+- **Evidence gate:** prove the exact blockers, preserve referenced transit-rule identities, pass
+  focused and full required tests plus independent review, verify backup and rollback readiness,
+  deploy only through repository protection, confirm each repaired prerequisite is ready from live
+  state/receipts, then prove exactly one same-chart recomputation and the remaining Task 9 context
+  transition without cross-chart mutation.
+- **Safety and rollback:** no direct production patch; no deletion, remap or ID churn for rule 133;
+  no broad shared rebuild; no existing important chart edit/rebuild; no secret, IAM, network,
+  Firebase, topology or frozen-orchestrator change. Stop on any unexpected candidate, row-count,
+  identity, citation, service-health, deployment, isolation or acceptance difference. Application
+  rollback uses the last healthy revision; shared-data rollback uses the fresh backup or a separately
+  reviewed forward repair, never destructive ad-hoc SQL.
+- **Coordination:** exclusive lease `MADHAV-JATAKA-BG-TRANSIT-REPAIR-20260928` on
+  `origin/campaign-coordination`, claimed and remotely verified at
+  `fad1e8fbd4e150a65c936626105ecd84893a1464`.
+- **Supersession:** extends CCD-018 only for the separately authorized prerequisite repair and the
+  acceptance items it left blocked. All other CCD-018 ceilings remain in force.

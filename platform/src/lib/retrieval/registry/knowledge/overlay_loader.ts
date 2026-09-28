@@ -1,6 +1,7 @@
 import { query as defaultQuery } from '@/lib/db/client'
 import { compileChartCapabilityOverlay, type ChartCapabilityEvidence } from './overlay'
 import { stableFingerprint } from './stable'
+import { bindingProofKind, isNonAnswerBinding } from './proof_kind'
 import type {
   AvailabilityRequirement,
   BindingAvailabilityContract,
@@ -12,6 +13,7 @@ import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
   ServiceProbeAvailabilityRequirement,
+  SnapshotResourceAvailabilityRequirement,
   SourceQueryAvailabilityRequirement,
   SemanticCapabilityBinding,
   SemanticCapabilityUnit,
@@ -21,6 +23,13 @@ import {
   sourceQueryAvailabilityContractMatches,
 } from './source_query_availability'
 import type { SourceQueryAvailabilityContract } from './source_query_availability'
+import {
+  chartServedGenerationFromRows,
+  servedGenerationIdentity,
+  servedReceiptColumnsSql,
+  servedReceiptJoinsSql,
+  type ChartServedGeneration,
+} from '../generation/served_generation'
 
 interface ReceiptRow {
   asset_id: string
@@ -36,8 +45,15 @@ interface ReceiptRow {
 }
 
 export interface OverlayQueryRow extends ReceiptRow {
-  active_build_id: string | null
-  active_build_status: string | null
+  // Served-generation classification columns (generation/served_generation.ts). Absent on
+  // global receipts and on the anchor row that only carries service-probe evidence.
+  partition_key?: string | null
+  receipt_build_id?: string | null
+  rows_build_id?: string | null
+  spec_active?: boolean | null
+  receipt_run_state?: string | null
+  receipt_asset_present?: boolean | null
+  receipt_disposition?: string | null
   service_probe_evidence?: unknown
 }
 
@@ -50,70 +66,81 @@ function reasons(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 }
 
-function receiptForClaim(claim: ProducerOutputClaim, rows: readonly ReceiptRow[], activeBuildId: string | null): ChartAssetCapabilityReceipt {
-  const matching = rows.filter((row) => row.asset_id === claim.asset_id)
-  // A chart-scoped receipt is evidence only for the selected completed build.
-  // Superseded rows must not poison a newer build, and must not be treated as
-  // current merely because they share chart_id. Global evidence is a fallback
-  // only when this asset has no receipt for the active chart build.
-  const activeChartRows = activeBuildId === null
-    ? []
-    : matching.filter((row) => row.chart_id !== null && row.build_id === activeBuildId)
-  const chosen = activeChartRows.length ? activeChartRows : matching.filter((row) => row.chart_id === null)
-  if (!chosen.length) return {
-    asset_id: claim.asset_id, build_id: null, writer_version: null,
-    output_digest_spec_sha256: claim.output_digest_spec_sha256, state: 'missing', receipt_ref: null,
+function receiptFingerprint(rows: readonly ReceiptRow[]): string {
+  return stableFingerprint(rows.map((row) => ({
+    asset_id: row.asset_id,
+    build_id: row.build_id,
+    receipt_version: row.receipt_version,
+    receipt_state: row.receipt_state,
+    output_digest_spec_sha256: row.output_digest_spec_sha256,
+    freshness_state: row.freshness_state,
+    observed_at: row.observed_at,
+  })))
+}
+
+/**
+ * A chart-scoped receipt is evidence only when the asset's served generation resolves
+ * (generation/served_generation.ts): proven, fresh, active-spec, issued by a completed run,
+ * with a provable writing run. The chart's latest completed run is irrelevant — asset runs
+ * are frequently single-asset, so it rarely wrote the rows being served.
+ */
+function chartReceipt(
+  assetId: string,
+  specSha256: string | null,
+  rows: readonly ReceiptRow[],
+  generation: ChartServedGeneration,
+): ChartAssetCapabilityReceipt | null {
+  const chartRows = rows.filter((row) => row.asset_id === assetId && row.chart_id !== null)
+  if (!chartRows.length) return null
+  const binding = generation.assets[assetId]
+  const specMismatch = chartRows.some((row) => row.output_digest_spec_sha256 !== specSha256)
+  return {
+    asset_id: assetId,
+    build_id: binding?.state === 'resolved' ? binding.rows_build_id : chartRows.map((row) => row.build_id).find(Boolean) ?? null,
+    writer_version: null,
+    output_digest_spec_sha256: specSha256,
+    state: specMismatch ? 'failed' : binding?.state === 'resolved' ? 'passed' : 'partial',
+    receipt_ref: receiptFingerprint(chartRows),
   }
-  const specMismatch = chosen.some((row) => row.output_digest_spec_sha256 !== claim.output_digest_spec_sha256)
+}
+
+function globalReceipt(assetId: string, specSha256: string | null, rows: readonly ReceiptRow[]): ChartAssetCapabilityReceipt {
+  const chosen = rows.filter((row) => row.asset_id === assetId && row.chart_id === null)
+  if (!chosen.length) return {
+    asset_id: assetId, build_id: null, writer_version: null,
+    output_digest_spec_sha256: specSha256, state: 'missing', receipt_ref: null,
+  }
+  const specMismatch = chosen.some((row) => row.output_digest_spec_sha256 !== specSha256)
   const failed = chosen.some((row) => row.receipt_state !== 'proven' || row.freshness_state !== 'fresh')
   return {
-    asset_id: claim.asset_id,
+    asset_id: assetId,
     build_id: chosen.map((row) => row.build_id).find(Boolean) ?? null,
     writer_version: null,
-    output_digest_spec_sha256: claim.output_digest_spec_sha256,
+    output_digest_spec_sha256: specSha256,
     state: specMismatch ? 'failed' : failed ? 'partial' : 'passed',
-    receipt_ref: stableFingerprint(chosen.map((row) => ({
-      asset_id: row.asset_id,
-      build_id: row.build_id,
-      receipt_version: row.receipt_version,
-      receipt_state: row.receipt_state,
-      output_digest_spec_sha256: row.output_digest_spec_sha256,
-      freshness_state: row.freshness_state,
-      observed_at: row.observed_at,
-    }))),
+    receipt_ref: receiptFingerprint(chosen),
   }
+}
+
+function receiptForClaim(
+  claim: ProducerOutputClaim,
+  rows: readonly ReceiptRow[],
+  generation: ChartServedGeneration,
+): ChartAssetCapabilityReceipt {
+  // Global evidence is a fallback only when this asset has no chart receipt at all.
+  return chartReceipt(claim.asset_id, claim.output_digest_spec_sha256, rows, generation)
+    ?? globalReceipt(claim.asset_id, claim.output_digest_spec_sha256, rows)
 }
 
 function receiptForRequirement(
   requirement: ProducerOutputAvailabilityRequirement,
   rows: readonly ReceiptRow[],
-  activeBuildId: string | null,
+  generation: ChartServedGeneration,
 ): ChartAssetCapabilityReceipt {
-  const matching = rows.filter((row) => row.asset_id === requirement.asset_id)
-  const chosen = requirement.scope === 'chart_build'
-    ? activeBuildId === null ? [] : matching.filter((row) => row.chart_id !== null && row.build_id === activeBuildId)
-    : matching.filter((row) => row.chart_id === null)
-  if (!chosen.length) return {
+  if (requirement.scope === 'global') return globalReceipt(requirement.asset_id, requirement.spec_sha256, rows)
+  return chartReceipt(requirement.asset_id, requirement.spec_sha256, rows, generation) ?? {
     asset_id: requirement.asset_id, build_id: null, writer_version: null,
     output_digest_spec_sha256: requirement.spec_sha256, state: 'missing', receipt_ref: null,
-  }
-  const specMismatch = chosen.some((row) => row.output_digest_spec_sha256 !== requirement.spec_sha256)
-  const failed = chosen.some((row) => row.receipt_state !== 'proven' || row.freshness_state !== 'fresh')
-  return {
-    asset_id: requirement.asset_id,
-    build_id: chosen.map((row) => row.build_id).find(Boolean) ?? null,
-    writer_version: null,
-    output_digest_spec_sha256: requirement.spec_sha256,
-    state: specMismatch ? 'failed' : failed ? 'partial' : 'passed',
-    receipt_ref: stableFingerprint(chosen.map((row) => ({
-      asset_id: row.asset_id,
-      build_id: row.build_id,
-      receipt_version: row.receipt_version,
-      receipt_state: row.receipt_state,
-      output_digest_spec_sha256: row.output_digest_spec_sha256,
-      freshness_state: row.freshness_state,
-      observed_at: row.observed_at,
-    }))),
   }
 }
 
@@ -147,6 +174,15 @@ function sourceQueryRequirement(requirement: unknown): requirement is SourceQuer
     && (requirement.scope === 'chart' || requirement.scope === 'global')
     && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
+
+function snapshotResourceRequirement(requirement: unknown): requirement is SnapshotResourceAvailabilityRequirement {
+  return isRecord(requirement)
+    && requirement.kind === 'snapshot_resource'
+    && (requirement.proof === 'registered_in_pinned_snapshot' || requirement.proof === 'index_compiled_from_pinned_catalog')
+    && requirement.scope === 'global'
+    && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
+}
+
 
 function derivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
   return isRecord(requirement) && requirement.kind === 'derived'
@@ -223,11 +259,22 @@ function bindingContractIntegrityGap(
       }
       continue
     }
+    if (snapshotResourceRequirement(requirement)) {
+      if (!isNonAnswerBinding(scu, binding) || contract.requirements.length !== 1) {
+        gap = 'A snapshot-resource proof is valid only as the sole proof of a plan, resource or discovery binding.'
+        break
+      }
+      continue
+    }
     if (usableDerivedRequirement(requirement)) {
       for (const childBindingId of requirement.required_binding_ids) {
         const childTarget = bindingIndex.get(childBindingId)
         if (!childTarget || childTarget.scu.scope !== requirement.scope || scu.scope !== requirement.scope) {
           gap = `Derived availability leg ${childBindingId} has no scope-compatible executable binding.`
+          break
+        }
+        if (isNonAnswerBinding(childTarget.scu, childTarget.binding)) {
+          gap = `Derived availability leg ${childBindingId} is a ${bindingProofKind(childTarget.scu, childTarget.binding)} binding and cannot evidence a composite answer.`
           break
         }
         if (!contractForBinding(childTarget.scu, childTarget.binding)) {
@@ -398,19 +445,20 @@ function sourceQueryEvidenceKey(requirement: SourceQueryAvailabilityRequirement)
 export async function probeSourceQueryAvailabilityContract(
   contract: SourceQueryAvailabilityContract,
   chartId: string,
-  activeBuildId: string | null,
+  servedBuildIds: readonly string[] | null,
   query: OverlayQueryExecutor,
 ): Promise<readonly string[]> {
-  if (contract.parameter_binding === 'chart_and_active_build' && !activeBuildId) {
-    return [`${contract.contract_id} cannot bind the selected chart to an active completed build.`]
+  const served = servedBuildIds?.length ? [...servedBuildIds] : null
+  if (contract.parameter_binding === 'chart_and_served_builds' && !served) {
+    return [`${contract.contract_id} cannot bind the selected chart to a served chart generation.`]
   }
-  if (contract.parameter_binding === 'chart_with_active_build_context' && !activeBuildId) {
-    return [`${contract.contract_id} requires an active completed build context for the selected chart.`]
+  if (contract.parameter_binding === 'chart_with_active_build_context' && !served) {
+    return [`${contract.contract_id} requires a served chart generation for the selected chart.`]
   }
   const params = contract.parameter_binding === 'global'
     ? []
-    : contract.parameter_binding === 'chart_and_active_build'
-      ? [chartId, activeBuildId]
+    : contract.parameter_binding === 'chart_and_served_builds'
+      ? [chartId, served]
       // Global addresses such as concept_locate can still make an explicitly
       // documented chart-backed fallback query.  The public capability remains
       // global; the probe deliberately exercises that fallback with the selected
@@ -434,7 +482,7 @@ export async function probeSourceQueryAvailabilityContract(
 async function sourceQueryEvidenceForSnapshot(
   snapshot: CapabilityKnowledgeSnapshot,
   chartId: string,
-  activeBuildId: string | null,
+  servedBuildIds: readonly string[] | null,
   query: OverlayQueryExecutor,
 ): Promise<SourceQueryEvidence> {
   const requirements = new Map<string, SourceQueryAvailabilityRequirement>()
@@ -450,16 +498,25 @@ async function sourceQueryEvidenceForSnapshot(
       evidence.set(key, ['Source-query availability requirement does not match its registry-owned reviewed query contract.'])
       return
     }
-    evidence.set(key, await probeSourceQueryAvailabilityContract(contract, chartId, activeBuildId, query))
+    evidence.set(key, await probeSourceQueryAvailabilityContract(contract, chartId, servedBuildIds, query))
   }))
   return evidence
 }
 
-function gapsForReceipts(receipts: readonly ChartAssetCapabilityReceipt[], rows: readonly ReceiptRow[]): string[] {
+function gapsForReceipts(
+  receipts: readonly ChartAssetCapabilityReceipt[],
+  rows: readonly ReceiptRow[],
+  generation: ChartServedGeneration,
+): string[] {
   return receipts.flatMap((receipt) => {
     if (receipt.state === 'passed') return []
     const sourceRows = rows.filter((row) => row.asset_id === receipt.asset_id)
-    return [`${receipt.asset_id} availability is ${receipt.state}.`, ...sourceRows.flatMap((row) => [...reasons(row.unknown_reasons), ...reasons(row.freshness_reasons)])]
+    const binding = generation.assets[receipt.asset_id]
+    return [
+      `${receipt.asset_id} availability is ${receipt.state}.`,
+      ...(binding?.state === 'unresolved' ? [`${receipt.asset_id} served generation is unresolved: ${binding.reason}.`] : []),
+      ...sourceRows.flatMap((row) => [...reasons(row.unknown_reasons), ...reasons(row.freshness_reasons)]),
+    ]
   })
 }
 
@@ -533,7 +590,7 @@ function evidenceForBinding(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
   rows: readonly ReceiptRow[],
-  activeBuildId: string | null,
+  generation: ChartServedGeneration,
   probeRows: readonly ServiceProbeEvidenceRow[],
   sourceQueryEvidence: SourceQueryEvidence,
   now: Date,
@@ -569,6 +626,18 @@ function evidenceForBinding(
     receipts: [],
     gaps: ['Duplicate binding availability contracts prevent a safe evidence selection.'],
   }
+  // R3 boundary ("genuine per-mode proof typing"): a binding's own deliberately-dark
+  // disposition must be recognized BEFORE the "SCU has authored contracts elsewhere, so every
+  // binding must have one too" gate below — otherwise a sibling binding's contract (e.g.
+  // sav_bav_gating's) makes THIS binding's honest disposition (e.g. kakshya_windows') look
+  // like an unreviewed omission instead of the disclosed, reviewed gap it actually is.
+  const deliberatelyDarkEarly = !contract ? deliberateDarkDisposition(scu, binding) : null
+  if (deliberatelyDarkEarly) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: [`Binding is deliberately dark: ${deliberatelyDarkEarly.reason}`],
+  }
   if ((hasAuthoredContracts(scu) || requireExplicitContract) && !contract) return {
     binding_id: binding.binding_id,
     passed: false,
@@ -580,9 +649,21 @@ function evidenceForBinding(
     const serviceRequirements = contract.requirements.filter(serviceProbeRequirement)
     const sourceQueryRequirements = contract.requirements.filter(sourceQueryRequirement)
     const derivedRequirements = contract.requirements.filter(usableDerivedRequirement)
+    const snapshotResourceRequirements = contract.requirements.filter(snapshotResourceRequirement)
+    // The snapshot proof is valid only as the sole proof of a non-answer BINDING, and never as
+    // a derived leg of an answer composite (the snapshot compiler rejects both). Scoped to
+    // this binding, not the whole SCU, so a plan/resource/discovery mode can live on an
+    // otherwise chart-scoped SCU (e.g. synergy_pipeline's dry_run leg).
+    const snapshotResourceGaps = snapshotResourceRequirements.length === 0 ? [] : [
+      ...(!isNonAnswerBinding(scu, binding) || contract.requirements.length !== 1 || requireExplicitContract
+        ? ['A snapshot-resource proof is valid only as the sole proof of a plan, resource or discovery binding.'] : []),
+      ...(bindingIndex.get(binding.binding_id)?.binding !== binding
+        ? ['Binding is not uniquely registered and executable in the pinned snapshot.'] : []),
+    ]
     const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement)
-      && !serviceProbeRequirement(requirement) && !sourceQueryRequirement(requirement) && !usableDerivedRequirement(requirement))
-    const receipts = producerRequirements.map((requirement) => receiptForRequirement(requirement, rows, activeBuildId))
+      && !serviceProbeRequirement(requirement) && !sourceQueryRequirement(requirement) && !usableDerivedRequirement(requirement)
+      && !snapshotResourceRequirement(requirement))
+    const receipts = producerRequirements.map((requirement) => receiptForRequirement(requirement, rows, generation))
     const derivedEvidence = derivedRequirements.flatMap((requirement) => requirement.required_binding_ids.map((bindingId) => {
       const target = bindingIndex.get(bindingId)
       if (!target || target.scu.scope !== requirement.scope || scu.scope !== requirement.scope) return {
@@ -592,7 +673,7 @@ function evidenceForBinding(
         gaps: [`Derived availability leg ${bindingId} has no scope-compatible executable binding.`],
       } satisfies BindingEvidence
       return evidenceForBinding(
-        target.scu, target.binding, rows, activeBuildId, probeRows, sourceQueryEvidence, now, bindingIndex, nextVisiting, true,
+        target.scu, target.binding, rows, generation, probeRows, sourceQueryEvidence, now, bindingIndex, nextVisiting, true,
       )
     }))
     const derivedGaps = derivedEvidence.flatMap((evidence) => evidence.gaps.map((gap) =>
@@ -601,15 +682,17 @@ function evidenceForBinding(
     const gaps = [
       ...(contract.requirements.length === 0 ? ['Binding availability contract has no requirements.'] : []),
       ...unsupported.map(() => 'Binding availability contract contains a malformed or unsupported requirement.'),
-      ...gapsForReceipts(receipts, rows),
+      ...gapsForReceipts(receipts, rows, generation),
       ...serviceRequirements.flatMap((requirement) => serviceProbeGaps(requirement, probeRows, now)),
       ...sourceQueryRequirements.flatMap((requirement) => sourceQueryEvidence.get(sourceQueryEvidenceKey(requirement))
         ?? ['Source-query availability evidence was not evaluated.']),
       ...derivedGaps,
+      ...snapshotResourceGaps,
     ]
     return {
       binding_id: binding.binding_id,
-      passed: contract.requirements.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed')
+      passed: contract.requirements.length > 0 && !unsupported.length && snapshotResourceGaps.length === 0
+        && receipts.every((receipt) => receipt.state === 'passed')
         && serviceRequirements.every((requirement) => serviceProbeGaps(requirement, probeRows, now).length === 0)
         && sourceQueryRequirements.every((requirement) => sourceQueryEvidence.get(sourceQueryEvidenceKey(requirement))?.length === 0)
         && derivedEvidence.every((evidence) => evidence.passed),
@@ -634,7 +717,7 @@ function evidenceForBinding(
     gaps: ['Legacy availability fallback is limited to the primary executable binding.'],
   }
   const reviewed = claims.filter((claim) => claim.disposition === 'reviewed_output' && /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))
-  const receipts = reviewed.map((claim) => receiptForClaim(claim, rows, activeBuildId))
+  const receipts = reviewed.map((claim) => receiptForClaim(claim, rows, generation))
   const unsupported = claims.filter((claim) => !reviewed.includes(claim))
   return {
     binding_id: binding.binding_id,
@@ -642,7 +725,7 @@ function evidenceForBinding(
     receipts,
     gaps: [
       ...unsupported.map((claim) => claim.gap_reason ?? `${claim.asset_id} has no reviewed output claim.`),
-      ...gapsForReceipts(receipts, rows),
+      ...gapsForReceipts(receipts, rows, generation),
     ],
   }
 }
@@ -650,6 +733,7 @@ function evidenceForBinding(
 function evidenceForSnapshot(
   snapshot: CapabilityKnowledgeSnapshot,
   rows: readonly ReceiptRow[],
+  generation: ChartServedGeneration,
   build: { build_id: string | null; status: string | null },
   probeRows: readonly ServiceProbeEvidenceRow[],
   sourceQueryEvidence: SourceQueryEvidence,
@@ -669,20 +753,85 @@ function evidenceForSnapshot(
       asset_receipts: [],
     }
     const executableBindings = scu.bindings.filter((binding) => binding.executable)
-    const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(
-      scu, binding, rows, build.build_id, probeRows, sourceQueryEvidence, now, bindingIndex,
-    ))
-    const availableBindingIds = bindingEvidence.filter((evidence) => evidence.passed).map((evidence) => evidence.binding_id)
-    const assetReceipts = bindingEvidence.flatMap((evidence) => evidence.receipts)
-    const allPassed = executableBindings.length > 0 && availableBindingIds.length === executableBindings.length
-    const gaps = bindingEvidence.flatMap((evidence) => evidence.gaps)
-    const hasSourceQueryRequirement = executableBindings.some((binding) =>
+    const bindingEvidence = executableBindings.map((binding) => ({
+      binding,
+      evidence: evidenceForBinding(scu, binding, rows, generation, probeRows, sourceQueryEvidence, now, bindingIndex),
+    }))
+    // R3 boundary ("genuine per-mode proof typing"): TWO independent partitions, not one.
+    //
+    // 1. Mandatory (no `mode_selector`) vs optional mode (`mode_selector` present) — an
+    //    optional mode is an ALTERNATE way to use this capability (e.g. get_av_transit_gating's
+    //    kakshya_windows, selected only by `mode: 'kakshya_windows'`); its own unavailability
+    //    must never affect whether the SCU's mandatory/default binding(s) read as 'available'.
+    //    A non-modal SCU (100% of the pre-existing estate) has zero optional-mode bindings, so
+    //    its state is computed exactly as before this type existed.
+    // 2. Answer vs non-answer (RC-7) — a plan/resource/discovery binding is never admitted as
+    //    answer evidence, whether it is mandatory or an optional mode.
+    const mandatory = bindingEvidence.filter(({ binding }) => (binding.mode_selector?.length ?? 0) === 0)
+    const optionalModes = bindingEvidence.filter(({ binding }) => (binding.mode_selector?.length ?? 0) > 0)
+    const mandatoryAnswer = mandatory.filter(({ binding }) => !isNonAnswerBinding(scu, binding))
+    const mandatoryNonAnswer = mandatory.filter(({ binding }) => isNonAnswerBinding(scu, binding))
+    const optionalAnswer = optionalModes.filter(({ binding }) => !isNonAnswerBinding(scu, binding))
+    const optionalNonAnswer = optionalModes.filter(({ binding }) => isNonAnswerBinding(scu, binding))
+
+    // available_binding_ids lists every PASSED answer binding — mandatory or optional mode —
+    // since a caller that specifically requested an available optional mode must still be able
+    // to find it here; a non-answer binding is never added, whether it passed or not.
+    const availableBindingIds = [...mandatoryAnswer, ...optionalAnswer]
+      .filter(({ evidence }) => evidence.passed)
+      .map(({ evidence }) => evidence.binding_id)
+    const assetReceipts = mandatoryAnswer.flatMap(({ evidence }) => evidence.receipts)
+    const mandatoryAnswerGaps = mandatoryAnswer.flatMap(({ evidence }) => evidence.gaps)
+    // Diagnostic-only: an optional mode's or a non-answer binding's own gaps are reported for
+    // visibility, but — critically — never folded into mandatoryAnswerGaps, so they can never
+    // move `state` away from 'available'.
+    const diagnosticGaps = [
+      ...mandatoryNonAnswer.filter(({ evidence }) => !evidence.passed)
+        .flatMap(({ evidence }) => evidence.gaps.map((gap) => `${evidence.binding_id} (non-answer): ${gap}`)),
+      ...optionalAnswer.filter(({ evidence }) => !evidence.passed)
+        .flatMap(({ evidence }) => evidence.gaps.map((gap) => `${evidence.binding_id} (optional mode): ${gap}`)),
+      ...optionalNonAnswer.filter(({ evidence }) => !evidence.passed)
+        .flatMap(({ evidence }) => evidence.gaps.map((gap) => `${evidence.binding_id} (optional, non-answer mode): ${gap}`)),
+    ]
+    const gaps = [...mandatoryAnswerGaps, ...diagnosticGaps]
+    const hasSourceQueryRequirement = mandatoryAnswer.some(({ binding }) =>
       requirementsForBindingTree(binding.binding_id, bindingIndex).some(sourceQueryRequirement),
     )
+
+    if (mandatoryAnswer.length === 0) {
+      // No mandatory answer binding at all — either every mandatory binding is non-answer (the
+      // whole-SCU RC-7 case), or this SCU has only optional-mode bindings (no plain default).
+      // Either way there is no chart-evidence-bearing default to report as 'available'/'partial'.
+      const allMandatoryNonAnswerPassed = mandatoryNonAnswer.length > 0
+        && mandatoryNonAnswer.every(({ evidence }) => evidence.passed)
+      return {
+        scu_id: scu.scu_id,
+        build_status: build.status,
+        build_id: build.build_id,
+        freshness: null,
+        // Never listed as available: a plan/resource/discovery capability carries no chart
+        // evidence, so no door may admit it for an answer. An optional mode that DID pass as
+        // answer evidence is still listed (availableBindingIds already includes it) even
+        // though the SCU as a whole has no mandatory answer default.
+        available_binding_ids: availableBindingIds,
+        state: allMandatoryNonAnswerPassed && mandatoryNonAnswer.every(({ evidence }) => evidence.gaps.length === 0)
+          ? 'resource_ok' as const
+          : availableBindingIds.length > 0 ? 'partial' as const : 'dark' as const,
+        gaps,
+        asset_receipts: [],
+      }
+    }
+
+    const allMandatoryAnswerPassed = mandatoryAnswer.every(({ evidence }) => evidence.passed)
     const hasPartialReceipt = assetReceipts.some((receipt) => receipt.state === 'partial')
     const hasFailedReceipt = assetReceipts.some((receipt) => receipt.state === 'failed')
-    const state = availableBindingIds.length > 0
-      ? allPassed && gaps.length === 0 ? 'available' : 'partial'
+    // A missing/unavailable MANDATORY answer binding still prevents 'available' — the state
+    // computation below reads only mandatoryAnswerGaps/allMandatoryAnswerPassed, never
+    // diagnosticGaps, so an optional mode's own unavailability (whether non-answer or a failed
+    // answer probe) can only ever add a diagnostic gap line, never move state away from
+    // 'available'.
+    const state = allMandatoryAnswerPassed && mandatoryAnswerGaps.length === 0 ? 'available'
+      : mandatoryAnswer.some(({ evidence }) => evidence.passed) ? 'partial'
       : hasFailedReceipt ? 'incompatible' : 'dark'
     return {
       scu_id: scu.scu_id,
@@ -690,10 +839,10 @@ function evidenceForSnapshot(
       build_id: build.build_id,
       // A successful LIMIT 0 source query proves only schema/query
       // reachability. It carries no row timestamp or content-freshness proof.
-      freshness: allPassed ? hasSourceQueryRequirement ? 'unknown' : 'fresh' : hasPartialReceipt ? 'unknown' : null,
+      freshness: allMandatoryAnswerPassed ? hasSourceQueryRequirement ? 'unknown' : 'fresh' : hasPartialReceipt ? 'unknown' : null,
       available_binding_ids: availableBindingIds,
       state,
-      gaps: gaps.length ? gaps : allPassed ? [] : ['No reviewed producer-output receipt is joined to this semantic capability.'],
+      gaps: gaps.length ? gaps : allMandatoryAnswerPassed ? [] : ['No reviewed producer-output receipt is joined to this semantic capability.'],
       asset_receipts: assetReceipts,
     }
   })
@@ -706,18 +855,15 @@ export async function loadChartCapabilityOverlay(
   query: OverlayQueryExecutor = defaultQuery as OverlayQueryExecutor,
   now: Date = new Date(),
 ): Promise<ChartCapabilityOverlay> {
+  // `build_id` on the overlay is the served-generation identity: a stable token that changes
+  // whenever any asset's served binding changes. It is never a single build_runs id.
   let build: { build_id: string | null; status: string | null } = { build_id: null, status: null }
   try {
     const assetIds = assetIdsForSnapshot(snapshot)
     const serviceProbeAssetIds = serviceProbeAssetIdsForSnapshot(snapshot)
+    const aliases = { receipt: 'p', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' }
     const { rows: queryRows } = await query(
-        `WITH latest_build AS (
-           SELECT id AS build_id, state AS status
-             FROM build_runs
-            WHERE chart_id=$2::uuid AND state='completed'
-            ORDER BY ended_at DESC NULLS LAST, id DESC
-            LIMIT 1
-         ), service_probe_evidence AS (
+        `WITH service_probe_evidence AS (
            SELECT event.entity_id AS asset_id, event.source_kind, event.source_ref,
                   event.observed_at::text AS observed_at, event.evidence_payload
              FROM nirmana_evidence.nirmana_elevation_campaign_events event
@@ -725,11 +871,10 @@ export async function loadChartCapabilityOverlay(
               AND event.entity_type = 'asset'
               AND event.entity_id = ANY($3::text[])
          )
-         SELECT latest_build.build_id::text AS active_build_id,
-                latest_build.status AS active_build_status,
-                p.asset_id, p.chart_id::text, p.build_id::text, p.receipt_version,
+         SELECT p.asset_id, p.chart_id::text, p.build_id::text, p.receipt_version,
                 p.receipt_state, p.output_digest_spec_sha256, p.observed_at::text,
                 f.freshness_state, p.unknown_reasons, f.reasons AS freshness_reasons,
+                ${servedReceiptColumnsSql(aliases)},
                 COALESCE((SELECT jsonb_agg(jsonb_build_object(
                   'asset_id', service.asset_id,
                   'source_kind', service.source_kind,
@@ -739,25 +884,28 @@ export async function loadChartCapabilityOverlay(
                 ) ORDER BY service.observed_at DESC)
                   FROM service_probe_evidence service), '[]'::jsonb) AS service_probe_evidence
            FROM (SELECT 1) anchor
-           LEFT JOIN latest_build ON true
+           -- Every chart receipt (the served generation spans all of them), plus global
+           -- receipts for the snapshot's producer assets.
            LEFT JOIN asset_provenance_receipts p
-             ON p.asset_id = ANY($1::text[])
-            AND (
-              (p.chart_id=$2::uuid AND p.build_id=latest_build.build_id)
-              OR p.chart_id IS NULL
-            )
+             ON p.chart_id=$2::uuid
+             OR (p.chart_id IS NULL AND p.asset_id = ANY($1::text[]))
            LEFT JOIN asset_freshness f
              ON f.asset_id=p.asset_id AND f.scope_key=p.scope_key AND f.partition_key=p.partition_key
+           ${servedReceiptJoinsSql(aliases)}
           ORDER BY p.asset_id, (p.chart_id IS NOT NULL) DESC, p.observed_at DESC`,
         [assetIds, chartId, serviceProbeAssetIds],
       )
-    build = { build_id: queryRows[0]?.active_build_id ?? null, status: queryRows[0]?.active_build_status ?? null }
     const rows = queryRows.filter((row): row is OverlayQueryRow & { asset_id: string } => typeof row.asset_id === 'string')
-    const sourceQueryEvidence = await sourceQueryEvidenceForSnapshot(snapshot, chartId, build.build_id, query)
+    // The resolver keeps only this chart's receipts (case-insensitively); global rows drop out.
+    const generation = chartServedGenerationFromRows(chartId, null, rows as unknown as Record<string, unknown>[])
+    const identity = servedGenerationIdentity(generation)
+    build = { build_id: identity, status: identity ? 'served_generation' : null }
+    const sourceQueryEvidence = await sourceQueryEvidenceForSnapshot(snapshot, chartId, generation.served_build_ids, query)
     return compileChartCapabilityOverlay({
       snapshot, chart_id: chartId, build_id: build.build_id,
       code_revision: process.env['K_REVISION'] ?? process.env['GIT_SHA'] ?? null,
-      evidence: evidenceForSnapshot(snapshot, rows, build, serviceProbeRows(queryRows[0]?.service_probe_evidence), sourceQueryEvidence, now),
+      evidence: evidenceForSnapshot(snapshot, rows, generation, build, serviceProbeRows(queryRows[0]?.service_probe_evidence), sourceQueryEvidence, now),
+      served_build_ids: generation.served_build_ids,
     })
   } catch (error) {
     console.error('[capability-overlay] availability evidence unavailable', error)

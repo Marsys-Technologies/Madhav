@@ -1,0 +1,95 @@
+/*
+ * Jātaka chart workspace — scoped visual tokens.
+ *
+ * Borrows Paripraśna's instrument principles (jet-black base, warm ivory ink,
+ * restrained gold family, one-pixel gold hairlines, Cormorant display type,
+ * 12px panels / 6px controls, quiet opacity/transform motion) without applying
+ * Paripraśna's deliberately isolated `.pp-root` shell outside Paripraśna.
+ * Everything here is scoped under `.jw-root`.
+ */
+
+.jw-root {
+  --jw-surface: #000000;
+  --jw-panel: #0a0a0a;
+  --jw-raise: #111010;
+  --jw-ink: #ebe3d2;
+  --jw-ink-dim: rgba(235, 227, 210, 0.64);
+  --jw-gold: #c9a24c;
+  --jw-gold-dim: #a37f37;
+  --jw-rule: rgba(201, 162, 76, 0.25);
+  --jw-rule-strong: rgba(201, 162, 76, 0.5);
+  --jw-tint: rgba(201, 162, 76, 0.06);
+  --jw-danger: #e0826f;
+  --jw-font-serif: var(--font-cormorant), Georgia, serif;
+  --jw-ease: cubic-bezier(0.25, 0.6, 0.3, 1);
+
+  background: var(--jw-surface);
+  color: var(--jw-ink);
+}
+
+.jw-panel {
+  border: 1px solid var(--jw-rule);
+  border-radius: 12px;
+  background: var(--jw-panel);
+}
+
+.jw-eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--jw-gold-dim);
+}
+
+.jw-display {
+  font-family: var(--jw-font-serif);
+  font-weight: 500;
+  line-height: 1.05;
+  color: var(--jw-ink);
+}
+
+.jw-control {
+  border-radius: 6px;
+  transition: opacity 180ms var(--jw-ease), transform 180ms var(--jw-ease), border-color 180ms var(--jw-ease);
+}
+
+.jw-capability {
+  transition: border-color 180ms var(--jw-ease), transform 180ms var(--jw-ease);
+}
+
+.jw-capability:hover {
+  border-color: var(--jw-rule-strong);
+  transform: translateY(-1px);
+}
+
+@media (pointer: coarse) {
+  .jw-root .jw-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jw-root *,
+  .jw-root *::before,
+  .jw-root *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+  .jw-capability:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .jw-root {
+    --jw-rule: rgba(201, 162, 76, 0.6);
+    --jw-rule-strong: rgba(201, 162, 76, 0.85);
+    --jw-ink-dim: rgba(235, 227, 210, 0.88);
+  }
+}
+
+@media (forced-colors: active) {
+  .jw-panel {
+    border-color: CanvasText;
+  }
+}

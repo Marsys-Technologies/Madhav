@@ -30,6 +30,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const KP_CATEGORIES = [
   'cusp_kp_lords',
@@ -101,6 +102,7 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
   ].join(' '),
 
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id:               { type: 'string',  description: 'Chart UUID. Required.', required: true },
     ayanamsha_id:           { type: 'string',  description: `Ayanamsha (default '${DEFAULT_AYANAMSHA}', the KP-canonical one). Others: lahiri_chitrapaksha, raman, true_chitra, surya_siddhanta_classical.` },
     include_graha_kp_lords: { type: 'boolean', description: 'If true, also return the per-graha KP lord chain (graha_kp_lords). Default false.' },
@@ -123,7 +125,11 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-    const build_id = args['build_id'] ? String(args['build_id']) : null
+    // Build fence: one build id or a chart's served build set (generation/served_generation.ts).
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_kp_cusps', chart_id)
+    const build_ids = buildFence.kind === 'resolved' ? buildFence.build_ids : null
+    const build_id = build_ids && build_ids.length === 1 ? build_ids[0]! : build_ids
 
     const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : DEFAULT_AYANAMSHA
     const includeGraha = args['include_graha_kp_lords'] === true || args['include_graha_kp_lords'] === 'true'
@@ -136,12 +142,12 @@ export const getKpCuspsCapability: CapabilityDescriptor = {
              fact_value_text, fact_value_num, fact_value_jsonb
       FROM chart_facts
       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = ANY($3::text[])
-      ${build_id ? 'AND build_id = $4::uuid' : ''}
+      ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}
       ORDER BY fact_category, fact_subject, fact_key`
 
     try {
-      const res = await query<FactRow>(sql, build_id
-        ? [chart_id, ayanamsha_id, categories, build_id]
+      const res = await query<FactRow>(sql, build_ids
+        ? [chart_id, ayanamsha_id, categories, build_ids]
         : [chart_id, ayanamsha_id, categories])
       const rows = res.rows ?? []
 

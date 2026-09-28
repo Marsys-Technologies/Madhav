@@ -14,6 +14,8 @@ const DIGNITY_CATEGORIES = [
   'vargottama_per_varga', 'graha_functional_class_per_ascendant',
 ]
 
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+
 export const getDignityCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_dignity',
   type: 'tool',
@@ -35,6 +37,7 @@ export const getDignityCapability: CapabilityDescriptor = {
     'computed anywhere in this build (see MARSYS_DEFECT_GAP_REGISTER Y-3) — do not infer it from ' +
     'this tool\'s output.',
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
     varga:        { type: 'string', description: 'Filter to one varga (e.g. D1, D9, D10). Omit for all.' },
@@ -71,8 +74,14 @@ export const getDignityCapability: CapabilityDescriptor = {
       const offset     = (args.offset as number) ?? 0
       const categories = (args.categories as string[]) ?? DIGNITY_CATEGORIES
 
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_dignity', chartId)
       const filterParams: unknown[] = [chartId, categories]
       let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
+      if (buildFence.kind === 'resolved') {
+        where += ` AND build_id = ANY($${filterParams.length + 1}::uuid[])`
+        filterParams.push(buildFence.build_ids)
+      }
       if (args.ayanamsha_id) {
         where += ` AND ayanamsha_id = $${filterParams.length + 1}`
         filterParams.push(args.ayanamsha_id as string)

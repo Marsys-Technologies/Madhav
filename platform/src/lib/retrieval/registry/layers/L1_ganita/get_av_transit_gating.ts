@@ -38,6 +38,7 @@
  */
 import type { CapabilityDescriptor, ToolResult } from '../../types'
 import { query } from '@/lib/db/client'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
@@ -216,6 +217,7 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
     ayanamsha_id: { type: 'string', description: "Ayanamsha for the chart_facts lookup (default 'lahiri_chitrapaksha')." },
     mode:         { type: 'string', description: "'sav_bav_gating' (default) or 'kakshya_windows'.", enum: ['sav_bav_gating', 'kakshya_windows'] },
+    build_id: BUILD_FENCE_INPUT,
     // sav_bav_gating facets
     sign_number:  { type: 'number', description: 'sav_bav_gating: filter to one sidereal sign (1=Aries..12=Pisces). Omit for all 12.' },
     house:        { type: 'number', description: 'sav_bav_gating: filter by house number (1-12) instead of sign; resolved via the chart LAGNA sign.' },
@@ -246,6 +248,78 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     empty_reason: true,
   },
 
+  // R3 boundary ("genuine per-mode proof typing"): sav_bav_gating and kakshya_windows are
+  // both answer-type evidence, but only sav_bav_gating is statically provable (the
+  // source-query contract below) — kakshya_windows makes a live BRAHMA daily-ephemeris read
+  // with no registered health-probe asset for that sidecar route, so it is honestly
+  // dispositioned dark rather than either (a) inheriting sav_bav_gating's proof by riding
+  // the same binding, or (b) fabricating a service_probe contract for infrastructure that
+  // does not exist. Authored directly (bypassing auto-derivation, which supports exactly one
+  // binding per descriptor) so the two modes can carry independent availability — content
+  // below matches the fields deriveDeclaration() would have produced for the single-binding
+  // v1 shape, plus the new per-mode structure.
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.get_av_transit_gating',
+    version: 2,
+    label: 'Get Av Transit Gating',
+    description: 'D-3 Kāla Taraṅga Lane T-1: sign-keyed Aṣṭakavarga transit-gating + kakṣyā sub-windows for a chart. mode="sav_bav_gating" (default) serves SAV (samudaya/sarva) and BAV (bhinnashtakavarga, per-graha) bindu counts per sign, each classified damping/ amplifying/neutral against the classical mean (~28.08 bindus/sign) — used to damp or amplify a timing window when a transiting planet crosses that sign. mode= "kakshya_windows" returns dated ~3.75-degree kakṣyā sub-arcs (8 per sign, fixed Saturn->Jupiter->Mars->Sun->Venus->Mercury->Moon->Lagna lordship order) a transiting planet crosses across a date range, each tagged with its kakṣyā lord and entry/exit dates (from BRAHMA daily ephemeris, tropical->sidereal via a documented Lahiri mean-rate approximation — not Swiss-Ephemeris-grade). Duration per kakṣyā window is computed from the ACTUAL transiting planet\'s speed, not a fixed day-count. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.',
+    kind: 'temporal',
+    domains: ['planetary_condition'],
+    concepts: ['condition_evidence', 'get_av_transit_gating', 'planetary_strength', 'qualification_factor'],
+    intents: ['compare', 'verify'],
+    horizons: ['current', 'natal'],
+    scope: 'chart',
+    inputs: ['ayanamsha_id', 'build_id', 'chart_id', 'end_date', 'graha', 'house', 'mode', 'planet', 'sign_number', 'start_date', 'target_sign'],
+    outputs: ['condition_qualifiers', 'evidence_references', 'strength_evidence'],
+    primary_binding_uri: 'marsys://tool/L1/get_av_transit_gating',
+    additional_bindings: [{
+      binding_id: 'registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows',
+      kind: 'registry_capability',
+      relation: 'provides',
+      capability_uri: 'marsys://tool/L1/get_av_transit_gating',
+      input_contract: {
+        chart_id: 'string:required', planet: 'string:required', target_sign: 'number:required',
+        start_date: 'string:required', end_date: 'string:required', ayanamsha_id: 'string:optional',
+      },
+      output_contract: { content: 'ToolResult.content' },
+      pagination: 'none',
+      pagination_verified: null,
+      executable: true,
+      execution_channels: ['platform_internal', 'mcp_full'],
+      public_tool_name: 'ganita_av_transit_gating_get',
+      mode_selector: [{ argument: 'mode', equals: 'kakshya_windows' }],
+      fixed_args: { mode: 'kakshya_windows' },
+      route_evidence: 'CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating',
+    }],
+    edges: [],
+    provenance_requirements: ['chart_id_when_chart_scoped', 'computed_at', 'engine_version'],
+    freshness_policy: 'Must carry computation time and engine version.',
+    entitlement: 'native',
+    safety_notes: ['Read-only evidence surface; planner must not interpret returned chart facts.'],
+    known_gaps: ['kakshya_windows mode makes a live BRAHMA daily-ephemeris sidecar read with no registered health-probe asset for that route; honestly dispositioned dark rather than statically proven or fabricated.'],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/get_av_transit_gating',
+      requirements: [{
+        kind: 'source_query',
+        contract_id: 'source-query:get-av-transit-gating:v1',
+        capability_uri: 'marsys://tool/L1/get_av_transit_gating',
+        contract_sha256: 'sha256:72c23b177cba67e35638331a1094c6555c092961277d90642a85e1a3888bc0ec',
+        scope: 'chart',
+        source_ref: 'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating | platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY',
+      }],
+    }],
+    availability_dispositions: [{
+      binding_id: 'registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows',
+      status: 'deliberately_dark',
+      reason: 'kakshya_windows makes a live BRAHMA daily-ephemeris sidecar read at request time; no health-probe asset is registered for that route (unlike bg_ephemeris_engine\'s reviewed probe backing query_planet_transit), so its live reachability cannot be statically proven without fabricating infrastructure that does not exist. sav_bav_gating (the default mode, same descriptor) remains statically proven via its own source-query contract, unaffected by this disposition.',
+      source_refs: [
+        'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleKakshyaWindows',
+        'platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts#source-query:get-av-transit-gating:v1',
+      ],
+    }],
+    editorial: true,
+  }],
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -257,21 +331,25 @@ export const getAvTransitGatingCapability: CapabilityDescriptor = {
     if (mode === 'kakshya_windows') {
       return handleKakshyaWindows(chart_id, ayanamsha_id, args)
     }
-    return handleSavBavGating(chart_id, ayanamsha_id, args)
+    return handleSavBavGating(chart_id, ayanamsha_id, args, args['build_id'] as BuildFence)
   },
 }
 
 async function handleSavBavGating(
-  chart_id: string, ayanamsha_id: string, args: Record<string, unknown>,
+  chart_id: string, ayanamsha_id: string, args: Record<string, unknown>, buildId?: BuildFence,
 ): Promise<ToolResult> {
   try {
+    const buildFence = classifyBuildFence(buildId)
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_av_transit_gating', chart_id)
+    const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
     // 1. LAGNA sign number (for house resolution).
     const lagnaRes = await query<{ fact_value_num: number }>(
       `SELECT fact_value_num FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2
          AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'
+         ${buildIds ? 'AND build_id = ANY($3::uuid[])' : ''}
        LIMIT 1`,
-      [chart_id, ayanamsha_id],
+      buildIds ? [chart_id, ayanamsha_id, buildIds] : [chart_id, ayanamsha_id],
     )
     const lagnaSignNumber = lagnaRes.rows[0]?.fact_value_num ?? null
 
@@ -280,8 +358,9 @@ async function handleSavBavGating(
       `SELECT fact_id, fact_subject, fact_value_num
        FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = $3
+         ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}
        ORDER BY fact_subject`,
-      [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY],
+      buildIds ? [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY, buildIds] : [chart_id, ayanamsha_id, AV_BINDU_SIGN_CATEGORY],
     )
 
     if (rowsRes.rows.length === 0) {

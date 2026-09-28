@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const queryMock = vi.fn()
 vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...args) }))
 
+import { chartServedGenerationFromRows } from '../../generation/served_generation'
 import {
   fetchKpCuspChain,
   fetchWealthAshtakavarga,
@@ -23,6 +24,18 @@ const BUILD_ID = '11111111-1111-4111-8111-111111111111'
 
 beforeEach(() => queryMock.mockReset())
 
+/** A served generation in which every named asset resolves unless listed as unresolved. */
+function servedGeneration(assetIds: readonly string[], unresolved: Record<string, string> = {}) {
+  return chartServedGenerationFromRows(CHART_ID, [...assetIds], assetIds.map(asset_id => ({
+    asset_id, partition_key: '__whole_asset__', receipt_version: 'v1',
+    receipt_build_id: BUILD_ID, rows_build_id: unresolved[asset_id] === 'skip_chain_writer_missing' ? null : BUILD_ID,
+    receipt_state: 'proven', freshness_state: unresolved[asset_id] === 'receipt_not_fresh' ? 'stale' : 'fresh',
+    output_digest_spec_sha256: 'a'.repeat(64), spec_active: true, receipt_run_state: 'completed',
+    receipt_asset_present: true, receipt_disposition: unresolved[asset_id] === 'skip_chain_writer_missing' ? 'skip_no_delta' : 'build',
+    observed_at: '2026-09-07T00:00:00Z',
+  })))
+}
+
 describe('reading-checklist selected-build fence', () => {
   it('fences sensitive-degree facts to the judgment build', async () => {
     queryMock.mockResolvedValueOnce({ rows: [{
@@ -34,10 +47,10 @@ describe('reading-checklist selected-build fence', () => {
 
     expect(result.fact_ids).toEqual(['active-sensitive'])
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain('build_id = $4::uuid')
+    expect(String(sql)).toContain('build_id = ANY($4::uuid[])')
     expect(String(sql)).not.toContain('build_id = $4::text')
     expect(params).toEqual([
-      CHART_ID, AYANAMSHA, ['pushkara', 'gandanta', 'mrityu_bhaga', 'kartari'], BUILD_ID,
+      CHART_ID, AYANAMSHA, ['pushkara', 'gandanta', 'mrityu_bhaga', 'kartari'], [BUILD_ID],
     ])
   })
 
@@ -48,24 +61,24 @@ describe('reading-checklist selected-build fence', () => {
 
     expect(result.cusps).toEqual([])
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain('build_id = $4::uuid')
+    expect(String(sql)).toContain('build_id = ANY($4::uuid[])')
     expect(String(sql)).not.toContain('build_id = $4::text')
     expect(params).toEqual([
       CHART_ID,
       AYANAMSHA,
       ['cusp_kp_lords', 'kp_cuspal_significators', 'bhava_cusps', 'kp_ruling_planets_natal'],
-      BUILD_ID,
+      [BUILD_ID],
     ])
   })
 
-  it('requires all wealth producers to have a current-spec fresh/proven receipt for the selected build', async () => {
+  it('requires every wealth producer to resolve to its own served generation, not one shared build', async () => {
     queryMock.mockResolvedValueOnce({ rows: WEALTH_READING_REQUIRED_ASSETS.map(asset_id => ({
       asset_id,
       receipt_matches_selected_build: true,
       replacement_in_progress: false,
     })) })
 
-    const result = await fetchWealthReadingSourceFence(CHART_ID, BUILD_ID)
+    const result = await fetchWealthReadingSourceFence(CHART_ID, servedGeneration(WEALTH_READING_REQUIRED_ASSETS))
 
     expect(result.ok).toBe(true)
     expect(result.ready).toBe(true)
@@ -73,10 +86,11 @@ describe('reading-checklist selected-build fence', () => {
     expect(String(sql)).toContain('asset_provenance_receipts receipt')
     expect(String(sql)).toContain('asset_freshness freshness')
     expect(String(sql)).toContain('asset_output_digest_specs digest_spec')
-    expect(String(sql)).toContain('receipt.build_id = $3::uuid')
+    // RC-1: no receipt is required to share one chart-wide build id.
+    expect(String(sql)).not.toContain('receipt.build_id = $3')
     expect(String(sql)).toContain("fenced_run.state IN ('planned', 'running', 'paused')")
     expect(String(sql)).toContain('proven_receipt.build_id = fenced_run.id')
-    expect(params).toEqual([[...WEALTH_READING_REQUIRED_ASSETS], CHART_ID, BUILD_ID])
+    expect(params).toEqual([[...WEALTH_READING_REQUIRED_ASSETS], CHART_ID])
   })
 
   it('fails closed if a selected-build receipt is missing or a replacement is active', async () => {
@@ -86,12 +100,33 @@ describe('reading-checklist selected-build fence', () => {
       replacement_in_progress: asset_id === 'ga_vichara',
     })) })
 
-    const result = await fetchWealthReadingSourceFence(CHART_ID, BUILD_ID)
+    const result = await fetchWealthReadingSourceFence(CHART_ID, servedGeneration(WEALTH_READING_REQUIRED_ASSETS))
 
     expect(result.ok).toBe(true)
     expect(result.ready).toBe(false)
     expect(result.assets.find(asset => asset.asset_id === 'ga_strength')?.receipt_matches_selected_build).toBe(false)
     expect(result.assets.find(asset => asset.asset_id === 'ga_vichara')?.replacement_in_progress).toBe(true)
+  })
+
+  it('refuses a producer whose receipt exists but does not resolve to a served generation, and names why', async () => {
+    queryMock.mockResolvedValueOnce({ rows: WEALTH_READING_REQUIRED_ASSETS.map(asset_id => ({
+      asset_id, receipt_matches_selected_build: true, replacement_in_progress: false,
+    })) })
+
+    const result = await fetchWealthReadingSourceFence(CHART_ID, servedGeneration(
+      WEALTH_READING_REQUIRED_ASSETS, { ga_structural: 'skip_chain_writer_missing', ga_vichara: 'receipt_not_fresh' },
+    ))
+
+    expect(result.ready).toBe(false)
+    expect(result.assets.find(asset => asset.asset_id === 'ga_structural')).toMatchObject({
+      receipt_matches_selected_build: false, served_generation_reason: 'skip_chain_writer_missing',
+    })
+    expect(result.assets.find(asset => asset.asset_id === 'ga_vichara')).toMatchObject({
+      receipt_matches_selected_build: false, served_generation_reason: 'receipt_not_fresh',
+    })
+    expect(result.assets.find(asset => asset.asset_id === 'ga_strength')).toMatchObject({
+      receipt_matches_selected_build: true, served_generation_reason: null,
+    })
   })
 
   it('reads the exact D9/D11 wealth pivots from the selected build and preserves their facts', async () => {
@@ -109,9 +144,9 @@ describe('reading-checklist selected-build fence', () => {
     expect(result.rows.map(row => row.varga)).toEqual([...WEALTH_CORROBORATING_VARGAS, ...WEALTH_CORROBORATING_VARGAS])
     expect(result.fact_ids).toEqual(['fact-j', 'fact-v'])
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain("build_id = $3::uuid")
+    expect(String(sql)).toContain("build_id = ANY($3::uuid[])")
     expect(String(sql)).toContain("domain = 'wealth'")
-    expect(params).toEqual([CHART_ID, AYANAMSHA, BUILD_ID, ['VEN', 'JUP']])
+    expect(params).toEqual([CHART_ID, AYANAMSHA, [BUILD_ID], ['VEN', 'JUP']])
   })
 
   it('fails closed rather than treating missing or duplicate fixed pivots as an empty finding', async () => {
@@ -133,7 +168,7 @@ describe('reading-checklist selected-build fence', () => {
     const result = await fetchWealthAshtakavarga(CHART_ID, AYANAMSHA, ['VEN', 'JUP'], BUILD_ID)
     expect(result.state).toBe('served')
     expect(result.rows).toHaveLength(12)
-    expect(String(queryMock.mock.calls[0]![0])).toContain('build_id = $3::uuid')
+    expect(String(queryMock.mock.calls[0]![0])).toContain('build_id = ANY($3::uuid[])')
   })
 
   it('requires the full selected-build Indu/Sree/Hora atomic lagna receipt', async () => {
@@ -155,10 +190,10 @@ describe('reading-checklist selected-build fence', () => {
     expect(result.state).toBe('served')
     expect(result.rows).toHaveLength(21)
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql)).toContain('build_id = $3::uuid')
+    expect(String(sql)).toContain('build_id = ANY($3::uuid[])')
     expect(String(sql)).toContain("fact_category = 'special_lagna'")
     expect(params).toEqual([
-      CHART_ID, AYANAMSHA, BUILD_ID,
+      CHART_ID, AYANAMSHA, [BUILD_ID],
       ['INDU_LAGNA', 'SREE_LAGNA', 'HORA_LAGNA'],
       ['longitude_sidereal', 'sign', 'sign_lord', 'nakshatra', 'nakshatra_lord', 'pada', 'house_d1'],
     ])
@@ -187,9 +222,9 @@ describe('reading-checklist selected-build fence', () => {
     expect(result.rows).toHaveLength(12)
     const [sql, params] = queryMock.mock.calls[0]!
     expect(String(sql)).toContain("fact_category = 'sensitive_point_yogi'")
-    expect(String(sql)).toContain('build_id = $3::uuid')
+    expect(String(sql)).toContain('build_id = ANY($3::uuid[])')
     expect(params).toEqual([
-      CHART_ID, AYANAMSHA, BUILD_ID,
+      CHART_ID, AYANAMSHA, [BUILD_ID],
       ['YOGI', 'AVAYOGI', 'DUPLICATE_YOGI', 'SAHAYOGI'],
       ['point_longitude', 'sign', 'nakshatra', 'assigned_graha'],
     ])
@@ -209,20 +244,22 @@ describe('reading-checklist selected-build fence', () => {
         citation_ref: 'tajaka-ref', citation_human: 'Tajaka citation.',
       }] })
 
-    const fence = await fetchTajakaSourceFence(CHART_ID, BUILD_ID)
+    const fence = await fetchTajakaSourceFence(CHART_ID, servedGeneration(['ga_tajaka']))
     const result = await fetchWealthTajaka(CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19')
 
     expect(fence.ready).toBe(true)
-    expect(fence.assets).toEqual([{ asset_id: 'ga_tajaka', receipt_matches_selected_build: true, replacement_in_progress: false }])
+    expect(fence.assets).toEqual([{
+      asset_id: 'ga_tajaka', receipt_matches_selected_build: true, served_generation_reason: null, replacement_in_progress: false,
+    }])
     expect(result.state).toBe('served')
     expect(result.row?.varsha_year).toBe(42)
     const [fenceSql, fenceParams] = queryMock.mock.calls[0]!
     expect(String(fenceSql)).toContain('asset_provenance_receipts receipt')
-    expect(fenceParams).toEqual([['ga_tajaka'], CHART_ID, BUILD_ID])
+    expect(fenceParams).toEqual([['ga_tajaka'], CHART_ID])
     const [tajakaSql, tajakaParams] = queryMock.mock.calls[1]!
     expect(String(tajakaSql)).toContain('l1_tajik_varsha_year_lords')
-    expect(String(tajakaSql)).toContain('build_id = $3::uuid')
+    expect(String(tajakaSql)).toContain('build_id = ANY($3::uuid[])')
     expect(String(tajakaSql)).toContain('varsha_start_iso <= $4::date')
-    expect(tajakaParams).toEqual([CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19'])
+    expect(tajakaParams).toEqual([CHART_ID, AYANAMSHA, [BUILD_ID], '2026-09-19'])
   })
 })

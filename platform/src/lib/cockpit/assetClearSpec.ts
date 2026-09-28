@@ -161,6 +161,21 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
     { sql: 'DELETE FROM mimamsa_insight_embeddings WHERE chart_id = $1' },
     { sql: 'DELETE FROM mimamsa_insight_units WHERE chart_id = $1' },
   ],
+  // Jātaka Phase-A2 integrity fix: mi_sankalpa has no explicit entry here, so a
+  // correction's strict clear falls through to the generic count_sql-derived
+  // DELETE — an unconditional per-chart wipe of mimamsa_intervention_ledger.
+  // That table holds native-FILED, attested rows (services/mi_sankalpa/db.py:
+  // "rows are FILED live, at serve time" — a native's real elected intervention,
+  // whether performed and its outcome_event_id are known or not). The writer's
+  // own idempotency predicate (delete_unresolved()) is scoped to exactly the
+  // rows this writer's own rebuild is entitled to touch — elected-pending,
+  // never performed, never linked to a real-world outcome. This mirrors that
+  // predicate verbatim rather than reinventing it, so the two never drift.
+  mi_sankalpa: [
+    {
+      sql: "DELETE FROM mimamsa_intervention_ledger WHERE chart_id = $1 AND study_arm = 'elected_pending' AND performed IS NULL AND outcome_event_id IS NULL",
+    },
+  ],
   mi_adhilepa: [
     { sql: 'DELETE FROM mimamsa_load_bearing WHERE chart_id = $1' },
     // Secondary output tables beyond the registered target_table.
@@ -214,6 +229,12 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // other bodha tables) — it owns no rows of its own and cannot be DELETEd from.
   // null = nothing to clear, skip cleanly (avoids a spurious failed_tables entry).
   bo_samvada: null,
+
+  // Kāla service-health writers: each runs a self-test, updates only the global
+  // asset_registry health fields, and returns rows_inserted=0. Neither owns a
+  // chart-scoped data surface, so a chart clear has deliberately nothing to do.
+  ka_dasha_kala: null,
+  ka_tulana: null,
 
   // JL-020 / BA_FULL_ASSET_AUDIT: mi_abhilekha's registered target_table is
   // mimamsa_journal, count_sql is null, so it fell through to the target_table

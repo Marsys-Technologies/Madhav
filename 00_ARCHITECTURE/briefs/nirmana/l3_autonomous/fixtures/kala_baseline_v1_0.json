@@ -1,0 +1,618 @@
+{
+  "artifact": "KALA_BASELINE",
+  "canonical_id": "KALA_BASELINE",
+  "version": "1.0",
+  "status": "FROZEN_BASELINE",
+  "date": "2026-09-22",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "does_not_authorize": "any change; this is a measurement",
+  "measured_against": {
+    "database": "production PostgreSQL `amjis`, read-only as role `amjis_app`, server clock 2026-09-22T11:38:42Z",
+    "mcp_surface": "deployed MCP server `marsys-jis-direct`; all probes executed 2026-09-22T11:39Z..11:44Z",
+    "not_measured": "the OAuth-gated `claude.ai Marsys JIS` MCP server (no interactive authorization available in this session)"
+  },
+  "f06_vocabulary": ["applied", "inapplicable", "unavailable", "unqualified", "contradictory_unresolved", "unexplored"],
+  "f06_assignment_note": "No probed surface emits an F06 state. Every f06_state below is THIS document's mapping from observed response shape, not a read of a served field.",
+  "baseline_facts": [
+    {
+      "id": "BF-1",
+      "statement": "Five L3 assets record large writes in asset_throughput while their target tables hold zero rows for the canonical chart.",
+      "sql": "select asset_id, state, rows_written, last_built_at, left(last_error,60) from asset_throughput where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and asset_id like 'ka\\_%' order by asset_id;",
+      "rows": [
+        {"asset_id": "ka_kalasutra", "state": "stale", "rows_written": 335403, "last_built_at": "2026-08-13T01:15:50Z", "target_table": "kala_activation", "rows_for_canonical_chart_today": 0, "rows_total": 337148},
+        {"asset_id": "ka_sangam", "state": "stale", "rows_written": 14868, "last_built_at": "2026-08-13T01:07:13Z", "target_table": "kala_convergence", "rows_for_canonical_chart_today": 0, "rows_total": 20497},
+        {"asset_id": "ka_kala_darshana", "state": "stale", "rows_written": 750, "last_built_at": "2026-08-13T01:15:53Z", "target_table": "kala_darshana", "rows_for_canonical_chart_today": 0, "rows_total": 750},
+        {"asset_id": "ka_bhavishya_lekha", "state": "stale", "rows_written": 100, "last_built_at": "2026-08-13T01:15:54Z", "target_table": "kala_bhavishya", "rows_for_canonical_chart_today": 0, "rows_total": 100},
+        {"asset_id": "ka_vighnakara", "state": "stale", "rows_written": 536, "last_built_at": "2026-08-13T01:08:12Z", "target_table": "kala_obstruction", "rows_for_canonical_chart_today": 0, "rows_total": 747},
+        {"asset_id": "ka_avadhi", "state": "error", "rows_written": 1169, "last_error_verbatim": "post-write integrity check failed: integrity_check_sql → False", "target_table": "kala_avadhi", "rows_for_canonical_chart_today": 1169, "note": "kala_bundle_get serves these rows as timeline_excerpt despite the failed integrity check"},
+        {"asset_id": "ka_kshetra", "state": "error", "rows_written": 1183134, "last_error_verbatim": "worker_crash: OperationalError: the connection is lost", "target_table": "kala_field"},
+        {"asset_id": "ka_gochara_v3_century_materialize", "state": "error", "rows_written": 914, "last_error_verbatim": "RaiseException: BUILD-PROTECTED: kala_gochara_windows row(s)"},
+        {"asset_id": "ka_gochara_sweep", "state": "error", "rows_written": 0, "last_error_verbatim": "no writer registered for ka_gochara_sweep", "note": "asset_registry catalog_status=RETIRED, is_active=false, data_disposition=RETAINED_AS_CAPITAL — expected"},
+        {"asset_id": "ka_dasha_kala", "state": "lit", "rows_written": 0, "target_table": null, "note": "state 'lit' on zero rows written and no declared target table"}
+      ]
+    },
+    {
+      "id": "BF-2",
+      "statement": "kala_field holds 8,570,075 rows for this chart while every serving surface reports the field build 'has not run'.",
+      "sql": "select count(*) from kala_field where chart_id='482012f1-...'; select count(*) from kala_field_snapshots where chart_id='482012f1-...'; select count(*) from kala_field_salience where chart_id='482012f1-...';",
+      "observed": {"kala_field": 8570075, "kala_field_snapshots": 0, "kala_field_salience": 0},
+      "served_message_verbatim": "ka_kshetra has written no kala_field_snapshots row for this chart yet — the first field build has not run. Honest empty marker per B.10/§N.8; the real 'kfs_…' id is served automatically once the field build lands.",
+      "note": "The first field build did run and wrote 8.57M rows, then crashed before the snapshot header and stage-6 salience. The served message asserts a cause the evidence contradicts."
+    },
+    {
+      "id": "BF-3",
+      "statement": "The L3 activation/convergence/projection rows belong almost entirely to a different chart.",
+      "sql": "select chart_id, count(*) from kala_activation group by 1 order by 2 desc limit 5;",
+      "observed": {"kala_activation": {"1c826d5a-41cb-4450-b4dc-59d440e5f75a": 336093, "cb73cd3d-9eba-4220-9902-0de91566e980": 1055, "482012f1-710e-4a25-994a-93821f5871aa": 0}, "kala_convergence": {"1c826d5a-41cb-4450-b4dc-59d440e5f75a": 17957, "cb73cd3d-9eba-4220-9902-0de91566e980": 2540, "482012f1-710e-4a25-994a-93821f5871aa": 0}, "kala_bhavishya": {"1c826d5a-41cb-4450-b4dc-59d440e5f75a": 100, "482012f1-710e-4a25-994a-93821f5871aa": 0}}
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "L3-Q01",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q01",
+      "question": "What is active now, and why? P09–10/P22",
+      "required_distinction": "Which exact structure, participants, condition and qualified clocks are engaged; background versus enabling interval versus contact.",
+      "primary_proof": "Perturb the qualifying condition while holding geometry fixed.",
+      "probe": {
+        "tools": ["kala_now_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa)", "kala_explain_get(chart_id=482012f1-..., domain='career', max_signals=3)"],
+        "sql": ["select count(*) from kala_activation where chart_id='482012f1-710e-4a25-994a-93821f5871aa';", "select count(*) from kala_darshana where chart_id='482012f1-710e-4a25-994a-93821f5871aa';"]
+      },
+      "observed": {
+        "call_succeeded": true,
+        "thesis_verbatim": "No temporal activation window is active for this chart as of 2026-09-22. No Kāla-Darshana confluence window is active today.",
+        "windows": 0,
+        "darshana": null,
+        "reading_evidence": 0,
+        "reading_dissent": 0,
+        "reading_falsifier": null,
+        "field_snapshot_id": "field_not_yet_built",
+        "populated_ancillary": {"gochara_dual_reference": 9, "dasha_lord_transit_condition": 2, "dasha_sandhi_bands": 8, "kota_chakra": 9, "moorti_nirnaya": 8, "moorti_nirnaya_with_moorti_computed_false": 4, "vedha_gochara": 3, "tithi_pravesha": 1, "sudarshana_varsha": 1},
+        "coverage_concepts": 18,
+        "coverage_vocabulary_observed": ["computed", "honest_empty", "not_in_corpus"],
+        "internal_inconsistency": "sukshma_boundary_uncertainty=[] with reason 'L1 dasha registry (get_dashas) unreachable this call' and sukshma_boundary_uncertainty_reachable=false, while dasha_sandhi_reachable=true and provenance_envelope.assets lists 'get_dashas (chart_dashas, level_n=4)' as reached, in the same envelope.",
+        "db": {"kala_activation_canonical": 0, "kala_darshana_canonical": 0},
+        "why_half": "kala_explain_get returned pact_status='unknown', chain=[], weakest_link=null, fact_id_refs=[]"
+      },
+      "distinction_present": false,
+      "partial_components_present": [],
+      "f06_state": "unavailable",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "Requires at least one engaged qualifying condition to perturb; there are none. Perturbation would also require a write/build, forbidden by the read-only mandate.",
+      "live_caller": "Registered and reachable live on marsys-jis-direct (verified by live call 2026-09-22T11:39Z); registration platform-mcp/src/tools/kala_views/now.ts, platform-mcp/src/tools/kala_views/register_all.ts. No live caller found within scope: grep -rlF 'kala_now_get' platform/src/app platform/src/components — single hit platform/src/components/pariprashna/ArrivalLine.tsx line 12, which is a code comment, not a call.",
+      "notes": "The response is rich everywhere except the core. No field anywhere types background vs enabling interval vs contact."
+    },
+    {
+      "case_id": "L3-Q02",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q02",
+      "question": "When is the closest eligible window, and which later window is better supported? P03–04/P09",
+      "required_distinction": "Nearest, strongest under a named criterion, robust across declared variants and merely present remain distinct.",
+      "primary_proof": "Controlled ranking on matched candidates and coverage; preserve ties/incomparability.",
+      "probe": {
+        "tools": ["kala_windows_get(chart_id=482012f1-..., start_date='2026-09-22', end_date='2031-09-22', limit=5)", "kala_ahead_get(chart_id=482012f1-..., horizon_years=5, max_items=3)", "kala_priority_get(chart_id=482012f1-..., domain='career', top_k=3)"],
+        "sql": []
+      },
+      "observed": {
+        "kala_windows_get": {"activations": 0, "activation_count": 0, "total_matching": 0, "window_families": 0, "forward_windows": 0, "predicates": 0, "signal_id_refs": 0, "empty_reason_verbatim": "No activation rows exist for chart 482012f1-710e-4a25-994a-93821f5871aa at ayanamsha 'lahiri_chitrapaksha'. The L3 Kāla activation asset (ka_kalasutra) may not be built for this chart, or the ayanamsha_id does not match a built variant.", "forward_window_status_state": "incompatible_filters", "incompatible_filters": ["ayanamsha_id"], "source_row_count": null},
+        "kala_ahead_get": {"windows": 0, "projections": 0, "recurrence_ladder": 0, "falsifier": null, "coverage_states_on_empty_arrays": {"forward_temporal_windows": "computed", "probabilistic_projections": "computed"}, "period_echo_status": "insufficient_data", "period_echo_reason_verbatim": "L1 dasha registry (marsys://tool/L1/get_dashas) unreachable this call.", "period_echo_reachable": false},
+        "kala_priority_get": {"ranked_signals": 0, "signal_count": 0, "thesis_verbatim": "No priority-ranked signals activation-overlap 2026-09-22–2026-12-21 (domain: career) for this chart."},
+        "named_defect": "temporal_closure on the same zero-row kala_windows_get response reads state='complete_within_stated_window', exhaustive_within_stated_window=true, continuation.reason='All rows matching this exact stated window and filters were returned.' — contradicting its own sibling empty_reason."
+      },
+      "distinction_present": false,
+      "partial_components_present": [],
+      "f06_state": "unavailable",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "Zero candidates; no ranking to control.",
+      "live_caller": "Live on marsys-jis-direct (verified). No live caller found within scope: grep -rlF over platform/src/app, platform/src/components — only match is the generic MCP passthrough platform/src/app/api/mcp/db/query/route.ts.",
+      "notes": "Ranking machinery does exist elsewhere in the layer — see L3-Q10."
+    },
+    {
+      "case_id": "L3-Q03",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q03",
+      "question": "Does a named configuration have a complete activation route? P09",
+      "required_distinction": "Formation, cancellation, active participants, necessary/optional temporal clauses and rival routes.",
+      "primary_proof": "Reject a participant contact that does not satisfy the complete qualified rule.",
+      "probe": {
+        "tools": ["kala_yoga_activation_get(chart_id=482012f1-..., limit=3)", "kala_explain_get(chart_id=482012f1-..., domain='career', max_signals=3)"],
+        "sql": []
+      },
+      "observed": {
+        "activated_yogas": 0,
+        "total_count": 0,
+        "undated_activation_count": 0,
+        "structurally_always_on_count": 0,
+        "undated_pending_window_count": 0,
+        "signal_id_refs": 0,
+        "empty_reason_verbatim": "No yoga signals join to kala_activation for chart 482012f1-710e-4a25-994a-93821f5871aa at ayanamsha 'lahiri_chitrapaksha'.",
+        "declared_join": "signal_id (bodha_msr_signals.signal_id = kala_activation.signal_id), yoga_filter signal_type_class = 'yoga'",
+        "live_detector_that_did_fire": {"claim_id": "DEFECT-001", "status": "RESOLVED", "total_refs": 73049, "orphan_refs": 0, "orphan_pct": 0, "as_of": "2026-09-22T11:40:22.113Z", "expires_on": "2026-09-23T11:40:22.113Z"},
+        "explain_chain": 0,
+        "explain_weakest_link": null
+      },
+      "distinction_present": false,
+      "partial_components_present": [],
+      "f06_state": "unavailable",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "No participant contact exists to reject.",
+      "live_caller": "Live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components — only the generic MCP passthrough route.",
+      "notes": "One genuine positive: a real detector with a real denominator (73,049 refs, 0 orphans) computed live at call time with an expiry."
+    },
+    {
+      "case_id": "L3-Q04",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q04",
+      "question": "Why can activity coexist with strain? P03–04",
+      "required_distinction": "Receipt/creation versus retention/relief; supporting and inhibiting paths can overlap.",
+      "primary_proof": "A decisive second-domain opposition survives compilation and projection.",
+      "probe": {
+        "tools": ["kala_bundle_get(chart_id=482012f1-..., date_range={start:'2026-01-01', end:'2028-12-31'})"],
+        "sql": ["select count(*) from kala_obstruction where chart_id='482012f1-710e-4a25-994a-93821f5871aa';", "select count(*) from kala_convergence where chart_id='482012f1-710e-4a25-994a-93821f5871aa';"]
+      },
+      "observed": {
+        "timeline_excerpt_rows": 5,
+        "timeline_row_fields_populated": ["avadhi_id", "system_id", "level_n", "lord_graha", "period_start", "period_end", "dossier.activated_pratijna_ids", "dossier.sublord_modulation (level-2 only)", "quality.domains", "citations", "formula_version"],
+        "timeline_row_fields_empty_on_every_row": ["dossier.lord_condition_fact_refs"],
+        "convergence_windows": 0,
+        "obstructions": 0,
+        "empty_reason_on_those_arrays": null,
+        "snapshot_kala_readiness_score": null,
+        "snapshot_kala_readiness_interpretation_verbatim": "No kala_darshana confluence row active for today — chart has no computed windows covering the current date.",
+        "snapshot_transit_state_transits": 0,
+        "snapshot_date": "2026-09-20",
+        "call_date": "2026-09-22",
+        "staleness_flag_on_snapshot_date": null,
+        "disclosed": "provenance_envelope.obstructions_not_date_filtered = true",
+        "db": {"kala_obstruction_canonical": 0, "kala_obstruction_total": 747, "kala_convergence_canonical": 0, "kala_convergence_total": 20497},
+        "cross_reference": "The ka_avadhi rows served here are from the asset whose asset_throughput.state is 'error' / 'post-write integrity check failed: integrity_check_sql → False' (BF-1)."
+      },
+      "distinction_present": false,
+      "partial_components_present": [],
+      "f06_state": "unavailable",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "The inhibiting half is entirely empty for this chart; there is no opposition to survive compilation.",
+      "live_caller": "Live on marsys-jis-direct (verified); registration platform-mcp/src/tools/retrieval/kala_temporal.ts. No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "Bundle collapses the inhibiting-path absence to a bare 0/[] with no state — the exact fallback F06 forbids."
+    },
+    {
+      "case_id": "L3-Q05",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q05",
+      "question": "Why do timing methods disagree? P15/P19/P21",
+      "required_distinction": "Method-native context, applicability, silent/failed methods, shared roots and non-comparable scales.",
+      "primary_proof": "Remove a method; show actual changed and unchanged evidence without a forced consensus.",
+      "probe": {
+        "tools": ["kala_explain_get(chart_id=482012f1-..., bhava=10, max_signals=3)", "kala_explain_get(chart_id=482012f1-..., domain='career', max_signals=3)"],
+        "sql": []
+      },
+      "observed": {
+        "school_voices_bhava10": 1,
+        "school_voice_fields": {"school": "kp", "bhava": 10, "cusp_owner": "Saturn", "ladder_ranked": ["Mercury", "Sun", "Saturn"], "ladder_fact_ids_count": 6, "kp_ayanamsha_id": "krishnamurti", "chain_ayanamsha_id": "lahiri_chitrapaksha", "ayanamsha_divergence": true, "state": "honest_empty", "kp_stance": "unknown", "parasari_stance": "unknown", "agreement": "not_comparable", "running_lords": 0, "matches": 0, "strongest_limb": null, "empty_reason_verbatim": "no running `vimshottari_kp` period rows for this chart at the evaluated date — KP judges a RUNNING window, and there is none to judge."},
+        "engine_testimony_bhava10": 2,
+        "engine_testimony_all_not_comparable": true,
+        "concordance": null,
+        "reading_dissent": 0,
+        "school_voices_domain_career": 0,
+        "kp_dropped_reason_verbatim": "the KP school voice needs a bhava to judge; this call resolved neither `bhava` nor a domain the shastra map maps to one.",
+        "parameter_dependent_answer": "a5_gochara_agreement.dominant_valence='gain' with gochara_windows_active=3 under domain=career; 'loss' with gochara_windows_active=10 under bhava=10 — same chart, same date."
+      },
+      "distinction_present": false,
+      "partial_components_present": ["method-native context (kp_ayanamsha_id vs chain_ayanamsha_id, ayanamsha_divergence=true)", "applicability / silent-failed methods (agreement='not_comparable' with a per-engine empty_reason, never forced agreement)", "non-comparable scales (as the not_comparable label)"],
+      "components_absent": ["shared roots (no producer-provenance de-correlation on any surface)", "the disagreement itself (both engines silent)"],
+      "f06_state": "unqualified",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "Removing a method requires at least two methods that both have a verdict; zero do.",
+      "live_caller": "Live on marsys-jis-direct (verified, both routes); registration platform-mcp/src/tools/kala_views/explain.ts. No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "The number of consulted methods depends on which parameter the caller used (bhava vs domain)."
+    },
+    {
+      "case_id": "L3-Q06",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q06",
+      "question": "How does this chapter differ from the preceding one? P10",
+      "required_distinction": "Recurrence with changes in participants, conditions, clocks, relationships and uncertainty.",
+      "primary_proof": "Matched mechanism identities across intervals; no universal narrative template.",
+      "probe": {
+        "tools": ["kala_story_get(chart_id=482012f1-..., budget_kb=14, top_k=40)"],
+        "sql": ["select count(*), sum(high_convergence_count), max(high_convergence_count) from kala_jivana_parva where chart_id='482012f1-710e-4a25-994a-93821f5871aa';", "select min(computed_at)::text, max(computed_at)::text from kala_jivana_parva where chart_id='482012f1-710e-4a25-994a-93821f5871aa';", "select count(*) from kala_convergence where chart_id='482012f1-710e-4a25-994a-93821f5871aa';"]
+      },
+      "observed": {
+        "chapter_count_after_trim": 2,
+        "trim_report_chapters": {"original_count": 40, "kept_count": 2, "reason": "life-arc chapters: floored to 2 (hard-cap)", "recover_via_present": true},
+        "dedup_report": {"source_row_count": 40, "deduped_row_count": 40, "collapses": 0},
+        "coverage_developmental_thesis": {"state": "honest_empty", "reason_excerpt": "the developmental thesis per chapter ... is not yet computed at this facade. Requires cross-chapter lord-relationship analysis wired into story composition. ... developmental_thesis is the W3 depth remainder, not yet built."},
+        "coverage_chara_dasha_second_voice": "not_in_corpus",
+        "coverage_punctuation_events": "not_in_corpus",
+        "retrodiction_fit_aligned_ratio": 0,
+        "retrodiction_fit_method": "lexical_theme_keyword_match",
+        "retrodiction_fit_self_disclaimer_present": true,
+        "narrative_template_uniform": true,
+        "narrative_template_shape": "<Lord> daśā (<start>–<end>): <quality> phase marked by <kw1>, <kw2>. N high-convergence windows in this span.",
+        "named_defect": {"statement": "Chapters serve high_convergence_count (884 for Jupiter MD, 178 for Jupiter/Venus) while kala_convergence holds 0 rows for this chart.", "kala_jivana_parva_rows": 100, "sum_high_convergence_count": 8838, "max_high_convergence_count": 1073, "parva_computed_at": "2026-08-13T01:15:53Z", "kala_convergence_canonical_rows": 0}
+      },
+      "distinction_present": false,
+      "partial_components_present": ["per-chapter retrodiction_fit with honest method disclosure and aligned_ratio 0.0"],
+      "f06_state": "unexplored",
+      "f06_state_secondary": "contradictory_unresolved (for the served convergence counts against the live table)",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "Matched mechanism identities across intervals are not emitted; the narrative template is universal, which the proof names as disqualifying.",
+      "live_caller": "Live on marsys-jis-direct (verified); registration platform-mcp/src/tools/kala_views/story.ts via register_all.ts. No live caller found within scope: platform/src/app, platform/src/components — only the generic MCP passthrough route.",
+      "notes": "composed_text narrates three chapters while the structured chapters array carries two — prose and data disagree on what was delivered."
+    },
+    {
+      "case_id": "L3-Q07",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q07",
+      "question": "Which domains interact over time? P01/P03–10/P17",
+      "required_distinction": "Qualified structural linkage plus coincident/ordered intervals, enabling or inhibiting roles, ordinary as well as dramatic expressions.",
+      "primary_proof": "Destroy the structural bridge while retaining coincident dates; the cross-domain inference must disappear.",
+      "probe": {
+        "tools": ["gochara_activation_get(chart_id=482012f1-..., as_of_date='2014-10-01', domain='health')"],
+        "sql": ["select scope_kind, count(*), count(distinct scope_id) from kala_taranga where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1;", "select month::text, scope_kind, scope_id, activation, components::text from kala_taranga where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and month between '2026-09-01' and '2026-09-30' limit 3;", "select count(*) total, count(*) filter (where (components->>'transit_contribution')::numeric = 0) zero, round(avg((components->>'transit_contribution')::numeric),4) avg, max((components->>'transit_contribution')::numeric) max from kala_taranga where chart_id='482012f1-710e-4a25-994a-93821f5871aa';"]
+      },
+      "observed": {
+        "kala_taranga_domain_rows": 43488,
+        "kala_taranga_distinct_domains": 24,
+        "kala_taranga_event_class_rows": 48924,
+        "kala_taranga_distinct_event_classes": 27,
+        "sample_row_2026_09_career": {"activation": 0.293444, "dasha_contribution": 0.15, "promise_contribution": 0.7884, "transit_contribution": 0.437, "formula_note": "ka_taranga_v1.0"},
+        "transit_contribution_aggregate": {"total_rows": 92412, "rows_exactly_zero": 56130, "pct_zero": 60.74, "rows_null": 0, "mean": 0.2490, "max": 1.0},
+        "gochara_coverage": {"event_classes_covered": 27, "event_classes_targeted_not_swept": 0, "domains_not_covered": 0, "coverage_quality_tier": "rich", "covered_domain_count": 13, "universe_source_verbatim_excerpt": "Mechanically derived fresh every call from live table state — never hand-maintained."},
+        "absent": "No surface emits a cross-domain object: no interval intersection between two domain streams, no enabling/inhibiting role assignment, no stated dominance rule."
+      },
+      "distinction_present": false,
+      "partial_components_present": ["per-domain time series over 24 domains", "mechanically-derived domain coverage accounting"],
+      "f06_state": "unexplored",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "There is no structural bridge object to destroy.",
+      "live_caller": "gochara_activation_get live on marsys-jis-direct (verified). kala_taranga served via query_activation_waveform. No live caller found within scope: platform/src/app, platform/src/components — only the generic MCP passthrough route.",
+      "notes": "Per-domain series and honest domain-coverage accounting are present; the cross-domain linkage, ordering and role assignment are not. See divergence_from_prior for a live measurement that contradicts a Lane E claim.",
+      "divergence_from_prior": "LANE_E_LAYER_VALUE_MODEL.md §3.3 / Q-K08 states the transit term is 0.0 on all 92,412 rows. Measured live 2026-09-22 it is 0 on 56,130 rows (60.7%), mean 0.2490, max 1.0. Recorded; NOT adjudicated by this baseline."
+    },
+    {
+      "case_id": "L3-Q08",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q08",
+      "question": "Is no window found a real negative? P09/P16/P18",
+      "required_distinction": "Searched horizon, resolution, method/target coverage, unavailable inputs and unknown intervals.",
+      "primary_proof": "A window just outside a searched partition must not become a universal denial.",
+      "probe": {
+        "tools": ["kala_windows_get(chart_id=482012f1-..., start_date='2026-09-22', end_date='2031-09-22', limit=5)", "kala_priority_get(chart_id=482012f1-..., domain='career', top_k=3)", "gochara_activation_get(chart_id=482012f1-..., as_of_date='2014-10-01', domain='health')"],
+        "sql": []
+      },
+      "observed": {
+        "kala_windows_get_disclosures": ["empty_reason names the possibly-unbuilt asset by id (ka_kalasutra) AND the alternative cause (ayanamsha variant mismatch)", "forward_window_status.state='incompatible_filters' with incompatible_filters=['ayanamsha_id']", "date_filter.honored=true", "2 caveats: single_cycle_per_signal, near_tier_build_date_relative"],
+        "kala_priority_get_three_independent_states": {"priority_ranking_legacy_scalar": "honest_empty (no overlap in window)", "salience_vector_five_axis": "honest_empty (no kala_field_salience rows for this chart — ka_kshetra stage 6 has not yet run)", "surprise_of_absence": "not_in_corpus (absence-as-signal, item 33, not yet built — lands W3)"},
+        "gochara_sweep_completeness": {"substeps_committed": 270, "source": "build_substep_progress (asset_id=ka_gochara_v3_century_materialize)", "materialized_through": "2084-01-31", "refusal_to_fabricate_denominator_verbatim": "No total-planned-substep denominator is reported here: that figure is not independently queryable post-build without re-deriving the writer's own planning logic, and this field will not fabricate one."},
+        "named_defect": "temporal_closure declares state='complete_within_stated_window' and exhaustive_within_stated_window=true on the zero-row result whose sibling empty_reason says the asset may not be built. Read alone, the closure block IS the universal denial the primary proof forbids."
+      },
+      "distinction_present": true,
+      "partial_components_present": [],
+      "f06_state": "unavailable",
+      "f06_note": "`unavailable` is correctly held apart from `inapplicable` in free-text reasons, but no surface emits an F06 state code, so the distinction lives in prose a machine cannot key on.",
+      "primary_proof_executed": true,
+      "primary_proof_result": "PARTIAL PASS — empty_reason and the three-state coverage reporting satisfy it; temporal_closure alone would fail it.",
+      "live_caller": "All three live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components — only the generic MCP passthrough route.",
+      "notes": "Strongest negative-reporting discipline measured in the layer."
+    },
+    {
+      "case_id": "L3-Q09",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q09",
+      "question": "What changes with birth uncertainty or convention? P13/P19",
+      "required_distinction": "Input sensitivity differs from method disagreement and from empirical reliability.",
+      "primary_proof": "Recompute declared variants; match the same propositions and boundary changes.",
+      "probe": {
+        "tools": ["kala_now_get(chart_id=482012f1-...)  # default lahiri_chitrapaksha", "kala_now_get(chart_id=482012f1-..., ayanamsha_id='raman')"],
+        "sql": ["select distinct ayanamsha_id from chart_dashas where chart_id='482012f1-710e-4a25-994a-93821f5871aa';", "select column_name from information_schema.columns where table_name='kala_gochara_windows' order by ordinal_position;"]
+      },
+      "observed": {
+        "variant_diff": {
+          "mahadasha_lord": {"lahiri_chitrapaksha": "Mercury", "raman": "Ketu"},
+          "antardasha_lord": {"lahiri_chitrapaksha": "Saturn", "raman": "Venus"},
+          "md_span": {"lahiri_chitrapaksha": "2010-08-18..2027-08-18", "raman": "2025-11-22..2032-11-22"},
+          "md_band_width_days": {"lahiri_chitrapaksha": 186, "raman": 77},
+          "level3_is_now_within_band": {"lahiri_chitrapaksha": false, "raman": true},
+          "natal_moon_sign_fact_id": {"lahiri_chitrapaksha": "141606653ff3f1ad", "raman": "cac267711001f79b"},
+          "janma_nakshatra_birth_fact_id": {"lahiri_chitrapaksha": "fe40422d174b38c0", "raman": "3850f63abec1b0bf"}
+        },
+        "declared_variants_in_chart_dashas": ["INVARIANT", "krishnamurti", "lahiri_chitrapaksha", "raman", "surya_siddhanta_classical", "true_chitra"],
+        "absent_1_no_comparison_surface": "Neither response mentions the other, flags that a different convention yields a different running lord, or matches propositions across variants. The caller must run two calls and diff by hand.",
+        "absent_2_half_the_layer_cannot_vary": "kala_gochara_windows has no ayanamsha_id column (verified against information_schema.columns). gochara_narrative.active_windows was byte-identical across both runs: same 10 event classes, same 2024-02-05..2034-01-30 spans, same peak dates, same signed_intensity values.",
+        "absent_3_conflation": "ayanamsha_divergence is carried as a flag on a METHOD voice (school_voices.kp), which is the one place input sensitivity and method disagreement are visibly conflated in the served shape."
+      },
+      "distinction_present": false,
+      "partial_components_present": ["variant recomputation is real, reproducible and fact_id-correct per variant"],
+      "f06_state": "unqualified",
+      "primary_proof_executed": true,
+      "primary_proof_result": "PARTIAL — 'recompute declared variants' passes; 'match the same propositions and boundary changes' fails (no matching surface exists, and the transit half cannot vary at all).",
+      "live_caller": "Live on marsys-jis-direct (verified, both variants). No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "The daśā half of Kāla is convention-sensitive; the transit half is convention-invariant by schema."
+    },
+    {
+      "case_id": "L3-Q10",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q10",
+      "question": "Which feasible initiation intervals meet this undertaking's constraints? P11/P21–22",
+      "required_distinction": "General calendar, personal suitability, action constraints and outcome expectation remain separate.",
+      "primary_proof": "Actual interval intersection, location/date fidelity and binding-constraint explanation.",
+      "probe": {
+        "tools": ["kala_elect_get(chart_id=482012f1-..., undertaking='business', date_range={start:'2026-09-22', end:'2026-12-20'}, limit=2, budget_kb=12, native_janma_nakshatra='Purva Bhadrapada')"],
+        "sql": []
+      },
+      "observed": {
+        "candidate_count": 2,
+        "best_candidate_window": "2026-11-29T00:00:00+00:00 .. 2026-12-01T00:00:00+00:00",
+        "best_score": 0.662,
+        "grading_tier": "silver",
+        "gold_tier_present": false,
+        "drivers_kept_separate": ["panchanga_quality=0.63", "dasha_quality=0.60 (Mercury/Saturn)", "transit_quality=0.80", "signal_activation=0.72", "tara_bala=Sampat (favorable)"],
+        "judgment_ledger": {"dosas_present": 0, "pariharas_applied": 0, "residual_dosas": 0, "net_standing": "clean", "convention_only_factor_count": 0},
+        "pareto_axes_used": ["panchangika_quality", "residual_dosha_burden", "cited_auspicious_support"],
+        "pareto_axes_excluded_with_reasons": ["personal_field_alignment (requires ka_kshetra field rows, not populated at this build tier)", "rite_specific_resonance", "practical_feasibility (no substrate models a querent's practical constraints)"],
+        "muhurta_factor_census": {"computed": 39, "not_computed": 5, "not_in_corpus": 7},
+        "parihara_corpus_gap": {"bg_parihara_rules_total": 60, "muhurta_scope_rows": 0, "consequence_verbatim": "Residual doṣas below are therefore reported UNCANCELLED."},
+        "density": {"cited_rows_in_horizon": 822, "convention_only_rows_in_horizon": 1178},
+        "falsifier": {"statement": "if business is not undertaken by 2026-12-01T00:00:00+00:00, this specific elected window closes", "resolves_by": "2026-12-01"},
+        "paired_rite": null,
+        "paired_rite_reason_present": true,
+        "named_defect": "At budget_kb=12 the candidates array was trimmed to 1 while candidate_count and frontier.candidate_count both still read 2; trim_report was itself trimmed (4 → 1) with recover_via.instrument=null; judgment_flags=[{code:'budget_exceeded_after_trim'}]."
+      },
+      "distinction_present": true,
+      "partial_components_present": [],
+      "f06_state": "applied",
+      "primary_proof_executed": true,
+      "primary_proof_result": "PASS — real interval slate, per-candidate binding-constraint explanation, explicit exclusions with reasons.",
+      "live_caller": "Live on marsys-jis-direct (verified); registration platform-mcp/src/tools/kala_views/elect.ts, cross-referenced from now.ts, explain.ts, ritual.ts. No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "Strongest surface measured."
+    },
+    {
+      "case_id": "L3-Q11",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q11",
+      "question": "What do actual observations fit or fail to fit? P12/P20",
+      "required_distinction": "Independently generated mechanisms, known-time chronology, unmatched activations and unobserved periods.",
+      "primary_proof": "Separate permitted retrospective comparison; no outcomes or derived selectors in prospective builds.",
+      "probe": {
+        "tools": ["mechanism_retrodiction_get(chart_id=482012f1-..., limit=50)", "standing_predictions_read(chart_id=482012f1-..., limit=5)"],
+        "sql": ["select lifecycle_status, count(*), min(lower(observation_window))::text, max(lower(observation_window))::text from brahma_prospective_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1;", "select generator_class, model, count(*) from brahma_prospective_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2 order by 3 desc;", "select prediction_id, lifecycle_status, observation_window::text, left(claim,70), generator_class from brahma_prospective_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and lower(observation_window) < '2027-01-01' order by lower(observation_window);"]
+      },
+      "observed": {
+        "retrodiction": {"mechanisms_reported": 7, "confirming_firings": 8, "not_confirmed_events": 25, "unmapped_events": 8, "per_firing_fields": ["event_id", "event_date", "dasha_level", "dasha_lord", "dasha_row_id"], "per_nonconfirm_fields": ["event_id", "event_date", "domain", "mapped_houses", "reason"], "sealed_split_verbatim": "Events on/after 2020-01-01 are excluded from this surface unconditionally (sealed test split, ESCALATION_POLICY §4)", "sealed_split_caller_settable": false, "no_leakage_note_present": true, "lagna_fact_id": "a51211ece89d6a5c"},
+        "prospective_ledger": {"open": 18, "matched": 0, "confirmed": 0, "falsified": 0, "withdrawn": 0, "earliest_window_start": "2011-02-15", "latest_window_start": "2082-01-01", "open_with_window_start_before_2031": 5, "generator_class_distribution": {"engine/gochara_v3_w45_builder": 12, "engine/gochara_lambda_e": 2, "reading_synthesis/dasha_lord_confluence_v1": 3, "native_intuition/native_filed_intuition": 1}, "expired_but_still_open": {"prediction_id": "8d85d0c7-dbf0-4636-8f6a-af159aa58770", "observation_window": "[2011-02-15,2011-03-11)", "lifecycle_status": "open", "claim_prefix": "G-5 live verification: engine-derived major_gain window 2011-02-15..20"}}
+      },
+      "distinction_present": true,
+      "distinction_present_scope": "retrospective half only",
+      "partial_components_present": ["independently generated mechanisms", "known-time chronology", "enforced generation/evaluation firewall"],
+      "components_absent": ["unmatched activations (kala_activation holds 0 rows for this chart)", "unobserved periods (not reported at all)"],
+      "f06_state": "applied",
+      "f06_state_secondary": "unexplored (prospective adjudication)",
+      "primary_proof_executed": true,
+      "primary_proof_result": "PASS — the retrospective comparison is separated in code (hard-coded 2020 split, not a parameter) and the no-leakage note is explicit.",
+      "live_caller": "Both live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "The adjudication lifecycle has never once advanced for this chart."
+    },
+    {
+      "case_id": "L3-Q12",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q12",
+      "question": "What useful question or computation is missing? P16–18",
+      "required_distinction": "Omission detection, low-ranked evidence and smallest admissible discriminating next step.",
+      "primary_proof": "Seed an omitted cancellation, method or relationship; expose the unresolved frontier.",
+      "probe": {
+        "tools": ["coverage[] arrays of kala_now_get (18), kala_ahead_get (12), kala_explain_get (4), kala_priority_get (3), kala_story_get (5), kala_elect_get (12)", "kala_elect_get gap_report.factors_not_computed (5) + factors_not_in_corpus (7)"],
+        "sql": []
+      },
+      "observed": {
+        "declared_gaps_observed": ["transit_moorti: not_in_corpus (item 4, W3)", "sky_event_calendar: not_in_corpus (item 3, W3)", "tithi_pravesa: not_in_corpus (item 13, W3)", "counterfactual_mode: not_in_corpus (E6, W2/W3)", "classical_citation_join: not_in_corpus (item 11)", "surprise_of_absence: not_in_corpus (item 33, W3)", "developmental_thesis: honest_empty (W3 remainder)", "chara_dasha_second_voice: not_in_corpus", "punctuation_events: not_in_corpus", "state_delta: honest_empty", "muhurta_scope_parihara_rules: not_in_corpus", "muhurta_lagna_strength: honest_empty"],
+        "elect_factors_not_computed": ["janma_tithi_vara_nakshatra_resonance", "gandanta", "sandhi_zones", "nakshatra_tara_bala", "nityayoga_vyatipata_vaidhriti_special_status"],
+        "elect_factors_not_in_corpus": ["dagdha_yoga", "hutasana_yoga", "jvalamukhi_yoga", "mrityu_yoga", "mrityu_bhaga", "pushkara_navamsha_bhaga", "shiva_vasa"],
+        "absent_1": "The gap inventory is AUTHORED, not detected: no code path would flip not_in_corpus to computed by measuring; it flips when a facade is edited.",
+        "detector_exception": "gochara_activation_get coverage.universe_source is mechanically derived fresh every call from live table state (its own words), and sweep_completeness reads build_substep_progress live.",
+        "absent_2": "No surface ranks its own gaps by information value, consequence or burden; none is nominated as the next discriminating step.",
+        "absent_3": "The omission-detection concept is itself one of the un-built ones: kala_priority_get reports surprise_of_absence = not_in_corpus."
+      },
+      "distinction_present": false,
+      "partial_components_present": ["a thorough declared-omission inventory with reasons, brief item numbers and evidence_pointers", "one mechanically-derived coverage universe (gochara)"],
+      "f06_state": "unexplored",
+      "primary_proof_executed": false,
+      "primary_proof_not_executed_reason": "Seeding an omitted cancellation requires a write; forbidden by the read-only mandate.",
+      "live_caller": "Coverage blocks ship on every elevated kala_* response served live from marsys-jis-direct (verified on 7 distinct tools this session).",
+      "notes": "Declared negative is the safe direction, but a declared status with no detector behind it is still undetected (CLAUDE.md §N.8)."
+    },
+    {
+      "case_id": "L3-Q13",
+      "source_authority": "MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md §2, row L3-Q13",
+      "question": "What reaches the person and survives replay? Product §§5.3/10",
+      "required_distinction": "Complete material evidence and conjoint interpretation through managed channels, narrower raw-tool guarantee.",
+      "primary_proof": "A sentinel only in a low-ranked, non-default field reaches the allowed consumer and saved result.",
+      "probe": {
+        "tools": ["kala_story_get(chart_id=482012f1-..., budget_kb=14, top_k=40)", "kala_elect_get(..., budget_kb=12)", "gochara_activation_get(...)  # default budget 20kb"],
+        "sql": [],
+        "primary_proof_probe": "NOT EXECUTED — planting a sentinel requires a write to production data; this session's mandate is read-only."
+      },
+      "observed": {
+        "kala_story_get_trim": [{"path": "chapters", "original_count": 40, "kept_count": 2, "reason": "life-arc chapters: floored to 2 (hard-cap)", "recover_via_instrument": "kala_story_get"}, {"path": "reading.evidence", "original_count": 3, "kept_count": 1, "reason": "argument evidence: trimmed to 1", "recover_via_present": true}],
+        "kala_story_get_prose_vs_data": "composed_text narrates 3 chapters while the structured chapters array carries 2.",
+        "kala_elect_get_trim_at_12kb": {"path": "(trim_report)", "original_count": 4, "kept_count": 1, "reason": "full trim_report omitted to fit budget", "recover_via_instrument": null, "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."}]},
+        "gochara_activation_get_at_20kb": {"judgment_flag": "budget_exceeded_after_trim", "inline_value_truncation_marker": "…[truncated for budget]", "truncated_fields": ["suppression_state.note", "coverage_quality.note", "source_citation", "context_only_note"]},
+        "managed_vs_raw_guarantee": "Visible in tool descriptions (kala_windows_get: 'This tool remains the raw low-level primitive') but no probed response carried a machine-readable field declaring which guarantee the caller was receiving."
+      },
+      "distinction_present": "could_not_verify",
+      "could_not_verify_reason": "The strategy-named primary proof requires planting a sentinel in a low-ranked non-default field, which requires a write. This session is read-only against production.",
+      "partial_components_present": ["budget trimming normally declares its loss with a recovery pointer"],
+      "components_absent": ["a reachable state exists in which the trim_report is itself trimmed and recover_via.instrument is null — the record of what was dropped is among the things dropped"],
+      "f06_state": "unexplored",
+      "primary_proof_executed": false,
+      "live_caller": "All three live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "Re-attempt the sentinel proof the moment a write-capable non-production fixture exists."
+    },
+    {
+      "case_id": "P14-A",
+      "source_authority": "MADHAV_PRODUCT_DEFINITION_v3_0.md §14 first proving set (1 of 3)",
+      "question": "A deep structural question without a forced forecast.",
+      "required_distinction": "Product §14 'Interpretive fidelity — material rivals, qualified manifestation bridge, counter-evidence, dependence accounting and no unsupported prose added after synthesis', discharged without manufacturing a forecast.",
+      "primary_proof": "A structural reading that stands on cited evidence and declines to forecast.",
+      "probe": {
+        "tools": ["kala_explain_get(chart_id=482012f1-..., domain='career', max_signals=3)", "kala_explain_get(chart_id=482012f1-..., bhava=10, max_signals=3)"],
+        "sql": []
+      },
+      "observed": {
+        "ok": true,
+        "thesis_verbatim": "Why for this matter as of today: PACT status: unknown (unrecognized status string — served verbatim, not fabricated).",
+        "verdict_verbatim": "PACT status: unknown (unrecognized status string — served verbatim, not fabricated).",
+        "verdict_tier": "structural_prior",
+        "pact_status": "unknown",
+        "weakest_link": null,
+        "about": null,
+        "chain": 0,
+        "evidence": 0,
+        "dissent": 0,
+        "fact_id_refs": 0,
+        "pact_drill_pointers": 0,
+        "concordance": null,
+        "falsifier": null,
+        "composed_full_text_repeats_same_sentence_twice": true,
+        "identical_on_both_routes": true
+      },
+      "distinction_present": false,
+      "partial_components_present": ["correctly does NOT force a forecast (falsifier null, no dates, no probability)", "correctly does NOT fabricate around an unrecognized status — says so in the served text"],
+      "f06_state": "contradictory_unresolved",
+      "primary_proof_executed": true,
+      "primary_proof_result": "FAIL — no structural reading is delivered: no evidence, no chain, no rivals, no counter-evidence, no fact ids, no weakest link.",
+      "live_caller": "Live on marsys-jis-direct (verified — failed identically on domain and bhava routes); registration platform-mcp/src/tools/kala_views/explain.ts. No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "The EXPLAIN view is the layer's entire answer to 'why do you say that?'. It returns a self-describing failure. Most consequential broken surface found."
+    },
+    {
+      "case_id": "P14-B",
+      "source_authority": "MADHAV_PRODUCT_DEFINITION_v3_0.md §14 first proving set (2 of 3)",
+      "question": "A structure–time question with accountable permitted forward claims when earned.",
+      "required_distinction": "Product §7.2 'Preserve the forecast actually delivered' and §14 'Predictive performance — frozen eligible claims, valid comparison baselines, observation coverage, discrimination, calibration and uncertainty without leakage or selective denominators.'",
+      "primary_proof": "A forward claim that is frozen, windowed, falsifiable and adjudicable within a horizon that can actually be observed.",
+      "probe": {
+        "tools": ["kala_ahead_get(chart_id=482012f1-..., horizon_years=5, max_items=3)", "standing_predictions_read(chart_id=482012f1-..., limit=5)"],
+        "sql": ["select count(*) from brahma_prospective_ledger where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and lifecycle_status='open' and lower(observation_window) < '2031-01-01';"]
+      },
+      "observed": {
+        "kala_ahead_get": {"windows": 0, "projections": 0, "predictions_logged": {"windows_examined": 0, "filed_count": 0, "skipped_count": 0, "failed_count": 0}, "falsifier": null, "promise_gate": {"state": "not_applicable", "gating_scope": "none", "contradicts_served_projections": false, "reason_verbatim": "No domain to consult: neither a `domain` filter was supplied nor did any served projection carry a domain label, so there is no PACT chain for this response to be gated against. Not a clean bill of health — nothing was checked."}},
+        "standing_predictions_read": {"returned": 5, "total_open_count": 5, "all_rows_have_nonnull_falsifier": true, "per_row_fields": ["claim", "event_class", "claim_shape", "window_start", "window_end", "confidence", "falsifier", "generator_class", "model", "formula_version", "as_of", "filed_by", "source_citation"], "confidence_range": [0.695, 0.701], "window_starts": ["2056-02-01", "2056-11-01", "2058-10-01", "2068-09-01", "2081-08-01"], "governance_verbatim_excerpt": "Predictions exist by explicit filing only; chat is never mined."},
+        "ledger_wide": {"open": 18, "ever_resolved_any_status": 0, "open_before_2031": 5, "open_2056_to_2082": 13, "one_window_expired_2011_still_open": true},
+        "falsifier_templating": "Every gochara-generated row's falsifier is the same template sentence with the event class substituted."
+      },
+      "distinction_present": false,
+      "partial_components_present": ["every claim row is structurally accountable: window, confidence, mandatory non-null falsifier, named generator, formula version", "the filing path refuses to mine conversation", "promise_gate refuses to let a not_applicable read as a pass"],
+      "components_absent": ["practical accountability: 13 of 18 open claims resolve 30–56 years out", "the adjudication lifecycle has never once advanced", "the structure–time surface that should earn a claim (kala_ahead_get) produced nothing to earn"],
+      "f06_state": "unqualified",
+      "primary_proof_executed": true,
+      "primary_proof_result": "FAIL on adjudicability; PASS on claim typing and leakage control.",
+      "live_caller": "Both live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components — only the generic MCP passthrough route.",
+      "notes": ""
+    },
+    {
+      "case_id": "P14-C",
+      "source_authority": "MADHAV_PRODUCT_DEFINITION_v3_0.md §14 first proving set (3 of 3)",
+      "question": "A historical challenge that actively seeks misfit.",
+      "required_distinction": "Product §8.3 'A fair reading of history' and §7.3 'Evaluate without hindsight or leakage.'",
+      "primary_proof": "The surface produces the disconfirming evidence, individually and unsoftened.",
+      "probe": {
+        "tools": ["mechanism_retrodiction_get(chart_id=482012f1-..., limit=50)", "kala_story_get(chart_id=482012f1-..., budget_kb=14, top_k=40)"],
+        "sql": []
+      },
+      "observed": {
+        "confirming_firings": 8,
+        "confirming_houses": 7,
+        "not_confirmed_events": 25,
+        "unmapped_events": 8,
+        "misfit_to_fit_ratio_approx": "3:1",
+        "every_misfit_individually_reasoned": true,
+        "aggregation_or_dropping_observed": false,
+        "story_retrodiction_fit_aligned_ratio": 0,
+        "story_retrodiction_fit_disclaimer_verbatim_excerpt": "A simple lexical corroboration signal, NOT a calibrated probability or model score ... Sample is small (<3 events) — read this ratio as indicative only.",
+        "leakage_controls": {"sealed_split_date": "2020-01-01", "caller_settable": false, "no_leakage_note_present": true}
+      },
+      "distinction_present": true,
+      "partial_components_present": [],
+      "f06_state": "applied",
+      "primary_proof_executed": true,
+      "primary_proof_result": "PASS — the surface actively produces the disconfirming evidence and reports a 0.0 fit ratio without softening it.",
+      "live_caller": "Live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components.",
+      "notes": "Second-strongest surface measured, after kala_elect_get."
+    },
+    {
+      "case_id": "ORD-1",
+      "source_authority": "MADHAV_PRODUCT_DEFINITION_v3_0.md §9 — 'The experience must work for ordinary charts and ordinary periods, not only dramatic named yogas or the repeatedly studied native chart.'",
+      "question": "What does the layer say about an ordinary period — an unremarkable antardaśā-grade window with no named yoga firing?",
+      "required_distinction": "The layer must produce a substantive, date-appropriate answer for an ordinary window, not only for dramatic ones.",
+      "primary_proof": "Ask the layer's own ordinary-case surfaces about a window selected for being unremarkable, and see whether the answer is about that window.",
+      "window_chosen": {
+        "level": 3,
+        "level_name": "pratyantardasha",
+        "lord_graha": "Moon",
+        "system_id": "vimshottari",
+        "ayanamsha_id": "lahiri_chitrapaksha",
+        "start_date": "2014-08-23",
+        "end_date": "2014-11-17",
+        "why_chosen": [
+          "zero logged life_events in the span, verified by query",
+          "no named yoga can fire in it — kala_activation holds 0 rows for this chart at any date (BF-1)",
+          "not a mahadasha or antardasha boundary and not inside any sandhi band",
+          "sits mid-way inside the long Mercury mahadasha, so no chapter change drives it",
+          "level 3 is the finest grain at which a genuinely event-free window of this chart exists — every lahiri antardasha between 1991 and 2010 carries at least one logged event"
+        ],
+        "selection_sql": "select d.level_n, d.lord_graha, d.start_date, d.end_date, (select count(*) from life_events e where e.chart_id=d.chart_id and e.event_date >= d.start_date and e.event_date < d.end_date) as lel from chart_dashas d where d.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and d.system_id='vimshottari' and d.ayanamsha_id='lahiri_chitrapaksha' and d.level_n=3 and d.start_date between '2014-06-01' and '2015-12-01' order by d.start_date;"
+      },
+      "probe": {
+        "tools": ["kala_priority_get(chart_id=482012f1-..., date_from='2014-08-23', date_to='2014-11-17', top_k=3)", "gochara_activation_get(chart_id=482012f1-..., as_of_date='2014-10-01', domain='health')"],
+        "sql": ["(the selection_sql above)"]
+      },
+      "observed": {
+        "kala_priority_get": {"ranked_signals": 0, "signal_count": 0, "neutral_dignity_downranked_count": 0, "excluded_internal_marker_count": 0, "catalog_only_rows_in_page": 0, "thesis_verbatim": "No priority-ranked signals activation-overlap 2014-08-23–2014-11-17 for this chart.", "verdict_verbatim": "Honest empty — nothing to triage in this window.", "coverage_states": 3},
+        "gochara_activation_get": {"windows_returned": 3, "event_classes": ["chronic_onset", "surgery", "illness_acute"], "all_window_spans_identical": "2014-02-05 .. 2024-01-31 (10 years)", "all_signed_intensity": 0.28, "all_calibration_state": "structural_prior", "era_slice_key": "g3_2014_2024", "facets_resolution": {"era": 1, "month": 0, "day": 0, "unavailable": 2}, "context_only_rows_in_page": 3, "context_only_of_total": "3 of 3", "all_is_timing_window": false, "timing_window_blocked_reasons": ["era_resolution", "point_class_context_envelope", "point_class_context_envelope"], "evidence_date_mismatch": "each row's term_breakdown.activity_terms are dated 2023-04-04..2023-04-12 and 2017-05-06..2017-05-15 — 3 to 9 years from the 2014-10-01 date the call asked about"}
+      },
+      "distinction_present": false,
+      "partial_components_present": ["the decade envelopes are correctly LABELLED as context, not as timing (context_only_note, is_timing_window=false, timing_window_blocked_reason)"],
+      "f06_state": "unavailable",
+      "f06_state_secondary": "inapplicable (the gochara rows, correctly, as timing claims)",
+      "primary_proof_executed": true,
+      "primary_proof_result": "FAIL — on an ordinary date the layer returns either nothing, or a decade-wide envelope whose supporting evidence sits years away from the date asked about.",
+      "live_caller": "Both live on marsys-jis-direct (verified). No live caller found within scope: platform/src/app, platform/src/components — only the generic MCP passthrough route.",
+      "notes": "Correct labelling is genuinely to the layer's credit; it is not an answer."
+    }
+  ],
+  "tally": {
+    "distinction_present_true": 4,
+    "distinction_present_false": 12,
+    "distinction_present_could_not_verify": 1,
+    "present_case_ids": ["L3-Q08", "L3-Q10", "L3-Q11", "P14-C"],
+    "could_not_verify_case_ids": ["L3-Q13"]
+  },
+  "lane_e_mapping": {
+    "note": "LANE_E_LAYER_VALUE_MODEL.md's Q-K01..Q-K16 are NOT baseline authority. This is a mapping required by critical review C3/D1, not an adoption. No Lane E finding is inherited.",
+    "rows": [
+      {"lane_e": "Q-K01", "short": "What is running right now, on every clock that applies to me?", "maps_to": ["L3-Q01"], "note": "Direct. Lane E adds applicability-vs-computability adjudication across the 6 declared ayanamsha variants and 7+ dasha systems."},
+      {"lane_e": "Q-K02", "short": "Which mechanisms are in an activation window, which dormant?", "maps_to": ["L3-Q01", "L3-Q03"], "note": "Splits across two. 'whole mechanism set, not a top-N' is a candidate strategy amendment (minor)."},
+      {"lane_e": "Q-K03", "short": "Exactly when does my antardasha end, to the hour?", "maps_to": ["L3-Q01"], "note": "Precise-lookup sub-case, not an independent question. Answerable at L1 by reference per §N.5."},
+      {"lane_e": "Q-K04", "short": "When do two domains coincide, and which dominates?", "maps_to": ["L3-Q07"], "note": "Direct. 'a stated dominance rule, not implied by score ordering' sharpens 'enabling or inhibiting roles'."},
+      {"lane_e": "Q-K05", "short": "Is the 2027 window stronger than the 2019 one?", "maps_to": ["L3-Q02", "L3-Q06"], "note": "Lane E's TIME-SYMMETRY constraint on any strength comparator is not in Strategy §2 — candidate strategy amendment."},
+      {"lane_e": "Q-K06", "short": "Which clocks disagree about H2-2028, and why?", "maps_to": ["L3-Q05"], "note": "Direct."},
+      {"lane_e": "Q-K07", "short": "How confident are you, and what would change your mind?", "maps_to": ["L3-Q05", "L3-Q13"], "note": "Confidence typing sits under L3-Q05's 'non-comparable scales'; the resolve-by-a-date falsifier sits under Product §7 via L3-Q13."},
+      {"lane_e": "Q-K08", "short": "Rising, cresting or decaying — trajectory, not snapshot?", "maps_to": ["L3-Q06", "L3-Q07"], "note": "LIVE-MEASUREMENT DIVERGENCE: Lane E states kala_taranga's transit term is 0.0 on all 92,412 rows; measured live 2026-09-22 it is 0 on 56,130 (60.7%), mean 0.2490, max 1.0. Recorded, not adjudicated."},
+      {"lane_e": "Q-K09", "short": "I need to sign in the next 90 days — when?", "maps_to": ["L3-Q10"], "note": "Direct."},
+      {"lane_e": "Q-K10", "short": "...and if there is genuinely no good time, say so.", "maps_to": ["L3-Q08", "L3-Q10"], "note": "Confirmed live: kala_elect_get emits a frontier with gold_tier_present=false and a gap_report."},
+      {"lane_e": "Q-K11", "short": "When does this pattern fire again — is that the complete list?", "maps_to": ["L3-Q08"], "note": "Recurrence completeness is coverage. 'any cap must be disclosed as a cap' = 'searched horizon, resolution'."},
+      {"lane_e": "Q-K12", "short": "You said four things point at 2029 — are those four actually four?", "maps_to": ["L3-Q05"], "note": "Provenance-aware de-correlation = L3-Q05's 'shared roots'. Confirmed absent live."},
+      {"lane_e": "Q-K13", "short": "Am I in a sandhi right now?", "maps_to": ["L3-Q01"], "note": "Boundary sub-case. Live: dasha_sandhi bands ARE served at levels 1-4 with a self-disclosing band_convention — better than Lane E's date-grain-only account describes."},
+      {"lane_e": "Q-K14", "short": "Is this an unusual period for me, or an ordinary one?", "maps_to": [], "disposition": "maps to nothing → candidate strategy amendment", "note": "Within-chart rarity/percentile has no L3-Q01..Q13 addressee. Closest analogue to the ORD-1 case this baseline had to construct; strongest argument for a fourteenth Strategy §2 row on ordinariness/rarity."},
+      {"lane_e": "Q-K15", "short": "Is there genuinely nothing in Q3 2027, or is something not built?", "maps_to": ["L3-Q08"], "note": "Direct, and the sharpest statement of it."},
+      {"lane_e": "Q-K16", "short": "Re-derive the 2019 window without hindsight.", "maps_to": ["L3-Q11"], "note": "Lane E's REPRODUCIBILITY constraint (a re-derivation depending on date.today() is not the 2019 computation) is not in Strategy §2 — candidate strategy amendment."}
+    ],
+    "dropped": [],
+    "candidate_strategy_amendments": [
+      "Q-K02: whole-mechanism-set partition requirement (not a top-N)",
+      "Q-K05: time-symmetry of any strength comparator",
+      "Q-K16: re-derivation reproducibility (build-date independence)",
+      "Q-K14: an ordinariness/rarity question with no current L3-Q addressee"
+    ]
+  },
+  "does_not_establish": [
+    "That the L3 code is wrong — 12 of 17 absences trace to a data condition (BF-1), not a logic condition. One chart measured.",
+    "That the surfaces' own coverage states mean what F06 means — no probed surface emits an F06 state; every f06_state here is this document's mapping.",
+    "The cause of BF-1 — deletion, interrupted rebuild or chart-scoped purge is not determined; only the state is recorded.",
+    "Whether asset_throughput is correct for any other chart — measured for chart_id 482012f1-... only.",
+    "The Strategy-named primary proofs — 9 of 13 are perturbation proofs requiring a write or a build run, both forbidden; for 8 of those 9 the proof is additionally moot today because the thing to be perturbed does not exist.",
+    "Adjudication of the Lane E divergence on kala_taranga.transit_contribution.",
+    "Live-caller ABSENCE — every 'no live caller found within scope' names its scope (grep -rlF over platform/src/app + platform/src/components, with broader counts over platform/src, platform-mcp/src, platform/python-sidecar noted separately). Every tool here answered a live call. 'No caller found within scope' is never 'unused'.",
+    "Anything about the OAuth-gated `claude.ai Marsys JIS` MCP server — not probed, no interactive authorization available.",
+    "Latency, cost, concurrency, failure-under-load, or any portal/UI rendering of these responses.",
+    "That the four PRESENT cases generalize — one chart, one date, one budget."
+  ]
+}

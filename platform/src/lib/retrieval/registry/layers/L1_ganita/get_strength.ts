@@ -25,6 +25,7 @@ import {
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -79,6 +80,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
     },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 500 },
+    build_id: BUILD_FENCE_INPUT,
     all: {
       type: 'boolean',
       description: 'ŚODHANA T3 (MC-014): default false — `graha_in_house_composite_strength` ' +
@@ -135,6 +137,10 @@ export const getStrengthCapability: CapabilityDescriptor = {
       }
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
+      const buildId = args.build_id as BuildFence
+      const buildFence = classifyBuildFence(buildId)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_strength', chartId)
+      const buildIds = buildFence.kind === 'resolved' ? buildFence.build_ids : null
 
       // F-60 fix: build the WHERE clause + its params ONCE, shared by a dedicated COUNT
       // query (the true pre-LIMIT/OFFSET row count matching this filter) and the SELECT
@@ -143,6 +149,10 @@ export const getStrengthCapability: CapabilityDescriptor = {
       // reported a post-cap, post-filter page length as if it were the true row count).
       const whereParams: unknown[] = [chartId, categories]
       let whereClause = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
+      if (buildIds) {
+        whereClause += ` AND build_id = ANY($${whereParams.length + 1}::uuid[])`
+        whereParams.push(buildIds)
+      }
       if (args.ayanamsha_id) {
         whereClause += ` AND ayanamsha_id = $${whereParams.length + 1}`
         whereParams.push(args.ayanamsha_id as string)
@@ -193,13 +203,14 @@ export const getStrengthCapability: CapabilityDescriptor = {
       let frameContext: Record<string, unknown> | undefined
       try {
         const { sign: referenceSign, ayanamsha_frame_sensitivity } =
-          await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+          await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha, build_id: buildId })
         const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
         const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
           `SELECT fact_subject, fact_value_text FROM chart_facts
            WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_position'
-             AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'`,
-          [chartId, frameAyanamsha, grahaCodes],
+             AND fact_subject = ANY($3::text[]) AND fact_key = 'sign'
+             ${buildIds ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+          buildIds ? [chartId, frameAyanamsha, grahaCodes, buildIds] : [chartId, frameAyanamsha, grahaCodes],
         )
         activeHouseByGraha = {}
         for (const r of signRes.rows) {

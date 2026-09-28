@@ -8,7 +8,7 @@ import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../t
 export const adapterOpenai: Adapter = {
   providerId: 'openai',
 
-  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+  prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel): StreamTextOptions {
     // Structured output via json_schema when responseSchema is present
     const providerOptions =
       req.responseSchema && meta.quirks.structured_output_format === 'json_schema'
@@ -39,7 +39,7 @@ export const adapterOpenai: Adapter = {
     // TODO: Future o-series models may have reasoning_via: 'native' — extend here when added to registry.
 
     return {
-      model: openai(meta.id),
+      model: injectedModel ?? openai(meta.id),
       system: req.systemPrompt,
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

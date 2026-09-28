@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getServerUserWithProfile } from '@/lib/auth/access-control'
+import { getFlag } from '@/lib/config'
 import { AppShell } from '@/components/shared/AppShell'
 import { ObservatorySubNav } from '@/components/observatory/ObservatorySubNav'
+import { BuildHeader } from '@/components/build/BuildHeader'
 
 export const metadata: Metadata = {
-  title: 'AIOps · Observatory — MARSYS-JIS',
+  title: 'Observatory — MARSYS-JIS',
 }
 
 export default async function ObservatorySectionLayout({
@@ -23,11 +25,12 @@ export default async function ObservatorySectionLayout({
       user={ctx.user}
       profile={ctx.profile}
       breadcrumb={[
-        { label: 'Roster', href: '/dashboard' },
-        { label: 'AIOps', href: '/aiops', current: false },
+        { label: 'Cockpit', href: '/cockpit' },
+        { label: 'Observatory', href: '/observatory', current: true },
       ]}
     >
       <div className="flex h-full min-h-0 flex-col">
+        <BuildHeader showAiConsole={getFlag('AI_CONSOLE_BYOK')} />
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <ObservatorySubNav />
           <div className="flex-1 overflow-auto">

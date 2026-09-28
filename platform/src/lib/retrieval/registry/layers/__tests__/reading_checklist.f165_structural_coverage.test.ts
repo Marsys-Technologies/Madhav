@@ -93,8 +93,8 @@ describe('F-165 — fetchDomainStructuralCoverage: population, not vocabulary', 
     queryMock.mockResolvedValueOnce({ rows: [{ msr_count: 1, mech_count: 1, mech_domain_coverage: 1 }] })
     await fetchDomainStructuralCoverage(CHART, AYA, 'wealth', BUILD_ID)
     const [sql, params] = queryMock.mock.calls[0]!
-    expect(String(sql).match(/build_id = \$4::uuid/g)).toHaveLength(3)
-    expect(params).toEqual([CHART, AYA, 'wealth', BUILD_ID])
+    expect(String(sql).match(/build_id = ANY\(\$4::uuid\[\]\)/g)).toHaveLength(3)
+    expect(params).toEqual([CHART, AYA, 'wealth', [BUILD_ID]])
   })
 })
 

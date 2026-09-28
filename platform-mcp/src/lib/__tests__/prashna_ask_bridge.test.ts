@@ -20,7 +20,7 @@ import {
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-const PRINCIPAL = { userUid: 'user-1', keyId: 'key-1' }
+const PRINCIPAL = { userUid: 'user-1', keyId: 'key-1', authKind: 'api_key' as const }
 
 function makeStreamResponse(
   lines: string[],
@@ -72,11 +72,25 @@ describe('callPrashnaAskEngine', () => {
     expect(typeof opts.headers['X-MCP-Internal-Token']).toBe('string')
     expect(opts.headers['X-MCP-User']).toBe('user-1')
     expect(opts.headers['X-MCP-Key-Id']).toBe('key-1')
+    expect(opts.headers['X-MCP-Auth-Kind']).toBe('api_key')
     expect(JSON.parse(opts.body)).toEqual({
       chart_id: 'c1',
       question: 'what dasha am I in?',
       response_format: 'standard',
     })
+  })
+
+  it('forwards OAuth identity kind from the authenticated principal metadata', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
+    )
+    await callPrashnaAskEngine({
+      chartId: 'c1',
+      question: 'q',
+      principal: { userUid: 'user-1', keyId: `oauth_sha256:${'a'.repeat(64)}`, authKind: 'oauth' },
+    })
+    const [, opts] = mockFetch.mock.calls[0]
+    expect(opts.headers['X-MCP-Auth-Kind']).toBe('oauth')
   })
 
   it('forwards scopeTuple in the POST body when supplied (W6.1 fix-cycle)', async () => {
@@ -168,6 +182,36 @@ describe('callPrashnaAskEngine', () => {
 
     const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
     expect(result).toEqual(planResponse)
+  })
+
+  it('returns the evidence outcome verbatim without inventing host-side synthesis', async () => {
+    const evidenceResponse = {
+      ok: true,
+      trace_id: 't-evidence',
+      chart_id: 'c1',
+      outcome: 'plan',
+      schema_version: 'madhav.evidence.v1',
+      synthesis: { mode: 'external', performed_by_madhav: false },
+      question: 'q',
+      plan: { tools: [] },
+      results: [],
+      completeness: { status: 'complete' },
+      judgment_flags: [],
+      response_accountability: null,
+      routing: {
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'c', modelId: 'm' },
+        configurationVersion: null,
+        roles: { planner: {}, deep_planner: {}, worker: {} },
+      },
+    }
+    mockFetch.mockResolvedValueOnce(makeStreamResponse([
+      JSON.stringify({ event: 'final', ...evidenceResponse }),
+    ]))
+
+    const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
+    expect(result).toEqual(evidenceResponse)
+    expect(result).not.toHaveProperty('reading')
   })
 
   it('streams interim progress lines to onProgress and resolves with the final event payload', async () => {

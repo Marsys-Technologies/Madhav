@@ -1,6 +1,30 @@
 import type { SemanticCapabilityDeclaration } from './types'
 import { sourceQueryAvailabilityRequirement } from './source_query_availability'
 
+/**
+ * The executable legs every assess_* result rests on (runAssessDomain, one handler for all four
+ * domains). An assess_* binding is available only when each leg earns its own exact availability
+ * in the same chart scope — never from an adjacent producer receipt alone.
+ *
+ * Included: the three mandatory legs (a failure aborts or empties the assessment), and the two
+ * legs carrying its confirmed-finding and ranking layers — the firings-authoritative bearing
+ * yogas (§N.6) and the composite signal surface. Each of those two degrades non-fatally, so
+ * without them here a composite could be promoted while serving an empty confirmed layer.
+ *
+ * Deliberately not gating: the handler's enrichment facets read directly from chart_facts
+ * (operative-varga dignity and AV, Indu Lagna, D1 significator grading, KP cusps, sensitive
+ * degrees). They have no executable binding of their own to contract; each reads only the
+ * served generation and reports its own empty_reason, and a withheld or unresolved asset is
+ * disclosed through the served_generation_unresolved_assets flag.
+ */
+export const ASSESS_DOMAIN_AVAILABILITY_LEGS = [
+  'registry:marsys://tool/L2/query_domain_reading',
+  'registry:marsys://tool/L3/query_temporal_activation',
+  'registry:marsys://tool/L2/query_contradictions',
+  'registry:marsys://tool/L1/get_yoga_firings',
+  'registry:marsys://tool/L2/query_signals',
+] as const
+
 const common = {
   version: 1,
   scope: 'chart' as const,
@@ -395,6 +419,14 @@ export const FINANCE_SCUS: readonly SemanticCapabilityDeclaration[] = [
     availability_contracts: [{
       binding_id: 'registry:marsys://tool/L-DOMAIN/assess_wealth',
       requirements: [
+        // Same handler as assess_career/health/marriage: every leg it rests on must earn its own
+        // availability. The two wealth producer receipts below remain additional requirements.
+        {
+          kind: 'derived',
+          scope: 'chart',
+          required_binding_ids: ASSESS_DOMAIN_AVAILABILITY_LEGS,
+          source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+        },
         {
           kind: 'producer_output', asset_id: 'bo_cdlm_summary',
           spec_sha256: 'f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497',

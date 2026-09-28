@@ -9,6 +9,10 @@ import {
   buildResponseCoverageReceipt,
   buildStructuredResponseAccountability,
   inquiryResponsePartContentHash,
+  inquiryCitationMarker,
+  inquiryFindingCitationHandles,
+  annotateInquiryEvidenceForSynthesis,
+  visibleInquiryCitationHandles,
 } from './response_accountability'
 import type { InquiryContract, InquiryResponseDeliveryPart, InquiryScopeTuple } from './types'
 
@@ -32,7 +36,7 @@ function compileInquiryContract(input: Parameters<typeof compileRawInquiryContra
   })
 }
 
-function completeFixture(): { contract: InquiryContract; evidencePayloads: readonly unknown[] } {
+function completeFixture(refFor: (itemId: string, payloadHash: string) => string = (itemId, payloadHash) => `retrieval:${itemId}:${payloadHash}`): { contract: InquiryContract; evidencePayloads: readonly unknown[] } {
   const initial = compileInquiryContract({
     snapshot,
     chart_id: 'chart-fixture',
@@ -50,7 +54,7 @@ function completeFixture(): { contract: InquiryContract; evidencePayloads: reado
   const contract = finalizeInquiryContract(applyInquiryObservations(initial, initial.plan_items.map((item) => ({
     item_id: item.item_id,
     disposition: 'served' as const,
-    evidence_refs: [`retrieval:${item.item_id}:${stableFingerprint(byItem.get(item.item_id))}`],
+    evidence_refs: [refFor(item.item_id, stableFingerprint(byItem.get(item.item_id)))],
   }))))
   return { contract, evidencePayloads }
 }
@@ -85,6 +89,18 @@ function completeAccountability(contract: InquiryContract, evidencePayloads: rea
 }
 
 describe('Wave 4 response accountability', () => {
+  it.each([
+    ['managed door', (_itemId: string, hash: string) => `managed:${hash}`],
+    ['raw MCP door', (_itemId: string, hash: string) => `raw:${hash}`],
+    ['managed pipeline', (itemId: string, hash: string) => `retrieval:${itemId}:${hash}`],
+  ])('delivers obligations evidenced by %s refs, so full coverage can close COMPLETE', (_door, refFor) => {
+    const { contract, evidencePayloads } = completeFixture(refFor)
+    const envelope = completeAccountability(contract, evidencePayloads)
+    expect(envelope.response_coverage_receipt.missing_required_fact_ids).toEqual([])
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+
   it('registers every obligation and required frontier identity exactly once', () => {
     const { contract, evidencePayloads } = completeFixture()
     const register = buildInquiryFactRegister(contract, evidencePayloads)
@@ -447,6 +463,115 @@ describe('Wave 4 response accountability', () => {
     expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids.length).toBeGreaterThan(0)
   })
 
+  it('maps paraphrased findings through citation markers instead of verbatim row JSON (RC-6.3)', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const handles = inquiryFindingCitationHandles(register)
+    const findings = register.facts.filter((fact) => fact.kind === 'finding')
+    expect(findings.length).toBeGreaterThan(1)
+    // Prose paraphrases each finding and cites it; no canonical JSON appears anywhere.
+    const responseText = findings
+      .map((fact, index) => `Point ${index + 1} is interpreted in plain language ${inquiryCitationMarker(handles.get(fact.fact_id)!)}.`)
+      .join('\n\n')
+    expect(findings.some((fact) => responseText.includes(fact.normalized_content!))).toBe(false)
+
+    const envelope = buildStructuredResponseAccountability(contract, { response_text: responseText, evidence_payloads: evidencePayloads })
+
+    expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(findings.length)
+    expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids).toEqual([])
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+  it('assigns stable citation handles from the register alone', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const first = inquiryFindingCitationHandles(buildInquiryFactRegister(contract, evidencePayloads))
+    const second = inquiryFindingCitationHandles(buildInquiryFactRegister(contract, [...evidencePayloads]))
+    expect([...first.entries()]).toEqual([...second.entries()])
+    expect([...first.values()]).toEqual([...first.values()].map((_, index) => `F${index + 1}`))
+  })
+
+  it('fails closed on a citation marker that names no registered finding', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const handles = inquiryFindingCitationHandles(register)
+    const cited = [...handles.values()].map((handle) => inquiryCitationMarker(handle)).join(' ')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: `${cited} and an invented claim ${inquiryCitationMarker('F999')}.`,
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.response_coverage_receipt.status).not.toBe('COMPLETE')
+    expect(envelope.response_coverage_receipt.invalid_delivery_claims)
+      .toContainEqual(expect.stringContaining('unknown citation marker F999'))
+  })
+
+  it('does not map a finding whose marker is absent from the cited span', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const handles = inquiryFindingCitationHandles(register)
+    const [firstFinding] = register.facts.filter((fact) => fact.kind === 'finding')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: `Only one finding is interpreted ${inquiryCitationMarker(handles.get(firstFinding!.fact_id)!)}.`,
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(1)
+    expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
+  })
+
+  it('annotates display copies with citation handles without changing canonical evidence (R2C.1)', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const before = evidencePayloads.map((payload) => stableFingerprint(payload))
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+
+    expect(evidencePayloads.map((payload) => stableFingerprint(payload))).toEqual(before)
+    const shown = JSON.stringify(annotated.payloads, null, 2)
+    expect(visibleInquiryCitationHandles(shown)).toEqual([...annotated.handles.values()].sort())
+  })
+
+  it('completes when synthesis interprets every finding it was shown by handle', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+    const visible = visibleInquiryCitationHandles(JSON.stringify(annotated.payloads, null, 2))
+    const reading = visible.map((handle) => `A plain-language interpretation ${inquiryCitationMarker(handle)}.`).join('\n\n')
+
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: reading, evidence_payloads: evidencePayloads, synthesis_visible_handles: visible,
+    })
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+  it('discloses unseen supporting findings and keeps unseen required findings incomplete', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+    const findings = annotated.register.facts.filter((fact) => fact.kind === 'finding')
+    const required = findings.find((fact) => fact.materiality === 'required')!
+    const supporting = findings.find((fact) => fact.materiality === 'supporting')
+    const hidden = new Set([required.fact_id, ...(supporting ? [supporting.fact_id] : [])])
+    const visible = findings.filter((fact) => !hidden.has(fact.fact_id)).map((fact) => annotated.handles.get(fact.fact_id)!)
+    const reading = visible.map((handle) => `Interpreted ${inquiryCitationMarker(handle)}.`).join('\n\n')
+
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: reading, evidence_payloads: evidencePayloads, synthesis_visible_handles: visible,
+    })
+    const receipt = envelope.response_coverage_receipt
+    expect(receipt.status).toBe('INCOMPLETE_RESUMABLE')
+    expect(receipt.interpretation_unmapped_fact_ids).toContain(required.fact_id)
+    if (supporting) {
+      expect(receipt.permitted_exclusion_fact_ids).toContain(supporting.fact_id)
+      expect(envelope.delivery_parts.find((part) => part.kind === 'permitted_exclusion')?.exclusion_reason)
+        .toContain('synthesis_budget_excluded')
+    }
+  })
+
+  it('accepts the Portal citation family for the same handle', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const annotated = annotateInquiryEvidenceForSynthesis(contract, evidencePayloads)
+    const reading = [...annotated.handles.values()].map((handle) => `Interpreted \u27E6cite: ${handle}\u27E7.`).join('\n\n')
+    const envelope = buildStructuredResponseAccountability(contract, { response_text: reading, evidence_payloads: evidencePayloads })
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
   it('derives verified production mappings when the canonical synthesis contains every finding', () => {
     const { contract, evidencePayloads } = completeFixture()
     const register = buildInquiryFactRegister(contract, evidencePayloads)
@@ -612,5 +737,25 @@ describe('Wave 4 response accountability', () => {
     expect(envelope.response_coverage_receipt.continuation.next_action_ids).toContain(supportingItem.item_id)
     expect(envelope.response_coverage_receipt.continuation.frontier_ids).not.toEqual([])
     expect(envelope.response_coverage_receipt.resume_required).toBe(true)
+  })
+})
+
+describe('restoreRegisterCitationMarkers (Portal rewriter → accountability)', () => {
+  it('turns resolved register markers back into handles accountability can read', async () => {
+    const { restoreRegisterCitationMarkers, inquiryCitedHandles } = await import('./response_accountability')
+    const text = 'Jupiter is strong [1] and the 10th lord is placed well [2][3].'
+    const restored = restoreRegisterCitationMarkers(text, [
+      { index: 1, signal_id: 'F7' }, { index: 2, signal_id: 'f12' }, { index: 3, signal_id: 'F3' },
+    ])
+    expect(inquiryCitedHandles(text)).toEqual([])
+    expect(inquiryCitedHandles(restored)).toEqual(['F12', 'F3', 'F7'])
+  })
+
+  it('leaves database signal ids, unresolved markers and other bracketed text alone', async () => {
+    const { restoreRegisterCitationMarkers } = await import('./response_accountability')
+    const text = 'See [1] and [2] and [11] and list item [4].'
+    expect(restoreRegisterCitationMarkers(text, [
+      { index: 1, signal_id: 'SIG.MSR.0042' }, { index: 2, signal_id: 'F2' },
+    ])).toBe('See [1] and ⟦cite: F2⟧ and [11] and list item [4].')
   })
 })

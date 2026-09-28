@@ -30,6 +30,8 @@ export interface SharingPanelProps {
   fetcher?: typeof fetch
 }
 
+const defaultFetcher: typeof fetch = (input, init) => fetch(input, init)
+
 export function SharingPanel({ chartId, initialGrants, fetcher }: SharingPanelProps) {
   const [grants, setGrants] = useState<SharingGrant[]>(initialGrants ?? [])
   const [loading, setLoading] = useState(initialGrants === undefined)
@@ -37,7 +39,7 @@ export function SharingPanel({ chartId, initialGrants, fetcher }: SharingPanelPr
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchFn = fetcher ?? (typeof window !== 'undefined' ? window.fetch.bind(window) : fetch)
+  const fetchFn = fetcher ?? defaultFetcher
 
   const refresh = useCallback(async () => {
     setLoading(true)

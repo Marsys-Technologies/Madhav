@@ -20,6 +20,8 @@ const FACET_TO_TYPE: Record<string, 'yoga' | 'dosha' | 'flag'> = {
   dosha_fires: 'dosha',
 }
 
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+
 export const getYogaDoshaCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_yoga_dosha',
   type: 'tool',
@@ -40,6 +42,7 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
     'fire_reason is requires_pass (shared-stub/catalog-only, not a confirmed per-chart finding) are ' +
     'EXCLUDED from the default page — pass all=true to include them.',
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
     type:         { type: 'string', description: 'yoga | dosha | flag. Omit for all.', enum: ['yoga', 'dosha', 'flag'] },
@@ -84,6 +87,9 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       const facet      = args.facet as string | undefined
       const type       = (args.type as string | undefined) ?? (facet ? FACET_TO_TYPE[facet] : undefined)
       const all        = args.all === true
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_yoga_dosha', chartId)
+      const buildIds   = buildFence.kind === 'resolved' ? buildFence.build_ids : null
 
       let categories = (args.categories as string[]) ?? YD_CATEGORIES
       if (type === 'yoga')  categories = categories.filter(c => c.startsWith('yoga') || c === 'bhadra_flag')
@@ -99,6 +105,10 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       if (args.ayanamsha_id) {
         baseParams.push(args.ayanamsha_id as string)
         whereClause += ` AND ayanamsha_id = $${baseParams.length}`
+      }
+      if (buildIds) {
+        baseParams.push(buildIds)
+        whereClause += ` AND build_id = ANY($${baseParams.length}::uuid[])`
       }
       // B9 dosha gate (D-1.5b — mirrors get_yoga_firings.ts's `all` pattern): a shared-stub
       // dosha_label row (fire_reason=requires_pass — a catalog/label match, not a cross-verified
@@ -124,6 +134,10 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         firingsParams.push(args.ayanamsha_id as string)
         firingsWhere += ` AND ayanamsha_id = $${firingsParams.length}`
       }
+      if (buildIds) {
+        firingsParams.push(buildIds)
+        firingsWhere += ` AND build_id = ANY($${firingsParams.length}::uuid[])`
+      }
 
       // B9 dosha gate honesty receipt: how many dosha_label/requires_pass rows this same
       // chart/ayanamsha/category filter is currently withholding by default (0 when all=true,
@@ -133,6 +147,10 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
       if (args.ayanamsha_id) {
         gatedCountParams.push(args.ayanamsha_id as string)
         gatedCountWhere += ` AND ayanamsha_id = $${gatedCountParams.length}`
+      }
+      if (buildIds) {
+        gatedCountParams.push(buildIds)
+        gatedCountWhere += ` AND build_id = ANY($${gatedCountParams.length}::uuid[])`
       }
 
       const [countResult, result, firingsCountResult, doshaGatedCountResult] = await Promise.all([
@@ -200,6 +218,10 @@ export const getYogaDoshaCapability: CapabilityDescriptor = {
         if (args.ayanamsha_id) {
           ksParams.push(args.ayanamsha_id as string)
           ksWhere += ` AND ayanamsha_id = $${ksParams.length}`
+        }
+        if (buildIds) {
+          ksParams.push(buildIds)
+          ksWhere += ` AND build_id = ANY($${ksParams.length}::uuid[])`
         }
         const ksResult = await query<Record<string, unknown>>(
           `SELECT fact_id, ayanamsha_id, fact_value_jsonb, fact_value_text, verification_pass_status, citation_ref

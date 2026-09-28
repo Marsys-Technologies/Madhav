@@ -1,0 +1,23 @@
+ka_avadhi|t|error|1169|2026-09-10|post-write integrity check failed: integrity_check_sql → False
+ka_bhavishya_lekha|t|stale|100|2026-08-13|
+ka_dasha_kala|t|lit|0|2026-09-10|
+ka_gochara|t|lit|87|2026-09-10|
+ka_gochara_resonance|t|lit|765|2026-09-07|
+ka_gochara_sweep|f|error|0|2026-08-12|no writer registered for ka_gochara_sweep
+ka_gochara_v3_century_materialize|t|error|914|2026-08-21|RaiseException: BUILD-PROTECTED: kala_gochara_windows row(s) for chart_id 482012f1-710e-4a25-994a-93821f5871aa (generation=3.0, asset_id=ka_gochara) are protected — DELETE is refused. Set app.allow_protected_sweep_rewrite=on for this sessio
+ka_graha_sancara|t|(no row)|-|-|
+ka_jivana_parva|t|stale|100|2026-08-13|
+ka_kala_darshana|t|stale|750|2026-08-13|
+ka_kalasutra|t|stale|335403|2026-08-13|
+ka_kota_chakra|t|lit|585|2026-09-07|
+ka_kshetra|t|error|1183134|2026-09-11|worker_crash: OperationalError: the connection is lost
+ka_moorti_nirnaya|t|lit|71|2026-09-07|
+ka_muhurta_seva|t|(no row)|-|-|
+ka_sangam|t|stale|14868|2026-08-13|
+ka_sudarshana_varsha|t|lit|120|2026-09-07|
+ka_taranga|t|stale|92412|2026-08-13|
+ka_tithi_pravesha|t|lit|120|2026-09-07|
+ka_tulana|t|stale|0|2026-08-13|
+ka_vedha_gochara|t|lit|177|2026-09-07|
+ka_vighnakara|t|stale|536|2026-08-13|
+ka_yojaka|t|stale|50678|2026-09-10|

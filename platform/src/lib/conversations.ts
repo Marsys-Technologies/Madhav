@@ -1,6 +1,7 @@
 import 'server-only'
 import { query } from '@/lib/db/client'
 import type { ConversationModule } from '@/lib/db/types'
+import type { ChartInputSnapshot, ConversationArchiveReason } from '@/lib/charts/types'
 
 export interface ConversationSummary {
   id: string
@@ -11,6 +12,23 @@ export interface ConversationSummary {
   created_at: string
   updated_at: string | null
   archived_at: string | null
+  /** 'chart_details_changed' = archived by a chart correction (system-locked read-only); NULL = manual archive. */
+  archive_reason: ConversationArchiveReason | null
+  /** Pre-correction chart inputs captured when a correction archived this conversation. */
+  archived_chart_snapshot: ChartInputSnapshot | null
+  /** Rebuild run created by that correction. */
+  archived_by_run_id: string | null
+}
+
+/** Single read-only predicate for chart-correction archives; see ./conversations/readOnly. */
+export { isCorrectionArchived } from '@/lib/conversations/readOnly'
+
+function archiveContext(row: Record<string, unknown>) {
+  return {
+    archive_reason: (row.archive_reason as ConversationArchiveReason | null | undefined) ?? null,
+    archived_chart_snapshot: (row.archived_chart_snapshot as ChartInputSnapshot | null | undefined) ?? null,
+    archived_by_run_id: (row.archived_by_run_id as string | null | undefined) ?? null,
+  }
 }
 
 export interface ConversationWithSnippet extends ConversationSummary {
@@ -60,6 +78,7 @@ export async function listConversations(params: {
     : ''
   const { rows } = await query(
     `SELECT c.id, c.chart_id, c.user_id, c.module, c.title, c.created_at, c.updated_at, c.archived_at,
+            c.archive_reason, c.archived_chart_snapshot, c.archived_by_run_id,
             LEFT(
               (
                 SELECT elem->>'text'
@@ -84,6 +103,7 @@ export async function listConversations(params: {
     module: row.module as ConversationModule,
     updated_at: (row.updated_at ?? row.created_at) as string,
     first_message_snippet: (row.first_message_snippet as string | null) ?? null,
+    ...archiveContext(row),
   }))
 }
 
@@ -98,7 +118,13 @@ export async function createConversation(params: {
   )
   const data = rows[0]
   if (!data) throw new Error('Failed to create conversation')
-  return { ...(data as ConversationSummary), module: data.module as ConversationModule, updated_at: data.created_at as string }
+  return {
+    ...(data as ConversationSummary),
+    module: data.module as ConversationModule,
+    updated_at: data.created_at as string,
+    archived_at: null,
+    ...archiveContext({}),
+  }
 }
 
 export async function insertConversationWithId(params: {
@@ -119,7 +145,9 @@ export async function getConversation(params: {
   isSuperAdmin: boolean
 }): Promise<ConversationSummary | null> {
   const { rows } = await query(
-    'SELECT id, chart_id, user_id, module, title, created_at, updated_at, archived_at FROM conversations WHERE id=$1',
+    `SELECT id, chart_id, user_id, module, title, created_at, updated_at, archived_at,
+            archive_reason, archived_chart_snapshot, archived_by_run_id
+       FROM conversations WHERE id=$1`,
     [params.id]
   )
   const data = rows[0] ?? null
@@ -130,11 +158,17 @@ export async function getConversation(params: {
     module: data.module as ConversationModule,
     updated_at: (data.updated_at ?? data.created_at) as string,
     archived_at: data.archived_at ?? null,
+    ...archiveContext(data),
   }
 }
 
 export async function updateConversationTitle(id: string, title: string) {
-  await query('UPDATE conversations SET title=$1 WHERE id=$2', [title, id])
+  // Atomic correction-history lock: a background title job racing a chart
+  // correction can never retitle a conversation that is now read-only history.
+  await query(
+    "UPDATE conversations SET title=$1 WHERE id=$2 AND archive_reason IS DISTINCT FROM 'chart_details_changed'",
+    [title, id],
+  )
 }
 
 export async function deleteConversation(id: string) {

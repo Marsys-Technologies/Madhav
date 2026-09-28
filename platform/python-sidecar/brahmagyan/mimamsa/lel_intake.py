@@ -1552,6 +1552,7 @@ def lel_query(
             FROM life_events le
             LEFT JOIN event_chart_state_index cs
                    ON cs.event_id = le.event_id AND cs.chart_id = le.chart_id
+                  AND cs.chart_context_stale_at IS NULL
             {where_clause}
             ORDER BY le.event_date
             LIMIT %s

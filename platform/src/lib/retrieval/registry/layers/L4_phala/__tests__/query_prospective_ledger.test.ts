@@ -93,7 +93,8 @@ describe('query_prospective_ledger — domain layering (§N.6 / B.10)', () => {
   })
 
   it('emits an explicit empty_reason when no filed predictions exist (no bare silent empty)', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] })
+    mockQuery.mockResolvedValueOnce({ rows: [] }) // the main query
+    mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }] }) // Jātaka Phase-A3: the stale-count check
     const res = await queryProspectiveLedgerCapability.handler(
       { chart_id: NATIVE_CHART_ID, domain: 'wealth' }, undefined,
     ) as { content: Record<string, unknown> }

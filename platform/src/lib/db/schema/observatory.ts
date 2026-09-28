@@ -60,7 +60,7 @@ export interface LlmPricingVersionRow {
 
 export interface LlmUsageEventRow {
   event_id: string
-  conversation_id: string
+  conversation_id: string | null
   conversation_name: string | null
   prompt_id: string
   parent_prompt_id: string | null

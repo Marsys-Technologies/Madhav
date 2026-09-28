@@ -68,6 +68,12 @@ vi.mock('@/lib/config/index', () => ({
 }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn(async () => 'gemini-2.5-pro') }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn(async () => 'view') }))
+// Jātaka chart workspace: /api/pariprashna now refuses a turn unless the shared
+// chart readiness is Ready — this harness exercises a Ready chart.
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => new Map(ids.map((id) => [id, { state: 'ready' }]))),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/conversations', () => ({
   getConversation: vi.fn(async () => null),
   insertConversationWithId: vi.fn(async () => undefined),

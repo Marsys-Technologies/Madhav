@@ -56,6 +56,7 @@
  */
 
 import { query } from '@/lib/db/client'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, type BuildFence } from '../generation/served_generation'
 import {
   resolveAddress,
   GRAHA_CODE_TO_NAME,
@@ -231,6 +232,7 @@ interface ShadbalaRankInfo { ranked: RankedGraha[]; percentileByKey: Map<string,
 async function fetchShadbalaRanking(
   chart_id: string,
   ayanamsha_id: string,
+  build_id?: BuildFence,
 ): Promise<ShadbalaRankInfo> {
   const empty: ShadbalaRankInfo = { ranked: [], percentileByKey: new Map() }
   try {
@@ -239,8 +241,9 @@ async function fetchShadbalaRanking(
               PERCENT_RANK() OVER (ORDER BY fact_value_num) AS percentile
        FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2
-         AND fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'`,
-      [chart_id, ayanamsha_id],
+         AND fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'
+         ${build_id ? 'AND build_id = ANY($3::uuid[])' : ''}`,
+      build_id ? [chart_id, ayanamsha_id, resolvedBuildFenceIds(build_id, 'significator_condition.rankByShadbala')] : [chart_id, ayanamsha_id],
     )
     const inputs: Array<{ graha: string; shadbala_total: number }> = []
     const percentileByKey = new Map<string, number>()
@@ -254,7 +257,8 @@ async function fetchShadbalaRanking(
       if (r.percentile !== null) percentileByKey.set(key, Number(r.percentile))
     }
     return { ranked: rankGrahasByShadbala(inputs, 'all_9'), percentileByKey }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // Non-fatal: the dignity leg still stands; strength-extreme selection degrades to null.
     return empty
   }
@@ -309,6 +313,7 @@ export async function buildSignificatorCondition(
   chart_id: string,
   ayanamsha_id: string,
   domain: string,
+  build_id?: BuildFence,
 ): Promise<SignificatorCondition> {
   const spec = SHASTRA_MAP[domain]
   const base: SignificatorCondition = {
@@ -336,7 +341,7 @@ export async function buildSignificatorCondition(
   }
 
   const fact_ids = new Set<string>()
-  const ranking = await fetchShadbalaRanking(chart_id, ayanamsha_id)
+  const ranking = await fetchShadbalaRanking(chart_id, ayanamsha_id, build_id)
 
   // ── bhāva sign + bhāveśa + occupants (lagna frame — the rāśi promise) ──
   let bhava_sign: string | null = null
@@ -344,9 +349,9 @@ export async function buildSignificatorCondition(
   const occupants: SignificatorPlacement[] = []
   try {
     const [bhavaRes, lordRes, occRes] = await Promise.all([
-      resolveAddress(chart_id, { type: 'bhava', house: spec.bhava }, { ayanamsha_id }),
-      resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava }, { ayanamsha_id }),
-      resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava }, { ayanamsha_id }),
+      resolveAddress(chart_id, { type: 'bhava', house: spec.bhava }, { ayanamsha_id, build_id }),
+      resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava }, { ayanamsha_id, build_id }),
+      resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava }, { ayanamsha_id, build_id }),
     ])
     const bhavaEntity = bhavaRes.entities[0] as ResolvedSign | undefined
     if (bhavaEntity) {
@@ -355,7 +360,7 @@ export async function buildSignificatorCondition(
     }
     const lordEntity = lordRes.entities[0] as ResolvedGraha | undefined
     if (lordEntity) {
-      bhavesha = withRank(await gradeGraha(chart_id, ayanamsha_id, lordEntity), 'bhavesha', ranking)
+      bhavesha = withRank(await gradeGraha(chart_id, ayanamsha_id, lordEntity, build_id), 'bhavesha', ranking)
       bhavesha.fact_ids.forEach(f => fact_ids.add(f))
     }
     const occEntity = occRes.entities[0] as ResolvedOccupants | undefined
@@ -365,9 +370,9 @@ export async function buildSignificatorCondition(
       // exalted graha sitting in the domain's own bhāva can never again reduce to a bare name.
       for (const name of occEntity.grahas) {
         try {
-          const res = await resolveAddress(chart_id, { type: 'graha', graha: name }, { ayanamsha_id })
+          const res = await resolveAddress(chart_id, { type: 'graha', graha: name }, { ayanamsha_id, build_id })
           const graded = withRank(
-            await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha),
+            await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha, build_id),
             'occupant',
             ranking,
           )
@@ -391,9 +396,9 @@ export async function buildSignificatorCondition(
   const karakas: SignificatorPlacement[] = []
   for (const karakaName of spec.karakas) {
     try {
-      const res = await resolveAddress(chart_id, { type: 'graha', graha: karakaName }, { ayanamsha_id })
+      const res = await resolveAddress(chart_id, { type: 'graha', graha: karakaName }, { ayanamsha_id, build_id })
       const graded = withRank(
-        await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha),
+        await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha, build_id),
         'karaka',
         ranking,
       )

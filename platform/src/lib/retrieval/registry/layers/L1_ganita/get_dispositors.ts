@@ -22,6 +22,8 @@ const DISP_CATEGORIES = [
   'parivartana_per_varga', 'kala_sarpa_per_varga',
 ]
 
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+
 export const getDispositorsCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_dispositors',
   type: 'tool',
@@ -38,6 +40,7 @@ export const getDispositorsCapability: CapabilityDescriptor = {
     'documentation but is never populated by the writer — do not request it; use ' +
     'parivartana_per_varga with a D1_ subject prefix filter instead.)',
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
     categories:   { type: 'array',  description: 'Subset of dispositor categories.', items: { type: 'string' } },
@@ -65,6 +68,8 @@ export const getDispositorsCapability: CapabilityDescriptor = {
       const offset     = (args.offset as number) ?? 0
       const categories = (args.categories as string[]) ?? DISP_CATEGORIES
 
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_dispositors', chartId)
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
@@ -75,6 +80,10 @@ export const getDispositorsCapability: CapabilityDescriptor = {
       if (args.ayanamsha_id) {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
+      }
+      if (buildFence.kind === 'resolved') {
+        sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
+        params.push(buildFence.build_ids)
       }
       sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
 

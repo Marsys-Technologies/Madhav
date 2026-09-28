@@ -1,10 +1,14 @@
 import type { SourceQueryAvailabilityRequirement } from './types'
 import { stableFingerprint } from './stable'
+import { servedRowsBuildIdSql } from '../generation/served_generation'
 
 export type SourceQueryParameterBinding =
   | 'global'
   | 'global_with_chart_fallback'
-  | 'chart_and_active_build'
+  // $2 is the chart's served build set (uuid[]): the rows builds of every asset whose chart
+  // receipt resolves (generation/served_generation.ts). Never a chart-wide "latest" run.
+  | 'chart_and_served_builds'
+  // Binds only $1; requires a non-empty served chart generation as its precondition.
   | 'chart_with_active_build_context'
 export type SourceQueryEmptySemantics = 'query_success_is_available' | 'required_rows_must_exist'
 
@@ -45,7 +49,7 @@ export function sourceQueryParameterBindingMatchesScope(
     || parameterBinding === 'global_with_chart_fallback'
   ))
     || (scope === 'chart' && (
-      parameterBinding === 'chart_and_active_build'
+      parameterBinding === 'chart_and_served_builds'
       || parameterBinding === 'chart_with_active_build_context'
     ))
 }
@@ -401,7 +405,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     scope: 'global', parameter_binding: 'global', empty_semantics: 'required_rows_must_exist',
     sql: `WITH eligible_receipts AS (
             SELECT receipt.receipt_version, receipt.partition_key, receipt.output_digest,
-                   receipt.output_digest_spec_sha256
+                   receipt.output_digest_spec_sha256, receipt.observed_at
               FROM asset_provenance_receipts receipt
               JOIN asset_freshness freshness
                 ON freshness.asset_id = receipt.asset_id
@@ -426,8 +430,18 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               SELECT 1 FROM build_run_assets asset
               JOIN build_runs run ON run.id = asset.run_id
               WHERE asset.asset_id = 'bg_texts'
-                AND (run.state IN ('planned', 'running', 'paused')
-                  OR asset.state IN ('queued', 'building'))
+                AND (
+                  run.state IN ('planned', 'running', 'paused')
+                  OR (
+                    asset.state IN ('queued', 'building')
+                    AND NOT (asset.state = 'queued' AND asset.started_at IS NULL)
+                    AND (
+                      COALESCE(asset.ended_at, run.ended_at) IS NULL
+                      OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MIN(observed_at) FROM eligible_receipts)
+                      OR NOT EXISTS (SELECT 1 FROM eligible_receipts)
+                    )
+                  )
+                )
             ) AS replacement_in_progress
           ), hybrid_source_probe AS (
             SELECT c.id, c.text_id, c.chunk_id, c.verse_ref, c.chapter,
@@ -485,9 +499,9 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     contract_id: 'source-query:query-contradictions:v1',
     descriptor_name: 'query_contradictions',
     capability_uri: 'marsys://tool/L2/query_contradictions',
-    scope: 'chart', parameter_binding: 'chart_and_active_build', empty_semantics: 'query_success_is_available',
+    scope: 'chart', parameter_binding: 'chart_and_served_builds', empty_semantics: 'query_success_is_available',
     sql: `WITH active_build AS (
-            SELECT $2::uuid AS build_id
+            SELECT unnest($2::uuid[]) AS build_id
           ), contradictions AS (
             SELECT contradiction_id, signal_a_id, signal_b_id, tension_class,
                    domains_affected_array, combined_salience, resolution_hint_jsonb, ayanamsha_id, c.build_id
@@ -1345,14 +1359,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'get_ayurdaya',
     capability_uri: 'marsys://tool/L1/get_ayurdaya',
     scope: 'chart',
-    parameter_binding: 'chart_and_active_build',
+    parameter_binding: 'chart_and_served_builds',
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
                    fact_value_jsonb, unit, ayanamsha_id, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = 'ayurdaya'
              ORDER BY ayanamsha_id, fact_subject, fact_key
              LIMIT 0
@@ -1360,7 +1374,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = 'ayurdaya'
           )
           SELECT handler_page.*, handler_count.total
@@ -1378,14 +1392,14 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'get_sensitive_degrees',
     capability_uri: 'marsys://tool/L1/get_sensitive_degrees',
     scope: 'chart',
-    parameter_binding: 'chart_and_active_build',
+    parameter_binding: 'chart_and_served_builds',
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num, fact_value_text,
                    fact_value_jsonb, unit, ayanamsha_id, verification_pass_status, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
              ORDER BY ayanamsha_id, fact_category, fact_subject, fact_key
              LIMIT 0
@@ -1393,7 +1407,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             SELECT COUNT(*)::text AS total
               FROM chart_facts
              WHERE chart_id = $1::uuid
-               AND build_id = $2::uuid
+               AND build_id = ANY($2::uuid[])
                AND fact_category = ANY(ARRAY['sensitive_degree_check', 'sensitive_point_yogi']::text[])
           )
           SELECT handler_page.*, handler_count.total
@@ -2183,7 +2197,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `WITH eligible_receipt AS (
-            SELECT receipt.build_id::text AS build_id
+            SELECT ${servedRowsBuildIdSql({ receipt: 'receipt', receiptRun: 'receipt_run', receiptAsset: 'receipt_asset' })}::text AS build_id
               FROM asset_provenance_receipts receipt
               JOIN asset_freshness freshness
                 ON freshness.asset_id = receipt.asset_id
@@ -2191,6 +2205,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND freshness.partition_key = receipt.partition_key
                AND freshness.receipt_version = receipt.receipt_version
               JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+              LEFT JOIN build_run_assets receipt_asset
+                ON receipt_asset.run_id = receipt.build_id AND receipt_asset.asset_id = receipt.asset_id
              WHERE receipt.asset_id = 'ga_dashas'
                AND receipt.chart_id = $1::uuid
                AND receipt.receipt_state = 'proven'
@@ -3489,6 +3505,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
               FROM mimamsa_calibration c
               LEFT JOIN mimamsa_predictions p
                 ON p.chart_id = c.chart_id AND p.prediction_id = c.prediction_id
+               AND p.chart_context_stale_at IS NULL
              WHERE c.chart_id = $1::uuid
                AND c.leakage_status != 'held_out'
                AND (NULL::text IS NULL OR p.domain = NULL::text)
@@ -3758,13 +3775,19 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  p.as_of, p.generator_class, p.configuration_signature,
                  p.lifecycle_status, p.matched_event_id, p.matched_at, p.match_note,
                  p.filed_by, p.filing_method, p.source_citation, p.created_at,
+                 p.chart_context_stale_at, p.chart_context_stale_reason, p.chart_context_superseded_by_run_id,
                  o.domain AS ontology_domain
             FROM brahma_prospective_ledger p
             LEFT JOIN brahma_event_ontology o ON o.event_class_id = p.event_class
            WHERE p.chart_id = $1::uuid AND p.lifecycle_status = NULLIF(NULL::text, '')
+             AND p.chart_context_stale_at IS NULL
            ORDER BY p.as_of DESC
            LIMIT 0`,
-    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226'],
+    // Jātaka Phase-A3 (independent-review Important finding #6): mirrors the
+    // real handler's default (include_stale=false) SQL shape, incl. the
+    // chart_context_stale_at exclusion added for migration 1123's deferred
+    // surfaces. Line range corrected to the handler's actual SELECT.
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:197-211'],
   },
   {
     contract_id: 'source-query:query-signals:v1',
@@ -3998,19 +4021,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     descriptor_name: 'judgment_query',
     capability_uri: 'marsys://tool/L-JUDGMENT/judgment_query',
     scope: 'chart',
-    parameter_binding: 'chart_and_active_build',
+    parameter_binding: 'chart_and_served_builds',
     empty_semantics: 'required_rows_must_exist',
-    sql: `WITH active_build AS (
-            SELECT id
-              FROM build_runs
-             WHERE chart_id = $1::uuid AND state = 'completed'
-             ORDER BY ended_at DESC NULLS LAST, id DESC
-             LIMIT 1
-          )
-          SELECT 1 AS source_query_available
-            FROM active_build b
-           WHERE b.id = $2::uuid
-             AND EXISTS (
+    sql: `SELECT 1 AS source_query_available
+           WHERE EXISTS (
                SELECT 1
                  FROM brahma_vichara_constants c
                 WHERE c.constant_key = 'operative_vargas'
@@ -4020,8 +4034,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                SELECT 1
                  FROM chart_facts f
                 WHERE f.chart_id = $1::uuid
-                  AND f.build_id = b.id
-                  AND f.build_id = $2::uuid
+                  AND f.build_id = ANY($2::uuid[])
                   AND f.ayanamsha_id = 'lahiri_chitrapaksha'
                   AND f.fact_subject = 'LAGNA'
                   AND f.fact_category = 'graha_position'
@@ -4052,6 +4065,215 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:517-549',
       'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.read_sutravali_rule_contract.test.ts:42-59',
+    ],
+  },
+  // The three Sutravali sidecar routes below run exactly these relations. The
+  // probe binds every optional filter to NULL so it proves the handler's
+  // relation, projection, filter columns, and ordering are queryable without
+  // returning rule content. query_sutravali_rules_for_planet's sidecar route
+  // (python-sidecar/routers/sutravali.py) previously bound two parameters
+  // for a single placeholder and could never succeed — fixed at the R3
+  // boundary ("remaining residual classification", packet 4) by removing the
+  // duplicated `planet` param; now contracted like its siblings.
+  {
+    contract_id: 'source-query:query-sutravali-rules:v1',
+    descriptor_name: 'query_sutravali_rules',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE (NULL::text IS NULL OR r.antecedent_jsonb::text ILIKE '%' || NULL::text || '%')
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'planet' ILIKE NULL::text)
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'sign_canon' ILIKE NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:368-394',
+      'platform/python-sidecar/routers/sutravali.py:87-124',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-sutravali-rules-for-planet:v1',
+    descriptor_name: 'query_sutravali_rules_for_planet',
+    capability_uri: 'marsys://tool/L0/query_sutravali_rules_for_planet',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.antecedent_jsonb->>'planet' ILIKE NULL::text
+             AND (NULL::text IS NULL OR r.antecedent_jsonb->>'house' = NULL::text)
+           ORDER BY r.confidence DESC NULLS LAST
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:400-473',
+      'platform/python-sidecar/routers/sutravali.py#query_rules_for_planet',
+      'platform/python-sidecar/tests/test_sutravali_query_rules_for_planet.py',
+    ],
+  },
+  {
+    contract_id: 'source-query:list-sutravali-rules-by-text:v1',
+    descriptor_name: 'list_sutravali_rules_by_text',
+    capability_uri: 'marsys://tool/L0/list_sutravali_rules_by_text',
+    scope: 'global',
+    parameter_binding: 'global',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT r.rule_id, r.text_id, r.verse_ref,
+                 r.antecedent_jsonb, r.predicate_jsonb, r.prediction_jsonb,
+                 r.confidence, r.extracted_by
+            FROM sutravali_rules r
+           WHERE r.text_id = NULL::text
+           ORDER BY r.verse_ref NULLS LAST, r.confidence DESC NULLS LAST
+           LIMIT 0 OFFSET 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643',
+      'platform/python-sidecar/routers/sutravali.py:181-203',
+      'platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts',
+    ],
+  },
+  {
+    contract_id: 'source-query:lel-intake-checklist:v1',
+    descriptor_name: 'lel_intake_checklist',
+    capability_uri: 'marsys://tool/L5/lel_intake_checklist',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    // checklist reads the global ontology and chart-scoped coverage; validate
+    // reads the ontology alone. Probe both with zero-row handler-shaped CTEs so
+    // availability proves queryability without exposing ontology or LEL content.
+    sql: `WITH ontology AS (
+            SELECT event_class_id, name_en, domain, lel_category, temporal_shape, evidence_requirements
+              FROM brahma_event_ontology
+             ORDER BY domain, event_class_id
+             LIMIT 0
+          ), coverage AS (
+            SELECT split_part(domain, '/', 1) AS domain, COUNT(*)::text AS total
+              FROM life_events
+             WHERE chart_id = $1::uuid
+             GROUP BY split_part(domain, '/', 1)
+             LIMIT 0
+          )
+          SELECT ontology.event_class_id, coverage.domain AS coverage_domain, coverage.total
+            FROM ontology FULL OUTER JOIN coverage ON false`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:246-302',
+      'platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql',
+      'platform/supabase/migrations/423_ba_lel_r2_2_step1_chart_scope.sql:19',
+      'platform/migrations/457_lel_schema_v2_event_shapes.sql',
+    ],
+  },
+  {
+    contract_id: 'source-query:query-spine-bundle:v1',
+    descriptor_name: 'query_spine_bundle',
+    capability_uri: 'marsys://tool/L-SPINE/query_spine_bundle',
+    scope: 'chart',
+    parameter_binding: 'chart_with_active_build_context',
+    empty_semantics: 'query_success_is_available',
+    // getOrMaterializeSpineBundle always reads the persisted bundle row and, when
+    // one exists, the source-asset freshness marker (MAX(last_built_at) across
+    // SPINE_SOURCE_ASSET_IDS). Both reads are probed here with zero rows; the four
+    // recompute legs are covered by the derived requirement in editorial_review.ts.
+    // The lazy-refresh DELETE/INSERT on bodha_spine_bundles is a write path that a
+    // read-only availability probe cannot exercise.
+    sql: `WITH persisted AS (
+            SELECT bundle_jsonb, top_k, computed_at, source_asset_marker
+              FROM bodha_spine_bundles
+             WHERE chart_id = $1::uuid AND ayanamsha_id = NULL::text AND domain = NULL::text
+             LIMIT 0
+          ), marker AS (
+            SELECT MAX(last_built_at) AS latest
+              FROM asset_throughput
+             WHERE chart_id = $1::uuid
+               AND asset_id = ANY(ARRAY['bo_laksana', 'ka_kalasutra', 'ph_nimitta', 'mi_pramana']::text[])
+          )
+          SELECT persisted.top_k, persisted.computed_at, persisted.source_asset_marker, marker.latest
+            FROM persisted CROSS JOIN marker`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts:98-123',
+      'platform/src/lib/retrieval/spine/materialize.ts:75-83',
+      'platform/src/lib/retrieval/spine/materialize.ts:137-167',
+      'platform/src/lib/retrieval/spine/constants.ts#SPINE_SOURCE_ASSET_IDS',
+      'platform/supabase/migrations/463_bodha_spine_bundles.sql:36-50',
+    ],
+  },
+  {
+    // R3 proof typing (review §4, "strength group"): the strength group (get_strength,
+    // graha_portrait, query_planet) was uncontracted with no proof kind at all. get_strength
+    // reads all 21 strength fact_categories from chart_facts directly, fenced to the served
+    // generation (RC-1/RC-2, get_strength.ts). The probe exercises exactly the default,
+    // unfiltered read every caller shares before any optional ayanamsha_id/graha_key/frame
+    // narrowing — the same convention as get-ayurdaya/get-sensitive-degrees.
+    contract_id: 'source-query:get-strength:v1',
+    descriptor_name: 'get_strength',
+    capability_uri: 'marsys://tool/L1/get_strength',
+    scope: 'chart',
+    parameter_binding: 'chart_and_served_builds',
+    empty_semantics: 'query_success_is_available',
+    sql: `SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                 fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            FROM chart_facts
+           WHERE chart_id = $1::uuid
+             AND build_id = ANY($2::uuid[])
+             AND fact_category = ANY(ARRAY[
+               'graha_shadbala_cheshta', 'graha_shadbala_dig', 'graha_shadbala_drik',
+               'graha_shadbala_kala', 'graha_shadbala_naisargika', 'graha_shadbala_sthana',
+               'graha_shadbala_total', 'graha_vimsopaka_dasavarga', 'graha_vimsopaka_saptavarga',
+               'graha_vimsopaka_shadvarga', 'graha_vimsopaka_shodasavarga', 'vimsopaka_bala_per_graha',
+               'graha_saptavargaja_bala_component', 'graha_ishta_phala', 'graha_kashta_phala',
+               'pranic_strength_per_graha', 'graha_in_house_composite_strength',
+               'graha_composite_state_classification', 'graha_special_state_rollup',
+               'graha_yoga_karaka_flag', 'graha_tri_deva_role_strength'
+             ]::text[])
+           ORDER BY fact_category, ayanamsha_id, fact_key
+           LIMIT 0`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:150-170',
+    ],
+  },
+  {
+    // R3 proof typing (review §4, per-mode facets): get_av_transit_gating has two modes
+    // sharing one binding — sav_bav_gating (chart_facts, this probe) and kakshya_windows (a
+    // live tropical-transit sidecar fetch this static contract cannot attest to). "Available"
+    // here means the default sav_bav_gating mode is provable; the Kakshya mode's live
+    // reachability is disclosed by the handler at request time, honestly outside this
+    // contract's scope (matching pact_query's TRIGGER stage precedent above).
+    contract_id: 'source-query:get-av-transit-gating:v1',
+    descriptor_name: 'get_av_transit_gating',
+    capability_uri: 'marsys://tool/L1/get_av_transit_gating',
+    scope: 'chart',
+    parameter_binding: 'chart_and_served_builds',
+    empty_semantics: 'query_success_is_available',
+    sql: `WITH lagna AS (
+            SELECT fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid
+               AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'
+               AND build_id = ANY($2::uuid[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             LIMIT 0
+          ), bindu AS (
+            SELECT fact_id, fact_subject, fact_value_num
+              FROM chart_facts
+             WHERE chart_id = $1::uuid AND fact_category = 'ashtakavarga_bindu_sign'
+               AND build_id = ANY($2::uuid[])
+               AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
+             ORDER BY fact_subject
+             LIMIT 0
+          )
+          SELECT lagna.fact_value_num, bindu.fact_id, bindu.fact_subject, bindu.fact_value_num
+            FROM lagna CROSS JOIN bindu`,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY',
     ],
   },
 ]

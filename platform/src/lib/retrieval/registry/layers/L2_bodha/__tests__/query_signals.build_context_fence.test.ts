@@ -48,7 +48,7 @@ beforeEach(() => {
     const sql = String(sqlValue)
     if (sql.includes('information_schema.columns')) return { rows: [] }
     if (sql.includes('FROM chart_facts') && sql.includes("fact_category = 'graha_shadbala_total'")) {
-      return { rows: l1FactsFor(String(params[2])) }
+      return { rows: l1FactsFor(String((params[2] as unknown[])?.[0])) }
     }
     if (sql.includes('FROM chart_facts') && sql.includes("fact_subject = $4 AND fact_key = 'sign'")) {
       return { rows: [{ fact_id: 'sun-sign', fact_value_text: 'Aries' }] }
@@ -58,7 +58,7 @@ beforeEach(() => {
     }
     if (sql.includes('FROM chart_facts')) return { rows: [] }
     if (sql.includes('FROM chart_dashas')) {
-      const lord = params[3] === BUILD_A ? 'SUN' : 'MOON'
+      const lord = (params[3] as unknown[])?.[0] === BUILD_A ? 'SUN' : 'MOON'
       return { rows: [{ level: 1, dasha_lord: lord }, { level: 2, dasha_lord: lord }] }
     }
     if (sql.includes('COUNT(*)')) return { rows: [{ total: '2' }] }
@@ -93,17 +93,17 @@ describe('query_signals selected-build L1 ranking context', () => {
     const dashaCalls = queryMock.mock.calls.filter(([sql]) => String(sql).includes('FROM chart_dashas'))
     expect(factCalls).toHaveLength(2)
     expect(dashaCalls).toHaveLength(2)
-    expect(factCalls.map(([, params]) => (params as unknown[])[2])).toEqual([BUILD_A, BUILD_B])
-    expect(dashaCalls.map(([, params]) => (params as unknown[])[3])).toEqual([BUILD_A, BUILD_B])
+    expect(factCalls.map(([, params]) => (params as unknown[])[2])).toEqual([[BUILD_A], [BUILD_B]])
+    expect(dashaCalls.map(([, params]) => (params as unknown[])[3])).toEqual([[BUILD_A], [BUILD_B]])
     for (const [sqlValue] of factCalls) {
       const sql = String(sqlValue).replace(/\s+/g, ' ')
       expect(sql).toContain('SELECT fact_category, fact_subject, fact_key, fact_value_num')
       expect(sql).toContain("fact_category = 'graha_shadbala_total' AND fact_key = 'rupa'")
       expect(sql).toContain("fact_category = 'graha_dignity_per_varga' AND fact_subject LIKE 'D1_%' AND fact_key = 'dignity_state'")
-      expect(sql).toContain('build_id = $3::uuid')
+      expect(sql).toContain('build_id = ANY($3::uuid[])')
       expect(sql).not.toContain('build_id = $3::text')
     }
-    for (const [sql] of dashaCalls) expect(String(sql)).toContain('build_id = $4::uuid')
+    for (const [sql] of dashaCalls) expect(String(sql)).toContain('build_id = ANY($4::uuid[])')
   })
 
   it('uses the UUID build fence for the frame-annotation chart_facts read', async () => {
@@ -117,8 +117,18 @@ describe('query_signals selected-build L1 ranking context', () => {
       String(sql).includes('SELECT fact_subject, fact_value_text FROM chart_facts'),
     )
     expect(frameFactCall).toBeTruthy()
-    expect(String(frameFactCall?.[0])).toContain('build_id = $4::uuid')
+    expect(String(frameFactCall?.[0])).toContain('build_id = ANY($4::uuid[])')
     expect(String(frameFactCall?.[0])).not.toContain('build_id = $4::text')
-    expect(frameFactCall?.[1]).toEqual(expect.arrayContaining([BUILD_A]))
+    expect(frameFactCall?.[1]).toEqual(expect.arrayContaining([[BUILD_A]]))
+  })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    queryMock.mockClear()
+    const result = await querySignalsCapability.handler(
+      { chart_id: CHART_ID, build_id: [], domain: 'career' }, undefined,
+    )
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(queryMock).not.toHaveBeenCalled()
   })
 })

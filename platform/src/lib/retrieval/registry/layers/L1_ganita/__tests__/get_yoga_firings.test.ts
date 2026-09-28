@@ -68,8 +68,8 @@ describe('getYogaFiringsCapability — F-D1 classical citation join', () => {
     expect((result.content as Record<string, unknown>)['build_id']).toBe(BUILD_ID)
     expect(mockQuery).toHaveBeenCalledTimes(2)
     for (const [sql, params] of mockQuery.mock.calls) {
-      expect(String(sql)).toContain('f.build_id = $2::uuid')
-      expect(params).toContain(BUILD_ID)
+      expect(String(sql)).toContain('f.build_id = ANY($2::uuid[])')
+      expect(params).toContainEqual([BUILD_ID])
     }
   })
 })
@@ -126,5 +126,13 @@ describe('getYogaFiringsCapability — F-D2 offset paging', () => {
     const result = await getYogaFiringsCapability.handler({ chart_id: CHART_ID }, undefined)
     const content = result.content as Record<string, unknown>
     expect(content['more_available']).toBe(true)  // 63 > 0 + 50
+  })
+
+  it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
+    mockQuery.mockReset()
+    const result = await getYogaFiringsCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined)
+    expect(result.is_error).toBe(true)
+    expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
+    expect(mockQuery).not.toHaveBeenCalled()
   })
 })

@@ -16,6 +16,8 @@ const ASPECT_CATEGORIES = [
   'lord_aspects_lord_per_varga', 'lord_in_house_per_varga',
 ]
 
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+
 export const getAspectsCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_aspects',
   type: 'tool',
@@ -28,6 +30,7 @@ export const getAspectsCapability: CapabilityDescriptor = {
     'and lord-in-house per varga (sign lord placements across all divisionals). ' +
     'Covers 11 aspect-related fact_categories.',
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
     tradition:    { type: 'string', description: 'Filter by tradition: parashari | jaimini | tajik. Omit for all.', enum: ['parashari', 'jaimini', 'tajik'] },
@@ -61,6 +64,8 @@ export const getAspectsCapability: CapabilityDescriptor = {
         categories = categories.filter(c => c.includes(t))
       }
 
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_aspects', chartId)
       const params: unknown[] = [chartId, categories, limit, offset]
       let sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
@@ -71,6 +76,10 @@ export const getAspectsCapability: CapabilityDescriptor = {
       if (args.ayanamsha_id) {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
+      }
+      if (buildFence.kind === 'resolved') {
+        sql += ` AND build_id = ANY($${params.length + 1}::uuid[])`
+        params.push(buildFence.build_ids)
       }
       sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
 

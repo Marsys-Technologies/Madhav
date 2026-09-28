@@ -24,7 +24,7 @@ export function getCellValue(row: EventRow, col: EventColumnId): string {
     case 'timestamp':
       return formatTimestamp(row.started_at)
     case 'conversation_name':
-      return row.conversation_name ?? row.conversation_id
+      return row.conversation_name ?? row.conversation_id ?? '—'
     case 'provider':
       return row.provider
     case 'model':

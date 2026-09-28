@@ -42,7 +42,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // header comment). PARIPRASHNA_SAFETY_GATE_ENABLED defaults OFF in production
 // (V3-E-054, a different already-referred finding) — this file forces it ON
 // only within each test's own scope, never touching the flag's real default.
-const { safetyFlagState } = vi.hoisted(() => ({ safetyFlagState: { on: false } }))
+const {
+  safetyFlagState, byokFlagState, mockAuthenticateByokUser, mockPrepareByokTurn,
+  mockByokSynthStream, mockByokWorkerGenerate, mockByokRelease,
+  mockInsertRoleReceipt,
+} = vi.hoisted(() => ({
+  safetyFlagState: { on: false },
+  byokFlagState: { on: false },
+  mockAuthenticateByokUser: vi.fn(),
+  mockPrepareByokTurn: vi.fn(),
+  mockByokSynthStream: vi.fn(),
+  mockByokWorkerGenerate: vi.fn(),
+  mockByokRelease: vi.fn(),
+  mockInsertRoleReceipt: vi.fn(),
+}))
 vi.mock('@/lib/pariprashna/safety/flag', () => ({
   SAFETY_GATE_FLAG: 'PARIPRASHNA_SAFETY_GATE_ENABLED',
   isSafetyGateEnabled: () => safetyFlagState.on,
@@ -68,12 +81,21 @@ vi.mock('@/lib/config/index', () => ({
     getFlag: vi.fn((k: string) => {
       if (k === 'PARIPRASHNA_ENABLED') return true
       if (k === 'PARIPRASHNA_SAFETY_GATE_ENABLED') return safetyFlagState.on
+      if (k === 'AI_CONSOLE_BYOK') return byokFlagState.on
       return false
     }),
   },
 }))
 vi.mock('@/lib/models/runtime_config', () => ({
   getEffectiveModel: vi.fn(async () => 'fake-model'),
+}))
+vi.mock('@/lib/pariprashna/pipeline/byok_preflight', () => ({
+  authenticateByokUser: mockAuthenticateByokUser,
+  prepareByokTurn: mockPrepareByokTurn,
+}))
+vi.mock('@/lib/ai-console/repository', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/ai-console/repository')>(),
+  insertRoleInvocationReceipt: mockInsertRoleReceipt,
 }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({
   authorizeChartAccess: vi.fn(async () => 'view'),
@@ -103,10 +125,23 @@ vi.mock('@/lib/db/client', () => ({
 
 // ── conversations (no clientConversationId in any scenario here, so only
 // `insertConversationWithId` is ever actually called). ──────────────────────
-const { mockInsertConversationWithId } = vi.hoisted(() => ({ mockInsertConversationWithId: vi.fn() }))
+const { mockInsertConversationWithId, mockGetConversation, mockReadinessState } = vi.hoisted(() => ({
+  mockInsertConversationWithId: vi.fn(),
+  mockGetConversation: vi.fn(),
+  mockReadinessState: { value: 'ready' as string },
+}))
 vi.mock('@/lib/conversations', () => ({
-  getConversation: vi.fn(async () => null),
+  getConversation: mockGetConversation,
   insertConversationWithId: mockInsertConversationWithId,
+}))
+
+// ── shared chart readiness (Jātaka chart workspace): every scenario below runs
+// against a Ready chart unless a test says otherwise. ──────────────────────────
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) =>
+    new Map(ids.map((id) => [id, { state: mockReadinessState.value }])),
+  ),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
 }))
 
 // ── manifest / orientation (plan-stage front matter; only reached by the
@@ -261,13 +296,17 @@ vi.mock('@/lib/conversations/title', () => ({
 // ═════════════════════════════════════════════════════════════════════════════
 import { POST } from '../route'
 import { HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT } from '@/lib/pariprashna/safety/fixed_responses'
+import { trackRoleExecutor } from '@/lib/ai-console/execution/tracked-executor'
+import { AiConsoleError } from '@/lib/ai-console/errors'
+import { admitByokTurn } from '@/lib/limits/byok_admission'
 
-function makeReq(question: string): Request {
+function makeReq(question: string, conversationId?: string): Request {
   return new Request('http://localhost/api/pariprashna', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       chartId: CHART,
+      ...(conversationId ? { conversationId } : {}),
       messages: [{ role: 'user', parts: [{ type: 'text', text: question }] }],
     }),
   })
@@ -302,15 +341,279 @@ async function runRoute(question: string): Promise<{ status: number; contentType
 
 beforeEach(() => {
   safetyFlagState.on = false
+  byokFlagState.on = false
   mockCallPipelinePlanner.mockReset()
+  mockAuthenticateByokUser.mockReset().mockResolvedValue({
+    user: { uid: 'route-test-uid' }, profile: { role: 'guest' },
+  })
+  mockByokSynthStream.mockReset()
+  mockByokWorkerGenerate.mockReset()
+  mockByokRelease.mockReset()
+  mockInsertRoleReceipt.mockReset().mockResolvedValue(undefined)
+  const roleExecutor = (role: 'synthesizer' | 'planner' | 'deep_planner' | 'worker') => ({
+    descriptor: { role, providerId: 'openai', connectionId: `connection-${role}`, modelId: `model-${role}` },
+    generate: role === 'worker' ? mockByokWorkerGenerate : vi.fn(),
+    stream: role === 'synthesizer' ? mockByokSynthStream : vi.fn(),
+  })
+  mockPrepareByokTurn.mockReset().mockResolvedValue({
+    kind: 'byok', selection: { kind: 'default' }, plan: {}, snapshotId: crypto.randomUUID(),
+    safeSnapshot: { roles: { synthesizer: { kind: 'provider_model', providerId: 'openai',
+      connectionId: 'connection', modelId: 'model' } } },
+    executors: { synthesizer: roleExecutor('synthesizer'), planner: roleExecutor('planner'),
+      deep_planner: roleExecutor('deep_planner'), worker: roleExecutor('worker') },
+    displayModelId: 'model', releaseAdmission: mockByokRelease,
+  })
   mockInsertConversationWithId.mockReset().mockResolvedValue(undefined)
+  mockGetConversation.mockReset().mockResolvedValue(null)
+  mockReadinessState.value = 'ready'
 })
 
 afterEach(() => {
   safetyFlagState.on = false
+  byokFlagState.on = false
+})
+
+describe('AI Console BYOK request boundary', () => {
+  it.each([
+    ['owner or chart denial', 'AI_PERMISSION_DENIED', 400],
+    ['stale or broken selection', 'AI_CHOICE_BROKEN', 400],
+    ['snapshot failure', 'AI_EXECUTION_FAILED', 400],
+    ['admission refusal', 'AI_RATE_LIMITED', 429],
+  ] as const)('returns a safe zero-call error for %s', async (_name, code, status) => {
+    byokFlagState.on = true
+    mockPrepareByokTurn.mockRejectedValueOnce(new AiConsoleError(code))
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+        messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+    }))
+    expect(response.status).toBe(status)
+    expect(await response.json()).toMatchObject({ code })
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockByokSynthStream).not.toHaveBeenCalled()
+    expect(mockInsertRoleReceipt).not.toHaveBeenCalled()
+  })
+
+  it('rejects oversized assistant/tool history before atomic preflight or any executor exists', async () => {
+    byokFlagState.on = true
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chartId: CHART,
+        ai_selection: { kind: 'default' },
+        messages: [
+          { id: 'assistant-1', role: 'assistant', parts: [
+            { type: 'reasoning', text: 'r'.repeat(1_100_000) },
+            { type: 'dynamic-tool', toolName: 'fixture', toolCallId: 'call-1', state: 'output-available',
+              input: { query: 'q'.repeat(500_000) }, output: { text: 'o'.repeat(500_000) } },
+          ] },
+          { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'short question' }] },
+        ],
+      }),
+    }))
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(mockPrepareByokTurn).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it.each(['direct', 'custom'] as const)(
+    'maps the exact four %s role executors through an actual successful POST',
+    async (configurationKind) => {
+      byokFlagState.on = true
+      mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+      mockByokSynthStream.mockImplementation(() => new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'text_delta', text: 'routed answer' })
+          controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+            usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
+          controller.close()
+        },
+      }))
+      const baseRuntime = await mockPrepareByokTurn.getMockImplementation()!({})
+      const directTarget = { providerId: 'openai', connectionId: 'connection-direct', modelId: 'model-direct' }
+      const directExecutor = <T extends { descriptor: Record<string, unknown> }>(executor: T): T => ({
+        ...executor, descriptor: { ...executor.descriptor, ...directTarget },
+      })
+      const executors = configurationKind === 'direct'
+        ? {
+            synthesizer: directExecutor(baseRuntime.executors.synthesizer),
+            planner: directExecutor(baseRuntime.executors.planner),
+            deep_planner: directExecutor(baseRuntime.executors.deep_planner),
+            worker: directExecutor(baseRuntime.executors.worker),
+          }
+        : baseRuntime.executors
+      mockPrepareByokTurn.mockResolvedValueOnce({ ...baseRuntime, executors })
+
+      const response = await POST(new Request('http://localhost/api/pariprashna', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+          messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+      }))
+      expect(response.status).toBe(200)
+      await expect(response.text()).resolves.toContain('routed answer')
+
+      const injected = mockCallPipelinePlanner.mock.calls[0][10]
+      expect(injected).toMatchObject({
+        plannerExecutor: executors.planner,
+        deepPlannerExecutor: executors.deep_planner,
+        workerExecutor: executors.worker,
+        maxOutputTokens: 16_384,
+      })
+      expect(mockByokSynthStream).toHaveBeenCalledWith(expect.objectContaining({
+        abortSignal: expect.any(AbortSignal), maxOutputTokens: 16_384,
+      }))
+      const descriptors = [executors.synthesizer.descriptor, executors.planner.descriptor,
+        executors.deep_planner.descriptor, executors.worker.descriptor]
+      expect(descriptors.map(descriptor => descriptor.role).sort()).toEqual([
+        'deep_planner', 'planner', 'synthesizer', 'worker',
+      ])
+      if (configurationKind === 'direct') {
+        expect(new Set(descriptors.map(descriptor =>
+          `${descriptor.providerId}:${descriptor.connectionId}:${descriptor.modelId}`))).toHaveLength(1)
+      } else {
+        expect(new Set(descriptors.map(descriptor => descriptor.modelId))).toHaveLength(4)
+      }
+    },
+  )
+
+  it('aborts the exact Synthesizer when the response reader cancels and starts no later Worker work', async () => {
+    byokFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+    const delegateCancel = vi.fn()
+    let synthSignal: AbortSignal | undefined
+    mockByokSynthStream.mockImplementation((input: { abortSignal?: AbortSignal }) => {
+      synthSignal = input.abortSignal
+      return new ReadableStream({
+        async pull(controller) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+          controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+            usage: { inputTokens: 1, outputTokens: 0, totalTokens: 1 } })
+          controller.close()
+        },
+        cancel: delegateCancel,
+      })
+    })
+    const delegate = {
+      descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,
+        connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' },
+      generate: vi.fn(), stream: mockByokSynthStream,
+    }
+    const trackedSynth = trackRoleExecutor(delegate, {
+      userId: 'route-test-uid', snapshotId: '30000000-0000-4000-8000-000000000003',
+    })
+    const baseRuntime = await mockPrepareByokTurn.getMockImplementation()!({})
+    mockPrepareByokTurn.mockResolvedValueOnce({ ...baseRuntime,
+      executors: { ...baseRuntime.executors, synthesizer: trackedSynth } })
+    const response = await POST(new Request('http://localhost/api/pariprashna', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+        messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+    }))
+    const reader = response.body!.getReader()
+    await reader.read()
+    await vi.waitFor(() => expect(mockByokSynthStream).toHaveBeenCalledOnce())
+    await reader.cancel()
+
+    expect(synthSignal?.aborted).toBe(true)
+    expect(delegateCancel).toHaveBeenCalledOnce()
+    expect(mockByokWorkerGenerate).not.toHaveBeenCalled()
+    expect(mockByokRelease).toHaveBeenCalled()
+    expect(mockInsertRoleReceipt).toHaveBeenCalledTimes(2)
+    expect(mockInsertRoleReceipt.mock.calls[0][0]).toMatchObject({
+      role: 'synthesizer', phase: 'start', status: 'started',
+    })
+    expect(mockInsertRoleReceipt.mock.calls[1][0]).toMatchObject({
+      role: 'synthesizer', phase: 'terminal', status: 'cancelled',
+      invocationId: mockInsertRoleReceipt.mock.calls[0][0].invocationId,
+    })
+  })
+
+  it('holds admission until delegate cancellation and the cancelled terminal receipt both finish', async () => {
+    byokFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+    let resolveDelegateCleanup!: () => void
+    let resolveTerminalReceipt!: () => void
+    const delegateCleanup = new Promise<void>(resolve => { resolveDelegateCleanup = resolve })
+    const terminalReceipt = new Promise<void>(resolve => { resolveTerminalReceipt = resolve })
+    const delegateCancel = vi.fn(() => delegateCleanup)
+    mockByokSynthStream.mockReturnValue(new ReadableStream({ cancel: delegateCancel }))
+    mockInsertRoleReceipt.mockImplementation((receipt: { phase: string }) =>
+      receipt.phase === 'terminal' ? terminalReceipt : Promise.resolve())
+
+    const routeAdmission = admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 })
+    const siblingAdmission = admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 })
+    expect(routeAdmission.allowed).toBe(true)
+    expect(siblingAdmission.allowed).toBe(true)
+    if (!routeAdmission.allowed || !siblingAdmission.allowed) throw new Error('admission fixture failed')
+    const releaseAdmission = vi.fn(routeAdmission.release)
+    const delegate = {
+      descriptor: { role: 'synthesizer' as const, providerId: 'openai' as const,
+        connectionId: 'connection-synthesizer', modelId: 'model-synthesizer' },
+      generate: vi.fn(), stream: mockByokSynthStream,
+    }
+    const trackedSynth = trackRoleExecutor(delegate, {
+      userId: 'route-test-uid', snapshotId: '30000000-0000-4000-8000-000000000003',
+    })
+    const baseRuntime = await mockPrepareByokTurn.getMockImplementation()!({})
+    mockPrepareByokTurn.mockResolvedValueOnce({ ...baseRuntime, releaseAdmission,
+      executors: { ...baseRuntime.executors, synthesizer: trackedSynth } })
+
+    try {
+      const response = await POST(new Request('http://localhost/api/pariprashna', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chartId: CHART, ai_selection: { kind: 'default' },
+          messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Question' }] }] }),
+      }))
+      const reader = response.body!.getReader()
+      await reader.read()
+      await vi.waitFor(() => expect(mockByokSynthStream).toHaveBeenCalledOnce())
+      let cancelSettled = false
+      const cancelling = reader.cancel().then(() => { cancelSettled = true })
+
+      await vi.waitFor(() => expect(delegateCancel).toHaveBeenCalledOnce())
+      expect(cancelSettled).toBe(false)
+      expect(releaseAdmission).not.toHaveBeenCalled()
+      expect(admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 }))
+        .toMatchObject({ allowed: false })
+
+      resolveDelegateCleanup()
+      await vi.waitFor(() => expect(mockInsertRoleReceipt).toHaveBeenCalledTimes(2))
+      expect(cancelSettled).toBe(false)
+      expect(releaseAdmission).not.toHaveBeenCalled()
+
+      resolveTerminalReceipt()
+      await cancelling
+      expect(releaseAdmission).toHaveBeenCalledOnce()
+      expect(mockByokWorkerGenerate).not.toHaveBeenCalled()
+      const replacement = admitByokTurn({ userId: 'deferred-cleanup-user', questionChars: 1 })
+      expect(replacement.allowed).toBe(true)
+      if (replacement.allowed) replacement.release()
+    } finally {
+      resolveDelegateCleanup()
+      resolveTerminalReceipt()
+      routeAdmission.release()
+      siblingAdmission.release()
+    }
+  })
 })
 
 describe('V3-E-055: PPR-12 safety gate (WEB door /api/pariprashna) — reaches the SSE wire', () => {
+  it('parses the authoritative camelCase conversationId and reuses that existing conversation row', async () => {
+    const existingConversationId = '33333333-3333-4333-8333-333333333333'
+    safetyFlagState.on = true
+    mockGetConversation.mockResolvedValue({ id: existingConversationId, chart_id: CHART })
+
+    const response = await POST(makeReq('I want to kill myself.', existingConversationId))
+    const events = parseSse(await response.text())
+
+    expect(events.find(event => event.type === 'turn.open')?.conversation_id).toBe(existingConversationId)
+    expect(mockGetConversation).toHaveBeenCalledWith({ id: existingConversationId, userId: 'route-test-uid', isSuperAdmin: false })
+    expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+  })
+
   it('flag OFF (the shipped default): a crisis question runs untouched, no safety block on the wire', async () => {
     safetyFlagState.on = false
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
@@ -437,5 +740,280 @@ describe('V3-E-055: PPR-12 safety gate (WEB door /api/pariprashna) — reaches t
     // but never a refusal action.
     const flagEvent = events.find((e) => e.type === 'flag' && typeof e.code === 'string' && (e.code as string).startsWith('safety_decision:'))
     expect(flagEvent?.code).toBe('safety_decision:proceed')
+  })
+})
+
+describe('Jātaka chart workspace — Paripraśna write gates', () => {
+  const ARCHIVED_ID = '0f0e0d0c-0b0a-4908-8706-050403020100'
+
+  function continueReq(question: string): Request {
+    return new Request('http://localhost/api/pariprashna', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chartId: CHART,
+        conversationId: ARCHIVED_ID,
+        messages: [{ role: 'user', parts: [{ type: 'text', text: question }] }],
+      }),
+    })
+  }
+
+  it.each(['building', 'needs-rebuild', 'not-built', 'partially-built', 'failed'])(
+    'a %s chart refuses a new reading with CHART_RECOMPUTE_REQUIRED before planning',
+    async (state) => {
+      mockReadinessState.value = state
+      mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+      const { events } = await runRoute('What does my chart say about work?')
+      expect(events.some((e) => e.code === 'CHART_RECOMPUTE_REQUIRED')).toBe(true)
+      expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+      expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['building', /being recomputed/i],
+    ['needs-rebuild', /needs to be rebuilt/i],
+    ['failed', /latest build .*failed/i],
+    ['partially-built', /fully computed/i],
+    ['not-built', /fully computed/i],
+  ])('explains the %s refusal truthfully', async (state, message) => {
+    mockReadinessState.value = state
+    const { events } = await runRoute('What does my chart say about work?')
+    const refusal = events.find((e) => e.code === 'CHART_RECOMPUTE_REQUIRED') as { message?: string } | undefined
+    expect(refusal?.message).toMatch(message)
+    if (state !== 'building') expect(refusal?.message).not.toMatch(/being recomputed/i)
+  })
+
+  it('a correction-archived conversation refuses a new turn with CONVERSATION_ARCHIVED_READ_ONLY', async () => {
+    mockGetConversation.mockResolvedValue({
+      id: ARCHIVED_ID,
+      chart_id: CHART,
+      user_id: 'route-test-uid',
+      module: 'consume',
+      archived_at: '2026-09-27T10:00:00Z',
+      archive_reason: 'chart_details_changed',
+      archived_chart_snapshot: { birth_date: '1984-02-05', birth_time: '10:43:00' },
+      archived_by_run_id: null,
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(continueReq('Continue please'))
+    const events = parseSse(await res.text())
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+  })
+
+  it('a manually archived conversation keeps its existing semantics', async () => {
+    mockGetConversation.mockResolvedValue({
+      id: ARCHIVED_ID,
+      chart_id: CHART,
+      user_id: 'route-test-uid',
+      module: 'consume',
+      archived_at: '2026-09-27T10:00:00Z',
+      archive_reason: null,
+      archived_chart_snapshot: null,
+      archived_by_run_id: null,
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(continueReq('Continue please'))
+    const events = parseSse(await res.text())
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(false)
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+  })
+})
+
+describe('Jātaka chart workspace — persistence-boundary race (deterministic)', () => {
+  // The refused turn's terminal sequence: the refusal error, then exactly one
+  // turn.close with status 'error' as the last event — never a successful finish.
+  function expectRefusedTerminal(events: Array<Record<string, unknown>>) {
+    const errorIdx = events.findIndex((e) => e.type === 'error' && e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')
+    const closes = events.filter((e) => e.type === 'turn.close')
+    expect(closes).toHaveLength(1)
+    expect(closes[0].status).toBe('error')
+    expect(events.at(-1)?.type).toBe('turn.close')
+    expect(errorIdx).toBeGreaterThanOrEqual(0)
+    expect(errorIdx).toBeLessThan(events.length - 1)
+  }
+
+  // These turns must reach persistence, so synthesis produces real text.
+  async function useTextSynthesis(text = 'Your tenth house is strongly placed this year.') {
+    const { runAgenticLoop } = await import('@/lib/synthesis/agentic_loop')
+    vi.mocked(runAgenticLoop).mockImplementation(async function* () {
+      yield { type: 'text_delta', text }
+    } as never)
+    return () => vi.mocked(runAgenticLoop).mockImplementation((() => emptyAdapterEvents()) as never)
+  }
+
+  it('a turn admitted before a chart correction cannot persist after the correction commits', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { query } = await import('@/lib/db/client')
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    const { writeTurn } = await import('@/lib/pariprashna/store/writer')
+    const dbQuery = vi.mocked(query)
+    const original = dbQuery.getMockImplementation()!
+    let corrected = false
+    dbQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      // After the correction commits, the conversation row carries the lock.
+      if (corrected && /FROM conversations WHERE id/.test(sql)) {
+        return { rows: [{ chart_id: CHART, archive_reason: 'chart_details_changed' }] } as never
+      }
+      return original(sql, params)
+    })
+    vi.mocked(writeConversationMessages).mockClear()
+    vi.mocked(writeTurn).mockClear()
+
+    // 1. Start under the old state: admission passes (Ready, active conversation).
+    mockReadinessState.value = 'ready'
+    // 2. The correction commits while the turn is planning/streaming.
+    mockCallPipelinePlanner.mockImplementation(async () => {
+      corrected = true
+      mockReadinessState.value = 'building'
+      return planOutcome(['chart_facts_query'])
+    })
+
+    try {
+      const { events } = await runRoute('What does my chart say about work?')
+
+      expect(mockInsertConversationWithId).toHaveBeenCalled() // admitted before the correction
+      expect(mockCallPipelinePlanner).toHaveBeenCalled()
+      // 3. The final write is refused at the persistence boundary.
+      expect(vi.mocked(writeConversationMessages)).not.toHaveBeenCalled()
+      expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+      expectRefusedTerminal(events)
+    } finally {
+      dbQuery.mockImplementation(original)
+      mockCallPipelinePlanner.mockReset()
+      mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
+  })
+
+  it('a correction that commits after the first guard (during the history write) still stops the canonical write', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { query } = await import('@/lib/db/client')
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    const { writeTurn } = await import('@/lib/pariprashna/store/writer')
+    const dbQuery = vi.mocked(query)
+    const original = dbQuery.getMockImplementation()!
+    let corrected = false
+    dbQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (corrected && /FROM conversations WHERE id/.test(sql)) {
+        return { rows: [{ chart_id: CHART, archive_reason: 'chart_details_changed' }] } as never
+      }
+      return original(sql, params)
+    })
+    vi.mocked(writeTurn).mockClear()
+    // The correction commits while the history rows are being written — after the
+    // write-through's first guard has already passed.
+    vi.mocked(writeConversationMessages).mockImplementationOnce(async () => {
+      corrected = true
+      mockReadinessState.value = 'building'
+      return { verified: true, messageIds: [], missingMessageIds: [] }
+    })
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    try {
+      const { events } = await runRoute('What does my chart say about work?')
+
+      expect(vi.mocked(writeConversationMessages)).toHaveBeenCalled()
+      expect(vi.mocked(writeTurn)).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+      expectRefusedTerminal(events)
+    } finally {
+      dbQuery.mockImplementation(original)
+      mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
+  })
+
+  const PREDICTIVE_TEXT =
+    'You will likely receive a promotion at work between March 2027 and June 2027, during the Jupiter period.'
+
+  it('a turn with a prediction captures it for review when nothing changes (control)', async () => {
+    const restoreSynthesis = await useTextSynthesis(PREDICTIVE_TEXT)
+    const { captureDetectedCandidates } = await import('@/lib/pariprashna/samiksha/capture')
+    vi.mocked(captureDetectedCandidates).mockClear()
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    try {
+      await runRoute('When will my career rise?')
+      expect(vi.mocked(captureDetectedCandidates)).toHaveBeenCalled()
+    } finally {
+      restoreSynthesis()
+    }
+  })
+
+  it('a correction that commits during the canonical write stops the Samīkṣā capture', async () => {
+    const restoreSynthesis = await useTextSynthesis(PREDICTIVE_TEXT)
+    const { query } = await import('@/lib/db/client')
+    const { writeTurn } = await import('@/lib/pariprashna/store/writer')
+    const { captureDetectedCandidates } = await import('@/lib/pariprashna/samiksha/capture')
+    const dbQuery = vi.mocked(query)
+    const original = dbQuery.getMockImplementation()!
+    const originalWriteTurn = vi.mocked(writeTurn).getMockImplementation()
+    let corrected = false
+    dbQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+      if (corrected && /FROM conversations WHERE id/.test(sql)) {
+        return { rows: [{ chart_id: CHART, archive_reason: 'chart_details_changed' }] } as never
+      }
+      return original(sql, params)
+    })
+    vi.mocked(captureDetectedCandidates).mockClear()
+    // The correction commits while the assistant row is being written.
+    vi.mocked(writeTurn).mockImplementation((async (message: { role: string }, parts: unknown) => {
+      if (message.role === 'assistant') {
+        corrected = true
+        mockReadinessState.value = 'building'
+      }
+      return originalWriteTurn ? originalWriteTurn(message as never, parts as never) : (undefined as never)
+    }) as never)
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    try {
+      const { events } = await runRoute('When will my career rise?')
+      expect(corrected).toBe(true)
+      expect(vi.mocked(captureDetectedCandidates)).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(true)
+      expectRefusedTerminal(events)
+    } finally {
+      dbQuery.mockImplementation(original)
+      if (originalWriteTurn) vi.mocked(writeTurn).mockImplementation(originalWriteTurn)
+      mockReadinessState.value = 'ready'
+      restoreSynthesis()
+    }
+  })
+
+  it('a turn whose history write fails ends with an error terminal, never ok', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    vi.mocked(writeConversationMessages).mockResolvedValueOnce({ verified: false, messageIds: [], missingMessageIds: ['m'] })
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    try {
+      const { events } = await runRoute('What does my chart say about work?')
+      const commit = events.find((e) => e.type === 'turn.commit')
+      expect(commit?.status).toBe('error')
+      const closes = events.filter((e) => e.type === 'turn.close')
+      expect(closes).toHaveLength(1)
+      expect(closes[0].status).toBe('error')
+      expect(events.at(-1)?.type).toBe('turn.close')
+    } finally {
+      restoreSynthesis()
+    }
+  })
+
+  it('without a correction the same turn persists normally', async () => {
+    const restoreSynthesis = await useTextSynthesis()
+    const { writeConversationMessages } = await import('@/lib/persistence/conversation_writer')
+    vi.mocked(writeConversationMessages).mockClear()
+    mockReadinessState.value = 'ready'
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const { events } = await runRoute('What does my chart say about work?')
+    expect(vi.mocked(writeConversationMessages)).toHaveBeenCalled()
+    expect(events.some((e) => e.code === 'CONVERSATION_ARCHIVED_READ_ONLY')).toBe(false)
+    expect(events.filter((e) => e.type === 'turn.close').map((e) => e.status)).toEqual(['ok'])
+    restoreSynthesis()
   })
 })

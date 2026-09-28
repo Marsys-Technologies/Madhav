@@ -5,12 +5,16 @@
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
 import type {
-  ProducerOutputAvailabilityRequirement,
+  AvailabilityRequirement,
+  CapabilityProofKind,
+  SnapshotResourceAvailabilityRequirement,
   ProducerOutputClaim,
   SemanticCapabilityDeclaration,
   SemanticCapabilityKind,
 } from './types'
 import { JUDGMENT_READING_CHECKLIST_V2_CONTRACT } from '../layers/reading_checklist'
+import { sourceQueryAvailabilityRequirement } from './source_query_availability'
+import { ASSESS_DOMAIN_AVAILABILITY_LEGS } from './editorial'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -43,43 +47,38 @@ export interface DescriptorAvailabilityReview {
  */
 export interface DescriptorAvailabilityContractReview {
   readonly producer_output_claims: readonly ProducerOutputClaim[]
-  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
+  readonly requirements: readonly AvailabilityRequirement[]
 }
 
-const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
-  'registry:marsys://tool/L2/query_domain_reading',
+const ASSESS_DOMAIN_AVAILABILITY_CONTRACT: DescriptorAvailabilityContractReview = {
+  producer_output_claims: [],
+  requirements: [{
+    kind: 'derived',
+    scope: 'chart',
+    required_binding_ids: ASSESS_DOMAIN_AVAILABILITY_LEGS,
+    source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+  }],
+}
+
+// query_spine_bundle delegates its full result to these exact four handlers.
+// The materialized row is only a cache of that composition: the serving path
+// lazily recomputes and persists it when absent or stale, so a probe of the
+// cache alone cannot establish the whole route. Every material leg is required
+// in the same chart scope, alongside the route's own cache-read source probe
+// (source-query:query-spine-bundle:v1, attached automatically by descriptor).
+const SPINE_BUNDLE_MANDATORY_BINDINGS = [
+  'registry:marsys://tool/L2/query_signals',
   'registry:marsys://tool/L3/query_temporal_activation',
-  'registry:marsys://tool/L2/query_contradictions',
+  'registry:marsys://tool/L4/query_predictive_anchors',
+  'registry:marsys://tool/L5/query_calibration',
 ] as const
 
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
-  assess_career: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+  channel_chat_dispatch: {
+    reason: 'The descriptor promises the legacy Consume chat route (/api/chat/consult) as a registry migration target. That route is not a governed inquiry door: the Portal door is /api/pariprashna, which carries the inquiry contract and accountability envelope (review RC-6). The descriptor answers nothing about a chart and must not be offered as a route.',
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
-    ],
-  },
-  assess_marriage: {
-    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
-    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
-      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
-    ],
-  },
-  get_strength: {
-    reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40',
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202',
-      'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts#chatDispatchTool',
+      'platform/src/app/api/pariprashna/route.ts',
     ],
   },
 }
@@ -122,7 +121,135 @@ const PRIMARY_BINDING_DETAILS: Readonly<Record<string, NonNullable<SemanticCapab
   },
 }
 
+// R3 proof typing (review §4, "strength group"): graha_portrait and query_planet are pure
+// in-process assemblies over already-contracted L1/L2 leaves (§N.6.4 sanctioned synthesizers;
+// B.10 — zero new computation). Every leg call is individually non-fatal (callHandler/try-catch
+// in each file), but each is part of the descriptor's own explicit promised field list, so the
+// composite is gated on all of them rather than exposing a synthesizer that could report
+// "assembled" while its dignity chain, shadbala, or dasha section silently degraded to empty.
+const GRAHA_PORTRAIT_LEGS = [
+  'registry:marsys://tool/L1/get_positions',
+  'registry:marsys://tool/L1/get_dignity',
+  'registry:marsys://tool/L1/get_strength',
+  'registry:marsys://tool/L1/get_avasthas',
+  'registry:marsys://tool/L1/get_yoga_dosha',
+  'registry:marsys://tool/L1/get_dashas',
+  'registry:marsys://tool/L2/query_signals',
+  'registry:marsys://tool/L2/traverse_chart_graph',
+] as const
+
+const QUERY_PLANET_LEGS = [
+  'registry:marsys://tool/L1/get_positions',
+  'registry:marsys://tool/L1/get_dignity',
+  'registry:marsys://tool/L1/get_strength',
+  'registry:marsys://tool/L1/get_avasthas',
+  'registry:marsys://tool/L1/get_aspects',
+  'registry:marsys://tool/L1/get_yoga_dosha',
+  'registry:marsys://tool/L1/get_yoga_firings',
+  'registry:marsys://tool/L1/get_dispositors',
+] as const
+
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  // R3 proof typing (review §4, "direct-DB composites"): PROMISE delegates to judgment_query
+  // (already contracted) and CONFIRMATION's own direct chart_facts read is fenced to the same
+  // served generation (register_d10_pact.ts). ACTIVATION reuses judgment_query's own timing
+  // hooks with no independent fetch. TRIGGER makes a live sidecar ephemeris call this static
+  // contract cannot attest to — a genuinely reachable-or-not external dependency, not a
+  // source-provable one; the handler discloses that stage's live outcome at request time
+  // (chain_incomplete_infra etc.), honestly outside this contract's scope.
+  pact_query: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: ['registry:marsys://tool/L-JUDGMENT/judgment_query'],
+      source_ref: 'platform/src/lib/retrieval/registry/layers/register_d10_pact.ts',
+    }],
+  },
+  // R3 proof typing (review §4, "direct-DB composites"): synergy_cross_layer runs
+  // runWholeChartRead in 'cross_domain' mode (register_d6_synergy.ts), which composes exactly
+  // query_ucd, query_domain_reading, query_signals, traverse_chart_graph and
+  // query_contradictions via their own registered handlers (getCapability, orchestrator.ts) —
+  // never a parallel unreviewed query path. The temporal step (L3 Kāla-owned legs) is gated on
+  // queryClass 'predictive'/'holistic' and never runs for 'cross_domain', so it is correctly
+  // outside this contract.
+  synergy_cross_layer: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: [
+        'registry:marsys://tool/L2/query_ucd',
+        'registry:marsys://tool/L2/query_domain_reading',
+        'registry:marsys://tool/L2/query_signals',
+        'registry:marsys://tool/L2/traverse_chart_graph',
+        'registry:marsys://tool/L2/query_contradictions',
+      ],
+      source_ref: 'platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead',
+    }],
+  },
+  // R3 proof typing (review §4, "direct-DB composites"): compose_large_n's RegistrySurfaceGateway
+  // (synthesis/surface_gateway.ts) composes exactly these four already-contracted surfaces via
+  // their own registered handlers (getCapability) — pre-aggregated gestalt, domain reading,
+  // CGM dispositor paths and contradictions — before map-reducing atomic signal families. Which
+  // surfaces one specific question actually draws on varies with its decomposition; gating
+  // availability on the full promised surface set is the conservative, honest choice (never
+  // claims available when a surface the instrument could need is unverified), matching every
+  // other composite in this file.
+  compose_large_n: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: [
+        'registry:marsys://tool/L2/query_chart_gestalt',
+        'registry:marsys://tool/L2/query_domain_reading',
+        'registry:marsys://tool/L2/query_cgm_paths',
+        'registry:marsys://tool/L2/query_contradictions',
+      ],
+      source_ref: 'platform/src/lib/retrieval/synthesis/surface_gateway.ts',
+    }],
+  },
+  graha_portrait: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: GRAHA_PORTRAIT_LEGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts',
+    }],
+  },
+  query_planet: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: QUERY_PLANET_LEGS,
+      source_ref: 'platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts',
+    }],
+  },
+  // The MCP alias already consumes this exact handler query through editorial.ts. Bind that
+  // same reviewed probe to the raw registry descriptor explicitly rather than renaming the
+  // alias-oriented contract into an ambiguous source-query owner.
+  yoga_activation_by_dasha: {
+    producer_output_claims: [],
+    requirements: [sourceQueryAvailabilityRequirement('source-query:yoga-activation-by-dasha:v1')!],
+  },
+  // assess_* composes exact handler results; it is never promoted from an adjacent producer
+  // receipt. The derived requirement evaluates each leg's own reviewed contract in the same
+  // chart scope.
+  assess_career: ASSESS_DOMAIN_AVAILABILITY_CONTRACT,
+  assess_health: ASSESS_DOMAIN_AVAILABILITY_CONTRACT,
+  assess_marriage: ASSESS_DOMAIN_AVAILABILITY_CONTRACT,
+  query_spine_bundle: {
+    producer_output_claims: [],
+    requirements: [{
+      kind: 'derived',
+      scope: 'chart',
+      required_binding_ids: SPINE_BUNDLE_MANDATORY_BINDINGS,
+      source_ref: 'platform/src/lib/retrieval/spine/compute_spine_bundle.ts:79-124 | platform/src/lib/retrieval/spine/materialize.ts:137-167',
+    }],
+  },
   query_classical_texts: {
     producer_output_claims: [{
       asset_id: 'bg_texts',
@@ -211,6 +338,54 @@ export function getDescriptorAvailabilityReview(name: string): DescriptorAvailab
 
 export function getDescriptorAvailabilityContractReview(name: string): DescriptorAvailabilityContractReview | undefined {
   return AVAILABILITY_CONTRACT_REVIEWS[name]
+}
+
+/**
+ * Capabilities whose correct availability proof is not chart evidence (RC-7 / review §4): prompt
+ * resources, routers, orchestration metadata, static dossiers, wiring projections and catalog
+ * discovery. They are proven by registration in the pinned snapshot, reported `resource_ok`,
+ * and excluded from answer readiness — never dark for want of an evidence receipt they cannot
+ * have, and never admissible as answer evidence.
+ */
+export interface DescriptorProofKindReview {
+  readonly proof_kind: Exclude<CapabilityProofKind, 'answer'>
+  readonly proof: SnapshotResourceAvailabilityRequirement['proof']
+  readonly rationale: string
+}
+
+const PROOF_KIND_REVIEWS: Readonly<Record<string, DescriptorProofKindReview>> = {
+  intent_classify: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Renders the intent-classification prompt template with its schema; it classifies a question and reads no chart evidence.',
+  },
+  route: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Selects a retrieval route over registered capabilities; routing metadata, not an answer.',
+  },
+  maro_orchestrate: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Returns orchestration metadata for registered capabilities; planning metadata, not chart evidence.',
+  },
+  maro_mcp_surface: {
+    proof_kind: 'plan', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Describes the MCP surface of registered capabilities; planning metadata, not chart evidence.',
+  },
+  maro_profiles: {
+    proof_kind: 'resource', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Static capability dossier, labelled unmeasured; a reference resource, not chart evidence.',
+  },
+  channel_mcp_wiring: {
+    proof_kind: 'resource', proof: 'registered_in_pinned_snapshot',
+    rationale: 'Static wiring map of registered bindings; a projection of the catalog, not chart evidence.',
+  },
+  tool_search: {
+    proof_kind: 'discovery', proof: 'index_compiled_from_pinned_catalog',
+    rationale: 'Searches an index built from the live catalog at call time; every door asserts that catalog compiles to the pinned snapshot, so the index cannot diverge from it.',
+  },
+}
+
+export function getDescriptorProofKindReview(name: string): DescriptorProofKindReview | undefined {
+  return PROOF_KIND_REVIEWS[name]
 }
 
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {

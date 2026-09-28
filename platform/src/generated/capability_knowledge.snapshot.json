@@ -1,11 +1,11 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-20T01:38:00.000Z",
-  "content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
-  "source_catalog_fingerprint": "sha256:05ede88db7d6c385ee33c9b727f41279210fef495f7aa5fb8eccbda9f663c084",
-  "semantic_review_fingerprint": "sha256:71c57e8866a2025c025a2ce1662901f585a112b12c0014d0888b1c37270661dd",
-  "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
+  "generated_at": "2026-09-28T08:13:39.000Z",
+  "content_hash": "sha256:9b47461d6716337149dd636cc2d6bed3a7506d86bc15aea51c727d9ba1955f58",
+  "source_catalog_fingerprint": "sha256:c25c7054e950458670605467787ef003ae5608361674f471ce0e114bdbb2874c",
+  "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
+  "producer_contract_fingerprint": "sha256:5dcb6898b6a95c08701e0636c6b2b0eda9af52993456df4254dc1aaca994085a",
   "scus": [
     {
       "version": 1,
@@ -288,11 +288,6 @@
         },
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_contradictions",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -318,21 +313,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "producer_output_claims": [],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_career",
-          "status": "deliberately_dark",
-          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
-          "missing_binding_ids": [
-            "registry:marsys://tool/L2/query_domain_reading",
-            "registry:marsys://tool/L3/query_temporal_activation",
-            "registry:marsys://tool/L2/query_contradictions"
-          ],
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            }
           ]
         }
       ],
@@ -438,7 +435,6 @@
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children"
         ]
       },
@@ -496,11 +492,6 @@
         },
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_contradictions",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -526,6 +517,26 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_health",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -628,7 +639,6 @@
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children"
         ]
       },
@@ -686,11 +696,6 @@
         },
         {
           "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
-        {
-          "relation": "enables",
           "target_scu_id": "scu.catalog.query_contradictions",
           "rationale": "Derived from the executable descriptor drill_children contract."
         },
@@ -716,21 +721,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
-      "availability_dispositions": [
+      "producer_output_claims": [],
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_marriage",
-          "status": "deliberately_dark",
-          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
-          "missing_binding_ids": [
-            "registry:marsys://tool/L2/query_domain_reading",
-            "registry:marsys://tool/L3/query_temporal_activation",
-            "registry:marsys://tool/L2/query_contradictions"
-          ],
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
-            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            }
           ]
         }
       ],
@@ -833,7 +840,6 @@
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
           "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
@@ -2362,6 +2368,17 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/channel/chat_dispatch",
+          "status": "deliberately_dark",
+          "reason": "The descriptor promises the legacy Consume chat route (/api/chat/consult) as a registry migration target. That route is not a governed inquiry door: the Portal door is /api/pariprashna, which carries the inquiry contract and accountability envelope (review RC-6). The descriptor answers nothing about a chart and must not be offered as a route.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts#chatDispatchTool",
+            "platform/src/app/api/pariprashna/route.ts"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -2474,6 +2491,7 @@
       "label": "Channel Mcp Wiring",
       "description": "D7 MCP channel wiring descriptor. Describes the bridge between the retrieval registry (platform/src/lib/retrieval/registry) and the MCP server tool surface (platform-mcp/src/server.ts). Returns the current wiring state: which registry URIs are surfaced via MCP tools, which MCP tools map back to registry URIs via mcp_capability_bridge.ts, and which registry capabilities are not yet MCP-surfaced. Used by the D8 eval harness for channel-parity verification. Not LLM-facing for end-user queries — internal channel introspection only. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "resource",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -2512,6 +2530,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/channel/mcp_wiring",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:channel_mcp_wiring"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3001,7 +3032,7 @@
       "scu_id": "scu.catalog.classical_attribution_lookup",
       "version": 1,
       "label": "Classical Attribution Lookup",
-      "description": "Fetch classical text attributions for MSR signals in a chart. Each attribution links an MSR signal (signal_id) to a classical text passage (text_key, title, author, chapter, verse_range, content) with an attribution_type (confirms | contradicts | partial | extends | silent) and confidence score. Provides the classical grounding for Bodha layer signals. Required: chart_id + signal_ids (array of signal_id strings). Optional: attribution_type filter, confidence_tier filter (HIGH|MEDIUM|LOW). emits_references: returns signal_id + attribution_id references. No audience-tier gating — tier gating is serve-time only. Registry equivalent of lib/retrieve/classical_attribution_lookup_tool.ts (D7 gap fill). Evidence use: ground a claim in retrievable classical source material.",
+      "description": "UNAVAILABLE — fails closed. Per-signal classical attributions (an MSR signal linked to a classical passage with an attribution_type and confidence) were read from the classical_attributions store, which was dropped in WS-0 with no queryable replacement. Every call therefore returns CLASSICAL_ATTRIBUTION_SOURCE_UNAVAILABLE instead of an unmeasured \"silent\" verdict for each signal. For classical grounding use the classical corpus surface (query_classical_texts; MCP ref_classical_citation_get), which returns verse text with receipt-pinned pagination. Input contract retained for callers: chart_id + signal_ids; optional attribution_type and confidence_tier (HIGH|MEDIUM|LOW). Evidence use: ground a claim in retrievable classical source material.",
       "kind": "citation",
       "domains": [
         "classical_grounding"
@@ -3138,13 +3169,11 @@
       ],
       "gap_dispositions": [],
       "graph_disposition": {
-        "status": "connected",
-        "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
+        "status": "isolated_dispositioned",
+        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children",
-          "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children"
+          "CapabilityDescriptor:marsys://tool/L2/classical_attribution_lookup",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#classical:classical_attribution_lookup"
         ]
       },
       "producer_semantic_disposition": {
@@ -3206,6 +3235,25 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/synthesis/compose_large_n",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_chart_gestalt",
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L2/query_cgm_paths",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/synthesis/surface_gateway.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -3542,7 +3590,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -3706,7 +3754,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -4402,6 +4450,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -4452,6 +4501,7 @@
           "capability_uri": "marsys://tool/L1/get_aspects",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -4568,7 +4618,7 @@
     },
     {
       "scu_id": "scu.catalog.get_av_transit_gating",
-      "version": 1,
+      "version": 2,
       "label": "Get Av Transit Gating",
       "description": "D-3 Kāla Taraṅga Lane T-1: sign-keyed Aṣṭakavarga transit-gating + kakṣyā sub-windows for a chart. mode=\"sav_bav_gating\" (default) serves SAV (samudaya/sarva) and BAV (bhinnashtakavarga, per-graha) bindu counts per sign, each classified damping/ amplifying/neutral against the classical mean (~28.08 bindus/sign) — used to damp or amplify a timing window when a transiting planet crosses that sign. mode= \"kakshya_windows\" returns dated ~3.75-degree kakṣyā sub-arcs (8 per sign, fixed Saturn->Jupiter->Mars->Sun->Venus->Mercury->Moon->Lagna lordship order) a transiting planet crosses across a date range, each tagged with its kakṣyā lord and entry/exit dates (from BRAHMA daily ephemeris, tropical->sidereal via a documented Lahiri mean-rate approximation — not Swiss-Ephemeris-grade). Duration per kakṣyā window is computed from the ACTUAL transiting planet's speed, not a fixed day-count. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
       "kind": "temporal",
@@ -4592,6 +4642,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "end_date",
         "graha",
@@ -4608,6 +4659,43 @@
         "strength_evidence"
       ],
       "primary_binding_uri": "marsys://tool/L1/get_av_transit_gating",
+      "additional_bindings": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows",
+          "kind": "registry_capability",
+          "relation": "provides",
+          "capability_uri": "marsys://tool/L1/get_av_transit_gating",
+          "input_contract": {
+            "chart_id": "string:required",
+            "planet": "string:required",
+            "target_sign": "number:required",
+            "start_date": "string:required",
+            "end_date": "string:required",
+            "ayanamsha_id": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "ganita_av_transit_gating_get",
+          "mode_selector": [
+            {
+              "argument": "mode",
+              "equals": "kakshya_windows"
+            }
+          ],
+          "fixed_args": {
+            "mode": "kakshya_windows"
+          },
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating"
+        }
+      ],
       "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
@@ -4619,7 +4707,35 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [],
+      "known_gaps": [
+        "kakshya_windows mode makes a live BRAHMA daily-ephemeris sidecar read with no registered health-probe asset for that route; honestly dispositioned dark rather than statically proven or fabricated."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_av_transit_gating",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-av-transit-gating:v1",
+              "capability_uri": "marsys://tool/L1/get_av_transit_gating",
+              "contract_sha256": "sha256:72c23b177cba67e35638331a1094c6555c092961277d90642a85e1a3888bc0ec",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating | platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY"
+            }
+          ]
+        }
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows",
+          "status": "deliberately_dark",
+          "reason": "kakshya_windows makes a live BRAHMA daily-ephemeris sidecar read at request time; no health-probe asset is registered for that route (unlike bg_ephemeris_engine's reviewed probe backing query_planet_transit), so its live reachability cannot be statically proven without fabricating infrastructure that does not exist. sav_bav_gating (the default mode, same descriptor) remains statically proven via its own source-query contract, unaffected by this disposition.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleKakshyaWindows",
+            "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts#source-query:get-av-transit-gating:v1"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -4629,6 +4745,7 @@
           "capability_uri": "marsys://tool/L1/get_av_transit_gating",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "end_date": "string:optional",
             "graha": "string:optional",
@@ -4655,46 +4772,58 @@
             "mcp_full"
           ],
           "public_tool_name": "ganita_av_transit_gating_get"
+        },
+        {
+          "binding_id": "registry:marsys://tool/L1/get_av_transit_gating#kakshya_windows",
+          "kind": "registry_capability",
+          "relation": "provides",
+          "capability_uri": "marsys://tool/L1/get_av_transit_gating",
+          "input_contract": {
+            "chart_id": "string:required",
+            "planet": "string:required",
+            "target_sign": "number:required",
+            "start_date": "string:required",
+            "end_date": "string:required",
+            "ayanamsha_id": "string:optional"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
+          "public_tool_name": "ganita_av_transit_gating_get",
+          "mode_selector": [
+            {
+              "argument": "mode",
+              "equals": "kakshya_windows"
+            }
+          ],
+          "fixed_args": {
+            "mode": "kakshya_windows"
+          },
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_av_transit_gating_get",
+          "pagination_review": {
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_av_transit_gating"
+          }
         }
       ],
       "source_descriptor_uris": [
         "marsys://tool/L1/get_av_transit_gating"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
@@ -4702,31 +4831,37 @@
         {
           "concept_id": "condition_evidence",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
         },
         {
           "concept_id": "get_av_transit_gating",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
         },
         {
           "concept_id": "planetary_strength",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
         },
         {
           "concept_id": "qualification_factor",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
         }
       ],
-      "gap_dispositions": [],
+      "gap_dispositions": [
+        {
+          "gap": "kakshya_windows mode makes a live BRAHMA daily-ephemeris sidecar read with no registered health-probe asset for that route; honestly dispositioned dark rather than statically proven or fabricated.",
+          "status": "deferred_contract",
+          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
+        }
+      ],
       "graph_disposition": {
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+          "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
         ]
       },
       "producer_semantic_disposition": {
@@ -4734,8 +4869,7 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+          "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
         ]
       }
     },
@@ -4765,6 +4899,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -4814,6 +4949,7 @@
           "capability_uri": "marsys://tool/L1/get_avasthas",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -4983,7 +5119,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-ayurdaya:v1",
               "capability_uri": "marsys://tool/L1/get_ayurdaya",
-              "contract_sha256": "sha256:9e1fd421c8ff3b4ddeba11b5804817c1daf713105a8bac52e782bd5bed9a65b6",
+              "contract_sha256": "sha256:7dec0d9b59196fe5c23ee728c6f48ae0a19846c768172fe8d9a294afcb252c38",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
             }
@@ -6268,6 +6404,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -6318,6 +6455,7 @@
           "capability_uri": "marsys://tool/L1/get_dignity",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -6458,6 +6596,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "limit",
@@ -6507,6 +6646,7 @@
           "capability_uri": "marsys://tool/L1/get_dispositors",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "limit": "number:optional",
@@ -6796,6 +6936,7 @@
           "capability_uri": "marsys://tool/L1/get_divisionals",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "graha": "string:optional",
             "limit": "number:optional",
@@ -7470,6 +7611,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "include_graha_kp_lords"
       ],
@@ -7515,6 +7657,7 @@
           "capability_uri": "marsys://tool/L1/get_kp_cusps",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "include_graha_kp_lords": "boolean:optional"
           },
@@ -8226,6 +8369,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "frame",
@@ -8294,6 +8438,7 @@
           "capability_uri": "marsys://tool/L1/get_positions",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "frame": "string:optional",
@@ -8853,7 +8998,7 @@
               "kind": "source_query",
               "contract_id": "source-query:get-sensitive-degrees:v1",
               "capability_uri": "marsys://tool/L1/get_sensitive_degrees",
-              "contract_sha256": "sha256:b45a95f75b69353cdbc3fe3c80090c4e078c20e736024ced20737f19be35effa",
+              "contract_sha256": "sha256:9c6ffbed11ae74dd5bc39e5b6dc6fb2b34f4ff07fb5b2fd56e0448476409c493",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-120 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:131-155 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2895-2971 | platform/python-sidecar/ga_writers/_idempotency.py:54-78"
             }
@@ -9203,6 +9348,7 @@
       "inputs": [
         "all",
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "frame",
@@ -9230,16 +9376,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L1/get_strength",
-          "status": "deliberately_dark",
-          "reason": "The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40",
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145",
-            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202",
-            "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:get-strength:v1",
+              "capability_uri": "marsys://tool/L1/get_strength",
+              "contract_sha256": "sha256:ecfe361ee1a1d1d6bd055f470ddf7335c4217b89c2563c22e4747ed6f57036dd",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES | platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:150-170"
+            }
           ]
         }
       ],
@@ -9253,6 +9401,7 @@
           "input_contract": {
             "all": "boolean:optional",
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "frame": "string:optional",
@@ -10556,6 +10705,7 @@
       "inputs": [
         "all",
         "ayanamsha_id",
+        "build_id",
         "categories",
         "chart_id",
         "facet",
@@ -10608,6 +10758,7 @@
           "input_contract": {
             "all": "boolean:optional",
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "categories": "array:optional",
             "chart_id": "string:required",
             "facet": "string:optional",
@@ -10770,6 +10921,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/graha_portrait",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L1/get_positions",
+                "registry:marsys://tool/L1/get_dignity",
+                "registry:marsys://tool/L1/get_strength",
+                "registry:marsys://tool/L1/get_avasthas",
+                "registry:marsys://tool/L1/get_yoga_dosha",
+                "registry:marsys://tool/L1/get_dashas",
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L2/traverse_chart_graph"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -10892,6 +11066,7 @@
       "label": "Intent Classify",
       "description": "System prompt template for fast query intent classification. Used by the Bulk Context adapter (bulk_context/intent_classifier.ts) as LLM fallback when regex confidence is low. Returns a structured intent tag from the canonical QueryIntent enum. Evidence use: discover available evidence surfaces and choose a bounded retrieval route.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -10929,6 +11104,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://prompt/intent-classify",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:intent_classify"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -11164,7 +11352,7 @@
               "kind": "source_query",
               "contract_id": "source-query:judgment-query-readiness:v1",
               "capability_uri": "marsys://tool/L-JUDGMENT/judgment_query",
-              "contract_sha256": "sha256:be129861e908a9499c6afca7da19a20ad8b6c284dd014589e0edc8872a4d1ac0",
+              "contract_sha256": "sha256:73e0d79b876ea797a9d6823bf3ab6788173ea44e84ee69c5b57e077ea1c075f1",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29"
             }
@@ -11371,6 +11559,21 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L5/lel_intake_checklist",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:lel-intake-checklist:v1",
+              "capability_uri": "marsys://tool/L5/lel_intake_checklist",
+              "contract_sha256": "sha256:297f34be409fe1bbe4daecd2c213634aa3d18d34d7b36b226c20e9bf146b1993",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:246-302 | platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql | platform/supabase/migrations/423_ba_lel_r2_2_step1_chart_scope.sql:19 | platform/migrations/457_lel_schema_v2_event_shapes.sql"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12058,6 +12261,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/list_sutravali_rules_by_text",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:list-sutravali-rules-by-text:v1",
+              "capability_uri": "marsys://tool/L0/list_sutravali_rules_by_text",
+              "contract_sha256": "sha256:2ac8db1e8fa35763eb4972332b0d4269c265f38d283582f798361e95852601e5",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12182,6 +12400,7 @@
       "label": "Maro Mcp Surface",
       "description": "MARO MCP channel surface resolver. Returns the surface spec for the BYO-MCP channel given a declared (or undeclared) model family. Declared family → serve that family's profiled surface (max_tools, tool_name_pattern, transport). Undeclared → serve the universal-best surface (10–15 consolidated tools, cross-family valid names, dual structuredContent+text output). DeepSeek on MCP: strip_mcp_constructs=true; serve as plain tool-calling backend only. All tool names are cross-family valid: snake_case, no hyphens, ≤64 chars, [A-Za-z0-9_.]. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -12219,6 +12438,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/maro/mcp_surface",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:maro_mcp_surface"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12333,6 +12565,7 @@
       "label": "Maro Orchestrate",
       "description": "MARO core: resolves the per-family normalization parameters for a retrieval request. Takes a chart_id (required, never defaulted), query, model_family, and capability URI. Returns the full normalization spec: tool_arg_format, cache_strategy, validate_and_repair, prompt_structure, context_budget_tokens, and reasoning_round_trip mode for the resolved family. Consumed by both the chat channel (MARO owns loop) and the MCP adapter (surface shaping). Families: anthropic / gemini / openai / deepseek / universal (undeclared fallback). NVIDIA NIM: use openai family + is_nvidia_model=true to apply cache_strategy:none override. Not LLM-facing for end-user queries — internal orchestration layer only. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -12377,6 +12610,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/maro/orchestrate",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:maro_orchestrate"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12497,6 +12743,7 @@
       "label": "Maro Profiles",
       "description": "MARO behavioral profiles — read-only dossier for all four LLM families. Returns the v1 profile for each family (anthropic / gemini / openai / deepseek) plus the universal fallback profile. Values tagged UNMEASURED are v1 hypotheses from RETRIEVAL_GROUNDTRUTH_LLM_PROVIDER_SPEC_v1_0.md awaiting D8 eval-harness measurement against the MARSYS corpus. Used by the D8 eval harness for profile validation and by the integration smoke test for roster-completeness checks. Evidence use: inspect internal route, channel, schema, and orchestration contracts without treating them as chart evidence.",
       "kind": "datum",
+      "proof_kind": "resource",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -12532,6 +12779,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://resource/maro/profiles",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:maro_profiles"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -12713,6 +12973,22 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-PACT/pact_query",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L-JUDGMENT/judgment_query"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -13440,7 +13716,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -14145,7 +14421,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-calibration:v1",
               "capability_uri": "marsys://tool/L5/query_calibration",
-              "contract_sha256": "sha256:fe0afbd1f892596bde67cfb1e3edf56c68c71beb57df0ed8e0ca1675bc3b25ae",
+              "contract_sha256": "sha256:46eb4e09dea47dc56465d09e1c9cfa9b54d77fe5a3db498ad03fce7377767732",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197"
             }
@@ -15264,7 +15540,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-classical-texts:v1",
               "capability_uri": "marsys://tool/L0/query_classical_texts",
-              "contract_sha256": "sha256:50d2344ef3d3e12ef1f0e4c90b032c1a23dee0a15df6e22b3cf563fe917c2103",
+              "contract_sha256": "sha256:9b0a76e7645ebf91eff9bb56603fdc9aecde2f1560d501037359f3dec195a8ce",
               "scope": "global",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts#receiptBoundarySql | platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:new_texts_spec"
             }
@@ -16034,7 +16310,7 @@
               "kind": "source_query",
               "contract_id": "source-query:query-contradictions:v1",
               "capability_uri": "marsys://tool/L2/query_contradictions",
-              "contract_sha256": "sha256:2046d3188e42746744b998ae69d1d9f077d76b6c620c37d58b1266bbc0e61f15",
+              "contract_sha256": "sha256:b17ecc2bed44efeed1b9ca7e03431e3eee10ceb5c00d4e8ca66c3498f299ce6e",
               "scope": "chart",
               "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:156-269 | platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_contradictions.contract.test.ts:15-130"
             }
@@ -17113,6 +17389,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "domain",
         "lens_limit",
@@ -17169,6 +17446,7 @@
           "capability_uri": "marsys://tool/L2/query_domain_reading",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "domain": "string:optional",
             "lens_limit": "number:optional",
@@ -21852,6 +22130,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/query_planet",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L1/get_positions",
+                "registry:marsys://tool/L1/get_dignity",
+                "registry:marsys://tool/L1/get_strength",
+                "registry:marsys://tool/L1/get_avasthas",
+                "registry:marsys://tool/L1/get_aspects",
+                "registry:marsys://tool/L1/get_yoga_dosha",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L1/get_dispositors"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -22022,7 +22323,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -22229,7 +22530,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -23862,6 +24163,7 @@
       "inputs": [
         "chart_id",
         "domain",
+        "include_stale",
         "limit",
         "status"
       ],
@@ -23893,9 +24195,9 @@
               "kind": "source_query",
               "contract_id": "source-query:query-prospective-ledger:v1",
               "capability_uri": "marsys://tool/L4/query_prospective_ledger",
-              "contract_sha256": "sha256:334cda1ae2dbc4dec773abbf67b85a7cc677f21c87a5a83694d56f1ee1be30ef",
+              "contract_sha256": "sha256:deb1e53d0fee2fc455fcc76875402c6598d6450350f3c0410bdded88a80f74df",
               "scope": "chart",
-              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:169-226"
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:197-211"
             }
           ]
         }
@@ -23910,6 +24212,7 @@
           "input_contract": {
             "chart_id": "string:required",
             "domain": "string:optional",
+            "include_stale": "boolean:optional",
             "limit": "number:optional",
             "status": "string:optional"
           },
@@ -25582,7 +25885,7 @@
               "asset_id": "bg_ephemeris_engine",
               "probe_id": "ephemeris_engine",
               "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
-              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "probe_contract_sha256": "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1",
               "max_age_seconds": 900,
               "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
             }
@@ -27390,6 +27693,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "domain",
         "frame",
@@ -27447,6 +27751,7 @@
           "capability_uri": "marsys://tool/L2/query_signals",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "domain": "string:optional",
             "frame": "string:optional",
@@ -28006,6 +28311,33 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-SPINE/query_spine_bundle",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L4/query_predictive_anchors",
+                "registry:marsys://tool/L5/query_calibration"
+              ],
+              "source_ref": "platform/src/lib/retrieval/spine/compute_spine_bundle.ts:79-124 | platform/src/lib/retrieval/spine/materialize.ts:137-167"
+            },
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-spine-bundle:v1",
+              "capability_uri": "marsys://tool/L-SPINE/query_spine_bundle",
+              "contract_sha256": "sha256:f54378368ab9125849fe901bf2c20ff83d59d10e44c663312929c32bcd6e8b32",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts:98-123 | platform/src/lib/retrieval/spine/materialize.ts:75-83 | platform/src/lib/retrieval/spine/materialize.ts:137-167 | platform/src/lib/retrieval/spine/constants.ts#SPINE_SOURCE_ASSET_IDS | platform/supabase/migrations/463_bodha_spine_bundles.sql:36-50"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28363,6 +28695,21 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules",
+              "contract_sha256": "sha256:0487558c23cc4ce96cfd704b4f695cd4fe9a465092d08ef22391eb78af2083d4",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:368-394 | platform/python-sidecar/routers/sutravali.py:87-124 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28529,6 +28876,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sutravali_rules_for_planet",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-sutravali-rules-for-planet:v1",
+              "capability_uri": "marsys://tool/L0/query_sutravali_rules_for_planet",
+              "contract_sha256": "sha256:ee16c85708fb4291044e5dcfe78fc1465ce118e5c5e9275ace6deaef91873b70",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:400-473 | platform/python-sidecar/routers/sutravali.py#query_rules_for_planet | platform/python-sidecar/tests/test_sutravali_query_rules_for_planet.py"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -31846,6 +32208,7 @@
       "label": "Route",
       "description": "Internal D2 query router. Classifies a query into one of five route classes (numeric_exact, relational, narrative, simple, multi_hop) and selects the appropriate tool chain from the registry. chart_id must be supplied per call. Not LLM-facing — consumed by the grounding spine (D3) and eval harness (D8). Evidence use: discover available evidence surfaces and choose a bounded retrieval route.",
       "kind": "datum",
+      "proof_kind": "plan",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -31888,6 +32251,19 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/router/route",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:route"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32023,7 +32399,7 @@
         "current",
         "natal"
       ],
-      "scope": "global",
+      "scope": "chart",
       "inputs": [
         "chart_id",
         "layers",
@@ -32047,6 +32423,26 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/cross_layer",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_ucd",
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L2/traverse_chart_graph",
+                "registry:marsys://tool/L2/query_contradictions"
+              ],
+              "source_ref": "platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32159,9 +32555,9 @@
     },
     {
       "scu_id": "scu.catalog.synergy_pipeline",
-      "version": 1,
+      "version": 2,
       "label": "Synergy Pipeline",
-      "description": "D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain into a single introspectable capability descriptor. Accepts a chart_id and query; routes to the appropriate layer tools; grounds the result against L1 chart_facts; passes through the MARO normalizer for the declared model family. Not LLM-facing for end-user queries — consumed by the D8 eval harness and integration smoke tests for pipeline-completeness verification. chart_id is required and must be a valid chart UUID — never defaulted. Evidence use: frame and reconcile domain evidence before downstream interpretation.",
+      "description": "D6 synergy pipeline — combines the router→grounding→graph+assets→MARO chain into a single introspectable capability descriptor. dry_run=true (the plan mode) returns the planned route/grounding stages with zero I/O; the executed default mode dispatches the real router→grounding→graph+assets→MARO chain, grounding the result against L1 chart_facts and passing it through the MARO normalizer for the declared model family. Not LLM-facing for end-user queries — consumed by the D8 eval harness and integration smoke tests for pipeline-completeness verification. chart_id is required and must be a valid chart UUID — never defaulted. Evidence use: frame and reconcile domain evidence before downstream interpretation.",
       "kind": "datum",
       "domains": [
         "cross_domain"
@@ -32180,7 +32576,7 @@
         "current",
         "natal"
       ],
-      "scope": "global",
+      "scope": "chart",
       "inputs": [
         "chart_id",
         "dry_run",
@@ -32193,6 +32589,39 @@
         "reconciled_evidence"
       ],
       "primary_binding_uri": "marsys://tool/synergy/pipeline",
+      "additional_bindings": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/pipeline#dry_run",
+          "kind": "registry_capability",
+          "relation": "provides",
+          "capability_uri": "marsys://tool/synergy/pipeline",
+          "input_contract": {
+            "chart_id": "string:required",
+            "query": "string:required",
+            "dry_run": "boolean:required"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "execution_channels": [
+            "platform_internal"
+          ],
+          "mode_selector": [
+            {
+              "argument": "dry_run",
+              "equals": true
+            }
+          ],
+          "fixed_args": {
+            "dry_run": true
+          },
+          "proof_kind": "plan",
+          "route_evidence": "CapabilityDescriptor:marsys://tool/synergy/pipeline#dry_run"
+        }
+      ],
       "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
@@ -32205,6 +32634,39 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/synergy/pipeline",
+          "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_ucd",
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L2/query_signals",
+                "registry:marsys://tool/L2/traverse_chart_graph",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L3/query_convergence_windows",
+                "registry:marsys://tool/L3/query_life_arc"
+              ],
+              "source_ref": "platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead:runTemporalStep (queryClass=holistic)"
+            }
+          ]
+        },
+        {
+          "binding_id": "registry:marsys://tool/synergy/pipeline#dry_run",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "registered_in_pinned_snapshot",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts#synergyPipelineTool.handler:dry_run"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32232,46 +32694,54 @@
           "execution_channels": [
             "platform_internal"
           ]
+        },
+        {
+          "binding_id": "registry:marsys://tool/synergy/pipeline#dry_run",
+          "kind": "registry_capability",
+          "relation": "provides",
+          "capability_uri": "marsys://tool/synergy/pipeline",
+          "input_contract": {
+            "chart_id": "string:required",
+            "query": "string:required",
+            "dry_run": "boolean:required"
+          },
+          "output_contract": {
+            "content": "ToolResult.content"
+          },
+          "pagination": "none",
+          "pagination_verified": null,
+          "executable": true,
+          "execution_channels": [
+            "platform_internal"
+          ],
+          "mode_selector": [
+            {
+              "argument": "dry_run",
+              "equals": true
+            }
+          ],
+          "fixed_args": {
+            "dry_run": true
+          },
+          "proof_kind": "plan",
+          "route_evidence": "CapabilityDescriptor:marsys://tool/synergy/pipeline#dry_run | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "pagination_review": {
+            "disposition": "not_paginated",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/synergy/pipeline"
+          }
         }
       ],
       "source_descriptor_uris": [
         "marsys://tool/synergy/pipeline"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/synergy/pipeline",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
@@ -32279,22 +32749,22 @@
         {
           "concept_id": "domain_assessment",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
         },
         {
           "concept_id": "evidence_reconciliation",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
         },
         {
           "concept_id": "judgment_support",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
         },
         {
           "concept_id": "synergy_pipeline",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
         }
       ],
       "gap_dispositions": [],
@@ -32302,8 +32772,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/synergy/pipeline",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+          "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
         ]
       },
       "producer_semantic_disposition": {
@@ -32311,8 +32780,7 @@
         "asset_ids": [],
         "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/synergy/pipeline",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+          "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
         ]
       }
     },
@@ -32322,6 +32790,7 @@
       "label": "Tool search",
       "description": "Keyword search over the full MARSYS tool/resource/prompt catalog (~120 capabilities across L0-L5). Returns matching tool names, descriptions, and layer/domain tags — NOT the full catalog. Use this before assuming a needed capability does not exist, or when the exact tool name is unknown (e.g. query=\"dasha activation\", \"muhurta\", \"yoga firings\", \"remedies\"). Case-insensitive keyword/substring match across name, description, layer, and domain tags — not fuzzy or semantic search; a query with zero token overlap against every catalog entry returns an honest empty result, not a fabricated best-effort guess. Evidence use: discover available evidence surfaces and choose a bounded retrieval route.",
       "kind": "datum",
+      "proof_kind": "discovery",
       "domains": [
         "evidence_infrastructure"
       ],
@@ -32361,6 +32830,19 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/tool_search",
+          "requirements": [
+            {
+              "kind": "snapshot_resource",
+              "proof": "index_compiled_from_pinned_catalog",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#proof_kind:tool_search"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -32510,6 +32992,7 @@
         "about_from",
         "about_to",
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "cross_subsystem_only",
         "depth",
@@ -32569,6 +33052,7 @@
             "about_from": "object:optional",
             "about_to": "object:optional",
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "cross_subsystem_only": "boolean:optional",
             "depth": "number:optional",
@@ -32711,6 +33195,7 @@
       "scope": "chart",
       "inputs": [
         "ayanamsha_id",
+        "build_id",
         "chart_id",
         "dasha_period",
         "date_from",
@@ -32726,11 +33211,6 @@
       ],
       "primary_binding_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
       "edges": [
-        {
-          "relation": "enables",
-          "target_scu_id": "scu.catalog.classical_attribution_lookup",
-          "rationale": "Derived from the executable descriptor drill_children contract."
-        },
         {
           "relation": "enables",
           "target_scu_id": "scu.catalog.query_signals",
@@ -32755,6 +33235,22 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "producer_output_claims": [],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-TIMING/yoga_activation_by_dasha",
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:yoga-activation-by-dasha:v1",
+              "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+              "contract_sha256": "sha256:c49df0f4f9d47fbd11dca0a694a06f523edb5b5b3e7d48becee083b2f0fe6a5b",
+              "scope": "chart",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -32764,6 +33260,7 @@
           "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
           "input_contract": {
             "ayanamsha_id": "string:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "dasha_period": "string:optional",
             "date_from": "string:optional",
@@ -32866,7 +33363,6 @@
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children",
           "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children",
           "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children"
         ]
@@ -33033,6 +33529,18 @@
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_wealth",
           "requirements": [
+            {
+              "kind": "derived",
+              "scope": "chart",
+              "required_binding_ids": [
+                "registry:marsys://tool/L2/query_domain_reading",
+                "registry:marsys://tool/L3/query_temporal_activation",
+                "registry:marsys://tool/L2/query_contradictions",
+                "registry:marsys://tool/L1/get_yoga_firings",
+                "registry:marsys://tool/L2/query_signals"
+              ],
+              "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain"
+            },
             {
               "kind": "producer_output",
               "asset_id": "bo_cdlm_summary",
@@ -33699,6 +34207,7 @@
             "all": "boolean:optional",
             "ayanamsha_id": "string:optional",
             "bhanga_active": "boolean:optional",
+            "build_id": "string:optional",
             "chart_id": "string:required",
             "fired": "boolean:optional",
             "is_partial": "boolean:optional",
@@ -33943,14 +34452,6 @@
     {
       "from_scu_id": "scu.catalog.assess_career",
       "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.assess_career",
-      "relation": "enables",
       "to_scu_id": "scu.catalog.query_contradictions",
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
@@ -33983,14 +34484,6 @@
     {
       "from_scu_id": "scu.catalog.assess_health",
       "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.assess_health",
-      "relation": "enables",
       "to_scu_id": "scu.catalog.query_contradictions",
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
@@ -34016,14 +34509,6 @@
       "from_scu_id": "scu.catalog.assess_marriage",
       "relation": "enables",
       "to_scu_id": "scu.catalog.chart_facts_query",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.assess_marriage",
-      "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
       "source_ref": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage#drill_children"
@@ -34211,14 +34696,6 @@
       "rationale": "Derived from the executable descriptor drill_children contract.",
       "edge_source": "drill_child_contract",
       "source_ref": "CapabilityDescriptor:marsys://tool/L2/query_ucd#drill_children"
-    },
-    {
-      "from_scu_id": "scu.catalog.yoga_activation_by_dasha",
-      "relation": "enables",
-      "to_scu_id": "scu.catalog.classical_attribution_lookup",
-      "rationale": "Derived from the executable descriptor drill_children contract.",
-      "edge_source": "drill_child_contract",
-      "source_ref": "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha#drill_children"
     },
     {
       "from_scu_id": "scu.catalog.yoga_activation_by_dasha",
@@ -34696,8 +35173,8 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_ashtakavarga",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_avasthas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_bhava_bala",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_condition_composite",
@@ -34836,6 +35313,7 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
+        "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -34851,8 +35329,7 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_spillover_cascades",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_triangulation",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_cross_layer",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_cross_layer"
       ]
     },
     {
@@ -34920,6 +35397,7 @@
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "SemanticCapabilityDeclaration:marsys://tool/L2/query_contradictions",
+        "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -34935,8 +35413,7 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_spillover_cascades",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_triangulation",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_cross_layer",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_cross_layer"
       ]
     },
     {
@@ -35048,7 +35525,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating"
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating"
       ]
     },
     {
@@ -35393,6 +35870,7 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
+        "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -35408,8 +35886,7 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_spillover_cascades",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_triangulation",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_ucd",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_cross_layer",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_cross_layer"
       ]
     },
     {
@@ -35647,8 +36124,8 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_ashtakavarga",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_avasthas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_bhava_bala",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_condition_composite",
@@ -35687,8 +36164,8 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_av_transit_gating",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_ashtakavarga",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_av_transit_gating",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_avasthas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_bhava_bala",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:get_condition_composite",
@@ -36814,7 +37291,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:synergy_pipeline"
+        "SemanticCapabilityDeclaration:marsys://tool/synergy/pipeline"
       ]
     },
     {
@@ -38462,9 +38939,9 @@
     "semantic_capabilities": 182,
     "editorial_scus": 182,
     "derived_scus": 0,
-    "executable_bindings": 186,
+    "executable_bindings": 188,
     "unavailable_bindings": 0,
-    "publicly_named_bindings": 72,
+    "publicly_named_bindings": 73,
     "reviewed_pagination_bindings": 5,
     "reviewed_pagination_dispositions": 186,
     "reviewed_paginated_descriptors": 96,
@@ -38477,9 +38954,9 @@
     "reviewed_output_claims": 14,
     "typed_concepts": 259,
     "unbound_concepts": 0,
-    "isolated_scus": 156,
-    "graph_components": 157,
-    "dispositioned_isolated_scus": 156,
+    "isolated_scus": 157,
+    "graph_components": 158,
+    "dispositioned_isolated_scus": 157,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 128,
     "directly_served_producer_outputs": 127,

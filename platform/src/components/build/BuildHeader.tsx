@@ -6,19 +6,13 @@ import { Logo } from '@/components/brand/Logo'
 import { RefreshButton } from './RefreshButton'
 
 const NAV_LINKS = [
-  { href: '/cockpit', label: 'Cockpit' },
-  { href: '/cockpit/plan', label: 'Plan' },
-  { href: '/cockpit/sessions', label: 'Sessions' },
-  { href: '/cockpit/registry', label: 'Registry' },
-  { href: '/cockpit/atlas', label: 'Atlas' },
-  { href: '/cockpit/interventions', label: 'Interventions' },
-  { href: '/cockpit/parallel', label: 'Parallel' },
-  { href: '/cockpit/health', label: 'Health' },
-  { href: '/cockpit/activity', label: 'Activity' },
+  { href: '/ai-console', label: 'AI Console', feature: 'aiConsole' as const },
+  { href: '/observatory', label: 'Observatory' },
 ]
 
-export function BuildHeader() {
+export function BuildHeader({ showAiConsole = false }: { showAiConsole?: boolean }) {
   const pathname = usePathname()
+  const navLinks = NAV_LINKS.filter(link => link.feature !== 'aiConsole' || showAiConsole)
 
   return (
     <header className="border-b border-border bg-background">
@@ -28,8 +22,8 @@ export function BuildHeader() {
             <Logo size="sm" />
             <span className="font-serif text-sm font-medium tracking-[0.14em]">COCKPIT</span>
           </Link>
-          <nav className="hidden items-center gap-0.5 md:flex">
-            {NAV_LINKS.map(({ href, label }) => {
+          <nav aria-label="Cockpit sections" className="flex items-center gap-0.5">
+            {navLinks.map(({ href, label }) => {
               const isActive =
                 href === '/cockpit' ? pathname === '/cockpit' : pathname.startsWith(href)
               return (

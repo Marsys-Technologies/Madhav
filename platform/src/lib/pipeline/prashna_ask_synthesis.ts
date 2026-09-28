@@ -58,6 +58,7 @@ import {
   neutralizeDelimiters,
   INJECTION_CONTAINMENT_CLAUSE,
 } from '@/lib/pariprashna/injection/delimit'
+import { visibleInquiryCitationHandles } from '@/lib/vidhi/inquiry/response_accountability'
 
 export interface SynthesisEvidenceItem {
   tool_name: string
@@ -96,13 +97,28 @@ export interface SynthesizeReadingInput {
    * parity between the two doors. `null`/absent is honest omission, not a defect —
    * not every plan carries guidance. */
   synthesisGuidance?: string | null
+  /** Evidence rows carry register citation handles (`_cite`); ask the model to cite them. */
+  citeRegisterFindings?: boolean
 }
 
 export interface SynthesizeReadingResult {
   reading: string | null
   model_id: string | null
   judgment_flags: string[]
+  /** Register handles present in the evidence the model was actually shown (post-budget);
+   *  null when the evidence carried no register citations. */
+  visible_citation_handles?: string[] | null
 }
+
+/** Asks the model to cite the register findings it interprets, so delivery is provable by
+ *  handle rather than by restating canonical row JSON (RC-6.3). */
+export const REGISTER_CITATION_INSTRUCTION = `
+
+---
+EVIDENCE CITATIONS: evidence rows carry a "_cite" handle such as "F7". Whenever a paragraph of
+your reading interprets a row, cite that row's handle inline in the same paragraph as ⟦cite: F7⟧
+(several handles may appear in one paragraph when you interpret rows jointly). Interpret every
+material row you are shown. Cite only handles that appear in <evidence>; never invent a handle.`
 
 /** Overrides the base acharya prompt's "call tools live" instruction — this
  *  call has no tools; evidence is already gathered and provided as context. */
@@ -399,6 +415,7 @@ export async function synthesizeReading(
     // intent (see header). Deterministic/trusted, so it sits ahead of the
     // containment clause rather than through `guard()`.
     (input.synthesisGuidance ? `\n\n---\n\nSYNTHESIS GUIDANCE:\n${input.synthesisGuidance}` : '') +
+    (input.citeRegisterFindings ? REGISTER_CITATION_INSTRUCTION : '') +
     // Lane G1-G: the clause that turns this door's existing attribution tags
     // into containment. In the SYSTEM channel deliberately — a clause carried
     // in the user message would sit inside the same envelope as the payload it
@@ -409,6 +426,8 @@ export async function synthesizeReading(
   if (truncatedTools.length > 0) {
     judgmentFlags.push('synthesis_evidence_truncated')
   }
+  // Exactly the handles that survived the evidence budget — the only findings the model saw.
+  const visibleCitationHandles = input.citeRegisterFindings ? visibleInquiryCitationHandles(evidenceBlock) : null
 
   // ── INJECTION CONTAINMENT (lane G1-G · PPR-13 · TA §14A.1). ───────────────
   // This is THE door §14A.1 is about — "a foreign, possibly compromised, MCP
@@ -469,7 +488,7 @@ export async function synthesizeReading(
     const reading = interaction.finalText?.trim()
     if (!reading) {
       judgmentFlags.push('synthesis_returned_empty')
-      return { reading: null, model_id: synthesisModelId, judgment_flags: judgmentFlags }
+      return { reading: null, model_id: synthesisModelId, judgment_flags: judgmentFlags, visible_citation_handles: visibleCitationHandles }
     }
     // EDIR E-004 (S4 pipeline-parity re-verification, S4_stage_S8_report.md):
     // `formatEvidenceBlock` above only ASKS the model (via the inline
@@ -485,7 +504,7 @@ export async function synthesizeReading(
     const finalReading = judgmentFlags.includes('synthesis_evidence_truncated')
       ? `${reading}\n\n*Note: some retrieved evidence for this reading was truncated due to length; the interpretation above may not reflect the complete evidence set.*`
       : reading
-    return { reading: finalReading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
+    return { reading: finalReading, model_id: synthesisModelId, judgment_flags: judgmentFlags, visible_citation_handles: visibleCitationHandles }
   } catch (err) {
     console.error('[prashna_ask_synthesis] synthesis call failed', err instanceof Error ? err.message : String(err))
     return { reading: null, model_id: synthesisModelId, judgment_flags: ['synthesis_call_failed'] }

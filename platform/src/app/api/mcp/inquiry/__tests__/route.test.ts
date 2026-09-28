@@ -68,10 +68,16 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
-import { compileInquiryContract, finalizeInquiryContract, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
+import { readBoundedRequestBody } from '../bounded_body'
+import { compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes as realAuthorizationHashes, recordInquiryExecution } from '@/lib/vidhi/inquiry/compiler'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import {
+  buildStructuredResponseAccountability,
+  inquiryCitationMarker,
+  inquiryFindingCitationHandles,
+} from '@/lib/vidhi/inquiry/response_accountability'
 import {
   W5_DOOR_PARITY_CHART_ID,
   W5_DOOR_PARITY_OVERLAY,
@@ -576,6 +582,20 @@ describe('raw MCP inquiry route', () => {
     }))
   })
 
+  it('commits the hash of the JSON the client receives, not of in-memory values that do not survive the wire', async () => {
+    primeStoredLifecycle()
+    const inMemory = { results: [{ content: 'served', optional: undefined }], observed: new Date(0) }
+    mocks.retrieve.mockResolvedValueOnce(inMemory)
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(200)
+    const received = (await response.json()).raw_result
+    const wireHash = stableFingerprint(received)
+    expect(wireHash).not.toBe(stableFingerprint(inMemory))
+    expect(mocks.commitObservation).toHaveBeenCalledWith(expect.objectContaining({
+      evidence: expect.objectContaining({ raw_result_hash: wireHash }),
+    }))
+  })
+
   it('consumes a replayed action before dispatch so only one concurrent request executes', async () => {
     const value = contract()
     mocks.verify.mockReturnValue({
@@ -730,5 +750,365 @@ describe('raw MCP inquiry route', () => {
       },
     })
     expect(mocks.commitFinalization).toHaveBeenCalledWith(expect.objectContaining({ contract: blocked }))
+  })
+})
+
+describe('raw MCP inquiry certification (RC-6.4)', () => {
+  const payload = { rows: [{ fact_key: 'wealth_signal', value: 'served evidence' }] }
+  const evidenceRef = `raw:${stableFingerprint(payload)}`
+
+  function finalized(status: InquiryContract['status'] = 'COMPLETE'): InquiryContract {
+    const value = contract()
+    const observed: InquiryContract = {
+      ...value,
+      status,
+      status_reasons: status === 'COMPLETE' ? [] : ['required_obligation_failed'],
+      iteration: 1,
+      obligations: value.obligations.map((obligation) => ({ ...obligation, disposition: 'served' as const, evidence_refs: [evidenceRef] })),
+      plan_items: value.plan_items.map((item) => ({
+        ...item,
+        state: 'observed' as const,
+        observation: { item_id: item.item_id, disposition: 'served' as const, evidence_refs: [evidenceRef], gap_reason: null },
+      })) as InquiryContract['plan_items'],
+    }
+    // Real authorization hashes: the server-side envelope re-derives them from content.
+    return { ...observed, ...realAuthorizationHashes(observed) }
+  }
+
+  function primeTerminal(final: InquiryContract, overrides: Record<string, unknown> = {}, rowOverrides: Record<string, unknown> = {}) {
+    primeStoredLifecycle({
+      revision: 0, allowed_transition: 'finalize', next_action_ids: [],
+      contract_hash: final.semantic_contract_hash, execution_plan_hash: final.execution_plan_hash, ...overrides,
+    })
+    mocks.get.mockResolvedValue({
+      inquiry_id: 'inquiry-1', principal_uid: 'user-1', chart_id: chartId,
+      semantic_contract_hash: final.semantic_contract_hash, execution_plan_hash: final.execution_plan_hash,
+      capability_content_hash: 'sha256:catalog', capability_compatibility_version: 'planner-scu-v1',
+      chart_overlay_version: null, chart_build_id: null,
+      authorization_jsonb: final, contract_jsonb: final, status: final.status, revision: 1,
+      current_jti_hash: 'terminal', expires_at: '2099-01-01T00:00:00Z', ...rowOverrides,
+    })
+  }
+
+  function citingAnswer(final: InquiryContract): string {
+    const probe = buildStructuredResponseAccountability(final, { evidence_payloads: [payload], knowledge_snapshot: mocks.snapshot() })
+    const handles = [...inquiryFindingCitationHandles(probe.fact_register).values()]
+    expect(handles.length).toBeGreaterThan(0)
+    return `The served wealth evidence supports the reading ${handles.map(inquiryCitationMarker).join(' ')}.`
+  }
+
+  it('certifies a finalized answer server-side from committed evidence, read-only', async () => {
+    const final = finalized()
+    primeTerminal(final)
+    const text = citingAnswer(final)
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: text, evidence_payloads: [payload] }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json).toMatchObject({
+      ok: true, inquiry_id: 'inquiry-1', coverage_certified: true,
+      certification: { contract_id: final.contract_id, response_text_hash: stableFingerprint(text), missing_committed_evidence: [] },
+    })
+    expect(json.certification.coverage_receipt_hash).toBe(json.response_accountability.response_coverage_receipt.receipt_hash)
+    expect(mocks.reserve).not.toHaveBeenCalled()
+    expect(mocks.commitObservation).not.toHaveBeenCalled()
+    expect(mocks.commitFinalization).not.toHaveBeenCalled()
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+  })
+
+  it('does not certify complete when committed evidence is withheld or the answer cites nothing', async () => {
+    const final = finalized()
+    primeTerminal(final)
+    const withheld = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: citingAnswer(final), evidence_payloads: [] }))
+    expect(withheld.status).toBe(200)
+    expect(await withheld.json()).toMatchObject({
+      coverage_certified: false,
+      certification: { missing_committed_evidence: [stableFingerprint(payload)] },
+    })
+    const uncited = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'A confident answer with no citations.', evidence_payloads: [payload] }))
+    expect(await uncited.json()).toMatchObject({ coverage_certified: false })
+  })
+
+  it('certifies a BLOCKED closure honestly, never as complete', async () => {
+    const final = finalized('BLOCKED')
+    primeTerminal(final, { allowed_transition: 'execute', next_action_ids: ['item-001'] })
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: citingAnswer(final), evidence_payloads: [payload] }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, coverage_certified: false })
+  })
+
+  it('does not certify a span that carries citation markers but no interpretation of its own', async () => {
+    const final = finalized()
+    primeTerminal(final)
+    const markers = citingAnswer(final).match(/\[\[F[0-9]+\]\]/g)!.join(' ')
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: markers, evidence_payloads: [payload] }))
+    expect(await res.json()).toMatchObject({
+      coverage_certified: false,
+      certification: { attests: 'evidence_coverage', uncertified_reasons: ['citation_without_interpretation'] },
+    })
+  })
+
+  it('bounds certification work: duplicate evidence, citation floods and oversized bodies', async () => {
+    primeTerminal(finalized())
+    const duplicate = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload, payload] }))
+    expect(duplicate.status).toBe(400)
+    expect(await duplicate.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_EVIDENCE_DUPLICATED' })
+
+    const flood = Array.from({ length: 257 }, (_, index) => `Span ${index} interprets the evidence [[F1]]`).join('\n\n')
+    const flooded = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: flood, evidence_payloads: [payload] }))
+    expect(flooded.status).toBe(400)
+    expect(await flooded.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_TOO_MANY_CITATIONS' })
+
+    mocks.verify.mockClear()
+    const oversized = await POST(request(
+      { action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [] },
+      { 'content-length': String(64 * 512 * 1024 + 2 * 1024 * 1024) },
+    ))
+    expect(oversized.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  // R3 boundary ("actual certify-request byte limit"): Content-Length is only an early-
+  // rejection optimization for an honest, accurately-declared oversized value (covered
+  // above) — it must never be the enforcement mechanism itself, since it can be omitted or
+  // understated while the actual body sent is still oversized. These two prove the real
+  // limit (readBoundedRequestBody, enforced against bytes actually received) still fires
+  // when the header lies or is absent.
+  const REAL_MAX_REQUEST_BYTES = 64 * 512 * 1024 + 1024 * 1024
+  function oversizedChunkedBody(totalBytes: number): ReadableStream<Uint8Array> {
+    const chunkSize = 8 * 1024 * 1024
+    let sent = 0
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= totalBytes) { controller.close(); return }
+        const size = Math.min(chunkSize, totalBytes - sent)
+        controller.enqueue(new Uint8Array(size).fill(120)) // 'x'
+        sent += size
+      },
+    })
+  }
+
+  it('rejects an oversized ACTUAL body even when Content-Length is omitted entirely', async () => {
+    mocks.verify.mockClear()
+    const req = new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1' },
+      body: oversizedChunkedBody(REAL_MAX_REQUEST_BYTES + 1024 * 1024),
+      duplex: 'half',
+    } as RequestInit)
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  it('rejects an oversized ACTUAL body even when Content-Length understates it', async () => {
+    mocks.verify.mockClear()
+    const req = new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1',
+        'content-length': '10', // lies — the actual stream below sends far more
+      },
+      body: oversizedChunkedBody(REAL_MAX_REQUEST_BYTES + 1024 * 1024),
+      duplex: 'half',
+    } as RequestInit)
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  // Security review: the certify-sized cap (~33.5 MB) applied to every action. Only a body that
+  // leads with "action":"certify" may exceed the small non-certify limit.
+  function textBody(text: string): Request {
+    const bytes = new TextEncoder().encode(text)
+    return new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1' },
+      body: new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(bytes); controller.close() } }),
+      duplex: 'half',
+    } as RequestInit)
+  }
+  const OVER_SMALL = 300 * 1024 // above the 256 KiB non-certify limit, far below the certify limit
+
+  it('refuses a body over the small limit for every non-certify action, header omitted', async () => {
+    mocks.verify.mockClear()
+    for (const action of ['start', 'execute', 'finalize', 'continue']) {
+      const res = await POST(textBody(JSON.stringify({ action, lifecycle_token: 't', pad: 'x'.repeat(OVER_SMALL) })))
+      expect(res.status, action).toBe(413)
+    }
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  it('refuses a large body that does not lead with the certify action, even if it mentions it later', async () => {
+    const res = await POST(textBody(JSON.stringify({ pad: 'x'.repeat(OVER_SMALL), action: 'certify', lifecycle_token: 't' })))
+    expect(res.status).toBe(413)
+  })
+
+  it('refuses a large body that leads with certify but parses as another action (duplicate action key)', async () => {
+    mocks.verify.mockClear()
+    const body = `{"action":"certify","action":"start","scope_tuple":{"pad":"${'x'.repeat(OVER_SMALL)}"}}`
+    const res = await POST(textBody(body))
+    expect(res.status).toBe(413)
+    expect(mocks.verify).not.toHaveBeenCalled()
+  })
+
+  it('admits a large body that leads with the certify action (up to the certify limit)', async () => {
+    primeTerminal(finalized())
+    const res = await POST(textBody(JSON.stringify({
+      action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [{ pad: 'x'.repeat(OVER_SMALL) }],
+    })))
+    expect(res.status).not.toBe(413)
+  })
+
+  it('accepts a valid request just below the limit and rejects invalid JSON below the limit', async () => {
+    // "Just below the limit" at the readBoundedRequestBody layer itself (see the dedicated
+    // unit tests below for the exact-boundary cases) — here, a well-formed, ordinary-sized
+    // certify body must still succeed end to end.
+    primeTerminal(finalized())
+    const ok = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload] }))
+    expect(ok.status).not.toBe(413)
+
+    const invalidJson = new Request('http://localhost/api/mcp/inquiry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mcp-user': 'user-1', 'x-mcp-key-id': 'key-1' },
+      body: '{not valid json',
+    })
+    const res = await POST(invalidJson)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: 'INVALID_JSON' })
+  })
+
+  it('rejects evidence the server never committed', async () => {
+    primeTerminal(finalized())
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload, { forged: true }] }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_EVIDENCE_UNCOMMITTED' })
+  })
+
+  it.each([
+    ['a lifecycle that is not terminal', {}, { current_jti_hash: 'sha256:current-jti', revision: 0 }],
+    ['a token older than the closing token', { revision: 0 }, { revision: 2 }],
+    ['a token for a different contract', { contract_hash: 'sha256:other' }, {}],
+    ['a token for a different catalog', { catalog_hash: 'sha256:other-catalog' }, {}],
+    ['a stored contract that no longer matches its row', {}, { contract_jsonb: { ...finalized(), contract_id: 'sha256:tampered' } }],
+  ])('refuses certification with %s', async (_label, claimOverrides, rowOverrides) => {
+    primeTerminal(finalized(), claimOverrides, rowOverrides)
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload] }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_NOT_AUTHORIZED' })
+  })
+
+  it('refuses certification against a stale knowledge snapshot', async () => {
+    primeTerminal(finalized())
+    mocks.snapshot.mockReturnValue({ content_hash: 'sha256:newer-catalog', compatibility_version: 'planner-scu-v1', scus: [] })
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [payload] }))
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ error: 'CAPABILITY_KNOWLEDGE_STALE' })
+  })
+
+  it('rejects an oversized evidence payload and a malformed request', async () => {
+    primeTerminal(finalized())
+    const huge = { blob: 'x'.repeat(513 * 1024) }
+    const res = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: 'answer', evidence_payloads: [huge] }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ error: 'INQUIRY_CERTIFICATION_PAYLOAD_TOO_LARGE' })
+    const malformed = await POST(request({ action: 'certify', lifecycle_token: 'final-token', response_text: '', evidence_payloads: [] }))
+    expect(malformed.status).toBe(400)
+  })
+})
+
+describe('readBoundedRequestBody', () => {
+  function streamOf(chunks: readonly string[]): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder()
+    let i = 0
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (i >= chunks.length) { controller.close(); return }
+        controller.enqueue(encoder.encode(chunks[i]!))
+        i += 1
+      },
+    })
+  }
+  function streamedRequest(chunks: readonly string[]): Request {
+    return new Request('http://localhost/x', { method: 'POST', body: streamOf(chunks), duplex: 'half' } as RequestInit)
+  }
+
+  describe('two-tier escalation', () => {
+    const allowCertify = (prefix: string) => prefix.startsWith('{"action":"certify"')
+    const tier = { initialBytes: 20, prefixBytes: 32, allow: allowCertify }
+
+    it('passes a body within the initial limit without consulting escalation', async () => {
+      const allow = vi.fn(() => false)
+      const result = await readBoundedRequestBody(streamedRequest(['{"a":1}']), 100, { ...tier, allow })
+      expect(result.ok).toBe(true)
+      expect(allow).not.toHaveBeenCalled()
+    })
+
+    it('refuses an unadmitted body at the initial limit, cancelling the stream', async () => {
+      const allow = vi.fn(() => false)
+      const result = await readBoundedRequestBody(streamedRequest(['{"action":"start",', '"x":"' + 'a'.repeat(40) + '"}']), 100, { ...tier, allow })
+      expect(result).toEqual({ ok: false, reason: 'too_large' })
+      expect(allow).toHaveBeenCalledTimes(1)
+    })
+
+    it('admits a body once, up to the maximum, when the prefix qualifies', async () => {
+      const allow = vi.fn(allowCertify)
+      const body = '{"action":"certify","x":"' + 'a'.repeat(40) + '"}'
+      const ok = await readBoundedRequestBody(streamedRequest([body.slice(0, 10), body.slice(10)]), 100, { ...tier, allow })
+      expect(ok).toEqual({ ok: true, text: body })
+      expect(allow).toHaveBeenCalledTimes(1)
+      const tooBig = await readBoundedRequestBody(streamedRequest(['{"action":"certify","x":"' + 'a'.repeat(200) + '"}']), 100, tier)
+      expect(tooBig).toEqual({ ok: false, reason: 'too_large' })
+    })
+
+    it('hands escalation only the leading bytes even when one chunk is far larger', async () => {
+      let seen = ''
+      await readBoundedRequestBody(streamedRequest(['{"action":"certify","x":"' + 'a'.repeat(60) + '"}']), 200, { ...tier, allow: (prefix) => { seen = prefix; return true } })
+      expect(seen.length).toBeLessThanOrEqual(32)
+      expect(seen.startsWith('{"action":"certify"')).toBe(true)
+    })
+  })
+
+  it('reads a body with no size problem in full', async () => {
+    const result = await readBoundedRequestBody(streamedRequest(['hello ', 'world']), 100)
+    expect(result).toEqual({ ok: true, text: 'hello world' })
+  })
+
+  it('accepts a body exactly at the limit', async () => {
+    const result = await readBoundedRequestBody(streamedRequest(['a'.repeat(10)]), 10)
+    expect(result).toEqual({ ok: true, text: 'a'.repeat(10) })
+  })
+
+  it('rejects a body one byte over the limit', async () => {
+    const result = await readBoundedRequestBody(streamedRequest(['a'.repeat(11)]), 10)
+    expect(result).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  it('aborts as soon as the CUMULATIVE total across chunks crosses the limit, not on a single oversized chunk', async () => {
+    // Each individual chunk is small; only their sum exceeds the limit — proves the check is
+    // a running total across the stream (chunked-transfer shaped), not a per-chunk check.
+    const result = await readBoundedRequestBody(streamedRequest(['aaaa', 'bbbb', 'cccc']), 10)
+    expect(result).toEqual({ ok: false, reason: 'too_large' })
+  })
+
+  it('never accumulates past the limit before rejecting (bounded memory, not measure-after-buffering)', async () => {
+    let pulls = 0
+    const totalChunks = 1000
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1
+        if (pulls > totalChunks) { controller.close(); return }
+        controller.enqueue(new TextEncoder().encode('a'.repeat(10)))
+      },
+    })
+    const req = new Request('http://localhost/x', { method: 'POST', body: stream, duplex: 'half' } as RequestInit)
+    const result = await readBoundedRequestBody(req, 25) // crosses mid-third chunk
+    expect(result).toEqual({ ok: false, reason: 'too_large' })
+    // Only enough chunks to cross the limit were ever pulled — not all 1000.
+    expect(pulls).toBeLessThan(totalChunks)
+  })
+
+  it('treats a request with no body as empty text', async () => {
+    const result = await readBoundedRequestBody(new Request('http://localhost/x', { method: 'GET' }), 10)
+    expect(result).toEqual({ ok: true, text: '' })
   })
 })

@@ -52,6 +52,7 @@ import {
   extractCandidateSignalIds,
   fetchCandidateSignalLabels,
   buildTurnCitationResolver,
+  mergeRegisterHandleLabels,
 } from './citation_resolver'
 import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { ChartOrientation } from '@/lib/retrieval/orientation'
@@ -67,6 +68,7 @@ import { isVoiceEnforcementEnabled } from '@/lib/pariprashna/voice/flag'
 import { lintVoiceProse } from '@/lib/pariprashna/voice/voice_lint'
 import { isDifficultFindingActive, shouldForceDifficultBlockBreak } from '@/lib/pariprashna/voice/pacing'
 import type { LengthTier } from '@/lib/pariprashna/protocol/events'
+import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 import {
   buildEntitlementScanRules,
   containRetrievedEvidence,
@@ -84,11 +86,17 @@ import {
   type SynthesisObservationIdentity,
 } from '@/lib/pariprashna/observability/synthesis_observation'
 import { PARIPRASHNA_CITATION_APPENDIX } from '@/lib/synthesis/prompts/pariprashna_synthesis_prompt_v1'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams } from './stage_context'
 import { PASS_ONE } from './evidence_stage'
 import { ReadingPartsAssembler, type OpenBlock } from './reading_parts'
 import type { LegacyQueryPlan } from './plan_stage'
+import { formatEvidenceBlock, REGISTER_CITATION_INSTRUCTION } from '@/lib/pipeline/prashna_ask_synthesis'
+import { inquiryFindingCitationHandles } from '@/lib/vidhi/inquiry/response_accountability'
+import { annotateInquiryEvidenceForSynthesis, visibleInquiryCitationHandles } from '@/lib/vidhi/inquiry/response_accountability'
+import type { InquiryContract } from '@/lib/vidhi/inquiry/types'
+import type { CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge/types'
 
 /**
  * deep_dive raises the agentic-loop iteration cap so the model can retrieve
@@ -123,11 +131,24 @@ export interface SynthesisContext {
   /** The full system prefix (bundle + guidance + durable-summary splice). */
   systemContentWithSummary: string
   /**
+   * Register citation handles present in the admitted inquiry evidence actually placed in the
+   * prompt (post-budget); null when no admitted evidence was supplied (R2C.1 Portal).
+   */
+  visibleCitationHandles: string[] | null
+  /**
    * The trimmed history the adapter messages are built from. Computed HERE and
    * carried forward rather than recomputed in `runSynthesisStage`: the
    * pre-decomposition closure called `convertToModelMessages` exactly once.
    */
   trimmedConversationHistory: ModelMessage[]
+  /**
+   * R2C.3b: register-citation ([[Fn]] / ⟦cite: Fn⟧) reader labels for every finding in
+   * the admitted evidence's fact register, keyed by handle — so the live citation stream
+   * (`runSynthesisStage`) can resolve a cited handle to the SAME finding the model was shown,
+   * synchronously and with no second DB round-trip (the register is already fully computed
+   * here). Null when no admitted evidence was supplied.
+   */
+  registerHandleLabels: ReadonlyMap<string, { reader_label: string; rationale: string; materiality: 'required' | 'supporting' }> | null
 }
 
 /**
@@ -204,6 +225,20 @@ export async function assembleSynthesisContext(args: {
   safetyDecision?: SafetyDecision
   /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
   lengthTier?: LengthTier
+  /**
+   * The inquiry's admitted evidence (the evidence-stage payloads the fact register is built
+   * from). When supplied, synthesis is shown register-annotated display copies of exactly that
+   * evidence and asked to cite what it interprets, so delivery is provable against what the
+   * model saw (RC-6.2 Portal). Omitted → prompt unchanged.
+   */
+  admittedEvidence?: {
+    readonly contract: InquiryContract
+    readonly payloads: readonly ToolBundle[]
+    readonly snapshot?: CapabilityKnowledgeSnapshot
+  }
+  workerExecutor?: RoleExecutor
+  abortSignal?: AbortSignal
+  maxOutputTokens?: number
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
@@ -276,8 +311,11 @@ export async function assembleSynthesisContext(args: {
   let conversationSummaryText: string | null = null
   try {
     const { getConversationSummaryForSplice } = await import('@/lib/pariprashna/summaries/splice')
-    conversationSummaryText = await getConversationSummaryForSplice(conversationId)
+    conversationSummaryText = await getConversationSummaryForSplice(conversationId, args.workerExecutor, {
+      abortSignal: args.abortSignal, maxOutputTokens: args.maxOutputTokens,
+    })
   } catch (err) {
+    if (args.abortSignal?.aborted) throw err
     console.error('[pariprashna] durable-summary splice failed (non-fatal):', err)
   }
   const { assembleSynthesisPrefix } = await import('@/lib/pariprashna/summaries/assemble')
@@ -329,6 +367,40 @@ export async function assembleSynthesisContext(args: {
       .join('\n\n---\n\n')
   }
 
+  // ── ADMITTED INQUIRY EVIDENCE (R2C.1 Portal) — untrusted content, so it is placed before
+  // the injection clause and the safety policy below, inside its own container. ─────────
+  let visibleCitationHandles: string[] | null = null
+  let registerHandleLabels: SynthesisContext['registerHandleLabels'] = null
+  if (args.admittedEvidence) {
+    const annotated = annotateInquiryEvidenceForSynthesis(
+      args.admittedEvidence.contract, args.admittedEvidence.payloads, args.admittedEvidence.snapshot,
+    )
+    const { block } = formatEvidenceBlock(args.admittedEvidence.payloads.map((payload, index) => ({
+      tool_name: payload.tool_name,
+      bundle: annotated.payloads[index] as ToolBundle,
+    })))
+    visibleCitationHandles = visibleInquiryCitationHandles(block)
+    const handleByFactId = inquiryFindingCitationHandles(annotated.register)
+    const labels = new Map<string, { reader_label: string; rationale: string; materiality: 'required' | 'supporting' }>()
+    for (const fact of annotated.register.facts) {
+      const handle = handleByFactId.get(fact.fact_id)
+      if (!handle) continue
+      labels.set(handle, { reader_label: fact.meaning.label, rationale: fact.meaning.rationale, materiality: fact.materiality })
+    }
+    registerHandleLabels = labels
+    const evidenceSection = `ADMITTED INQUIRY EVIDENCE (the evidence this reading is accountable for):
+${block}`
+    // The ⟦cite: Fn⟧ syntax is taught only when the rewriter that resolves/redacts it is armed
+    // (same flag as the appendix above): otherwise the raw sentinel would leak into reader
+    // prose. With the flag off the evidence is still shown, but interpretation is not
+    // citation-provable, so the response receipt reports it honestly rather than certifying it.
+    systemContentWithSummary = [
+      systemContentWithSummary,
+      injectionContained ? containRetrievedEvidence(evidenceSection) : evidenceSection,
+      isFirstPaintCitationsEnabled() ? REGISTER_CITATION_INSTRUCTION.trim() : '',
+    ].filter(Boolean).join('\n\n---\n\n')
+  }
+
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety
   // policy, so the ordering downstream-of-untrusted-content reads:
@@ -359,7 +431,7 @@ export async function assembleSynthesisContext(args: {
     )
   }
 
-  return { systemContentWithSummary, trimmedConversationHistory }
+  return { systemContentWithSummary, trimmedConversationHistory, visibleCitationHandles, registerHandleLabels }
 }
 
 export interface SynthesisStageOutput {
@@ -427,15 +499,21 @@ export async function runSynthesisStage(args: {
    * outside this lane's `may_touch` scope.
    */
   observability?: SynthesisObservationIdentity
+  /** Flag-on authority: exact Synthesizer. Tools are intentionally absent. */
+  synthesizerExecutor?: RoleExecutor
+  /** Turn-owned cancellation, including response-reader cancellation. */
+  abortSignal?: AbortSignal
 }): Promise<StageResult<SynthesisStageOutput>> {
   const { em, request, queryText, params, queryPlan, context } = args
+  const abortSignal = args.abortSignal ?? request.signal
   const { systemContentWithSummary, trimmedConversationHistory } = context
   const injectionContained = isInjectionContainmentEnabled()
 
   // ── Adapter + agentic loop wiring (SAME engine as consult). ────────────────
-  const adapterId: StackId | undefined =
-    STACK_TO_ADAPTER[params.selectedStack] ?? (params.modelMeta.provider as StackId | undefined)
-  if (!adapterId) {
+  const adapterId: StackId | undefined = args.synthesizerExecutor
+    ? undefined
+    : STACK_TO_ADAPTER[params.selectedStack] ?? (params.modelMeta.provider as StackId | undefined)
+  if (!adapterId && !args.synthesizerExecutor) {
     em.error({ code: 'NO_ADAPTER', message: `No adapter for stack=${params.selectedStack}.`, retryable: false, phase: 'synthesize' })
     return halt('error')
   }
@@ -447,13 +525,13 @@ export async function runSynthesisStage(args: {
     injectionContained ? containUserQuestion(queryText) : queryText,
   )
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, params.modelId, systemContentWithSummary)
-  const adapter = getAdapter(adapterId)
-  const useAgenticLoop = AGENTIC_PROVIDERS.has(adapterId)
+  const adapter = adapterId ? getAdapter(adapterId) : undefined
+  const useAgenticLoop = adapterId !== undefined && AGENTIC_PROVIDERS.has(adapterId)
   const loopMaxIterations = params.deepDive ? DEEP_DIVE_MAX_ITERATIONS : 8
 
   if (useAgenticLoop) {
-    const providerManifest = adapter.getManifest()
-    const toolsCfg = adapter.tools({
+    const providerManifest = adapter!.getManifest()
+    const toolsCfg = adapter!.tools({
       toolLoopMode: providerManifest.adaptiveToolLoop,
       tools: buildChatToolsFromNames(queryPlan.tools_authorized ?? []),
       maxIterations: loopMaxIterations,
@@ -518,16 +596,19 @@ export async function runSynthesisStage(args: {
     // `channel` migration 574) this lane wires. Never awaited — a telemetry
     // write must not add latency to turn completion (same discipline
     // `stream_capture.ts`/`ring_buffer.ts` already use on this hot path).
-    void recordSynthesisTurnObservation({
-      identity: args.observability,
-      stackId: adapterId,
-      modelId: params.modelId,
-      startedAt: new Date(synthesisStartedAt),
-      finishedAt: new Date(synthesisFinishedAt),
-      status: opts?.aborted || streamErrorCode ? 'error' : 'success',
-      errorCode: opts?.aborted ? 'client_aborted' : streamErrorCode,
-      snapshot: metricsSnapshot,
-    })
+    if (adapterId) {
+      void recordSynthesisTurnObservation({
+        identity: args.observability,
+        stackId: adapterId,
+        modelId: params.modelId,
+        startedAt: new Date(synthesisStartedAt),
+        finishedAt: new Date(synthesisFinishedAt),
+        status: opts?.aborted || streamErrorCode ? 'error' : 'success',
+        errorCode: opts?.aborted ? 'client_aborted' : streamErrorCode,
+        snapshot: metricsSnapshot,
+        routingMode: args.synthesizerExecutor ? 'byok' : 'legacy',
+      })
+    }
   }
 
   // Pass/seam state — derived PURELY from the engine's own control flow
@@ -682,7 +763,7 @@ export async function runSynthesisStage(args: {
       })
     : null
 
-  const baseLoopConfig: AgenticLoopConfig | undefined = LOOP_CONFIG_BY_PROVIDER[adapterId]
+  const baseLoopConfig: AgenticLoopConfig | undefined = adapterId ? LOOP_CONFIG_BY_PROVIDER[adapterId] : undefined
   const loopConfig: AgenticLoopConfig | undefined = baseLoopConfig
     ? { ...baseLoopConfig, maxIterations: loopMaxIterations }
     : undefined
@@ -711,6 +792,9 @@ export async function runSynthesisStage(args: {
   if (citationRewriteEnabled) {
     const candidateIds = extractCandidateSignalIds({ validToolResults: args.validToolResults ?? [] })
     const { labels, faulted } = await fetchCandidateSignalLabels(queryPlan.chart_id, candidateIds)
+    // R2C.3b: register-citation handles (F1, F2, ...) resolve against THIS turn's own admitted
+    // fact register — additive to (never replacing) the signal/fact-id label map above.
+    mergeRegisterHandleLabels(labels, args.context.registerHandleLabels)
     if (faulted) {
       // §N.8: a degraded prefetch (DB/infra fault on one or more source
       // tables) is distinguishable from the honest "nothing to resolve"
@@ -742,11 +826,45 @@ export async function runSynthesisStage(args: {
     if (safe) assembler.appendProse(assembler.ensureBlock('prose'), safe)
   }
 
+  async function* byokSynthesisStream(executor: RoleExecutor) {
+    const reader = executor.stream({
+      systemPrompt: systemContentWithSummary,
+      messages: buildAdapterMessages(
+        trimmedConversationHistory,
+        injectionContained ? containUserQuestion(queryText) : queryText,
+      ).flatMap(message => message.role !== 'system' && typeof message.content === 'string'
+        ? [{ role: message.role, content: message.content }]
+        : []),
+      abortSignal,
+      maxOutputTokens: Math.min(params.modelMeta.maxOutputTokens, BYOK_MAX_OUTPUT_TOKENS),
+    }).getReader()
+    let completed = false
+    const cancelOnAbort = () => { void reader.cancel().catch(() => undefined) }
+    abortSignal.addEventListener('abort', cancelOnAbort, { once: true })
+    try {
+      while (true) {
+        const next = await reader.read()
+        if (next.done) { completed = true; return }
+        if (next.value.type === 'text_delta') yield next.value
+        else if (next.value.type === 'reasoning_delta') {
+          yield { type: 'thinking_delta' as const, thinking: next.value.text }
+        } else if (next.value.type === 'tool_call' || next.value.type === 'tool_result') {
+          throw new Error('BYOK synthesizer emitted a forbidden tool event')
+        }
+      }
+    } finally {
+      abortSignal.removeEventListener('abort', cancelOnAbort)
+      if (!completed) await reader.cancel().catch(() => undefined)
+      reader.releaseLock()
+    }
+  }
+
   try {
-    const chatStream =
-      useAgenticLoop && loopConfig
+    const chatStream = args.synthesizerExecutor
+      ? byokSynthesisStream(args.synthesizerExecutor)
+      : useAgenticLoop && loopConfig
         ? runAgenticLoop(
-            adapter,
+            adapter!,
             adapterChatReq,
             async (toolCall) => {
               toolSequenceMonitor?.record(toolCall.name)
@@ -787,14 +905,14 @@ export async function runSynthesisStage(args: {
             },
             loopConfig,
           )
-        : adapter.chat(adapterChatReq)
+        : adapter!.chat(adapterChatReq)
 
     for await (const event of chatStream) {
       // Lane P2-E. Observes every raw event (TTFT, max inter-event gap, token
       // usage from 'usage' events) without altering it — the same event
       // object flows into the branches below untouched.
       metrics.recordEvent(event)
-      if (request.signal.aborted) {
+      if (abortSignal.aborted) {
         appendCitationFlushText(citationStream?.end() ?? '')
         drainScannerInto()
         assembler.commitBlock()
@@ -906,8 +1024,21 @@ export async function runSynthesisStage(args: {
     }
   } catch (adapterErr) {
     console.error('[pariprashna] synthesis stream error:', adapterErr)
-    em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
     streamErrorCode = extractStreamErrorCode(adapterErr)
+    if (args.synthesizerExecutor) {
+      appendCitationFlushText(citationStream?.end() ?? '')
+      drainScannerInto()
+      assembler.commitBlock()
+      em.error({
+        code: 'AI_EXECUTION_FAILED',
+        message: 'The selected AI could not complete the request. Check the choice in AI Console.',
+        retryable: false,
+        phase: 'synthesize',
+      })
+      finalizeObservability()
+      return halt(abortSignal.aborted ? 'aborted' : 'error')
+    }
+    em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
   }
   // Terminal citation-stream flush — exactly once per turn (the abort branch
   // above is the other terminal path and returns before reaching here).

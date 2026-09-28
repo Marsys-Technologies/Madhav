@@ -44,3 +44,12 @@ export interface AdminChartGrant {
   is_own: boolean
   granted: boolean
 }
+
+export type AdminCliId = 'codex' | 'claude_code' | 'gemini_antigravity' | 'kimi_code'
+
+export interface AdminCliGrant {
+  cliId: AdminCliId
+  productName: string
+  granted: boolean
+  hostState: 'reachable' | 'unavailable'
+}

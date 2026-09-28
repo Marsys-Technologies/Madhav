@@ -4,12 +4,20 @@ import { streamText } from 'ai'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { getConversation } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
+import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { loadConversationMessagesV2 } from '@/lib/persistence/conversation_writer'
-import { res } from '@/lib/errors'
+import { errorResponse, res } from '@/lib/errors'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { resolveModel } from '@/lib/models/resolver'
 import type { ModelMessage } from 'ai'
+import { configService } from '@/lib/config'
+import { AiConsoleError } from '@/lib/ai-console/errors'
+import { getConversationSelection } from '@/lib/ai-console/repository'
+import { prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
+import { BYOK_MAX_OUTPUT_TOKENS, validateByokUiMessages } from '@/lib/limits/byok_admission'
+import type { RoleExecutionEvent } from '@/lib/ai-console/execution'
 
 export const maxDuration = 120
 
@@ -44,10 +52,13 @@ export async function POST(request: Request) {
   // Resolve access: owner or super_admin.
   let isSuperAdmin = false
   try {
-    const result = await query<{ role: string }>(
-      'SELECT role FROM profiles WHERE id=$1',
+    const result = await query<{ role: string; status: string }>(
+      'SELECT role,status FROM profiles WHERE id=$1',
       [user.uid],
     )
+    if (configService.getFlag('AI_CONSOLE_BYOK') && result.rows[0]?.status !== 'active') {
+      return Response.json(new AiConsoleError('AI_PERMISSION_DENIED').toJSON(), { status: 403 })
+    }
     isSuperAdmin = result.rows[0]?.role === 'super_admin'
   } catch {
     return res.dbError()
@@ -60,6 +71,14 @@ export async function POST(request: Request) {
   }).catch(() => null)
 
   if (!conv) return res.notFound('conversation')
+  // Jātaka chart workspace: history archived by a chart-details correction is read-only.
+  if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
+
+  // Same shared readiness gate as the consult and Paripraśna doors.
+  const readingGate = await checkReadingReadiness(conv.chart_id)
+  if (!readingGate.ok) {
+    return errorResponse(readingGate.code, readingGate.message, 409, { retry: readingGate.retryable })
+  }
 
   // Load conversation messages for context.
   let uiMessages
@@ -67,6 +86,104 @@ export async function POST(request: Request) {
     uiMessages = await loadConversationMessagesV2(conversation_id)
   } catch {
     return res.dbError()
+  }
+
+  if (configService.getFlag('AI_CONSOLE_BYOK')) {
+    try {
+      uiMessages = await validateByokUiMessages(uiMessages)
+      const selection = await getConversationSelection(user.uid, conversation_id)
+      const turnId = crypto.randomUUID()
+      const runtime = await prepareByokTurn({
+        userId: user.uid,
+        role: isSuperAdmin ? 'super_admin' : 'guest',
+        chartId: conv.chart_id,
+        conversationId: conversation_id,
+        isFirstTurn: false,
+        turnId,
+        requestedSelection: selection,
+        questionChars: CONTINUATION_INSTRUCTION.length,
+        source: 'consult',
+      })
+      try {
+      const history = uiMessages.map(message => ({
+        role: message.role as 'user' | 'assistant',
+        content: message.parts
+          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+          .map(part => part.text).join(''),
+      }))
+      const turnAbort = new AbortController()
+      const turnSignal = AbortSignal.any([request.signal, turnAbort.signal])
+      let execution: Promise<void> | undefined
+      const uiStream = createUIMessageStream({
+        onError: () => new AiConsoleError('AI_EXECUTION_FAILED').message,
+        execute: ({ writer }) => {
+          execution = (async () => {
+          let reader: ReadableStreamDefaultReader<RoleExecutionEvent> | undefined
+          let completed = false
+          let abortCleanup: Promise<void> | undefined
+          let cancelOnAbort: (() => void) | undefined
+          try {
+            const id = crypto.randomUUID()
+            writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
+            writer.write({ type: 'text-start', id } as never)
+            reader = runtime.executors.synthesizer.stream({
+              systemPrompt: CONTINUATION_INSTRUCTION,
+              messages: history,
+              abortSignal: turnSignal,
+              maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
+            }).getReader()
+            cancelOnAbort = () => {
+              abortCleanup ??= reader!.cancel().catch(() => undefined)
+            }
+            turnSignal.addEventListener('abort', cancelOnAbort, { once: true })
+            while (true) {
+              const next = await reader.read()
+              if (next.done) { completed = true; break }
+              if (next.value.type === 'text_delta') {
+                writer.write({ type: 'text-delta', id, delta: next.value.text } as never)
+              }
+            }
+            writer.write({ type: 'text-end', id } as never)
+            writer.write({ type: 'finish', finishReason: 'stop' } as never)
+          } catch (error) {
+            const safe = error instanceof AiConsoleError
+              ? error : new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
+            writer.write({ type: 'error', errorText: safe.message } as never)
+          } finally {
+            if (cancelOnAbort) turnSignal.removeEventListener('abort', cancelOnAbort)
+            if (reader && !completed) abortCleanup ??= reader.cancel().catch(() => undefined)
+            await abortCleanup
+            runtime.releaseAdmission()
+            reader?.releaseLock()
+          }
+          })()
+          return execution
+        },
+      })
+      const response = createUIMessageStreamResponse({ stream: uiStream })
+      if (!response.body) return response
+      const wireReader = response.body.getReader()
+      const guardedBody = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          try {
+            const next = await wireReader.read()
+            if (next.done) controller.close()
+            else controller.enqueue(next.value)
+          } catch (error) { controller.error(error) }
+        },
+        async cancel(reason) {
+          turnAbort.abort()
+          await wireReader.cancel(reason).catch(() => undefined)
+          await execution?.catch(() => undefined)
+        },
+      })
+      return new Response(guardedBody, { status: response.status, statusText: response.statusText,
+        headers: response.headers })
+      } catch (error) { runtime.releaseAdmission(); throw error }
+    } catch (error) {
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
+    }
   }
 
   // Resolve synthesis model — use stack stored in conversation metadata if available;

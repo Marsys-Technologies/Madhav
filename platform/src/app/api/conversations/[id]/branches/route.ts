@@ -1,6 +1,7 @@
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { getConversation } from '@/lib/conversations'
+import { archivedReadOnlyResponse, isCorrectionArchived } from '@/lib/conversations/readOnly'
 import { res } from '@/lib/errors/errors'
 import type { ConversationBranch } from '@/types/branches'
 
@@ -82,6 +83,8 @@ export async function POST(
     const isSuperAdmin = await resolveAccess(user.uid)
     const conv = await getConversation({ id, userId: user.uid, isSuperAdmin })
     if (!conv) return res.notFound('conversation')
+    // Jātaka chart workspace: correction-history is read-only — no new branches.
+    if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 
     const snapshotJsonb = body.snapshot_jsonb ?? {}
     const parentBranchId = body.parent_branch_id ?? null

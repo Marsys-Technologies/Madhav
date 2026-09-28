@@ -15,21 +15,21 @@ test.describe('/build → /cockpit redirects', () => {
     expect(res?.status()).toBeLessThan(400)
   })
 
-  test('/build/activity redirects to /cockpit/activity', async ({ page }) => {
+  test('/build/activity lands on the retained cockpit', async ({ page }) => {
     const res = await page.goto('/build/activity', { waitUntil: 'commit' })
-    expect(page.url()).toContain('/cockpit/activity')
+    expect(page.url()).toMatch(/\/cockpit(?:$|\?)/)
     expect(res?.status()).toBeLessThan(400)
   })
 
-  test('/build/health redirects to /cockpit/health', async ({ page }) => {
+  test('/build/health lands on the retained cockpit', async ({ page }) => {
     const res = await page.goto('/build/health', { waitUntil: 'commit' })
-    expect(page.url()).toContain('/cockpit/health')
+    expect(page.url()).toMatch(/\/cockpit(?:$|\?)/)
     expect(res?.status()).toBeLessThan(400)
   })
 
-  test('/build/plan redirects to /cockpit/plan', async ({ page }) => {
+  test('/build/plan lands on the retained cockpit', async ({ page }) => {
     const res = await page.goto('/build/plan', { waitUntil: 'commit' })
-    expect(page.url()).toContain('/cockpit/plan')
+    expect(page.url()).toMatch(/\/cockpit(?:$|\?)/)
     expect(res?.status()).toBeLessThan(400)
   })
 })

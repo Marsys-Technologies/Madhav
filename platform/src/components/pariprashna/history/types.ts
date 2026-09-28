@@ -30,4 +30,16 @@ export interface ThreadSummary {
   active: boolean
   /** §5.1 F-1 "streaming thread shows a quiet gold dot." */
   streaming: boolean
+  /** Set when the persisted conversation is archived. */
+  archivedAt?: string | null
+  /**
+   * 'chart_details_changed' = archived by a chart-details correction: historical,
+   * read-only material (Jātaka chart workspace). Manual archives are not listed.
+   */
+  archiveReason?: 'chart_details_changed' | null
+  /**
+   * Real navigation target. Present only for correction-history rows, which open
+   * their read-only transcript page; every other row keeps the in-shell select.
+   */
+  href?: string
 }

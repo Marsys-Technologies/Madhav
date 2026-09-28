@@ -41,6 +41,9 @@ import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } fr
 import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
+import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
+import type { TurnRuntime } from './turn_runtime'
+import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
 
 /**
  * Lane P2-C (PPR-09/16) — honest depth disclosure. Maps the CLASSIFIER's own
@@ -124,8 +127,17 @@ export async function runPlanStage(args: {
   identity: TurnIdentity
   params: TurnParams
   safetyDecision: SafetyDecision
+  runtime?: TurnRuntime
+  abortSignal?: AbortSignal
+  /**
+   * What `authorizeTurn` returned for this caller on this chart. It alone decides the successor
+   * envelope's effective entitlement (the scope tuple can only narrow); absent means unverified,
+   * which yields an empty envelope.
+   */
+  chartPermission?: 'all' | 'view' | 'deny' | null
 }): Promise<StageResult<PlanStageOutput>> {
-  const { em, request, messages, identity, params } = args
+  const { em, request, messages, identity, params, runtime } = args
+  const abortSignal = args.abortSignal ?? request.signal
   const { chartId, queryId } = identity
 
   // ── Query text + planner context. ──────────────────────────────────────────
@@ -162,12 +174,20 @@ export async function runPlanStage(args: {
     }))
     .filter((m) => m.content.length > 0)
 
-  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
-    getEffectiveModel(params.selectedStack, 'planner_fast', 'primary', request),
-    getEffectiveModel(params.selectedStack, 'planner_fast', 'fallback', request),
-    getEffectiveModel(params.selectedStack, 'planner_deep', 'primary', request),
-    getEffectiveModel(params.selectedStack, 'planner_deep', 'fallback', request),
-  ])
+  const descriptorModel = (role: 'planner' | 'deep_planner'): string => {
+    if (!runtime || runtime.kind === 'legacy') return ''
+    const descriptor = runtime.executors[role].descriptor
+    return descriptor.modelId ?? ('cliId' in descriptor ? `${descriptor.cliId}:built-in-default` : 'selected-model')
+  }
+  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] =
+    runtime?.kind === 'byok'
+      ? [descriptorModel('planner'), undefined, descriptorModel('deep_planner'), undefined]
+      : await Promise.all([
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_fast', 'primary', request),
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_fast', 'fallback', request),
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_deep', 'primary', request),
+          getEffectiveModel(params.selectedStack as import('@/lib/models/registry').ModelStack, 'planner_deep', 'fallback', request),
+        ])
 
   // ── INJECTION CONTAINMENT: the planner's own inputs (lane G1-G · PPR-13). ──
   // TA §14A.1 names this surface first and by line number: "`queryText` flows
@@ -212,6 +232,15 @@ export async function runPlanStage(args: {
     undefined,
     deepPlannerModelId,
     deepPlannerFallbackModelId,
+    runtime?.kind === 'byok'
+      ? {
+          plannerExecutor: runtime.executors.planner,
+          deepPlannerExecutor: runtime.executors.deep_planner,
+          workerExecutor: runtime.executors.worker,
+          abortSignal,
+          maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
+        }
+      : undefined,
   )
 
   if (plannerOutcome.outcome === 'clarification_needed') {
@@ -343,8 +372,10 @@ export async function runPlanStage(args: {
           scope_tuple: plan.scope_tuple!,
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
+          server_authorization: { chart_permission: args.chartPermission ?? null },
           temporal_anchor_date: temporalAnchorDate,
           temporal_anchor_source: 'request_context_clock',
+          planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)

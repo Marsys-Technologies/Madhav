@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 71,
+  "entry_count": 72,
   "entries": [
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -24,86 +24,86 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 125,
+      "line": 129,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_bhava_bala. It mirrors the handler's full multi-category and optional fact_key filter surface, but LIMIT 0 guarantees no fact row is consumed or reduced. Requiring a concrete fact_key here would make the availability contract narrower than the handler and mask unreadable valid categories."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 186,
+      "line": 190,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_dignity. It validates the handler's complete category set and optional fact_key surface without selecting any fact row; it is not a value lookup or reduction."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 223,
+      "line": 227,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_aspects. The complete handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 248,
+      "line": 252,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. The complete default handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 273,
+      "line": 277,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_avasthas. It validates the complete handler category set without selecting or reducing a fact row; the count is only a source-access witness."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 308,
-      "pattern": null,
+      "line": null,
+      "pattern": "`WITH\\ handler_page\\ AS\\ \\(\\ SELECT\\ fact_id,\\ fact_category,\\ ayanamsha_id,\\ fact_subject,\\ fact_key,\\ fact_value_num,\\ fact_value_text,\\ fact_value_jsonb,\\ unit,\\ ",
       "justification": "AUDITED zero-row/count source-query availability probe for get_argala. It mirrors the complete handler category and optional ayanamsha/varga-filter surface, but LIMIT 0 prevents selecting or reducing any matrix fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 337,
+      "line": 341,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_dispositors. It verifies the handler's complete five-category source scope and optional ayanamsha filter without selecting a fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 360,
+      "line": 364,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_eclipse_flags. It reproduces the handler's one-category source scope with LIMIT 0 and consumes no fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1518,
-      "pattern": null,
+      "line": null,
+      "pattern": "`SELECT\\ fact_id,\\ fact_category,\\ ayanamsha_id,\\ fact_subject,\\ fact_key,\\ fact_value_text,\\ fact_value_num,\\ fact_value_jsonb\\ FROM\\ chart_facts\\ WHERE\\ chart_i",
       "justification": "AUDITED zero-row source-query availability probe for get_kp_cusps. It mirrors the handler's KP-default ayanamsha and unconditional category set, but LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1541,
+      "line": 1555,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_nakshatra. It reproduces the handler's complete default category set and pagination order with LIMIT 0, so it witnesses source access without reading or reducing a fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1566,
-      "pattern": null,
+      "line": null,
+      "pattern": "`SELECT\\ fact_id,\\ fact_category,\\ fact_subject,\\ ayanamsha_id,\\ fact_key,\\ fact_value_num,\\ fact_value_text,\\ fact_value_jsonb,\\ unit,\\ formula_id,\\ formula_pro",
       "justification": "AUDITED zero-row source-query availability probe for get_sensitive_points. It preserves the handler's complete category set and multi-formula projection while LIMIT 0 prevents selecting, collapsing, or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1595,
+      "line": 1609,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_sade_sati. It preserves the handler's complete category family and its stable pagination order while LIMIT 0 prevents selecting, filtering, or reducing a period fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1621,
-      "pattern": null,
+      "line": null,
+      "pattern": "`WITH\\ chart_facts_probe\\ AS\\ \\(\\ SELECT\\ fact_id\\ FROM\\ chart_facts\\ WHERE\\ chart_id\\ =\\ \\$1::uuid\\ AND\\ fact_category\\ =\\ ANY\\(ARRAY\\[\\ 'tajik_hadda_lord',\\ 'tajik_trira",
       "justification": "AUDITED zero-row composite source-query availability probe for get_tajik. It reaches each of the handler's chart_facts, annual-lord, and birth-date source tables, while every CTE has LIMIT 0 and therefore cannot select or reduce a fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1701,
-      "pattern": null,
+      "line": null,
+      "pattern": "`WITH\\ floor_facts_probe\\ AS\\ \\(\\ SELECT\\ fact_id,\\ fact_subject,\\ fact_key,\\ ayanamsha_id,\\ fact_value_jsonb\\ FROM\\ chart_facts\\ WHERE\\ chart_id\\ =\\ \\$1::uuid\\ AND\\ fac",
       "justification": "AUDITED zero-row composite source-query availability probe for get_graha_yuddha. It preserves the handler's complete floored graha_yuddha fact family and separately validates the chart birth-date and tropical ephemeris sources; every CTE has LIMIT 0, so no fact row is selected or reduced."
     },
     {
@@ -114,19 +114,19 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2000,
+      "line": 2014,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_structural. It preserves the handler's complete residual structural-signal category family and deterministic pagination order while LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2079,
+      "line": 2093,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. It preserves the complete default and advertised opt-in Ashtakavarga category family with the handler's deterministic pagination order, while LIMIT 0 prevents selecting or reducing any fact row."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2132,
+      "line": 2146,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_positions. It preserves the handler's default graha-position source and stable category-priority order while LIMIT 0 prevents selecting or reducing a fact row. Optional upagraha and non-default category requests are deliberately not implied by this default-source contract."
     },
@@ -294,7 +294,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-      "line": 227,
+      "line": 249,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: fact_category='dosha_label' compound-filtered by fact_subject==='kala_sarpa' (not fact_key) — dosha_label rows are one-per-dosha-name-per-chart by the writer's own emission convention, so this is a narrower risk than P0-1 (which had NO second filter at all). Still lacks the lint's required fact_key/.sort() signal; recommend a follow-up hygiene pass to add an explicit fact_key check for defense-in-depth, not urgent. Line shifted 225→227 by PB-1/S-2's additive 2-line reader_label comment inserted earlier in the file (commit range on pb/1/integrate) — same violation, no logic change."
     },
@@ -329,17 +329,17 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-      "line": 65,
+      "line": 70,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits."
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-      "line": 280,
+      "line": 358,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits."
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-      "line": 380,
+      "line": 459,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits."
     },
     {
@@ -349,7 +349,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-      "line": 69,
+      "line": 74,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits."
     },
     {
@@ -359,12 +359,12 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-      "line": 134,
+      "line": 140,
       "justification": "AUDITED multi-key assembler. The query returns the full deterministically ordered row set (`ORDER BY fact_category, fact_subject, fact_key`) for every requested KP category; it does not reduce or choose a category-only row. The downstream dispatcher preserves and routes the distinct keys into the cusp lord chain, cuspal significators plus cross-source integrity checks, bhava degree map, ruling-planet roles, and optional per-graha KP chains. A single fact_key predicate would incorrectly discard required sibling measurements from this composite serving contract."
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-      "line": 184,
+      "line": 190,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [line 157->184, cycle 184: F-B32 added a docstring paragraph + sun_derived_upagraha/sandhi_flag categories earlier in the file — same query, verified via diff.]"
     },
     {
@@ -411,6 +411,12 @@
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
       "line": 135,
       "justification": "NEW file (cycle 181, F-B32 slice 8), audited before landing, not grandfathered. Identical shape to get_nakshatra.ts:82 / get_positions.ts:157 / get_sensitive_points.ts:99: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) serving ALL matching rows across 15 fact_categories — never reduces to one row, cannot exhibit the shadbala MIN-across-incommensurable-units defect. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries. [line 107->123, cycle 183: F-B32 slice added a docstring paragraph + 3 more categories earlier in the file — same query, verified via diff. line 123->135, cycle 185: added tara_bala + docstring paragraph — same query, verified via diff.]"
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": null,
+      "pattern": "`SELECT\\ fact_id,\\ fact_category,\\ fact_subject,\\ ayanamsha_id,\\ fact_key,\\ fact_value_num,\\ fact_value_text,\\ fact_value_jsonb,\\ unit,\\ verification_pass_status,\\ citatio",
+      "justification": "AUDITED source-query availability probe for get_strength, not a value read or one-row reduction. The SELECT deliberately reproduces the handler's complete 21-category default source scope (STRENGTH_CATEGORIES) while LIMIT 0 guarantees that no fact row is selected — availability is earned solely by authenticated query success against the chart's served build set, including a legitimate empty category set. Adding an arbitrary fact_key predicate would narrow the real handler contract (get_strength.ts serves all 21 categories by default and any subset on request) and could report availability while a valid strength category remains unreadable. The chart+served-build binding and intentional zero-row shape are exercised by availability_coverage.test.ts."
     }
   ]
 }

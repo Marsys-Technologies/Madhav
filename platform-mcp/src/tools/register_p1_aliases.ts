@@ -1355,6 +1355,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     {
       domain: z.string().optional().describe('Question domain (wealth clusters {wealth, residence}).'),
       status: z.string().optional().describe('Lifecycle filter (open | matched | confirmed | falsified | withdrawn). Default: open.'),
+      // Jātaka Phase-A3 (independent-review Important finding #5): without this,
+      // zod silently stripped include_stale before it reached callRegistryCap,
+      // making the underlying query_prospective_ledger opt-in unreachable here.
+      include_stale: z.boolean().optional().describe('Include chart-context-stale rows (filed under birth details a correction has since superseded). Default: false.'),
     }, principal)
 
   // list_assets → catalog_assets_list

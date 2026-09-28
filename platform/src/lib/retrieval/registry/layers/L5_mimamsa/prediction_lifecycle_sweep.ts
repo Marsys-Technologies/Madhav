@@ -275,10 +275,15 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
           prediction_id: string; domain: string | null; eval_date: string
           observation_window: string | null; outcome_claim: string
         }>(
+          // Jātaka Phase-A2 (migration 1122): a chart-details correction marks
+          // a preserved row chart_context_stale_at instead of deleting it — the
+          // sweep must never mutate a prediction's lifecycle while it reflects
+          // former birth details still awaiting rebuild.
           `SELECT prediction_id, domain, to_char(eval_date, 'YYYY-MM-DD') AS eval_date,
                   observation_window::text, outcome_claim
            FROM mimamsa_predictions
            WHERE chart_id = $1 AND lifecycle_status = 'pending' AND eval_date < $2::date
+             AND chart_context_stale_at IS NULL
            ORDER BY eval_date ASC
            LIMIT $3`,
           [chart_id, today, MAX_LAPSED_ROWS],
@@ -366,10 +371,18 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
           observation_window: string | null
           milestone_set: Array<{ milestone_id: string; expected_date: string; name_en?: string }> | null
         }>(
+          // Jātaka Phase-A3 (migration 1123, independent-review finding): a
+          // row a correction has marked chart_context_stale_at reflects
+          // former birth details — the sweep must not report it as a
+          // lapsed candidate or route it to matchOpenPredictionsForLelEvent
+          // (which already excludes stale rows on its own side of this same
+          // hook, so an unfiltered read here would otherwise silently claim
+          // a match that hook never made).
           `SELECT prediction_id, event_class, claim, claim_shape,
                   observation_window::text, milestone_set
            FROM brahma_prospective_ledger
            WHERE chart_id = $1 AND lifecycle_status = 'open'
+             AND chart_context_stale_at IS NULL
            LIMIT $2`,
           [chart_id, MAX_LAPSED_ROWS],
         )

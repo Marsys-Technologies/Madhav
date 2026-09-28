@@ -5,6 +5,7 @@ import { compileChartCapabilityOverlay, assertOverlayCompatibility } from './ove
 import { inspectSemanticCapability, searchSemanticCapabilities } from './query'
 import type { CapabilityKnowledgeSnapshot, SemanticCapabilityUnit } from './types'
 import { getDescriptorEditorialReview, getDescriptorPrimaryBindingDetails } from './editorial_review'
+import { ASSESS_DOMAIN_AVAILABILITY_LEGS } from './editorial'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 import type { CapabilityDescriptor } from '../types'
 import { buildPlannerCapabilityKnowledgeProjection } from './planner_projection'
@@ -18,7 +19,12 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
-    expect(snapshot.census.executable_bindings).toBe(186)
+    // R3 boundary ("genuine per-mode proof typing"): get_av_transit_gating gained a second,
+    // distinct binding for its kakshya_windows mode (deliberately_dark, alongside its
+    // statically-proven sav_bav_gating default) — 186 -> 187 — and synergy_pipeline gained a
+    // second binding for its dry_run (plan) mode, alongside its now-contracted executed
+    // (answer) default — 187 -> 188.
+    expect(snapshot.census.executable_bindings).toBe(188)
     expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.schema_version).toBe('2.3.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
@@ -157,13 +163,23 @@ describe('planner capability knowledge', () => {
       const primaryContract = scu.availability_contracts?.find((contract) => contract.binding_id === primary.binding_id)
       expect(primaryContract).toEqual({
         binding_id: primary.binding_id,
-        requirements: reviewedClaims.map((claim) => ({
-          kind: 'producer_output',
-          asset_id: claim.asset_id,
-          spec_sha256: claim.output_digest_spec_sha256,
-          scope: 'chart_build',
-          source_ref: claim.evidence,
-        })),
+        requirements: [
+          // assess_wealth shares runAssessDomain with the other assess_* routes, so its own
+          // executable legs gate it before (not instead of) its reviewed producer receipts.
+          ...(scuId === 'scu.finance.prosperity_assessment' ? [{
+            kind: 'derived',
+            scope: 'chart',
+            required_binding_ids: [...ASSESS_DOMAIN_AVAILABILITY_LEGS],
+            source_ref: 'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+          }] : []),
+          ...reviewedClaims.map((claim) => ({
+            kind: 'producer_output',
+            asset_id: claim.asset_id,
+            spec_sha256: claim.output_digest_spec_sha256,
+            scope: 'chart_build',
+            source_ref: claim.evidence,
+          })),
+        ],
       })
     }
 
@@ -299,8 +315,12 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(173)
-    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(9)
+    // R3 boundary ("genuine per-mode proof typing"): get_av_transit_gating and synergy_pipeline
+    // both moved from descriptor_metadata_review (auto-derived, supports exactly one binding
+    // and one proof_kind) to authored_declaration (so each can carry its own second, distinct
+    // per-mode binding) — 173 -> 171 reviewed, 9 -> 11 authored.
+    expect(reviewed).toHaveLength(171)
+    expect(snapshot.scus.filter((scu) => scu.editorial_method === 'authored_declaration')).toHaveLength(11)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)

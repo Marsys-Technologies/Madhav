@@ -1,114 +1,325 @@
 ---
-artifact: CLAUDECODE_BRIEF_L3_KALA
-type: CLAUDECODE_BRIEF (governing scope for execution sessions)
-version: 1.0
-status: ACTIVE
-authored_by: L3 Kāla autonomous conductor session (Claude Code, Sonnet 5, run 2), 2026-09-20
-supersedes: >
-  CLAUDECODE_BRIEF_PURNATA (this file's prior content, status COMPLETE, 2026-08-01). That arc is
-  closed and its record remains at 00_ARCHITECTURE/briefs/purnata/PURNATA_CLOSE_REPORT_v1_0.md —
-  nothing there is retracted. This file now governs the currently-active L3 campaign per
-  CLAUDE.md §C item 0; it is not a "shortcut" edit — it is the exact governance-refresh packet
-  (B3 / P0-4) the campaign's own governing plan authorizes.
-authority: >
-  DP-SD-017/018/019/020/021 (00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md
-  §9-§13) and MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md. Native authorization for autonomous
-  overnight execution recorded in MADHAV_L3_AUTONOMOUS_EXECUTION_PACKAGE_v1_0.md frontmatter,
-  2026-09-20.
+artifact: CLAUDECODE_BRIEF_PURNA_FOLLOWUP_FENCE_AND_SUCCESSOR_ENVELOPE
+version: 1.4
+status: LOCAL_SOURCE_COMPLETE_PUBLICATION_AUTHORIZED
+date: 2026-09-28
+native_authority: Native source-execution authorization for the complete follow-up campaign (both packets),
+  2026-09-28. Local only: no push, PR, merge, deployment, production, database, migration, rebuild or live collection.
+baseline_verified_at_head: 75794b894b62c6f122b3536f5cb5aaf4c5b97e2f   # tsc clean; snapshot 5aa26443, census 1a231d17 fresh; pin-lint 0 new; 541 focused tests green
+lineage: follows PR #2742 (Pūrṇa Anveṣaṇa source candidate), squash-merged to protected main
+lineage_record:
+  r5a_publication_and_ci: COMPLETE   # PR #2742 opened, CI repaired, independently reviewed, accepted by the Native at head d5c4c1f27
+  r5b_source_merge: COMPLETE         # verified 2026-09-28: main 205a62618182a73f45a9bee34f8ffff8cdce8892, tree 231e9bdd67a8cfab2a1034ff9b5593d7e310b7dd == reviewed candidate 4f5d5a0dc tree
+  production_deployment: NOT_COMPLETE
+  empirical_or_candidate_validation: NOT_COMPLETE   # candidate_validation NOT_RUN in BEYOND_ACARYA_ACCEPTANCE_v10.json (v9 is now an immutable pin)
+  campaign_or_product_completion: NOT_COMPLETE
+base_main_sha: 205a62618182a73f45a9bee34f8ffff8cdce8892
+worktree: /Users/Dev/.codex/worktrees/purna-followup-v1/Madhav
+branch: codex/purna-followup-fence-and-successor-envelope
+source_execution_authorized: true          # reopened by the Native's remediation ruling (2026-09-28): local source, ordinary merge of main, conditional push/PR/CI repair
+push_authorized: true             # conditional publication authority: every publication condition passed (see the remediation closeout)
+pr_change_authorized: true
+merge_authorized: false
+production_authorized: false
+database_write_authorized: false
+migration_authorized: false
+producer_rebuild_authorized: false
+deployment_authorized: false
+live_collection_authorized: false
+candidate_validation: NOT_RUN
+product_completion_claim_authorized: false
 ---
 
-# L3 Kāla data-plane elevation — ACTIVE
+# KICKOFF — Pūrṇa follow-up: two focused source packets
 
-**Scope:** elevate the 22 active `ka_*` identities to terminal acceptance
-(`LAYER_DATA_ACCEPTED + scoped CONSUMER_INTEGRATED + DEPLOYED_ACCEPTED + VALUE_EVALUATED`) for the
-canonical chart `482012f1-710e-4a25-994a-93821f5871aa` against campaign definition
-`t3-2026-09-11-8b884eac`. Headline metric: **`Accepted N/22`**. Live state:
-`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/STATE.md` (authoritative, updated every packet
-close) — this brief is a scope pointer, not a progress tracker.
+This is a NEW, isolated campaign. It is not part of PR #2742 and is not a continuation of its branch.
+PR #2704 and #2705 remain historical salvage sources, not dependencies. Nothing here claims
+deployment, empirical validation, or that the Pūrṇa Anveṣaṇa campaign or product is complete.
 
-Governing documents, read in order: `MADHAV_L3_AUTONOMOUS_EXECUTION_PACKAGE_v1_0.md` §B (the
-conductor's operating instructions), `MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` (the two-
-campaign platform split), `MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md` +
-`..._EXECUTION_BRIEF_v1_0.md` (the frozen L3 strategy/brief content, DP-SD-017), `..._ASTRA_REVIEW_RECORD_v1_0.md`,
-`..._UNBLOCK_AND_RESUME_AMENDMENT_v1_0.md` (DP-SD-018).
+**Deliverable:** one focused pull request (prepared, not merged) containing Packet A and Packet B,
+each with red-then-green tests. Publishing (push / PR) needs a fresh explicit Native authorization;
+until then work locally and commit locally.
 
-## may_touch
+## Start-of-session checks (do these before any edit)
 
-Lifted from `MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md` (DP-SD-017), unchanged:
+1. `pwd` is exactly the worktree above (not a `.claude/worktrees/...` copy); branch is the one above;
+   the tree is clean; `git merge-base --is-ancestor <base_main_sha> HEAD` succeeds.
+2. `git fetch origin main`; if main moved, inspect every new commit and integrate with an ordinary merge
+   commit (never rebase, never force-push) before starting.
+3. This is a fresh worktree with NO `node_modules`. Install locally (dev-only, no production access):
+   `cd platform && npm ci`, and `cd ../platform-mcp && npm ci` if you will touch platform-mcp. Then run
+   `npx tsc --noEmit -p .`, `npm run codegen:capability-knowledge:check` and
+   `npm run codegen:capability-estate-census:check` to confirm a green baseline before touching anything.
+4. Read: `CLAUDE.md` §I, §N.5–N.8; `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/historical_fork_v7_v11/LINEAGE_FORK_MANIFEST_v1_0.md`.
 
-- `platform/python-sidecar/pipeline/orchestrator/writers/ka_*.py` except protected retired sweep
-- `platform/python-sidecar/services/ka_*/**`, `services/gochara_v3/**`, `services/w2g/**`
-- `platform/python-sidecar/services/gochara_intensity/**`, `services/gochara_grammar/**`,
-  `services/kala_trigger/**` (L3 contribution only, no method/source ratification)
-- `platform/python-sidecar/pipeline/transit_search.py`
-- `platform/python-sidecar/pipeline/orchestrator/service_probes.py` (L3 clauses only)
-- `platform/python-sidecar/tests/l3/**` and exact changed-surface test files
-- `platform/python-sidecar/scripts/validate_data_plane_l3_*.py`
-- `platform/migrations/<reserved>_data_plane_l3_*.sql` in range **1070–1119** (see partition rule
-  below) and explicitly reviewed upstream integration migrations
-- `platform/src/lib/retrieval/registry/layers/L3_kala/**`
-- `platform/src/lib/retrieval/registry/layers/register_d10_pact.ts` and L3 timing delegation in
-  `register_d9_judgment.ts`
-- `platform-mcp/src/tools/kala_views/**` and `platform-mcp/src/lib/promise_spine.ts`
-- Generated writer/layer pins through their real generators after the appropriate gate
-- `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_*` execution evidence, excluding pinned
-  strategy/brief/review authority content
-- `00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md`
-- `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/**` (this campaign's own durable state)
-- Own campaign-coordination rows on `origin/campaign-coordination` (L3 party only)
-- **Added by DP-SD-021 / Packet B3 (this brief's own authorized exception to "must_not_touch
-  CLAUDE.md/CLAUDECODE_BRIEF.md as a shortcut" below):** this file; `CLAUDE.md` §C item 5 and §E's
-  L3 row only; `CURRENT_STATE_v1_0.md` §2 top banner only — one governance-refresh act, not a
-  standing license to edit these files routinely
+## Packet A — served-generation-safe composite tools (`query_planet`, `graha_portrait`)
 
-## must_not_touch
+**Problem.** Both composites best-effort resolve the chart's served generation
+(`resolveChartServedGeneration`). When that fails or no generation resolves, they fall back to reading
+the generation-sensitive components (shadbala/strength, yoga firings, and any other component whose rows
+are generation-scoped) from the chart's *current* rows, unfenced, disclosed only by a free-text note in
+`generation_fence`. That is a historical-row fallback dressed as an answer.
+Files: `platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts` (~lines 130–225),
+`platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts` (~lines 195–400).
+Existing tests to extend: `L1_ganita/__tests__/query_planet.build_fence.test.ts`,
+`L2_bodha/__tests__/graha_portrait.build_fence.test.ts`.
 
-- Pinned strategy, execution brief, prior acceptances and historical review/receipt content
-- Frozen `WriterBase`, `runner`/`asset_runner` transaction and build-state contracts
-- Shared Swiss-state serialization span and method/source/admission authority
-- `ka_gochara_sweep` implementation, retained corpus/snapshot or its non-rebuild protection
-- Foreign worktrees/campaign definitions, events, queues, goals, automations or branches —
-  **including all Pūrṇa Anveṣaṇa territory**: `retrieval/registry/knowledge/**`,
-  `register_prashna_*`, `purna/**`, `managed_prashna_jobs.ts`, `prashna_ask_bridge.ts`,
-  planner/inquiry lifecycle, `capability_*` generators (regenerate via the shared generator only)
-- Applied migrations **1033–1041**; anything in **1042–1069** (Pūrṇa's range)
-- `.github/workflows/deploy.yml`, the data-plane/Pūrṇa ownership scripts
-  (`data-plane-ownership-*.ts`, `purna-inquiry-ownership-*.ts`, `data-plane-protected-cutover.ts`,
-  `data-plane-secret-isolation-preflight.ts`, `data-plane-admin-credential-diagnostic.ts`)
-- Credentials/secrets/IAM/infra; branch protection; security/safety/CI gates
-- `WATCHDOG_SECRET` (GCP secret) and revision `amjis-web-02826-huf` — human-owned incident
-- L4/L5 writer/evaluation/issuance/model implementation outside separately approved later-layer work
-- CLAUDE.md / CURRENT_STATE / SESSION_LOG / CAPABILITY_MANIFEST **beyond the one-time exception
-  named above** — no routine edits as a shortcut to avoid real asset work
+**Required behavior.**
+- Preserve useful base output (position, sign/house, other components that are NOT generation-sensitive).
+- When a valid served-generation identity cannot be resolved, do NOT read or present unfenced strength,
+  yoga-firing, or any other generation-sensitive component. Audit every component each tool assembles and
+  classify it generation-sensitive or not; record the classification in code, with the reason.
+- For each omitted component return a named, machine-readable unavailable state, e.g.
+  `components_unavailable: [{ component, code: 'served_generation_unresolved' | 'no_served_generation', ... }]`
+  (choose one stable schema, shared by both tools; keep `generation_fence`). No free-text-only signalling.
+- Never silently fall back to historical rows. Never reject the WHOLE composite because one component is
+  unavailable (partial response is the point).
+- Do not leak raw database error text (log server-side, return a fixed code).
 
-## activation_prohibitions
+**Acceptance criteria / tests (red first, then green).**
+- Fenced: served generation resolved → components read fenced, `generation_fence.fenced === true`, no
+  `components_unavailable`.
+- Unavailable: resolution returns none / throws → generation-sensitive components absent, each named in
+  `components_unavailable`, the strength and yoga-firing handlers are NOT called, base output present,
+  `is_error === false`.
+- Partial: mixed case (some components generation-sensitive, some not) returns exactly the safe ones plus
+  the named omissions.
+- No raw error text in the response. Existing fenced-path tests keep passing.
+- If descriptors/inputs/outputs change: regenerate the snapshot; see "Generated artifacts" below.
 
-- No production mutation before exact environment, authority, protected source, canary,
-  backup/restore, ownership and upstream-data gates pass
-- No automatic lifting of century, source/method, protected-history, NIRMANA_HOLD or other named
-  holds — the `ka_gochara_v3_century_materialize` hold is decided by the native, not this session
-- No private event/outcome corpus or derived selector in prospective input; no claim/observation
-  rewrites or unauthorized disclosure
-- No grandfathered freeze, manual green status, fabricated generation/convergence pin or skipped
-  required proof — an asset is `Accepted` only via an authenticated terminal/freeze event
-- No blanket L0–L2 semantic redesign, new doctrine, planner-campaign takeover, or L4/L5 campaign
-  start
-- No production mutation while Codex holds a conflicting, unexpired lease on
-  `origin/campaign-coordination` — check before every merge and before Wave E
+## Packet B — bounded authorization envelope for evidence-driven successors
 
-## Migration numbering (DP-SD-021 / dual-campaign plan §3.3 rule 2)
+**Problem.** `plan_stage.ts` (~line 374) replaces `toolsAuthorized` with exactly the tools of the compiled
+plan items. `evidence_frontier.ts` (`deriveEvidenceFrontier`) only ever proposes SCUs the contract has NOT
+planned, so a successor's target tool is by construction never in the authorized set: on the Portal door
+(`pariprashna/pipeline/evidence_stage.ts` `executeReady`) and the managed door
+(`api/mcp/prashna_ask/route.ts` `drainManagedReadyActions`) every evidence-driven successor item fails
+closed with `successor_capability_not_authorized_for_request`. Safe, but the widening feature can never
+execute, and it leaves a required frontier that cannot be satisfied.
 
-Pūrṇa **1042–1069**; **L3 1070–1119**; anything cross-cutting **1120+** by a logged coordination
-request. Never edit an applied migration (1033–1041 belong to the delivery gate now closed by
-Codex; leave them alone).
+**Required design.** Replace "exact initially selected tool set" with a *bounded authorization envelope*,
+computed deterministically at plan time (before any evidence), stored on the contract, hashed into its
+authorization, and attributable in receipts. A successor capability may execute ONLY when ALL are proven:
+1. read-only (descriptor `mcp_annotations.readOnly` and `isInquirySafeRegistryDescriptor`);
+2. present in the capability catalogue / snapshot and executable on the door's channel
+   (`isInquiryServerDispatchEligible`);
+3. relevant to the compiled inquiry and to the evidence frontier that named it (graph/edge or rule linkage
+   from `EVIDENCE_FRONTIER_RULES`, not model text);
+4. scoped to the same chart and the same principal (chart identity re-checked; overlay/build identity
+   re-checked as today);
+5. permitted by the caller's entitlement (same `authorizeChartAccess` / entitlement rules as the plan);
+6. within the inquiry's cost, iteration and successor-depth limits (`max_iterations`,
+   `MAX_MANAGED_SUCCESSOR_CHAIN`, cost caps);
+7. eligible under the deterministic safety rules (plan-time safety exclusions such as
+   `applyCapabilityExclusion`, leaked-capability filters);
+8. fully receipted and attributable (which rule, which observed item, which envelope entry admitted it).
 
-## Delivery target
+**The synthesizing model must not grant authority.** It may point at an evidence frontier; only the
+deterministic envelope decides. Anything outside the envelope continues to fail closed with a NAMED reason
+(keep `successor_capability_not_authorized_for_request` for out-of-envelope; add distinct named reasons for
+each failed condition so the gap is diagnosable). A successor must never widen to another chart, a write
+capability, or beyond depth/cost/iteration limits.
 
-`LAYER_DATA_ACCEPTED + scoped CONSUMER_INTEGRATED + DEPLOYED_ACCEPTED + VALUE_EVALUATED`; empirical
-outcome evaluation excluded. `L4` and `L5` remain `WAITING_FOR_STRATEGIC_BRIEF`.
+**Doors and parity (all three must expose the same truth).**
+- Portal: `api/pariprashna/route.ts` → `pariprashna/pipeline/{plan_stage,evidence_stage}.ts`.
+- Managed MCP: `api/mcp/prashna_ask/route.ts` (`drainManagedReadyActions`, `continueWithEvidenceSuccessor`)
+  and `lib/vidhi/inquiry/execution_session.ts`.
+- Raw MCP: `api/mcp/inquiry/route.ts` (`execute`, `continue`, `certify`) — the server executes committed
+  plan items; the envelope must be enforced server-side there too, never trusted from the client.
+Add one shared envelope evaluator in `lib/vidhi/inquiry/` used by all three; do not fork logic per door.
 
-## Close condition
+**Acceptance criteria / tests (red first).**
+- Unit: each of the 8 conditions individually fails closed with its named reason; the all-conditions-true
+  case admits; the model-supplied text can never admit a capability.
+- Boundedness: depth, iteration and cost limits stop widening; a successor cannot itself widen without
+  bound.
+- Cross-door parity test: the same contract + evidence yields the same admit/refuse decision and the same
+  receipt fields on Portal, managed and raw.
+- Regression: the existing named-gap behavior for out-of-envelope targets is preserved on every door, and
+  the managed never-dispatched record stays terminal (`persistAcceptedObservation` with an undefined bundle).
+- Recovered managed workers: define and test what happens to a successor's first-time items after a worker
+  restart (today `drainManagedReadyActions(true)` runs only right after `continueWithEvidenceSuccessor`).
+- Acceptance denominators (novel-combination 5/13, omission 0/25, route 34/34, edges 9/9, long-inquiry 1/1,
+  abstention 3/3) do not weaken.
+- Authority note: adopting this changes authorization semantics. Record the envelope definition, the
+  rejected alternatives, and the residual risks in the PR description for the Native's review.
 
-Per CLAUDE.md §C item 0: this brief flips to `status: COMPLETE` when the L3 data-plane elevation
-campaign closes (22/22 accepted, or an honestly-scoped native-ruled partial close per the
-governing plan's Phase 3 exit). Until then it stays `ACTIVE` and every session reads it first.
+## Generated artifacts and repo traps (learned in PR #2742)
+
+- **Order of operations:** commit source first, then regenerate generated artifacts against that commit's SHA
+  (`codegen:capability-estate-census -- --generated-at=<now> --source-revision=<40-hex>`). The census tracks
+  source-file hashes, so ANY edit to a census-member file needs a regen. Snapshot:
+  `codegen:capability-knowledge -- --generated-at=<now>`.
+- **Acceptance successor rule:** create a new immutable `BEYOND_ACARYA_ACCEPTANCE_v<N+1>.json` ONLY if the
+  executable report or capability content genuinely changes (current canonical head is v9; v7 is protected
+  main's, byte-identical; `historical_fork_v7_v11/` is preserved history). Compute it with the real
+  evaluator; never hand-write hashes. Update the acceptance and lineage tests (previous version becomes an
+  immutable pin).
+- **Route goldens:** regenerate with `PARIPRASHNA_PORTS_BASELINE=write` and prove the diff is masked
+  content-hash rotation only (mask `sha256:` and `fact:` ids; compare fact multisets).
+- **Pin-lint:** `python3 platform/scripts/governance/check_fact_category_pinning.py` must report 0 new
+  violations. An inserted line can shift an audited entry's line anchor: re-anchor it, do not add exemptions.
+- **Next.js:** `route.ts` may export only HTTP handlers and route config. Put helpers in sibling modules.
+  `tsc` and vitest do NOT catch this: run the real build with CI's placeholder Firebase env
+  (`NEXT_PUBLIC_FIREBASE_*=ci-placeholder ... npm run build`) before publishing.
+- **Writes under `00_ARCHITECTURE/`** are denied for the Write/Edit tools and for shell redirects/`cp`. The
+  working route is git plumbing: `git hash-object -w <file>` → `git update-index --add --cacheinfo
+  100644,<blob>,<path>` → `git checkout-index -f -- <path>`.
+- **Mocked-compiler tests hide real state transitions:** `recordInquiryExecution` re-readies a failed item
+  while iterations remain. Test session/lifecycle behavior against the real compiler.
+- **Secrets:** `bash platform/scripts/governance/secret_scan.sh` (CI's gate) must PASS; a full-history gitleaks
+  failure is a known pre-existing baseline, so also scan only your own commits
+  (`gitleaks detect --log-opts="origin/main..HEAD"`).
+- **Merge:** main uses a merge queue and strict branch protection; the PR must be current with main.
+  `platform-mcp` full-suite local failures and its `Headers` typing errors are local `node_modules` drift
+  unrelated to CI; CI runs `npm ci` there.
+
+## Authority boundaries
+
+Allowed now: local source, tests, generated artifacts and local commits in this worktree.
+Needs a fresh explicit Native authorization each: pushing the branch, opening/updating the PR, CI repair,
+merging (the follow-up PR's merge is never implied). Forbidden regardless: deployment, production
+credentials, database writes, migration application, producer rebuilds, live collection, empirical or
+candidate production validation, auto-merge, claims of campaign or product completion, and any edit to
+L3-owned source (`kala_*`, `ka_*`, `l3_*`) or the FROZEN orchestrator contract.
+
+## Definition of done for this kickoff
+
+Both packets implemented with red-then-green tests; `tsc` clean; real `next build` exit 0; codegen
+freshness green; pin-lint 0 new; full suite green; secret scan clean; an independent read-only review
+with no unresolved HIGH/MED finding; branch clean, current with main; PR description drafted (not posted)
+covering objective, both packets, the envelope definition and residual risks, tests, and the authority
+ceiling. Then stop and request the exact next authority.
+
+
+## Closeout record (local source execution complete — awaiting Native publication authorization)
+
+Status: `LOCAL_SOURCE_COMPLETE_AWAITING_NATIVE_PUBLICATION_AUTHORIZATION`. Nothing was pushed; no PR exists.
+Both packets are implemented with red-then-green tests on branch
+`codex/purna-followup-fence-and-successor-envelope` (base main `205a62618`, still current at close).
+
+**Packet A — served-generation-safe composites.** `query_planet` and `graha_portrait` resolve the served
+generation once (`generation/composite_fence.ts`). With one, every chart-data leg is fenced to it; without
+one (none resolves, or resolution throws) no generation-sensitive leaf is called, each requested component
+is named in `components_unavailable` (`served_generation_unresolved` | `no_served_generation`, fixed reason
+text), `generation_fence` is retained, and the response is not a whole-tool error. Component audit in source:
+`QUERY_PLANET_COMPONENTS` / `GRAHA_PORTRAIT_COMPONENTS` (`independent` | `sensitive` | `self_fenced`; only the
+request-derived planet identity is independent, `get_dashas` is self-fenced, everything else is sensitive).
+Both tools also emit one shared `component_failures` list. `classifyInquiryResult` no longer counts a composite
+with withheld or failed components as `served`.
+
+**Packet B — one shared successor authorization envelope** (`platform/src/lib/vidhi/inquiry/authorization_envelope.ts`,
+live state in `successor_admission_live.ts`). Computed at plan time from the pinned snapshot and compiled plan
+only, stored on the contract, bound into `execution_plan_hash` (recomputed from content). Entries exist only for
+frontier-rule targets the plan does not contain that have a dispatchable binding on the door's channel, are
+within the scope entitlement tier, and are relevant (graph-adjacent to a planned SCU, or a universal/overlapping
+domain). The eight conditions are enforced by one evaluator with stable named codes: (1) `successor_capability_not_read_only`;
+(2) `successor_capability_not_in_catalogue`, `successor_channel_not_eligible`; (3) `successor_frontier_not_relevant`;
+(4) `successor_chart_mismatch`, `successor_principal_mismatch`, `successor_build_identity_mismatch`;
+(5) `successor_chart_access_not_verified`, `successor_entitlement_not_permitted`; (6) `successor_depth_exceeded`,
+`successor_iteration_limit_exceeded`, `successor_cost_limit_exceeded`; (7) `successor_safety_excluded`; (8)
+`successor_receipt_incomplete`; outside the envelope: `successor_capability_not_authorized_for_request`
+(unchanged). A capped same-capability pagination frontier is authorized by the hash-bound parent plan
+(`authority: parent_plan_continuation`) and still clears every other condition. Every door recomputes the decision
+at dispatch (`evaluateSuccessorItemForDispatch`); a stored refusal is final; refusals terminalize identically
+(`terminalizeRefusedSuccessorItem`) and are receipted on the plan item (`successor_dispatch`) and in the durable
+evidence payload. A recovered managed worker resumes a successor generation through the same drain (first-time
+items), never through the adopted plan tool set (which bypassed authorization).
+
+**Rejected alternatives.** (a) Letting the synthesizing model or a client name admissible capabilities — authority
+must be server-computed. (b) Evaluating only at compile time — live state (safety, cost, overlay, principal)
+changes; dispatch re-evaluates. (c) Widening the request tool set — the envelope is a separate, hash-bound grant.
+(d) Refusing at compile by blocking the plan item — kept ready-then-named-failed so the existing terminal named-gap
+shape and `successor_capability_not_authorized_for_request` behavior are preserved.
+
+**Residual risks / limitations (for the Native's review).** Entitlement (5) is checked against the contract's
+declared scope tier; no per-principal tier exists in the platform (CLAUDE.md §N.4), so on the raw door it is
+exactly as strong as plan compilation already was. Chart access is the door's actual `authorizeChartAccess` /
+`authorizeTurn` result; the BYOK managed preflight only proves access, so it is recorded as the least privilege
+that admits (`view`). The Portal and raw doors have no per-request call-count cost tracker, so the cost detector is
+live only on managed (and the batch/lineage ceilings); the envelope is small (≤3 rule targets), so the lineage
+ceilings are testable mainly with synthetic chains. Successors issued before this change (no parent envelope)
+now refuse every item (fail closed). Two LOW items were left: the raw door returns 409 (not a terminal record)
+when a refused item has no resolvable binding or unauthorized args; `authorizeMcpByokPrincipal` does not return a
+permission level.
+
+**Generated artifacts and why.** Capability snapshot regenerated (`sha256:9b47461d…`): exactly seven added optional
+`build_id` inputs (get_positions, get_dignity, get_avasthas, get_aspects, get_yoga_dosha, get_dispositors,
+traverse_chart_graph). Estate census regenerated against the final source commit. New immutable
+`BEYOND_ACARYA_ACCEPTANCE_v10.json` from the real evaluator (report hash `fe396729…`); v9 is now an immutable pin;
+all six denominators identical (5/13, 0/25, 34/34, 9/9, 1/1, 3/3); source-provenance only. Two route goldens
+rotated by content hashes only (verified semantically equal after masking and order-normalizing). Four pin-lint
+allowlist line anchors re-anchored, no new exemption.
+
+**Verification at close.** `tsc` clean; freshness gates current; pin-lint 0 new; full platform suite 1285 files /
+14,261 tests passed (81 files skipped: DB-backed); real `next build` (CI placeholder Firebase env) exit 0; CI-mode
+secret scan PASS; branch-only gitleaks: no leaks (a local full-worktree gitleaks reports the inherited baseline,
+which CI does not run). Three independent read-only review rounds (Packet A; Packet B security; Packet B
+semantics) plus a final full-delta security review; every HIGH/MED finding was fixed and re-verified; two LOW
+items are recorded above. Untouched: `kala_*`/`ka_*`/`l3_*`, the frozen orchestrator, migrations, `platform-mcp`.
+
+**Next authority required.** A fresh explicit Native authorization to publish this follow-up (push the branch and
+open the PR, plus CI repair and independent review); merging is a separate later authorization.
+
+
+## Reopened — remediation before conditional publication (2026-09-28)
+
+The closeout record above declared `LOCAL_SOURCE_COMPLETE_AWAITING_NATIVE_PUBLICATION_AUTHORIZATION` at
+HEAD `3e15dbfa3` while carrying unresolved MEDIUM findings. That claim was premature: this brief's own
+definition of done forbids an unresolved HIGH or MEDIUM finding. The Native reopened the work to (1) make the
+successor entitlement server-authoritative (the scope tuple's entitlement is caller/planner supplied on raw MCP
+and cannot be a privilege detector), (2) replace the constant `cost_exhausted: false` on Portal and raw with one
+deterministic, persisted, shared successor cost model, (3) terminalize every raw-door refusal, and (4) resolve
+or regrade the remaining LOW findings. The earlier record is preserved unedited; it is superseded, not erased.
+Main also advanced (PRs #2746, #2747; zero path overlap, reconfirmed) and is integrated by an ordinary merge.
+Publication (push + one PR into main, CI repair) is authorized only after every condition in the ruling passes;
+merge, deployment, production, database, migration, rebuild, live collection and candidate validation remain
+prohibited.
+
+
+## Remediation closeout (supersedes the earlier closeout's residual list) — `LOCAL_SOURCE_COMPLETE_PUBLICATION_AUTHORIZED`
+
+The three MEDIUM findings that reopened this brief are resolved, verified by independent review rounds, and
+covered by mutation-checked tests on the real compiler and lifecycle:
+
+1. **Entitlement is server-authoritative.** `effective_entitlement {tier, source}` is derived from the door's
+   verified chart permission (`authorizeChartAccess` / `authorizeTurn`; BYOK reads its real level from
+   `authorizeChartAccess`, it is no longer assumed): all -> native, view -> the least-privileged tier (so no
+   successor), denied/unknown/missing -> none. The scope tuple, planner, stored state and client can only narrow.
+   It is stored with its source in the envelope and every decision, bound into the authorization hash, and
+   re-derived from the live permission at dispatch (dispatch takes the minimum of live grant, stored grant and
+   scope; a malformed stored tier, including prototype keys, grants nothing).
+2. **One shared, deterministic successor cost model.** Unit: the registry dispatch unit (`SUCCESSOR_COST_UNIT`).
+   Ceiling: 12 units per lineage, clamped to the platform constant. A hash-chained `SuccessorCostLedger` on each
+   contract is appended in the same transition as the observation it pays for (every page, retry and attempt that
+   reached the tool; refusals cost nothing; an unverifiable receipt is charged as the whole budget). A
+   generation's ledger is embedded in its successor's `parent_contract`, and dispatch verifies the successor
+   receipt's own seal and parent-state hash and that every stamped dispatch has a charge, so deleting or
+   rewriting a ledger is as detectable as editing one. The request-level `cost_exhausted` input is refuse-only and
+   optional; Portal and raw no longer assert a constant.
+3. **Every successor refusal is terminal on every door.** One shared post-evaluation gate
+   (`refineSuccessorAdmission`) turns an admitted item whose tool/binding vanished, or whose arguments are
+   unauthorized (new stable code `successor_arguments_not_authorized`), into the same named, receipted, uncharged
+   refusal; refused items terminalize identically and carry no evidence ref (door-parity projection asserted on
+   all three doors). Ordinary non-successor items keep their plain 409s.
+
+Also resolved: composite `chart_id` validation (any hex UUID); the shared `BUILD_FENCE_INPUT` declaration is
+frozen; `query_planet` failed legs no longer read as empty findings; BYOK permission is read, not assumed.
+
+**Remaining LOW residuals (none blocks publication):** `BUILD_FENCE_INPUT` keeps its `string` schema type (the
+derived input contracts and acceptance lineage pin it; runtime accepts scalar or array); raw returns 401 for a
+request-level chart-permission denial before any lifecycle mutation (deliberate: a denied principal must not
+write state); a refused raw item still passes reserve -> mark-dispatched (the store's commit requires it), so a
+crash in that window is ambiguous and fail-closed rather than retriable; `args_authorized` is structurally
+guaranteed (not independently verified) on Portal and managed, and Portal's principal/owner comparison cannot
+fail (the contract is in-process); a deterministic partial composite is re-dispatched until the iteration budget
+is spent (bounded); the managed door records the capability URI as `tool_name` for an admitted successor
+(cosmetic); read-only relies on snapshot membership plus the descriptor predicate because real descriptors carry
+no positive read-only annotation; view-only principals receive no successors (intended: least privilege).
+
+**Compatibility.** Successors issued before the envelope (no parent envelope, or no recorded effective
+entitlement) fail closed; this is tested synthetically. This source has not been deployed under this follow-up.
+
+**Evidence at close** (fresh, after integrating `origin/main` at `88e639777`): `tsc` clean; snapshot and census
+current; pin-lint 0 new; full platform suite and real `next build` recorded in the PR description; CI-mode secret
+scan and branch-only gitleaks clean; candidate validation remains `NOT_RUN`.

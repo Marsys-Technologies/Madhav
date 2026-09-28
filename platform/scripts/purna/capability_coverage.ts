@@ -6,6 +6,8 @@ export type CoverageBlocker =
   | 'overlay_not_measured'
   | 'overlay_unavailable'
   | 'ready'
+  /** RC-7: a plan/resource/discovery capability — available as a resource, not an answer route. */
+  | 'resource_not_answer'
 
 export interface CapabilityCoverageRow {
   /** Stable occurrence key; binding_id alone is not globally unique in the generated estate. */
@@ -17,7 +19,8 @@ export interface CapabilityCoverageRow {
   readonly outputs: readonly string[]
   readonly source_dependencies: readonly string[]
   readonly availability_contract: 'authored' | 'deliberately_dark' | 'missing'
-  readonly readiness: 'unknown' | 'available' | 'partial' | 'dark' | 'incompatible'
+  readonly proof_kind: 'answer' | 'plan' | 'resource' | 'discovery'
+  readonly readiness: 'unknown' | 'available' | 'partial' | 'dark' | 'incompatible' | 'resource_ok'
   readonly blocker: CoverageBlocker
 }
 
@@ -28,7 +31,8 @@ function dependencies(scu: CapabilityKnowledgeSnapshot['scus'][number], bindingI
       requirement.kind === 'producer_output' ? `producer:${requirement.asset_id}`
         : requirement.kind === 'service_probe' ? `probe:${requirement.probe_id}`
           : requirement.kind === 'source_query' ? `source_query:${requirement.contract_id}`
-            : `derived:${requirement.required_binding_ids.join(',')}`),
+            : requirement.kind === 'snapshot_resource' ? `snapshot:${requirement.proof}`
+              : `derived:${requirement.required_binding_ids.join(',')}`),
   ])].sort()
 }
 
@@ -46,6 +50,7 @@ export function buildCapabilityCoverage(
     const contractState = contract ? 'authored' : disposition ? 'deliberately_dark' : 'missing'
     const blocker: CoverageBlocker = bindingAvailable
       ? 'ready'
+      : overlayEntry?.state === 'resource_ok' ? 'resource_not_answer'
       : overlayEntry ? 'overlay_unavailable'
         : disposition ? 'deliberately_dark'
           : !contract ? 'availability_contract_missing'
@@ -59,8 +64,10 @@ export function buildCapabilityCoverage(
       outputs: scu.outputs,
       source_dependencies: dependencies(scu, binding.binding_id),
       availability_contract: contractState,
+      proof_kind: scu.proof_kind ?? 'answer',
       readiness: bindingAvailable
         ? 'available'
+        : overlayEntry?.state === 'resource_ok' ? 'resource_ok'
         : overlayEntry?.state === 'incompatible' ? 'incompatible'
           : overlayEntry ? 'dark'
             : 'unknown',

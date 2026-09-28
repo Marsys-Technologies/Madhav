@@ -5,7 +5,18 @@ brahmagyan.l0_ephemeris — BRAHMA WS-2 L0 Brahmagyan: Daily Ephemeris
 Builds and queries the ephemeris_daily table: tropical positions for 9
 celestial bodies computed via pyswisseph (Swiss Ephemeris DE441).
 
-Bodies covered: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu (mean), Ketu (mean).
+Bodies covered: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu (TRUE node,
+swe_id=11 = SE_TRUE_NODE), Ketu (TRUE node + 180 deg). Every row is computed at a
+NOON-UT epoch (swe.julday(..., 12.0), see _compute_positions_for_date below).
+NODE FRAME + EPOCH (L0 repair item 7, 2026-09): this table's node rows are TRUE
+node, NOT mean, though other declarations in this codebase (bg_ephemeris_engine's
+health probe, routers/ephemeris.py, panchang_engine/planets.py) mandate MEAN_NODE
+as the Phase 4B house standard and already comply — the defect was isolated to
+THIS table + this module's own stale comments (below), never to those live-serving
+paths. Both the node frame ('true') and the epoch convention ('noon_ut') are now
+declared on every row via the node_mode/epoch_convention columns (additive
+migration, no rebuild of existing tropical_longitude data — see
+platform/supabase/migrations/ for the migration number).
 Ascendant is chart-parameterized (needs birth lat/lon); it is NOT in DAILY_BODIES
 and is not stored in the daily ephemeris table.
 
@@ -51,6 +62,14 @@ logger = logging.getLogger(__name__)
 SOURCE_CITATION = "pyswisseph + Swiss Ephemeris .se1"
 AYANAMSHA_ID = "tropical"
 
+# L0 repair item 7: node frame + epoch, declared on every ephemeris_daily row
+# (additive migration, no rebuild). NODE_MODE = 'true' (SE_TRUE_NODE, swe_id=11)
+# for Rahu/Ketu rows only; other bodies carry node_mode=NULL (no node concept).
+# EPOCH_CONVENTION = 'noon_ut' for every row (_compute_positions_for_date always
+# computes at swe.julday(..., 12.0) — see that function).
+NODE_MODE = "true"
+EPOCH_CONVENTION = "noon_ut"
+
 VOLUME_FLOOR = 825_084  # 1900-2150 × 9 bodies: 91,676 days × 9 = 825,084 rows
 
 # Native birth — Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
@@ -74,8 +93,8 @@ DAILY_BODIES: list[dict[str, Any]] = [
     {"name": "Jupiter", "swe_id": 5},
     {"name": "Venus",   "swe_id": 3},
     {"name": "Saturn",  "swe_id": 6},
-    {"name": "Rahu",    "swe_id": 11},  # Mean North Node
-    {"name": "Ketu",    "swe_id": -1},  # Ketu = Rahu + 180°
+    {"name": "Rahu",    "swe_id": 11},  # TRUE North Node (SE_TRUE_NODE) — NOT mean; L0 repair item 7
+    {"name": "Ketu",    "swe_id": -1},  # Ketu = TRUE Rahu + 180°
 ]
 
 # ── 5-ayanamsha read-time derivation ─────────────────────────────────────────
@@ -284,7 +303,8 @@ def _compute_positions_for_date(
         swe_id = body["swe_id"]
 
         if swe_id == -1:
-            # Ketu = mean North Node (Rahu) + 180°
+            # Ketu = TRUE North Node (Rahu, swe_id 11 = SE_TRUE_NODE) + 180°
+            # NOT mean — L0 repair item 7; declared via node_mode='true' below.
             flags = swe.FLG_SWIEPH | swe.FLG_SPEED
             rahu_result = swe.calc_ut(jd, 11, flags)
             lon = (rahu_result[0][0] + 180.0) % 360.0
@@ -307,6 +327,11 @@ def _compute_positions_for_date(
             "is_retrograde": speed < 0.0,
             "source_citation": SOURCE_CITATION,
             "computed_at": now_ts,
+            # L0 repair item 7: declare node frame + epoch on the row itself.
+            # NODE_MODE for Rahu/Ketu ('true' node, swe_id=11=SE_TRUE_NODE);
+            # NULL for the other seven bodies (no node concept applies).
+            "node_mode": NODE_MODE if body["name"] in ("Rahu", "Ketu") else None,
+            "epoch_convention": EPOCH_CONVENTION,
         })
 
     return rows
@@ -345,6 +370,11 @@ def _algorithmic_fallback_date(d: date) -> list[dict[str, Any]]:
             "speed_dps": round(daily_motion, 7), "is_retrograde": False,
             "source_citation": "algorithmic_fallback (pyswisseph unavailable)",
             "computed_at": now_ts,
+            # This fallback's Rahu/Ketu are a mean-motion approximation, not a
+            # real SE_TRUE_NODE computation — node_mode left NULL (honest: not
+            # declared as either frame) rather than falsely claimed as 'true'.
+            "node_mode": None,
+            "epoch_convention": EPOCH_CONVENTION,
         })
     return rows
 
@@ -461,13 +491,17 @@ def _copy_insert(conn, rows: list[dict[str, Any]]) -> int:
         return 0
 
     # Write rows to a StringIO buffer in CSV format
+    # node_mode is NULL for the seven non-node bodies — psycopg copy_from's
+    # default NULL representation is the literal two-character string \N.
     buf = io.StringIO()
     for r in rows:
+        node_mode_field = r["node_mode"] if r["node_mode"] is not None else "\\N"
         buf.write(
             f"{r['date']}\t{r['body']}\t{r['ayanamsha_id']}\t"
             f"{r['tropical_longitude']}\t{r['latitude']}\t"
             f"{r['speed_dps']}\t{r['is_retrograde']}\t"
-            f"{r['source_citation']}\t{r['computed_at']}\n"
+            f"{r['source_citation']}\t{r['computed_at']}\t"
+            f"{node_mode_field}\t{r['epoch_convention']}\n"
         )
     buf.seek(0)
 
@@ -483,7 +517,9 @@ def _copy_insert(conn, rows: list[dict[str, Any]]) -> int:
                 speed_dps numeric(10,7) NOT NULL DEFAULT 0.0,
                 is_retrograde boolean NOT NULL DEFAULT false,
                 source_citation text NOT NULL,
-                computed_at timestamptz NOT NULL
+                computed_at timestamptz NOT NULL,
+                node_mode text,
+                epoch_convention text
             ) ON COMMIT DELETE ROWS
         """)
 
@@ -494,16 +530,19 @@ def _copy_insert(conn, rows: list[dict[str, Any]]) -> int:
             columns=(
                 "date", "body", "ayanamsha_id", "tropical_longitude", "latitude",
                 "speed_dps", "is_retrograde", "source_citation", "computed_at",
+                "node_mode", "epoch_convention",
             ),
         )
 
         cur.execute("""
             INSERT INTO ephemeris_daily
               (date, body, ayanamsha_id, tropical_longitude, latitude,
-               speed_dps, is_retrograde, source_citation, computed_at)
+               speed_dps, is_retrograde, source_citation, computed_at,
+               node_mode, epoch_convention)
             SELECT
               date, body, ayanamsha_id, tropical_longitude, latitude,
-              speed_dps, is_retrograde, source_citation, computed_at
+              speed_dps, is_retrograde, source_citation, computed_at,
+              node_mode, epoch_convention
             FROM _ephe_stage
             ON CONFLICT (date, body, ayanamsha_id) DO NOTHING
         """)

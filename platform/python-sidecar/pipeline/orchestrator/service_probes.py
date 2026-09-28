@@ -319,6 +319,14 @@ def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
         "node_mode",
         "allowed_ephemeris_backends",
         "ephemeris_file_sha256",
+        # L0 repair item 6 (migration 1075): degree-level companion to the
+        # sign-level check above. Sign alone cannot detect a true-vs-mean node
+        # mixup at the forensic instant (TRUE 50.049248 deg and MEAN 49.033044
+        # deg share sign 2 — only the pada differs), so it is a detector that
+        # provably cannot fail (§N.8). Required, not optional, so a probe_spec
+        # that predates 1075 fails closed instead of silently skipping it.
+        "expected_mean_node_rahu_longitude_deg",
+        "mean_node_longitude_tolerance_arcsec",
     }
     missing = sorted(required - probe_spec.keys())
     if missing:
@@ -361,12 +369,29 @@ def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
             + ", ".join(invalid_digests)
         )
 
+    # L0 repair item 6: the degree-level mean-node anchor (migration 1075).
+    expected_node_lon = probe_spec["expected_mean_node_rahu_longitude_deg"]
+    if isinstance(expected_node_lon, bool) or not isinstance(expected_node_lon, (int, float)) \
+            or not 0.0 <= expected_node_lon < 360.0:
+        raise ValueError(
+            "expected_mean_node_rahu_longitude_deg must be a number in [0, 360)"
+        )
+    tolerance_arcsec = probe_spec["mean_node_longitude_tolerance_arcsec"]
+    if isinstance(tolerance_arcsec, bool) or not isinstance(tolerance_arcsec, (int, float)) \
+            or not 0 < tolerance_arcsec <= 3600:
+        raise ValueError(
+            "mean_node_longitude_tolerance_arcsec must be a number in (0, 3600] "
+            "(a degree-level anchor wider than one full degree defeats its purpose)"
+        )
+
     return {
         "jd": float(jd),
         "expected_sun_sign": _sign("expected_sun_sign"),
         "expected_mean_node_rahu_sign": _sign("expected_mean_node_rahu_sign"),
         "allowed_ephemeris_backends": frozenset(allowed),
         "ephemeris_file_sha256": file_sha256,
+        "expected_mean_node_rahu_longitude_deg": float(expected_node_lon),
+        "mean_node_longitude_tolerance_deg": float(tolerance_arcsec) / 3600.0,
     }
 
 
@@ -530,6 +555,57 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     except Exception as exc:
         _add_check(checks, failures, "sidereal_mean_node_rahu_invariant", False,
                    f"MEAN_NODE check failed: {exc}", error=str(exc))
+        node_lon = None
+
+    # Check 4 (L0 repair item 6, migration 1075): degree-level mean-node anchor.
+    # Check 3 above is sign-level only and, at this forensic instant, PROVABLY
+    # CANNOT distinguish a true-node-mistaken-for-mean defect from a genuine
+    # mean-node computation — TRUE 50.049248 deg and MEAN 49.033044 deg share
+    # sign 2 (Vrishabha), differing only in pada (KIMI_K3_CLOSE_REVIEW_KSHETRA_
+    # v1_0.md §(C)1; §N.8). This is a SEPARATE check (not folded into check 3)
+    # so a caller sees the coarser and finer detectors as distinct evidence,
+    # never one flattened verdict (§N.6).
+    #
+    # HONEST SCOPE (narrowed after independent review of PR #2727 — the earlier
+    # wording overclaimed): what this detects is a mixup in THIS PROBE's own node
+    # constant and ayanamsha configuration, because it calls swe.calc_ut(MEAN_NODE)
+    # itself and compares the result against a pinned longitude. It does NOT read
+    # `ephemeris_daily`, so it cannot detect the STORED node frame drifting. The
+    # store is covered instead by migration 1076's row-level node_mode/
+    # epoch_convention declaration, which has no probe of its own — a real,
+    # disclosed gap, not a covered one.
+    #
+    # Tolerance sizing, stated correctly (migration 1075's own header got this
+    # arithmetic wrong and is applied, so the correction lives here and in 1079):
+    # the TRUE-vs-MEAN separation this must catch is 1.016204 deg = 3658.3 arcsec,
+    # so a 10-arcsec tolerance is ~366x tighter than the defect — not the "640x"
+    # 1075 claims, which mistakenly used the 177.3-arcsec Rohini pada-4 margin.
+    try:
+        if node_lon is None:
+            raise RuntimeError("MEAN_NODE longitude unavailable (check 3 raised)")
+        expected_deg = config["expected_mean_node_rahu_longitude_deg"]
+        tolerance_deg = config["mean_node_longitude_tolerance_deg"]
+        # Shortest angular distance, correct across the 0/360 wrap.
+        raw_diff = abs(node_lon - expected_deg) % 360.0
+        angular_diff = min(raw_diff, 360.0 - raw_diff)
+        degree_ok = angular_diff <= tolerance_deg
+        _add_check(
+            checks, failures, "mean_node_degree_level_anchor",
+            degree_ok,
+            "" if degree_ok else (
+                f"MEAN_NODE Rahu lon={node_lon:.6f} deg, expected {expected_deg:.6f} "
+                f"deg +/- {tolerance_deg * 3600:.1f} arcsec (diff={angular_diff * 3600:.1f} arcsec) "
+                f"at JD {jd}"
+            ),
+            rahu_lon_deg=round(node_lon, 6),
+            expected_rahu_lon_deg=expected_deg,
+            tolerance_arcsec=tolerance_deg * 3600.0,
+            diff_arcsec=round(angular_diff * 3600.0, 2),
+            ayanamsha="Lahiri",
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "mean_node_degree_level_anchor", False,
+                   f"degree-level anchor check failed: {exc}", error=str(exc))
 
     return _aggregate(checks, failures)
 

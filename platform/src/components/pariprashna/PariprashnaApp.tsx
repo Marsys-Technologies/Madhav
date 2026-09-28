@@ -19,6 +19,7 @@ import { OverlayLayer } from './overlay/OverlayLayer'
 import { DockControllerProvider } from './dock/DockController'
 import { useFixtureStream } from './state/useFixtureStream'
 import { useLiveStream } from './hooks/useLiveStream'
+import { useAiChoices } from './hooks/useAiChoices'
 import { FIXTURE_ARRIVAL_LINE } from './fixtures/arrival'
 import { useVisualViewport } from './hooks/useVisualViewport'
 import type { FixtureMode } from './fixtures'
@@ -39,6 +40,7 @@ export interface PariprashnaStream {
   state: ThreadState
   submit: (text: string, mode: FixtureMode, controls?: SubmitControls) => string | void
   stop: (turnId: string) => void
+  conversationId?: string | null
 }
 
 /** Truncates a user question into a sidebar-row-length auto-generated title (§10.1). */
@@ -97,7 +99,10 @@ function DevFixturePicker({ onPick, disabled }: { onPick: (mode: FixtureMode) =>
 export function PariprashnaApp({ chartPin, chartId }: { chartPin: ChartPin; chartId?: string }) {
   const liveEnabled = process.env.NEXT_PUBLIC_PARIPRASHNA_LIVE === '1' && !!chartId
   if (liveEnabled && chartId) {
-    return <PariprashnaAppLive chartPin={chartPin} chartId={chartId} />
+    // Chart identity owns the entire live session. A keyed remount resets the
+    // AI-choice acknowledgement alongside transport state before the new
+    // chart can submit.
+    return <PariprashnaAppLive key={chartId} chartPin={chartPin} chartId={chartId} />
   }
   return <PariprashnaAppFixture chartPin={chartPin} />
 }
@@ -125,10 +130,11 @@ function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId
       submit: (text: string, _mode: FixtureMode, controls?: SubmitControls) =>
         live.submit(text, {
           reading_depth: controls?.readingDepth ?? 'auto',
-          model_id: controls?.modelId,
+          aiMode: controls?.aiMode ?? { kind: 'legacy' },
           length_tier: controls?.lengthTier ?? 'standard',
         }),
       stop: live.stop,
+      conversationId: live.conversationId,
     }),
     [live],
   )
@@ -156,6 +162,8 @@ function PariprashnaSurface({
   isFixtureHost: boolean
 }) {
   const { state, submit, stop } = stream
+  const aiChoicesEnabled = !isFixtureHost && process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true'
+  const aiChoices = useAiChoices(stream.conversationId ?? null, aiChoicesEnabled)
   const activeTurn = state.turns[state.turns.length - 1]
   const streaming = !!activeTurn && !['settled', 'interrupted', 'errored'].includes(activeTurn.status)
 
@@ -177,7 +185,7 @@ function PariprashnaSurface({
   const [titleOverride, setTitleOverride] = useState<string | null>(null)
   const [pastReadings, setPastReadings] = useState<ThreadSummary[]>([])
   const [unavailableNotice, setUnavailableNotice] = useState(false)
-  const threadId = useMemo(() => `session-${chartId}`, [chartId])
+  const threadId = useMemo(() => stream.conversationId ?? `session-${chartId}`, [stream.conversationId, chartId])
 
   useEffect(() => {
     if (isFixtureHost) return
@@ -192,7 +200,9 @@ function PariprashnaSurface({
     // live turn, not independent prior history — drop it rather than risk
     // a visible duplicate.
     const snapshotAtMs = Date.now()
-    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume&readingsOnly=true`)
+    // archived=true also returns chart-correction history (Jātaka chart workspace),
+    // shown as read-only Historical rows; manual archives stay hidden below.
+    fetch(`/api/conversations?chartId=${encodeURIComponent(chartId)}&module=consume&readingsOnly=true&archived=true`)
       .then((r) => (r.ok ? r.json() : null))
       .then(
         (data: {
@@ -203,20 +213,29 @@ function PariprashnaSurface({
             first_message_snippet: string | null
             updated_at: string
             created_at: string
+            archived_at?: string | null
+            archive_reason?: string | null
           }[]
         } | null) => {
           if (cancelled || !data?.conversations) return
           setPastReadings(
             data.conversations
-              .map((c) => ({
-                id: c.id,
-                chartId: c.chart_id,
-                chartName: chartPin.name,
-                title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
-                updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
-                active: false,
-                streaming: false,
-              }))
+              .filter((c) => !c.archived_at || c.archive_reason === 'chart_details_changed')
+              .map((c) => {
+                const historical = c.archive_reason === 'chart_details_changed'
+                return {
+                  id: c.id,
+                  chartId: c.chart_id,
+                  chartName: chartPin.name,
+                  title: c.title ?? c.first_message_snippet ?? 'Untitled reading',
+                  updatedAtMs: new Date(c.updated_at ?? c.created_at).getTime(),
+                  active: false,
+                  streaming: false,
+                  archivedAt: c.archived_at ?? null,
+                  archiveReason: historical ? ('chart_details_changed' as const) : null,
+                  ...(historical ? { href: `/clients/${encodeURIComponent(c.chart_id)}/consult/${encodeURIComponent(c.id)}` } : {}),
+                }
+              })
               .filter((t) => t.updatedAtMs < snapshotAtMs),
           )
         },
@@ -250,8 +269,8 @@ function PariprashnaSurface({
               },
             ]
           })()
-    return [...live, ...pastReadings]
-  }, [state.turns, threadId, chartId, chartPin.name, titleOverride, streaming, pastReadings])
+    return [...live, ...pastReadings.filter(thread => thread.id !== stream.conversationId)]
+  }, [state.turns, threadId, chartId, chartPin.name, titleOverride, streaming, pastReadings, stream.conversationId])
 
   const handleSidebarSelect = useCallback(
     (id: string) => {
@@ -310,9 +329,18 @@ function PariprashnaSurface({
 
   const handleSubmit = useCallback(
     (text: string, mode: FixtureMode, controls?: SubmitControls) => {
+      if (!controls) {
+        if (aiChoices.mode.kind === 'byok' && !aiChoices.canSubmit) return
+        submit(text, mode, {
+          aiMode: aiChoices.mode,
+          readingDepth: 'auto',
+          lengthTier: 'standard',
+        })
+        return
+      }
       submit(text, mode, controls)
     },
-    [submit],
+    [submit, aiChoices.canSubmit, aiChoices.mode],
   )
 
   const handleStop = useCallback(() => {
@@ -387,6 +415,7 @@ function PariprashnaSurface({
               onStop={handleStop}
               depthReceived={activeTurn?.readingDepthReceived}
               autoFocus={state.turns.length === 0}
+              aiChoices={aiChoices}
             />
           </div>
           <RightDock turns={state.turns} />

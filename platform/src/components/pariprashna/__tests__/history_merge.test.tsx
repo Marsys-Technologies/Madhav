@@ -13,7 +13,14 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { makeInitialTurnState } from '../state/reducer'
+import type { ThreadState } from '../state/types'
 
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => (
+    <a href={href} {...rest}>{children}</a>
+  ),
+}))
 vi.mock('../ThreadHeader', () => ({ ThreadHeader: () => null }))
 vi.mock('../Transcript', () => ({ Transcript: () => null }))
 vi.mock('../EmptyState', () => ({ EmptyState: () => null }))
@@ -28,9 +35,10 @@ vi.mock('../hooks/useVisualViewport', () => ({ useVisualViewport: () => ({ suppo
 
 const { mockUseLiveStream } = vi.hoisted(() => ({
   mockUseLiveStream: vi.fn(() => ({
-    state: { turns: [], surfaceStatus: 'idle' },
+    state: { turns: [], surfaceStatus: 'idle' } as ThreadState,
     submit: vi.fn(),
     stop: vi.fn(),
+    conversationId: null as string | null,
   })),
 }))
 vi.mock('../hooks/useLiveStream', () => ({ useLiveStream: mockUseLiveStream }))
@@ -41,7 +49,7 @@ const CHART_PIN = { name: 'Abhinandan Mohanty', bornLine: '02 Mar 1985 · 09:40 
 
 beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '1')
-  mockUseLiveStream.mockReturnValue({ state: { turns: [], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn() })
+  mockUseLiveStream.mockReturnValue({ state: { turns: [], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn(), conversationId: null })
 })
 
 afterEach(() => {
@@ -142,10 +150,83 @@ describe('PariprashnaApp history merge (V3-E-012a)', () => {
     expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(1)
   })
 
+  it('uses the server conversation ID for the live row and excludes that same ID from fetched history', async () => {
+    const liveTurn = { ...makeInitialTurnState('turn-live', 'Current server-backed reading'),
+      status: 'settled' as const, openedAtMs: Date.now() - 1_000 }
+    mockUseLiveStream.mockReturnValue({
+      state: { turns: [liveTurn], surfaceStatus: 'idle' }, submit: vi.fn(), stop: vi.fn(), conversationId: 'conv-live',
+    })
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ conversations: [
+        { id: 'conv-live', chart_id: 'c-1', title: 'Duplicate live row', first_message_snippet: null,
+          updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z' },
+        { id: 'conv-past-1', chart_id: 'c-1', title: 'Independent old reading', first_message_snippet: null,
+          updated_at: '2026-08-19T00:00:00Z', created_at: '2026-08-19T00:00:00Z' },
+      ] }),
+    } as Response)
+
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getByText('Independent old reading')).toBeInTheDocument())
+    expect(screen.getByText('Current server-backed reading')).toBeInTheDocument()
+    expect(screen.queryByText('Duplicate live row')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2)
+  })
+
   it('does not fetch on the fixture host (no chartId / live flag off)', () => {
     vi.stubEnv('NEXT_PUBLIC_PARIPRASHNA_LIVE', '0')
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
     render(<PariprashnaApp chartPin={CHART_PIN} />)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('PariprashnaApp — chart-correction history (Jātaka chart workspace)', () => {
+  const rows = [
+    { id: 'conv-active', chart_id: 'c-1', title: 'Current reading', first_message_snippet: null, updated_at: '2026-08-21T00:00:00Z', created_at: '2026-08-21T00:00:00Z', archived_at: null, archive_reason: null },
+    { id: 'conv-historical', chart_id: 'c-1', title: 'Before the correction', first_message_snippet: null, updated_at: '2026-08-20T00:00:00Z', created_at: '2026-08-20T00:00:00Z', archived_at: '2026-09-27T00:00:00Z', archive_reason: 'chart_details_changed' },
+    { id: 'conv-manual', chart_id: 'c-1', title: 'Manually archived', first_message_snippet: null, updated_at: '2026-08-19T00:00:00Z', created_at: '2026-08-19T00:00:00Z', archived_at: '2026-09-01T00:00:00Z', archive_reason: null },
+  ]
+
+  function stubFetch() {
+    return vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: rows }) } as Response)
+  }
+
+  it('requests archived readings too', async () => {
+    const fetchMock = stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(String(fetchMock.mock.calls[0][0])).toContain('archived=true')
+    expect(String(fetchMock.mock.calls[0][0])).toContain('readingsOnly=true')
+  })
+
+  it('shows correction history as a Historical row linking to its read-only page', async () => {
+    stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getByText('Before the correction')).toBeInTheDocument())
+    const link = screen.getByRole('link', { name: /before the correction/i })
+    expect(link).toHaveAttribute('href', '/clients/c-1/consult/conv-historical')
+    expect(link).toHaveTextContent('Historical')
+    fireEvent.click(link)
+    expect(screen.queryByTestId('pp-sidebar-select-unavailable')).not.toBeInTheDocument()
+  })
+
+  it('never offers rename on a historical row', async () => {
+    stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getByText('Before the correction')).toBeInTheDocument())
+    fireEvent.doubleClick(screen.getByText('Before the correction'))
+    expect(screen.queryByDisplayValue('Before the correction')).not.toBeInTheDocument()
+  })
+
+  it('keeps manually archived readings hidden and active rows on the existing notice path', async () => {
+    stubFetch()
+    render(<PariprashnaApp chartPin={CHART_PIN} chartId="c-1" />)
+    await waitFor(() => expect(screen.getAllByTestId('pp-sidebar-row')).toHaveLength(2))
+    expect(screen.queryByText('Manually archived')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /current reading/i })).not.toBeInTheDocument()
+    const activeRow = screen.getAllByTestId('pp-sidebar-row').find((row) => row.dataset.threadId === 'conv-active')!
+    fireEvent.click(activeRow)
+    expect(screen.getByTestId('pp-sidebar-select-unavailable')).toBeInTheDocument()
   })
 })

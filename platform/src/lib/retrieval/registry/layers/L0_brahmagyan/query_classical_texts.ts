@@ -129,7 +129,7 @@ async function tryEmbedQuery(text: string): Promise<number[] | null> {
 function receiptBoundarySql(): string {
   return `eligible_receipts AS (
     SELECT receipt.receipt_version, receipt.partition_key, receipt.output_digest,
-           receipt.output_digest_spec_sha256
+           receipt.output_digest_spec_sha256, receipt.observed_at
       FROM asset_provenance_receipts receipt
       JOIN asset_freshness freshness
         ON freshness.asset_id = receipt.asset_id
@@ -158,7 +158,21 @@ function receiptBoundarySql(): string {
       SELECT 1 FROM build_run_assets asset
       JOIN build_runs run ON run.id = asset.run_id
       WHERE asset.asset_id = $1::text
-        AND (run.state IN ('planned', 'running', 'paused') OR asset.state IN ('queued', 'building'))
+        AND (
+          run.state IN ('planned', 'running', 'paused')
+          -- A dispatched row left queued/building by a terminal run blocks only when it
+          -- may have mutated rows after the oldest eligible receipt. A queued row that the
+          -- terminal run never dispatched cannot mutate and is orphan hygiene only.
+          OR (
+            asset.state IN ('queued', 'building')
+            AND NOT (asset.state = 'queued' AND asset.started_at IS NULL)
+            AND (
+              COALESCE(asset.ended_at, run.ended_at) IS NULL
+              OR COALESCE(asset.ended_at, run.ended_at) >= (SELECT MIN(observed_at) FROM eligible_receipts)
+              OR NOT EXISTS (SELECT 1 FROM eligible_receipts)
+            )
+          )
+        )
     ) AS replacement_in_progress
   )`
 }

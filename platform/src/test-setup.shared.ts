@@ -33,5 +33,7 @@ vi.mock('@/lib/db/monitoring-write', () => ({
   writeQueryPlanLog: vi.fn(),
   writeToolExecutionLog: vi.fn(),
   writeContextAssemblyLog: vi.fn(),
+  writeAiRoutingUsageEvent: vi.fn(),
+  writeMcpExternalSynthesisEvent: vi.fn(),
   resolveProvider: vi.fn(() => 'mock'),
 }))

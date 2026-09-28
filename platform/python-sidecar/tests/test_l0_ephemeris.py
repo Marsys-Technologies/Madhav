@@ -216,6 +216,47 @@ class TestAlgorithmicFallback:
                     "Venus", "Saturn", "Rahu", "Ketu"}
         assert names == expected
 
+    def test_all_rows_carry_epoch_convention(self):
+        """L0 repair item 7: every row (including this analytic-fallback path,
+        never used in production) declares epoch_convention='noon_ut'."""
+        mod = _get_mod()
+        rows = mod._algorithmic_fallback(date(1984, 2, 5))
+        for r in rows:
+            assert r["epoch_convention"] == "noon_ut"
+
+    def test_fallback_node_mode_is_null_not_falsely_true(self):
+        """L0 repair item 7: this fallback's Rahu/Ketu are a mean-motion
+        APPROXIMATION, not a real SE_TRUE_NODE computation — node_mode must be
+        NULL here (honest: not declared as either frame), never 'true'. Only
+        the real swisseph path (_compute_positions_for_date) may claim 'true'."""
+        mod = _get_mod()
+        rows = mod._algorithmic_fallback(date(1984, 2, 5))
+        for r in rows:
+            assert r["node_mode"] is None, f"{r['body']}: node_mode={r['node_mode']!r}"
+
+
+# ── node_mode / epoch_convention constants (L0 repair item 7) ─────────────────
+
+class TestNodeFrameAndEpochDeclaration:
+    def test_node_mode_constant_is_true_not_mean(self):
+        """The table stores SE_TRUE_NODE (swe_id=11), not mean — the row-level
+        declaration must say so, never silently default to 'mean'."""
+        mod = _get_mod()
+        assert mod.NODE_MODE == "true"
+
+    def test_epoch_convention_constant_is_noon_ut(self):
+        mod = _get_mod()
+        assert mod.EPOCH_CONVENTION == "noon_ut"
+
+    def test_rahu_and_ketu_swe_ids_are_true_node_not_mean_node(self):
+        """swe_id 11 is SE_TRUE_NODE; SE_MEAN_NODE is 10. This pins the DAILY_
+        BODIES table's own swe_id choice against the constant it actually is,
+        so a future edit that silently changes to swe_id=10 without updating
+        NODE_MODE is caught here rather than only in a live DB comparison."""
+        mod = _get_mod()
+        rahu = next(b for b in mod.DAILY_BODIES if b["name"] == "Rahu")
+        assert rahu["swe_id"] == 11, "swe_id 11 = SE_TRUE_NODE; this table's Rahu row"
+
 
 # ── query_ephemeris ──────────────────────────────────────────────────────────
 

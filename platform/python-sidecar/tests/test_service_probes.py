@@ -64,6 +64,11 @@ _EPHEMERIS_SPEC = {
         "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
         "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
     },
+    # L0 repair item 6 (migration 1075): degree-level mean-node anchor, required
+    # alongside the sign-level fields above — a sign-level-only spec now fails
+    # closed at probe_config_valid rather than silently skipping the finer check.
+    "expected_mean_node_rahu_longitude_deg": 49.033044,
+    "mean_node_longitude_tolerance_arcsec": 10,
 }
 
 _GRAHA_SANCARA_SPEC = {
@@ -205,6 +210,47 @@ def test_ephemeris_node_check_fails_on_a_wrong_expected_sign():
     res = sp.run_health_probe("bg_ephemeris_engine", wrong)
     assert res["status"] != "GREEN"
     assert _check(res, "sidereal_mean_node_rahu_invariant")["passed"] is False
+
+
+def test_ephemeris_sign_level_node_check_cannot_detect_true_vs_mean_mixup():
+    """L0 repair item 6 (migration 1075). At the forensic instant, TRUE node
+    longitude (50.049...deg) and MEAN node longitude (49.033...deg) share sign 2
+    (Vrishabha) — only the pada differs. So the pre-1075 sign-level check alone
+    is a detector that PROVABLY CANNOT distinguish a true-node value from a
+    mean-node value here (CLAUDE.md §N.8). This test pins that historical fact:
+    the sign-level check ALONE passes even when fed the TRUE-node longitude."""
+    true_node_as_if_mean = dict(
+        _EPHEMERIS_SPEC, expected_mean_node_rahu_longitude_deg=50.049248,
+    )
+    res = sp.run_health_probe("bg_ephemeris_engine", true_node_as_if_mean)
+    # The coarse, sign-level check still reads GREEN on the wrong (true-node) value...
+    assert _check(res, "sidereal_mean_node_rahu_invariant")["passed"] is True
+    # ...which is exactly why the finer, degree-level anchor exists and must fail.
+    assert res["status"] != "GREEN"
+    assert _check(res, "mean_node_degree_level_anchor")["passed"] is False
+
+
+def test_ephemeris_degree_level_node_anchor_passes_on_the_true_mean_value():
+    """CAN-PASS proof: the real mean-node longitude at the forensic instant
+    (independently reproduced via swe.MEAN_NODE) clears the degree-level anchor
+    well within its 10 arcsec tolerance."""
+    res = sp.run_health_probe("bg_ephemeris_engine", _EPHEMERIS_SPEC)
+    node = _check(res, "mean_node_degree_level_anchor")
+    assert node["passed"] is True
+    assert node["diff_arcsec"] < 1.0, node
+
+
+def test_ephemeris_probe_fails_closed_without_the_degree_level_anchor_fields():
+    """A probe_spec that predates migration 1075 (sign-level fields only, no
+    degree-level anchor) must fail closed at probe_config_valid, not silently
+    skip the finer check — required fields, not optional ones."""
+    pre_1075_spec = {
+        k: v for k, v in _EPHEMERIS_SPEC.items()
+        if k not in ("expected_mean_node_rahu_longitude_deg", "mean_node_longitude_tolerance_arcsec")
+    }
+    res = sp.run_health_probe("bg_ephemeris_engine", pre_1075_spec)
+    assert res["status"] == "down"
+    assert _check(res, "probe_config_valid")["passed"] is False
 
 
 def test_ephemeris_reports_which_ephemeris_backend_served_the_position():

@@ -1,4 +1,5 @@
 import type { ExecutionChannel } from '../../retrieval/registry/knowledge/types'
+import type { AuthorizationEnvelope, SuccessorAdmissionDecision, SuccessorCostLedger } from './authorization_envelope'
 
 export const INQUIRY_CONTRACT_VERSION = '1.3.0' as const
 
@@ -79,6 +80,17 @@ export interface InquiryPlanItem {
     readonly evidence_refs: readonly string[]
     readonly gap_reason: string | null
   } | null
+  /**
+   * Compile-time decision of the shared authorization envelope for an evidence-admitted successor
+   * item (Packet B). Bound into the execution plan hash, so it cannot be edited after issue.
+   */
+  readonly successor_admission?: SuccessorAdmissionDecision
+  /**
+   * The decision the door's dispatch-time re-evaluation reached for this item, recorded in the
+   * same transition as its observation so an executed (or refused) successor item is attributable.
+   * Not part of the authorization hash: it is execution history, not authority.
+   */
+  readonly successor_dispatch?: SuccessorAdmissionDecision
 }
 
 export interface MaterialFrontierItem {
@@ -89,6 +101,8 @@ export interface MaterialFrontierItem {
   readonly reason: string
   readonly disposition: 'open' | 'absorbed' | 'capped' | 'not_applicable'
   readonly source_ref?: string
+  /** The evidence-frontier rule that proposed this item (explicit, never parsed from `reason`). */
+  readonly rule_id?: string
 }
 
 export interface OmissionFinding {
@@ -172,7 +186,10 @@ export interface InquirySuccessorReceipt {
     readonly reason: string
     readonly source_ref?: string
     readonly evidence_refs: readonly string[]
+    readonly rule_id?: string
   }[]
+  /** One envelope decision per admitted frontier item (admit or refuse), in frontier order. */
+  readonly admission_decisions?: readonly SuccessorAdmissionDecision[]
   readonly successor_hash: string
 }
 
@@ -181,6 +198,24 @@ export interface AiInquiryProposal {
   readonly question_facets: readonly { label: string; terms: readonly string[]; materiality: 'required' | 'supporting' }[]
   readonly uncommon_adjacencies: readonly { from_scu_id: string; to_scu_id: string; rationale: string }[]
   readonly hypotheses: readonly string[]
+}
+
+/**
+ * Which planner produced the contract's AI proposal, with the model and reasoning actually
+ * requested (RC-5.6). Recorded, never hashed: it describes how the plan was proposed, while
+ * the deterministic compiler alone decides the contract's semantic and execution identity.
+ */
+export interface InquiryPlanningProvenance {
+  /** 'model' when a server-side planner LLM proposed facets; 'deterministic_compiler' when the
+   *  door compiled only a caller-supplied (or absent) proposal. */
+  readonly planner: 'model' | 'deterministic_compiler'
+  readonly ai_proposal_source: 'server_planner' | 'caller' | 'none'
+  readonly call_type: 'planner_fast' | 'planner_deep' | null
+  readonly reasoning_requested: 'auto' | 'enable' | null
+  /** The model that actually produced the plan; null when the planner reported none. */
+  readonly model_id: string | null
+  /** True when the fallback model produced the plan; null when the planner reported none. */
+  readonly fallback_used: boolean | null
 }
 
 export interface InquiryContract {
@@ -210,8 +245,21 @@ export interface InquiryContract {
   readonly graph_traversal?: GraphTraversalReceipt
   readonly omission_challenge?: OmissionChallengeReceipt
   readonly planning_budget?: InquiryPlanningBudgetReceipt
+  readonly planning_provenance?: InquiryPlanningProvenance
   /** Present only on a fresh, evidence-admitted continuation contract. */
   readonly successor?: InquirySuccessorReceipt
+  /**
+   * The deterministic, bounded set of capabilities beyond the compiled plan that evidence-driven
+   * successors may use (Packet B). Computed at plan time before any evidence is observed and
+   * bound into `execution_plan_hash`. Absent only on contracts issued before it existed.
+   */
+  readonly authorization_envelope?: AuthorizationEnvelope
+  /**
+   * What this generation's successor dispatches have cost so far (hash-chained; appended in the same
+   * transition as the observation each charge pays for). Execution history, not authority: the
+   * ceiling it is checked against lives in the hash-bound envelope and the platform constant.
+   */
+  readonly successor_cost_ledger?: SuccessorCostLedger
 }
 
 export interface InquiryObservation {
@@ -223,6 +271,7 @@ export interface InquiryObservation {
     scu_id: string
     materiality: 'required' | 'supporting'
     reason: string
+    rule_id?: string
   }[]
 }
 

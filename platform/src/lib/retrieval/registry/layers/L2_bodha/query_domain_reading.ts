@@ -28,6 +28,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { deriveDefect001Note } from '../../../provenance/freshness_notes'
 import { demoteSignatureTier } from '../../../ranking/salience_demotion'
@@ -171,14 +172,28 @@ interface DiscriminatedSignal {
  * through the SAME composite pipeline query_signals uses, WITH the domain overlay (graha×domain
  * + bhāva×domain + varga), and returns the top-K with an inline classical rationale per row.
  */
+/**
+ * Optional build fence (generation/served_generation.ts): when a composing caller supplies the
+ * chart's served build set, every bodha_* read below is restricted to it. Standalone calls
+ * without a fence keep their historical chart-scoped reads.
+ */
+function fenceFilter(params: unknown[], build_ids: string[] | null): string | null {
+  if (!build_ids) return null
+  params.push(build_ids)
+  return `build_id = ANY($${params.length}::uuid[])`
+}
+
 async function computeDiscriminatedSignals(
   chart_id: string,
   ayanamsha_id: string,
   domain: string,
+  build_ids: string[] | null = null,
 ): Promise<{ signals: DiscriminatedSignal[]; pool_size: number; filtered_by: string | null }> {
   const filterVal = DOMAIN_TO_SIGNAL_FILTER[domain] ?? null
   const filters = ['chart_id = $1', 'ayanamsha_id = $2', '(lel_origin IS NULL OR lel_origin = false)']
   const params: unknown[] = [chart_id, ayanamsha_id]
+  const fence = fenceFilter(params, build_ids)
+  if (fence) filters.push(fence)
   if (filterVal) {
     filters.push(`$${params.length + 1} = ANY(domains_affected_array)`)
     params.push(filterVal)
@@ -198,7 +213,7 @@ async function computeDiscriminatedSignals(
   if (res.rows.length === 0) return { signals: [], pool_size: 0, filtered_by: filterVal }
 
   const as_of_date = new Date().toISOString().split('T')[0]
-  const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+  const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_ids ?? undefined)
   const scored = applyCompositeRanking(
     res.rows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain,
   )
@@ -298,6 +313,7 @@ async function computeLensRerank(
   ayanamsha_id: string,
   domain: string,
   lensRows: Array<Record<string, unknown>>,
+  build_ids: string[] | null = null,
 ): Promise<{ perLens: Map<string, LensRerank>; anchor_leg: AnchorLegStatus }> {
   const out = new Map<string, LensRerank>()
   // F-169: default until the anchor-leg guard below (or its try/catch) proves otherwise.
@@ -338,6 +354,8 @@ async function computeLensRerank(
     try {
       const filters = ['chart_id = $1', 'ayanamsha_id = $2', '(lel_origin IS NULL OR lel_origin = false)']
       const params: unknown[] = [chart_id, ayanamsha_id]
+      const fence = fenceFilter(params, build_ids)
+      if (fence) filters.push(fence)
       const tag = DOMAIN_TO_SIGNAL_FILTER[domain] ?? null
       if (tag) { filters.push(`$${params.length + 1} = ANY(domains_affected_array)`); params.push(tag) }
       const anchorPreds: string[] = []
@@ -410,15 +428,16 @@ async function computeLensRerank(
               lel_origin, signature_tier, configuration_jsonb,
               graph_node_strength_contribution_jsonb
        FROM bodha_msr_signals
-       WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id = ANY($3::uuid[])`,
-      [chart_id, ayanamsha_id, [...allIds]],
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id = ANY($3::uuid[])
+         ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+      build_ids ? [chart_id, ayanamsha_id, [...allIds], build_ids] : [chart_id, ayanamsha_id, [...allIds]],
     )
     if (res.rows.length === 0) return { perLens: out, anchor_leg: anchorLeg }
     const rowById = new Map<string, Record<string, unknown>>()
     for (const r of res.rows) rowById.set(String(r['signal_id']), r)
 
     const as_of_date = new Date().toISOString().split('T')[0]
-    const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+    const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date, build_ids ?? undefined)
 
     for (const { key, ids } of perLens) {
       const candidateIds = [...new Set([...ids, ...(anchorIdsByLens.get(key) ?? [])])]
@@ -503,6 +522,7 @@ async function hydrateSignalText(
   chart_id: string,
   ayanamsha_id: string,
   signalIds: string[],
+  build_ids: string[] | null = null,
 ): Promise<Map<string, HydratedSignalText>> {
   const map = new Map<string, HydratedSignalText>()
   const distinct = Array.from(new Set(signalIds.filter(Boolean))).slice(0, HYDRATION_ID_CAP)
@@ -511,8 +531,9 @@ async function hydrateSignalText(
     `SELECT signal_id, signal_headline_text, signal_summary_text, signature_tier,
             signal_type_id, configuration_jsonb
      FROM bodha_msr_signals
-     WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id::text = ANY($3::text[])`,
-    [chart_id, ayanamsha_id, distinct],
+     WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id::text = ANY($3::text[])
+       ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}`,
+    build_ids ? [chart_id, ayanamsha_id, distinct, build_ids] : [chart_id, ayanamsha_id, distinct],
   )
   for (const row of res.rows) {
     const demoted = demoteSignatureTier(row)
@@ -591,6 +612,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
   required_inputs: ['chart_id'],
 
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id: {
       type: 'string',
       description: 'Chart UUID (<chart_uuid>). Required.',
@@ -670,6 +692,10 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
 
     const domain          = args['domain'] as string | undefined
     const ayanamsha_id    = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    // Build fence: a chart's served build set, supplied by composing callers (assess_*).
+    const buildFence = classifyBuildFence(args['build_id'])
+    if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('query_domain_reading', chart_id)
+    const build_ids       = buildFence.kind === 'resolved' ? [...buildFence.build_ids] : null
     const response_format = (args['response_format'] as string | undefined) ?? 'default'
     const is_full         = response_format === 'full'
     // Default cap: 200 (enough for temporal-activation filter top_k=20 with headroom).
@@ -713,9 +739,10 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           FROM bodha_cdlm_cells,
                LATERAL (VALUES (domain_row), (domain_col)) AS v(d)
           WHERE chart_id = $1 AND ayanamsha_id = $2 AND d IS NOT NULL
+            ${build_ids ? 'AND build_id = ANY($3::uuid[])' : ''}
           ORDER BY d
         `
-        const availRes = await query<Record<string, unknown>>(availSql, [chart_id, ayanamsha_id])
+        const availRes = await query<Record<string, unknown>>(availSql, build_ids ? [chart_id, ayanamsha_id, build_ids] : [chart_id, ayanamsha_id])
         return {
           content: {
             chart_id,
@@ -750,6 +777,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         FROM bodha_question_lenses
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND question_type = ANY($3)
+          ${build_ids ? 'AND build_id = ANY($6::uuid[])' : ''}
         ORDER BY question_type
         LIMIT $4 OFFSET $5
       `
@@ -765,6 +793,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           computed_at
         FROM bodha_question_lenses
         WHERE chart_id = $1 AND ayanamsha_id = $2
+          ${build_ids ? 'AND build_id = ANY($5::uuid[])' : ''}
         ORDER BY question_type
         LIMIT $3 OFFSET $4
       `
@@ -772,8 +801,8 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // D-1.5b: genuine COUNT(*) of the SAME filter the page above is drawn from, so
       // `lens_pagination.total` is a real family size, not the page length mislabeled as total.
       const lensCountSql = filterByQuestionType
-        ? `SELECT COUNT(*)::int AS n FROM bodha_question_lenses WHERE chart_id = $1 AND ayanamsha_id = $2 AND question_type = ANY($3)`
-        : `SELECT COUNT(*)::int AS n FROM bodha_question_lenses WHERE chart_id = $1 AND ayanamsha_id = $2`
+        ? `SELECT COUNT(*)::int AS n FROM bodha_question_lenses WHERE chart_id = $1 AND ayanamsha_id = $2 AND question_type = ANY($3)${build_ids ? ' AND build_id = ANY($4::uuid[])' : ''}`
+        : `SELECT COUNT(*)::int AS n FROM bodha_question_lenses WHERE chart_id = $1 AND ayanamsha_id = $2${build_ids ? ' AND build_id = ANY($3::uuid[])' : ''}`
 
       // CDLM cross-domain cell from bodha_cdlm_cells (real columns)
       const cdlmSql = `
@@ -792,22 +821,23 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         FROM bodha_cdlm_cells
         WHERE chart_id = $1 AND ayanamsha_id = $2
           AND (domain_row = $3 OR domain_col = $3)
+          ${build_ids ? 'AND build_id = ANY($4::uuid[])' : ''}
         ORDER BY net_linkage_strength DESC NULLS LAST
         LIMIT 10
       `
 
       const [lensRes, lensCountRes, cdlmRes, discriminated] = await Promise.all([
         filterByQuestionType
-          ? query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, relevantQuestionTypes, lens_limit, lens_offset])
-          : query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, lens_limit, lens_offset]),
+          ? query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, relevantQuestionTypes, lens_limit, lens_offset, ...(build_ids ? [build_ids] : [])])
+          : query<Record<string, unknown>>(lensSql, [chart_id, ayanamsha_id, lens_limit, lens_offset, ...(build_ids ? [build_ids] : [])]),
         filterByQuestionType
-          ? query<{ n: number }>(lensCountSql, [chart_id, ayanamsha_id, relevantQuestionTypes])
-          : query<{ n: number }>(lensCountSql, [chart_id, ayanamsha_id]),
-        query<Record<string, unknown>>(cdlmSql, [chart_id, ayanamsha_id, domain]),
+          ? query<{ n: number }>(lensCountSql, [chart_id, ayanamsha_id, relevantQuestionTypes, ...(build_ids ? [build_ids] : [])])
+          : query<{ n: number }>(lensCountSql, [chart_id, ayanamsha_id, ...(build_ids ? [build_ids] : [])]),
+        query<Record<string, unknown>>(cdlmSql, [chart_id, ayanamsha_id, domain, ...(build_ids ? [build_ids] : [])]),
         // WP-1.2β: domain-discriminated composite ranked surface ('other' has no overlay).
         domain === 'other'
           ? Promise.resolve({ signals: [], pool_size: 0, filtered_by: null })
-          : computeDiscriminatedSignals(chart_id, ayanamsha_id, domain),
+          : computeDiscriminatedSignals(chart_id, ayanamsha_id, domain, build_ids),
       ])
       const lensTotal = lensCountRes.rows[0]?.n ?? lensRes.rows.length
 
@@ -818,7 +848,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // threaded through so the served note can never claim the UNION guarantee ran when
       // it silently didn't (query threw / no anchors configured / matched nothing).
       const { perLens: lensRerank, anchor_leg: anchorLeg } = await computeLensRerank(
-        chart_id, ayanamsha_id, domain, lensRes.rows as Array<Record<string, unknown>>,
+        chart_id, ayanamsha_id, domain, lensRes.rows as Array<Record<string, unknown>>, build_ids,
       )
       const lensRankBases = new Map<string, { basis: string; candidate_window: number | null }>()
 
@@ -870,7 +900,7 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
         }
       }
       const textById = await hydrateSignalText(
-        chart_id, ayanamsha_id, [...signalRefsArray, ...lensRankedIds],
+        chart_id, ayanamsha_id, [...signalRefsArray, ...lensRankedIds], build_ids,
       )
 
       // Hydrated ref rows (replaces the bare id list; signal_id_refs kept for back-compat).

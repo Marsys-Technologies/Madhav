@@ -46,6 +46,46 @@ UK_CH4    = "Uttara Kalamrita Ch.4 (Graha Bala — Gochara context)"
 # be verified against the corpus for this content.
 PD_ADH26_S2_8_21 = "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)"
 
+# L0 repair item 1 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md §1): the 35 favourable+vedha
+# rows for the seven classical grahas previously cited "BPHS Ch.29" — refuted; BPHS
+# page 29 in the served corpus is Bhava Padas, and no BPHS transit-vedha chapter
+# exists (bg_gochara_citation_resolution.GOGACHARA_PHALA_BPHS_29 = unresolved,
+# migration 565). Their content is verbatim Phaladipika Adh. XXVI slokas 3-8,
+# row-verified against the corpus (KSHETRA_INDEPENDENT_REVIEW_7_8_9_v1_0.md,
+# corroborated by KIMI_K3_CLOSE_REVIEW_KSHETRA_v1_0.md). Re-cited PAGE-ANCHORED —
+# verse_ref in this corpus is page-based; a chapter.sloka citation does not resolve.
+PD_ADH26_PG322_SUN     = "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)"
+PD_ADH26_PG322_MOON    = "Phaladipika Adh. XXVI, Sloka 4 — phaladeepika:PG322:C1 (Sastri trans. 1950)"
+PD_ADH26_PG322_MARS    = "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)"
+PD_ADH26_PG322_SATURN  = "Phaladipika Adh. XXVI, Sloka 5 — phaladeepika:PG322:C1 (Sastri trans. 1950)"
+PD_ADH26_PG323_MERCURY = "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)"
+PD_ADH26_PG323_JUPITER = "Phaladipika Adh. XXVI, Sloka 7 — phaladeepika:PG323:C1 (Sastri trans. 1950)"
+PD_ADH26_PG323_VENUS   = "Phaladipika Adh. XXVI, Sloka 8 — phaladeepika:PG323:C1 (Sastri trans. 1950)"
+
+# L0 repair item 3 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md §5; Gochara N-14 read together
+# with N-5/N-6/N-6a/N-10, GOCHARA_RULING_SHEET_v1_0.md on origin/l3/gochara-elevation):
+# the six Rahu/Ketu house-vedha rows (3rd/6th/11th from Moon, mirroring the Sun's set
+# less the 10th/4th pair) have no counterpart in Phaladipika Adh. XXVI slokas 3-8,
+# which name only the seven classical grahas — confirmed by row-by-row check and by a
+# corpus-wide search of every served text (Saravali, Jataka Parijata, Hora Sara,
+# Uttara Kalamrita): no alternative house-transit vedha source for these pairs exists.
+# N-14 rules the instrument casts no graha-drishti from the nodes; read alongside
+# N-5/N-6/N-6a/N-10 (which govern nothing is ever deleted, only relabelled honestly),
+# the same discipline applies here: the rows are NEVER DELETED and NEVER re-cited to
+# a sloka that does not in fact cover them (that would be a fabricated citation) —
+# they are marked honestly UNSOURCED. This does not contradict the corpus being
+# non-silent on Rahu/Ketu vedha altogether: PG348:C1 gives an explicit Rahu/Ketu
+# vedha rule, but for the Sarvatobhadra chakra's asterism-direction vedha, a
+# different mechanism from the house-transit pairs these six rows need.
+RAHU_KETU_HOUSE_VEDHA_UNSOURCED = (
+    "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in "
+    "the served corpus (Phaladipika Adh. XXVI slokas 3-8, phaladeepika:PG322:C1-"
+    "PG323:C1, name only the seven classical grahas; BPHS Ch.29 does not exist in "
+    "this corpus). Retained per B.10 (writers emit, serve-time governs; never "
+    "silently dropped) and Gochara N-14 (no graha-drishti cast from the nodes) — "
+    "see KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.5."
+)
+
 # ── §1 — BG_TRANSIT_ENGINE: Graha average motion parameters ──────────────────
 #
 # avg_daily_motion_deg: classical average daily motion in degrees
@@ -137,8 +177,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 9,
         "phala": "Courage, travel, gain from siblings",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 9th house transit nullifies result",
+        "classical_citation": PD_ADH26_PG322_SUN,
+        "rule_notes": (
+            "Vedha from 9th house transit nullifies result. Exception (sl. 3): "
+            "a Saturn transit through the vedha house does not nullify — L0 repair "
+            "item 2 Sec.4; bg_transit_rules has no exception column, declared here "
+            "as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -146,8 +191,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 12,
         "phala": "Defeat of enemies, health improvement",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 12th house transit nullifies result",
+        "classical_citation": PD_ADH26_PG322_SUN,
+        "rule_notes": (
+            "Vedha from 12th house transit nullifies result. Exception (sl. 3): "
+            "a Saturn transit through the vedha house does not nullify — L0 repair "
+            "item 2 Sec.4; bg_transit_rules has no exception column, declared here "
+            "as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -155,8 +205,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 10,
         "vedha_house": 4,
         "phala": "Career success, fame, royal favour",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 4th house transit nullifies result",
+        "classical_citation": PD_ADH26_PG322_SUN,
+        "rule_notes": (
+            "Vedha from 4th house transit nullifies result. Exception (sl. 3): "
+            "a Saturn transit through the vedha house does not nullify — L0 repair "
+            "item 2 Sec.4; bg_transit_rules has no exception column, declared here "
+            "as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -164,8 +219,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Financial gains, fulfillment of desires",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 5th house transit nullifies result",
+        "classical_citation": PD_ADH26_PG322_SUN,
+        "rule_notes": (
+            "Vedha from 5th house transit nullifies result. Exception (sl. 3): "
+            "a Saturn transit through the vedha house does not nullify — L0 repair "
+            "item 2 Sec.4; bg_transit_rules has no exception column, declared here "
+            "as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "unfavourable",
@@ -201,8 +261,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": 5,
         "phala": "Good health, mental peace, bodily comforts",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 5th house nullifies result",
+        "classical_citation": PD_ADH26_PG322_MOON,
+        "rule_notes": (
+            "Vedha from 5th house nullifies result. Exception (sl. 4): a Mercury "
+            "transit through the vedha house does not nullify — L0 repair item 2 "
+            "Sec.4; bg_transit_rules has no exception column, declared here as an "
+            "honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -210,8 +275,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 9,
         "phala": "Gain from siblings, short journeys, enterprise",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 9th nullifies result",
+        "classical_citation": PD_ADH26_PG322_MOON,
+        "rule_notes": (
+            "Vedha from 9th nullifies result. Exception (sl. 4): a Mercury transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -219,8 +289,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 12,
         "phala": "Defeat of enemies, good health",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 12th nullifies result",
+        "classical_citation": PD_ADH26_PG322_MOON,
+        "rule_notes": (
+            "Vedha from 12th nullifies result. Exception (sl. 4): a Mercury transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -228,8 +303,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 7,
         "vedha_house": 2,
         "phala": "Gain in partnership, conjugal happiness",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 2nd nullifies result",
+        "classical_citation": PD_ADH26_PG322_MOON,
+        "rule_notes": (
+            "Vedha from 2nd nullifies result. Exception (sl. 4): a Mercury transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -237,8 +317,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 10,
         "vedha_house": 4,
         "phala": "Professional success, recognition",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 4th nullifies result",
+        "classical_citation": PD_ADH26_PG322_MOON,
+        "rule_notes": (
+            "Vedha from 4th nullifies result. Exception (sl. 4): a Mercury transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -246,8 +331,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 8,
         "phala": "Gains, fulfilment of wishes",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 8th nullifies result",
+        "classical_citation": PD_ADH26_PG322_MOON,
+        "rule_notes": (
+            "Vedha from 8th nullifies result. Exception (sl. 4): a Mercury transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "unfavourable",
@@ -265,7 +355,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 12,
         "phala": "Courage, bravery, victory over enemies",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG322_MARS,
         "rule_notes": "Vedha from 12th nullifies result",
     },
     {
@@ -274,7 +364,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 9,
         "phala": "Defeat of enemies, liberation from debts",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG322_MARS,
         "rule_notes": "Vedha from 9th nullifies result",
     },
     {
@@ -283,7 +373,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Financial gains, political success",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG322_MARS,
         "rule_notes": "Vedha from 5th nullifies result",
     },
     {
@@ -320,8 +410,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": 5,
         "phala": "Eloquence, financial gain through communication",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 5th nullifies result",
+        "classical_citation": PD_ADH26_PG323_MERCURY,
+        "rule_notes": (
+            "Vedha from 5th nullifies result. Exception (sl. 6): a Moon transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -329,8 +424,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 4,
         "vedha_house": 3,
         "phala": "Good education, domestic happiness, vehicles",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 3rd nullifies result",
+        "classical_citation": PD_ADH26_PG323_MERCURY,
+        "rule_notes": (
+            "Vedha from 3rd nullifies result. Exception (sl. 6): a Moon transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -338,8 +438,30 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 9,
         "phala": "Victory over enemies, success in disputes",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 9th nullifies result",
+        "classical_citation": PD_ADH26_PG323_MERCURY,
+        "rule_notes": (
+            "Vedha from 9th nullifies result. Exception (sl. 6): a Moon transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
+    },
+    {
+        "rule_type": "favourable",
+        "graha": "mercury",
+        "primary_house": 8,
+        "vedha_house": 1,
+        "phala": "Success in trade or profession through resourcefulness",
+        "classical_citation": PD_ADH26_PG323_MERCURY,
+        "rule_notes": (
+            "L0 repair item 2 Sec.3 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md): the "
+            "text's sixth Mercury pair, absent from this table until this INSERT — "
+            "phala phrasing follows this writer's existing Mercury convention "
+            "(e.g. ids for houses 10/11), not invented. Vedha from 1st nullifies "
+            "result. Exception (sl. 6): a Moon transit through the vedha house "
+            "does not nullify — bg_transit_rules has no exception column, "
+            "declared here as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -347,8 +469,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 10,
         "vedha_house": 8,
         "phala": "Success in trade, professional recognition",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 8th nullifies result",
+        "classical_citation": PD_ADH26_PG323_MERCURY,
+        "rule_notes": (
+            "Vedha from 8th nullifies result. Exception (sl. 6): a Moon transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -356,8 +483,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 12,
         "phala": "Financial gains, accomplishment of desires",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Vedha from 12th nullifies result",
+        "classical_citation": PD_ADH26_PG323_MERCURY,
+        "rule_notes": (
+            "Vedha from 12th nullifies result. Exception (sl. 6): a Moon transit "
+            "through the vedha house does not nullify — L0 repair item 2 Sec.4; "
+            "bg_transit_rules has no exception column, declared here as an honest "
+            "precision limit, not silently resolved."
+        ),
     },
     # ── JUPITER (Guru) Gochara — BPHS Ch.29 ──────────────────────────────────
     {
@@ -366,7 +498,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": 12,
         "phala": "Wealth accumulation, family happiness",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_JUPITER,
         "rule_notes": "Jupiter 2nd from Moon — dhana yoga; vedha from 12th",
     },
     {
@@ -375,7 +507,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 5,
         "vedha_house": 4,
         "phala": "Good children, happiness, wisdom, spiritual gains",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_JUPITER,
         "rule_notes": "Jupiter 5th from Moon; vedha from 4th",
     },
     {
@@ -384,7 +516,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 7,
         "vedha_house": 3,
         "phala": "Marital happiness, partnership gains",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_JUPITER,
         "rule_notes": "Jupiter 7th from Moon; vedha from 3rd",
     },
     {
@@ -393,7 +525,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 9,
         "vedha_house": 10,
         "phala": "Dharmic activity, father's wellbeing, fortune",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_JUPITER,
         "rule_notes": "Jupiter 9th from Moon; vedha from 10th",
     },
     {
@@ -402,7 +534,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 8,
         "phala": "Major gains, fulfilment of wishes, income rise",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_JUPITER,
         "rule_notes": "Jupiter 11th from Moon — best transit; vedha from 8th",
     },
     {
@@ -430,7 +562,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 1,
         "vedha_house": 8,
         "phala": "Good health, pleasures, marital happiness",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_VENUS,
         "rule_notes": "Venus 1st from Moon; vedha from 8th",
     },
     {
@@ -439,26 +571,32 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 2,
         "vedha_house": 7,
         "phala": "Wealth, food, comforts, family happiness",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_VENUS,
         "rule_notes": "Venus 2nd from Moon; vedha from 7th",
     },
     {
+        # L0 repair item 2 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.2, row id 35):
+        # vedha_house corrected 11 -> 1 to match the text's 3rd-house pair. This
+        # row is an exact transposition of id 179's (11,3) pair (reversed), which
+        # explains its origin; primary_house=3 is correct and needed (deleting
+        # this row would remove the table's only 3rd-house Venus pair), so the
+        # repair is an UPDATE of vedha_house only, never a delete. Row 179 is
+        # untouched.
         "rule_type": "favourable",
         "graha": "venus",
         "primary_house": 3,
-        "vedha_house": 11,
+        "vedha_house": 1,
         "phala": "Gains from siblings, short journeys, new ventures",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Venus 3rd from Moon; vedha from 11th",
+        "classical_citation": PD_ADH26_PG323_VENUS,
+        "rule_notes": "Venus 3rd from Moon; vedha from 1st",
     },
-    # BPHS Ch.29 — complete favourable set; Wave 2 audit fix
     {
         "rule_type": "favourable",
         "graha": "venus",
         "primary_house": 4,
         "vedha_house": 10,
         "phala": "Domestic happiness, comforts, mother's well-being",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_VENUS,
         "rule_notes": "Venus 4th from Moon; vedha from 10th",
     },
     {
@@ -467,26 +605,36 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 5,
         "vedha_house": 9,
         "phala": "Children, romance, creativity, speculative gains",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_VENUS,
         "rule_notes": "Venus 5th from Moon; vedha from 9th",
     },
     {
+        # L0 repair item 2 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.2, row id 44):
+        # vedha_house corrected 1 -> 5 to match the text's 8th-house pair. This
+        # row is an exact transposition of id 33's (1,8) pair (reversed), which
+        # explains its origin; primary_house=8 is correct and needed (deleting
+        # this row would remove the table's only 8th-house Venus pair), so the
+        # repair is an UPDATE of vedha_house only, never a delete. Row 33 is
+        # untouched.
         "rule_type": "favourable",
         "graha": "venus",
         "primary_house": 8,
-        "vedha_house": 1,
+        "vedha_house": 5,
         "phala": "Longevity support, gains through inheritance or partner",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Venus 8th from Moon; vedha from 1st",
+        "classical_citation": PD_ADH26_PG323_VENUS,
+        "rule_notes": "Venus 8th from Moon; vedha from 5th",
     },
     {
+        # L0 repair item 2 (KSHETRA_L0_VEDHA_ROW_FIXES_v1_0.md Sec.2, row id 45):
+        # vedha_house corrected 2 -> 11 — a content typo, not a transposition
+        # (nearest text pair 9th->11th); primary_house=9 is unaffected, UPDATE only.
         "rule_type": "favourable",
         "graha": "venus",
         "primary_house": 9,
-        "vedha_house": 2,
+        "vedha_house": 11,
         "phala": "Dharmic fortune, prosperity, guru's grace",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Venus 9th from Moon; vedha from 2nd",
+        "classical_citation": PD_ADH26_PG323_VENUS,
+        "rule_notes": "Venus 9th from Moon; vedha from 11th",
     },
     {
         "rule_type": "favourable",
@@ -494,7 +642,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 3,
         "phala": "Gains, fulfilment of desires, elder sibling prosperity",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_VENUS,
         "rule_notes": "Venus 11th from Moon; vedha from 3rd",
     },
     {
@@ -503,7 +651,7 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 12,
         "vedha_house": 6,
         "phala": "Pleasures of the bed, foreign travel, liberation-tending",
-        "classical_citation": BPHS_CH29,
+        "classical_citation": PD_ADH26_PG323_VENUS,
         "rule_notes": "Venus 12th from Moon; vedha from 6th",
     },
     # F-145: Venus unfavourable set (6th/7th/10th from Moon) — the writer previously
@@ -543,8 +691,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 12,
         "phala": "Courage, perseverance, enterprise, gains from effort",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Saturn 3rd from Moon — best transit; vedha from 12th",
+        "classical_citation": PD_ADH26_PG322_SATURN,
+        "rule_notes": (
+            "Saturn 3rd from Moon — best transit; vedha from 12th. Exception "
+            "(sl. 5): a Sun transit through the vedha house does not nullify — "
+            "L0 repair item 2 Sec.4; bg_transit_rules has no exception column, "
+            "declared here as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -552,8 +705,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 9,
         "phala": "Victory over enemies, servants, legal gains",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Saturn 6th from Moon; vedha from 9th nullifies",
+        "classical_citation": PD_ADH26_PG322_SATURN,
+        "rule_notes": (
+            "Saturn 6th from Moon; vedha from 9th nullifies. Exception (sl. 5): "
+            "a Sun transit through the vedha house does not nullify — L0 repair "
+            "item 2 Sec.4; bg_transit_rules has no exception column, declared "
+            "here as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "favourable",
@@ -561,8 +719,13 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Sustained income, gains through persistence",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Saturn 11th from Moon; vedha from 5th nullifies",
+        "classical_citation": PD_ADH26_PG322_SATURN,
+        "rule_notes": (
+            "Saturn 11th from Moon; vedha from 5th nullifies. Exception (sl. 5): "
+            "a Sun transit through the vedha house does not nullify — L0 repair "
+            "item 2 Sec.4; bg_transit_rules has no exception column, declared "
+            "here as an honest precision limit, not silently resolved."
+        ),
     },
     {
         "rule_type": "unfavourable",
@@ -598,8 +761,8 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 9,
         "phala": "Enterprise, travel, gain through courage; sibling support",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Rahu 3rd from Moon — gain and initiative; vedha from 9th nullifies.",
+        "classical_citation": RAHU_KETU_HOUSE_VEDHA_UNSOURCED,
+        "rule_notes": "Rahu 3rd from Moon — gain and initiative. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification).",
     },
     {
         "rule_type": "favourable",
@@ -607,8 +770,8 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 12,
         "phala": "Defeat of enemies, legal victories, health improvement",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Rahu 6th from Moon — ari-bhava placement aids in enemy removal; vedha from 12th.",
+        "classical_citation": RAHU_KETU_HOUSE_VEDHA_UNSOURCED,
+        "rule_notes": "Rahu 6th from Moon — ari-bhava placement aids in enemy removal. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification).",
     },
     {
         "rule_type": "favourable",
@@ -616,8 +779,8 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Financial gains, labha, fulfillment of desires through unconventional means",
-        "classical_citation": PD_CH26,
-        "rule_notes": "Rahu 11th from Moon — labha amplified; shadow planet in gain house; vedha from 5th.",
+        "classical_citation": RAHU_KETU_HOUSE_VEDHA_UNSOURCED,
+        "rule_notes": "Rahu 11th from Moon — labha amplified; shadow planet in gain house. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification).",
     },
     {
         "rule_type": "unfavourable",
@@ -680,8 +843,8 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 3,
         "vedha_house": 9,
         "phala": "Moderate gain through effort; spiritual enterprise; sibling support",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Ketu 3rd from Moon — paurushabala enterprise; less potent than Rahu here; vedha from 9th.",
+        "classical_citation": RAHU_KETU_HOUSE_VEDHA_UNSOURCED,
+        "rule_notes": "Ketu 3rd from Moon — paurushabala enterprise; less potent than Rahu here. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification).",
     },
     {
         "rule_type": "favourable",
@@ -689,8 +852,8 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 6,
         "vedha_house": 12,
         "phala": "Enemies subdued; disease removal; spiritual purification",
-        "classical_citation": BPHS_CH29,
-        "rule_notes": "Ketu 6th from Moon — moksha-karak in ari-bhava aids liberation from obstacles.",
+        "classical_citation": RAHU_KETU_HOUSE_VEDHA_UNSOURCED,
+        "rule_notes": "Ketu 6th from Moon — moksha-karak in ari-bhava aids liberation from obstacles. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification).",
     },
     {
         "rule_type": "favourable",
@@ -698,8 +861,8 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "primary_house": 11,
         "vedha_house": 5,
         "phala": "Spiritual gains, gains through research or occult; modest material labha",
-        "classical_citation": PD_CH26,
-        "rule_notes": "Ketu 11th from Moon — gains oriented toward karmic fulfilment; vedha from 5th.",
+        "classical_citation": RAHU_KETU_HOUSE_VEDHA_UNSOURCED,
+        "rule_notes": "Ketu 11th from Moon — gains oriented toward karmic fulfilment. L0 repair item 3: vedha_house retained, disposition unsourced (never a claimed-cited nullification).",
     },
     {
         "rule_type": "favourable",

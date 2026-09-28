@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { fetchBuildState } from '@/lib/build/dataSource'
 import { CockpitGrid } from '@/components/build/CockpitGrid'
 import { stalenessLabel } from '@/lib/build/format'
@@ -34,9 +33,9 @@ export default async function BuildCockpitPage() {
             </span>
           )}
           {state && (
-            <Link href="/build/health" className={`bt-body hover:underline ${healthClass}`}>
+            <span className={`bt-body ${healthClass}`}>
               {healthLabel}
-            </Link>
+            </span>
           )}
         </div>
       </div>

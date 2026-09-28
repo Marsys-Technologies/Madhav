@@ -77,6 +77,7 @@ import {
 // grahaCodeOf, AddressResolutionError} call site is unaffected — moved, not copied.
 // A CLIENT COMPONENT must import from './graha_labels' directly, never from this file.
 import { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
+import { resolvedBuildFenceIds, type BuildFence } from './registry/generation/served_generation'
 export { AddressResolutionError, GRAHA_CODE_TO_NAME, grahaCodeOf } from './graha_labels'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -298,24 +299,24 @@ export interface ResolvedAddress {
 interface ResolveCtx {
   chart_id: string
   ayanamsha_id: string
-  /** Optional immutable chart-build generation. When present every build-bearing read is
-   *  fenced to this exact generation; omitted callers retain the historical latest-row
-   *  behaviour for backward compatibility. */
-  build_id?: string
+  /** Optional build fence: one build id, or a chart's served build set
+   *  (generation/served_generation.ts). When present every build-bearing read is fenced to
+   *  it; omitted callers retain the historical latest-row behaviour for backward compatibility. */
+  build_id?: BuildFence
 }
 
 function factBuildFence(ctx: ResolveCtx, param: number): string {
-  return ctx.build_id ? ` AND build_id = $${param}::uuid` : ''
+  return ctx.build_id ? ` AND build_id = ANY($${param}::uuid[])` : ''
 }
 
 function divisionalBuildFence(ctx: ResolveCtx, param: number): string {
   return ctx.build_id
-    ? ` AND build_id = $${param}::text AND build_id_uuid = $${param}::uuid`
+    ? ` AND build_id = ANY($${param}::text[]) AND build_id_uuid = ANY($${param}::uuid[])`
     : ''
 }
 
 function withBuildParam(ctx: ResolveCtx, params: unknown[]): unknown[] {
-  return ctx.build_id ? [...params, ctx.build_id] : params
+  return ctx.build_id ? [...params, resolvedBuildFenceIds(ctx.build_id, 'address_resolver')] : params
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -533,7 +534,7 @@ async function resolveFrameSign(
 export async function resolveFrameReferenceSign(
   chart_id: string,
   frame: ReferenceFrame,
-  opts?: { ayanamsha_id?: string; build_id?: string },
+  opts?: { ayanamsha_id?: string; build_id?: BuildFence },
 ): Promise<{ sign: ZodiacSign; fact_ids: string[]; ayanamsha_frame_sensitivity?: AyanamshaFrameSensitivity }> {
   const ctx: ResolveCtx = {
     chart_id,
@@ -1022,7 +1023,7 @@ function ordinal(n: number): string {
 export async function resolveAddress(
   chart_id: string,
   expression: AddressExpression | string,
-  opts?: { ayanamsha_id?: string; paradigm?: Paradigm; build_id?: string },
+  opts?: { ayanamsha_id?: string; paradigm?: Paradigm; build_id?: BuildFence },
 ): Promise<ResolvedAddress> {
   const expr = typeof expression === 'string' ? parseAddressExpression(expression) : expression
   assertParadigmCoherent(expr, opts?.paradigm)

@@ -566,14 +566,14 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(bootstrap.if).toContain("needs.migration-state.outputs.nirmana == 'unmarked'")
     expect(bootstrap.if).toContain("needs.migration-state.outputs.purna != 'marked'")
     expect(Object.entries(workflowJobs).filter(([, job]) => job.environment === 'data-plane-production-cutover').map(([name]) => name))
-      .toEqual(['privileged-bootstrap'])
+      .toEqual(['privileged-bootstrap', 'jataka-protected-migrations'])
     expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_ADMIN_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('NIRMANA_MIGRATOR_DATABASE_URL')
 
-    expect(migrate.needs).toEqual(['changes', 'migration-state', 'privileged-bootstrap'])
+    expect(migrate.needs).toEqual(['changes', 'migration-state', 'privileged-bootstrap', 'jataka-protected-migrations'])
     expect(migrate.environment).toBeUndefined()
     expect(migrate.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
     expect(migrate.if).toContain('always()')
@@ -629,15 +629,18 @@ describe('DP-SD-018 deployment ordering', () => {
     for (const secret of [
       'DATA_PLANE_ADMIN_DATABASE_URL',
       'DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL',
-      'DATA_PLANE_MIGRATOR_DATABASE_URL',
       'NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL',
       'NIRMANA_MIGRATOR_DATABASE_URL',
     ]) {
       expect(Object.entries(workflowJobs).filter(([, job]) => JSON.stringify(job).includes(secret)).map(([name]) => name))
         .toEqual(['privileged-bootstrap'])
     }
+    expect(Object.entries(workflowJobs)
+      .filter(([, job]) => JSON.stringify(job).includes('DATA_PLANE_MIGRATOR_DATABASE_URL'))
+      .map(([name]) => name))
+      .toEqual(['privileged-bootstrap', 'jataka-protected-migrations'])
 
-    for (const jobName of ['deploy-web', 'deploy-mcp', 'deploy-pipeline-job']) {
+    for (const jobName of ['deploy-web', 'deploy-sidecar', 'deploy-mcp', 'deploy-pipeline-job']) {
       expect(workflowJobs[jobName].needs).toContain('migrate')
     }
   })
@@ -658,6 +661,7 @@ describe('DP-SD-018 deployment ordering', () => {
       purna: string,
       bootstrapResult: string,
       isolation = 'strict',
+      jatakaResult = 'skipped',
     ) => ({
       ...base,
       'needs.migration-state.outputs.data_plane': dataPlane,
@@ -665,6 +669,7 @@ describe('DP-SD-018 deployment ordering', () => {
       'needs.migration-state.outputs.nirmana': nirmana,
       'needs.migration-state.outputs.purna': purna,
       'needs.privileged-bootstrap.result': bootstrapResult,
+      'needs.jataka-protected-migrations.result': jatakaResult,
     })
 
     expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped'))).toBe(false)
@@ -683,6 +688,8 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'success', 'repair_required'))).toBe(true)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped', 'strict', 'success'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped', 'strict', 'failure'))).toBe(false)
 
     for (const result of ['failure', 'cancelled', 'skipped']) {
       expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'marked', result))).toBe(false)

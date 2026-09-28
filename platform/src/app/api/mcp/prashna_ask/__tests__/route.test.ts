@@ -63,6 +63,16 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => {
   }
 })
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
+// Jātaka chart workspace: every reading door admits only a Ready chart (shared
+// readiness gate). This harness exercises a Ready chart unless a test says otherwise.
+const { readinessState } = vi.hoisted(() => ({ readinessState: { value: 'ready' as string | 'throw' } }))
+vi.mock('@/lib/charts/readiness', () => ({
+  getChartReadinessMap: vi.fn(async (ids: string[]) => {
+    if (readinessState.value === 'throw') throw new Error('db down')
+    return new Map(ids.map((id) => [id, { state: readinessState.value }]))
+  }),
+  isDerivedChartReady: (r: { state: string }) => r.state === 'ready',
+}))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn().mockResolvedValue('fake-model') }))
@@ -88,6 +98,20 @@ vi.mock('@/lib/models/registry', () => {
 const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
   mockGetToolByName: vi.fn(),
+}))
+const { mockAuthorizeMcpByokPrincipal, mockPrepareMcpByokRuntime } = vi.hoisted(() => ({
+  mockAuthorizeMcpByokPrincipal: vi.fn(),
+  mockPrepareMcpByokRuntime: vi.fn(),
+}))
+const { mockObserveMcpExternalSynthesis } = vi.hoisted(() => ({
+  mockObserveMcpExternalSynthesis: vi.fn(),
+}))
+vi.mock('@/lib/mcp/prashna_ask/byok_preflight', () => ({
+  authorizeMcpByokPrincipal: mockAuthorizeMcpByokPrincipal,
+  prepareMcpByokRuntime: mockPrepareMcpByokRuntime,
+}))
+vi.mock('@/lib/ai-console/observability', () => ({
+  observeMcpExternalSynthesis: mockObserveMcpExternalSynthesis,
 }))
 const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
@@ -218,11 +242,15 @@ function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  readinessState.value = 'ready'
   managedInquiry.getJob.mockResolvedValue(null)
   knowledgeState.snapshot = null
   knowledgeState.overlay = null
   knowledgeState.overlaySequence = []
   knowledgeState.overlayLoadCount = 0
+  configService.setFlag('AI_CONSOLE_BYOK', false)
+  mockAuthorizeMcpByokPrincipal.mockResolvedValue({ role: 'guest' })
+  mockObserveMcpExternalSynthesis.mockReturnValue(undefined)
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -329,6 +357,191 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
   })
 })
 
+describe('POST /api/mcp/prashna_ask — AI Console routing', () => {
+  it('rejects a revoked or mismatched credential before any managed-job or routing read', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    mockAuthorizeMcpByokPrincipal.mockRejectedValue(new Error('credential revoked'))
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'must stop before job lookup',
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000098',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000098',
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(401)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledOnce()
+    expect(managedInquiry.getJob).not.toHaveBeenCalled()
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('rejects a forged managed job before snapshot preflight or any model call', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    managedInquiry.getJob.mockResolvedValue(null)
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'forged managed request',
+      managed_job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
+      managed_inquiry_id: 'bbbbbbbb-1111-4000-8000-000000000099',
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(401)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledOnce()
+    expect(managedInquiry.getJob).toHaveBeenCalledWith({
+      job_id: 'aaaaaaaa-1111-4000-8000-000000000099',
+      principal_uid: 'owner-uid',
+      principal_key_id: 'mcp_test_KEY001',
+    })
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(mockAuthorizeMcpByokPrincipal.mock.invocationCallOrder[0])
+      .toBeLessThan(managedInquiry.getJob.mock.invocationCallOrder[0])
+  })
+
+  it('reads an authorized managed job before repeating authority in atomic routing preparation', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000097'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000097'
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors: {}, releaseAdmission: vi.fn(), safeSnapshot: {},
+    })
+    mockCallPipelinePlanner.mockResolvedValue({
+      outcome: 'clarification_needed', question: 'Which period?', missing_scope_dims: [], suggested_options: [],
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'authorized managed request',
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }, { 'x-mcp-auth-kind': 'api_key' }))
+
+    expect(res.status).toBe(200)
+    expect(mockAuthorizeMcpByokPrincipal.mock.invocationCallOrder[0])
+      .toBeLessThan(managedInquiry.getJob.mock.invocationCallOrder[0])
+    expect(managedInquiry.getJob.mock.invocationCallOrder[0])
+      .toBeLessThan(mockPrepareMcpByokRuntime.mock.invocationCallOrder[0])
+    expect(mockPrepareMcpByokRuntime.mock.invocationCallOrder[0])
+      .toBeLessThan(mockCallPipelinePlanner.mock.invocationCallOrder[0])
+  })
+
+  it('uses the mapped Default executors and returns evidence without invoking Madhav synthesis', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const releaseAdmission = vi.fn()
+    const executors = {
+      planner: { execute: vi.fn() },
+      deep_planner: { execute: vi.fn() },
+      worker: { execute: vi.fn() },
+    }
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors, releaseAdmission,
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'Give me the evidence.' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    const lines = await readNdjson(res)
+    const final = lines.at(-1)
+
+    expect(mockPrepareMcpByokRuntime).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'owner-uid', keyId: 'mcp_test_KEY001', authKind: 'api_key', chartId: CHART,
+    }))
+    expect(mockCallPipelinePlanner.mock.calls[0]?.[10]).toEqual({
+      plannerExecutor: executors.planner,
+      deepPlannerExecutor: executors.deep_planner,
+      workerExecutor: executors.worker,
+      abortSignal: expect.any(AbortSignal),
+    })
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(final).toMatchObject({
+      event: 'final', schema_version: 'madhav.evidence.v1',
+      synthesis: { mode: 'external', performed_by_madhav: false },
+      question: 'Give me the evidence.',
+    })
+    expect(final).not.toHaveProperty('reading')
+    expect((final?.routing as { roles: object }).roles).not.toHaveProperty('synthesizer')
+    expect(releaseAdmission).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not delay the final MCP envelope when handoff telemetry never settles', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    mockObserveMcpExternalSynthesis.mockReturnValue(new Promise<void>(() => undefined))
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1', executors: {}, releaseAdmission: vi.fn(),
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome([]))
+
+    const response = await POST(makeReq(
+      { chart_id: CHART, question: 'Return evidence without telemetry delay.' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    const lines = await Promise.race([
+      readNdjson(response),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('telemetry blocked MCP')), 100)),
+    ])
+
+    expect(lines.at(-1)).toMatchObject({ event: 'final', synthesis: { mode: 'external' } })
+    expect(mockObserveMcpExternalSynthesis).toHaveBeenCalledOnce()
+  })
+
+  it('logs only a stable code, trace, and allowlisted tool for BYOK retrieval failures', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    const releaseAdmission = vi.fn()
+    const target = { kind: 'provider_model', connectionId: 'connection-1', providerId: 'openai', modelId: 'model-1' }
+    mockPrepareMcpByokRuntime.mockResolvedValue({
+      role: 'guest', snapshotId: 'snapshot-1',
+      executors: { planner: { execute: vi.fn() }, deep_planner: { execute: vi.fn() }, worker: { execute: vi.fn() } },
+      releaseAdmission,
+      safeSnapshot: {
+        source: 'mcp', userId: 'owner-uid', correlationId: 'turn-1', conversationId: null,
+        selection: { kind: 'default' },
+        resolvedChoice: { kind: 'provider_model', connectionId: 'connection-1', modelId: 'model-1' },
+        configurationVersion: null,
+        roles: { synthesizer: target, planner: target, deep_planner: target, worker: target },
+      },
+    })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['safe_tool']))
+    mockGetToolByName.mockReturnValue({
+      name: 'safe_tool', version: '1.0', dispatch_units: 1,
+      retrieve: vi.fn().mockRejectedValue(new Error('provider-secret-value must not be logged')),
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const res = await POST(makeReq(
+        { chart_id: CHART, question: 'Trigger a safe retrieval failure.' },
+        { 'x-mcp-auth-kind': 'api_key' },
+      ))
+      await readNdjson(res)
+      const rendered = errorSpy.mock.calls.map(args => args.map(String).join(' ')).join('\n')
+      expect(rendered).toContain('MCP_TOOL_DISPATCH_FAILED')
+      expect(rendered).toContain('tool=safe_tool')
+      expect(rendered).not.toContain('provider-secret-value')
+    } finally {
+      errorSpy.mockRestore()
+    }
+    expect(releaseAdmission).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
   it('routes a non-exhausted page through the same managed reservation and evidence checkpoint before serving page two', async () => {
     const jobId = 'aaaaaaaa-1111-4000-8000-000000000011'
@@ -366,6 +579,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       failClosedAmbiguity: vi.fn(),
       failClosed: vi.fn(async (contract: InquiryContract) => contract),
       finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'COMPLETE' as const })),
+      continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
       current = { ...contract, max_iterations: 3 }
@@ -382,6 +596,177 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
     expect(session.beginAction).toHaveBeenCalledTimes(2)
     expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
+    // With an inquiry contract, synthesis is shown register-annotated display copies (R2C.1).
+    expect(mockSynthesizeReading.mock.calls.at(-1)?.[0]?.citeRegisterFindings).toBe(true)
+  })
+
+  // The two "legacy" tests below drive a MOCKED session whose contract carries no `successor` receipt,
+  // so they pin the pre-envelope tool-set path only. The envelope path (admit, refuse, recovery, no
+  // bypass) is proven against the real compiler and lifecycle in route.successor_envelope.test.ts.
+  it('legacy (envelope-less) successor contract: continues using only request-authorized tools, and carries the chain', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000012'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000012'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'evidence successor test', response_format: 'standard' },
+    })
+    // The successor's admitted item reuses the fixture's one real binding — this test proves
+    // the ROUTE'S continuation/successor wiring, not the compiler's evidence-frontier semantics
+    // (proven separately in evidence_frontier.test.ts and execution_session.test.ts).
+    const successorItem = {
+      item_id: 'item-901', obligation_ids: ['obligation-901'], scu_id: 'scu.test.wealth',
+      binding_id: 'registry:marsys://tool/L1/test', args: {}, depends_on: [], blocked_reason: null,
+      state: 'ready' as const, observation: null,
+    }
+    let current: InquiryContract | undefined
+    let successorAdopted = false
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const contract = requireInquiryContract(current)
+        current = {
+          ...contract,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
+            ? { ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'COMPLETE' as const })),
+      continueWithEvidenceSuccessor: vi.fn().mockImplementation(async () => {
+        if (successorAdopted) return false
+        successorAdopted = true
+        current = { ...requireInquiryContract(current), status: 'INCOMPLETE', plan_items: [successorItem] }
+        return true
+      }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 5 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'evidence successor test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    expect(lines.at(-1)?.event).toBe('final')
+    expect(session.continueWithEvidenceSuccessor).toHaveBeenCalledTimes(1)
+    // Two persisted observations: the original item, then the successor's admitted item.
+    expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
+    expect(session.persistAcceptedObservation).toHaveBeenNthCalledWith(2, expect.objectContaining({ plan_item_id: 'item-901' }))
+    expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
+  })
+
+  it('legacy (envelope-less) successor contract: never dispatches an item outside the request-authorized tool set', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000013'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000013'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    // Only 'authorized_test' is authorized — the successor names an item this request never authorized.
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'evidence successor gap test', response_format: 'standard' },
+    })
+    const successorItem = {
+      item_id: 'item-901', obligation_ids: ['obligation-901'], scu_id: 'scu.discovered',
+      binding_id: 'registry:marsys://tool/L1/unauthorized', args: {}, depends_on: [], blocked_reason: null,
+      state: 'ready' as const, observation: null,
+    }
+    let current: InquiryContract | undefined
+    let successorAdopted = false
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id, disposition, gap_reason }: { plan_item_id: string; disposition: 'served' | 'empty' | 'failed'; gap_reason?: string }) => {
+        const contract = requireInquiryContract(current)
+        current = {
+          ...contract,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
+            ? { ...item, state: 'observed', observation: { disposition, evidence_refs: ['managed:receipt'], gap_reason: gap_reason ?? null } }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'BLOCKED' as const })),
+      continueWithEvidenceSuccessor: vi.fn().mockImplementation(async () => {
+        if (successorAdopted) return false
+        successorAdopted = true
+        current = { ...requireInquiryContract(current), status: 'INCOMPLETE', plan_items: [successorItem] }
+        return true
+      }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 5 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'evidence successor gap test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    expect(lines.at(-1)?.event).toBe('final')
+    expect(mockGetToolByName).not.toHaveBeenCalledWith('marsys://tool/L1/unauthorized')
+    expect(session.continueWithEvidenceSuccessor).toHaveBeenCalledTimes(1)
+    // The unauthorized successor item is durably closed with the SAME named gap the Portal door
+    // records, without a dispatch and without any result entering recovered evidence.
+    const failure = session.persistAcceptedObservation.mock.calls.find(([args]) => args.plan_item_id === 'item-901')
+    expect(failure?.[0]).toMatchObject({
+      disposition: 'failed', gap_reason: 'successor_capability_not_authorized_for_request', bundle: undefined,
+    })
+    expect(session.beginAction).toHaveBeenCalledWith('item-901')
+    expect(session.readyActionIds).toEqual([])
+  })
+
+  it('records the planner slot, requested reasoning, and fallback model on the managed contract (RC-5.6)', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000019'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000019'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue({
+      ...planOutcome(['authorized_test'], scope),
+      metrics: {
+        planning_confidence: 0.9, fallback_used: true, active_model_id: 'fallback-planner-model',
+        parsed_on_first_attempt: true, first_parse_error: null,
+      },
+    })
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'managed provenance test', response_format: 'standard' },
+    })
+    let opened: InquiryContract | undefined
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      opened = contract
+      throw new Error('stop after compile')
+    })
+
+    await POST(makeReq({
+      chart_id: CHART, question: 'managed provenance test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    })).then(readNdjson).catch(() => undefined)
+
+    expect(requireInquiryContract(opened).planning_provenance).toEqual({
+      planner: 'model', ai_proposal_source: 'server_planner', call_type: 'planner_fast',
+      reasoning_requested: 'auto', model_id: 'fallback-planner-model', fallback_used: true,
+    })
   })
 
   it('terminalizes a capped ready continuation without a post-cap retrieval', async () => {
@@ -417,6 +802,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       failClosedAmbiguity: vi.fn(),
       failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
       finalizeWhenNoReady: vi.fn(async () => requireInquiryContract(current)),
+      continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
       current = { ...contract, max_iterations: 1 }
@@ -457,7 +843,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     const session = {
       recoveredEvidence: vi.fn().mockResolvedValue([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }]),
       beginAction: vi.fn(), persistAcceptedObservation: vi.fn(), failClosedAmbiguity: vi.fn(), failClosed: vi.fn(),
-      finalizeWhenNoReady: vi.fn(), readyActionIds: [],
+      finalizeWhenNoReady: vi.fn(), continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false), readyActionIds: [],
       currentContract: null as InquiryContract | null,
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
@@ -506,7 +892,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       get currentContract() { return requireInquiryContract(current) },
       get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
-      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(), continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
       failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
@@ -550,7 +936,7 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
       get currentContract() { return requireInquiryContract(current) },
       get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
       recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
-      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(), continueWithEvidenceSuccessor: vi.fn().mockResolvedValue(false),
       failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
     }
     managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
@@ -981,6 +1367,8 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.emptyResultTools).toEqual([])
     expect(call.strippedLeakedCapabilities).toEqual([])
     expect(call.capTripped).toBeNull()
+    // Without an inquiry contract there is no register to cite.
+    expect(call.citeRegisterFindings).toBe(false)
   })
 
   it('passes an explicitly requested response format to synthesis', async () => {
@@ -1487,5 +1875,53 @@ describe('PPR-12 safety gate (MCP door)', () => {
     expect(safetyDecision.decision_id).toMatch(UUID_RE)
     expect(safetyDecision.review_id).toBeNull()
     expect(typeof safetyDecision.audit_written).toBe('boolean')
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — shared chart readiness gate (Jātaka Phase-A2)', () => {
+  it.each([
+    ['building', true],
+    ['needs-rebuild', false],
+    ['failed', false],
+    ['partially-built', false],
+    ['not-built', false],
+    ['throw', true],
+  ])('a %s chart is refused before planning, retrieval, synthesis or spend (retryable=%s)', async (state, retryable) => {
+    readinessState.value = state
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'What does my career look like?' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error.class).toBe('chart_not_ready')
+    expect(body.error.code).toBe('CHART_RECOMPUTE_REQUIRED')
+    // The code survives a durable job store that keeps only the message.
+    expect(body.error.message).toMatch(/^CHART_RECOMPUTE_REQUIRED: /)
+    expect(body.error.retryable).toBe(retryable)
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+    expect(mockGetToolByName).not.toHaveBeenCalled()
+  })
+
+  it('authorizes a flag-on caller but refuses an unready chart before BYOK admission', async () => {
+    configService.setFlag('AI_CONSOLE_BYOK', true)
+    readinessState.value = 'building'
+    const res = await POST(makeReq(
+      { chart_id: CHART, question: 'What does my career look like?' },
+      { 'x-mcp-auth-kind': 'api_key' },
+    ))
+    expect(res.status).toBe(409)
+    expect(mockAuthorizeMcpByokPrincipal).toHaveBeenCalledTimes(1)
+    expect(mockPrepareMcpByokRuntime).not.toHaveBeenCalled()
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('a denied chart is still refused by authorization first, without consulting readiness', async () => {
+    ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('deny')
+    readinessState.value = 'failed'
+    const res = await POST(makeReq({ chart_id: CHART, question: 'q' }))
+    expect(res.status).toBe(401)
   })
 })

@@ -31,7 +31,8 @@ describe('chart_facts build_id schema contract', () => {
       join(process.cwd(), 'src/lib/retrieval/address_resolver.ts'),
       'utf8',
     )
-    expect(resolver).toMatch(/function factBuildFence[\s\S]*?build_id = \$\$\{param\}::uuid[\s\S]*?\n\}/)
-    expect(resolver).toMatch(/function divisionalBuildFence[\s\S]*?build_id = \$\$\{param\}::text AND build_id_uuid = \$\$\{param\}::uuid[\s\S]*?\n\}/)
+    // Fences accept a served build set (generation/served_generation.ts); chart_facts stays uuid-typed.
+    expect(resolver).toMatch(/function factBuildFence[\s\S]*?build_id = ANY\(\$\$\{param\}::uuid\[\]\)[\s\S]*?\n\}/)
+    expect(resolver).toMatch(/function divisionalBuildFence[\s\S]*?build_id = ANY\(\$\$\{param\}::text\[\]\) AND build_id_uuid = ANY\(\$\$\{param\}::uuid\[\]\)[\s\S]*?\n\}/)
   })
 })

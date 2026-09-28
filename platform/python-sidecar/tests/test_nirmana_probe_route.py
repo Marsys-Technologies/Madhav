@@ -151,7 +151,7 @@ def test_full_frozen_release_contracts_match_javascript_digests():
         "febfe3379c97f5a02f88b56d6eb6894e2f3aa9e50d1081561aaae4b56de7dbf2"
     )
     assert nirmana_probe._contract_digest(contracts["bg_ephemeris_engine"]) == (
-        "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4"
+        "d36262fa325fc2c29fe5ccf026d3da67120cad2280b1f7e1287bf4a327db5de1"
     )
     assert nirmana_probe._contract_digest(contracts["ka_graha_sancara"]) == (
         "2e7108591fc10fc0c435c9129b2336f18d79ec4348d765008aa0b5521f4bd8a6"
@@ -165,6 +165,22 @@ def test_full_frozen_release_contracts_match_javascript_digests():
     assert nirmana_probe._contract_digest(contracts["ka_muhurta_seva"]) == (
         "96a89ddf3ea762a1746109f438cca1ecec86534fe1a088f14eca88a77fc52001"
     )
+
+
+def test_release_smoke_ephemeris_contract_is_accepted_by_the_probe_validator():
+    # The release smoke posts this static contract to the candidate revision and needs a
+    # GREEN answer. Migration 1075 made two fields required by the probe while this copy
+    # still lacked them, so probe_config_valid failed and every sidecar deploy was blocked.
+    # Validating here (no ephemeris files needed) catches that class of drift in unit CI.
+    from pipeline.orchestrator.service_probes import _validated_ephemeris_probe_config
+
+    contracts_path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "nirmana_probe_contracts.json"
+    )
+    contract = json.loads(contracts_path.read_text(encoding="utf-8"))["bg_ephemeris_engine"]
+    config = _validated_ephemeris_probe_config(contract)
+    assert config["expected_mean_node_rahu_longitude_deg"] == pytest.approx(49.033044)
+    assert config["mean_node_longitude_tolerance_deg"] == pytest.approx(10 / 3600)
 
 
 @pytest.fixture

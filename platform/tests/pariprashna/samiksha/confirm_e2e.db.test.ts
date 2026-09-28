@@ -85,6 +85,9 @@ run('SAMĪKṢĀ candidate → confirm → ledger (real DB, real DAL)', () => {
       lifecycle_status text NOT NULL DEFAULT 'detected',
       build_id text, priors_version text, formula_versions jsonb, ranking_config jsonb,
       now_context_date date, stamp_copied_at timestamptz,
+      chart_context_stale_at timestamptz,
+      chart_context_stale_reason text,
+      chart_context_superseded_by_run_id uuid,
       outcome text, outcome_value numeric, outcome_note text, outcome_recorded_at timestamptz,
       confirmed_at timestamptz, dismissed_reason text,
       created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now())`)

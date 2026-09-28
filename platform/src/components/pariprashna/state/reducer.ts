@@ -105,9 +105,14 @@ export interface StopAction {
   turnId: string
 }
 
+/** Client-only action: switch the surface to a different chart/conversation scope. */
+export interface ResetThreadAction {
+  type: 'RESET_THREAD'
+}
+
 /** Client-only action: expand/collapse handled at component level (not reducer) — no action needed. */
 
-export type ThreadAction = WireEvent | SubmitTurnAction | StopAction
+export type ThreadAction = WireEvent | SubmitTurnAction | StopAction | ResetThreadAction
 
 function updateTurn(state: ThreadState, turnId: string, fn: (t: TurnState) => TurnState): ThreadState {
   let touched = false
@@ -148,6 +153,9 @@ function addSeen(turn: TurnState, eventId: string | undefined): Set<string> {
 
 export function threadReducer(state: ThreadState, action: ThreadAction): ThreadState {
   switch (action.type) {
+    case 'RESET_THREAD':
+      return initialThreadState
+
     case 'CLIENT_SUBMIT_TURN': {
       const newTurn = makeInitialTurnState(action.turnId, action.userText)
       return {

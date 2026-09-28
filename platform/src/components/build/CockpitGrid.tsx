@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import type { BuildState } from '@/lib/build/types'
 import { JourneyStrip } from './JourneyStrip'
 import { ProgressBar } from './ProgressBar'
@@ -123,16 +122,13 @@ export function CockpitGrid({ state }: { state: BuildState }) {
               <div>
                 <p className="bt-label mb-1.5">Just finished</p>
                 {last_session ? (
-                  <Link
-                    href={`/build/sessions/${encodeURIComponent(last_session.id)}`}
-                    className="block group"
-                  >
-                    <p className="bt-body font-medium group-hover:underline">{lastTitle}</p>
+                  <div>
+                    <p className="bt-body font-medium">{lastTitle}</p>
                     <p className="bt-body mt-0.5 text-muted-foreground line-clamp-2">
                       {lastSummary}
                     </p>
                     <p className="bt-label mt-1">{relativeDay(last_session.closed_at)}</p>
-                  </Link>
+                  </div>
                 ) : (
                   <p className="bt-body text-muted-foreground">—</p>
                 )}
@@ -141,8 +137,8 @@ export function CockpitGrid({ state }: { state: BuildState }) {
               <div>
                 <p className="bt-label mb-1.5">Working on next</p>
                 {next_session?.objective ? (
-                  <Link href="/build/plan" className="block group">
-                    <p className="bt-body line-clamp-3 group-hover:underline">
+                  <div>
+                    <p className="bt-body line-clamp-3">
                       {next_session.objective}
                     </p>
                     {next_session.proposed_cowork_thread_name && (
@@ -150,7 +146,7 @@ export function CockpitGrid({ state }: { state: BuildState }) {
                         thread · {next_session.proposed_cowork_thread_name}
                       </p>
                     )}
-                  </Link>
+                  </div>
                 ) : (
                   <p className="bt-body text-muted-foreground">No objective set.</p>
                 )}
@@ -215,12 +211,9 @@ export function CockpitGrid({ state }: { state: BuildState }) {
             <div className="space-y-2">
               <p className="bt-body">
                 Active brief:{' '}
-                <Link
-                  href={`/build/sessions/${encodeURIComponent(current_brief.session_id)}`}
-                  className="font-medium hover:underline"
-                >
+                <span className="font-medium">
                   {current_brief.session_id}
-                </Link>
+                </span>
               </p>
               <p className="bt-body text-muted-foreground">
                 {current_brief.ac_passed_known} of {current_brief.ac_total} acceptance criteria
@@ -273,15 +266,7 @@ export function CockpitGrid({ state }: { state: BuildState }) {
 
       {/* AC.15: Recent activity — 7 sessions with class pills */}
       <section>
-        <div className="mb-3 flex items-baseline justify-between">
-          <p className="bt-label">Recent activity</p>
-          <Link
-            href="/build/activity"
-            className="rounded-full border border-border px-3 py-1 bt-label hover:bg-muted transition-colors"
-          >
-            All activity →
-          </Link>
-        </div>
+        <p className="bt-label mb-3">Recent activity</p>
         <Card className="p-0">
           {recent.length === 0 ? (
             <p className="bt-body p-4 text-muted-foreground">No sessions yet.</p>
@@ -289,13 +274,10 @@ export function CockpitGrid({ state }: { state: BuildState }) {
             <ul className="divide-y divide-border">
               {recent.map((s) => (
                 <li key={s.session_id} className="px-4 py-2.5 first:pt-3 last:pb-3">
-                  <Link
-                    href={`/build/sessions/${encodeURIComponent(s.session_id)}`}
-                    className="group flex items-baseline gap-3"
-                  >
+                  <div className="flex items-baseline gap-3">
                     <span className="bt-label w-20 shrink-0">{relativeDay(s.date)}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="bt-body font-medium group-hover:underline">
+                      <p className="bt-body font-medium">
                         {friendlySessionTitle(s)}
                       </p>
                       <p className="bt-body line-clamp-1 text-muted-foreground">
@@ -306,7 +288,7 @@ export function CockpitGrid({ state }: { state: BuildState }) {
                     {s.phase_id && (
                       <span className="bt-label shrink-0">{s.phase_id}</span>
                     )}
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>

@@ -46,6 +46,16 @@ on:
         type: boolean
         required: false
         default: false
+      jataka_schema_migration:
+        description: 'Explicitly authorize the temporary protected schema window for exact Jataka migrations 1120-1123'
+        type: boolean
+        required: false
+        default: false
+      ai_console_schema_migration:
+        description: 'Explicitly authorize the temporary protected schema window for exact AI Console migrations 1124-1125'
+        type: boolean
+        required: false
+        default: false
 
 # CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
 #   - pull_request  -> the `build-check` job only, which builds with `push: false`
@@ -128,6 +138,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # The regular serving image is distinct from Dockerfile.pipeline. Building it
@@ -914,18 +925,142 @@ jobs:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
+  # JATAKA CCD-019 / AI Console BYOK: migrations 1120-1125 alter
+  # application-owned tables but also create objects in the protected public schema.
+  # The ordinary migration role intentionally has USAGE without CREATE. This
+  # exact-set, manual-only protected job opens the minimum capability window and
+  # closes it on every exit; no service may deploy until the close succeeds.
+  jataka-protected-migrations:
+    name: Apply Protected Public-Schema Migrations
+    needs: [changes, migration-state, privileged-bootstrap]
+    if: >-
+      always() &&
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true) &&
+      needs.changes.result == 'success' &&
+      needs.migration-state.result == 'success' &&
+      needs.migration-state.outputs.data_plane == 'marked' &&
+      needs.migration-state.outputs.data_plane_isolation == 'strict' &&
+      needs.migration-state.outputs.nirmana == 'marked' &&
+      needs.migration-state.outputs.purna == 'marked' &&
+      needs.privileged-bootstrap.result == 'skipped'
+    runs-on: ubuntu-latest
+    environment: data-plane-production-cutover
+    concurrency:
+      group: data-plane-production-cutover
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Applying protected public-schema migrations from immutable source SHA $ACTUAL_SHA"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_5432_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_5432_pid" 2>/dev/null \
+              && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."
+            cat cloud-sql-proxy-5432.log || true
+            exit 1
+          fi
+
+      - name: Set up Node.js for protected public-schema migrations
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install migration runner deps
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      - name: Validate production migration database route
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/validate-migration-database-routes.ts --prod
+
+      - name: Grant temporary public-schema capability
+        env:
+          DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/jataka-schema-capability.ts grant
+
+      - name: Apply exact protected public-schema migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          APPLY_JATAKA_SCHEMA_MIGRATIONS: ${{ inputs.jataka_schema_migration }}
+          APPLY_AI_CONSOLE_SCHEMA_MIGRATION: ${{ inputs.ai_console_schema_migration }}
+        run: |
+          migrations=()
+          if [ "$APPLY_JATAKA_SCHEMA_MIGRATIONS" = "true" ]; then
+            migrations+=(1120_jataka_conversation_archive_context.sql)
+            migrations+=(1121_jataka_correction_archive_write_guard.sql)
+            migrations+=(1122_jataka_chart_context_staleness.sql)
+            migrations+=(1123_jataka_context_staleness_deferred_surfaces.sql)
+          fi
+          if [ "$APPLY_AI_CONSOLE_SCHEMA_MIGRATION" = "true" ]; then
+            migrations+=(1124_ai_console_byok_routing.sql)
+            migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)
+          fi
+          if [ "${#migrations[@]}" -eq 0 ]; then
+            echo "::error::No protected public-schema migration was explicitly authorized."
+            exit 1
+          fi
+          only="$(IFS=,; echo "${migrations[*]}")"
+          cd platform && npx tsx scripts/migrate.ts --only "$only"
+
+      - name: Revoke temporary public-schema capability
+        if: ${{ always() }}
+        env:
+          DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/jataka-schema-capability.ts revoke
+
   # The routine path receives no DBA, Pūrṇa admin, data-plane migrator,
   # legacy-owner or Nirmana migrator credential and has no protected environment.
   # `always()` is used only to admit the intentional "all already marked" skip;
   # every failed, cancelled, partial or inconsistent predecessor remains closed.
   migrate:
     name: Apply Routine DB Migrations
-    needs: [changes, migration-state, privileged-bootstrap]
+    needs: [changes, migration-state, privileged-bootstrap, jataka-protected-migrations]
     if: >-
       always() &&
       (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
+      (
+        needs.jataka-protected-migrations.result == 'success' ||
+        needs.jataka-protected-migrations.result == 'skipped'
+      ) &&
       (
         (
           needs.migration-state.outputs.data_plane == 'marked' &&
@@ -1164,6 +1299,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
@@ -1242,6 +1378,9 @@ jobs:
             MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
+            MARSYS_FLAG_AI_CONSOLE_BYOK=true
+            MARSYS_AI_ACTIVE_KEK_VERSION=V1
+            MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=false
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
@@ -1259,6 +1398,8 @@ jobs:
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:2
+            MARSYS_AI_KEK_V1=marsys-ai-kek-v1:1
+            MARSYS_AI_FINGERPRINT_SECRET=marsys-ai-fingerprint-secret:1
 
       - name: Resolve web candidate URL
         id: web-candidate-url
@@ -1355,8 +1496,13 @@ jobs:
 
   deploy-sidecar:
     name: Build & Deploy Sidecar
-    needs: [changes]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.sidecar == 'true')
+    needs: [changes, migrate]
+    if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.migrate.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.sidecar == 'true')
     runs-on: ubuntu-latest
 
     permissions:

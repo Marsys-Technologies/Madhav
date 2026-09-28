@@ -96,6 +96,7 @@ import {
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
+import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, resolvedRowsBuildId, servedGenerationIdentity, type BuildFence, type ChartServedGeneration, type UnresolvedAssetGeneration } from '../generation/served_generation'
 
 // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows.
 // Mirrors the same helper in register_d8_assess_domain.ts — see that file for the
@@ -335,7 +336,7 @@ interface VargaDignity {
  *  when varga==='D1' (already counted by the D1 dignity leg). */
 async function vargaDignity(
   chartId: string, ayanamshaId: string, graha: string, grahaCode: string,
-  varga: string, role: 'bhavesha' | 'karaka', buildId?: string,
+  varga: string, role: 'bhavesha' | 'karaka', buildId?: BuildFence,
 ): Promise<VargaDignity> {
   const base: VargaDignity = { graha, graha_code: grahaCode, role, varga, dignity_state: null, dignity_weight: null, fact_id: null }
   if (varga === 'D1') return base
@@ -344,9 +345,9 @@ async function vargaDignity(
       `SELECT fact_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
          AND fact_subject = $3 AND fact_key = 'dignity_state'
-         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
+         ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, `${varga}_${grahaCode}`, buildId]
+        ? [chartId, ayanamshaId, `${varga}_${grahaCode}`, resolvedBuildFenceIds(buildId, 'register_d9_judgment.vargaDignity')]
         : [chartId, ayanamshaId, `${varga}_${grahaCode}`],
     )
     if (res.rows[0]) {
@@ -354,7 +355,12 @@ async function vargaDignity(
       base.dignity_weight = res.rows[0].fact_value_text ? DIGNITY_WEIGHT[res.rows[0].fact_value_text] ?? 0 : null
       base.fact_id = res.rows[0].fact_id
     }
-  } catch {
+  } catch (error) {
+    // An explicit-empty build fence is an invariant violation, not a "best-effort miss" —
+    // judgment_query's own caller-side gate (servedGenerationIdentity) guarantees buildId is
+    // never empty by the time it reaches here, so this should never fire in practice; if it
+    // ever does, it must not be swallowed into a false "dignity absent" 0-weight contribution.
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: operative-varga dignity is best-effort; absence contributes 0, disclosed in the receipt.
   }
   return base
@@ -363,7 +369,7 @@ async function vargaDignity(
 /** D1 dignity + shadbala for one already-resolved graha entity. Never recomputes either —
  *  both are frozen build-time formula output (must_not_touch, R5 brief). */
 export async function gradeGraha(
-  chartId: string, ayanamshaId: string, g: ResolvedGraha, buildId?: string,
+  chartId: string, ayanamshaId: string, g: ResolvedGraha, buildId?: BuildFence,
 ): Promise<GrahaCondition> {
   const fact_ids = [...g.fact_ids]
   let dignity_state: string | null = null
@@ -373,16 +379,17 @@ export async function gradeGraha(
       `SELECT fact_id, fact_value_text FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
          AND fact_subject = $3 AND fact_key = 'dignity_state'
-         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
+         ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, `D1_${g.graha_code}`, buildId]
+        ? [chartId, ayanamshaId, `D1_${g.graha_code}`, resolvedBuildFenceIds(buildId, 'register_d9_judgment.gradeGraha.dignity')]
         : [chartId, ayanamshaId, `D1_${g.graha_code}`],
     )
     if (dignityRes.rows[0]) {
       dignity_state = dignityRes.rows[0].fact_value_text
       fact_ids.push(dignityRes.rows[0].fact_id)
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: dignity annotation best-effort
   }
   try {
@@ -390,16 +397,17 @@ export async function gradeGraha(
       `SELECT fact_id, fact_value_num FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_shadbala_total'
          AND fact_subject = $3 AND fact_key = 'rupa'
-         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
+         ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, g.graha_code, buildId]
+        ? [chartId, ayanamshaId, g.graha_code, resolvedBuildFenceIds(buildId, 'register_d9_judgment.gradeGraha.shadbala')]
         : [chartId, ayanamshaId, g.graha_code],
     )
     if (shadbalaRes.rows[0]) {
       shadbala_rupa = shadbalaRes.rows[0].fact_value_num !== null ? Number(shadbalaRes.rows[0].fact_value_num) : null
       fact_ids.push(shadbalaRes.rows[0].fact_id)
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     // non-fatal: shadbala annotation best-effort
   }
   return {
@@ -415,23 +423,24 @@ export async function gradeGraha(
 }
 
 async function fetchAspectingGrahas(
-  chartId: string, ayanamshaId: string, house: number, buildId?: string,
+  chartId: string, ayanamshaId: string, house: number, buildId?: BuildFence,
 ): Promise<{ grahas: string[]; fact_ids: string[] }> {
   try {
     const res = await query<{ fact_id: string; fact_key: string }>(
       `SELECT fact_id, fact_key FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'aspect_parashari_received'
          AND fact_subject = $3 AND fact_key LIKE 'from_%'
-         ${buildId ? 'AND build_id = $4::uuid' : ''}`,
+         ${buildId ? 'AND build_id = ANY($4::uuid[])' : ''}`,
       buildId
-        ? [chartId, ayanamshaId, `HOUSE_${house}`, buildId]
+        ? [chartId, ayanamshaId, `HOUSE_${house}`, resolvedBuildFenceIds(buildId, 'register_d9_judgment.fetchAspectingGrahas')]
         : [chartId, ayanamshaId, `HOUSE_${house}`],
     )
     const grahas = res.rows
       .map(r => r.fact_key.replace(/^from_/, ''))
       .map(code => GRAHA_CODE_TO_NAME[code] ?? code)
     return { grahas, fact_ids: res.rows.map(r => r.fact_id) }
-  } catch {
+  } catch (error) {
+    if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { grahas: [], fact_ids: [] }
   }
 }
@@ -626,51 +635,69 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       }
     }
 
-    // Mandatory consumption fence: select the same chart-level generation rule used by
-    // the capability overlay before any chart fact or derived-store read. A missing row or
-    // failed lookup is a hard error; judgment must never fall through to whichever stale
-    // generation a source table happens to return first.
-    let build_id: string
+    // Mandatory consumption fence: every chart fact and derived-store read is fenced to the
+    // chart's SERVED GENERATION — each asset's own writing run, resolved by the same shared
+    // rule the capability overlay uses (generation/served_generation.ts). There is no
+    // chart-wide build: runs are routinely single-asset, so "the latest completed run" rarely
+    // wrote the rows read here (RC-1). A failed resolution or an empty generation is a hard
+    // error; judgment never falls through to unfenced or stale reads.
+    let generation: ChartServedGeneration
     try {
-      const buildRes = await query<{ build_id: string }>(
-        `SELECT id::text AS build_id
-           FROM build_runs
-          WHERE chart_id = $1::uuid AND state = 'completed'
-          ORDER BY ended_at DESC NULLS LAST, id DESC
-          LIMIT 1`,
-        [chart_id],
-      )
-      const selected = buildRes.rows[0]?.build_id
-      if (!selected) {
-        return {
-          content: {
-            error: 'judgment_query: no completed chart build is available; refusing unfenced fact reads.',
-            code: 'no_active_completed_build',
-            chart_id,
-          },
-          is_error: true,
-        }
-      }
-      build_id = selected
+      generation = await resolveChartServedGeneration(chart_id, null)
     } catch (error) {
+      console.error('[judgment_query] served-generation resolution failed', error)
       return {
         content: {
-          error: `judgment_query: completed-build selection failed; refusing unfenced fact reads: ${String(error)}`,
-          code: 'active_build_selection_failed',
+          error: `judgment_query: served-generation resolution failed; refusing unfenced fact reads`,
+          code: 'served_generation_resolution_failed',
           chart_id,
         },
         is_error: true,
       }
     }
-    const generation_provenance = {
-      source_table: 'build_runs',
-      selection: 'latest_completed_chart_build',
-      build_id,
-      state: 'completed',
-      order: 'ended_at DESC NULLS LAST, id DESC',
+    const build_id = servedGenerationIdentity(generation)
+    const build_ids = generation.served_build_ids
+    const unresolvedAssets = Object.values(generation.assets)
+      .filter((asset): asset is UnresolvedAssetGeneration => asset.state === 'unresolved')
+      .map((asset) => ({ asset_id: asset.asset_id, reason: asset.reason }))
+    if (!build_id) {
+      return {
+        content: {
+          error: 'judgment_query: no chart receipt resolves to a served generation; refusing unfenced fact reads.',
+          code: 'no_served_generation',
+          chart_id,
+          unresolved_assets: unresolvedAssets,
+        },
+        is_error: true,
+      }
     }
+    const generation_provenance = {
+      source: generation.source,
+      selection: 'per_asset_served_generation',
+      generation_hash: generation.generation_hash,
+      served_build_ids: build_ids,
+      withheld_builds: generation.withheld_builds,
+      assets: Object.values(generation.assets).map((asset) => asset.state === 'resolved'
+        ? { asset_id: asset.asset_id, rows_build_id: asset.rows_build_id, receipt_build_id: asset.receipt_build_id, rows_binding: asset.rows_binding }
+        : { asset_id: asset.asset_id, unresolved: asset.reason }),
+    }
+    const dashaRowsBuildId = resolvedRowsBuildId(generation, 'ga_dashas')
 
     const judgment_flags: JudgmentFlagEntry[] = []
+    if (unresolvedAssets.length || generation.withheld_builds.length) {
+      // Honest disclosure (§N.8): rows of an unresolved asset are excluded from every fenced
+      // read below, and so are rows of any resolved asset that shares a build run with one
+      // (a multi-writer row carries only its build id). A leg that depends on either may be
+      // empty for that reason, not because the chart lacks the configuration.
+      const withheld = generation.withheld_builds.flatMap((entry) => entry.resolved_asset_ids)
+      judgment_flags.push(judgmentFlag(
+        'served_generation_unresolved_assets',
+        `served generation excludes ${unresolvedAssets.length} unresolved asset(s): ` +
+        unresolvedAssets.map((asset) => `${asset.asset_id} (${asset.reason})`).join(', ') +
+        (withheld.length ? `; withholds ${withheld.length} resolved asset(s) sharing their runs: ${withheld.join(', ')}` : ''),
+        'warning',
+      ))
+    }
     const fact_ids = new Set<string>()
 
     // ── F-57: domain-resolution disclosure (§N.6 pt 3 / §N.7 pt 6 / §N.8) ──────────────
@@ -813,15 +840,15 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     try {
       // ── Step 1+2 (lagna frame): bhava condition, bhāveśa condition, occupants, aspects ──
       const [bhavaLagna, lordLagna, occupantsLagna, aspectsLagna] = await Promise.all([
-        resolveAddress(chart_id, { type: 'bhava', house: spec.bhava }, { ayanamsha_id, build_id }),
-        resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava }, { ayanamsha_id, build_id }),
-        resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava }, { ayanamsha_id, build_id }),
-        fetchAspectingGrahas(chart_id, ayanamsha_id, spec.bhava, build_id),
+        resolveAddress(chart_id, { type: 'bhava', house: spec.bhava }, { ayanamsha_id, build_id: build_ids }),
+        resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava }, { ayanamsha_id, build_id: build_ids }),
+        resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava }, { ayanamsha_id, build_id: build_ids }),
+        fetchAspectingGrahas(chart_id, ayanamsha_id, spec.bhava, build_ids),
       ])
       const bhavaSignLagna = bhavaLagna.entities[0] as ResolvedSign
       const lordEntityLagna = lordLagna.entities[0] as ResolvedGraha
       const occupantsLagnaEntity = occupantsLagna.entities[0] as ResolvedOccupants
-      const lordCondition = await gradeGraha(chart_id, ayanamsha_id, lordEntityLagna, build_id)
+      const lordCondition = await gradeGraha(chart_id, ayanamsha_id, lordEntityLagna, build_ids)
       bhavaSignLagna.fact_ids.forEach(f => fact_ids.add(f))
       occupantsLagnaEntity.fact_ids.forEach(f => fact_ids.add(f))
       aspectsLagna.fact_ids.forEach(f => fact_ids.add(f))
@@ -831,8 +858,8 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       const karakaConditions: GrahaCondition[] = []
       for (const karakaName of spec.karakas) {
         try {
-          const res = await resolveAddress(chart_id, { type: 'graha', graha: karakaName }, { ayanamsha_id, build_id })
-          const g = await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha, build_id)
+          const res = await resolveAddress(chart_id, { type: 'graha', graha: karakaName }, { ayanamsha_id, build_id: build_ids })
+          const g = await gradeGraha(chart_id, ayanamsha_id, res.entities[0] as ResolvedGraha, build_ids)
           g.fact_ids.forEach(f => fact_ids.add(f))
           karakaConditions.push(g)
         } catch (e) {
@@ -846,13 +873,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       let occupantsMoon: ResolvedOccupants | null = null
       try {
         const [bhavaMoon, lordMoon, occMoon] = await Promise.all([
-          resolveAddress(chart_id, { type: 'bhava', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id, build_id }),
-          resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id, build_id }),
-          resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id, build_id }),
+          resolveAddress(chart_id, { type: 'bhava', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id, build_id: build_ids }),
+          resolveAddress(chart_id, { type: 'lord_of', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id, build_id: build_ids }),
+          resolveAddress(chart_id, { type: 'occupants_of', house: spec.bhava, frame: 'chandra' }, { ayanamsha_id, build_id: build_ids }),
         ])
         bhavaSignMoon = bhavaMoon.entities[0] as ResolvedSign
         occupantsMoon = occMoon.entities[0] as ResolvedOccupants
-        lordConditionMoon = await gradeGraha(chart_id, ayanamsha_id, lordMoon.entities[0] as ResolvedGraha, build_id)
+        lordConditionMoon = await gradeGraha(chart_id, ayanamsha_id, lordMoon.entities[0] as ResolvedGraha, build_ids)
         bhavaSignMoon.fact_ids.forEach(f => fact_ids.add(f))
         occupantsMoon.fact_ids.forEach(f => fact_ids.add(f))
         lordConditionMoon.fact_ids.forEach(f => fact_ids.add(f))
@@ -891,7 +918,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           // (a 2-letter code here would silently return zero rows, the exact P1 failure
           // class this run's standing requirement warns about).
           const res = await getDivisionalsCapability.handler(
-            { chart_id, ayanamsha_id, build_id, varga: spec.varga, graha: name }, undefined,
+            { chart_id, ayanamsha_id, build_id: build_ids, varga: spec.varga, graha: name }, undefined,
           )
           if (!res.is_error) {
             const c = res.content as Record<string, unknown>
@@ -915,7 +942,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       const vargaRatification = await fetchVargaRatification(
         chart_id, ayanamsha_id, spec.signal_domain, spec.varga,
         grahasToConfirm.map(({ role, code }) => ({ role, code })),
-        build_id,
+        build_ids,
       )
       if (!vargaRatification.ok) {
         judgment_flags.push(judgmentFlag(
@@ -945,35 +972,35 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // this exact build; an unavailable provenance fence is disclosed, never flattened into
       // an empty corroboration finding.
       const wealthSourceFence = spec.signal_domain === 'wealth'
-        ? await fetchWealthReadingSourceFence(chart_id, build_id)
+        ? await fetchWealthReadingSourceFence(chart_id, generation)
         : null
       const wealthCorroboratingVargas = wealthSourceFence?.ready
         ? await fetchWealthCorroboratingVargas(
           chart_id, ayanamsha_id,
-          grahasToConfirm.map(({ role, code }) => ({ role, code })), build_id,
+          grahasToConfirm.map(({ role, code }) => ({ role, code })), build_ids,
         )
         : null
       for (const factId of wealthCorroboratingVargas?.fact_ids ?? []) fact_ids.add(factId)
       const wealthAshtakavarga = wealthSourceFence?.ready
         ? await fetchWealthAshtakavarga(
           chart_id, ayanamsha_id,
-          grahasToConfirm.map(({ code }) => code), build_id,
+          grahasToConfirm.map(({ code }) => code), build_ids,
         )
         : null
       for (const fact of wealthAshtakavarga?.rows ?? []) fact_ids.add(fact.fact_id)
       const wealthSpecialLagnas = wealthSourceFence?.ready
-        ? await fetchWealthSpecialLagnas(chart_id, ayanamsha_id, build_id)
+        ? await fetchWealthSpecialLagnas(chart_id, ayanamsha_id, build_ids)
         : null
       for (const fact of wealthSpecialLagnas?.rows ?? []) fact_ids.add(fact.fact_id)
       const wealthYogiAvayogi = wealthSourceFence?.ready
-        ? await fetchWealthYogiAvayogi(chart_id, ayanamsha_id, build_id)
+        ? await fetchWealthYogiAvayogi(chart_id, ayanamsha_id, build_ids)
         : null
       for (const fact of wealthYogiAvayogi?.rows ?? []) fact_ids.add(fact.fact_id)
       const tajakaSourceFence = spec.signal_domain === 'wealth'
-        ? await fetchTajakaSourceFence(chart_id, build_id)
+        ? await fetchTajakaSourceFence(chart_id, generation)
         : null
       const wealthTajaka = tajakaSourceFence?.ready
-        ? await fetchWealthTajaka(chart_id, ayanamsha_id, build_id, as_of_date)
+        ? await fetchWealthTajaka(chart_id, ayanamsha_id, build_ids, as_of_date)
         : null
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
@@ -995,7 +1022,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       try {
         const { getYogaFiringsCapability } = await import('./L1_ganita/get_yoga_firings')
         const res = await getYogaFiringsCapability.handler(
-          { chart_id, ayanamsha_id, build_id, fired: true, limit: 50 },
+          { chart_id, ayanamsha_id, build_id: build_ids, fired: true, limit: 50 },
           undefined,
         )
         if (!res.is_error) {
@@ -1069,7 +1096,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         const res = await querySignalsCapability.handler(
           {
             chart_id, ayanamsha_id, domain: spec.signal_domain,
-            build_id, signal_type_class: 'yoga', top_k: max_signals,
+            build_id: build_ids, signal_type_class: 'yoga', top_k: max_signals,
           },
           undefined,
         )
@@ -1126,12 +1153,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           const content = result.content as Record<string, unknown>
           const returnedBuildId = content['build_id'] ?? content['active_build_id']
           const mismatch = content['code'] === 'ga_dashas_build_mismatch'
-            || (!result.is_error && returnedBuildId !== build_id)
+            || (!result.is_error && (dashaRowsBuildId === null || returnedBuildId !== dashaRowsBuildId))
           if (mismatch) {
             if (!dashaBuildMismatchFlagged) {
               judgment_flags.push(judgmentFlag(
                 'timing_hook_failed',
-                `dasha child provenance did not match judgment build ${build_id}; ` +
+                `dasha child provenance did not match the served ga_dashas generation ${dashaRowsBuildId ?? '(unresolved)'}; ` +
                 `the mismatched ${leg} payload was discarded and timing remains unanchored.`,
                 'warning',
               ))
@@ -1143,7 +1170,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           return Array.isArray(content['rows']) ? content['rows'] as unknown[] : []
         }
         const currentRes = await getDashasCapability.handler(
-          { chart_id, ayanamsha_id, build_id, system: 'vimshottari', as_of_date, all_levels: true, limit: 5 },
+          { chart_id, ayanamsha_id, ...(dashaRowsBuildId ? { build_id: dashaRowsBuildId } : {}), system: 'vimshottari', as_of_date, all_levels: true, limit: 5 },
           undefined,
         )
         timing['current'] = dashaRowsForSelectedBuild(currentRes, 'current-period')
@@ -1154,7 +1181,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         const windowsByGraha: Record<string, unknown> = {}
         for (const name of relevantNames) {
           const windowRes = await getDashasCapability.handler(
-            { chart_id, ayanamsha_id, build_id, system: 'vimshottari', level: 1, lord_graha: name, window_start: '1900-01-01', window_end: '2100-01-01' },
+            { chart_id, ayanamsha_id, ...(dashaRowsBuildId ? { build_id: dashaRowsBuildId } : {}), system: 'vimshottari', level: 1, lord_graha: name, window_start: '1900-01-01', window_end: '2100-01-01' },
             undefined,
           )
           windowsByGraha[name] = dashaRowsForSelectedBuild(windowRes, `${name}-mahadasha-window`)
@@ -1258,11 +1285,11 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // Re-derived operative-varga dignity of bhāveśa + kāraka(s), weighted sub-D1. Sequenced
       // after WP-1.5's R-38 (varga rows now exist to weigh). This is what lets D9-contradicts-D1
       // (e.g. a bhāveśa neutral in rasi but debilitated in navamsha) actually MOVE the verdict.
-      const bhaveshaVarga = await vargaDignity(chart_id, ayanamsha_id, lordCondition.graha, lordCondition.graha_code, spec.varga, 'bhavesha', build_id)
+      const bhaveshaVarga = await vargaDignity(chart_id, ayanamsha_id, lordCondition.graha, lordCondition.graha_code, spec.varga, 'bhavesha', build_ids)
       if (bhaveshaVarga.fact_id) fact_ids.add(bhaveshaVarga.fact_id)
       const karakaVargaList: VargaDignity[] = []
       for (const k of karakaConditions) {
-        const kv = await vargaDignity(chart_id, ayanamsha_id, k.graha, k.graha_code, spec.varga, 'karaka', build_id)
+        const kv = await vargaDignity(chart_id, ayanamsha_id, k.graha, k.graha_code, spec.varga, 'karaka', build_ids)
         if (kv.fact_id) fact_ids.add(kv.fact_id)
         karakaVargaList.push(kv)
       }
@@ -1412,12 +1439,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
                   computed_salience, constituent_facts_array
              FROM bodha_msr_signals
             WHERE chart_id = $1 AND ayanamsha_id = $2
-              AND build_id = $4::uuid
+              AND build_id = ANY($4::uuid[])
               AND $3 = ANY(domains_affected_array)
               AND valence IN ('malefic','mixed')
             ORDER BY computed_salience DESC NULLS LAST
             LIMIT $5`,
-          [chart_id, ayanamsha_id, spec.signal_domain, build_id, max_signals],
+          [chart_id, ayanamsha_id, spec.signal_domain, [...build_ids], max_signals],
         )
         bearing_afflictions = advRes.rows.map(r => {
           for (const fid of (r.constituent_facts_array ?? [])) fact_ids.add(fid)
@@ -1435,12 +1462,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           `SELECT mechanism_name, mechanism_class, valence, citation_human
             FROM bodha_mechanisms
             WHERE chart_id = $1 AND ayanamsha_id = $2
-              AND build_id = $4::uuid
+              AND build_id = ANY($4::uuid[])
               AND valence IN ('malefic','mixed')
               AND $3 = ANY(domains_affected_array)
             ORDER BY CASE valence WHEN 'malefic' THEN 0 ELSE 1 END
             LIMIT $5`,
-          [chart_id, ayanamsha_id, spec.signal_domain, build_id, max_signals],
+          [chart_id, ayanamsha_id, spec.signal_domain, [...build_ids], max_signals],
         )
         affliction_mechanisms = mechRes.rows.map(r => ({
           mechanism_name: r.mechanism_name, mechanism_class: r.mechanism_class,
@@ -1458,7 +1485,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // cannot be read as "chart is clean" — it means the domain was never populated in this
       // store. Runs independently of the afflictions fetch's own try/catch so a coverage-query
       // failure never masks an otherwise-successful afflictions result (or vice versa).
-      const coverage = await fetchDomainStructuralCoverage(chart_id, ayanamsha_id, spec.signal_domain, build_id)
+      const coverage = await fetchDomainStructuralCoverage(chart_id, ayanamsha_id, spec.signal_domain, build_ids)
       if (coverage.available) {
         signal_domain_row_coverage = { msr_signals: coverage.msr_signals, mechanisms: coverage.mechanisms }
         affliction_mechanisms_coverage = {
@@ -1514,7 +1541,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // domain judgment without the caller asking for sensitive degrees. Chart-wide, not
       // domain-scoped: a fired sensitive degree on a chart-critical graha bears across
       // domains. Reads the frozen L1 fact (§N.5), never recomputes.
-      const sensitive = await fetchSensitiveDegreeFirings(chart_id, ayanamsha_id, build_id)
+      const sensitive = await fetchSensitiveDegreeFirings(chart_id, ayanamsha_id, build_ids)
       for (const f of sensitive.fact_ids) fact_ids.add(f)
       if (sensitive.firings.length > 0) {
         judgment_flags.push(judgmentFlag(
@@ -1539,7 +1566,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       const kpCusps = domainKey && DOMAIN_KP_CUSPS[domainKey]
         ? DOMAIN_KP_CUSPS[domainKey]!
         : [spec.bhava as number]
-      const kp = await fetchKpCuspChain(chart_id, ayanamsha_id, kpCusps, build_id)
+      const kp = await fetchKpCuspChain(chart_id, ayanamsha_id, kpCusps, build_ids)
       for (const f of kp.fact_ids) fact_ids.add(f)
       if (kp.cusps.length === 0) {
         judgment_flags.push(judgmentFlag(
