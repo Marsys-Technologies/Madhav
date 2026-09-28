@@ -127,7 +127,11 @@ Method (production read-only; writes only on a disposable copy):
 4. `step06b_windows_projection.py` run per chart against the disposable DB
    with the real class context and `--delta-report-out`.
 
-Results:
+Results (**SUPERSEDED 2026-09-28 — these numbers were computed with the
+K3-F1 `RELATION_TO_PRIMITIVE` key bug, which silently excluded all 94,203
+kakshya contacts per chart; the corrected re-run is in the "2026-09-28 —
+ADK-0024 K3/O-2 remediation" section below; the delta-report files named
+here have been regenerated in place by the corrected run**):
 
 | chart | 4.0 windows (era subset) | mean raw 4.0 | baseline 3.0 read | report |
 |---|---|---|---|---|
@@ -169,3 +173,134 @@ labelling the wider scope as "the campaign battery"):
 
 Production itself was never written: no candidate manifest, no '4.0' rows, no
 authority change. The flip remains unauthorized and unperformed.
+
+---
+
+## 2026-09-28 — ADK-0024 K3/O-2 remediation (K3-F1 relation key, K3-F2 reversal windows cleanup)
+
+Ruling: `00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md` ADK-0024; review:
+`00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/wp7_packets/K3_O2_REVIEW_PRODUCTION_APPLICATION_SET.md`.
+All DB work below on a **fresh disposable** Postgres 16 container
+(`gochara-link3-disposable`, `127.0.0.1:55445`, db `gochara_link3`), rebuilt
+from `.run/wp10_tranche2/pre_run_dump_20260927.dump` +
+`rehearsal_schema.sql` + the `kala_moorti_nirnaya`/`kala_vedha_gochara`
+sections of `rehearsal_data.sql` (the dump's own overlay rows lack
+`upstream_fingerprint`, so the §12.9 freshness gate refuses until the
+fingerprinted rows are loaded — 148 mn / 344 kvg, matching the prior
+restore's counts), plus the `kala_gochara_windows.id` sequence-default
+re-attach. The '4.0' candidate was rebuilt on the disposable from the
+retained enumeration payloads (`link2_episodes_*.json`,
+`link2_coverage_*.json`): contacts_written **138,837** (482012f1, manifest
+`969bd194-996a-4aa7-a644-9eadb6122822`) / **138,836** (1c826d5a, manifest
+`c4f043b0-7314-42dc-bb78-677b1bd6dc41`) — production-exact. Production was
+never touched (READ-ONLY ruling honored; no proxy was even started).
+
+### K3-F1 — relation-vocabulary key fix, validated
+
+- `step06b_windows_projection.py`: `RELATION_TO_PRIMITIVE` key
+  `"kakshya_cell"` → `"kakshya_cell_crossing"` (the pinned WP1 §3.1/§7
+  vocabulary and the value actually stored in the ledger).
+- `test_step06b_windows_projection.py::test_relation_to_primitive_vocabulary`
+  now pins the correct key and regression-asserts all 8 enumerator relations
+  (conjunction, return, drishti_contact, sign_ingress, nakshatra_ingress,
+  kakshya_cell_crossing, station_retro_loop, eclipse_degree) are map keys.
+- Loud disclosure: the writer now prints a stderr WARNING whenever
+  `contacts_unmapped_relation` or `contacts_unmapped_no_class` is non-zero,
+  and the stdout run report gains `windows_collapsed_dupes` +
+  `windows_by_tier_basis` (the reconciliation the reviewer asked for:
+  `sum(windows_by_tier) = windows_written + windows_collapsed_dupes`).
+
+**Corrected re-run (both charts, exit 0; run reports retained this time —
+`.run/wp10_tranche2/link3_step06b_runreport_<chart>.json` + `.stderr`):**
+
+| chart | contacts read | unmapped_relation | unmapped_no_class | windows written (era/month/day) | collapsed dupes | mean raw 4.0 (all / era) | baseline 3.0 |
+|---|---|---|---|---|---|---|---|
+| 482012f1 | 138,837 | **0** (was 94,203 = 67.9%) | 0 | 4,417 (1435/1492/1492) | 2 | 0.559520 / 0.556359 | 914 |
+| 1c826d5a | 138,836 | **0** | 0 | 3,955 (1263/1346/1346) | 0 | 0.541071 / 0.537113 | 916 |
+
+Reconciliation holds on both charts (482012f1: 1435+1492+1492 = 4419 =
+4417 + 2). Both delta reports regenerated in place
+(`.run/wp10_tranche2/link2_delta_report_<chart>.md`); the §4 figures above
+are the superseded stale set.
+
+**Why the numbers barely moved — verified mechanism, not an assumption:**
+every kakshya contact in the '4.0' ledger is a **zero-width instant**
+(`t_in = t_exact = t_out`; per-chart histogram on the disposable:
+kakshya_cell_crossing 94,203/94,203 zero-width, nakshatra_ingress 29,322/29,322,
+sign_ingress 13,360/13,362 — boundary relations are instants by
+construction). Under M-1 `linear_no_box_decay` the contribution is 0 at every
+sampled point including the instant itself (`step06b_windows_projection.py:211`
+returns 0 at `t == t_in == t_out` before the `span <= 0 → 1.0` branch can
+fire). The excluded 67.9% of contacts were therefore **amplitude-inert**;
+the entire activity signal comes from the nonzero-width relations
+(drishti_contact 1,092 / conjunction 771 / return 87). The corrected run's
+small deltas (+2 pre-dedupe windows on 482012f1, +10 on 1c826d5a) come from
+the added contact **breakpoints** refining the sampled series (sub-day bumps
+become visible), not from new amplitude. The fix is still required and
+blocking-correct: the exclusion violated the pinned served-relation
+vocabulary and was invisible end-to-end; the invariance "kakshya is inert"
+holds only while enumeration writes boundary contacts as zero-width spans,
+and is now pinned by the battery instead of left silent.
+
+### K3-F2 (option iii) — reversal windows cleanup, implemented + drilled
+
+- `services/gochara_kernel/ledger.py`: new explicit op
+  `clear_windows_on_reversal(conn, chart_id, generation)` — the same scoped
+  statement as `EXPLICIT_CLEAR_OPS['ka_gochara']`'s windows DELETE
+  (`platform/src/lib/cockpit/assetClearSpec.ts:271`), parameterized by
+  generation. Hard guard refuses (`PublishedGenerationRefusal`) unless the
+  manifest is `candidate`/`rolled_back` AND the generation is not the chart's
+  served authority AND the generation is not `'v1'`/`'3.0'`.
+- `step08_flip.py --reverse` reordered per the ruling: authority → '3.0'
+  FIRST, `ledger.rollback()` (coverage+contacts), then
+  `clear_windows_on_reversal` — one transaction; report gains
+  `windows_deleted` and `label_burned`.
+- Docs: `step09_soak_checklist.md` reversal section and
+  `GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md` step-8 row rewritten (3-step
+  reverse, guard, post-reversal integrity evaluation, burned-label
+  semantics, per-chart half-flip rule, conjunct-(i) vacuity note).
+
+**Reversal drill (disposable, chart 482012f1, real production-density
+projection):** flip exit 0 (authority 4.0, manifest published, contacts
+138,837) → `--reverse` exit 0, `windows_deleted=4417` → post-state: 4.0
+windows/contacts/coverage = 0/0/0, v1 = 16,297 and 3.0 = 914 untouched,
+authority '3.0', manifest `rolled_back`, chart 1c826d5a untouched (3,955
+4.0 windows — per-chart half-flip rule holds) → conjuncts (a)/(f) scoped to
+the reversed chart GREEN → burned label verified: re-flip attempt exits 8
+(`manifest status is 'rolled_back', not 'candidate'`), authority stays '3.0'.
+Conjunct (i) is vacuous for step06b's row shape (bare-string
+`active_sentences` carry no `contact_id` key) — recorded here, not earned.
+
+### Findings disclosed by the drill (pre-existing, outside K3 scope)
+
+- **Conjunct (e) RED on the real-data projection**: 39 '4.0' rows (both
+  charts, era/month/day resolutions) have `window_start = 2019-12-31`, one
+  day before the manifest horizon's lower bound (2020-01-01T00:00) — the
+  horizon-edge era-window flooring backs off one day. Present in the stale
+  run too (same machinery); never previously evaluated against real data.
+  The full 11-conjunct integrity check therefore reads `f` mid-flip on the
+  disposable, and post-reversal reads `f` only while chart 2's
+  (e)-violating rows remain. ADK-0024 §3's gates (b)/(c) re-verification
+  must see this before Link 3 executes. Not patched here — the fix belongs
+  to the window-start edge convention, not to the reversal path.
+- Disposable restore loses the `kala_gochara_windows.id` sequence default
+  and the dump's overlay rows lack fingerprints (both worked around as
+  above); the dump also excludes the cockpit schema (`asset_registry` was
+  recreated minimally and migration 1091 applied for the drill's integrity
+  evaluations).
+
+### Battery + gates after remediation
+
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55443/wp6 GOCHARA_REMAINDER_DSN=postgresql://wp6:disposable@localhost:55444/wp6 python3 -m pytest tests/l3/gochara -q`
+(fresh disposable containers `gochara-wp6-disposable` :55443,
+`gochara-wp10-disposable` :55444): **378 passed, 0 failed, 0 skipped**
+(up from PRAMĀṆIN's 359 passed/18 skipped at HEAD — the delta is the new
+K3-F1/K3-F2 assertions plus previously-NOT_RUN DB tests now reachable).
+Includes the extended `test_step08_flip_and_reverse` (post-reversal 4.0
+windows = 0, v1/3.0 counts unchanged, integrity GREEN, burned label exit 8)
+and the new `test_clear_windows_on_reversal_refusals` (served-authority,
+published-manifest, and v1/3.0 refusals; legal candidate-path delete).
+
+Per ADK-0024 §3: gates (b) and (c) must be re-verified against the corrected
+projection and PRAMĀṆIN must re-verify the regenerated delta reports before
+Link 3 executes. The flip itself remains unauthorized and unperformed.
