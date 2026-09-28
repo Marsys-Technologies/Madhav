@@ -1,13 +1,14 @@
 ---
 artifact: SUVARNA_EXECUTION_ARCHITECTURE
 canonical_id: SUVARNA_EXECUTION_ARCHITECTURE
-version: "1.0"
+version: "1.1"
 status: DRAFT — for native review
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 companion_of: SUVARNA_CAMPAIGN_PLAN_v1_1.md (the what and when; this document is the how)
 decision_owner: Native (Abhisek Mohanty)
 changelog:
+  - "1.1 (2026-09-29): real-time visibility made a first-class requirement (native, 2026-09-28): new principle 9, new §11 (the tracker: one event log as the single source of truth, detectors decide done, live push, resilience), emit duties added to the queue life (§4.3), the conductor loop (§5.1), the Monitor (§8) and restartability (§10). The tracker is built and tested (34 tests)."
   - "1.0 (2026-09-28): first draft. Isolation, the swarm, models and effort, the work queue, the build strategy, autonomy and its limits, environment, cost control."
 ---
 
@@ -26,6 +27,7 @@ and never idle.
 6. **Diagnose before retrying.** A second failure of the same thing becomes a diagnosis task, never a third attempt.
 7. **Freeze the standard before judging against it.** Nirmāṇa replaced its definition five times; most of its freezes were judged against a standard it later dropped.
 8. **Every result is gated.** A fresh reviewer tries to break it before it counts.
+9. **Visible the moment it happens.** Every state change is written to the event log as it happens, by the role that caused it, before that role moves on. The tracker (§11) shows it within about a second. A change that is not in the log did not happen, as far as the campaign is concerned.
 
 ### 1.1 · Lessons from Nirmāṇa, and the rule each produced
 
@@ -140,6 +142,7 @@ ready → running → review → accepted → folded
 blocked or parked → ready, once the condition clears
 ```
 
+- **Every transition is an event.** The role that moves an item emits it at that moment (§11.3). Queue states map to tracker states: `accepted` shows as `review`; `folded` shows as `done`, and needs evidence.
 - **Nothing folds without a gate verdict.**
 - **Folding is a script run by the Scribe:** register row states, ledger emit (with the withholding list), tallies, fingerprints, drift check.
 
@@ -147,7 +150,7 @@ blocked or parked → ready, once the condition clears
 
 ### 5.1 · The loop
 
-On every event (an agent finishing, a build finishing, a decision arriving, a timer):
+On every event (an agent finishing, a build finishing, a decision arriving, a timer), and emitting a heartbeat event at each pass so a stalled conductor is visible on the tracker:
 
 1. Fold what finished.
 2. Release its dependents.
@@ -256,6 +259,7 @@ The Monitor checks these before any dispatch, and every 15 minutes while work ru
 - **Power.** On AC power, with sleep prevented. On battery, pause long builds and warn.
 - **The hold switch.** `run/SUVARNA_HOLD` absent. If present: finish running items, dispatch nothing new.
 - **Disk space** for evidence.
+- **The tracker** answering `/api/health`. If not, the supervisor restarts it; if that fails, the Monitor restarts the supervisor. The swarm keeps working either way: the event log is written whether or not the tracker is up.
 
 ## §9 · Cost control
 
@@ -271,3 +275,70 @@ The Monitor checks these before any dispatch, and every 15 minutes while work ru
 - **Every packet is idempotent** and commits its progress, so a crash loses at most one step.
 - **The Conductor can be restarted at any time** and resumes from `hq/state/`.
 - **A daily digest** goes to the native: what finished, what is parked, what is next, spend.
+- **The event log is append-only** and survives any crash; the tracker rebuilds its whole view from it on restart.
+
+## §11 · Real-time visibility — the tracker
+
+The native asked for a live view of the whole campaign: the plan, what runs in parallel and what in sequence, where we are, what is next, what is done, and useful measures, updated the moment things change. This section makes that a requirement on every role, not an afterthought.
+
+### 11.1 · One source of truth
+
+| Piece | Where | What it holds |
+|---|---|---|
+| Plan model | `00_ARCHITECTURE/control/suvarna/plan_model.json` | tracks (parallel, sequential or hybrid), items, dependencies, decisions, and how each item is proven done |
+| Event log | `$SUVARNA_HOME/run/EVENTS.jsonl` | one line per state change, append-only |
+| Detectors | `platform/scripts/governance/suvarna_tracker/detectors.py` | checks against real sources: PR merged, file on main, register tallies and rows, ledgers, database columns, levels elevated |
+| Tracker | `platform/scripts/governance/suvarna_tracker/` | pure function of the three above; served on `127.0.0.1:8765` |
+
+### 11.2 · Earned signals (CLAUDE.md §N.8)
+
+- **Where a detector exists, the detector decides "done".** An event that claims done while the detector disagrees is shown as a *conflict*, never as done.
+- **A detector that cannot measure** shows *unmeasured*, never done.
+- **An event may mark an item done only with evidence** (refused at write time otherwise). A decision counts as decided only with what was decided.
+
+### 11.3 · Who emits what
+
+Every role emits through one command, which validates and appends atomically:
+
+```
+python -m suvarna_tracker.emit item --actor <role> --item <id> --state <running|review|blocked|parked|failed|done> [--step <name>] [--progress 0..1] [--evidence <path|PR>] [--detail <text>]
+python -m suvarna_tracker.emit decision --actor steward --decision N-7 --state <requested|decided|delegated> --detail <text>
+python -m suvarna_tracker.emit heartbeat --actor conductor --detail "<what it is doing>"
+python -m suvarna_tracker.emit metric --actor scribe --name <name> --value <number>
+```
+
+| Role | Emits |
+|---|---|
+| Conductor | `running` on dispatch; a heartbeat each loop pass |
+| Builder, Analyst | step events (e.g. census, instance, briefs, designs) and progress as they go |
+| Gate reviewer | `review`, then the verdict: back to `running`, or accepted |
+| Scribe | `done` with evidence, at fold |
+| Steward | decision `requested` when foreseen; `decided` when the native rules |
+| Build operator | build started and finished, per level |
+| Monitor | `blocked` and the reason when the environment stops work, and again when it clears |
+
+A role that cannot emit (the log unwritable) stops and reports; it does not continue invisibly.
+
+### 11.4 · How it stays real-time
+
+- The tracker tails the event log every second and pushes a new snapshot to open pages over Server-Sent Events. **Measured: about 0.1 s** from a line being written to the page showing it (worst case about 1 s, one engine tick).
+- It sends a visible heartbeat every 5 seconds, so a quiet campaign reads as live, and a stuck server reads as stuck.
+- Detectors run in the background on time-to-live timers, so a slow check never delays an event.
+
+### 11.5 · How it stays up, and honest when it cannot
+
+| Failure | Behaviour (tested) |
+|---|---|
+| Tracker process killed | the supervisor restarts it in about 2 s; the page reconnects by itself about 0.4 s later |
+| Page loses the stream | falls back to polling every 5 s and says so in amber |
+| Server unreachable | the page says so in red, with the age of the data it still shows |
+| Corrupt line in the event log | skipped, counted, and shown in the health strip |
+| Bad edit to the plan model | the last good plan stays up; the error is shown |
+| A detector crashes or its source is missing | that one item shows *unmeasured*; the rest carry on |
+| Restart | the last snapshot is restored from disk at once, then rebuilt from the log |
+
+### 11.6 · Known limits
+
+- **Database credential source.** The detectors that read the database use a read-only environment file. Today that file sits in a session scratch folder; a permanent location is needed before execution (decision for the native).
+- **Local only.** The tracker listens on `127.0.0.1`. Viewing from another device needs a decision on how to expose it safely.
+- **The plan model is hand-kept.** A change to the plan must be made in the plan document and in `plan_model.json` together; the Scribe checks they agree at every fold.
