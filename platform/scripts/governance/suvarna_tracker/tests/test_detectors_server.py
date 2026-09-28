@@ -282,3 +282,14 @@ def test_quiet_stream_still_sends_visible_heartbeat(server):
     resp.close()
     assert got is not None, "no alive event on a quiet stream"
     assert got["tick_age_s"] < 5 and "version" in got
+
+
+def test_service_worker_kill_switch_served(server):
+    """A worker left on this port by another app is retired: the tracker answers its script URL with one
+    that clears caches, unregisters itself and reloads the page from the network."""
+    for p in ("/sw.js", "/service-worker.js"):
+        r = urllib.request.urlopen(server["base"] + p, timeout=5)
+        body = r.read().decode()
+        assert r.status == 200 and "javascript" in r.headers["Content-Type"]
+        assert r.headers["Cache-Control"] == "no-store"
+        assert "registration.unregister()" in body and "caches.delete" in body and "navigate" in body

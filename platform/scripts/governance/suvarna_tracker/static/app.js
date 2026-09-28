@@ -194,6 +194,12 @@
 
   setInterval(paintLive, 1000);                              // freshness ticks every second
   setInterval(() => { if (snap) { renderWhere(); } }, 15000); // elapsed times stay current
+  // This page never uses a service worker. Remove any a previous app on this port left behind,
+  // so it can never again serve that app's cached pages here.
+  try {
+    navigator.serviceWorker?.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+    window.caches?.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
+  } catch (_) {}
   fetch("/api/state", { cache: "no-store" }).then((r) => r.json()).then((s) => accept(s, "polling")).catch(() => {});
   connect();
 })();

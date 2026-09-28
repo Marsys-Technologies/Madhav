@@ -262,6 +262,19 @@ def _strip_ages(obj):
     return obj
 
 
+SW_KILL_PATHS = {"/sw.js", "/service-worker.js", "/serviceworker.js", "/serviceWorker.js", "/firebase-messaging-sw.js"}
+SW_KILL_SWITCH = """/* Suvarna tracker: retire any service worker a previous app left on this origin. */
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    try { for (const k of await caches.keys()) await caches.delete(k); } catch (_) {}
+    try { await self.registration.unregister(); } catch (_) {}
+    try { for (const c of await self.clients.matchAll({ type: "window" })) c.navigate(c.url); } catch (_) {}
+  })());
+});
+"""
+
+
 def make_handler(engine: Engine):
     class Handler(BaseHTTPRequestHandler):
         server_version = "SuvarnaTracker/1"
@@ -294,6 +307,11 @@ def make_handler(engine: Engine):
                 return self._send(200 if h["ok"] else 503, json.dumps(h, default=str).encode(), "application/json")
             if path == "/events":
                 return self._sse()
+            if path in SW_KILL_PATHS:
+                # Port 8765 has hosted other local apps. A service worker one of them left behind keeps
+                # serving that app's cached pages in an everyday browser profile. Browsers re-fetch the
+                # worker script from the network, so answering with this one retires the old worker.
+                return self._send(200, SW_KILL_SWITCH.encode(), "application/javascript; charset=utf-8")
             return self._send(404, b"not found", "text/plain")
 
         def _static(self, rel: str):
