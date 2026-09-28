@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "1a231d17775c6979c77720feea2838f12d650724ec7d1c50999d3b0672fad1bf",
+  "content_sha256": "b08984860bf0398326de91c651d4d44ffefc26f11f256c39fb621fb72f1548dd",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -3833,6 +3833,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of aspect categories.",
             "items": {
@@ -3898,7 +3902,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "RC-7: served-generation build fence for sav_bav_gating (generation/served_generation.ts). Omit for the chart's current unfenced rows.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -3981,6 +3985,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Filter by ayanamsha. Omit for all.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "categories": {
@@ -4447,6 +4455,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Explicit category list.",
             "items": {
@@ -4507,6 +4519,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of dispositor categories.",
             "items": {
@@ -4563,7 +4579,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -4778,7 +4794,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -5025,6 +5041,10 @@
         "input_contract": {
           "ayanamsha_id": {
             "description": "Filter by ayanamsha_id (e.g. LAHIRI). Omit for all ayanamshas.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "categories": {
@@ -5385,7 +5405,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "RC-7: served-generation build fence (generation/served_generation.ts). Composing callers (query_planet, graha_portrait) best-effort resolve the chart's served build set and pass it here so the strength read resolves to one generation (each caller discloses whether resolution actually succeeded via its own `generation_fence` response field — a resolution failure there falls back to this same unfenced path, it is never a silent, unstated fence). Standalone calls omit it and read the chart's current rows unfenced, as before.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "categories": {
@@ -5883,6 +5903,10 @@
             "description": "Filter by ayanamsha. Omit for all.",
             "type": "string"
           },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
+            "type": "string"
+          },
           "categories": {
             "description": "Subset of categories.",
             "items": {
@@ -5961,7 +5985,7 @@
             "type": "boolean"
           },
           "build_id": {
-            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -6542,7 +6566,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -7277,7 +7301,7 @@
             "type": "string"
           },
           "build_id": {
-            "description": "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced.",
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -7544,6 +7568,10 @@
           },
           "ayanamsha_id": {
             "description": "Ayanamsha filter (e.g. 'LAHIRI'). Omit for all ayanamshas.",
+            "type": "string"
+          },
+          "build_id": {
+            "description": "Served-generation build fence: one build UUID or an array of them. Composing callers and inquiry-dispatched calls carry the chart's served build set; a standalone call that omits it reads the chart's current rows unfenced.",
             "type": "string"
           },
           "chart_id": {
@@ -20849,7 +20877,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-28T01:09:09.000Z",
+  "generated_at": "2026-09-28T08:13:49.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20871,7 +20899,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "f1e21c3df13aeb54389cfeb863622dda635f928ccc6a8cdb8ef1cff41ee99d42"
+        "sha256": "eb66c018343ec0fe84b3e64168db8bc8e626fe5550a73b25903c8fed20042962"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21450,7 +21478,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 202,
+        "member_count": 203,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21477,8 +21505,12 @@
             "sha256": "7e1e716500db5f048024d0b63633381dfa64b492d0d28ec8e6c4a195b32a8c23"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/generation/composite_fence.ts",
+            "sha256": "511dac1df63fb8d9b1cbe67845986df623531d642891218dbeef3595392e1b7b"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/generation/served_generation.ts",
-            "sha256": "5fc485a2e5934201aad8e8e7596a7c7b2922f80fcab5e470b92554728d7b7052"
+            "sha256": "23e3bc377d772110c81ceaf9d140434d9e994b804b7bd30a4fe0546a8f8c4828"
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
@@ -21758,15 +21790,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-            "sha256": "1fa2d6ccf260d0b8ff1cfddcc5e8be203ca1fde3b08138961ace1c1c579cdda1"
+            "sha256": "1b430efab124f5c304b7ff6b3788ee6a23cd86fad059833bedf1994ad4949a45"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
-            "sha256": "672e199e2847979deda99d78dfe8622efad9f2438c85fbb276ccecbd91a23ff6"
+            "sha256": "2f79d75d060d24169cb34405bc6f4706dacda149f5e4822a030501c23e8e0fae"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
-            "sha256": "a068c2bd692568ee6eb0e787c3a9b2549198f031be2ac3e57cf56312adc93f10"
+            "sha256": "24653dc1f1878ebfa601232df0a749a0b820bb2f8c52b1422549b516bf518258"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
@@ -21802,15 +21834,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
-            "sha256": "38ef7f2ccdf9c705a6ce4f91bdc73e86a2db0f64a15f47ca36e49f0a17b83528"
+            "sha256": "22fd718f853ef35d037cd4fbc160515947af4ea10c3a8669d843cae3d46993b8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-            "sha256": "dfcc6d68d82b203f1986a837029e2726568bf47b4a8f880168b3b9a3064bb9c2"
+            "sha256": "180c8a5b991085e300fb9977d5ad0d328516b18ef375a6274ca97c945cbb6670"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "b79edfb0dc92c0f28c0d205e8440abe52c356db93b363bb97a717c3ece4108f0"
+            "sha256": "698e0eda76165653ab92b623b1097d5613ec53285b97b61eab3aeda2ec2caa76"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -21826,7 +21858,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
-            "sha256": "ce52df133580f0d7d368f5b09a2de8978d0ca990f089796b0431eaea8042f125"
+            "sha256": "16e98b3b5c107a3d7574ad0f8d48c77f4e77f04bc70c74dffaee007040a2feff"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
@@ -21842,7 +21874,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-            "sha256": "cef3d2bf0fe79e71a1758d02556ceeb858873957622c8eae53ac0d910993e179"
+            "sha256": "24d57f7a9f1c5bb281bc62d1e0c73d9cebdc3bb7df62b089d73f8d87914b8953"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
@@ -21862,7 +21894,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
-            "sha256": "d3e6c8f5cb041e3f87041fcf03e1cde6e9f4bafd5d66368499cd816fef188aaa"
+            "sha256": "564bbb75c6fc05485e1c3f88c4a3db0b7a02c8b9e1a178afa740d05b784a639d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
@@ -21890,11 +21922,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-            "sha256": "a0d67441815c6ac91c6c60235a0a9c0b109a7233e898be45b8de1dbf63fa5eec"
+            "sha256": "7b2aaecfe02df408dccff6bf23ae4536fa3e4d64a981ad6510d9af8a7cb03784"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
-            "sha256": "00059628d9ecc617277cc97293b22355a2661b1afc2ab3d1aa518a011076cf01"
+            "sha256": "01017b721c20e79f3e6113f09ef90fa9776cf860d52dc16f7e85aeb372a8b03a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
@@ -21902,7 +21934,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
-            "sha256": "81135b6b4886f2c824d80f5f606b6ab0400a10af3700101ff9931f3f40f3f68f"
+            "sha256": "dec3e2ff9c6af437c12c9fd872788104c695a6703040fdbc0739fe31bdfb5441"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
@@ -21910,7 +21942,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
-            "sha256": "9f727d2352d347318eadf64a894c025851431329dc6dbc2fe66b8366f1709b41"
+            "sha256": "9cfcc8306fa1ce4910b96749e5d2fb6f7a8a446389bcbe8d520230dc124b2f85"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
@@ -21942,7 +21974,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
-            "sha256": "01ac9261216c163477b9bd089eb6f22610b0638316c7c631dd03b9e2132ef33a"
+            "sha256": "820ec6846be3fb9d488859f42c77cf7c4dab3ac430ba32d1ceb130e68660daad"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
@@ -21990,7 +22022,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "9806675feab7107fd6dc9b9e0320cd5d3ba2064859ed9ec4d5d75f564d3180ef"
+            "sha256": "a00747d3fd8c98fd3b381a33d7b45c7dff9f3087f39d49129250b3ee96b90190"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -22006,7 +22038,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
-            "sha256": "c390d21ff3064697777336601af5f0d3706a5548a010fcefa8dafa15a7ed368b"
+            "sha256": "847b26a613568dd69bdf6286a751633dfc5ad820621a1dd2373ab200832290ac"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
@@ -22262,7 +22294,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "1abab040dd6a1d69a83139fc8656dd6f5f3b2b1c8eae5e8dd70e69c1ade8361a"
+        "sha256": "dd15fc64ccf065110969454787f22ce52afe57a64e18ef06e0cbbd11348c065e"
       },
       {
         "id": "service_effect_contracts",
@@ -22287,5 +22319,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "60dbd9c9cb0159544cd9314b1cc8f536c8fd9c5d"
+  "source_revision": "f2c5e52a9b199891f9717f6b196a4c2669018365"
 }
