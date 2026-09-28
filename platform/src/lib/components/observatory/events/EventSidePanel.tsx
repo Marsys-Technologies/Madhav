@@ -63,6 +63,10 @@ export function EventSidePanel({
         const detail = await fetchEvent(eventId)
         if (cancelled) return
         setEvent(detail)
+        if (detail.conversation_id === null) {
+          setSiblings([])
+          return
+        }
         const params: EventsParams = {
           from: dateRange.from,
           to: dateRange.to,

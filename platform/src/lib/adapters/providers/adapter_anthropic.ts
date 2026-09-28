@@ -8,7 +8,7 @@ import type { QueryRequest, ModelInteractionEvent, ModelInteraction } from '../t
 export const adapterAnthropic: Adapter = {
   providerId: 'anthropic',
 
-  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+  prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel): StreamTextOptions {
     const providerOptions =
       meta.quirks.cache_strategy === 'explicit_headers'
         ? { anthropic: { cacheControl: { type: 'ephemeral' as const } } }
@@ -29,7 +29,7 @@ export const adapterAnthropic: Adapter = {
     }
 
     return {
-      model: anthropic(meta.id),
+      model: injectedModel ?? anthropic(meta.id),
       system: req.systemPrompt,
       messages: req.messages,
       providerOptions,

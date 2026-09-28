@@ -1,5 +1,5 @@
 import 'server-only'
-import { Pool, QueryResult, QueryResultRow, types } from 'pg'
+import { Pool, PoolClient, QueryResult, QueryResultRow, types } from 'pg'
 
 // Return date/timestamp columns as strings to match TypeScript types
 types.setTypeParser(types.builtins.DATE, (v) => v)
@@ -72,6 +72,24 @@ async function initPool(): Promise<Pool> {
 export async function getPool(): Promise<Pool> {
   if (!g.__pgPool) g.__pgPool = await initPool()
   return g.__pgPool
+}
+
+/** A transaction is never retried: its callback may have performed external work. */
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await (await getPool()).connect()
+  let discard = false
+  try {
+    await client.query('BEGIN')
+    const result = await fn(client)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch { discard = true }
+    throw error
+  } finally {
+    if (discard) client.release(true)
+    else client.release()
+  }
 }
 
 function isTransientConnectionError(err: unknown): boolean {

@@ -1,0 +1,49 @@
+session_open:
+  session_id: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  cowork_thread_name: "Madhav — Jātaka Controlled Production Rollout"
+  agent_name: gpt-5
+  agent_version: gpt-5
+  tool: "Codex"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/jataka-chart-workspace/Madhav
+  step_number_or_layer: "Jātaka chart workspace — controlled production rollout"
+  predecessor_session: NIRMANA-L0-L5-COUPLING-FIX-20260927
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+    lease_status_verified: true
+    lease_verified_at: 2026-09-27T23:40:00+05:30
+    coordination_commit: e209baf50e9988524390abf70710e4a8ae73fec6
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    ccd_consumed: [CCD-013, CCD-014, CCD-015, CCD-016, CCD-017, CCD-018, CCD-019]
+    ccd_appended: []
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md]
+  mandatory_reading_confirmation: []
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/jataka/JATAKA_CHART_WORKSPACE_CONTROLLED_PRODUCTION_ROLLOUT_ADDENDUM_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_OPEN.yaml
+      - 00_ARCHITECTURE/schema_reports/JATAKA_CONTROLLED_PROD_ROLLOUT_20260927_CLOSE.yaml
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+      - .github/workflows/deploy.yml
+      - platform/tests/unit/governance/deploy_protected_jataka_migrations.test.ts
+    must_not_touch:
+      - platform/src/**
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - platform/supabase/migrations/**
+      - CLAUDECODE_BRIEF.md
+      - existing production charts and conversations
+      - shared production asset rebuilds or data repairs
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No Macro Plan or health-crisis serving change."
+      acknowledged: true
+  red_team_due: false
+  notes: "Native explicitly authorized the controlled production rollout and later CCD-019's narrow temporary schema capability. Production writes were limited to the reviewed deploy path and one synthetic chart; full correction stopped safely on the inherited shared-asset failure."

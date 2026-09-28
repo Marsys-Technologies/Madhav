@@ -37,6 +37,7 @@ export interface RegistryEntryWithScope extends RegistryEntry {
   natural_key_partition: string | null
   asset_kind: 'data' | 'artifact' | 'service'
   asset_type: 'data' | 'artifact' | 'service'
+  service_health: string | null
   health_probe: Record<string, unknown> | null
 }
 
@@ -177,7 +178,7 @@ export async function loadPlanningInputs(db: Queryable, chartId: string): Promis
       // (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.3) reads this directly.
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
               scope, has_writer, target_table, count_sql, natural_key_partition,
-              asset_kind, asset_type, health_probe, domain
+              asset_kind, asset_type, service_health, health_probe, domain
        FROM asset_registry
        WHERE is_active = true
        ORDER BY layer, sort_order`,

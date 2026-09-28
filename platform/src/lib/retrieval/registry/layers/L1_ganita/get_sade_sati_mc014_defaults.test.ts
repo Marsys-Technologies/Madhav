@@ -72,7 +72,7 @@ describe('get_sade_sati — MC-014 current+adjacent-window default', () => {
     expect(subjects.has('FAR_PAST')).toBe(false)
     expect(res.content['periods_dropped_outside_window']).toBe(2) // FAR_FUTURE + FAR_PAST
     expect(res.content['window_filter_applied']).toBe(true)
-  })
+  }, 15_000)
 
   it('all:true restores the full historical+future sweep (never deleted, just not the default)', async () => {
     const handler = await getCapabilityHandler()

@@ -29,7 +29,7 @@ const SAFETY_BLOCK_NONE = [
 export const adapterGemini: Adapter = {
   providerId: 'google',
 
-  prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
+  prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel): StreamTextOptions {
     // Gemini 3.x models declare `thinking_level` (minimal/low/medium/high) in their
     // registry quirks instead of `thinking_budget` (registry.ts's gemini-3.1-pro-preview /
     // gemini-3.7-flash catalog entries). thinkingLevel and thinkingBudget are distinct,
@@ -93,7 +93,7 @@ export const adapterGemini: Adapter = {
     }
 
     return {
-      model: google(meta.id),
+      model: injectedModel ?? google(meta.id),
       system: req.systemPrompt,
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

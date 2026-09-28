@@ -34,7 +34,8 @@ function reg(asset_id: string, extra: Record<string, unknown> = {}) {
     asset_id, layer, depends_on: [], estimated_seconds: 10,
     scope: asset_id.startsWith('bg_') ? 'global' : 'per_chart',
     has_writer: true, target_table: `${asset_id}_t`, count_sql: null,
-    natural_key_partition: null, asset_kind: 'data', asset_type: 'data', health_probe: null, domain: null,
+    natural_key_partition: null, asset_kind: 'data', asset_type: 'data', service_health: null,
+    health_probe: null, domain: null,
     ...extra,
   }
 }
@@ -151,6 +152,26 @@ describe('resolveRunPreparation — chart correction', () => {
       throughput: [{ asset_id: 'bg_ephemeris', state: 'error' }],
     })
     await expect(resolveRunPreparation(db, CORRECTION)).rejects.toMatchObject({ code: 'UPSTREAM_BLOCKED' })
+  })
+
+  it('accepts a current healthy service probe with only the inapplicable output-spec reason', async () => {
+    const { db, sql } = fakeDb({
+      registry: [
+        reg('bg_panchanga', {
+          asset_kind: 'service', asset_type: 'service', service_health: 'healthy',
+          has_writer: false, target_table: null, health_probe: { type: 'http' },
+        }),
+        reg(WRITERS[0], { depends_on: ['bg_panchanga'] }),
+      ],
+      throughput: [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      freshness: [{
+        asset_id: 'bg_panchanga', state: 'unknown', reasons: ['output_digest_spec_unavailable'],
+      }],
+    })
+
+    const prepared = await resolveRunPreparation(db, CORRECTION)
+    expect(prepared.plan).toEqual([WRITERS[0]])
+    expect(sql.find((statement) => /FROM asset_registry/.test(statement))).toMatch(/service_health/)
   })
 
   it('rejects with CODE_DIGEST_UNAVAILABLE when a planned writer has no sidecar digest', async () => {

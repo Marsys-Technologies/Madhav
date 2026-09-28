@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.85
+version: 6.86
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,20 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.86 (2026-09-28, JATAKA-CONTROLLED-PROD-ROLLOUT-20260927): Controlled production
+    rollout CLOSED under CCD-018/CCD-019. PRs #2739/#2740 merged; protected main and all live
+    services are bound to acf8d2baed6345097dd28a34e533329be52046ec. Backup 1790545434667
+    succeeded. Migrations 1120-1123 applied through manual run 36352926415; temporary schema
+    CREATE was mandatorily revoked and read-only attestation confirms amjis_app has USAGE=true,
+    CREATE=false. Audited force-all run 36354240706 put web, sidecar and MCP at 100% traffic on
+    the exact SHA; pipeline image matches. Live browser acceptance is PARTIAL/BLOCKED: dashboard
+    minimal cards, dedicated workspace, responsive layout, name-only edit, truthful gates and D1
+    rendering were verified. Synthetic chart a0fa7e08-c758-4167-846b-b38054e5f768 remains at
+    birth time 12:34 with preferred name Rollout Verified and zero build runs. The single
+    confirmed recompute attempt refused before mutation because pre-existing shared asset
+    bg_transit_engine fails on gochara_resonance_map_source_rule_id_fkey referencing rule 133.
+    No broad shared rebuild, existing-chart mutation or direct production patch was attempted;
+    full Task 9/context-transition acceptance remains BLOCKED pending separate authority.
   - v6.85 (2026-09-27, NIRMANA-L0-L5-COUPLING-FIX-20260927): Native-authorized, separately
     governed follow-up (CCD-017) to the closed Jātaka Phase-A3 session, lease
     MADHAV-NIRMANA-L0-L5-COUPLING-FIX-20260927 (claimed 4640ec77b, released at this close).
@@ -9625,8 +9639,8 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: NIRMANA-L0-L5-COUPLING-FIX-20260927
-  predecessor_session: JATAKA-PHASE-A3-SOURCE-INTEGRITY-20260927
+  last_session_id: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  predecessor_session: NIRMANA-L0-L5-COUPLING-FIX-20260927
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
   last_session_drift_verdict: "Nirmāṇa L0/L5 receipt-checker coupling fix (CCD-017, separately governed follow-up to the closed Jātaka Phase-A3 session): fixed build_pins()'s cross-layer coupling in nirmana_analysis_layer_pins.py (an L5-only --layer request used to unconditionally validate L0's frozen pins too, which is what blocked Phase-A3's item 4); scoped both the per-layer construction loop and the definition-binding membership check to only the requested layer(s), extracted the per-layer splice into a testable splice_layer_pin() function. 7 new hermetic RED->GREEN Python unit tests prove: a legitimate L5-only successor passes; it never touches L0_FROZEN_PINS; a real L0 fingerprint/membership drift still fails closed when L0 is in scope; unreviewed L5 drift still fails closed; predecessor histories stay immutable across a splice. Then, under live native GCP-CLI DB authorization narrowly re-granted for this one action (read-only-session-enforced, no write attempted or possible), ran the now-fixed --layer L5 splice once: nirmana-analysis-layer-pins.json's L5 entry updated (convergence_commit, writer_inventory_sha256 only; membership_sha256/receipt_count/non_writer_assets/asset_prefix unchanged; L0-L4 and all history untouched, byte-for-byte, confirmed via diff). Both previously-failing nirmana-analysis-receipts.test.ts tests now pass; one further pre-existing hardcoded literal in the same file (asserting L5 unchanged since the unrelated L0-repair successor) updated to the new correct values, not weakened -- 12/12 pass. Beyond-Ācārya v6/v7 untouched, 16/16 still pass. Full platform unit suite and full Python CI verified with no new failures beyond confirmed pre-existing/unrelated ones. Task 9 remains BLOCKED. Not pushed; no PR, merge, deploy, migration application, or production access."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md

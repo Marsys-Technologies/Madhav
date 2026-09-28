@@ -1634,10 +1634,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "dbe44c43c8df047d8e0de560aa5584217b4c0ffbaa963efed8c282dbcbf672a5",
+      "fingerprint": "18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1",
       "native_id": "project",
-      "last_verified_session": "JATAKA-CONTROLLED-PROD-ROLLOUT-20260927",
-      "last_verified_on": "2026-09-27"
+      "last_verified_session": "JATAKA-SHARED-PREREQUISITE-REPAIR-20260928",
+      "last_verified_on": "2026-09-28"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",

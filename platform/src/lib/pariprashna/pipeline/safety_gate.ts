@@ -68,6 +68,7 @@ import {
   type LengthTier,
 } from '@/lib/pariprashna/protocol/events'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import type { ByokTurnRuntime } from './turn_runtime'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 
@@ -87,6 +88,30 @@ export interface RequestBody {
   length_tier?: string
   style?: string
   lel_context_enabled?: boolean
+  ai_selection?: unknown
+}
+
+/** Pure flag-on binding. It never consults the legacy registry or environment. */
+export function bindByokTurnParams(body: RequestBody, runtime: ByokTurnRuntime): TurnParams {
+  const readingDepth: ReadingDepth = ReadingDepthSchema.safeParse(body.reading_depth).success
+    ? (body.reading_depth as ReadingDepth) : 'auto'
+  const lengthTier: LengthTier = LengthTierSchema.safeParse(body.length_tier).success
+    ? (body.length_tier as LengthTier) : 'standard'
+  const synth = runtime.safeSnapshot.roles.synthesizer
+  return {
+    selectedStack: 'byok',
+    modelId: runtime.displayModelId,
+    modelMeta: {
+      provider: synth.kind === 'provider_model' ? synth.providerId : synth.cliId,
+      maxInputTokens: 128_000,
+      maxOutputTokens: 16_384,
+    },
+    readingDepth,
+    deepDive: readingDepth === 'deep_dive',
+    lengthTier,
+    lelContextEnabled: body.lel_context_enabled !== false,
+    style: body.style ?? 'acharya',
+  }
 }
 
 export interface AdmittedRequest {

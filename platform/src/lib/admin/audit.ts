@@ -12,6 +12,8 @@ export type AuditAction =
   | 'set_password'
   | 'chart_grant'
   | 'chart_revoke'
+  | 'ai_cli_grant'
+  | 'ai_cli_revoke'
   | 'nirmana_definition_recorded'
   | 'nirmana_evidence_recorded'
   | 'nirmana_label_catalogue_recorded'

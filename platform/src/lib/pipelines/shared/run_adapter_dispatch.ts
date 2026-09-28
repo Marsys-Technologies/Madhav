@@ -88,6 +88,9 @@ import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_v
 import { traceEmitter } from '@/lib/trace/emitter'
 
 import { runOnFinishWriteThrough, type OnFinishWriteThroughResult } from './onfinish_writethrough'
+import type { ByokTurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
+import { BYOK_MAX_OUTPUT_TOKENS } from '@/lib/limits/byok_admission'
+import { AiConsoleError } from '@/lib/ai-console/errors'
 import { checkConversationWritable } from '@/lib/conversations/writeGuard'
 
 // ---------------------------------------------------------------------------
@@ -191,6 +194,9 @@ export interface RunAdapterDispatchCtx {
    * alongside `data-completeness`. Defaults to an empty array when omitted.
    */
   judgmentFlags?: string[]
+  /** Flag-on exact role authority. Omitted preserves the legacy adapter path. */
+  byokRuntime?: ByokTurnRuntime
+  abortSignal?: AbortSignal
 }
 
 // ---------------------------------------------------------------------------
@@ -405,6 +411,8 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
     orientation,
     completenessReceipt,
     judgmentFlags: ctxJudgmentFlags,
+    byokRuntime,
+    abortSignal,
   } = ctx
 
   const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
@@ -418,10 +426,10 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   // model's provider field. STACK_ROUTING resolves a synthesis model_id;
   // modelMeta.provider is the concrete provider that adapter dispatch needs.
   const mappedStackAdapter = STACK_TO_ADAPTER[selectedStack] as StackId | undefined
-  const adapterId: StackId | undefined =
-    mappedStackAdapter ??
-    (modelMeta.provider as StackId | undefined)
-  if (!adapterId) {
+  const adapterId: StackId | undefined = byokRuntime
+    ? undefined
+    : mappedStackAdapter ?? (modelMeta.provider as StackId | undefined)
+  if (!adapterId && !byokRuntime) {
     throw new Error(
       `[consult] no adapter mapping for stack=${selectedStack} provider=${modelMeta.provider} — ` +
       `legacy synthesis path was removed by 3.legacy_delete.`,
@@ -483,14 +491,14 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
       ? `${builtSystemContent}\n\n---\n\n${INJECTION_CONTAINMENT_CLAUSE}`
       : builtSystemContent
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
-  const adapter = getAdapter(adapterId)
+  const adapter = adapterId ? getAdapter(adapterId) : undefined
   // R11E loop flags permanently true (WS-0 2026-06-04)
   const AGENTIC_PROVIDERS = new Set(['anthropic', 'google', 'openai', 'deepseek', 'nvidia'])
-  const useAgenticLoop = AGENTIC_PROVIDERS.has(adapterId)
+  const useAgenticLoop = adapterId !== undefined && AGENTIC_PROVIDERS.has(adapterId)
 
   if (useAgenticLoop) {
-    const manifest = adapter.getManifest()
-    const toolsCfg = adapter.tools({
+    const manifest = adapter!.getManifest()
+    const toolsCfg = adapter!.tools({
       toolLoopMode: manifest.adaptiveToolLoop,
       tools: buildChatToolsFromNames(queryPlan.tools_authorized ?? []),
       maxIterations: 8,
@@ -504,7 +512,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   // can reference it in the streamText providerOptions.google.cachedContent field.
   // Cache creation is non-fatal — any failure falls through to a standard uncached request.
   if (false && adapterId === 'google') { // R11D_GEMINI_CACHE: NOT_IMPLEMENTED — permanently false (WS-0)
-    const cacheResponse = adapter.cache({ cacheMode: 'cached_content_api', breakpointPositions: [] })
+    const cacheResponse = adapter!.cache({ cacheMode: 'cached_content_api', breakpointPositions: [] })
     const estimatedTokens = Math.ceil((systemContent?.length ?? 0) / 4)
     if (estimatedTokens >= GEMINI_CACHE_MIN_TOKENS) {
       try {
@@ -515,7 +523,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           : `models/${adapterChatReq.model}`
         const cachePayload = buildCacheCreatePayload({
           model: qualifiedModel,
-          systemPrompt: systemContent,
+          systemPrompt: systemContent ?? '',
           ragBundle: undefined,
           ttl: `${ttlSeconds}s`,
         })
@@ -559,8 +567,17 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   }
   const adapterMsgId = createIdGenerator({ prefix: 'msg', size: 16 })()
   const adapterStartMs = Date.now()
-  const adapterStream = createUIMessageStream({
-    execute: async ({ writer }) => {
+  const turnAbort = byokRuntime ? new AbortController() : undefined
+  const turnSignal = turnAbort
+    ? (abortSignal ? AbortSignal.any([abortSignal, turnAbort.signal]) : turnAbort.signal)
+    : abortSignal
+  let execution: Promise<void> | undefined
+  const baseAdapterStream = createUIMessageStream({
+    ...(byokRuntime ? { onError: (error: unknown) => error instanceof AiConsoleError
+      ? error.message : new AiConsoleError('AI_EXECUTION_FAILED').message } : {}),
+    execute: ({ writer }) => {
+      execution = (async () => {
+      try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       writer.write({ type: 'start', messageId: adapterMsgId } as any)
       // W4 core step 5 / W5 L9 — S-1 orientation front-door: emit ONCE near the start, before any
@@ -593,11 +610,47 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
       const adapterTextPartId = 'text-0'
       let adapterTextStarted = false
       let adapterAccumulatedText = ''
+      async function* exactSynthesizerStream(runtime: ByokTurnRuntime) {
+        const reader = runtime.executors.synthesizer.stream({
+          systemPrompt: systemContent ?? '',
+          messages: adapterMessages.flatMap(message =>
+            message.role !== 'system' && typeof message.content === 'string'
+              ? [{ role: message.role, content: message.content }]
+              : []),
+          abortSignal: turnSignal,
+          maxOutputTokens: BYOK_MAX_OUTPUT_TOKENS,
+        }).getReader()
+        let completed = false
+        let abortCleanup: Promise<void> | undefined
+        const cancelOnAbort = () => {
+          abortCleanup ??= reader.cancel().catch(() => undefined)
+        }
+        turnSignal?.addEventListener('abort', cancelOnAbort, { once: true })
+        try {
+          while (true) {
+            const next = await reader.read()
+            if (next.done) { completed = true; return }
+            if (next.value.type === 'text_delta') yield next.value
+            else if (next.value.type === 'reasoning_delta') {
+              yield { type: 'thinking_delta' as const, thinking: next.value.text }
+            } else if (next.value.type === 'tool_call' || next.value.type === 'tool_result') {
+              throw new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
+            }
+          }
+        } finally {
+          turnSignal?.removeEventListener('abort', cancelOnAbort)
+          if (!completed) abortCleanup ??= reader.cancel().catch(() => undefined)
+          await abortCleanup
+          reader.releaseLock()
+        }
+      }
       try {
-        const loopConfig = LOOP_CONFIG_BY_PROVIDER[adapterId]
-        const chatStream = (useAgenticLoop && loopConfig)
+        const loopConfig = adapterId ? LOOP_CONFIG_BY_PROVIDER[adapterId] : undefined
+        const chatStream = byokRuntime
+          ? exactSynthesizerStream(byokRuntime)
+          : (useAgenticLoop && loopConfig)
           ? runAgenticLoop(
-              adapter,
+              adapter!,
               adapterChatReq,
               async (toolCall) => {
                 // `toolCall.input` is MODEL-chosen and reaches the tool as
@@ -623,7 +676,7 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
               },
               loopConfig,
             )
-          : adapter.chat(adapterChatReq)
+          : adapter!.chat(adapterChatReq)
         for await (const event of chatStream) {
           if (event.type === 'text_delta') {
             if (!adapterTextStarted) {
@@ -654,6 +707,12 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
         }
       } catch (adapterErr) {
         console.error('[adapter-dispatch] stream error stack=%s', adapterId, adapterErr)
+        if (byokRuntime) {
+          const safe = adapterErr instanceof AiConsoleError
+            ? adapterErr : new AiConsoleError('AI_EXECUTION_FAILED', 'synthesizer')
+          writer.write({ type: 'error', errorText: safe.message } as never)
+          return
+        }
       }
       if (adapterTextStarted) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -794,8 +853,12 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             style,
             pipeline: 'v2-adapter',
             conversationId: finalConversationId,
+            ...(byokRuntime ? { ai_routing_snapshot_id: byokRuntime.snapshotId } : {}),
           },
         }
+        const byokTitle = isFirstTurn && byokRuntime && !turnSignal?.aborted
+          ? await generateConversationTitle(persistMsgs, undefined, byokRuntime.executors.worker, turnSignal)
+          : undefined
         writeThrough = await runOnFinishWriteThrough(
           {
             pipelineKind: 'agentic',
@@ -854,7 +917,9 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
             fetchMsrSnippets: (ids) => fetchMsrSnippets(ids),
             pendingStreamWriter,
             title: {
-              generate: (msgs, c) => generateConversationTitle(msgs, c),
+              generate: (msgs, c) => byokRuntime
+                ? Promise.resolve(byokTitle ?? null)
+                : generateConversationTitle(msgs, c),
               update: (cid, t) => updateConversationTitle(cid, t).then(() => undefined),
             },
             predictionLedger: async (entry) => {
@@ -889,9 +954,38 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
         adapterStartMs,
         queryId,
       })
+      } finally {
+        byokRuntime?.releaseAdmission()
+      }
+      })()
+      return execution
     },
   })
-  return createUIMessageStreamResponse({ stream: adapterStream })
+  const response = createUIMessageStreamResponse({ stream: baseAdapterStream })
+  if (!byokRuntime || !response.body) return response
+
+  const wireReader = response.body.getReader()
+  const guardedBody = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const next = await wireReader.read()
+        if (next.done) controller.close()
+        else controller.enqueue(next.value)
+      } catch (error) {
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      turnAbort!.abort()
+      await wireReader.cancel(reason).catch(() => undefined)
+      await execution?.catch(() => undefined)
+    },
+  })
+  return new Response(guardedBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  })
 }
 
 /**

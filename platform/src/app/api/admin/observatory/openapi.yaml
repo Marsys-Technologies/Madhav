@@ -648,7 +648,7 @@ components:
         - started_at
       properties:
         event_id: { type: string, format: uuid }
-        conversation_id: { type: string }
+        conversation_id: { type: string, nullable: true }
         conversation_name: { type: string, nullable: true }
         prompt_id: { type: string }
         user_id: { type: string }
@@ -692,7 +692,7 @@ components:
         - created_at
       properties:
         event_id: { type: string, format: uuid }
-        conversation_id: { type: string }
+        conversation_id: { type: string, nullable: true }
         conversation_name: { type: string, nullable: true }
         prompt_id: { type: string }
         parent_prompt_id: { type: string, nullable: true }

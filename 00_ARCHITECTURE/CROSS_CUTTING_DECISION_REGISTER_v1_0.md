@@ -465,3 +465,51 @@ coordination lease that produced it.
   access, push, PR, protected merge, governed migration application and deployment for this exact
   rollout. Their source-integrity conclusions, file boundaries, migration identities, historical
   evidence, safety constraints and all unrelated ceilings remain in force.
+
+## CCD-019 — Jātaka protected migration schema-capability exception
+
+- **Date/tool/session:** 2026-09-28; Codex; `JATAKA-CONTROLLED-PROD-ROLLOUT-20260927`.
+- **Authority:** direct native authorization after the protected deploy stopped before service
+  mutation because the ordinary `amjis_app` migration login had `USAGE` but not `CREATE` on the
+  protected `public` schema. This entry registers the exact exception already recorded and closed
+  in the controlled-rollout addendum.
+- **Decision:** permit one reviewed, protected workflow to grant `CREATE ON SCHEMA public` to
+  `amjis_app` only while applying migrations 1120–1123, revoke it on every exit path, and attest
+  the closed privilege state before service deployment. The completed run applied the four
+  migrations and confirmed `amjis_app` retained `USAGE=true`, `CREATE=false`.
+- **Ceiling:** no permanent grant, role membership, credential/IAM change, direct SQL application,
+  emergency override, different migration, unrelated database mutation or reuse of the exception.
+- **Supersession:** none. The exception is exhausted and closed.
+
+## CCD-020 — Jātaka shared-prerequisite repair and blocked-acceptance completion
+
+- **Date/tool/session:** 2026-09-28; Codex; `JATAKA-SHARED-PREREQUISITE-REPAIR-20260928`.
+- **Authority:** direct native instruction in the continuing Jātaka conversation to execute the
+  separately authorized controlled production repair after the rollout's recomputation blocker was
+  explained. This is a bounded repair-and-acceptance authority, not a broad data-plane mandate.
+- **Corrected diagnosis gate:** read-only production evidence must distinguish a current writer
+  failure from stale operational metadata and freshness receipts. Rule 133 and every cited
+  `gochara_resonance_map` row must be preserved. The historical FK error may not be treated as a
+  current failure without reproduction against the deployed writer.
+- **Decision:** permit the smallest tested planner/readiness correction required for healthy
+  service prerequisites; a focused protected PR and exact-revision deploy if source changes are
+  necessary; a fresh recoverable production backup; explicit governed probe/rebuild operations only
+  for the prerequisite identities proven to block the disposable chart; and one rerun of only the
+  previously blocked correction/context-transition acceptance on synthetic chart
+  `a0fa7e08-c758-4167-846b-b38054e5f768`.
+- **Evidence gate:** prove the exact blockers, preserve referenced transit-rule identities, pass
+  focused and full required tests plus independent review, verify backup and rollback readiness,
+  deploy only through repository protection, confirm each repaired prerequisite is ready from live
+  state/receipts, then prove exactly one same-chart recomputation and the remaining Task 9 context
+  transition without cross-chart mutation.
+- **Safety and rollback:** no direct production patch; no deletion, remap or ID churn for rule 133;
+  no broad shared rebuild; no existing important chart edit/rebuild; no secret, IAM, network,
+  Firebase, topology or frozen-orchestrator change. Stop on any unexpected candidate, row-count,
+  identity, citation, service-health, deployment, isolation or acceptance difference. Application
+  rollback uses the last healthy revision; shared-data rollback uses the fresh backup or a separately
+  reviewed forward repair, never destructive ad-hoc SQL.
+- **Coordination:** exclusive lease `MADHAV-JATAKA-BG-TRANSIT-REPAIR-20260928` on
+  `origin/campaign-coordination`, claimed and remotely verified at
+  `fad1e8fbd4e150a65c936626105ecd84893a1464`.
+- **Supersession:** extends CCD-018 only for the separately authorized prerequisite repair and the
+  acceptance items it left blocked. All other CCD-018 ceilings remain in force.

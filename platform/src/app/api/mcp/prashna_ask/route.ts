@@ -67,6 +67,7 @@ import { NextResponse } from 'next/server'
 // requirement as /api/mcp/primitives/[tool]/route.ts.
 import '@/lib/retrieval/registry/catalog'
 import { validateMcpServiceRequest } from '@/lib/mcp/service_token'
+import { getFlag } from '@/lib/config'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query } from '@/lib/db/client'
@@ -87,14 +88,26 @@ import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_nam
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
 import { adoptInquiryPlanItems, annotateInquiryEvidenceForSynthesis, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
-import { DEFAULT_STACK_ID } from '@/lib/models/registry'
-import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
-import { synthesizeReading } from '@/lib/pipeline/prashna_ask_synthesis'
 import { ManagedInquiryExecutionSession } from '@/lib/vidhi/inquiry/execution_session'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
 import { getManagedPrashnaJob } from '@/lib/vidhi/inquiry/managed_job_store'
 import { serverPlannerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
+import { AiConsoleError, normalizeAiError } from '@/lib/ai-console/errors'
+import {
+  authorizeMcpByokPrincipal,
+  prepareMcpByokRuntime,
+  type PreparedMcpByokRuntime,
+} from '@/lib/mcp/prashna_ask/byok_preflight'
+import {
+  buildMcpEvidenceEnvelope,
+  MCP_EVIDENCE_ENVELOPE_MAX_BYTES,
+  MCP_RAW_EVIDENCE_MAX_BYTES,
+  mcpEvidenceBudgetTokens,
+  projectMcpEvidencePlan,
+} from '@/lib/mcp/prashna_ask/evidence'
+import { logSafeByokToolFailure } from '@/lib/mcp/prashna_ask/logging'
+import { observeMcpExternalSynthesis } from '@/lib/ai-console/observability'
 
 // Wall-clock generous enough for the elevated super_admin cost cap (300s) plus
 // margin for the HTTP round trip; the resolved per-entitlement cap enforces the
@@ -193,13 +206,24 @@ export async function POST(request: Request) {
   }
 
   // ── Layer 2: resolved principal headers ──────────────────────────────────────
+  const byokEnabled = getFlag('AI_CONSOLE_BYOK')
   const userUid = request.headers.get('x-mcp-user')
   const keyId = request.headers.get('x-mcp-key-id')
+  const authKind = request.headers.get('x-mcp-auth-kind')
   if (!userUid || !keyId) {
     return NextResponse.json(
       buildErrorEnvelope({
         error_class: 'auth',
         message: 'Missing principal headers (X-MCP-User, X-MCP-Key-Id)',
+      }),
+      { status: 401 },
+    )
+  }
+  if (byokEnabled && authKind !== 'api_key' && authKind !== 'oauth') {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'auth',
+        message: 'Missing or invalid principal header (X-MCP-Auth-Kind)',
       }),
       { status: 401 },
     )
@@ -217,8 +241,8 @@ export async function POST(request: Request) {
   }
 
   const chartId = body.chart_id
-  const question = body.question
-  if (!chartId || !question || !question.trim()) {
+  const rawQuestion = body.question
+  if (!chartId || !rawQuestion || !rawQuestion.trim()) {
     return NextResponse.json(
       buildErrorEnvelope({
         error_class: 'validation',
@@ -227,6 +251,7 @@ export async function POST(request: Request) {
       { status: 400 },
     )
   }
+  const question = rawQuestion
   const rawResponseFormat = body.response_format ?? 'standard'
   if (!PRASHNA_RESPONSE_FORMATS.includes(rawResponseFormat as PrashnaResponseFormat)) {
     return NextResponse.json(
@@ -238,6 +263,58 @@ export async function POST(request: Request) {
     )
   }
   const responseFormat = rawResponseFormat as PrashnaResponseFormat
+
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  if (byokEnabled && (body.managed_job_id === undefined) !== (body.managed_inquiry_id === undefined)) {
+    return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry and job identifiers must be supplied together' }), { status: 400 })
+  }
+  if (byokEnabled && body.managed_job_id !== undefined && !uuidPattern.test(body.managed_job_id)) {
+    return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_job_id must be a UUID' }), { status: 400 })
+  }
+  if (byokEnabled && body.managed_inquiry_id !== undefined && !uuidPattern.test(body.managed_inquiry_id)) {
+    return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_inquiry_id must be a UUID' }), { status: 400 })
+  }
+  let authorizedManagedJob: Awaited<ReturnType<typeof getManagedPrashnaJob>> = null
+  let authorizedByokRole: 'guest' | 'super_admin' | null = null
+  if (byokEnabled && body.managed_job_id && body.managed_inquiry_id) {
+    try {
+      authorizedByokRole = (await authorizeMcpByokPrincipal({
+        userId: userUid,
+        keyId,
+        authKind: authKind as 'api_key' | 'oauth',
+        chartId,
+      })).role
+    } catch (error) {
+      const normalized = normalizeAiError(error, { source: 'provider' })
+      return NextResponse.json(buildErrorEnvelope({
+        error_class: 'auth',
+        message: normalized.message,
+        remediation: `AI Console: ${normalized.code}`,
+      }), { status: 401 })
+    }
+    try {
+      authorizedManagedJob = await getManagedPrashnaJob({
+        job_id: body.managed_job_id,
+        principal_uid: userUid,
+        principal_key_id: keyId,
+      })
+    } catch {
+      return NextResponse.json(buildErrorEnvelope({
+        error_class: 'internal',
+        message: 'Managed inquiry authorization is temporarily unavailable',
+        remediation: 'Retry the authenticated managed request.',
+      }), { status: 422 })
+    }
+    if (!authorizedManagedJob || authorizedManagedJob.chart_id !== chartId
+      || authorizedManagedJob.request_jsonb.inquiry_id !== body.managed_inquiry_id) {
+      return NextResponse.json(buildErrorEnvelope({
+        error_class: 'auth',
+        message: 'managed inquiry does not match the authenticated durable job',
+      }), { status: 401 })
+    }
+  }
+  const correlationCandidate = byokEnabled && authorizedManagedJob ? body.managed_job_id : undefined
+  const queryId = correlationCandidate ?? crypto.randomUUID()
 
   // A malformed scope_tuple is a caller bug worth surfacing (400), not something
   // to silently drop back to text-only classification — the whole point of this
@@ -257,14 +334,36 @@ export async function POST(request: Request) {
     suppliedScopeTuple = parsedTuple.data
   }
 
-  // ── Per-call chart-access authorization (same brain as the primitives route) ─
-  const role = await resolveMcpPrincipalRole(userUid)
-  const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
-  if (perm === 'deny') {
-    return NextResponse.json(
-      buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
-      { status: 401 },
-    )
+  let role: 'guest' | 'super_admin'
+  if (byokEnabled) {
+    if (!authorizedByokRole) {
+      try {
+        authorizedByokRole = (await authorizeMcpByokPrincipal({
+          userId: userUid,
+          keyId,
+          authKind: authKind as 'api_key' | 'oauth',
+          chartId,
+        })).role
+      } catch (error) {
+        const normalized = normalizeAiError(error, { source: 'provider' })
+        return NextResponse.json(buildErrorEnvelope({
+          error_class: 'auth',
+          message: normalized.message,
+          remediation: `AI Console: ${normalized.code}`,
+        }), { status: 401 })
+      }
+    }
+    role = authorizedByokRole
+  } else {
+    // ── Per-call chart-access authorization (same brain as the primitives route) ─
+    role = await resolveMcpPrincipalRole(userUid)
+    const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    if (perm === 'deny') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
+        { status: 401 },
+      )
+    }
   }
 
   // ── Shared chart readiness gate (Jātaka Phase-A2) ─────────────────────────────
@@ -293,20 +392,59 @@ export async function POST(request: Request) {
     return NextResponse.json(refusal, { status: 409 })
   }
 
+  let byokRuntime: PreparedMcpByokRuntime | null = null
+  if (byokEnabled) {
+    try {
+      byokRuntime = await prepareMcpByokRuntime({
+        userId: userUid,
+        keyId,
+        authKind: authKind as 'api_key' | 'oauth',
+        chartId,
+        correlationId: queryId,
+        questionChars: question.length,
+      })
+      role = byokRuntime.role
+    } catch (error) {
+      const normalized = normalizeAiError(error, { source: 'provider' })
+      return NextResponse.json(
+        buildErrorEnvelope({
+          trace_id: queryId,
+          error_class: error instanceof AiConsoleError && error.code === 'AI_PERMISSION_DENIED'
+            ? 'auth' : 'orchestrator_error',
+          message: normalized.message,
+          remediation: `AI Console: ${normalized.code}`,
+        }),
+        { status: normalized.code === 'AI_RATE_LIMITED' ? 429 : normalized.code === 'AI_PERMISSION_DENIED' ? 401 : 422 },
+      )
+    }
+  }
+
+  try {
+
   // ── Cost-cap resolution — SERVER-VERIFIED role only, never the request body's
   // `entitlement` field (see file header). ────────────────────────────────────
   const costCaps = resolveCostCapsForEntitlement(role)
   const tracker = new CostCapTracker(costCaps)
 
-  const queryId = crypto.randomUUID()
-
   // ── Engine invocation: callPipelinePlanner (same call consult/route.ts makes) ─
-  const [plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
-    getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'primary'),
-    getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'fallback'),
-    getEffectiveModel(DEFAULT_STACK_ID, 'planner_deep', 'primary'),
-    getEffectiveModel(DEFAULT_STACK_ID, 'planner_deep', 'fallback'),
-  ])
+  let plannerModelId = 'selected-planner'
+  let plannerFallbackModelId: string | undefined
+  let deepPlannerModelId = 'selected-deep-planner'
+  let deepPlannerFallbackModelId: string | undefined
+  let legacySynthesisModelId: string | undefined
+  if (!byokEnabled) {
+    const [{ DEFAULT_STACK_ID }, { getEffectiveModel }] = await Promise.all([
+      import('@/lib/models/registry'),
+      import('@/lib/models/runtime_config'),
+    ])
+    ;[plannerModelId, plannerFallbackModelId, deepPlannerModelId, deepPlannerFallbackModelId] = await Promise.all([
+      getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'primary'),
+      getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'fallback'),
+      getEffectiveModel(DEFAULT_STACK_ID, 'planner_deep', 'primary'),
+      getEffectiveModel(DEFAULT_STACK_ID, 'planner_deep', 'fallback'),
+    ])
+    legacySynthesisModelId = await getEffectiveModel(DEFAULT_STACK_ID, 'synthesis', 'primary')
+  }
 
   // ── NCD-8 pre-dispatch limits (MCP door — the second of the two doors) ──────
   //
@@ -335,14 +473,13 @@ export async function POST(request: Request) {
   // use (it calls the same getEffectiveModel(DEFAULT_STACK_ID, 'synthesis',
   // 'primary')), not against a client-supplied hint. Same discipline as the
   // server-verified-role rule in this file's header.
-  const synthesisModelId = await getEffectiveModel(DEFAULT_STACK_ID, 'synthesis', 'primary')
-  const limits = await enforceTurnLimits({
+  const limits = byokEnabled ? { allowed: true as const } : await enforceTurnLimits({
     userId: userUid,
     channel: 'mcp',
-    modelId: synthesisModelId,
+    modelId: legacySynthesisModelId!,
     rateLimitPrincipalId: keyId,
   })
-  if (!limits.allowed) {
+  if (limits.allowed === false) {
     return NextResponse.json(
       buildErrorEnvelope({
         trace_id: queryId,
@@ -423,6 +560,51 @@ export async function POST(request: Request) {
     // planner has not run at the point this returns.
     const text =
       safetyDecision.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+    if (byokRuntime) {
+      const completeness = {
+        status: 'withheld',
+        tools_dispatched: [],
+        unserved_tools: [],
+        unresolved_tools: [],
+        stripped_leaked_capabilities: [],
+        empty_result_tools: [],
+        cap_tripped: null,
+      }
+      try {
+        const envelope = buildMcpEvidenceEnvelope({
+          question,
+          plan: null,
+          results: [],
+          completeness,
+          judgmentFlags: [
+            `safety_decision:${safetyDecision.action}`,
+            'safety_reading_withheld',
+            ...(safetyDecision.classes_detected.length > 0
+              ? [`safety_classes_detected:${safetyDecision.classes_detected.length}`]
+              : []),
+          ],
+          responseAccountability: null,
+          snapshot: byokRuntime.safeSnapshot,
+          metadata: {
+            ok: true,
+            trace_id: queryId,
+            chart_id: chartId,
+            outcome: 'safety_withheld',
+            safety_response: text,
+            persistence: MCP_TURN_PERSISTENCE_CALLER_REQUIRED,
+            safety_decision: {
+              decision_id: safetyDecision.decision_id,
+              review_id: safetyDecision.review_id,
+              audit_written: safetyDecision.audit_written,
+            },
+          },
+        })
+        observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+        return NextResponse.json(envelope)
+      } finally {
+        byokRuntime.releaseAdmission()
+      }
+    }
     return NextResponse.json({
       ok: true,
       trace_id: queryId,
@@ -471,21 +653,24 @@ export async function POST(request: Request) {
   // DISCLOSE planning latency on the wire, on every outcome branch, no new DB
   // write, no new dependency.
   const planStartedAtMs = Date.now()
-  const plannerOutcome = await callPipelinePlanner(
-    question,
-    [],
-    plannerModelId,
-    chartId,
-    undefined,
-    queryId,
-    plannerFallbackModelId,
-    suppliedScopeTuple,
-    deepPlannerModelId,
-    deepPlannerFallbackModelId,
-  )
+  const plannerOutcome = byokRuntime
+    ? await callPipelinePlanner(
+        question, [], plannerModelId, chartId, undefined, queryId, plannerFallbackModelId,
+        suppliedScopeTuple, deepPlannerModelId, deepPlannerFallbackModelId, {
+          plannerExecutor: byokRuntime.executors.planner,
+          deepPlannerExecutor: byokRuntime.executors.deep_planner,
+          workerExecutor: byokRuntime.executors.worker,
+          abortSignal: request.signal,
+        },
+      )
+    : await callPipelinePlanner(
+        question, [], plannerModelId, chartId, undefined, queryId, plannerFallbackModelId,
+        suppliedScopeTuple, deepPlannerModelId, deepPlannerFallbackModelId,
+      )
   const planningLatencyMs = Date.now() - planStartedAtMs
 
   if (plannerOutcome.outcome === 'clarification_needed') {
+    byokRuntime?.releaseAdmission()
     return NextResponse.json({
       ok: true,
       trace_id: queryId,
@@ -497,6 +682,16 @@ export async function POST(request: Request) {
     })
   }
   if (plannerOutcome.outcome === 'fault') {
+    byokRuntime?.releaseAdmission()
+    if (byokRuntime) {
+      const normalized = normalizeAiError(new AiConsoleError('AI_EXECUTION_FAILED', 'planner'), { source: 'provider', role: 'planner' })
+      return NextResponse.json(buildErrorEnvelope({
+        trace_id: queryId,
+        error_class: 'orchestrator_error',
+        message: normalized.message,
+        remediation: `AI Console: ${normalized.code}`,
+      }), { status: 422 })
+    }
     return NextResponse.json(
       {
         ...buildErrorEnvelope({
@@ -520,7 +715,7 @@ export async function POST(request: Request) {
   const arbitrated = arbitrateBudgets(
     plan.tool_calls.map((tc) => ({ tool_name: tc.tool_name, priority: tc.priority, token_budget: tc.token_budget })),
     {
-      synthesis_model_max_context: 128_000,
+      synthesis_model_max_context: byokEnabled ? mcpEvidenceBudgetTokens() : 128_000,
       system_prompt_reserve: 800,
       synthesis_guidance_reserve: plan.synthesis_guidance ? 200 : 0,
       safety_margin: 0.85,
@@ -595,24 +790,27 @@ export async function POST(request: Request) {
   let managedInquirySession: ManagedInquiryExecutionSession | null = null
   if (body.managed_inquiry_id !== undefined || body.managed_job_id !== undefined) {
     if (!body.managed_inquiry_id || !body.managed_job_id) {
+      byokRuntime?.releaseAdmission()
       return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry and job identifiers must be supplied together' }), { status: 400 })
     }
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.managed_inquiry_id)) {
+      byokRuntime?.releaseAdmission()
       return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_inquiry_id must be a UUID' }), { status: 400 })
     }
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.managed_job_id)) {
+      byokRuntime?.releaseAdmission()
       return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed_job_id must be a UUID' }), { status: 400 })
     }
     if (!initialInquiryContract) {
+      byokRuntime?.releaseAdmission()
       return NextResponse.json(buildErrorEnvelope({ error_class: 'validation', message: 'managed inquiry requires a resolved scope tuple' }), { status: 409 })
     }
     const resolvedInquiryContract = initialInquiryContract
-    const managedJob = await getManagedPrashnaJob({
-      job_id: body.managed_job_id,
-      principal_uid: userUid,
-      principal_key_id: keyId,
+    const managedJob = byokEnabled ? authorizedManagedJob : await getManagedPrashnaJob({
+      job_id: body.managed_job_id, principal_uid: userUid, principal_key_id: keyId,
     })
     if (!managedJob || managedJob.chart_id !== chartId || managedJob.request_jsonb.inquiry_id !== body.managed_inquiry_id) {
+      byokRuntime?.releaseAdmission()
       return NextResponse.json(buildErrorEnvelope({ error_class: 'auth', message: 'managed inquiry does not match the authenticated durable job' }), { status: 401 })
     }
     managedInquirySession = await ManagedInquiryExecutionSession.open({
@@ -684,6 +882,44 @@ export async function POST(request: Request) {
     if (postPlanSafety.action === 'seal_pending_signoff' || postPlanSafety.action === 'hard_stop') {
       const text =
         postPlanSafety.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+      if (byokRuntime) {
+        const completeness = {
+          status: 'withheld', tools_dispatched: [], unserved_tools: [], unresolved_tools: [],
+          stripped_leaked_capabilities: [], empty_result_tools: [], cap_tripped: null,
+        }
+        try {
+          const envelope = buildMcpEvidenceEnvelope({
+            question,
+            plan: projectMcpEvidencePlan(plan),
+            results: [],
+            completeness,
+            judgmentFlags: [
+              `safety_decision:${postPlanSafety.action}`,
+              'safety_reading_withheld',
+              'safety_escalated_at_plan_time',
+            ],
+            responseAccountability: null,
+            snapshot: byokRuntime.safeSnapshot,
+            metadata: {
+              ok: true,
+              trace_id: queryId,
+              chart_id: chartId,
+              outcome: 'safety_withheld',
+              safety_response: text,
+              persistence: MCP_TURN_PERSISTENCE_CALLER_REQUIRED,
+              safety_decision: {
+                decision_id: postPlanSafety.decision_id,
+                review_id: postPlanSafety.review_id,
+                audit_written: postPlanSafety.audit_written,
+              },
+            },
+          })
+          observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+          return NextResponse.json(envelope)
+        } finally {
+          byokRuntime.releaseAdmission()
+        }
+      }
       return NextResponse.json({
         ok: true,
         trace_id: queryId,
@@ -784,7 +1020,11 @@ export async function POST(request: Request) {
         // surface to the client as a bare stream-read exception with no
         // trace_id/chart_id to correlate it against. Emit a structured error
         // line — same NDJSON framing as `progress`/`final` — then close.
-        console.error('[mcp:prashna_ask] stream body failed', err instanceof Error ? err.message : String(err))
+        const safeStreamError = byokRuntime
+          ? normalizeAiError(err, { source: 'provider' })
+          : null
+        console.error('[mcp:prashna_ask] stream body failed', safeStreamError?.code
+          ?? (err instanceof Error ? err.message : String(err)))
         try {
           controller.enqueue(
             encoder.encode(
@@ -792,7 +1032,7 @@ export async function POST(request: Request) {
                 event: 'error',
                 trace_id: queryId,
                 chart_id: chartId,
-                message: err instanceof Error ? err.message : String(err),
+                message: safeStreamError?.message ?? (err instanceof Error ? err.message : String(err)),
               }) + '\n',
             ),
           )
@@ -807,6 +1047,8 @@ export async function POST(request: Request) {
           controller.error(err)
         }
         return
+      } finally {
+        byokRuntime?.releaseAdmission()
       }
       controller.close()
     },
@@ -833,7 +1075,8 @@ export async function POST(request: Request) {
       ): boolean => {
         const entry = { tool_name: toolName, bundle }
         const entryBytes = Buffer.byteLength(JSON.stringify(entry)) + (toolResults.length > 0 ? 1 : 0)
-        if (retainedToolResultBytes + entryBytes > MAX_TERMINAL_TOOL_RESULTS_BYTES) {
+        const rawEvidenceLimit = byokEnabled ? MCP_RAW_EVIDENCE_MAX_BYTES : MAX_TERMINAL_TOOL_RESULTS_BYTES
+        if (retainedToolResultBytes + entryBytes > rawEvidenceLimit) {
           const judgmentFlag = 'terminal_result_budget_exceeded'
           costCapTripped = { reason: 'terminal_result_budget', judgmentFlag }
           if (!judgmentFlags.includes(judgmentFlag)) judgmentFlags.push(judgmentFlag)
@@ -875,6 +1118,7 @@ export async function POST(request: Request) {
       }
 
       for (let i = 0; i < dispatchableTools.length; i++) {
+        if (request.signal.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
         if (await terminalizeManagedIterationCap()) break
         const toolName = dispatchableTools[i]
 
@@ -974,7 +1218,8 @@ export async function POST(request: Request) {
             }
           }
           toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - toolStart })
-          console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
+          if (byokRuntime) logSafeByokToolFailure('MCP_TOOL_DISPATCH_FAILED', queryId, toolName)
+          else console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
         }
 
         emitProgress(toolName)
@@ -1051,7 +1296,8 @@ export async function POST(request: Request) {
               break
             }
           } catch (error) {
-            console.error(`[mcp:prashna_ask] managed inquiry continuation failed for ${toolName}`, error)
+            if (byokRuntime) logSafeByokToolFailure('MCP_MANAGED_CONTINUATION_FAILED', queryId, toolName)
+            else console.error(`[mcp:prashna_ask] managed inquiry continuation failed for ${toolName}`, error)
             await managedInquirySession.persistAcceptedObservation({
               plan_item_id: item.item_id,
               obligation_ids: item.obligation_ids,
@@ -1151,6 +1397,7 @@ export async function POST(request: Request) {
         }
 
         while (inquiryContract.iteration < inquiryContract.max_iterations) {
+          if (request.signal.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
           const item = inquiryContract.plan_items.find((candidate) => candidate.state === 'ready'
             && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
           if (!item?.binding_id) break
@@ -1184,7 +1431,8 @@ export async function POST(request: Request) {
               })
             }
           } catch (error) {
-            console.error(`[mcp:prashna_ask] inquiry continuation failed for ${toolName}`, error)
+            if (byokRuntime) logSafeByokToolFailure('MCP_INQUIRY_CONTINUATION_FAILED', queryId, toolName)
+            else console.error(`[mcp:prashna_ask] inquiry continuation failed for ${toolName}`, error)
             toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
             inquiryContract = recordInquiryExecution(inquiryContract, {
               item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
@@ -1243,9 +1491,11 @@ export async function POST(request: Request) {
       // failure mode produced it. The completeness receipt (`cap_tripped`,
       // `status: 'partial'`) and a dedicated `synthesis_skipped_cost_cap`
       // judgment flag disclose exactly what happened — never a silent drop.
-      const synthesisCapCheck = costCapTripped === null ? tracker.checkAndRecordCall() : null
-      let synthesis: Awaited<ReturnType<typeof synthesizeReading>>
-      if (costCapTripped !== null || synthesisCapCheck?.stopped) {
+      const synthesisCapCheck = !byokEnabled && costCapTripped === null ? tracker.checkAndRecordCall() : null
+      let synthesis: { reading: string | null; model_id: string | null; judgment_flags: string[]; visible_citation_handles?: string[] | null }
+      if (byokEnabled) {
+        synthesis = { reading: null, model_id: null, judgment_flags: [] }
+      } else if (costCapTripped !== null || synthesisCapCheck?.stopped) {
         const reasonFlag = costCapTripped?.judgmentFlag
           ?? synthesisCapCheck?.judgmentFlag
           ?? 'cost_cap_exceeded'
@@ -1259,6 +1509,7 @@ export async function POST(request: Request) {
         controller.enqueue(
           encoder.encode(JSON.stringify({ event: 'progress', tools_dispatched_count: toolEventLog.length, cap_ceiling: { maxCalls: costCaps.maxCalls, maxWallClockMs: costCaps.maxWallClockMs }, elapsed_ms: Date.now() - dispatchLoopStart, last_tool: 'synthesis' }) + '\n'),
         )
+        const { synthesizeReading } = await import('@/lib/pipeline/prashna_ask_synthesis')
         // The model is shown display copies annotated with register citation handles; the
         // canonical bundles (and their evidence hashes) feed the accountability register below.
         const citedEvidence = inquiryContract
@@ -1293,7 +1544,7 @@ export async function POST(request: Request) {
 
       const responseAccountability = inquiryContract
         ? buildStructuredResponseAccountability(inquiryContract, {
-            response_text: synthesis.reading,
+            response_text: byokEnabled ? null : synthesis.reading,
             evidence_payloads: toolResults.map((result) => result.bundle),
             knowledge_snapshot: inquirySnapshot ?? undefined,
             ...(synthesis.visible_citation_handles ? { synthesis_visible_handles: synthesis.visible_citation_handles } : {}),
@@ -1305,6 +1556,77 @@ export async function POST(request: Request) {
         dispatchErrors.length > 0 ||
         compiledFloorFailed || unmappedFloorItems > 0 || (inquiryContract !== null && inquiryContract.status !== 'COMPLETE') ||
         (responseAccountability !== null && responseAccountability.response_coverage_receipt.status !== 'COMPLETE')
+
+      const completeness = {
+        status: isPartial ? 'partial' : 'complete',
+        tools_dispatched: toolEventLog,
+        unserved_tools: unservedTools,
+        unresolved_tools: unresolvedTools,
+        stripped_leaked_capabilities: leakedTools,
+        empty_result_tools: emptyResultTools,
+        cap_tripped: costCapTripped?.reason ?? null,
+        compiled_floor_failed: compiledFloorFailed,
+        unmapped_floor_item_count: unmappedFloorItems,
+      }
+
+      if (byokRuntime) {
+        const safePlan = projectMcpEvidencePlan(plan)
+        let evidenceEnvelope
+        try {
+          evidenceEnvelope = buildMcpEvidenceEnvelope({
+            question,
+            plan: safePlan,
+            results: toolResults,
+            completeness,
+            judgmentFlags,
+            responseAccountability,
+            snapshot: byokRuntime.safeSnapshot,
+            metadata: {
+              ok: true,
+              trace_id: queryId,
+              chart_id: chartId,
+              outcome: 'plan',
+              query_class: plan.query_class,
+              query_intent_summary: plan.query_intent_summary,
+              chart_header: chartHeader,
+              planning_latency_ms: planningLatencyMs,
+              inquiry_contract: inquiryContract,
+              inquiry_closure_receipt: inquiryContract ? buildInquiryClosureReceipt(inquiryContract) : null,
+              inquiry_door_parity: inquiryContract ? buildInquiryDoorParityProjection(inquiryContract) : null,
+              persistence: MCP_TURN_PERSISTENCE_CALLER_REQUIRED,
+              safety_decision: {
+                decision_id: postPlanSafety.decision_id,
+                review_id: postPlanSafety.review_id,
+                audit_written: postPlanSafety.audit_written,
+              },
+            },
+          })
+        } catch {
+          const boundedFailure = buildErrorEnvelope({
+            trace_id: queryId,
+            error_class: 'internal',
+            message: 'MCP_EVIDENCE_ENVELOPE_TOO_LARGE',
+            remediation: 'Narrow the question or scope so the evidence envelope fits the configured ceiling.',
+          })
+          controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...boundedFailure }) + '\n'))
+          return
+        }
+        assertNoCalibrationLeak(evidenceEnvelope, 'api/mcp/prashna_ask:byok-evidence-envelope')
+        const finalLine = JSON.stringify({ event: 'final', ...evidenceEnvelope }) + '\n'
+        if (Buffer.byteLength(finalLine, 'utf8') > MCP_EVIDENCE_ENVELOPE_MAX_BYTES) {
+          const boundedFailure = buildErrorEnvelope({
+            trace_id: queryId,
+            error_class: 'internal',
+            message: 'MCP_EVIDENCE_ENVELOPE_TOO_LARGE',
+            remediation: 'Narrow the question or scope so the evidence envelope fits the configured ceiling.',
+          })
+          controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...boundedFailure }) + '\n'))
+          return
+        }
+        observeMcpExternalSynthesis(byokRuntime.safeSnapshot)
+        controller.enqueue(encoder.encode(finalLine))
+        return
+      }
 
       // The reading ENVELOPE — everything this route ASSEMBLES — kept structurally
       // separate from `results`, the verbatim evidence rows, so the COLLECT-ONLY guard
@@ -1320,17 +1642,7 @@ export async function POST(request: Request) {
         // S6-V3-E-003 — see the timing block above `callPipelinePlanner`.
         planning_latency_ms: planningLatencyMs,
         reading: synthesis.reading,
-        completeness: {
-          status: isPartial ? 'partial' : 'complete',
-          tools_dispatched: toolEventLog,
-          unserved_tools: unservedTools,
-          unresolved_tools: unresolvedTools,
-          stripped_leaked_capabilities: leakedTools,
-          empty_result_tools: emptyResultTools,
-          cap_tripped: costCapTripped?.reason ?? null,
-          compiled_floor_failed: compiledFloorFailed,
-          unmapped_floor_item_count: unmappedFloorItems,
-        },
+        completeness,
         inquiry_contract: inquiryContract,
         inquiry_closure_receipt: inquiryContract ? buildInquiryClosureReceipt(inquiryContract) : null,
         inquiry_door_parity: inquiryContract ? buildInquiryDoorParityProjection(inquiryContract) : null,
@@ -1384,4 +1696,15 @@ export async function POST(request: Request) {
     status: 200,
     headers: { 'Content-Type': 'application/x-ndjson' },
   })
+  } catch (error) {
+    byokRuntime?.releaseAdmission()
+    if (!byokRuntime) throw error
+    const normalized = normalizeAiError(error, { source: 'provider' })
+    return NextResponse.json(buildErrorEnvelope({
+      trace_id: queryId,
+      error_class: 'orchestrator_error',
+      message: normalized.message,
+      remediation: `AI Console: ${normalized.code}`,
+    }), { status: normalized.code === 'AI_RATE_LIMITED' ? 429 : 422 })
+  }
 }

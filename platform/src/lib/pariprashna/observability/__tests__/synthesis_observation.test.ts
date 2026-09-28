@@ -80,6 +80,16 @@ describe('recordSynthesisTurnObservation', () => {
     expect(warn).toHaveBeenCalledTimes(1) // logs once, not once per turn
   })
 
+  it('skips the legacy writer for BYOK because the tracked executor is authoritative', async () => {
+    const { db, calls } = fakeDb()
+    await recordSynthesisTurnObservation({
+      identity: { turnId: 'turn-1', conversationId: 'conv-1', userId: 'user-1' },
+      stackId: 'anthropic', modelId: 'claude-x', startedAt: new Date(), finishedAt: new Date(),
+      status: 'success', snapshot: emptySnapshot(), routingMode: 'byok', db,
+    })
+    expect(calls).toHaveLength(0)
+  })
+
   it('writes a real INSERT with the mapped provider name and channel default when identity IS present', async () => {
     const { db, calls } = fakeDb({ pricingRows: [] }) // no pricing → honest null cost, not a crash
 

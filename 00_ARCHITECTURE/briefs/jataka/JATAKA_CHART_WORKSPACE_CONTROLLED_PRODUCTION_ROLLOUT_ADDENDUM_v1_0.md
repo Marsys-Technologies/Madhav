@@ -1,7 +1,7 @@
 ---
 artifact: JATAKA_CHART_WORKSPACE_CONTROLLED_PRODUCTION_ROLLOUT_ADDENDUM_v1_0.md
-version: 1.1
-status: ACTIVE
+version: 1.2
+status: CLOSED — DEPLOYED; LIVE ACCEPTANCE PARTIAL/BLOCKED
 decision: CCD-018; CCD-019
 session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
 branch: codex/jataka-chart-workspace; successor: codex/jataka-prod-schema-capability
@@ -129,3 +129,45 @@ The final record must distinguish source, CI, protected integration, deployment 
 It must include the deployed commit/revision, migration state, backup/recovery evidence, exact test
 results, disposable chart identifier and disposition, production observations, rollback status and
 the coordination lease release commit. Anything not directly proven remains `NOT_RUN` or `BLOCKED`.
+
+## 7. Final rollout record — 2026-09-28
+
+**Source and integration — PASS.** PR #2739 merged the reviewed feature and PR #2740 merged the
+CCD-019 protected-migration capability. Protected main is
+`acf8d2baed6345097dd28a34e533329be52046ec`; post-merge CI run `36351244072` passed. The reviewed
+source verification was 4,199 suites / 13,654 tests, with 12,945 passed, 707 skipped, 2 todo and
+0 failed; TypeScript, scoped lint, actionlint, migration guard and diff check passed. Independent
+review returned APPROVE with no unresolved High or Important finding.
+
+**Backup, migration and deployment — PASS.** Production backup `1790545434667` completed
+successfully before mutation. The automatic deployment `36352071291` failed closed before any
+service change because protected migrations require manual dispatch. Manual exact-SHA run
+`36352926415` applied migrations 1120–1123 through the CCD-019 temporary capability, revoked that
+capability on the mandatory exit path, and passed the ordinary no-privilege migration gate.
+Read-only production attestation found all four receipts, 18 expected columns, 18 constraints,
+6 indexes, the archive guard function and both triggers; `amjis_app` retains schema `USAGE` and
+does not retain `CREATE`. Because the ordinary sidecar change detector followed a prior
+zero-traffic ready revision, audited exact-SHA force-all run `36354240706` redeployed every
+service. Web, sidecar and MCP are healthy, receive 100% traffic and carry commit label
+`acf8d2baed6345097dd28a34e533329be52046ec`; the pipeline job image is pinned to the same SHA.
+
+**Live acceptance — PARTIAL/BLOCKED, not promoted to full Task 9 acceptance.** Disposable chart
+`Jataka Rollout Test 2026-09-28` was created at route UUID
+`a0fa7e08-c758-4167-846b-b38054e5f768` (`charts.chart_id`
+`5bf51ef4-7aba-4514-9a63-e9d08d7de6ec`) with synthetic data. Dashboard cards are minimal and
+responsive with no Nirmāṇa or Paripraśna card actions; the dedicated workspace, action menu,
+truthful capability gates, confirmation dialog and name-only edit were verified. Preferred name
+is now `Rollout Verified`; its birth time remains `12:34`; UUID is unchanged; no build run was
+created. A read-only existing workspace confirmed the D1/Rāśi chart renders. Exactly one
+birth-time correction attempt was made; it refused before mutation with
+`Build blocked: upstream assets must be rebuilt first`, and the database confirmed zero build
+runs and no chart-data change.
+
+The blocker is an inherited shared-data failure in `bg_transit_engine`: deleting/updating
+`bg_transit_rules.id=133` is refused because `gochara_resonance_map_source_rule_id_fkey` still
+references it. Repairing or rebuilding that global asset is outside this rollout's authority.
+Therefore acceptance items 6, 8, 9 and 11 and the synthetic chart's own built D1 remain BLOCKED;
+the corresponding context-transition receipts are NOT_RUN. No existing important chart was
+mutated, no broad shared rebuild was attempted, and no rollback was required because the release,
+migrations and services are healthy and the rejected correction rolled back transactionally.
+The disposable chart remains clearly named in production for a separately authorized follow-up.

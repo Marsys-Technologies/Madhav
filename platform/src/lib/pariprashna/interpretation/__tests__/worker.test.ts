@@ -31,10 +31,13 @@ import {
   generateInterpretationSets,
   resolveInterpretationSetsModelId,
   parseAndValidateSets,
+  createInterpretationCaller,
   type InterpretationLlmCaller,
 } from '../worker'
 import { getModelMeta } from '@/lib/models/registry'
 import type { SignificantJudgment } from '../detect'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
+import { StructuredOutputValidationError } from '@/lib/ai-console/execution/structured-output-error'
 
 function judgment(overrides: Partial<SignificantJudgment> = {}): SignificantJudgment {
   return {
@@ -46,6 +49,46 @@ function judgment(overrides: Partial<SignificantJudgment> = {}): SignificantJudg
     ...overrides,
   }
 }
+
+describe('createInterpretationCaller — BYOK repair authority', () => {
+  const valid = JSON.stringify({ sets: [{ judgment_id: 'sig-domain_verdict-1', status: 'waived',
+    waiver_reason: 'The evidence supports only one non-speculative reading.' }] })
+  const executor = (): RoleExecutor => ({
+    descriptor: { role: 'worker', providerId: 'openai', connectionId: 'c', modelId: 'm' },
+    generate: vi.fn(async () => ({ text: valid, toolCalls: [], finishReason: 'stop', retryCount: 0,
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } })),
+    stream: vi.fn(),
+  })
+
+  it('repairs only a typed structured failure on the same Worker with signal and cap', async () => {
+    const worker = executor()
+    vi.mocked(worker.generate).mockRejectedValueOnce(
+      new StructuredOutputValidationError('worker', '{"sets":"private-invalid"}'),
+    )
+    const controller = new AbortController()
+    const result = await createInterpretationCaller(worker, {
+      abortSignal: controller.signal, maxOutputTokens: 777,
+    })([judgment()])
+    expect(result.get('sig-domain_verdict-1')?.status).toBe('waived')
+    expect(worker.generate).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(worker.generate).mock.calls[1][0]).toMatchObject({
+      abortSignal: controller.signal, maxOutputTokens: 777,
+    })
+  })
+
+  it('does not repair provider failures or start after cancellation', async () => {
+    const worker = executor()
+    vi.mocked(worker.generate).mockRejectedValueOnce(new Error('provider failed'))
+    await expect(createInterpretationCaller(worker)([judgment()])).rejects.toThrow('provider failed')
+    expect(worker.generate).toHaveBeenCalledOnce()
+
+    const cancelled = executor()
+    const controller = new AbortController(); controller.abort()
+    await expect(createInterpretationCaller(cancelled, { abortSignal: controller.signal })([judgment()]))
+      .rejects.toThrow(/aborted/i)
+    expect(cancelled.generate).not.toHaveBeenCalled()
+  })
+})
 
 describe('generateInterpretationSets — generated path', () => {
   it('produces a correctly-shaped entry from a genuine >=3-candidate model response', async () => {

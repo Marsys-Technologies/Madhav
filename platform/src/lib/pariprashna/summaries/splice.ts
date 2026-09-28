@@ -21,6 +21,7 @@ import { listCanonicalMessagesForConversation, PgSummaryStore } from './store'
 import { LlmSummarizerWorker } from './worker'
 import { getOrCreateSummary } from './service'
 import type { CanonicalTurn } from './types'
+import type { RoleExecutor } from '@/lib/ai-console/execution'
 
 /**
  * Resolve the durable summary text to splice for `conversationId`, or `null`
@@ -31,7 +32,12 @@ import type { CanonicalTurn } from './types'
  * non-fatal-helper convention (see `orientationPromise`'s `.catch()` in
  * route.ts).
  */
-export async function getConversationSummaryForSplice(conversationId: string): Promise<string | null> {
+export async function getConversationSummaryForSplice(
+  conversationId: string,
+  workerExecutor?: RoleExecutor,
+  options?: { abortSignal?: AbortSignal; maxOutputTokens?: number },
+): Promise<string | null> {
+  if (options?.abortSignal?.aborted) throw new DOMException('Aborted', 'AbortError')
   const messageRefs = await listCanonicalMessagesForConversation(conversationId)
   if (messageRefs.length === 0) return null
 
@@ -44,7 +50,7 @@ export async function getConversationSummaryForSplice(conversationId: string): P
   )
 
   const result = await getOrCreateSummary(
-    { store: new PgSummaryStore(), worker: new LlmSummarizerWorker() },
+    { store: new PgSummaryStore(), worker: new LlmSummarizerWorker(workerExecutor, options) },
     { conversationId, turns },
   )
   return result.summary?.summary_text ?? null

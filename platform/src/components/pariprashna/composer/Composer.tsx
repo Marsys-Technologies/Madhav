@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { PickerPopover, type PickerRow } from './PickerPopover'
+import { AiChoicePicker } from './AiChoicePicker'
 import { getSynthesisModelRows } from './model_options'
 import type { DepthOption, LengthOption, SubmitControls } from '../state/types'
+import type { UseAiChoicesResult } from '../hooks/useAiChoices'
 import type { FixtureMode } from '../fixtures'
 
 /** Real registry ids (`@/lib/models/registry`) — see `model_options.ts`. The
@@ -27,9 +29,8 @@ const LENGTH_ROWS: PickerRow<LengthOption>[] = [
   { value: 'Detailed', label: 'Detailed', detail: 'every nuance' },
 ]
 
-const LINE_HEIGHT_PX = 22.5 // Inter 15/22 with a little breathing room
 const MIN_LINES = 3
-const MAX_LINES = 8
+const COMPOSER_HEIGHT_PX = 96
 
 export interface ComposerProps {
   streaming: boolean
@@ -44,6 +45,7 @@ export interface ComposerProps {
   depthReceived?: string | null
   /** §5.3 `empty`: "focus is already in the composer." Only relevant on mount. */
   autoFocus?: boolean
+  aiChoices?: UseAiChoicesResult
 }
 
 /** Maps the composer's Depth choice to which fixture the stub plays (see the build report for why). */
@@ -76,12 +78,12 @@ export function modelToModelId(model: string): string | undefined {
   return model === 'auto' ? undefined : model
 }
 
-export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus }: ComposerProps) {
+export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus, aiChoices }: ComposerProps) {
   const [text, setText] = useState('')
   const [model, setModel] = useState('auto')
   const [depth, setDepth] = useState<DepthOption>('Auto')
   const [length, setLength] = useState<LengthOption>('Auto')
-  const [openPicker, setOpenPicker] = useState<'model' | 'depth' | 'length' | null>(null)
+  const [openPicker, setOpenPicker] = useState<'ai' | 'model' | 'depth' | 'length' | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const modelLabel = MODEL_ROWS.find((r) => r.value === model)?.label ?? model
@@ -100,40 +102,46 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
       ? 'acharya-grade · one register'
       : `acharya-grade · ${depth !== 'Auto' ? depth.toLowerCase() + ' ' : ''}${length !== 'Auto' ? length.toLowerCase() + ' ' : ''}override`.replace(/\s+/g, ' ').trim()
 
-  function autogrow() {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    const maxPx = LINE_HEIGHT_PX * MAX_LINES
-    el.style.height = `${Math.min(el.scrollHeight, maxPx)}px`
-  }
-
   function submit() {
     const trimmed = text.trim()
-    if (!trimmed || streaming) return
-    onSubmit(trimmed, depthToFixtureMode(depth), {
-      modelId: modelToModelId(model),
+    const usingAiChoices = aiChoices?.mode.kind === 'byok'
+    if (!trimmed || streaming || (usingAiChoices && !aiChoices.canSubmit)) return
+    const common = {
       readingDepth: depthToReadingDepth(depth),
       lengthTier: lengthToLengthTier(length),
-    })
+    } as const
+    onSubmit(trimmed, depthToFixtureMode(depth), usingAiChoices
+      ? { ...common, aiMode: aiChoices.mode }
+      : { ...common, aiMode: { kind: 'legacy', modelId: modelToModelId(model) } })
     setText('')
-    requestAnimationFrame(() => {
-      const el = textareaRef.current
-      if (el) el.style.height = `${LINE_HEIGHT_PX * MIN_LINES}px`
-    })
   }
+
+  const usingAiChoices = aiChoices?.mode.kind === 'byok'
+  const blocked = usingAiChoices && !aiChoices.canSubmit
 
   return (
     <div className="px-5 pb-[18px] pt-3.5" style={{ borderTop: '1px solid var(--pp-rule)', background: 'var(--pp-panel)' }}>
-      <div className="flex items-center gap-2 flex-wrap mb-2.5 px-0.5">
-        <PickerPopover
-          valueLabel={modelLabel}
-          rows={MODEL_ROWS}
-          selected={model}
-          open={openPicker === 'model'}
-          onOpenChange={(o) => setOpenPicker(o ? 'model' : null)}
-          onSelect={setModel}
-        />
+      <div data-testid="pp-composer-controls" className="flex items-center gap-2 flex-wrap mb-2.5 px-0.5">
+        {usingAiChoices ? (
+          <AiChoicePicker
+            options={aiChoices.options}
+            selected={aiChoices.selection}
+            open={openPicker === 'ai'}
+            disabled={aiChoices.loading || aiChoices.mutationPending}
+            onOpenChange={(o) => setOpenPicker(o ? 'ai' : null)}
+            onSelect={aiChoices.select}
+            onRefresh={aiChoices.refresh}
+          />
+        ) : (
+          <PickerPopover
+            valueLabel={modelLabel}
+            rows={MODEL_ROWS}
+            selected={model}
+            open={openPicker === 'model'}
+            onOpenChange={(o) => setOpenPicker(o ? 'model' : null)}
+            onSelect={setModel}
+          />
+        )}
         <PickerPopover
           eyebrow="Depth"
           valueLabel={depth}
@@ -169,16 +177,13 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
           ref={textareaRef}
           data-testid="pp-composer-textarea"
           className="pp-composer-field flex-1 bg-transparent outline-none border-none"
-          style={{ color: 'var(--pp-ink)', height: LINE_HEIGHT_PX * MIN_LINES }}
+          style={{ color: 'var(--pp-ink)', height: COMPOSER_HEIGHT_PX, minHeight: COMPOSER_HEIGHT_PX, maxHeight: COMPOSER_HEIGHT_PX, overflowY: 'auto' }}
           placeholder="Ask the chart…"
           aria-label="Ask the chart"
           value={text}
           rows={MIN_LINES}
           disabled={streaming}
-          onChange={(e) => {
-            setText(e.target.value)
-            autogrow()
-          }}
+          onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault()
@@ -205,18 +210,29 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus
             title="Send"
             aria-label="Send"
             data-testid="pp-composer-send"
-            disabled={!text.trim()}
+            disabled={!text.trim() || blocked}
             className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
             style={{
               border: '1px solid var(--pp-rule)',
               background: 'var(--pp-tint)',
-              color: text.trim() ? 'var(--pp-gold)' : 'var(--pp-gold-tertiary)',
+              color: text.trim() && !blocked ? 'var(--pp-gold)' : 'var(--pp-gold-tertiary)',
             }}
           >
             ↑
           </button>
         )}
       </div>
+      {usingAiChoices && (
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label="AI choice status"
+          style={{ minHeight: 16, padding: '5px 2px 0', color: 'var(--pp-gold-tertiary)', fontSize: 11 }}
+        >
+          {aiChoices.statusMessage}
+        </div>
+      )}
     </div>
   )
 }

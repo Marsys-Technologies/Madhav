@@ -54,14 +54,19 @@ import { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/ring_buffer'
 import { beginTurnCapture, captureEvent, endTurnCapture } from '@/lib/pariprashna/protocol/stream_capture'
 
-import type { TurnIdentity } from '@/lib/pariprashna/pipeline/stage_context'
+import type { TurnIdentity, TurnParams } from '@/lib/pariprashna/pipeline/stage_context'
 import {
   admitRequest,
   admitWithinLimits,
   bindTurnParams,
+  bindByokTurnParams,
   authorizeTurn,
   runSafetyPolicyGate,
 } from '@/lib/pariprashna/pipeline/safety_gate'
+import { configService } from '@/lib/config'
+import { AiConsoleError } from '@/lib/ai-console/errors'
+import { authenticateByokUser, prepareByokTurn } from '@/lib/pariprashna/pipeline/byok_preflight'
+import { LEGACY_TURN_RUNTIME, type TurnRuntime } from '@/lib/pariprashna/pipeline/turn_runtime'
 import { runPlanStage } from '@/lib/pariprashna/pipeline/plan_stage'
 import { runEvidenceStage } from '@/lib/pariprashna/pipeline/evidence_stage'
 import { assembleSynthesisContext, runSynthesisStage } from '@/lib/pariprashna/pipeline/synthesis_stage'
@@ -71,29 +76,21 @@ import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stag
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
 import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
 import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
+import { isByokEvidencePayloadWithinLimit, validateByokUiMessages } from '@/lib/limits/byok_admission'
 
 export const maxDuration = 120
 
 export async function POST(request: Request): Promise<Response> {
   const requestStartedAt = Date.now()
+  const byokEnabled = configService.getFlag('AI_CONSOLE_BYOK')
 
   // ── Pre-stream: auth + validation only (fast; real HTTP responses). ────────
   // Everything DB/LLM-bound runs INSIDE the stream so `turn.open` is the first
   // byte and every downstream fault is an in-stream `error` event.
   const admission = await admitRequest(request)
   if (!admission.admitted) return admission.response
-  const { user, body, chartId, messages } = admission.value
-
-  // ── Bind request params (pure — no DB/LLM). ────────────────────────────────
-  const params = await bindTurnParams(body, request)
-
-  // ── NCD-8 pre-dispatch limits (web door). ──────────────────────────────────
-  // Still PRE-STREAM, so a ceiling refusal is a real HTTP 429 with a branchable
-  // code rather than an in-stream error — and it lands before the planner, the
-  // first LLM call of the turn. Needs `params` because the ceiling is evaluated
-  // against the model this turn actually bound. Flag-OFF by default.
-  const withinLimits = await admitWithinLimits({ user, params })
-  if (!withinLimits.admitted) return withinLimits.response
+  const { user, body, chartId } = admission.value
+  let { messages } = admission.value
 
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.
@@ -123,49 +120,128 @@ export async function POST(request: Request): Promise<Response> {
   }
   const { conversationId } = identity
 
+  let runtime: TurnRuntime = LEGACY_TURN_RUNTIME
+  let params: TurnParams
+  if (byokEnabled) {
+    try {
+      messages = await validateByokUiMessages(messages)
+      const auth = await authenticateByokUser()
+      if (auth.user.uid !== user.uid) throw new AiConsoleError('AI_PERMISSION_DENIED')
+      const questionChars = messages
+        .filter(message => message.role === 'user')
+        .flatMap(message => message.parts ?? [])
+        .filter(part => part.type === 'text')
+        .reduce((total, part) => total + ((part as { text?: string }).text?.length ?? 0), 0)
+      runtime = await prepareByokTurn({
+        userId: user.uid,
+        role: auth.profile.role,
+        chartId,
+        conversationId,
+        isFirstTurn: identity.isFirstTurn,
+        turnId,
+        requestedSelection: body.ai_selection,
+        questionChars,
+      })
+      params = bindByokTurnParams(body, runtime)
+    } catch (error) {
+      if (runtime.kind === 'byok') runtime.releaseAdmission()
+      const safe = error instanceof AiConsoleError ? error : new AiConsoleError('AI_EXECUTION_FAILED')
+      return Response.json(safe.toJSON(), { status: safe.code === 'AI_RATE_LIMITED' ? 429 : 400 })
+    }
+  } else {
+    // Flag-off order remains exactly the established bind → legacy admission.
+    params = await bindTurnParams(body, request)
+    const withinLimits = await admitWithinLimits({ user, params })
+    if (!withinLimits.admitted) return withinLimits.response
+  }
+
+  const turnAbort = runtime.kind === 'byok' ? new AbortController() : undefined
+  const turnSignal = turnAbort
+    ? AbortSignal.any([request.signal, turnAbort.signal])
+    : request.signal
+  let sourceCancelled = false
+  let execution: Promise<void> | undefined
+  let runtimeFinalized = false
+  const finalizeRuntime = (): void => {
+    if (runtimeFinalized || runtime.kind !== 'byok') return
+    runtimeFinalized = true
+    runtime.releaseAdmission()
+  }
+  let captureEnded = false
+  const endCapture = () => {
+    if (captureEnded) return
+    captureEnded = true
+    endTurnCapture(turnId)
+  }
+
   // ── Open the stream. `turn.open` + `phase{plan,start}` are the FIRST bytes. ─
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
+      execution = (async () => {
+      if (runtime.kind === 'byok' && turnSignal.aborted) {
+        return
+      }
       // PB-2/M-5: seed this turn's ring buffer BEFORE the first event is
       // emitted, so a resume request that races the very first byte still
       // finds turn metadata. Awaited (not fire-and-forget) for exactly that
       // reason — the write is a single Redis SET (or in-memory Map.set) and
       // is not on the model-latency critical path.
-      await openTurnBuffer({ turnId, chartId, conversationId })
+      try {
+        await openTurnBuffer({ turnId, chartId, conversationId })
+        if (runtime.kind === 'byok' && turnSignal.aborted) {
+          return
+        }
+      } catch (error) {
+        controller.error(error)
+        return
+      }
       // SAMĀPTI/B-PB8-BYTEEQ: opt-in, sampled, durable capture of this turn's
       // raw wire stream so BRIEF_PB-2 §G-1's "byte-equality against one real
       // deployed reading" can actually be run (see
       // protocol/stream_capture.ts). OFF unless PARIPRASHNA_STREAM_CAPTURE=1;
       // decided ONCE here so a turn is captured whole or not at all.
-      beginTurnCapture({ turnId, conversationId, chartId })
-      const em = new PariprashnaEmitter(controller, (event) => {
-        void appendBufferedEvent(turnId, event)
-        void captureEvent(turnId, event)
-      })
+      let em: PariprashnaEmitter
+      try {
+        beginTurnCapture({ turnId, conversationId, chartId })
+        em = new PariprashnaEmitter(controller, (event) => {
+          void appendBufferedEvent(turnId, event)
+          void captureEvent(turnId, event)
+        })
 
-      // FIRST BYTES — before the planner, before any DB/LLM work.
-      em.turnOpen({
-        turn_id: turnId,
-        conversation_id: conversationId,
-        chart_id: chartId,
-        model_id: params.modelId,
-        reading_depth: params.readingDepth,
-        length_tier: params.lengthTier,
-      })
-      em.phase({ phase: 'plan', status: 'start' })
+        // FIRST BYTES — before the planner, before any DB/LLM work.
+        em.turnOpen({
+          turn_id: turnId,
+          conversation_id: conversationId,
+          chart_id: chartId,
+          model_id: params.modelId,
+          reading_depth: params.readingDepth,
+          length_tier: params.lengthTier,
+        })
+        em.phase({ phase: 'plan', status: 'start' })
+      } catch (error) {
+        endCapture()
+        controller.error(error)
+        return
+      }
 
+      let finished = false
       const finish = (status: 'ok' | 'error' | 'aborted'): void => {
-        em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
-        em.close()
+        if (finished) return
+        finished = true
+        if (!sourceCancelled) {
+          em.turnClose({ turn_id: turnId, status, ms: Date.now() - requestStartedAt })
+          em.close()
+        }
         // Release the in-process capture mark AFTER the terminal turn.close has
         // been emitted (and therefore captured) — never before.
-        endTurnCapture(turnId)
+        endCapture()
       }
 
       try {
         // ── Entitlement + conversation resolution (PPR-11, fail-closed). ─────
         const authorized = await authorizeTurn({ em, user, identity })
         if (authorized.halted) return finish(authorized.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
 
         // ── Safety (PPR-12, lane G1-A). AFTER consent (it needs subject_kind),
         //    BEFORE the planner (a blocked class must never build a plan). ────
@@ -176,11 +252,15 @@ export async function POST(request: Request): Promise<Response> {
           subjectKind: authorized.value.subjectKind,
         })
         if (safetyGate.halted) return finish(safetyGate.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         const safetyDecision = safetyGate.value
 
         // ── Plan: query text → planner → budgets → floors → NO-LEAKAGE. ──────
-        const planned = await runPlanStage({ em, request, messages, identity, params, safetyDecision })
+        const planned = await runPlanStage({
+          em, request, messages, identity, params, safetyDecision, runtime, abortSignal: turnSignal,
+        })
         if (planned.halted) return finish(planned.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         const {
           plan,
           queryPlan,
@@ -228,7 +308,13 @@ export async function POST(request: Request): Promise<Response> {
           toolsAuthorized,
           orientationPromise,
           inquiryContract,
+          abortSignal: turnSignal,
         })
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
+        if (runtime.kind === 'byok') {
+          if (!isByokEvidencePayloadWithinLimit({ messages, bundle: evidence.bundle,
+            toolResults: evidence.validToolResults })) throw new AiConsoleError('AI_EXECUTION_FAILED')
+        }
 
         // ── Synthesis: prompt assembly, then the streaming interpretation. ───
         const synthesisContext = await assembleSynthesisContext({
@@ -248,6 +334,11 @@ export async function POST(request: Request): Promise<Response> {
                 snapshot: getPinnedCapabilityKnowledgeSnapshot(),
               } }
             : {}),
+          ...(runtime.kind === 'byok' ? {
+            workerExecutor: runtime.executors.worker,
+            abortSignal: turnSignal,
+            maxOutputTokens: params.modelMeta.maxOutputTokens,
+          } : {}),
         })
         const synthesized = await runSynthesisStage({
           em,
@@ -280,8 +371,11 @@ export async function POST(request: Request): Promise<Response> {
           // module has carried since P2-E — see its header for why identity
           // was left optional rather than fabricated.
           observability: { turnId, conversationId, userId: user.uid },
+          abortSignal: turnSignal,
+          ...(runtime.kind === 'byok' ? { synthesizerExecutor: runtime.executors.synthesizer } : {}),
         })
         if (synthesized.halted) return finish(synthesized.status)
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
         // Lane G2-B. Server-derived grounding summary — counts + grade rollup
         // from what the rewriter actually resolved this turn, completeness
@@ -341,6 +435,7 @@ export async function POST(request: Request): Promise<Response> {
           validToolResults: evidence.validToolResults,
           citationGate,
           synthesisStartedAt,
+          abortSignal: turnSignal,
           safetyDecision: postPlanSafety,
           citationRewriteEnabled: synthesized.value.citationRewriteEnabled,
           resolvedCitations: synthesized.value.resolvedCitations,
@@ -353,6 +448,7 @@ export async function POST(request: Request): Promise<Response> {
           completenessReceipt: evidence.completenessReceipt,
           citationHallucinationCount: synthesized.value.citationHallucinationCount,
           responseAccountability,
+          runtime,
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).
@@ -367,10 +463,28 @@ export async function POST(request: Request): Promise<Response> {
         // A refused or unverified write closes the turn as an error, never 'ok'.
         return finish(persisted.status)
       } catch (fatal) {
+        if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         console.error('[pariprashna] fatal in-stream error:', fatal)
-        em.error({ code: 'INTERNAL', message: fatal instanceof Error ? fatal.message : String(fatal), retryable: false })
+        if (runtime.kind === 'byok') {
+          const safe = fatal instanceof AiConsoleError ? fatal : new AiConsoleError('AI_EXECUTION_FAILED')
+          em.error(safe.toJSON())
+        } else {
+          em.error({ code: 'INTERNAL', message: fatal instanceof Error ? fatal.message : String(fatal), retryable: false })
+        }
         return finish('error')
       }
+      })().finally(finalizeRuntime)
+      if (runtime.kind === 'byok') {
+        void execution.catch(() => undefined)
+        return
+      }
+      return execution
+    },
+    async cancel() {
+      if (runtime.kind !== 'byok') return
+      sourceCancelled = true
+      turnAbort!.abort()
+      await execution?.catch(() => undefined)
     },
   })
 
