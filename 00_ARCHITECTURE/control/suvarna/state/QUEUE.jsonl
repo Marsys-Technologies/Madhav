@@ -1,0 +1,1 @@
+{"_schema": "suvarna.queue.v1", "fields": ["id", "stage", "lane", "kind", "depends_on", "write_set", "risk", "role", "model", "effort", "state", "evidence"], "source": "SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md §4.1", "rule": "one line per state change; the latest line per id is current"}

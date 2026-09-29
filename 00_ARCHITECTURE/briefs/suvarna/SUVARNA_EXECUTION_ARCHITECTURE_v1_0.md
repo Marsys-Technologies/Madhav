@@ -47,8 +47,9 @@ The campaign runs in its own folder, on its own branches, with its own switch. O
 
 ```
 /Users/Dev/suvarna/
-├── hq/               worktree, branch suvarna/hq — plan, state, queue, decisions (the campaign's record)
-├── trunk/            worktree, branch suvarna/trunk — integration branch all lanes merge into
+├── hq/               worktree, branch suvarna/hq (from strategy/suvarna-plan) — plan, state, queue, decisions (the campaign's record);
+│                     state lives in 00_ARCHITECTURE/control/suvarna/state/ (repository root stays clean, ROOT_FILE_POLICY)
+├── trunk/            worktree, branch suvarna/trunk (from main) — integration branch all lanes merge into
 ├── lanes/<lane-id>/  one worktree per active lane, created and removed by the conductor
 ├── evidence/         census outputs, build evidence, review scratch (not committed)
 └── run/              SUVARNA_HOLD switch, heartbeat, spend meter, locks, mailboxes
@@ -111,7 +112,7 @@ The campaign runs in its own folder, on its own branches, with its own switch. O
 
 ### 4.1 · The item
 
-Every piece of work is one line in `hq/state/QUEUE.jsonl`:
+Every piece of work is one line in `hq/00_ARCHITECTURE/control/suvarna/state/QUEUE.jsonl`:
 
 | Field | Meaning |
 |---|---|
@@ -273,7 +274,7 @@ The Monitor checks these before any dispatch, and every 15 minutes while work ru
 
 - **All state lives in files:** the queue, decisions, the register, the ledgers. None of it lives in an agent's memory.
 - **Every packet is idempotent** and commits its progress, so a crash loses at most one step.
-- **The Conductor can be restarted at any time** and resumes from `hq/state/`.
+- **The Conductor can be restarted at any time** and resumes from `hq/00_ARCHITECTURE/control/suvarna/state/`.
 - **A daily digest** goes to the native: what finished, what is parked, what is next, spend.
 - **The event log is append-only** and survives any crash; the tracker rebuilds its whole view from it on restart.
 
