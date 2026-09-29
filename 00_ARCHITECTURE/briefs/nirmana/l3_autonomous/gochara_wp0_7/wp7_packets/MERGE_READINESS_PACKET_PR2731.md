@@ -9,6 +9,12 @@
   1091** (§2d), golden-baseline renumbering dispositioned (§2e), second D-E022 successor
   ratified by the native (§2f). Sections 2d, 2e, 2f, 3 and the verdict supersede
   their second-pass content where marked; unmarked earlier content stands.
+- **Refreshed:** 2026-09-30 **fourth pass** (Pravāha A0.6 — merge-queue ejection repair) @
+  **`e9c2e56df`** — #2731 was ejected from the merge queue twice by the Governance Gates
+  pins check in `--delivery-topology` mode (runs only on `merge_group`). Root cause and
+  re-based D-E022 admissions in **§2g**; new READY criterion (delivery-topology pins check
+  on a simulated squash) added to the verdict. Section 2g and the verdict supersede earlier
+  content where marked.
 - **Governing:** ADK-0027 (native directive F-0, precondition 1 — deploy-before-flip),
   ADK-0028 (light-work scope; Cloud-Run-only century rebuild), ESCALATIONS.md E-020/E-021/E-022,
   **D-E022** (native, 2026-09-29: "Accept all recommendations." — pins re-admission at the
@@ -186,6 +192,89 @@ self-authorised, awaiting ratification. **The native ratified it on 2026-09-29**
 successor stands as admitted; no remediation applies. The first L1/L3 successors
 (`6f145dd87`) were covered by D-E022 directly.
 
+**A0.6 amendment (2026-09-30):** the ratified generation was **withdrawn before first
+delivery** and consolidated into the single re-based L3 successor
+`l3:333eb7abcac3:d1bf773c4d94` (§2g) — same content identity (`d1bf773c4d94`), same D-E022
+authority, source re-pinned to the origin/main merge commit. The ratified
+`l3:ad22bef06784:d1bf773c4d94` never reached main and exists only in this lane's git
+history. The re-based successors carry new generation ids and are listed in the verdict as
+**awaiting native ratification** (the A0.6 instruction authorised the re-base; the new ids
+are disclosed for the record).
+
+### 2g. A0.6 — merge-queue ejection repair (delivery-topology pins failure)
+
+**Symptom:** #2731 ejected from the merge queue twice (2026-09-29 15:43 and 18:09 UTC), both
+times by Governance Gates in the `merge_group` run (e.g. run `36610053226`). The queue
+squashes (ruleset `merge_method: SQUASH`), so lane commits are never ancestors of the
+delivery HEAD; the PR's own CI runs the pins check in source topology and never saw this.
+Failures:
+
+```
+L1: newly archived protected generation l1:149f8479ac4e:93de3b2c84b7 must name protected baseline cbded8e54908… as its historical snapshot
+L3: newly archived protected generation l3:7d40f8c70640:dfcf30d8b3d2 must name protected baseline cbded8e54908… as its historical snapshot
+L3 history snapshot: artifact commit 6f145dd87… must be an ancestor of HEAD (×2)
+L3: archived pin differs from immutable historical snapshot
+```
+
+**Root cause:** two distinct delivery-topology rules. (i) A generation that is active on the
+protected baseline and newly archived on the lane must name the baseline commit as its
+historical snapshot — the A0.3 admissions had named the lane-local commit `55ec5e355`.
+(ii) A generation admitted AND archived on the lane (`l3:f4cba9d606ab:64ca6e06c175`, the
+first A0.3 L3 successor) names a lane-only snapshot commit; after the squash no ancestor of
+the delivery HEAD carries that pin, so NO historical snapshot can ever resolve it. Re-pointing
+its snapshot to the baseline fails content-matching (verified empirically: "archived pin
+differs from immutable historical snapshot"). The A0.3 two-successor L3 shape is therefore
+undeliverable by construction.
+
+**Repair (native instruction A0.6, 2026-09-30; per the generator's delivery rules,
+append-only — nothing on main was rewritten, no admission on main was edited, the check was
+not weakened):**
+
+1. Merged current `origin/main` (`cbded8e54908`) into the lane — merge commit `333eb7abc`,
+   no rebase. The merged tree's writer-digests file was already consistent
+   (`provenance_inventory` regeneration produced zero diff; `--check` green).
+2. Rewound the lane-local L1/L3 pins to the protected baseline **byte-for-byte** (the file's
+   own "rewind, do not weaken" convention) and re-admitted **exactly one** D-E022 successor
+   per layer — matching D-E022's recorded scope ("exactly one L1 and one L3 successor
+   admission") — with `--historical-snapshot-commit cbded8e54908…`, source commit
+   `333eb7abcac33deefa4f89dc417e73d4f28d74bd` (the merge commit, whose committed writer
+   inventory is byte-identical to the merged tree's):
+   - L1: `l1:333eb7abcac3:b3674dfbfa91` (supersedes `l1:149f8479ac4e:93de3b2c84b7`; same
+     6-asset delta and classifications as the withdrawn lane-local admission).
+   - L3: `l3:333eb7abcac3:d1bf773c4d94` (supersedes the L0-repair generation
+     `l3:7d40f8c70640:dfcf30d8b3d2`; **7-asset union** of the two withdrawn lane-local
+     deltas with identical per-asset classifications).
+   - Both archived predecessors now name the protected baseline `cbded8e54908…` as their
+     historical snapshot. The lane-local source commits `f4cba9d6…`/`ad22bef06…` were removed
+     from `AUTHORIZED_SOURCE_COMMITS["D-E022"]` (never reached main; their committed
+     inventories predate the merge, so no admission can cite them against the merged tree).
+3. Cascade: `nirmana-analysis-receipts.test.ts` and the pins pytest re-based to the
+   single-successor shape (same "rewind, do not weaken" convention); capability census
+   regenerated (`--source-revision=cb9fd237f8…`), `:check` green. Local gates all green:
+   pins `--check --protected-baseline-commit cbded8e54908…` exit 0 (source topology),
+   pins pytest 69 passed/3 skipped, receipts 40/40, TS scripts 118/118, golden-stream 56/56,
+   mr06 6/6, provenance `--check` exit 0.
+
+**Step-3 verification — the queue's exact check reproduced locally** (scratch worktree at
+`origin/main` `cbded8e54908`, lane squash-merged and committed, i.e. GitHub's one-parent
+delivery shape):
+
+```
+cd /tmp/pr2731-squashsim/platform   # squash of lane HEAD e9c2e56df onto cbded8e54908
+python3 scripts/generate/nirmana_analysis_layer_pins.py --check \
+  --protected-baseline-commit cbded8e54908aa258277d6a47c6988bca8fbbdbb --delivery-topology
+# → "Nirmana analysis layer pins are current." exit=0
+NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT=cbded8e54908aa258277d6a47c6988bca8fbbdbb \
+NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY=1 \
+  python -m pytest scripts/__tests__/test_nirmana_analysis_layer_pins.py -q
+# → 69 passed, 3 skipped
+```
+
+Before the re-base, the identical simulation reproduced the queue's failure set exactly
+(5 failures, above). **Note:** if main moves before the re-queue lands, step 2 must be
+redone against the new main head (the successor source and the archived snapshots re-point
+to the new baseline; the A0.6 instruction covers the redo).
+
 First-pass sections 2a/2b below are kept for the record.
 
 ### 2a. State at packet time (HEAD `800057a73`, queried ~05:00 IST) — SUPERSEDED
@@ -214,6 +303,10 @@ this does not invalidate the results above. Re-merging main again was NOT done �
 merge authorization was scoped to the one conflict-resolution merge.
 
 ### 2c. RESOLVED (second pass) — nirmana layer-pins re-admission executed under D-E022
+
+**SUPERSEDED by §2g (A0.6, 2026-09-30):** the two admissions recorded here were the
+lane-local A0.3 shape; both layers were rewound to the protected baseline and re-admitted
+once each for squash delivery. Kept for the record.
 
 **Resolution:** the native issued **D-E022** (2026-09-29, recorded in pravaha
 `EVENTS.jsonl`: "Accept all recommendations." — pins re-admission at the #2731 merge
@@ -378,26 +471,44 @@ Consequences:
 
 ---
 
-## HEADLINE VERDICT: **READY — NO STANDING NATIVE ITEMS** (final, 2026-09-29, HEAD `25bb4fc3b`)
+## HEADLINE VERDICT: **READY** (fourth pass, 2026-09-30, HEAD `e9c2e56df`) — merge-queue ejection repaired; one ratification disclosure
 
-Native rulings of 2026-09-29 closed the last two items:
+READY is earned only with ALL of the following (fourth-pass criteria):
+
+1. PR CI green in source topology (pins `--check --protected-baseline-commit <base sha>`).
+2. **Delivery-topology pins check passes on a simulated squash onto the current main head**
+   (`--check --protected-baseline-commit <main head> --delivery-topology` on a scratch
+   squash of the lane — §2g step-3 commands, exit 0; pins pytest in delivery mode 69
+   passed/3 skipped). READY without it is not earned.
+3. Production dry-run pending set exactly `{1071, 1072, 1086}` with 1072 in Part-2-only form
+   (§3), and the ka_gochara integrity evidence of §2d.
+
+Native rulings of 2026-09-29 closed the prior items:
 
 1. **1086 applies at merge — CONFIRMED** (native's L1-lane confirmation, §3). Scope limit:
    the ga_strength rebuild is NOT authorised by this ruling — no ga_strength rebuild for
    any chart after deploy; that is a separate, later decision.
-2. **Second D-E022 successor RATIFIED** (`l3:ad22bef06784:d1bf773c4d94`, §2f).
-3. **No standing native items remain for the merge.**
+2. **Second D-E022 successor RATIFIED** (`l3:ad22bef06784:d1bf773c4d94`, §2f) — subsequently
+   **withdrawn before first delivery** by the A0.6 re-base (§2g); it never reached main.
+3. **No standing native items remain for the merge** — except the one A0.6 disclosure below.
 
-Steward-verified against production 2026-09-29: 1072 no longer touches ka_gochara, the seed
-equals the live 1091 row, the live integrity check evaluates `t`, and the 3 sweep-protection
-rows are present. CI at HEAD: 34 pass / 15 skipping / 0 fail; PR MERGEABLE/CLEAN. Local
-evidence for everything the reconciliation touched (§2d): mr06 6/6, seed parity + DAG parity
-17/17, golden-stream 56/56, beyond_acarya 21/21 (+ fork 6/6), knowledge 38/38, pins py
-69 passed/3 skipped, TS scripts 118/118, writer digests `--check` exit 0, layer pins current,
-both codegen `:check`s green.
+A0.6 (2026-09-30): the merge-queue ejection is repaired (§2g). The delivered D-E022
+successors are now `l1:333eb7abcac3:b3674dfbfa91` and `l3:333eb7abcac3:d1bf773c4d94`
+(content identities unchanged — `b3674dfbfa91`, `d1bf773c4d94`; source re-pinned to the
+origin/main merge commit `333eb7abca…` because the squash topology makes lane-only sources
+undeliverable). **Disclosure, awaiting native ratification:** the re-based generation ids
+differ from the ratified ones; the native's A0.6 instruction authorised the re-base, and the
+new ids are recorded here for ratification. The D-E022 authority document, review artifacts,
+classifications, and receipt membership are unchanged.
 
-**Merging #2731 is the native's action.** This lane now waits for A1.1 to detect the merge,
-then proceeds to A1.2 (DEPLOY_SHA) and A1.3 (post-merge hygiene).
+CI at fourth-pass HEAD: pending push (this section updates when the run lands). Local
+evidence: §2g step 3 plus pins pytest 69/3, receipts 40/40, TS scripts 118/118,
+golden-stream 56/56, mr06 6/6, provenance `--check` exit 0, census `:check` green.
+
+**Merging #2731 is the native's action — re-queue immediately after this push** (if main
+moves in between, §2g step 2 must be redone against the new main head). Once it lands, this
+lane's A1.1 detects the merge, then proceeds to A1.2 (DEPLOY_SHA) and A1.3 (post-merge
+hygiene).
 
 <details><summary>First-pass verdict (HOLDING, superseded)</summary>
 
@@ -438,7 +549,8 @@ question (now sharper: the ka_gochara seed row catalogs the `'4.0'` surface per 
 century materializer's row counts `g3_%` on `_v2`; `'3.0'` on `kala_gochara_windows` has no
 seed owner — migration-only by design or a gap is the native's call).
 
-Next native actions: **merge + deploy #2731** (no standing items remain); then DEPLOY_SHA
+Next native actions: **re-queue + merge + deploy #2731** (one disclosure pending
+ratification: the re-based D-E022 generation ids, §2g/§2f amendment); then DEPLOY_SHA
 verification → Cloud-Run century rebuild → flips under trigger #0 + soaks (ADK-0028 amended
 sequence). Reminder carried from the 1086 ruling: deploy applies 1086, but no ga_strength
 rebuild is authorised — that decision is separate and later.
