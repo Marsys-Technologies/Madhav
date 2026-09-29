@@ -27,37 +27,58 @@ artifact for the merge exists beyond that record.
 All other merge content arrived cleanly (Jātaka/AI-console migrations 1120–1125 as expected;
 `.github/workflows/deploy.yml` serving/deploy changes; Kṣetra packets; etc.).
 
-## 2. CI STATUS (queried 2026-09-29 ~05:00 IST, post-merge HEAD `800057a73`)
+## 2. CI STATUS
 
 `gh pr view 2731 --json mergeable,mergeStateStatus`:
 **`mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED`.**
 
-Fresh checks were triggered on the post-merge HEAD and are **mid-run**: several jobs are
-still `pending` (Build Check, TypeScript src, Unit Tests, DB Integration Tests, Density
-Census, Gate batteries chromium/mobile, ICR PR Gate, PRATIJÑĀ v4, Planner Regression).
-Run logs for completed-failing jobs are not yet available ("run … is still in progress").
+### 2a. State at packet time (HEAD `800057a73`, queried ~05:00 IST) — SUPERSEDED
 
-Completed so far:
+Five FAIL: `D-01a (WARN)`, `Earned-Signal Gate (§N.8)`, `Fact-Category Pinning Gate
+(§5 C.7)`, `Governance Gates`, `Secret Scan (unit 0b.2)`; rest pending/passing.
 
-- **PASS (sample):** K1+W1 PLAN-mode serving gates; D-08 pointer integrity; W0.6 unit
-  batteries; W2 specificity; Coverage Gate; Registry Parity + fact_subject gate; Naming
-  Governance; NO-LEAKAGE canary; Reducer tests; TAP-5/7/S-13; boot-time pointer
-  validation; TypeScript platform-mcp; D-01b/c/d/e.
-- **FAIL (5):** `D-01a — No Local Aspect Dict (WARN)`; `Earned-Signal Gate (§N.8)`;
-  `Fact-Category Pinning Gate (§5 C.7)`; `Governance Gates (drift / schema / edge /
-  native-literal / py-sidecar)`; `Secret Scan (unit 0b.2)`.
+### 2b. Resolution pass (2026-09-29, executor; fixes committed as `bd5c34fb0` +
+`68a56814a`, remote re-run at those SHAs)
 
-**Material finding for the Governance Gates failure:** the 12.10c staleness is confirmed
-locally on the merged tree —
-`python -m pipeline.orchestrator.provenance_inventory --check` reports
-**"writer digest inventory is stale"** (`platform/src/generated/nirmana-writer-digests.json`
-no longer fingerprints the merged writer sources). This is exactly what the 12.10c runbook
-predicts for a merge that changes writer content, and is the likely root of at least the
-Governance Gates failure. Whether it explains Earned-Signal / Fact-Category-Pinning /
-Secret-Scan / D-01a failures is UNCONFIRMED until logs are available — treat those four as
-open.
+| Check | Root cause | Fix | Local evidence | Remote after push |
+|---|---|---|---|---|
+| D-01a No Local Aspect Dict (WARN) | 2 NEW violations: (i) `ga_strength_writer.py` allowlist entry pinned at line 224 while this branch's G-10 insertions above shifted the byte-identical `_DRIK_ASPECT_OFFSETS` dict to line 230; (ii) `gochara_kernel/convention.py:45` `SPECIAL_DRISHTI_DEG` — this lane's NEW pinned doctrine (N-14 RULED: nodes cast NO dṛṣṭi), for which the suggested oracle `brahmagyan.aspects.get_graha_aspects()` carries the OPPOSITE nodal convention (aspects.py:26) — importing it would violate the ruling. | Sanctioned allowlist mechanism: line 224→230 update (byte-identity verified vs `origin/main:224-232`) + new entry for `convention.py:45` citing N-14/WP1 §7 and why the oracle cannot be imported. **Committed independently by a parallel lane session as `25f5dd6cb` with identical content; my working-tree edit matched it exactly and was dropped.** | `check_no_local_aspect_dict.py`: 0 new violations (3 allowlisted). PASS. | PASS (not in the failing set at `bd5c34fb0`/`68a56814a`) |
+| Secret Scan (unit 0b.2) | 13 NEW `pg_conn_string` findings — all the lane's disposable-DB DSNs `postgresql://wp6:disposable@localhost:…` in 7 docs/evidence files + 6 test defaults. Not real credentials (throwaway docker containers), but literal credential-shaped strings. | Docs/evidence: password masked to `***` (scanner-sanctioned masked form; history not falsified — the recorded commands now show a placeholder, the DBs were torn down regardless). Tests: default password renamed `disposable`→`local` (scanner's sanctioned weak-placeholder tolerance; env override unchanged). Scanner itself untouched; inherited register untouched. | `secret_scan.sh`: PASS (no new literal credentials); `--self-test` exit 0. Local gitleaks add-on reports 283 historical findings — NOT a CI gate (CI has no gitleaks; script comment documents this). | PASS |
+| Earned-Signal Gate (§N.8) | 2 NON-ALLOWLISTED: `step07_flip_gates.py:75,89` — `ts_gate` (signal name, `_gate` suffix) bound to the constant `"NOT_RUN (route test lives in platform-mcp)"`. | Honest fix per the lint's own message: `"ts_gate": None` + explanation moved to non-signal field `ts_route_test`. No gate semantics changed; no allowlist growth. | `check_earned_signal.py`: 0 new (143 allowlisted). PASS; `--self-test` exit 0. Gochara battery 300 passed / 83 skipped. | PASS |
+| Fact-Category Pinning Gate (§5 C.7) | 2 NON-ALLOWLISTED: `step06_enumerate_episodes.py:178` (fetch ALL rows of `sensitive_degree_check` to build a fact_id→subject lookup map) and `gochara_v3/context.py:646` (`_fetch_kakshya_boundaries` assembles per-subject dicts keyed BY fact_key across every key of the category). Both are set-valued whole-category reads; a fact_key pin would break them. | 2 AUDITED allowlist entries in `fact_category_pin_allowlist.json` following the repo's own precedents (`bo_upaya.py` set-of-keys; `get_kp_cusps.ts:140` multi-key assembler), pattern-keyed not line-keyed. Gate not weakened. | `check_fact_category_pinning.py`: 0 new (65 allowlisted). PASS; `--self-test` exit 0. | PASS |
+| Governance Gates | TWO causes. (i) `provenance_inventory --check` stale on merged tree (12.10c step-1 artifact) — FIXED: runbook step 1 executed, `nirmana-writer-digests.json` regenerated, `--check` green. Also in this job: drift 79 (≤ ceiling 79, exit 3) PASS; schema_validator was exit 1 from ONE CRITICAL — the `L3-GOCHARA-WP0-7-ADK0018-20260927` SESSION_LOG entry embedded a `session_close_pointer` instead of an inline `session_close:` block — FIXED by inlining the canonical close YAML verbatim (now 42 violations ≤ 43, exit 3). (ii) **pins `--check` — STILL RED, see 2c.** | (i) executed; (ii) stopped — native authority required. | `provenance_inventory --check` exit 0; `drift_detector` 79/exit 3; `schema_validator` 42/exit 3. | FAIL (pins step only — log confirms "Nirmana analysis layer pins are STALE or INVALID") |
+| Density Census (§N.6) | `capability_knowledge.snapshot.json` stale on merged tree (planner capability content arrived via main merge). | `npm run codegen:capability-knowledge -- --generated-at=2026-09-29T00:16:48Z` (182 SCUs; `…:check` green). | check green locally. | fixed in `68a56814a`; awaiting re-run confirmation |
+| Unit Tests | `nirmana-analysis-receipts.test.ts` — layer aggregates re-derived from the live inventory mismatch the committed pins (L1 `b3674dfb…` vs committed `93de3b2c…`; L3 similarly). Same root cause as Governance Gates (ii). | NOT branch-local-fixable without authority — see 2c. | — | FAIL (same pins root cause) |
 
-**CI is therefore NOT green. This alone is a stop item.**
+### 2c. STOP ITEM — nirmana layer-pins re-admission (12.10c step 2) requires native authority
+
+Root cause, precisely: this branch's own writer edits since the pinned convergence
+commits moved two layers' writer-inventory aggregates —
+
+- **L1 (`ga_`)**: `1fab2364e` (WP8 G-10: `ga_strength_writer.py` +90, `ga_sensitive_writer.py`
+  +21, `CHART_FACTS_SCHEMA.json` entry) and `ddf985751` (M-6). Committed pin
+  `l1:149f8479ac4e:93de3b2c84b7`; live inventory derives `b3674dfbfa91…`.
+- **L3 (`ka_`)**: this lane's gochara writer/kernel work since `7d40f8c70640`
+  (`bb7644ee4`, `b70115631`, `4d8f83050`, `8b5d7f4ed`, `c2eb8a780`, `660e12129`,
+  `3d606523b`, `8c8dd2a1f`, `fe3038be7`, `ac746434a`, `f1ee17c81`, `9ef81897c`,
+  `3c7bf6947`, `45f150bb9`, …). Committed pin `l3:7d40f8c70640:dfcf30d8b3d2`; live
+  inventory derives `64ca6e06c175…`.
+
+Why the executor stopped: `--admit-successor` writes an **admission record** carrying
+`authority_decision` / `authority_commit` / `review_artifacts` / per-asset
+classifications. The only authority the 12.10c runbook names
+(`NATIVE-2026-09-24-L0-REPAIR-REPIN`, commit `101171f76517`) is **scoped to the L0-repair
+change set (PR #2727) and is already consumed** by the currently committed L0/L2/L3
+generations — it does not authorize successors for THIS lane's different change set, and
+it names **no L1 generation at all**. Writing either successor without a native decision
+would fabricate the authority field — the exact defect class the gate exists to catch.
+**Needed from the native: one authority decision covering the L1 (ga_, G-10/M-6 change
+set) and L3 (ka_, this lane's writer change set) successor admissions** (or a ruling
+extending an existing decision). The mechanics (read-only DB for receipt counts, command
+per runbook §2) are staged and can run within minutes once authority exists.
+
+Also noted: `nirmana-analysis-receipts.test.ts` (Unit Tests) fails on the same staleness;
+it goes green when the pins do.
 
 ## 3. DEPLOY MIGRATION LIST — `migrate.ts --dry-run` against production
 
@@ -98,8 +119,14 @@ Assessment:
 
 ## 4. 12.10c RUNBOOK STATUS
 
-`MERGE_HYGIENE_12_10c_RUNBOOK.md` — **documented 2026-09-27, NOT executed.** Nothing in it
-may run before the second merge lands; it still has not run.
+`MERGE_HYGIENE_12_10c_RUNBOOK.md` — documented 2026-09-27. **Execution state as of
+2026-09-29 (this lane, on-branch, per the packet §4 duty assignment): step 1 EXECUTED
+(writer digests regenerated, `--check` green), step 3 EXECUTED (census regenerated, check
+green), step 2 STOPPED on missing native authority (§2c), step 4 is a recorded note,
+step 5 partially applied (steps 1+3 committed in `bd5c34fb0`).** The runbook's own
+"nothing may run before the second merge lands" constraint is satisfied differently than
+written: the merge commit `f95cf19af` exists ON THIS BRANCH, so the merged tree it
+requires is this tree.
 
 **Changed second-merger dynamics.** The runbook was written for "whoever merges second
 between this branch and the L0 lane." That framing is now overtaken: F-0 had **main merged
@@ -137,28 +164,39 @@ Consequences:
 
 ---
 
-## HEADLINE VERDICT: **HOLDING**
+## HEADLINE VERDICT: **HOLDING** (updated 2026-09-29, HEAD `68a56814a`)
 
 Stop items, in order:
 
-1. **CI not green on post-merge HEAD** — 5 failing checks (Governance Gates, Earned-Signal,
-   Fact-Category Pinning, Secret Scan, D-01a-WARN) plus a large pending set. Writer-digest
-   staleness (12.10c step-1 artifact) is confirmed locally on the merged tree and is the
-   likely root of the Governance Gates failure; the other four failures are UNCONFIRMED
-   pending logs.
-2. **12.10c regeneration duty now sits with this lane** (the merged tree exists on-branch);
-   steps 1–3 have NOT run. Awaiting native go to execute them on-branch (recommended) —
-   without them the second merge cannot reach green CI.
-3. **STOP-LEVEL: deploy runner would apply 1071 + 1072 at merge** — intended? (1072 flips
+1. **Nirmana layer-pins re-admission (12.10c step 2) — NATIVE AUTHORITY REQUIRED** (§2c).
+   Two checks stay red until it lands: `Governance Gates` (pins `--check`) and
+   `Unit Tests` (`nirmana-analysis-receipts.test.ts`). Both fail ONLY on the L1+L3 pin
+   staleness; everything else in those jobs is fixed and locally green.
+2. **STOP-LEVEL: deploy runner would apply 1071 + 1072 at merge** — intended? (1072 flips
    `target_table` and breaks conjunct (j) if applied uncoordinated; standing instruction is
    DO NOT apply locally.) Native decision required.
-4. **OPEN native coordination: 1086** — the native must confirm with the L1 lane that
+3. **OPEN native coordination: 1086** — the native must confirm with the L1 lane that
    applying it at deploy is intended. Not confirmable by this lane.
+
+Resolved in this pass (was stop item 1/2): D-01a, Secret Scan, Earned-Signal §N.8,
+Fact-Category Pinning, Density Census, the provenance-inventory staleness, the drift and
+schema_validator ceilings, and the SESSION_LOG CRITICAL — all fixed branch-local with
+local-equivalent green evidence (§2b); remote re-runs at `bd5c34fb0`/`68a56814a` confirm
+PASS for D-01a, Secret Scan, Earned-Signal, Fact-Category (Density Census re-run pending
+at packet-update time).
+
+12.10c runbook execution state: **step 1 (writer digests) EXECUTED** on the merged tree —
+`nirmana-writer-digests.json` regenerated, `--check` green; **step 3 (capability-estate
+census) EXECUTED** — `capability_estate_census.json` regenerated
+(`--source-revision=f512bdfe4`, the HEAD at generation time), check green; **step 2 (L3
+pin re-admission) STOPPED** — §2c, native authority needed; step 4 (1072 interplay) is a
+recorded note, nothing to run; step 5 (commit) partially applied (steps 1+3 outputs
+committed in `bd5c34fb0`).
 
 Non-blocking, recorded: Disclosure 3 (R240); chart-1 `'4.0'` burned; chart-2 candidate
 retention; soak trigger #0 added to `step09_soak_checklist.md`; frozen seven + 1150 verified
 absent from the deploy pending list.
 
-Next native actions: rule on stop items 2–4; merge + deploy #2731 when green; then
-DEPLOY_SHA verification → Cloud-Run century rebuild → flips under trigger #0 + soaks
-(ADK-0028 amended sequence).
+Next native actions: issue the pins authority decision (stop item 1); rule on stop items
+2–3; merge + deploy #2731 when green; then DEPLOY_SHA verification → Cloud-Run century
+rebuild → flips under trigger #0 + soaks (ADK-0028 amended sequence).
