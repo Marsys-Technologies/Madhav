@@ -1532,15 +1532,22 @@ def test_readmission_classifications_equal_the_actual_digest_delta(layer: str) -
 
 
 def test_readmission_archived_predecessors_name_the_protected_baseline() -> None:
-    # A0.6: every D-E022 archived predecessor must name the protected baseline
-    # as its historical snapshot, or the merge queue's delivery-topology check
-    # cannot resolve it after the squash.
+    # A0.6: every D-E022 archived predecessor must name a historical snapshot
+    # reachable from the protected baseline, or the merge queue's
+    # delivery-topology check cannot resolve it after the squash. On #2731's
+    # own queue run the snapshot IS the baseline (cbded8e5); every later
+    # branch has a baseline past the squash, of which the snapshot is an
+    # ancestor. The generator's own "newly archived" rule keeps the strict
+    # equality for the admitting delivery.
     baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
     assert baseline, "CI must provide the protected pin baseline"
     for layer in READMISSION_LAYERS:
         archived = LIVE_PINS["history"][layer][-1]
         assert archived["generation_id"] == READMISSION[layer]["supersedes"]
-        assert archived["historical_snapshot_commit"] == baseline
+        snapshot = archived["historical_snapshot_commit"]
+        assert snapshot == baseline or pins_module._commit_is_ancestor_of_commit(
+            snapshot, baseline
+        ), f"{layer} snapshot {snapshot} is not reachable from baseline {baseline}"
         assert archived["superseded_by_generation_id"] == (
             LIVE_PINS["layers"][layer]["generation_id"]
         )
