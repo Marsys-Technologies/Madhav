@@ -202,11 +202,11 @@ describe('clients/[id] workspace — composition', () => {
   })
 
   it.each([
-    ['building', 'dim', false, false],
-    ['needs-rebuild', 'dim', false, false],
-    ['failed', 'lit', false, false],
-    ['partially-built', 'lit', false, true],
-    ['not-built', 'dim', false, false],
+    ['building', 'dim', true, false],
+    ['needs-rebuild', 'dim', true, false],
+    ['failed', 'lit', true, false],
+    ['partially-built', 'lit', true, true],
+    ['not-built', 'dim', true, false],
     ['ready', 'lit', true, true],
   ] as const)('readiness %s (Gaṇita %s) → Paripraśna available=%s, Pañcāṅga available=%s', async (state, ganita, pariprashna, panchang) => {
     setAccess('all')
@@ -218,11 +218,12 @@ describe('clients/[id] workspace — composition', () => {
     expect(byTestId(doc, 'build-room-card')?.getAttribute('data-available')).toBe('true')
   })
 
-  it('explains why Paripraśna is unavailable during recomputation', async () => {
+  it('keeps Paripraśna linked during recomputation while the readiness band remains visible', async () => {
     setAccess('all')
     setReadiness('needs-rebuild')
     const { doc } = await renderPage()
-    expect(byTestId(doc, 'consult-room-card')?.textContent).toMatch(/recomputation/i)
+    expect(byTestId(doc, 'consult-room-card')?.getAttribute('href')).toBe(`/clients/${TEST_CHART_ID}/pariprashna`)
+    expect(byTestId(doc, 'chart-readiness-band')).not.toBeNull()
   })
 
   it('does not render the disabled Timeline placeholder or an invented daśā/yoga claim', async () => {

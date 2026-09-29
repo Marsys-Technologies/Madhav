@@ -44655,3 +44655,180 @@ session_close:
   unblocks: ["Normal use of the deployed release; separately authorized shared-asset repair may resume only blocked acceptance steps."]
   handoff_notes: "Production rollout succeeded at acf8d2baed6345097dd28a34e533329be52046ec. Full Task 9 did not; one recompute attempt rolled back cleanly before chart mutation."
 ```
+
+## MADHAV-AI-CLI-VM-BRIDGE-20260929 — 2026-09-29
+
+```yaml
+session_open:
+  session_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+  cowork_thread_name: "Madhav — AI CLI VM Bridge"
+  agent_name: gpt-5
+  agent_version: gpt-5
+  tool: "Codex"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/ai-cli-vm-bridge/Madhav
+  step_number_or_layer: "AI Console — private VM CLI bridge production repair"
+  predecessor_session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+    lease_status_verified: true
+    lease_verified_at: 2026-09-29T05:16:00+05:30
+    coordination_commit: b52912b8545becaf680a5928e38e5a67feb1c128
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    ccd_consumed: []
+    ccd_appended: []
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md]
+  mandatory_reading_confirmation: []
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - .github/workflows/deploy.yml
+      - platform/scripts/ai-cli-bridge/**
+      - platform/tests/unit/governance/cli_bridge_contract.test.ts
+      - platform/tests/unit/governance/deployment_contract.test.ts
+      - platform/src/lib/ai-console/cli/**
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_OPEN.yaml
+      - 00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_CLOSE.yaml
+      - 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.md
+      - 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.json
+      - 00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.md
+      - 00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.json
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    must_not_touch:
+      - platform/supabase/migrations/**
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - existing production charts, conversations, and customer grants
+      - unrelated IAM, database, migration, chart, build, and shared-asset state
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No Macro Plan or health-crisis serving change."
+      acknowledged: true
+  red_team_due: false
+  notes: "Native authorized a minimal-essential-security production repair: keep the four authenticated personal CLIs on the companion VM, connect only the hosted product through a private allowlisted bridge, preserve existing per-user grants, and verify direct CLI health before product validation."
+```
+
+The four CLIs were installed and authenticated correctly on the companion VM, but production
+MARSYS-JIS is a Cloud Run service and its existing runner could only start child processes on the
+same host. Production also correctly kept local process spawning disabled. The repair therefore
+added an explicit private transport instead of exposing the VM or enabling arbitrary commands on
+the public web host.
+
+PR #2753 added a non-root VM bridge with a fixed executable/operation allowlist, bearer-token
+authentication, concurrency, output and timeout limits, secure temporary working directories, and
+no shell surface. The web runner accepts only private RFC1918/loopback endpoints, obtains its token
+from Secret Manager, preserves existing per-user grants and validation sealing, and retains
+`MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=false`. Cloud Run Direct VPC egress uses tag
+`amjis-web-cli-egress`; the bridge listens only on `10.160.0.2:8787`; the firewall allows that
+source tag and denies all other sources on the bridge port. The VM public address cannot reach
+8787 and an unauthenticated private request returns 401.
+
+VM smoke validation passed inspection, version, authentication/catalog, probe, and confirmation
+for all four CLIs. Full CI passed: 14,359 Vitest tests passed, 750 skipped, 2 todo; TypeScript had
+0 errors; ESLint had 0 errors and 583 pre-existing warnings. PR #2753 merged through the protected
+queue as `952e5c3634dfd1a8e7bbe96548a8ce120ca6e6a7`. Main CI run `36504821998` and exact-SHA
+deployment run `36505937019` succeeded; revision
+`amjis-web-probe-952e5c3634df-36505937019-1` receives 100% traffic. Authenticated live production
+AI Console validation showed Codex CLI 0.158.0, Claude Code 2.1.284, Gemini/Antigravity 1.2.12,
+and Kimi Code 2.1.1 all Reachable. No default provider, customer grant, database, migration, chart,
+build, or `/api/pariprashna` serving behavior changed.
+
+### Next session objective
+
+None required for this repair. Future security hardening or additional customer access remains a
+separate, explicitly authorized change; current use stays behind the existing per-user CLI grants.
+
+```yaml
+session_close:
+  session_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+  closed_at: 2026-09-29T07:00:00+05:30
+  tool: Codex
+  files_touched:
+    - {path: ".github/workflows/deploy.yml", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/scripts/ai-cli-bridge/README.md", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/scripts/ai-cli-bridge/marsys-ai-cli-bridge.service", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/scripts/ai-cli-bridge/server.mjs", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/scripts/ai-cli-bridge/smoke.mjs", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/tests/unit/governance/cli_bridge_contract.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/tests/unit/governance/deployment_contract.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/ai-console/cli/__tests__/registry.test.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/ai-console/cli/__tests__/remote-runner.test.ts", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "platform/src/lib/ai-console/cli/registry.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "platform/src/lib/ai-console/cli/runner.ts", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_LOG.md", mutation_type: modified, within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_OPEN.yaml", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_CLOSE.yaml", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.md", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.json", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.md", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+    - {path: "00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.json", mutation_type: created, within_declared_scope: true, reason: created_this_session}
+  registry_updates_made:
+    current_state:
+      - change: ai_cli_vm_bridge_close_recorded
+        rationale: "v6.87 records the private VM bridge, protected deployment, live four-CLI validation, and security boundary."
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  code_review_pass:
+    reviewer: "Protected PR review, merge queue, and full CI"
+    verdict_before_fixes: "PASS; all required checks green"
+    fixed: [cloud_run_to_vm_transport_missing, bridge_cwd_lifetime_race, group_writable_codex_launcher]
+    not_fixed_reported: []
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.md
+    divergences_found: 79
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.md
+    violations_found: 42
+  handshake_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    tool_profile: madhav-safe
+    exit_code: 0
+    report_path: 00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_OPEN.yaml
+    violations_found: 0
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    ccd_consumed: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    migration_request: null
+    migration_file: null
+    migration_applied: false
+    lease_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+    lease_claim_commit: b52912b8545becaf680a5928e38e5a67feb1c128
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: 009a41767e02e41b983d35a1f1546bea462c7728
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: MADHAV-AI-CLI-VM-BRIDGE-20260929
+      obligation_addressed: true
+      evidence: "No Macro Plan or health-crisis serving change occurred."
+  known_residuals:
+    - {finding_id: inherited_governance_drift_baseline, severity: MEDIUM, booking_reference: "79 drift findings (77 MEDIUM, 2 LOW), matching the preceding governed baseline and unrelated to this repair."}
+    - {finding_id: inherited_schema_baseline, severity: MEDIUM, booking_reference: "42 schema violations after this entry's required next-objective heading, matching the preceding governed baseline and unrelated to this repair."}
+  close_criteria_met: true
+  unblocks:
+    - "Owner-authorized use of Codex CLI, Claude Code, Gemini/Antigravity, and Kimi Code from the production AI Console through the private VM bridge."
+  handoff_notes: "PR #2753 merged as 952e5c3634dfd1a8e7bbe96548a8ce120ca6e6a7; deploy run 36505937019 serves revision amjis-web-probe-952e5c3634df-36505937019-1 at 100% traffic. All four production dashboard validations are Reachable. No default provider or customer grant changed."
+```

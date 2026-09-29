@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   // Jātaka chart workspace: history archived by a chart-details correction is read-only.
   if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 
-  // Same shared readiness gate as the consult and Paripraśna doors, checked
+  // Same shared readiness gate as the legacy consult door, checked
   // before the truncation so a refused re-post never strands a shortened
   // conversation.
   const readingGate = await checkReadingReadiness(conv.chart_id)

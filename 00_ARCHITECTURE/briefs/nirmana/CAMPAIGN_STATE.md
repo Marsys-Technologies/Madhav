@@ -2,10 +2,12 @@
 artifact: CAMPAIGN_STATE.md
 canonical_id: NIRMANA_CAMPAIGN_STATE
 version: rolling
-status: LIVE
+status: SUPERSEDED — 2026-09-28, native decision; see NIRMANA_SUPERSESSION_RECORD_v1_0.md (was: LIVE)
 campaign_id: nirmana-elevation
 last_updated: 2026-09-05T-v2.1-parallel-sessions-active-conductor-bootstrap
 ---
+
+> ⛔ **SUPERSEDED 2026-09-28 by native decision.** The Nirmāṇa elevation campaign is off and will not resume. Successor: the Nikaṣa engine, then an elevation campaign built on it. Assets Nirmāṇa froze are kept as the starting point, not as certification. Kept as history only — do not execute. Record: `00_ARCHITECTURE/briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`.
 
 # Nirmāṇa Velocity-Reset — Campaign State
 

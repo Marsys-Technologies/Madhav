@@ -1337,6 +1337,10 @@ jobs:
             --tag=${{ steps.web-candidate.outputs.tag }}
             --min-instances=1
             --timeout=360s
+            --network=default
+            --subnet=default
+            --network-tags=amjis-web-cli-egress
+            --vpc-egress=private-ranges-only
             --remove-secrets=WATCHDOG_SECRET
             --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|# runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts use this|# distinct Cloud-SQL principal.  Its absent secret fails those|# writes closed; neither the migrator nor legacy-owner credential|# is ever present in the serving revision.|# Server-reconstructed evidence (probe_accepted|integrity_verified|# asset_frozen|stage_transition_accepted|foundation_lane_accepted)|# uses this distinct Cloud-SQL principal instead. Its absent secret|# fails those writes closed the same way -- this was missing from|# the serving revision from when the ingress writer role and its|# secret were first provisioned (2026-08-27) until this line."
           # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
@@ -1381,6 +1385,7 @@ jobs:
             MARSYS_FLAG_AI_CONSOLE_BYOK=true
             MARSYS_AI_ACTIVE_KEK_VERSION=V1
             MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=false
+            MARSYS_AI_CLI_BRIDGE_URL=http://10.160.0.2:8787
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
@@ -1400,6 +1405,7 @@ jobs:
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:2
             MARSYS_AI_KEK_V1=marsys-ai-kek-v1:1
             MARSYS_AI_FINGERPRINT_SECRET=marsys-ai-fingerprint-secret:1
+            MARSYS_AI_CLI_BRIDGE_TOKEN=marsys-ai-cli-bridge-token:1
 
       - name: Resolve web candidate URL
         id: web-candidate-url

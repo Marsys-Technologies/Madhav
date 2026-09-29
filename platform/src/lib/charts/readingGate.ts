@@ -3,12 +3,15 @@ import { getChartReadinessMap, isDerivedChartReady } from '@/lib/charts/readines
 import { readinessRefusalMessage } from '@/lib/charts/readinessCopy'
 
 /**
- * The single admission check every reading door uses (Paripraśna SSE, legacy
- * consult). A new reading starts only when the shared readiness authority says
- * Ready — a Ready chart may carry a non-blocking refresh warning. Anything else
+ * The single admission check used by readiness-gated reading doors (legacy
+ * consult, MCP prashna_ask and super-admin chat/build). A new reading starts
+ * there only when the shared readiness authority says Ready — a Ready chart may
+ * carry a non-blocking refresh warning. Anything else
  * (Building, Needs rebuild, Failed, Partially built, Not built) or an unreadable
  * readiness refuses with CHART_RECOMPUTE_REQUIRED and state-specific copy, so
- * old or incomplete results never produce a reading.
+ * old or incomplete results never produce a reading through those doors.
+ * Paripraśna does not use this gate: its planner works from available material
+ * and its surface displays a non-blocking chart-completeness notice.
  */
 export type ReadingGateResult =
   | { ok: true }
