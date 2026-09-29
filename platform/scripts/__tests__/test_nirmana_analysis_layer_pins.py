@@ -67,9 +67,11 @@ def replace_layer_writers(
 # every PR entering the merge queue while the tool's own --check stayed green.
 READMISSION_LAYERS = ("L1", "L3")
 REPAIR_LAYERS = ("L0", "L2", "L3")
-# L3 carries TWO D-E022 readmission successors (the DP-SD-010 knots.py digest
-# cascade required a second append-only admission); L1 carries one.
-READMISSION_REWINDS = ("L1", "L3", "L3")
+# L1 and L3 each carry ONE D-E022 readmission successor. The A0.3 lane-local
+# shape (one L1, two L3 successors) was rewound to the protected baseline and
+# re-admitted once per layer in A0.6, because the merge queue's squash delivery
+# can never resolve a lane-only historical snapshot commit.
+READMISSION_REWINDS = ("L1", "L3")
 POST_REPAIR_PINS = LIVE_PINS
 POST_REPAIR_INVENTORY = LIVE_INVENTORY
 for _layer in READMISSION_REWINDS:
@@ -1408,48 +1410,45 @@ def test_repair_authority_chain_binds_the_recorded_decision_document() -> None:
         pins_module.validate_authority_binding(REPAIR_DECISION, "0" * 40)
 
 
-# --- D-E022 merge pins re-admission (PR #2731, Pravaha A0.3) ---------------
+# --- D-E022 merge pins re-admission (PR #2731, Pravaha A0.3/A0.6) ------------
 # The origin/main merge into the #2731 lane moved L1 and L3 writer digests
 # (membership unchanged). The native authorised re-admission per
 # MERGE_HYGIENE_12_10c_RUNBOOK step 2; the authority evidence document is
 # 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_E022_PINS_READMISSION_AUTHORITY_v1_0.md.
 #
-# L3 carries TWO D-E022 successors: the DP-SD-010 serialization fix on
-# services/gochara_kernel/knots.py (swiss_state_boundary compliance, same A0.3
-# repair) moved the knots-closure writer digests after the first L3 successor
-# was admitted. Fail-closed design: a second append-only successor, never an
-# edit of the first. L1 carries exactly one.
+# A0.6 delivery re-base: the merge queue squashes #2731 onto main, so lane-only
+# commits are never ancestors of the delivery HEAD and the A0.3 lane-local
+# admission shape (one L1 successor, two L3 successors after the DP-SD-010
+# knots.py digest cascade) could not name deliverable historical snapshots.
+# Both layers were rewound to the protected baseline byte-for-byte and
+# re-admitted ONCE each directly on the origin/main merge commit, with the
+# archived predecessors naming that baseline as their historical snapshot.
+# The L3 admission's delta is the exact union of the two withdrawn lane-local
+# admissions; the lane-local generation l3:f4cba9d606ab:64ca6e06c175 never
+# reached main.
 READMISSION_DECISION = "D-E022"
 # The authority identity (first commit of the evidence document) and the pinned
-# source commits are DIFFERENT commits, on purpose (same pattern as the L0
-# repair): each source is a commit whose committed writer inventory is
-# byte-identical to the tree its successor pins.
+# source commit are DIFFERENT commits, on purpose (same pattern as the L0
+# repair): the source is the origin/main merge commit, whose committed writer
+# inventory is byte-identical to the merged tree its successors pin.
 READMISSION_AUTHORITY = "442f1ed955a701008b2a975c7df80d543fbbc67a"
 READMISSION = {
     "L1": {
-        "source": "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
+        "source": "333eb7abcac33deefa4f89dc417e73d4f28d74bd",
         "supersedes": "l1:149f8479ac4e:93de3b2c84b7",
         "successors": 1,
         "intentional": {"ga_strength", "ga_sensitive"},
         "both": set(),
     },
     "L3": {
-        "source": "ad22bef06784bf3326a3b6fb36660bdad84cb805",
-        "supersedes": "l3:f4cba9d606ab:64ca6e06c175",
-        "successors": 2,
+        "source": "333eb7abcac33deefa4f89dc417e73d4f28d74bd",
+        "supersedes": "l3:7d40f8c70640:dfcf30d8b3d2",
+        "successors": 1,
         "intentional": set(),
-        "both": set(),
-    },
-}
-# The first L3 readmission successor (merge delta, source f4cba9d6) is now
-# archived; it remains asserted, immutable, below.
-READMISSION_L3_FIRST = {
-    "generation": "l3:f4cba9d606ab:64ca6e06c175",
-    "supersedes": "l3:7d40f8c70640:dfcf30d8b3d2",
-    "source": "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
-    "both": {
-        "ka_gochara_resonance", "ka_gochara_v3_century_materialize",
-        "ka_kshetra", "ka_moorti_nirnaya", "ka_vedha_gochara",
+        "both": {
+            "ka_gochara_resonance", "ka_gochara_v3_century_materialize",
+            "ka_kshetra", "ka_moorti_nirnaya", "ka_vedha_gochara",
+        },
     },
 }
 
@@ -1532,25 +1531,21 @@ def test_readmission_classifications_equal_the_actual_digest_delta(layer: str) -
     assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
 
 
-def test_readmission_first_l3_successor_is_archived_whole_and_immutable() -> None:
-    archived = LIVE_PINS["history"]["L3"][-1]
-    assert archived["generation_id"] == READMISSION_L3_FIRST["generation"]
-    assert archived["superseded_by_generation_id"] == LIVE_PINS["layers"]["L3"]["generation_id"]
-    pin = archived["pin"]
-    assert pin["supersedes_generation_id"] == READMISSION_L3_FIRST["supersedes"]
-    assert pin["convergence_commit"] == READMISSION_L3_FIRST["source"]
-    admission = pin["admission"]
-    assert admission["authority_decision"] == READMISSION_DECISION
-    assert admission["authority_commit"] == READMISSION_AUTHORITY
-    assert admission["source_commit"] == READMISSION_L3_FIRST["source"]
-    assert len(admission["changed_assets"]) == 7
-    for asset_id, classification in admission["delta_classifications"].items():
-        expected_class = (
-            "approved_intentional_and_derived_import_change"
-            if asset_id in READMISSION_L3_FIRST["both"]
-            else "derived_import_change"
+def test_readmission_archived_predecessors_name_the_protected_baseline() -> None:
+    # A0.6: every D-E022 archived predecessor must name the protected baseline
+    # as its historical snapshot, or the merge queue's delivery-topology check
+    # cannot resolve it after the squash.
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    assert baseline, "CI must provide the protected pin baseline"
+    for layer in READMISSION_LAYERS:
+        archived = LIVE_PINS["history"][layer][-1]
+        assert archived["generation_id"] == READMISSION[layer]["supersedes"]
+        assert archived["historical_snapshot_commit"] == baseline
+        assert archived["superseded_by_generation_id"] == (
+            LIVE_PINS["layers"][layer]["generation_id"]
         )
-        assert classification == expected_class, asset_id
+        admission = LIVE_PINS["layers"][layer]["admission"]
+        assert len(admission["changed_assets"]) == (6 if layer == "L1" else 7)
 
 
 def test_readmission_leaves_every_other_layer_and_the_definitions_untouched() -> None:
@@ -1566,10 +1561,8 @@ def test_readmission_leaves_every_other_layer_and_the_definitions_untouched() ->
 def test_readmission_only_l1_l3_are_authorised_for_the_decision() -> None:
     authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[READMISSION_DECISION]
     assert set(authorised) == set(READMISSION_LAYERS)
-    assert authorised["L1"] == frozenset({READMISSION["L1"]["source"]})
-    assert authorised["L3"] == frozenset({
-        READMISSION["L3"]["source"], READMISSION_L3_FIRST["source"]
-    })
+    for layer in READMISSION_LAYERS:
+        assert authorised[layer] == frozenset({READMISSION[layer]["source"]})
     for layer in ("L0", "L2", "L4", "L5"):
         with pytest.raises(SystemExit, match="is not authorized by"):
             pins_module.validate_authorized_source(
