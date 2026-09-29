@@ -135,6 +135,19 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: L0_REPAIR_REPIN_APPROVED",
         "authority_identity_binding": "`101171f76517fa3c6b0b44fa9d1cc46358612eee`",
     },
+    "D-E022": {
+        # Pins re-admission at the PR #2731 merge (Pravaha A0.3). The native's
+        # approval ("Accept all recommendations.", 2026-09-29) is recorded verbatim
+        # in the evidence document; the authority identity is the commit that first
+        # introduced that document. Scope: exactly one L1 and one L3 successor
+        # admission, per MERGE_HYGIENE_12_10c_RUNBOOK step 2 / ESCALATIONS E-022.
+        "authority_commit": "442f1ed955a701008b2a975c7df80d543fbbc67a",
+        "evidence_commit": "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
+        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_E022_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "14f98475c61de92759e78021267a7c2b9dae936fb63d78de61c1beaa60658c7e",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`442f1ed955a701008b2a975c7df80d543fbbc67a`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -230,6 +243,15 @@ AUTHORIZED_SOURCE_COMMITS = {
         "L0": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
         "L2": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
         "L3": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
+    },
+    # D-E022 (Pravaha A0.3): exactly one source commit, for exactly the two layers
+    # whose writer digests moved at the PR #2731 merge. f4cba9d6 is a docs-only
+    # commit on top of merge 8eeeb6e2a, so its committed writer inventory is
+    # byte-identical to the merged tree's derived inventory. L0, L2, L4, L5 are
+    # deliberately absent.
+    "D-E022": {
+        "L1": frozenset({"f4cba9d606abffd6c73bee42307ea8cbfd733ae6"}),
+        "L3": frozenset({"f4cba9d606abffd6c73bee42307ea8cbfd733ae6"}),
     },
 }
 
