@@ -1,13 +1,14 @@
 ---
 artifact: SUVARNA_INTERIM_RUNTIME
 canonical_id: SUVARNA_INTERIM_RUNTIME
-version: "1.1"
+version: "1.1.1"
 status: "DRAFT — for native review (with the v1.4 plan set, N-1)"
 produced_on: 2026-09-29
 produced_in: session "L.15 interim runtime safeguards"
 companion_of: SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md §5.5 (runtime), SUVARNA_RUNBOOK_v1_0.md §2 step 9
              and §2 steps 11–12, SUVARNA_AUTONOMY_CHARTER_v1_0.md §8 (hold switch) and P13 (no bypass)
 changelog:
+  - "1.1.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): the hold-guard hook runs the committed code in the hq worktree (PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance), never Strategic Suvarṇa's worktree, and fails closed for dispatches (a hook that cannot run, or a malformed payload, refuses an Agent dispatch and any dispatch-like command); the Monitor confirmation reads every check ok except isolation, which warns until N-25 is decided; the swarm's allow-list forms per arch §2.4 (code: the template, CODE items in the pass-3 disposition)."
   - "1.1 (2026-09-29, review pass 2 / plan v1.4, Strategic Suvarṇa): the generated settings move to /Users/Dev/suvarna/config/claude-settings.json (owned by the native, read-only to the swarm) and are passed with --settings to every session, pass and lane (a settings.local.json in a swarm-writable worktree is not a boundary, and lane worktrees never get hq's copy); the generator needs that target (CODE-20) and the template needs the arch §2.4 deny rules (CODE-21). /loop 10m. Tools run from the hq worktree. Isolation (arch §2.4, N-25) and the lane launcher referenced."
   - "1.0 (2026-09-29): first draft. Built and tested the four L.15 deliverables (runtime_settings.py,
      hold_guard.py, the monitor.py conductor_heartbeat check and --notify) against installed Claude
@@ -154,7 +155,7 @@ older: a stale Conductor is the watchdog's job to relaunch (arch §5.5, charter 
 stop dispatch outright.
 
 Confirm on the dashboard within a few minutes: a `conductor` heartbeat from each session, `monitor`
-reading `ok: 9/9`, and — once L.14's durable watchdog exists — no repeated notifications for the same
+reading every check ok except `isolation`, which reads `warn` until N-25 is decided (exit 1 then, 0 after), and — once L.14's durable watchdog exists — no repeated notifications for the same
 unresolved condition.
 
 ## §6 · The hold guard
@@ -162,7 +163,9 @@ unresolved condition.
 Charter §8: *"`$SUVARNA_HOME/run/SUVARNA_HOLD` present: finish the items already running, dispatch
 nothing new. Production-visible actions stop at the next precondition check."* `hold_guard.py` is one
 of those precondition checks, wired as the settings template's `PreToolUse` hook (matcher
-`Bash|Agent`). It reads the hook's JSON off stdin and:
+`Bash|Agent`). **It runs the committed code in the hq worktree**
+(`PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance`), never `/Users/Dev/madhav-suvarna-plan` (Strategic
+Suvarṇa's worktree, which the `suvarna` user may not be able to read under N-25). It reads the hook's JSON off stdin and:
 
 - **Always** refuses a Bash command that tries to delete the hold file itself (`rm`/`unlink` on
   `SUVARNA_HOLD`, however spelled) — hold on or off. Only the native removes it (charter §8).
@@ -171,9 +174,10 @@ of those precondition checks, wired as the settings template's `PreToolUse` hook
   `nikasha_certify`, `gh pr merge`, `orchestrator`, or `--apply`).
 - **Otherwise lets everything through** — git, tests, reads, the census, `emit`/`decide` — because
   "finish what is already running" means exactly that, not "stop everything."
-- **Never wedges the session** on a malformed or empty stdin payload: it exits 0 (allows the call)
-  but logs a `note` event (actor `hold-guard`) so the gap is visible on the dashboard rather than
-  silently swallowed.
+- **Fails closed for dispatches.** If the hook cannot run at all (an import failure, an unreadable path) or cannot
+  read its payload, it refuses (exit 2) an `Agent` dispatch and any dispatch-like Bash command, and logs a `note`
+  event (actor `hold-guard`) where it can; a hook failure must never let a dispatch through. Other calls on a malformed
+  payload are allowed and logged, so a bad payload does not wedge ordinary work.
 - Every block is logged the same way, before the exit code (2) reaches the harness — charter §11:
   "an action that is not logged did not happen," applied to a refusal as much as to an action taken.
 

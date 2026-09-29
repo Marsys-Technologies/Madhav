@@ -1,12 +1,13 @@
 ---
 artifact: SUVARNA_RUNBOOK
 canonical_id: SUVARNA_RUNBOOK
-version: "1.2"
+version: "1.2.1"
 status: DRAFT — for native review (N-1, with the v1.4 plan set)
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 companion_of: SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md (v1.4) and SUVARNA_AUTONOMY_CHARTER_v1_0.md (v1.4)
 changelog:
+  - "1.2.1 (2026-09-30, review pass 3 folded; REVIEW_PASS3_DISPOSITION_v1_0.md): the launch never requires every Monitor check ok before N-25: isolation reads warn until N-25 is decided (ok after), so the Monitor exits 0 or 1 (1 only from isolation) before N-25 and 0 after; builder_scope reads warn until E7.2 writes builder_identity.json. Step 2a is done when isolation reads ok after N-25. Step 9: the allow-list forms, pushes only to suvarna/*, decide/decisions/runtime_settings not allowed to the swarm, the hold-guard hook runs from hq and fails closed for dispatches. The census runs through census_run. Migrations: N-27 (Suvarṇa range and the deny-list amendment) in §7."
   - "1.2 (2026-09-29, review pass 2 folded): D6 recorded as applied. A missing or broken reader file is re-issued by D6 runbook §3 (--apply), never by the rollback, which restores the write-capable app login. The tracker and Monitor run from the committed code in the hq worktree and are restarted after each plan merge (L.17), reading NIKASHA_REF=origin/campaign/nikasha-test. New launch steps for isolation (N-25; L.16a/b/g). The permission allow-list is the untracked Suvarṇa settings file passed with --settings, not the tracked .claude/settings.json. /loop 10m. Decisions are recorded only in Strategic Suvarṇa. New incident rows: isolation, decision writers. L0 is four native dispatches."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): launch checklist rebuilt: N-1 read from the authoritative decisions log ($SUVARNA_HOME/run/DECISIONS.jsonl, written only through python -m suvarna_tracker.decide); the D6 reader login applied and the Monitor's eight checks listed (credential_readonly included); hq brought current by a merge commit, never --ff-only (arch §12.12); the decisions mirror; the permission allowlist (dontAsk, never bypass) and the watchdog (L.15); sessions started in dontAsk mode and /loop armed (D5 interim to G2), with the weekly re-arm; the durable headless runner (L.14) before B.W1. Census only through census_lock. New §7 for the native's part in L0 waves (D1, D4) and the builder identity (E7.2). Incidents: credential missing blocks / too open warns (a changed file is not detectable), credential_readonly and builder_scope blocks, a stalled Conductor, usage-limit pauses. Where-things-live table updated. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (S2, C24, C43); D1, D4, D5, D6."
   - "1.0 (2026-09-29): first draft. Launch, daily operation, hold and resume, restart after a reboot, incidents, where things live."
@@ -57,17 +58,20 @@ export PYTHONPATH=$T SUVARNA_HOME=/Users/Dev/suvarna
    decisions log belongs to you and is read-only to `suvarna`. Either way: `chmod 600 /Users/Dev/madhav-l3/dbenv.sh
    /Users/Dev/madhav-l3/dbenv_builder.sh`; the settings file `/Users/Dev/suvarna/config/claude-settings.json` in place;
    the swarm's own GitHub identity installed for the swarm only, and a merge attempt with it on a throwaway PR refused;
-   branch protection on `main` requires your approving review. Done when step 6 shows `isolation` ok.
+   branch protection on `main` requires your approving review. `isolation` reads `warn` until N-25 is decided; done
+   when, after N-25, step 6 shows `isolation` ok.
 3. **Machine:** on AC power, lid open, automatic macOS updates and restarts off for the campaign's duration. Sleep
    prevented: `pgrep -x caffeinate || (nohup caffeinate -dimsu >/dev/null 2>&1 &)`.
 4. **Database proxy** on 5433: `lsof -nP -iTCP:5433 -sTCP:LISTEN` shows `cloud-sql-proxy`. If not:
    `nohup cloud-sql-proxy --address 127.0.0.1 --port 5433 madhav-astrology:asia-south1:amjis-postgres > /Users/Dev/suvarna/run/proxy.log 2>&1 &`
 5. **Tracker** up: `curl -s http://127.0.0.1:8765/api/health` returns `"ok": true`. If not:
    `rm -f /Users/Dev/suvarna/run/TRACKER_STOP; nohup bash $T/suvarna_tracker/run_tracker.sh >/dev/null 2>&1 &`
-6. **Monitor green:** `python3 -m suvarna_tracker.monitor --once` exits 0, with every check ok: today eight (`db_proxy`,
+6. **Monitor green:** `python3 -m suvarna_tracker.monitor --once` exits 0, or **1 only because `isolation` reads `warn`
+   before N-25 is decided** (never 2; any other non-ok check is not green). After N-25 it exits 0. Checks: today eight (`db_proxy`,
    `credential` (file present, mode 600, no backup beside it), `credential_readonly` (login `suvarna_reader`, no write
    path), `power`, `sleep_prevented`, `hold`, `disk`, `tracker`); `conductor_heartbeat` joins with L.15 (runtime/INTERIM_RUNTIME
-   §5), `isolation` and `decision_writers` with L.16a, `builder_scope` with E7.3. Then keep it running (it also carries the Conductor watchdog once L.15 has built it):
+   §5), `isolation` (warn until N-25 is decided, ok after) and `decision_writers` with L.16a, `builder_scope` with E7.3
+   (warn until E7.2 writes `run/builder_identity.json`, ok after). Then keep it running (it also carries the Conductor watchdog once L.15 has built it):
    `nohup python3 -m suvarna_tracker.monitor --watch 300 --emit --repair >> /Users/Dev/suvarna/run/monitor.log 2>&1 &`
 7. **hq is current**, by a merge commit, never fast-forward-only and never a rebase (arch §12.12). With both execution
    sessions stopped (at launch they are):
@@ -80,10 +84,13 @@ export PYTHONPATH=$T SUVARNA_HOME=/Users/Dev/suvarna
 8. **Decisions mirror refreshed** (information only; the log itself is the authority):
    `python3 -m suvarna_tracker.decide --mirror-to /Users/Dev/suvarna/hq/00_ARCHITECTURE/control/suvarna/state/DECISIONS.jsonl`
 9. **Runtime safeguards in place (L.15):** the settings file `/Users/Dev/suvarna/config/claude-settings.json` exists, generated by
-   `runtime_settings.py` (`runtime/INTERIM_RUNTIME_v1_0.md` §2) and `--check` clean (arch §2.4, §5.5: allows the `suvarna_tracker` commands, the lane launcher, `psql` only through `pgenv.sh`, `git`
-   without `push --force`, `python3`, `pytest`, `gh pr create/view`, `suvarna-build`; denies merges, `gh api`,
-   force-push, `mcp__postgres__*`, `gcloud`, foreign credential files, edits to `config/` and the decisions log; the
-   hold-guard hook); `ls /Users/Dev/suvarna/run/CONDUCTOR_STALLED` → "No such file".
+   `runtime_settings.py` (`runtime/INTERIM_RUNTIME_v1_0.md` §2) and `--check` clean (arch §2.4, §5.5: allows the swarm's `suvarna_tracker` modules but
+   not `decide`, `decisions` or `runtime_settings`, the lane launcher, `psql` and `pg_dump` only as
+   `bash -c 'source ~/.config/suvarna/pgenv.sh && …'`, `git` with pushes only to `suvarna/*` and the Engine's fold push to
+   `campaign/nikasha-test` (no `+` refspec, no `…:main`, no force), `python3 platform/scripts/governance/<script>.py`, `pytest`, `gh pr create/view`,
+   `~/.config/suvarna/bin/suvarna-build`; denies merges, `gh api`, force-push, `mcp__postgres__*`, `gcloud`, foreign
+   credential files, edits to `config/` and the decisions log; the hold-guard hook, run from
+   `/Users/Dev/suvarna/hq/platform/scripts/governance` and failing closed for dispatches); `ls /Users/Dev/suvarna/run/CONDUCTOR_STALLED` → "No such file".
 10. **Hold switch absent:** `ls /Users/Dev/suvarna/run/SUVARNA_HOLD` → "No such file".
 11. **Start the Nikaṣa Engine session** in its own terminal (as the `suvarna` user under N-25: `sudo -iu suvarna`),
     **Opus 5.5, medium effort**, never a bypass mode:
@@ -95,7 +102,7 @@ export PYTHONPATH=$T SUVARNA_HOME=/Users/Dev/suvarna
     `Read and follow /Users/Dev/suvarna/hq/00_ARCHITECTURE/briefs/suvarna/prompts/EXEC_SUVARNA_START_PROMPT_v1_0.md`,
     then the same `/loop 10m` line.
 13. **Confirm on the dashboard** within a few minutes: a `conductor` heartbeat from each session, a `monitor` heartbeat
-    reading every check ok, first items `running`.
+    reading every check ok (before N-25: every check but `isolation`, which reads `warn`), first items `running`.
 
 **Interim runtime limits (`/loop`).** Its scheduled tasks expire after 7 days and do not survive a restart: **re-arm
 both loops weekly** (the digest carries the date) and after every restart (§5). A usage-limit pause stops the loop; the
@@ -123,7 +130,9 @@ it by API key or by subscription is your decision (N-23).
   that packet and reports. After a plan revision, bring hq current by §2 step 7 while no Conductor pass is committing (or
   through the hq-lock wrapper, L.13).
 - **Census:** every census, in every session and in the family sessions, runs through
-  `python3 -m suvarna_tracker.census_lock --emit -- <census command>`; exit 75 means another census holds the lock.
+  `python3 -m suvarna_tracker.census_run --layer <Lx> --out <absolute path> --wait 900 --emit --actor <role>` (it takes
+  the census lock itself); exit 75
+  means another census holds the lock.
 
 ## §4 · Pause, resume, stop
 
@@ -155,6 +164,7 @@ Nothing is lost: state is in files, the event and decisions logs are append-only
 | Monitor **BLOCK: credential** (file missing) or **WARN: credential** (not mode 600, or a backup file beside it) | Missing or broken reader file: re-run D6 runbook §3 (`--apply`, after a fresh dry run and its plan hash); it resets the password and rewrites the file. **Never** restore `~/.config/madhav-admin/pgenv.app-login.bak` unless you mean to roll D6 back (D6 §6): that is the write-capable app login. Too open: `chmod 600`. Move stray backups to `~/.config/madhav-admin/`. Agents never recreate or change it (R10). A changed password shows as `credential_readonly` failing to log in. |
 | Monitor **BLOCK: credential_readonly** | The login is not `suvarna_reader`, or it has a write path or an exposure. Nothing dispatches. Investigate with the D6 runbook §4; fix or roll back yourself. |
 | Monitor **BLOCK: builder_scope** (after E7.3) | The preflight says the builder is not `guest`/`active`, its grants are not exactly `{(482012f1,'build')}`, or it differs from `run/builder_identity.json`; or the preflight failed. Revoke fastest-first: delete the extra `chart_grants` row; disable the profile; revoke its tokens (D1). Only you rotate `builder.env`. |
+| Monitor **WARN: isolation** before N-25 is decided | Expected: the check has nothing to measure against yet. Decide N-25 (L.16d); then set up per step 2a. |
 | Monitor **BLOCK: isolation** | The swarm runs as the wrong user, can read a foreign credential, can write the decisions log, or a settings file changed. Set the hold; find what changed before removing it. |
 | Monitor **BLOCK: decision_writers** | A `decided` line not written by Strategic Suvarṇa. Treat it as forged: set the hold; in Strategic Suvarṇa, record a superseding line with your actual ruling. |
 | **`CONDUCTOR_STALLED`** present, or a session's Conductor shows `blocked` | Interim: open that session, read its last output; if a usage limit, wait it out; then "Resume from the queue." and re-arm `/loop`; then `rm /Users/Dev/suvarna/run/CONDUCTOR_STALLED`. Durable: the watchdog relaunches up to three times an hour, then sets the hold and parks: find the cause before removing the hold. |
@@ -179,6 +189,11 @@ Nothing is lost: state is in files, the event and decisions logs are append-only
   post-wave row-level diff. **Undo:** hold; you choose a surgical revert migration generated from the diff (preferred)
   or a restore from the dump; both are yours to run.
 - **Normal (L1+) waves** run without you, through `suvarna-build`, after their fixes are merged by you and deployed.
+  Each is one asset-list run over the level's non-family assets; a family asset or reader is never in it (arch §6.2).
+- **Migration range (N-27), before E7.1's PR:** reserve 1200–1299 for Suvarṇa on the coordination branch, and merge one
+  small PR to `main`, agreed with the L3 Kāla owner, that replaces the deny line
+  `Edit(platform/migrations/1[2-9][0-9][0-9]_*)` in `.claude/settings.json` by `Edit(platform/migrations/1[3-9][0-9][0-9]_*)`.
+  You (or that owner) edit the file: no agent may. Until it is merged, no Suvarṇa lane can write a migration.
 
 ## §8 · Closing
 

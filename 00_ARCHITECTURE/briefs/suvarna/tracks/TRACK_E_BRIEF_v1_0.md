@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_TRACK_E_BRIEF
 canonical_id: SUVARNA_TRACK_E_BRIEF
-version: "1.1"
+version: "1.1.1"
 status: "DRAFT — for native approval with N-1"
 produced_on: 2026-09-29
 produced_in: "Strategic Suvarṇa"
@@ -12,8 +12,9 @@ governed_by:
   - "SUVARNA_CAMPAIGN_PLAN_v1_4.md §4.2 (J1), §5.1 (Track E), §6.3–§6.6"
   - "SUVARNA_AUTONOMY_CHARTER_v1_0.md v1.4 (G1–G15; R1–R11; P1–P14)"
   - "SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md v1.4 §3, §6, §11.7, §12"
-  - "decisions N-2, N-3, N-6, D1, D2, D3, D4 ($SUVARNA_HOME/run/DECISIONS.jsonl); N-26 pending"
+  - "decisions N-2, N-3, N-6, D1, D2, D3, D4 ($SUVARNA_HOME/run/DECISIONS.jsonl); N-26 and N-27 pending"
 changelog:
+  - "1.1.1 (2026-09-30, review pass 3 folded; REVIEW_PASS3_DISPOSITION_v1_0.md): migrations only in the Suvarṇa range after N-27's deny-list amendment (E0.1), which gates E7.1 and E3.2; N-26 renumbers into it. New packet E1.10: R34 and R36 closed after landing, migration, deploy and runtime proof; R34's residual split. E4.2r: DEFERRED counts only with the bo_upaya-Idem.pattern withholding in force and the fix PR (head suvarna/land/E4.2-build-001) merged. E5.3: dispatch is an --assets run over the level's non-family assets only and refuses a family intersection. E6.3: the interface elevated_assets(ref, repo) -> set[str] and the LEVEL_MAP.json schema pinned; E6.3t's detector. Census through census_run."
   - "1.1 (2026-09-29, review pass 2 folded): one branch rule (lanes from suvarna/trunk; fold lanes before the cut-over pushed to campaign/nikasha-test; landing branches from origin/main). E3: the 10 commits cherry-picked; migrations per N-26; R39 closes on the census's Build checks in the scorecard; deploy = ancestry. E4: E4.1 no longer waits for the ledgers; E4.3 lands them and checks the register too; E4.2 split into the merged fix (test file pinned) and R244's state (E4.2r). E1: scorecard schema and committed generator; E1.9 census --assets. E5: canary in E5.3; E5.6 wave rehearsal off production; E5.7 L0 dump rehearsal. E6: FAMILY_ASSETS.json and registry-coverage schemas pinned; E6.3t. E7: preflight returns the builder's scope; suvarna-build interface pinned; builder_scope measured through the preflight; E7.3 lands on strategy/suvarna-plan. §9 findings folded into plan v1.4."
   - "1.0 (2026-09-29): first issue. Packets, write sets and boundaries for lanes E1–E7; approvals named; plan_model detector fields pinned (E3.2, E3.7, E5.1–E5.5, E6.3). Measured today: the build engine's own work is 10 commits on top of l3/kala-layer-briefs, not ~200 (§3); migrations 1094–1096 are unapplied and sit inside L3's reserved range 1070–1119 (§3.3); the tier documents and the Nikaṣa tools are not on main (§4)."
 ---
@@ -25,7 +26,7 @@ the plan's facts out of date it says so (§9) and follows the plan until Strateg
 
 ## §1 · Scope and done
 
-- **Done = J1-ready:** every Track E row of the J1 checklist (plan §4.2 #1–#6, #9–#13) reads done by its detector, and
+- **Done = J1-ready:** every Track E row of the J1 checklist (plan §4.2 #1–#6a, #9–#13, #16) reads done by its detector, and
   the Conductor hands the native one J1 packet with evidence. The freeze itself is N-8; the reopens are N-4/N-5.
 - **Seven lanes:** E1 tooling · E2 clause fixes · E3 build engine · E4 landing and `bo_upaya` · E5 execution tooling ·
   E6 gate detectors (D3) · E7 build identity (D1; the D1 auth PR is E7.1).
@@ -49,9 +50,12 @@ the plan's facts out of date it says so (§9) and follows the plan until Strateg
 - **Out of bounds, all lanes:** family assets and their code, data and migrations (charter R8: `ka_gochara`,
   `ka_gochara_resonance`, `ka_vedha_gochara`, `ka_sangam`, `ka_kshetra` and tables, plus claimed prerequisites);
   the `WriterBase` contract (R2); any chart but `482012f1…` (R4); credentials (P1, R10); `CLAUDE.md` except by the
-  native-decided PR in §3.2 (E3.2-build-004); the plan, plan model and tracker code (Strategic's; E7.3 is a PR to `strategy/suvarna-plan`); tiers 1–3 before their agenda is approved.
-- **Migrations:** one number at a time per arch §12.5, placeholder on the lane branch, row on the coordination branch;
-  every migration file goes through the `migration-guard` agent before its PR opens.
+  native-decided PR in §3.2 (E3.2-build-004); the plan, plan model and tracker code (Strategic's; E7.3 is a PR to `strategy/suvarna-plan`); tiers 1–3 before their agenda is approved; `.claude/settings.json` (N-27's amendment is authored by the native or the L3 Kāla owner).
+- **Migrations:** only in the Suvarṇa range of N-27 (1200–1299 proposed), and only once its deny-list amendment is on
+  `main` (E0.1): until then main's `.claude/settings.json` refuses every Suvarṇa migration edit (arch §12.5). One number
+  at a time inside the range, placeholder on the lane branch, row on the coordination branch; never in
+  `platform/supabase/migrations/` to step around the deny (P13); every migration file goes through the
+  `migration-guard` agent before its PR opens.
 - **Reviews:** a fresh gate reviewer per packet (Opus 5.5 medium; **high** for writer, ledger, auth, reopen and
   algorithm packets); two rejects → Steward. CI green before a PR is marked ready.
 
@@ -88,15 +92,16 @@ to `main` via PR #2735 under the Saṅgam session. **E3 lands only the 10.**
   (`gh pr list --head <ref> --base main --state all`; a CODE item in REVIEW_PASS2_DISPOSITION); until that lands the
   items read unknown, and Strategic Suvarṇa adds the PR numbers the day each PR opens (its duty, named in the plan
   model's `pinned_by`).
-- **Write set:** the files above, `platform/supabase/migrations/1094_*`–`1096_*`, their tests. **Boundary:** no other
+- **Write set:** the files above, the build engine's three migrations (today `platform/supabase/migrations/1094_*`–`1096_*`;
+  after N-26 renumbered into the N-27 range, in `platform/migrations/`, the folder the amended deny list opens), their tests. **Boundary:** no other
   writer, no family code, no `WriterBase`/`WriterResult` shape change (A1 stops *reading* `duration_seconds`; the
   field stays).
 
 ### 3.3 · Migration numbers — parked for the native
-1094–1096 are unapplied (`_migrations_applied`, read 2026-09-29), claimed by no open PR, and **inside L3 Kāla's
-reserved range 1070–1119** (coordination branch). This is decision **N-26** (plan §8). Recommendation: renumber them at landing to freshly reserved
-cross-cutting numbers (legal: never applied, P4 untouched), and Strategic Suvarṇa updates E3.3 and plan §4.2 #9 in the
-same commit. Alternative: the L3 range owner confirms 1094–1096 on the coordination branch. The Steward parks this at
+1094–1096 are unapplied (`_migrations_applied`, read 2026-09-29 and 2026-09-30), claimed by no open PR, and **inside L3 Kāla's
+reserved range 1070–1119** (coordination branch). This is decision **N-26** (plan §8). Recommendation: renumber them at landing to the
+next free numbers of the Suvarṇa range once **N-27** is decided and its deny-list amendment merged (E0.1) (legal: never
+applied, P4 untouched), and Strategic Suvarṇa pins E3.3's `numbers` and plan §4.2 #9 in the same commit. Alternative: the L3 range owner confirms 1094–1096 on the coordination branch. The Steward parks this at
 session open; only E3.2-build-001/002's PR opening waits on it.
 
 ## §4 · Lane E4 — landing and `bo_upaya` (10–20 h)
@@ -111,7 +116,7 @@ retarget" is done by building fresh branches from `suvarna/trunk`, not by retarg
 | E4.1-build-001 | E4.1, E4.1c | **code PR**: every governance tool at `campaign/nikasha-test` HEAD with its tests (`platform/scripts/governance/{asset_census,catalog_provenance,hand_row_provenance,ledger_r81_migration,apply_r80_r81_ledger_migration,manifest_fingerprint,check_migration_ledger_vs_production}.py`, `drift_detector.py`/`schema_validator.py` hunks, `__tests__/*`, `r218_*`), `00_ARCHITECTURE/control/asset_elevation_tracker.py`; a base-dependency sweep (every import and path resolves on `main`); a CI job running `platform/scripts/governance/__tests__/` | files on main; `ci.yml` contains `asset_census` |
 | E4.1-build-002 | E4.1 | **evidence PR**: the four tiers, L0 instance v3.0, pilot briefs, register v2.8, implementation plan, `nikasha_test/**`, reviews, the `bo_upaya` hand-off. `SESSION_LOG`, `CURRENT_STATE`, `CAPABILITY_MANIFEST` hunks only as Nikaṣa-own rows added on `main` (never a rebase); manifest re-fingerprinted last | register on main (E4.1's `main_has_files` has no ledgers) |
 | E4.3-fold-001 | E4.3 | **ledger PR at the named cut**: folds stop on `campaign/nikasha-test` at a recorded commit; `asset_gaps.jsonl`, `asset_certs.jsonl` land; line count and md5 of both ledgers **and the register** equal old vs new (evidence in the event); Strategic Suvarṇa re-points `NIKASHA_REF` to `origin/suvarna/trunk` in one step | `main_has_files` on both ledgers; a J1 input |
-| E4.2-build-001 | E4.2, E4.2r | `bo_upaya` per the hand-off: restore `replace_prior_rm_dasha_windowed()` before `replace_prior_rm_prescriptions()` (`bo_upaya.py:1942–1945`), rewrite the comment, source-order test at `platform/python-sidecar/tests/l2/test_bo_upaya_source_order.py`, correct the three write-ups and L2 strategy §6 wording. Lease `SUVARNA-E4.2-build-001` on `bo_upaya`. Not migration 1013, not `cr_status.ts`, no live rebuild (that is B.U) | E4.2: the test on `main`; E4.2r: R244 `DEFERRED` with withholding, folded on the merged fix |
+| E4.2-build-001 | E4.2, E4.2r | `bo_upaya` per the hand-off: restore `replace_prior_rm_dasha_windowed()` before `replace_prior_rm_prescriptions()` (`bo_upaya.py:1942–1945`), rewrite the comment, source-order test at `platform/python-sidecar/tests/l2/test_bo_upaya_source_order.py`, correct the three write-ups and L2 strategy §6 wording. Lease `SUVARNA-E4.2-build-001` on `bo_upaya`. Not migration 1013, not `cr_status.ts`, no live rebuild (that is B.U). Landing branch `suvarna/land/E4.2-build-001` | E4.2: the test on `main`; E4.2r: R244 `DEFERRED`, folded on the merged fix, and counted by `register_rows_state` only while `NIKASHA_WITHHOLDING.json` at the Nikaṣa ref holds `bo_upaya-Idem.pattern` (`deferred_withholding_entry`) and the fix PR is merged (`deferred_pr`: the head ref above, replaced by the PR number the day it opens) |
 
 - **Sequencing:** 001 first (it unlocks `suvarna/trunk` as the base for E1, E5, E6), then 002, then the cut-over last.
   E4.2 in parallel from day one. PR #2736 stays open until 001–003 merge; closing it is the native's act.
@@ -130,6 +135,7 @@ retarget" is done by building fresh branches from `suvarna/trunk`, not by retarg
 | E1.6-build-001 | E1.6 | R246 DELETE-FK-child detector, narrow, after E4.2 merges | R246 closed |
 | E1.8-analysis-001 | E1.8 | R24: production L3 census (R134) and clean re-runs of all six layers after E1.2–E1.4 | R24 closed |
 | E1.7-analysis-001 | E1.7 | T1–T5 re-proved with the tools on `main`; scorecard committed on `main` by the committed generator | `scorecard_pass` |
+| E1.10-analysis-001 | E1.10 | R34 and R36 (BLOCKS_FREEZE, `CLOSED_ON_BRANCH`): after E3.2 (A1 `8edba0533`, A3 `551d5ecad` landed), E3.3 (A1's timing migration applied) and E3.7 (deployed), prove each at runtime: R34 non-NULL `rows_per_second`/duration on representative applicable paths, R36 a registry divergence failing only the diverged asset (harness replay, then the deployed evidence), both read-only from build history or on the E5.6 scratch database, never by a Suvarṇa production build before J1; split R34's residual (the legacy `ga_writers/_telemetry.py` path, 8 `ga_*` call sites) into its own non-freeze row; fold both rows closed | `register_rows_state` R34, R36 in CLOSED/DONE; J1.R expects both |
 | E1.9-build-001 | E1.9 | `asset_census.py --assets <id,…>` for the census and `--emit-gaps`, so a level wave measures and emits only its assets (other assets' gap state untouched); tests | `main_file_contains` `--assets` |
 
 - **Scorecard schema** (`00_ARCHITECTURE/control/NIKASHA_T1_T5_SCORECARD.json`): `{"generator":
@@ -138,8 +144,9 @@ retarget" is done by building fresh branches from `suvarna/trunk`, not by retarg
   "population": "…", "evidence": "<path>"}, …, "T5": {…}}, "engine_build_checks": {"<criterion>": "PASS|…"}}`.
 - **Write set:** `platform/scripts/governance/**` (inspector, provenance, their tests), the scorecard, the
   retrieval-registry `source_ref` annotations (R228 only), the ledgers through E5.2/migration scripts only.
-- **Census lock:** every census here goes through `census_lock` and competes with Track A's six censuses; the Conductor
-  asks Exec Suvarṇa's Conductor for a slot by tracker note, never runs outside the lock.
+- **Census lock:** every census here goes through `python3 -m suvarna_tracker.census_run --layer <Lx> --out <absolute
+  path> --wait 900 --emit --actor <role>` (it holds the census lock) and competes with Track A's six censuses; the Conductor asks Exec Suvarṇa's
+  Conductor for a slot by tracker note, never runs outside the lock.
 
 ## §6 · Lane E2 — founding-document fixes, held for the reopen (20–30 h)
 
@@ -164,7 +171,7 @@ All on `main` via `suvarna/trunk`, each with its test (the paths are the plan-mo
 |---|---|---|
 | E5.1 | `platform/scripts/governance/nikasha_certify.py`, `__tests__/test_e5_1_certify.py` | writes arch §12.16 records; refuses a PASS whose criterion has `detector: NONE` or no census run id; refuses N/A not computed by the registry; idempotent on a ledger copy |
 | E5.2 | `nikasha_fold.py`, `__tests__/test_e5_2_fold.py` | register state transitions; `--emit-gaps` with the withholding list (`00_ARCHITECTURE/control/NIKASHA_WITHHOLDING.json`, today `bo_upaya-Idem.pattern`); computed tallies; fingerprints; drift |
-| E5.3 | `suvarna_level_wave.py`, `__tests__/test_e5_3_level_wave.py` | dispatch only via `suvarna-build`; preflight; the landing merge an **ancestor** of `job_sha` / `deployed_sha` after a fetch, never equality; writer-hash re-check at that commit; read-only per-chart lock check; L0 dump, `pg_restore --list` and row-count verification, post-wave diff, impact statement; **serving canary** (golden reads of the served MCP tools for `482012f1`, before and after; an unexplained difference triggers the stated reversal); fail closed. Tested against the builder with `--preflight` and expected-403 dispatches (clear, `brahmagyan`, other chart), and end to end in E5.6. How staleness propagates on a global run is established from `staleness.py` and build history, read-only |
+| E5.3 | `suvarna_level_wave.py`, `__tests__/test_e5_3_level_wave.py` | dispatch only via `suvarna-build`, **always `--assets <the level's non-family assets>`**: every asset at the level in the frozen `LEVEL_MAP.json` minus `FAMILY_ASSETS.json`'s `family_set`, never `--level`; **refuse** (exit non-zero, nothing dispatched) if the dispatch set intersects `family_set` or either file is missing on `origin/main`; the test asserts both, with a fixture level holding a family asset (levels 1, 5, 12, 13 do today); preflight; the landing merge an **ancestor** of `job_sha` / `deployed_sha` after a fetch, never equality; writer-hash re-check at that commit; read-only per-chart lock check; L0 dump, `pg_restore --list` and row-count verification, post-wave diff, impact statement; **serving canary** (golden reads of the served MCP tools for `482012f1`, before and after; an unexplained difference triggers the stated reversal); fail closed. Tested against the builder with `--preflight` and expected-403 dispatches (clear, `brahmagyan`, other chart), and end to end in E5.6. How staleness propagates on a global run is established from `staleness.py` and build history, read-only |
 | E5.4 | `manifest_fingerprint.py`, `__tests__/test_e5_4_manifest_per_entry_rotation.py` | rotates each changed entry, not only the root |
 | E5.5 | `nikasha_stale_certs.py`, `__tests__/test_e5_5_stale_certs.py` | invalidates a record whose writer hash, upstream cert ids or row-set fingerprint no longer match |
 
@@ -189,10 +196,20 @@ PARTIAL > PASS; N/A only by rule; no checks = NO_DETECTOR), cells versioned with
 ELEVATED exact in `asset_elevation_tracker.py` (terminal dispositions honoured) with
 `__tests__/test_e6_3_elevated_exact.py`; `00_ARCHITECTURE/control/LEVEL_MAP.json` and
 `00_ARCHITECTURE/control/FAMILY_ASSETS.json` generated from the live registry, frozen at J1; a cycle is an error.
+**The E6.3 interface** (pinned; the tracker and E5.3 call it): `asset_elevation_tracker.elevated_assets(ref: str, repo:
+str) -> set[str]`, a module-level function; input = a git ref (the Nikaṣa ref the tracker reads the ledgers at) and a
+repository path; it reads every input with `git -C <repo> show <ref>:<path>` (`asset_gaps.jsonl`, `asset_certs.jsonl`,
+with E5.5's invalidations already in the ledger, and the recorded dispositions), never the working tree, never the
+database, no side effects; output = the asset ids ELEVATED per plan §1.1 or terminally dispositioned; it **raises** on
+any unreadable or malformed input, never returns an empty set for a failure. `__tests__/test_e6_3_tracker_interface.py`
+proves the signature, the committed-ref reads (a dirty working tree changes nothing), and the raise.
+**LEVEL_MAP.json keys**: `{"version", "frozen_at", "registry_revision", "levels": {"<asset_id>": <level>}}`; wave
+membership is read only from it (plan-model `level_map`).
 **FAMILY_ASSETS.json keys** (the plan model reads these names): `{"version", "frozen_at", "registry_revision",
 "family_gochara": [...], "family_sangam": [...], "family_kshetra": [...], "family_readers_L3": [...],
 "family_readers_L4": [...], "family_readers_L5": [...], "family_set": [<union of all six>]}`. E6.3t (Strategic's):
-the Suvarṇa tracker calls the E6.3 function at the committed ref. E6.4: `ledger_e6_4_info_rekey.py` (R81 pattern, on
+the Suvarṇa tracker calls the E6.3 function at the committed ref through that interface; its detector is
+`main_has_files` on the module and the interface test. E6.4: `ledger_e6_4_info_rekey.py` (R81 pattern, on
 a copy first). E6.5: `asset_census.py --registry-check --out 00_ARCHITECTURE/control/registry_coverage_report.json`,
 committed on `main`, schema `{"registry_revision", "inspector_commit", "covered_cells": <n>,
 "uncovered_required_criteria": [], "per_asset_pending": [<criteria declared "required, per-asset detector
@@ -202,7 +219,7 @@ pending">], "na_rules": [...]}`. Per-asset semantic detectors are Track A/I, not
 `api/cockpit/runs/route.ts` (dispatch needs `'build'`, layer or asset-list scope; `clear_before` needs `'all'`), new
 `api/cockpit/runs/preflight/route.ts` (authenticated; returns `{job_image_tag, job_sha, deployed_sha, builder:
 {principal_id, role, status, grants: [{chart_id, permission}]}}`, the caller's own scope), one migration widening
-`chart_grants.permission` to `('view','build')`, tests proving 403 on clear, clear routes, `layer=brahmagyan`, other
+`chart_grants.permission` to `('view','build')` (numbered in the N-27 range; the PR waits for E0.1), tests proving 403 on clear, clear routes, `layer=brahmagyan`, other
 charts. `security-reviewer` agent plus gate review at high. E7.2 is the native's (account, grant row, `builder.env`,
 `suvarna-build`; the non-secret builder uid, role, status and grant rows recorded in
 `$SUVARNA_HOME/run/builder_identity.json`). **The `suvarna-build` interface** (pinned here; E5.3 and the detectors use
@@ -221,7 +238,7 @@ is restarted.
 | Gate verdict and fold | Gate reviewer; Scribe (G7); two rejects → Steward |
 | Open a PR to `main` | Conductor (G11) |
 | Merge to `main`; the deploy follows | **native** (R7) |
-| Migration numbering of 1094–1096 (§3.3, N-26); `CLAUDE.md` note; closing #2736 | **native** (parked by the Steward) |
+| Migration numbering of 1094–1096 (§3.3, N-26); the Suvarṇa range and the deny-list amendment (N-27, E0.1: the native or the L3 Kāla owner edits `.claude/settings.json`); `CLAUDE.md` note; closing #2736 | **native** (parked by the Steward) |
 | Per-gate applicability rules (E6.0) | **native** (N-22) |
 | Reopen agendas and re-seals | **native** (N-4.Tx, N-5.Tx) |
 | Builder provisioning (E7.2) | **native** |
@@ -229,8 +246,8 @@ is restarted.
 
 The Steward decides only within G1–G15; G16 (asset briefs) does not apply to Track E.
 
-**Critical path:** E4.1-001 → E1.2/E1.3/E1.4 → E1.8 → E1.7 → E3.6; E3.2 → merge → E3.3 → E1.5; E7.1 → E7.2 → E7.3 →
-E5.3/E3.7; E6.1 → E6.2 → E6.5 (+N-22); E5.1 → E5.5 → E6.3; A.H → E2 combine → N-4/N-5 ×3.
+**Critical path:** N-27 → E0.1 → E7.1 and E3.2; E4.1-001 → E1.2/E1.3/E1.4 → E1.8 → E1.7 → E3.6; E3.2 → merge → E3.3 →
+E1.5; E3.3 + E3.7 → E1.10; E7.1 → E7.2 → E7.3 → E5.3/E3.7; E6.1 → E6.2 → E6.5 (+N-22); E5.1 → E5.5 → E6.3; A.H → E2 combine → N-4/N-5 ×3.
 
 **Estimates (plan §5.1 = §6.6):** E1 30–50 · E2 20–30 · E3 40–70 · E4 10–20 · E5 40–65 · E6 50–90 · E7 8–15 =
 **200–340 h**. E3 may land lower (10 reviewed commits, not 200); re-estimate after E3.2. **Native merges before J1:

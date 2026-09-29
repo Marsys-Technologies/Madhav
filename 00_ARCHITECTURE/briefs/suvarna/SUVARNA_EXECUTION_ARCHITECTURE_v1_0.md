@@ -1,13 +1,14 @@
 ---
 artifact: SUVARNA_EXECUTION_ARCHITECTURE
 canonical_id: SUVARNA_EXECUTION_ARCHITECTURE
-version: "1.4"
+version: "1.4.1"
 status: DRAFT — for native review (N-1)
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 companion_of: SUVARNA_CAMPAIGN_PLAN_v1_4.md (the what and when; this document is the how)
 decision_owner: Native (Abhisek Mohanty)
 changelog:
+  - "1.4.1 (2026-09-30, review pass 3 folded; REVIEW_PASS3_DISPOSITION_v1_0.md): §2.4/§5.5 the allow-list forms the documents use (single-quoted reader psql and pg_dump, governance scripts, suvarna-build), the swarm's pushes limited to suvarna/* branches, decide/decisions/runtime_settings not allowed to the swarm; the hold-guard hook runs from hq and fails closed for dispatches. §6.1 wave membership only from the J1-frozen LEVEL_MAP.json. §6.2 item 2: a level wave dispatches every non-family asset at the level and never a family asset (one run over the level's non-family assets). §8: isolation reads warn until N-25 is decided (Monitor exit 0 or 1, 1 only from isolation before N-25); builder_scope warn until E7.2 writes builder_identity.json. §11.7: scorecard generator pinned by the spec; register_rows_state deferred checks; fk_no_cascade target; levels_elevated level_map. §12.5: Suvarṇa range 1200–1299 and the deny-list amendment (N-27). §12.13/§12.15: the census_run wrapper."
   - "1.4 (2026-09-29, review pass 2 folded; REVIEW_PASS2_DISPOSITION_v1_0.md): new §2.4 isolation (PROPOSED pending N-25: separate macOS user, Suvarṇa settings file with explicit denies and the hold-guard hook, own GitHub identity, branch protection, decisions log read-only to the swarm; what launch requires either way). §2.1/§12.2 one branch rule: lanes from suvarna/trunk (synced from main every pass); PRs to main from landing branches cut from origin/main; source branches read or cherry-picked only; fold lanes before the cut-over pushed as fast-forwards to campaign/nikasha-test, read by the tracker at origin/campaign/nikasha-test (§12.7). §2.2, §8: D6 applied. §3.1, §3.3: effort sets aligned with plan §6.2. §5.5: /loop 10m, passes read snapshot.json and the event tail, lanes only through the lane launcher, settings file untracked and passed explicitly. §6.2: deployed = ancestry. §6.4: waiting_on_family shown as blocked. §6.5: L3 close is an asset-list run; L2 after F3.FK. §7: which charter version is in force. §8: every 5 minutes; builder_scope from the authenticated preflight (the reader cannot read chart_grants.permission or profiles); isolation and decision-writer checks. §11: exact ELEVATED only (E6.3t); empty specs read unknown; new detector types; FAMILY_ASSETS.json path; registry coverage via E6.5. §12.7 folds; §12.9 the measured cascade (8 keys, 7 tables); §12.10 only Strategic Suvarṇa writes decisions; §12.12 tracker and Monitor run from committed code in hq, one owner of tracker code, the hq_commit command, the mirror on hq only; §12.14 exit code 2."
   - "1.3 (2026-09-29, review pass 1 and decisions D1–D6 folded): §5.5 new runtime section (D5: interim /loop to G2, durable supervised headless pass loop, stateless passes, watchdog, rollover, allowlist). §6 families excluded from wave completion with asset-level waits (D2), L0 wave safety and full-layer rebuild (D4), waves wait for fixes merged to main and deployed. §2.2, §3.1, §8 builder identity and L0 native dispatch (D1); reader login (D6); power rule matches monitor.py. §11.7 new detector types (built by L.13). §12.2 Track E lanes branch from their source branches; §12.5 names the placeholder branch; §12.6 one review path; §12.7 ledger cut-over; §12.9 L2 MSR = the L2 writers only; §12.10 decisions log outside git behind the decide CLI; §12.12 hq commits under a lock and plan revisions merged, never fast-forward-only; §12.14 provisional censuses checked by script; §12.15 census lock; §12.16 certification record fields. Corrected: §1 (three definition replacements, t0→t3; Nirmāṇa's plan quote), §2.3 (families; migration numbers), §4.1 (plan_item), §5.4 (stall owner), §7 (charter wins; destructive needs snapshot and approval; no budget), §11.6 (credential). The 1.2 body's charter-points paragraph had changed without a bump; recorded here. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md."
   - "1.2 (2026-09-29): §12 operating conventions added, settling the open questions the role-instruction draft raised (queue-to-tracker mapping, ids, one queue per session, leases on campaign-coordination, migration reservations, output paths, ledger folds before landing, stall and spend metering, the L2 MSR set, decision-log writers, digest, hq commits, census checkout). Four missing scripts assigned to Track E as J1 prerequisites (plan §5.1 E5). Three charter points left for the native."
@@ -96,13 +97,21 @@ append to the decisions log. An allowlist placed beside these bounds nothing.
   Its home holds nothing of the native's: no read access to `~/.config/madhav-admin`, `~/.codex`, the native's GitHub
   and cloud logins, `/Users/Dev/madhav-l3/dbenv*`, or any `platform/.env*`.
 - **Its own Claude Code settings**, `$SUVARNA_HOME/config/claude-settings.json`, owned by the native and read-only to
-  `suvarna`, passed explicitly (`--settings`) by every launch: `defaultMode: dontAsk`; allow the `suvarna_tracker`
-  commands, `git` (no force-push), `python3`, `pytest`, `gh pr create`, `gh pr view`, `suvarna-build`, the lane
-  launcher; **explicit deny rules**, which win over allow rules in every other scope: `gh pr merge*`, `gh api*`,
+  `suvarna`, passed explicitly (`--settings`) by every launch: `defaultMode: dontAsk`; allow, in exactly the forms the
+  role documents use: the `suvarna_tracker` modules the swarm runs (`emit`, `census_run`, `hq_commit`, `lane_launch`,
+  `monitor`, `events`), never `decide`, `decisions` or `runtime_settings` (those are Strategic Suvarṇa's and the
+  native's, review pass 3 B6); `bash -c 'source ~/.config/suvarna/pgenv.sh && psql …'` and `… && pg_dump …`
+  (single-quoted); `python3 platform/scripts/governance/<script>.py`; `pytest`; `git` with pushes only to
+  `suvarna/*` branches, plus the Nikaṣa Engine's fast-forward fold push to `campaign/nikasha-test` before E4.3 (§12.7)
+  (no `+` refspec, no `…:main`, no force); `gh pr create`, `gh pr view`;
+  `~/.config/suvarna/bin/suvarna-build …`; **explicit deny rules**, which win over allow rules in every other scope: `gh pr merge*`, `gh api*`,
   `git push --force*`, `git push* main*`, `mcp__github__*merge*`, `mcp__postgres__*`, `gcloud*`, `Read`/`Bash` on
   `**/.env*`, `/Users/Dev/madhav-l3/dbenv*`, `~/.config/madhav-admin/**`, `~/.codex/**`, and `Edit`/`Write` on
   `$SUVARNA_HOME/config/**` and `$SUVARNA_HOME/run/DECISIONS.jsonl`; a **hold-guard hook** (PreToolUse) that refuses
-  every production-visible command while `run/SUVARNA_HOLD` exists. The repo's project settings still load in each
+  every production-visible command while `run/SUVARNA_HOLD` exists. The hook runs the committed code in the hq worktree
+  (`PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance`), never Strategic Suvarṇa's worktree, and **fails
+  closed for dispatches**: if it cannot run (an import failure, an unreadable path under N-25) or cannot read its
+  payload, it refuses an `Agent` dispatch and any dispatch-like command rather than letting it through. The repo's project settings still load in each
   worktree; the deny rules are written to cover everything they allow that Suvarṇa must not do.
 - **Its own GitHub identity** (a machine user or GitHub App) with a token scoped to this repository: it can push
   branches and open PRs. **Branch protection on `main`** requires a pull request with the native's approving review and
@@ -116,8 +125,8 @@ append to the decisions log. An allowlist placed beside these bounds nothing.
 **Required at launch either way** (L.16a, L.16b, L.16g; FI-7 waits): the settings file with its deny rules and hook,
 passed to every agent; `chmod 600` on the two `dbenv` files; the swarm's own GitHub identity and branch protection on
 `main`; the Monitor's `isolation` check (who it runs as, what it can read and write, the settings files' hashes
-against a recorded baseline) and its decision-writer check (any `decided` line not written by `strategic-suvarna`
-blocks). **What N-25 adds:** without it, everything above is a second line only, because the swarm runs as the native
+against a recorded baseline; it reads `warn` until N-25 is decided and must read `ok` after) and its decision-writer
+check (any `decided` line not written by `strategic-suvarna` blocks). **What N-25 adds:** without it, everything above is a second line only, because the swarm runs as the native
 and can reach the native's logins and the log.
 
 ## §3 · The swarm
@@ -266,9 +275,11 @@ native absent. So the runtime is chosen explicitly.
     restart-loops. Billing the runner by API key removes the pause; that is the native's choice (N-23).
 - **Permissions (both modes):** the Suvarṇa settings file `$SUVARNA_HOME/config/claude-settings.json` (§2.4), never a
   tracked `.claude/settings.json` (that file is shared by every branch and would collide with plan merges), passed by
-  `--settings` to every session, pass and lane. It allows the `suvarna_tracker` commands, `psql` only through
-  `pgenv.sh`, `git` (never `push --force`), `python3`, `pytest`, `gh pr create/view`, `suvarna-build`, the lane
-  launcher; it denies everything §2.4 lists plus `rm -rf` outside `$SUVARNA_HOME/lanes` and `curl` to hosts off the
+  `--settings` to every session, pass and lane. It allows exactly the §2.4 forms: the swarm's `suvarna_tracker`
+  modules (never `decide`, `decisions`, `runtime_settings`), `psql` and `pg_dump` only as
+  `bash -c 'source ~/.config/suvarna/pgenv.sh && …'`, `git` with pushes only to `suvarna/*` and the §12.7 fold push
+  (never a `+` refspec, a `…:main` destination or `--force`), `python3 platform/scripts/governance/<script>.py`, `pytest`, `gh pr create/view`,
+  `~/.config/suvarna/bin/suvarna-build`, the lane launcher; it denies everything §2.4 lists plus `rm -rf` outside `$SUVARNA_HOME/lanes` and `curl` to hosts off the
   list. A denial is logged, never a stall. No bypass mode (charter P13).
 - **Cost:** each fresh pass re-reads about 50–100 k tokens; the spend meter shows it per pass.
 - **Single point of failure:** the Mac. Hold-and-park makes a failure safe, not fast.
@@ -288,8 +299,10 @@ The 127 active assets form **27 dependency levels** (measured 2026-09-28):
 - Parallelism shortens analysis and coding. It cannot shorten the chain.
 - **The chain is the critical path.** Every walk of it costs the same no matter how many lanes run.
 - **The map moves.** Family sessions and Suvarṇa both change `asset_registry.depends_on` (Kṣetra's edges are known to
-  be wrong). So the level map is snapshotted and versioned at J1 (E6.3); wave ranges are derived from the snapshot and
-  re-derived, with a plan-model update in the same commit, if a later registry change moves an asset. A dependency cycle
+  be wrong). So the level map is snapshotted and versioned at J1 (E6.3, `00_ARCHITECTURE/control/LEVEL_MAP.json`); wave
+  ranges are derived from the snapshot and re-derived, with a plan-model update in the same commit, if a later registry
+  change moves an asset. **Wave membership comes only from that frozen file**, never from the live registry: the wave
+  items' `levels_elevated` detectors carry `level_map` (CODE item, review pass 3), and the level-wave script reads it. A dependency cycle
   is an error, never level 0.
 - **Family positions (measured 2026-09-29):** `ka_gochara_resonance` and `ka_vedha_gochara` at level 1, `ka_gochara`
   at 5, `ka_kshetra` at 12, `ka_sangam` at 13; 16 assets read a family asset (§6.4).
@@ -303,7 +316,11 @@ The 127 active assets form **27 dependency levels** (measured 2026-09-28):
    commit and that the writer files at that commit hash to what the packet recorded (charter §6.4), because other
    workstreams deploy to `main` too.
 2. **One wave per level.** When every asset at a level has its fixes deployed and every upstream asset is certified and
-   current, the Build operator dispatches one orchestrator run covering that whole level for the chart. For an L0 wave
+   current, the Build operator dispatches one orchestrator run covering **the level's non-family assets** for the chart:
+   every asset at that level in the frozen `LEVEL_MAP.json` that is not in `FAMILY_ASSETS.json`'s `family_set`, as an
+   `--assets` list, never `--level`. A wave **never** dispatches a family asset or a reader (family assets sit at levels
+   1, 5, 12 and 13, readers at 13; a whole-level run would rebuild family data, charter R8); the level-wave script
+   refuses if its dispatch set intersects the family set. For an L0 wave
    it prepares the pre-check, dump and impact statement and parks the dispatch for the native (§6.5).
 3. **Certify as the wave lands.** The inspector re-measures that level; gaps close; certifications are written, each
    carrying what it was measured against (§12.16).
@@ -393,7 +410,8 @@ The charter (`SUVARNA_AUTONOMY_CHARTER_v1_0.md`: v1.2 approved by N-19 and CHART
 ## §8 · Environment
 
 The Monitor checks these before any dispatch, and every 5 minutes while work runs (`--watch 300`;
-`python -m suvarna_tracker.monitor`; exit 0 ok, 1 warn, 2 block):
+`python -m suvarna_tracker.monitor`; exit 0 ok, 1 warn, 2 block). **Before N-25 is decided the Monitor exits 0 or 1,
+and 1 only from `isolation`**; no launch step requires every check `ok` before N-25:
 
 - **Database proxy** listening on 5433. Restart if not.
 - **Read-only credential file** present at `~/.config/suvarna/pgenv.sh`, owner-only (N-20): missing is a block, too
@@ -404,10 +422,13 @@ The Monitor checks these before any dispatch, and every 5 minutes while work run
   authenticated answer carries the builder's own `{principal_id, role, status, grants}` as the server sees it; the
   reader cannot measure it (D6 withholds `chart_grants.permission` and `profiles`). The account is `guest` and
   `active`, its grants are exactly `{(482012f1, 'build')}`, and it matches the provisioning record
-  `run/builder_identity.json` (E7.2). Anything else, or a preflight that fails, blocks.
+  `run/builder_identity.json` (E7.2). **Before E7.2 writes `builder_identity.json` it reads `warn`** (never `ok`: nothing
+  has been measured), so E7.3 cannot read done early. Once the file exists, anything else, or a preflight that fails,
+  blocks.
 - **Isolation** (`isolation`, L.16a, §2.4): the process runs as the expected user; the paths §2.4 lists are unreadable;
   the decisions log is not writable (under N-25); the settings files in every scope match their recorded hashes.
-  Anything else blocks.
+  **Until N-25 is decided it reads `warn`** (the expected user and paths are not yet defined); after it, `ok` when every
+  check holds under the decided outcome (the separate user, or the fallback hardening), anything else blocks.
 - **Decision writers** (`decision_writers`): any `decided` line in the log whose writer is not `strategic-suvarna`
   blocks.
 - **Power.** On AC power, with sleep prevented. On battery the Monitor warns; below 50% it blocks and dispatch pauses.
@@ -513,22 +534,23 @@ semantics of the deploy checks and adds three types (the code is listed in REVIE
 |---|---|
 | `prs_merged` | every listed PR is merged; PRs named by `head_refs` are resolved with `gh pr list --head <ref> --base main --state all` |
 | `main_has_files` | every listed path exists on `origin/main` |
-| `scorecard_pass` | the scorecard at the path on the ref (schema in Track E §5) has `tests[T].verdict == "PASS"` for every listed test, its `generator_sha256` equals the committed generator's hash, and its `inspector_commit` is an ancestor of the ref |
+| `scorecard_pass` | the scorecard at the path on the ref (schema in Track E §5) has `tests[T].verdict == "PASS"` for every listed test, its `generator` equals the spec's pinned `generator` (never the path the scorecard names for itself), its `generator_sha256` equals that committed file's hash, and its `inspector_commit` is an ancestor of the ref |
 | `migrations_applied` | each number has its row in `_migrations_applied` (read-only) |
-| `register_rows_state` | each row's state is one of the listed states |
+| `register_rows_state` | each row's state is one of the listed states; a `DEFERRED` row counts only if the spec's `deferred_withholding_entry` is in the withholding list at the Nikaṣa ref and the spec's `deferred_pr` (a number, or a head ref `gh pr view` resolves) is merged (E4.2r) |
 | `register_freeze_clean` | every row in `expect_rows` is present (a missing row is an error) and every BLOCKS_FREEZE row is CLOSED or DONE (rows in `allow_deferred` may be DEFERRED) |
 | `monitor_check_ok` | the named check reads `ok` in `python -m suvarna_tracker.monitor --once --json`, run by the detector itself (`run/monitor_state.json` keeps only the non-ok list) |
 | `deployed_contains` | after a fetch, every listed PR's merge commit is an ancestor (`git merge-base --is-ancestor`) of the running commit from `~/.config/suvarna/bin/suvarna-build --preflight` (`job_sha` for `component: job`, `deployed_sha` for `web`) |
 | `wave_deployed` | the wave's landing PR (recorded by E5.3 in `evidence/<wave>/LANDING.json`) is merged and its merge commit is an ancestor of the running job commit |
 | `assets_elevated` | every asset of the named set in `00_ARCHITECTURE/control/FAMILY_ASSETS.json` on `origin/main` is ELEVATED by the exact function (unknown before E6.3t) |
 | `registry_coverage` | `00_ARCHITECTURE/control/registry_coverage_report.json` on `origin/main` (written by E6.5's `asset_census.py --registry-check`) carries `registry_revision`, an empty `uncovered_required_criteria` list and `covered_cells`; a missing key is an error, never a pass |
-| `fk_no_cascade` | no foreign key into the named table has `confdeltype = 'c'` (read-only `pg_constraint` query as the reader); F3.FK |
+| `fk_no_cascade` | the foreign keys into the named table match the spec's `target`: `no_fk` = none at all; `set_null` = every one `confdeltype = 'n'`. `CASCADE`, `RESTRICT` and `NO ACTION` (`c`, `r`, `a`) read pending, since a restricting key refuses the L2 delete-then-insert (read-only `pg_constraint` query as the reader); F3.FK |
 | `acks_from` | the event log holds a `note` from each named actor whose detail starts with the named marker (e.g. `ACK FI-8`) |
 | `main_protected` | `gh api repos/{owner}/{repo}/rulesets` (or branch protection) shows `main` requiring a pull request with an approving review, bypass limited to the named actor |
 | `ledger_no_open_gap_on` | the gap ledger has no open `kind: gap` row on a criterion with the listed prefixes |
 
-`levels_elevated` also gains `exclude: family_set` (read from `FAMILY_ASSETS.json` once E6.3 lands it), and reads
-unknown until E6.3t.
+`levels_elevated` also gains `exclude: family_set` (read from `FAMILY_ASSETS.json` once E6.3 lands it) and `level_map`
+(wave membership from the J1-frozen `LEVEL_MAP.json` on `origin/main`, pending until it exists; never the live
+registry), and reads unknown until E6.3t. `level_map` and `target` are v1.4.1 spec keys (CODE items, review pass 3).
 
 ## §12 · Operating conventions (settled 2026-09-29; revised in v1.3)
 
@@ -540,7 +562,7 @@ Settled in Strategic Suvarṇa from the role-instruction review. Role files cite
 | 12.2 | Ids and branches | Queue id: `<plan_item>-<kind>-<nnn>` (e.g. `A.L2-brief-014`). Lane branch: `suvarna/lane/<queue id>`. Lane worktree: `$SUVARNA_HOME/lanes/<queue id>`. **One base rule:** every lane branches from `suvarna/trunk` (= `main` plus accepted packets; the Conductor merges `origin/main` into it by a merge commit every pass). `campaign/nikasha-test` and `campaign/nirmana-engine` are never a base for anything bound for `main`: they sit on `l3/kala-layer-briefs` and carry ~190 foreign commits, Saṅgam family code among them; read them with `git show` or cherry-pick with `-x`. **The one exception:** a fold lane before the E4.3 cut-over is cut from `origin/campaign/nikasha-test` (§12.7) and is never PR-bound. **Landing:** a PR to `main` comes from `suvarna/land/<group>`, cut from `origin/main`, with the group's accepted lane branches merged into it; PR #2736 is not retargeted. Never edit `/Users/Dev/madhav-nikasha` or `/Users/Dev/madhav-engine` directly. |
 | 12.3 | One Conductor or two | **One per session, one queue per Conductor**: `QUEUE.jsonl` (Exec Suvarṇa) and `QUEUE_ENGINE.jsonl` (Nikaṣa Engine), both in `hq/00_ARCHITECTURE/control/suvarna/state/`. Each has one writer. |
 | 12.4 | Leases | The project's existing mechanism: a row in `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md` on branch `origin/campaign-coordination`, claimed before and released after. Lease id: `SUVARNA-<queue id>`. The L3 family assets are never leased by Suvarṇa (N-17, charter R8). |
-| 12.5 | Migration numbers | The project's existing convention: reserve one number at a time after a fresh `origin/main` and open-PR sweep (take the maximum across `platform/migrations` and `platform/supabase/migrations`, and the reserved ranges of Pūrṇa, Jātaka and L3); commit a placeholder migration file **on the lane branch** and push it at once; record the number in the queue line and as a row on the coordination branch (§12.4) so other workstreams see it; never on `main` (charter P9); never reuse a number. Suvarṇa has no reserved range, so a Builder never stops for lack of one. |
+| 12.5 | Migration numbers | **The Suvarṇa range, proposed (N-27): 1200–1299**, recorded as a reservation row on the coordination branch (§12.4). **Why a range is needed:** main's committed `.claude/settings.json` (L3 Kāla #2718) denies `Edit(platform/migrations/…)` on `[0-9][0-9][0-9]_*`, `10[0-6][0-9]_*`, `1070_*`, `11[2-9][0-9]_*`, `1[2-9][0-9][0-9]_*` and `ws2_*` for every session in the repo, and a deny beats the `--settings` allow, so only L3's 1071–1119 is writable. **Evidence 1200–1299 is free (2026-09-30):** no file numbered 1200 or above on `origin/main` or on any of the 2,220 local and remote refs, in either migration folder; none in the 22 open PRs; 0 of the 883 `_migrations_applied` rows (read-only, as `suvarna_reader`); the highest applied is 1150 (L3 Gochara). **The amendment** (E0.1): one small PR to `main`, coordinated with the L3 Kāla owner and authored by the native or that owner (no agent may edit `.claude/settings.json`), replacing `Edit(platform/migrations/1[2-9][0-9][0-9]_*)` by `Edit(platform/migrations/1[3-9][0-9][0-9]_*)`. The deny does not cover `platform/supabase/migrations/`, which `migrate.ts` also applies; Suvarṇa never writes there to step around it (charter P13). **Within the range**, one number at a time: after a fresh `origin/main` and open-PR sweep, the next free number; commit a placeholder migration file **on the lane branch** and push it at once; record the number in the queue line and on the coordination branch; never on `main` (charter P9); never reuse a number. N-26 renumbers 1094–1096 into the range. Until E0.1 is merged no Suvarṇa lane writes a migration (E7.1, E3.2 wait). |
 | 12.6 | Where committed outputs live | On the lane branch, merged to `suvarna/trunk`: layer instances `00_ARCHITECTURE/briefs/suvarna/layers/<Lx>/`; asset briefs `…/layers/<Lx>/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md`; fix designs `…/layers/<Lx>/designs/`; gate reviews `00_ARCHITECTURE/briefs/suvarna/reviews/<queue id>_REVIEW_<n>.md` (committed on the packet's lane branch and merged with the packet, for audit; `<n>` is the review round). This is the one review path; raw review scratch and other evidence stay in `$SUVARNA_HOME/evidence/<queue id>/` (not committed). |
 | 12.7 | Register and ledger folds before landing | **Before the E4.3 cut-over** only the Nikaṣa Engine Scribe folds, on a fold lane cut from `origin/campaign/nikasha-test`; the Nikaṣa Engine Conductor then pushes it as a fast-forward: `git push origin suvarna/lane/<qid>:campaign/nikasha-test` (never forced; a rejected push means re-cut from the new tip and redo the fold). The tracker reads `NIKASHA_REF=origin/campaign/nikasha-test` (fetched first), so the fold is visible at once; `/Users/Dev/madhav-nikasha` is never touched. **No ledger emits before E5.2 lands**; pre-E5.2 folds change register rows only. Exec Suvarṇa's Scribe files a fold request (`$SUVARNA_HOME/evidence/<qid>/FOLD_REQUEST.md` and a `note`). **Cut-over (E4.3):** folds stop at a named cut; the ledgers land on `main` last; line count and md5 of both ledgers and the register are equal across the old and new locations (evidence); Strategic Suvarṇa re-points `NIKASHA_REF` to `origin/suvarna/trunk` in one step; folds resume on lanes from `suvarna/trunk`. |
 | 12.8 | Stall detection and spend | **The Conductor** does both: an agent with no event and no commit for 10 minutes is stalled (restart from its last commit); after every agent run it emits `metric` events for tokens used, by role and stage (N-15: reported, not capped). The Monitor stays an environment checker; the Conductor runs `monitor --once` before each dispatch and pauses on exit 2. |
@@ -548,9 +570,9 @@ Settled in Strategic Suvarṇa from the role-instruction review. Role files cite
 | 12.10 | Who writes `DECISIONS.jsonl` | **The authoritative log is `$SUVARNA_HOME/run/DECISIONS.jsonl`, outside git**, appended only through `python -m suvarna_tracker.decide` (exclusive file lock; every field required; the latest line per id wins), **only by Strategic Suvarṇa, with the native present** (`--writer strategic-suvarna`). No swarm role writes to it (charter P14); the Steward requests and parks. Under N-25 the file is owned by the native's account and read-only to the swarm. Only the native's own words with their source (where, when). The mirror (`hq/…/state/DECISIONS.jsonl`) has one writer (Strategic Suvarṇa, `decide --mirror-to`, committed under the hq lock) on one branch (`suvarna/hq`); it is never changed on `strategy/suvarna-plan`. The tracker and every precondition read the log itself; the Monitor blocks on a `decided` line by any other writer. Nothing else is a decision (charter §2, P10). |
 | 12.11 | Daily digest | Written by the Steward to `hq/…/state/DIGEST_<date>.md` (a new file: `hq_commit --add-new`, §12.12) and announced as a tracker `note`; it lists every new decision line for the native to confirm. The native reads it from the dashboard. |
 | 12.12 | Committing `suvarna/hq` state; where the tools run | Each queue's writer commits its own file on `suvarna/hq` at the end of every Conductor pass, only through `python3 -m suvarna_tracker.hq_commit --paths <path…> -m "<msg>"` (the hq lock `$SUVARNA_HOME/run/locks/hq.lock`; explicit paths only; `--add-new` for a new file such as a digest, CODE item). Plan revisions reach hq from `strategy/suvarna-plan` by a merge commit (`git merge --no-edit origin/strategy/suvarna-plan`), never fast-forward-only and never a rebase. **The tracker and the Monitor run from the hq worktree**, i.e. from committed code; Strategic Suvarṇa restarts them after each plan merge (L.17). **Tracker code has one owner:** it is changed only on `strategy/suvarna-plan` (by Strategic Suvarṇa, or a lane PR to that branch, e.g. E7.3) and reaches hq by the merge. |
-| 12.13 | Which checkout the census runs from | `/Users/Dev/madhav-nikasha` (read-only) until E4.1 lands the inspector on `main`; `suvarna/trunk` after. Always through the census lock (§12.15). The census records the inspector's commit with its output. A level wave censuses only its assets once E1.9 adds `--assets`. |
+| 12.13 | Which checkout the census runs from | `/Users/Dev/madhav-nikasha` (read-only) until E4.1 lands the inspector on `main`; `suvarna/trunk` after. Always through `census_run` (§12.15). The census records the inspector's commit with its output. A level wave censuses only its assets once E1.9 adds `--assets`. |
 | 12.14 | Gating measurements | **Provisional censuses** (before J1) are checked by script, not by an Opus review: exit code (0 clean · 2 FAIL present · 3 PARTIAL/NO_DETECTOR/ERRORED present · 4 unknown · 5 script error; 4 and 5 are unmeasured · 75 census lock held), the inspector's commit, per-layer row counts. (The inspector's docstring disagrees with its code on code 3: an E1.2 row.) **Certifying censuses** (after J1) get a gate review before the step is done, at fold. |
-| 12.15 | One census at a time | Every census, in every session and in the family sessions, runs through `python -m suvarna_tracker.census_lock --emit -- <census command>` (exclusive lock `$SUVARNA_HOME/run/locks/census.lock`; exit 75 means another census holds it: wait or re-queue). The command sources `~/.config/suvarna/pgenv.sh` and writes `--out` to a file in an existing evidence folder. |
+| 12.15 | One census at a time | Every census, in every session and in the family sessions, runs through the validated wrapper `python3 -m suvarna_tracker.census_run --layer <Lx> --out <absolute path> --wait 900 --emit --actor <role>` (review pass 3 B6). It takes the exclusive census lock `$SUVARNA_HOME/run/locks/census.lock` itself (`--wait` seconds, default 0; exit 75 means another census holds it: wait or re-queue), sources `~/.config/suvarna/pgenv.sh`, builds and runs only `asset_census.py --layer <Lx> --out <file>` from the census checkout (today `/Users/Dev/madhav-nikasha`; the switch to `suvarna/trunk` at E4.1, §12.13, is a CODE item), and refuses (exit 2) a relative `--out` or one with shell metacharacters; create the evidence folder first (`mkdir -p`). `census_lock -- <command>` no longer wraps an arbitrary command: it would have bypassed every Bash deny. |
 | 12.16 | What a certification record carries | The asset, gate or addition, verdict, the criterion and its detector (never `NONE` for a PASS), the census run id, the run's job image tag, the writer file hashes, the upstream certification ids, and the row-set fingerprint. E5.5 invalidates a record when any of these no longer matches. |
 
 **Charter points** (the native's): ruled 2026-09-29 as charter v1.2 amendments A–C: L0's global build under G13; per-layer idempotency in G4; pre-wave fingerprints and a reserved undo for normal level waves (charter §6.7). Charter v1.3 folds D1–D5 (builder identity and native L0 dispatch; family staleness exemption and hand-back; registry-computed N/A; L0 dump and diff; watchdog and no bypass). Charter v1.4 folds review pass 2 (only Strategic Suvarṇa writes decisions; F-3 plus F3.FK; ancestry; landing branches; §13 isolation, proposed pending N-25).

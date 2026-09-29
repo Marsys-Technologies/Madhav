@@ -1,32 +1,33 @@
 ---
 artifact: L3_FAMILY_CORRECTION_NOTICE
-version: "1.1"
+version: "1.2"
 status: READY — paste into each L3 family session (Gochara, Saṅgam, Kṣetra)
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa" (plan item FI-8)
 changelog:
+  - "1.2 (2026-09-30, review pass 3): prompts now v1.3. The census runs through the validated wrapper census_run (the lock no longer wraps an arbitrary command); the acknowledgement names notice v1.2 and prompt v1.3."
   - "1.1 (2026-09-29, review pass 2): prompts now v1.2. Absolute evidence folder; tools from the hq worktree; the leftover 'emit it as decided' line removed; the sealed brief reported as review, closed by Strategic Suvarṇa's seal record (SEAL-G/S/K); F-3 now means the cascade removed on all eight foreign keys; an acknowledgement note closes FI-8."
   - "1.0 (2026-09-29): corrections found by Suvarṇa review pass 1, relayed as a report."
 ---
 
 # Corrections to your start prompt (a report from Strategic Suvarṇa, not a new instruction)
 
-Your prompt has been corrected to v1.2. Please re-read it:
+Your prompt has been corrected to v1.3. Please re-read it:
 `/Users/Dev/madhav-suvarna-plan/00_ARCHITECTURE/briefs/suvarna/prompts/L3_<GOCHARA|SANGAM|KSHETRA>_FINAL_BRIEF_PROMPT_v1_0.md`
 
 What changed:
 
-1. **The census command.** `--out` must be a file, the read-only credential must be sourced, and the evidence folder
-   must be an **absolute** path (the census runs after a `cd` into the Nikaṣa checkout, so a relative folder would
-   write into it). From any folder:
+1. **The census command.** The census runs through one validated wrapper, which takes the lock, sources the read-only
+   credential and runs only the inspector. `--out` must be a file at an **absolute** path; create the folder first.
+   From any folder:
    ```
    mkdir -p /Users/Dev/suvarna/evidence/l3-<family>-<date>
    export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
-   python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor l3-<family> -- \
-     bash -c 'source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out /Users/Dev/suvarna/evidence/l3-<family>-<date>/census_L3.json'
+   python3 -m suvarna_tracker.census_run --layer L3 --out /Users/Dev/suvarna/evidence/l3-<family>-<date>/census_L3.json \
+     --wait 900 --emit --actor l3-<family>
    ```
    The lock makes sure only one census runs at a time across all sessions (exit 75 = another census is running; wait
-   and retry).
+   and retry). The earlier `census_lock … -- bash -c '…'` form (notice v1.1, prompts v1.2) is retired.
 2. **Certification (native decision D2).** Your assets are certified by Suvarṇa's independent re-measure, and only if
    they were built by an **orchestrator run**, never by a hand-run cutover script. For Gochara: no certification until
    the registered writer produces the new generation.
@@ -46,7 +47,7 @@ What changed:
 
 **Please acknowledge** once you have read this, so Suvarṇa's launch item FI-8 can close:
 ```
-python3 -m suvarna_tracker.emit note --actor l3-<family> --detail "ACK FI-8: correction notice v1.1 read; prompt v1.2"
+python3 -m suvarna_tracker.emit note --actor l3-<family> --detail "ACK FI-8: correction notice v1.2 read; prompt v1.3"
 ```
 
 If anything you have already done conflicts with these, tell the native; nothing here asks you to undo work.

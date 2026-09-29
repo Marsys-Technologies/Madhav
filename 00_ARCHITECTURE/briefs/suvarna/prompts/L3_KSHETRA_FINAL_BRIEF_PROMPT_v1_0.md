@@ -1,10 +1,11 @@
 ---
 artifact: L3_KSHETRA_FINAL_BRIEF_PROMPT
-version: "1.2"
+version: "1.3"
 status: READY — paste into a new conversation
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.3 (2026-09-30, review pass 3 / FI-8): the census runs through the validated wrapper python3 -m suvarna_tracker.census_run --layer L3 --out <absolute path> (census_lock no longer wraps an arbitrary command, review pass 3 B6); Corrections updated to match."
   - "1.2 (2026-09-29, review pass 2 / FI-8): the leftover line telling this session to emit a ruling as decided is removed (its own Corrections forbid it); the sealed brief is reported as review with evidence, and F1.K closes when Strategic Suvarṇa records the native's seal (SEAL-K); the evidence folder is an absolute path under /Users/Dev/suvarna/evidence; the tools run from the hq worktree; F-3 means the cascade removed from all eight keys."
   - "1.1 (2026-09-29, review pass 1 / FI-8): census command corrected (--out is a file; the read-only credential is sourced; runs through the census lock so only one census runs at a time); certification condition (D2); native rulings are recorded as decided only by Strategic Suvarṇa; record the tier-4 template revision the brief follows."
   - "1.0 (2026-09-29): first issue, on the native's instruction that each L3 focus family gets its own session to seal a final brief and implement it."
@@ -61,10 +62,10 @@ Write `00_ARCHITECTURE/briefs/l3_families/KSHETRA_FINAL_BRIEF_v1_0.md`.
 1. **Follow the asset elevation template:** `/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md` (identity, measured state, nine gates, delta, change packets, certification, opportunity register). The five L0 pilot briefs in `…/nirmana/l0_assets/` show the shape. Record anything the template does not fit in a "template findings" section.
 2. **Measure before you write.** Run the Nikaṣa inspector for L3 only, read-only:
    ```
-   mkdir -p /Users/Dev/suvarna/evidence/l3-kshetra-<date>   # absolute: the census runs after a cd
+   mkdir -p /Users/Dev/suvarna/evidence/l3-kshetra-<date>   # --out must be an absolute path; create the folder first
    export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
-   python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor l3-kshetra -- \
-     bash -c 'source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out /Users/Dev/suvarna/evidence/l3-kshetra-<date>/census_L3.json'
+   python3 -m suvarna_tracker.census_run --layer L3 --out /Users/Dev/suvarna/evidence/l3-kshetra-<date>/census_L3.json \
+     --wait 900 --emit --actor l3-kshetra
    ```
    Never pass `--emit-gaps`. Never run it while another full census is running. The ledgers belong to Suvarṇa.
 3. **Cover:**
@@ -127,11 +128,12 @@ python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state revi
 - When the native rules on F-1 or F-4, tell Strategic Suvarṇa; it records the ruling. This session emits only `requested`.
 - A `done` without evidence is refused. F1.K reads done only when Strategic Suvarṇa records the seal (SEAL-K); your own events are evidence, not decisions.
 
-## Corrections (v1.1, 2026-09-29)
+## Corrections (v1.1, 2026-09-29; census wording updated in v1.3, 2026-09-30)
 
 - **Certification (native decision D2).** A family asset is certified by Suvarṇa's independent re-measure, and only when it was built by an **orchestrator run**, never by a hand-run cutover script. (For Gochara this means no certification until the registered writer produces the new generation.)
 - **Rulings.** When the native seals one of this family's rulings, **Strategic Suvarṇa records it** as `decided` in the authoritative decisions log. This session emits `requested` only, never `decided`.
-- **One census at a time.** Always run the census through the lock command above; exit code 75 means another census is running: wait and retry.
+- **One census at a time.** Always run the census with the `census_run` command above (it takes the census lock itself); exit code 75 means another census is running: wait and retry.
+- **The census command (v1.3).** The census now runs through the wrapper `python3 -m suvarna_tracker.census_run --layer L3 --out <absolute path>`, which takes the lock, sources the read-only credential and runs only the inspector. The earlier form, `census_lock … -- bash -c '…'`, is retired: the lock no longer wraps an arbitrary command.
 - **Template revision.** State in the brief's frontmatter which revision of the tier-4 template it follows (it is re-sealed at the engine freeze; Suvarṇa maps briefs to the new revision afterwards).
 
 **Start by:** verifying §1 against the live sources, then telling the native in plain language what differs from this prompt. Then bring the F-1 recommendation.

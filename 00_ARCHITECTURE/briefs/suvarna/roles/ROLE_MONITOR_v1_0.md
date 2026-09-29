@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_MONITOR
 canonical_id: SUVARNA_ROLE_MONITOR
-version: "1.2"
+version: "1.2.1"
 status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): isolation warns until N-25 is decided (exit 1 only from it before N-25); builder_scope warns until E7.2 writes builder_identity.json."
   - "1.2 (2026-09-29, review pass 2 folded): runs from the committed code in the hq worktree and is restarted after each plan merge; D6 applied (credential_readonly reads ok); builder_scope measured through the authenticated preflight, not the reader; new isolation and decision_writers checks (L.16a; code items in REVIEW_PASS2_DISPOSITION)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): eight checks, including credential_readonly (D6: the login is suvarna_reader with no write path by effective privilege); builder_scope added by E7.3 (D1). Credential semantics match monitor.py: missing blocks; group/world-readable or a backup beside it warns; a changed file is not detectable by stat. Power: warn on battery at 50% or more, block below; a build treats a power warn as a failed precondition. Stalls and spend belong to the Conductor (arch §12.8), not the Monitor. New: the Conductor watchdog (D5, charter G15; alerting from L.15, relaunch from L.14). Whole-item blocked events are the Conductor's (arch §12.1); the Monitor's only blocked event is the watchdog's. Stale 'ROLE_COMMON open question 9' references replaced by arch §12.8 and §12.1. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C15, C16, C34, C43; S16, S27 residuals); D5, D6."
   - "1.0 (2026-09-29): first draft, from arch §3.1, §5.4, §8, §11.3, charter G15, R10, §10 and platform/scripts/governance/suvarna_tracker/monitor.py."
@@ -50,10 +51,11 @@ that reads its output. Always on, one instance, serving both execution sessions.
    - `tracker`: `/api/health` answers.
    A check that cannot measure reports `warn`, never `ok`. **Added later:** `isolation` and `decision_writers` (L.16a,
    arch §2.4, §8: who the process runs as, what it can read and write, settings-file hashes; any `decided` line not
-   written by `strategic-suvarna` blocks), and `builder_scope` (E7.3, D1), which reads the builder's own scope from
+   written by `strategic-suvarna` blocks). `isolation` reads `warn` until N-25 is decided, so before N-25 the overall
+   exit is 0 or 1, and 1 only from `isolation`. `builder_scope` (E7.3, D1) reads the builder's own scope from
    `suvarna-build --preflight` (the reader cannot read `chart_grants.permission` or `profiles`): `guest`, `active`,
-   grants exactly `{(482012f1, 'build')}`, matching `run/builder_identity.json`; anything else, or a failed preflight,
-   blocks.
+   grants exactly `{(482012f1, 'build')}`, matching `run/builder_identity.json`; it reads `warn` until E7.2 writes that
+   file; after, anything else, or a failed preflight, blocks.
 3. **Repairs** (`--repair`, G15), only when the process is verifiably not running: restart the database proxy on 5433
    (never a proxy on another workstream's port), the tracker supervisor (`run_tracker.sh`), and `caffeinate`. With the
    hold switch on, it repairs nothing.

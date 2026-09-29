@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_TRACK_A_BRIEF
 canonical_id: SUVARNA_TRACK_A_BRIEF
-version: "1.1"
+version: "1.1.1"
 status: "DRAFT — for native approval with N-1"
 produced_on: 2026-09-29
 produced_in: "Strategic Suvarṇa"
@@ -14,6 +14,7 @@ governed_by:
   - "SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md v1.4 §3.3, §6, §12.6, §12.9, §12.13–§12.15"
   - "decisions N-17, D2, D3 ($SUVARNA_HOME/run/DECISIONS.jsonl)"
 changelog:
+  - "1.1.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): the census runs through the census_run wrapper (census_lock no longer wraps an arbitrary command, B6)."
   - "1.1 (2026-09-29, review pass 2 folded): the PROVISIONAL banner lifts at the layer's instance acceptance after revalidation (A.Lxa, N-10.Lx.i; L0 at N-7.L0 after A.L0v), which ends the circle with N-10's close; family evaluation is its own item A.L3f; dispositions use the tier-4 list only (keep with fix designs is keep; integrate and unresolved go to the native); Track I starts at N-24 on provisional approvals; census exit codes include 75; --assets once E1.9 lands; D6 applied; L2 instance records the measured cascade; findings folded."
   - "1.0 (2026-09-29): first issue. The three items per layer (instance, briefs, revalidation), the census rules, the tier-gap and harvest format, the brief, disposition and fix-design rules, L3 family evaluation, the asset-brief approval rule, output paths and the read-only write boundary."
 ---
@@ -64,8 +65,9 @@ census or `psql -X` in a subshell. No session-level `SET` that could lift read-o
 
 - **One at a time, everywhere** (arch §3.3, §12.15), shared with the Nikaṣa Engine's E1 censuses and the family
   sessions:
-  `python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor analyst -- bash -c 'source ~/.config/suvarna/pgenv.sh && cd <checkout> && python3 platform/scripts/governance/asset_census.py --layer <Lx> --out $SUVARNA_HOME/evidence/<qid>/census_<Lx>.json'`.
-  Exit 75 = the lock is held: wait or re-queue; never bypass.
+  `python3 -m suvarna_tracker.census_run --layer <Lx> --out /Users/Dev/suvarna/evidence/<qid>/census_<Lx>.json --wait 900 --emit --actor analyst`
+  (the validated wrapper, arch §12.15: it takes the census lock, sources the reader file and runs only the inspector from
+  the census checkout; `--out` absolute, the folder created first). Exit 75 = the lock is held: wait or re-queue; never bypass.
 - **Checkout** (arch §12.13): `/Users/Dev/madhav-nikasha` until E4.1 lands the inspector on `main`, then the
   `suvarna/trunk` worktree. Record the inspector's commit with the output.
 - **Always `--out`** to the evidence folder (the default overwrites the committed `asset_census.json`). Never

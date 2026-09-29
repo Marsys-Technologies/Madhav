@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_BUILD_OPERATOR
 canonical_id: SUVARNA_ROLE_BUILD_OPERATOR
-version: "1.2"
+version: "1.2.1"
 status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): a level wave dispatches every non-family asset at the level, as an --assets list computed from the frozen LEVEL_MAP.json minus FAMILY_ASSETS.json family_set, never --level and never a family or reader asset; stop if the set intersects the family set (B9)."
   - "1.2 (2026-09-29, review pass 2 folded): check 4 is git ancestry (the merge is an ancestor of the running commit), never equality; writer hashes at the running commit. L2 MSR screen needs F-3 decided and F3.FK done. Serving canary before and after each wave (E5.3). L0 is four native dispatches, level 3 (bg_concordance) split out of W1. L3 full-layer rebuild is an asset-list run over the non-family assets; L2's runs after F3.FK. suvarna-build interface per Track E §8."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): D1 dispatch route and identity: every build through ~/.config/suvarna/bin/suvarna-build (POST /api/cockpit/runs, builder identity, canonical chart, never clear_before); deployed code read with suvarna-build --preflight (job_image_tag for writers, deployed_sha for serving), not env.DEPLOY_SHA; writer-file hashes re-checked at dispatch. The seven charter §6 preconditions each name their command; a power warn fails check 7. D4: L0 waves are prepared (dump verified by pg_restore --list and row counts, measured impact, pre-check) and parked for the native to dispatch; post-wave row-level diff; the undo is a native-run surgical revert or restore; N-12 before the first L0 wave. Full-layer rebuild = scope=layer, action=rebuild, clear_before=false. D2: family assets excluded from wave completion, readers wait asset by asset, family certification evidence (orchestrator run, substep plan complete), staleness propagation recorded and reported. Waves wait for their fixes merged and deployed (B.WnM). The script is E5.3 (stale 'ROLE_COMMON open question 8' removed). Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C16; S1, S12, S13, S14, S15 residuals); D1, D2, D4."
   - "1.0 (2026-09-29): first draft, from charter §3 (G8, G13), §4 (R1, R3, R4, R7–R9), §6, §10 and arch §3.1, §5.3, §5.4, §6."
@@ -45,7 +46,9 @@ dispatching. You never open `builder.env` (P1). No other dispatch route, no hand
    reads done (R1); or
    would cascade into another asset's data or clear more than its own rows (R3). **Family assets and their readers are
    excluded from the wave (D2):** the wave completes without them; a reader waits until its family input is certified
-   and shows `waiting_on_family`. When unsure, it is reserved (R11).
+   and shows `waiting_on_family`. **The dispatch set is computed, not chosen:** every asset at the level in the frozen
+   `LEVEL_MAP.json` minus `FAMILY_ASSETS.json`'s `family_set` (both on `origin/main`); if either file is missing, or the
+   set you would dispatch intersects `family_set`, stop (the script refuses too). When unsure, it is reserved (R11).
 2. **Check all seven preconditions in the same step as the dispatch** (charter §6), each with the command that measured
    it. A check you cannot measure has failed.
    1. **Decisions re-read now:** the ROLE_COMMON §1 read command; record the latest `ts` and that nothing newer revokes,
@@ -70,7 +73,9 @@ dispatching. You never open `builder.env` (P1). No other dispatch route, no hand
       rows to evidence first, and run the serving canary's "before" reads (E5.3); the stated undo is "hold; the native
       approves revert and rebuild".
 3. **Log the checks, then dispatch.** Emit the PRECHECK note (below) and write `PRECHECK.md`; then one
-   `suvarna-build` call covering the whole level for the canonical chart (G13).
+   `suvarna-build --assets <id,…>` call covering **the level's non-family assets** for the canonical chart (G13), never
+   `--level` (a level holding a family asset or reader, levels 1, 5, 12 and 13 today, would rebuild family data, R8).
+   `PRECHECK.md` lists the dispatch set and the family assets left out.
 4. **Wait without polling** (arch §5.3): one timer no shorter than the wave's expected duration.
 5. **Collect evidence:** the canary's "after" reads (an unexplained difference from "before" outside the wave's declared
    output changes fails the wave: step 6), run id, per-asset outcome, whether each asset's substep plan completed (not only "rows present",

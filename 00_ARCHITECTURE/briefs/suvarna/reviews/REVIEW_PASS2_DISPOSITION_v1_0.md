@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REVIEW_PASS2_DISPOSITION
 canonical_id: SUVARNA_REVIEW_PASS2_DISPOSITION
-version: "1.0"
+version: "1.1"
 status: "DONE — the disposition of every review-pass-2 finding in the v1.4 plan set"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
@@ -10,6 +10,7 @@ inputs:
   - briefs/suvarna/reviews/REVIEW_PASS2_CONSISTENCY_v1_0.md (40 findings, prefix C)
   - briefs/suvarna/reviews/REVIEW_PASS1_DISPOSITION_v1_0.md; $SUVARNA_HOME/run/DECISIONS.jsonl (latest line per id)
 changelog:
+  - "1.1 (2026-09-30): §6 pass-3 follow-up added (which pass-2 fixes review pass 3 found not done or partial, and where each now lives). No pass-2 row re-graded in place."
   - "1.0 (2026-09-29): first disposition, with plan set v1.4."
 ---
 
@@ -174,3 +175,22 @@ progress in the same tree; CODE-20 and CODE-21 amend them.)
   the exact session names.
 - Merge the v1.4 set into hq and restart the tracker and Monitor from hq (L.17) once committed.
 - Build L.12r (package and bundle) before L.9; draft J1.0d after A.L0.
+
+## 6 · Pass-3 follow-up (2026-09-30)
+
+Review pass 3 (`REVIEW_PASS3_v1_0.md`) checked 62 of these findings and all 21 CODE specs: 56 findings verified; 12 CODE
+specs implemented as specified, 8 partial, 1 not implemented. The rows above are left as written; where pass 3 found a
+fix missing or partial, the follow-up lives in `REVIEW_PASS3_DISPOSITION_v1_0.md`:
+
+| Pass-2 item | Pass-3 finding | Now |
+|---|---|---|
+| S1 · CODE-12 (not implemented), CODE-20 wiring, CODE-11 bypass | isolation hard-coded `warn`; L.16a and runbook steps 2a/6 never completable (B1) | CODE-22, CODE-33; documents accept `warn` until N-25 |
+| S2 · CODE-14 (partial) | any process can append `decided` as `strategic-suvarna` (B6) | CODE-27 (the swarm is denied `decide`/`decisions`) |
+| C3 · CODE-15 (partial) | `builder_scope` `ok` before provisioning; E7.3 read done (B2) | CODE-23; documents: `warn` until E7.2 |
+| S10(b) · CODE-6 (partial) | generator pin ignored (B7) | CODE-24 |
+| S14 (partial) | hold-guard hook runs from Strategic's worktree and fails open | CODE-25; documents: hq path, fail closed for dispatches |
+| C22/S1 · CODE-21 (partial) | broad `git push *` kept; psql quoting differs (B5, B10/B11) | CODE-26, CODE-28 |
+| CODE-8, CODE-17, CODE-18 (partial, cosmetic) | docstring; `NIKASHA_ROOT` default; `lane_launch` item | CODE-34 |
+| S10(c)-adjacent: J1.R | R34, R36 BLOCKS_FREEZE with no owner (B3) | FIXED: E1.10 |
+| §4 N-26 | every Suvarṇa migration denied by main's settings (B4) | NATIVE: N-27 (N-26 now renumbers into its range) |
+| R244-deferred finding | E4.2r did not pin the withholding (B8) | FIXED: E4.2r spec |

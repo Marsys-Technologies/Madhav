@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_BUILDER
 canonical_id: SUVARNA_ROLE_BUILDER
-version: "1.2"
+version: "1.2.1"
 status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): migrations only in the N-27 Suvarṇa range and only after the deny-list amendment (E0.1) is on main; never around the deny."
   - "1.2 (2026-09-29, review pass 2): lane base is always suvarna/trunk; the #2736 split is built fresh, the engine commits cherry-picked; landing branches from origin/main; the bo_upaya test path pinned."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): step 4 migration numbers per arch §12.5 (fresh origin/main and open-PR sweep, maximum across both migration folders and the other campaigns' reserved ranges, placeholder committed and pushed on the lane branch, never main, never reused); the 'no reserved migration range' stop condition dropped (Suvarṇa has none, by design). Lane base branches per arch §12.2. bo_upaya: fix per its handoff, merged and tested on fixtures, no live rebuild before its wave (B.U). Sanctioned Track E packets extended to E5–E7 per the Track E brief; E7.1 (auth) needs a security review. Stage brief replaced by track and asset briefs. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C22; S3, S27 residuals); D1."
   - "1.0 (2026-09-29): first draft, from plan §5.4, §6.3, §6.4, arch §2.3, §3.1, §4.3, charter G4–G6 and CLAUDE.md §N.2–§N.7."
@@ -47,10 +48,13 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
      pin `fact_key` with a total `ORDER BY` (§N.7). No wrapper constant shadowing an L1 value. Honest null, never an
      invented default (§N.7, P8). Verification tiers via `brahmagyan/verification_vocab.py` constants (§N.4).
    - **Registry rows** carry a correct chart-scoped `count_sql` (§N.4 cockpit truth).
-4. **Migrations** (G4, §N.4, arch §12.5): surgical and single-purpose. **Reserve one number at the moment you need it:**
-   `git fetch -q origin main` and sweep open PRs (`gh pr list --state open --json files`); take the maximum across
-   `platform/migrations` and `platform/supabase/migrations` on `origin/main`, the open PRs, and the reserved ranges of
-   Pūrṇa, Jātaka and L3 (plan §7); use the next free number. Commit a placeholder migration file with that number **on
+4. **Migrations** (G4, §N.4, arch §12.5): surgical and single-purpose, **only in the Suvarṇa range** (1200–1299 once N-27
+   is decided) and **only after its deny-list amendment is on `main`** (plan item E0.1). Until then main's
+   `.claude/settings.json` denies the edit: stop and hand back `blocked` ("waiting for E0.1"); never write the file in
+   `platform/supabase/migrations/` or by another route to step around the deny (P13). **Reserve one number at the moment
+   you need it:** `git fetch -q origin main` and sweep open PRs (`gh pr list --state open --json files`); take the next
+   number in the range not used on `origin/main` (both migration folders) or by an open PR; place the file in
+   `platform/migrations/`. Commit a placeholder migration file with that number **on
    your lane branch** and push the lane branch at once (never `main`, P9; never a number already used). Emit
    `EMIT note --actor builder --detail "[<qid>] MIGRATION RESERVED <n>"` so the Conductor records it in the queue line
    and on the coordination branch. Never edit a migration that has been applied (P4): write a new one. Never apply it
@@ -96,8 +100,8 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
 ## Stop conditions
 
 ROLE_COMMON §10, plus: the failing-first test cannot be made to fail on the unchanged code · the fix needs a file
-outside `write_set` · the number sweep finds a collision you cannot resolve with the next free number · the same packet
-has failed twice.
+outside `write_set` · the number sweep finds a collision you cannot resolve with the next free number · the Suvarṇa
+range is exhausted or E0.1 is not merged · the same packet has failed twice.
 
 ## Done means
 

@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_COMMON
 canonical_id: SUVARNA_ROLE_COMMON
-version: "1.2"
+version: "1.2.1"
 status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): census through census_run; builder_scope warn until E7.2; isolation warn until N-25 (exit 1 is not a stop, exit 2 is); the allowed command forms."
   - "1.2 (2026-09-29, review pass 2 folded): header cites plan v1.4, charter v1.4, arch v1.4, track briefs v1.1. §1 only Strategic Suvarṇa writes the decisions log (charter P14); the Steward requests. §2 one base rule: every lane from suvarna/trunk; fold lanes before the cut-over from origin/campaign/nikasha-test, pushed back as a fast-forward; landing branches from origin/main. §3 the exact hq_commit command. §4 foreign credentials never used (P1). §5 tools run from the hq worktree. §7 FAMILY_ASSETS.json path. §8 ELEVATED unknown until E6.3t. §12 the Suvarṇa settings file and the lane launcher; isolation (arch §2.4)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): header cites charter v1.3 (v1.2 approved: N-19 + amendments A–C; v1.3 confirmed with N-1), arch v1.3, plan v1.3 and the track briefs. §1 the decisions log is $SUVARNA_HOME/run/DECISIONS.jsonl, written only through python -m suvarna_tracker.decide by strategic-suvarna or steward; committed copies are mirrors; delegated is not decided; a family ruling is recorded only by Strategic Suvarṇa; grants G1–G16 (G16 proposed, not in force), prohibitions P1–P13. §2 lane worktree $SUVARNA_HOME/lanes/<qid> and base branches per arch §12.2 (Track E lanes off campaign/nikasha-test or campaign/nirmana-engine; never edit /Users/Dev/madhav-nikasha or /Users/Dev/madhav-engine directly); one review path (arch §12.6). §4 reads as suvarna_reader (D6); census only through the census lock (arch §12.15); builder credential only through suvarna-build (D1); Monitor credential semantics (missing blocks, too open warns). §5 export SUVARNA_HOME; decision events are requests only; the decide command. §7 family set, D2 staleness exemption and hand-back. §8 N/A only as the census computes it from a declared registry rule (D3); non-gate rows never block ELEVATED. New §12 runtime (D5). Settled conventions extended to arch §12.15–§12.16 and charter v1.3. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C20, C29, C42; S2, S9, S24, S26, S27 residuals)."
   - "1.0 (2026-09-29): first draft. Rules every Suvarṇa role follows, written from the approved autonomy charter (v1.1, N-19), the execution architecture (v1.2) and the campaign plan (v1.2). Cites clause ids; restates nothing it can cite. (Corrected in 1.1: the 1.0 entry named the architecture as v1.1; it was v1.2.)"
@@ -92,14 +93,17 @@ are confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (
   role (P2). Never call `gcloud` per command (plan §6.5).
 - **No writes to production** except a migration applied by the deploy pipeline or an orchestrator build dispatched
   through `suvarna-build` (P3). No hand-written SQL that changes anything.
-- **Every census runs through the census lock** (arch §3.3, §12.15), in every session:
-  `python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor <role> -- bash -c 'source ~/.config/suvarna/pgenv.sh && cd <census checkout> && python3 platform/scripts/governance/asset_census.py --layer <Lx> --out <existing evidence folder>/census_<Lx>.json'`.
-  Exit 75 means another census holds the lock: hand back `blocked` for re-queue; never run around it. The census
+- **Every census runs through the census lock** (arch §3.3, §12.15), in every session, by the validated wrapper:
+  `python3 -m suvarna_tracker.census_run --layer <Lx> --out /Users/Dev/suvarna/evidence/<qid>/census_<Lx>.json --wait 900 --emit --actor <role>`
+  (absolute `--out`, the folder created first with `mkdir -p`; it takes the lock, sources the reader file and runs only
+  the inspector).
+  `census_lock -- <command>` is not a route: it no longer wraps an arbitrary command. Exit 75 means another census holds the lock: hand back `blocked` for re-queue; never run around it. The census
   checkout is `/Users/Dev/madhav-nikasha` until E4.1, `/Users/Dev/suvarna/trunk` after (arch §12.13). Run one only when
   the Conductor dispatched you for it.
 - **Credential trouble** (the Monitor's `credential` check blocks because the file is missing, or warns because it is
   group- or world-readable or has a backup beside it; `credential_readonly` blocks because the login is not
-  `suvarna_reader` or has a write path; `builder_scope` blocks, once E7.3 adds it): stop, do not recreate, repair or
+  `suvarna_reader` or has a write path; `builder_scope` blocks once E7.2 has written `run/builder_identity.json`, and
+  reads `warn` before that): stop, do not recreate, repair or
   inspect the file, report (R10, charter §10). Only the native changes credentials.
 
 ## 5 · Report as it happens (charter §11, arch §11.3)
@@ -204,7 +208,11 @@ anything parked or refused and why; open questions. Keep narration out of it; th
   with `--permission-mode dontAsk`; never a bypass mode, never without the file, never an edit to it (P13). Lane agents
   are started only by the lane launcher (arch §5.5). A denial is logged as a `note`, never retried in another form.
 - **Isolation (arch §2.4; N-25 pending).** If the swarm runs as the `suvarna` user, the native's files are simply not
-  readable; either way, reaching for them is a P1 refusal.
+  readable; either way, reaching for them is a P1 refusal. Until N-25 is decided the Monitor's `isolation` check reads
+  `warn` (exit 1); that alone is not a reason to stop, while exit 2 always is.
+- **Allowed command forms** (arch §2.4): reader `psql`/`pg_dump` only as `bash -c 'source ~/.config/suvarna/pgenv.sh &&
+  …'`; governance scripts as `python3 platform/scripts/governance/<script>.py`; pushes only to `suvarna/*` branches (and the
+  Nikaṣa Engine's fast-forward fold push to `campaign/nikasha-test`, arch §12.7); never `python3 -m suvarna_tracker.decide`, `decisions` or `runtime_settings` (Strategic Suvarṇa's and the native's).
 
 ## Settled conventions
 

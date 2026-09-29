@@ -1,10 +1,11 @@
 ---
 artifact: EXEC_SUVARNA_START_PROMPT
-version: "1.2"
+version: "1.2.1"
 status: READY — paste after N-1
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): Monitor exit 1 accepted only from isolation before N-25; census through census_run."
   - "1.2 (2026-09-29, review pass 2 folded): plan v1.4, charter v1.4, arch v1.4, runbook v1.2, Track A v1.1, roles v1.2. Tools run from the hq worktree. The Steward records no decision (P14): the decisions log and mirror leave may_touch; foreign credentials and the Suvarṇa config added to must_not_touch. D6 applied; isolation check. Track I starts at N-24 (tier-independent fixes to trunk before J1); instance acceptance per layer (A.Lxa) lifts the banner; family evaluation is A.L3f; waves with an L2 MSR writer (W0 included) wait for F-3 and F3.FK; L0 is four native dispatches; lel_events ruled before W0."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): points at plan v1.3, charter v1.3, arch v1.3, runbook v1.1 and the Track A brief (tracks/TRACK_A_BRIEF_v1_0.md). Explicit CLAUDE.md scope declaration (may_touch / must_not_touch). N-1 read from the authoritative log $SUVARNA_HOME/run/DECISIONS.jsonl. Track A steps per plan v1.3 (A.Lxi → A.H; A.Lx provisional; A.Lxr after J1; family evaluation off the J1 path). Census through the lock; provisional censuses checked by script, not gate-reviewed (arch §12.14). Tracks I and B wait for J1 and the Tracks I and B brief (N-24); builds only through suvarna-build, L0 waves native-dispatched (D1, D4); family assets excluded from wave completion (D2); no L2 MSR rebuild until F-3 has a decided line. Runtime: stateless passes under /loop to G2, durable runner before B.W1 (D5). Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (S28; S11, S24, S29 residuals)."
   - "1.0 (2026-09-29): first issue."
@@ -72,8 +73,9 @@ freeze (J1). You run a swarm of agents; you do not write briefs or code yourself
    Your lanes write under `00_ARCHITECTURE/briefs/suvarna/layers/**` and `…/reviews/**` on lane branches (arch §12.6),
    and later Track I fix files within each packet's write set.
 4. **Environment:** `python3 -m suvarna_tracker.monitor --once` exits 0: every check ok (eight, `conductor_heartbeat` from L.15, and
-   `isolation`, `decision_writers` once L.16a adds them). D6 is applied; if `credential_readonly` or `isolation` blocks, stop and say
-   so. Anything else: runbook §2.
+   `isolation`, `decision_writers` once L.16a adds them). Before N-25 is decided it may exit 1 **only** because
+   `isolation` reads `warn`; that is expected, not a stop. D6 is applied; if `credential_readonly` or `isolation` blocks
+   (exit 2), stop and say so. Anything else: runbook §2. Censuses run only through `census_run` (arch §12.15).
 
 ## 1 · What you run now: Track A, all six layers at once, read-only
 
