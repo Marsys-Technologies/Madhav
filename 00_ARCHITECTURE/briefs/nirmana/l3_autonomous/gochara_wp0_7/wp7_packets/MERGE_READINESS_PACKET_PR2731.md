@@ -15,6 +15,12 @@
   re-based D-E022 admissions in **§2g**; new READY criterion (delivery-topology pins check
   on a simulated squash) added to the verdict. Section 2g and the verdict supersede earlier
   content where marked.
+- **Refreshed:** 2026-09-30 **post-merge record** (Pravāha A1.2/A1.3) — #2731 **MERGED**
+  (queue, 2026-09-29T19:47:33Z, main `285bff17c`); the 1071 deploy incident and its fix
+  via #2760, the successful deploy run `36637288503` (main `56dba8ac5`), and the live
+  post-deploy verification are recorded in **§6**. This lands on branch
+  `l3/gochara-wp0-7-postmerge-packet` from main `56dba8ac5` (docs-only; the lane-local
+  record commit `f1912c566` cherry-picked per the native's A1.3 instruction).
 - **Governing:** ADK-0027 (native directive F-0, precondition 1 — deploy-before-flip),
   ADK-0028 (light-work scope; Cloud-Run-only century rebuild), ESCALATIONS.md E-020/E-021/E-022,
   **D-E022** (native, 2026-09-29: "Accept all recommendations." — pins re-admission at the
@@ -550,6 +556,54 @@ committed in `bd5c34fb0`).
 
 </details>
 
+---
+
+## 6. POST-MERGE EVIDENCE — #2731 MERGED (Pravāha A1.1/A1.2/A1.3, 2026-09-30)
+
+**Merge (A1.1):** #2731 merged via the merge queue at **2026-09-29T19:47:33Z** as main
+`285bff17c` (squash delivery; the re-based, native-ratified D-E022 successors
+`l1:333eb7abcac3:b3674dfbfa91` / `l3:333eb7abcac3:d1bf773c4d94` are the delivered
+generations). Post-merge CI on main: Ganga Quality Gate, Serving Gates, TAP, EKV,
+ṢAḌ-DARŚANA all **success**. The `Paripraśna Post-Deploy Behaviour Smoke` failure is
+**pre-existing** (red on `cbded8e54` since ≥16:01 UTC, before the merge) — recorded, not
+fixed here.
+
+**The 1071 deploy incident and its fix:** the first deploy run (`36623429423`, on
+`285bff17c`) **failed in migration 1071** — `permission denied for schema public`
+(SQLSTATE 42501); the migration runner is transactional, so **nothing applied** (verified
+read-only: `_migrations_applied` unchanged, no partial guard left behind). Root cause:
+1071's guard-creation DDL collided with production's stricter pre-existing guard
+(`kala_gochara_generation_guard` + `trg_kgw_generation_guard_row/_truncate`). Fix PR
+**#2760** (main `56dba8ac5`) made 1071 install its guard **only when production's stricter
+guard is absent** — since it is present, 1071 skips on apply. (#2762 later added a
+protected-window fallback that proved not to be needed.)
+
+**Successful deploy:** run **`36637288503`** on main **`56dba8ac5`** — all jobs green,
+earned outcome green (2026-09-29 ~22:1x UTC).
+
+**DEPLOY_SHA verified from the live services (A1.2, Trap 103 — read from the running
+revisions, never from run metadata):** all three Cloud Run services' 100% serving
+revisions carry commit-sha label `56dba8ac560222d28d1c4f5e00e75359ddcb83bc`:
+
+```
+amjis-web      → amjis-web-probe-56dba8ac5602-36637288503-1      commit-sha 56dba8ac5602…
+amjis-mcp      → amjis-mcp-probe-56dba8ac5602-36637288503-1      commit-sha 56dba8ac5602…
+amjis-sidecar  → amjis-sidecar-probe-56dba8ac5602-36637288503-1  commit-sha 56dba8ac5602…
+```
+
+(Checked via `gcloud run revisions describe … --format="value(labels['commit-sha'])"` on
+the revision actually serving 100% traffic — the `status.traffic` list, not
+`traffic[0]`, which can be a tagged canary.)
+
+**Post-deploy registry state (steward read-only checks, 2026-09-29 22:15 UTC):**
+`_migrations_applied` now contains **1071, 1072, 1086**; the `ka_gochara` registry row is
+**unchanged** (`target_table=kala_gochara_windows`, `count_sql` scoped to
+`generation='4.0'`, the 1091/1150 identity); the live `integrity_check_sql` evaluates to
+**`t`**; `ga_strength` carries **1 active digest spec** and **no rebuild was run**
+(standing native scope limit).
+
+---
+
 Non-blocking, recorded: Disclosure 3 (R240); chart-1 `'4.0'` burned; chart-2 candidate
 retention; soak trigger #0 added to `step09_soak_checklist.md`; frozen seven + 1150 verified
 absent from the deploy pending list; 12.10c step 4's 1072-interplay note is **closed** by
@@ -559,8 +613,7 @@ question (now sharper: the ka_gochara seed row catalogs the `'4.0'` surface per 
 century materializer's row counts `g3_%` on `_v2`; `'3.0'` on `kala_gochara_windows` has no
 seed owner — migration-only by design or a gap is the native's call).
 
-Next native actions: **re-queue + merge + deploy #2731** (re-based D-E022 generation ids
-RATIFIED 2026-09-30, §2f/§2g — no standing items); then DEPLOY_SHA
-verification → Cloud-Run century rebuild → flips under trigger #0 + soaks (ADK-0028 amended
-sequence). Reminder carried from the 1086 ruling: deploy applies 1086, but no ga_strength
+**POST-MERGE (2026-09-30):** re-queue + merge + deploy are **done** — §6. Remaining native
+sequence: Cloud-Run century rebuild → flips under trigger #0 + soaks (ADK-0028 amended
+sequence). Reminder carried from the 1086 ruling: deploy applied 1086, but no ga_strength
 rebuild is authorised — that decision is separate and later.
