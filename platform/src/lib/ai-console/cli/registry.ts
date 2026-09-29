@@ -34,6 +34,7 @@ export interface CliDefinition {
   readonly versionArgs: readonly string[]
   readonly authStatusArgs?: readonly string[]
   readonly supportedVersion: string
+  readonly supportedVersions?: readonly string[]
   readonly compatibleRoles: readonly AiRole[]
   readonly supportsTools: false
   readonly supportsStructuredOutput: boolean
@@ -71,7 +72,8 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   gemini_antigravity: Object.freeze({
     id: 'gemini_antigravity', productName: 'Gemini / Antigravity', candidates: fixed('/Users/Dev/.local/bin/agy'),
     allowedRealpathPrefixes: fixed('/Users/Dev/.local/bin/'), versionArgs: fixed('--version'),
-    supportedVersion: '1.2.12', compatibleRoles: ALL_CLI_ROLES, supportsTools: false,
+    supportedVersion: '1.2.13', supportedVersions: fixed('1.2.12', '1.2.13'),
+    compatibleRoles: ALL_CLI_ROLES, supportsTools: false,
     supportsStructuredOutput: true,
     modelCatalog: Object.freeze({ args: fixed('models'), format: 'antigravity_models' }),
     execution: Object.freeze({
@@ -95,9 +97,15 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
 if (Object.keys(CLI_REGISTRY).join(',') !== CLI_IDS.join(',')) throw new Error('CLI registry drift')
 
 export function parseSupportedVersion(definition: CliDefinition, output: string): string | null {
-  const escaped = definition.supportedVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return escaped && new RegExp(`(?:^|\\s)${escaped}(?:\\s|$|\\))`).test(output.trim())
-    ? definition.supportedVersion : null
+  for (const version of definition.supportedVersions ?? [definition.supportedVersion]) {
+    const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (escaped && new RegExp(`(?:^|\\s)${escaped}(?:\\s|$|\\))`).test(output.trim())) return version
+  }
+  return null
+}
+
+export function isSupportedCliVersion(definition: CliDefinition, version: string): boolean {
+  return (definition.supportedVersions ?? [definition.supportedVersion]).includes(version)
 }
 
 const ModelIdSchema = z.string().min(1).max(512).refine(value => !value.startsWith('-')

@@ -385,9 +385,11 @@ export async function runPersistenceStage(args: {
       },
     },
     {
-      // Jātaka chart workspace: final archive/readiness recheck at persistence —
-      // a chart correction may have committed while this turn streamed.
-      writeGuard: () => checkConversationWritable({ conversationId, chartId }),
+      // Paripraśna deliberately admits incomplete charts and answers from the
+      // data currently available. At persistence, keep the archive/chart
+      // ownership guard but do not re-introduce the legacy Ready-only gate.
+      writeGuard: () =>
+        checkConversationWritable({ conversationId, chartId, readinessPolicy: 'allow-incomplete' }),
       persistence: {
         writeMessages: async (writeArgs) => {
           // The write guard ran once before this closure; a correction can
@@ -395,7 +397,11 @@ export async function runPersistenceStage(args: {
           // refusal that the non-fatal catches re-throw, and the shared
           // write-through turns it into a refused turn (no ledger, no stamp).
           const assertStillWritable = async () => {
-            const guard = await checkConversationWritable({ conversationId, chartId })
+            const guard = await checkConversationWritable({
+              conversationId,
+              chartId,
+              readinessPolicy: 'allow-incomplete',
+            })
             if (!guard.ok) throw new PersistenceRefusedError(guard.code, guard.message)
           }
           // History rows — legacy path, UNCHANGED (see scope-decision comment

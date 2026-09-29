@@ -38,7 +38,8 @@ export const SafeAiRoutingParametersSchema = z.object({
   total_tokens: NullableTokens,
   retry_count: z.number().int().nonnegative().nullable(),
   error_code: AiErrorCodeSchema.nullable(),
-  fallback_used: z.literal(false),
+  fallback_used: z.boolean(),
+  fallback_from_correlation_id: Identifier.nullable(),
 }).strict().superRefine((value, context) => {
   if (value.target_kind === 'provider_model') {
     if (!value.connection_id || value.cli_id || value.provider === 'cli' || !value.model_id || value.built_in_default) {
@@ -53,6 +54,9 @@ export const SafeAiRoutingParametersSchema = z.object({
   }
   if ((value.configuration_id === null) !== (value.configuration_version === null)) {
     context.addIssue({ code: 'custom', message: 'Configuration version is inconsistent.' })
+  }
+  if (value.fallback_used !== (value.fallback_from_correlation_id !== null)) {
+    context.addIssue({ code: 'custom', message: 'Fallback linkage is inconsistent.' })
   }
 })
 
@@ -71,6 +75,7 @@ export interface RoleInvocationTerminalFacts {
 export interface RoleObservationContext {
   readonly snapshotId: string
   readonly snapshot: SafeRoutingSnapshot
+  readonly fallback?: { readonly fromCorrelationId: string }
   readonly write?: (event: SafeAiRoutingParameters) => Promise<void>
 }
 
@@ -89,7 +94,7 @@ export function projectRoleInvocationObservation(
     ? snapshot.resolvedChoice.configurationId : null
   const isProvider = 'providerId' in descriptor
   const modelId = descriptor.modelId
-  const fallbackUsed = isProvider
+  const descriptorMismatch = isProvider
     ? roleTarget.kind !== 'provider_model'
       || roleTarget.connectionId !== descriptor.connectionId
       || roleTarget.providerId !== descriptor.providerId
@@ -97,9 +102,10 @@ export function projectRoleInvocationObservation(
     : roleTarget.kind !== 'local_cli'
       || roleTarget.cliId !== descriptor.cliId
       || roleTarget.modelId !== modelId
-  if (fallbackUsed) {
+  if (descriptorMismatch) {
     throw new Error('Executor descriptor does not match the immutable routing snapshot.')
   }
+  const fallbackUsed = context.fallback !== undefined
   const input = terminal.usage?.inputTokens ?? null
   const output = terminal.usage?.outputTokens ?? null
   const total = terminal.usage?.totalTokens ?? null
@@ -132,6 +138,7 @@ export function projectRoleInvocationObservation(
     retry_count: terminal.retryCount,
     error_code: terminal.errorCode,
     fallback_used: fallbackUsed,
+    fallback_from_correlation_id: context.fallback?.fromCorrelationId ?? null,
   })
 }
 

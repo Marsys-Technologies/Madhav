@@ -3,6 +3,7 @@ import { AiConsoleError } from '../errors'
 import type { ResolvedRoleExecution } from './types'
 import { createCliRoleExecutor } from './cli-executor'
 export { createProviderRoleExecutor } from './provider-executor'
+export { createDefaultFallbackExecutor } from './fallback-executor'
 import { createProviderRoleExecutor } from './provider-executor'
 
 export function createRoleExecutor(execution: ResolvedRoleExecution) {
