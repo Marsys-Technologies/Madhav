@@ -86,6 +86,70 @@ def test_credential_ok_when_restricted(tmp_path):
     assert r.status == "ok"
 
 
+@pytest.mark.parametrize("name", ["pgenv.app-login.bak", "pgenv.sh.bak", "pgenv.bak.1",
+                                  "pgenv.previous.2026-09-29T10-00-00-000Z.bak", "pgenv.previous"])
+def test_credential_warns_on_backup_beside_the_credential(tmp_path, name):
+    d = tmp_path / "suvarna"
+    d.mkdir()
+    p = d / "pgenv.sh"
+    p.write_text("secret=x")
+    os.chmod(p, 0o600)
+    b = d / name
+    b.write_text("write-capable app login")
+    os.chmod(b, 0o600)
+    r = M.check_credential(cfg(tmp_path, pgenv=str(p)))
+    assert r.status == "warn" and name in r.detail and "madhav-admin" in r.detail
+
+
+@pytest.mark.parametrize("name", ["notes.bak", "pgenv.sh", "other.previous", ".pgenv.123.abc.tmp"])
+def test_credential_ignores_unrelated_sibling_names(tmp_path, name):
+    d = tmp_path / "suvarna"
+    d.mkdir()
+    p = d / "pgenv.sh"
+    p.write_text("secret=x")
+    os.chmod(p, 0o600)
+    if name != "pgenv.sh":
+        (d / name).write_text("x")
+    r = M.check_credential(cfg(tmp_path, pgenv=str(p)))
+    assert r.status == "ok"
+
+
+def test_credential_backup_check_reads_names_only(tmp_path, monkeypatch):
+    d = tmp_path / "suvarna"
+    d.mkdir()
+    p = d / "pgenv.sh"
+    p.write_text("secret=x")
+    os.chmod(p, 0o600)
+    b = d / "pgenv.app-login.bak"
+    b.write_text("secret=y")
+    os.chmod(b, 0o000)  # unreadable: the check must not need to open it
+    real_open = open
+
+    def _guarded_open(path, *a, **kw):
+        if str(path) in (str(p), str(b)):
+            raise AssertionError("credential check must never open the credential or a backup")
+        return real_open(path, *a, **kw)
+
+    monkeypatch.setattr("builtins.open", _guarded_open)
+    try:
+        r = M.check_credential(cfg(tmp_path, pgenv=str(p)))
+        assert r.status == "warn" and "pgenv.app-login.bak" in r.detail and "secret" not in r.detail
+    finally:
+        os.chmod(b, 0o600)
+
+
+def test_credential_ok_when_backup_lives_in_the_admin_dir(tmp_path):
+    d = tmp_path / "suvarna"
+    d.mkdir()
+    admin = tmp_path / "madhav-admin"
+    admin.mkdir()
+    p = d / "pgenv.sh"
+    p.write_text("secret=x")
+    os.chmod(p, 0o600)
+    (admin / "pgenv.app-login.bak").write_text("x")
+    assert M.check_credential(cfg(tmp_path, pgenv=str(p))).status == "ok"
+
+
 def test_credential_never_opens_the_file(tmp_path, monkeypatch):
     p = tmp_path / "pg.env"
     p.write_text("secret=x")
@@ -111,12 +175,15 @@ def _cred_file(tmp_path):
     return str(p)
 
 
+_ROLE_CONFIG = ",".join(sorted(M.EXPECTED_ROLE_CONFIG))
+
 _CLEAN = {
-    "current_user": "suvarna_reader", "read_only": "on", "elevated": "false",
+    "current_user": "suvarna_reader", "session_user": "suvarna_reader", "read_only": "on",
+    "read_only_source": "client", "role_config": _ROLE_CONFIG, "elevated": "false",
     "table_write": "0", "column_write": "0", "sequence_write": "0",
     "database_create": "false", "database_temp": "true", "schema_create": "0",
-    "member_of": "0", "members_of_me": "0", "owned_objects": "0",
-    "auth_schema_usage": "false", "auth_dependent_views": "0",
+    "member_of": "0", "members_of_me": "0", "owned_objects": "0", "large_objects": "0",
+    "acl_outside_scope": "0", "auth_schema_usage": "false", "auth_dependent_views": "0",
 }
 
 
@@ -230,6 +297,8 @@ def test_credential_readonly_is_part_of_run_checks(tmp_path):
     ({"elevated": "true"}, "elevated"),
     ({"auth_schema_usage": "true"}, "schema auth"),
     ({"auth_dependent_views": 1}, "views over schema auth"),
+    ({"large_objects": 2}, "large objects"),
+    ({"acl_outside_scope": 1}, "ACL grants outside"),
 ])
 def test_credential_readonly_blocks_on_every_write_path(tmp_path, over, needle):
     r, _, _ = _ro(tmp_path, _facts(**over))
@@ -261,14 +330,49 @@ def test_credential_readonly_warns_when_login_is_not_the_reader(tmp_path):
     assert r.status == "warn" and "retrieval_census_ro" in r.detail and "suvarna_reader" in r.detail
 
 
+def test_credential_readonly_warns_when_session_user_differs(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(session_user="postgres"))
+    assert r.status == "warn" and "session_user=postgres" in r.detail
+
+
+def test_credential_readonly_ok_reports_session_and_role_read_only_separately(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(read_only_source="client"))
+    assert r.status == "ok"
+    assert "session default_transaction_read_only=on (source client)" in r.detail
+    assert "role default read-only=on" in r.detail
+
+
+@pytest.mark.parametrize("role_config,needle", [
+    (",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:temp_file_limit=1GB"})), "missing 0:temp_file_limit=1GB"),
+    (_ROLE_CONFIG + ",0:search_path=public", "unexpected 0:search_path=public"),
+    (",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:default_transaction_read_only=on"})), "missing 0:default_transaction_read_only=on"),
+    ("", "missing"),
+])
+def test_credential_readonly_warns_when_role_defaults_differ(tmp_path, role_config, needle):
+    r, _, _ = _ro(tmp_path, _facts(role_config=role_config))
+    assert r.status == "warn" and "role defaults differ" in r.detail and needle in r.detail
+
+
+def test_credential_readonly_role_default_off_but_pgoptions_on_is_warn(tmp_path):
+    """PGOPTIONS keeps the session read-only, but the role's own default is missing: reported, warn."""
+    cfg_no_ro = ",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:default_transaction_read_only=on"}))
+    r, _, _ = _ro(tmp_path, _facts(read_only="on", read_only_source="client", role_config=cfg_no_ro))
+    assert r.status == "warn"
+
+
+def test_credential_readonly_tolerates_a_set_command_tag(tmp_path):
+    r, _, _ = _ro(tmp_path, "SET\n" + _facts())
+    assert r.status == "ok"
+
+
 def test_credential_readonly_warns_when_another_role_can_assume_the_login(tmp_path):
     r, _, _ = _ro(tmp_path, _facts(members_of_me=1))
     assert r.status == "warn" and "assume" in r.detail
 
 
 def test_credential_readonly_warns_when_session_flag_off_without_write_path(tmp_path):
-    r, _, _ = _ro(tmp_path, _facts(read_only="off"))
-    assert r.status == "warn" and "default_transaction_read_only=off" in r.detail
+    r, _, _ = _ro(tmp_path, _facts(read_only="off", read_only_source="default"))
+    assert r.status == "warn" and "default_transaction_read_only=off (source default)" in r.detail
 
 
 @pytest.mark.parametrize("output", [
@@ -298,6 +402,18 @@ def test_self_privilege_sql_evaluates_the_login_itself():
         assert fragment in sql, fragment
     for priv in ("INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"):
         assert priv in sql
+    for fragment in ("session_user::text", "pg_db_role_setting", "pg_largeobject_metadata", "d.deptype = 'a'",
+                     "pg_settings where name = 'default_transaction_read_only'"):
+        assert fragment in sql, fragment
+
+
+def test_self_privilege_secdef_has_no_schema_usage_condition():
+    """Security-definer functions are reachable through operators/casts/aggregates without schema
+    USAGE, so EXECUTE alone must count."""
+    sql = M._SELF_PRIVILEGE_SQL
+    clause = sql[sql.index("'secdef'"):sql.index("'end', 'ok'")]
+    assert "has_function_privilege(current_user, p.oid, 'EXECUTE')" in clause
+    assert "has_schema_privilege" not in clause
 
 
 def test_self_privilege_sql_is_shell_safe():
@@ -306,21 +422,50 @@ def test_self_privilege_sql_is_shell_safe():
         assert ch not in sql, repr(ch)
 
 
-def test_default_query_fn_passes_the_sql_through_bash_intact(tmp_path):
-    """The real helper sources the file in bash and runs psql -c "<sql>"; a stand-in psql on PATH
-    records its -c argument so the quoting is proven without any database."""
+def _fake_psql_env(tmp_path, dirname="cred"):
+    """A stand-in psql on PATH that records its -c argument and its flags (no database)."""
     bindir = tmp_path / "bin"
     bindir.mkdir()
     record = tmp_path / "psql_arg.txt"
+    flags = tmp_path / "psql_flags.txt"
     fake_psql = bindir / "psql"
-    fake_psql.write_text(f'#!/bin/bash\nprintf %s "$3" > {record}\necho "end|ok"\n')
+    fake_psql.write_text("#!/bin/bash\n"
+                         f": > '{flags}'\n"
+                         'while [ $# -gt 0 ]; do\n'
+                         f'  if [ "$1" = -c ]; then printf %s "$2" > \'{record}\'; shift; else printf "%s\\n" "$1" >> \'{flags}\'; fi\n'
+                         '  shift\n'
+                         'done\n'
+                         'echo "end|ok"\n')
     os.chmod(fake_psql, 0o755)
-    pgenv = tmp_path / "pgenv.sh"
+    d = tmp_path / dirname
+    d.mkdir()
+    pgenv = d / "pgenv.sh"
     pgenv.write_text(f'export PATH="{bindir}:$PATH"\n')
     os.chmod(pgenv, 0o600)
+    return pgenv, record, flags
+
+
+def test_default_query_fn_passes_the_sql_through_bash_intact(tmp_path):
+    """The real helper sources the file in bash and runs psql -c <sql>; the SQL arrives byte-for-byte,
+    prefixed with the search_path pin, with -q and ON_ERROR_STOP."""
+    pgenv, record, flags = _fake_psql_env(tmp_path)
     rc, out, _ = M._default_credential_query_fn(str(pgenv), M._SELF_PRIVILEGE_SQL, 10)
     assert rc == 0 and out.strip() == "end|ok"
-    assert record.read_text() == M._SELF_PRIVILEGE_SQL
+    assert record.read_text() == "set search_path = pg_catalog; " + M._SELF_PRIVILEGE_SQL
+    recorded = flags.read_text().split()
+    assert "-q" in recorded and "ON_ERROR_STOP=1" in recorded
+
+
+def test_default_query_fn_shell_quotes_path_and_sql(tmp_path):
+    """A path with spaces and shell metacharacters, and SQL with quotes/$/backticks, reach bash and
+    psql literally: nothing is expanded or executed."""
+    pgenv, record, _ = _fake_psql_env(tmp_path, dirname="we ird $(touch PWNED1) `touch PWNED2`")
+    sql = "select 'a''b' as \"x\", '$(touch PWNED3)' , '`touch PWNED4`', $$dollar$$"
+    rc, out, err = M._default_credential_query_fn(str(pgenv), sql, 10)
+    assert rc == 0, err
+    assert record.read_text() == "set search_path = pg_catalog; " + sql
+    for n in ("PWNED1", "PWNED2", "PWNED3", "PWNED4"):
+        assert not (tmp_path / n).exists() and not os.path.exists(n)
 
 
 # ---- power ---------------------------------------------------------------------------------------

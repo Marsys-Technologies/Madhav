@@ -24,8 +24,10 @@ Design rules:
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
+import shlex
 
 # N-20 (native, 2026-09-29): the read-only credential lives in one file outside every repository,
 # owner-only (mode 600). Tools default to it; its contents are never read or printed by these tools.
@@ -92,8 +94,12 @@ def _default_launch(argv: list[str], cwd: str | None = None, log_path: str | Non
 def _default_credential_query_fn(pgenv: str, sql: str, timeout: int = 10) -> tuple[int, str, str]:
     """Run one read-only SQL query with the credential, sourced only inside this subprocess shell —
     the caller never opens, reads, or holds the file's contents in this Python process; every fact
-    used comes from `psql`'s own stdout/stderr (Fix 3, review #16)."""
-    cmd = f"source {pgenv} && psql -tAX -c {json.dumps(sql)}"
+    used comes from `psql`'s own stdout/stderr (Fix 3, review #16). Both the path and the SQL are
+    ``shlex.quote``d (security review 2), and the SQL is prefixed with ``set search_path = pg_catalog;``
+    so nothing in a user schema can shadow a catalog name; ``-q`` keeps the SET tag out of stdout."""
+    full_sql = sql if sql.lstrip().lower().startswith("set search_path") else f"set search_path = pg_catalog; {sql}"
+    cmd = (f"source {shlex.quote(pgenv)} && psql -q -X -t -A -v ON_ERROR_STOP=1 "
+           f"-c {shlex.quote(full_sql)}")
     p = subprocess.run(["bash", "-c", cmd], timeout=timeout, capture_output=True, text=True)
     return p.returncode, p.stdout, p.stderr
 
@@ -185,9 +191,22 @@ def check_db_proxy(cfg: Config) -> CheckResult:
     return CheckResult("db_proxy", "block", f"port {cfg.db_port} not accepting connections")
 
 
+# Backups of the write-capable app-login credential belong in ~/.config/madhav-admin/, never beside
+# the reader credential (security review 2, finding 1). Matched by NAME only; never opened.
+STRAY_BACKUP_PATTERNS = ("pgenv*.bak*", "pgenv.previous*")
+
+
+def _stray_backups(pgenv: str) -> list[str]:
+    try:
+        names = os.listdir(os.path.dirname(os.path.abspath(pgenv)))
+    except OSError:
+        return []
+    return sorted(n for n in names if any(fnmatch.fnmatchcase(n, pat) for pat in STRAY_BACKUP_PATTERNS))
+
+
 def check_credential(cfg: Config) -> CheckResult:
-    """Existence + permission bits only — the file's contents are never opened or read, and nothing
-    beyond the mode/existence facts below is reported (no path component is printed)."""
+    """Existence + permission bits + sibling file NAMES only — no file's contents are ever opened or
+    read, and nothing beyond the mode/existence facts and backup-file names below is reported."""
     if not cfg.pgenv:
         return CheckResult("credential", "block", "SUVARNA_PGENV is not set")
     try:
@@ -197,6 +216,11 @@ def check_credential(cfg: Config) -> CheckResult:
     if mode & 0o077:
         return CheckResult("credential", "warn",
                             f"credential file is group- or world-readable (mode {oct(mode & 0o777)})")
+    stray = _stray_backups(cfg.pgenv)
+    if stray:
+        return CheckResult("credential", "warn",
+                            f"credential backup file(s) beside the credential ({', '.join(stray[:5])}"
+                            f"{', …' if len(stray) > 5 else ''}): move them to ~/.config/madhav-admin/")
     return CheckResult("credential", "ok", "credential file exists with restricted permissions")
 
 
@@ -222,17 +246,29 @@ READER_LOGIN = "suvarna_reader"
 # `regprocedure` text, e.g. `public.f(integer)`), separated by ';' because signatures contain commas.
 SECDEF_ALLOW_ENV = "SUVARNA_READER_SECDEF_ALLOW"
 
+# The reader's role defaults, exactly as suvarna-reader-bootstrap.ts READER_ROLE_CONFIG sets them
+# (pg_db_role_setting rows, `<setdatabase>:<name>=<value>`; 0 = all databases).
+EXPECTED_ROLE_CONFIG = frozenset({
+    "0:default_transaction_read_only=on", "0:statement_timeout=120s",
+    "0:idle_in_transaction_session_timeout=60s", "0:lock_timeout=5s", "0:temp_file_limit=1GB",
+})
+
 # One psql round trip; one `key|value` row per fact, terminated by `end|ok` so a truncated result can
-# never pass. Every privilege function is evaluated for `current_user` — the login itself. Kept on one
-# line with no `$`, `!`, backtick, backslash or double quote: it travels inside a bash double-quoted
-# string (see _default_credential_query_fn); test_self_privilege_sql_is_shell_safe pins this.
+# never pass. Every privilege function is evaluated for `current_user` — the login itself. The SQL is
+# shlex-quoted into bash (see _default_credential_query_fn); it is still kept free of `$`, `!`,
+# backtick, backslash and double quote as a second layer (test_self_privilege_sql_is_shell_safe).
 _REL_SCOPE = "not (n.nspname ~ '^pg_toast' or n.nspname ~ '^pg_temp_')"
 _SELF_PRIVILEGE_SQL = " ".join(f"""
 with me as (select oid from pg_roles where rolname = current_user),
 rels as (select c.oid, c.relkind from pg_class c join pg_namespace n on n.oid = c.relnamespace where {_REL_SCOPE}),
 facts(k, v) as (
   select 'current_user', current_user::text
+  union all select 'session_user', session_user::text
   union all select 'read_only', current_setting('default_transaction_read_only')
+  union all select 'read_only_source', coalesce((select source from pg_settings where name = 'default_transaction_read_only'), '?')
+  union all select 'role_config', coalesce((select string_agg(s.setdatabase::text || ':' || c, ',' order by s.setdatabase, c)
+                                              from pg_db_role_setting s join me on s.setrole = me.oid
+                                              cross join lateral unnest(s.setconfig) c), '')
   union all select 'elevated', (select (rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls)::text
                                   from pg_roles where rolname = current_user)
   union all select 'table_write', count(*)::text from rels where relkind in ('r','p','v','m','f')
@@ -250,6 +286,12 @@ facts(k, v) as (
   union all select 'owned_objects', ((select count(*) from pg_shdepend d join me on d.refobjid = me.oid
                                        where d.refclassid = 'pg_authid'::regclass and d.deptype = 'o')
                                     + (select count(*) from pg_database d join me on d.datdba = me.oid))::text
+  union all select 'large_objects', (select count(*) from pg_largeobject_metadata l join me on l.lomowner = me.oid)::text
+  union all select 'acl_outside_scope', (select count(*) from pg_shdepend d join me on d.refobjid = me.oid
+      where d.refclassid = 'pg_authid'::regclass and d.deptype = 'a'
+        and not (d.dbid = (select oid from pg_database where datname = current_database())
+                 and d.classid in ('pg_class'::regclass, 'pg_namespace'::regclass))
+        and not (d.dbid = 0 and d.classid = 'pg_database'::regclass))::text
   union all select 'auth_schema_usage', coalesce((select has_schema_privilege(current_user, oid, 'USAGE')
                                                     from pg_namespace where nspname = 'auth'), false)::text
   union all select 'auth_dependent_views', (
@@ -267,16 +309,16 @@ facts(k, v) as (
        and has_schema_privilege(current_user, vn.oid, 'USAGE') and has_any_column_privilege(current_user, v.oid, 'SELECT'))
   union all (select 'secdef', p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where p.prosecdef and n.nspname <> 'pg_catalog'
-                and has_function_privilege(current_user, p.oid, 'EXECUTE') and has_schema_privilege(current_user, n.oid, 'USAGE'))
+                and has_function_privilege(current_user, p.oid, 'EXECUTE'))
   union all select 'end', 'ok'
 )
 select k || '|' || v from facts;
 """.split())
 
 _COUNT_KEYS = ("table_write", "column_write", "sequence_write", "schema_create", "member_of", "members_of_me",
-               "owned_objects", "auth_dependent_views")
+               "owned_objects", "large_objects", "acl_outside_scope", "auth_dependent_views")
 _BOOL_KEYS = ("elevated", "database_create", "database_temp", "auth_schema_usage")
-_REQUIRED_KEYS = ("current_user", "read_only") + _COUNT_KEYS + _BOOL_KEYS
+_REQUIRED_KEYS = ("current_user", "session_user", "read_only", "read_only_source", "role_config") + _COUNT_KEYS + _BOOL_KEYS
 
 
 def _secdef_allowlist() -> frozenset[str]:
@@ -288,7 +330,8 @@ def _parse_self_privileges(out: str) -> dict | str:
     """Parse the ``key|value`` rows. Returns the facts, or a string naming why they cannot be trusted
     (missing terminator, missing key, non-numeric count, non-boolean flag) — never a partial pass."""
     facts: dict = {"secdef": []}
-    lines = [ln.strip() for ln in (out or "").splitlines() if ln.strip()]
+    # A bare `SET` command tag (psql without -q) is the only non key|value line tolerated.
+    lines = [ln.strip() for ln in (out or "").splitlines() if ln.strip() and ln.strip() != "SET"]
     if not lines or lines[-1] != "end|ok":
         return "self-privilege query output incomplete (no end marker)"
     for ln in lines[:-1]:
@@ -320,14 +363,17 @@ def check_credential_readonly(cfg: Config) -> CheckResult:
     injectable query function, which sources the file inside a subprocess shell; this process never
     opens it) evaluates for ``current_user``: table and column write privileges on every relation,
     sequence USAGE/UPDATE, database and schema CREATE, role memberships in both directions, owned
-    objects, elevated role attributes, reachable SECURITY DEFINER functions outside pg_catalog, and
-    whether schema ``auth`` (or any readable view over it) is reachable.
+    objects and owned large objects, ACL dependencies outside this database's relations/schemas and
+    CONNECT (pg_shdepend catch-all), elevated role attributes, executable SECURITY DEFINER functions
+    outside pg_catalog in ANY schema (operators, casts and aggregates can reach them without schema
+    USAGE), and whether schema ``auth`` (or any readable view over it) is reachable.
 
-    ``block`` on any write path; ``ok`` only if every check passes AND the login is
-    ``suvarna_reader`` AND default_transaction_read_only is on; ``warn`` with the detail when the
-    login is anything else, when another role can assume this one, when the session flag is off, or
-    when the query cannot run / returns output that cannot be trusted. Never fabricates a pass
-    (CLAUDE.md §N.8)."""
+    ``block`` on any write path; ``ok`` only if every check passes AND session_user = current_user =
+    ``suvarna_reader`` AND the session's default_transaction_read_only is on AND the role's own
+    defaults (pg_db_role_setting) equal EXPECTED_ROLE_CONFIG; the session value (PGOPTIONS or role
+    default, with its pg_settings source) and the role default are reported separately. ``warn``
+    with the detail otherwise, when another role can assume this one, or when the query cannot run /
+    returns output that cannot be trusted. Never fabricates a pass (CLAUDE.md §N.8)."""
     name = "credential_readonly"
     if not cfg.pgenv:
         return CheckResult(name, "warn", "SUVARNA_PGENV is not set; cannot verify read-only access")
@@ -356,6 +402,8 @@ def check_credential_readonly(cfg: Config) -> CheckResult:
                        ("schema_create", "schemas with CREATE"),
                        ("member_of", "role memberships"),
                        ("owned_objects", "owned objects"),
+                       ("large_objects", "owned large objects"),
+                       ("acl_outside_scope", "ACL grants outside this database's relations/schemas/CONNECT"),
                        ("auth_dependent_views", "readable views over schema auth")):
         if facts[key]:
             write_paths.append(f"{label}={facts[key]}")
@@ -369,21 +417,32 @@ def check_credential_readonly(cfg: Config) -> CheckResult:
     if write_paths:
         return CheckResult(name, "block", f"login {login} has a write path: " + "; ".join(write_paths))
 
+    session = _sanitize_query_output(str(facts["session_user"])) or "?"
     ro_flag = _sanitize_query_output(str(facts["read_only"])).lower() or "?"
+    ro_source = _sanitize_query_output(str(facts["read_only_source"])) or "?"
+    role_config = frozenset(e for e in str(facts["role_config"]).split(",") if e)
+    role_ro = "on" if "0:default_transaction_read_only=on" in role_config else "off/unset"
     temp = "temp tables allowed (session-local)" if facts["database_temp"] else "no temp"
     accepted = f", {len(facts['secdef'])} accepted security-definer exception(s)" if facts["secdef"] else ""
     concerns = []
-    if login != READER_LOGIN:
-        concerns.append(f"login is {login}, not {READER_LOGIN}")
+    if login != READER_LOGIN or session != login:
+        concerns.append(f"session_user={session} current_user={login}, expected both {READER_LOGIN}")
     if facts["members_of_me"]:
         concerns.append(f"{facts['members_of_me']} other role(s) can assume this login")
     if ro_flag != "on":
-        concerns.append(f"default_transaction_read_only={ro_flag}")
+        concerns.append(f"session default_transaction_read_only={ro_flag} (source {ro_source})")
+    if role_config != EXPECTED_ROLE_CONFIG:
+        missing = sorted(EXPECTED_ROLE_CONFIG - role_config)
+        extra = sorted(role_config - EXPECTED_ROLE_CONFIG)
+        concerns.append("role defaults differ from the expected set"
+                        + (f"; missing {_sanitize_query_output(', '.join(missing))}" if missing else "")
+                        + (f"; unexpected {_sanitize_query_output(', '.join(extra))}" if extra else ""))
     if concerns:
         return CheckResult(name, "warn", "no write path found, but " + "; ".join(concerns))
     return CheckResult(name, "ok", f"{READER_LOGIN}: no write path (tables, columns, sequences, create, memberships, "
-                                   f"ownership, security-definer, auth all clear{accepted}); "
-                                   f"default_transaction_read_only=on; {temp}")
+                                   f"ownership, large objects, out-of-scope ACLs, security-definer, auth all clear"
+                                   f"{accepted}); session default_transaction_read_only=on (source {ro_source}); "
+                                   f"role default read-only={role_ro}, role defaults as expected; {temp}")
 
 
 _BATTERY_PCT_RE = re.compile(r"(\d+)%")
