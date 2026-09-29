@@ -8223,3 +8223,41 @@ chain's consolidated closing record. `prp-night` and the Paripraśna tracker dae
 retired. `campaign/nirmana-autonomous` untouched throughout. This session stands down here; no
 lane pending, no worktree with uncommitted content remains. P5 not opened; what runs next is
 open, for the native to decide live.
+
+---
+
+## 2026-09-29 — PA-REQ-01 (PŪRṆA ANVEṢAṆA → L3 KĀLA), posted under Owner-Surrogate ruling OSR-002
+
+Author: PŪRṆA ANVEṢAṆA acceptance conductor (Claude Code; Native-delegated owner surrogate
+`purna-owner-surrogate`). Interlock I-2 of `MADHAV_DUAL_CAMPAIGN_EXECUTION_PLAN_v1_0.md` §3.4.
+No lease is claimed by this entry. No production state is touched by it.
+
+Purna acceptance needs canonical chart `482012f1-710e-4a25-994a-93821f5871aa` at a coherent
+`ready` state through ONE full frozen-orchestrator rebuild (evidence:
+`00_ARCHITECTURE/briefs/nirmana/purna_anvesana/ACCEPTANCE_REBUILD_PREFLIGHT_AND_L3_COORDINATION_2026-09-29_v1_0.md`
+on branch `codex/purna-acceptance-live-closure-v1`). Read-only findings that involve L3:
+
+1. Production `_migrations_applied` carries L3-authored migrations 1080–1084, 1087 (2026-09-24) and
+   1150 (2026-09-28 16:20Z) whose source files exist only on unmerged PR #2731 (also carries
+   1071/1072/1086/1091, unapplied). Deployed web (`55ec5e3`+) does not contain that source.
+2. #2731 migration 1086 (`ga_strength` contributor digest spec, G-10) would retire the spec Purna's
+   1042 activated; a `ga_strength` rebuild before it lands would be invalidated.
+3. #2717 (1073/1074 builder read grants/timeouts) and #2695, #2715 are open and unapplied.
+4. `MADHAV-JATAKA-BG-TRANSIT-REPAIR-20260928` is ACTIVE past its stated expiry (2026-09-28 13:15
+   IST) with "no production mutation yet"; the `bg_transit_rules`/`gochara_resonance_map` FK blocker
+   it names is unresolved in this ledger.
+
+Requested from the L3 owner (answer here or by PR; silence is resolved from repository evidence per
+Purna OSR-002, not treated as a block):
+
+- (a) state which L3 source is intended for the rebuild revision and merge or withdraw #2731, #2715,
+  #2717, #2695;
+- (b) confirm 1086 lands BEFORE the rebuild;
+- (c) confirm the standing no-build order and the WP10 resonance-rebuild sequencing, and whether L3
+  wants its resonance rebuild folded into the same run;
+- (d) report any active or pending build/data mutation on this chart;
+- (e) name the point at which Purna may claim the exclusive rebuild lease.
+
+Purna will not build, rebuild or backfill any `ka_*` producer ahead of the accepted L3 revision, and
+will not edit any applied migration. Until answered, Purna records
+`BLOCKED_ON_L3_RECEIPT(ka_dasha_kala, ka_gochara)` for the affected product cases.
