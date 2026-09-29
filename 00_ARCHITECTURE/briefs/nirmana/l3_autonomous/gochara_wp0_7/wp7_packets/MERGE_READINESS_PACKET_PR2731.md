@@ -46,9 +46,16 @@ Five FAIL: `D-01a (WARN)`, `Earned-Signal Gate (§N.8)`, `Fact-Category Pinning 
 | Secret Scan (unit 0b.2) | 13 NEW `pg_conn_string` findings — all the lane's disposable-DB DSNs (`postgresql://wp6:<pw>@localhost:…`, password a throwaway dictionary word) in 7 docs/evidence files + 6 test defaults. Not real credentials (throwaway docker containers), but literal credential-shaped strings. | Docs/evidence: password masked to `***` (scanner-sanctioned masked form; history not falsified — the recorded commands now show a placeholder, the DBs were torn down regardless). Tests: default password renamed `disposable`→`local` (scanner's sanctioned weak-placeholder tolerance; env override unchanged). Scanner itself untouched; inherited register untouched. | `secret_scan.sh`: PASS (no new literal credentials); `--self-test` exit 0. Local gitleaks add-on reports 283 historical findings — NOT a CI gate (CI has no gitleaks; script comment documents this). | PASS |
 | Earned-Signal Gate (§N.8) | 2 NON-ALLOWLISTED: `step07_flip_gates.py:75,89` — `ts_gate` (signal name, `_gate` suffix) bound to the constant `"NOT_RUN (route test lives in platform-mcp)"`. | Honest fix per the lint's own message: `"ts_gate": None` + explanation moved to non-signal field `ts_route_test`. No gate semantics changed; no allowlist growth. | `check_earned_signal.py`: 0 new (143 allowlisted). PASS; `--self-test` exit 0. Gochara battery 300 passed / 83 skipped. | PASS |
 | Fact-Category Pinning Gate (§5 C.7) | 2 NON-ALLOWLISTED: `step06_enumerate_episodes.py:178` (fetch ALL rows of `sensitive_degree_check` to build a fact_id→subject lookup map) and `gochara_v3/context.py:646` (`_fetch_kakshya_boundaries` assembles per-subject dicts keyed BY fact_key across every key of the category). Both are set-valued whole-category reads; a fact_key pin would break them. | 2 AUDITED allowlist entries in `fact_category_pin_allowlist.json` following the repo's own precedents (`bo_upaya.py` set-of-keys; `get_kp_cusps.ts:140` multi-key assembler), pattern-keyed not line-keyed. Gate not weakened. | `check_fact_category_pinning.py`: 0 new (65 allowlisted). PASS; `--self-test` exit 0. | PASS |
-| Governance Gates | TWO causes. (i) `provenance_inventory --check` stale on merged tree (12.10c step-1 artifact) — FIXED: runbook step 1 executed, `nirmana-writer-digests.json` regenerated, `--check` green. Also in this job: drift 79 (≤ ceiling 79, exit 3) PASS; schema_validator was exit 1 from ONE CRITICAL — the `L3-GOCHARA-WP0-7-ADK0018-20260927` SESSION_LOG entry embedded a `session_close_pointer` instead of an inline `session_close:` block — FIXED by inlining the canonical close YAML verbatim (now 42 violations ≤ 43, exit 3). (ii) **pins `--check` — STILL RED, see 2c.** | (i) executed; (ii) stopped — native authority required. | `provenance_inventory --check` exit 0; `drift_detector` 79/exit 3; `schema_validator` 42/exit 3. | FAIL (pins step only — log confirms "Nirmana analysis layer pins are STALE or INVALID") |
-| Density Census (§N.6) | `capability_knowledge.snapshot.json` stale on merged tree (planner capability content arrived via main merge). | `npm run codegen:capability-knowledge -- --generated-at=2026-09-29T00:16:48Z` (182 SCUs; `…:check` green). | check green locally. | fixed in `68a56814a`; awaiting re-run confirmation |
-| Unit Tests | `nirmana-analysis-receipts.test.ts` — layer aggregates re-derived from the live inventory mismatch the committed pins (L1 `b3674dfb…` vs committed `93de3b2c…`; L3 similarly). Same root cause as Governance Gates (ii). | NOT branch-local-fixable without authority — see 2c. | — | FAIL (same pins root cause) |
+| Governance Gates | TWO causes. (i) `provenance_inventory --check` stale on merged tree (12.10c step-1 artifact) — FIXED: runbook step 1 executed, `nirmana-writer-digests.json` regenerated, `--check` green. Also in this job: drift 79 (≤ ceiling 79, exit 3) PASS; schema_validator was exit 1 from ONE CRITICAL — the `L3-GOCHARA-WP0-7-ADK0018-20260927` SESSION_LOG entry embedded a `session_close_pointer` instead of an inline `session_close:` block — FIXED by inlining the canonical close YAML verbatim (now 42 violations ≤ 43, exit 3). (ii) **pins `--check` — STILL RED, see 2c.** | (i) executed; (ii) stopped — native authority required. | `provenance_inventory --check` exit 0; `drift_detector` 79/exit 3; `schema_validator` 42/exit 3. | FAIL — remote log confirms the ONLY remaining failure is the pins step ("L1 active: writer_inventory_sha256 is stale … L3 active: … changed_assets do not match exact delta") |
+| Density Census (§N.6) | `capability_knowledge.snapshot.json` stale on merged tree (planner capability content arrived via main merge). | `npm run codegen:capability-knowledge -- --generated-at=2026-09-29T00:16:48Z` (182 SCUs; `…:check` green). | check green locally. | fixed in `68a56814a`; **remote PASS confirmed** at `66d168174` |
+| Unit Tests | `nirmana-analysis-receipts.test.ts` — layer aggregates re-derived from the live inventory mismatch the committed pins (L1 `b3674dfb…` vs committed `93de3b2c…`; L3 similarly). Same root cause as Governance Gates (ii). | NOT branch-local-fixable without authority — see 2c. | — | FAIL — remote log confirms exactly 3 failing assertions, all inside `nirmana-analysis-receipts.test.ts` (pinned receipt count; wrong-layer refusal; hand-edited-pin re-derivation) — the pins root cause only |
+
+**Final remote state at HEAD `66d168174`: 32 pass / 15 skip / 2 fail** (`Governance Gates`
++ `Unit Tests`, both pins-only). `mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED`.
+Note: `origin/main` advanced one commit past our merge (`fd4c3d4b1`, #2752) after the
+readiness work began; PR checks run on `refs/pull/2731/merge` against current main, so
+this does not invalidate the results above. Re-merging main again was NOT done — F-0's
+merge authorization was scoped to the one conflict-resolution merge.
 
 ### 2c. STOP ITEM — nirmana layer-pins re-admission (12.10c step 2) requires native authority
 
@@ -164,7 +171,7 @@ Consequences:
 
 ---
 
-## HEADLINE VERDICT: **HOLDING** (updated 2026-09-29, HEAD `68a56814a`)
+## HEADLINE VERDICT: **HOLDING** (updated 2026-09-29, HEAD `66d168174`)
 
 Stop items, in order:
 
@@ -181,9 +188,8 @@ Stop items, in order:
 Resolved in this pass (was stop item 1/2): D-01a, Secret Scan, Earned-Signal §N.8,
 Fact-Category Pinning, Density Census, the provenance-inventory staleness, the drift and
 schema_validator ceilings, and the SESSION_LOG CRITICAL — all fixed branch-local with
-local-equivalent green evidence (§2b); remote re-runs at `bd5c34fb0`/`68a56814a` confirm
-PASS for D-01a, Secret Scan, Earned-Signal, Fact-Category (Density Census re-run pending
-at packet-update time).
+local-equivalent green evidence (§2b) and **remote PASS confirmed at `66d168174`** for
+every one of them.
 
 12.10c runbook execution state: **step 1 (writer digests) EXECUTED** on the merged tree —
 `nirmana-writer-digests.json` regenerated, `--check` green; **step 3 (capability-estate
