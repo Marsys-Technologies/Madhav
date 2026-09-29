@@ -188,6 +188,73 @@ def test_waiting_vs_ready():
     assert status_of(s, "B")["status"] == "waiting" and status_of(s, "B")["deps_open"] == ["A"]
 
 
+# ---- Fix 2: the authoritative decisions log drives done_by:decision items, not decision events -
+
+def decisions_log(latest: dict) -> dict:
+    return {"latest": latest, "malformed": 0}
+
+
+def test_decisions_none_keeps_old_event_driven_behaviour():
+    """Backward compatibility: build_snapshot(..., decisions=None) is unchanged from before Fix 2."""
+    s = build_snapshot(MODEL, [ev(kind="decision", decision="N-1", state="decided", detail="approved")],
+                       {}, {}, {}, now=NOW, decisions=None)
+    assert status_of(s, "C")["status"] == "done"
+
+
+def test_event_alone_no_longer_marks_a_decision_item_done():
+    """The Fix 2 defect: previously ANY actor's decided/delegated event flipped the gate done."""
+    s = build_snapshot(MODEL, [ev(kind="decision", decision="N-1", state="decided", detail="approved", actor="anyone")],
+                       {}, {}, {}, now=NOW, decisions=decisions_log({}))
+    assert status_of(s, "C")["status"] != "done"
+    row = next(d for d in s["decisions"] if d["id"] == "N-1")
+    assert row["status"] == "conflict" and row["conflict"] == {"event": "decided", "log": "none"}
+
+
+def test_log_decided_marks_the_item_done_with_evidence():
+    log = decisions_log({"N-1": {"id": "N-1", "state": "decided", "detail": "approved for real",
+                                 "source": "Native, 2026-09-29: yes", "ts": "2026-09-29T10:00:00+00:00"}})
+    s = build_snapshot(MODEL, [], {}, {}, {}, now=NOW, decisions=log)
+    c = status_of(s, "C")
+    assert c["status"] == "done"
+    assert "approved for real" in c["evidence"] and "Native, 2026-09-29: yes" in c["evidence"]
+
+
+def test_log_delegated_shows_waiting_not_done():
+    log = decisions_log({"N-1": {"id": "N-1", "state": "delegated", "detail": "handed off",
+                                 "source": "Native, 2026-09-29: delegate", "delegated_to": "L3 family session",
+                                 "ts": "2026-09-29T10:00:00+00:00"}})
+    s = build_snapshot(MODEL, [], {}, {}, {}, now=NOW, decisions=log)
+    c = status_of(s, "C")
+    assert c["status"] == "waiting"
+    assert c["detail"] == "delegated to L3 family session; not yet decided"
+
+
+def test_requested_event_still_shows_running_awaiting_native_when_log_has_no_record():
+    log = decisions_log({})
+    s = build_snapshot(MODEL, [ev(kind="decision", decision="N-1", state="requested")], {}, {}, {}, now=NOW, decisions=log)
+    assert status_of(s, "C")["status"] == "running"
+
+
+def test_decision_event_disagreeing_with_log_is_a_conflict_row():
+    log = decisions_log({"N-1": {"id": "N-1", "state": "delegated", "detail": "handed off",
+                                 "source": "Native, 2026-09-29: delegate", "ts": "2026-09-29T10:00:00+00:00"}})
+    s = build_snapshot(MODEL, [ev(kind="decision", decision="N-1", state="decided", detail="I say it's decided")],
+                       {}, {}, {}, now=NOW, decisions=log)
+    row = next(d for d in s["decisions"] if d["id"] == "N-1")
+    assert row["status"] == "conflict"
+    assert row["conflict"] == {"event": "decided", "log": "delegated"}
+    # the item itself follows the log (delegated → waiting), never the disagreeing event
+    assert status_of(s, "C")["status"] == "waiting"
+
+
+def test_decision_event_warnings_flag_unauthorized_actors():
+    evs = [ev(kind="decision", decision="N-1", state="decided", detail="x", actor="random-builder"),
+           ev(kind="decision", decision="N-1", state="decided", detail="x", actor="steward")]
+    s = build_snapshot(MODEL, evs, {}, {}, {}, now=NOW, decisions=decisions_log({}))
+    warnings = s["health"]["decision_event_warnings"]
+    assert len(warnings) == 1 and "random-builder" in warnings[0]
+
+
 def test_detector_activity_does_not_bypass_open_dependencies():
     """An open PR on a gated item (e.g. #2731 before its preconditions) shows as waiting, not running."""
     import datetime as dt

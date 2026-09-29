@@ -37,6 +37,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     __package__ = "suvarna_tracker"
 
+from suvarna_tracker import decisions as DEC  # noqa: E402
 from suvarna_tracker import detectors as D  # noqa: E402
 from suvarna_tracker.events import EventLog  # noqa: E402
 from suvarna_tracker.state import build_snapshot  # noqa: E402
@@ -56,6 +57,7 @@ def default_config() -> dict:
         "hold": os.path.join(home, "run", "SUVARNA_HOLD"),
         "model": os.environ.get("SUVARNA_PLAN_MODEL",
                                 os.path.join(REPO_ROOT, "00_ARCHITECTURE", "control", "suvarna", "plan_model.json")),
+        "decisions": os.environ.get("SUVARNA_DECISIONS", os.path.join(home, "run", "DECISIONS.jsonl")),
         "repo": os.environ.get("SUVARNA_REPO", REPO_ROOT),
         "nikasha_root": os.environ.get("NIKASHA_ROOT", "/Users/Dev/madhav-nikasha"),
         "pgenv": os.environ.get("SUVARNA_PGENV") or DEFAULT_PGENV,
@@ -78,6 +80,13 @@ class Engine:
         self.model: dict = {"tracks": [], "items": [], "decisions": []}
         self.model_error: str | None = None
         self._model_mtime = None
+        # Fix 2: the authoritative decisions log (decisions.py), reloaded whenever its mtime
+        # changes — cheap, and it's what native gates read now, not decision events. Starts as an
+        # EMPTY (not None) log: once this engine is running, "no DECISIONS.jsonl written yet" must
+        # mean "nothing is decided", never "fall back to the old event-driven behaviour" — that
+        # fallback exists only for callers of build_snapshot() that never pass a log at all.
+        self.decisions_log: dict = {"latest": {}, "malformed": 0}
+        self._decisions_mtime = None
         self.metrics: dict = {"status": "not yet measured"}
         self._metrics_at = 0.0
         self._metrics_running = False
@@ -124,6 +133,7 @@ class Engine:
     def tick(self) -> None:
         self._last_tick = time.time()
         self._reload_model()
+        self._reload_decisions()
         if self.log.refresh():
             self._dirty = True
         if self.cfg["detectors_enabled"]:
@@ -161,10 +171,32 @@ class Engine:
             self._model_mtime = m
             self._dirty = True  # surface errors as fast as any other change
 
+    def _reload_decisions(self) -> None:
+        path = self.cfg.get("decisions")
+        if not path:
+            return
+        try:
+            m = os.stat(path).st_mtime
+        except OSError:
+            # Not written yet (or removed): an EMPTY log, not "no log" — see the __init__ note.
+            if self.decisions_log.get("latest"):
+                self._dirty = True
+            self.decisions_log = {"latest": {}, "malformed": 0}
+            self._decisions_mtime = None
+            return
+        if m == self._decisions_mtime:
+            return
+        try:
+            self.decisions_log = DEC.load_decisions(path)
+        except OSError:
+            self.decisions_log = {"latest": {}, "malformed": 0}
+        self._decisions_mtime = m
+        self._dirty = True
+
     def _refresh_metrics(self) -> None:
         out: dict = {"errors": [], "measured_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
         try:
-            reg = D.parse_register(os.path.join(self.cfg["nikasha_root"], "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md"))
+            reg = D.parse_register(D.register_text(self.cfg["nikasha_root"]))
             out["register"] = D.register_counts(reg)
             out["register"]["malformed_rows"] = reg["malformed"]
         except Exception as exc:
@@ -187,7 +219,11 @@ class Engine:
                 out["open_gaps_by_layer"] = dict(sorted(collections.Counter(layer_of.get(g["asset"], "other") for g in ls["open_gaps"]).items()))
             elev = D.elevated_assets(D.Config(repo=self.cfg["repo"], nikasha_root=self.cfg["nikasha_root"],
                                               pgenv=self.cfg["pgenv"], home=self.cfg["home"]))
-            out["elevated"] = len(elev)
+            # Fix 6 (review #7): "elevated" is a proxy (≥1 PASS/N-A certification, no open gap row),
+            # not the §1.1 rollup itself — the key and an explicit definition say so honestly.
+            out["elevated_proxy"] = len(elev)
+            out["elevated_definition"] = ("proxy: ≥1 PASS/N-A certification and no open gap row; "
+                                          "exact §1.1 rollup arrives with the certification writer (E5.1)")
             if layer_of:
                 out["elevated_by_layer"] = {l: sum(1 for a in elev if layer_of.get(a) == l) for l in sorted(set(layer_of.values()))}
                 levels = D._dag_cache.get("levels", {})
@@ -232,7 +268,8 @@ class Engine:
                 r = self.det.get(i["detector"])
                 if r is not None:
                     det_results[i["id"]] = r.to_dict()
-        snap = build_snapshot(self.model, list(self.log.events), det_results, self.metrics, self.health())
+        snap = build_snapshot(self.model, list(self.log.events), det_results, self.metrics, self.health(),
+                              decisions=self.decisions_log)
         body = {k: v for k, v in snap.items() if k != "generated_at"}
         # ages change every second; exclude them from the change digest
         digest = hashlib.sha256(json.dumps(_strip_ages(body), sort_keys=True, default=str).encode()).hexdigest()

@@ -2,6 +2,7 @@
 import json
 import os
 import socket
+import subprocess
 import threading
 import time
 import urllib.request
@@ -36,6 +37,16 @@ REGISTER = """# register
 """
 
 
+def _git_init_commit(root) -> None:
+    """Fix 5: detectors now read the register and ledgers from a committed ref (git show), never
+    the working tree — so any fixture root they'll be pointed at must be a real git repo with its
+    fixture content actually committed."""
+    env = {**os.environ, "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "test@example.com",
+           "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "test@example.com"}
+    for cmd in (["git", "init", "-q"], ["git", "add", "-A"], ["git", "commit", "-q", "-m", "seed"]):
+        subprocess.run(cmd, cwd=str(root), env=env, check=True, capture_output=True)
+
+
 @pytest.fixture
 def nik(tmp_path):
     root = tmp_path / "nik"
@@ -49,6 +60,7 @@ def nik(tmp_path):
         + json.dumps({"asset": "a2", "gap_id": "g2", "state": "CLOSED"}) + "\n")
     (root / "00_ARCHITECTURE/control/asset_certs.jsonl").write_text(
         json.dumps({"asset": "_schema"}) + "\n" + json.dumps({"asset": "a2", "criterion": "Idem.pattern", "verdict": "PASS"}) + "\n")
+    _git_init_commit(root)
     return str(root)
 
 
@@ -128,6 +140,106 @@ def test_db_detector_without_env_is_error_not_pass(nik, tmp_path):
 def test_elevation_proxy(nik):
     cfg = D.Config(repo=".", nikasha_root=nik, pgenv=None, home=".")
     assert D.elevated_assets(cfg) == {"a2"}                      # a1 has an open gap and no PASS certification
+
+
+# ---- Fix 5: committed-ref reads, not the working tree ------------------------------------------
+
+def test_register_detector_reads_committed_ref_not_working_tree(tmp_path):
+    """The register/ledger detectors must reflect the branch's last commit, never an in-flight,
+    uncommitted edit sitting in the working tree."""
+    root = tmp_path / "nik2"
+    (root / "00_ARCHITECTURE/briefs/nirmana").mkdir(parents=True)
+    (root / "00_ARCHITECTURE/control").mkdir(parents=True)
+    reg_path = root / "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md"
+    reg_path.write_text(REGISTER)  # committed version has R4 malformed (extra cell)
+    (root / "00_ARCHITECTURE/control/asset_gaps.jsonl").write_text(json.dumps({"asset": "_schema"}) + "\n")
+    (root / "00_ARCHITECTURE/control/asset_certs.jsonl").write_text(json.dumps({"asset": "_schema"}) + "\n")
+    _git_init_commit(root)
+
+    # Dirty the working tree only: fix R4's extra cell so the file ON DISK is now well-formed —
+    # this change is never committed.
+    fixed = REGISTER.replace("| R4 | d | s | COSMETIC | — | 1 | OPEN — x | EXTRA RULING CELL |",
+                             "| R4 | d | s | COSMETIC | — | 1 | OPEN |")
+    assert fixed != REGISTER
+    reg_path.write_text(fixed)
+
+    d = dets(str(root), tmp_path)
+    spec = {"type": "register_wellformed"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    # still reflects the last COMMIT (R4 malformed), not the uncommitted working-tree fix
+    assert r.status == "pending" and "R4" in r.detail
+
+
+def test_register_detector_uses_nikasha_ref_env_override(tmp_path, monkeypatch):
+    """NIKASHA_REF selects which commit is read; changing it changes what the detector sees."""
+    root = tmp_path / "nik3"
+    (root / "00_ARCHITECTURE/briefs/nirmana").mkdir(parents=True)
+    (root / "00_ARCHITECTURE/control").mkdir(parents=True)
+    reg_path = root / "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md"
+    reg_path.write_text(REGISTER)
+    (root / "00_ARCHITECTURE/control/asset_gaps.jsonl").write_text(json.dumps({"asset": "_schema"}) + "\n")
+    (root / "00_ARCHITECTURE/control/asset_certs.jsonl").write_text(json.dumps({"asset": "_schema"}) + "\n")
+    _git_init_commit(root)
+    first_sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(root), capture_output=True, text=True, check=True).stdout.strip()
+
+    fixed = REGISTER.replace("| R4 | d | s | COSMETIC | — | 1 | OPEN — x | EXTRA RULING CELL |",
+                             "| R4 | d | s | COSMETIC | — | 1 | OPEN |")
+    reg_path.write_text(fixed)
+    subprocess.run(["git", "add", "-A"], cwd=str(root), check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-q", "-m", "fix R4"], cwd=str(root), check=True, capture_output=True)
+
+    monkeypatch.setenv("NIKASHA_REF", first_sha)
+    reg = D.parse_register(D.register_text(str(root)))
+    assert reg["malformed"] == ["R4"]                              # pinned to the first commit
+
+    monkeypatch.setenv("NIKASHA_REF", "HEAD")
+    reg2 = D.parse_register(D.register_text(str(root)))
+    assert reg2["malformed"] == []                                 # HEAD now has the fix
+
+
+def test_ledger_state_errors_never_fall_back_to_working_tree(tmp_path):
+    """If the committed ref can't be read (e.g. not a git repo), the reader errors — it must never
+    silently read the working tree instead."""
+    root = tmp_path / "not_a_repo"
+    (root / "00_ARCHITECTURE/control").mkdir(parents=True)
+    (root / "00_ARCHITECTURE/control/asset_gaps.jsonl").write_text(json.dumps({"asset": "_schema"}) + "\n")
+    (root / "00_ARCHITECTURE/control/asset_certs.jsonl").write_text(json.dumps({"asset": "_schema"}) + "\n")
+    with pytest.raises(RuntimeError):
+        D.ledger_state(D.Config(repo=str(tmp_path), nikasha_root=str(root), pgenv=None, home=str(tmp_path)))
+
+
+# ---- Fix 6: dag_levels must error, never silently return level 0, on a cycle -------------------
+
+class _FakePsqlDetectors:
+    """A stand-in for Detectors offering only the `_psql` surface dag_levels needs."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def _psql(self, sql):
+        return self._rows
+
+
+def test_dag_levels_raises_on_cycle_naming_the_assets():
+    D._dag_cache.update(at=0.0, levels={}, layer={})
+    try:
+        fake = _FakePsqlDetectors([["a", "L1", "b"], ["b", "L1", "a"]])
+        with pytest.raises(RuntimeError) as exc:
+            D.dag_levels(fake)
+        assert "a" in str(exc.value) and "b" in str(exc.value)
+    finally:
+        D._dag_cache.update(at=0.0, levels={}, layer={})
+
+
+def test_dag_levels_still_computes_correctly_without_a_cycle():
+    D._dag_cache.update(at=0.0, levels={}, layer={})
+    try:
+        fake = _FakePsqlDetectors([["a", "L1", ""], ["b", "L1", "a"], ["c", "L1", "b"]])
+        levels = D.dag_levels(fake)
+        assert levels == {"a": 0, "b": 1, "c": 2}
+    finally:
+        D._dag_cache.update(at=0.0, levels={}, layer={})
 
 
 # ---- end-to-end server ---------------------------------------------------------------------------
@@ -293,3 +405,126 @@ def test_service_worker_kill_switch_served(server):
         assert r.status == 200 and "javascript" in r.headers["Content-Type"]
         assert r.headers["Cache-Control"] == "no-store"
         assert "registration.unregister()" in body and "caches.delete" in body and "navigate" in body
+
+
+# ---- Fix 6: metrics report the honest 'elevated_proxy' label, not a bare 'elevated' -------------
+
+def test_metrics_report_elevated_proxy_not_bare_elevated(server):
+    t0 = time.time()
+    m = {}
+    while time.time() - t0 < 10:
+        m = get(server["base"] + "/api/state").get("metrics", {})
+        if "elevated_proxy" in m:
+            break
+        time.sleep(0.2)
+    assert "elevated_proxy" in m and "elevated" not in m
+    assert m.get("elevated_definition", "").startswith("proxy:")
+
+
+# ---- Fix 2: native gates read the authoritative decisions log, not decision events --------------
+
+@pytest.fixture
+def server_with_decisions(tmp_path, nik):
+    from suvarna_tracker import decisions as DEC
+    home = tmp_path / "home2"
+    (home / "run").mkdir(parents=True)
+    model = tmp_path / "model2.json"
+    model_dict = {
+        "campaign": "Suvarṇa", "plan_ref": "test",
+        "tracks": [{"id": "T", "title": "Track", "mode": "parallel"}],
+        "items": [{"id": "G1", "track": "T", "title": "gated", "depends_on": [], "done_by": "decision", "decision": "N-1"}],
+        "decisions": [{"id": "N-1", "title": "approve", "recommendation": "yes"}],
+    }
+    model.write_text(json.dumps(model_dict))
+    decisions_path = str(home / "run" / "DECISIONS.jsonl")
+    cfg = {"home": str(home), "events": str(home / "run/EVENTS.jsonl"), "snapshot": str(home / "run/snapshot.json"),
+           "hold": str(home / "run/SUVARNA_HOLD"), "model": str(model), "decisions": decisions_path,
+           "repo": str(tmp_path), "nikasha_root": nik, "pgenv": None, "db_port": 1, "metrics_ttl": 3600,
+           "detectors_enabled": False}
+    port = free_port()
+    httpd, engine = serve(port, cfg)
+    th = threading.Thread(target=httpd.serve_forever, daemon=True); th.start()
+    base = f"http://127.0.0.1:{port}"
+    t0 = time.time()
+    while time.time() - t0 < 10:
+        try:
+            if json.load(urllib.request.urlopen(base + "/api/state", timeout=2)).get("tracks"):
+                break
+        except Exception:
+            pass
+        time.sleep(0.1)
+    yield {"base": base, "cfg": cfg, "engine": engine, "decisions_path": decisions_path, "DEC": DEC}
+    engine.stop(); httpd.shutdown(); httpd.server_close()
+
+
+def test_decision_event_alone_never_marks_a_gate_done(server_with_decisions):
+    """The old defect: an event (any actor) claiming decided used to flip the gate done. Now an
+    event alone — with no corroborating log record — must NOT do that; it must surface as a conflict."""
+    s = server_with_decisions
+    append(s["cfg"]["events"], {"kind": "decision", "actor": "some-random-actor", "decision": "N-1",
+                                "state": "decided", "detail": "I decided it myself"})
+    t0 = time.time()
+    dec_row = {"status": None}
+    snap = None
+    while time.time() - t0 < 8:
+        snap = get(s["base"] + "/api/state")
+        dec_row = next(d for d in snap["decisions"] if d["id"] == "N-1")
+        if dec_row["status"] == "conflict":
+            break
+        time.sleep(0.2)
+    assert dec_row["status"] == "conflict"
+    assert dec_row["conflict"]["event"] == "decided" and dec_row["conflict"]["log"] == "none"
+    assert item(snap, "G1")["status"] != "done"
+
+
+def test_decision_log_decided_marks_the_gate_done(server_with_decisions):
+    s = server_with_decisions
+    s["DEC"].append_decision(s["decisions_path"], {
+        "id": "N-1", "state": "decided", "writer": "strategic-suvarna",
+        "source": "Native, session 'Strategic Suvarṇa', 2026-09-29: 'yes, approved'",
+        "detail": "approved for real",
+    })
+    t0 = time.time()
+    g1 = None
+    while time.time() - t0 < 8:
+        snap = get(s["base"] + "/api/state")
+        g1 = item(snap, "G1")
+        if g1["status"] == "done":
+            break
+        time.sleep(0.2)
+    assert g1["status"] == "done"
+    assert "approved for real" in g1["evidence"]
+
+
+def test_decision_log_delegated_shows_waiting_not_done(server_with_decisions):
+    s = server_with_decisions
+    s["DEC"].append_decision(s["decisions_path"], {
+        "id": "N-1", "state": "delegated", "writer": "steward",
+        "source": "Native, session 'Strategic Suvarṇa', 2026-09-29: 'delegate this'",
+        "detail": "handed to the L3 family session", "delegated_to": "L3 Saṅgam family session",
+    })
+    t0 = time.time()
+    g1 = None
+    while time.time() - t0 < 8:
+        snap = get(s["base"] + "/api/state")
+        g1 = item(snap, "G1")
+        if g1["status"] == "waiting" and "delegated" in (g1.get("detail") or ""):
+            break
+        time.sleep(0.2)
+    assert g1["status"] == "waiting"
+    assert "delegated to L3 Saṅgam family session; not yet decided" == g1["detail"]
+
+
+def test_decision_event_from_unauthorized_actor_is_warned_in_health(server_with_decisions):
+    s = server_with_decisions
+    append(s["cfg"]["events"], {"kind": "decision", "actor": "random-builder", "decision": "N-1",
+                                "state": "decided", "detail": "rogue claim"})
+    t0 = time.time()
+    warnings = []
+    while time.time() - t0 < 8:
+        snap = get(s["base"] + "/api/state")
+        warnings = snap["health"].get("decision_event_warnings", [])
+        if warnings:
+            break
+        time.sleep(0.2)
+    assert any("random-builder" in w for w in warnings)

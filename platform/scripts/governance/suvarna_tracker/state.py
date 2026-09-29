@@ -4,7 +4,15 @@ Status rules (the earned-signal discipline, in order):
 1. An item with a **detector**: the detector decides `done`. An event may set it running, in review,
    blocked or parked, but an event claiming `done` while the detector disagrees is shown as a
    conflict, never as done. A detector that cannot measure shows `unknown`, never done.
-2. An item **done by decision**: done when the native's decision is recorded (decided or delegated).
+2. An item **done by decision**: driven by the authoritative decisions log (`decisions.py`
+   DECISIONS.jsonl), not by decision events (Fix 2 — review: any actor's `decided`/`delegated`
+   *event* used to turn a native gate done). `decided` in the log → done; `delegated` in the log →
+   not done, `waiting` with detail naming who it's delegated to; otherwise a `requested` *event*
+   shows `running` "awaiting the native"; otherwise waiting/ready as usual. A decision *event*
+   claiming `decided`/`delegated` that disagrees with the log (or that the log has no record of) is
+   surfaced as a `conflict` on that decision's row in the snapshot's `decisions` table, never used to
+   drive the gate. Callers that don't pass a decisions log (`decisions=None`) keep the old,
+   event-driven behaviour for backward compatibility.
 3. An item **done by event**: done only by an event that carries evidence (enforced at write time).
 4. Anything not started whose dependencies are all done is `ready`; otherwise `waiting`.
 """
@@ -47,13 +55,42 @@ def index_events(events: list[dict]) -> dict:
 
 
 def decision_status(evs: list[dict]) -> tuple[str, dict | None]:
+    """Status from decision *events* only (the workflow signal, not the authoritative record)."""
     if not evs:
         return "pending", None
     last = evs[-1]
     return last["state"], last
 
 
-def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
+def decision_log_status(dec_id: str, decisions: dict | None) -> tuple[str, dict | None]:
+    """Status from the authoritative decisions log (decisions.load_decisions' return shape:
+    {'latest': {id: record}, 'malformed': N}), or ('none', None) if there's no record — or no log
+    was supplied at all (decisions is None)."""
+    if not decisions:
+        return "none", None
+    rec = decisions.get("latest", {}).get(dec_id)
+    if not rec:
+        return "none", None
+    return rec.get("state", "none"), rec
+
+
+ALLOWED_DECISION_WRITERS = {"steward", "strategic-suvarna"}
+
+
+def decision_event_warnings(events: list[dict]) -> list[str]:
+    """Decision events from actors other than the two roles authorized to write the decisions log
+    (Fix 2) — these events never drive a gate, but are worth surfacing as a health warning since an
+    unexpected actor emitting one usually means a misconfigured writer somewhere."""
+    out = []
+    for e in events:
+        if (e.get("kind") == "decision" and e.get("state") in ("decided", "delegated")
+                and e.get("actor") not in ALLOWED_DECISION_WRITERS):
+            out.append(f"{e.get('actor')} emitted a {e['state']} decision event for "
+                       f"{e.get('decision')} (ts {e.get('ts')})")
+    return out
+
+
+def item_status(item: dict, ix: dict, det_result: dict | None, decisions: dict | None = None) -> dict:
     all_evs = ix["items"].get(item["id"], [])
     # A step event ("census done") advances only that step, never the whole item's status.
     evs = [e for e in all_evs if not e.get("step")]
@@ -98,9 +135,23 @@ def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
         return out
 
     if item.get("done_by") == "decision":
-        st, dev = decision_status(ix["decisions"].get(item.get("decision", ""), []))
-        out["source"] = "decision:" + item.get("decision", "?")
-        if st in ("decided", "delegated"):
+        dec_id = item.get("decision", "")
+        out["source"] = "decision:" + (dec_id or "?")
+        log_state, log_rec = decision_log_status(dec_id, decisions)
+        if decisions is not None and log_state == "decided":
+            evidence = f"{log_rec.get('detail', '')} — {log_rec.get('source', '')}"
+            out.update(status="done", detail=log_rec.get("detail", ""), evidence=evidence,
+                       updated_at=log_rec.get("ts"))
+            return out
+        if decisions is not None and log_state == "delegated":
+            delegated_to = log_rec.get("delegated_to") or "?"
+            out.update(status="waiting", detail=f"delegated to {delegated_to}; not yet decided",
+                       updated_at=log_rec.get("ts"))
+            return out
+        st, dev = decision_status(ix["decisions"].get(dec_id, []))
+        if decisions is None and st in ("decided", "delegated"):
+            # Backward-compatible path: no authoritative log supplied — fall back to the old,
+            # event-driven behaviour so existing callers keep working unchanged.
             out.update(status="done", detail=dev.get("detail", ""), evidence=dev.get("detail"), updated_at=dev["ts"])
         elif st == "requested":
             out.update(status="running", detail="awaiting the native", updated_at=dev["ts"])
@@ -119,12 +170,16 @@ def item_status(item: dict, ix: dict, det_result: dict | None) -> dict:
 
 
 def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: dict,
-                   health: dict, now: dt.datetime | None = None) -> dict:
-    """Pure function: everything the dashboard shows. det_results maps item id → detector result dict."""
+                   health: dict, now: dt.datetime | None = None, decisions: dict | None = None) -> dict:
+    """Pure function: everything the dashboard shows. det_results maps item id → detector result dict.
+
+    `decisions` is the authoritative decisions log as returned by `decisions.load_decisions()`
+    ({'latest': {id: record}, 'malformed': N}), or None to keep the old, event-only behaviour
+    (backward compatible for callers/tests that don't pass one — Fix 2)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     ix = index_events(events)
     items = {i["id"]: dict(i) for i in model["items"]}
-    status = {iid: item_status(it, ix, det_results.get(iid)) for iid, it in items.items()}
+    status = {iid: item_status(it, ix, det_results.get(iid), decisions) for iid, it in items.items()}
 
     # readiness from dependencies
     for iid, it in items.items():
@@ -159,15 +214,30 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     total = len(flat)
     done_w = counts.get("done", 0) + sum((t["progress"] or 0) for t in flat if t["status"] != "done")
 
-    decisions = []
+    decisions_rows = []
     needed_by = collections.defaultdict(list)
     for it in model["items"]:
         if it.get("decision"):
             needed_by[it["decision"]].append(it["id"])
     for d in model["decisions"]:
-        st, dev = decision_status(ix["decisions"].get(d["id"], []))
-        decisions.append({**d, "status": st, "detail": (dev or {}).get("detail", ""),
-                          "updated_at": (dev or {}).get("ts"), "needed_by": needed_by.get(d["id"], [])})
+        ev_state, ev = decision_status(ix["decisions"].get(d["id"], []))
+        if decisions is not None:
+            log_state, log_rec = decision_log_status(d["id"], decisions)
+            if log_state != "none":
+                row_status, row_detail, row_updated = log_state, log_rec.get("detail", ""), log_rec.get("ts")
+            else:
+                row_status, row_detail, row_updated = ev_state, (ev or {}).get("detail", ""), (ev or {}).get("ts")
+            row = {**d, "status": row_status, "detail": row_detail, "updated_at": row_updated,
+                   "needed_by": needed_by.get(d["id"], [])}
+            # A decision *event* claiming decided/delegated that the log doesn't corroborate (missing
+            # or disagreeing) is a conflict — surfaced, never used to drive the gate (Fix 2).
+            if ev_state in ("decided", "delegated") and (log_state == "none" or log_state != ev_state):
+                row["status"] = "conflict"
+                row["conflict"] = {"event": ev_state, "log": log_state}
+            decisions_rows.append(row)
+        else:
+            decisions_rows.append({**d, "status": ev_state, "detail": (ev or {}).get("detail", ""),
+                                   "updated_at": (ev or {}).get("ts"), "needed_by": needed_by.get(d["id"], [])})
 
     recent = [e for e in events[-40:]][::-1]
     last_ev = events[-1]["ts"] if events else None
@@ -189,9 +259,10 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "next": [t for t in flat if t["status"] == "ready"],
         "attention": [t for t in flat if t["status"] in ("blocked", "failed", "parked", "conflict", "unknown")],
         "done": sorted([t for t in flat if t["status"] == "done"], key=lambda t: t.get("updated_at") or t.get("checked_at") or "", reverse=True),
-        "decisions": decisions,
+        "decisions": decisions_rows,
         "metrics": {**metrics, "items_done_24h": done_24h,
                     "reported": {k: {"value": v.get("value"), "ts": v["ts"], "detail": v.get("detail", "")} for k, v in ix["metrics"].items()}},
         "activity": recent,
-        "health": {**health, "heartbeats": hb, "last_event_at": last_ev, "last_event_age_s": _age_s(last_ev, now)},
+        "health": {**health, "heartbeats": hb, "last_event_at": last_ev, "last_event_age_s": _age_s(last_ev, now),
+                   "decision_event_warnings": decision_event_warnings(events)},
     }

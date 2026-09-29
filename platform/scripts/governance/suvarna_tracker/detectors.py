@@ -54,6 +54,35 @@ def _run(cmd: list[str] | str, cwd: str | None = None, timeout: int = 60, shell:
 
 
 # --------------------------------------------------------------------------------------------
+# Committed-ref reads (Fix 5, review #17): the register and ledgers must reflect what's actually
+# on the branch's last commit, never an in-flight working-tree edit — a detector measuring a
+# working copy could show "closed" for a change that was never committed. `NIKASHA_REF` (default
+# HEAD) selects the ref; a failed `git show` is surfaced as an error, never silently falls back to
+# the working tree.
+# --------------------------------------------------------------------------------------------
+
+REGISTER_REL_PATH = "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md"
+GAPS_REL_PATH = "00_ARCHITECTURE/control/asset_gaps.jsonl"
+CERTS_REL_PATH = "00_ARCHITECTURE/control/asset_certs.jsonl"
+
+
+def _nikasha_ref() -> str:
+    return os.environ.get("NIKASHA_REF", "HEAD")
+
+
+def _git_show_text(nikasha_root: str, rel_path: str) -> str:
+    ref = _nikasha_ref()
+    rc, out = _run(["git", "-C", nikasha_root, "show", f"{ref}:{rel_path}"], timeout=30)
+    if rc != 0:
+        raise RuntimeError(f"git show {ref}:{rel_path} failed: {out.strip()[:200]}")
+    return out
+
+
+def register_text(nikasha_root: str) -> str:
+    return _git_show_text(nikasha_root, REGISTER_REL_PATH)
+
+
+# --------------------------------------------------------------------------------------------
 # Register parsing (shared by several detectors and by the metrics)
 # --------------------------------------------------------------------------------------------
 
@@ -65,43 +94,47 @@ def classify_state(cell: str) -> str:
     return "OTHER"
 
 
-def parse_register(path: str) -> dict:
+def parse_register(source: str) -> dict:
     """Rows keyed by id: {'severity','state_class','state'}; plus the header tally and malformed rows.
+
+    `source` is either a file path or the register's own text (auto-detected: a path never
+    contains a newline, the register's markdown always does) — so a caller reading a committed ref
+    via `git show` (Fix 5) can hand this the text directly, with no working-tree file involved.
 
     Header-aware: the register holds tables with different column layouts (the build-system rows
     carry two extra columns). Each row is read against the most recent table header above it, and
     the severity and state columns are located by name, never by fixed position. A row whose cell
     count differs from its table's header is flagged malformed (its named columns are still read).
     """
+    text = source if "\n" in source else open(source, encoding="utf-8").read()
     rows, malformed, header = {}, [], {}
     in_tally = False
     layout = {"n": 9, "severity": 4, "state": 7}  # default: # | change | surfaced | severity | depends | effort | state
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            if line.startswith("### 0.1"):
-                in_tally = True
-                continue
-            if in_tally and line.startswith("###"):
-                in_tally = False
-            if in_tally:
-                m = re.match(r"^\|\s*([A-Za-z_ 0-9]+?)\s*\|\s*(\d+)\s*\|", line)
-                if m and m.group(1).lower() != "state":
-                    header[m.group(1).strip()] = int(m.group(2))
-                continue
-            if re.match(r"^\|\s*#\s*\|", line):
-                names = [c.strip().lower() for c in PIPE_SPLIT.split(line.rstrip("\n"))]
-                if "severity" in names and "state" in names:
-                    layout = {"n": len(names), "severity": names.index("severity"), "state": names.index("state")}
-                continue
-            m = re.match(r"^\| (R\d+) \|", line)
-            if not m:
-                continue
-            cells = [c.strip() for c in PIPE_SPLIT.split(line.rstrip("\n"))]
-            if len(cells) != layout["n"]:
-                malformed.append(m.group(1))
-            get = lambda i: cells[i] if i < len(cells) else ""
-            state = get(layout["state"])
-            rows[m.group(1)] = {"severity": get(layout["severity"]), "state_class": classify_state(state), "state": state[:200]}
+    for line in text.splitlines(keepends=True):
+        if line.startswith("### 0.1"):
+            in_tally = True
+            continue
+        if in_tally and line.startswith("###"):
+            in_tally = False
+        if in_tally:
+            m = re.match(r"^\|\s*([A-Za-z_ 0-9]+?)\s*\|\s*(\d+)\s*\|", line)
+            if m and m.group(1).lower() != "state":
+                header[m.group(1).strip()] = int(m.group(2))
+            continue
+        if re.match(r"^\|\s*#\s*\|", line):
+            names = [c.strip().lower() for c in PIPE_SPLIT.split(line.rstrip("\n"))]
+            if "severity" in names and "state" in names:
+                layout = {"n": len(names), "severity": names.index("severity"), "state": names.index("state")}
+            continue
+        m = re.match(r"^\| (R\d+) \|", line)
+        if not m:
+            continue
+        cells = [c.strip() for c in PIPE_SPLIT.split(line.rstrip("\n"))]
+        if len(cells) != layout["n"]:
+            malformed.append(m.group(1))
+        get = lambda i: cells[i] if i < len(cells) else ""
+        state = get(layout["state"])
+        rows[m.group(1)] = {"severity": get(layout["severity"]), "state_class": classify_state(state), "state": state[:200]}
     return {"rows": rows, "malformed": malformed, "header": header}
 
 
@@ -176,8 +209,11 @@ class Detectors:
             _run(["git", "fetch", "-q", "origin", "main"], cwd=self.cfg.repo, timeout=90)
             self._last_fetch = time.time()
 
-    def _register_path(self) -> str:
-        return os.path.join(self.cfg.nikasha_root, "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md")
+    def _register_text(self) -> str:
+        """The register's text at the committed ref (NIKASHA_REF, default HEAD) — never the
+        working tree (Fix 5). Raises RuntimeError if `git show` fails; callers let that propagate
+        so the detector reports `error`, never falling back to reading the file off disk."""
+        return register_text(self.cfg.nikasha_root)
 
     def _psql(self, sql: str, timeout: int = 60) -> list[list[str]]:
         if not self.cfg.pgenv or not os.path.exists(self.cfg.pgenv):
@@ -202,7 +238,7 @@ class Detectors:
         return DetectorResult("blocked", f"PR #{spec['pr']} closed without merging", now_iso(), "detector:pr_merged")
 
     def d_register_tally_consistent(self, spec):
-        reg = parse_register(self._register_path())
+        reg = parse_register(self._register_text())
         counts = register_counts(reg)["by_state"]
         label = {"OPEN": "OPEN", "CLOSED_ON_BRANCH": "CLOSED_ON_BRANCH", "DONE": "DONE", "CLOSED": "CLOSED",
                  "MEASURED in P6": "MEASURED", "PARTIAL": "PARTIAL"}
@@ -221,13 +257,13 @@ class Detectors:
         return DetectorResult("done", "header tallies match the rows", now_iso(), "detector:register_tally_consistent", 1.0)
 
     def d_register_wellformed(self, spec):
-        reg = parse_register(self._register_path())
+        reg = parse_register(self._register_text())
         if reg["malformed"]:
             return DetectorResult("pending", "malformed rows: " + ", ".join(reg["malformed"]), now_iso(), "detector:register_wellformed")
         return DetectorResult("done", f"all {len(reg['rows'])} rows well-formed", now_iso(), "detector:register_wellformed", 1.0)
 
     def d_register_rows_closed(self, spec):
-        reg = parse_register(self._register_path())
+        reg = parse_register(self._register_text())
         want = spec["rows"]
         missing = [r for r in want if r not in reg["rows"]]
         if missing:
@@ -301,7 +337,13 @@ _dag_lock = threading.Lock()
 
 
 def dag_levels(det: Detectors) -> dict[str, int]:
-    """Dependency level per active asset, from asset_registry.depends_on. Cached 10 minutes."""
+    """Dependency level per active asset, from asset_registry.depends_on. Cached 10 minutes.
+
+    Fix 6 (review #7): a dependency cycle is invalid registry data, not a valid level-0 result — it
+    now raises RuntimeError naming the cycle's assets instead of silently returning 0 for the
+    asset that closes the loop. Callers (the `levels_elevated` detector, the metrics refresh) let
+    this propagate into their existing error-isolation paths, same as any other measurement failure.
+    """
     with _dag_lock:
         if time.time() - _dag_cache["at"] < 600 and _dag_cache["levels"]:
             return dict(_dag_cache["levels"])
@@ -315,8 +357,9 @@ def dag_levels(det: Detectors) -> dict[str, int]:
     def level(a, stack=()):
         if a in lvl:
             return lvl[a]
-        if a in stack:  # cycle guard: never recurse forever on bad registry data
-            return 0
+        if a in stack:
+            cycle = stack[stack.index(a):] + (a,)
+            raise RuntimeError(f"dependency cycle: {' -> '.join(cycle)}")
         lvl[a] = 0 if not deps[a] else 1 + max(level(d, stack + (a,)) for d in deps[a])
         return lvl[a]
 
@@ -328,30 +371,33 @@ def dag_levels(det: Detectors) -> dict[str, int]:
 
 
 def ledger_state(cfg: Config) -> dict:
-    """Open gap rows (last state per gap_id, not superseded) and certification rows."""
-    gaps_path = os.path.join(cfg.nikasha_root, "00_ARCHITECTURE/control/asset_gaps.jsonl")
-    certs_path = os.path.join(cfg.nikasha_root, "00_ARCHITECTURE/control/asset_certs.jsonl")
+    """Open gap rows (last state per gap_id, not superseded) and certification rows — read from the
+    committed ref (NIKASHA_REF, default HEAD), never the working tree (Fix 5)."""
     last = {}
-    with open(gaps_path, encoding="utf-8") as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except ValueError:
-                continue
-            if d.get("asset") == "_schema" or "gap_id" not in d:
-                continue
-            last[d["gap_id"]] = d
+    for line in _git_show_text(cfg.nikasha_root, GAPS_REL_PATH).splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        if d.get("asset") == "_schema" or "gap_id" not in d:
+            continue
+        last[d["gap_id"]] = d
     open_gaps = [d for d in last.values() if d.get("state") in ("OPEN", "RE-OPENED")
                  and d.get("kind", "gap") == "gap" and not d.get("superseded_by")]
     certs = []
-    with open(certs_path, encoding="utf-8") as f:
-        for line in f:
-            try:
-                d = json.loads(line)
-            except ValueError:
-                continue
-            if d.get("asset") != "_schema":
-                certs.append(d)
+    for line in _git_show_text(cfg.nikasha_root, CERTS_REL_PATH).splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        if d.get("asset") != "_schema":
+            certs.append(d)
     return {"open_gaps": open_gaps, "certs": certs}
 
 

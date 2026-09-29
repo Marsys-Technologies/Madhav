@@ -102,6 +102,110 @@ def test_credential_never_opens_the_file(tmp_path, monkeypatch):
     assert r.status == "ok"
 
 
+# ---- credential_readonly (Fix 3, review #16) ------------------------------------------------------
+
+def _cred_file(tmp_path):
+    p = tmp_path / "pg.env"
+    p.write_text("secret=do-not-read-me")
+    os.chmod(p, 0o600)
+    return str(p)
+
+
+def test_credential_readonly_ok_when_readonly_and_no_write_grants(tmp_path):
+    p = _cred_file(tmp_path)
+
+    def q(pgenv, sql, timeout=10):
+        assert pgenv == p
+        if "default_transaction_read_only" in sql:
+            return 0, "on\n", ""
+        return 0, "0\n", ""
+
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    assert r.status == "ok"
+
+
+def test_credential_readonly_blocks_when_writes_are_possible(tmp_path):
+    p = _cred_file(tmp_path)
+
+    def q(pgenv, sql, timeout=10):
+        if "default_transaction_read_only" in sql:
+            return 0, "off\n", ""
+        return 0, "3\n", ""
+
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    assert r.status == "block" and "3" in r.detail
+
+
+def test_credential_readonly_blocks_when_flag_on_but_grants_exist(tmp_path):
+    p = _cred_file(tmp_path)
+
+    def q(pgenv, sql, timeout=10):
+        if "default_transaction_read_only" in sql:
+            return 0, "on\n", ""
+        return 0, "1\n", ""
+
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    assert r.status == "block"
+
+
+def test_credential_readonly_warns_when_query_cannot_run(tmp_path):
+    p = _cred_file(tmp_path)
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p,
+                                        credential_query_fn=lambda pgenv, sql, timeout=10: (1, "", "connection refused")))
+    assert r.status == "warn"
+
+
+def test_credential_readonly_warns_when_pgenv_unset(tmp_path):
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=None))
+    assert r.status == "warn"
+
+
+def test_credential_readonly_warns_when_file_missing(tmp_path):
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=str(tmp_path / "nope.env")))
+    assert r.status == "warn"
+
+
+def test_credential_readonly_warns_when_query_raises(tmp_path):
+    p = _cred_file(tmp_path)
+
+    def q(pgenv, sql, timeout=10):
+        raise TimeoutError("psql hung")
+
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    assert r.status == "warn" and "TimeoutError" in r.detail
+
+
+def test_credential_readonly_sanitizes_secret_looking_output(tmp_path):
+    p = _cred_file(tmp_path)
+
+    def q(pgenv, sql, timeout=10):
+        return 1, "", "connection to postgres://user:hunter2@10.0.0.5:5432/db failed (password auth)"
+
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    assert r.status == "warn"
+    assert "postgres://" not in r.detail and "password" not in r.detail and "@" not in r.detail
+
+
+def test_credential_readonly_never_opens_the_file(tmp_path, monkeypatch):
+    p = _cred_file(tmp_path)
+    real_open = open
+
+    def _guarded_open(path, *a, **kw):
+        if str(path) == p:
+            raise AssertionError("credential_readonly must never open the credential file itself")
+        return real_open(path, *a, **kw)
+
+    monkeypatch.setattr("builtins.open", _guarded_open)
+    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p,
+                                        credential_query_fn=lambda pgenv, sql, timeout=10: (0, "on\n" if "read_only" in sql else "0\n", "")))
+    assert r.status == "ok"
+
+
+def test_credential_readonly_is_part_of_run_checks(tmp_path):
+    results = M.run_checks(cfg(tmp_path))
+    assert "credential_readonly" in {r.name for r in results}
+
+
 # ---- power ---------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("src,status", [

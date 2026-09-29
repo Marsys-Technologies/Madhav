@@ -2,11 +2,12 @@
 
     python -m suvarna_tracker.monitor [--once | --watch SECONDS] [--emit] [--repair] [--json]
 
-Seven checks decide whether the environment the campaign runs in is sound: the DB proxy port, the
-read-only credential file's permissions, the laptop's power state, whether sleep is prevented, the
-hold switch, free disk space, and the tracker's own health endpoint. Each returns ``ok`` / ``warn`` /
-``block``; the overall status is the worst of the seven, and the process exit code mirrors it
-(0 / 1 / 2) so this doubles as a CI-style gate.
+Eight checks decide whether the environment the campaign runs in is sound: the DB proxy port, the
+read-only credential file's permissions, whether the credential can actually write (review #16 —
+permissions alone don't prove the DB role itself is read-only), the laptop's power state, whether
+sleep is prevented, the hold switch, free disk space, and the tracker's own health endpoint. Each
+returns ``ok`` / ``warn`` / ``block``; the overall status is the worst of the eight, and the process
+exit code mirrors it (0 / 1 / 2) so this doubles as a CI-style gate.
 
 Design rules:
 - **Never fabricate a pass.** A check that cannot measure reports ``warn`` with the reason, never
@@ -51,7 +52,7 @@ from suvarna_tracker.events import append, now_iso  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-CHECK_NAMES = ("db_proxy", "credential", "power", "sleep_prevented", "hold", "disk", "tracker")
+CHECK_NAMES = ("db_proxy", "credential", "credential_readonly", "power", "sleep_prevented", "hold", "disk", "tracker")
 STATUS_RANK = {"ok": 0, "warn": 1, "block": 2}
 
 
@@ -88,6 +89,15 @@ def _default_launch(argv: list[str], cwd: str | None = None, log_path: str | Non
             log_fh.close()
 
 
+def _default_credential_query_fn(pgenv: str, sql: str, timeout: int = 10) -> tuple[int, str, str]:
+    """Run one read-only SQL query with the credential, sourced only inside this subprocess shell —
+    the caller never opens, reads, or holds the file's contents in this Python process; every fact
+    used comes from `psql`'s own stdout/stderr (Fix 3, review #16)."""
+    cmd = f"source {pgenv} && psql -tAX -c {json.dumps(sql)}"
+    p = subprocess.run(["bash", "-c", cmd], timeout=timeout, capture_output=True, text=True)
+    return p.returncode, p.stdout, p.stderr
+
+
 def _default_disk_free_bytes(path: str) -> float:
     p = os.path.abspath(path)
     while not os.path.exists(p):
@@ -122,6 +132,7 @@ class Config:
     http_get_fn: Callable[[str, float], tuple[int | None, str, str | None]] | None = None
     launch_fn: Callable[..., None] | None = None
     disk_free_fn: Callable[[str], float] | None = None
+    credential_query_fn: Callable[[str, str, int], tuple[int, str, str]] | None = None
 
     def __post_init__(self) -> None:
         self.run_dir = self.run_dir or os.path.join(self.home, "run")
@@ -134,6 +145,7 @@ class Config:
         self.http_get_fn = self.http_get_fn or _default_http_get
         self.launch_fn = self.launch_fn or _default_launch
         self.disk_free_fn = self.disk_free_fn or _default_disk_free_bytes
+        self.credential_query_fn = self.credential_query_fn or _default_credential_query_fn
 
     @property
     def tracker_stop_path(self) -> str:
@@ -184,6 +196,61 @@ def check_credential(cfg: Config) -> CheckResult:
         return CheckResult("credential", "warn",
                             f"credential file is group- or world-readable (mode {oct(mode & 0o777)})")
     return CheckResult("credential", "ok", "credential file exists with restricted permissions")
+
+
+_SECRET_TOKEN_RE = re.compile(r"postgres://|password|@", re.IGNORECASE)
+
+
+def _sanitize_query_output(text: str) -> str:
+    """Drop any whitespace-delimited token that could echo a connection string or secret
+    (containing ``postgres://``, ``password``, or ``@``) before it ever reaches a detail string —
+    query stderr can otherwise leak a DSN verbatim (Fix 3, review #16)."""
+    if not text:
+        return ""
+    kept = [t for t in text.split() if not _SECRET_TOKEN_RE.search(t)]
+    return " ".join(kept)[:200]
+
+
+def check_credential_readonly(cfg: Config) -> CheckResult:
+    """Verify the credential can only read, not just that its file permissions look right: runs
+    ``show default_transaction_read_only`` and a write-grant count via the injectable query
+    function (never opening the credential file itself — see ``_default_credential_query_fn``).
+    ``ok`` only when the session is read-only AND zero write grants exist; ``block`` if writes are
+    possible; ``warn`` if the query cannot run at all (e.g. the proxy is down — already reported by
+    the `db_proxy` check). Never fabricates a pass (CLAUDE.md §N.8)."""
+    if not cfg.pgenv:
+        return CheckResult("credential_readonly", "warn", "SUVARNA_PGENV is not set; cannot verify read-only access")
+    if not os.path.exists(cfg.pgenv):
+        return CheckResult("credential_readonly", "warn", "credential file does not exist; cannot verify read-only access")
+    try:
+        rc1, out1, err1 = cfg.credential_query_fn(cfg.pgenv, "show default_transaction_read_only;", 10)
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("credential_readonly", "warn",
+                            f"read-only query failed: {type(exc).__name__}: {_sanitize_query_output(str(exc))}")
+    if rc1 != 0:
+        return CheckResult("credential_readonly", "warn",
+                            f"cannot run read-only check ({_sanitize_query_output(err1 or out1)})")
+    try:
+        rc2, out2, err2 = cfg.credential_query_fn(
+            cfg.pgenv,
+            "select count(*) from information_schema.table_privileges where grantee = current_user "
+            "and privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE');", 10)
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("credential_readonly", "warn",
+                            f"write-grant query failed: {type(exc).__name__}: {_sanitize_query_output(str(exc))}")
+    if rc2 != 0:
+        return CheckResult("credential_readonly", "warn",
+                            f"cannot run write-grant check ({_sanitize_query_output(err2 or out2)})")
+    ro_flag = out1.strip().lower()
+    try:
+        write_grants = int(out2.strip())
+    except ValueError:
+        return CheckResult("credential_readonly", "warn",
+                            f"unexpected write-grant query result ({_sanitize_query_output(out2)})")
+    if ro_flag == "on" and write_grants == 0:
+        return CheckResult("credential_readonly", "ok", "default_transaction_read_only=on, 0 write grants")
+    return CheckResult("credential_readonly", "block",
+                        f"credential can write: default_transaction_read_only={ro_flag or '?'}, write grants={write_grants}")
 
 
 _BATTERY_PCT_RE = re.compile(r"(\d+)%")
@@ -249,6 +316,7 @@ def check_tracker(cfg: Config) -> CheckResult:
 _CHECK_FNS: dict[str, Callable[[Config], CheckResult]] = {
     "db_proxy": check_db_proxy,
     "credential": check_credential,
+    "credential_readonly": check_credential_readonly,
     "power": check_power,
     "sleep_prevented": check_sleep_prevented,
     "hold": check_hold,

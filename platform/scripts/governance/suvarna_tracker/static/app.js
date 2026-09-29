@@ -140,10 +140,10 @@
 
   function renderMetrics() {
     const m = snap.metrics || {};
-    const kpi = (v, t) => `<div class="kpi"><b>${v ?? "—"}</b><span>${esc(t)}</span></div>`;
+    const kpi = (v, t, tip) => `<div class="kpi"${tip ? ` title="${esc(tip)}"` : ""}><b>${v ?? "—"}</b><span>${esc(t)}</span></div>`;
     const reg = m.register || {};
     const open = reg.by_state?.OPEN;
-    let html = `<div class="kpis">${kpi(m.elevated != null ? `${m.elevated}/${m.assets_active ?? "?"}` : null, "assets elevated")}
+    let html = `<div class="kpis">${kpi(m.elevated_proxy != null ? `${m.elevated_proxy}/${m.assets_active ?? "?"}` : null, "elevated (proxy)", m.elevated_definition)}
       ${kpi(m.certifications, "certification records")}${kpi(m.open_gaps, "open gap rows")}
       ${kpi(m.levels_certified != null ? `${m.levels_certified}/${m.dag_levels ?? "?"}` : null, "dependency levels certified")}
       ${kpi(open, "register rows open")}${kpi(m.items_done_24h, "plan items done, 24h")}</div>`;
