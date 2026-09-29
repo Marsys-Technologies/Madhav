@@ -59,17 +59,32 @@ const ADMIN_UID = 'admin-uid'
 const REGISTRY = [
   {
     asset_id: 'ka_kshetra', layer: 'kala', depends_on: [], estimated_seconds: 60,
-    scope: 'per_chart', target_table: 'kala_kshetra',
+    scope: 'per_chart', target_table: 'kala_kshetra', is_active: true,
     count_sql: 'SELECT count(*) FROM kala_kshetra WHERE chart_id=$1',
     english_name: 'Kshetra', sanskrit_name: 'Kshetra',
   },
   {
+    // B1 (Kāla pre-elevation Phase 1.1): this fixture now carries the RETIRED
+    // asset exactly as production does — `is_active: false` (migration 563,
+    // W6.4 cutover), `scope: 'per_chart'`, `layer: 'kala'` — and its REAL
+    // production count_sql, which is generation-scoped to the protected v1
+    // corpus. Measured live 2026-09-22:
+    //   asset_registry.ka_gochara_sweep.count_sql =
+    //     SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'
+    //   kala_gochara_windows WHERE generation='v1' = 38,287 rows over 3 charts
+    // `deriveDeleteSqlFromCountSql` turns that string into
+    //   DELETE FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'
+    // which is the never-rebuildable sweep snapshot (its @register was removed
+    // at retirement — see migration 588's own STANDING CAUTION).
     asset_id: 'ka_gochara_sweep', layer: 'kala', depends_on: [], estimated_seconds: 1800,
-    scope: 'per_chart', target_table: 'kala_gochara_windows',
-    count_sql: 'SELECT count(*) FROM kala_gochara_windows WHERE chart_id=$1',
+    scope: 'per_chart', target_table: 'kala_gochara_windows', is_active: false,
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'",
     english_name: 'Forward Sweep', sanskrit_name: 'Gochara Cakra',
   },
 ]
+
+/** The `asset_registry` SELECT the route under test actually issued. */
+let registrySql: string | null = null
 
 const SUBJECT_NAME = 'Abhisek Mohanty'
 
@@ -115,7 +130,10 @@ function setupMocks(opts: {
     if (/scope\s+FROM asset_registry/.test(sql)) {
       return Promise.resolve({ rows: [{ scope: 'per_chart' }], rowCount: 1 })
     }
-    if (/FROM asset_registry/.test(sql)) return Promise.resolve({ rows: REGISTRY, rowCount: REGISTRY.length })
+    if (/FROM asset_registry/.test(sql)) {
+      registrySql = sql
+      return Promise.resolve({ rows: REGISTRY, rowCount: REGISTRY.length })
+    }
     if (/FROM build_protected_assets/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
     if (/FROM asset_throughput/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
     if (/count\(\*\)/.test(sql)) return Promise.resolve({ rows: [{ count: '11' }], rowCount: 1 })
@@ -123,6 +141,7 @@ function setupMocks(opts: {
   })
 
   clientQueries = []
+  registrySql = null
   const client = {
     query: vi.fn((sql: string) => {
       clientQueries.push(sql)
@@ -183,7 +202,11 @@ describe('POST /api/cockpit/clear (preview) — P2-B-007 cross-chart destructive
     }))
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.preview.affected_assets).toEqual(expect.arrayContaining(['ka_kshetra', 'ka_gochara_sweep']))
+    expect(body.preview.affected_assets).toEqual(expect.arrayContaining(['ka_kshetra']))
+    // B1: the RETIRED `ka_gochara_sweep` used to be listed here. It is now out
+    // of scope for every Clear (see the `is_active` describe block below); this
+    // assertion previously asserted the hazard, so it is inverted deliberately.
+    expect(body.preview.affected_assets).not.toContain('ka_gochara_sweep')
   })
 
   it('(d2) ALLOWS an owner the scope:global preview — CockpitShell Clear-all must keep working', async () => {
@@ -212,7 +235,7 @@ describe('POST /api/cockpit/clear/execute — P2-B-007 cross-chart destructive a
       chart_id: VICTIM_CHART,
       scope: 'layer',
       scope_target: 'kala',
-      preview_hash: previewHash('layer', 'kala', ['ka_kshetra', 'ka_gochara_sweep']),
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
     }))
     expect(res.status).not.toBe(200)
     expect(res.status).toBe(403)
@@ -227,7 +250,7 @@ describe('POST /api/cockpit/clear/execute — P2-B-007 cross-chart destructive a
       chart_id: VICTIM_CHART,
       scope: 'layer',
       scope_target: 'kala',
-      preview_hash: previewHash('layer', 'kala', ['ka_kshetra', 'ka_gochara_sweep']),
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
     }))
     expect(res.status).toBe(403)
     expect(mockGetPool).not.toHaveBeenCalled()
@@ -239,11 +262,11 @@ describe('POST /api/cockpit/clear/execute — P2-B-007 cross-chart destructive a
       chart_id: VICTIM_CHART,
       scope: 'layer',
       scope_target: 'kala',
-      preview_hash: previewHash('layer', 'kala', ['ka_kshetra', 'ka_gochara_sweep']),
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
     }))
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.cleared.assets).toBe(2)
+    expect(body.cleared.assets).toBe(1)  // B1: ka_gochara_sweep is out of scope
     expect(clientQueries.some(q => /^\s*DELETE/i.test(q))).toBe(true)
   })
 
@@ -253,8 +276,138 @@ describe('POST /api/cockpit/clear/execute — P2-B-007 cross-chart destructive a
       chart_id: VICTIM_CHART,
       scope: 'layer',
       scope_target: 'kala',
-      preview_hash: previewHash('layer', 'kala', ['ka_kshetra', 'ka_gochara_sweep']),
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
     }))
     expect(res.status).toBe(200)
+  })
+})
+
+/**
+ * B1 — Kāla pre-elevation Phase 1.1 (Strategy W0, "make the programme safe").
+ *
+ * THE HAZARD, as measured live on production 2026-09-22:
+ *
+ *   asset_registry.ka_gochara_sweep = { layer: 'kala', scope: 'per_chart',
+ *     is_active: false, catalog_status: 'RETIRED',
+ *     count_sql: "SELECT COUNT(*) FROM kala_gochara_windows
+ *                 WHERE chart_id=$1 AND generation='v1'" }
+ *
+ *   kala_gochara_windows WHERE generation='v1' = 38,287 rows across 3 charts.
+ *
+ * Neither Clear route filtered on `is_active`, and `filterScopeAssets`'s layer
+ * branch matched on `layer` + `scope` only. `allowedScopes = ['per_chart']` for
+ * a non-super-admin (route.ts:93), so an ordinary chart OWNER issuing a
+ * layer-scoped Clear of `kala` pulled the retired asset into scope. The execute
+ * route's resolution order then reached it at the count_sql branch — NOT the
+ * `target_table` fallback — and `deriveDeleteSqlFromCountSql` turned the string
+ * above into `DELETE FROM kala_gochara_windows WHERE chart_id=$1 AND
+ * generation='v1'`: the exact protected snapshot the L3 strategy says is
+ * "retired, snapshot-protected and never rebuildable" (its @register was
+ * removed at retirement, so the build system cannot regenerate it — migration
+ * 588's own STANDING CAUTION).
+ *
+ * The database-level guard that migration 540 installed for this table was
+ * DROPPED by migration 588 (2026-08-23) and `build_protected_assets` emptied,
+ * so the route-level exclusion above it was, at the time of this fix, the ONLY
+ * thing standing between an ordinary Clear and the snapshot. Migration 1071
+ * restores a DB-level guard underneath these route tests; this suite covers the
+ * route half only.
+ *
+ * Every sibling cockpit route already filters this column — refresh/route.ts:49,
+ * status/route.ts:11, runs/route.ts:243, stats/route.ts:257 — so the BUILD path
+ * could not touch the retired asset while the DELETE path could. The Clear pair
+ * was the lone omission, not a deliberate exception.
+ */
+describe('POST /api/cockpit/clear — B1 retired-asset (is_active=false) exclusion', () => {
+  it('(B1-a) preview: a RETIRED asset is not in scope for a layer Clear an owner can issue', async () => {
+    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+    const res = await PREVIEW(makeReq('/api/cockpit/clear', {
+      chart_id: VICTIM_CHART, scope: 'layer', scope_target: 'kala',
+    }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+
+    expect(body.preview.affected_assets).not.toContain('ka_gochara_sweep')
+    expect(body.preview.assets_clearable.some((a: { id: string }) => a.id === 'ka_gochara_sweep')).toBe(false)
+    expect(body.preview.assets_reset_only.some((a: { id: string }) => a.id === 'ka_gochara_sweep')).toBe(false)
+    expect(body.preview.not_clearable_assets.some((a: { id: string }) => a.id === 'ka_gochara_sweep')).toBe(false)
+    // The protected corpus's table must not be counted or displayed as clearable.
+    expect(body.preview.tables.map((t: { table: string }) => t.table)).not.toContain('kala_gochara_windows')
+    // The active sibling in the same layer is unaffected.
+    expect(body.preview.affected_assets).toContain('ka_kshetra')
+  })
+
+  it('(B1-b) preview: a global-scope Clear (CockpitShell "Clear all") also excludes it', async () => {
+    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+    const res = await PREVIEW(makeReq('/api/cockpit/clear', {
+      chart_id: VICTIM_CHART, scope: 'global', scope_target: null,
+    }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.preview.affected_assets).not.toContain('ka_gochara_sweep')
+  })
+
+  it('(B1-c) preview: a DIRECT asset-scope Clear naming the retired asset resolves to nothing', async () => {
+    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+    const res = await PREVIEW(makeReq('/api/cockpit/clear', {
+      chart_id: VICTIM_CHART, scope: 'asset', scope_target: 'ka_gochara_sweep',
+    }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.preview.affected_assets).toEqual([])
+    expect(body.preview.total_rows).toBe(0)
+  })
+
+  it('(B1-d) execute: NO DELETE naming kala_gochara_windows is ever issued', async () => {
+    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+    const res = await EXECUTE(makeReq('/api/cockpit/clear/execute', {
+      chart_id: VICTIM_CHART,
+      scope: 'layer',
+      scope_target: 'kala',
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
+    }))
+    expect(res.status).toBe(200)
+    // The real proof: the protected table is never named in any statement the
+    // destructive transaction issued.
+    expect(clientQueries.some(q => /kala_gochara_windows/.test(q))).toBe(false)
+    expect(clientQueries.some(q => /generation\s*=\s*'v1'/.test(q))).toBe(false)
+    // ...while the active sibling still cleared, so this is an exclusion, not a
+    // route that stopped working.
+    expect(clientQueries.some(q => /DELETE FROM kala_kshetra/i.test(q))).toBe(true)
+  })
+
+  it('(B1-e) execute: a super_admin gets the same exclusion — it is not a role gate', async () => {
+    setupMocks({ uid: ADMIN_UID, role: 'super_admin', ownerId: VICTIM_UID })
+    const res = await EXECUTE(makeReq('/api/cockpit/clear/execute', {
+      chart_id: VICTIM_CHART,
+      scope: 'layer',
+      scope_target: 'kala',
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
+    }))
+    expect(res.status).toBe(200)
+    expect(clientQueries.some(q => /kala_gochara_windows/.test(q))).toBe(false)
+  })
+
+  it('(B1-f) the registry SELECT itself carries an is_active predicate — the query half', async () => {
+    // Defence in depth: the scope filter is not the only thing standing between
+    // a retired asset and the DELETE loop. If the filter regressed, the row
+    // would still never be loaded. Asserted on the SQL the route actually ran.
+    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+    await PREVIEW(makeReq('/api/cockpit/clear', {
+      chart_id: VICTIM_CHART, scope: 'layer', scope_target: 'kala',
+    }))
+    expect(registrySql).toMatch(/is_active/)
+    expect(registrySql).toMatch(/WHERE[\s\S]*is_active/i)
+  })
+
+  it('(B1-g) execute re-derives the same registry predicate, so preview and execute cannot disagree', async () => {
+    setupMocks({ uid: VICTIM_UID, role: 'guest', ownerId: VICTIM_UID })
+    await EXECUTE(makeReq('/api/cockpit/clear/execute', {
+      chart_id: VICTIM_CHART,
+      scope: 'layer',
+      scope_target: 'kala',
+      preview_hash: previewHash('layer', 'kala', ['ka_kshetra']),
+    }))
+    expect(registrySql).toMatch(/WHERE[\s\S]*is_active/i)
   })
 })

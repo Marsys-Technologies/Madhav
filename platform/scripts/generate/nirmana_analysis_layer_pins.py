@@ -135,6 +135,19 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: L0_REPAIR_REPIN_APPROVED",
         "authority_identity_binding": "`101171f76517fa3c6b0b44fa9d1cc46358612eee`",
     },
+    "D-E022": {
+        # Pins re-admission at the PR #2731 merge (Pravaha A0.3). The native's
+        # approval ("Accept all recommendations.", 2026-09-29) is recorded verbatim
+        # in the evidence document; the authority identity is the commit that first
+        # introduced that document. Scope: exactly one L1 and one L3 successor
+        # admission, per MERGE_HYGIENE_12_10c_RUNBOOK step 2 / ESCALATIONS E-022.
+        "authority_commit": "442f1ed955a701008b2a975c7df80d543fbbc67a",
+        "evidence_commit": "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
+        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_E022_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "14f98475c61de92759e78021267a7c2b9dae936fb63d78de61c1beaa60658c7e",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`442f1ed955a701008b2a975c7df80d543fbbc67a`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -230,6 +243,30 @@ AUTHORIZED_SOURCE_COMMITS = {
         "L0": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
         "L2": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
         "L3": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
+    },
+    # D-E022 (Pravaha A0.3/A0.6): exactly one source commit, for exactly the two
+    # layers whose writer digests moved at the PR #2731 merge.
+    #
+    # A0.6 delivery re-base: the merge queue delivers this PR as a one-parent
+    # squash onto main, so lane-only commits are never ancestors of the delivery
+    # HEAD and a lane-admitted-then-archived generation (the first A0.3 L3
+    # successor) can never name a deliverable historical snapshot. The two
+    # lane-local admissions per the A0.3 shape were therefore rewound to the
+    # protected baseline (byte-for-byte) and re-admitted ONCE per layer directly
+    # on top of the origin/main merge, each archived predecessor naming the
+    # protected baseline as its historical snapshot. The lane-local source
+    # commits f4cba9d606ab (L1, L3) and ad22bef06784 (L3) authorized for the A0.3
+    # shape are WITHDRAWN here before first delivery: they never reached main and
+    # their committed inventories predate the origin/main merge, so no admission
+    # can cite them against the merged tree.
+    #
+    # The source commit below IS the origin/main merge commit on the #2731 lane:
+    # its committed writer inventory is byte-identical to the merged tree's
+    # derived inventory (provenance_inventory --check green). L0, L2, L4, L5 are
+    # deliberately absent.
+    "D-E022": {
+        "L1": frozenset({"333eb7abcac33deefa4f89dc417e73d4f28d74bd"}),
+        "L3": frozenset({"333eb7abcac33deefa4f89dc417e73d4f28d74bd"}),
     },
 }
 

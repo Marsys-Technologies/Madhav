@@ -773,9 +773,11 @@ class TestA1GochaCorpusPin:
         assert set(result) == {'gochara_generation', 'gochara_calibration_state',
                                'gochara_corpus_digest'}
 
-    def test_generation_defaults_to_v1_when_authority_table_empty(self):
+    def test_generation_is_unpublished_when_authority_table_empty(self):
+        # WP7 K-1/N-10: an absent authority row means UNPUBLISHED — never the
+        # old COALESCE default 'v1'.
         result = self._corpus_pin()
-        assert result['gochara_generation'] == 'v1'
+        assert result['gochara_generation'] == 'unpublished'
 
     def test_generation_uses_authority_row_when_present(self):
         result = self._corpus_pin(authority_rows=[
@@ -796,7 +798,12 @@ class TestA1GochaCorpusPin:
             {'chart_id': F.CHART_ID, 'generation': 'v1',
              'calibration_state': 'empirically_calibrated'},
         ]
-        result = self._corpus_pin(windows_rows=windows)
+        # WP7 K-1: the calibration read keys on the pin generation, which is
+        # authority-resolved — seed the authority row so it is 'v1'.
+        result = self._corpus_pin(
+            windows_rows=windows,
+            authority_rows=[{'chart_id': F.CHART_ID,
+                             'authoritative_generation': 'v1'}])
         assert result['gochara_calibration_state'] == 'structural_prior'
 
     def test_corpus_digest_differs_when_resonance_map_changes(self):

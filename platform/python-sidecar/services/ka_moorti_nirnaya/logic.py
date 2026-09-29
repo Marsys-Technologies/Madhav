@@ -65,6 +65,26 @@ MOORTI_GRAHAS: tuple[str, ...] = (
     "Sun", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu",
 )
 
+# ── WP9 overlay stamps (GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §5.4; migration
+# 1082) ──────────────────────────────────────────────────────────────────────
+# A moorti-computed row restates bg_transit_moorti verbatim (migration 401,
+# REAL cited: Phaladeepika Ch.26; BPHS Ch.28) → 'verse_cited', corpus-
+# verifiable. A row whose moorti could NOT be computed (truncated run /
+# ephemeris gap — moorti_computed=False) has no sourced value → 'unsourced',
+# not corpus-verifiable. precision_regime is 'date_grain' for the day-grade
+# ingress date and 'instant_grain' only when the grade was taken at a true
+# kernel sign-ingress instant (WP9 5.3).
+SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximation", "unsourced")
+PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
+
+
+def moorti_source_qualification(moorti_computed: bool) -> str:
+    return "verse_cited" if moorti_computed else "unsourced"
+
+
+def moorti_corpus_verifiable(moorti_computed: bool) -> bool:
+    return bool(moorti_computed)
+
 
 class SignRun(TypedDict):
     sign_idx: int
@@ -136,8 +156,43 @@ def nakshatra_offset_from_janma(moon_nak_idx_at_ingress: int, janma_nak_idx: int
 
 __all__ = [
     "MOORTI_GRAHAS",
+    "SOURCE_QUALIFICATIONS",
+    "PRECISION_REGIMES",
+    "moorti_source_qualification",
+    "moorti_corpus_verifiable",
     "SignRun",
     "detect_sign_runs",
     "run_containing_date",
     "nakshatra_offset_from_janma",
+    "moorti_upstream_fingerprint",
 ]
+
+
+# ── §12.9 upstream fingerprint ───────────────────────────────────────────────
+# A kala_moorti_nirnaya row restates a `bg_transit_moorti` row verbatim (name, tier, phala,
+# citation). Nothing on the row said WHICH version of that table it was built from, so an
+# upstream change left built rows silently stale (CLAUDE.md §N.8). This digests exactly the
+# rows a build consumed — the same in-memory objects the writer holds — so comparing it to a
+# fresh read answers "was this built from what the table says now?".
+# `ephemeris_daily` is deliberately NOT fingerprinted here: it is a bulk substrate whose
+# input identity is its own substrate_version, recorded in the publication's input
+# generation vector (plan §5.5), not a citation-bearing reference table.
+from services.gochara_kernel.fingerprint import FINGERPRINT_ALGORITHM, canonical_digest
+
+
+def moorti_upstream_fingerprint(moorti_table: dict) -> dict:
+    """Digest of the `bg_transit_moorti` rows one build consumed.
+
+    `moorti_table` is `{nakshatra_offset: row}` — what the writer's `_fetch_moorti_table`
+    returns. Order-independent; sensitive to every consumed field. JSON-safe, so it
+    round-trips through a jsonb column.
+    """
+    rows = sorted(
+        ([int(k), {f: v for f, v in sorted(dict(row).items())}] for k, row in moorti_table.items()),
+        key=lambda x: x[0],
+    )
+    return {
+        "algorithm": FINGERPRINT_ALGORITHM,
+        "bg_transit_moorti": canonical_digest(rows),
+        "n_moorti_rows": len(rows),
+    }

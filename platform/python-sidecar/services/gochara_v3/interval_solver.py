@@ -26,6 +26,17 @@ from .threshold import ThresholdConfig, is_above_threshold
 
 logger = logging.getLogger(__name__)
 
+
+class EvaluationFailure(Exception):
+    """WP5 H-2: explicit failure state for lambda_v3 evaluation.
+
+    Raised by _eval_single / _eval_single_full when the engine cannot
+    produce a trustworthy lambda value. Callers MUST catch this and emit
+    an unqualified record (completeness_state='unqualified') with a
+    failure_detail, instead of silently converting the failure to 0.0/None.
+    """
+    pass
+
 # ---------------------------------------------------------------------------
 # Generation-scoping constant
 # ---------------------------------------------------------------------------
@@ -75,6 +86,13 @@ class IntervalBoundary:
                        I4 degrade.
     ci_source          'structural_prior' | 'fitted_posterior' disclosure tag
                        from the peak IntensityResult. None on I4 degrade.
+    completeness_state 'applied' | 'unqualified'. WP5 H-2: 'unqualified'
+                       means evaluation failed for this interval and the row
+                       carries a failure_detail; peak_lambda is 0.0 because
+                       the true value is unknown, not because lambda was
+                       measured as zero.
+    failure_detail     Non-None when completeness_state='unqualified'.
+                       Human-readable cause of the evaluation failure.
     """
     enter_jd: float
     exit_jd: float
@@ -85,6 +103,8 @@ class IntervalBoundary:
     lambda_v3_ci_low: Optional[float] = None
     lambda_v3_ci_high: Optional[float] = None
     ci_source: Optional[str] = None
+    completeness_state: str = "applied"
+    failure_detail: Optional[str] = None
 
 
 @dataclass
@@ -100,6 +120,10 @@ class MilestoneScore:
     is_irreversibility_milestone Flag from the milestone_template entry.
     intensity_result            Full IntensityResult from the engine (or None if
                                 evaluation failed — I4 honest gap).
+    completeness_state          'applied' | 'unqualified'. WP5 H-2:
+                                'unqualified' when evaluation failed;
+                                lambda_v3 is 0.0 because the value is unknown.
+    failure_detail              Non-None when completeness_state='unqualified'.
     """
     milestone_id: str
     milestone_jd: float
@@ -107,6 +131,8 @@ class MilestoneScore:
     is_above_threshold: bool
     is_irreversibility_milestone: bool
     intensity_result: Any  # IntensityResult | None
+    completeness_state: str = "applied"
+    failure_detail: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +143,9 @@ def _eval_single(swe, context, jd: float) -> float:
     """Evaluate lambda_v3 at a single JD.
 
     Calls evaluate_lambda_vector with a one-element array and returns the
-    raw_lambda of the result. Returns 0.0 on any exception (honest degrade).
+    raw_lambda of the result. WP5 H-2: raises EvaluationFailure on any
+    exception so callers can emit an explicit unqualified record instead of
+    silently converting failure to 0.0.
 
     Note: evaluate_lambda_vector is imported at module level so tests can
     patch services.gochara_v3.interval_solver.evaluate_lambda_vector.
@@ -129,17 +157,19 @@ def _eval_single(swe, context, jd: float) -> float:
         if results:
             return float(results[0].raw_lambda)
         return 0.0
+    except EvaluationFailure:
+        raise
     except Exception as exc:  # noqa: BLE001
-        logger.debug(
-            "[gochara_v3.interval_solver] _eval_single failed at jd=%.4f: %s", jd, exc,
-        )
-        return 0.0
+        raise EvaluationFailure(
+            f"_eval_single failed at jd={jd:.4f}: {exc}"
+        ) from exc
 
 
 def _eval_single_full(swe, context, jd: float):
     """Evaluate lambda_v3 at a single JD and return the full IntensityResult.
 
-    Returns None on any exception (I4: honest gap).
+    WP5 H-2: raises EvaluationFailure on any exception so callers can emit
+    an explicit unqualified record instead of silently returning None.
     """
     try:
         results = evaluate_lambda_vector(
@@ -148,11 +178,12 @@ def _eval_single_full(swe, context, jd: float):
         if results:
             return results[0]
         return None
+    except EvaluationFailure:
+        raise
     except Exception as exc:  # noqa: BLE001
-        logger.debug(
-            "[gochara_v3.interval_solver] _eval_single_full failed at jd=%.4f: %s", jd, exc,
-        )
-        return None
+        raise EvaluationFailure(
+            f"_eval_single_full failed at jd={jd:.4f}: {exc}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -266,6 +297,52 @@ def find_threshold_crossings(
             return [], np.array([]), np.array([])
         return []
 
+    # WP5 H-2: wrap the root-solving algorithm so an EvaluationFailure
+    # produces ONE honest unqualified interval covering the requested range
+    # instead of crashing or silently degrading to 0.0.
+    try:
+        return _find_threshold_crossings_core(
+            swe, context, start_jd, end_jd, threshold_config,
+            coarse_step_days=coarse_step_days,
+            bisect_tol_days=bisect_tol_days,
+            return_series=return_series,
+        )
+    except EvaluationFailure as exc:
+        logger.info(
+            "[gochara_v3.interval_solver] find_threshold_crossings: "
+            "EvaluationFailure across [%.4f, %.4f] — emitting unqualified interval: %s",
+            start_jd, end_jd, exc,
+        )
+        unqualified = IntervalBoundary(
+            enter_jd=start_jd,
+            exit_jd=end_jd,
+            peak_jd=start_jd,
+            peak_lambda=0.0,
+            era_slice_key=ERA_SLICE_KEY_V3,
+            term_breakdown=None,
+            lambda_v3_ci_low=None,
+            lambda_v3_ci_high=None,
+            ci_source=None,
+            completeness_state="unqualified",
+            failure_detail=str(exc),
+        )
+        if return_series:
+            return [unqualified], np.array([]), np.array([])
+        return [unqualified]
+
+
+def _find_threshold_crossings_core(
+    swe,
+    context,
+    start_jd: float,
+    end_jd: float,
+    threshold_config: ThresholdConfig,
+    *,
+    coarse_step_days: float,
+    bisect_tol_days: float,
+    return_series: bool,
+):
+    """Core root-solving implementation (factored out for H-2 wrapping)."""
     # 1. Coarse sweep
     jd_series = np.arange(start_jd, end_jd, coarse_step_days)
     if len(jd_series) == 0:
@@ -446,13 +523,19 @@ def score_chain_milestones(
         milestone_jd = episode_anchor_jd + typical_offset_days
 
         # Evaluate at this milestone's own JD (genuine per-milestone evaluation)
-        intensity_result = _eval_single_full(swe, context, milestone_jd)
-
-        if intensity_result is not None:
-            lam = float(intensity_result.raw_lambda)
-        else:
-            # Honest gap: evaluation failed — lambda is unknown, treat as 0.0
+        try:
+            intensity_result = _eval_single_full(swe, context, milestone_jd)
+            lam = float(intensity_result.raw_lambda) if intensity_result is not None else 0.0
+            failure_detail = None
+            completeness_state = "applied"
+        except EvaluationFailure as exc:
+            # WP5 H-2: per-milestone explicit failure. Sibling milestones remain
+            # normal; this one carries lambda_v3=0.0 because the true value is
+            # unknown, not because it was measured as zero.
+            intensity_result = None
             lam = 0.0
+            failure_detail = str(exc)
+            completeness_state = "unqualified"
 
         above = is_above_threshold(lam, threshold_config)
 
@@ -463,6 +546,8 @@ def score_chain_milestones(
             is_above_threshold=above,
             is_irreversibility_milestone=is_irrev,
             intensity_result=intensity_result,
+            completeness_state=completeness_state,
+            failure_detail=failure_detail,
         ))
 
     return scores
@@ -472,6 +557,7 @@ __all__ = [
     "ERA_SLICE_KEY_V3",
     "IntervalBoundary",
     "MilestoneScore",
+    "EvaluationFailure",
     "find_threshold_crossings",
     "score_chain_milestones",
 ]

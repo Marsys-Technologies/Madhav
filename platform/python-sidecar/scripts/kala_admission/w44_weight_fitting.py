@@ -102,63 +102,29 @@ BOUNDS_END = date(2022, 6, 1)
 # Documented lower-bound proxy, not a true ablation.
 PROXY_ABLATION_FRACTION = 0.1
 
-# ── Engine-wiring status per admitted mechanism (PARIṢKĀRA MR-14-matching) ────
+# ── Engine-wiring status per mechanism (N-16 wiring-truth detector) ───────────
 #
-# Traced 2026-08-11 against services/gochara_v3/engine.py (the module that
-# ACTUALLY produces term_breakdown/signed_intensity for kala_gochara_windows_v2
-# rows). Records whether the mechanism's own
-# services/gochara_v3/mechanisms/<toggle_key>.py `compute()` is invoked
-# ANYWHERE in that production path.
+# Machine-checked against services/gochara_v3/engine.py by
+# tests/l3/gochara/test_n16_mechanism_wiring.py.  A mechanism is "wired" iff
+# engine.py imports its services.gochara_v3.mechanisms.<module> and multiplies
+# the resulting modifier into the production raw_lambda (= lambda_v3) product.
 #
-# Finding: it is not. This is a DEEPER root cause than "toggle_keys don't
-# literally match term_breakdown's top-level keys" (the prior pass's
-# hypothesis, disproven here) -- the 10 admitted Wave-2 mechanisms are
-# entirely dormant, standalone modules that engine.py never calls, so there
-# is NO key under ANY name in term_breakdown, signed_intensity,
-# permission_detail, or quality_gates_detail that legitimately represents
-# any of their contributions. Evidence:
-#   (a) services/gochara_v3/mechanisms/__init__.py's own module docstring:
-#       "Dormant mechanism modules for Wave 2... NOT wired into engine.py
-#       yet... Admission into the live scoring path requires ablation
-#       evidence and a formal admission ruling."
-#   (b) each mechanism module says so explicitly, e.g. w21_av_gating.py:
-#       "This module is a CANDIDATE mechanism -- it is NOT wired into
-#       engine.py (that wiring is Wave 4 work)."
-#   (c) `grep -rn "gochara_v3.mechanisms" services/gochara_v3/*.py` (engine.py,
-#       context.py, interval_solver.py, threshold.py) returns ZERO hits --
-#       nothing outside services/gochara_v3/mechanisms/ itself imports them.
-#   (d) ClassContext (context.py) carries no data fields for 9 of the 10
-#       mechanisms' documented data sources (moorti rows, kota_chakra rings,
-#       sudarshana placements, tajaka year-lords, tithi_pravesha rows, real
-#       eclipse events, tara_bala's natal_moon_nakshatra_id passthrough).
-#       Only av_gate_rows exists -- and engine.py's own
-#       `_check_av_threshold_from_context` consumes it via a different
-#       (boolean, v1-legacy) computation than w21_av_gating.py's own SAV/BAV
-#       bindu modifier logic; the two are not the same computation.
-#   (e) every mechanism YAML in the registry is still `admission_state:
-#       candidate` -- none has ever been promoted past candidacy.
+# State as of 2026-09-23 (HEAD on l3/gochara-autonomous-wp0-7):
+#   - w23_tara_bala    : True  (multiplied into raw_lambda)
+#   - w30_nodal_drishti: True  (multiplied into raw_lambda; N-14 retires it
+#                               behind flag nodal_drishti ∈ {enabled,removed})
+#   - w21, w22, w24-w27c: False (admitted modules, not yet wired into lambda_v3)
+#   - w28_bhava_degrees, w29_citation_resolution: False (structural-only,
+#                                                       modifier always 1.0)
 #
-# A literal-key remap (e.g. aliasing w23_tara_bala to the pre-existing
-# 'nakshatra_ingress_tara' activity_terms primitive it is *meant* to
-# eventually enhance) was considered and REJECTED: the raw v1 primitive's
-# contribution is not the candidate mechanism's marginal effect (the
-# mechanism is a quality MODIFIER layered on top of the primitive, not the
-# primitive itself). Aliasing the two would misattribute the base primitive's
-# signal as if it were the mechanism's, which is exactly the fabrication I3
-# ("no weight is assumed, hardcoded, or fabricated") forbids.
-#
-# All 10 are correctly False today. Flip an entry to True only in the same
-# PR that actually wires that mechanism's compute() into engine.py's
-# production lambda_v3 path (Wave 4 work -- see MASTER_REMEDIATION_REGISTER
-# MR-14 amendment + this PR's report for the explicit hand-off). Any
-# toggle_key not present in this dict defaults to wired=True (`.get(key,
-# True)`) -- i.e. only mechanisms we have POSITIVELY confirmed are dormant
-# are excluded from term_breakdown/proxy attribution; everything else keeps
-# today's behaviour unchanged.
+# The 2026-08-11 finding that "no Wave-2 mechanism is wired" is superseded
+# for w23 and w30 by the current engine.py AST; the other admitted/structural
+# mechanisms remain unwired.  Flip an entry only in the same change that wires
+# that mechanism's compute() into engine.py's lambda_v3 path.
 MECHANISM_ENGINE_WIRED: dict[str, bool] = {
     "w21_av_gating": False,
     "w22_moorti_nirnaya": False,
-    "w23_tara_bala": False,
+    "w23_tara_bala": True,
     "w24_sade_sati": False,
     "w25_kota_chakra": False,
     "w26_real_eclipses": False,
@@ -166,6 +132,9 @@ MECHANISM_ENGINE_WIRED: dict[str, bool] = {
     "w27a_tajaka_year_lord": False,
     "w27b_tithi_pravesha": False,
     "w27c_sudarshana": False,
+    "w28_bhava_degrees": False,
+    "w29_citation_resolution": False,
+    "w30_nodal_drishti": True,
 }
 
 

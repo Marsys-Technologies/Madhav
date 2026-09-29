@@ -170,13 +170,14 @@ describe('MR-02 — computeGocharaCoverage is authority-aware', () => {
     return JSON.parse(init.body as string) as { sql: string; params: unknown[] }
   }
 
-  it('uses ka_gochara_sweep as $2 param for v1-authority charts (no authority row)', async () => {
-    // Mock fetch: route each SQL query to the right response
+  it('uses ka_gochara_sweep as $2 param for explicit-v1-authority charts', async () => {
+    // WP7 P-1d (N-10): absent authority row no longer means v1 — it is served as
+    // `unpublished`. The legacy v1 substep path now applies ONLY where an
+    // authority row literally says authoritative_generation='v1'.
     fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
       const { sql } = JSON.parse(init.body as string) as { sql: string; params: unknown[] }
       if (sql.includes('kala_gochara_authority')) {
-        // No row → v1 authority
-        return Promise.resolve(fakeJsonResponse([]))
+        return Promise.resolve(fakeJsonResponse([{ authoritative_generation: 'v1' }]))
       }
       if (sql.includes('gochara_resonance_map')) {
         return Promise.resolve(fakeJsonResponse([]))
@@ -239,10 +240,12 @@ describe('MR-02 — computeGocharaCoverage is authority-aware', () => {
     expect(body.params[1]).not.toBe('ka_gochara_sweep')
   })
 
-  it('v1-authority coverage.sweep_completeness.source names ka_gochara_sweep', async () => {
+  it('explicit-v1-authority coverage.sweep_completeness.source names ka_gochara_sweep', async () => {
+    // WP7 P-1d: fixture seeds an explicit 'v1' authority row — an absent row is
+    // now the unpublished state, not v1.
     fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
       const { sql } = JSON.parse(init.body as string) as { sql: string; params: unknown[] }
-      if (sql.includes('kala_gochara_authority')) return Promise.resolve(fakeJsonResponse([]))
+      if (sql.includes('kala_gochara_authority')) return Promise.resolve(fakeJsonResponse([{ authoritative_generation: 'v1' }]))
       if (sql.includes('gochara_resonance_map')) {
         return Promise.resolve(fakeJsonResponse([{ event_class: 'career_advancement', domain: 'career' }]))
       }

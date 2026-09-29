@@ -2440,6 +2440,27 @@ def _build_gulika_mandi_sensitive_rows(
             f"segment {mandi_seg}/8 for vara={vara})"
         ),
     ))
+
+    # M-6 (remainder brief §4.4): persist Yamakaṇṭaka (Jupiter-son upagraha)
+    # for the Phaladīpikā XVII derived transit targets. NATIVE PyJHora path
+    # ONLY (`sensitive_points['yama']`, planet_index=4 = Jupiter's son per
+    # BPHS Ch.3/Phaladīpikā XXV.1): the classical day-segment fallback used
+    # for Gulika/Māndi above is deliberately NOT extended to Yamakaṇṭaka —
+    # the served Phaladīpikā passage (XXV śl.3) gives only the day table, so
+    # a fabricated fallback could not honestly handle night births. When the
+    # native point is absent, no row is emitted and downstream targets stamp
+    # 'unavailable' (the honest null), never an approximated sign.
+    yama = upagrahas_native.get("yama")
+    if isinstance(yama, dict) and yama.get("longitude_deg") is not None:
+        rows.extend(_long_rows(
+            "sensitive_point_gulika_mandi", "YAMAKANTAKA",
+            float(yama["longitude_deg"]),
+            chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
+            formula_provenance_text=(
+                "Phaladeepika XXV.1-3: Yamakantaka, Jupiter-son upagraha; native "
+                "PyJHora upagraha_longitude(planet_index=4, part='middle')"
+            ),
+        ))
     return rows
 
 

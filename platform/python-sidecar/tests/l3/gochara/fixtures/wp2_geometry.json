@@ -1,0 +1,220 @@
+{
+  "_meta": {
+    "artifact": "wp2_geometry",
+    "version": "1.0",
+    "date": "2026-09-23",
+    "executes": "KIMI_AUTONOMOUS_EXECUTION_PROMPT_GOCHARA_v1_0.md §4 WP2 + WP1_CONTRACTS.md §7 (orb table), §9 (tolerances), §10 (F-14 gate)",
+    "independence_statement": "Every expected answer herein is independently derived; no legacy system output was consulted (services/gochara_v3, services/w2g, pipeline/transit_search.py were never run or read for values). Swiss-derived numbers were computed directly with pyswisseph 2.10.03 against the sha256-verified .run/se1 files; synthetic numbers are hand-specified math documented case-by-case in WP2_FIXTURES.md.",
+    "chart_id_rule": "All chart ids are synthetic wp2-synth-* ids. No real chart id appears anywhere in this file.",
+    "ephemeris_backend_record": {
+      "se1_checksums": {
+        "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+        "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+        "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2"
+      },
+      "backend": "swieph",
+      "retflag_observed": 65602,
+      "retflag_note": "65602 = FLG_SIDEREAL(65536) + NONUT(64, added internally by Swiss for sidereal) + SWIEPH(2). F-14 gate retflag & 2 asserted on EVERY swe.calc_ut/swe.calc call that produced an expected value in this file; a Moshier fallback (retflag & 4) would have made the case NOT_RUN."
+    },
+    "swiss_convention": "swe.set_ephe_path('.run/se1'); swe.set_sid_mode(SIDM_LAHIRI); flags = FLG_SWIEPH | FLG_SIDEREAL (D-1); knots at swe.julday(y,m,d,12.0) for node sampling (noon-UT abscissa, F-15)."
+  },
+  "cases": {
+    "case_01_close_station_cubic": {
+      "id": "wp2-geo-01",
+      "description": "Synthetic cubic longitude curve with a station region crossing target degree 270.0 three times (direct -> retrograde -> direct). Hand-specified coefficients; roots solved analytically (factored form) and verified by bisection and numpy.roots. No ephemeris involved.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000001",
+      "derivation": "hand-specified + analytic/numeric root solve (numpy.roots, bisection; the two agree to 3.2e-12 days)",
+      "inputs": {
+        "curve": "lambda(t) = 270.0 + 0.001*(t-3)*(t-6)*(t-9) degrees, t in days from 2026-01-01T00:00:00Z",
+        "target_longitude_deg": 270.0,
+        "relation": "conjunction",
+        "orb_id": "orb_conj_slow",
+        "orb_max_deg": 1.0,
+        "horizon_utc": ["2025-12-20T00:00:00Z", "2026-01-25T00:00:00Z"]
+      },
+      "derivation_detail": {
+        "f_over_0.001_polynomial": "t^3 - 18t^2 + 99t - 162 (roots of f(t)=lambda(t)-270.0 exactly at t=3,6,9 by the factored form)",
+        "extrema": "f'(t)=0 at t = 6 +/- sqrt(3) = 4.267949 / 7.732051 days, deviations +0.0103923 / -0.0103923 deg (+/-37.4 arcsec) -- the 'close station': the body reverses only 37 arcsec from the target, far inside the 1.0 deg orb, so the orb is never vacated between roots",
+        "orb_boundaries": "|f|=1.0 -> t^3-18t^2+99t+838=0 (entry, t=-4.29991269688132) and t^3-18t^2+99t-1162=0 (exit, t=+16.29991269688132); each has exactly one real root (discriminant-checked numerically), verified by direct evaluation lambda(t)=269.0 / 271.0"
+      },
+      "expected": {
+        "root_count": 3,
+        "branches_in_order": ["direct", "retrograde", "direct"],
+        "episode_pinning_rule": "WP2 decision, pinned: one episode per root. Because the body never leaves the orb between roots, each episode's t_in/t_out are the orb boundaries clipped at the neighbouring roots: episode k spans [max(orb_entry, t_exact_{k-1}), min(orb_exit, t_exact_{k+1})]. Episode 2 (retrograde) therefore has t_in = t_exact of root 1 and t_out = t_exact of root 3.",
+        "episodes": [
+          {"t_in": "2025-12-27T16:48:07Z", "t_exact": "2026-01-04T00:00:00Z", "t_out": "2026-01-07T00:00:00Z", "branch": "direct", "station_flag": false, "exact_crossing": true, "orb_max_deg": 1.0, "orb_source": "orb_conj_slow", "dwell_days": 10.2999126969},
+          {"t_in": "2026-01-04T00:00:00Z", "t_exact": "2026-01-07T00:00:00Z", "t_out": "2026-01-10T00:00:00Z", "branch": "retrograde", "station_flag": false, "exact_crossing": true, "orb_max_deg": 1.0, "orb_source": "orb_conj_slow", "dwell_days": 3.0},
+          {"t_in": "2026-01-07T00:00:00Z", "t_exact": "2026-01-10T00:00:00Z", "t_out": "2026-01-17T07:11:52Z", "branch": "direct", "station_flag": false, "exact_crossing": true, "orb_max_deg": 1.0, "orb_source": "orb_conj_slow", "dwell_days": 7.2999126969}
+        ],
+        "declared_tolerances": {"tolerance_arcsec": 2.0, "bracket_seconds": 300, "per": "WP1_CONTRACTS.md §9 exact-separation roots, slow bodies"}
+      },
+      "retflag_backend_record": {"backend": "n/a (synthetic; no Swiss call)", "ephemeris_used": false}
+    },
+    "case_02_true_node_excursion": {
+      "id": "wp2-geo-02",
+      "description": "TRUE node vs MEAN node sidereal separation over calendar 2026, sampled every 6 hours at noon-knot-compatible UT instants. Under the pinned mean-node convention (N-4a(b'')), the transiting node position used for every Rahu/Ketu contact is swe.MEAN_NODE; the true node's excursion is the wrong-answer detector.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000002",
+      "derivation": "computed directly with pyswisseph 2.10.03 against .run/se1 (checksums in _meta); FLG = FLG_SWIEPH|FLG_SIDEREAL, SIDM_LAHIRI, D-1",
+      "inputs": {
+        "interval_utc": ["2026-01-01T00:00:00Z", "2026-12-31T18:00:00Z"],
+        "sampling": "every 6 h (1465 samples; 6 h spacing catches the max of the quasi-monthly true-node oscillation to better than 15 arcsec)",
+        "bodies": ["swe.TRUE_NODE", "swe.MEAN_NODE"]
+      },
+      "derivation_detail": {
+        "max_separation": "max over samples of |lon_TRUE - lon_MEAN| (wrapped to [0,180]) = 1.7642302810 deg = 6351.229 arcsec",
+        "max_at": "2026-07-02T18:00:00Z",
+        "positions_at_max": {"true_node_sidereal_deg": 306.5003912134, "mean_node_sidereal_deg": 308.2646214944},
+        "cross_check": "independent call path swe.calc at JD_ET = JD_UT + swe.deltat(JD_UT) at the same instant reproduces 6351.229011 arcsec (delta 0.000 arcsec)"
+      },
+      "expected": {
+        "max_abs_true_minus_mean_arcsec_2026": 6351.229,
+        "max_abs_true_minus_mean_deg_2026": 1.764230,
+        "max_at_utc": "2026-07-02T18:00:00Z",
+        "convention_pin": "The fixture pins swe.MEAN_NODE (FLG_SIDEREAL, SIDM_LAHIRI) positions as the expected input set for all Rahu/Ketu contact solving. A kernel reporting node contacts against swe.TRUE_NODE positions is WRONG under convention N-4a(b''); an error of up to ~1.76 deg = 6351 arcsec at contact time is the demonstrated magnitude of the defect.",
+        "node_agents_and_targets_remain_valid": true
+      },
+      "retflag_backend_record": {"backend": "swieph", "retflag": 65602, "retflag_and_2_asserted": true, "se1_checksums_ref": "_meta.ephemeris_backend_record.se1_checksums"}
+    },
+    "case_03_seam_tangency": {
+      "id": "wp2-geo-03",
+      "description": "Synthetic monotone arc split into two partitions with a contact falling exactly at the seam instant. Expected: exactly 1 episode, never zero, never duplicated.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000003",
+      "derivation": "hand-specified linear arc; hand-computed contact instant",
+      "inputs": {
+        "curve": "lambda(t) = 270.0 + 0.1*(t - 5) degrees, t in days from 2026-03-01T00:00:00Z (direct motion, 0.1 deg/day)",
+        "target_longitude_deg": 270.5,
+        "relation": "conjunction",
+        "orb_id": "orb_conj_slow",
+        "orb_max_deg": 1.0,
+        "partition_A_utc": ["2026-03-01T00:00:00Z", "2026-03-06T00:00:00Z"],
+        "partition_B_utc": ["2026-03-06T00:00:00Z", "2026-03-11T00:00:00Z"]
+      },
+      "derivation_detail": {
+        "contact_instant": "lambda = 270.5 -> t = 5 exactly -> 2026-03-06T00:00:00Z = the seam instant",
+        "orb_span": "orb 1.0 deg at 0.1 deg/day -> t_in = seam - 10 d = 2026-02-24T00:00:00Z, t_out = seam + 10 d = 2026-03-16T00:00:00Z (the orb straddles both partitions even though t_exact sits on the seam)"
+      },
+      "expected": {
+        "episode_count": 1,
+        "episodes": [
+          {"t_in": "2026-02-24T00:00:00Z", "t_exact": "2026-03-06T00:00:00Z", "t_out": "2026-03-16T00:00:00Z", "branch": "direct", "truncated_at_horizon": null, "exact_crossing": true}
+        ],
+        "attribution_rule_pinned": "A contact whose t_exact equals a partition seam is attributed to the partition whose END it equals (partition A, end-closed). It must appear in exactly one partition: zero episodes (seam dropped as 'outside both') and two episodes (emitted once per partition) are both test failures."
+      },
+      "retflag_backend_record": {"backend": "n/a (synthetic; no Swiss call)", "ephemeris_used": false}
+    },
+    "case_04_horizon_edge_truncation": {
+      "id": "wp2-geo-04",
+      "description": "Start-inside and end-inside episodes at a horizon edge, including cases where t_exact lies OUTSIDE the horizon but the orb overlaps it: the episode is emitted truncated, never dropped. Hand-computed overlap intervals.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000004",
+      "derivation": "hand-specified linear arcs; hand-computed orb entries/exits and overlap intervals",
+      "inputs": {
+        "horizon_utc": ["2026-04-01T00:00:00Z", "2026-05-01T00:00:00Z"],
+        "target_longitude_deg": 268.0,
+        "relation": "conjunction",
+        "orb_id": "orb_conj_slow",
+        "orb_max_deg": 1.0
+      },
+      "subcases": {
+        "start_inside_exact_outside_before": {
+          "curve": "lambda(t) = 268.5 + 0.05*(t - 2026-04-01T00:00Z), direct, deg/day",
+          "derivation_detail": "At horizon start lambda = 268.5 (0.5 deg inside the 1.0 deg orb). t_exact (lambda = 268.0) would be at t = -10 d = 2026-03-22T00:00:00Z, BEFORE the horizon. Orb exit (lambda = 269.0) at t = +10 d = 2026-04-11T00:00:00Z, inside the horizon.",
+          "expected": {
+            "episode_count": 1,
+            "episodes": [
+              {"t_in": "2026-04-01T00:00:00Z", "t_exact": null, "t_out": "2026-04-11T00:00:00Z", "branch": "direct", "truncated_at_horizon": "start", "exact_crossing": false, "orb_overlap_days": 10.0}
+            ],
+            "drop_is_failure": "t_exact is outside the horizon but the orb overlaps it for 10.0 days; a truncated episode MUST be emitted. Dropping it, or emitting it with t_exact fabricated inside the horizon, is a test failure."
+          }
+        },
+        "end_inside_exact_inside": {
+          "curve": "lambda(t) = 269.5 - 0.06*(t - 2026-04-01T00:00Z), retrograde-direction (decreasing), deg/day",
+          "derivation_detail": "Orb entry (lambda = 269.0) at t = 25/3 d = 2026-04-09T08:00:00Z (inside horizon). t_exact (lambda = 268.0) at t = +25 d = 2026-04-26T00:00:00Z (inside). Orb exit (lambda = 267.0) would be at t = 125/3 d = 2026-05-12T16:00:00Z, BEYOND the horizon end.",
+          "expected": {
+            "episode_count": 1,
+            "episodes": [
+              {"t_in": "2026-04-09T08:00:00Z", "t_exact": "2026-04-26T00:00:00Z", "t_out": "2026-05-01T00:00:00Z", "branch": "direct", "truncated_at_horizon": "end", "exact_crossing": true, "orb_overlap_days": 21.6666666667}
+            ],
+            "drop_is_failure": "Truncated_at_horizon='end', t_out pinned to the horizon end exactly; the remaining 11.67 days of orb beyond the horizon are recorded as unsearched, never silently folded into t_out (H-3 discipline)."
+          }
+        }
+      },
+      "retflag_backend_record": {"backend": "n/a (synthetic; no Swiss call)", "ephemeris_used": false}
+    },
+    "case_05_noon_midnight_epoch": {
+      "id": "wp2-geo-05",
+      "description": "F-15 trap: ephemeris_daily knots are at NOON UT. The Moon's sidereal longitude at 2026-06-15T12:00:00Z (correct noon-knot abscissa) vs 2026-06-15T00:00:00Z (midnight abscissa) differs by ~6.5 deg; a kernel consuming noon knots must treat the knot abscissa as noon.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000005",
+      "derivation": "computed directly with pyswisseph 2.10.03 against .run/se1 (checksums in _meta); FLG = FLG_SWIEPH|FLG_SIDEREAL, SIDM_LAHIRI, D-1",
+      "inputs": {
+        "body": "swe.MOON",
+        "instants_utc": ["2026-06-15T12:00:00Z", "2026-06-15T00:00:00Z"],
+        "knot_convention": "noon_ut_knot_abscissa (F-15, WP1_CONTRACTS.md §1)"
+      },
+      "derivation_detail": {
+        "moon_sidereal_noon_deg": 65.62028774757364,
+        "moon_sidereal_midnight_deg": 57.96929397808918,
+        "difference_deg": 7.650993769484458,
+        "difference_arcsec": 27543.578,
+        "cross_checks": [
+          "swe.calc at JD_ET = JD_UT + swe.deltat (deltat = 0.0007968447 d) reproduces both longitudes to 0.000 arcsec (independent call path)",
+          "tropical-minus-ayanamsa path (FLG_SWIEPH tropical - get_ayanamsa_ut = 65.6223320 deg) agrees within 7.36 arcsec -- the expected nutation-in-longitude-of-date difference between the two sidereal paths (WP1_CONTRACTS.md §1 D-1 note)"
+        ],
+        "note_on_332arcsec": "WP1_CONTRACTS.md §1 records a historical 'spurious 332.3 arcsec' from a midnight abscissa. The ACTUAL noon-vs-midnight lunar abscissa difference computed here is 27543.6 arcsec (~6.5 deg), the true magnitude of the F-15 trap for the Moon; the 332.3 arcsec historical figure is a different (smaller, case-specific) residual and is NOT reproduced by this 12-hour abscissa shift. The fixture pins the actual computed value."
+      },
+      "expected": {
+        "substrate_value_pinned_correct": {"instant_utc": "2026-06-15T12:00:00Z", "moon_sidereal_longitude_deg": 65.62028774757364},
+        "wrong_answer_detector": {"instant_utc": "2026-06-15T00:00:00Z", "moon_sidereal_longitude_deg": 57.96929397808918},
+        "difference_arcsec": 27543.578,
+        "kernel_requirement": "A kernel consuming the noon-knot substrate must treat each knot's abscissa as 12:00 UT. An off-by-12h abscissa for the Moon shifts positions by ~27544 arcsec, dwarfing every declared tolerance in WP1_CONTRACTS.md §9 (2-5 arcsec)."
+      },
+      "retflag_backend_record": {"backend": "swieph", "retflag": 65602, "retflag_and_2_asserted": true, "se1_checksums_ref": "_meta.ephemeris_backend_record.se1_checksums"}
+    },
+    "case_06_special_drishti_table": {
+      "id": "wp2-geo-06",
+      "description": "Per-graha special drishti angle table (BPHS ch.26 per WP1_CONTRACTS.md §7 doctrine note) with N-14: Rahu and Ketu cast NO drishti at all, not even the 7th -- while remaining valid conjunction/ingress/kakshya/return agents AND targets.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000006",
+      "derivation": "hand-specified (doctrine table pinned by WP1_CONTRACTS.md §7 and §2.2 N-14 note)",
+      "inputs": {"relation_family": "drishti_contact"},
+      "expected": {
+        "drishti_angles_deg": {
+          "Mars": [90, 180, 210],
+          "Jupiter": [120, 180, 240],
+          "Saturn": [60, 180, 270],
+          "Sun": [180],
+          "Moon": [180],
+          "Mercury": [180],
+          "Venus": [180],
+          "Rahu": [],
+          "Ketu": []
+        },
+        "rahu_ketu_relation_set": {
+          "excludes": ["drishti_contact"],
+          "includes": ["conjunction", "sign_ingress", "nakshatra_ingress", "kakshya_cell_crossing", "return"],
+          "note": "Nodes remain full gochara agents and targets (conjunction, ingresses, kakshya-cell crossing, returns to/from them); only drishti_contact is excluded. Any drishti_contact episode with body or target Rahu/Ketu is a test failure (N-14; supersedes the served SPECIAL_DRISHTI_DEG entries for the nodes, F-29)."
+        },
+        "orb_source": {"drishti": ["orb_drishti_slow", "orb_drishti_moon"], "per": "WP1_CONTRACTS.md §7"}
+      },
+      "retflag_backend_record": {"backend": "n/a (doctrine table; no ephemeris)", "ephemeris_used": false}
+    },
+    "case_12_plateau_ties": {
+      "id": "wp2-geo-12",
+      "description": "Synthetic daily lambda(t) series with a flat plateau at the maximum spanning k=4 consecutive days. Peak detection must handle the tie deterministically; with H-5 (no cap) all admitted peaks persist.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000012",
+      "derivation": "hand-specified series",
+      "inputs": {
+        "series_start_utc": "2026-01-01T00:00:00Z",
+        "series_step": "1 day",
+        "series": [0.5, 0.54, 0.58, 0.62, 0.66, 0.7, 0.74, 0.78, 0.82, 0.86, 0.9, 0.94, 1.0, 1.0, 1.0, 1.0, 0.96, 0.92, 0.88, 0.84, 0.8, 0.76, 0.72, 0.68, 0.64, 0.6, 0.56, 0.52, 0.48, 0.44],
+        "max_value": 1.0
+      },
+      "derivation_detail": "Days 0-11 ramp 0.5 -> 0.94; days 12-15 plateau at exactly 1.0; days 16-29 ramp down. max = 1.0 attained at day indices 12,13,14,15 (dates 2026-01-13 .. 2026-01-16).",
+      "expected": {
+        "tie_break_rule_pinned": "ALL tied maxima are admitted with the SAME rank (no first-day-wins, no arbitrary single pick, no drop of the 'duplicate' days). The plateau contributes 4 admitted peaks, each carrying its own date and sharing rank 1.",
+        "peak_count": 4,
+        "peak_dates_utc": ["2026-01-13T00:00:00Z", "2026-01-14T00:00:00Z", "2026-01-15T00:00:00Z", "2026-01-16T00:00:00Z"],
+        "h5": "With the H-5 fix (no fixed cap on stored peaks per era per decade), all 4 admitted peaks persist in storage; trimming, if any, happens only at serve time."
+      },
+      "retflag_backend_record": {"backend": "n/a (synthetic; no Swiss call)", "ephemeris_used": false}
+    }
+  }
+}

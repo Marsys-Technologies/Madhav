@@ -221,6 +221,181 @@ VEDHA_KINDS: tuple[str, ...] = (HOUSE_VEDHA, SARVATOBHADRA, LATTA)
 # not invented for this writer.
 NATURAL_MALEFICS: frozenset[str] = frozenset({"Sun", "Mars", "Saturn", "Rahu", "Ketu"})
 
+# ── WP9 overlay stamps (GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §5.4) ─────────────
+# Every served row carries three machine-readable stamps (migration 1082).
+# `source_qualification` names HOW the row's served value was sourced;
+# `precision_regime` names the time grain the window was computed at;
+# `corpus_verifiable` records whether the row's citation chain is verifiable
+# against the ingested corpus today. house_vedha rows restate a
+# `bg_transit_rules` row, so all three stamps derive from THAT ROW'S OWN
+# `classical_citation`, never from a constant. After the 2026-09 L0 repair
+# (PR #2727, migration 1079's falsifier predicates — re-run them, do not trust
+# a count copied into a comment):
+#   classical_citation LIKE 'Phaladipika Adh. XXVI, Sloka%'  -> verse-cited
+#   classical_citation LIKE 'UNSOURCED%'                     -> declared unsourced
+# The UNSOURCED rows are the Rāhu/Ketu house-transit rules: the served corpus
+# carries no house-transit vedha doctrine for the nodes (ruling N-14 / F-29).
+# They MUST NOT be stamped verse_cited or uncited_extension=False — that is a
+# favourable-sounding default standing in for a known negative (§N.7 item 6).
+SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximation", "unsourced")
+PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
+STRUCK_BPHS_CH29_MARKER = "BPHS Ch.29"
+# The L0 repair's own discriminator (migration 1079 falsifier: `LIKE 'UNSOURCED%'`,
+# which is case-sensitive — so is this).
+UNSOURCED_CITATION_PREFIX = "UNSOURCED"
+
+
+def is_unsourced_citation(classical_citation: Optional[str]) -> bool:
+    """True when a rule's citation declares it UNSOURCED — or is missing.
+
+    A NULL/empty citation is treated as unsourced: an absent source must never be
+    promoted to a cited one (§N.7 item 6). Matches the L0 predicate
+    `classical_citation LIKE 'UNSOURCED%'`.
+    """
+    c = (classical_citation or "").strip()
+    # Case-insensitive on purpose: L0's own predicate (`LIKE 'UNSOURCED%'`) is
+    # case-sensitive, but an unrecognised spelling such as 'Unsourced …' read as
+    # CITED would err in the favourable direction. Any doubt resolves to "uncited".
+    return c == "" or c.upper().startswith(UNSOURCED_CITATION_PREFIX)
+
+
+def house_vedha_uncited_extension(classical_citation: Optional[str]) -> bool:
+    """Row-level `uncited_extension` for a house_vedha row: True exactly when the
+    rule it restates carries no source (declared UNSOURCED, or no citation)."""
+    return is_unsourced_citation(classical_citation)
+
+
+# ── M-8: vedha exceptions + vipareeta vedha (F-26; verse-cited against
+# Phaladīpikā Adh. XXVI — PG322:C1 the Sun's vedha pairs "provided the
+# corresponding Vedha places … are not marred by the transit of any of the
+# planets other than Saturn", PG323:C1 Mercury's with the Moon excepted;
+# vipareeta vedha — a second graha joining the transiting graha cancels the
+# obstruction — bphs_vol1_rsanthanam_djvu.txt:24414-24441, translator
+# commentary tier). The omission was one-directional (Vedha only ever lowers
+# quality_gates), which is why M-8 was ruled early. GOCHARA_REMAINDER_
+# EXECUTION_BRIEF_v1_0 §5.2, evaluation order: exceptions first, then
+# vipareeta.
+MUTUAL_EXCLUSION_PAIRS: frozenset[frozenset[str]] = frozenset({
+    frozenset({"Sun", "Saturn"}),
+    frozenset({"Moon", "Mercury"}),
+})
+
+
+def is_mutual_exclusion(graha_a: str, graha_b: str) -> bool:
+    """True when vedha never operates BETWEEN this pair in either direction —
+    Sun↔Saturn and Moon↔Mercury (Phaladīpikā PG322:C1 / PG323:C1). An
+    occupancy of the vedha house by the excluded partner is not an
+    obstruction; when it is the ONLY occupancy, no house_vedha row is emitted
+    at all (the exception is recorded in coverage instead)."""
+    return frozenset({graha_a, graha_b}) in MUTUAL_EXCLUSION_PAIRS
+
+
+def vipareeta_cancellation(
+    obstruction_start: date, obstruction_end: date,
+    companion_runs: list[SignRun],
+) -> Optional[Overlap]:
+    """Vipareeta vedha: a second graha JOINING THE TRANSITING (primary) graha
+    cancels the obstruction. `companion_runs` are the candidate companions'
+    sign-runs already filtered to the PRIMARY graha's sign; the cancelled
+    interval is companionship ∩ obstruction. Returns the earliest such
+    overlap, or None when no companion joins during the obstruction."""
+    best: Optional[Overlap] = None
+    for r in companion_runs:
+        ov = overlap_window(obstruction_start, obstruction_end, r["start_date"], r["end_date"])
+        if ov is not None and (best is None or ov["start"] < best["start"]):
+            best = ov
+    return best
+
+
+# ── §12.9 upstream fingerprint ───────────────────────────────────────────────
+# A house_vedha row restates a `bg_transit_rules` row and (nested) a
+# `bg_vedha_malefic_scale` grade. Neither the rules nor the scale is versioned by
+# anything the row could carry, so when L0 re-cited the rules the built rows went
+# stale with no code path able to notice (§N.8). The fingerprint is a digest of the
+# rows a build ACTUALLY CONSUMED — the same objects the writer holds in memory — so
+# comparing it to a fresh read of the tables answers "was this row built from what
+# the tables say now?" and can only be wrong if the digest is.
+from services.gochara_kernel.fingerprint import FINGERPRINT_ALGORITHM, canonical_digest as _digest
+
+
+def upstream_fingerprint(vedha_rules: dict, malefic_scale: dict) -> dict:
+    """Digest of the reference rows one house_vedha build consumed.
+
+    `vedha_rules` is `{(graha, primary_house): row}` and `malefic_scale` is
+    `{malefic_count: row}` — exactly what the writer's fetch functions return.
+    Order-independent; sensitive to every consumed field (citation, phala,
+    vedha_house, grade). JSON-safe, so it round-trips through a jsonb column.
+    """
+    rules = sorted(
+        ([str(k[0]), int(k[1]), {f: v for f, v in sorted(dict(row).items())}]
+         for k, row in vedha_rules.items()),
+        key=lambda x: (x[0], x[1]),
+    )
+    scale = sorted(
+        ([int(k), {f: v for f, v in sorted(dict(row).items())}] for k, row in malefic_scale.items()),
+        key=lambda x: x[0],
+    )
+    return {
+        "algorithm": FINGERPRINT_ALGORITHM,
+        "bg_transit_rules": _digest(rules),
+        "n_transit_rules": len(rules),
+        "bg_vedha_malefic_scale": _digest(scale),
+        "n_malefic_scale_rows": len(scale),
+    }
+
+
+def source_qualification_for(vedha_kind: str, grid_basis: Optional[str], *,
+                             classical_citation: Optional[str] = None) -> str:
+    """The WP9 `source_qualification` stamp. Sarvatobhadra is
+    'algorithmic_approximation' exactly when the served pairing came from the
+    disclosed algorithmic opposition approximation (grid_basis=
+    'algorithmic_approximation'); a DB-sourced grid (school-tagged or
+    l1_sarvatobhadra_vedha) is 'verse_cited'. latta (bg_phaladeepika_latta) is a
+    verse-cited rule. house_vedha (bg_transit_rules) is 'verse_cited' EXCEPT when
+    its own rule is declared UNSOURCED (or has no citation), which is 'unsourced' —
+    derived from the row's citation, never assumed."""
+    if vedha_kind == SARVATOBHADRA:
+        return "algorithmic_approximation" if grid_basis == "algorithmic_approximation" else "verse_cited"
+    if vedha_kind == HOUSE_VEDHA:
+        return "unsourced" if is_unsourced_citation(classical_citation) else "verse_cited"
+    if vedha_kind == LATTA:
+        return "verse_cited"
+    raise ValueError(f"unknown vedha_kind {vedha_kind!r}")
+
+
+# §7.6 ruling / O-3 recount: bg_transit_rules id 21 (Mercury 2→5 vedha) has a
+# page-grain-only śloka anchor — the śloka-6 vedha house is the OCR token
+# "Bill". It must read corpus_verifiable=False even though its citation text
+# carries no UNSOURCED/struck marker.
+PAGE_GRAIN_ONLY_RULES = {("mercury", 2, 5)}
+
+
+def corpus_verifiable_for(vedha_kind: str, *, grid_basis: Optional[str] = None,
+                          classical_citation: Optional[str] = None,
+                          graha: Optional[str] = None,
+                          primary_house: Optional[int] = None,
+                          vedha_house: Optional[int] = None) -> bool:
+    """The WP9 `corpus_verifiable` stamp. house_vedha: False when the rule is
+    declared UNSOURCED (or has no citation) — decided FIRST, so it does not depend
+    on the incidental wording of the UNSOURCED reason text — and False while the
+    citation carries the struck 'BPHS Ch.29' marker; False for the page-grain-only
+    Mercury 2→5 row (bg_transit_rules id 21, OCR token "Bill" — §7.6 ruling);
+    True otherwise.
+    sarvatobhadra: False while grid_basis is the algorithmic approximation.
+    latta: True (Phaladīpikā PG338-339, REAL cited; Ketu rows are never
+    emitted, so the Ketu gap never surfaces as a False stamp)."""
+    if vedha_kind == HOUSE_VEDHA:
+        if is_unsourced_citation(classical_citation):
+            return False
+        if (str(graha).lower(), primary_house, vedha_house) in PAGE_GRAIN_ONLY_RULES:
+            return False
+        return STRUCK_BPHS_CH29_MARKER not in (classical_citation or "")
+    if vedha_kind == SARVATOBHADRA:
+        return grid_basis != "algorithmic_approximation"
+    if vedha_kind == LATTA:
+        return True
+    raise ValueError(f"unknown vedha_kind {vedha_kind!r}")
+
 
 class SignRun(TypedDict):
     sign_idx: int
@@ -345,4 +520,17 @@ __all__ = [
     "overlap_window",
     "latta_nakshatra_idx",
     "malefic_count_grade",
+    "SOURCE_QUALIFICATIONS",
+    "PRECISION_REGIMES",
+    "STRUCK_BPHS_CH29_MARKER",
+    "FINGERPRINT_ALGORITHM",
+    "upstream_fingerprint",
+    "UNSOURCED_CITATION_PREFIX",
+    "is_unsourced_citation",
+    "house_vedha_uncited_extension",
+    "MUTUAL_EXCLUSION_PAIRS",
+    "is_mutual_exclusion",
+    "vipareeta_cancellation",
+    "source_qualification_for",
+    "corpus_verifiable_for",
 ]

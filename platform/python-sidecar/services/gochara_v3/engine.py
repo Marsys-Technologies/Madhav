@@ -93,12 +93,82 @@ from services.gochara_intensity.permission import (
     _relevant_grahas, _relevant_signs, _lord_matches, YOGINI_LORD_TO_GRAHA,
 )
 from services.gochara_intensity.beta_priors import beta_for
-from pipeline.transit_search import _jd_to_ist_iso
+from pipeline.transit_search import _jd_to_ist_iso, find_aspect_events, _get_planet_pos
+from brahmagyan.graha_vocabulary import norm_graha
 
-from .context import ClassContext, VedhaRow, MaleficScaleRow
+from .context import ClassContext, VedhaRow, MaleficScaleRow, KakshyaBoundaryRow
 from .threshold import ThresholdConfig, compute_threshold_config, is_above_threshold
 from services.gochara_v3.mechanisms import w23_tara_bala as _w23  # W2.3 tara bala
 from services.gochara_v3.mechanisms import w30_nodal_drishti as _w30  # W3.0 nodal drishti
+from services.gochara_kernel import ids as _kernel_ids
+from services.gochara_kernel import coverage as _kernel_coverage
+
+# WP5 H-4/H-5/H-6 identity adapter — CORRECTED during the WP0-WP7 branch
+# reconciliation (2026-09-23): the version of this wiring first written
+# (outside this worktree, before being moved onto this branch) called a
+# second, ad-hoc contact_id(sentence)/independence_group(sentence) pair with
+# a different signature and a different docstring than the pinned kernel
+# contract below. That would have produced ids that do NOT agree with the
+# WP3a kernel's ledger ids for the same physical event — exactly the
+# "independent reimplementation produces different ids" failure
+# WP1_CONTRACTS.md §3.2 exists to prevent. This adapter calls the ONE
+# canonical `services.gochara_kernel.ids` functions instead.
+#
+# `_WP5_PROVISIONAL_CONVENTION_ID` / `_WP5_METHOD_VERSION` are declared
+# literals, not silently invented per call: WP1_CONTRACTS.md defines the
+# convention vector as a design document only (no executable convention_id
+# yet exists in code). Replace both once WP1's convention table lands as
+# real code.
+_WP5_PROVISIONAL_CONVENTION_ID = "wp1-design-pending"
+_WP5_METHOD_VERSION = "gochara_v3_engine.wp5"
+
+
+def _sentence_identity(sentence: "ConfigurationSentence"):
+    """WP5 H-4/H-5/H-6: derive (contact_id, independence_group) for a
+    ConfigurationSentence using the pinned kernel identity contract
+    (services.gochara_kernel.ids / WP1_CONTRACTS.md §3.2) — never a
+    second, local reimplementation, so ids agree with the WP6 ledger built
+    from the same kernel functions.
+
+    Returns (None, None) when the sentence carries no exact instant — an
+    identity cannot be computed without one, and that must surface as an
+    honest gap (no identity attached) rather than a fabricated epoch.
+    """
+    if sentence.event_jd is None:
+        return (None, None)
+    detail = sentence.detail or {}
+    try:
+        aspect_deg = float(detail.get("aspect_deg", 0.0))
+    except (TypeError, ValueError):
+        aspect_deg = 0.0
+    target_deg_raw = detail.get("target_longitude_deg", detail.get("boundary_deg"))
+    try:
+        target_deg = float(target_deg_raw) if target_deg_raw is not None else 0.0
+    except (TypeError, ValueError):
+        target_deg = 0.0
+    body = sentence.transit_planet or "unknown"
+    relation = sentence.primitive
+
+    cid = _kernel_ids.contact_id(
+        chart_id=sentence.chart_id,
+        convention_id=_WP5_PROVISIONAL_CONVENTION_ID,
+        body=body,
+        target_type=sentence.target_type or "unknown",
+        relation=relation,
+        aspect_deg=aspect_deg,
+        t_exact_jd=sentence.event_jd,
+        target_ref=sentence.target_ref,
+        method_version=_WP5_METHOD_VERSION,
+    )
+    igroup = _kernel_ids.independence_group(
+        body=body,
+        relation=relation,
+        aspect_deg=aspect_deg,
+        target_deg=target_deg,
+        t_exact_jd=sentence.event_jd,
+        t_fallback_jd=sentence.event_jd,
+    )
+    return (cid, igroup)
 
 # W3.0 nodal drishti toggle — Rahu/Ketu 5/7/9 aspect modifier.
 # When True the engine will call _w30.compute() in _evaluate_single_from_context
@@ -116,6 +186,118 @@ logger = logging.getLogger(__name__)
 # tara_modifier in (0, 2]; modifier is 1.0 when Moon nakshatra data unavailable (honest skip).
 # ---------------------------------------------------------------------------
 _W23_TARA_BALA_ENABLED: bool = True
+
+# ---------------------------------------------------------------------------
+# N-22 / N-13 (L3 §4.3): kakṣyā sign-level bindu interim. Recorded flag
+# `kakshya_bindu_interim` (input generation vector; mechanism_register.yaml
+# "PLANNED INPUT-VECTOR FLAGS"), default OFF.
+#
+# When True, a kakṣyā crossing whose transiting graha has no resolvable bindu
+# in the transited sign (chart_facts `ashtakavarga_bindu_sign`, graha × sign —
+# count 0 or row absent) contributes NO activity and carries
+# detail['completeness_state']='unqualified' with a failure_detail
+# ({primitive, error_class, message, row_identity}, per the WP2 honesty
+# pinning). A crossing with a resolvable count >= 1 is qualified by it and
+# declared at the coarser grain: detail['qualification_grain']='sign' (the
+# sign-level BAV, interim for the kakṣyā-grain qualification M-7 requires).
+# When False the kakṣyā path is byte-identical to the pre-interim engine:
+# no detail keys are added and _compute_activity_v3's skip never fires.
+# ---------------------------------------------------------------------------
+_KAKSHYA_BINDU_INTERIM_ENABLED: bool = False
+
+# ---------------------------------------------------------------------------
+# M-1 (L3 §4.5): activity shape projection. Recorded flag `activity_shape`
+# (input generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR
+# FLAGS"), default "legacy_box".
+#
+# activity_shape ∈ {"legacy_box", "linear_no_box"}:
+#   legacy_box     — legacy F-08 STEP: a sentence inside the ±5-day gather
+#                    box contributes its full EVENT-TIME orb decay, constant
+#                    across the whole box (no decay by |t − event_jd|).
+#   linear_no_box  — linear-in-separation activity at the instant:
+#                    1 − |Δ| / orb_max_deg, where |Δ| is the transit body's
+#                    angular separation from the sentence's target longitude
+#                    AT t_jd. No time box: the contribution varies
+#                    continuously with t; the ±5-day gather only enumerates
+#                    candidate events and never gates the value. Orb per
+#                    WP1_CONTRACTS.md §7 orb_source; orb_max_deg is
+#                    parameterised (default = the legacy 5.0°).
+# `_ACTIVITY_MAX_ORB_DEG` and its mirrors are RETAINED for the legacy
+# default — they are retired by the M-1 value ratification step that
+# follows the WP8 orb battery (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0
+# §4.6); do not remove them before that ruling.
+# ---------------------------------------------------------------------------
+_ACTIVITY_SHAPE_DEFAULT: str = "legacy_box"
+_ACTIVITY_SHAPES: tuple[str, ...] = ("legacy_box", "linear_no_box")
+
+# ---------------------------------------------------------------------------
+# M-3 (L3 §4.8): Moon channel split. Recorded flag `moon_channel` (input
+# generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR FLAGS"),
+# default "blended".
+#
+# moon_channel ∈ {"blended", "separate"}:
+#   blended   — legacy: Moon-body sentences enter the century λ's activity
+#               term like every other body's.
+#   separate  — the Moon is EXCLUDED from the century λ's activity term;
+#               Moon-scale classes are served on demand by
+#               find_episodes(..., moon=True), which writes a
+#               'moon_on_demand' coverage partition for its searched
+#               interval (even a zero-answer search — L3-Q08). Tārā-bala
+#               (W2.3) and mūrti qualifiers are INSTANT qualifiers on the
+#               whole window and still enter slow-body windows — the split
+#               removes Moon CONTACTS from activity, not the Moon-based
+#               qualifier terms. Sade-Sati testimony is NOT in the Moon
+#               channel (it is a whole-chart phase system; under N-15 it
+#               becomes window testimony, never a Moon-contact signal).
+# The Moon channel's own doctrine content stays [U] — no citation is
+# invented here; the split is an engineering partition, not a textual claim.
+# ---------------------------------------------------------------------------
+_MOON_CHANNEL_DEFAULT: str = "blended"
+_MOON_CHANNELS: tuple[str, ...] = ("blended", "separate")
+
+# ---------------------------------------------------------------------------
+# N-14 (L3 §4.9): nodal dṛṣṭi removal. Recorded flag `nodal_drishti` (input
+# generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR FLAGS"),
+# default "enabled".
+#
+# nodal_drishti ∈ {"enabled", "removed"}:
+#   enabled  — legacy: P.drishti_contact emits Rahu/Ketu rows and
+#              w30_modifier participates in the λ product.
+#   removed  — drishti_contact emits NO rows with body ∈ {Rahu, Ketu} (the
+#              nodes stay agents/targets for conjunction, ingress, kakṣyā,
+#              and return — only the dṛṣṭi relation is removed);
+#              w30_modifier leaves the λ product; the removed term is kept
+#              one generation as a labelled NON-SCORING annotation
+#              (term_breakdown.w30_annotation) and the absence is recorded
+#              as a completeness_state on w30_detail.
+# ---------------------------------------------------------------------------
+_NODAL_DRISHTI_DEFAULT: str = "enabled"
+_NODAL_DRISHTI_MODES: tuple[str, ...] = ("enabled", "removed")
+
+# ---------------------------------------------------------------------------
+# N-15 (L3 §4.10): Sade-Sati to testimony. Recorded flag `sade_sati_mode`
+# (input generation vector; mechanism_register.yaml "PLANNED INPUT-VECTOR
+# FLAGS"), default "permission_weight".
+#
+# sade_sati_mode ∈ {"permission_weight", "testimony"}:
+#   permission_weight — legacy: sade_sati is one weighted system in
+#                       PERMISSION (SYSTEM_WEIGHTS["sade_sati"], normalized
+#                       by total_weight).
+#   testimony         — sade_sati is DROPPED from the weight set and
+#                       total_weight is renormalised (never a zero-weight
+#                       row, which would depress permission at every
+#                       instant); the phase becomes typed testimony on the
+#                       window (epistemic_class per F04 — source testimony,
+#                       not computed fact; corpus_verifiable=false;
+#                       citation = the nāḍī rows PG1333/PG1334/PG1339/
+#                       PG1340/PG1342 at MEDIUM provenance per N-21 — the
+#                       corrected §7.6 list; PG786 is dropped, it resolves
+#                       to zero rows in the served corpus); the global permission
+#                       lift is computed and reported as a first-class
+#                       delta (sade_sati_permission_lift).
+# ---------------------------------------------------------------------------
+_SADE_SATI_MODE_DEFAULT: str = "permission_weight"
+_SADE_SATI_MODES: tuple[str, ...] = ("permission_weight", "testimony")
 
 # ---------------------------------------------------------------------------
 # Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
@@ -151,6 +333,12 @@ TERM_BREAKDOWN_FORMULA: str = (
 # fractionally based on proximity; contacts at or beyond this orb score 0.
 # This is the linear-decay bound: activity_strength = 1 - orb / MAX_ORB_DEG
 # (clamped to [0, 1]).
+# M-1 (L3 §4.5): RETAINED for the legacy_box default. Retired by the M-1
+# value ratification step that follows the WP8 orb battery
+# (GOCHARA_REMAINDER_EXECUTION_BRIEF_v1_0 §4.6) — superseded then by the
+# parameterised `orb_max_deg` projection option. Do not remove before that
+# ruling; the mirrors in services/gochara_kernel/legacy_semantics.py carry
+# the same note.
 _ACTIVITY_MAX_ORB_DEG: float = 5.0
 
 # Primitives that contribute to the v3 activity term (same set as X(t)).
@@ -425,6 +613,11 @@ def evaluate_lambda_vector(
     suppression_window_days: float = 3.0,
     source: str = "v3_batch",
     v1_parity_mode: bool = False,
+    activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
+    orb_max_deg: float | None = None,
+    moon_channel: str = _MOON_CHANNEL_DEFAULT,
+    nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
+    sade_sati_mode: str = _SADE_SATI_MODE_DEFAULT,
 ) -> list[IntensityResult]:
     """Evaluate lambda_e for ALL JDs simultaneously. ZERO per-JD DB access.
 
@@ -460,6 +653,11 @@ def evaluate_lambda_vector(
             suppression_window_days=suppression_window_days,
             source=source,
             v1_parity_mode=v1_parity_mode,
+            activity_shape=activity_shape,
+            orb_max_deg=orb_max_deg,
+            moon_channel=moon_channel,
+            nodal_drishti=nodal_drishti,
+            sade_sati_mode=sade_sati_mode,
         )
         results.append(result)
 
@@ -478,6 +676,11 @@ def _evaluate_single_from_context(
     suppression_window_days: float = 3.0,
     source: str = "v3_batch",
     v1_parity_mode: bool = False,
+    activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
+    orb_max_deg: float | None = None,
+    moon_channel: str = _MOON_CHANNEL_DEFAULT,
+    nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
+    sade_sati_mode: str = _SADE_SATI_MODE_DEFAULT,
 ) -> IntensityResult:
     """Compute ONE lambda value using ONLY the pre-fetched ClassContext.
 
@@ -485,6 +688,22 @@ def _evaluate_single_from_context(
     Ephemeris calls (swe.calc_ut via transit_search primitives) are the
     only external calls — these are CPU-bound, not IO-bound.
     """
+    if activity_shape not in _ACTIVITY_SHAPES:
+        raise ValueError(
+            f"activity_shape must be one of {_ACTIVITY_SHAPES}, got {activity_shape!r}"
+        )
+    if moon_channel not in _MOON_CHANNELS:
+        raise ValueError(
+            f"moon_channel must be one of {_MOON_CHANNELS}, got {moon_channel!r}"
+        )
+    if nodal_drishti not in _NODAL_DRISHTI_MODES:
+        raise ValueError(
+            f"nodal_drishti must be one of {_NODAL_DRISHTI_MODES}, got {nodal_drishti!r}"
+        )
+    if sade_sati_mode not in _SADE_SATI_MODES:
+        raise ValueError(
+            f"sade_sati_mode must be one of {_SADE_SATI_MODES}, got {sade_sati_mode!r}"
+        )
     # 1. PROMISE — already computed in context (time-invariant)
     promise = context.promise
     promise_detail = context.promise_detail
@@ -493,12 +712,16 @@ def _evaluate_single_from_context(
     permission, permission_detail = _compute_permission_from_context(
         swe, context, t_jd, targets,
         window_days=window_days_permission,
+        sade_sati_mode=sade_sati_mode,
     )
 
     # 3. Gather configuration sentences (ephemeris only, no DB)
     start_jd = t_jd - window_days_activity
     end_jd = t_jd + window_days_activity
-    sentences = _gather_sentences_no_db(swe, context, targets, start_jd, end_jd)
+    sentences = _gather_sentences_no_db(
+        swe, context, targets, start_jd, end_jd,
+        nodal_drishti=nodal_drishti,
+    )
 
     notes = []
 
@@ -572,8 +795,20 @@ def _evaluate_single_from_context(
     #     This saturates at 1.0 (multiple strong contacts can't exceed 1.0),
     #     is monotonically non-decreasing in sentence count, and preserves the
     #     qualitative ordering: tighter-orb contacts count for more.
+    instantaneous_orbs: dict[int, float] | None = None
+    if activity_shape == "linear_no_box":
+        # M-1 (flag activity_shape): separation of each sentence's transit
+        # body from its target longitude AT t_jd — the no-box projection's
+        # |Δ|. Sentences without a resolvable body/target longitude are
+        # absent from the map and keep the engine's neutral unorbed
+        # fallback, exactly as the legacy path treats unorbed contacts.
+        instantaneous_orbs = _instantaneous_orbs_at(swe, sentences, t_jd)
     activity, activity_detail, term_breakdown = _compute_activity_v3(
         sentences, context.weight_by_target_ref,
+        activity_shape=activity_shape,
+        orb_max_deg=orb_max_deg,
+        instantaneous_orbs=instantaneous_orbs,
+        moon_channel=moon_channel,
     )
 
     # 4b. W1.2 — Signed channels: separate supportive (weight > 0) and
@@ -627,6 +862,16 @@ def _evaluate_single_from_context(
     #     modifier=1.0 when disabled or no natal target signs are aspected.
     _w30_result = _w30.compute(context, t_jd, swe=swe, enabled=_W30_NODAL_DRISHTI_ENABLED)
     w30_modifier = _w30_result.modifier
+    w30_annotation_value: float | None = None
+    if nodal_drishti == "removed":
+        # N-14 (flag nodal_drishti): w30_modifier leaves the λ product. The
+        # computed value is preserved as a labelled non-scoring annotation
+        # (term_breakdown.w30_annotation, below) — never silently dropped.
+        # The variable name `w30_modifier` is deliberately KEPT in the
+        # product line so the N-16 wiring detector's AST trace (modifier
+        # variable → raw_lambda) continues to see the wiring.
+        w30_annotation_value = w30_modifier
+        w30_modifier = 1.0
 
     # 5. Assemble lambda_v3 — bounded [0,1] by construction
     raw_lambda = promise * permission * activity * tara_modifier * w30_modifier * quality_gates
@@ -673,6 +918,16 @@ def _evaluate_single_from_context(
             "skipped": _w30_result.skipped,
             "skip_reason": _w30_result.skip_reason,
             "mechanism_id": _w30_result.mechanism_id,
+            **(
+                {
+                    # N-14 (flag nodal_drishti='removed'): the absence of the
+                    # w30 term is recorded via the F06 six-state
+                    # completeness_state — an honest gap, not a silent zero.
+                    "completeness_state": "inapplicable",
+                    "removed_by_ruling": "N-14",
+                }
+                if nodal_drishti == "removed" else {}
+            ),
         },
         # W1.2 signed-channel fields
         "signed_channels": signed_channel_detail,
@@ -781,6 +1036,20 @@ def _evaluate_single_from_context(
         "activity_terms": x_t_detail_compat.get("contributions", []),
         "formula": TERM_BREAKDOWN_FORMULA,
     }
+    if nodal_drishti == "removed":
+        # N-14 (flag nodal_drishti): the removed w30 term is kept one
+        # generation as a labelled NON-SCORING annotation — the value the
+        # mechanism would have contributed, explicitly outside the product.
+        w15_term_breakdown["w30_annotation"] = {
+            "label": (
+                "N-14: nodal dṛṣṭi removed from the λ product — "
+                "non-scoring annotation, kept one generation"
+            ),
+            "scoring": False,
+            "would_be_modifier": round(
+                w30_annotation_value if w30_annotation_value is not None else 1.0, 8,
+            ),
+        }
 
     # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
     # ci_source='structural_prior' until Wave-4.5 fitted posteriors replace this.
@@ -818,9 +1087,47 @@ def _evaluate_single_from_context(
     )
 
 
+def _instantaneous_orbs_at(
+    swe,
+    sentences: list[ConfigurationSentence],
+    t_jd: float,
+) -> dict[int, float]:
+    """M-1 (flag activity_shape='linear_no_box'): the separation |Δ| of each
+    sentence's transit body from the sentence's target longitude AT t_jd.
+
+    Target longitude is read from detail['target_longitude_deg'], falling
+    back to detail['boundary_deg'] (the two keys the WP5 identity adapter
+    already reads for the same purpose). Only sentences with both a
+    resolvable body and a target longitude appear in the map; everything
+    else keeps the engine's neutral unorbed fallback (0.5) — the same
+    honest fallback the legacy path applies when no orb information exists,
+    never a fabricated separation.
+    """
+    orbs: dict[int, float] = {}
+    for idx, s in enumerate(sentences):
+        body = s.transit_planet
+        target_deg_raw = s.detail.get(
+            "target_longitude_deg", s.detail.get("boundary_deg")
+        )
+        if not body or target_deg_raw is None:
+            continue
+        try:
+            target_deg = float(target_deg_raw)
+            lon, _speed = _get_planet_pos(swe, body, t_jd)
+        except Exception:  # noqa: BLE001
+            continue  # honest skip: unresolvable body -> neutral fallback
+        orbs[idx] = abs(((float(lon) - target_deg + 180.0) % 360.0) - 180.0)
+    return orbs
+
+
 def _compute_activity_v3(
     sentences: list[ConfigurationSentence],
     weight_by_target_ref: dict[str, float],
+    *,
+    activity_shape: str = _ACTIVITY_SHAPE_DEFAULT,
+    orb_max_deg: float | None = None,
+    instantaneous_orbs: dict[int, float] | None = None,
+    moon_channel: str = _MOON_CHANNEL_DEFAULT,
 ) -> tuple[float, dict, dict]:
     """Compute the W1.1 activity term in [0,1].
 
@@ -837,6 +1144,16 @@ def _compute_activity_v3(
     Then:
         activity = 1 - product_i(1 - p_i)   (noisy-OR; same math as PROMISE)
 
+    M-1 (flag activity_shape, L3 §4.5): when activity_shape ==
+    'linear_no_box', a sentence present in `instantaneous_orbs` scores by
+    its separation AT the evaluation instant,
+        orb_decay_i = 1 - min(|Δ|_i / orb_max_deg, 1.0)
+    with orb_max_deg parameterised (default the legacy 5.0°). There is no
+    time box: the instantaneous separation supersedes the event-time orb
+    values for those sentences. Sentences absent from `instantaneous_orbs`
+    keep the legacy fallback chain unchanged. Default 'legacy_box' is
+    byte-identical to the pre-flag engine.
+
     Returns:
         activity      float in [0,1]
         detail        dict with per-sentence contributions for debugging
@@ -846,11 +1163,28 @@ def _compute_activity_v3(
     contributions = []
     term_breakdown: dict[str, float] = {}
 
-    for s in sentences:
+    for idx, s in enumerate(sentences):
         if s.primitive not in _ACTIVITY_PRIMITIVES:
             continue
         if s.primitive == "gochara_vedha_pair" and s.detail.get("cancelled"):
             continue  # cancelled vedha pair: not an activity signal
+        if (
+            moon_channel == "separate"
+            and norm_graha(s.transit_planet) == "MOON"
+        ):
+            # M-3 (flag moon_channel): Moon contacts are excluded from the
+            # century λ's activity term; they are served on demand by
+            # find_episodes(..., moon=True). Never fires with the flag off.
+            continue
+        if (
+            s.primitive == "kakshya_cell_crossing"
+            and s.detail.get("completeness_state") == "unqualified"
+        ):
+            # N-22/N-13 interim (flag kakshya_bindu_interim): no resolvable
+            # bindu in the transited sign -> the crossing contributes no
+            # activity. Never fires with the flag off (no sentence then
+            # carries completeness_state).
+            continue
 
         # Target weight: clamp to [0,1] (negative weights encode direction,
         # not activity magnitude; direction is handled at the signed_lambda level)
@@ -860,20 +1194,40 @@ def _compute_activity_v3(
         # normalized by the primitive), else compute from detail['orb_degrees']
         # with linear decay, else fall back to 0.5 (conservative neutral,
         # not flat 1.0 — stations/eclipses not near exact degree get partial credit)
-        orb_strength_raw = s.detail.get("orb_strength")
+        if (
+            activity_shape == "linear_no_box"
+            and instantaneous_orbs is not None
+            and idx in instantaneous_orbs
+        ):
+            # M-1 (flag activity_shape): linear-in-separation at the instant,
+            # 1 - |Δ|/orb_max_deg, no time box. The instantaneous separation
+            # supersedes the event-time orb values for this sentence.
+            orb_max = (
+                float(orb_max_deg) if orb_max_deg is not None
+                else _ACTIVITY_MAX_ORB_DEG
+            )
+            orb_decay = 1.0 - min(instantaneous_orbs[idx] / orb_max, 1.0)
+            orb_decay = max(0.0, orb_decay)
+            orb_strength_raw = None
+            orb_degrees_raw = None
+        else:
+            orb_strength_raw = s.detail.get("orb_strength")
+            orb_degrees_raw = s.detail.get("orb_degrees")
         if orb_strength_raw is not None:
             # Primitive already computed orb_strength in [0,1]
             orb_decay = float(max(0.0, min(1.0, orb_strength_raw)))
-        else:
-            orb_degrees_raw = s.detail.get("orb_degrees")
-            if orb_degrees_raw is not None:
-                orb_degrees = abs(float(orb_degrees_raw))
-                orb_decay = 1.0 - min(orb_degrees / _ACTIVITY_MAX_ORB_DEG, 1.0)
-            else:
-                # No orb information available (sign_ingress, nakshatra_ingress,
-                # eclipse_degree, some vedha variants): use 0.5 as the honest
-                # "present but unorbed" contribution level
-                orb_decay = 0.5
+        elif orb_degrees_raw is not None:
+            orb_degrees = abs(float(orb_degrees_raw))
+            orb_decay = 1.0 - min(orb_degrees / _ACTIVITY_MAX_ORB_DEG, 1.0)
+        elif not (
+            activity_shape == "linear_no_box"
+            and instantaneous_orbs is not None
+            and idx in instantaneous_orbs
+        ):
+            # No orb information available (sign_ingress, nakshatra_ingress,
+            # eclipse_degree, some vedha variants): use 0.5 as the honest
+            # "present but unorbed" contribution level
+            orb_decay = 0.5
 
         p_i = orb_decay * target_weight
         # p_i is in [0,1] (both factors clamped)
@@ -913,6 +1267,23 @@ def _compute_activity_v3(
             "result saturates at 1.0 (replaces unbounded X(t) from v1)."
         ),
     }
+    if activity_shape != _ACTIVITY_SHAPE_DEFAULT:
+        # M-1 projection provenance (added only under a non-default flag so
+        # the legacy detail stays byte-identical).
+        detail["activity_shape"] = activity_shape
+        detail["orb_max_deg"] = (
+            float(orb_max_deg) if orb_max_deg is not None
+            else _ACTIVITY_MAX_ORB_DEG
+        )
+        detail["orb_source"] = "wp1_contracts_s7_orb_source"
+    if moon_channel != _MOON_CHANNEL_DEFAULT:
+        # M-3 channel provenance (added only under a non-default flag).
+        detail["moon_channel"] = moon_channel
+        detail["moon_sentences_excluded"] = sum(
+            1 for s in sentences
+            if s.primitive in _ACTIVITY_PRIMITIVES
+            and norm_graha(s.transit_planet) == "MOON"
+        )
 
     return activity, detail, term_breakdown
 
@@ -1060,12 +1431,148 @@ def _resolve_valence_v3(
         return "adverse", True, False
 
 
+def _bindu_interim_detail(
+    context: ClassContext,
+    bindu_lookup: dict[tuple[str, int], Optional[float]],
+    planet: str,
+    sign_number: int,
+) -> dict:
+    """N-22/N-13 sign-level bindu interim qualification for one kakṣyā crossing.
+
+    Resolves the transiting graha's BAV bindu count in the transited sign from
+    the pre-fetched L1 rows. A resolvable count >= 1 qualifies the crossing at
+    the coarser sign grain; a count of 0 or an absent row leaves it
+    'unqualified' with a failure_detail in the WP2-honesty pinned shape.
+    """
+    graha_code = norm_graha(planet)
+    row_key = (graha_code, sign_number)
+    bindus = bindu_lookup.get(row_key)
+
+    if bindus is not None and bindus >= 1:
+        return {
+            "completeness_state": "applied",
+            "qualification_grain": "sign",
+            "bindu_count": int(bindus),
+            "bindu_source": "chart_facts.ashtakavarga_bindu_sign",
+        }
+
+    if bindus is not None:
+        error_class = "bindu_zero"
+        message = (
+            f"{graha_code} has 0 bindus in sign {sign_number} "
+            "(ashtakavarga_bindu_sign)"
+        )
+    else:
+        error_class = "bindu_unresolvable"
+        message = (
+            f"no ashtakavarga_bindu_sign row resolves for "
+            f"{graha_code}-SIGN_{sign_number}"
+        )
+    return {
+        "completeness_state": "unqualified",
+        "failure_detail": {
+            "primitive": "kakshya_cell_crossing",
+            "error_class": error_class,
+            "message": message,
+            "row_identity": f"{context.chart_id}:{graha_code}-SIGN_{sign_number}",
+        },
+    }
+
+
+def _kakshya_cell_crossing_from_context(
+    swe,
+    context: ClassContext,
+    target: ResonanceTarget,
+    start_jd: float,
+    end_jd: float,
+    planets: Optional[list[str]] = None,
+    orb_deg: float = 0.1,
+) -> list[ConfigurationSentence]:
+    """WP5 H-1a: kakṣyā-cell crossing using L1 boundaries pre-fetched in context.
+
+    Mirrors gochara_grammar.primitives.kakshya_cell_crossing but reads
+    kakṣyā boundaries from context.kakshya_boundaries instead of making a DB
+    call. When no L1 rows exist for a planet, falls back to the equal-eighths
+    fixture exactly as the primitive does, honestly flagged with
+    uncited_extension=True and source='equal_eighths_fixture_approximation'.
+    """
+    if not target.target_sign:
+        logger.debug(
+            "[_kakshya_cell_crossing_from_context] target_ref=%s has no target_sign; skipping.",
+            target.target_ref,
+        )
+        return []
+
+    sign_start = P._sign_index(target.target_sign) * 30.0
+    sentences: list[ConfigurationSentence] = []
+
+    # N-22/N-13 interim (flag kakshya_bindu_interim, default off): pre-resolve
+    # the transited sign's absolute rāśi number (1-12, Aries=1 — the L1
+    # ashtakavarga_bindu_sign subject convention) and the bindu lookup once
+    # per call. Empty lookup when the flag is off — nothing is stamped then.
+    bindu_lookup: dict[tuple[str, int], Optional[float]] = {}
+    sign_number = 0
+    if _KAKSHYA_BINDU_INTERIM_ENABLED:
+        sign_number = P._sign_index(target.target_sign) + 1
+        bindu_lookup = {
+            (r.graha, r.sign_number): r.bindus
+            for r in context.bindu_sign_rows
+        }
+
+    # Build a fast lookup: planet -> list of KakshyaBoundaryRow
+    by_planet: dict[str, list[KakshyaBoundaryRow]] = {}
+    for row in context.kakshya_boundaries:
+        by_planet.setdefault(row.planet, []).append(row)
+
+    for planet in (planets or P.ALL_GRAHAS):
+        l1_rows = by_planet.get(planet, [])
+        if l1_rows:
+            boundary_degs = sorted(
+                {float(r.start_deg) for r in l1_rows if r.start_deg is not None}
+            )
+            citation = P.C.KAKSHYA_BPHS_66 if hasattr(P, "C") else None
+            uncited = False
+            source = "chart_facts.ashtakavarga_kakshya_boundary"
+        else:
+            boundary_degs = [sign_start + i * (30.0 / 8.0) for i in range(8)]
+            citation = None
+            uncited = True
+            source = "equal_eighths_fixture_approximation"
+
+        for i, b in enumerate(boundary_degs):
+            events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
+            for ev in events:
+                detail = {"boundary_deg": b, "kakshya_index": i, "source": source}
+                if _KAKSHYA_BINDU_INTERIM_ENABLED:
+                    detail.update(
+                        _bindu_interim_detail(context, bindu_lookup, planet, sign_number)
+                    )
+                sentences.append(ConfigurationSentence(
+                    primitive="kakshya_cell_crossing",
+                    chart_id=context.chart_id,
+                    event_class=target.event_class,
+                    target_type=target.target_type,
+                    target_ref=target.target_ref,
+                    transit_planet=planet,
+                    secondary_planet=None,
+                    event_jd=ev.event_jd,
+                    event_datetime_ist=ev.event_datetime_ist,
+                    temporal_shape="point",
+                    classical_citation=citation,
+                    uncited_extension=uncited,
+                    detail=detail,
+                ))
+    return sentences
+
+
 def _gather_sentences_no_db(
     swe,
     context: ClassContext,
     targets: list[ResonanceTarget],
     start_jd: float,
     end_jd: float,
+    *,
+    nodal_drishti: str = _NODAL_DRISHTI_DEFAULT,
 ) -> list[ConfigurationSentence]:
     """Run v1 configuration primitives EPHEMERIS-ONLY (no conn passed).
 
@@ -1077,13 +1584,16 @@ def _gather_sentences_no_db(
     skip them here (their DB-dependent data is already in context) or
     call them without conn (they degrade honestly to []).
 
-    This approach trades some accuracy on the 3 DB-needing primitives
-    for ZERO per-JD DB access. The trade is acceptable because:
-      - kakshya_cell_crossing: reads chart_facts for kakshya boundaries —
-        these are natal (time-invariant) and could be pre-fetched, but
-        the primitive's internal format is tightly coupled to its DB query.
-        Skipping it means we lose kakshya contributions to X(t) — a minor
-        signal in practice.
+    WP5 H-1a: kakṣyā-cell crossing is now evaluated from L1 boundaries
+    pre-fetched into ClassContext, restoring its signal instead of skipping
+    it. Only the remaining 2 DB-needing primitives (gochara_vedha_pair,
+    sarvatobhadra_vedha) still degrade on this path.
+
+    This approach trades some accuracy on the 2 remaining DB-needing
+    primitives for ZERO per-JD DB access. The trade is acceptable because:
+      - kakshya_cell_crossing: now served from context.kakshya_boundaries
+        (chart_facts ashtakavarga_kakshya_boundary rows) with honest
+        equal-eighths fallback when L1 rows are absent (WP5 H-1a).
       - gochara_vedha_pair: reads `bg_transit_rules` (rule_type=
         'favourable', vedha_house IS NOT NULL — corrected predicate, MR-41(a)
         / PK-R-9) for vedha houses. Called here with `conn=None`, so it is
@@ -1130,16 +1640,30 @@ def _gather_sentences_no_db(
                     getattr(fn, "__name__", fn), target.target_ref, exc,
                 )
 
-        # The 2 conn-needing primitives: call with conn=None so they
-        # degrade honestly (return []) rather than crashing.
-        for fn in (P.kakshya_cell_crossing, P.gochara_vedha_pair):
-            try:
-                out.extend(fn(swe, context.chart_id, target, start_jd, end_jd, conn=None))
-            except Exception as exc:  # noqa: BLE001
-                logger.debug(
-                    "[v3.engine] %s (no-conn degrade) failed for target_ref=%s: %s",
-                    getattr(fn, "__name__", fn), target.target_ref, exc,
-                )
+        # WP5 H-1a: kakṣyā-cell crossing now uses pre-fetched L1 boundaries from
+        # context instead of the conn-needing primitive. Falls back honestly to
+        # the equal-eighths fixture when no L1 rows exist.
+        try:
+            out.extend(_kakshya_cell_crossing_from_context(
+                swe, context, target, start_jd, end_jd,
+            ))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "[v3.engine] _kakshya_cell_crossing_from_context failed for target_ref=%s: %s",
+                target.target_ref, exc,
+            )
+
+        # The remaining conn-needing primitive: call with conn=None so it
+        # degrades honestly (return []) rather than crashing.
+        try:
+            out.extend(P.gochara_vedha_pair(
+                swe, context.chart_id, target, start_jd, end_jd, conn=None,
+            ))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug(
+                "[v3.engine] gochara_vedha_pair (no-conn degrade) failed for target_ref=%s: %s",
+                target.target_ref, exc,
+            )
 
         # sarvatobhadra_vedha (conn-needing)
         try:
@@ -1151,7 +1675,108 @@ def _gather_sentences_no_db(
                 "[v3.engine] sarvatobhadra_vedha (no-conn degrade) failed: %s", exc,
             )
 
-    return out
+    # WP5 H-4/H-5/H-6: attach physical-event identity to every sentence and
+    # collapse duplicate independence_group values to one row per build.
+    if nodal_drishti == "removed":
+        # N-14 (flag nodal_drishti): drishti_contact emits no rows with
+        # body ∈ {Rahu, Ketu}. The nodes stay agents/targets for
+        # conjunction, ingress, kakṣyā, and return — only the dṛṣṭi
+        # relation is filtered. Filtered rows never receive identities
+        # (they were never emitted).
+        out = [
+            s for s in out
+            if not (
+                s.primitive == "drishti_contact"
+                and norm_graha(s.transit_planet)
+                in ("RAHU", "KETU", "RAH_MEAN", "KET_MEAN")
+            )
+        ]
+    for s in out:
+        cid, igroup = _sentence_identity(s)
+        s.detail["contact_id"] = cid
+        s.detail["independence_group"] = igroup
+
+    seen_groups: set[str] = set()
+    deduped: list[ConfigurationSentence] = []
+    for s in out:
+        group = s.detail.get("independence_group")
+        if group is not None and group in seen_groups:
+            continue
+        if group is not None:
+            seen_groups.add(group)
+        deduped.append(s)
+
+    return deduped
+
+
+def find_episodes(
+    swe,
+    context: ClassContext,
+    targets: list[ResonanceTarget],
+    start_jd: float,
+    end_jd: float,
+    *,
+    moon: bool = False,
+    generation: str = "on_demand",
+) -> dict:
+    """M-3 (flag moon_channel='separate', L3 §4.8): on-demand episode search.
+
+    Gathers configuration sentences over [start_jd, end_jd] through the
+    same ephemeris-only path the century λ uses. With moon=True the result
+    is restricted to Moon-body contacts — the channel the century λ no
+    longer carries when the split is active — and the search writes a
+    'moon_on_demand' coverage partition for the interval it ACTUALLY
+    searched, including a zero-answer search (L3-Q08; kernel coverage.py:
+    Moon on demand is first-class).
+
+    D-S1(a) (§12.3 4.13a): EVERY branch returns a coverage object, never
+    None. The non-Moon branch writes a 'bodies_on_demand' partition — a
+    fourth partition_kind (migration 1087), chosen over per-body
+    body_target rows because a zero-contact search has no bodies to
+    partition by and live-search coverage must not mix into the build
+    manifest's body_target semantics.
+
+    The payload is contact episodes + coverage only: Sade-Sati testimony
+    is NOT in the Moon channel, and the channel's doctrine content stays
+    [U] (no citation is invented here).
+    """
+    sentences = _gather_sentences_no_db(swe, context, targets, start_jd, end_jd)
+    if moon:
+        episodes = [
+            s for s in sentences if norm_graha(s.transit_planet) == "MOON"
+        ]
+        coverage = _kernel_coverage.build_coverage(
+            chart_id=context.chart_id,
+            generation=generation,
+            partition_kind="moon_on_demand",
+            partition_key=f"moon:interval:{start_jd}/{end_jd}",
+            requested_horizon=(float(start_jd), float(end_jd)),
+            completed_horizon=(float(start_jd), float(end_jd)),
+            resolution_arcsec=1.0,
+            relations_searched=tuple(sorted({s.primitive for s in episodes})),
+            resolution_states={"resolved": len(targets)},
+            convention_id=_WP5_PROVISIONAL_CONVENTION_ID,
+            ephemeris_backend={"source": "swiss_ephemeris", "path": "on_demand"},
+        )
+        return {
+            "episodes": episodes,
+            "coverage": coverage,
+            "moon_channel": "separate",
+        }
+    coverage = _kernel_coverage.build_coverage(
+        chart_id=context.chart_id,
+        generation=generation,
+        partition_kind="bodies_on_demand",
+        partition_key=f"bodies:interval:{start_jd}/{end_jd}",
+        requested_horizon=(float(start_jd), float(end_jd)),
+        completed_horizon=(float(start_jd), float(end_jd)),
+        resolution_arcsec=1.0,
+        relations_searched=tuple(sorted({s.primitive for s in sentences})),
+        resolution_states={"resolved": len(targets)},
+        convention_id=_WP5_PROVISIONAL_CONVENTION_ID,
+        ephemeris_backend={"source": "swiss_ephemeris", "path": "on_demand"},
+    )
+    return {"episodes": sentences, "coverage": coverage}
 
 
 def _compute_permission_from_context(
@@ -1161,6 +1786,7 @@ def _compute_permission_from_context(
     targets: list[ResonanceTarget],
     *,
     window_days: float = 15.0,
+    sade_sati_mode: str = _SADE_SATI_MODE_DEFAULT,
 ) -> tuple[float, dict]:
     """Compute PERMISSION using ONLY pre-fetched ClassContext data.
 
@@ -1173,7 +1799,16 @@ def _compute_permission_from_context(
       10:  guru_shani_double_transit — ephemeris only (no DB)
       11:  av_threshold — from context.av_gate_rows (pre-fetched)
       12:  planetary_return — ephemeris only (no DB)
+
+    N-15 (flag sade_sati_mode, L3 §4.10): when 'testimony', generator 9
+    leaves the weight set (total_weight renormalised, never a zero-weight
+    row) and is reported as typed testimony plus a first-class permission
+    lift delta. Default 'permission_weight' is byte-identical.
     """
+    if sade_sati_mode not in _SADE_SATI_MODES:
+        raise ValueError(
+            f"sade_sati_mode must be one of {_SADE_SATI_MODES}, got {sade_sati_mode!r}"
+        )
     t_iso = _jd_to_ist_iso(swe, t_jd)
     start_jd = t_jd - window_days
     end_jd = t_jd + window_days
@@ -1252,6 +1887,53 @@ def _compute_permission_from_context(
         "window_days": window_days,
         "calibration_state": "structural_prior",
     }
+
+    if sade_sati_mode == "testimony":
+        # N-15: Sade Sati leaves the weight set entirely (never a
+        # zero-weight row); it is reported as typed testimony plus a
+        # first-class permission-lift delta. F04 epistemic classes are
+        # computed_fact / qualified_rule / interpretive_inference —
+        # 'testimony' is the typed non-scoring class per the ruling,
+        # distinct from external_claim (never emitted).
+        legacy_permission = permission
+        systems = [s for s in systems if s["system_id"] != "sade_sati"]
+        active_weight = sum(s["weight"] for s in systems if s["active"])
+        total_weight -= SYSTEM_WEIGHTS["sade_sati"]
+        permission = active_weight / total_weight if total_weight else 0.0
+        systems_active = [s["system_id"] for s in systems if s["active"]]
+        detail["systems"] = systems
+        detail["systems_active"] = systems_active
+        detail["systems_considered"] = [s["system_id"] for s in systems]
+        detail["system_count_active"] = len(systems_active)
+        detail["sade_sati_mode"] = "testimony"
+        detail["sade_sati_permission_lift"] = {
+            "legacy_permission": legacy_permission,
+            "testimony_permission": permission,
+            "delta": permission - legacy_permission,
+        }
+        # Citations per KIMI_RECONCILIATION_GOCHARA_DECISIONS_v1_0.md and
+        # the ruling sheet; nāḍī attestation → testimony, never weight,
+        # without primary corroboration (N-21 standing rule).
+        detail["sade_sati_testimony"] = {
+            "active": sade_sati_active,
+            "epistemic_class": "testimony",
+            "corpus_verifiable": False,
+            "citations": [
+                {
+                    "ref": ref,
+                    "text": "nadi_navamsa_patel",
+                    "provenance": "MEDIUM",
+                    "ruling": "N-15; N-21 standing rule (WP1_CONTRACTS.md §6)",
+                }
+                for ref in ("PG1333", "PG1334", "PG1339", "PG1340", "PG1342")
+            ],
+            "detail": sade_sati_detail,
+            "note": (
+                "Nāḍī attestation demoted to testimony: never weight "
+                "without primary corroboration. [U] which primary text "
+                "carries the composite."
+            ),
+        }
     return permission, detail
 
 
@@ -1547,6 +2229,7 @@ def evaluate_lambda_vector_with_threshold(
 __all__ = [
     "evaluate_lambda_vector",
     "evaluate_lambda_vector_with_threshold",
+    "find_episodes",
     "_compute_activity_v3",
     "_compute_signed_channels_v3",
     "_resolve_valence_v3",

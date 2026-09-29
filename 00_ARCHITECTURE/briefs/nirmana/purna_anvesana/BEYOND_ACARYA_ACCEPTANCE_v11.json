@@ -1,0 +1,82 @@
+{
+    "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v11",
+    "campaign_id": "madhav-purna-anvesana",
+    "packet_id": "KALA-B1-GOCHARA-REIDENTIFICATION-SNAPSHOT-REGEN",
+    "predecessor": {
+        "artifact": "BEYOND_ACARYA_ACCEPTANCE_v10.json",
+        "acceptance_version": "beyond-acarya-source-acceptance-v2",
+        "capability_content_hash": "sha256:9b47461d6716337149dd636cc2d6bed3a7506d86bc15aea51c727d9ba1955f58",
+        "report_hash": "sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde"
+    },
+    "preserves_historical_predecessor": true,
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+    "temporal_anchor_date": "2026-09-29",
+    "evaluated_source_revision": "cacc72440f98f79486ef679e046e2dbe1d687eb9",
+    "generated_snapshot": {
+        "path": "platform/src/generated/capability_knowledge.snapshot.json",
+        "generated_at": "2026-09-29T00:16:48.000Z",
+        "snapshot_file_sha256": "sha256:3ecef79977137991239824bbfdf8056250d0e3bac40d2b42a9b587c4d6783968",
+        "capability_content_hash": "sha256:e6c208210c310bf19257be96897b5eb225610b7d5c03efb420da53ea46fdfd5d",
+        "source_catalog_fingerprint": "sha256:c25c7054e950458670605467787ef003ae5608361674f471ce0e114bdbb2874c",
+        "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
+        "producer_contract_fingerprint": "sha256:ded8ab777fd6b59a74ee99618d445a330333283650fb10b81bef16b5154570a0"
+    },
+    "capability_content_hash": "sha256:e6c208210c310bf19257be96897b5eb225610b7d5c03efb420da53ea46fdfd5d",
+    "report_hash": "sha256:773dd150de295ed561b42402fc4209228574ed8c07653bc414368606a48af8bc",
+    "evidence_kind": "synthetic_source_local",
+    "source_status": "SOURCE_ONLY_NOT_LIVE",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "metrics": {
+        "novel_combination_suite": {
+            "passed": true,
+            "cases": 5,
+            "expected_novel_capabilities": 13,
+            "missing_novel_capabilities": 0
+        },
+        "omission_rate": {
+            "passed": true,
+            "omitted": 0,
+            "expected": 25,
+            "rate": 0
+        },
+        "route_coverage": {
+            "passed": true,
+            "covered": 34,
+            "expected": 34,
+            "rate": 1
+        },
+        "semantic_edge_coverage": {
+            "passed": true,
+            "covered": 9,
+            "expected": 9,
+            "rate": 1
+        },
+        "long_inquiry_closure": {
+            "passed": true,
+            "completed_cases": 1,
+            "total_cases": 1,
+            "blocked_case_ids": [],
+            "minimum_iterations_observed": 10,
+            "pagination_continuations": 1,
+            "retained_earlier_evidence": true
+        },
+        "abstention_quality": {
+            "passed": true,
+            "passed_cases": 3,
+            "total_cases": 3,
+            "cases": {
+                "missing_required_floor_rejected": true,
+                "capped_material_frontier_blocked": true,
+                "unavailable_channel_abstained": true
+            }
+        }
+    },
+    "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+    "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+    "empirical_answer_quality": "NOT_RUN",
+    "production_validation": "NOT_RUN",
+    "deployed_route_validation": "NOT_RUN",
+    "candidate_validation": "NOT_RUN",
+    "provenance_note": "Kala B1 gochara re-identification successor. The lane re-identified ka_gochara under a recorded NATIVE RULING (ka_gochara.py module docstring; W0 census #4, MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md): it writes kala_gochara_windows_v2 generation='2.0' and never the protected kala_gochara_windows corpus, whose generation='3.0' rows belong to ka_gochara_v3_century_materialize. asset_registry_seed.ts caught up (commit cacc72440, Kala B1, 2026-09-22), moving the producer_contract_fingerprint; the snapshot was regenerated on the merged tree (commit 68a56814a, Density Census N.6, 182 SCUs, codegen:capability-knowledge:check green). All six metrics are identical to v10; no SCU, edge, proof kind or availability disposition changed. Only generated_at, capability_content_hash, producer_contract_fingerprint, snapshot_file_sha256 and report_hash moved. Source-provenance acceptance only: candidate_validation remains NOT_RUN; no live, deployed, empirical, expert or production acceptance is claimed."
+}

@@ -252,7 +252,10 @@ def test_health_resonance_rows_carry_the_ontology_citation():
         lords=["6L", "8L"],
         karakas=["Mars", "Saturn"],
         ontology_citation="BPHS ch.6 (roga-bhava); Phaladeepika ch.6",
-        sensitive_fact_rows=[{"fact_id": "f-health-1"}],
+        # N-12 R-1: only positive sensitive checks become targets (positive
+        # vocabulary pinned from ga_sensitive_degree_writer).
+        sensitive_fact_rows=[{"fact_id": "f-health-1", "fact_subject": "MAR",
+                              "fact_key": "kartari", "fact_value_text": "papa_kartari"}],
     )
     cited = [r for r in rows if r["target_type"] in ("bhava", "lord", "karaka")]
     assert cited, "no cited resonance rows built for illness_acute"

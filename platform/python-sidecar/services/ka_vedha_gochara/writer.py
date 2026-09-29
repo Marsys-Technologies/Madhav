@@ -63,15 +63,23 @@ from services.ka_vedha_gochara.logic import (
     LATTA,
     NATURAL_MALEFICS,
     SARVATOBHADRA,
+    corpus_verifiable_for,
     detect_sign_runs,
     house_from_moon,
+    house_vedha_uncited_extension,
+    is_mutual_exclusion,
     latta_nakshatra_idx,
     malefic_count_grade,
     overlap_window,
     sign_from_house,
+    source_qualification_for,
+    upstream_fingerprint,
+    vipareeta_cancellation,
 )
 from services.gochara_grammar.sarvatobhadra import _vedha_pairs_from_db, opposite_nakshatra_id
 from services.gochara_grammar import citations as C
+from services.gochara_kernel.ids import independence_group as _kernel_independence_group
+from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +136,15 @@ SELECT malefic_count, effect_grade, effect_description, source_citation
 FROM bg_vedha_malefic_scale
 """
 
+# M-8 (c): retrograde flag per body per day, for the
+# detail.intensity_qualifier='retrograde_malefic' stamp on obstructed rows.
+_FETCH_RETROGRADE_SQL = """
+SELECT date, body
+FROM ephemeris_daily
+WHERE ayanamsha_id = 'tropical' AND date BETWEEN %s AND %s AND body = ANY(%s)
+  AND is_retrograde
+"""
+
 _DELETE_SQL = "DELETE FROM kala_vedha_gochara WHERE chart_id = %s"
 
 _INSERT_SQL = """
@@ -136,12 +153,14 @@ INSERT INTO kala_vedha_gochara (
     window_start, window_end, start_truncated, end_truncated,
     janma_reference_fact_id, classical_citation, uncited_extension,
     grid_basis, grid_school_tag,
+    source_qualification, precision_regime, corpus_verifiable,
     detail, formula_version
 ) VALUES (
     %(chart_id)s, %(ayanamsha_id)s, %(vedha_kind)s, %(graha)s,
     %(window_start)s, %(window_end)s, %(start_truncated)s, %(end_truncated)s,
     %(janma_reference_fact_id)s, %(classical_citation)s, %(uncited_extension)s,
     %(grid_basis)s, %(grid_school_tag)s,
+    %(source_qualification)s, %(precision_regime)s, %(corpus_verifiable)s,
     %(detail)s::jsonb, %(formula_version)s
 )
 ON CONFLICT (chart_id, ayanamsha_id, vedha_kind, graha, window_start) DO NOTHING
@@ -184,6 +203,34 @@ def _compute_ayanamsha_offset(reference_date: date) -> float:
 
     jd = _tropical_to_jd(reference_date)
     return derive_sidereal(0.0, jd, CANONICAL_AYANAMSHA)["ayanamsha_offset"]
+
+
+def _config_horizon_date(value: Any) -> date | None:
+    """Parse an optional caller-passed horizon bound (date or ISO string)."""
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value))
+
+
+def _vedha_independence_group(
+    *, body: str, relation: str, target_deg: float, window_start: date,
+) -> str:
+    """A08 / H-6: one physical obstruction root attenuates once. The group is
+    computed by the family's single identity scheme
+    (gochara_kernel.ids.independence_group) from the PHYSICAL root only — the
+    obstructing body, the obstruction relation, the obstructed degree and the
+    window-start instant — never from the rule that surfaced it, so several
+    rows rooted in the same physical occupancy share one group."""
+    return _kernel_independence_group(
+        body=body,
+        relation=relation,
+        aspect_deg=0.0,
+        target_deg=target_deg,
+        t_exact_jd=None,
+        t_fallback_jd=_date_to_jd(window_start),
+    )
 
 
 def _fetch_vedha_rules(conn: Any) -> dict[tuple[str, int], dict[str, Any]]:
@@ -260,6 +307,21 @@ def _fetch_daily_sidereal_by_body(
     return by_body
 
 
+def _fetch_retrograde_dates(
+    conn: Any, horizon_start: date, horizon_end: date, bodies: tuple[str, ...],
+) -> dict[str, set[date]]:
+    """{body: {dates is_retrograde within the horizon}} — M-8 (c). Kept
+    separate from _fetch_daily_sidereal_by_body so that function's signature
+    (mirrored in tests) is unchanged."""
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(_FETCH_RETROGRADE_SQL, (horizon_start, horizon_end, list(bodies)))
+        rows = cur.fetchall()
+    retro: dict[str, set[date]] = {}
+    for r in rows:
+        retro.setdefault(str(r["body"]), set()).add(r["date"])
+    return retro
+
+
 @register("ka_vedha_gochara")
 class KaVedhaGocharaWriter(WriterBase):
     """ka_vedha_gochara — Vedha application + Sarvatobhadra (L3 Kāla, item 5,
@@ -296,15 +358,25 @@ class KaVedhaGocharaWriter(WriterBase):
         # serve honestly; only the malefic-count grading / latta kind are
         # skipped, each with its own coverage note (never silently degraded).
         malefic_scale = _fetch_malefic_scale(conn)
+        # §12.9: digest of exactly the reference rows this build consumes, stamped on
+        # every house_vedha row so a later re-citation upstream is DETECTABLE.
+        upstream_fp = upstream_fingerprint(vedha_rules, malefic_scale)
         latta_rules = _fetch_latta_rules(conn)
 
         today = date.today()
-        horizon_start = today - timedelta(days=HORIZON_BACK_DAYS)
-        horizon_end = today + timedelta(days=HORIZON_FORWARD_DAYS)
+        # WP9 5.3 (F-11): the caller may pass the REQUESTED horizon explicitly
+        # (ctx.config['horizon_start'] / ['horizon_end'], date or ISO string);
+        # the ±60/+400 d build window is only the default, never silently
+        # treated as the requested coverage.
+        horizon_start = _config_horizon_date(ctx.config.get("horizon_start")) or (
+            today - timedelta(days=HORIZON_BACK_DAYS)
+        )
+        horizon_end = _config_horizon_date(ctx.config.get("horizon_end")) or (
+            today + timedelta(days=HORIZON_FORWARD_DAYS)
+        )
 
         offset = _compute_ayanamsha_offset(today)
         daily_by_body = _fetch_daily_sidereal_by_body(conn, horizon_start, horizon_end, offset, ALL_GRAHAS)
-
         if not any(daily_by_body.values()):
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -329,6 +401,7 @@ class KaVedhaGocharaWriter(WriterBase):
 
         # Per-graha sign runs and nakshatra runs, computed once and reused by
         # both vedha_kind branches below (no repeat ephemeris derivation).
+        retro_dates = _fetch_retrograde_dates(conn, horizon_start, horizon_end, ALL_GRAHAS)
         sign_runs_by_graha: dict[str, list[dict]] = {}
         nak_runs_by_graha: dict[str, list[dict]] = {}
         for graha in ALL_GRAHAS:
@@ -373,6 +446,11 @@ class KaVedhaGocharaWriter(WriterBase):
         vedha_nak_idx = vedha_nak_idx_1based - 1
 
         all_rows: list[dict] = []
+        # M-8 (a) coverage: one record per house_vedha transit whose ONLY
+        # vedha-house occupancy was by the mutual-exclusion partner — no row
+        # is emitted for these (the exception nullifies the vedha itself);
+        # the record is what "searched, exception_applied" means for them.
+        m8_exceptions: list[dict] = []
 
         # ── house_vedha ────────────────────────────────────────────────────
         for graha, runs in sign_runs_by_graha.items():
@@ -389,11 +467,7 @@ class KaVedhaGocharaWriter(WriterBase):
                 # Collect EVERY overlapping occupant (not just the first) so the
                 # ADJUDICATION-11 malefic-count grading below has a real count to
                 # grade, not just a boolean.
-                obstruction_active = False
-                obstructing_graha = None
-                obstruction_start = None
-                obstruction_end = None
-                malefic_occupants: list[str] = []
+                occupants: list[tuple[str, dict]] = []
                 for other_graha, other_runs in sign_runs_by_graha.items():
                     if other_graha == graha:
                         continue
@@ -406,13 +480,73 @@ class KaVedhaGocharaWriter(WriterBase):
                         )
                         if ov is None:
                             continue
-                        if not obstruction_active:
-                            obstruction_active = True
-                            obstructing_graha = other_graha
-                            obstruction_start = ov["start"]
-                            obstruction_end = ov["end"]
-                        if other_graha in NATURAL_MALEFICS and other_graha not in malefic_occupants:
-                            malefic_occupants.append(other_graha)
+                        occupants.append((other_graha, ov))
+
+                # M-8 evaluation order — exceptions FIRST, then vipareeta.
+                # (a) Mutual exclusions (Sun↔Saturn, Moon↔Mercury; Phaladīpikā
+                # PG322:C1 / PG323:C1): occupancy of the vedha house by the
+                # excluded partner is never an obstruction, and never counts
+                # toward the malefic grading either.
+                effective = [(g, ov) for g, ov in occupants if not is_mutual_exclusion(graha, g)]
+                excepted = [g for g, _ov in occupants if is_mutual_exclusion(graha, g)]
+                if occupants and not effective:
+                    m8_exceptions.append({
+                        "graha": graha,
+                        "primary_house": house,
+                        "vedha_house": vedha_house,
+                        "excluded_obstructors": sorted(set(excepted)),
+                        "window_start": run["start_date"].isoformat(),
+                        "window_end": run["end_date"].isoformat(),
+                        "searched": True,
+                        "exception_applied": True,
+                    })
+                    continue  # no vedha row — the exception nullifies this vedha
+
+                obstruction_active = bool(effective)
+                obstructing_graha = effective[0][0] if effective else None
+                obstruction_start = effective[0][1]["start"] if effective else None
+                obstruction_end = effective[0][1]["end"] if effective else None
+                malefic_occupants: list[str] = []
+                for other_graha, _ov in effective:
+                    if other_graha in NATURAL_MALEFICS and other_graha not in malefic_occupants:
+                        malefic_occupants.append(other_graha)
+
+                # M-8 (b) vipareeta vedha: a second graha JOINING THE TRANSITING
+                # graha (sharing the primary sign) during the obstruction cancels
+                # it for the companionship interval. Row kept, cancelled=true,
+                # suppression_factor=1.0. The vipareeta doctrine is translator
+                # commentary, not verse — recorded under detail.vipareeta.
+                cancelled = False
+                cancelled_by = None
+                cancelled_from = None
+                cancelled_until = None
+                if obstruction_active:
+                    for comp_graha, comp_runs in sign_runs_by_graha.items():
+                        if comp_graha == graha or comp_graha == obstructing_graha:
+                            continue
+                        comp_in_sign = [r for r in comp_runs if r["sign_idx"] == run["sign_idx"]]
+                        cov = vipareeta_cancellation(
+                            obstruction_start, obstruction_end, comp_in_sign,
+                        )
+                        if cov is not None:
+                            cancelled = True
+                            cancelled_by = comp_graha
+                            cancelled_from = cov["start"]
+                            cancelled_until = cov["end"]
+                            break
+
+                # M-8 (c) retrograde malefic in vedha position → intensity
+                # qualifier (Phaladīpikā PG347-349 retrograde rule).
+                intensity_qualifier = None
+                if (
+                    obstruction_active
+                    and obstructing_graha in NATURAL_MALEFICS
+                    and any(
+                        obstruction_start <= d <= obstruction_end
+                        for d in retro_dates.get(obstructing_graha, ())
+                    )
+                ):
+                    intensity_qualifier = "retrograde_malefic"
 
                 # ADJUDICATION-11 Part 4: PG353 malefic-count -> effect-grade
                 # scale. The REFERENCE TABLE (bg_vedha_malefic_scale) is REAL
@@ -436,12 +570,35 @@ class KaVedhaGocharaWriter(WriterBase):
                     "end_truncated": run["end_truncated"],
                     "janma_reference_fact_id": janma_fact_id,
                     "classical_citation": rule.get("classical_citation") or C.PHALADEEPIKA_VEDHA_26,
-                    "uncited_extension": False,
+                    # §12.10b / §N.7 item 6: derived from the rule's OWN citation.
+                    # bg_transit_rules now carries rows declared UNSOURCED (the
+                    # Rāhu/Ketu house-transit rules); a literal False here stamped
+                    # them as cited. A missing citation also counts as uncited —
+                    # the column fallback above satisfies the schema, it does not
+                    # make the row cited.
+                    "uncited_extension": house_vedha_uncited_extension(rule.get("classical_citation")),
                     # Constraint kala_vedha_gochara_grid_fields_scope: grid_basis/
                     # grid_school_tag must be NULL for non-sarvatobhadra rows.
                     "grid_basis": None,
                     "grid_school_tag": None,
+                    # WP9 overlay stamps (migration 1082). house_vedha restates a
+                    # bg_transit_rules row; every stamp below derives from THAT
+                    # row's own classical_citation (logic.py), not from a constant.
+                    # Date-grain until kernel ingress instants land.
+                    "source_qualification": source_qualification_for(
+                        HOUSE_VEDHA, None,
+                        classical_citation=rule.get("classical_citation"),
+                    ),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": corpus_verifiable_for(
+                        HOUSE_VEDHA,
+                        classical_citation=rule.get("classical_citation"),
+                        graha=rule.get("graha"),
+                        primary_house=rule.get("primary_house"),
+                        vedha_house=rule.get("vedha_house"),
+                    ),
                     "detail": {
+                        "upstream_fingerprint": upstream_fp,
                         "primary_house": house,
                         "primary_sign_idx": run["sign_idx"],
                         "primary_sign_name": SIGNS[run["sign_idx"]],
@@ -453,12 +610,48 @@ class KaVedhaGocharaWriter(WriterBase):
                         "obstructing_graha": obstructing_graha,
                         "obstruction_window_start": obstruction_start.isoformat() if obstruction_start else None,
                         "obstruction_window_end": obstruction_end.isoformat() if obstruction_end else None,
+                        # A08: one physical obstruction root attenuates once.
+                        # Present exactly when an obstruction is active; rows
+                        # with no active obstruction have no group (they
+                        # attenuate nothing).
+                        "independence_group": (
+                            _vedha_independence_group(
+                                body=obstructing_graha,
+                                relation="vedha_obstruction",
+                                target_deg=vedha_sign_idx * SIGN_SIZE_DEG,
+                                window_start=obstruction_start,
+                            )
+                            if obstruction_active else None
+                        ),
                         "malefic_obstructing_grahas": malefic_occupants,
                         "malefic_count": malefic_count,
                         "malefic_effect_grade": grade_row["effect_grade"] if grade_row else None,
                         "malefic_effect_description": grade_row["effect_description"] if grade_row else None,
                         "malefic_scale_citation": grade_row["source_citation"] if grade_row else None,
                         "malefic_grade_uncited_extension": grade_row is not None,
+                        # M-8 fields. vedha_exception is recorded when an
+                        # excluded-partner occupancy coexisted with an effective
+                        # obstruction (the all-excluded case emits no row — it is
+                        # in the writer's coverage notes instead).
+                        "vedha_exception": (
+                            {"pair_with": sorted(set(excepted)),
+                             "searched": True, "exception_applied": True}
+                            if excepted else None
+                        ),
+                        "cancelled": cancelled,
+                        "cancelled_by": cancelled_by,
+                        "cancelled_from": cancelled_from.isoformat() if cancelled_from else None,
+                        "cancelled_until": cancelled_until.isoformat() if cancelled_until else None,
+                        "suppression_factor": 1.0 if cancelled else None,
+                        "intensity_qualifier": intensity_qualifier,
+                        "vipareeta": (
+                            {"applied": True,
+                             "source_qualification": "translator_commentary",
+                             "companion_graha": cancelled_by,
+                             "window_start": cancelled_from.isoformat(),
+                             "window_end": cancelled_until.isoformat()}
+                            if cancelled else None
+                        ),
                     },
                     "formula_version": FORMULA_VERSION,
                 })
@@ -499,11 +692,24 @@ class KaVedhaGocharaWriter(WriterBase):
                     # only-populated state for the algorithmic approximation).
                     "grid_basis": grid_basis,
                     "grid_school_tag": grid_school_tag,
+                    # WP9 overlay stamps (migration 1082): qualification mirrors
+                    # grid_basis exactly (algorithmic approximation ⟺ the R-19
+                    # approximation serves the pairing); not corpus-verifiable
+                    # while that approximation is what is served.
+                    "source_qualification": source_qualification_for(SARVATOBHADRA, grid_basis),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": corpus_verifiable_for(SARVATOBHADRA, grid_basis=grid_basis),
                     "detail": {
                         "target_nakshatra_idx": janma_moon_nak_idx,
                         "target_nakshatra_name": NAKSHATRAS[janma_moon_nak_idx],
                         "vedha_nakshatra_idx": vedha_nak_idx,
                         "vedha_nakshatra_name": NAKSHATRAS[vedha_nak_idx],
+                        "independence_group": _vedha_independence_group(
+                            body=graha,
+                            relation="sarvatobhadra_vedha",
+                            target_deg=vedha_nak_idx * NAK_SIZE_DEG,
+                            window_start=run["start_date"],
+                        ),
                         "grid_basis": grid_basis,
                         "grid_school_tag": grid_school_tag,
                         "cancellation_effect": (
@@ -547,11 +753,23 @@ class KaVedhaGocharaWriter(WriterBase):
                     # grid_school_tag must be NULL for non-sarvatobhadra rows.
                     "grid_basis": None,
                     "grid_school_tag": None,
+                    # WP9 overlay stamps (migration 1082): latta restates
+                    # bg_phaladeepika_latta verbatim (Phaladīpikā PG338-339,
+                    # REAL cited) — verse-cited and corpus-verifiable today.
+                    "source_qualification": source_qualification_for(LATTA, None),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": corpus_verifiable_for(LATTA),
                     "detail": {
                         "count_from_graha": int(rule["count_from_graha"]),
                         "direction": rule["direction"],
                         "latta_nakshatra_idx": latta_nak_idx,
                         "latta_nakshatra_name": NAKSHATRAS[latta_nak_idx],
+                        "independence_group": _vedha_independence_group(
+                            body=graha,
+                            relation="latta",
+                            target_deg=latta_nak_idx * NAK_SIZE_DEG,
+                            window_start=run["start_date"],
+                        ),
                         "janma_nakshatra_idx": janma_moon_nak_idx,
                         "janma_nakshatra_name": NAKSHATRAS[janma_moon_nak_idx],
                         "effect_description": rule["effect_description"],
@@ -564,7 +782,9 @@ class KaVedhaGocharaWriter(WriterBase):
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
                 notes="no vedha-checkable house transit and no sarvatobhadra-vedha-nakshatra "
-                      f"dwelling found in horizon {horizon_start}..{horizon_end}",
+                      f"dwelling found in horizon {horizon_start}..{horizon_end};"
+                      f"m8_exceptions={len(m8_exceptions)};"
+                      f"m8_exception_windows={json.dumps(m8_exceptions)}",
             )
 
         # Idempotency: per-chart delete-then-insert (§N.3)
@@ -582,11 +802,14 @@ class KaVedhaGocharaWriter(WriterBase):
         latta_count = sum(1 for r in all_rows if r["vedha_kind"] == LATTA)
         logger.info(
             "[ka_vedha_gochara] %d rows (%d house_vedha, %d sarvatobhadra, %d latta) for "
-            "chart %s; sbc_grid_basis=%s",
+            "chart %s; sbc_grid_basis=%s; m8_exceptions=%d",
             len(all_rows), house_count, sbc_count, latta_count, chart_id, grid_basis,
+            len(m8_exceptions),
         )
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=len(all_rows),
             notes=f"house_vedha={house_count};sarvatobhadra={sbc_count};latta={latta_count};"
-                  f"grid_basis={grid_basis};horizon={horizon_start}..{horizon_end}",
+                  f"grid_basis={grid_basis};m8_exceptions={len(m8_exceptions)};"
+                  f"m8_exception_windows={json.dumps(m8_exceptions)};"
+                  f"horizon={horizon_start}..{horizon_end}",
         )

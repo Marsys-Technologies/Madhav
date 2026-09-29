@@ -195,6 +195,12 @@ def _citation_human_strength(category: str, subject: str, key: str,
     if category == "ashtakavarga_kakshya_boundary":
         return (f"Kakṣyā {subject.replace('KAKSHYA_','')} ({key}): {value_num} "
                 f"(3°45′ arc; lord fixed classical, ayanamsha-invariant).")
+    if category == "ashtakavarga_bindu_contributor" and "-SIGN_" in subject:
+        gp, rest = subject.split("-CONTRIBUTOR_")
+        ccode, sn = rest.split("-SIGN_")
+        sign_name = SIGN_NAMES[int(sn) - 1] if sn.isdigit() and 1 <= int(sn) <= 12 else sn
+        return (f"{gp.capitalize()} BAV contributor {ccode} → {sign_name}: "
+                f"{int(value_num)} bindu (BPHS ch.66; nāḍī testimony PG1615/PG1616) ({ay}).")
     if category == "house_bhava_bala_subscore":
         return f"House {subject.replace('HOUSE_','')} {key}: {value_num:.4f} rupa ({ay})."
     if category == "house_bhava_bala_total":
@@ -507,6 +513,58 @@ def _derive_ashtakavarga_shodhana_grids(
     }
 
     return {"trikona": trikona_grid, "ekadhipatya": ekadhipatya_grid}
+
+
+# G-10 contributor order: PyJHora prastara index 0..7 = Sun..Saturn, Lagna
+# (const.ashtaka_varga_dict iteration order; verified against
+# get_ashtaka_varga source and BENEFIC_HOUSES orientation).
+_AV_CONTRIBUTORS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Lagna"]
+
+
+@serialized_swiss_state
+def _derive_ashtakavarga_prastara(
+    jd_ut: float,
+    ayanamsha_id: str,
+    *,
+    lat: float = 0.0,
+    lon: float = 0.0,
+    tz: float = 0.0,
+) -> dict[str, dict[str, list[int]]]:
+    """
+    G-10 (GOCHARA ruling sheet M-7): the per-contributor BAV matrix — for each
+    aṣṭakavarga graha g (7 classical), each contributor c (7 grahas + Lagna),
+    and each rāśi s, the single bindu (0/1) that c donates to g's BAV in s
+    (BPHS ch.66 dot/rekha semantics). This is PyJHora's ``prastara`` return
+    from ``jhora.horoscope.chart.ashtakavarga.get_ashtaka_varga`` — delegated,
+    NOT hand-rolled (D-1.5b Lane B-2 rule). Summing the matrix over
+    contributors reproduces the raw BAV row exactly (asserted in tests).
+
+    Ruling-sheet grading (M-7 / N-21): the per-contributor kakṣyā doctrine is
+    attested by the nāḍī rows PG1615/PG1616 at TESTIMONY grade — testimony
+    attests the data model only and never supplies computation weight; the
+    values here come from the verified PyJHora engine.
+
+    Returns {graha_name: {contributor_name: [12 ints in {0,1}]}}, sign-indexed
+    (index 0 = Aries), matching the raw binna convention.
+    """
+    from pyjhora_adapter._jhora import charts, utils
+    from jhora.horoscope.chart import ashtakavarga as _jhora_av
+
+    place = pyjhora_strength._place(lat, lon, tz)
+    pyjhora_strength._set_ayanamsha(ayanamsha_id)
+
+    pp = charts.rasi_chart(jd_ut, place)
+    chart_1d = utils.get_house_planet_list_from_planet_positions(pp)
+
+    _binna, _samudhaya, prastara = _jhora_av.get_ashtaka_varga(chart_1d)
+
+    return {
+        graha: {
+            contrib: [int(v) for v in prastara[gi][ci][:12]]
+            for ci, contrib in enumerate(_AV_CONTRIBUTORS)
+        }
+        for gi, graha in enumerate(_AV_CLASSICAL_7)
+    }
 
 
 @serialized_swiss_state
@@ -943,6 +1001,7 @@ def _build_ashtakavarga_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str, verif_status: str,
     grids: dict[str, dict[str, list[int]]] | None = None,
+    prastara: dict[str, dict[str, list[int]]] | None = None,
 ) -> list[dict[str, Any]]:
     """
     M-3 fix (see MARSYS_DEFECT_GAP_REGISTER): `pinda` now comes from PyJHora's
@@ -977,6 +1036,7 @@ def _build_ashtakavarga_rows(
       - ashtakavarga_ekadhipathya_shodhana  : ekādhipatya-śodhita grid, sign-keyed
       - ashtakavarga_pinda_raasi            : rāśi-piṇḍa (was computed then dropped)
       - ashtakavarga_kakshya_boundary       : 8 kakṣyā sub-arc boundaries (constants)
+      - ashtakavarga_bindu_contributor      : G-10 per-contributor matrix (prastara)
     """
     rows = []
     grids = grids or {}
@@ -1081,6 +1141,30 @@ def _build_ashtakavarga_rows(
             None, "graha", text=lord, chum=chum)
         _mk("ashtakavarga_kakshya_boundary", subj, "start_deg", start_deg, "degree", chum=chum)
         _mk("ashtakavarga_kakshya_boundary", subj, "end_deg", end_deg, "degree", chum=chum)
+
+    # ADDED (G-10, ruling sheet M-7): per-contributor BAV matrix — 7 grahas ×
+    # 8 contributors (Sun..Saturn, Lagna) × 12 rāśis = 672 rows per
+    # (chart, ayanamsha). Sign-keyed (CR-99a note: gochara reads move through
+    # signs). Values are the PyJHora prastara 0/1 dots (BPHS ch.66 dot/rekha
+    # semantics); nāḍī kakṣyā rows PG1615/PG1616 attest the doctrine at
+    # TESTIMONY grade (N-21: testimony never supplies computation weight).
+    if prastara:
+        for planet_name, contrib_map in prastara.items():
+            subject = planet_subjects.get(planet_name)
+            if subject is None:
+                continue
+            for contrib, grid in contrib_map.items():
+                ccode = norm_graha(contrib)
+                for idx, dot in enumerate(grid):
+                    comp_subject = f"{subject}-CONTRIBUTOR_{ccode}-SIGN_{idx + 1}"
+                    chum = (
+                        f"{planet_name} BAV: contributor {contrib} donates "
+                        f"{int(dot)} bindu to sign {idx + 1} "
+                        f"(BPHS ch.66 dot/rekha; nāḍī kakṣyā testimony "
+                        f"PG1615/PG1616, testimony grade) ({ayanamsha_id})."
+                    )
+                    _mk("ashtakavarga_bindu_contributor", comp_subject, "bindus",
+                        float(dot), "bindu", chum=chum)
 
     return rows
 
@@ -1747,6 +1831,11 @@ def build_ga_strength(
             av_grids = _derive_ashtakavarga_shodhana_grids(
                 _jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz,
             )
+            # G-10 (ruling sheet M-7): per-contributor BAV matrix (PyJHora
+            # prastara), emitted as ashtakavarga_bindu_contributor rows.
+            av_prastara = _derive_ashtakavarga_prastara(
+                _jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz,
+            )
             # CR-103: bhāva bala via PyJHora library (no hand-roll); documented
             # 3-source approximation stamped inside _build_bhava_bala_rows.
             bhava_bala = _derive_bhava_bala(_jd_ut, canonical_id, lat=_lat, lon=_lon, tz=_tz)
@@ -1789,6 +1878,7 @@ def build_ga_strength(
             all_rows.extend(_build_ashtakavarga_rows(
                 bav, av_pinda, chart_id, build_id, canonical_id,
                 computed_at, eng_ver, verif_status, grids=av_grids,
+                prastara=av_prastara,
             ))
             all_rows.extend(_build_bhava_bala_rows(
                 bhava_bala, chart_id, build_id, canonical_id,

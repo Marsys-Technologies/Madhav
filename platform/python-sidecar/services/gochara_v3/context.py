@@ -111,6 +111,36 @@ class MaleficScaleRow:
 
 
 @dataclass(frozen=True)
+class KakshyaBoundaryRow:
+    """One L1 kakṣyā boundary row from chart_facts.
+
+    fact_category='ashtakavarga_kakshya_boundary',
+    fact_subject='{planet}.{kakshya_index}',
+    fact_key in {'lord','start_deg','end_deg'}.
+    """
+    planet: str
+    kakshya_index: int
+    lord: Optional[str] = None
+    start_deg: Optional[float] = None
+    end_deg: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class BinduSignRow:
+    """One L1 sign-keyed BAV bindu row from chart_facts (N-22/N-13 interim).
+
+    fact_category='ashtakavarga_bindu_sign',
+    fact_subject='{GRAHA}-SIGN_{N}' where GRAHA is the canonical code
+    (SUN/MOON/MAR/MER/JUP/VEN/SAT, or SARVA) and N is the ABSOLUTE rāśi
+    number 1-12 (Aries=1) — the CR-99a sign-keyed convention in
+    ga_strength_writer.py; fact_key='bindus', count in fact_value_num.
+    """
+    graha: str
+    sign_number: int
+    bindus: Optional[float] = None
+
+
+@dataclass(frozen=True)
 class ClassContext:
     """All data needed to evaluate lambda_e for a (chart x event_class) pair,
     fetched ONCE. After construction this object is immutable and contains
@@ -171,6 +201,11 @@ class ClassContext:
     # Empty when table is absent — suppression factor falls back to a fixed schedule.
     malefic_scale: tuple[MaleficScaleRow, ...] = ()
 
+    # WP5 H-1a: L1 ashtakavarga kakṣyā boundaries pre-fetched from chart_facts.
+    # Empty when the chart has no L1 boundary rows — the engine falls back to
+    # the equal-eighths fixture approximation, honestly flagged.
+    kakshya_boundaries: tuple[KakshyaBoundaryRow, ...] = ()
+
     # F-MOORTI-2 (L3-W3, N3): kala_moorti_nirnaya rows for the W2.2 moorti_nirnaya
     # CANDIDATE mechanism (services/gochara_v3/mechanisms/w22_moorti_nirnaya.py).
     # Plain dicts, not a dataclass — the mechanism's own _find_overlapping_moorti
@@ -184,6 +219,14 @@ class ClassContext:
     # until ablation evidence is gathered (a separate, later step — this PR is
     # data-wiring only).
     moorti_rows: tuple[dict, ...] = ()
+
+    # N-22/N-13 (L3 §4.3): sign-keyed BAV bindu rows for the kakṣyā sign-level
+    # bindu interim qualification, behind the recorded flag
+    # `kakshya_bindu_interim` (engine._KAKSHYA_BINDU_INTERIM_ENABLED, default
+    # off). Empty when the chart has no ashtakavarga_bindu_sign rows — with the
+    # flag on, every kakṣyā crossing is then honestly 'unqualified'; with the
+    # flag off this field is never read.
+    bindu_sign_rows: tuple[BinduSignRow, ...] = ()
 
     @classmethod
     def fetch(
@@ -247,9 +290,16 @@ class ClassContext:
         vedha_rows = _fetch_vedha_rows(conn, chart_id)
         malefic_scale = _fetch_malefic_scale(conn)
 
-        # 13. F-MOORTI-2 (L3-W3, N3): moorti_nirnaya rows for the W2.2 candidate
+        # 13. WP5 H-1a: L1 ashtakavarga kakṣyā boundaries (time-invariant).
+        kakshya_boundaries = _fetch_kakshya_boundaries(conn, chart_id)
+
+        # 14. F-MOORTI-2 (L3-W3, N3): moorti_nirnaya rows for the W2.2 candidate
         # mechanism (data-wiring only — see moorti_rows field docstring above)
         moorti_rows = _fetch_moorti_rows(conn, chart_id, ayanamsha_id)
+
+        # 15. N-22/N-13 (L3 §4.3): sign-keyed BAV bindu rows (time-invariant;
+        # read only when the kakshya_bindu_interim flag is on)
+        bindu_sign_rows = _fetch_bindu_sign_rows(conn, chart_id)
 
         return cls(
             chart_id=chart_id,
@@ -271,7 +321,9 @@ class ClassContext:
             sade_sati_phases=tuple(sade_sati_phases),
             vedha_rows=tuple(vedha_rows),
             malefic_scale=tuple(malefic_scale),
+            kakshya_boundaries=tuple(kakshya_boundaries),
             moorti_rows=tuple(moorti_rows),
+            bindu_sign_rows=tuple(bindu_sign_rows),
         )
 
 
@@ -578,7 +630,125 @@ def _fetch_malefic_scale(conn) -> list[MaleficScaleRow]:
     return result
 
 
+def _fetch_kakshya_boundaries(conn, chart_id: str) -> list[KakshyaBoundaryRow]:
+    """Pre-fetch L1 ashtakavarga kakṣyā boundaries from chart_facts.
+
+    Reads fact_category='ashtakavarga_kakshya_boundary' rows (written by
+    ga_strength_writer.py). Empty list when the rows are absent — the engine
+    falls back to the equal-eighths fixture approximation and honestly flags
+    the source (WP5 H-1a).
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_kakshya_boundaries"):
+            cur = conn.execute(
+                """
+                SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND fact_category = 'ashtakavarga_kakshya_boundary'
+                """,
+                [chart_id],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] kakshya_boundaries fetch failed: %s", exc)
+        return []
+
+    by_subject: dict[str, dict] = {}
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["fact_subject", "fact_key", "fact_value_text", "fact_value_num"], row)
+        )
+        by_subject.setdefault(d["fact_subject"], {})[d["fact_key"]] = (
+            d.get("fact_value_text") if d.get("fact_value_text") is not None else d.get("fact_value_num")
+        )
+
+    result = []
+    for subject, facts in by_subject.items():
+        # fact_subject format: "{planet}.{kakshya_index}"
+        parts = subject.split(".")
+        if len(parts) != 2:
+            continue
+        planet = parts[0]
+        try:
+            kakshya_index = int(parts[1])
+        except (TypeError, ValueError):
+            continue
+        try:
+            start_deg = float(facts["start_deg"]) if facts.get("start_deg") is not None else None
+        except (TypeError, ValueError):
+            start_deg = None
+        try:
+            end_deg = float(facts["end_deg"]) if facts.get("end_deg") is not None else None
+        except (TypeError, ValueError):
+            end_deg = None
+        result.append(KakshyaBoundaryRow(
+            planet=planet,
+            kakshya_index=kakshya_index,
+            lord=facts.get("lord"),
+            start_deg=start_deg,
+            end_deg=end_deg,
+        ))
+    return result
+
+
+def _fetch_bindu_sign_rows(conn, chart_id: str) -> list[BinduSignRow]:
+    """Pre-fetch L1 sign-keyed BAV bindu counts from chart_facts.
+
+    Reads fact_category='ashtakavarga_bindu_sign', fact_key='bindus' rows
+    (written by ga_strength_writer.py, CR-99a sign-keyed convention). Empty
+    list when the rows are absent — with the kakshya_bindu_interim flag on, a
+    kakṣyā crossing whose (graha, sign) has no row is then honestly
+    'unqualified' (N-22/N-13); with the flag off these rows are never read.
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_bindu_sign_rows"):
+            cur = conn.execute(
+                """
+                SELECT fact_subject, fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND fact_category = 'ashtakavarga_bindu_sign'
+                   AND fact_key = 'bindus'
+                """,
+                [chart_id],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] bindu_sign_rows fetch failed: %s", exc)
+        return []
+
+    result = []
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["fact_subject", "fact_value_num"], row)
+        )
+        subject = d["fact_subject"] or ""
+        if "-SIGN_" not in subject:
+            continue
+        graha, sign_part = subject.split("-SIGN_", 1)
+        try:
+            sign_number = int(sign_part)
+        except (TypeError, ValueError):
+            continue
+        try:
+            bindus = (
+                float(d["fact_value_num"])
+                if d.get("fact_value_num") is not None else None
+            )
+        except (TypeError, ValueError):
+            bindus = None
+        result.append(BinduSignRow(
+            graha=graha,
+            sign_number=sign_number,
+            bindus=bindus,
+        ))
+    return result
+
+
 __all__ = [
     "ClassContext", "NatalFacts", "DashaPeriod", "AVGateRow",
-    "VedhaRow", "MaleficScaleRow",
+    "VedhaRow", "MaleficScaleRow", "KakshyaBoundaryRow", "BinduSignRow",
 ]
