@@ -249,9 +249,21 @@ AUTHORIZED_SOURCE_COMMITS = {
     # commit on top of merge 8eeeb6e2a, so its committed writer inventory is
     # byte-identical to the merged tree's derived inventory. L0, L2, L4, L5 are
     # deliberately absent.
+    #
+    # ad22bef06 (L3 only): within the same A0.3 merge-repair operation, the
+    # DP-SD-010 serialization fix on services/gochara_kernel/knots.py moved the
+    # knots-closure writer digests (ka_gochara_v3_century_materialize,
+    # ka_moorti_nirnaya, ka_sangam) AFTER the first L3 successor was admitted.
+    # The fail-closed design requires a second, append-only L3 successor rather
+    # than editing the first; ad22bef06 is the commit whose committed inventory
+    # carries the corrected digests (its successor commit changes only this
+    # generator). Same authority, same scope: the #2731 merge pins re-admission.
     "D-E022": {
         "L1": frozenset({"f4cba9d606abffd6c73bee42307ea8cbfd733ae6"}),
-        "L3": frozenset({"f4cba9d606abffd6c73bee42307ea8cbfd733ae6"}),
+        "L3": frozenset({
+            "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
+            "ad22bef06784bf3326a3b6fb36660bdad84cb805",
+        }),
     },
 }
 
