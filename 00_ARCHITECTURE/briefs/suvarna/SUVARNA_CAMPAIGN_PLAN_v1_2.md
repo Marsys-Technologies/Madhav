@@ -2,7 +2,7 @@
 artifact: SUVARNA_CAMPAIGN_PLAN
 canonical_id: SUVARNA_CAMPAIGN_PLAN
 version: "1.2"
-status: DRAFT — for native review (several review rounds expected before any execution)
+status: "SUPERSEDED by SUVARNA_CAMPAIGN_PLAN_v1_3.md (2026-09-29)"
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 decision_owner: Native (Abhisek Mohanty)
@@ -18,6 +18,7 @@ uses: >
   the delta ledger (asset_gaps.jsonl), the certification ledger (asset_certs.jsonl), the change
   register (NIKASHA_CHANGE_REGISTER_v2_0.md) and the implementation plan (NIKASHA_IMPLEMENTATION_PLAN_v1_0.md).
 changelog:
+  - "SUPERSEDED (2026-09-29): replaced by v1.3, which folds review pass 1 and decisions D1–D6; no further edits here."
   - "1.2 (2026-09-29, native decisions and launch readiness): the three L3 focus families move to three family sessions that each seal a final brief and implement it; Suvarṇa's L3 analysis evaluates their latest versions (N-17). Decisions N-2, N-3, N-6, N-18 approved; F-0 and F-5 decided; F-1–F-4 and F-6 delegated to the family sessions; N-19 (charter) drafted; N-20 added. New §5.0b launch readiness (what must be true before execution starts). The real-time tracker becomes the tracking surface (§9). §3 updated: register tallies repaired (v2.8), the 2026-09-28 Gochara switch and its reversal (ADK-0027), isolation set up."
   - "1.1 (2026-09-28, native review pass 1): the stage sequence becomes parallel tracks with one join. Stage 0 dissolves into first items (hours, not days). The derivability work moves off the engine path into the parallel analysis track, bringing the engine-to-freeze estimate from 240–310 to 90–150 hours. L1–L5 run as dependency waves, not layer gates. New Track F for the L3 focus families (Sangam, Kshetra, Gochara). Companion documents added: execution architecture, L3 focus families, document map, review package."
   - "1.0 (2026-09-28): first full draft. Built on a fact baseline measured the same day (Appendix A)."
