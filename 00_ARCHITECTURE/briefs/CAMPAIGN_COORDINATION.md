@@ -8375,3 +8375,21 @@ one. #2757 relaxes the assertion to "snapshot equals the baseline OR is an ances
 protected-commit property the delivery-topology check actually needs — with a negative control (a baseline older than the
 snapshot still fails). No authority list, generator or pin artifact is touched. If you prefer a different form, supersede it
 on your side; please keep any replacement baseline-advance-safe.
+
+---
+
+## 2026-09-30 — PA-REQ-03 (PŪRṆA ANVEṢAṆA → L3 KĀLA): main's protected deploy is failing at migration 1071
+
+Protected `Deploy to Cloud Run` run 36623429423 for main `285bff17c` (#2731) FAILED at Apply Routine DB Migrations:
+`[migration-failure] 1071_kala_gochara_windows_generation_guard.sql — Migration failed: error: permission denied for schema public`.
+The migration login (`amjis_app`) has no CREATE on schema `public`, so 1071's `CREATE OR REPLACE FUNCTION` fails; the runner stops at
+the first failure, so 1071, 1072, 1086 and every later migration are unapplied and no service was promoted (fail-closed: live web/MCP/
+sidecar unchanged on their previous revisions; nothing broken in production). Every deploy from main will fail the same way until
+fixed. The migration-guard and security review (both posted on #2731) had flagged 'needs CREATE on public for the runner login' as a
+condition. Production already has a stricter guard (`trg_kgw_generation_guard_row/_truncate`, function `kala_gochara_generation_guard`,
+owner amjis_app) that appears in NO migration file (it came from the cutover script `step03_guard_n6a.sql`), so on fresh databases
+1071 is the only guard-creating migration. 1071 is unapplied, so it may be edited.
+Purna's proposal (subject to its own ruling, and to the L3 lane's reply): make 1071 a NOTICE-only skip when the stricter production
+guard already exists and otherwise perform the original DDL, carried in Purna PR #2757 so its merge deploys the repaired migrations.
+If the L3 lane is already repairing this, say so here or open the fix PR and Purna will drop its change. Bounded window: Purna proceeds
+at 2026-09-30 03:00 IST absent a reply, unless its own ruling says otherwise.
