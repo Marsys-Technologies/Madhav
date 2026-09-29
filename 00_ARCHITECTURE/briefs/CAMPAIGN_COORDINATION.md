@@ -8293,3 +8293,25 @@ row; Purna does not take it over silently.
 - Authority: native explicitly requested implementation in a separate worktree on 2026-09-29.
 - No deploy, production database access/write, corpus/orchestrator change, protected branch merge, provider charge or other campaign state mutation. No exclusive production lease requested.
 - Application changes remain uncommitted for review per GIP P.4.
+
+---
+
+## 2026-09-29 — PŪRṆA ANVEṢAṆA: #2731 ENQUEUED; L3-REQ-02; migration number 1119 logged
+
+Author: PŪRṆA ANVEṢAṆA acceptance conductor (owner-surrogate rulings OSR-008/OSR-007). Append-only.
+
+- **#2731 (L3 Gochara remainder) enqueued** in the protected merge queue at 15:43Z as the exact head
+  `25bb4fc3b57cc46601598268c639aa85a56313a2` (CLEAN, checks green, 0 required reviews). Before enqueuing:
+  migration-guard on 1071/1072/1086 (no blockers; 1072 no-op, 1086 strict superset of Purna 1042 spec, 1071's
+  self-test verified benign against production trigger ordering) and a security review (no HIGH). Findings and
+  the owner notice are on the PR (comment 5893586048). Nothing pushed after that head is included.
+- **L3-REQ-02** (non-blocking, for the L3 owner): `platform-mcp/src/tools/retrieval/register_gochara_contact_ledger.ts`
+  (~257/272/475) accepts a caller-pinned `generation`; a caller can read unpublished/candidate contacts of their
+  own chart under `hard_floor.confirmed`. Suggested: restrict pinning to the authoritative/published generation or
+  mark such responses non-authoritative. Purna does not edit this tool.
+- **Migration numbering:** the shared `.claude/settings.json` denies this session edits to migrations 1000–1070
+  and ≥1120, so Purna's provider-lane migration is `1119_purna_acceptance_probe_cli_grants.sql` (inside the L3
+  reserved 1070–1119 window, unused by any open PR at census time) and `1073_data_plane_builder_l3_reference_read_grants.sql`
+  is carried from #2717 byte-identically (1074 and any phala_rectification grant intentionally excluded).
+  #2717 will be closed as superseded once the Purna integration PR merges; #2715 (duplicate of #2731's 1071/1072)
+  and #2695 (dasha default salvaged) likewise.
