@@ -39,6 +39,13 @@ describe('checkConversationWritable', () => {
     expect(await checkConversationWritable(ARGS)).toMatchObject({ ok: false, code: 'CHART_RECOMPUTE_REQUIRED' })
   })
 
+  it('allows Pariprashna to persist a turn while the chart is incomplete', async () => {
+    mockGate.mockResolvedValue({ ok: false, code: 'CHART_RECOMPUTE_REQUIRED', state: 'partially-built', message: 'm' })
+
+    expect(await checkConversationWritable({ ...ARGS, readinessPolicy: 'allow-incomplete' })).toEqual({ ok: true })
+    expect(mockGate).not.toHaveBeenCalled()
+  })
+
   it('refuses a conversation that belongs to another chart', async () => {
     mockQuery.mockResolvedValue({ rows: [{ chart_id: 'other', archive_reason: null }] })
     expect(await checkConversationWritable(ARGS)).toMatchObject({ ok: false, code: 'CONVERSATION_ARCHIVED_READ_ONLY' })
