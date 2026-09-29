@@ -31,6 +31,15 @@ describe('AI Console production deployment contract', () => {
     expect(workflow).not.toContain('MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=true')
   })
 
+  it('routes CLI calls to the private VM bridge with a versioned secret and private-only VPC egress', () => {
+    expect(workflow).toContain('MARSYS_AI_CLI_BRIDGE_URL=http://10.160.0.2:8787')
+    expect(workflow).toContain('MARSYS_AI_CLI_BRIDGE_TOKEN=marsys-ai-cli-bridge-token:1')
+    expect(workflow).toContain('--network=default')
+    expect(workflow).toContain('--subnet=default')
+    expect(workflow).toContain('--network-tags=amjis-web-cli-egress')
+    expect(workflow).toContain('--vpc-egress=private-ranges-only')
+  })
+
   it('applies AI Console schema functions only through the protected migration window', () => {
     expect(snapshotRepair).toContain('CREATE OR REPLACE FUNCTION ai_snapshot_shape')
     expect(workflow).toContain('migrations+=(1124_ai_console_byok_routing.sql)')

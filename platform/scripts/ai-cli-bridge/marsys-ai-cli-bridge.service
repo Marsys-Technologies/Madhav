@@ -1,0 +1,33 @@
+[Unit]
+Description=MARSYS-JIS private AI CLI bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mail_abhisek_mohanty_gmail_com
+Group=mail_abhisek_mohanty_gmail_com
+WorkingDirectory=/home/mail_abhisek_mohanty_gmail_com
+Environment=HOME=/home/mail_abhisek_mohanty_gmail_com
+Environment=USER=mail_abhisek_mohanty_gmail_com
+Environment=LOGNAME=mail_abhisek_mohanty_gmail_com
+Environment=MARSYS_AI_CLI_BRIDGE_HOST=10.160.0.2
+Environment=MARSYS_AI_CLI_BRIDGE_PORT=8787
+Environment=MARSYS_AI_CLI_BRIDGE_TOKEN_FILE=/etc/marsys-ai-cli-bridge/token
+ExecStart=/usr/bin/node /opt/marsys-ai-cli-bridge/server.mjs
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target
