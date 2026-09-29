@@ -11,7 +11,11 @@ Relations (plan §4.2, WP1_CONTRACTS.md §2.2 N-14, §7):
   return           — separation root like conjunction, orb per orb_return_*
   sign_ingress / nakshatra_ingress / kakshya_cell_crossing — boundary roots at
                      30° / 13°20′ / 3°75′ grid edges (boundary-exact, no orb —
-                     WP1 §7 orb_ingress; episodes rooted at the span edge)
+                     WP1 §7 orb_ingress; episodes rooted at the span edge). All
+                     three grids include the 0°/360° seam (spec §6.2: "0° seam
+                     root exists", #14) — one root per seam crossing, attributed
+                     to the arc that REACHES the boundary (see
+                     arcs.MonotoneArc.covers_degree).
 
 Two-stage discipline (plan §4.2): the arc index brackets the root from the
 spline; the root is then REFINED by direct Swiss bisection at the instant
@@ -221,6 +225,14 @@ def _levels_for_relation(body: str, relation: str, target_deg: float) -> list[tu
     raise ValueError(f"relation {relation!r} has no exact-separation levels")
 
 
+def _seam_canonical(level: float) -> float:
+    """Wrapped level with the 0°/360° seam read as 360, matching
+    arcs.MonotoneArc.covers_degree: the seam root lives at the 360k END of
+    the arc that reaches the boundary, never at the 0 start of the next band.
+    """
+    return float(level) % 360.0 or 360.0
+
+
 def find_roots(
     index: ArcIndex,
     body: str,
@@ -239,7 +251,7 @@ def find_roots(
     roots: list[ContactRoot] = []
     for aspect_deg, level in _levels_for_relation(body, relation, target_deg):
         for arc in index.arcs_covering_degree(level):
-            level_u = float(level) % 360.0 + 360.0 * arc.wrap_index
+            level_u = _seam_canonical(level) + 360.0 * arc.wrap_index
             spline_jd = _bisect_arc(arc, level_u, tol_deg)
             exact_jd = spline_jd
             if refine:
@@ -265,18 +277,21 @@ def boundary_degrees(relation: str) -> list[float]:
     """The fixed grid degrees (in [0,360)) at which `relation` has roots —
     boundary-exact, no orb (WP1 §7 orb_ingress)."""
     if relation == "sign_ingress":
-        return [SIGN_DEG * k for k in range(1, 12)]
+        # 12 cusps per revolution, 0° (the Aries seam) included (spec §6.2,
+        # #14) — O-SS-1 pins Sun = 12 sign crossings/yr.
+        return [SIGN_DEG * k for k in range(12)]
     if relation == "nakshatra_ingress":
-        return [NAKSHATRA_DEG * k for k in range(1, 27)]
+        # 27 boundaries per revolution, 0° included — O-SS-1 pins 27/yr.
+        return [NAKSHATRA_DEG * k for k in range(27)]
     if relation == "kakshya_cell_crossing":
-        # Equal-eighths cells: internal boundaries at 3.75° steps within each
-        # sign (0° and 30° are sign cusps — sign_ingress owns those). Lords
-        # per WP1_CONTRACTS.md §8 (cell k of a sign → KAKSHYA_LORD_ORDER[k]).
-        out: list[float] = []
-        for sign in range(12):
-            for cell in range(1, 8):
-                out.append(sign * SIGN_DEG + KAKSHYA_CELL_DEG * cell)
-        return out
+        # Equal-eighths cells (WP1_CONTRACTS.md §8): re-derived against O-SS-1
+        # (Sun = 96 kakṣyā crossings/yr), NOT the earlier "sign_ingress owns
+        # 0°/30°" carve-out — sign_ingress did not own 0° (the #14 seam was
+        # owned by nobody) and the 84-boundary internal-only grid cannot
+        # reach the pinned 96. Every 3.75° step is a cell crossing, including
+        # the sign cusps (30s = 3.75·8s) and the 0° seam; sign_ingress
+        # reports the cusp crossings too (a separate relation's event).
+        return [KAKSHYA_CELL_DEG * k for k in range(96)]
     raise ValueError(f"relation {relation!r} is not a boundary relation")
 
 
@@ -297,7 +312,7 @@ def find_boundary_roots(
     roots: list[ContactRoot] = []
     for level in boundary_degrees(relation):
         for arc in index.arcs_covering_degree(level):
-            level_u = float(level) % 360.0 + 360.0 * arc.wrap_index
+            level_u = _seam_canonical(level) + 360.0 * arc.wrap_index
             spline_jd = _bisect_arc(arc, level_u, tol_deg)
             exact_jd = spline_jd
             if refine:

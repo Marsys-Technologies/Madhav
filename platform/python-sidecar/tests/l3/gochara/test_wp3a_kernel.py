@@ -431,6 +431,107 @@ def test_oad_levels_computed_as_target_minus_angle():
     assert levels[210.0] == pytest.approx(150.0)
 
 
+# ── O-SS-1/O-SS-2 — the 0°/360° seam is a boundary root (spec §6.2, #14) ────
+#
+# GOCHARA_TEST_ORACLES_v1_4.json O-SS-2: case 1 direct 359.9°→0.1° over
+# [2025-03-01T00:00Z, 2025-03-02T00:00Z] (Aries ingress at the seam); case 2
+# retrograde 0.1°→359.9° over [2025-09-01T00:00Z, 2025-09-02T00:00Z] (Pisces
+# re-entry through the UPPER boundary). Tolerance δt < 60 s; synthetic linear
+# curves are reproduced exactly by the spline (refine=False). O-SS-1 count
+# contract per revolution: sign 12 / nakṣatra 27 / kakṣyā 96 (the
+# "each event stored once" producer half is step 6's global_boundary_table).
+
+OSS2_HORIZON = ("2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z")
+
+
+def _oss2_solve(curve, knot_start, knot_end, relation):
+    jds, lons = daily_knots(knot_start, knot_end, curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = tuple(jd_from_iso(s) for s in OSS2_HORIZON)
+    return episodes.solve_boundary_episodes(idx, "Sun", relation, horizon, refine=False)
+
+
+def test_oss2_case1_direct_crossing_aries_ingress():
+    h = jd_from_iso("2025-03-01T00:00:00Z")
+
+    def curve(jd):
+        return 359.9 + 0.2 * (jd - h)  # 359.9° at 03-01T00 → 0.1° at 03-02T00
+
+    eps = _oss2_solve(curve, date(2025, 2, 25), date(2025, 3, 5), "sign_ingress")
+    assert len(eps) == 1  # the curve crosses ONLY the seam — one root, not two
+    ep = eps[0]
+    assert ep.level_deg == 0.0 and ep.target_deg == 0.0
+    assert ep.exact_crossing is True
+    # δt < 60 s: seam at λ=360 exactly midway, 2025-03-01T12:00:00Z
+    assert iso_from_jd(ep.t_exact) == "2025-03-01T12:00:00Z"
+    # never a fabricated t_exact at the horizon edge
+    assert ep.t_in == ep.t_exact == ep.t_out
+    assert abs(ep.t_exact - jd_from_iso(OSS2_HORIZON[0])) > 1.0
+    assert abs(ep.t_exact - jd_from_iso(OSS2_HORIZON[1])) > 1.0
+    # 0° is a nakṣatra boundary too (360/27·27 ≡ 0): same seam, one root
+    naks = _oss2_solve(curve, date(2025, 2, 25), date(2025, 3, 5), "nakshatra_ingress")
+    assert len(naks) == 1 and naks[0].level_deg == 0.0
+    assert iso_from_jd(naks[0].t_exact) == "2025-03-01T12:00:00Z"
+
+
+def test_oss2_case2_retrograde_pisces_reentry_upper_boundary():
+    h = jd_from_iso("2025-09-01T00:00:00Z")
+
+    def curve(jd):
+        return 0.1 - 0.2 * (jd - h)  # 0.1° at 09-01T00 → 359.9° at 09-02T00
+
+    eps = _oss2_solve(curve, date(2025, 8, 26), date(2025, 9, 5), "sign_ingress")
+    assert len(eps) == 1  # the retrograde seam crossing, through the UPPER edge
+    ep = eps[0]
+    assert ep.level_deg == 0.0
+    assert ep.exact_crossing is True
+    assert iso_from_jd(ep.t_exact) == "2025-09-01T12:00:00Z"
+
+
+def test_oss1_boundary_counts_one_revolution():
+    """O-SS-1 count contract (per-body grid half): a Sun-like direct sweep
+    (~0.986°/day) across exactly one revolution yields exactly 12 sign, 27
+    nakṣatra and 96 kakṣyā roots — including exactly ONE 0°-seam root in each
+    grid. Removing 0° from any grid (the pre-fix mutation) drops the count to
+    11/26/95 and fails; so does double-emitting the seam."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+    rate = 360.0 / 365.25  # Sun-like: one revolution per year
+
+    def curve(jd):
+        return 350.0 + rate * (jd - t0)  # knot window spans 352° → ~711° unwrapped
+
+    jds, lons = daily_knots(date(2026, 1, 3), date(2027, 1, 3), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (jds[0], jds[-1])
+    expected = {"sign_ingress": 12, "nakshatra_ingress": 27,
+                "kakshya_cell_crossing": 96}
+    for relation, count in expected.items():
+        eps = episodes.solve_boundary_episodes(
+            idx, "Sun", relation, horizon, refine=False
+        )
+        assert len(eps) == count, (
+            f"{relation}: {len(eps)} roots over one revolution, expected {count}"
+        )
+        assert all(e.exact_crossing for e in eps)
+        seam = [e for e in eps if e.level_deg == 0.0]
+        assert len(seam) == 1, (
+            f"{relation}: {len(seam)} seam roots — the 0° crossing must be "
+            "present exactly once (attributed to the arc reaching the seam)"
+        )
+        # δt < 60 s: the seam root is at λ=360, t0 + 10°/rate
+        assert abs(seam[0].t_exact - (t0 + 10.0 / rate)) < 60.0 / 86400.0
+
+
+def test_oss_grids_include_zero_exactly_once():
+    """Grid-level pin: 0° is a member of all three boundary grids, listed once."""
+    for relation, n in (("sign_ingress", 12), ("nakshatra_ingress", 27),
+                        ("kakshya_cell_crossing", 96)):
+        grid = contacts.boundary_degrees(relation)
+        assert len(grid) == n and len(set(grid)) == n
+        assert grid.count(0.0) == 1
+        assert all(0.0 <= d < 360.0 for d in grid)
+
+
 # ── Case 12 — plateau ties in peak detection ────────────────────────────────
 
 def test_case_12_plateau_ties():

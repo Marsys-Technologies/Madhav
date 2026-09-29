@@ -153,6 +153,14 @@ class MonotoneArc:
 
     def covers_degree(self, target_deg: float) -> bool:
         t = float(target_deg) % 360.0
+        if t == 0.0:
+            # The 0°/360° seam (spec §6.2, #14): band k−1's arc ENDS at
+            # exactly 360 (its lon_hi) while band k's arc STARTS at 0. Testing
+            # the seam as 360 attributes the root to exactly one arc — the
+            # one that REACHES the boundary — so a wrap crossing yields one
+            # root, never zero or two (and never a fabricated root at the 0
+            # start of an arc that merely departs from the seam).
+            t = 360.0
         return self.lon_lo_deg - 1e-9 <= t <= self.lon_hi_deg + 1e-9
 
 
