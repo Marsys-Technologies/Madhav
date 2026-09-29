@@ -24,7 +24,7 @@
 import { query } from '@/lib/db/client'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
-import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, classifyBuildFence, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
+import { resolvedBuildFenceIds, resolvedRowsBuildId, ExplicitEmptyBuildFenceError, classifyBuildFence, type BuildFence, type ChartServedGeneration, type UnresolvedGenerationReason } from '../generation/served_generation'
 
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -921,6 +921,329 @@ export async function fetchWealthTajaka(
     if (error instanceof ExplicitEmptyBuildFenceError) throw error
     return { state: 'source_unproven', row: null }
   }
+}
+
+// ── NMB-CAND-v1 (OSR-009 / OSR-012): notably-absent yogas from the serve-time formation band ──
+//
+// The band is derived at SERVE time by the python sidecar route
+// `POST /api/compute/yoga_formation_band` (routers/yoga_formation_band.py) from the served
+// generation's L1 facts and ga_yoga_firings using the shipped L1 evaluators. Nothing is stored.
+// Present is decided only by L1 `ga_yoga_firings`; the route adds the leg-level derivation of
+// NON-firings. This reader is fenced to the served generation of the producing assets
+// (`ga_yoga` + the assets that write the chart_facts the evaluators read: `ga_positions`),
+// each behind its own fresh, proven receipt. Any unproven leg -- fence, generation, sidecar
+// failure, malformed or non-six response -- is `source_unproven`: never an empty finding, never
+// `not_computed` (N.7 item 6: an honest null beats an invented judgment).
+
+export const NEAR_MISS_CANDIDATE_SET_VERSION = 'NMB-CAND-v1'
+export const NEAR_MISS_ELIGIBILITY_RULE_VERSION = 'NMB-ELIG-v1'
+export const NEAR_MISS_BAND_VERSION = 'NMB-BAND-v1'
+/** ga_yoga writes the firings; ga_positions writes the graha_position facts the evaluators read
+ *  (`ChartState` categories -- packet v1.1 section 6). `bo_laksana` is NOT in this fence. */
+export const NEAR_MISS_REQUIRED_ASSETS = ['ga_yoga', 'ga_positions'] as const
+/** The closed candidate set (packet section 2). A band that is not exactly this set is unproven. */
+export const NEAR_MISS_CANDIDATE_IDS = [
+  'dhana_yoga_house_lords',
+  'dhana_yoga_2_11',
+  'dhana_yoga_5_9',
+  'dhana_yoga_lagna_2',
+  'dhana_yoga_9_11',
+  'dhana_yoga_2_5_9_11',
+] as const
+export type NearMissBandState = 'present' | 'near_miss' | 'absent' | 'indeterminate'
+const NEAR_MISS_BAND_STATES: readonly NearMissBandState[] = ['present', 'near_miss', 'absent', 'indeterminate']
+const NEAR_MISS_SIDECAR_TIMEOUT_MS = 8000
+
+/** Wording rule (packet section 6): a near-miss is "Not formed: ..." and never claims the yoga
+ *  is held, given, partial, scored, or predictive. */
+export const NEAR_MISS_FORBIDDEN_WORDING =
+  /\b(has|have|had|gives?|gave|partial(ly)?|percent(age)?s?|strength|strong(er|est)?|effects?|predict(s|ed|ion|ions|ive)?)\b|%/i
+
+export interface NearMissPair {
+  houses_ruled: number[]
+  lords: string[]
+  association_mode: string | null
+  placement_houses: number[]
+}
+
+export interface NotablyAbsentYogaRow {
+  candidate_id: string
+  yoga_name: string
+  state: 'near_miss'
+  /** "Not formed: <yoga> requires <rule>. The chart meets <legs>; it fails <leg>." */
+  statement: string
+  rule: string
+  legs_met: string[]
+  leg_failed: string
+  pairs: NearMissPair[]
+  contradicting_present_siblings: string[]
+  ayanamsha_sensitive: boolean | null
+  candidate_set_version: string
+  eligibility_rule_version: string
+  constituent_fact_ids: string[]
+  l1_firing_ids: number[]
+}
+
+export interface NotablyAbsentYogasResult {
+  state: 'served' | 'empty_for_this_chart' | 'source_unproven'
+  /** Why the source is unproven (null when served/empty). */
+  reason: string | null
+  /** near_miss rows ONLY (packet section 6). */
+  near_miss: NotablyAbsentYogaRow[]
+  band_coverage: Record<NearMissBandState, number> & { total: number }
+  /** Indeterminate candidates are served AS indeterminate (never folded into absent). */
+  indeterminate: Array<{ candidate_id: string; reason: string | null }>
+  /** true/false when every other ayanamsha was evaluated; null when some could not be. */
+  ayanamsha_sensitive: boolean | null
+  ayanamsha_sensitive_candidates: string[]
+  ayanamsha_unchecked: string[]
+  candidate_set_version: string
+  eligibility_rule_version: string
+  band_version: string
+  served_build_ids: string[]
+  fact_ids: string[]
+}
+
+const EMPTY_COVERAGE = (): NotablyAbsentYogasResult['band_coverage'] =>
+  ({ present: 0, near_miss: 0, absent: 0, indeterminate: 0, total: 0 })
+
+export function unprovenBand(reason: string): NotablyAbsentYogasResult {
+  return {
+    state: 'source_unproven', reason, near_miss: [], band_coverage: EMPTY_COVERAGE(), indeterminate: [],
+    ayanamsha_sensitive: null, ayanamsha_sensitive_candidates: [], ayanamsha_unchecked: [],
+    candidate_set_version: NEAR_MISS_CANDIDATE_SET_VERSION,
+    eligibility_rule_version: NEAR_MISS_ELIGIBILITY_RULE_VERSION,
+    band_version: NEAR_MISS_BAND_VERSION,
+    served_build_ids: [],
+    fact_ids: [],
+  }
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v)
+const asNumberArray = (v: unknown): number[] => Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : []
+const asStringArray = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+
+/** Fixed wording vocabulary only: yoga name, catalogue rule, house numbers and graha names.
+ *  A catalogue text that trips the forbidden-wording rule is replaced, never edited. */
+function safeRule(candidateId: string, formationText: unknown): string {
+  const text = typeof formationText === 'string' ? formationText.trim().replace(/\.$/, '') : ''
+  if (!text || NEAR_MISS_FORBIDDEN_WORDING.test(text)) return `the shipped formation rule for ${candidateId}`
+  return text
+}
+
+function safeName(candidateId: string, name: unknown): string {
+  const text = typeof name === 'string' ? name.trim() : ''
+  return text && !NEAR_MISS_FORBIDDEN_WORDING.test(text) ? text : candidateId
+}
+
+function nearMissPairsOf(cand: Record<string, unknown>): NearMissPair[] {
+  const pairs = Array.isArray(cand['pairs']) ? cand['pairs'].filter(isRecord) : []
+  return pairs
+    .filter(p => p['associated'] === true && p['gate_failed'] === true)
+    .map(p => ({
+      houses_ruled: asNumberArray(p['houses_ruled']),
+      lords: asStringArray(p['lords']),
+      association_mode: typeof p['association_mode'] === 'string' ? p['association_mode'] : null,
+      placement_houses: asNumberArray(p['placement_houses']),
+    }))
+}
+
+function buildNearMissRow(cand: Record<string, unknown>, candidateId: string, ayanamshaSensitive: boolean | null): NotablyAbsentYogaRow | null {
+  const pairs = nearMissPairsOf(cand)
+  if (pairs.length === 0) return null
+  const name = safeName(candidateId, cand['yoga_name'])
+  const rule = safeRule(candidateId, cand['formation_text'])
+  const legsMet = pairs.map(p =>
+    `the lord-association leg (the lords of houses ${p.houses_ruled.join(' and ')}, ` +
+    `${p.lords.join(' and ')}, associate by ${p.association_mode ?? 'association'})`)
+  const failedHouses = [...new Set(pairs.flatMap(p => p.placement_houses.filter(h => h === 6 || h === 8 || h === 12)))]
+  const legFailed =
+    `the meeting-house leg (the association falls in house ${failedHouses.join('/')}, a dusthana of 6/8/12)`
+  const statement = `Not formed: ${name} requires ${rule}. The chart meets ${legsMet.join('; ')}; it fails ${legFailed}.`
+  if (NEAR_MISS_FORBIDDEN_WORDING.test(statement)) return null
+  return {
+    candidate_id: candidateId,
+    yoga_name: name,
+    state: 'near_miss',
+    statement,
+    rule,
+    legs_met: legsMet,
+    leg_failed: legFailed,
+    pairs,
+    contradicting_present_siblings: asStringArray(cand['contradicting_present_siblings']).sort(),
+    ayanamsha_sensitive: ayanamshaSensitive,
+    candidate_set_version: NEAR_MISS_CANDIDATE_SET_VERSION,
+    eligibility_rule_version: NEAR_MISS_ELIGIBILITY_RULE_VERSION,
+    constituent_fact_ids: asStringArray(cand['constituent_fact_ids']).sort(),
+    l1_firing_ids: asNumberArray(cand['l1_firing_ids']),
+  }
+}
+
+/** Validate one route response against the request that produced it. Returns a candidate map, or a reason. */
+function validateBandResponse(
+  raw: unknown, expect: { chart_id: string; ayanamsha_id: string; served_build_ids: readonly string[] },
+): { ok: true; candidates: Map<string, Record<string, unknown>>; response: Record<string, unknown> } | { ok: false; reason: string } {
+  if (!isRecord(raw)) return { ok: false, reason: 'band_response_malformed' }
+  if (raw['candidate_set_version'] !== NEAR_MISS_CANDIDATE_SET_VERSION
+    || raw['eligibility_rule_version'] !== NEAR_MISS_ELIGIBILITY_RULE_VERSION
+    || raw['band_version'] !== NEAR_MISS_BAND_VERSION) return { ok: false, reason: 'band_version_mismatch' }
+  if (raw['tolerance'] !== 'none') return { ok: false, reason: 'band_tolerance_not_none' }
+  if (raw['chart_id'] !== expect.chart_id || raw['ayanamsha_id'] !== expect.ayanamsha_id) {
+    return { ok: false, reason: 'band_scope_mismatch' }
+  }
+  const echoed = asStringArray(raw['served_build_ids']).slice().sort()
+  const sent = [...expect.served_build_ids].sort()
+  if (echoed.length !== sent.length || echoed.some((b, i) => b !== sent[i])) return { ok: false, reason: 'band_generation_mismatch' }
+  const list = Array.isArray(raw['candidates']) ? raw['candidates'] : null
+  if (!list || list.length !== NEAR_MISS_CANDIDATE_IDS.length) {
+    return { ok: false, reason: `band_rows_incomplete:${list?.length ?? 0}/${NEAR_MISS_CANDIDATE_IDS.length}` }
+  }
+  const byId = new Map<string, Record<string, unknown>>()
+  for (const c of list) {
+    if (!isRecord(c) || typeof c['candidate_id'] !== 'string' || byId.has(c['candidate_id'])
+      || !NEAR_MISS_BAND_STATES.includes(c['state'] as NearMissBandState)) return { ok: false, reason: 'band_row_invalid' }
+    byId.set(c['candidate_id'], c)
+  }
+  const closed = new Set<string>(NEAR_MISS_CANDIDATE_IDS)
+  if (byId.size !== closed.size || [...byId.keys()].some(id => !closed.has(id))) {
+    return { ok: false, reason: 'band_candidate_set_mismatch' }
+  }
+  return { ok: true, candidates: byId, response: raw }
+}
+
+/**
+ * Interpret the route response for the resolved ayanamsha. Pure: every provenance decision
+ * (fence, generation, transport) is made by the caller; this decides only whether the response is
+ * a complete, valid NMB-CAND-v1 band and what it says. `others` are the responses for the other
+ * ayanamshas (null = could not be evaluated) used only for `ayanamsha_sensitive`.
+ */
+export function interpretYogaBandResponse(
+  raw: unknown,
+  expect: { chart_id: string; ayanamsha_id: string; served_build_ids: readonly string[] },
+  others: ReadonlyArray<{ ayanamsha_id: string; raw: unknown | null }> = [],
+): NotablyAbsentYogasResult {
+  const mine = validateBandResponse(raw, expect)
+  if (!mine.ok) return unprovenBand(mine.reason)
+
+  const sensitive: string[] = []
+  const unchecked: string[] = []
+  for (const other of others) {
+    const checked = other.raw === null ? null
+      : validateBandResponse(other.raw, { ...expect, ayanamsha_id: other.ayanamsha_id })
+    if (!checked || !checked.ok) { unchecked.push(other.ayanamsha_id); continue }
+    for (const id of NEAR_MISS_CANDIDATE_IDS) {
+      if (checked.candidates.get(id)!['state'] !== mine.candidates.get(id)!['state'] && !sensitive.includes(id)) sensitive.push(id)
+    }
+  }
+  const ayanamshaSensitive: boolean | null = sensitive.length > 0 ? true : (unchecked.length > 0 ? null : false)
+
+  const coverage = EMPTY_COVERAGE()
+  const nearMiss: NotablyAbsentYogaRow[] = []
+  const indeterminate: NotablyAbsentYogasResult['indeterminate'] = []
+  const factIds = new Set<string>()
+  for (const id of NEAR_MISS_CANDIDATE_IDS) {
+    const cand = mine.candidates.get(id)!
+    const state = cand['state'] as NearMissBandState
+    coverage[state] += 1
+    coverage.total += 1
+    if (state === 'near_miss') {
+      const row = buildNearMissRow(cand, id, sensitive.includes(id) ? true : ayanamshaSensitive === null ? null : false)
+      // A near_miss row that cannot be phrased inside the wording rule is unproven, not dropped.
+      if (!row) return unprovenBand('near_miss_row_unrenderable')
+      nearMiss.push(row)
+      for (const f of row.constituent_fact_ids) factIds.add(f)
+    } else if (state === 'indeterminate') {
+      indeterminate.push({ candidate_id: id, reason: typeof cand['reason'] === 'string' ? cand['reason'] : null })
+    }
+  }
+  return {
+    state: nearMiss.length > 0 ? 'served' : 'empty_for_this_chart',
+    reason: null,
+    near_miss: nearMiss,
+    band_coverage: coverage,
+    indeterminate,
+    ayanamsha_sensitive: ayanamshaSensitive,
+    ayanamsha_sensitive_candidates: sensitive,
+    ayanamsha_unchecked: unchecked,
+    candidate_set_version: NEAR_MISS_CANDIDATE_SET_VERSION,
+    eligibility_rule_version: NEAR_MISS_ELIGIBILITY_RULE_VERSION,
+    band_version: NEAR_MISS_BAND_VERSION,
+    served_build_ids: [...expect.served_build_ids].sort(),
+    fact_ids: [...factIds].sort(),
+  }
+}
+
+async function callYogaBandRoute(chart_id: string, ayanamsha_id: string, served_build_ids: readonly string[]): Promise<unknown> {
+  const sidecarUrl = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const key = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
+  if (key) headers['x-api-key'] = key
+  const res = await fetch(`${sidecarUrl}/api/compute/yoga_formation_band`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ chart_id, ayanamsha_id, served_build_ids }),
+    signal: AbortSignal.timeout(NEAR_MISS_SIDECAR_TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`sidecar ${res.status}`)
+  return res.json()
+}
+
+/** The other ayanamshas that have graha_position facts in the served facts build (pinned category+key). */
+async function otherServedAyanamshas(chart_id: string, ayanamsha_id: string, factsBuildId: string): Promise<string[]> {
+  const res = await query<{ ayanamsha_id: string }>(
+    `SELECT DISTINCT ayanamsha_id
+       FROM chart_facts
+      WHERE chart_id = $1::uuid AND build_id = $2::uuid
+        AND fact_category = 'graha_position' AND fact_key = 'sign'
+        AND ayanamsha_id <> $3
+      ORDER BY ayanamsha_id ASC`,
+    [chart_id, factsBuildId, ayanamsha_id],
+  )
+  return res.rows.map(r => r.ayanamsha_id)
+}
+
+/**
+ * Serve the notably-absent (near-miss) yogas for the resolved ayanamsha. Fenced to the served
+ * generation of `ga_yoga` + `ga_positions` (each: proven fresh receipt, current spec, resolved
+ * binding, no replacement in flight). Any failure is `source_unproven` with the reason.
+ */
+export async function fetchNotablyAbsentYogas(
+  chart_id: string,
+  ayanamsha_id: string,
+  generation: ChartServedGeneration,
+): Promise<NotablyAbsentYogasResult> {
+  const fence = await fetchSourceReceiptFence(chart_id, generation, NEAR_MISS_REQUIRED_ASSETS)
+  if (!fence.ok) return unprovenBand('source_fence_unavailable')
+  const blocked = fence.assets.filter(a => !a.receipt_matches_selected_build || a.replacement_in_progress)
+  if (blocked.length > 0) {
+    return unprovenBand(`source_fence_unproven:${blocked.map(a => a.asset_id).sort().join(',')}`)
+  }
+  const rowsBuilds = NEAR_MISS_REQUIRED_ASSETS.map(asset => resolvedRowsBuildId(generation, asset))
+  if (rowsBuilds.some(b => b === null)) return unprovenBand('generation_unresolved')
+  const servedBuildIds = [...new Set(rowsBuilds as string[])].sort()
+  const expect = { chart_id, ayanamsha_id, served_build_ids: servedBuildIds }
+  let mine: unknown
+  try {
+    mine = await callYogaBandRoute(chart_id, ayanamsha_id, servedBuildIds)
+  } catch {
+    return unprovenBand('sidecar_unavailable')
+  }
+  const primary = interpretYogaBandResponse(mine, expect)
+  if (primary.state === 'source_unproven') return primary
+
+  // Ayanamsha sensitivity: re-evaluate the SAME generation under every other served ayanamsha.
+  // A failed neighbour leaves sensitivity unknown (null), never asserted false.
+  const factsBuild = resolvedRowsBuildId(generation, 'ga_positions')!
+  let neighbours: string[] | null = null
+  try { neighbours = await otherServedAyanamshas(chart_id, ayanamsha_id, factsBuild) } catch { neighbours = null }
+  if (neighbours === null) {
+    return interpretYogaBandResponse(mine, expect, [{ ayanamsha_id: 'other_ayanamshas_lookup_failed', raw: null }])
+  }
+  const others = await Promise.all(neighbours.map(async other => {
+    try { return { ayanamsha_id: other, raw: await callYogaBandRoute(chart_id, other, servedBuildIds) } }
+    catch { return { ayanamsha_id: other, raw: null } }
+  }))
+  return interpretYogaBandResponse(mine, expect, others)
 }
 
 export interface KpCuspLink {

@@ -172,7 +172,19 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(unitByName.has('gochara_sweep')).toBe(true)
       expect(unitByName.has('bearing_yogas')).toBe(true)
       expect(unitByName.has('bearing_afflictions')).toBe(true)
-      expect(unitByName.get('notably_absent_yogas')!['state']).toBe('not_computed')
+      // NMB-CAND-v1 (OSR-012): wealth reads the serve-time near-miss band. Until the OSR-004 rebuild
+      // refreshes ga_yoga/ga_positions the honest live state is `source_unproven`; once proven it is
+      // `served` (near_miss rows) or `empty_for_this_chart`. It is NEVER the retired `not_computed`,
+      // and the unit count always equals the served near_miss array length.
+      const notablyAbsentYogas = checklist['notably_absent_yogas'] as Array<Record<string, unknown>>
+      expect(Array.isArray(notablyAbsentYogas)).toBe(true)
+      const naState = unitByName.get('notably_absent_yogas')!['state']
+      expect(['served', 'empty_for_this_chart', 'source_unproven']).toContain(naState)
+      expect(unitByName.get('notably_absent_yogas')!['count']).toBe(notablyAbsentYogas.length)
+      if (naState === 'served') expect(notablyAbsentYogas.length).toBeGreaterThan(0)
+      if (naState !== 'served') expect(notablyAbsentYogas).toEqual([])
+      const naFlags = (content['judgment_flags'] as Array<Record<string, unknown>>).map(f => f['code'])
+      expect(naFlags.includes('notably_absent_not_checked')).toBe(naState === 'source_unproven')
       // yogi/avayogi honestly not_joined (T6/MC-029 computed it; this instrument doesn't fold it in yet)
       expect(unitByName.get('yogi_avayogi')!['state']).toBe('not_joined')
 
