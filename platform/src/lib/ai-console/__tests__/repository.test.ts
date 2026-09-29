@@ -764,6 +764,50 @@ describe('atomic routing resolution read', () => {
   })
 })
 
+describe('atomic Pariprashna selected-to-Default fallback preparation', () => {
+  const selectedModel = 'model-selected'
+  const defaultModel = 'model-default'
+  const turnId = '00000000-0000-4000-8000-000000000099'
+
+  it('pins an explicit selection and its Default fallback as two linked immutable snapshots', async () => {
+    respond((sql, params) => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql === 'SELECT owner_id FROM charts WHERE id=$1 FOR SHARE') return [{ owner_id: 'alice' }]
+      if (sql.includes('FROM conversations') && sql.includes('FOR NO KEY UPDATE')) {
+        return [{ id: conversationId, chart_id: conversationId }]
+      }
+      if (sql.includes('FROM ai_conversation_selections')) return [{ kind: 'provider_model',
+        connection_id: connectionId, model_id: selectedModel, configuration_id: null, cli_id: null }]
+      if (sql.includes('FROM ai_user_defaults')) return [{ kind: 'provider_model',
+        connection_id: connectionId, model_id: defaultModel, configuration_id: null, cli_id: null }]
+      if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: params[1], display_name: String(params[1]),
+        compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true }]
+      if (sql.startsWith('INSERT INTO ai_turn_routing_snapshots')) {
+        return [{ id: params[1] === turnId ? '30000000-0000-4000-8000-000000000003'
+          : '30000000-0000-4000-8000-000000000004' }]
+      }
+      return undefined
+    })
+
+    const prepared = await repository.prepareTurnRouting({ userId: 'alice', role: 'guest',
+      chartId: conversationId, conversationId, isFirstTurn: false, turnId,
+      source: 'pariprashna', selection: { kind: 'explicit', choice: {
+        kind: 'provider_model', connectionId, modelId: selectedModel,
+      } } })
+
+    expect(prepared.safeSnapshot).toMatchObject({ correlationId: turnId,
+      resolvedChoice: { kind: 'provider_model', connectionId, modelId: selectedModel } })
+    expect(prepared.fallback?.safeSnapshot).toMatchObject({
+      correlationId: `${turnId}:default-fallback`,
+      selection: { kind: 'default' },
+      resolvedChoice: { kind: 'provider_model', connectionId, modelId: defaultModel },
+    })
+    const snapshotWrites = calls().filter(call => call.sql.startsWith('INSERT INTO ai_turn_routing_snapshots'))
+    expect(snapshotWrites.map(call => call.params[1])).toEqual([turnId, `${turnId}:default-fallback`])
+  })
+})
+
 describe('immutable history and safe audit', () => {
   const snapshot = { userId: 'alice', correlationId: 'turn', source: 'backend' as const, conversationId: null, selection: { kind: 'default' as const }, resolvedChoice: choice, configurationVersion: null, roles: Object.fromEntries(AI_ROLES.map(r => [r, { ...choice, providerId: 'openai' }])) }
   it('rejects secret-bearing snapshots before touching persistence', async () => {

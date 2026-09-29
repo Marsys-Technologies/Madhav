@@ -179,6 +179,11 @@ export interface PreparedTurnRouting {
   resolution: RoutingResolution
   safeSnapshot: z.infer<typeof RoutingSnapshotSchema>
   snapshotId: string
+  fallback?: {
+    resolution: RoutingResolution
+    safeSnapshot: z.infer<typeof RoutingSnapshotSchema>
+    snapshotId: string
+  }
 }
 
 export interface PreparedMcpRouting extends PreparedTurnRouting {
@@ -916,24 +921,41 @@ export async function prepareTurnRouting(input: unknown): Promise<PreparedTurnRo
       if (!isDeepStrictEqual(authoritativeSelection, parsed.selection)) throw new AiConsoleError('AI_CHOICE_BROKEN')
     }
 
+    const snapshot = (selection: z.infer<typeof ConversationAiSelectionSchema>, resolution: RoutingResolution,
+      correlationId: string) => RoutingSnapshotSchema.parse({
+        source: 'pariprashna',
+        userId: parsed.userId,
+        correlationId,
+        conversationId: parsed.conversationId,
+        selection,
+        resolvedChoice: resolution.resolvedChoice,
+        configurationVersion: resolution.configurationVersion,
+        roles: Object.fromEntries(AI_ROLES.map(role => {
+          const target = resolution.roles[role]
+          return [role, target.kind === 'provider_model'
+            ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId, modelId: target.modelId }
+            : { kind: target.kind, cliId: target.cliId, modelId: target.modelId }]
+        })),
+      })
+
     const resolution = await loadRoutingResolutionWithClient(client, parsed.userId, authoritativeSelection)
-    const safeSnapshot = RoutingSnapshotSchema.parse({
-      source: 'pariprashna',
-      userId: parsed.userId,
-      correlationId: parsed.turnId,
-      conversationId: parsed.conversationId,
-      selection: authoritativeSelection,
-      resolvedChoice: resolution.resolvedChoice,
-      configurationVersion: resolution.configurationVersion,
-      roles: Object.fromEntries(AI_ROLES.map(role => {
-        const target = resolution.roles[role]
-        return [role, target.kind === 'provider_model'
-          ? { kind: target.kind, connectionId: target.connectionId, providerId: target.providerId, modelId: target.modelId }
-          : { kind: target.kind, cliId: target.cliId, modelId: target.modelId }]
-      })),
-    })
+    const safeSnapshot = snapshot(authoritativeSelection, resolution, parsed.turnId)
     const snapshotId = await insertRoutingSnapshotWithClient(client, safeSnapshot)
-    return { selection: authoritativeSelection, resolution, safeSnapshot, snapshotId }
+    if (authoritativeSelection.kind === 'default') {
+      return { selection: authoritativeSelection, resolution, safeSnapshot, snapshotId }
+    }
+
+    const defaultSelection = ConversationAiSelectionSchema.parse({ kind: 'default' })
+    const fallbackResolution = await loadRoutingResolutionWithClient(client, parsed.userId, defaultSelection)
+    const fallbackSafeSnapshot = snapshot(defaultSelection, fallbackResolution,
+      `${parsed.turnId}:default-fallback`)
+    if (isDeepStrictEqual(fallbackSafeSnapshot.roles, safeSnapshot.roles)) {
+      return { selection: authoritativeSelection, resolution, safeSnapshot, snapshotId }
+    }
+    const fallbackSnapshotId = await insertRoutingSnapshotWithClient(client, fallbackSafeSnapshot)
+    return { selection: authoritativeSelection, resolution, safeSnapshot, snapshotId,
+      fallback: { resolution: fallbackResolution, safeSnapshot: fallbackSafeSnapshot,
+        snapshotId: fallbackSnapshotId } }
   })
 }
 

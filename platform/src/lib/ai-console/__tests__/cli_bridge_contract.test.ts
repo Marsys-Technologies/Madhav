@@ -15,6 +15,8 @@ describe('private AI CLI bridge contract', () => {
     expect(bridge).toContain("path: join(HOME, '.local/bin/codex')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/claude')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/agy')")
+    expect(bridge).toContain("versions: ['1.2.12', '1.2.13']")
+    expect(bridge).toContain('definition.versions.includes(payload.version)')
     expect(bridge).toContain("path: join(HOME, '.kimi-code/bin/kimi')")
     expect(bridge).not.toMatch(/raw\.(?:args|command|executable)/)
     expect(bridge).not.toContain('shell: true')

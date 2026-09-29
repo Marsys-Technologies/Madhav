@@ -47,7 +47,8 @@ export type RoleExecutionEvent =
   | { type: 'reasoning_delta'; text: string }
   | { type: 'tool_call'; name: string; args: unknown; callId: string }
   | { type: 'tool_result'; callId: string; result: unknown }
-  | { type: 'finish'; finishReason: string; usage: NormalizedUsage; retryCount: number }
+  | { type: 'finish'; finishReason: string; usage: NormalizedUsage; retryCount: number;
+      fallbackUsed: boolean; activeModelId: string }
 
 export interface RoleExecutionResult {
   text: string
@@ -56,6 +57,8 @@ export interface RoleExecutionResult {
   finishReason: string
   usage: NormalizedUsage
   retryCount: number
+  fallbackUsed: boolean
+  activeModelId: string
 }
 
 export interface RoleExecutor {
@@ -123,7 +126,8 @@ async function generate(execution: ResolvedRoleExecution, descriptor: SafeProvid
         new StructuredOutputValidationError(execution.role, text), { retryCount })
     }
   }
-  return { text, ...(request.responseSchema ? { structured } : {}), toolCalls, finishReason, usage, retryCount }
+  return { text, ...(request.responseSchema ? { structured } : {}), toolCalls, finishReason, usage, retryCount,
+    fallbackUsed: false, activeModelId: descriptor.modelId }
 }
 
 function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecutorDescriptor,
@@ -212,7 +216,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
           controller.close()
           return
         }
-        const event = translate(next.value, retryCount)
+        const event = translate(next.value, retryCount, descriptor.modelId)
         if (!event) continue
         emitted = true
         controller.enqueue(event)
@@ -298,7 +302,7 @@ function callType(role: AiRole): QueryRequest['callType'] {
   return 'worker'
 }
 
-function translate(value: unknown, retryCount: number): RoleExecutionEvent | undefined {
+function translate(value: unknown, retryCount: number, activeModelId: string): RoleExecutionEvent | undefined {
   if (!value || typeof value !== 'object') return undefined
   const part = value as Record<string, unknown>
   if (part.type === 'text-delta' && typeof part.text === 'string') return { type: 'text_delta', text: part.text }
@@ -316,7 +320,8 @@ function translate(value: unknown, retryCount: number): RoleExecutionEvent | und
     const outputTokens = token(rawUsage.outputTokens)
     return { type: 'finish', finishReason: finishReason(part.finishReason),
       usage: { inputTokens, outputTokens,
-        totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens }, retryCount }
+        totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens }, retryCount,
+      fallbackUsed: false, activeModelId }
   }
   if (part.type === 'error') throw part.error
   return undefined
