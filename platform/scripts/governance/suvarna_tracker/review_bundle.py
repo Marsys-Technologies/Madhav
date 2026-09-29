@@ -113,7 +113,8 @@ def default_entries(roots: Roots) -> list[Entry]:
     p = roots.plan
     entries = [
         _file(p, PACKAGE_REL),
-        _file(p, f"{b}/SUVARNA_CAMPAIGN_PLAN_v1_4.md"),
+        _file(p, f"{b}/SUVARNA_CAMPAIGN_PLAN_v1_5.md"),
+        _file(p, f"{b}/NATIVE_SETUP_v1_0.md"),
         _file(p, f"{b}/SUVARNA_AUTONOMY_CHARTER_v1_0.md"),
         _file(p, f"{b}/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md"),
         _file(p, f"{b}/SUVARNA_RUNBOOK_v1_0.md"),
@@ -135,7 +136,7 @@ def default_entries(roots: Roots) -> list[Entry]:
 
 def superseded_entries(roots: Roots) -> list[Entry]:
     """Listed in the manifest by name only; never copied."""
-    return [_file(roots.plan, f"{SUVARNA_BRIEFS}/SUVARNA_CAMPAIGN_PLAN_v1_{n}.md") for n in range(4)]
+    return [_file(roots.plan, f"{SUVARNA_BRIEFS}/SUVARNA_CAMPAIGN_PLAN_v1_{n}.md") for n in range(5)]
 
 
 # --------------------------------------------------------------------------------------------

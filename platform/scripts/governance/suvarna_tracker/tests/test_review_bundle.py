@@ -210,7 +210,8 @@ def _fake_roots(tmp_path, secret_in=None):
     plan, nik, mad, home = (tmp_path / n for n in ("plan", "nikasha", "madhav", "home"))
     b = RB.SUVARNA_BRIEFS
     files = {plan: [RB.PACKAGE_REL] + [f"{b}/{n}" for n in (
-        "SUVARNA_CAMPAIGN_PLAN_v1_4.md", "SUVARNA_AUTONOMY_CHARTER_v1_0.md",
+        "SUVARNA_CAMPAIGN_PLAN_v1_5.md", "NATIVE_SETUP_v1_0.md", "SUVARNA_CAMPAIGN_PLAN_v1_4.md",
+        "SUVARNA_AUTONOMY_CHARTER_v1_0.md",
         "SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md", "SUVARNA_RUNBOOK_v1_0.md",
         "D6_SUVARNA_READER_RUNBOOK_v1_0.md", "SUVARNA_L3_FOCUS_FAMILIES_v1_0.md",
         "SUVARNA_DOCUMENT_MAP_v1_0.md", "SUVARNA_CAMPAIGN_PLAN_v1_3.md",
