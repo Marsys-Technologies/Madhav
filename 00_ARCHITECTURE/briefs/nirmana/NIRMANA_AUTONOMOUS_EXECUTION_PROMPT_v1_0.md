@@ -2,7 +2,7 @@
 artifact: NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md
 canonical_id: NIRMANA_AUTONOMOUS_EXECUTION_PROMPT
 version: "1.0"
-status: NATIVE-AUTHORIZED — this document IS the execution authority
+status: SUPERSEDED — 2026-09-28, native decision; see NIRMANA_SUPERSESSION_RECORD_v1_0.md (was: NATIVE-AUTHORIZED — this document IS the execution authority)
 campaign_id: nirmana-elevation
 produced_on: 2026-09-01
 authorized_by: native (Abhisek Mohanty), 2026-09-01 — "I accept all your recommendations… full
@@ -17,6 +17,8 @@ usage: >
   human gates; this campaign has none). The prompt is idempotent and resumable: re-pasting it
   into a new session after any interruption resumes from the durable state file, never from zero.
 ---
+
+> ⛔ **SUPERSEDED 2026-09-28 by native decision.** The Nirmāṇa elevation campaign is off and will not resume. Successor: the Nikaṣa engine, then an elevation campaign built on it. Assets Nirmāṇa froze are kept as the starting point, not as certification. Kept as history only — do not execute. Record: `00_ARCHITECTURE/briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`.
 
 # NIRMĀṆA L0→L5 — AUTONOMOUS EXECUTION PROMPT
 
