@@ -244,26 +244,29 @@ AUTHORIZED_SOURCE_COMMITS = {
         "L2": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
         "L3": frozenset({"7d40f8c706406ee8187eadb5c3930553800a1a4a"}),
     },
-    # D-E022 (Pravaha A0.3): exactly one source commit, for exactly the two layers
-    # whose writer digests moved at the PR #2731 merge. f4cba9d6 is a docs-only
-    # commit on top of merge 8eeeb6e2a, so its committed writer inventory is
-    # byte-identical to the merged tree's derived inventory. L0, L2, L4, L5 are
-    # deliberately absent.
+    # D-E022 (Pravaha A0.3/A0.6): exactly one source commit, for exactly the two
+    # layers whose writer digests moved at the PR #2731 merge.
     #
-    # ad22bef06 (L3 only): within the same A0.3 merge-repair operation, the
-    # DP-SD-010 serialization fix on services/gochara_kernel/knots.py moved the
-    # knots-closure writer digests (ka_gochara_v3_century_materialize,
-    # ka_moorti_nirnaya, ka_sangam) AFTER the first L3 successor was admitted.
-    # The fail-closed design requires a second, append-only L3 successor rather
-    # than editing the first; ad22bef06 is the commit whose committed inventory
-    # carries the corrected digests (its successor commit changes only this
-    # generator). Same authority, same scope: the #2731 merge pins re-admission.
+    # A0.6 delivery re-base: the merge queue delivers this PR as a one-parent
+    # squash onto main, so lane-only commits are never ancestors of the delivery
+    # HEAD and a lane-admitted-then-archived generation (the first A0.3 L3
+    # successor) can never name a deliverable historical snapshot. The two
+    # lane-local admissions per the A0.3 shape were therefore rewound to the
+    # protected baseline (byte-for-byte) and re-admitted ONCE per layer directly
+    # on top of the origin/main merge, each archived predecessor naming the
+    # protected baseline as its historical snapshot. The lane-local source
+    # commits f4cba9d606ab (L1, L3) and ad22bef06784 (L3) authorized for the A0.3
+    # shape are WITHDRAWN here before first delivery: they never reached main and
+    # their committed inventories predate the origin/main merge, so no admission
+    # can cite them against the merged tree.
+    #
+    # The source commit below IS the origin/main merge commit on the #2731 lane:
+    # its committed writer inventory is byte-identical to the merged tree's
+    # derived inventory (provenance_inventory --check green). L0, L2, L4, L5 are
+    # deliberately absent.
     "D-E022": {
-        "L1": frozenset({"f4cba9d606abffd6c73bee42307ea8cbfd733ae6"}),
-        "L3": frozenset({
-            "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
-            "ad22bef06784bf3326a3b6fb36660bdad84cb805",
-        }),
+        "L1": frozenset({"333eb7abcac33deefa4f89dc417e73d4f28d74bd"}),
+        "L3": frozenset({"333eb7abcac33deefa4f89dc417e73d4f28d74bd"}),
     },
 }
 
