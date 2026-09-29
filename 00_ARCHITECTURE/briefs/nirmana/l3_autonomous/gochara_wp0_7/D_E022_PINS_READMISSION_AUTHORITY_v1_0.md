@@ -75,4 +75,4 @@ Computed by comparing each writer's provenance closure
 ## Authority identity
 
 The immutable approval identity for this authority is the commit that first
-introduced this document:
+introduced this document: `442f1ed955a701008b2a975c7df80d543fbbc67a`
