@@ -24,7 +24,9 @@ in or leaked out.
    `5bd6c51e…182392`). This is the ground truth the specs must express. Its §7 ruling requests
    are all **ruled** (see item 4) — treat them as settled, not open.
 2. `design/GOCHARA_DESIGN_SPECS_v1_0.md` — **the reviewed document** (sha256
-   `1f4110b7…75fd6a`). Eleven sections; each has schema, invariants, test oracles.
+   `c87919db…debea0` at commit 04d142c4f; the hash supersedes `1f4110b7…75fd6a`, which covered
+   the pre-erratum text — the only change is §3.2 invariant 3's citation label).
+   Eleven sections; each has schema, invariants, test oracles.
 3. `design/GOCHARA_PLAN_V3_AMENDMENT_v1_0.md` (sha256 `bb5bc981…f4fd804f`) — how the ratified
    engineering plan v2.1 and the ruling sheets reconcile with v3.0; which rulings stand, which
    packets survive, the tier→item map.
