@@ -35,7 +35,7 @@ consumes. What this file proves:
     contact_id.
 
 DB tests use ONLY the disposable WP6 Postgres (env WP6_LEDGER_DSN, default
-postgresql://wp6:disposable@localhost:55433/wp6) and skip NOT_RUN otherwise —
+postgresql://wp6:local@localhost:55433/wp6) and skip NOT_RUN otherwise —
 never a fallback DSN. Real-ephemeris tests run under the conftest's F-14
 checksum gate (requires_swieph).
 """

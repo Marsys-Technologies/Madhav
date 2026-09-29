@@ -42345,14 +42345,157 @@ residual, none introduced by this session); mirror_enforcer NOT_RUN (retired 834
 build-state serializer not run (no build shards). No coordination lease taken or held.
 
 ```yaml
-# session_close block: see
+# session_close block — inlined verbatim from the canonical close artifact
 # 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/SESSION_CLOSE_WP07_TRANCHE_PHASE_v1_0.yaml
-# (validated exit 0 via schema_validator --close-checklist; embedded by reference to avoid a
-#  stale duplicate — the yaml file is the canonical close artifact for this session)
-session_close_pointer:
+# (validated exit 0 via schema_validator --close-checklist). Inlined 2026-09-29 because the
+# schema_validator rule session_log_entry_missing_session_close_yaml requires an inline
+# fenced `session_close:` block (CRITICAL); the yaml file remains the canonical artifact.
+session_close:
   session_id: L3-GOCHARA-WP0-7-ADK0018-20260927
-  canonical_checklist: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/SESSION_CLOSE_WP07_TRANCHE_PHASE_v1_0.yaml
+  closed_at: 2026-09-27T18:15:00+05:30
+  tool: "Claude Code"
+
+  files_touched:
+    - path: platform/python-sidecar/scripts/kala_gochara_cutover/step06a_class_context.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: e249545e7576f4135f167a42024416cfcd49cd4e8e46c05bdf4d988cb47a1503
+      justification: "ADK-0018 (a) / ADK-0017 carried block 4: class-context permission wiring producer — emits step06b's --class-context-json from the real L1 machinery (permission union over candidate-contact t_exact instants + served map fetch + valence); honest skip preserved; read-only, exit 4 production refusal"
+      within_declared_scope: true
+    - path: platform/python-sidecar/tests/l3/gochara/test_step06a_class_context.py
+      mutation_type: created
+      sha256_before: null
+      sha256_after: 86ed2587f64cb2db83301fc67102635ccc098bcdd7377b8629bd82b9e3f83d5a
+      justification: "6 tests: 3 unit (union semantics, honest zero, omission-never-fabricate) + 3 disposable-DB integration (wired JSON feeds step06b end-to-end; skipped-class zero-window guarantee; exit 4/exit 3 negatives)"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/MERGE_HYGIENE_12_10c_RUNBOOK.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: fb06c30cd6027c4ed5aca93f7ab2562b8285efecd4d558117d4a1045a2504b4c
+      justification: "ADK-0018 (b): 12.10c merge-hygiene runbook — documented, NOT executed; verified generator commands (provenance_inventory, nirmana_analysis_layer_pins --admit-successor, codegen:capability-estate-census) + conjunct-(j)/1072 note + ordering constraint"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md
+      mutation_type: created
+      sha256_before: null
+      sha256_after: fe1a8fcdcac24901b7c4c659facebcf5d6dfc505df737fc27336b3af9aab8fbf
+      justification: "ADK-0018 (c): production application set review request, status DRAFT_AWAITING_NATIVE — three-link chain, evidence index, preconditions, rollback, owed-ledger backfill; nothing marked REVIEWED"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      sha256_before: b9f36c9cf27180c20744f1f4ec96f978160956f6511fdee6c0c235712d8f9ee5
+      sha256_after: bd1d980af7faebdeded011291f43988d92b548b9ef5d85c202a0a1aab6bce191
+      justification: "v6.81 → v6.82 — §2 top banner replaced for the ADK-0018 session; changelog entry added"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      sha256_before: 0a2b905053c2316b852b702aafb9fd4503d9718b57d9cb1a0618c7f112e4d5df
+      sha256_after: null
+      justification: "Session entry appended atomically AFTER this checklist validates (template §3 ordering); sha256_after unknowable pre-append by construction"
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/SESSION_CLOSE_WP07_TRANCHE_PHASE_v1_0.yaml
+      mutation_type: created
+      sha256_before: null
+      sha256_after: null
+      justification: "This checklist (self-referential; hash unknowable at write time)"
+      within_declared_scope: true
+
+  registry_updates_made:
+    file_registry:
+      - row_before: "n/a"
+        row_after: "no registry update required — campaign artifacts live under the governed briefs tree and are registered by the campaign's own report set; no FILE_REGISTRY row convention exists for per-campaign brief files"
+        version_of_registry: "n/a"
+    governance_stack: []
+    canonical_artifacts: []
+
+  mirror_updates_propagated: []
+
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: null
+    report_path: null
+    divergences_found: null
+    note: "NOT_RUN this session — no new governed-surface claims introduced beyond the campaign tree; the inherited baseline (79 drift findings, byte-identical since the W7 close) is carried as a known residual per prior closes"
+  known_residuals:
+    - finding: "79 drift findings / 42 schema violations, inherited baseline unchanged; none introduced by this session (its files are net-new under the campaign tree or governance surfaces updated per protocol)"
+      severity: MEDIUM
+      booking_reference: "inherited governance baseline — separately scoped remediation, per W7 close entry 'inherited_governance_baseline'"
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py --close-checklist
+    exit_code: 0
+    report_path: null
+    violations_found: 0
+    note: "close-checklist validation of THIS file; the full-corpus 42-violation inherited baseline is separately scoped (see known_residuals)"
+  mirror_enforcer_run:
+    script: platform/scripts/governance/mirror_enforcer.py
+    exit_code: 0
+    report_path: null
+    desync_pairs: []
+    note: "NOT_RUN — mirror_enforcer.py was retired from the repo (commit 834164b78, 0b.3 Gemini mirror-discipline retirement, ND.1 retired 2026-05-27); exit_code 0 asserted as 'no obligation remains', no script was executed"
+
+  step_ledger_updated: n/a
+  current_state_updated: true
+  session_log_appended: true
+
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_note: >
+      Vacuous-true, recorded honestly: this session took NO coordination lease.
+      All database work ran against the two disposable containers
+      (gochara-wp6-disposable :55435, gochara-wp10-disposable :55434), both torn
+      down at close; no production contact at any point. Nothing held, nothing
+      to release.
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md
+      - 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/MERGE_HYGIENE_12_10c_RUNBOOK.md
+      - 00_ARCHITECTURE/autonomy/ADHIKARIN_RULINGS.md (ADK-0017/ADK-0018)
+
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification: []
+
+  build_state_serialized:
+    serialized: false
+    output_path: null
+    uploaded: false
+    gcs_uri: null
+    schema_validated: false
+    serializer_version: "0.2.0"
+    shards_emitted: 0
+    cowork_ledger_referenced: false
+    rationale: >
+      serialized=false — this session's outputs are one sidecar script, one test
+      module and governance/review artifacts, not build shards; no build-state
+      delta to serialize. Recorded truthfully as not performed rather than
+      padding the checklist.
+
   close_criteria_met: true
+  unblocks: "WP10 tranche 2 resumption past the E-018 halt — gated on native review of REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md (DRAFT_AWAITING_NATIVE) and the PRODUCTION_TRANCHE_2_AUTHORIZED flag; the 12.10c merge hygiene is ready for whoever merges PR #2731 second; owed _migrations_applied backfill (1080-1084/1087/1091) is queued as a same-session native item"
+  handoff_notes: >
+    ADK-0018 final runway complete on l3/gochara-autonomous-wp0-7 (four commits:
+    step06a wiring + tests, 12.10c runbook, production-application-set review
+    request, close artifacts). (a) needed no production access — the wiring
+    interface was fully definable off-production — so no E-020 escalation was
+    required. Gochara battery 363 passed, 0 failed (357 prior + 6 new step06a),
+    all on disposable DBs; containers torn down at close, none remain. The
+    production application set is a DRAFT awaiting the native; nothing in this
+    session touched production, marked anything REVIEWED, or executed the 12.10c
+    runbook. CLAUDECODE_BRIEF.md stays status: ACTIVE (WP10 production tranches
+    incomplete).
 ```
 
 ### Next session objective

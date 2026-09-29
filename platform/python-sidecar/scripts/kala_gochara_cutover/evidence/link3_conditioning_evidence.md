@@ -308,7 +308,7 @@ Conjunct (i) is vacuous for step06b's row shape (bare-string
 
 ### Battery + gates after remediation
 
-`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55443/wp6 GOCHARA_REMAINDER_DSN=postgresql://wp6:disposable@localhost:55444/wp6 python3 -m pytest tests/l3/gochara -q`
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55443/wp6 GOCHARA_REMAINDER_DSN=postgresql://wp6:***@localhost:55444/wp6 python3 -m pytest tests/l3/gochara -q`
 (fresh disposable containers `gochara-wp6-disposable` :55443,
 `gochara-wp10-disposable` :55444): **378 passed, 0 failed, 0 skipped**
 (up from PRAMĀṆIN's 359 passed/18 skipped at HEAD — the delta is the new

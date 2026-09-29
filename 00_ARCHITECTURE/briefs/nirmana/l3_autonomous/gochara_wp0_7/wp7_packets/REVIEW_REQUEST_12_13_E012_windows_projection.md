@@ -86,7 +86,7 @@ synthetic stand-in. Five files, all on `l3/gochara-autonomous-wp0-7`:
 ## Verification (RED→GREEN evidence)
 
 All runs from `platform/python-sidecar`, `../../.venv/bin/python -m pytest`,
-`WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6`:
+`WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55435/wp6`:
 
 - `tests/l3/gochara/test_step06b_windows_projection.py` → **13 passed**.
   Unit: M-1 decay shape; evaluator ≡ pinned algebra term-for-term;

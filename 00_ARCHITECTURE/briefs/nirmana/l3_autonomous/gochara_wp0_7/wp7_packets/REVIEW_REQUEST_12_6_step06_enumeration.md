@@ -72,7 +72,7 @@ Four files, all on `l3/gochara-autonomous-wp0-7`:
 ## Verification
 
 - Full battery from `platform/python-sidecar`:
-  `WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+  `WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
   → **344 passed, 0 skipped** (re-run 2026-09-27). This includes
   `test_wp10_cutover.py` 17/17 on the 55434 container (an earlier draft of this line
   said 14/14 — stale; the ADK-0013 harness fix at 537d5022c grew it to 17; corrected on

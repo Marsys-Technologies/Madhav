@@ -72,8 +72,9 @@ def main() -> int:
                          and row[0] in ("candidate", "published")),
             "detail": f"manifest status={row[0] if row else None} "
                       f"writer={row[1] if row else None}",
-            "ts_gate": "NOT_RUN (route test lives in platform-mcp; see module "
-                       "docstring)",
+            "ts_gate": None,
+            "ts_route_test": "NOT_RUN (route test lives in platform-mcp; see module "
+                             "docstring)",
         }
 
         # Gate 2 substrate: coverage rows exist and are count-consistent.
@@ -86,7 +87,8 @@ def main() -> int:
         gates["coverage_p1b_substrate"] = {
             "pass": bool(n_cov and consistent),
             "detail": f"coverage rows={n_cov} count-consistent={consistent}",
-            "ts_gate": "NOT_RUN (route test lives in platform-mcp)",
+            "ts_gate": None,
+            "ts_route_test": "NOT_RUN (route test lives in platform-mcp)",
         }
 
         # Gate 5 (E-012): the SERVED table has window rows for this generation. Gates 1-2 read

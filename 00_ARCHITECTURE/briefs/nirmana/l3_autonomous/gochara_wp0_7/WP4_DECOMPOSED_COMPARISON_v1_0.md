@@ -108,4 +108,4 @@ cd platform/python-sidecar
 
 Prints `WP4_DELTA …` lines (one per classified delta), `WP4_MEASURED {json}` (timing), and
 `WP4_LEDGER_MEASURED {json}` (ledger pricing). The ledger test skips NOT_RUN if the disposable
-database `postgresql://wp6:disposable@localhost:55433/wp6` is unreachable.
+database `postgresql://wp6:***@localhost:55433/wp6` is unreachable.

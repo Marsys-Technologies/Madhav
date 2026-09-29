@@ -31,7 +31,7 @@ OLD_SHA = "3743484c996bf41a9b957224fd5c54cf04f1f1de27ef91116726b60b483bb07a"
 NEW_SHA = "52a0d2537dc43fc04effe54fd65a165a223e918b14544f96a0892e1df3987a97"
 
 DSN = os.environ.get(
-    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:disposable@localhost:55434/wp6"
+    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:local@localhost:55434/wp6"
 )
 
 DDL = """

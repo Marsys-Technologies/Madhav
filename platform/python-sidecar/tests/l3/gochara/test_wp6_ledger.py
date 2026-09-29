@@ -34,7 +34,7 @@ SIDECAR_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(SIDECAR_ROOT))
 
 WP6_DSN = os.environ.get(
-    "WP6_LEDGER_DSN", "postgresql://wp6:disposable@localhost:55433/wp6"
+    "WP6_LEDGER_DSN", "postgresql://wp6:local@localhost:55433/wp6"
 )
 
 # ledger.py is loaded by file path, not via `services.gochara_kernel.ledger`,

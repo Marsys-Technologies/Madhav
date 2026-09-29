@@ -41,7 +41,7 @@ import psycopg
 import pytest
 
 DSN = os.environ.get(
-    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:disposable@localhost:55434/wp6"
+    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:local@localhost:55434/wp6"
 )
 
 SIDECAR = Path(__file__).resolve().parents[3]

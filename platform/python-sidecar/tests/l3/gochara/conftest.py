@@ -104,7 +104,7 @@ import os  # noqa: E402
 import psycopg  # noqa: E402
 
 WP6_DSN = os.environ.get(
-    "WP6_LEDGER_DSN", "postgresql://wp6:disposable@localhost:55433/wp6"
+    "WP6_LEDGER_DSN", "postgresql://wp6:local@localhost:55433/wp6"
 )
 
 WP6_MIGRATION_1072 = (

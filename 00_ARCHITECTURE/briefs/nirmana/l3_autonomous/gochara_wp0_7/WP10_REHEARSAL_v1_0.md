@@ -31,7 +31,7 @@ every entry point (verified: refusal wins over a missing `--dump`).
 ## Rehearsal environment
 
 Disposable Postgres 16 (`gochara-wp10-disposable`, localhost:55434, DSN
-`postgresql://wp6:disposable@localhost:55434/wp6`, overridable via
+`postgresql://wp6:***@localhost:55434/wp6`, overridable via
 `GOCHARA_REMAINDER_DSN`), stripped-down synthetic schema: windows
 (460 + 527 generation + 556 era_slice_key), `kala_gochara_windows_v2`,
 `kala_gochara_v2_build_state`, `kala_gochara_authority`,

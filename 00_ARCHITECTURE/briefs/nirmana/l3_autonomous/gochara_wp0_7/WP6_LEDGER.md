@@ -7,7 +7,7 @@ executes: GOCHARA_FAMILY_ELEVATION_PLAN_v2_1.md §4.3, §4.4, §4.7, §5.5, §6.
           WP1_CONTRACTS.md §1.2, §3.1, §3.2, §4.1, §5.2, §5.4 (schema source, lifted + refined);
           GOCHARA_RULING_SHEET_v1_0.md N-7 (conditions incl. publish-refusal), N-10
 branch: l3/gochara-autonomous-wp0-7 @ /Users/Dev/madhav-l3/gochara-wp0-7
-database: postgresql://wp6:disposable@localhost:55433/wp6 (docker gochara-wp6-disposable) — ONLY
+database: postgresql://wp6:***@localhost:55433/wp6 (docker gochara-wp6-disposable) — ONLY
 ---
 
 # WP6 — Ledger, coverage, publication: implementation report

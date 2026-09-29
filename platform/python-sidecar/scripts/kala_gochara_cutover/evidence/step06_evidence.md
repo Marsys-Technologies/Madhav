@@ -197,7 +197,7 @@ path was run.**
 
 ### Battery
 
-`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
 (disposable containers `gochara-wp6-disposable` on :55435 and
 `gochara-wp6-remainder` on :55434): **366 passed, 0 skipped** (365 prior + 1
 new Pisces-span test). Log: `.run/wp10_tranche2/battery_after_pisces_fix.log`.
@@ -350,7 +350,7 @@ keyed by contact_id.
 
 ### Battery
 
-`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
 (disposable pg16 containers `gochara-wp6-disposable` :55435,
 `gochara-wp6-remainder` :55434): **374 passed, 0 failed, 0 skipped**
 (incl. all 8 new dedupe tests; both pre-existing e2e tests still green with
@@ -425,7 +425,7 @@ ADK-0020-era refusal counts exactly.
 
 ### Battery
 
-`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
 (disposable pg16 containers): **376 passed, 0 failed, 0 skipped**.
 
 ### Rehearsal (disposable DB `wp10_rehearsal` on :55434, rebuilt from retained production dumps; candidate-1 flags: linear_no_box, orb 5.0°, refine ON)
@@ -514,7 +514,7 @@ defect to repair in this lane.
 
 ### Battery
 
-`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:disposable@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
+`cd platform/python-sidecar && WP6_LEDGER_DSN=postgresql://wp6:***@localhost:55435/wp6 ../../.venv/bin/python -m pytest tests/l3/gochara -q`
 (disposable pg16 containers `gochara-wp6-disposable` :55435,
 `gochara-wp6-remainder` :55434, torn down after): **377 passed, 0 failed,
 0 skipped**.

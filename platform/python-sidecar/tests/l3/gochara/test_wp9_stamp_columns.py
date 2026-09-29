@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 import psycopg  # noqa: E402
 
 WP6_DSN = os.environ.get(
-    "WP6_LEDGER_DSN", "postgresql://wp6:disposable@localhost:55433/wp6"
+    "WP6_LEDGER_DSN", "postgresql://wp6:local@localhost:55433/wp6"
 )
 
 MIGRATION_1082 = (
