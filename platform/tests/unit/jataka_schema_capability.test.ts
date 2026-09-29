@@ -109,11 +109,13 @@ describe('Protected public-schema migration workflow contract', () => {
   it('requires explicit manual authorization and the protected environment', () => {
     expect(workflow.on.workflow_dispatch.inputs.jataka_schema_migration).toBeTruthy()
     expect(workflow.on.workflow_dispatch.inputs.ai_console_schema_migration).toBeTruthy()
+    expect(workflow.on.workflow_dispatch.inputs.gochara_schema_migration).toBeTruthy()
     const job = workflow.jobs['jataka-protected-migrations']
     expect(job.environment).toBe('data-plane-production-cutover')
     expect(job.if).toContain("github.event_name == 'workflow_dispatch'")
     expect(job.if).toContain('inputs.jataka_schema_migration == true')
     expect(job.if).toContain('inputs.ai_console_schema_migration == true')
+    expect(job.if).toContain('inputs.gochara_schema_migration == true')
   })
 
   it('pins the exact migration set between a grant and an always-run revoke', () => {
@@ -126,7 +128,9 @@ describe('Protected public-schema migration workflow contract', () => {
     expect(apply?.env?.DATABASE_URL).toContain('PROD_DATABASE_URL')
     expect(apply?.env?.APPLY_JATAKA_SCHEMA_MIGRATIONS).toContain('jataka_schema_migration')
     expect(apply?.env?.APPLY_AI_CONSOLE_SCHEMA_MIGRATION).toContain('ai_console_schema_migration')
+    expect(apply?.env?.APPLY_GOCHARA_SCHEMA_MIGRATION).toContain('gochara_schema_migration')
     for (const migration of [
+      '1071_kala_gochara_windows_generation_guard.sql',
       '1120_jataka_conversation_archive_context.sql',
       '1121_jataka_correction_archive_write_guard.sql',
       '1122_jataka_chart_context_staleness.sql',
@@ -136,6 +140,9 @@ describe('Protected public-schema migration workflow contract', () => {
     ]) {
       expect(apply?.run).toContain(migration)
     }
+    expect(apply?.run?.indexOf('1071_kala_gochara_windows_generation_guard.sql')).toBeLessThan(
+      apply?.run?.indexOf('1120_jataka_conversation_archive_context.sql') ?? -1,
+    )
     expect(apply?.run?.indexOf('1124_ai_console_byok_routing.sql')).toBeLessThan(
       apply?.run?.indexOf('1125_ai_snapshot_shape_operator_precedence.sql') ?? -1,
     )
