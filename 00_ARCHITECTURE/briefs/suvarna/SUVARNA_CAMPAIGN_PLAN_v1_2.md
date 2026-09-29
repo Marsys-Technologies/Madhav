@@ -320,13 +320,13 @@ Execution starts when the native approves this plan (N-1). Before that:
 | Item | Owner | State (2026-09-29) |
 |---|---|---|
 | This plan brought up to date (v1.2) | Strategic Suvarṇa | this document |
-| Autonomy charter drafted | Strategic Suvarṇa | drafted; approval is N-19 |
+| Autonomy charter drafted | Strategic Suvarṇa | drafted (v1.1); approval is N-19 |
 | Role prompts for the swarm, each reporting to the tracker | Strategic Suvarṇa | after the charter |
 | Runbook, and start prompts for Exec Suvarṇa and Nikaṣa Engine | Strategic Suvarṇa | after the role prompts |
 | Isolation: `/Users/Dev/suvarna`, branches `suvarna/hq` and `suvarna/trunk` | Strategic Suvarṇa | **done** |
-| Monitor: environment checks and repair | Strategic Suvarṇa | in progress |
-| Permanent read-only database credential | native decides (N-20), then set up | open |
-| Budget ceilings per stage (N-15) | native | open; under the charter a stage without a ceiling does not start |
+| Monitor: environment checks and repair | Strategic Suvarṇa | **done** (`suvarna_tracker.monitor`) |
+| Permanent read-only database credential | native decided (N-20) | **done**: `~/.config/suvarna/pgenv.sh`, mode 600 |
+| Budget ceilings (N-15) | native | **decided: none**; spend is reported |
 | Two or three review passes of the plan set | Strategic Suvarṇa | after the documents |
 | Independent third-party review, findings folded | reviewer (GPT-6 Astra recommended) | after the review passes |
 
@@ -528,12 +528,12 @@ In the order they are needed. Status as of 2026-09-29; the live record is the de
 | N-12 | Elevation certifies the canonical chart only, or several charts | before L1 | Canonical chart first; multi-chart as a recorded addition | open |
 | N-13 | N/A policy for "writes nothing to its own table" and "update-only" assets (R247) | before L2 | — | open |
 | N-14 | Data findings with owners outside the inspector: `lel_events` (R236), `build_dependencies` (R219), `ka_gochara` registry (R240) | per layer | — | open; R240 now sits with L3 Gochara |
-| N-15 | Pace and budget: model routing, review depth, spend ceiling per stage and track | **before launch** | Ceilings per track, reviewed weekly | open; under the charter a stage without a ceiling does not start |
+| N-15 | Pace and budget: model routing, review depth, spend ceiling per stage and track | before launch | Ceilings per track, reviewed weekly | **decided: no ceilings**; spend metered and reported |
 | N-16 | Nirmāṇa's database record: leave it reading "frozen", or supersede it with the privileged control writer | any time | Leave it | open |
 | N-17 | Track F: how Suvarṇa relates to the L3 families | now | — | **decided:** three family sessions own them; Suvarṇa evaluates (§5.3) |
 | N-18 | Isolation: dedicated folder and branch model | now | Yes | **decided: yes**; set up 2026-09-29 |
-| N-19 | Approve the autonomy charter | before execution | Review the draft | **requested**: draft v1.0 ready |
-| N-20 | Where the permanent read-only database credential lives | before launch | A file outside every repository (mode 600), refreshed once per session by the Monitor | open (new) |
+| N-19 | Approve the autonomy charter | before execution | Review the draft | **requested**: draft v1.1 ready |
+| N-20 | Where the permanent read-only database credential lives | before launch | A file outside every repository (mode 600) | **decided:** `~/.config/suvarna/pgenv.sh`, set up 2026-09-29 |
 | F-0 | Gochara: deploy before switching authority | now | Yes | **decided: yes** (ADK-0027) |
 | F-5 | Gochara: served horizon | — | — | **decided: full century** (by F-0) |
 | F-2, F-3, F-6 | Saṅgam: keep or retire into `kala_field`; the cascade lock; Mode D | before Saṅgam design | — | **delegated** to L3 Saṅgam; the native seals. F-3 gates L2 MSR rebuilds |

@@ -23,6 +23,10 @@ import datetime as dt
 import hashlib
 import json
 import os
+
+# N-20 (native, 2026-09-29): the read-only credential lives in one file outside every repository,
+# owner-only (mode 600). Tools default to it; its contents are never read or printed by these tools.
+DEFAULT_PGENV = os.path.expanduser("~/.config/suvarna/pgenv.sh")
 import sys
 import threading
 import time
@@ -54,7 +58,7 @@ def default_config() -> dict:
                                 os.path.join(REPO_ROOT, "00_ARCHITECTURE", "control", "suvarna", "plan_model.json")),
         "repo": os.environ.get("SUVARNA_REPO", REPO_ROOT),
         "nikasha_root": os.environ.get("NIKASHA_ROOT", "/Users/Dev/madhav-nikasha"),
-        "pgenv": os.environ.get("SUVARNA_PGENV"),
+        "pgenv": os.environ.get("SUVARNA_PGENV") or DEFAULT_PGENV,
         "db_port": int(os.environ.get("SUVARNA_DB_PORT", "5433")),
         "metrics_ttl": int(os.environ.get("SUVARNA_METRICS_TTL", "60")),
         "detectors_enabled": os.environ.get("SUVARNA_DETECTORS", "1") != "0",

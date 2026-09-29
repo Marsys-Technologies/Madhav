@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_AUTONOMY_CHARTER
 canonical_id: SUVARNA_AUTONOMY_CHARTER
-version: "1.0"
+version: "1.1"
 status: "DRAFT — for native approval (N-19)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
@@ -9,6 +9,7 @@ decision_owner: Native (Abhisek Mohanty)
 written_from: SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md §7 (granted / reserved / prohibited), with §3, §4, §5, §8–§11
 companion_of: SUVARNA_CAMPAIGN_PLAN_v1_2.md (§8 decision list)
 changelog:
+  - "1.1 (2026-09-29): native decisions N-15 (no budget ceilings) and N-20 (credential file ~/.config/suvarna/pgenv.sh, mode 600) folded in: §9 rewritten (spend metered and reported, no ceilings); R6 and R10 updated; §10 environment row updated. Still a draft for N-19."
   - "1.0 (2026-09-29): first draft. Written from execution architecture §7 and brought up to date with the native decisions of 2026-09-29 (N-2, N-3, N-6, N-17, N-18), the F-ruling delegations, pending N-20, and the 2026-09-28 Gochara switch incident (ADK-0027)."
 ---
 
@@ -89,7 +90,7 @@ Park by the §7 procedure. Only the items that depend on the answer wait.
   asset's data. Needs **a verified snapshot and a recorded native approval**, both.
 - **R4 · Any scope beyond the canonical chart** `482012f1-…` (N-12). No other chart is built, including `1c826d5a`.
 - **R5 · Retiring an asset, or changing its output** beyond its approved brief.
-- **R6 · Exceeding a budget ceiling** (§9).
+- **R6 · Exceeding a budget ceiling**, if the native sets one (none set: N-15, §9).
 - **R7 · Merging to `main`.** The native merges. Deploys follow the native's merge, never an agent's.
 - **R8 · Anything that would change an L3 family asset**: its code, data, registry row, lease or build state. The
   family sets are those in the focus-families inventories (§1.1, §2.1, §3.1): `ka_gochara`, `ka_gochara_resonance`,
@@ -98,7 +99,7 @@ Park by the §7 procedure. Only the items that depend on the answer wait.
   rebuild upstream whose effect reaches family data or marks a family asset blocked.
 - **R9 · A change to the Gochara L0 inputs** (`bg_gochara_arcs`, `bg_gochara_citation_resolution`) that alters what a
   family session consumes. Suvarṇa may analyse and fix them; the rebuild waits for the native.
-- **R10 · The permanent home of the read-only database credential** (N-20, pending), and any use of a privileged role.
+- **R10 · Any change to the read-only credential** (its file is `~/.config/suvarna/pgenv.sh`, mode 600, N-20), and any use of a privileged role.
 - **R11 · Anything this charter does not clearly grant.** When in doubt, it is reserved.
 
 ## §5 · Prohibited — refuse, never park
@@ -172,9 +173,10 @@ switch and park.
 
 - **Default effort is medium.** High only where arch §3.1 says so; low for mechanical roles. Scripts before agents for
   anything countable (arch §9).
-- **Ceilings per stage and track are set by the native (N-15).** A stage with no recorded ceiling does not start.
-- **At 80% of a ceiling** the Steward reports it. **At 100%** dispatch for that stage pauses and the question is parked.
-- The spend meter records tokens per role and per stage; spend against estimate goes in the weekly scorecard.
+- **No budget ceilings** (N-15, native, 2026-09-29). No stage or track waits on a budget.
+- **Spend is still metered and reported:** tokens per role and per stage, in the daily digest and the weekly scorecard.
+  Visibility, not a limit.
+- **The native may set a ceiling at any time** by a recorded decision. It applies from the next dispatch; then R6 applies.
 
 ## §10 · Failure and escalation
 
@@ -184,7 +186,7 @@ switch and park.
 | The same item fails twice | No third attempt. Open a diagnosis item: Analyst, then Architect if needed |
 | A gate rejects twice | Escalate to the Steward with both reviews |
 | An agent stalls 10 minutes | Monitor flags it; Conductor restarts it from its last commit |
-| Environment failure | Monitor pauses dispatch, repairs what is within grant, resumes. A missing read-only environment file is not rebuilt until N-20 is decided: pause and park |
+| Environment failure | Monitor pauses dispatch, repairs what is within grant (G15), resumes. A missing or changed credential file is never recreated by an agent: pause and park (R10) |
 | The plan looks wrong | Stop that packet and report. Do not improvise (plan §10) |
 
 ## §11 · Audit

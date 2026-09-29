@@ -256,7 +256,7 @@ A delegated-authority charter (`SUVARNA_AUTONOMY_CHARTER_v1_0.md`, to be written
 The Monitor checks these before any dispatch, and every 15 minutes while work runs:
 
 - **Database proxy** listening on 5433. Restart if not.
-- **Read-only environment file** present. Rebuild it once from Secret Manager if not; never call `gcloud` per command.
+- **Read-only credential file** present at `~/.config/suvarna/pgenv.sh`, owner-only (N-20). If missing, pause and park; never recreate it, never call `gcloud` per command. Checked by `python -m suvarna_tracker.monitor`.
 - **Power.** On AC power, with sleep prevented. On battery, pause long builds and warn.
 - **The hold switch.** `run/SUVARNA_HOLD` absent. If present: finish running items, dispatch nothing new.
 - **Disk space** for evidence.
@@ -266,8 +266,8 @@ The Monitor checks these before any dispatch, and every 15 minutes while work ru
 
 - **Default effort is medium.** High is used only where the table in §3.1 says so. Low is used for mechanical roles.
 - **Scripts before agents** for anything countable.
-- **A spend meter** records tokens per role and per stage, and a ceiling per stage is set by the native (decision N-15).
-- **At 80% of a ceiling** the Steward reports. **At 100%,** dispatch pauses and the question is parked.
+- **A spend meter** records tokens per role and per stage.
+- **No budget ceilings** (N-15, native, 2026-09-29): spend is reported, not capped. If the native later sets a ceiling, the Steward reports at 80% and dispatch pauses at 100%.
 - **Weekly:** spend against estimate, per stage, in the scorecard.
 
 ## §10 · Restartability

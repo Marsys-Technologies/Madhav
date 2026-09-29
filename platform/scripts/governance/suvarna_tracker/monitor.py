@@ -25,6 +25,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+
+# N-20 (native, 2026-09-29): the read-only credential lives in one file outside every repository,
+# owner-only (mode 600). Tools default to it; its contents are never read or printed by these tools.
+DEFAULT_PGENV = os.path.expanduser("~/.config/suvarna/pgenv.sh")
 import re
 import signal
 import subprocess
@@ -140,7 +144,7 @@ def default_config() -> Config:
     home = os.environ.get("SUVARNA_HOME", "/Users/Dev/suvarna")
     return Config(
         home=home,
-        pgenv=os.environ.get("SUVARNA_PGENV"),
+        pgenv=os.environ.get("SUVARNA_PGENV") or DEFAULT_PGENV,
         db_port=int(os.environ.get("SUVARNA_DB_PORT", "5433")),
         tracker_port=int(os.environ.get("SUVARNA_TRACKER_PORT", "8765")),
         events_path=os.environ.get("SUVARNA_EVENTS", os.path.join(home, "run", "EVENTS.jsonl")),
