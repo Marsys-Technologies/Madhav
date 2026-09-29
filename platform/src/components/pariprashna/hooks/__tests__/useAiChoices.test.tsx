@@ -11,7 +11,7 @@ const aggregate = {
     validationState: 'validated', confirmedValid: true, lastValidatedAt: null, lastCheckedAt: null, lastErrorCode: null, deletedAt: null }],
   models: [{ connectionId: CONNECTION_ID, modelId: 'gpt-safe', displayName: 'GPT Safe',
     compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false,
-    supportsStructuredOutput: true, available: true }],
+    supportsStructuredOutput: true, available: true, userSelected: true, plainTestedAt: '2026-09-27T10:00:00.000Z' }],
   configurations: [{ id: CONFIG_ID, name: 'Research quartet', version: 2, deletedAt: null, roles: {
     synthesizer: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
     planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
@@ -43,6 +43,37 @@ function deferred<T>() {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('useAiChoices', () => {
+  it('keeps catalog-only provider models out of the explicit picker while preserving Default', async () => {
+    vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
+      if (String(url) === '/api/ai-console') return response({ ...aggregate,
+        models: aggregate.models.map(model => ({ ...model, userSelected: false })) })
+      if (String(url) === '/api/ai-console/clis') return response(clis)
+      throw new Error(`unexpected ${url}`)
+    }))
+    const { result } = renderHook(() => useAiChoices(null, true))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.options[0].label).toBe('Default — Personal OpenAI · GPT Safe')
+    expect(result.current.options.some(option => option.group === 'Provider connections')).toBe(false)
+  })
+
+  it('keeps a working conversation choice visible after its model leaves the shortlist', async () => {
+    const confirmed = { kind: 'explicit', choice: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' } } as const
+    vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
+      if (String(url) === '/api/ai-console') return response({ ...aggregate,
+        models: aggregate.models.map(model => ({ ...model, userSelected: false })) })
+      if (String(url) === '/api/ai-console/clis') return response(clis)
+      if (String(url).endsWith('/ai-selection')) return response({ selection: confirmed, availability: 'ready',
+        label: 'Personal OpenAI · GPT Safe', resolvedLabel: null, remediation: null })
+      throw new Error(`unexpected ${url}`)
+    }))
+    const { result } = renderHook(() => useAiChoices(CONVERSATION_ID, true))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    const saved = result.current.options.find(option => option.key.startsWith('provider:'))
+    expect(saved?.disabled).toBe(false)
+    expect(saved?.detail).toMatch(/saved for this conversation/i)
+    expect(result.current.canSubmit).toBe(true)
+  })
+
   it('starts with symbolic Default, then offers exactly the three explicit groups in order', async () => {
     vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
       if (String(url) === '/api/ai-console') return response(aggregate)

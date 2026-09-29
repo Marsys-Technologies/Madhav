@@ -4,12 +4,14 @@ import * as repository from '../../repository'
 import type { CliDefinition } from '../registry'
 import type { CliRunner } from '../runner'
 import { CLI_BUILTIN_MODEL_DB_ID } from '../types'
-import { validateCli, validateMachineOutput } from '../validation'
+import { testAndAddManualCliModel, validateCli, validateMachineOutput } from '../validation'
 
 vi.mock('../../repository', () => ({
   assertCliValidationAuthorized: vi.fn(),
   markCliValidationStarted: vi.fn(),
   storeCliValidation: vi.fn(),
+  listConfirmedManualCliModels: vi.fn(),
+  storeManualCliModel: vi.fn(),
   restoreCliValidation: vi.fn(),
 }))
 
@@ -32,10 +34,61 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(repository.markCliValidationStarted).mockResolvedValue(attempt)
   vi.mocked(repository.storeCliValidation).mockResolvedValue('43')
+  vi.mocked(repository.listConfirmedManualCliModels).mockResolvedValue([])
   vi.mocked(repository.restoreCliValidation).mockResolvedValue(true)
 })
 
 describe('CLI validation', () => {
+  it('tests an exact Claude model through the CLI before persisting and confirming it', async () => {
+    const claudeIdentity = { ...identity, cliId: 'claude_code' as const }
+    const output = { stdout: JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'OK' }),
+      exitCode: 0, signal: null }
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(claudeIdentity),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: '2.1.284', exitCode: 0, signal: null }),
+      runAuthValidation: vi.fn().mockResolvedValue({ stdout: '', exitCode: 0, signal: null }),
+      runModelCatalogValidation: vi.fn(), runProbeValidation: vi.fn().mockResolvedValue(output),
+      runModelProbeValidation: vi.fn().mockResolvedValue(output), confirmValidation: vi.fn(),
+      confirmManualModel: vi.fn(),
+    } as unknown as CliRunner
+    await testAndAddManualCliModel('alice', 'claude_code', 'claude-test', undefined, runner)
+    expect(runner.runModelProbeValidation).toHaveBeenCalledWith('alice', 'claude_code', 'claude-test',
+      'Reply with exactly OK.', undefined)
+    expect(repository.storeManualCliModel).toHaveBeenCalledWith('alice', 'claude_code', 'claude-test',
+      '2.1.284', claudeIdentity.entrypoint.sha256)
+    expect(runner.confirmManualModel).toHaveBeenCalledWith('claude_code', claudeIdentity, 'claude-test')
+  })
+
+  it('does not persist a CLI candidate that fails its exact-model probe', async () => {
+    const claudeIdentity = { ...identity, cliId: 'claude_code' as const }
+    const output = { stdout: JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'OK' }),
+      exitCode: 0, signal: null }
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(claudeIdentity),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: '2.1.284', exitCode: 0, signal: null }),
+      runAuthValidation: vi.fn().mockResolvedValue({ stdout: '', exitCode: 0, signal: null }),
+      runModelCatalogValidation: vi.fn(), runProbeValidation: vi.fn().mockResolvedValue(output),
+      runModelProbeValidation: vi.fn().mockResolvedValue({ ...output, stdout: JSON.stringify({
+        type: 'result', subtype: 'success', is_error: false, result: 'NO',
+      }) }), confirmValidation: vi.fn(), confirmManualModel: vi.fn(),
+    } as unknown as CliRunner
+    await expect(testAndAddManualCliModel('alice', 'claude_code', 'claude-test', undefined, runner))
+      .rejects.toMatchObject({ code: 'AI_EXECUTION_FAILED' })
+    expect(repository.storeManualCliModel).not.toHaveBeenCalled()
+  })
+
+  it('restores a previously tested manual model to the confirmed set after CLI revalidation', async () => {
+    vi.mocked(repository.listConfirmedManualCliModels).mockResolvedValueOnce(['approved-model'])
+    const output = { stdout: '{"type":"item.completed","item":{"type":"agent_message","text":"OK"}}\n{"type":"turn.completed","usage":{}}',
+      exitCode: 0, signal: null }
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.158.0', exitCode: 0, signal: null }),
+      runAuthValidation: vi.fn().mockResolvedValue({ stdout: '', exitCode: 0, signal: null }),
+      runProbeValidation: vi.fn().mockResolvedValue(output), runModelCatalogValidation: vi.fn(),
+    } as unknown as CliRunner
+    const result = await validateCli('alice', 'codex', undefined, { runner })
+    expect(result.state).toBe('reachable')
+    expect(runner.confirmValidation).toHaveBeenCalledWith('codex', identity, '0.158.0', [null, 'approved-model'])
+  })
+
   it('discovers and persists a subscription model catalog without retaining provider secrets', async () => {
     const catalogDefinition: CliDefinition = {
       ...definition,

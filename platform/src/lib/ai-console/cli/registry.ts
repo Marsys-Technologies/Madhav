@@ -86,7 +86,7 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   kimi_code: Object.freeze({
     id: 'kimi_code', productName: 'Kimi Code', candidates: fixed('/Users/Dev/.kimi-code/bin/kimi'),
     allowedRealpathPrefixes: fixed('/Users/Dev/.kimi-code/bin/'), versionArgs: fixed('--version'),
-    supportedVersion: '2.1.1', compatibleRoles: ALL_CLI_ROLES, supportsTools: false,
+    supportedVersion: '2.1.1', compatibleRoles: fixed('synthesizer'), supportsTools: false,
     supportsStructuredOutput: false,
     modelCatalog: Object.freeze({ args: fixed('provider', 'list', '--json'), format: 'kimi_provider_json' }),
     execution: Object.freeze({ args: fixed('acp'), modelFlag: fixed<string>(), outputFormat: 'kimi_acp_json',

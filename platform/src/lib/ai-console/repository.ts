@@ -5,7 +5,8 @@ import { z } from 'zod'
 import { query, withTransaction } from '@/lib/db/client'
 import type { EncryptedCredential } from './crypto'
 import { writeAiAudit } from './audit'
-import { CLI_REGISTRY } from './cli/registry'
+import { CLI_REGISTRY, validateCliModelId } from './cli/registry'
+import { CLI_BUILTIN_MODEL_DB_ID } from './cli/types'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError } from './errors'
 import {
   AI_ROLES, CLI_IDS, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
@@ -98,9 +99,14 @@ async function assertTarget(client: Client, userId: string, target: RoleTarget, 
     const hasAuthority = connection.validation_state === 'validated'
       || (connection.validation_state === 'validating' && connection.credential_validity === 'valid')
     if (!hasAuthority) throw new AiConsoleError('AI_CONNECTION_INVALID')
-    const model = required((await client.query(`SELECT m.compatible_roles,m.available FROM ai_connection_models m
+    const model = required((await client.query(`SELECT m.compatible_roles,m.available,m.user_selected,
+      m.plain_tested_at,m.tested_credential_version,c.credential_version FROM ai_connection_models m
       JOIN ai_provider_connections c ON c.id=m.connection_id
       WHERE c.user_id=$1 AND c.id=$2 AND m.model_id=$3 AND m.available=true`, [userId, target.connectionId, target.modelId])).rows)
+    if (model.user_selected !== true || model.plain_tested_at == null
+      || Number(model.tested_credential_version) !== Number(model.credential_version)) {
+      throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    }
     if (!roles.every(role => model.compatible_roles.includes(role))) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
   } else {
     if (!CLI_REGISTRY[target.cliId].execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
@@ -127,7 +133,10 @@ async function assertChoice(client: Client, userId: string, choice: AiChoiceRef)
 export async function listAiConsoleState(userId: string) {
   const connections = await query(`SELECT ${safeColumns},credential_version,last_validated_at,last_checked_at,last_error_code,deleted_at
     FROM ai_provider_connections WHERE user_id=$1 ORDER BY created_at,id`, [userId])
-  const models = await query(`SELECT m.connection_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available FROM ai_connection_models m
+  const models = await query(`SELECT m.connection_id,m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available,
+    m.user_selected,m.plain_tested_at,m.tested_credential_version,m.last_probe_at,m.last_probe_error_code,
+    m.last_probe_input_tokens,m.last_probe_output_tokens,
+    c.credential_version AS current_credential_version FROM ai_connection_models m
     JOIN ai_provider_connections c ON c.id=m.connection_id WHERE c.user_id=$1 ORDER BY m.connection_id,m.model_id`, [userId])
   const configurations = await query(`SELECT id,name,version,deleted_at FROM ai_custom_configurations WHERE user_id=$1 ORDER BY created_at,id`, [userId])
   const roles = await query(`SELECT configuration_id,role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 ORDER BY configuration_id,role`, [userId])
@@ -367,6 +376,10 @@ export async function replaceConnectionCredential(userId: string, connectionId: 
       WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING ${safeColumns},credential_version`,
     [userId, connectionId, ...credentialParams(encrypted)])).rows)
     await invalidateCatalog(client, userId, connectionId)
+    await client.query(`UPDATE ai_connection_models SET plain_tested_at=NULL,tested_credential_version=NULL,
+      last_probe_at=NULL,last_probe_error_code=NULL,last_probe_input_tokens=NULL,last_probe_output_tokens=NULL
+      WHERE connection_id=$2 AND EXISTS (SELECT 1 FROM ai_provider_connections WHERE user_id=$1 AND id=$2)`,
+    [userId, connectionId])
     await writeAiAudit(client, userId, { event: 'connection_credential_replaced', connectionId })
     return { connection: safeConnection(row), credentialVersion: Number(row.credential_version) }
   })
@@ -407,6 +420,45 @@ export async function storeConnectionValidation(userId: string, connectionId: st
         ? { event: 'connection_validation_rejected', connectionId,
           errorCode: result.errorCode ?? 'AI_CONNECTION_INVALID' }
         : { event: 'connection_validated', connectionId })
+  })
+}
+
+/** A catalog row is only a discovery claim. Individual confirmation is a separate, version-fenced write. */
+export async function storeProviderModelProbe(userId: string, connectionId: string, modelId: string,
+  credentialVersion: number, result: { ok: true; inputTokens: number | null; outputTokens: number | null }
+    | { ok: false; errorCode: string }) {
+  const safeModelId = z.string().min(1).max(512).parse(modelId)
+  const safeVersion = z.number().int().positive().parse(credentialVersion)
+  const safeError = result.ok ? null : AiErrorCodeSchema.parse(result.errorCode)
+  const tokenSchema = z.number().int().nonnegative().nullable()
+  const inputTokens = result.ok ? tokenSchema.parse(result.inputTokens) : null
+  const outputTokens = result.ok ? tokenSchema.parse(result.outputTokens) : null
+  return withUserTransaction(userId, async client => {
+    const connection = await ownedConnection(client, userId, connectionId)
+    if (Number(connection.credential_version) !== safeVersion) throw notFound()
+    const updated = await client.query(`UPDATE ai_connection_models m SET
+      last_probe_at=now(),last_probe_error_code=$5,
+      last_probe_input_tokens=$6,last_probe_output_tokens=$7,
+      plain_tested_at=CASE WHEN $5::text IS NULL THEN now() ELSE m.plain_tested_at END,
+      tested_credential_version=CASE WHEN $5::text IS NULL THEN $4 ELSE m.tested_credential_version END,
+      user_selected=CASE WHEN $5::text IS NULL THEN true ELSE m.user_selected END
+      FROM ai_provider_connections c WHERE c.id=m.connection_id AND c.user_id=$1 AND c.id=$2
+      AND c.deleted_at IS NULL AND c.credential_version=$4 AND m.model_id=$3 AND m.available=true
+      RETURNING m.model_id`, [userId, connectionId, safeModelId, safeVersion, safeError, inputTokens, outputTokens])
+    if (!updated.rowCount) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    await writeAiAudit(client, userId, { event: 'connection_updated', connectionId })
+  })
+}
+
+export async function deselectProviderModel(userId: string, connectionId: string, modelId: string) {
+  const safeModelId = z.string().min(1).max(512).parse(modelId)
+  return withUserTransaction(userId, async client => {
+    await ownedConnection(client, userId, connectionId)
+    const updated = await client.query(`UPDATE ai_connection_models m SET user_selected=false
+      FROM ai_provider_connections c WHERE c.id=m.connection_id AND c.user_id=$1 AND c.id=$2 AND m.model_id=$3
+      RETURNING m.model_id`, [userId, connectionId, safeModelId])
+    if (!updated.rowCount) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    await writeAiAudit(client, userId, { event: 'connection_updated', connectionId })
   })
 }
 
@@ -627,6 +679,7 @@ export interface CliValidationWrite {
   state: 'reachable' | 'not_installed' | 'auth_unavailable' | 'unreachable' | 'needs_attention'
   detectedProduct?: string
   detectedVersion?: string
+  entrypointSha256?: string
   errorCode?: 'AI_CLI_NOT_INSTALLED' | 'AI_CLI_AUTH_UNAVAILABLE' | 'AI_CLI_UNREACHABLE'
     | 'AI_CLI_TIMEOUT' | 'AI_CLI_OUTPUT_LIMIT' | 'AI_EXECUTION_FAILED'
   models?: readonly {
@@ -709,6 +762,7 @@ export async function storeCliValidation(cliId: string, input: CliValidationWrit
     state: z.enum(['reachable', 'not_installed', 'auth_unavailable', 'unreachable', 'needs_attention']),
     detectedProduct: z.string().min(1).max(120).optional(),
     detectedVersion: z.string().min(1).max(80).optional(),
+    entrypointSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     errorCode: z.enum(['AI_CLI_NOT_INSTALLED', 'AI_CLI_AUTH_UNAVAILABLE', 'AI_CLI_UNREACHABLE',
       'AI_CLI_TIMEOUT', 'AI_CLI_OUTPUT_LIMIT', 'AI_EXECUTION_FAILED']).optional(),
     models: z.array(z.object({ modelId: z.string().min(1).max(512), displayName: z.string().min(1).max(120),
@@ -733,7 +787,50 @@ export async function storeCliValidation(cliId: string, input: CliValidationWrit
       [cli, model.modelId, model.displayName, model.isBuiltinDefault, model.compatibleRoles,
         model.supportsTools, model.supportsStructuredOutput])
     }
+    if (data.state === 'reachable' && data.detectedVersion && data.entrypointSha256) {
+      await client.query(`UPDATE ai_cli_models SET available=true WHERE cli_id=$1 AND is_manual=true
+        AND tested_version=$2 AND tested_entrypoint_sha256=$3`,
+      [cli, data.detectedVersion, data.entrypointSha256])
+    }
     return cliEpochSchema.parse(updated.rows[0].validation_epoch)
+  })
+}
+
+export async function listConfirmedManualCliModels(cliId: string, version: string, entrypointSha256: string): Promise<string[]> {
+  const cli = CliIdSchema.parse(cliId)
+  const safeVersion = z.string().min(1).max(80).parse(version)
+  const safeSha = z.string().regex(/^[a-f0-9]{64}$/).parse(entrypointSha256)
+  const rows = await query(`SELECT model_id FROM ai_cli_models WHERE cli_id=$1 AND is_manual=true
+    AND available=true AND tested_version=$2 AND tested_entrypoint_sha256=$3 ORDER BY model_id`,
+  [cli, safeVersion, safeSha])
+  return rows.rows.map(row => z.string().min(1).max(512).parse(row.model_id))
+}
+
+/** Host-global model addition is grant-gated and bound to the exact inspected binary/version. */
+export async function storeManualCliModel(userId: string, cliId: string, modelId: string,
+  version: string, entrypointSha256: string): Promise<void> {
+  const cli = CliIdSchema.parse(cliId)
+  if (cli !== 'codex' && cli !== 'claude_code') throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+  const model = validateCliModelId(modelId)
+  if (!model || model === CLI_BUILTIN_MODEL_DB_ID) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+  const safeVersion = z.string().min(1).max(80).parse(version)
+  const safeSha = z.string().regex(/^[a-f0-9]{64}$/).parse(entrypointSha256)
+  await withTransaction(async client => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended('ai-console:cli:' || $1::text, 0))", [cli])
+    const authorized = await client.query(`SELECT i.cli_id FROM ai_cli_grants g
+      JOIN ai_cli_installations i ON i.cli_id=g.cli_id JOIN profiles p ON p.id=g.user_id
+      WHERE g.user_id=$1 AND g.cli_id=$2 AND g.revoked_at IS NULL AND p.status='active'
+      AND i.validation_state='reachable' AND i.detected_version=$3 FOR SHARE OF g,i`,
+    [userId, cli, safeVersion])
+    if (!authorized.rowCount) throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+    await client.query(`INSERT INTO ai_cli_models (cli_id,model_id,display_name,is_builtin_default,available,
+      compatible_roles,supports_tools,supports_structured_output,is_manual,tested_entrypoint_sha256,tested_version)
+      VALUES($1,$2,$2,false,true,$3,false,true,true,$4,$5)
+      ON CONFLICT(cli_id,model_id) DO UPDATE SET available=true,is_manual=true,
+      tested_entrypoint_sha256=excluded.tested_entrypoint_sha256,tested_version=excluded.tested_version,
+      compatible_roles=excluded.compatible_roles,supports_structured_output=true,last_seen_at=now()`,
+    [cli, model, [...CLI_REGISTRY[cli].compatibleRoles], safeSha, safeVersion])
+    await writeAiAudit(client, userId, { event: 'cli_model_added', cliId: cli })
   })
 }
 

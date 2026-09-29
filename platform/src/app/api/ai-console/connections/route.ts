@@ -7,7 +7,7 @@ import { CredentialSchema, NameSchema, VALIDATION_DISCLOSURE, json, ownedConnect
 
 export const dynamic = 'force-dynamic'
 
-const CreateSchema = z.object({ name: NameSchema, providerId: ProviderIdSchema,
+const CreateSchema = z.object({ name: NameSchema, providerId: ProviderIdSchema.refine(id => id !== 'kimi'),
   apiKey: CredentialSchema, acknowledgeCharge: z.literal(true) }).strict()
 
 export async function GET() {

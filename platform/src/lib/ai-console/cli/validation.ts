@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AiConsoleError, normalizeAiError } from '../errors'
 import {
   assertCliValidationAuthorized, markCliValidationStarted, restoreCliValidation, storeCliValidation,
+  listConfirmedManualCliModels, storeManualCliModel,
 } from '../repository'
 import { CliIdSchema, type CliId } from '../types'
 import { CLI_REGISTRY, parseSupportedVersion, type CliDefinition, type CliOutputFormat } from './registry'
@@ -112,9 +113,10 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
         compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
         supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: false }))]
       const completedEpoch = await publish({ state: 'reachable', detectedProduct: definition.productName,
-        detectedVersion: version, models })
+        detectedVersion: version, entrypointSha256: installationIdentity.entrypoint.sha256, models })
       try { await runner.confirmValidation(id, installationIdentity, version,
-        [null, ...discoveredModels.map(discovered => discovered.modelId)]) }
+        [null, ...discoveredModels.map(discovered => discovered.modelId),
+          ...await listConfirmedManualCliModels(id, version, installationIdentity.entrypoint.sha256)]) }
       catch {
         await publish({ state: 'needs_attention', detectedProduct: definition.productName,
           detectedVersion: version, errorCode: 'AI_CLI_UNREACHABLE' }, completedEpoch)
@@ -141,6 +143,26 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
     }
     throw error
   }
+}
+
+/** Test an explicit Codex/Claude model through the subscription CLI before adding it to host choices. */
+export async function testAndAddManualCliModel(userId: string, cliId: CliId, modelId: string,
+  signal?: AbortSignal, runner: CliRunner = cliRunner): Promise<void> {
+  if (cliId !== 'codex' && cliId !== 'claude_code') throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+  await assertCliValidationAuthorized(userId, cliId)
+  const definition = CLI_REGISTRY[cliId]
+  const validation = await validateCli(userId, cliId, signal, { runner })
+  if (validation.state !== 'reachable' || !validation.detectedVersion) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  const before = await runner.inspectInstallation(cliId)
+  const probe = await runner.runModelProbeValidation(userId, cliId, modelId, PROBE, signal)
+  if (validateMachineOutput(definition.execution!.outputFormat, probe.stdout).text.trim().toUpperCase() !== 'OK') {
+    throw new AiConsoleError('AI_EXECUTION_FAILED')
+  }
+  if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  const after = await runner.inspectInstallation(cliId)
+  if (JSON.stringify(before) !== JSON.stringify(after)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  await storeManualCliModel(userId, cliId, modelId, validation.detectedVersion, after.entrypoint.sha256)
+  await runner.confirmManualModel(cliId, after, modelId)
 }
 
 function cliErrorCode(code: string): 'AI_CLI_NOT_INSTALLED' | 'AI_CLI_AUTH_UNAVAILABLE' | 'AI_CLI_UNREACHABLE'

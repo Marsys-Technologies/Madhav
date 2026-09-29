@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), flag: vi.fn(), list: vi.fn(), validate: vi.fn() }))
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), flag: vi.fn(), list: vi.fn(), validate: vi.fn(), addModel: vi.fn() }))
 vi.mock('@/lib/auth/access-control', () => ({ getServerUserWithProfile: mocks.auth }))
 vi.mock('@/lib/config', () => ({ getFlag: mocks.flag }))
 vi.mock('@/lib/ai-console/repository', () => ({ listAiConsoleState: mocks.list }))
-vi.mock('@/lib/ai-console/cli/validation', () => ({ validateCli: mocks.validate }))
+vi.mock('@/lib/ai-console/cli/validation', () => ({ validateCli: mocks.validate, testAndAddManualCliModel: mocks.addModel }))
 
 import * as route from '../route'
 import * as validateRoute from '../[cliId]/validate/route'
+import * as modelRoute from '../[cliId]/models/route'
 
 const context = (cliId: string) => ({ params: Promise.resolve({ cliId }) })
 
@@ -26,6 +27,21 @@ beforeEach(() => {
 })
 
 describe('user CLI routes', () => {
+  it('admits one exact manual model test only for a valid request and signed-in user', async () => {
+    const request = new Request('http://localhost/api/ai-console/clis/claude_code/models', { method: 'POST',
+      body: JSON.stringify({ modelId: 'claude-test' }) })
+    const response = await modelRoute.POST(request, context('claude_code'))
+    expect(response.status).toBe(200)
+    expect(mocks.addModel).toHaveBeenCalledWith('alice', 'claude_code', 'claude-test', request.signal)
+    const invalid = new Request('http://localhost/api/ai-console/clis/claude_code/models', { method: 'POST',
+      body: JSON.stringify({ modelId: 'claude-test', unsafe: true }) })
+    expect((await modelRoute.POST(invalid, context('claude_code'))).status).toBe(400)
+    mocks.auth.mockResolvedValueOnce(null)
+    const denied = new Request('http://localhost/api/ai-console/clis/claude_code/models', { method: 'POST',
+      body: JSON.stringify({ modelId: 'claude-test' }) })
+    expect((await modelRoute.POST(denied, context('claude_code'))).status).toBe(401)
+  })
+
   it('reveals only product and not-granted state for ungranted CLIs and projects built-in model to null', async () => {
     const response = await route.GET(); const body = await response.json()
     expect(body.clis[0]).toEqual({ cliId: 'codex', productName: 'Codex CLI', state: 'not_granted' })

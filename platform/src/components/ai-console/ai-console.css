@@ -134,6 +134,14 @@
   background: var(--pp-panel) !important;
   color: var(--pp-ink) !important;
 }
+.pp-root.aic-role-dialog { width: min(calc(100vw - 32px), 760px); max-width: 760px; }
+.pp-root.aic-model-manager { width: min(calc(100vw - 32px), 740px); max-width: 740px; }
+.pp-root .aic-manager-controls { display: grid; grid-template-columns: minmax(0, 1fr) 170px; gap: 12px; }
+.pp-root .aic-manager-results { max-height: 320px; overflow-y: auto; border-block: 1px solid var(--pp-rule); }
+.pp-root .aic-manager-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--pp-rule); }
+.pp-root .aic-manager-row:last-child { border-bottom: 0; }
+.pp-root .aic-manager-row > div { min-width: 0; }
+.pp-root .aic-cli-manual { display: grid; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--pp-rule); }
 .pp-root.aic-dialog [data-slot='dialog-title'],
 .pp-root.aic-dialog [data-slot='alert-dialog-title'] {
   color: var(--pp-ink);
@@ -181,6 +189,7 @@
   .pp-root .aic-model-row { grid-template-columns: 1fr; gap: 4px; padding-block: 12px; }
   .pp-root .aic-default-control { justify-self: start; }
   .pp-root .aic-editor-role { grid-template-columns: 1fr; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--pp-rule); }
+  .pp-root .aic-manager-controls { grid-template-columns: 1fr; }
   .pp-root.aic-dialog {
     top: auto !important;
     right: 0 !important;

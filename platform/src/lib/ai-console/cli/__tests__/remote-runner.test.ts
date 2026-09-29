@@ -84,4 +84,22 @@ describe('remote CLI runner', () => {
       .resolves.toMatchObject({ exitCode: 0 })
     expect(operations).toEqual(['confirm', 'execute'])
   })
+
+  it('probes an exact remote CLI model before admitting it to execution', async () => {
+    const operations: Array<Record<string, unknown>> = []
+    const fetchImpl = vi.fn(async (_input: URL | RequestInfo, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+      operations.push(body)
+      if (body.operation === 'confirm') return Response.json({ ok: true })
+      return Response.json({ stdout: 'safe-machine-output', exitCode: 0, signal: null })
+    }) as unknown as typeof fetch
+    const runner = createRemoteCliRunner({ endpoint: 'http://10.160.0.2:8787', token, fetchImpl })
+    await runner.confirmValidation('codex', identity, '0.158.0', [null])
+    await runner.runModelProbeValidation('owner', 'codex', 'manual-model', 'Reply OK.')
+    await runner.confirmManualModel('codex', identity, 'manual-model')
+    await runner.runExecution('owner', 'codex', { modelId: 'manual-model', stdin: 'prompt' })
+    expect(operations.map(item => item.operation)).toEqual(['confirm', 'probe_model', 'execute'])
+    expect(operations[1]).toMatchObject({ cliId: 'codex', modelId: 'manual-model', stdin: 'Reply OK.' })
+    expect(JSON.stringify(operations.slice(1))).not.toContain('owner')
+  })
 })
