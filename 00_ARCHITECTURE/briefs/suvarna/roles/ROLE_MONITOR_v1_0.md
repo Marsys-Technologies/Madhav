@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_MONITOR
 canonical_id: SUVARNA_ROLE_MONITOR
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2 folded): runs from the committed code in the hq worktree and is restarted after each plan merge; D6 applied (credential_readonly reads ok); builder_scope measured through the authenticated preflight, not the reader; new isolation and decision_writers checks (L.16a; code items in REVIEW_PASS2_DISPOSITION)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): eight checks, including credential_readonly (D6: the login is suvarna_reader with no write path by effective privilege); builder_scope added by E7.3 (D1). Credential semantics match monitor.py: missing blocks; group/world-readable or a backup beside it warns; a changed file is not detectable by stat. Power: warn on battery at 50% or more, block below; a build treats a power warn as a failed precondition. Stalls and spend belong to the Conductor (arch §12.8), not the Monitor. New: the Conductor watchdog (D5, charter G15; alerting from L.15, relaunch from L.14). Whole-item blocked events are the Conductor's (arch §12.1); the Monitor's only blocked event is the watchdog's. Stale 'ROLE_COMMON open question 9' references replaced by arch §12.8 and §12.1. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C15, C16, C34, C43; S16, S27 residuals); D5, D6."
   - "1.0 (2026-09-29): first draft, from arch §3.1, §5.4, §8, §11.3, charter G15, R10, §10 and platform/scripts/governance/suvarna_tracker/monitor.py."
 ---
@@ -23,7 +24,8 @@ that reads its output. Always on, one instance, serving both execution sessions.
 
 ## Inputs
 
-- `platform/scripts/governance/suvarna_tracker/monitor.py`. Environment: `SUVARNA_HOME=/Users/Dev/suvarna`; the
+- `/Users/Dev/suvarna/hq/platform/scripts/governance/suvarna_tracker/monitor.py`: the committed code on `suvarna/hq`,
+  never a working copy elsewhere; restarted after each plan merge into hq (arch §12.12). Environment: `SUVARNA_HOME=/Users/Dev/suvarna`; the
   credential path defaults to `~/.config/suvarna/pgenv.sh`, which the `credential` check only `stat`s and never opens.
   The `credential_readonly` check runs one read-only catalog query through that file, in a subprocess, and never prints
   it.
@@ -31,23 +33,27 @@ that reads its output. Always on, one instance, serving both execution sessions.
 ## What it does
 
 1. **Start it once**, detached, if it is not already running:
-   `PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna python3 -m suvarna_tracker.monitor --watch 300 --emit --repair`
+   `PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna python3 -m suvarna_tracker.monitor --watch 300 --emit --repair`
 2. **Eight checks** every 300 seconds, each `ok`, `warn` or `block` (arch §8); overall exit 0 / 1 / 2:
    - `db_proxy`: the database proxy listening on 5433;
    - `credential`: the file exists (missing blocks); owner-only (group- or world-readable warns); no
      `pgenv*.bak*`, `pgenv.previous*` or `.pgenv.*.tmp` beside it (warns). It cannot see whether the contents changed;
    - `credential_readonly` (D6): session and current user both `suvarna_reader`, its role default read-only, and no
      write path by effective privilege (tables, columns, sequences, CREATE, memberships, ownership, SECURITY DEFINER
-     functions) and no exposure of withheld columns. Any write path or exposure blocks. **Until the native applies D6
-     this check blocks, which is correct**: nothing is dispatched on the old app login;
+     functions) and no exposure of withheld columns. Any write path or exposure blocks. D6 is applied (2026-09-29), so
+     it reads ok; if it ever blocks, nothing is dispatched;
    - `power`: AC ok; on battery at 50% or more warns; below 50% blocks. A production build treats a `power` warn as a
      failed precondition (charter §6.7);
    - `sleep_prevented`: `caffeinate` or an active assertion;
    - `hold`: `run/SUVARNA_HOLD` present blocks;
    - `disk`: below 20 GB warns, below 5 GB blocks;
    - `tracker`: `/api/health` answers.
-   A check that cannot measure reports `warn`, never `ok`. **E7.3 adds a ninth, `builder_scope`** (D1): the builder
-   account is `guest` and `active` and its grants are exactly `{(482012f1, 'build')}`; anything else blocks.
+   A check that cannot measure reports `warn`, never `ok`. **Added later:** `isolation` and `decision_writers` (L.16a,
+   arch §2.4, §8: who the process runs as, what it can read and write, settings-file hashes; any `decided` line not
+   written by `strategic-suvarna` blocks), and `builder_scope` (E7.3, D1), which reads the builder's own scope from
+   `suvarna-build --preflight` (the reader cannot read `chart_grants.permission` or `profiles`): `guest`, `active`,
+   grants exactly `{(482012f1, 'build')}`, matching `run/builder_identity.json`; anything else, or a failed preflight,
+   blocks.
 3. **Repairs** (`--repair`, G15), only when the process is verifiably not running: restart the database proxy on 5433
    (never a proxy on another workstream's port), the tracker supervisor (`run_tracker.sh`), and `caffeinate`. With the
    hold switch on, it repairs nothing.

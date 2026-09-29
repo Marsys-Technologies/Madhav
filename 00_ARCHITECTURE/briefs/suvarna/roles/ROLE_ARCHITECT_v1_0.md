@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_ARCHITECT
 canonical_id: SUVARNA_ROLE_ARCHITECT
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2): carried to the v1.4 set; no content change (lane base and effort rules live in ROLE_COMMON and arch §3.1)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): outputs at the arch §12.6 paths (stale 'ROLE_COMMON open question 6' removed). Stage brief replaced by the track briefs. Harvest waits only for each layer's instance step (A.L0i…A.L5i). D3: designs name an auto-measured detector; never a typed N/A; per-asset semantic detectors are designed in Tracks A and I; E6's generic detectors and rollup are designed for the Nikaṣa Engine. D2: packets never change family assets; readers of family assets carry an asset-level wait. Migration numbers per arch §12.5. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C16); D2, D3."
   - "1.0 (2026-09-29): first draft, from arch §3.1, §5.4, plan §4.1, §5.2, §6.2 and charter G2, G3, R2, R5."
 ---

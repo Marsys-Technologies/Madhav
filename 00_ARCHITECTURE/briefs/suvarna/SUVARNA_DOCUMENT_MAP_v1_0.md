@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_DOCUMENT_MAP
 canonical_id: SUVARNA_DOCUMENT_MAP
-version: "1.1"
+version: "1.2"
 status: DRAFT — living; updated whenever a campaign document is added, versioned or retired
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, plan set v1.4, review pass 2): plan v1.4 added, v1.3 superseded; charter v1.4, architecture v1.4, families v1.3, runbook v1.2, roles and prompts v1.2, correction notice v1.1, track briefs v1.1 (rows added), D6 runbook v1.3 (applied); tracker at 260 tests after L.13, run from the hq worktree; review package marked stale (L.12r); pass-2 reviews and disposition added; §8 rebuilt (L.11–L.13 done)."
   - "1.1 (2026-09-29, plan set v1.3): plan v1.3 added and v1.2 marked superseded; charter v1.3 (v1.2 approved: N-19 + A–C); architecture v1.3; focus families v1.2; D6 runbook, the D6 bootstrap script, the review reports and the pass-1 disposition added; decisions log now authoritative outside git ($SUVARNA_HOME/run/DECISIONS.jsonl), committed copy a mirror; register v2.8 with repaired tallies; tracker 198 tests; PR #2751 merged (branch G replaced by M); §8 rewritten from the launch items L.11–L.15 (charter, roles and runbook removed as written; Track F briefs now written by the family sessions). Map 1.0 changed on 2026-09-29 without a bump; recorded here (REVIEW_PASS1_CONSISTENCY #9)."
   - "1.0 (2026-09-28): first map. Every document that composes the Suvarṇa campaign and the Nikaṣa engine, where it lives, its status, and what is still to be written."
 ---
@@ -24,26 +25,32 @@ Branches: **S** = `strategy/suvarna-plan` · **N** = `campaign/nikasha-test` · 
 
 | Document | Branch | Status | Role |
 |---|---|---|---|
-| `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_3.md` | S | draft v1.3, for native review (N-1) | The master plan: end state, standard, tracks, the J1 checklist (§4.2), launch readiness (§5.0b), decisions with status (§8) |
-| `briefs/suvarna/SUVARNA_AUTONOMY_CHARTER_v1_0.md` | S | v1.2 approved (N-19; amendments A–C); v1.3 folds D1–D5 and corrections, confirmed with N-1 | What the swarm decides alone, parks for the native, or refuses |
-| `$SUVARNA_HOME/run/DECISIONS.jsonl` | R | living, append-only, **authoritative** | The native's decisions with sources; written only through `python -m suvarna_tracker.decide` (Strategic Suvarṇa, Steward) |
-| `control/suvarna/state/DECISIONS.jsonl` | S → `suvarna/hq` | mirror | Committed copy of the log, refreshed with `decide --mirror-to`; never read as the authority |
+| `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_4.md` | S | draft v1.4, for native review (N-1) | The master plan: end state, standard, tracks, the J1 checklist (§4.2), launch readiness (§5.0b), decisions with status (§8) |
+| `briefs/suvarna/SUVARNA_AUTONOMY_CHARTER_v1_0.md` | S | v1.2 approved (N-19; amendments A–C); v1.3–v1.4 changes (D1–D5, review folds, G16, §13 isolation proposed pending N-25) confirmed with N-1 | What the swarm decides alone, parks for the native, or refuses |
+| `$SUVARNA_HOME/run/DECISIONS.jsonl` | R | living, append-only, **authoritative** | The native's decisions with sources; written only through `python -m suvarna_tracker.decide`, by Strategic Suvarṇa with the native present (charter P14) |
+| `control/suvarna/state/DECISIONS.jsonl` | `suvarna/hq` only | mirror | Committed copy of the log, refreshed by Strategic Suvarṇa with `decide --mirror-to`; never changed on S; never read as the authority |
 | `control/suvarna/state/QUEUE.jsonl`, `QUEUE_ENGINE.jsonl` | `suvarna/hq` | living, append-only | One work queue per execution session |
-| `briefs/suvarna/roles/ROLE_*_v1_0.md` (shared rules + 9 roles) | S | v1.0; to be swept to the v1.3 set (L.12) | Instructions each swarm agent receives at dispatch |
-| `briefs/suvarna/SUVARNA_RUNBOOK_v1_0.md` | S | v1.0; to be swept (L.12) | Launch checklist, daily operation, hold and resume, restart, incidents |
-| `briefs/suvarna/prompts/{NIKASHA_ENGINE,EXEC_SUVARNA}_START_PROMPT_v1_0.md` | S | v1.0; to be swept (L.12); used after N-1 | Start prompts for the two execution sessions |
-| `briefs/suvarna/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` | S | draft v1.3 | How it runs: isolation, swarm, queue, runtime (§5.5), builds (§6), autonomy, cost, the tracker (§11), operating conventions (§12) |
+| `briefs/suvarna/roles/ROLE_*_v1_0.md` (shared rules + 9 roles) | S | v1.2 | Instructions each swarm agent receives at dispatch |
+| `briefs/suvarna/tracks/TRACK_E_BRIEF_v1_0.md`, `TRACK_A_BRIEF_v1_0.md` | S | v1.1, for native approval with N-1 | Packets, write sets and boundaries per lane; detector pins and schemas |
+| `briefs/suvarna/runtime/INTERIM_RUNTIME_v1_0.md` | S | v1.1 (L.15) | The settings generator and template, the hold-guard hook, `conductor_heartbeat`; power settings |
+| `briefs/suvarna/SUVARNA_RUNBOOK_v1_0.md` | S | v1.2 | Launch checklist (isolation included), daily operation, hold and resume, restart, incidents |
+| `briefs/suvarna/prompts/{NIKASHA_ENGINE,EXEC_SUVARNA}_START_PROMPT_v1_0.md` | S | v1.2; used after N-1 | Start prompts for the two execution sessions |
+| `briefs/suvarna/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` | S | draft v1.4 | How it runs: isolation (§2.4, proposed pending N-25), swarm, queue, runtime (§5.5), builds (§6), autonomy, cost, the tracker (§11), operating conventions (§12) |
 | `control/suvarna/plan_model.json` | S | living | The plan in machine form: tracks, items, dependencies, decisions, done-detectors. Drives the tracker |
-| `platform/scripts/governance/suvarna_tracker/` | S | built, 198 tests; v1.3 detector types to add (L.13) | The real-time tracker (event log, decisions log, detectors, dashboard), the Monitor, the census lock, the decide CLI |
-| `briefs/suvarna/D6_SUVARNA_READER_RUNBOOK_v1_0.md` and `platform/scripts/suvarna-reader-bootstrap.ts` | S | v1.2; three production dry runs done (rolled back); apply after PR #2756 deploys | The read-only login `suvarna_reader` (D6) |
-| `briefs/suvarna/prompts/L3_{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_PROMPT_v1_0.md` | S | in use by the family sessions; findings relayed as reports (FI-8), prompt fixes in L.12 | Start prompts for the three L3 family sessions |
+| `platform/scripts/governance/suvarna_tracker/` | S (authored) → `suvarna/hq` (runs) | built, 260 tests at L.13 (`4cef1a958`); v1.4 code items in REVIEW_PASS2_DISPOSITION | The real-time tracker (event log, decisions log, detectors, dashboard), the Monitor, the census lock, the decide CLI, the hq commit wrapper |
+| `briefs/suvarna/D6_SUVARNA_READER_RUNBOOK_v1_0.md` and `platform/scripts/suvarna-reader-bootstrap.ts` | S | v1.3; **applied 2026-09-29** (plan `31e035f7…`, `21637553c`); kept for re-apply and rollback | The read-only login `suvarna_reader` (D6) |
+| `briefs/suvarna/prompts/L3_{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_PROMPT_v1_0.md` | S | v1.2; in use by the family sessions; changes relayed as reports (FI-8) | Start prompts for the three L3 family sessions |
+| `briefs/suvarna/prompts/L3_FAMILY_CORRECTION_NOTICE_2026-09-29.md` | S | v1.1; the native pastes it into each family session (FI-8, closed by their acknowledgements) | The relay of prompt corrections |
 | `briefs/l3_families/{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_v1_0.md` | family branches | being written by the family sessions | The sealed final briefs; Suvarṇa's L3 analysis evaluates their latest versions |
-| `briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` | S | draft v1.2 | Gochara, Saṅgam, Kṣetra: state, target, effort; how Suvarṇa certifies them (§7) |
+| `briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` | S | draft v1.3 | Gochara, Saṅgam, Kṣetra: state, target, effort; how Suvarṇa certifies them (§7) |
 | `briefs/suvarna/reviews/REVIEW_PASS1_SUBSTANCE_v1_0.md`, `REVIEW_PASS1_CONSISTENCY_v1_0.md` | S | done | Review pass 1 (30 + 44 findings) |
 | `briefs/suvarna/reviews/FABLE_REVIEW_D1_D5_v1_0.md` | S | done | The delegated review behind D1–D5 |
 | `briefs/suvarna/reviews/REVIEW_PASS1_DISPOSITION_v1_0.md` | S | done | Where each pass-1 finding was fixed, or why not |
-| `briefs/suvarna/SUVARNA_DOCUMENT_MAP_v1_0.md` | S | living v1.1 | This map |
-| `briefs/suvarna/SUVARNA_REVIEW_PACKAGE_v1_0.md` | S | v1.0, stale (reviews v1.1); to be rebuilt for the v1.3 set before L.9 (L.12) | The brief for the independent reviewer |
+| `briefs/suvarna/reviews/REVIEW_PASS2_SUBSTANCE_v1_0.md`, `REVIEW_PASS2_CONSISTENCY_v1_0.md` | S | done | Review pass 2 (30 + 40 findings) |
+| `briefs/suvarna/reviews/REVIEW_PASS2_DISPOSITION_v1_0.md` | S | done | Where each pass-2 finding was fixed, deferred, sent to code or to the native |
+| `briefs/suvarna/SUVARNA_DOCUMENT_MAP_v1_0.md` | S | living v1.2 | This map |
+| `briefs/suvarna/SUVARNA_REVIEW_PACKAGE_v1_0.md` | S | **STALE** (v1.0, names plan v1.1); rebuilt for the v1.4 set by L.12r before L.9 | The brief for the independent reviewer |
+| `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_3.md` | S | superseded by v1.4 | History |
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_2.md` | S | superseded by v1.3 | History |
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_1.md` | S | superseded by v1.2 | History |
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_0.md` | S | superseded by v1.1 | History |
@@ -145,19 +152,18 @@ Branches: **S** = `strategy/suvarna-plan` · **N** = `campaign/nikasha-test` · 
 | Saṅgam stage 3 | `sangam/stage3` (PR #2735, draft) | unmerged |
 | Kṣetra briefs and stage plans | merged to `main` as documents | stage 3 authorized 2026-09-24, not started |
 
-**The review bundle** (not committed; assembled for the independent reviewer): `/Users/Dev/suvarna-review-bundle/` and `/Users/Dev/suvarna-review-bundle.zip` — 40 files, each listed in `MANIFEST.txt` with its origin branch and sha256.
+**The review bundle** (not committed; assembled for the independent reviewer): `/Users/Dev/suvarna-review-bundle/` and `/Users/Dev/suvarna-review-bundle.zip` — stale (the v1.1 set); rebuilt with the package by L.12r, each file listed in `MANIFEST.txt` with its origin branch and sha256.
 
 ## 8 · Still to be written, in the order needed
 
 | Document | Written in | Needed by | Tracker |
 |---|---|---|---|
-| Track E brief (Nikaṣa Engine): lanes E1–E7, write sets, boundaries; pins the detector paths and landing PR numbers | Strategic Suvarṇa | N-1 | L.11 |
-| Track A brief (analysis, all layers): the three items per layer, asset-brief approval | Strategic Suvarṇa | N-1 | L.11 |
-| Role, prompt, runbook and review-package sweep to the v1.3 set; review bundle rebuilt | Strategic Suvarṇa | N-1 (before L.9) | L.12 |
-| Runtime: allowlist and watchdog (interim), headless runner (durable) | Strategic Suvarṇa | N-1 (interim); B.W1 (durable) | L.15, L.14 |
+| Review package and bundle for the v1.4 set | Strategic Suvarṇa | L.9, N-1 | L.12r |
+| Runtime: settings file, lane launcher and watchdog (interim), headless runner (durable) | Strategic Suvarṇa | N-1 (interim); B.W1 (durable) | L.15, L.14 |
+| Isolation set-up record (user, GitHub identity, branch protection) | native, verified by Strategic Suvarṇa | N-1 | L.16a, L.16g, L.16b |
 | Final briefs, one per family | L3 Gochara, L3 Saṅgam, L3 Kṣetra (N-17) | their own implementation | F1.G, F1.S, F1.K |
 | Combined reopen agendas: T1, T2, T3 | Strategic Suvarṇa, from Track E and Track A | J1 | J1.1a, J1.2a, J1.3a |
-| Tracks I and B brief (implementation, rebuild, certification) | Strategic Suvarṇa | before J1 | J1.0 |
+| Tracks I and B brief (implementation, rebuild, certification) | Strategic Suvarṇa, after A.L0 | N-24 (Track I starts there) | J1.0d, J1.0 |
 | L1–L5 layer instances; 122 asset briefs | Track A | per layer | A.L1i … A.L5i, A.L1 … A.L5 |
 | Layer close reports | Track B | per layer | G3.L0 … G3.L5 |
 | Closure report | Closure | end | CL.3 |

@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_BUILDER
 canonical_id: SUVARNA_ROLE_BUILDER
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2): lane base is always suvarna/trunk; the #2736 split is built fresh, the engine commits cherry-picked; landing branches from origin/main; the bo_upaya test path pinned."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): step 4 migration numbers per arch §12.5 (fresh origin/main and open-PR sweep, maximum across both migration folders and the other campaigns' reserved ranges, placeholder committed and pushed on the lane branch, never main, never reused); the 'no reserved migration range' stop condition dropped (Suvarṇa has none, by design). Lane base branches per arch §12.2. bo_upaya: fix per its handoff, merged and tested on fixtures, no live rebuild before its wave (B.U). Sanctioned Track E packets extended to E5–E7 per the Track E brief; E7.1 (auth) needs a security review. Stage brief replaced by track and asset briefs. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C22; S3, S27 residuals); D1."
   - "1.0 (2026-09-29): first draft, from plan §5.4, §6.3, §6.4, arch §2.3, §3.1, §4.3, charter G4–G6 and CLAUDE.md §N.2–§N.7."
 ---
@@ -65,17 +66,17 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
 **Sanctioned packets (Track E, as the Track E brief pins them):**
 - `bo_upaya` only as its handoff describes
   (`/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/HANDOFF_TO_L2_BODHA_bo_upaya_2026-09-28.md` on
-  `campaign/nikasha-test`, read-only) (G5, N-6). The fix is merged and tested on fixtures (E4.2); **no live rebuild before J1**: its live proof
+  `campaign/nikasha-test`, read-only) (G5, N-6). The fix and its source-order test (`platform/python-sidecar/tests/l2/test_bo_upaya_source_order.py`) are merged and tested on fixtures (E4.2); **no live rebuild before J1**: its live proof
   comes in its own L2 wave (B.U).
-- PR #2736's split into code and evidence PRs retargeted to `main`, with the inspector's tests added to CI (G6, N-3).
+- PR #2736's split into code and evidence PRs to `main`, built as fresh branches from `suvarna/trunk` (never by retargeting #2736), with the inspector's tests added to CI (G6, N-3). The build engine's 10 commits are cherry-picked with `-x`; nothing is branched from a source branch.
 - E5 execution tooling, E6 gate detectors, E7.1 the dispatch-only `build` grant (auth code: its PR needs a security
   review, and tests proving a `build` grantee is refused `clear_before`, the clear routes, `layer=brahmagyan` and every
   other chart).
 
 ## Outputs and where they go
 
-- Commits on your lane branch; the Conductor merges accepted work into `suvarna/trunk` (G10), or into the landing PRs
-  the Track E brief pins.
+- Commits on your lane branch (from `suvarna/trunk`); the Conductor merges accepted work into `suvarna/trunk` (G10) and
+  into the landing branch cut from `origin/main` for its PR (G11).
 - Evidence in `$SUVARNA_HOME/evidence/<qid>/`: `test_fails_before.txt`, `mutation_run.txt`, check outputs, a short
   `CHANGE.md` (what changed, which gate or gap row it answers, commit SHAs, any migration number reserved).
 

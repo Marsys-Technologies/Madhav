@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_BUILD_OPERATOR
 canonical_id: SUVARNA_ROLE_BUILD_OPERATOR
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2 folded): check 4 is git ancestry (the merge is an ancestor of the running commit), never equality; writer hashes at the running commit. L2 MSR screen needs F-3 decided and F3.FK done. Serving canary before and after each wave (E5.3). L0 is four native dispatches, level 3 (bg_concordance) split out of W1. L3 full-layer rebuild is an asset-list run over the non-family assets; L2's runs after F3.FK. suvarna-build interface per Track E §8."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): D1 dispatch route and identity: every build through ~/.config/suvarna/bin/suvarna-build (POST /api/cockpit/runs, builder identity, canonical chart, never clear_before); deployed code read with suvarna-build --preflight (job_image_tag for writers, deployed_sha for serving), not env.DEPLOY_SHA; writer-file hashes re-checked at dispatch. The seven charter §6 preconditions each name their command; a power warn fails check 7. D4: L0 waves are prepared (dump verified by pg_restore --list and row counts, measured impact, pre-check) and parked for the native to dispatch; post-wave row-level diff; the undo is a native-run surgical revert or restore; N-12 before the first L0 wave. Full-layer rebuild = scope=layer, action=rebuild, clear_before=false. D2: family assets excluded from wave completion, readers wait asset by asset, family certification evidence (orchestrator run, substep plan complete), staleness propagation recorded and reported. Waves wait for their fixes merged and deployed (B.WnM). The script is E5.3 (stale 'ROLE_COMMON open question 8' removed). Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C16; S1, S12, S13, S14, S15 residuals); D1, D2, D4."
   - "1.0 (2026-09-29): first draft, from charter §3 (G8, G13), §4 (R1, R3, R4, R7–R9), §6, §10 and arch §3.1, §5.3, §5.4, §6."
 ---
@@ -40,7 +41,8 @@ dispatching. You never open `builder.env` (P1). No other dispatch route, no hand
 
 1. **Screen the write set first.** Stop and send to the Steward if any asset: is not on the canonical chart (R4;
    `1c826d5a` included); is a family asset (R8); is `bg_gochara_arcs` or `bg_gochara_citation_resolution` (R9); is an L2
-   MSR asset (a writer that replaces rows in `bodha_msr_signals`, arch §12.9) while F-3 has no `decided` line (R1); or
+   MSR asset (a writer that replaces rows in `bodha_msr_signals`, arch §12.9) unless F-3 has a `decided` line and F3.FK
+   reads done (R1); or
    would cascade into another asset's data or clear more than its own rows (R3). **Family assets and their readers are
    excluded from the wave (D2):** the wave completes without them; a reader waits until its family input is certified
    and shows `waiting_on_family`. When unsure, it is reserved (R11).
@@ -52,22 +54,26 @@ dispatching. You never open `builder.env` (P1). No other dispatch route, no hand
    3. **Lock free:** E5.3's read-only check of the orchestrator's per-chart lock; no other Suvarṇa build on the chart;
       every asset in the write set leased to `SUVARNA-<qid>` and to no one else
       (`git fetch -q origin campaign-coordination && git show origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`).
-   4. **Deploy verified:** `suvarna-build --preflight`. A writer change needs `job_image_tag` to end with the merge
-      commit's SHA; a serving change needs `deployed_sha` to equal it; and every writer file at that commit hashes to
-      what the packet recorded (`git show <sha>:<path> | shasum -a 256`), because other workstreams deploy to `main`
-      too. A pipeline's reported head SHA is not enough. The wave's landing PR is merged (B.WnM, `wave_deployed`).
+   4. **Deploy verified:** `~/.config/suvarna/bin/suvarna-build --preflight`, then `git fetch -q origin`. The merge
+      commit must be an **ancestor** of the running commit: `git merge-base --is-ancestor <merge_sha> <job_sha>` for a
+      writer change, `<deployed_sha>` for a serving change (exit 0). Every writer file **at the running commit** hashes
+      to what the packet recorded (`git show <job_sha>:<path> | shasum -a 256`), which catches a later overwrite. Never
+      test equality: other workstreams deploy to `main` too. A pipeline's reported head SHA is not enough. The wave's
+      landing PR is merged (B.WnM, `wave_deployed`).
    5. **Snapshot**, only for a destructive operation, with the native's recorded approval (R3). A writer's own
       delete-then-insert or upsert is not destructive (charter §3): normally `n/a`.
    6. **Inputs ready:** every upstream asset certified and current (the stale-certification detector, E5.5, finds none
       invalid); every asset at this level merged and deployed; no family input uncertified for any asset in the wave;
-      F-3 has a `decided` line if the write set holds an L2 MSR asset.
+      F-3 has a `decided` line and F3.FK reads done if the write set holds an L2 MSR asset.
    7. **Environment and reversal:** `python3 -m suvarna_tracker.monitor --once` does not exit 2, and a `power` warn also
       fails. For an L1+ level wave (amendment C): save a read-only fingerprint and row count of every affected asset's
-      rows to evidence first; the stated undo is "hold; the native approves revert and rebuild".
+      rows to evidence first, and run the serving canary's "before" reads (E5.3); the stated undo is "hold; the native
+      approves revert and rebuild".
 3. **Log the checks, then dispatch.** Emit the PRECHECK note (below) and write `PRECHECK.md`; then one
    `suvarna-build` call covering the whole level for the canonical chart (G13).
 4. **Wait without polling** (arch §5.3): one timer no shorter than the wave's expected duration.
-5. **Collect evidence:** run id, per-asset outcome, whether each asset's substep plan completed (not only "rows present",
+5. **Collect evidence:** the canary's "after" reads (an unexplained difference from "before" outside the wave's declared
+   output changes fails the wave: step 6), run id, per-asset outcome, whether each asset's substep plan completed (not only "rows present",
    CLAUDE.md §N.8), row counts from each asset's `count_sql`, the job image tag the run used. If the run flipped a family
    asset to `stale` through the orchestrator's own propagation (the R8 exemption, D2), record it and tell the Steward, who
    reports it. Hand the level to the Conductor for re-measure and certification (arch §6.2.3); you certify nothing.
@@ -81,7 +87,8 @@ dispatching. You never open `builder.env` (P1). No other dispatch route, no hand
 ## L0 waves (D1, D4; plan §6.4b; charter §6.7)
 
 L0 is global: one build, no chart, and it changes the inputs of every chart. **The native dispatches it; you never do.**
-N-12 must be `decided` before the first L0 wave (B.N12).
+N-12 must be `decided` before the first L0 wave (B.N12). **One dispatch per L0 level** (B.L0.0–B.L0.3: levels 0, 1, 2
+in W0; level 3, `bg_concordance`, split out of W1's normal dispatch and parked the same way).
 
 1. Run checks 1–4 and 6–7 as above.
 2. **Dump:** `pg_dump --format=custom` of every affected L0 table into `$SUVARNA_HOME/evidence/<qid>/`, as the reader
@@ -99,10 +106,10 @@ N-12 must be `decided` before the first L0 wave (B.N12).
 
 ## Full-layer rebuild (layer close; plan §1.2, arch §6.5)
 
-One `suvarna-build` run with `scope=layer, action=rebuild, clear_before=false` over the layer's active assets, with
-every §6 precondition. L0's is parked for the native as above and proved by fingerprint equality or an explained diff.
-L2's waits for F-3 and still cascades into Saṅgam's rows: park it as R1/R3 until F-3 is decided and the cascade is
-approved. L3's covers the non-family assets only.
+One `suvarna-build` run with `action=rebuild, clear_before=false` over the layer's active assets, with every §6
+precondition: `--layer <Lx>` for L0, L1, L2, L4, L5; for L3 an asset-list run (`--assets`) over L3 minus
+`FAMILY_ASSETS.json`, never layer scope (R8). L0's is parked for the native as above and proved by fingerprint
+equality or an explained diff. L2's waits for F-3 and F3.FK (R1).
 
 ## Family certification evidence (D2)
 

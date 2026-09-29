@@ -2,10 +2,11 @@
 artifact: SUVARNA_REVIEW_PACKAGE
 canonical_id: SUVARNA_REVIEW_PACKAGE
 version: "1.0"
-status: DRAFT — to be sent to an independent third-party reviewer after the native's own passes
+status: "STALE — describes plan v1.1 and the 2026-09-28 bundle. Do not send. Rebuilt for the v1.4 set by launch item L.12r before L.9 (REVIEW_PASS2_DISPOSITION, C14)."
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.0-stale (2026-09-29): marked stale by review pass 2; no content change. L.12r rebuilds it."
   - "1.0 (2026-09-28): first package. Purpose, reading order, the questions, the bundle manifest."
 ---
 

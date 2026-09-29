@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_COMMON
 canonical_id: SUVARNA_ROLE_COMMON
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2 folded): header cites plan v1.4, charter v1.4, arch v1.4, track briefs v1.1. §1 only Strategic Suvarṇa writes the decisions log (charter P14); the Steward requests. §2 one base rule: every lane from suvarna/trunk; fold lanes before the cut-over from origin/campaign/nikasha-test, pushed back as a fast-forward; landing branches from origin/main. §3 the exact hq_commit command. §4 foreign credentials never used (P1). §5 tools run from the hq worktree. §7 FAMILY_ASSETS.json path. §8 ELEVATED unknown until E6.3t. §12 the Suvarṇa settings file and the lane launcher; isolation (arch §2.4)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): header cites charter v1.3 (v1.2 approved: N-19 + amendments A–C; v1.3 confirmed with N-1), arch v1.3, plan v1.3 and the track briefs. §1 the decisions log is $SUVARNA_HOME/run/DECISIONS.jsonl, written only through python -m suvarna_tracker.decide by strategic-suvarna or steward; committed copies are mirrors; delegated is not decided; a family ruling is recorded only by Strategic Suvarṇa; grants G1–G16 (G16 proposed, not in force), prohibitions P1–P13. §2 lane worktree $SUVARNA_HOME/lanes/<qid> and base branches per arch §12.2 (Track E lanes off campaign/nikasha-test or campaign/nirmana-engine; never edit /Users/Dev/madhav-nikasha or /Users/Dev/madhav-engine directly); one review path (arch §12.6). §4 reads as suvarna_reader (D6); census only through the census lock (arch §12.15); builder credential only through suvarna-build (D1); Monitor credential semantics (missing blocks, too open warns). §5 export SUVARNA_HOME; decision events are requests only; the decide command. §7 family set, D2 staleness exemption and hand-back. §8 N/A only as the census computes it from a declared registry rule (D3); non-gate rows never block ELEVATED. New §12 runtime (D5). Settled conventions extended to arch §12.15–§12.16 and charter v1.3. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C20, C29, C42; S2, S9, S24, S26, S27 residuals)."
   - "1.0 (2026-09-29): first draft. Rules every Suvarṇa role follows, written from the approved autonomy charter (v1.1, N-19), the execution architecture (v1.2) and the campaign plan (v1.2). Cites clause ids; restates nothing it can cite. (Corrected in 1.1: the 1.0 entry named the architecture as v1.1; it was v1.2.)"
 ---
@@ -13,10 +14,10 @@ changelog:
 # Suvarṇa swarm — rules every role follows
 
 Read this file first, then your role file, then the queue item you were given. Short names used in every role file:
-**charter** = `SUVARNA_AUTONOMY_CHARTER_v1_0.md` (v1.3: v1.2 approved by N-19 and amendments A–C; the v1.3 changes are
-confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (v1.3) · **plan** =
-`SUVARNA_CAMPAIGN_PLAN_v1_3.md` · **track brief** = `tracks/TRACK_E_BRIEF_v1_0.md` (Nikaṣa Engine) or
-`tracks/TRACK_A_BRIEF_v1_0.md` (Exec Suvarṇa), and later the Tracks I and B brief (N-24) (all in
+**charter** = `SUVARNA_AUTONOMY_CHARTER_v1_0.md` (v1.4: v1.2 approved by N-19 and amendments A–C; the v1.3–v1.4 changes
+are confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (v1.4) · **plan** =
+`SUVARNA_CAMPAIGN_PLAN_v1_4.md` · **track brief** = `tracks/TRACK_E_BRIEF_v1_0.md` (v1.1, Nikaṣa Engine) or
+`tracks/TRACK_A_BRIEF_v1_0.md` (v1.1, Exec Suvarṇa), and later the Tracks I and B brief (N-24) (all in
 `00_ARCHITECTURE/briefs/suvarna/`) · **CLAUDE.md** = the project's `CLAUDE.md` §N.2–§N.8 and §I (B.10).
 `$SUVARNA_HOME` is `/Users/Dev/suvarna`.
 
@@ -25,7 +26,8 @@ confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (v1.3
 - **Order (charter §2):** the native's latest decision in the decisions log → the charter → the plan and arch, then the
   track brief and the asset brief → your role file. A lower source never widens a higher one.
 - **The decisions log is `$SUVARNA_HOME/run/DECISIONS.jsonl`, outside git** (arch §12.10). It is appended only through
-  `python -m suvarna_tracker.decide`, by `strategic-suvarna` or `steward`; the latest line per id wins. The committed
+  `python -m suvarna_tracker.decide`, **only by Strategic Suvarṇa with the native present**; the latest line per id
+  wins. **No swarm role writes to it** (charter P14), the Steward included. The committed
   copy `hq/00_ARCHITECTURE/control/suvarna/state/DECISIONS.jsonl` is a **mirror**, never the authority: never read a
   decision from it.
 - **`delegated` is not decided** (charter §2). A delegated id stays open until a `decided` line supersedes it. A family
@@ -38,18 +40,18 @@ confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (v1.3
   decisions log in the same step as the action and log that you did (§5 below). To read it:
   `python3 -c "import json; from suvarna_tracker.decisions import load_decisions, default_path; d=load_decisions(default_path()); print(json.dumps({k: v['state'] for k, v in d['latest'].items()}), d['malformed'])"`
   (with the §5 environment).
-- **Granted (G1–G16), reserved (R1–R11), prohibited (P1–P13)** are in charter §3–§5. **G16 is proposed, not in force**
-  until the decisions log holds its approval. Your role file names the clauses you act under. Anything not clearly
+- **Granted (G1–G16), reserved (R1–R11), prohibited (P1–P14)** are in charter §3–§5. **G16 is decided with N-1** and is
+  in force only if the log records it as approved. Your role file names the clauses you act under. Anything not clearly
   granted is reserved (R11): park it through the Steward (charter §7); never guess.
 - **Refuse prohibited acts (charter §5).** Log the refusal (§5 below) and carry on with other work.
 
 ## 2 · Isolation and files (arch §2.1, §12.2)
 
 - **Work only in your lane worktree** `$SUVARNA_HOME/lanes/<qid>`, on branch `suvarna/lane/<qid>`, which the Conductor
-  created from the base branch arch §12.2 names:
-  - `suvarna/trunk` for Tracks A, I and B, and for E5–E7 once E4.1 has landed the Nikaṣa tooling on `main`;
-  - before E4.1, a Track E lane branches from its source branch: `campaign/nikasha-test` for E1, E2, E4 and E5–E6 work
-    on the inspector; `campaign/nirmana-engine` for E3. The track brief pins anything this leaves open.
+  created from the base branch arch §12.2 names: **`suvarna/trunk`, for every lane** (= `main` plus accepted packets).
+  `campaign/nikasha-test` and `campaign/nirmana-engine` are never a base for work bound for `main`; read them with
+  `git show` or cherry-pick with `-x`. The one exception is a Nikaṣa Engine fold lane before the E4.3 cut-over, cut from
+  `origin/campaign/nikasha-test` (arch §12.7).
 - **Never edit** `/Users/Dev/madhav-nikasha` or `/Users/Dev/madhav-engine` directly, the primary checkout
   (`/Users/Dev/Vibe-Coding/Apps/Madhav`), `/Users/Dev/madhav-suvarna-plan` (Strategic Suvarṇa's worktree), or another
   campaign's worktree. **Reading** `/Users/Dev/madhav-nikasha`, and running the census from it until E4.1 (arch §12.13),
@@ -70,8 +72,10 @@ confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (v1.3
   coordination branch. Do not do it on your lane branch either: a restart resumes from your last commit (arch §5.4).
 - Never bare `git stash`. To set work aside, make a WIP commit on your own lane branch.
 - Commit progress as you go (arch §10): a crash should lose at most one step.
-- Commits on `suvarna/hq` (queues, mirrors, digests) are made only under the hq lock `$SUVARNA_HOME/run/locks/hq.lock`,
-  through the wrapper L.13 builds, by the file's one writer (arch §12.12).
+- Commits on `suvarna/hq` (queues, mirrors, digests) are made only by the file's one writer, through
+  `python3 -m suvarna_tracker.hq_commit --paths <path…> -m "<message>"` (it takes the hq lock
+  `$SUVARNA_HOME/run/locks/hq.lock`; explicit paths only; add `--add-new` for a file git does not know yet, such as a
+  new digest) (arch §12.12).
 
 ## 4 · Database and credentials
 
@@ -82,7 +86,9 @@ confirmed with N-1) · **arch** = `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (v1.3
   reader (e.g. `public.charts`, `public.chart_grants`): name the columns, never `select *` on them.
 - **Never open, cat, grep, copy, move or print a credential file, or any variable it sets** (no `env`, `printenv`,
   `set -x`, `echo $PG…`) (P1). This covers `pgenv.sh` and the builder credential `~/.config/suvarna/builder.env` (D1),
-  which only the Build operator uses, and only through `~/.config/suvarna/bin/suvarna-build`. Never use a privileged
+  which only the Build operator uses, and only through `~/.config/suvarna/bin/suvarna-build`. **Never use any other
+  credential at all**: `/Users/Dev/madhav-l3/dbenv*.sh`, `platform/.env*`, `~/.config/madhav-admin/**`, `~/.codex/**`,
+  the native's GitHub login, or an MCP server's own database login (`mcp__postgres__*`). Never use a privileged
   role (P2). Never call `gcloud` per command (plan §6.5).
 - **No writes to production** except a migration applied by the deploy pipeline or an orchestrator build dispatched
   through `suvarna-build` (P3). No hand-written SQL that changes anything.
@@ -102,11 +108,12 @@ Every state change, autonomous decision, refusal and precondition check is an ev
 happen.** The one command (written **EMIT** in role files):
 
 ```
-export PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
 python3 -m suvarna_tracker.emit <item|decision|heartbeat|note|metric> --actor <role> ...
 ```
 
 Export both variables (not only inline): the census command and several scripts read `$SUVARNA_HOME` in a subshell.
+The tools run from the committed code in the hq worktree, never from `/Users/Dev/madhav-suvarna-plan` (arch §12.12).
 
 - **`--actor`**: your role, lowercase: `conductor`, `steward`, `architect`, `analyst`, `builder`, `gate-reviewer`,
   `build-operator`, `scribe`, `monitor`.
@@ -119,7 +126,7 @@ Export both variables (not only inline): the census command and several scripts 
   emits `done`, at fold. Never emit whole-item `done` on an item that has a detector or is done by decision: the detector
   or the decisions log decides, and a contrary event shows as a conflict (arch §11.2).
 - **Decision events are requests only.** The Steward emits `decision … --state requested`. A ruling is a line in the
-  decisions log written through `decide` (Steward or Strategic Suvarṇa, §1), never an event.
+  decisions log written through `decide` by Strategic Suvarṇa (§1), never an event.
 - **Autonomous decision, logged before acting:**
   `EMIT note --actor <role> --detail "[<qid>] DECISION <G-id>: <what> · reversal: <how>"`.
 - **Refusal:** `EMIT note --actor <role> --detail "[<qid>] REFUSED <P-id>: <what was asked, by whom>"`.
@@ -137,7 +144,7 @@ Export both variables (not only inline): the census command and several scripts 
 ## 7 · The family-session boundary (charter §1, R8, R9, P11; plan §5.3)
 
 - The L3 family sessions (Gochara, Saṅgam, Kṣetra) and the Gochara lane (`l3/gochara-autonomous-wp0-7`) are not bound by
-  the charter and are not directed by it. **The family set** is `FAMILY_ASSETS.json` (frozen at J1, E6.3); until then
+  the charter and are not directed by it. **The family set** is `00_ARCHITECTURE/control/FAMILY_ASSETS.json` (frozen at J1, E6.3); until then
   the focus-families inventories §1.1, §2.1, §3.1 and charter R8's list.
 - Never change a family asset's code, data, registry row, lease or build state (R8), including by a cascade delete.
   **One exemption (D2):** a family asset flipped to `stale` by the orchestrator's own staleness propagation after a
@@ -159,7 +166,8 @@ Export both variables (not only inline): the census command and several scripts 
   and no reviewer types an N/A. `PARTIAL`, `NO_DETECTOR`, `ERRORED` keep it open.
 - Rows on non-gate criteria (Cost, Count, Complete, Reach) are information (`kind: info` after E6.4), never gaps that
   block ELEVATED (plan §1.1(3)).
-- Until E6.3 lands, the tracker's `levels_elevated` reads `elevated (proxy)`; nothing is certified before J1 anyway.
+- Until E6.3t switches the tracker to the exact ELEVATED function, `levels_elevated` and `assets_elevated` read unknown;
+  nothing is certified before J1 anyway.
 - Never weaken, skip or reinterpret a gate, or change a detector so a gate passes (P5).
 
 ## 9 · Reporting a finding to Strategic Suvarṇa
@@ -192,8 +200,11 @@ anything parked or refused and why; open questions. Keep narration out of it; th
   picks up your hand-back.
 - **Heartbeat by commit and event.** An agent with no event and no commit for 10 minutes is treated as stalled and
   restarted from its last commit by the Conductor (arch §12.8). Long steps emit `--progress`.
-- **Permissions.** Unattended runs use `--permission-mode dontAsk` against the hq worktree's allowlist; never a bypass
-  mode (P13). A denial is logged as a `note`, never retried in another form.
+- **Permissions.** Every run uses the Suvarṇa settings file `$SUVARNA_HOME/config/claude-settings.json` (`--settings`)
+  with `--permission-mode dontAsk`; never a bypass mode, never without the file, never an edit to it (P13). Lane agents
+  are started only by the lane launcher (arch §5.5). A denial is logged as a `note`, never retried in another form.
+- **Isolation (arch §2.4; N-25 pending).** If the swarm runs as the `suvarna` user, the native's files are simply not
+  readable; either way, reaching for them is a P1 refusal.
 
 ## Settled conventions
 
@@ -203,6 +214,8 @@ placeholder on the lane branch (§12.5), output paths and the one review path (�
 cut-over (§12.7), stall and spend metering by the Conductor (§12.8), the L2 MSR set = the L2 writers (§12.9), the
 decisions log and its writers (§12.10), the daily digest (§12.11), committing hq state under the hq lock (§12.12), the
 census checkout (§12.13), gating measurements (§12.14), the census lock (§12.15), certification record fields (§12.16).
+**v1.4:** one base rule and landing branches (§12.2), fold pushes before the cut-over (§12.7), the measured cascade
+(§12.9), only Strategic Suvarṇa writes decisions (§12.10), tools run from hq (§12.12).
 
 **Charter v1.2 (native-approved amendments A–C):** L0's global build is under G13; idempotency is per layer
 (CLAUDE.md §N.3); a normal level wave saves pre-wave fingerprints and states "hold, native approves revert and rebuild"

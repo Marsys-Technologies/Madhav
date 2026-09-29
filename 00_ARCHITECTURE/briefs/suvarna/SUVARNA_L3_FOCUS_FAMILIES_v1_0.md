@@ -1,16 +1,17 @@
 ---
 artifact: SUVARNA_L3_FOCUS_FAMILIES
 canonical_id: SUVARNA_L3_FOCUS_FAMILIES
-version: "1.2"
+version: "1.3"
 status: DRAFT — for native review
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
-companion_of: SUVARNA_CAMPAIGN_PLAN_v1_3.md §5.3 (Track F)
+companion_of: SUVARNA_CAMPAIGN_PLAN_v1_4.md §5.3 (Track F)
 evidence: >
   Three read-only reconciliations, 2026-09-28, each with a source for every claim:
   l3_recon/GOCHARA_RECON.md · l3_recon/KSHETRA_RECON.md · l3_recon/SANGAM_RECON.md.
   Figures below are theirs; effort figures are the researchers' estimates, in their own units.
 changelog:
+  - "1.3 (2026-09-29, review pass 2): the cascade measured: eight ON DELETE CASCADE keys into bodha_msr_signals from seven tables (kala_convergence, kala_darshana, kala_bhavishya, kala_activation, kala_obstruction, bodha_signal_embeddings, bodha_contradictions ×2), so every L2 MSR rebuild also empties four non-family L3 tables and two L2 tables. F-3 now means cascade removed on all eight keys; L2 MSR waves, wave 0 included, wait for F-3 decided and the F3.FK detector. Brief seals recorded by Strategic Suvarṇa (SEAL-G/S/K). FAMILY_ASSETS.json path fixed."
   - "1.2 (2026-09-29, review pass 1 and D2 folded): §5 rewritten for the regime in force under N-17: the family sessions own F1–F4 under their own sealed briefs, are not gated by J1 and may change production while Suvarṇa waves run; the old Suvarṇa-run sequence (F0–F4) is kept only as history. New §7: how Suvarṇa certifies family assets (D2: orchestrator-built rebuild plus Suvarṇa re-measure; excluded from wave completion; readers wait asset by asset; staleness exemption; hand-back; Kṣetra on the L5 critical path; F-3 recorded decided by Strategic Suvarṇa, a foreign-key change preferred). §6 gains a status column from the decisions log. §0 and §1.2 brought up to date (the '4.1' century rebuild; PR #2731 open and mergeable). Sources: REVIEW_PASS1_SUBSTANCE #4, #9, #10, #22, #23; REVIEW_PASS1_CONSISTENCY #11; FABLE_REVIEW_D1_D5 §D2."
   - "1.1 (2026-09-29): Gochara brought up to date with the lane's ruling ADK-0027 (commit 33b725778). The lane switched the canonical chart to '4.0' at 19:22:58Z before F-0 arrived and reversed it at 19:29Z; '4.0' as a label is retired; F-0 is in force; the horizon default is now the full century (F-5 settled by F-0); §1.2 gains the seven-step standing sequence; Saṅgam and Kṣetra now wait on 'the new Gochara generation', not on '4.0'."
   - "1.0 (2026-09-28): first draft. Current state, target, gaps, effort and risk per family; the links between the three families; Track F's sequence; the rulings it needs."
@@ -178,7 +179,7 @@ From the family's own design documents: a century-horizon, cited, orchestrator-b
 | Link | Consequence | Response |
 |---|---|---|
 | Gochara → Saṅgam, Kṣetra | Both pick up whichever Gochara generation is live on their next build. | Gochara settles first. Saṅgam and Kṣetra are rebuilt only on the new Gochara generation, after it is deployed and served. |
-| `bo_laksana` → Saṅgam (cascade delete) | Every L2 re-elevation either wipes Saṅgam or is refused by it (R243). | Ruling F-3 **before** Suvarṇa rebuilds any L2 MSR asset, recorded `decided` in the decisions log. A foreign-key change that removes the cascade is preferred (D2): a sequencing rule would force a Saṅgam rebuild after every later L2 rebuild. |
+| L2 MSR writers → Saṅgam and six other tables (cascade delete) | Every L2 MSR rebuild deletes rows in `kala_convergence` (Saṅgam), `kala_darshana`, `kala_bhavishya`, `kala_activation`, `kala_obstruction`, `bodha_signal_embeddings` and `bodha_contradictions` (eight `ON DELETE CASCADE` keys, measured 2026-09-29); a restricting key would instead refuse the rebuild (R243). | F-3 = **cascade removed on all eight keys**, decided and applied (F3.LOCK and the F3.FK detector) **before** Suvarṇa rebuilds any L2 MSR asset; wave 0 holds two. A sequencing rule is rejected: it would force a Saṅgam rebuild after every later L2 rebuild and leave the other six tables exposed. |
 | `bo_upaya` → Kṣetra (phantom edge) | `bo_upaya`'s known failure would block Kṣetra for no reason. | Drop the edge. Fix `bo_upaya` anyway (N-6). |
 | Kṣetra → Gochara windows (undeclared read) | The orchestrator cannot order builds correctly. | Declare it. |
 | A Kṣetra change lives on the Gochara branch | Two workstreams edit the same writer. | Land it through PR #2731, then Kṣetra work starts from `main`. |
@@ -196,7 +197,7 @@ switch, F3.G/S/K, F4). They run under their own authority:
 - **They are not gated by J1** and are not bound by the Suvarṇa charter. Their production changes can happen while
   Suvarṇa's waves run.
 - **Suvarṇa's part is limited to:** evaluating their latest briefs in its L3 analysis (A.L3, off the J1 path, and
-  mapping them onto the post-J1 tier-4 template in A.L3r); waiting for F-3 before any L2 MSR rebuild (charter R1);
+  mapping them onto the post-J1 tier-4 template in A.L3f); waiting for F-3 and F3.FK before any L2 MSR rebuild (charter R1);
   never changing a family asset (charter R8); and certifying what the families build (§7).
 - **Each family brief records the tier-4 template revision it follows** (the template is still a draft and changes at
   J1). Suvarṇa's A.L3r maps the gate sections onto the re-sealed template; the families may also seal their algorithm
@@ -227,7 +228,7 @@ decided: the native seals each delegated ruling and Strategic Suvarṇa records 
 | F-0 | Gochara: require a deploy-before-switch gate on the live workstream | **now** | — | **decided** 2026-09-28 (yes); in force as ADK-0027 |
 | F-1 | Kṣetra: build W7 first, or authorize an interim archive-and-clear of ~11M rows (~6.7 GB, with a verified snapshot) | Kṣetra rebuild | W7 generalised from Gochara's pattern, if the design confirms it; the interim clear only if W7 slips | **delegated** to L3 Kṣetra |
 | F-2 | Saṅgam: elevate it, or retire it into `kala_field` (ŚAḌ-DARŚANA) | before Saṅgam design investment | Decide first; it changes what the design covers | **delegated** to L3 Saṅgam |
-| F-3 | The L2↔L3 cascade lock: foreign-key change, or a sequencing rule | before any L2 MSR rebuild | Foreign-key change (D2) | **delegated** to L3 Saṅgam; gates Suvarṇa's L2 MSR waves (F3.LOCK) |
+| F-3 | The L2↔L3 cascade lock: remove `ON DELETE CASCADE` from all eight keys into `bodha_msr_signals` (the replacement must not refuse the L2 delete-then-insert), and who lands the migration | before wave 0 | Drop the keys; integrity checked by detector (D2) | **delegated** to L3 Saṅgam; gates every Suvarṇa wave with an L2 MSR writer, W0 included (F3.LOCK + F3.FK) |
 | F-4 | Kṣetra: stay at 6 classes (ruling 1), or reopen it | enrichment | Stay at 6 until the 6-class field is correct, published and served | **delegated** to L3 Kṣetra |
 | F-5 | Gochara: accept the 2020–2030 horizon, or require the century horizon before it counts as elevated | Gochara switch | The lane stops and asks only if it finds a prior ruling that narrowed it | **decided** (full century, by F-0) |
 | F-6 | Saṅgam: the Mode D design (80% of rows, one set of windows repeated) | Saṅgam design | Decide with F-2 | **delegated** to L3 Saṅgam |
@@ -245,12 +246,14 @@ decided: the native seals each delegated ruling and Strategic Suvarṇa records 
 - **Waves do not wait for families.** The family set and its readers (16 readers measured: `ka_gochara`, `ka_kshetra`,
   `ka_sangam`, `ka_kalasutra`, `ka_taranga`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`,
   `ka_jivana_parva`, `ka_tulana`, `ph_nimitta`, `ph_muhurta`, `ph_pratikara`, `mi_bhara`, `mi_sankalpa`,
-  `mi_adhilepa`) are frozen in `FAMILY_ASSETS.json` at J1 and excluded from wave completion. Each reader waits, asset by
+  `mi_adhilepa`) are frozen in `00_ARCHITECTURE/control/FAMILY_ASSETS.json` at J1 and excluded from wave completion. Each reader waits, asset by
   asset, for its family input to be certified (B.FR.L3, B.FR.L4, B.FR.L5).
 - **Staleness is not a breach.** A Suvarṇa wave upstream with a real delta makes the orchestrator flip family assets to
   `stale`; charter R8 exempts that. The wave evidence records it and the family session is told; the family rebuilds.
-- **Saṅgam is certified only after the L2 chain is certified** (B.W2), because a later L2 MSR rebuild would
-  cascade-delete its rows (unless F-3 removes the cascade).
+- **Saṅgam is certified only after its L2 upstreams are certified** (B.W2). Once F-3's migration removes the cascade
+  (F3.FK), a later L2 rebuild no longer deletes its rows.
+- **Brief seals.** A family session's own `done` is not a seal: F1.G/F1.S/F1.K close when Strategic Suvarṇa records the
+  native's seal (SEAL-G, SEAL-S, SEAL-K).
 - **Currency.** Every certification records what it was measured against (job image tag, upstream certification ids,
   row-set fingerprint), so a later family change invalidates it (E5.5).
 - **Hand-back.** When a family session closes, the native records HB-G, HB-S or HB-K: that family's assets leave the

@@ -1,10 +1,11 @@
 ---
 artifact: L3_KSHETRA_FINAL_BRIEF_PROMPT
-version: "1.1"
+version: "1.2"
 status: READY — paste into a new conversation
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2 / FI-8): the leftover line telling this session to emit a ruling as decided is removed (its own Corrections forbid it); the sealed brief is reported as review with evidence, and F1.K closes when Strategic Suvarṇa records the native's seal (SEAL-K); the evidence folder is an absolute path under /Users/Dev/suvarna/evidence; the tools run from the hq worktree; F-3 means the cascade removed from all eight keys."
   - "1.1 (2026-09-29, review pass 1 / FI-8): census command corrected (--out is a file; the read-only credential is sourced; runs through the census lock so only one census runs at a time); certification condition (D2); native rulings are recorded as decided only by Strategic Suvarṇa; record the tier-4 template revision the brief follows."
   - "1.0 (2026-09-29): first issue, on the native's instruction that each L3 focus family gets its own session to seal a final brief and implement it."
 ---
@@ -60,10 +61,10 @@ Write `00_ARCHITECTURE/briefs/l3_families/KSHETRA_FINAL_BRIEF_v1_0.md`.
 1. **Follow the asset elevation template:** `/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md` (identity, measured state, nine gates, delta, change packets, certification, opportunity register). The five L0 pilot briefs in `…/nirmana/l0_assets/` show the shape. Record anything the template does not fit in a "template findings" section.
 2. **Measure before you write.** Run the Nikaṣa inspector for L3 only, read-only:
    ```
-   mkdir -p <your evidence folder>
-   export PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+   mkdir -p /Users/Dev/suvarna/evidence/l3-kshetra-<date>   # absolute: the census runs after a cd
+   export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
    python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor l3-kshetra -- \
-     bash -c 'source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out <your evidence folder>/census_L3.json'
+     bash -c 'source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out /Users/Dev/suvarna/evidence/l3-kshetra-<date>/census_L3.json'
    ```
    Never pass `--emit-gaps`. Never run it while another full census is running. The ledgers belong to Suvarṇa.
 3. **Cover:**
@@ -116,15 +117,15 @@ Nothing is implemented before the seal.
 The tracker is at http://127.0.0.1:8765. Your items are **F1.K** (the brief, sealed) and **F3.K** (the brief implemented).
 
 ```
-export PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
 python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state running --detail "<what you are doing>"
 python3 -m suvarna_tracker.emit decision --actor l3-kshetra --decision F-1 --state requested --detail "<options + recommendation>"
-python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state done --evidence "<sealed brief path + commit>"
+python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state review --evidence "<sealed brief path + commit>" --detail "sealed by the native; for SEAL-K"
 ```
 
 - Use `blocked` with a reason whenever you are waiting on the native.
-- When the native rules on F-1 or F-4, emit it as `decided` with what was decided.
-- A `done` without evidence is refused.
+- When the native rules on F-1 or F-4, tell Strategic Suvarṇa; it records the ruling. This session emits only `requested`.
+- A `done` without evidence is refused. F1.K reads done only when Strategic Suvarṇa records the seal (SEAL-K); your own events are evidence, not decisions.
 
 ## Corrections (v1.1, 2026-09-29)
 

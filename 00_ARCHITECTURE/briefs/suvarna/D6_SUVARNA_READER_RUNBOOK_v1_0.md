@@ -1,8 +1,8 @@
 ---
 artifact: D6_SUVARNA_READER_RUNBOOK
 canonical_id: D6_SUVARNA_READER_RUNBOOK
-version: "1.2"
-status: DRAFT — for native review; nothing has been run against any database
+version: "1.3"
+status: "APPLIED 2026-09-29 (plan hash 31e035f7…; commit 21637553c; login proven with 0 write paths; data-plane gate passes as the reader; Monitor 8/8 OK). Retained for re-apply (§3) and rollback (§6)."
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa" (D6 implementation draft)
 implements: native decision D6 (2026-09-29) — Suvarṇa reads production through a dedicated, genuinely read-only login
@@ -11,6 +11,7 @@ tooling:
   - platform/scripts/governance/suvarna_tracker/monitor.py (checks credential and credential_readonly)
 supersedes: platform/scripts/governance/suvarna_tracker/setup_reader.sh (deleted — it assumed the app login could set passwords; it cannot)
 changelog:
+  - "1.3 (2026-09-29, review pass 2): status set to APPLIED (the native ran it after PR #2756 merged and deployed). §0: the gate amendment is PR #2756, merged. §1: the admin block is bash; zsh's read -p means something else, so run it through bash (both forms given). §2 item 4: V0–V16. §3: COMMIT handling is step 5. New §3 note: a lost or broken reader file is re-issued by re-running --apply, never by the rollback."
   - "1.2 (2026-09-29): security review of 4b979ce52 applied. M1: the PII, RLS and definer-view checks now run after the grants over everything the reader can read in public/nirmana_evidence (the plan plus anything readable through PUBLIC or other grants), counting only columns it can SELECT (new check A1). M2: public.chart_grants is column-level too (chart_id, principal_id only; granted_by and the rest withheld); the PII name pattern is widened (name, lat/lng/lon, place, city, location, tz/timezone, principal_id, client_id, owner_id, user_id, granted_by, triggered_by, native_id) and json/jsonb columns need --accept-pii as well. M3: any definer view or materialized view whose dependency closure reaches charts or chart_grants is excluded regardless of RLS (not overridable), any view reading a withheld column is excluded, and V16 proves no readable relation depends on a withheld column. M4: the Monitor BLOCKs on table-level SELECT on charts/chart_grants, any readable withheld column of either, and any readable deny-listed relation. M5: the plan hash now also covers the PII entries, the accepted SECURITY DEFINER set, this script's own sha256, the role defaults, connection limit, read schemas and stale revokes; lines are JSON-encoded and code-unit sorted; the hash is printed after the grants and checks. M6: temp_file_limit dropped from the role defaults (instance flag instead). L1: pg_stat_statements reset needs schema USAGE, runs before COMMIT under a savepoint; expect 'not reset' on Cloud SQL; pgaudit and Query Insights noted. L2: the amjis_app reads assert ordinary tables and run with row_security off. L3: unknown arguments are never echoed. L4: a COMMIT answered by anything but COMMIT is a failure. L5: SIGINT/SIGTERM after the secret add disables the version; a failed add disables every version created since run start. L6: wording on a role changing its own password/settings; the Monitor BLOCKs if the role's read-only default is missing. L7: the deploy gate's attestation tables and l2_data_plane_asset_outputs are in the read set, so the post-apply gate run works as the reader. L8: trigger/event-trigger functions excluded from the SECURITY DEFINER checks. L9: --data-plane-gate-amended now requires the amendment's actual clauses (comments stripped). L10: the Monitor also flags stray .pgenv.*.tmp files."
   - "1.1 (2026-09-29): security review 2 applied. (1) The write-capable app-login backup moves to ~/.config/madhav-admin/ (dir 700, files 600, never overwritten); rollback restores from there; the Monitor WARNs on any pgenv*.bak* / pgenv.previous* beside the credential. (2) SET LOCAL search_path = pg_catalog, pg_temp is the first statement of every transaction; every relation is schema-qualified; the roles snapshot also compares rolvaliduntil, rolconfig and per-database role settings. (3) The COMMIT runs in its own try: on failure the new Secret Manager version is disabled and the run reports 'COMMIT outcome unknown'; after a proven apply older versions are disabled. (4) --apply needs --expect-plan=<sha256>; the dry run prints the plan, EXCLUDED and PII lists in full with that hash (targets + column spec + exclusion decisions). (5) Role defaults: statement_timeout 120s, idle_in_transaction_session_timeout 60s, lock_timeout 5s, temp_file_limit 1GB, read-only on; the Monitor WARNs if they differ and BLOCKs on owned large objects. (6) public.charts is granted column-level SELECT on 7 non-personal columns only; definer views/matviews reaching an RLS table are excluded unless --accept-view. (7) Deny list widened by 15 patterns; any readable PII-looking column fails the dry run unless --accept-pii. (8) SECURITY DEFINER checks drop the schema-USAGE condition (bootstrap and Monitor). (9) pg_shdepend catch-all for ACL dependencies (bootstrap V15, existing-reader refusal, Monitor). (10) Monitor requires session_user = current_user = suvarna_reader and reports the session read-only value (with its source) separately from the role default. (11) Monitor shlex-quotes path and SQL and pins search_path. (12) gcloud runs with a minimal environment; its stderr is redacted. (13) SCRAM verifier exposure documented; pg_stat_statements entries reset after apply (best effort). (14) Atomic writes unlink the temp file if the rename fails. (15) Rollback restores only over a file with PGUSER=suvarna_reader and keeps the replaced file. (16) --data-plane-gate-amended is refused unless the checked-out gate names suvarna_reader; runbook adds subshell / unset, npx --no-install, the post-apply gate run, and 'never during a deploy or migration'. Also corrected: §5's charts RLS description (chart_service_policy exposes all rows when app.principal_id is unset)."
   - "1.0 (2026-09-29): first runbook. Blocking prerequisite found while drafting: the deployed data-plane gate (data-plane-ownership-status.ts) rejects any new grantee on schema public and on the protected L1/L2 tables, so it must be amended and deployed before --apply. Rollback is a script mode because a hand-typed REVOKE by postgres cannot remove owner-made grants."
@@ -63,7 +64,7 @@ The reader needs both, because Suvarṇa reads `chart_facts`, `bodha_*` and the 
 bootstrap without amending the gate would **block the next deploy**. By default the script detects
 this: the checks D3, D4 and D5 print **DATA-PLANE GATE CONFLICT**, and the run fails.
 
-**The amendment** (a separate, reviewed PR on `main`; this session has not written it). It admits
+**The amendment** (a separate, reviewed PR on `main`: PR #2756, merged and deployed 2026-09-29). It admits
 `suvarna_reader` and nothing else:
 
 1. `schemaAcl`: add a conditional expected row, the same pattern already used for
@@ -108,6 +109,8 @@ the Monitor stays OK, but its queries would fail. The fix is to re-run this boot
   to `gcloud`, which runs with only `PATH`, `HOME` and `CLOUDSDK_CONFIG`. Keep the URL out of shell
   history and out of your long-lived shell: run everything inside `( … )`, or `unset
   SUVARNA_READER_ADMIN_DATABASE_URL` as soon as you finish.
+  **Run this block in bash** (type `bash` first; `exit` when done). Your login shell is zsh, where `read -p` means
+  "read from the coprocess" and fails; in zsh the prompt form is `read -rs 'PGADMINPW?postgres password: '; echo`.
   ```bash
   (
     read -rs -p 'postgres password: ' PGADMINPW; echo; export PGADMINPW
@@ -162,7 +165,7 @@ npx --no-install tsx scripts/suvarna-reader-bootstrap.ts --data-plane-gate-amend
    - "Sequences: none".
    - The temporary memberships that were used and removed. Expect some of `amjis_app`, the
      `data_plane_*_owner` roles, `nirmana_evidence_owner` and `purna_inquiry_owner`.
-4. **V0–V15 all PASS:**
+4. **V0–V16 all PASS:**
    - V0: LOGIN NOINHERIT, connection limit 10, and the role defaults exactly as listed in §5 (every
      database);
    - V1–V3: CONNECT, USAGE, SELECT on every table-level target; **V3b**: on `public.charts` and
@@ -244,6 +247,10 @@ verifier, but of a password that is discarded and a role that is rolled back.
 
 ## 3 · Apply
 
+**Also the re-issue path.** If `~/.config/suvarna/pgenv.sh` is lost or broken after the apply, re-run a dry run and then
+`--apply` with its fresh plan hash: it resets the password and rewrites the file. Never use §6 for that: the rollback
+drops the reader and restores the write-capable app login.
+
 ```bash
 # inside the subshell from §1, in platform/, NOT during a deploy or migration
 npx --no-install tsx scripts/suvarna-reader-bootstrap.ts --apply --data-plane-gate-amended \
@@ -290,7 +297,7 @@ Possible final results:
 - `APPLIED BUT UNPROVEN` — the role and secret are committed, but the login test failed, so the
   credential file was **not** changed and older secret versions were **not** disabled. Investigate,
   then re-run `--apply`; it resets the password.
-- `COMMIT outcome unknown` — see step 4.
+- `COMMIT outcome unknown` — see step 5.
 
 **Right after `RESULT: APPLIED`, run the deploy gate** (read-only) and confirm it prints `marked`:
 

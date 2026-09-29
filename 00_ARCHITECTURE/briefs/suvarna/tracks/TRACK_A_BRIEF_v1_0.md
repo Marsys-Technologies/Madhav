@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_TRACK_A_BRIEF
 canonical_id: SUVARNA_TRACK_A_BRIEF
-version: "1.0"
+version: "1.1"
 status: "DRAFT — for native approval with N-1"
 produced_on: 2026-09-29
 produced_in: "Strategic Suvarṇa"
@@ -9,11 +9,12 @@ session: "Exec Suvarṇa"
 decision_owner: "Native (Abhisek Mohanty)"
 plan_item: "L.11"
 governed_by:
-  - "SUVARNA_CAMPAIGN_PLAN_v1_3.md §1, §2, §5.2 (Track A), §5.3 (Track F), §5.4 step 1"
-  - "SUVARNA_AUTONOMY_CHARTER_v1_0.md v1.3 (G3, G16 proposed; R1, R5, R8, R9; P3, P6–P8, P11)"
-  - "SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md v1.3 §3.3, §6, §12.6, §12.9, §12.13–§12.15"
+  - "SUVARNA_CAMPAIGN_PLAN_v1_4.md §1, §2, §5.2 (Track A), §5.3 (Track F), §5.4 step 1"
+  - "SUVARNA_AUTONOMY_CHARTER_v1_0.md v1.4 (G3, G16 decided with N-1; R1, R5, R8, R9; P3, P6–P8, P11)"
+  - "SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md v1.4 §3.3, §6, §12.6, §12.9, §12.13–§12.15"
   - "decisions N-17, D2, D3 ($SUVARNA_HOME/run/DECISIONS.jsonl)"
 changelog:
+  - "1.1 (2026-09-29, review pass 2 folded): the PROVISIONAL banner lifts at the layer's instance acceptance after revalidation (A.Lxa, N-10.Lx.i; L0 at N-7.L0 after A.L0v), which ends the circle with N-10's close; family evaluation is its own item A.L3f; dispositions use the tier-4 list only (keep with fix designs is keep; integrate and unresolved go to the native); Track I starts at N-24 on provisional approvals; census exit codes include 75; --assets once E1.9 lands; D6 applied; L2 instance records the measured cascade; findings folded."
   - "1.0 (2026-09-29): first issue. The three items per layer (instance, briefs, revalidation), the census rules, the tier-gap and harvest format, the brief, disposition and fix-design rules, L3 family evaluation, the asset-brief approval rule, output paths and the read-only write boundary."
 ---
 
@@ -30,6 +31,8 @@ reopen at J1, and fix designs into Track I.
 | **A.Lxi** | census (provisional) and layer-instance draft, tier gaps recorded | census JSON with exit code and inspector commit; instance draft and tier-gap file committed; gate ACCEPT |
 | **A.Lx** | provisional asset briefs, dispositions, fix designs (L3: plus family evaluation) | one brief per in-scope asset, the dispositions table, every design marked tier-independent or tier-dependent; gate ACCEPT |
 | **A.Lxr** | after J1.6: re-measure with the frozen inspector, revalidate every brief | certifying census gate-reviewed (arch §12.14); every brief bumped with a revalidation changelog line |
+| **A.Lxa** (L1–L5) · **A.L0v** | the native accepts the revalidated layer instance (N-10.Lx.i); for L0, the instance revalidated against the re-sealed tiers before N-7.L0 (J1.5) | the decisions log; lifts the PROVISIONAL banner |
+| **A.L3f** | evaluation of the family sessions' latest briefs and, after J1, their mapping onto the re-sealed tier-4 template (§6) | the evaluation files; gate ACCEPT |
 | **A.H** | once all six A.Lxi are done | the harvest file, deduplicated and assigned to tiers; gate ACCEPT (high) |
 
 - **A.H and J1 wait only for the six A.Lxi.** Briefs never hold up the harvest.
@@ -54,7 +57,7 @@ L0 instance v3.0 source (tier gaps are *recorded*, never *filled*); the family s
 P11); the plan, plan model, charter, `CLAUDE.md`; `/Users/Dev/madhav-nikasha`, `/Users/Dev/madhav-engine` and the main
 checkout (read only, via the census command); any chart but `482012f1-…` (R4); credentials (P1).
 
-**Database access:** reads only, through `~/.config/suvarna/pgenv.sh` (`suvarna_reader` once D6 is applied), from the
+**Database access:** reads only, through `~/.config/suvarna/pgenv.sh` (`suvarna_reader`, D6 applied 2026-09-29), from the
 census or `psql -X` in a subshell. No session-level `SET` that could lift read-only.
 
 ## §3 · The census (A.Lxi step 1; A.Lxr step 1)
@@ -67,8 +70,10 @@ census or `psql -X` in a subshell. No session-level `SET` that could lift read-o
   `suvarna/trunk` worktree. Record the inspector's commit with the output.
 - **Always `--out`** to the evidence folder (the default overwrites the committed `asset_census.json`). Never
   `--emit-gaps`.
-- **Exit codes:** 0 clean · 2 failures measured · 3 PARTIAL/NO_DETECTOR/ERRORED present — all *measured*; 4 unknown, 5
-  script error — the layer is **unmeasured**: report `failed`, do not work around it (arch §12.14).
+- **Exit codes (arch §12.14):** 0 clean · 2 FAIL present · 3 PARTIAL/NO_DETECTOR/ERRORED present — all *measured*;
+  4 unknown, 5 script error — the layer is **unmeasured**: report `failed`, do not work around it; 75 the census lock is
+  held (re-queue).
+- **Scope:** a whole layer here (A.Lxi). Once E1.9 lands `--assets`, level-wave re-measures census only their assets.
 - **Gating:** provisional censuses (before J1) are checked by script — exit code, inspector commit, per-layer row
   counts. Certifying censuses (A.Lxr) get a gate review.
 - **Order:** L0 (J1.5 needs the L0 instance), L1, L2, L4, L5, then L3 (`kala_field` ≈ 11 M rows, the slowest). The
@@ -88,7 +93,8 @@ census or `psql -X` in a subshell. No session-level `SET` that could lift read-o
     DRAFT status; the Gochara L0 inputs flagged R9.
   - L1: the 8 `ga_*` call sites still timing through `ga_writers/_telemetry.py` (R34 residual) as an L1 gap.
   - **L2: the measured list of L2 MSR assets** (arch §12.9: writers whose rebuild replaces rows in
-    `bodha_msr_signals`) and the cascade victims; R243's six chart-conditional PASSes carry their annotation;
+    `bodha_msr_signals`; seven by registry target today) and the cascade victims (eight `ON DELETE CASCADE` keys from
+    seven tables, measured 2026-09-29), as the input to F-3 and F3.FK; R243's six chart-conditional PASSes carry their annotation;
     `bo_upaya` is Track E's (E4.2) — recorded, not redesigned.
   - L3: the family set and readers as found (the input to `FAMILY_ASSETS.json`, E6.3); Kṣetra's wrong edges noted.
   - L4: the three assets recording 139 rows written against 4 present.
@@ -112,8 +118,9 @@ census or `psql -X` in a subshell. No session-level `SET` that could lift read-o
   reference assets, Narr golden tests per narration writer, declared null reasons. They gate that asset's ELEVATED;
   they are not J1 inputs.
 - **Disposition** from the tier-4 list: keep · integrate · enrich · qualify · consolidate · historical · retire ·
-  unresolved. ("Fix" in plan §5.2 and G16 means *keep* with fix designs.) Retire, consolidate, historical or any output
-  change is a proposal the Steward parks for the native (R5).
+  unresolved. A kept asset with fix designs is `keep`; there is no "fix" disposition (plan §1.1(4)). Retire,
+  consolidate, historical, integrate, unresolved or any output change is a proposal the Steward parks for the native
+  (R5).
 - **Fix design** (`designs/<ASSET_ID>_FIX_DESIGN_v1_0.md`): the gap rows it answers and the gate; the `write_set`
   (files, tables, migrations, registry rows); whether output changes; the failing-first test and its mutation; leases
   needed; **tier-independent** (buildable before J1: needs no clause the reopen may change) or **tier-dependent**
@@ -130,9 +137,10 @@ census or `psql -X` in a subshell. No session-level `SET` that could lift read-o
   inspector: `layers/L3/family/<GOCHARA|SANGAM|KSHETRA>_EVALUATION_v<n>.md`. Their claims are evidence, not verdicts.
 - Readers of family assets get normal briefs, with the family input named and the D2 wait recorded
   (`waiting_on_family`); `mi_bhara` and `mi_sankalpa` carry the N-21 choice.
-- The evaluation is **off the J1 path** and may run any time after A.L3i. It is a report: the Steward files it as a
+- The evaluation is its own item, **A.L3f**, **off the J1 path**, and may run any time after A.L3i; B.FG, B.FS and
+  B.FK wait for it. It is a report: the Steward files it as a
   tracker note and Strategic Suvarṇa relays it; nobody in Exec Suvarṇa writes to a family session (P11).
-- A.L3r maps the family briefs onto the post-J1 tier-4 template (they were sealed on the draft).
+- A.L3f also maps the family briefs onto the post-J1 tier-4 template after J1 (they were sealed on the draft).
 
 ## §7 · The harvest (A.H)
 
@@ -161,20 +169,21 @@ run id and inspector commit it rests on, changelog).
 Re-census with the frozen inspector (certifying, gate-reviewed); re-read every brief against the re-sealed tiers, the
 frozen registry (E6 applicability and N/A rules), the accepted tier 4 and the J1 level map; update gap citations,
 gate verdicts and designs (a tier-dependent design is rewritten or confirmed against the sealed clause); bump the
-version with a changelog line saying what changed, or "revalidated, no change". Remove the PROVISIONAL banner only
-when the layer instance is accepted (N-10.Lx; L0 via N-7.L0).
+version with a changelog line saying what changed, or "revalidated, no change". The Steward then requests the
+layer's instance acceptance (A.Lxa, N-10.Lx.i; L0 via A.L0v and N-7.L0), batched; the PROVISIONAL banner is removed
+when the log records it. That acceptance comes before the layer's first wave; the layer close (N-10.Lx.c) comes after.
 
 ## §10 · Who approves an asset brief (plan §5.4 step 1)
 
 | Brief | Approver |
 |---|---|
-| Disposition keep, enrich or qualify (with or without fix designs), every addition in a class the native approved (N-11) | **Steward**, under G16 — **only once the native approves G16**; until then the native |
+| Disposition keep (with or without fix designs), enrich or qualify, every addition in a class the native approved (N-11) | **Steward**, under G16 — **only once the native approves G16 (with N-1)**; until then the native |
 | Retire, consolidate, historical, integrate, unresolved; any output change (R5); any addition outside an approved class | **native**, batched per layer |
 
 - **When:** after the gate reviewer's ACCEPT. The Steward requests native approvals per layer, batched, with lead time
   (charter §7), each with its recommendation.
 - **Provisional approval (before J1)** covers only the brief's **tier-independent** designs, so Track I may start them
-  (plan §4); it never certifies anything. **Full approval** follows A.Lxr: a revalidation that changes the
+  (Track I starts at N-24, before J1, lane to trunk only; plan §5.4); it never certifies anything. **Full approval** follows A.Lxr: a revalidation that changes the
   disposition, an addition or an output needs re-approval by the same rule; "no change" is confirmed by the approver
   who approved it.
 - A gate reviewer accepts or rejects a brief's quality; it never approves it and never authors a PASS or an N/A (D3).
@@ -189,6 +198,4 @@ when the layer instance is accepted (N-10.Lx; L0 via N-7.L0).
   ≈ 122 × 1–2 h ≈ 130–250 h · revalidation 30–65 h · semantic-detector designs, a share of 60–180 h (with Track I).
   L0 is measured first; the Conductor re-estimates after L0's A.L0 closes and reports the change against plan §10's
   trigger (a miss by more than half).
-- **Findings for Strategic Suvarṇa:** ROLE_ANALYST's exit-code list differs from arch §12.14 (this brief follows §12.14
-  plus code 2); the Exec start prompt still names plan v1.2 and says "gate review on every result, census included",
-  which arch §12.14 narrows for provisional censuses; "fix" vs the tier-4 disposition list (§5) — all for L.12.
+- **Findings for Strategic Suvarṇa:** all folded (exit codes; the Exec start prompt; the "fix" disposition). None open.

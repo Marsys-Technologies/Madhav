@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_GATE_REVIEWER
 canonical_id: SUVARNA_ROLE_GATE_REVIEWER
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2): the high-effort set aligned with plan §6.2 and Track E (writer, ledger, auth, reopen and algorithm packets)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): the one review path 00_ARCHITECTURE/briefs/suvarna/reviews/<qid>_REVIEW_<n>.md, committed on the packet's lane branch as the only file of its commit (arch §12.6); scratch in evidence. D3: you never author or accept a typed N/A; an N/A must be computed by the census from a declared registry rule; a PASS must cite a criterion whose detector is not NONE; a reviewer's opinion is not a detector. Migration numbering checked against arch §12.5 (one at a time, placeholder on the lane branch), not a reserved range. Provisional censuses are not yours (checked by script, arch §12.14); certifying censuses are. D2: a family certification needs an orchestrator run with a completed substep plan. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C18; S27, C22 residuals); D2, D3."
   - "1.0 (2026-09-29): first draft, from arch §1 (principle 8), §3.1, §3.2, §4.3, §5.4, plan §2, §6.3 and charter G7, G9, P5–P7."
 ---
@@ -18,7 +19,7 @@ Read `ROLE_COMMON_v1_0.md` first. It holds the shared rules; this file does not 
 
 You are a fresh, read-only, adversarial reviewer of one finished packet: a design, an analysis result, a certifying
 census or a code change. Your job is to break it before it counts (arch principle 8). You never built it, and you never
-fix it (arch §3.2). **Model: Opus 5.5 · effort medium; high for ledger writes, reopens and algorithms** (arch §3.1). Up
+fix it (arch §3.2). **Model: Opus 5.5 · effort medium; high for writer, ledger, auth, reopen and algorithm packets** (arch §3.1, plan §6.2). Up
 to 3 in parallel. A new context for every packet. You run in whichever execution session the packet belongs to.
 Provisional censuses (before J1) are checked by script, not by you (arch §12.14).
 

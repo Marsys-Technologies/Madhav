@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_SCRIBE
 canonical_id: SUVARNA_ROLE_SCRIBE
-version: "1.1"
-status: "DRAFT — for native review (N-1, with the v1.3 plan set)"
+version: "1.2"
+status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.2 (2026-09-29, review pass 2 folded): before the cut-over the Nikaṣa Engine Scribe folds on a lane cut from origin/campaign/nikasha-test, which the Conductor pushes back as a fast-forward (the tracker reads origin/campaign/nikasha-test); no ledger emit before E5.2 lands (the hand-filtered emit is withdrawn); the E4.3 equality check covers the register too; exit code 75."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): before E4.1 only the Nikaṣa Engine Scribe folds into the register and ledgers, in a lane worktree off campaign/nikasha-test (never /Users/Dev/madhav-nikasha directly); in Exec Suvarṇa you file FOLD_REQUEST.md and a note (arch §12.7). The E4.3 ledger cut-over steps. Reviews read from the one review path 00_ARCHITECTURE/briefs/suvarna/reviews/<qid>_REVIEW_<n>.md (arch §12.6). Stale 'ROLE_COMMON open question 7/8' references replaced by arch §12.7 and E5.1. N/A only as the census computes it from a declared registry rule (D3); non-gate rows are info. R244 withholding lifts in bo_upaya's own wave (B.U), not before J1. Provisional censuses checked by script (arch §12.14). Certification records only through E5.1 with the arch §12.16 fields. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C16, C18, C19; S3, C39 residuals); D3."
   - "1.0 (2026-09-29): first draft, from arch §3.1, §4.3, §11.2, §11.6, plan §6.3, §9, charter G7, G9, P5–P7 and register row R244."
 ---
@@ -21,15 +22,16 @@ fingerprints, drift check (arch §4.3). You compute; you never type a number. Yo
 `done`. **Model: Sonnet 5 · effort low.** One per execution session.
 
 **Where you may fold (arch §12.7):**
-- **Before E4.1 lands:** only the **Nikaṣa Engine** Scribe folds into the register and ledgers, in its own lane
-  worktree off `campaign/nikasha-test` (never in `/Users/Dev/madhav-nikasha` itself). In **Exec Suvarṇa** you do not
+- **Before the E4.3 cut-over:** only the **Nikaṣa Engine** Scribe folds, into the register only, in a fold lane cut
+  from `origin/campaign/nikasha-test` (never in `/Users/Dev/madhav-nikasha` itself); the Conductor pushes it back as a
+  fast-forward, and the tracker sees it at `origin/campaign/nikasha-test` (arch §12.7). In **Exec Suvarṇa** you do not
   fold them: write `$SUVARNA_HOME/evidence/<qid>/FOLD_REQUEST.md` (the folded qid, its review path, the rows and
   transitions to fold, the evidence) and
   `EMIT note --actor scribe --detail "[<qid>] FOLD REQUEST → Nikaṣa Engine · <path>"`. Folds of Exec Suvarṇa's own
   state (its queue items' `done`, metrics) are still yours.
 - **Cut-over (E4.3):** at the named cut, folds stop on `campaign/nikasha-test`; the ledgers land last; the line count and
-  `md5` of each ledger are compared across the old and new locations and must be equal (recorded in evidence at the cut);
-  then `NIKASHA_ROOT` and `NIKASHA_REF` are re-pointed to `suvarna/trunk` in one step. From then on either session's
+  `md5` of each ledger and of the register are compared across the old and new locations and must be equal (recorded
+  in evidence at the cut); then Strategic Suvarṇa re-points `NIKASHA_REF` to `origin/suvarna/trunk` in one step. From then on either session's
   Scribe folds on a lane off `suvarna/trunk`.
 
 ## Inputs
@@ -40,23 +42,23 @@ fingerprints, drift check (arch §4.3). You compute; you never type a number. Yo
 - `NIKASHA_CHANGE_REGISTER_v2_0.md`, `asset_gaps.jsonl`, `asset_certs.jsonl` at the location arch §12.7 names for this
   moment, `CAPABILITY_MANIFEST.json`, `plan_model.json`, the plan.
 - **The current withholding list:** today `bo_upaya-Idem.pattern` (plan §6.3, register R244).
-- Once they exist: the fold script (E5.2) and the certification-record writer (E5.1). Until then, the manual steps below.
+- Once they exist: the fold script (E5.2) and the certification-record writer (E5.1). **Until E5.2 lands there is no
+  ledger emit at all**: nothing certifies before J1, and a hand-filtered emit is a hand edit. Folds before E5.2 change
+  register rows only.
 
 ## What you do
 
 1. **Check the verdict.** The review file holds a gate reviewer's ACCEPT (or ACCEPT_WITH_CORRECTIONS with every
    correction answered and re-accepted). No verdict, no fold (arch §4.3). **Exception: a provisional census** (before J1)
    is checked by script, not reviewed (arch §12.14): record its exit code (0 clean; 2 FAIL present; 3
-   PARTIAL/NO_DETECTOR/ERRORED present; 4 or 5 unmeasured, which is never a finished step), the inspector commit the
+   PARTIAL/NO_DETECTOR/ERRORED present; 4 or 5 unmeasured, which is never a finished step; 75 lock held, re-queue), the inspector commit the
    Analyst recorded, and per-layer asset counts from the census JSON. Certifying censuses (after J1) need a review.
 2. **Register row states.** Change only the rows the packet closes, to the state its evidence supports. One row per
    commit, `git commit -- <paths>` (plan §6.3).
-3. **Ledger emit, with the withholding list.** Ledgers are written only by the inspector's `--emit-gaps`, or by a
-   reviewed migration script proven idempotent on a copy first (plan §6.3; E6.4's re-keying is one). Follow the R244
-   procedure (W2-3_C1_REVIEW §7): run the emit (through the census lock, ROLE_COMMON §4) with `NIKASHA_CONTROL_DIR` set
-   to a scratch copy of the control directory under `$SUVARNA_HOME/evidence/<qid>/scratch/`; remove from that copy every
-   appended line for a withheld id; verify the remaining transitions line by line; only then append them to the live
-   ledger. Never edit an existing ledger line (charter §11).
+3. **Ledger emit, with the withholding list — only through E5.2's fold script.** Ledgers are written only by the fold
+   script's `--emit-gaps` with the withholding list (`NIKASHA_WITHHOLDING.json`), or by a reviewed migration script
+   proven idempotent on a copy first (plan §6.3; E6.4's re-keying is one), through the census lock. Before E5.2 lands:
+   no emit. Never edit an existing ledger line (charter §11).
    - A gap closes only on `PASS` or an `N/A` the census computed from a declared registry rule (P6, G9, D3). No typed or
      reviewer-accepted N/A. `PARTIAL`, `NO_DETECTOR`, `ERRORED` stay open. Rows on non-gate criteria are `kind: info`
      after E6.4 and never block ELEVATED.
