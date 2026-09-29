@@ -8261,3 +8261,21 @@ Purna OSR-002, not treated as a block):
 Purna will not build, rebuild or backfill any `ka_*` producer ahead of the accepted L3 revision, and
 will not edit any applied migration. Until answered, Purna records
 `BLOCKED_ON_L3_RECEIPT(ka_dasha_kala, ka_gochara)` for the affected product cases.
+
+---
+
+## 2026-09-29 — LEASE SUPERSEDED (append-only): MADHAV-JATAKA-BG-TRANSIT-REPAIR-20260928 — by PŪRṆA ANVEṢAṆA under OSR-005/OSR-008
+
+The lease row above stated expiry 2026-09-28 13:15 IST and status "ACTIVE — ROOT-CAUSE INVESTIGATION; NO
+PRODUCTION MUTATION YET". Objective evidence checked 2026-09-29: expiry passed ~32h ago; the same owner's
+later lease `MADHAV-JATAKA-SHARING-FLICKER-20260928` recorded an expiry override and released cleanly;
+`origin/codex/jataka-bg-transit-repair` carries no repair commit (only merged #2744) and there is no PR,
+migration or ledger entry for the repair since. Under the ledger's own rule ("a lease past its stated expiry is
+DEAD") this lease carries no authority. No history is deleted or edited.
+
+The underlying defect is NOT resolved and is now an explicit gate on the Purna canonical rebuild: production
+`bg_transit_rules` id 133 (Jupiter double_transit, house 2) exists with 3 `gochara_resonance_map` rows
+referencing it via `source_rule_id` (76 rules, 1,595 map rows, 0 orphans). Purna will prove read-only that the
+rebuild plan does not run a delete-then-insert over that rule before any rebuild dispatch, and will otherwise
+land an FK-safe repair through the protected path first. The original owner may reclaim the repair with a new
+row; Purna does not take it over silently.
