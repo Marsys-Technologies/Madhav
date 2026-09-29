@@ -227,21 +227,34 @@ with its own operands and missing-data states (S-05):**
   adverse** (D-RQ1; BPHS ch.70 vv.24–27). Operands: per-sign mark vector of that graha's BAV.
   Missing BAV build ⇒ `unqualified` (O-BP-2). **No "sign mean" comparator** — neither the
   sealed P5 nor D-RQ1 authorises a population-mean test; it is removed (S-05.1).
+  **Chart operand resolved 2026-09-29 (G-10):** this chart's BAV per sign =
+  `design/L1_ASHTAKAVARGA_EXTRACT_v1_0.json` (sha256 312de09e…, build aa9602ce,
+  pyjhora/1.0.0, lahiri_chitrapaksha), carried at its source tier
+  **`verification_pass_status = single_pass` — single-pass, not "verified"** (native's check 2).
 - **P5b** — SAV bands: >30 favourable / 25–30 medium / <25 adverse (`BPHS2:42332-42335`).
   Operands: SAV per sign. Missing SAV ⇒ P5b `unqualified`; **does not touch P5a**.
+  **Chart operand resolved (G-10):** SARVA row in the same pinned extract (total 337;
+  single_pass tier, as above).
 - **P5c** — fruit delivered in the kakṣyā **owned by the mark-donor** (PG301 [D], division
-  order Saturn, Jupiter, …). Operands: per-contributor BAV matrix + donor key. Missing
-  contributor matrix (G-10) ⇒ **P5c alone** `unqualified`; P5a/P5b stand (S-05.2). A
-  sign-level fallback is labelled exactly that — a coarser P5a qualification — never donor
-  evaluation (#19).
+  order Saturn, Jupiter, …). Operands: per-contributor BAV matrix + donor key. **P5c stays
+  disabled**: donor-level rows do not exist in L1 (count(*) = 0 at pin time) — reason updated
+  per the native's correction: the PyJHora prastāra writer (chart_facts category
+  `ashtakavarga_bindu_contributor`, 7×8×12) is merged in PR #2731 (migration 1086), but the
+  rows exist only after a **native-authorised ga_strength rebuild** of 482012f1, which the
+  native has deferred. So P5c's missing-data state is "donor rows pending a native-authorised
+  ga_strength rebuild (writer merged in #2731)" — **not** "no L1 source". P5a/P5b stand
+  (S-05.2). A sign-level fallback is labelled exactly that — a coarser P5a qualification —
+  never donor evaluation (#19).
 - **P5d** — śodhya-piṇḍa × marks ÷ 27 → nakṣatra (Phaladīpikā XXIV PG304/PG307; BPHS ch.70
   PG874–876): operand conventions pinned — integer product, `mod 27`, **remainder 0 ⇒ 27th
   nakṣatra** (Revatī); marks taken at the house the verse names (father: 9th from the Sun's
   rāśi in the Sun's AV); Saturn/Jupiter over the star or its trines times the affair;
-  daśā-gated per the text. **Chart-specific operand values (this chart's rekha counts,
-  yoga-piṇḍa) are `unresolved` until a pinned L1 AV extract supplies them** (S-06): the
-  textbook worked example (marks 2, piṇḍa 148 → Uttarabhadra) is the text's example, not this
-  chart's data (CORPUS_READS §9 records the *procedure* [D], not chart operands).
+  daśā-gated per the text. **Chart operand partially resolved (G-10):** the per-sign rekha
+  counts now come from the pinned extract (single_pass tier); śodhya-piṇḍa requires the
+  contributor matrix, which is pending the same deferred rebuild as P5c — piṇḍa-dependent P5d
+  operands stay `unresolved` until then. The textbook worked example (marks 2, piṇḍa 148 →
+  Uttarabhadra) remains the text's example, not this chart's data (S-06; CORPUS_READS §9
+  records the *procedure* [D], not chart operands).
 - **P5e** — Sun-month selection only where the rule says so (BPHS ch.70). Operands: solar
   ingress substrate. No extension to other agents.
 
@@ -493,9 +506,15 @@ benefic-mark count is compared **against the doctrine's stated expectations only
 favourable, fewer adverse, **a known zero is adverse** (BPHS ch.70 vv.24–27). The v1.0
 "sign mean" comparator is **removed**: neither the sealed P5 definition nor D-RQ1 specifies it.
 An **unresolved operand** yields `unqualified`. SAV bands: >30 / 25–30 / <25
-(`BPHS2:42332-42335`). **Chart-specific AV operand values are `unresolved` until a pinned L1
-AV extract (per-contributor matrix + SAV + piṇḍas, build-stamped) is produced** — that extract
-is a named precondition for P5 scoring (S-06; G-10).
+(`BPHS2:42332-42335`). **Chart-specific AV operand values are resolved from the pinned extract
+`design/L1_ASHTAKAVARGA_EXTRACT_v1_0.json` (sha256 312de09e791e34e58377b7c0956e39f6691490bd2cfd0a27b415a7055c88fe83;
+96 rows with fact_ids; build aa9602ce; engine pyjhora/1.0.0; ayanamsha lahiri_chitrapaksha;
+krishnamurti / raman / surya_siddhanta_classical / true_chitra recorded as available, unused)**
+— at the extract's own tier `verification_pass_status = single_pass` (carried as-is; not
+"verified"). Provenance consistency established by independent recomputation: pyjhora 1.0.0 fed
+the graha_position (build 1c092ffb) sidereal longitudes reproduces all 96 pinned values exactly
+(extract §consistency_check). Per-contributor matrix and piṇḍas remain pending the deferred
+native-authorised ga_strength rebuild (PR #2731 / migration 1086 writer).
 
 ### 8.2 Invariants
 

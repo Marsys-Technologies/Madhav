@@ -22,8 +22,8 @@ the new measurement stack (registry + protocol v2.0 + the '3.0' re-run) is sound
 
 | Artifact | SHA-256 |
 |---|---|
-| design/GOCHARA_DESIGN_SPECS_v1_1.md | 6d08d29e8fff03cd2841c12b547a0eae1e9be77702942286a6c2a09adfdb0942 |
-| design/GOCHARA_TEST_ORACLES_v1_1.json | 6eb255460d83800d2c1cab755345bece46e462bd7fe11fb9ac89f2f429a3de05 |
+| design/GOCHARA_DESIGN_SPECS_v1_1.md | d5d9e85b08358230cf7f47f5531a3bb0709b85f6d33c356f8ef2882a3f130161 (updated after G-10 resolution; see §5) |
+| design/GOCHARA_TEST_ORACLES_v1_1.json | 96c27dfd858167e07980d22cf2d94010e776f092610c3ad77c9e93d571128926 (updated after G-10 resolution; see §5) |
 | design/RECONCILIATION_DESIGN_SPECS_v1_0.md | f5f11c2f07068135dbe1e764dae34e381f6f38306f52e9a60458d79dd194c28c |
 | measurement/EVALUATION_PROTOCOL_v2_0.md | 21fa3bc6fcad9cce140c2225fcff44ea84a8953229a533cacec9e391abc7e999 |
 | measurement/EVENT_REGISTRY_v2_0.md | dcce07ff1247f68991f109e77b17e7739b007ac47ace22c838619ac2a2bd78de |
@@ -115,20 +115,39 @@ rank-unproven 1/27 (FAIL); T-FP 8/9 adverse classes FAIL at 99.87 % burden; rand
    2.61 %. Recompute; is the n_c = 0 allowance rule sound, and is the factor-3 slack over the
    ±45-day T-time tolerance defensible as stated?
 
-## 5. Open dependency the native must route — gap G-10 (pinned L1 aṣṭakavarga extract)
+## 5. Gap G-10 — RESOLVED by native routing before dispatch (updated 2026-09-29)
 
-The specs v1.1 mark all **chart-specific AV operands unresolved** (S-06: a textbook worked
-example is not this chart's data). To resolve them, Stream B needs a pinned L1 extract for
-chart `482012f1-710e-4a25-994a-93821f5871aa` containing:
+The native routed G-10 to Stream B directly (read-only pin from `chart_facts`). Result:
 
-- the seven **Bhinnāṣṭakavarga** tables (Sun…Saturn): bindu counts per sign (12 values each),
-  with each donor's contribution recoverable (P5c needs donor-level rows);
-- the **Sarvāṣṭakavarga** row (12 sign totals);
-- the computation method and version (ephemeris/build id — the L1 natal positions in current
-  use carry build `1c092ffb`), serialised as JSON with a recorded sha256.
+- **Pinned extract:** `design/L1_ASHTAKAVARGA_EXTRACT_v1_0.json` (sha256
+  `312de09e791e34e58377b7c0956e39f6691490bd2cfd0a27b415a7055c88fe83`) — 96 rows
+  (`ashtakavarga_bindu_sign`, 7 BAV × 12 signs + SARVA, total 337) with fact_ids, build
+  `aa9602ce-79df-4675-91c0-d08ade003d67`, engine `pyjhora/1.0.0`, ayanamsha
+  `lahiri_chitrapaksha` (krishnamurti / raman / surya_siddhanta_classical / true_chitra
+  recorded as available, unused).
+- **Native check (1) — build consistency, answered:** the AV rows carry build aa9602ce while
+  the natal positions in use carry build 1c092ffb. Settled empirically, not by assumption:
+  pyjhora 1.0.0 fed the graha_position (build 1c092ffb) sidereal longitudes reproduces **all
+  96 pinned values exactly** (extract §consistency_check prints the method). The pinned rows
+  ARE consistent with the positions in use.
+- **Native check (2) — tier honesty:** the rows are `verification_pass_status = single_pass`;
+  the specs carry that tier as-is and do not describe them as verified.
+- **P5c correction:** donor-level contributions are not out of reach in principle — the
+  PyJHora prastāra writer (`ashtakavarga_bindu_contributor`, 7×8×12) is merged in PR #2731
+  (migration 1086) — but rows exist only after a native-authorised ga_strength rebuild of
+  482012f1, which the native has deferred. P5c stays disabled with **that** reason ("donor
+  rows pending a native-authorised ga_strength rebuild"), not "no L1 source". P5d's
+  piṇḍa-dependent operands are pending the same rebuild.
+- Specs v1.1 §2-P5/§8 and oracle O-BP-5 updated accordingly (specs sha256 changed — see the
+  updated hash table below).
 
-Until that extract lands, every P5 chart operand stays `unresolved` and O-BP-5's measured-SAV
-fixture cannot be built from this chart. Routing is the native's call (L1 owner).
+Updated hashes after the G-10 resolution (others unchanged from §1):
+
+| Artifact | SHA-256 |
+|---|---|
+| design/GOCHARA_DESIGN_SPECS_v1_1.md | d5d9e85b08358230cf7f47f5531a3bb0709b85f6d33c356f8ef2882a3f130161 |
+| design/GOCHARA_TEST_ORACLES_v1_1.json | 96c27dfd858167e07980d22cf2d94010e776f092610c3ad77c9e93d571128926 |
+| design/L1_ASHTAKAVARGA_EXTRACT_v1_0.json | 312de09e791e34e58377b7c0956e39f6691490bd2cfd0a27b415a7055c88fe83 |
 
 ## 6. Out of scope for this round
 

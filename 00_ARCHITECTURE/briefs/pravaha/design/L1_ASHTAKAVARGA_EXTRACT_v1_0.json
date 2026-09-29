@@ -1,0 +1,614 @@
+{
+ "artifact": "L1_ASHTAKAVARGA_EXTRACT",
+ "version": "1.0",
+ "pinned_at": "2026-09-29",
+ "pinned_by": "Stream B (read-only SELECT; native G-10 routing)",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "predicate": "chart_facts where chart_id='482012f1-\u2026' and fact_category='ashtakavarga_bindu_sign' and ayanamsha_id='lahiri_chitrapaksha'",
+ "build_id": "aa9602ce-79df-4675-91c0-d08ade003d67",
+ "engine_version": "pyjhora/1.0.0",
+ "source_calculation": "pyjhora_adapter.strength.compute_ashtakavarga_shodhana/pyjhora/1.0.0",
+ "verification_pass_status": "single_pass",
+ "ayanamsha_used": "lahiri_chitrapaksha",
+ "ayanamshas_available_unused": [
+  "krishnamurti",
+  "raman",
+  "surya_siddhanta_classical",
+  "true_chitra"
+ ],
+ "sign_order": "SIGN_1..12 = Aries..Pisces",
+ "subjects": {
+  "SUN": "BAV Sun",
+  "MOON": "BAV Moon",
+  "MAR": "BAV Mars",
+  "MER": "BAV Mercury",
+  "JUP": "BAV Jupiter",
+  "VEN": "BAV Venus",
+  "SAT": "BAV Saturn",
+  "SARVA": "Sarvashtakavarga (sum of the 7 BAVs; total 337)"
+ },
+ "rows": [
+  {
+   "subject": "SUN",
+   "sign": 1,
+   "bindus": 5,
+   "fact_id": "4cfa686f54f0e455"
+  },
+  {
+   "subject": "SUN",
+   "sign": 2,
+   "bindus": 5,
+   "fact_id": "cdf0e3fc82a74d3d"
+  },
+  {
+   "subject": "SUN",
+   "sign": 3,
+   "bindus": 5,
+   "fact_id": "700aef0b1d7db96f"
+  },
+  {
+   "subject": "SUN",
+   "sign": 4,
+   "bindus": 5,
+   "fact_id": "92c3458a1dc9a174"
+  },
+  {
+   "subject": "SUN",
+   "sign": 5,
+   "bindus": 4,
+   "fact_id": "409106e34c8a7224"
+  },
+  {
+   "subject": "SUN",
+   "sign": 6,
+   "bindus": 3,
+   "fact_id": "6aa35adaadba526f"
+  },
+  {
+   "subject": "SUN",
+   "sign": 7,
+   "bindus": 5,
+   "fact_id": "e81bbe0f37592817"
+  },
+  {
+   "subject": "SUN",
+   "sign": 8,
+   "bindus": 6,
+   "fact_id": "277d5a2f86d7a7a8"
+  },
+  {
+   "subject": "SUN",
+   "sign": 9,
+   "bindus": 2,
+   "fact_id": "dd1aacce0b1968dd"
+  },
+  {
+   "subject": "SUN",
+   "sign": 10,
+   "bindus": 4,
+   "fact_id": "ef3d8e078a146f85"
+  },
+  {
+   "subject": "SUN",
+   "sign": 11,
+   "bindus": 2,
+   "fact_id": "33be321563e0a3c0"
+  },
+  {
+   "subject": "SUN",
+   "sign": 12,
+   "bindus": 2,
+   "fact_id": "938863c8f716b44f"
+  },
+  {
+   "subject": "MOON",
+   "sign": 1,
+   "bindus": 3,
+   "fact_id": "a5a465933fa58bf8"
+  },
+  {
+   "subject": "MOON",
+   "sign": 2,
+   "bindus": 1,
+   "fact_id": "609c8b21944c0f3f"
+  },
+  {
+   "subject": "MOON",
+   "sign": 3,
+   "bindus": 4,
+   "fact_id": "7160b5f83b921e4c"
+  },
+  {
+   "subject": "MOON",
+   "sign": 4,
+   "bindus": 5,
+   "fact_id": "a1544f7a3eba184b"
+  },
+  {
+   "subject": "MOON",
+   "sign": 5,
+   "bindus": 6,
+   "fact_id": "5e3a882d8fa81f67"
+  },
+  {
+   "subject": "MOON",
+   "sign": 6,
+   "bindus": 3,
+   "fact_id": "0a2dfa6f5124fbaf"
+  },
+  {
+   "subject": "MOON",
+   "sign": 7,
+   "bindus": 5,
+   "fact_id": "c7521a41a62a1f68"
+  },
+  {
+   "subject": "MOON",
+   "sign": 8,
+   "bindus": 4,
+   "fact_id": "97b3bb1874936de1"
+  },
+  {
+   "subject": "MOON",
+   "sign": 9,
+   "bindus": 4,
+   "fact_id": "7936ce28cbcbf3a4"
+  },
+  {
+   "subject": "MOON",
+   "sign": 10,
+   "bindus": 3,
+   "fact_id": "906f6107e8aac4f8"
+  },
+  {
+   "subject": "MOON",
+   "sign": 11,
+   "bindus": 5,
+   "fact_id": "88b0e87e1c279f44"
+  },
+  {
+   "subject": "MOON",
+   "sign": 12,
+   "bindus": 6,
+   "fact_id": "afce370a2ae89b74"
+  },
+  {
+   "subject": "MAR",
+   "sign": 1,
+   "bindus": 4,
+   "fact_id": "173c5cdb77024ffe"
+  },
+  {
+   "subject": "MAR",
+   "sign": 2,
+   "bindus": 6,
+   "fact_id": "d6216fd57633dd45"
+  },
+  {
+   "subject": "MAR",
+   "sign": 3,
+   "bindus": 4,
+   "fact_id": "f917c828c01c21aa"
+  },
+  {
+   "subject": "MAR",
+   "sign": 4,
+   "bindus": 4,
+   "fact_id": "8a6297194df077d2"
+  },
+  {
+   "subject": "MAR",
+   "sign": 5,
+   "bindus": 2,
+   "fact_id": "436d9a132195272c"
+  },
+  {
+   "subject": "MAR",
+   "sign": 6,
+   "bindus": 2,
+   "fact_id": "46ce465419ca9081"
+  },
+  {
+   "subject": "MAR",
+   "sign": 7,
+   "bindus": 5,
+   "fact_id": "c12c9e8a870a6a6c"
+  },
+  {
+   "subject": "MAR",
+   "sign": 8,
+   "bindus": 5,
+   "fact_id": "bcc5589fe812acda"
+  },
+  {
+   "subject": "MAR",
+   "sign": 9,
+   "bindus": 1,
+   "fact_id": "cc72284a54d25416"
+  },
+  {
+   "subject": "MAR",
+   "sign": 10,
+   "bindus": 3,
+   "fact_id": "4fb695327962b10a"
+  },
+  {
+   "subject": "MAR",
+   "sign": 11,
+   "bindus": 1,
+   "fact_id": "72de5d0a673ed04a"
+  },
+  {
+   "subject": "MAR",
+   "sign": 12,
+   "bindus": 2,
+   "fact_id": "4fdc3a0c81bdfe88"
+  },
+  {
+   "subject": "MER",
+   "sign": 1,
+   "bindus": 4,
+   "fact_id": "ca68c0a98b9d69e7"
+  },
+  {
+   "subject": "MER",
+   "sign": 2,
+   "bindus": 7,
+   "fact_id": "d6bbc6a8d6af08af"
+  },
+  {
+   "subject": "MER",
+   "sign": 3,
+   "bindus": 4,
+   "fact_id": "6c84dfd5b706fe48"
+  },
+  {
+   "subject": "MER",
+   "sign": 4,
+   "bindus": 6,
+   "fact_id": "dfd8a881edeb8b21"
+  },
+  {
+   "subject": "MER",
+   "sign": 5,
+   "bindus": 3,
+   "fact_id": "4ce51d6de31a36a1"
+  },
+  {
+   "subject": "MER",
+   "sign": 6,
+   "bindus": 4,
+   "fact_id": "da4a582b25ee299b"
+  },
+  {
+   "subject": "MER",
+   "sign": 7,
+   "bindus": 5,
+   "fact_id": "7f40589f06129526"
+  },
+  {
+   "subject": "MER",
+   "sign": 8,
+   "bindus": 7,
+   "fact_id": "3d66d8026305d687"
+  },
+  {
+   "subject": "MER",
+   "sign": 9,
+   "bindus": 4,
+   "fact_id": "b1085d6144e19277"
+  },
+  {
+   "subject": "MER",
+   "sign": 10,
+   "bindus": 5,
+   "fact_id": "d1095c0aa7495454"
+  },
+  {
+   "subject": "MER",
+   "sign": 11,
+   "bindus": 2,
+   "fact_id": "1647f8b0f1ccda81"
+  },
+  {
+   "subject": "MER",
+   "sign": 12,
+   "bindus": 3,
+   "fact_id": "e2d417a48c3b3fc8"
+  },
+  {
+   "subject": "JUP",
+   "sign": 1,
+   "bindus": 5,
+   "fact_id": "10a9d49017c9446c"
+  },
+  {
+   "subject": "JUP",
+   "sign": 2,
+   "bindus": 4,
+   "fact_id": "c72ef71448f630da"
+  },
+  {
+   "subject": "JUP",
+   "sign": 3,
+   "bindus": 3,
+   "fact_id": "12e36dafdfcc02ad"
+  },
+  {
+   "subject": "JUP",
+   "sign": 4,
+   "bindus": 4,
+   "fact_id": "5b4d9983743aaf35"
+  },
+  {
+   "subject": "JUP",
+   "sign": 5,
+   "bindus": 5,
+   "fact_id": "c0ab94405b7d0f13"
+  },
+  {
+   "subject": "JUP",
+   "sign": 6,
+   "bindus": 6,
+   "fact_id": "db3bf32810e0e9b9"
+  },
+  {
+   "subject": "JUP",
+   "sign": 7,
+   "bindus": 7,
+   "fact_id": "3c3f42505b984161"
+  },
+  {
+   "subject": "JUP",
+   "sign": 8,
+   "bindus": 3,
+   "fact_id": "ef73744470dbded3"
+  },
+  {
+   "subject": "JUP",
+   "sign": 9,
+   "bindus": 4,
+   "fact_id": "e26af370b8c6b12b"
+  },
+  {
+   "subject": "JUP",
+   "sign": 10,
+   "bindus": 6,
+   "fact_id": "abecdfb182ee1755"
+  },
+  {
+   "subject": "JUP",
+   "sign": 11,
+   "bindus": 5,
+   "fact_id": "9ec3828217c25149"
+  },
+  {
+   "subject": "JUP",
+   "sign": 12,
+   "bindus": 4,
+   "fact_id": "30a7261225ada36e"
+  },
+  {
+   "subject": "VEN",
+   "sign": 1,
+   "bindus": 4,
+   "fact_id": "e56f1ae15ceed50b"
+  },
+  {
+   "subject": "VEN",
+   "sign": 2,
+   "bindus": 4,
+   "fact_id": "1268417a318551bb"
+  },
+  {
+   "subject": "VEN",
+   "sign": 3,
+   "bindus": 5,
+   "fact_id": "9990fd49cfb1a988"
+  },
+  {
+   "subject": "VEN",
+   "sign": 4,
+   "bindus": 4,
+   "fact_id": "cf3d0ef896afd4cc"
+  },
+  {
+   "subject": "VEN",
+   "sign": 5,
+   "bindus": 6,
+   "fact_id": "7e9296a9afc3b517"
+  },
+  {
+   "subject": "VEN",
+   "sign": 6,
+   "bindus": 5,
+   "fact_id": "7341367e88962d49"
+  },
+  {
+   "subject": "VEN",
+   "sign": 7,
+   "bindus": 3,
+   "fact_id": "d5fc640bc2f60f17"
+  },
+  {
+   "subject": "VEN",
+   "sign": 8,
+   "bindus": 3,
+   "fact_id": "4db10703956ad03d"
+  },
+  {
+   "subject": "VEN",
+   "sign": 9,
+   "bindus": 6,
+   "fact_id": "6c2760228e6fa96c"
+  },
+  {
+   "subject": "VEN",
+   "sign": 10,
+   "bindus": 4,
+   "fact_id": "f4c1b6ef1bffbc53"
+  },
+  {
+   "subject": "VEN",
+   "sign": 11,
+   "bindus": 4,
+   "fact_id": "0e96884f23507011"
+  },
+  {
+   "subject": "VEN",
+   "sign": 12,
+   "bindus": 4,
+   "fact_id": "a6ad4580d79e2ea4"
+  },
+  {
+   "subject": "SAT",
+   "sign": 1,
+   "bindus": 4,
+   "fact_id": "114ede96556e15c0"
+  },
+  {
+   "subject": "SAT",
+   "sign": 2,
+   "bindus": 2,
+   "fact_id": "9e44ca0cbc06830b"
+  },
+  {
+   "subject": "SAT",
+   "sign": 3,
+   "bindus": 2,
+   "fact_id": "004e4a43e7dae0f5"
+  },
+  {
+   "subject": "SAT",
+   "sign": 4,
+   "bindus": 4,
+   "fact_id": "a13083c34c7e4e79"
+  },
+  {
+   "subject": "SAT",
+   "sign": 5,
+   "bindus": 4,
+   "fact_id": "9d5f0afc2e517aeb"
+  },
+  {
+   "subject": "SAT",
+   "sign": 6,
+   "bindus": 3,
+   "fact_id": "b135e744572a1051"
+  },
+  {
+   "subject": "SAT",
+   "sign": 7,
+   "bindus": 4,
+   "fact_id": "2c45c925fc35faac"
+  },
+  {
+   "subject": "SAT",
+   "sign": 8,
+   "bindus": 4,
+   "fact_id": "6f17e25cf0276624"
+  },
+  {
+   "subject": "SAT",
+   "sign": 9,
+   "bindus": 4,
+   "fact_id": "e5ebe8678e00b9c1"
+  },
+  {
+   "subject": "SAT",
+   "sign": 10,
+   "bindus": 2,
+   "fact_id": "dce214e6e163821f"
+  },
+  {
+   "subject": "SAT",
+   "sign": 11,
+   "bindus": 4,
+   "fact_id": "bb8851ff41154b39"
+  },
+  {
+   "subject": "SAT",
+   "sign": 12,
+   "bindus": 2,
+   "fact_id": "31ec5f269cdf9e1c"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 1,
+   "bindus": 29,
+   "fact_id": "dc2ca9dbb8c940e8"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 2,
+   "bindus": 29,
+   "fact_id": "9c511a6ac691bbff"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 3,
+   "bindus": 27,
+   "fact_id": "d0ce746d42638bf3"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 4,
+   "bindus": 32,
+   "fact_id": "d1c91d5fb0898b10"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 5,
+   "bindus": 30,
+   "fact_id": "6193cc0160ba7756"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 6,
+   "bindus": 26,
+   "fact_id": "f9ab87b525804785"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 7,
+   "bindus": 34,
+   "fact_id": "36658e900c8e59f1"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 8,
+   "bindus": 32,
+   "fact_id": "9dd47fa91044d99e"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 9,
+   "bindus": 25,
+   "fact_id": "5d72211c8f926c4d"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 10,
+   "bindus": 27,
+   "fact_id": "07844a5d91fd17f7"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 11,
+   "bindus": 23,
+   "fact_id": "36b81039eeb707a7"
+  },
+  {
+   "subject": "SARVA",
+   "sign": 12,
+   "bindus": 23,
+   "fact_id": "8ac92174a71293dc"
+  }
+ ],
+ "consistency_check": {
+  "question": "were the AV rows (build aa9602ce) computed from the natal positions in use (graha_position build 1c092ffb)?",
+  "method": "independent recomputation: pyjhora 1.0.0 get_ashtaka_varga fed the sidereal longitudes of graha_position build 1c092ffb (lahiri_chitrapaksha): SUN 291.962617284992, MOON 327.055230133129, MAR 198.519187554622, MER 270.838753918698, JUP 249.787497023181, VEN 259.172696089456, SAT 202.431986059195, LAGNA 12.4311495988431 (RAH/KET mean 49.033/229.033 included as chart occupants)",
+  "result": "ALL 96 values match exactly (7 BAV x 12 signs + 12 SARVA; SARVA total 337). The pinned rows ARE consistent with the natal positions in use."
+ },
+ "donor_level": "NOT AVAILABLE in L1 as of pinning (count(*) = 0 for donor categories); per native correction: PyJHora prastara writer merged in PR #2731 (migration 1086); donor rows (category ashtakavarga_bindu_contributor, 7x8x12) will exist only after a native-authorised ga_strength rebuild of 482012f1 \u2014 rebuild deferred by the native"
+}

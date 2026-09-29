@@ -319,11 +319,11 @@
      "operands_source": "PG301 + L1 contributor matrix (or its declared absence → P5c unqualified)", "tolerance": "exact"},
 
     {"id": "O-BP-5", "guards": "§8", "defects": ["#26"],
-     "given": "a fixture where the config value min_sav_score differs from the measured SAV of the transit sign (both pinned)",
+     "given": "fixture built from the pinned extract design/L1_ASHTAKAVARGA_EXTRACT_v1_0.json (sha256 312de09e…): measured SARVA per sign = [29,29,27,32,30,26,34,32,25,27,23,23] for signs 1..12 (Aries..Pisces), build aa9602ce, tier single_pass; a config where min_sav_score differs from the transit sign's measured SAV",
      "when": "P5b qualifies a transit",
-     "then": "the MEASURED SAV is used; reading min_sav_score as the measured SAV (the w21 proxy defect) produces the wrong band and fails",
+     "then": "the MEASURED SAV from the pinned extract is used; reading min_sav_score as the measured SAV (the w21 proxy defect) produces the wrong band and fails",
      "mutation_that_must_fail": "config-as-measurement fails",
-     "operands_source": "L1 SAV + config", "tolerance": "exact"},
+     "operands_source": "L1_ASHTAKAVARGA_EXTRACT_v1_0.json SARVA row + config", "tolerance": "exact"},
 
     {"id": "O-AO-1", "guards": "§9 annual", "defects": ["saham-year-mixing", "S-07"],
      "given": "Vivāha saham computed for two consecutive varṣa years (two literal rows, different longitudes)",
