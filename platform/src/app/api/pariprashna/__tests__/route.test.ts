@@ -759,30 +759,16 @@ describe('Jātaka chart workspace — Paripraśna write gates', () => {
   }
 
   it.each(['building', 'needs-rebuild', 'not-built', 'partially-built', 'failed'])(
-    'a %s chart refuses a new reading with CHART_RECOMPUTE_REQUIRED before planning',
+    'a %s chart lets the planner work with the data currently available',
     async (state) => {
       mockReadinessState.value = state
       mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
       const { events } = await runRoute('What does my chart say about work?')
-      expect(events.some((e) => e.code === 'CHART_RECOMPUTE_REQUIRED')).toBe(true)
-      expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
-      expect(mockInsertConversationWithId).not.toHaveBeenCalled()
+      expect(events.some((e) => e.code === 'CHART_RECOMPUTE_REQUIRED')).toBe(false)
+      expect(mockCallPipelinePlanner).toHaveBeenCalledTimes(1)
+      expect(mockInsertConversationWithId).toHaveBeenCalledTimes(1)
     },
   )
-
-  it.each([
-    ['building', /being recomputed/i],
-    ['needs-rebuild', /needs to be rebuilt/i],
-    ['failed', /latest build .*failed/i],
-    ['partially-built', /fully computed/i],
-    ['not-built', /fully computed/i],
-  ])('explains the %s refusal truthfully', async (state, message) => {
-    mockReadinessState.value = state
-    const { events } = await runRoute('What does my chart say about work?')
-    const refusal = events.find((e) => e.code === 'CHART_RECOMPUTE_REQUIRED') as { message?: string } | undefined
-    expect(refusal?.message).toMatch(message)
-    if (state !== 'building') expect(refusal?.message).not.toMatch(/being recomputed/i)
-  })
 
   it('a correction-archived conversation refuses a new turn with CONVERSATION_ARCHIVED_READ_ONLY', async () => {
     mockGetConversation.mockResolvedValue({

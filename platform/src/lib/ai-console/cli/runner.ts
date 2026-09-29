@@ -7,10 +7,11 @@ import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { isDeepStrictEqual } from 'node:util'
 import { StringDecoder } from 'node:string_decoder'
+import { z } from 'zod'
 import { AiConsoleError } from '../errors'
 import { withCliInvocationAuthorization, type CliInvocationHandle } from '../repository'
 import { CliIdSchema, type CliId } from '../types'
-import { buildExecutionArgs, CLI_REGISTRY, validateCliModelId, type CliDefinition } from './registry'
+import { buildExecutionArgs, CLI_REGISTRY, isSupportedCliVersion, validateCliModelId, type CliDefinition } from './registry'
 import { parseCliModelCatalog, type CliDiscoveredModel } from './catalog'
 
 export interface CliProcessResult {
@@ -96,6 +97,175 @@ export interface CliRunner {
   inspectForTests(): { active: number; queued: number }
 }
 
+type BridgeFetch = typeof fetch
+
+const BridgeErrorSchema = z.object({ error: z.enum([
+  'AI_CLI_NOT_INSTALLED', 'AI_CLI_AUTH_UNAVAILABLE', 'AI_CLI_UNREACHABLE',
+  'AI_CLI_TIMEOUT', 'AI_CLI_OUTPUT_LIMIT', 'AI_MODEL_UNAVAILABLE', 'AI_EXECUTION_FAILED',
+]) }).strict()
+const BridgeProcessSchema = z.object({ stdout: z.string(), exitCode: z.literal(0), signal: z.null() }).strict()
+const BridgeIdentitySchema = z.object({
+  cliId: CliIdSchema,
+  entrypoint: z.object({ candidate: z.string(), realpath: z.string(), device: z.string(), inode: z.string(),
+    size: z.number().nonnegative(), modifiedMs: z.number().nonnegative(), changedMs: z.number().nonnegative(),
+    mode: z.number().int().nonnegative(), uid: z.number().int().nonnegative(), sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict(),
+  interpreter: z.object({ candidate: z.string(), realpath: z.string(), device: z.string(), inode: z.string(),
+    size: z.number().nonnegative(), modifiedMs: z.number().nonnegative(), changedMs: z.number().nonnegative(),
+    mode: z.number().int().nonnegative(), uid: z.number().int().nonnegative(), sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict().optional(),
+}).strict()
+const BridgeModelsSchema = z.object({ models: z.array(z.object({
+  modelId: z.string().min(1).max(512), displayName: z.string().min(1).max(120),
+}).strict()).max(256) }).strict()
+
+class RemoteCliRunner implements CliRunner {
+  private readonly endpoint: URL
+  private readonly token: string
+  private readonly fetchImpl: BridgeFetch
+  private readonly confirmed = new Map<CliId, { identity: CliInstallationIdentity; version: string;
+    modelIds: ReadonlySet<string | null> }>()
+  private readonly revalidationFlights = new Map<string, Promise<void>>()
+  private nextRequestId = 1_000_000
+
+  constructor(options: { endpoint: string; token: string; fetchImpl?: BridgeFetch }) {
+    this.endpoint = validateBridgeEndpoint(options.endpoint)
+    if (options.token.length < 32 || options.token.includes('\0')) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    this.token = options.token
+    this.fetchImpl = options.fetchImpl ?? fetch
+  }
+
+  async inspectInstallation(cliId: CliId): Promise<CliInstallationIdentity> {
+    const body = await this.request({ operation: 'inspect', cliId: CliIdSchema.parse(cliId) })
+    const parsed = BridgeIdentitySchema.safeParse(body)
+    if (!parsed.success) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    return Object.freeze(parsed.data)
+  }
+
+  async confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string,
+    modelIds: readonly (string | null)[]): Promise<void> {
+    const id = CliIdSchema.parse(cliId)
+    const validatedModels = modelIds.map(modelId => modelId === null ? null : validateConfirmedModelId(modelId))
+    if (!validatedModels.length || !validatedModels.includes(null)
+      || new Set(validatedModels).size !== validatedModels.length) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    await this.request({ operation: 'confirm', cliId: id, identity, version, modelIds: validatedModels })
+    this.confirmed.set(id, Object.freeze({ identity, version, modelIds: new Set(validatedModels) }))
+  }
+
+  runVersionValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
+    return this.runAuthorized(userId, cliId, { operation: 'version', cliId }, signal, 'validation')
+  }
+
+  async runAuthValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
+    const result = await this.runAuthorized(userId, cliId, { operation: 'auth', cliId }, signal, 'validation')
+    return { ...result, stdout: '' }
+  }
+
+  async runModelCatalogValidation(userId: string, cliId: CliId, signal?: AbortSignal) {
+    const result = await this.runAuthorizedBody(userId, cliId, { operation: 'catalog', cliId }, signal, 'validation')
+    const parsed = BridgeModelsSchema.safeParse(result)
+    if (!parsed.success) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    return parsed.data.models
+  }
+
+  runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal) {
+    return this.runAuthorized(userId, cliId, { operation: 'probe', cliId, stdin }, signal, 'validation')
+  }
+
+  async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
+    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
+    const id = CliIdSchema.parse(cliId)
+    await this.ensureConfirmed(userId, id, input.signal)
+    const confirmed = this.confirmed.get(id)
+    const modelId = input.modelId === null ? null : validateConfirmedModelId(input.modelId)
+    if (!confirmed?.modelIds.has(modelId)) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    return this.runAuthorized(userId, id, { operation: 'execute', cliId: id, modelId, stdin: input.stdin,
+      ...(input.responseSchema === undefined ? {} : { responseSchema: input.responseSchema }),
+      ...(input.maxOutputTokens === undefined ? {} : { maxOutputTokens: input.maxOutputTokens }) },
+    input.signal, 'execution')
+  }
+
+  inspectForTests() { return { active: 0, queued: 0 } }
+
+  private async ensureConfirmed(userId: string, cliId: CliId, signal?: AbortSignal): Promise<void> {
+    if (this.confirmed.has(cliId)) return
+    const key = `${userId}:${cliId}`
+    let flight = this.revalidationFlights.get(key)
+    if (!flight) {
+      flight = revalidateCliForExecution(userId, cliId, signal, this, CLI_REGISTRY)
+      this.revalidationFlights.set(key, flight)
+      void flight.finally(() => {
+        if (this.revalidationFlights.get(key) === flight) this.revalidationFlights.delete(key)
+      }).catch(() => undefined)
+    }
+    try { await flight }
+    catch (error) {
+      if (error instanceof AiConsoleError && (error.code === 'AI_CLI_NOT_GRANTED'
+        || (signal?.aborted && error.code === 'AI_EXECUTION_FAILED'))) throw error
+      throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    }
+  }
+
+  private async runAuthorized(userId: string, cliId: CliId, payload: Record<string, unknown>,
+    signal: AbortSignal | undefined, purpose: 'execution' | 'validation'): Promise<CliProcessResult> {
+    const body = await this.runAuthorizedBody(userId, cliId, payload, signal, purpose)
+    const parsed = BridgeProcessSchema.safeParse(body)
+    if (!parsed.success) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    return parsed.data
+  }
+
+  private async runAuthorizedBody(userId: string, cliId: CliId, payload: Record<string, unknown>,
+    signal: AbortSignal | undefined, purpose: 'execution' | 'validation'): Promise<unknown> {
+    const handle = await withCliInvocationAuthorization(userId, cliId,
+      () => this.startRequest(payload, signal), purpose)
+    return await handle.completion
+  }
+
+  private startRequest(payload: Record<string, unknown>, signal?: AbortSignal): StartedCliProcess {
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    const controller = new AbortController()
+    const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal
+    const pid = this.nextRequestId++
+    let cancelled = false
+    const completion = this.request(payload, combined)
+    void completion.catch(() => undefined)
+    return Object.freeze({ pid, completion: completion as Promise<CliProcessResult>, cancel: () => {
+      if (cancelled) return
+      cancelled = true
+      controller.abort()
+    } })
+  }
+
+  private async request(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+    let response: Response
+    const timeout = AbortSignal.timeout(DEFAULT_LIMITS.timeoutMs + 5_000)
+    const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout
+    try {
+      response = await this.fetchImpl(new URL('/v1/invoke', this.endpoint), {
+        method: 'POST', signal: requestSignal, headers: { Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    } catch {
+      throw new AiConsoleError(timeout.aborted && !signal?.aborted ? 'AI_CLI_TIMEOUT'
+        : signal?.aborted ? 'AI_EXECUTION_FAILED' : 'AI_CLI_UNREACHABLE')
+    }
+    const length = Number(response.headers.get('content-length') ?? '0')
+    if (Number.isFinite(length) && length > 1_100_000) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
+    let bytes: ArrayBuffer
+    try { bytes = await response.arrayBuffer() } catch { throw new AiConsoleError('AI_CLI_UNREACHABLE') }
+    if (bytes.byteLength > 1_100_000) throw new AiConsoleError('AI_CLI_OUTPUT_LIMIT')
+    let body: unknown
+    try { body = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) }
+    catch { throw new AiConsoleError('AI_CLI_UNREACHABLE') }
+    if (!response.ok) {
+      const error = BridgeErrorSchema.safeParse(body)
+      throw new AiConsoleError(error.success ? error.data.error : 'AI_CLI_UNREACHABLE')
+    }
+    return body
+  }
+}
+
 class GovernedCliRunner implements CliRunner {
   private readonly registry: Registry
   private readonly limits: CliRunLimits
@@ -130,7 +300,7 @@ class GovernedCliRunner implements CliRunner {
   async confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string,
     modelIds: readonly (string | null)[]): Promise<void> {
     const definition = this.definition(cliId)
-    if (!definition.execution || version !== definition.supportedVersion || identity.cliId !== definition.id) {
+    if (!definition.execution || !isSupportedCliVersion(definition, version) || identity.cliId !== definition.id) {
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
     }
     try { await assertCurrentInstallationIdentity(definition, identity) }
@@ -782,4 +952,32 @@ export function createCliRunner(options: ConstructorParameters<typeof GovernedCl
   return new GovernedCliRunner(options)
 }
 
-export const cliRunner = createCliRunner()
+export function createRemoteCliRunner(options: { endpoint: string; token: string; fetchImpl?: BridgeFetch }): CliRunner {
+  return new RemoteCliRunner(options)
+}
+
+function validateBridgeEndpoint(value: string): URL {
+  let endpoint: URL
+  try { endpoint = new URL(value) } catch { throw new AiConsoleError('AI_CLI_UNREACHABLE') }
+  const privateIpv4 = /^10(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/.test(endpoint.hostname)
+  const privateEndpoint = privateIpv4 || endpoint.hostname === '127.0.0.1'
+  if (!privateEndpoint || (endpoint.protocol !== 'http:' && endpoint.protocol !== 'https:')) {
+    throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  }
+  if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+    throw new AiConsoleError('AI_CLI_UNREACHABLE')
+  }
+  return endpoint
+}
+
+export function createConfiguredCliRunner(environment: NodeJS.ProcessEnv = process.env): CliRunner {
+  const endpoint = environment.MARSYS_AI_CLI_BRIDGE_URL
+  const token = environment.MARSYS_AI_CLI_BRIDGE_TOKEN
+  if (endpoint || token) {
+    if (!endpoint || !token) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    return createRemoteCliRunner({ endpoint, token })
+  }
+  return createCliRunner({ environment })
+}
+
+export const cliRunner = createConfiguredCliRunner()

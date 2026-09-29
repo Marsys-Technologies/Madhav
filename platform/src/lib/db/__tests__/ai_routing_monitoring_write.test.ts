@@ -20,6 +20,7 @@ const base: SafeAiRoutingParameters = {
   started_at: '2026-09-27T00:00:00.000Z', finished_at: '2026-09-27T00:00:00.010Z',
   latency_ms: 10, input_tokens: 100, output_tokens: 20, total_tokens: 120,
   retry_count: 0, error_code: null, fallback_used: false,
+  fallback_from_correlation_id: null,
 }
 
 describe('strict AI routing monitoring writers', () => {

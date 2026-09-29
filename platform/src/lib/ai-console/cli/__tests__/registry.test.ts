@@ -13,13 +13,13 @@ describe('closed CLI registry', () => {
       .toEqual(['/Users/Dev/.local/share/claude/versions/'])
     expect(CLI_REGISTRY.claude_code.interpreter).toBeUndefined()
     expect(CLI_REGISTRY.gemini_antigravity).toMatchObject({
-      candidates: ['/Users/Dev/.local/bin/agy'], supportedVersion: '1.2.12',
+      candidates: ['/Users/Dev/.local/bin/agy'], supportedVersions: ['1.2.12', '1.2.13'],
       compatibleRoles: AI_ROLES,
       modelCatalog: { args: ['models'], format: 'antigravity_models' },
       execution: { transport: 'antigravity_stream_json', outputFormat: 'antigravity_stream_json' },
     })
     expect(CLI_REGISTRY.kimi_code).toMatchObject({
-      candidates: ['/Users/Dev/.kimi-code/bin/kimi'], supportedVersion: '2.0.2',
+      candidates: ['/Users/Dev/.kimi-code/bin/kimi'], supportedVersion: '2.1.1',
       compatibleRoles: AI_ROLES,
       modelCatalog: { args: ['provider', 'list', '--json'], format: 'kimi_provider_json' },
       execution: { transport: 'kimi_acp', outputFormat: 'kimi_acp_json' },
@@ -29,13 +29,15 @@ describe('closed CLI registry', () => {
   })
 
   it('accepts only the independently inspected versions', () => {
-    expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.155.1')).toBe('0.155.1')
-    expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.155.2')).toBeNull()
-    expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.1.239 (Claude Code)')).toBe('2.1.239')
+    expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.158.0')).toBe('0.158.0')
+    expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.158.1')).toBeNull()
+    expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.1.284 (Claude Code)')).toBe('2.1.284')
     expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.2.0')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.12')).toBe('1.2.12')
+    expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.13')).toBe('1.2.13')
+    expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.14')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.1.16')).toBeNull()
-    expect(parseSupportedVersion(CLI_REGISTRY.kimi_code, '2.0.2')).toBe('2.0.2')
+    expect(parseSupportedVersion(CLI_REGISTRY.kimi_code, '2.1.1')).toBe('2.1.1')
   })
 
   it('constructs fixed execution arguments without fallback or user flags', () => {

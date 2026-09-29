@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { query } from '@/lib/db/client'
 import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
-import { emptyChartReadiness, getChartReadinessMap, isDerivedChartReady, type ChartReadiness } from '@/lib/charts/readiness'
+import { emptyChartReadiness, getChartReadinessMap, type ChartReadiness } from '@/lib/charts/readiness'
 import { getChartWorkspaceSummary } from '@/lib/charts/workspaceSummary'
 import { formatDate } from '@/lib/utils/date'
 import { ChartHero } from '@/components/profile/ChartHero'
@@ -20,19 +20,6 @@ import '@/components/profile/jataka-workspace.css'
  * at-a-glance summaries. D1, daśā and yogas come from this chart's own L1 rows;
  * nothing is borrowed from another chart or invented for a missing value.
  */
-
-function pariprashnaReason(readiness: ChartReadiness): string {
-  switch (readiness.state) {
-    case 'building':
-      return 'Chart recomputation is in progress. New readings open when it is ready.'
-    case 'needs-rebuild':
-      return 'Chart details changed and recomputation has not completed yet.'
-    case 'failed':
-      return 'The latest build failed. Readings open again once the chart is rebuilt.'
-    default:
-      return 'Readings open once the full chart has been computed.'
-  }
-}
 
 function panchangReason(readiness: ChartReadiness): string {
   if (readiness.state === 'building') return 'Chart recomputation is in progress.'
@@ -95,7 +82,6 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   const readiness = readinessMap.get(id) ?? emptyChartReadiness()
   const recentConversations = conversationsResult.rows
 
-  const pariprashnaAvailable = isDerivedChartReady(readiness)
   const panchangAvailable =
     !['building', 'needs-rebuild', 'failed'].includes(readiness.state) &&
     readiness.layerPips.some((pip) => pip.layer === 'ganita' && pip.state === 'lit')
@@ -143,9 +129,8 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               name="Paripraśna"
               description="Ask and explore this chart."
               href={`/clients/${id}/pariprashna`}
-              available={pariprashnaAvailable}
+              available
               stateHint="Ask"
-              reason={pariprashnaAvailable ? undefined : pariprashnaReason(readiness)}
             />
             <CapabilityCard
               testId="panchang-room-card"

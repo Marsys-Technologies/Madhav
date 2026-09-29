@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.86
+version: 6.88
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.88 (2026-09-29, NIRMANA-SUPERSESSION-20260928; recorded 2026-09-28, renumbered from 6.87 at merge because main took 6.87 for PR 2753): Native decision recorded — the Nirmāṇa
+    elevation campaign is OFF (did not meet the quality, depth and efficiency criteria) and will
+    not resume. Successor: the Nikaṣa engine (campaign/nikasha-test, PR #2736), then an elevation
+    campaign built on it. Nirmāṇa's 98 frozen assets (L0 40, L1 19, L2 22, L3 13, L5 4) are KEPT as
+    the starting point, NOT as certification — 97 of 98 carry open Nikaṣa gaps. NIRMANA_HOLD set in
+    every Nirmāṇa session worktree. Plan, execution prompt and campaign state marked SUPERSEDED.
+    Record: briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md.
+    Successor campaign named Suvarṇa (the elevation campaign on the Nikaṣa engine); its plan lives on
+    branch strategy/suvarna-plan (SUVARNA_CAMPAIGN_PLAN_v1_2.md), pending native approval (N-1).
+  - v6.87 (2026-09-29, MADHAV-AI-CLI-VM-BRIDGE-20260929): Production AI Console local-CLI
+    connectivity repaired with the four authenticated personal CLIs kept on the dedicated
+    `marsys-jis-ai-cli` VM. PR #2753 merged through the protected queue as
+    `952e5c3634dfd1a8e7bbe96548a8ce120ca6e6a7`; full CI and exact-SHA deployment run
+    `36505937019` passed, and Cloud Run revision
+    `amjis-web-probe-952e5c3634df-36505937019-1` now receives 100% traffic. The product uses
+    Direct VPC egress to a token-authenticated bridge bound only to `10.160.0.2:8787`; firewall
+    policy permits only the Cloud Run egress tag and denies other sources. The bridge exposes
+    fixed operations for four fixed executables, never an arbitrary shell. Authenticated live
+    AI Console validation shows Codex CLI 0.158.0, Claude Code 2.1.284,
+    Gemini/Antigravity 1.2.12, and Kimi Code 2.1.1 all Reachable. The VM public address cannot
+    reach the bridge port and a private unauthenticated call returns 401. Existing per-user CLI
+    grants remain enforced; no customer-wide grant, default-provider change, credential copy,
+    migration, database/chart/build mutation, or silent `/api/pariprashna` activation occurred.
   - v6.86 (2026-09-28, JATAKA-CONTROLLED-PROD-ROLLOUT-20260927): Controlled production
     rollout CLOSED under CCD-018/CCD-019. PRs #2739/#2740 merged; protected main and all live
     services are bound to acf8d2baed6345097dd28a34e533329be52046ec. Backup 1790545434667
@@ -6099,6 +6122,14 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> ⛔ **NIRMĀṆA ELEVATION CAMPAIGN — SUPERSEDED (2026-09-28, native decision).** Off; will not
+> resume. Do not run its conductor or layer supervisors (`NIRMANA_HOLD` is set). Successor: the
+> **Nikaṣa engine** (`/Users/Dev/madhav-nikasha`, `campaign/nikasha-test`, PR #2736; state in
+> `briefs/nirmana/nikasha_test/STATE.md` and `NIKASHA_CHANGE_REGISTER_v2_0.md`), then an elevation
+> campaign built on it. Nirmāṇa's 98 frozen assets are the starting point, not certification.
+> The engine campaign `campaign/nirmana-engine` is a different campaign and is NOT affected.
+> Record: `briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`.
+
 > 🟣 **JĀTAKA CHART WORKSPACE — PARALLEL LOCAL-EXECUTION EXCEPTION (2026-09-27, CCD-013).**
 > Native authorization permits Claude Code to implement, test and commit Tasks 1–8 of
 > `platform/docs/superpowers/plans/2026-09-27-jataka-chart-workspace.md` only in the isolated
@@ -9639,10 +9670,10 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
-  predecessor_session: NIRMANA-L0-L5-COUPLING-FIX-20260927
+  last_session_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+  predecessor_session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Nirmāṇa L0/L5 receipt-checker coupling fix (CCD-017, separately governed follow-up to the closed Jātaka Phase-A3 session): fixed build_pins()'s cross-layer coupling in nirmana_analysis_layer_pins.py (an L5-only --layer request used to unconditionally validate L0's frozen pins too, which is what blocked Phase-A3's item 4); scoped both the per-layer construction loop and the definition-binding membership check to only the requested layer(s), extracted the per-layer splice into a testable splice_layer_pin() function. 7 new hermetic RED->GREEN Python unit tests prove: a legitimate L5-only successor passes; it never touches L0_FROZEN_PINS; a real L0 fingerprint/membership drift still fails closed when L0 is in scope; unreviewed L5 drift still fails closed; predecessor histories stay immutable across a splice. Then, under live native GCP-CLI DB authorization narrowly re-granted for this one action (read-only-session-enforced, no write attempted or possible), ran the now-fixed --layer L5 splice once: nirmana-analysis-layer-pins.json's L5 entry updated (convergence_commit, writer_inventory_sha256 only; membership_sha256/receipt_count/non_writer_assets/asset_prefix unchanged; L0-L4 and all history untouched, byte-for-byte, confirmed via diff). Both previously-failing nirmana-analysis-receipts.test.ts tests now pass; one further pre-existing hardcoded literal in the same file (asserting L5 unchanged since the unrelated L0-repair successor) updated to the new correct values, not weakened -- 12/12 pass. Beyond-Ācārya v6/v7 untouched, 16/16 still pass. Full platform unit suite and full Python CI verified with no new failures beyond confirmed pre-existing/unrelated ones. Task 9 remains BLOCKED. Not pushed; no PR, merge, deploy, migration application, or production access."
+  last_session_drift_verdict: "AI Console VM CLI bridge production repair: the four CLIs were healthy on the companion VM, but the Cloud Run web service had no transport to them and correctly kept local child-process execution disabled. Added a private, token-authenticated, fixed-operation bridge on the VM and Direct VPC routing from Cloud Run while retaining the existing grant, limit, timeout, no-silent-fallback and validation-seal controls. Full CI passed (14,359 Vitest tests passed, 750 skipped, 2 todo; TypeScript 0 errors; ESLint 0 errors with 583 pre-existing warnings). PR #2753 merged and exact-SHA deployment run 36505937019 promoted the matching revision to 100% traffic. Direct VM smoke tests and authenticated production AI Console validation both prove Codex, Claude Code, Gemini/Antigravity and Kimi Code are reachable. Public bridge access is blocked; unauthenticated private access returns 401."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9657,6 +9688,14 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+The production AI Console can now reach the four authenticated personal CLIs on the dedicated
+`marsys-jis-ai-cli` VM through a private, fixed-operation bridge. PR #2753 merged as
+`952e5c3634dfd1a8e7bbe96548a8ce120ca6e6a7`; deployment run `36505937019` placed the matching
+Cloud Run revision at 100% traffic. Live owner-authenticated validation shows Codex CLI,
+Claude Code, Gemini/Antigravity and Kimi Code all Reachable. The bridge is not public, does not
+offer arbitrary shell execution, requires its scoped token, and preserves the product's existing
+per-user CLI grants. No default provider or customer grant changed.
 
 The Jātaka chart-workspace workstream is authorized for local source implementation and mock-backed
 verification through plan Task 8 only. Its migration number is reserved as cross-cutting `1120`.

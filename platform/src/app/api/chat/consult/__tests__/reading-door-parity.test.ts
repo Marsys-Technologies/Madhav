@@ -1,12 +1,10 @@
 /**
- * Reading-door parity (Jātaka Phase-A hardening, item 3).
+ * Reading-door readiness policy (Jātaka chart workspace).
  *
- * Legacy consult and Paripraśna admit or refuse a new reading from the same
- * shared readiness computation, with the same CHART_RECOMPUTE_REQUIRED code and
- * the same message. Only Ready — including Ready with a non-blocking refresh
- * warning — produces a reading; Building, Needs rebuild, Failed (a failed
- * correction or full rebuild), Partially built, Not built, or an unreadable
- * readiness never do.
+ * Legacy consult remains readiness-gated. Paripraśna is intentionally adaptive:
+ * its planner selects the relevant subset from whatever chart material exists,
+ * so incomplete chart readiness does not prevent a reading. The entry surface
+ * carries the separate completeness notice.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -85,7 +83,7 @@ beforeEach(() => {
   mockPlanner.mockRejectedValue(new Error('stop after gate'))
 })
 
-describe('legacy consult ↔ Paripraśna readiness parity', () => {
+describe('legacy consult and adaptive Paripraśna readiness policy', () => {
   it.each([
     ['building', true, true],
     ['needs-rebuild', true, false],
@@ -93,11 +91,11 @@ describe('legacy consult ↔ Paripraśna readiness parity', () => {
     ['partially-built', true, false],
     ['not-built', true, false],
     ['ready', false, undefined],
-  ])('a %s chart: refused=%s at both doors, with the same code, message and retry=%s', async (state, refused, retry) => {
+  ])('a %s chart: legacy refused=%s with retry=%s while Paripraśna remains available', async (state, refused, retry) => {
     readiness.value = { state, refreshWarning: null }
     const [consult, pariprashna] = [await consultOutcome(), await pariprashnaOutcome()]
     expect(consult.refused).toBe(refused)
-    expect(pariprashna).toEqual(consult)
+    expect(pariprashna.refused).toBe(false)
     if (refused) {
       expect(consult.code).toBe('CHART_RECOMPUTE_REQUIRED')
       expect(consult.message).toBe(readinessRefusalMessage(state))
@@ -111,11 +109,11 @@ describe('legacy consult ↔ Paripraśna readiness parity', () => {
     expect((await pariprashnaOutcome()).refused).toBe(false)
   })
 
-  it('unreadable readiness fails closed at both doors, identically', async () => {
+  it('unreadable readiness fails closed for legacy consult but does not block Paripraśna', async () => {
     readiness.value = 'throw'
     const [consult, pariprashna] = [await consultOutcome(), await pariprashnaOutcome()]
     expect(consult.refused).toBe(true)
-    expect(pariprashna).toEqual(consult)
+    expect(pariprashna.refused).toBe(false)
     expect(consult.message).toBe(readinessRefusalMessage('unavailable'))
     expect(consult.retry).toBe(true)
   })
