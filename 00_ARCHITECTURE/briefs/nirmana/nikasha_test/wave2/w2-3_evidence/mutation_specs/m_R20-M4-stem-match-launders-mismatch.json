@@ -1,0 +1,1 @@
+{"old": "own = {k: [x for x in facts[k] if x[0] in tset]", "new": "own = {k: [x for x in facts[k] if x[0] in tset or any(x[0].startswith(o + '_') for o in tset)]"}

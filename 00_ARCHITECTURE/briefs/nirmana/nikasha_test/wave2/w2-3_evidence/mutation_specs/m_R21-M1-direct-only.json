@@ -1,0 +1,1 @@
+{"old": "            seen.add(x)\n            todo.extend(rev[x])", "new": "            seen.add(x)\n            pass"}

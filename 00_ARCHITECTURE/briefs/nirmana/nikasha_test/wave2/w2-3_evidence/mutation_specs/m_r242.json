@@ -1,0 +1,1 @@
+{"old": "r, lambda: owners[\"map\"] if \"map\" in owners else owners.setdefault(\"map\", target_owners()))", "new": "r, lambda: owners.setdefault(\"map\", target_owners()))"}

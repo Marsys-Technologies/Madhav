@@ -1,0 +1,1 @@
+DATABASE_URL="host=/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/nikasha_test/.sandbox port=54329 user=sandbox dbname=nikasha_sandbox"

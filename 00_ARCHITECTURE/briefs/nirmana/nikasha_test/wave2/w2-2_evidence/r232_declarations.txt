@@ -1,0 +1,5 @@
+capability modules scanned (6 layers, .test.ts excluded): 155
+modules mentioning density_contract anywhere (old substring rule): 45
+modules declaring a density_contract property in code (R232 rule): 45
+modules whose 'declares' answer changes: 0
+=> no module's declaring flag moves, so no asset's Dens.served declaring-count or verdict can move from R232 today

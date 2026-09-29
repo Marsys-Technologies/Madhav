@@ -1,0 +1,1 @@
+{"old": "        raise Unknown(f\"no capability directory at {caps_root}\")", "new": "        return {}"}

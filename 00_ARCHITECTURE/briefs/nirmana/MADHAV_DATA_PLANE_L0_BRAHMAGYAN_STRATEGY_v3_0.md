@@ -143,7 +143,11 @@ traces_to:   0.3
 
 **40 assets.** The registry says 34 writer-backed and 6 not; **the code registers 36** — `bg_nakshatra_medical` and `bg_transit_engine` each carry a live `@register(...)` while the registry declares `has_writer = false`. Found 2026-09-26 by the new `Build` gate's first check (native ruling, decision 17); the two rows below are corrected and the registry itself is now a gap. 38 carry a `count_sql`; 2 are services with no table by design.
 1 is `catalog_status = DRAFT` (`bg_vidhi_floors`); the other 39 are CURRENT. Tracker state:
-**NO_BRIEF = 40/40, ELEVATED 0/40, gates certified 0/320.**
+**NO_BRIEF = 40/40, ELEVATED 0/40, gates certified 0/360** (pre-census-emission snapshot,
+2026-09-26 — `asset_census.py --emit-gaps` had not yet run against this layer; R70, DEGRADES
+per NIKASHA_CHANGE_REGISTER_v2_0.md, restates this section's own figures as a historical count
+rather than a live one, which drifts every run and is re-measured from the live ledger, not
+re-derived here).
 
 | asset | target table(s) | live (own count_sql) | floor | Δ | writer | integrity |
 |---|---|---|---|---|---|---|
@@ -459,7 +463,7 @@ Ten obligations exist; L0 is scored on the four its 0.2 names. Domain correctnes
 | **Source and domain fidelity** | 3,002 rules all carry a verse reference across 14 texts; 721 attributions stored. Against that: 53 doṣa rows cite a placeholder, 289 remedy source ids do not resolve, and **no detector compares any encoding to its cited passage**. | W-L0-3 (source-correspondence detector) · W-L0-5 (placeholder and normalisation repair) |
 | **Computational correctness** | 5 computed assets, 1,173,317 rows between them, all at or above floor except none; **no independent re-derivation detector at L0** | W-L0-4 (re-derivation check on ephemeris and calendar) |
 | **Delivery fidelity** | 46 capability modules, 39 declared descriptors, **0 declaring a density contract**; presentation parity **never run** | W-L0-8 (density declaration + parity run) |
-| **Operational honesty** | 38/40 count_sql, 37/40 integrity checks, 1 DRAFT, tracker reports 0/320 gates and 40/40 NO_BRIEF — the status surface is honest about being empty | W-L0-2 (first briefs) closes it by making the zeros non-zero |
+| **Operational honesty** | 38/40 count_sql, 37/40 integrity checks, 1 DRAFT, tracker reports 0/360 gates and 40/40 NO_BRIEF — the status surface is honest about being empty | W-L0-2 (first briefs) closes it by making the zeros non-zero |
 
 ### 3.2 · Per asset — disposition
 
@@ -519,7 +523,7 @@ Identity first, because every other seam resolves through it:
 3. **The carriage detectors** — source correspondence first (it protects every later layer), then
    independent re-derivation on the computed five.
 4. **The served surface** — density declarations and the first parity run.
-5. **Briefs and gates** — 40 briefs, 320 gates, in dependency order within each depth level.
+5. **Briefs and gates** — 40 briefs, 360 gates, in dependency order within each depth level.
 
 **Three-way baseline:** `deployed` = the production figures in 1.1, read 2026-09-26. `current code` =
 identical for L0 — no unmerged branch carries an L0 writer change (the L0 writers are untouched on every
@@ -610,7 +614,7 @@ traces_to:   4.4
 ```
 
 **Nine gates × 40 assets = 360. Certified: 0.** (Eight until 2026-09-26; `Build` added by native ruling 17 — a template-wide gate, 9 × 129 across L0–L5, of which 360 is L0's share.) The ledger holds its schema line and nothing else,
-which agrees with the tracker's `gates certified 0/320`.
+which agrees with the tracker's `gates certified 0/360`.
 
 | gate | this layer's reading |
 |---|---|
@@ -726,8 +730,13 @@ C-8's three inherited rows are corrected above; the parent's detector is a reope
    asked the architectural question no gate would have asked — the key contract, the ephemeris grain, and
    a service's health signal.
 
-**Ledger after five pilots:** 30 gap rows, 18 opportunity rows, 5 assets at `GAPS_REGISTERED`, 35 at
-`NO_BRIEF`, 0/320 gates certified. The opportunities correctly do not withhold elevation.
+**Ledger after five pilots (pre-census-emission snapshot, 2026-09-26 — before
+`asset_census.py --emit-gaps` first ran against this layer; R70):** 30 gap rows, 18 opportunity
+rows, 5 assets at `GAPS_REGISTERED`, 35 at `NO_BRIEF`, 0/360 gates certified. The opportunities
+correctly do not withhold elevation. This count does not reproduce against the live ledger — the
+census's own `emit_gaps` additions and every later hand row grow `asset_gaps.jsonl` past this
+snapshot on every subsequent run; re-measure from the live ledger (`asset_gaps.jsonl`) and the
+tracker's own count, never restate a fresher figure here, which would only go stale again.
 
 **Three findings are layer-scope, not asset-scope, and belong to packets rather than briefs:** D1 source
 correspondence (absent, and pilot 2 is where it matters most), the undeclared normalisation at the

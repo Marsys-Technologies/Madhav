@@ -175,7 +175,7 @@ traces_to:   layer §1.4
 
 ---
 
-## §4 · Asset conformance — the eight gates
+## §4 · Asset conformance — the nine gates
 
 | gate | verdict | detector and evidence |
 |---|---|---|
@@ -187,6 +187,7 @@ traces_to:   layer §1.4
 | **Carr** source carriage | **NO_DETECTOR** | D1 is the applicable check (row against its cited source). Nothing compares them. D2 N/A — a single identity has no second witness. D3 N/A — nothing computed. (G05) |
 | **Narr** narration fidelity | **N/A** | `description` is seeded editorial prose, not narration re-derived over computed facts; §N.7's defect class does not apply. It *is* in scope for D1 once that detector exists — recorded so the N/A is not read as "never checkable". |
 | **Dens** serving density | **FAIL** | Applies — the asset reaches a served surface. Neither of its 2 capability modules declares a `density_contract`; and 233 built rows are unreachable through one of them (§1.2). |
+| **Build** buildability | **FAIL** | Measured against `asset_census.py --layer L0`, 2026-09-28: registered / contract / target / DAG / count-integrity / exercised / history all **PASS** (2 executed runs, no error or abort). Check 6 (completion honesty) **FAILS**: build record `rows_written=0` against 741 live rows — the same underlying fact as `bg_ontology-G02` (`Earn.build_record`) above, independently confirmed by Build's own detector; no second ledger row registered for the same measurement (R81 folds this class of duplicate). |
 
 ---
 

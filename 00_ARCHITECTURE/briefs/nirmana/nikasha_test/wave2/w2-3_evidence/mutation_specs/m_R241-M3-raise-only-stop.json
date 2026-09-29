@@ -1,0 +1,1 @@
+{"old": "isinstance(s, (ast.Raise, ast.Return, ast.Continue, ast.Break))", "new": "isinstance(s, (ast.Raise,))"}

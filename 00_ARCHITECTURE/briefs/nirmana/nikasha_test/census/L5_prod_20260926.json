@@ -1,0 +1,1234 @@
+{
+ "L5": {
+  "generated": "2026-09-26T17:24:03+05:30",
+  "layer": "L5",
+  "layer_name": "Mimamsa",
+  "scoring": "contribution",
+  "n_assets": 14,
+  "global_runs": 67,
+  "global_runs_touching_layer": 456,
+  "never_exercised_with_writer": [],
+  "registered_ids": 12,
+  "registry_has_writer": 14,
+  "phantom_registered": [],
+  "local_map_candidates": -1,
+  "assets": [
+   {
+    "asset_id": "mi_abhilekha",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_journal",
+    "has_writer": true,
+    "writer_files": [
+     "mi_abhilekha.py"
+    ],
+    "catalog_status": "DRAFT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_abhilekha.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "no idempotency pattern in the writer's own SQL \u2014 it likely delegates; verify there"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_journal"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=0, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "table empty"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, journal_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "1 module(s): query_journal.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "94 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 26 error(s) and 9 abort(s) on record. BLOCKED: upstream dependency(ies) mi_bhavisya did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_bhavisya'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_adhilepa",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_load_bearing",
+    "has_writer": true,
+    "writer_files": [
+     "mi_adhilepa.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_adhilepa.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_load_bearing"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "5 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=-, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "9 rows, 6 cols; fully populated 6; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, conclusion_id, signal_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "2 module(s): query_attribution.ts, query_load_bearing.ts; declaring density_contract: 2"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "102 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 33 error(s), 11 abort(s). BLOCKED: upstream dependency(ies) mi_gunanaka did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_gunanaka', 'ka_sangam', 'ph_nimitta'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_bhara",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "kala_field_skill",
+    "has_writer": true,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "FAIL",
+      "measured": "registry says has_writer=true and no @register found"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer file"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer file"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=kala_field_skill"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-21"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=0, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "7 rows, 17 cols; fully populated 15; NEVER populated ['skill_prospective']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "64 run(s), scope(s): asset_set, global, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 19 error(s), 4 abort(s). BLOCKED: upstream dependency(ies) ka_kshetra did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ka_kshetra'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_bhavisya",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_predictions",
+    "has_writer": true,
+    "writer_files": [
+     "mi_bhavisya.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_bhavisya.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_predictions"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-21"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=278, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "195 rows, 18 cols; fully populated 16; NEVER populated ['base_rate', 'contact_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, prediction_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "5 module(s): index.ts, prediction_lifecycle_sweep.ts, query_calibration.ts, query_manifestation_sets.ts, query_predictions.ts; declaring density_contract: 4"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "98 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 29 error(s), 10 abort(s). BLOCKED: upstream dependency(ies) ph_nimitta, ph_phaladesa, ph_pramana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_pramana', 'ph_nimitta', 'ph_phaladesa'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_darshana",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_insight_units",
+    "has_writer": true,
+    "writer_files": [
+     "mi_darshana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_darshana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_insight_units"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=-, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "150 rows, 18 cols; fully populated 13; NEVER populated ['horizon']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, insight_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "3 module(s): index.ts, query_insight_embeddings.ts, query_insights.ts; declaring density_contract: 2"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "103 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 35 error(s), 11 abort(s). BLOCKED: upstream dependency(ies) mi_adhilepa, mi_gunanaka, mi_pariksha, mi_pramana, mi_sambandha did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_gunanaka",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_multipliers",
+    "has_writer": true,
+    "writer_files": [
+     "mi_gunanaka.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_gunanaka.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_multipliers"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=9, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "18 rows, 20 cols; fully populated 19; NEVER populated ['domain']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, weight_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "1 module(s): query_calibration.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "100 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 30 error(s), 10 abort(s). BLOCKED: upstream dependency(ies) mi_pramana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_pramana'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_jivanaghatana",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_event_provenance",
+    "has_writer": true,
+    "writer_files": [
+     "mi_jivanaghatana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_jivanaghatana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_event_provenance"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-07-26"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=0, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "63 rows, 20 cols; fully populated 14; NEVER populated ['shaped_predictor_refs', 'disclosure_date', 'domain_secondary', 'event_magnitude', 'lel_file_sha', 'event_class_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, event_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "51 run(s), scope(s): asset_set, global, layer, last 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 2 error(s) and 5 abort(s) on record. RuntimeError: [mi_jivanaghatana] chart_id=1c826d5a-41cb-4450-b4dc-59d440e5f75a: both the LEL markdown (/app/01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md, exists=False) and the life_events DB fallback yielded"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_kula",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": 15,
+    "target_table": "mimamsa_signal_families",
+    "has_writer": true,
+    "writer_files": [
+     "mi_kula.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_kula.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_signal_families"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=15, live=15"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-06"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=15, rps=-"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=15, floor=0, delta=+15"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "11 rows, 20 cols; fully populated 16; NEVER populated ['data_source_pin', 'apply_point', 'interaction_value', 'interaction_status']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (family_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "2 module(s): index.ts, query_signal_families.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "43 run(s), scope(s): asset_set, global, layer, last 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 2 abort(s) on record. "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "all declared dependencies are lit"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_pariksha",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_qa_eval",
+    "has_writer": true,
+    "writer_files": [
+     "mi_pariksha.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_pariksha.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_qa_eval"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=6, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "174 rows, 8 cols; fully populated 7; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, check_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "4 module(s): query_attribution.ts, query_calibration.ts, query_insights.ts, query_mimamsa_discoveries.ts; declaring density_contract: 4"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "100 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 32 error(s), 10 abort(s). BLOCKED: upstream dependency(ies) mi_pramana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_pramana'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_pramana",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_calibration",
+    "has_writer": true,
+    "writer_files": [
+     "mi_pramana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_pramana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_calibration"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "4 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-21"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=63, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "57 rows, 20 cols; fully populated 18; NEVER populated ['manifestation_channel', 'base_rate_adjusted_skill']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, match_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "4 module(s): index.ts, query_calibration.ts, query_insights.ts, query_predictions.ts; declaring density_contract: 3"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "98 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 29 error(s), 10 abort(s). BLOCKED: upstream dependency(ies) mi_bhavisya did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_bhavisya'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_sambandha",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_manifestation_grammar",
+    "has_writer": true,
+    "writer_files": [
+     "mi_sambandha.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_sambandha.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_manifestation_grammar"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=23, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "47 rows, 17 cols; fully populated 14; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, origin_kind, origin_ref, channel_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "citation_ref populated on 47/47 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "3 module(s): index.ts, query_manifestation_grammar.ts, query_manifestation_sets.ts; declaring density_contract: 2"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "100 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-21"
+     },
+     "Build.history": {
+      "v": "FAIL",
+      "measured": "most recent run error (2026-08-21); 31 error(s), 10 abort(s). BLOCKED: upstream dependency(ies) mi_pariksha, mi_pramana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_pramana', 'mi_pariksha', 'mi_bhavisya'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_sankalpa",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "mimamsa_intervention_ledger",
+    "has_writer": true,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "FAIL",
+      "measured": "registry says has_writer=true and no @register found"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer file"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer file"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_intervention_ledger"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='dormant'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-13"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=dormant, rows_written=0, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "table empty"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, intervention_class, rite_or_activity_class, elected_window): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "10 run(s), scope(s): asset_set, global, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 3 abort(s) on record. "
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ka_kshetra'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_seva",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": 0,
+    "target_table": "mimamsa_preferences",
+    "has_writer": true,
+    "writer_files": [
+     "mi_seva.py"
+    ],
+    "catalog_status": "DRAFT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_seva.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "no idempotency pattern in the writer's own SQL \u2014 it likely delegates; verify there"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_preferences"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "live=0 and rows_written=0 \u2014 consistent (empty by design or service)"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=0, rps=-"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=0, floor=0, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "table empty"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (user_id, channel_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "97 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 28 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) mi_adhilepa did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['mi_adhilepa'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "mi_vistara",
+    "layer": "L5",
+    "scoring": "contribution",
+    "live_rows": 0,
+    "target_table": "mimamsa_export_log",
+    "has_writer": true,
+    "writer_files": [
+     "mi_vistara.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in mi_vistara.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "no idempotency pattern in the writer's own SQL \u2014 it likely delegates; verify there"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=mimamsa_export_log"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "live=0 and rows_written=0 \u2014 consistent (empty by design or service)"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-09-06"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=lit, rows_written=0, rps=-"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=0, floor=0, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "table empty"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (export_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "45 run(s), scope(s): asset_set, global, layer, last 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 1 abort(s) on record. "
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   }
+  ]
+ }
+}

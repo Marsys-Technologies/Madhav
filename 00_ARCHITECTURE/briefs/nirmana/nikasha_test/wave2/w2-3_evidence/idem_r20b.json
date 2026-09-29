@@ -1,0 +1,1553 @@
+{
+ "bg_class_lifetime_counts": {
+  "layer": "L0",
+  "files": [
+   "bg_class_lifetime_counts.py"
+  ],
+  "target": "brahma_class_priors",
+  "ctables": [
+   "brahma_class_priors"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_class_priors (brahmagyan/l0_class_lifetime_counts.py:721 via bg_class_lifetime_counts.py \u2192 brahmagyan/l0_class_lifetime_counts.py:seed_class_lifetime_counts)"
+ },
+ "bg_class_priors": {
+  "layer": "L0",
+  "files": [
+   "bg_class_priors.py"
+  ],
+  "target": "brahma_class_priors",
+  "ctables": [
+   "brahma_class_priors"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_class_priors (brahmagyan/l0_class_priors.py:319 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:340 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:361 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:382 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:407 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors)"
+ },
+ "bg_cohort": {
+  "layer": "L0",
+  "files": [
+   "bg_cohort.py"
+  ],
+  "target": "bg_synthetic_cohort",
+  "ctables": [
+   "bg_synthetic_cohort",
+   "bg_synthetic_cohort_md"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_synthetic_cohort (bg_cohort.py:641), bg_synthetic_cohort_md (bg_cohort.py:672)"
+ },
+ "bg_compendium_index": {
+  "layer": "L0",
+  "files": [
+   "bg_compendium_index.py"
+  ],
+  "target": "brahma_compendium_index",
+  "ctables": [
+   "brahma_compendium_index"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: brahma_compendium_index (bg_compendium_index.py:168) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "bg_concordance": {
+  "layer": "L0",
+  "files": [
+   "bg_concordance.py"
+  ],
+  "target": "classical_attributions",
+  "ctables": [
+   "classical_attributions"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: classical_attributions (bg_concordance.py:207) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "bg_dasha_systems": {
+  "layer": "L0",
+  "files": [
+   "bg_dasha_systems.py"
+  ],
+  "target": "brahma_dasha_systems",
+  "ctables": [
+   "brahma_dasha_systems",
+   "brahma_ontology",
+   "reference_dasha_systems"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: reference_dasha_systems (brahmagyan/l0_dasha_systems.py:725 via bg_dasha_systems.py \u2192 brahmagyan/l0_dasha_systems.py:seed_dasha_systems), brahma_dasha_systems (brahmagyan/l0_dasha_systems.py:726 via bg_dasha_systems.py \u2192 brahmagyan/l0_dasha_systems.py:seed_dasha_systems), brahma_ontology (brahmagyan/l0_dasha_systems.py:727 via bg_dasha_systems.py \u2192 brahmagyan/l0_dasha_systems.py:seed_dasha_systems) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "bg_dignity_reference": {
+  "layer": "L0",
+  "files": [
+   "bg_dignity_reference.py"
+  ],
+  "target": "bg_dignity_reference",
+  "ctables": [
+   "bg_dignity_reference",
+   "bg_avastha_schemes",
+   "bg_combustion_orbs",
+   "bg_graha_naisargika_friendship",
+   "bg_motion_state_thresholds"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_dignity_reference (bg_dignity_reference.py:412), bg_graha_naisargika_friendship (bg_dignity_reference.py:445), bg_avastha_schemes (bg_dignity_reference.py:460), bg_motion_state_thresholds (bg_dignity_reference.py:480), bg_combustion_orbs (bg_dignity_reference.py:504)"
+ },
+ "bg_doshas": {
+  "layer": "L0",
+  "files": [
+   "bg_doshas.py"
+  ],
+  "target": "brahma_dosha_catalog",
+  "ctables": [
+   "brahma_dosha_catalog",
+   "brahma_ontology",
+   "reference_doshas"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: reference_doshas (brahmagyan/l0_doshas.py:1942 via bg_doshas.py \u2192 brahmagyan/l0_doshas.py:seed_doshas), brahma_dosha_catalog (brahmagyan/l0_doshas.py:1943 via bg_doshas.py \u2192 brahmagyan/l0_doshas.py:seed_doshas), brahma_ontology (brahmagyan/l0_doshas.py:1944 via bg_doshas.py \u2192 brahmagyan/l0_doshas.py:seed_doshas) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "bg_ephemeris": {
+  "layer": "L0",
+  "files": [
+   "bg_ephemeris.py"
+  ],
+  "target": "ephemeris_daily",
+  "ctables": [
+   "ephemeris_daily"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): ephemeris_daily (bg_ephemeris.py:125)"
+ },
+ "bg_ephemeris_engine": {
+  "layer": "L0",
+  "files": [],
+  "target": null,
+  "ctables": [],
+  "v": "N/A",
+  "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+ },
+ "bg_formula_constants": {
+  "layer": "L0",
+  "files": [
+   "bg_formula_constants.py"
+  ],
+  "target": "brahma_formula_constants",
+  "ctables": [
+   "brahma_formula_constants"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_formula_constants (brahmagyan/l0_formula_constants.py:237 via bg_formula_constants.py \u2192 brahmagyan/l0_formula_constants.py:seed_formula_constants)"
+ },
+ "bg_ghatana": {
+  "layer": "L0",
+  "files": [
+   "bg_ghatana.py"
+  ],
+  "target": "brahma_event_ontology",
+  "ctables": [
+   "brahma_event_ontology",
+   "brahma_activity_ontology"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_event_ontology (brahmagyan/l0_ghatana.py:878 via bg_ghatana.py \u2192 brahmagyan/l0_ghatana.py:seed_ghatana), brahma_activity_ontology (brahmagyan/l0_ghatana.py:923 via bg_ghatana.py \u2192 brahmagyan/l0_ghatana.py:seed_ghatana)"
+ },
+ "bg_gochara_arcs": {
+  "layer": "L0",
+  "files": [
+   "bg_gochara_arcs.py"
+  ],
+  "target": "bg_gochara_arcs",
+  "ctables": [
+   "bg_gochara_arcs"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: bg_gochara_arcs (bg_gochara_arcs.py:149), bg_gochara_arcs (bg_gochara_arcs.py:156) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "bg_gochara_citation_resolution": {
+  "layer": "L0",
+  "files": [],
+  "target": "bg_gochara_citation_resolution",
+  "ctables": [
+   "bg_gochara_citation_resolution"
+  ],
+  "v": "N/A",
+  "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+ },
+ "bg_kota_chakra_rings": {
+  "layer": "L0",
+  "files": [
+   "bg_kota_chakra_rings.py"
+  ],
+  "target": "bg_kota_chakra_rings",
+  "ctables": [
+   "bg_kota_chakra_rings"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_kota_chakra_rings (brahmagyan/l0_kota_chakra_rings.py:154 via bg_kota_chakra_rings.py \u2192 brahmagyan/l0_kota_chakra_rings.py:seed_kota_chakra_rings)"
+ },
+ "bg_kp_sublord_division": {
+  "layer": "L0",
+  "files": [
+   "bg_kp_sublord_division.py"
+  ],
+  "target": "bg_kp_sublord_division",
+  "ctables": [
+   "bg_kp_sublord_division"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_kp_sublord_division (brahmagyan/l0_kp_sublord_division.py:316 via bg_kp_sublord_division.py \u2192 brahmagyan/l0_kp_sublord_division.py:seed_kp_sublord_division)"
+ },
+ "bg_medical_mappings": {
+  "layer": "L0",
+  "files": [
+   "bg_medical_mappings.py"
+  ],
+  "target": "bg_medical_mappings",
+  "ctables": [
+   "bg_medical_mappings"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_medical_mappings (brahmagyan/l0_medical.py:421 via bg_medical_mappings.py \u2192 brahmagyan/l0_medical.py:seed_medical_mappings)"
+ },
+ "bg_muhurta_lattice": {
+  "layer": "L0",
+  "files": [
+   "bg_muhurta_lattice.py"
+  ],
+  "target": "bg_muhurta_lattice",
+  "ctables": [
+   "bg_muhurta_lattice"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_muhurta_lattice (bg_muhurta_lattice.py:939)"
+ },
+ "bg_nakshatra": {
+  "layer": "L0",
+  "files": [
+   "bg_nakshatra.py"
+  ],
+  "target": "reference_nakshatra",
+  "ctables": [
+   "reference_nakshatra",
+   "reference_nakshatra_pada",
+   "reference_nakshatra_matrix"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: reference_nakshatra_matrix (brahmagyan/l0_nakshatra.py:1395 via bg_nakshatra.py \u2192 brahmagyan/l0_nakshatra.py:seed_nakshatra), reference_nakshatra_pada (brahmagyan/l0_nakshatra.py:1396 via bg_nakshatra.py \u2192 brahmagyan/l0_nakshatra.py:seed_nakshatra), reference_nakshatra (brahmagyan/l0_nakshatra.py:1397 via bg_nakshatra.py \u2192 brahmagyan/l0_nakshatra.py:seed_nakshatra) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "bg_nakshatra_medical": {
+  "layer": "L0",
+  "files": [
+   "bg_medical_mappings.py"
+  ],
+  "target": "bg_nakshatra_medical",
+  "ctables": [
+   "bg_nakshatra_medical"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_nakshatra_medical (brahmagyan/l0_medical.py:453 via bg_medical_mappings.py \u2192 brahmagyan/l0_medical.py:seed_medical_mappings)"
+ },
+ "bg_ontology": {
+  "layer": "L0",
+  "files": [
+   "bg_ontology.py"
+  ],
+  "target": "brahma_ontology",
+  "ctables": [
+   "brahma_ontology"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_ontology (brahmagyan/l0_ontology.py:1143 via bg_ontology.py \u2192 brahmagyan/l0_ontology.py:seed_ontology)"
+ },
+ "bg_panchanga": {
+  "layer": "L0",
+  "files": [],
+  "target": null,
+  "ctables": [],
+  "v": "N/A",
+  "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+ },
+ "bg_parihara_rules": {
+  "layer": "L0",
+  "files": [
+   "bg_parihara_rules.py"
+  ],
+  "target": "bg_parihara_rules",
+  "ctables": [
+   "bg_parihara_rules",
+   "bg_muhurta_activity_rules",
+   "bg_muhurta_factor_census"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_parihara_rules (bg_parihara_rules.py:623), bg_muhurta_activity_rules (bg_parihara_rules.py:653), bg_muhurta_factor_census (bg_parihara_rules.py:675)"
+ },
+ "bg_phaladeepika_latta": {
+  "layer": "L0",
+  "files": [
+   "bg_phaladeepika_vedha.py"
+  ],
+  "target": "bg_phaladeepika_latta",
+  "ctables": [
+   "bg_phaladeepika_latta"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_phaladeepika_latta (brahmagyan/l0_phaladeepika_vedha.py:160 via bg_phaladeepika_vedha.py \u2192 brahmagyan/l0_phaladeepika_vedha.py:seed_phaladeepika_latta)"
+ },
+ "bg_prashna_rules": {
+  "layer": "L0",
+  "files": [
+   "bg_prashna_rules.py"
+  ],
+  "target": null,
+  "ctables": [
+   "bg_prashna_lagna_methods",
+   "bg_prashna_tajik_yogas",
+   "bg_prashna_significators",
+   "bg_prashna_fructification_rules",
+   "bg_prashna_special_techniques"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_prashna_lagna_methods (brahmagyan/l0_prashna.py:807 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_tajik_yogas (brahmagyan/l0_prashna.py:836 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_significators (brahmagyan/l0_prashna.py:865 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_fructification_rules (brahmagyan/l0_prashna.py:892 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_special_techniques (brahmagyan/l0_prashna.py:914 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules)"
+ },
+ "bg_reference": {
+  "layer": "L0",
+  "files": [
+   "bg_reference.py"
+  ],
+  "target": "reference_planets",
+  "ctables": [
+   "reference_planets",
+   "reference_signs",
+   "reference_aspects",
+   "reference_vargas",
+   "reference_houses",
+   "reference_strength_systems",
+   "reference_karakas",
+   "reference_upagrahas",
+   "reference_constants",
+   "reference_topic_tags",
+   "reference_glossary"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): reference_planets (brahmagyan/l0_reference.py:1315 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_signs (brahmagyan/l0_reference.py:1362 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_aspects (brahmagyan/l0_reference.py:1381 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_vargas (brahmagyan/l0_reference.py:1401 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_houses (brahmagyan/l0_reference.py:1443 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_strength_systems (brahmagyan/l0_reference.py:1464 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_karakas (brahmagyan/l0_reference.py:1483 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_upagrahas (brahmagyan/l0_reference.py:1502 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_constants (brahmagyan/l0_reference.py:1521 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_topic_tags (brahmagyan/l0_reference.py:1540 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_glossary (brahmagyan/l0_reference.py:1556 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference)"
+ },
+ "bg_remedies": {
+  "layer": "L0",
+  "files": [
+   "bg_remedies.py"
+  ],
+  "target": "brahma_remedy_corpus",
+  "ctables": [
+   "brahma_remedy_corpus"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_remedy_corpus (brahmagyan/l0_remedy_corpus.py:3462 via bg_remedies.py \u2192 brahmagyan/l0_remedy_corpus.py:seed_remedy_corpus), brahma_remedy_corpus (brahmagyan/l0_remedy_loader.py:188 via bg_remedies.py \u2192 brahmagyan/l0_remedy_loader.py:load_remedies)"
+ },
+ "bg_rules": {
+  "layer": "L0",
+  "files": [
+   "bg_rules.py"
+  ],
+  "target": "sutravali_rules",
+  "ctables": [
+   "sutravali_rules"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): sutravali_rules (brahmagyan/l0_rules.py:1608 via bg_rules.py \u2192 brahmagyan/l0_rules.py:seed_rules)"
+ },
+ "bg_sarvatobhadra_grid": {
+  "layer": "L0",
+  "files": [],
+  "target": "bg_sarvatobhadra_grid",
+  "ctables": [
+   "bg_sarvatobhadra_grid"
+  ],
+  "v": "N/A",
+  "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+ },
+ "bg_sign_medical": {
+  "layer": "L0",
+  "files": [
+   "bg_medical_mappings.py"
+  ],
+  "target": "bg_sign_medical",
+  "ctables": [
+   "bg_sign_medical"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_sign_medical (brahmagyan/l0_medical.py:479 via bg_medical_mappings.py \u2192 brahmagyan/l0_medical.py:seed_medical_mappings)"
+ },
+ "bg_sky_calendar": {
+  "layer": "L0",
+  "files": [
+   "bg_sky_calendar.py"
+  ],
+  "target": "bg_sky_calendar",
+  "ctables": [
+   "bg_sky_calendar"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_sky_calendar (bg_sky_calendar.py:734)"
+ },
+ "bg_text_index": {
+  "layer": "L0",
+  "files": [
+   "bg_text_index.py"
+  ],
+  "target": "classical_text_chunks",
+  "ctables": [
+   "classical_text_chunks"
+  ],
+  "v": "PARTIAL",
+  "measured": "the asset's own table(s) are only UPDATEd in place: classical_text_chunks (bg_text_index.py:546) \u2014 no row is added, but whether a rebuild re-derives every row is not measured [resolved scope: bg_text_index.py]"
+ },
+ "bg_texts": {
+  "layer": "L0",
+  "files": [
+   "bg_texts.py"
+  ],
+  "target": "classical_text_chunks",
+  "ctables": [
+   "classical_text_chunks"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): classical_text_chunks (bg_texts.py:665)"
+ },
+ "bg_transit_engine": {
+  "layer": "L0",
+  "files": [
+   "bg_transit_rules.py"
+  ],
+  "target": "bg_transit_engine",
+  "ctables": [
+   "bg_transit_engine"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_transit_engine (brahmagyan/l0_transit.py:913 via bg_transit_rules.py \u2192 brahmagyan/l0_transit.py:seed_transit_rules)"
+ },
+ "bg_transit_rules": {
+  "layer": "L0",
+  "files": [
+   "bg_transit_rules.py"
+  ],
+  "target": "bg_transit_rules",
+  "ctables": [
+   "bg_transit_rules"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_transit_rules (brahmagyan/l0_transit.py:938 via bg_transit_rules.py \u2192 brahmagyan/l0_transit.py:seed_transit_rules)"
+ },
+ "bg_vastu_directions": {
+  "layer": "L0",
+  "files": [
+   "bg_vastu_directions.py"
+  ],
+  "target": "bg_vastu_directions",
+  "ctables": [
+   "bg_vastu_directions",
+   "bg_vastu_direction_remedials"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_vastu_directions (brahmagyan/l0_vastu_directions.py:298 via bg_vastu_directions.py \u2192 brahmagyan/l0_vastu_directions.py:seed_vastu_directions), bg_vastu_direction_remedials (brahmagyan/l0_vastu_directions.py:320 via bg_vastu_directions.py \u2192 brahmagyan/l0_vastu_directions.py:seed_vastu_directions)"
+ },
+ "bg_vedha_malefic_scale": {
+  "layer": "L0",
+  "files": [
+   "bg_phaladeepika_vedha.py"
+  ],
+  "target": "bg_vedha_malefic_scale",
+  "ctables": [
+   "bg_vedha_malefic_scale"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_vedha_malefic_scale (brahmagyan/l0_phaladeepika_vedha.py:129 via bg_phaladeepika_vedha.py \u2192 brahmagyan/l0_phaladeepika_vedha.py:seed_vedha_malefic_scale)"
+ },
+ "bg_vidhi_floors": {
+  "layer": "L0",
+  "files": [
+   "bg_vidhi_floors.py"
+  ],
+  "target": "vidhi_floor_items",
+  "ctables": [
+   "vidhi_intent_floors",
+   "vidhi_floor_items"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): vidhi_intent_floors (bg_vidhi_floors.py:555)"
+ },
+ "bg_vidhi_primitives": {
+  "layer": "L0",
+  "files": [
+   "bg_vidhi_primitives.py"
+  ],
+  "target": "vidhi_primitives",
+  "ctables": [
+   "vidhi_primitives"
+  ],
+  "v": "PASS",
+  "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): vidhi_primitives (bg_vidhi_primitives.py:144)"
+ },
+ "bg_yogas": {
+  "layer": "L0",
+  "files": [
+   "bg_yogas.py"
+  ],
+  "target": "brahma_yoga_catalog",
+  "ctables": [
+   "brahma_yoga_catalog",
+   "brahma_ontology",
+   "reference_yogas",
+   "brahma_yoga_source_chunks"
+  ],
+  "v": "PASS",
+  "measured": "the asset's own table(s) replaced by delete-then-insert: brahma_yoga_source_chunks (brahmagyan/l0_yogas.py:2244 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas), reference_yogas (brahmagyan/l0_yogas.py:2245 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas), brahma_yoga_catalog (brahmagyan/l0_yogas.py:2247 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas), brahma_ontology (brahmagyan/l0_yogas.py:2249 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+ },
+ "ga_ayurdaya": {
+  "layer": "L1",
+  "files": [
+   "ga_ayurdaya.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_ayurdaya.py \u2192 ga_writers/ga_ayurdaya_writer.py:build_ga_ayurdaya_substep \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_condition": {
+  "layer": "L1",
+  "files": [
+   "ga_condition.py"
+  ],
+  "target": "ga_condition_composite",
+  "ctables": [
+   "ga_condition_composite",
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/ga_condition_writer.py:1196 via ga_condition.py \u2192 ga_writers/ga_condition_writer.py:build_ga_condition_substep), ga_condition_composite (ga_writers/ga_condition_writer.py:1647 via ga_condition.py \u2192 ga_writers/ga_condition_writer.py:build_ga_condition_substep)"
+ },
+ "ga_dashas": {
+  "layer": "L1",
+  "files": [
+   "ga_dashas.py"
+  ],
+  "target": "chart_dashas",
+  "ctables": [
+   "chart_dashas"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_dashas (ga_writers/_idempotency.py:86 via ga_dashas.py \u2192 ga_writers/ga_dashas_writer.py:build_system \u2192 ga_writers/_idempotency.py:replace_prior_chart_dashas)"
+ },
+ "ga_medical": {
+  "layer": "L1",
+  "files": [
+   "ga_medical.py"
+  ],
+  "target": "ga_medical",
+  "ctables": [
+   "ga_medical"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): ga_medical (ga_writers/ga_medical_writer.py:289 via ga_medical.py \u2192 ga_writers/ga_medical_writer.py:build_ga_medical_substep)"
+ },
+ "ga_nakshatra": {
+  "layer": "L1",
+  "files": [
+   "ga_nakshatra.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_nakshatra.py \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_panchanga": {
+  "layer": "L1",
+  "files": [
+   "ga_panchanga.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_panchanga.py \u2192 ga_writers/ga_panchanga_writer.py:build_ga_panchanga \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_positions": {
+  "layer": "L1",
+  "files": [
+   "ga_positions.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_positions.py \u2192 ga_writers/ga_positions_writer.py:build_ga_positions \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_prashna": {
+  "layer": "L1",
+  "files": [
+   "ga_prashna.py"
+  ],
+  "target": "ga_prashna_judgment",
+  "ctables": [
+   "ga_prashna_lagna",
+   "ga_prashna_judgment"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): ga_prashna_lagna (ga_writers/ga_prashna_writer.py:302 via ga_prashna.py \u2192 ga_writers/ga_prashna_writer.py:seed_prashna_judgment), ga_prashna_judgment (ga_writers/ga_prashna_writer.py:306 via ga_prashna.py \u2192 ga_writers/ga_prashna_writer.py:seed_prashna_judgment)"
+ },
+ "ga_sade_sati": {
+  "layer": "L1",
+  "files": [
+   "ga_sade_sati.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_sade_sati.py \u2192 ga_writers/ga_sade_sati_writer.py:build_ga_sade_sati \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_sensitive": {
+  "layer": "L1",
+  "files": [
+   "ga_sensitive.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_sensitive.py \u2192 ga_writers/ga_sensitive_writer.py:build_ga_sensitive_for_ayanamsha \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_sensitive_degree": {
+  "layer": "L1",
+  "files": [
+   "ga_sensitive_degree.py"
+  ],
+  "target": "chart_facts",
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_sensitive_degree.py \u2192 ga_writers/ga_sensitive_degree_writer.py:build_ga_sensitive_degree_substep \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_strength": {
+  "layer": "L1",
+  "files": [
+   "ga_strength.py"
+  ],
+  "target": null,
+  "ctables": [
+   "chart_facts"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_strength.py \u2192 ga_writers/ga_strength_writer.py:build_ga_strength \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_structural": {
+  "layer": "L1",
+  "files": [
+   "ga_structural.py"
+  ],
+  "target": null,
+  "ctables": [
+   "chart_facts",
+   "fact_category_ownership"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_facts (ga_writers/_idempotency.py:66 via ga_structural.py \u2192 ga_writers/ga_structural_writer.py:build_ga_structural_substep \u2192 ga_writers/_idempotency.py:replace_prior_chart_facts)"
+ },
+ "ga_tajaka": {
+  "layer": "L1",
+  "files": [
+   "ga_tajaka.py"
+  ],
+  "target": "l1_tajik_varsha_year_lords",
+  "ctables": [
+   "l1_tajik_varsha_year_lords"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): l1_tajik_varsha_year_lords (ga_writers/_idempotency.py:132 via ga_tajaka.py \u2192 ga_writers/ga_tajaka_writer.py:build_ga_tajaka \u2192 ga_writers/_idempotency.py:replace_prior_tajik_varsha)"
+ },
+ "ga_transit_anchors": {
+  "layer": "L1",
+  "files": [
+   "ga_transit_anchors.py"
+  ],
+  "target": "ga_transit_anchors",
+  "ctables": [
+   "ga_transit_anchors"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): ga_transit_anchors (ga_transit_anchors.py:187)"
+ },
+ "ga_vargas": {
+  "layer": "L1",
+  "files": [
+   "ga_vargas.py"
+  ],
+  "target": "chart_divisionals",
+  "ctables": [
+   "chart_divisionals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_divisionals (ga_writers/_idempotency.py:106 via ga_vargas.py \u2192 ga_writers/ga_vargas_writer.py:build_ga_vargas \u2192 ga_writers/_idempotency.py:replace_prior_chart_divisionals), chart_divisionals (ga_writers/ga_vargas_writer.py:2896 via ga_vargas.py \u2192 ga_writers/ga_vargas_writer.py:build_ga_vargas)"
+ },
+ "ga_vastu": {
+  "layer": "L1",
+  "files": [
+   "ga_vastu.py"
+  ],
+  "target": "ga_vastu_planet_direction_map",
+  "ctables": [
+   "ga_vastu_planet_direction_map"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): ga_vastu_planet_direction_map (ga_writers/ga_vastu_writer.py:95 via ga_vastu.py \u2192 ga_writers/ga_vastu_writer.py:build_ga_vastu_substep)"
+ },
+ "ga_vichara": {
+  "layer": "L1",
+  "files": [
+   "ga_vichara.py"
+  ],
+  "target": "chart_vichara",
+  "ctables": [
+   "chart_vichara"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): chart_vichara (ga_writers/ga_vichara_writer.py:165 via ga_vichara.py \u2192 ga_writers/ga_vichara_writer.py:build_ga_vichara_substep)"
+ },
+ "ga_yoga": {
+  "layer": "L1",
+  "files": [
+   "ga_yoga.py"
+  ],
+  "target": "ga_yoga_firings",
+  "ctables": [
+   "ga_yoga_firings"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): ga_yoga_firings (ga_writers/ga_yoga_writer.py:2777 via ga_yoga.py \u2192 ga_writers/ga_yoga_writer.py:build_ga_yoga_substep)"
+ },
+ "bo_anveshana": {
+  "layer": "L2",
+  "files": [
+   "bo_anveshana.py"
+  ],
+  "target": "bodha_discoveries",
+  "ctables": [
+   "bodha_discoveries",
+   "bodha_anomalies"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_discoveries (bo_anveshana.py:821), bodha_anomalies (bo_anveshana.py:822)"
+ },
+ "bo_arudha": {
+  "layer": "L2",
+  "files": [
+   "bo_arudha.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_arudha.py \u2192 bodha_writers/_idempotency.py:replace_prior_msr_for_chart)"
+ },
+ "bo_bimba": {
+  "layer": "L2",
+  "files": [
+   "bo_bimba.py"
+  ],
+  "target": "bodha_cgm_nodes",
+  "ctables": [
+   "bodha_cgm_nodes"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_nodes (bodha_writers/_idempotency.py:343 via bo_bimba.py \u2192 bodha_writers/_idempotency.py:replace_prior_cgm_nodes), bodha_cgm_nodes (bodha_writers/_idempotency.py:348 via bo_bimba.py \u2192 bodha_writers/_idempotency.py:replace_prior_cgm_nodes)"
+ },
+ "bo_cdlm_summary": {
+  "layer": "L2",
+  "files": [
+   "bo_cdlm_summary.py"
+  ],
+  "target": "bodha_cdlm_chart_summary",
+  "ctables": [
+   "bodha_cdlm_chart_summary"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cdlm_chart_summary (bo_cdlm_summary.py:433)"
+ },
+ "bo_cgm_motifs": {
+  "layer": "L2",
+  "files": [
+   "bo_cgm_motifs.py"
+  ],
+  "target": "bodha_cgm_motifs",
+  "ctables": [
+   "bodha_cgm_motifs"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_motifs (bo_cgm_motifs.py:913)"
+ },
+ "bo_cgm_paths": {
+  "layer": "L2",
+  "files": [
+   "bo_cgm_paths.py"
+  ],
+  "target": "bodha_cgm_paths",
+  "ctables": [
+   "bodha_cgm_paths"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_paths (bo_cgm_paths.py:384)"
+ },
+ "bo_chart_gestalt": {
+  "layer": "L2",
+  "files": [
+   "bo_chart_gestalt.py"
+  ],
+  "target": "bodha_chart_gestalt",
+  "ctables": [
+   "bodha_chart_gestalt"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_chart_gestalt (bo_chart_gestalt.py:685)"
+ },
+ "bo_drishti": {
+  "layer": "L2",
+  "files": [
+   "bo_drishti.py"
+  ],
+  "target": "bodha_question_lenses",
+  "ctables": [
+   "bodha_question_lenses"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_question_lenses (bo_drishti.py:311)"
+ },
+ "bo_grounding": {
+  "layer": "L2",
+  "files": [
+   "bo_grounding.py"
+  ],
+  "target": "bodha_grounding_matches",
+  "ctables": [
+   "bodha_grounding_matches"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_grounding_matches (bodha_writers/_idempotency.py:232 via bo_grounding.py \u2192 bodha_writers/_idempotency.py:replace_prior_grounding_matches)"
+ },
+ "bo_karanajala": {
+  "layer": "L2",
+  "files": [
+   "bo_karanajala.py"
+  ],
+  "target": "bodha_cgm_edges",
+  "ctables": [
+   "bodha_cgm_edges"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_edges (bodha_writers/_idempotency.py:358 via bo_karanajala.py \u2192 bodha_writers/_idempotency.py:replace_prior_cgm_edges), bodha_cgm_edges (bodha_writers/_idempotency.py:363 via bo_karanajala.py \u2192 bodha_writers/_idempotency.py:replace_prior_cgm_edges)"
+ },
+ "bo_laksana": {
+  "layer": "L2",
+  "files": [
+   "bo_laksana.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_laksana.py \u2192 bodha_writers/_idempotency.py:replace_prior_msr_for_chart)"
+ },
+ "bo_laksana_rerank": {
+  "layer": "L2",
+  "files": [
+   "bo_laksana.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PARTIAL",
+  "measured": "the asset's own table(s) are only UPDATEd in place: bodha_msr_signals (bo_laksana.py:3756), bodha_msr_signals (bo_laksana.py:3886), bodha_msr_signals (bo_laksana.py:3948) \u2014 no row is added, but whether a rebuild re-derives every row is not measured [resolved scope: bo_laksana.py, bodha_writers/data_plane_contracts.py, brahmagyan/graha_vocabulary.py, brahmagyan/l0_semantic_release.py]"
+ },
+ "bo_nakshatra_semantic": {
+  "layer": "L2",
+  "files": [
+   "bo_nakshatra_semantic.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_nakshatra_semantic.py \u2192 bodha_writers/_idempotency.py:replace_prior_msr_for_chart)"
+ },
+ "bo_pramana_mapa": {
+  "layer": "L2",
+  "files": [
+   "bo_pramana_mapa.py"
+  ],
+  "target": "synthesis_quality_scorecard",
+  "ctables": [
+   "synthesis_quality_scorecard"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): synthesis_quality_scorecard (bodha_writers/_idempotency.py:523 via bo_pramana_mapa.py \u2192 bodha_writers/_idempotency.py:replace_prior_scorecard)"
+ },
+ "bo_pratijna": {
+  "layer": "L2",
+  "files": [
+   "bo_pratijna.py"
+  ],
+  "target": "bodha_pratijna",
+  "ctables": [
+   "bodha_pratijna"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_pratijna (bo_pratijna.py:458)"
+ },
+ "bo_samskara": {
+  "layer": "L2",
+  "files": [
+   "bo_samskara.py"
+  ],
+  "target": "bodha_signal_embeddings",
+  "ctables": [
+   "bodha_signal_embeddings"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_signal_embeddings (bodha_writers/_idempotency.py:508 via bo_samskara.py \u2192 bodha_writers/_idempotency.py:replace_prior_signal_embeddings)"
+ },
+ "bo_samvada": {
+  "layer": "L2",
+  "files": [
+   "bo_samvada.py"
+  ],
+  "target": "vw_chart_digest",
+  "ctables": [],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) ['vw_chart_digest'] anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: bo_samvada.py, bodha_writers/data_plane_contracts.py]"
+ },
+ "bo_sangati": {
+  "layer": "L2",
+  "files": [
+   "bo_sangati.py"
+  ],
+  "target": "bodha_cdlm_cells",
+  "ctables": [
+   "bodha_cdlm_cells",
+   "bodha_triangulation"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_triangulation (bo_sangati.py:504), bodha_cdlm_cells (bodha_writers/_idempotency.py:248 via bo_sangati.py \u2192 bodha_writers/_idempotency.py:replace_prior_cdlm_cells), bodha_cdlm_cells (bodha_writers/_idempotency.py:253 via bo_sangati.py \u2192 bodha_writers/_idempotency.py:replace_prior_cdlm_cells)"
+ },
+ "bo_special_lagna": {
+  "layer": "L2",
+  "files": [
+   "bo_special_lagna.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_special_lagna.py \u2192 bodha_writers/_idempotency.py:replace_prior_msr_for_chart)"
+ },
+ "bo_sudarshana": {
+  "layer": "L2",
+  "files": [
+   "bo_sudarshana.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_sudarshana.py \u2192 bodha_writers/_idempotency.py:replace_prior_msr_for_chart)"
+ },
+ "bo_upaya": {
+  "layer": "L2",
+  "files": [
+   "bo_upaya.py"
+  ],
+  "target": "bodha_rm_resonances",
+  "ctables": [
+   "bodha_rm_resonances",
+   "bodha_rm_remedy_prescriptions"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_rm_resonances (bodha_writers/_idempotency.py:430 via bo_upaya.py \u2192 bodha_writers/_idempotency.py:replace_prior_rm_resonances), bodha_rm_resonances (bodha_writers/_idempotency.py:435 via bo_upaya.py \u2192 bodha_writers/_idempotency.py:replace_prior_rm_resonances), bodha_rm_remedy_prescriptions (bodha_writers/_idempotency.py:445 via bo_upaya.py \u2192 bodha_writers/_idempotency.py:replace_prior_rm_prescriptions), bodha_rm_remedy_prescriptions (bodha_writers/_idempotency.py:450 via bo_upaya.py \u2192 bodha_writers/_idempotency.py:replace_prior_rm_prescriptions)"
+ },
+ "bo_vargottama_dhana": {
+  "layer": "L2",
+  "files": [
+   "bo_vargottama_dhana.py"
+  ],
+  "target": "bodha_msr_signals",
+  "ctables": [
+   "bodha_msr_signals"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_msr_signals (bodha_writers/_idempotency.py:209 via bo_vargottama_dhana.py \u2192 bodha_writers/_idempotency.py:replace_prior_msr_for_chart)"
+ },
+ "bo_yantra_mechanism": {
+  "layer": "L2",
+  "files": [
+   "bo_yantra_mechanism.py"
+  ],
+  "target": "bodha_mechanisms",
+  "ctables": [
+   "bodha_mechanisms"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): bodha_mechanisms (bo_yantra_mechanism.py:608)"
+ },
+ "ka_avadhi": {
+  "layer": "L3",
+  "files": [
+   "ka_avadhi.py"
+  ],
+  "target": "kala_avadhi",
+  "ctables": [
+   "kala_avadhi"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_avadhi (ka_avadhi.py:325)"
+ },
+ "ka_bhavishya_lekha": {
+  "layer": "L3",
+  "files": [
+   "ka_bhavishya_lekha.py"
+  ],
+  "target": "kala_bhavishya",
+  "ctables": [
+   "kala_bhavishya"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_bhavishya (ka_bhavishya_lekha.py:403)"
+ },
+ "ka_dasha_kala": {
+  "layer": "L3",
+  "files": [
+   "services/ka_dasha_kala/writer.py"
+  ],
+  "target": null,
+  "ctables": [],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) (none declared) anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: services/ka_dasha_kala/writer.py]"
+ },
+ "ka_gochara": {
+  "layer": "L3",
+  "files": [
+   "ka_gochara.py"
+  ],
+  "target": "kala_gochara_windows",
+  "ctables": [
+   "kala_gochara_windows"
+  ],
+  "v": "PARTIAL",
+  "measured": "registry/writer table mismatch (R240, a registry-data finding \u2014 not closable by the detector): the registry declares kala_gochara_windows, the writer replaces kala_gochara_windows_v2; no write to the asset's own table(s) ['kala_gochara_windows'] anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: ka_gochara.py, services/w2g/materialize.py, services/w2g/fingerprint.py, services/w2g/db_source.py, services/gochara_intensity/_dbutil.py, services/gochara_grammar/resonance_map.py, services/w2g/tiers.py, services/gochara_grammar/dasha_data.py, services/ka_gochara_sweep/sweep.py, services/gochara_intensity/engine.py, services/ka_gochara_sweep/shape_output.py, services/gochara_grammar/models.py]"
+ },
+ "ka_gochara_resonance": {
+  "layer": "L3",
+  "files": [
+   "services/ka_gochara_resonance/writer.py"
+  ],
+  "target": "gochara_resonance_map",
+  "ctables": [
+   "gochara_resonance_map"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): gochara_resonance_map (services/ka_gochara_resonance/writer.py:417)"
+ },
+ "ka_graha_sancara": {
+  "layer": "L3",
+  "files": [
+   "ka_graha_sancara.py"
+  ],
+  "target": null,
+  "ctables": [],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) (none declared) anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: ka_graha_sancara.py, services/ka_graha_sancara/engine.py, brahmagyan/l0_ephemeris.py]"
+ },
+ "ka_jivana_parva": {
+  "layer": "L3",
+  "files": [
+   "ka_jivana_parva.py"
+  ],
+  "target": "kala_jivana_parva",
+  "ctables": [
+   "kala_jivana_parva"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_jivana_parva (ka_jivana_parva.py:75)"
+ },
+ "ka_kala_darshana": {
+  "layer": "L3",
+  "files": [
+   "ka_kala_darshana.py"
+  ],
+  "target": "kala_darshana",
+  "ctables": [
+   "kala_darshana"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_darshana (ka_kala_darshana.py:19)"
+ },
+ "ka_kalasutra": {
+  "layer": "L3",
+  "files": [
+   "ka_kalasutra.py"
+  ],
+  "target": "kala_activation",
+  "ctables": [
+   "kala_activation"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_activation (ka_kalasutra.py:33)"
+ },
+ "ka_kota_chakra": {
+  "layer": "L3",
+  "files": [
+   "services/ka_kota_chakra/writer.py"
+  ],
+  "target": "kala_kota_chakra",
+  "ctables": [
+   "kala_kota_chakra"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_kota_chakra (services/ka_kota_chakra/writer.py:101)"
+ },
+ "ka_kshetra": {
+  "layer": "L3",
+  "files": [
+   "services/ka_kshetra/writer.py"
+  ],
+  "target": "kala_field",
+  "ctables": [
+   "kala_field"
+  ],
+  "v": "FAIL",
+  "measured": "rebuild refused when target is populated: services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld after the output-existence probe _populated_owned_table) \u2014 the delete-then-insert path runs only on an output-empty chart, so a rebuild of a populated chart does not replace (\u00a7N.3 'rebuild replaces' not met)"
+ },
+ "ka_moorti_nirnaya": {
+  "layer": "L3",
+  "files": [
+   "services/ka_moorti_nirnaya/writer.py"
+  ],
+  "target": "kala_moorti_nirnaya",
+  "ctables": [
+   "kala_moorti_nirnaya"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_moorti_nirnaya (services/ka_moorti_nirnaya/writer.py:87)"
+ },
+ "ka_muhurta_seva": {
+  "layer": "L3",
+  "files": [
+   "services/ka_muhurta_seva/writer.py"
+  ],
+  "target": null,
+  "ctables": [],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) (none declared) anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: services/ka_muhurta_seva/writer.py, panchang_engine/__init__.py, panchang_engine/tara_bala.py, panchang_engine/types.py, muhurat/finder.py, panchang_engine/config_loader.py]"
+ },
+ "ka_sangam": {
+  "layer": "L3",
+  "files": [
+   "ka_sangam.py"
+  ],
+  "target": "kala_convergence",
+  "ctables": [
+   "kala_convergence"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_convergence (ka_sangam.py:451), kala_convergence (ka_sangam.py:544), kala_convergence (ka_sangam.py:554), kala_convergence (ka_sangam.py:601)"
+ },
+ "ka_sudarshana_varsha": {
+  "layer": "L3",
+  "files": [
+   "services/ka_sudarshana_varsha/writer.py"
+  ],
+  "target": "kala_sudarshana_varsha",
+  "ctables": [
+   "kala_sudarshana_varsha"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_sudarshana_varsha (services/ka_sudarshana_varsha/writer.py:54)"
+ },
+ "ka_taranga": {
+  "layer": "L3",
+  "files": [
+   "ka_taranga.py"
+  ],
+  "target": "kala_taranga",
+  "ctables": [
+   "kala_taranga"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_taranga (ka_taranga.py:180)"
+ },
+ "ka_tithi_pravesha": {
+  "layer": "L3",
+  "files": [
+   "services/ka_tithi_pravesha/writer.py"
+  ],
+  "target": "kala_tithi_pravesha",
+  "ctables": [
+   "kala_tithi_pravesha"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_tithi_pravesha (services/ka_tithi_pravesha/writer.py:79)"
+ },
+ "ka_tulana": {
+  "layer": "L3",
+  "files": [
+   "services/ka_tulana/writer.py"
+  ],
+  "target": null,
+  "ctables": [],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) (none declared) anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: services/ka_tulana/writer.py, services/ka_tulana/ranker.py]"
+ },
+ "ka_vedha_gochara": {
+  "layer": "L3",
+  "files": [
+   "services/ka_vedha_gochara/writer.py"
+  ],
+  "target": "kala_vedha_gochara",
+  "ctables": [
+   "kala_vedha_gochara"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_vedha_gochara (services/ka_vedha_gochara/writer.py:131)"
+ },
+ "ka_vighnakara": {
+  "layer": "L3",
+  "files": [
+   "ka_vighnakara.py"
+  ],
+  "target": "kala_obstruction",
+  "ctables": [
+   "kala_obstruction"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_obstruction (ka_vighnakara.py:172)"
+ },
+ "ka_yojaka": {
+  "layer": "L3",
+  "files": [
+   "ka_yojaka.py"
+  ],
+  "target": "kala_activation_predicates",
+  "ctables": [
+   "kala_activation_predicates"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_activation_predicates (ka_yojaka.py:445)"
+ },
+ "ph_muhurta": {
+  "layer": "L4",
+  "files": [
+   "ph_muhurta.py"
+  ],
+  "target": "phala_muhurta",
+  "ctables": [
+   "phala_muhurta"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_muhurta (ph_muhurta.py:63)"
+ },
+ "ph_nimitta": {
+  "layer": "L4",
+  "files": [
+   "ph_nimitta.py"
+  ],
+  "target": "phala_anchors",
+  "ctables": [
+   "phala_anchors"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_anchors (ph_nimitta.py:129)"
+ },
+ "ph_phaladesa": {
+  "layer": "L4",
+  "files": [
+   "ph_phaladesa.py"
+  ],
+  "target": "phala_phaladesa",
+  "ctables": [
+   "phala_phaladesa"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_phaladesa (ph_phaladesa.py:170)"
+ },
+ "ph_pramana": {
+  "layer": "L4",
+  "files": [
+   "ph_pramana.py"
+  ],
+  "target": "phala_pramana",
+  "ctables": [
+   "phala_pramana"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_pramana (ph_pramana.py:56)"
+ },
+ "ph_pratikara": {
+  "layer": "L4",
+  "files": [
+   "ph_pratikara.py"
+  ],
+  "target": "phala_mitigation",
+  "ctables": [
+   "phala_mitigation"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_mitigation (ph_pratikara.py:100)"
+ },
+ "ph_rectification": {
+  "layer": "L4",
+  "files": [
+   "ph_rectification/__init__.py"
+  ],
+  "target": "phala_rectification",
+  "ctables": [
+   "phala_rectification",
+   "phala_rectification_best"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_rectification_best (ph_rectification/__init__.py:288), phala_rectification (ph_rectification/__init__.py:291)"
+ },
+ "ph_sankrama": {
+  "layer": "L4",
+  "files": [
+   "ph_sankrama.py"
+  ],
+  "target": "phala_sankrama",
+  "ctables": [
+   "phala_sankrama"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_sankrama (ph_sankrama.py:78)"
+ },
+ "ph_sodhana": {
+  "layer": "L4",
+  "files": [
+   "ph_sodhana.py"
+  ],
+  "target": "phala_sodhana",
+  "ctables": [
+   "phala_sodhana"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_sodhana (ph_sodhana.py:53)"
+ },
+ "ph_suddha_sodhana": {
+  "layer": "L4",
+  "files": [
+   "ph_suddha_sodhana.py"
+  ],
+  "target": "phala_suddha_sodhana",
+  "ctables": [
+   "phala_suddha_sodhana"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_suddha_sodhana (ph_suddha_sodhana.py:46)"
+ },
+ "lel_events": {
+  "layer": "L5",
+  "files": [],
+  "target": null,
+  "ctables": [
+   "life_events"
+  ],
+  "v": "N/A",
+  "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+ },
+ "mi_abhilekha": {
+  "layer": "L5",
+  "files": [
+   "mi_abhilekha.py"
+  ],
+  "target": "mimamsa_journal",
+  "ctables": [
+   "mimamsa_journal"
+  ],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) ['mimamsa_journal'] anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: mi_abhilekha.py]"
+ },
+ "mi_adhilepa": {
+  "layer": "L5",
+  "files": [
+   "mi_adhilepa.py"
+  ],
+  "target": "mimamsa_load_bearing",
+  "ctables": [
+   "mimamsa_load_bearing",
+   "mimamsa_convergence_adjustment",
+   "mimamsa_anchor_adjustment",
+   "mimamsa_signal_adjustment",
+   "mimamsa_fact_adjustment"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_anchor_adjustment (mi_adhilepa.py:208), mimamsa_convergence_adjustment (mi_adhilepa.py:208), mimamsa_fact_adjustment (mi_adhilepa.py:208), mimamsa_load_bearing (mi_adhilepa.py:208), mimamsa_signal_adjustment (mi_adhilepa.py:208)"
+ },
+ "mi_bhara": {
+  "layer": "L5",
+  "files": [
+   "mi_bhara.py"
+  ],
+  "target": "kala_field_skill",
+  "ctables": [
+   "kala_field_skill"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): kala_field_skill (services/mi_bhara/db.py:215 via mi_bhara.py \u2192 services/mi_bhara/db.py:replace_prior_skill_and_gof)"
+ },
+ "mi_bhavisya": {
+  "layer": "L5",
+  "files": [
+   "mi_bhavisya.py"
+  ],
+  "target": "mimamsa_predictions",
+  "ctables": [
+   "mimamsa_predictions",
+   "mimamsa_manifestation_sets"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_manifestation_sets (mi_bhavisya.py:228), mimamsa_predictions (mi_bhavisya.py:230)"
+ },
+ "mi_darshana": {
+  "layer": "L5",
+  "files": [
+   "mi_darshana.py"
+  ],
+  "target": "mimamsa_insight_units",
+  "ctables": [
+   "mimamsa_insight_units",
+   "mimamsa_insight_embeddings"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_insight_embeddings (mi_darshana.py:684), mimamsa_insight_units (mi_darshana.py:685)"
+ },
+ "mi_gunanaka": {
+  "layer": "L5",
+  "files": [
+   "mi_gunanaka.py"
+  ],
+  "target": "mimamsa_multipliers",
+  "ctables": [
+   "mimamsa_multipliers",
+   "mimamsa_calibration_snapshot"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_multipliers (mi_gunanaka.py:300)"
+ },
+ "mi_jivanaghatana": {
+  "layer": "L5",
+  "files": [
+   "mi_jivanaghatana.py"
+  ],
+  "target": "mimamsa_event_provenance",
+  "ctables": [
+   "mimamsa_event_provenance"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_event_provenance (mi_jivanaghatana.py:356)"
+ },
+ "mi_kula": {
+  "layer": "L5",
+  "files": [
+   "mi_kula.py"
+  ],
+  "target": "mimamsa_signal_families",
+  "ctables": [
+   "mimamsa_signal_families",
+   "mimamsa_negative_controls"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_negative_controls (mi_kula.py:312), mimamsa_signal_families (mi_kula.py:313)"
+ },
+ "mi_pariksha": {
+  "layer": "L5",
+  "files": [
+   "mi_pariksha.py"
+  ],
+  "target": "mimamsa_qa_eval",
+  "ctables": [
+   "mimamsa_qa_eval",
+   "mimamsa_attribution",
+   "mimamsa_discoveries"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_discoveries (mi_pariksha.py:170), mimamsa_qa_eval (mi_pariksha.py:305), mimamsa_qa_eval (mi_pariksha.py:384), mimamsa_attribution (mi_pariksha.py:480), mimamsa_qa_eval (mi_pariksha.py:589), mimamsa_discoveries (mi_pariksha.py:682), mimamsa_qa_eval (mi_pariksha.py:813)"
+ },
+ "mi_pramana": {
+  "layer": "L5",
+  "files": [
+   "mi_pramana.py"
+  ],
+  "target": "mimamsa_calibration",
+  "ctables": [
+   "mimamsa_calibration",
+   "mimamsa_reliability"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_calibration (mi_pramana.py:374), mimamsa_reliability (mi_pramana.py:490)"
+ },
+ "mi_sambandha": {
+  "layer": "L5",
+  "files": [
+   "mi_sambandha.py"
+  ],
+  "target": "mimamsa_manifestation_grammar",
+  "ctables": [
+   "mimamsa_manifestation_grammar"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_manifestation_grammar (mi_sambandha.py:245)"
+ },
+ "mi_sankalpa": {
+  "layer": "L5",
+  "files": [
+   "mi_sankalpa.py"
+  ],
+  "target": "mimamsa_intervention_ledger",
+  "ctables": [
+   "mimamsa_intervention_ledger"
+  ],
+  "v": "PASS",
+  "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): mimamsa_intervention_ledger (services/mi_sankalpa/db.py:208 via mi_sankalpa.py \u2192 services/mi_sankalpa/db.py:delete_unresolved)"
+ },
+ "mi_seva": {
+  "layer": "L5",
+  "files": [
+   "mi_seva.py"
+  ],
+  "target": "mimamsa_preferences",
+  "ctables": [
+   "mimamsa_preferences"
+  ],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) ['mimamsa_preferences'] anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: mi_seva.py]"
+ },
+ "mi_vistara": {
+  "layer": "L5",
+  "files": [
+   "mi_vistara.py"
+  ],
+  "target": "mimamsa_export_log",
+  "ctables": [
+   "mimamsa_export_log"
+  ],
+  "v": "PARTIAL",
+  "measured": "no write to the asset's own table(s) ['mimamsa_export_log'] anywhere in the resolved scope \u2014 nothing to replace; not graded N/A, since a static scan cannot prove a write's absence [resolved scope: mi_vistara.py]"
+ }
+}

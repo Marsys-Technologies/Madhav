@@ -1,0 +1,7 @@
+L1 Ganita (contribution): 19 assets · 19 registered ids vs 19 has_writer=true
+  build scope: 67 global run(s), of which 567 touched this layer
+  FAIL 39 · PARTIAL/NO_DETECTOR 64 · assets measured 19
+    FAIL Build.history: 1 — ga_positions
+    FAIL Cost.baseline: 19 — ga_ayurdaya, ga_condition, ga_dashas, ga_medical, ga_nakshatra, ga_panchanga…
+    FAIL Earn.build_record: 19 — ga_ayurdaya, ga_condition, ga_dashas, ga_medical, ga_nakshatra, ga_panchanga…
+census written: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/census/L1_prod_20260926.json

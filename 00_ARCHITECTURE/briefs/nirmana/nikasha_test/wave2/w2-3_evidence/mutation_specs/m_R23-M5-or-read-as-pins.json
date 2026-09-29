@@ -1,0 +1,1 @@
+{"old": "    if re.search(r\"\\bOR\\b\", where, re.I):\n        return None", "new": "    if False:\n        return None"}

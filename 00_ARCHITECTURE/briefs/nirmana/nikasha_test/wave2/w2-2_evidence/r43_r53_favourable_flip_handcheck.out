@@ -1,0 +1,23 @@
+R43 contract flips — text-level scan broader than the AST contract_scan (every line of the resolved file):
+  ka_dasha_kala          services/ka_dasha_kala/writer.py | commit/close/rollback calls: ['12: - NEVER calls ctx.db_conn.commit() or ctx.db_conn.rollback()'] | asset_throughput writes: none
+  ka_gochara_resonance   services/ka_gochara_resonance/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ka_kota_chakra         services/ka_kota_chakra/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ka_kshetra             services/ka_kshetra/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ka_moorti_nirnaya      services/ka_moorti_nirnaya/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ka_muhurta_seva        services/ka_muhurta_seva/writer.py | commit/close/rollback calls: ['13: - NEVER calls ctx.db_conn.commit() / rollback() / close()', '97: Never calls ctx.db_conn.commit() / rollback() / close().'] | asset_throughput writes: none
+  ka_sudarshana_varsha   services/ka_sudarshana_varsha/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ka_tithi_pravesha      services/ka_tithi_pravesha/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ka_tulana              services/ka_tulana/writer.py | commit/close/rollback calls: ['12: - NEVER calls ctx.db_conn.commit() or ctx.db_conn.rollback()'] | asset_throughput writes: none
+  ka_vedha_gochara       services/ka_vedha_gochara/writer.py | commit/close/rollback calls: none | asset_throughput writes: none
+  mi_bhara               pipeline/orchestrator/writers/mi_bhara.py | commit/close/rollback calls: none | asset_throughput writes: none
+  mi_sankalpa            pipeline/orchestrator/writers/mi_sankalpa.py | commit/close/rollback calls: none | asset_throughput writes: none
+  ph_rectification       pipeline/orchestrator/writers/ph_rectification/__init__.py | commit/close/rollback calls: none | asset_throughput writes: none
+R43 Idem.pattern PASS flips — DELETE targets vs registry target_table:
+  ka_gochara_resonance   target=gochara_resonance_map    DELETE FROM ['gochara_resonance_map']  -> on target
+  ka_kota_chakra         target=kala_kota_chakra         DELETE FROM ['kala_kota_chakra']  -> on target
+  ka_kshetra             target=kala_field               DELETE FROM ['build_substep_progress']  -> NOT on target
+  ka_moorti_nirnaya      target=kala_moorti_nirnaya      DELETE FROM ['kala_moorti_nirnaya']  -> on target
+  ka_sudarshana_varsha   target=kala_sudarshana_varsha   DELETE FROM ['kala_sudarshana_varsha']  -> on target
+  ka_tithi_pravesha      target=kala_tithi_pravesha      DELETE FROM ['kala_tithi_pravesha']  -> on target
+  ka_vedha_gochara       target=kala_vedha_gochara       DELETE FROM ['kala_vedha_gochara']  -> on target
+  ph_rectification       target=phala_rectification      DELETE FROM ['phala_rectification', 'phala_rectification_best']  -> on target

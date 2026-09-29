@@ -1,0 +1,1 @@
+{"old": "        return ((\"empty\" if r[0] == \"populated\" else \"populated\"), r[1]) if r else None", "new": "        return None"}

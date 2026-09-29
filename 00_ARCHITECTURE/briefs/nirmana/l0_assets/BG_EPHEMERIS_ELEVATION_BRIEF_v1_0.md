@@ -96,7 +96,7 @@ expected or needed. Requirement **[TRANSFERS]**.
 | Source and domain fidelity | the conventions in force are carried with every row | **PASS** — three convention columns, no nulls |
 | Operational honesty | the build record carries a real figure for the layer's largest table | `rows_written` non-zero (G03) |
 
-## §4 · The eight gates
+## §4 · The nine gates
 
 | gate | verdict | detector and evidence |
 |---|---|---|
@@ -108,6 +108,7 @@ expected or needed. Requirement **[TRANSFERS]**.
 | **Carr** | **NO_DETECTOR** | D3 is the applicable check. The integrity check verifies *shape* (count, span, body set) and never recomputes a single position from different inputs. 825,084 computed values, none independently re-derived. |
 | **Narr** | **N/A** | emits no prose |
 | **Dens** | **FAIL** | 4 serving modules, 0 `density_contract` declarations |
+| **Build** | **FAIL** | Measured against `asset_census.py --layer L0`, 2026-09-28: registered / contract / target / DAG / count-integrity / exercised / history all **PASS** (3 executed runs, no error or abort). Check 6 (completion honesty) **FAILS**: build record `rows_written=0` against 825,084 live rows — the same underlying fact as `G03` (`Earn.build_record`) above; no second ledger row registered for the same measurement. |
 
 ## §5 · Ledger rows (registered)
 `G01` body-case vocabulary (+ the integrity check pin) · `G02` no D3 re-derivation · `G03` build record

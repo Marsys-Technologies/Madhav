@@ -1,0 +1,1 @@
+{"old": "                tail = lit[m.end() if alias or not m.group(1) else m.start(1):]", "new": "                tail = lit[m.end():]"}

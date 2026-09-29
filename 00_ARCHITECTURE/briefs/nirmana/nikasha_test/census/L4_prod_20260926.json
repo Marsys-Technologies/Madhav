@@ -1,0 +1,822 @@
+{
+ "L4": {
+  "generated": "2026-09-26T17:23:36+05:30",
+  "layer": "L4",
+  "layer_name": "Phala",
+  "scoring": "contribution",
+  "n_assets": 9,
+  "global_runs": 67,
+  "global_runs_touching_layer": 355,
+  "never_exercised_with_writer": [],
+  "registered_ids": 8,
+  "registry_has_writer": 9,
+  "phantom_registered": [],
+  "local_map_candidates": -1,
+  "assets": [
+   {
+    "asset_id": "ph_muhurta",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_muhurta",
+    "has_writer": true,
+    "writer_files": [
+     "ph_muhurta.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_muhurta.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_muhurta"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=56, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "183 rows, 24 cols; fully populated 21; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (muhurta_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 183/183 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "3 module(s): index.ts, query_phala_calibration.ts, salience_order.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta', 'ka_kalasutra', 'ka_vighnakara', 'ka_sangam'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_nimitta",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_anchors",
+    "has_writer": true,
+    "writer_files": [
+     "ph_nimitta.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_nimitta.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_anchors"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "9 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=-, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 37 cols; fully populated 29; NEVER populated ['subsystem_source', 'karmic_frame', 'karmic_note']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (anchor_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "PASS",
+      "measured": "5 module(s): index.ts, query_phala_calibration.ts, query_predictive_anchors.ts, query_prospective_ledger.ts, salience_order.ts; declaring density_contract: 1"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "101 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 30 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ka_bhavishya_lekha did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ka_sangam', 'ka_bhavishya_lekha'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_phaladesa",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_phaladesa",
+    "has_writer": true,
+    "writer_files": [
+     "ph_phaladesa.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_phaladesa.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_phaladesa"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "7 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='error'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-07"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=error, rows_written=-, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "26 rows, 31 cols; fully populated 16; NEVER populated ['narration_requested_at', 'narration_model']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (phaladesa_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 26/26 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): index.ts, query_domain_result.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "102 run(s), scope(s): asset, asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 35 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_muhurta, ph_nimitta, ph_pramana, ph_pratikara, ph_sankrama, ph_suddha_sodhana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta', 'ph_muhurta', 'ph_pratikara', 'ph_suddha_sodhana', 'ph_sankrama', 'ph_pramana'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_pramana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_pramana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_pramana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_pramana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_pramana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-13"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=139, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 14 cols; fully populated 11; NEVER populated ['lel_entry_id', 'lel_entry_jsonb', 'linked_sodhana_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (pramana_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "4 module(s): index.ts, query_phala_calibration.ts, query_predictive_anchors.ts, salience_order.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 32 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_muhurta, ph_nimitta, ph_pratikara, ph_sankrama, ph_sodhana, ph_suddha_sodhana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta', 'ph_sankrama', 'ph_muhurta', 'ph_pratikara', 'ph_sodhana', 'ph_suddha_sodhana'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_pratikara",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_mitigation",
+    "has_writer": true,
+    "writer_files": [
+     "ph_pratikara.py"
+    ],
+    "catalog_status": "DRAFT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_pratikara.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_mitigation"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "4 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=741, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "1277 rows, 22 cols; fully populated 16; NEVER populated ['initiation_muhurta_ref', 'source_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (mitigation_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 1277/1277 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "3 module(s): index.ts, query_phala_calibration.ts, salience_order.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta', 'ka_vighnakara', 'ka_sangam'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_rectification",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_rectification",
+    "has_writer": true,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "FAIL",
+      "measured": "registry says has_writer=true and no @register found"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer file"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer file"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_rectification"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=186, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "370 rows, 13 cols; fully populated 11; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, offset_minutes, ayanamsha_id): 0 duplicate(s)"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): index.ts, query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_sankrama",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_sankrama",
+    "has_writer": true,
+    "writer_files": [
+     "ph_sankrama.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_sankrama.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_sankrama"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=475, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "630 rows, 26 cols; fully populated 24; NEVER populated ['mitigation_ref']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 630/630 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): index.ts, query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_sodhana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_sodhana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_sodhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_sodhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_sodhana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-12"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=41, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "41 rows, 14 cols; fully populated 13; NEVER populated ['leakage_class']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (sodhana_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 41/41 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "4 module(s): index.ts, query_phala_calibration.ts, query_predictive_anchors.ts, salience_order.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 32 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_nimitta'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_suddha_sodhana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": null,
+    "target_table": "phala_suddha_sodhana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_suddha_sodhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_suddha_sodhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM present (delete-then-insert)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_suddha_sodhana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql; build state='stale'"
+     },
+     "Earn.build_record": {
+      "v": "FAIL",
+      "measured": "rows_per_second=NULL, last_built=2026-08-13"
+     },
+     "Cost.baseline": {
+      "v": "FAIL",
+      "measured": "state=stale, rows_written=139, rps=-"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 16 cols; fully populated 10; NEVER populated ['revision_approved_by', 'revision_applied_at', 'magnitude_delta_if_applied']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (entry_id): 0 duplicate(s)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "3 module(s): index.ts, query_phala_calibration.ts, salience_order.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "99 run(s), scope(s): asset_set, global, layer, last 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 32 error(s) and 10 abort(s) on record. BLOCKED: upstream dependency(ies) ph_sodhana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "FAIL",
+      "measured": "declared dependencies not lit: ['ph_sodhana', 'ph_nimitta'] \u2014 a DEP-ASSERT trap if no writer can light them"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "field-level exposure census is per-capability; not generic"
+     }
+    }
+   }
+  ]
+ }
+}

@@ -10,7 +10,7 @@ kind: template          # fixes shape; never cited as authority for content
 chain: ELEVATION_DERIVATION_CHAIN_v1_0.md
 produces: ["one asset instance per registered asset or service — 129 across L0-L5; 40 in L0"]
 inherits:                                                                            # what THIS TEMPLATE inherits — all three SEALED 2026-09-25
-  - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md    # tier 3, FINAL — §4.4 is the hook §0.1 receives; §5.2 the eight gates; §5.3 the record shape
+  - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md    # tier 3, FINAL — §4.4 is the hook §0.1 receives; §5.2 the nine gates; §5.3 the record shape
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md     # tier 2, FINAL — §13.3 asset-brief sentence; §4.1 vocabulary; §12.2 tests
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md                               # tier 1, FINAL — §16 what every brief states; §14 obligations
 instance_inherits:                                                                   # what EACH ASSET INSTANCE inherits — four, not three
@@ -30,6 +30,7 @@ role: >
   layer requires carries a current passing record and its gap rows are closed — never by assertion.
 independent_review: NOT YET — native review before the pilot (native instruction 2026-09-26). The pilot on five L0 assets is its first practical test; a defect found there is fixed HERE.
 changelog:
+  - "2.0 (2026-09-27, figure correction — no doctrine change): §4.2's build-scenario population corrected 776 -> 762 recorded `build_runs`. The 776 was a mismeasurement by this document's own author, not a value that later drifted: nothing has written to `build_runs` since 2026-09-19, and on 2026-09-27 the production read-only connection and the local instance agree exactly at 762 (completed 328 / failed 419 / stopped 15). Caught independently by the Nikasha test campaign (R84, `nikasha_test/PHASE6_ANALYSIS.md`), which flagged it as tier-4 drift and was right. The two-scenario claim itself (global skips L0 and walks L1-L5; layer scope runs every asset in the layer) is unaffected — it rests on the `scope`/`action` columns, not on the run count."
   - "2.0 (2026-09-26, third change — native ruling, decision 17): NINTH GATE `Build` — buildability. Can the orchestrator dispatch this asset, and does a triggered rebuild produce the correct result? Six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus one runtime state proved by `ctx.dry_run` and, when authorized, a real rebuild. The gate set is 9 per asset, template-wide: 9 x 129 = 1,161 across L0-L5, not an L0 measure. THE BOUNDARY RULE, which the native asked be decided here: the gate asks DOES IT WORK; §9 asks COULD IT WORK BETTER. A passing gate writes a certification record and NO ledger row — rows come only from FAIL / PARTIAL / NO_DETECTOR. Making a working rebuild faster, cheaper or incremental is a §9 opportunity under the build-cost column and never blocks certification. One boundary case sits on the gate side: a rebuild that works only after a manual step is a Build gap, because `seamlessly when triggered` is part of the claim. A buildability gap is fixed in the ASSET or the REGISTRY, never in the orchestrator — the freeze is why any of this is checkable. Requires the tier-3 reopen of layer template §5.2 (decision 17)."
   - "2.0 (2026-09-26, second change — native review folded, same day): (h) §9 OPPORTUNITY REGISTER added — the 'beyond' half of the delta: algorithm/architecture (three outcome columns: output, inputs, BUILD COST), concept completeness (width and depth against a DECLARED universe), retrieval reachability (fields and rows exposed, requirement [TRANSFERS] to the retrieval plane), and synergy (joint value neither asset carries alone; shared roots are not confirmations). One admission rule: no measurement-after, no entry. Opportunities NEVER block certification. (i) §1 gains three measured items: build-cost baseline ('not instrumented' is a legal value), completeness census, reachability census. (j) §4 Vocab row names which of the six §4.1 rules apply to the asset. (k) §5 is the DELTA LEDGER, both kinds: asset_gaps.jsonl gains `kind: gap | opportunity`; the four states are reused with CLOSED meaning 'proven by its measurement' for either kind; the tracker filters on kind and prints conforms (gaps) and could-be-better (opportunities) separately. Ledger schema lines and tracker aligned in the same commit."
   - "2.0 (2026-09-26): rebuilt from the sealed tiers 1-3. (a) RULING 11 — gate `Dom` (is the astrology right) becomes `Carr` (source carriage and reproduction): the three mechanical checks stay, the seeded negative case leaves with the verdict framing, and the sentence that made `Dom` a certification blocker is replaced by the carriage framing. (b) §0.1 now carries the sealed layer template's thirteen inherited items row for row — v1.1 had ten; missing were the preserved kernel, the Jyotish concepts with the carriage check each invites, and the individual/synergistic/cross-layer terms as three rows. (c) THE DELTA LEDGER: §5's gap register IS `asset_gaps.jsonl`, whose `_schema` line fixes the fields; a brief's delta section is those rows rendered, never retyped, and `what` carries `measured … / required …` so the delta is a re-run, not a claim. (d) Every section carries the layer template's three lines (inherits / measured_by / traces_to). (e) PILOT clause — a brief derived from a layer instance that is not yet ACCEPTED may register gaps and may not certify. (f) RULING 9 — §8 verdict may be signed by reviewer, native or session once a review has happened; §7's verified_by records who ran the detector, and the independence that matters is the detector's. (g) Change packet gains the frozen orchestrator contract conformance lines (§N.2/§N.3). Three alignment items outside this document are listed at the end, not done silently."
@@ -207,10 +208,10 @@ An obligation inherited but not specialised is an obligation nobody can test.
 
 ---
 
-## §4 · Asset conformance — the eight gates
+## §4 · Asset conformance — the nine gates
 
 ```
-inherits:    layer §5.2 (a) — the eight gates; CLAUDE.md §N.3, §N.6-§N.8
+inherits:    layer §5.2 (a) — the nine gates; CLAUDE.md §N.3, §N.6-§N.8
 measured_by: one detector per gate, evaluated against the ASSET, each able to return false
 traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured against
 ```
@@ -228,7 +229,7 @@ traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured 
 | **Carr** source carriage and reproduction | always | what the asset restates from a source matches that source; what it computes reproduces a second way; a witness disagreement is carried, not settled — **one** applicable check from §4.1, run | | | |
 | **Narr** narration fidelity | if it emits prose | prose restates cited facts and never re-derives them (§N.7) | | | |
 | **Dens** serving density | if it reaches a served surface | confirmed and catalog-only rows counted separately; the dense layer survives a trim (§N.6) | | | |
-| **Build** buildability | always | the orchestrator can dispatch this asset and a triggered rebuild produces the correct result — the six checks of §4.2 | | | |
+| **Build** buildability | always | the orchestrator can dispatch this asset and a triggered rebuild produces the correct result — the nine checks of §4.2 | | | |
 
 **Verdict vocabulary, closed set, these spellings exactly** (they are the tracker's and the ledger's):
 `PASS` · `FAIL` · `PARTIAL` (holds for a *named* subset) · `NO_DETECTOR` (never recorded as PASS) ·
@@ -237,7 +238,7 @@ traces_to:   layer §3.1 and §3.3 — the gates are what the delta is measured 
 A conditional gate that does not apply is disposed of with an explicit `N/A` and one line of reason. It is
 never silently dropped.
 
-### 4.2 · Buildability — the six checks, and what is NOT a gap
+### 4.2 · Buildability — the nine checks, and what is NOT a gap
 
 ```
 inherits:    CLAUDE.md §N.2 (the FROZEN orchestrator contract), §N.3 (idempotency per layer), §N.8 (a status needs a detector that could read false); ORCHESTRATOR_CONVERGENCE_CLOSE §2
@@ -247,7 +248,7 @@ traces_to:   0.1 — an asset that cannot be rebuilt serves no P-need, whatever 
 
 An asset's content is worth nothing if the orchestrator cannot rebuild it on demand.
 
-**Two build scenarios, and they do not exercise the same assets.** Measured 2026-09-26 over 776 recorded
+**Two build scenarios, and they do not exercise the same assets.** Measured 2026-09-26, re-measured 2026-09-27, over 762 recorded
 runs (`build_runs`, scopes `global` / `layer` / `asset_set` / `asset`; actions build / rebuild / update):
 
 | scenario | what the orchestrator does | what it proves |
@@ -275,7 +276,7 @@ All nine checks run read-only, and all nine can return false:
 | 5 | **count and integrity** | `count_sql` present, correctly scoped, and `integrity_check_sql` present — each able to fail |
 | 6 | **completion honesty** | the build record agrees with the live count. `rows_written = 0` against a populated table is a status with no measurement behind it, and for a service it is indistinguishable from a writer that produced nothing |
 | 7 | **exercised** | the orchestrator has actually run this asset at least once (`build_run_assets`), and under which scope. A registered writer the orchestrator has never dispatched is the sharpest "not integrated" signal there is — measured 2026-09-26: **5 of 40 L0 assets have never appeared in any run**, one of them (`bg_sign_medical`) with a writer |
-| 8 | **history** | its recorded outcomes: `state ∈ complete / error / aborted / queued` and `disposition`. FAIL if the most recent run errored or aborted; PARTIAL if it has errored before and the latest run completed; NA if never run (check 7 owns that). Measured: **13 of 40 L0 assets have errored or aborted**, 7 of them with the *identical* error — `post-write integrity check failed: integrity_check_sql → False` — which is one systemic finding, not seven |
+| 8 | **history** | its recorded outcomes: `state ∈ complete / error / aborted / queued` and `disposition`. FAIL if the most recent run errored or aborted; PARTIAL if it has errored before and the latest run completed; N/A if never run (check 7 owns that). Measured: **13 of 40 L0 assets have errored or aborted**, 7 of them with the *identical* error — `post-write integrity check failed: integrity_check_sql → False` — which is one systemic finding, not seven |
 | 9 | **dependency liveness** | every declared dependency can actually reach `lit` before this asset runs. A dependency that no writer can ever light is a permanent `DEP-ASSERT` trap; a dependency merely not lit *yet* is an ordering fault. Both are orchestrator-integration failures and both are this asset's gap, not the orchestrator's |
 
 **`disposition = 'skip_no_delta'` is not a failure.** It is the orchestrator correctly declining to rebuild
@@ -495,7 +496,7 @@ Accepted entries are how the layer instance's Part 3 grows its "beyond" half.
 
 ## Adapting per layer
 
-What changes per layer is the *content*, never the headings, the three lines, the eight gates or the
+What changes per layer is the *content*, never the headings, the three lines, the nine gates or the
 ledger fields.
 
 | layer | what is distinctive |

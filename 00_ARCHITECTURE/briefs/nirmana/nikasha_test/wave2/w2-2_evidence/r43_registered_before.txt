@@ -1,0 +1,6 @@
+L0: registered ids 36 (in registry 36) vs has_writer=true 34; writer-backed unrecognised: []; phantom: []; multi-file: []
+L1: registered ids 19 (in registry 19) vs has_writer=true 19; writer-backed unrecognised: []; phantom: []; multi-file: []
+L2: registered ids 23 (in registry 23) vs has_writer=true 23; writer-backed unrecognised: []; phantom: []; multi-file: []
+L3: registered ids 11 (in registry 11) vs has_writer=true 21; writer-backed unrecognised: ['ka_dasha_kala', 'ka_gochara_resonance', 'ka_kota_chakra', 'ka_kshetra', 'ka_moorti_nirnaya', 'ka_muhurta_seva', 'ka_sudarshana_varsha', 'ka_tithi_pravesha', 'ka_tulana', 'ka_vedha_gochara']; phantom: []; multi-file: []
+L4: registered ids 8 (in registry 8) vs has_writer=true 9; writer-backed unrecognised: ['ph_rectification']; phantom: []; multi-file: []
+L5: registered ids 12 (in registry 12) vs has_writer=true 14; writer-backed unrecognised: ['mi_bhara', 'mi_sankalpa']; phantom: []; multi-file: []

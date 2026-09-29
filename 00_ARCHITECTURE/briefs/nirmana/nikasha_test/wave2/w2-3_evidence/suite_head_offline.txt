@@ -1,0 +1,3 @@
+FAILED platform/scripts/governance/__tests__/test_drift_detector_h35_h38.py::test_f163_current_row_flagged_predecessor_row_is_not
+FAILED platform/scripts/governance/__tests__/test_drift_detector_h35_h38.py::test_h35_critical_when_canonical_artifacts_missing
+2 failed, 320 passed, 23 skipped in 7.84s

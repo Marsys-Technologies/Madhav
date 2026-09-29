@@ -1,0 +1,1 @@
+asset_census: script error — TimeoutExpired: Command '['psql', '-tAX', '-F', '\x1f', '-v', 'ON_ERROR_STOP=1', '-c', 'SELECT (count(*) - count(DISTINCT (chart_id, event_class, segment_index)))::text FROM kala_field']' timed out after 180 seconds

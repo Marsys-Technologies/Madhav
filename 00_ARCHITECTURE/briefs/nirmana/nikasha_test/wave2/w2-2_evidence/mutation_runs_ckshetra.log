@@ -1,0 +1,55 @@
+# C-KSHETRA mutation runs (W2-2 gate correction) — mut.sh NAME FILE TESTSEL; offline (the ckshetra tests read source only)
+=== mutation CK-M1-refusal-guard-reverted on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (50 -> 50 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[\n    def _prepare(self, conn, chart_id):\n        populated = self._populated(conn, chart_id)\n        if populated is not None:\n            raise ReplacementHeld(f"held: output exists in {populated}")\n        self._delete_prior(conn, chart_id)\n-FAIL-rebuild refused when target is populated: ka_x.py:]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_an_open_idem_gap_does_not_close_on_a_refused_rebuild
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_the_real_ka_kshetra_does_not_pass_and_a_real_replacing_writer_does
+3 failed, 6 passed, 64 deselected in 1.03s
+--- reverted (byte-identical)
+--- after revert:
+259 passed, 20 skipped, 21 deselected in 4.07s
+=== mutation CK-M2-any-delete-counts on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (17 -> 28 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_counted_delete_must_name_the_assets_own_table['DELETE FROM build_substep_progress WHERE chart_id = %s'-targets0-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_counted_delete_must_name_the_assets_own_table[f"DELETE FROM {unresolved} WHERE chart_id = %s"-targets1-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_counted_delete_must_name_the_assets_own_table[f"DELETE FROM {table} WHERE chart_id = %s"-targets3-PARTIAL]
+3 failed, 6 passed, 64 deselected in 1.32s
+--- reverted (byte-identical)
+--- after revert:
+259 passed, 20 skipped, 21 deselected in 4.01s
+=== mutation CK-M3-old-rule-restored on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (70 -> 211 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[\n    def _prepare(self, conn, chart_id):\n        self._delete_prior(conn, chart_id)\n-PASS-t_x (ka_x.py:]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[\n    def _prepare(self, conn, chart_id):\n        upstream = self._populated(conn, chart_id)\n        if upstream is None:\n            raise RuntimeError("upstream missing")\n        self._delete_prior(conn, chart_id)\n-PASS-t_x (ka_x.py:]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_counted_delete_must_name_the_assets_own_table['DELETE FROM build_substep_progress WHERE chart_id = %s'-targets0-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_counted_delete_must_name_the_assets_own_table[f"DELETE FROM {unresolved} WHERE chart_id = %s"-targets1-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_counted_delete_must_name_the_assets_own_table[f"DELETE FROM {table} WHERE chart_id = %s"-targets3-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_an_open_idem_gap_does_not_close_on_a_refused_rebuild
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_the_real_ka_kshetra_does_not_pass_and_a_real_replacing_writer_does
+8 failed, 1 passed, 64 deselected in 0.99s
+--- reverted (byte-identical)
+--- after revert:
+259 passed, 20 skipped, 21 deselected in 4.05s
+=== mutation CK-M4-guard-polarity-ignored on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (84 -> 94 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[\n    def _prepare(self, conn, chart_id):\n        upstream = self._populated(conn, chart_id)\n        if upstream is None:\n            raise RuntimeError("upstream missing")\n        self._delete_prior(conn, chart_id)\n-PASS-t_x (ka_x.py:]
+1 failed, 8 passed, 64 deselected in 0.92s
+--- reverted (byte-identical)
+--- after revert:
+259 passed, 20 skipped, 21 deselected in 4.50s
+=== mutation CK-M5-loop-tables-unresolved on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (53 -> 29 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[\n    def _prepare(self, conn, chart_id):\n        self._delete_prior(conn, chart_id)\n-PASS-t_x (ka_x.py:]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_ckshetra_a_rebuild_refused_on_a_populated_chart_never_passes[\n    def _prepare(self, conn, chart_id):\n        upstream = self._populated(conn, chart_id)\n        if upstream is None:\n            raise RuntimeError("upstream missing")\n        self._delete_prior(conn, chart_id)\n-PASS-t_x (ka_x.py:]
+2 failed, 7 passed, 64 deselected in 1.11s
+--- reverted (byte-identical)
+--- after revert:
+259 passed, 20 skipped, 21 deselected in 4.25s
+
+# C3c: R53-M3 in its natural form (drop the self-exclusion), run by the finishing builder — an EQUIVALENT mutant (survives), as the review found:
+=== mutation R53-M3-natural-self-counted-as-owner on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (72 -> 50 chars)
+7 passed, 66 deselected in 5.92s
+--- reverted (byte-identical)
+--- after revert:
+259 passed, 20 skipped, 21 deselected in 4.01s

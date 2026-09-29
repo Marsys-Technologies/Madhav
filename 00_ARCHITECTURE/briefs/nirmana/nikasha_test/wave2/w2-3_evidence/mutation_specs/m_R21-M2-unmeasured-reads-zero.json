@@ -1,0 +1,1 @@
+{"old": "if br else dict(transitive=None, direct=None, severity_weight=None,", "new": "if br else dict(transitive=0, direct=0, severity_weight=1,"}

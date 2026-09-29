@@ -1,0 +1,1 @@
+{"old": "            out.update(capability_sql(root) if i == 0 else\n", "new": "            if i and not (ROOT / root).is_dir():\n                continue\n            out.update(capability_sql(root) if i == 0 else\n"}

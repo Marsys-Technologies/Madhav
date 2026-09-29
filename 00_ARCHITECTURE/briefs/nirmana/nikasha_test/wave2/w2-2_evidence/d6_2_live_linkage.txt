@@ -1,0 +1,22 @@
+instrument present: False
+era (first disposition='build'): 2026-09-04T19:41:33.241851+00:00
+production (instrument absent), 127 assets, (Earn, Cost): {('NO_DETECTOR', 'NO_DETECTOR'): 127}
+SIMULATED column (duration=1.0s injected into each real build record), reason buckets:
+    62  ('Earn PASS', 'Cost PASS', 'linked build')
+    31  ('Earn NO_DETECTOR', 'Cost NO_DETECTOR', 'unclassified')
+    10  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at any chart (global build ')
+     6  ('Earn N/A', 'Cost FAIL', 'see Build.exercised')
+     5  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 8d74')
+     3  ('Earn N/A', 'Cost NO_DETECTOR', 'attempt error before completion; see Build.history; latest a')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run f2a6')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 9eb0')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 0ac3')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run fd08')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 4844')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 346d')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 6a7e')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 5d4d')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 5b06')
+     1  ('Earn N/A', 'Cost NO_DETECTOR', 'no build was due; latest attempt at chart 482012f1: run 5369')
+SIMULATED Earn N/A by cause: {'skip_no_delta': 25, 'never attempted': 6, 'before completion': 3}
+never attempted: ['bg_gochara_citation_resolution(has_writer=False)', 'bg_nakshatra_medical(has_writer=False)', 'bg_sarvatobhadra_grid(has_writer=False)', 'bg_sign_medical(has_writer=True)', 'bg_transit_engine(has_writer=False)', 'lel_events(has_writer=False)']

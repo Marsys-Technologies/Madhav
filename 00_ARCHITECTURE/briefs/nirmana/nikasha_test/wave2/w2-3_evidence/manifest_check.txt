@@ -1,0 +1,4 @@
+entries: 141 (declared 141)
+fingerprint declared: 1847709eec2bad52
+fingerprint observed: 1847709eec2bad52
+MATCH

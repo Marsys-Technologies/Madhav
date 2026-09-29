@@ -1,0 +1,43 @@
+pg_constraint (read-only):
+bodha_rm_dasha_windowed_prescriptions_base_prescription_id_fkey | f | f | a | FOREIGN KEY (base_prescription_id) REFERENCES bodha_rm_remedy_prescriptions(prescription_id)
+
+legacy dasha-window rows referencing static_natal prescriptions (chart, ayanamsha, snapshot, n):
+1c826d5a | krishnamurti | static_natal | 2
+1c826d5a | lahiri_chitrapaksha | static_natal | 2
+1c826d5a | raman | static_natal | 2
+1c826d5a | surya_siddhanta_classical | static_natal | 1
+1c826d5a | true_chitra | static_natal | 2
+482012f1 | krishnamurti | static_natal | 1
+482012f1 | lahiri_chitrapaksha | static_natal | 1
+482012f1 | raman | static_natal | 1
+482012f1 | surya_siddhanta_classical | static_natal | 1
+482012f1 | true_chitra | static_natal | 1
+cb73cd3d | krishnamurti | static_natal | 1
+cb73cd3d | lahiri_chitrapaksha | static_natal | 1
+cb73cd3d | raman | static_natal | 2
+cb73cd3d | surya_siddhanta_classical | static_natal | 1
+cb73cd3d | true_chitra | static_natal | 1
+
+482012f1 rows: build/computed_at of child and parent:
+krishnamurti | fcdcd284 | 2026-09-09 23:57:19.289515+00 | fcdcd284
+lahiri_chitrapaksha | fcdcd284 | 2026-09-09 23:57:19.289515+00 | fcdcd284
+raman | fcdcd284 | 2026-09-09 23:57:19.289515+00 | fcdcd284
+surya_siddhanta_classical | fcdcd284 | 2026-09-09 23:57:19.289515+00 | fcdcd284
+true_chitra | fcdcd284 | 2026-09-09 23:57:19.289515+00 | fcdcd284
+
+bo_upaya started attempts (latest first):
+482012f1 | complete | build | 2026-09-09
+482012f1 | complete | build | 2026-09-09
+482012f1 | complete | - | 2026-08-21
+1c826d5a | complete | - | 2026-08-12
+
+writer order at aa26d83bb (2026-09-09) vs HEAD:
+            replace_prior_rm_dasha_windowed(conn, chart_id, aya)
+            replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
+            replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
+
+            # DP-SD-015: do not delete or append the legacy daśā-window table.
+            # Existing history remains readable; new L2 generations have no
+            # resolved timing/activation authority.
+            replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
+            replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)

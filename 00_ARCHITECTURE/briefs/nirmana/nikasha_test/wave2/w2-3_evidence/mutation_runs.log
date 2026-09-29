@@ -1,0 +1,431 @@
+
+=== 2026-09-27T21:54:04 R242-without (WITHOUT the change: asset_census.py at HEAD)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r242_the_ownership_map_is_read_once_per_measure_and_the_verdicts_are_unchanged
+  1 failed, 1 passed in 0.11s
+restored byte-identical: True
+
+=== 2026-09-27T21:54:16 R242-M1-eager-setdefault
+mutation: {"old": "r, lambda: owners[\"map\"] if \"map\" in owners else owners.setdefault(\"map\", target_owners()))", "new": "r, lambda: owners.setdefault(\"map\", target_owners()))"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r242_the_ownership_map_is_read_once_per_measure_and_the_verdicts_are_unchanged
+  1 failed, 1 passed in 0.10s
+reverted: md5 before 0b843bfd49a5165a9e8b4c03b0be7832 after 0b843bfd49a5165a9e8b4c03b0be7832 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 280 passed, 20 skipped in 4.15s']
+
+=== 2026-09-27T21:54:22 R242-M2-cache-empty
+mutation: {"old": "r, lambda: owners[\"map\"] if \"map\" in owners else owners.setdefault(\"map\", target_owners()))", "new": "r, lambda: owners[\"map\"] if \"map\" in owners else owners.setdefault(\"map\", {}))"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r242_the_ownership_map_is_read_once_per_measure_and_the_verdicts_are_unchanged
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r242_an_unreadable_map_is_not_cached_as_empty
+  2 failed in 0.10s
+reverted: md5 before 0b843bfd49a5165a9e8b4c03b0be7832 after 0b843bfd49a5165a9e8b4c03b0be7832 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 280 passed, 20 skipped in 4.22s']
+
+=== 2026-09-27T21:58:33 R20-without (WITHOUT the change: asset_census.py at fa23abe69)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_helper_module_is_not_credited_for_functions_the_writer_never_calls
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_upsert_layer_passes_only_on_an_on_conflict_into_its_own_table[        return seed_x(ctx.db_conn, ctx.build_id)\n-PASS-INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): t_own (brahmagyan/l0_x.py:]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_upsert_layer_passes_only_on_an_on_conflict_into_its_own_table[        ctx.db_conn.execute("INSERT INTO t_other (k) VALUES (1) ON CONFLICT DO NOTHING")\n        ctx.db_conn.execute("INSERT INTO t_own (k, v) VALUES (1, 2)")\n-FAIL-plain INSERT into the asset's own table(s)]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_l1_adapter_chain_is_followed_two_hops
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_replacement_deeper_than_the_hop_limit_is_partial_naming_the_chain_never_guessed
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_scan_starts_at_the_registered_class_not_its_whole_module
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_r240_a_registry_writer_table_mismatch_is_named_never_laundered_into_a_pass
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_own_table_upsert_where_delete_then_insert_is_required_fails_only_on_a_fully_read_scope[-FAIL-upsert into the asset's own table(s) with no delete of them anywhere in the resolved scope]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_own_table_upsert_where_delete_then_insert_is_required_fails_only_on_a_fully_read_scope[        ctx.db_conn.execute(f"DELETE FROM {self.tbl} WHERE chart_id = %s", (1,))\n-PARTIAL-a DELETE/INSERT whose table the scan cannot name: ga_u.py:]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_insert_and_its_on_conflict_split_across_two_strings_is_an_upsert_not_an_accretion
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_writer_that_writes_nothing_is_partial_with_the_reason_never_the_closable_na
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_end_to_end_an_open_gap_closes_on_the_followed_replacement_and_not_on_the_mismatch
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_real_writers_resolve_as_hand_verified
+  14 failed, 1 skipped, 2 deselected in 2.71s
+restored byte-identical: True
+
+=== 2026-09-27T21:59:03 R20-M1-no-delegation-followed
+mutation: {"old": "IDEM_DELEGATION_HOPS = 2\n", "new": "IDEM_DELEGATION_HOPS = 0\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_replacement_delegated_to_a_shared_helper_passes_naming_the_helper_and_chain
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_helper_module_is_not_credited_for_functions_the_writer_never_calls
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_upsert_layer_passes_only_on_an_on_conflict_into_its_own_table[        return seed_x(ctx.db_conn, ctx.build_id)\n-PASS-INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): t_own (brahmagyan/l0_x.py:]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_l1_adapter_chain_is_followed_two_hops
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_replacement_deeper_than_the_hop_limit_is_partial_naming_the_chain_never_guessed
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_end_to_end_an_open_gap_closes_on_the_followed_replacement_and_not_on_the_mismatch
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_real_writers_resolve_as_hand_verified
+  7 failed, 7 passed, 1 skipped, 2 deselected in 1.64s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 5.97s']
+
+=== 2026-09-27T21:59:14 R20-M2-whole-module-not-class
+mutation: {"old": "queue.append((p, tree, [cls] if cls is not None else [tree], 0, _rel(p)))", "new": "queue.append((p, tree, [tree], 0, _rel(p)))"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_scan_starts_at_the_registered_class_not_its_whole_module
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_writer_that_writes_nothing_is_partial_with_the_reason_never_the_closable_na
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_real_writers_resolve_as_hand_verified
+  3 failed, 11 passed, 1 skipped, 2 deselected in 2.08s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 6.01s']
+
+=== 2026-09-27T21:59:26 R20-M3-on-conflict-anywhere
+mutation: {"old": "    if convention == \"upsert\":\n        if own[\"upsert\"]:", "new": "    if convention == \"upsert\":\n        if facts[\"upsert\"]:"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_upsert_layer_passes_only_on_an_on_conflict_into_its_own_table[        ctx.db_conn.execute("INSERT INTO t_other (k) VALUES (1) ON CONFLICT DO NOTHING")\n        ctx.db_conn.execute("INSERT INTO t_own (k, v) VALUES (1, 2)")\n-FAIL-plain INSERT into the asset's own table(s)]
+  1 failed, 13 passed, 1 skipped, 2 deselected in 2.05s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 6.25s']
+
+=== 2026-09-27T21:59:37 R20-M4-stem-match-launders-mismatch
+mutation: {"old": "own = {k: [x for x in facts[k] if x[0] in tset]", "new": "own = {k: [x for x in facts[k] if x[0] in tset or any(x[0].startswith(o + '_') for o in tset)]"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_r240_a_registry_writer_table_mismatch_is_named_never_laundered_into_a_pass
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_end_to_end_an_open_gap_closes_on_the_followed_replacement_and_not_on_the_mismatch
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_real_writers_resolve_as_hand_verified
+  3 failed, 11 passed, 1 skipped, 2 deselected in 1.69s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 5.82s']
+
+=== 2026-09-27T21:59:48 R20-M5-fail-on-unread-scope
+mutation: {"old": "    unresolved = bool(beyond or facts[\"dynamic\"])", "new": "    unresolved = False"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_replacement_deeper_than_the_hop_limit_is_partial_naming_the_chain_never_guessed
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_an_own_table_upsert_where_delete_then_insert_is_required_fails_only_on_a_fully_read_scope[        ctx.db_conn.execute(f"DELETE FROM {self.tbl} WHERE chart_id = %s", (1,))\n-PARTIAL-a DELETE/INSERT whose table the scan cannot name: ga_u.py:]
+  2 failed, 12 passed, 1 skipped, 2 deselected in 2.04s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 6.27s']
+
+=== 2026-09-27T21:59:58 R20-M6-no-write-reads-na
+mutation: {"old": "    return PARTIAL, [\"; \".join(reasons) + f\" [resolved scope: {scope}]\"]", "new": "    return (NA if not any(own.values()) else PARTIAL), [\"; \".join(reasons) + f\" [resolved scope: {scope}]\"]"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_r240_a_registry_writer_table_mismatch_is_named_never_laundered_into_a_pass
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_writer_that_writes_nothing_is_partial_with_the_reason_never_the_closable_na
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_end_to_end_an_open_gap_closes_on_the_followed_replacement_and_not_on_the_mismatch
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_the_real_writers_resolve_as_hand_verified
+  4 failed, 10 passed, 1 skipped, 2 deselected in 1.63s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 5.73s']
+
+=== 2026-09-27T22:00:10 R20-M7-uncalled-helpers-credited
+mutation: {"old": "            return path, tree, d\n", "new": "            return path, tree, tree\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_helper_module_is_not_credited_for_functions_the_writer_never_calls
+  1 failed, 13 passed, 1 skipped, 2 deselected in 2.78s
+reverted: md5 before 153ee97faf80c4fa1e9b8794ecb42582 after 153ee97faf80c4fa1e9b8794ecb42582 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 294 passed, 21 skipped in 5.87s']
+
+=== 2026-09-27T22:04:21 R241-without (WITHOUT the change: asset_census.py at 50c0d4535)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[continue]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[count_probe]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[early_return]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[negated]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[skip_no_raise]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[walrus]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_a_guard_in_a_delegated_module_is_seen
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_an_open_gap_does_not_close_on_an_early_return_hold
+  8 failed, 5 passed, 17 deselected in 3.02s
+restored byte-identical: True
+
+=== 2026-09-27T22:05:04 R241-M1-any-table-probe-is-output
+mutation: {"old": "                if tb in tset or tb == \"{?}\":\n                    return True", "new": "                if True:\n                    return True"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_controls_that_are_not_holds_still_pass[upstream_probe-        if self._upstream(conn) > 0:\n            raise RuntimeError('input present, nothing built')\n        self._delete_prior(conn)\n        conn.execute('INSERT INTO t_h (chart_id) VALUES (1)')\n]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified
+  2 failed, 25 passed, 1 skipped, 2 deselected in 4.12s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 7.54s']
+
+=== 2026-09-27T22:05:20 R241-M2-build-scoped-probe-counts
+mutation: {"old": "                    continue            # \"did THIS build already write it\"", "new": "                    pass            # \"did THIS build already write it\""}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_controls_that_are_not_holds_still_pass[this_build_resume-        for v in ('D1',):\n            if self._already_this_build(conn, ctx.build_id):\n                continue\n            self._delete_prior(conn)\n]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified
+  2 failed, 25 passed, 1 skipped, 2 deselected in 3.59s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 8.29s']
+
+=== 2026-09-27T22:05:35 R241-M3-raise-only-stop
+mutation: {"old": "isinstance(s, (ast.Raise, ast.Return, ast.Continue, ast.Break))", "new": "isinstance(s, (ast.Raise,))"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[continue]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[early_return]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_an_open_gap_does_not_close_on_an_early_return_hold
+  3 failed, 24 passed, 1 skipped, 2 deselected in 3.52s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 7.53s']
+
+=== 2026-09-27T22:05:49 R241-M4-no-skip-hold
+mutation: {"old": "            if stop is None and deletes(on_path) and not deletes(", "new": "            if False and deletes(on_path) and not deletes("}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[skip_no_raise]
+  1 failed, 26 passed, 1 skipped, 2 deselected in 3.47s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 7.41s']
+
+=== 2026-09-27T22:06:05 R241-M5-negation-ignored
+mutation: {"old": "        return ((\"empty\" if r[0] == \"populated\" else \"populated\"), r[1]) if r else None", "new": "        return None"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[negated]
+  1 failed, 26 passed, 1 skipped, 2 deselected in 3.93s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 7.83s']
+
+=== 2026-09-27T22:06:19 R241-M6-guard-in-writer-file-only
+mutation: {"old": "    funcs, seen = [], set()\n    for u in units:", "new": "    funcs, seen = [], set()\n    for u in units[:1]:"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_a_guard_in_a_delegated_module_is_seen
+  1 failed, 26 passed, 1 skipped, 2 deselected in 3.93s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 7.27s']
+
+=== 2026-09-27T22:06:33 R241-M7-no-count-probe
+mutation: {"old": "r\"|(?:1|count\\(\\s*\\*\\s*\\))\\s+FROM\\s+\"", "new": "r\"|(?:1)\\s+FROM\\s+\""}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[count_probe]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_every_disclosed_hold_shape_reads_fail_naming_the_hold[walrus]
+  2 failed, 25 passed, 1 skipped, 2 deselected in 3.40s
+reverted: md5 before 189b3044a93fe952afdf444cd6743867 after 189b3044a93fe952afdf444cd6743867 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 307 passed, 21 skipped in 7.47s']
+
+=== 2026-09-27T22:09:16 R21-without (WITHOUT the change: asset_census.py at f31a98e4f)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r21
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_the_radius_is_the_count_of_active_assets_that_transitively_depend_on_it
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_root_and_a_leaf_with_the_same_verdict_open_differently_weighted_build_gaps
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_an_unreadable_dag_is_unmeasured_never_zero
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_closing_or_reopening_build_row_carries_the_radius_measured_now
+  4 failed, 1 skipped, 30 deselected in 0.09s
+restored byte-identical: True
+
+=== 2026-09-27T22:09:40 R21-M1-direct-only
+mutation: {"old": "            seen.add(x)\n            todo.extend(rev[x])", "new": "            seen.add(x)\n            pass"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r21
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_the_radius_is_the_count_of_active_assets_that_transitively_depend_on_it
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_root_and_a_leaf_with_the_same_verdict_open_differently_weighted_build_gaps
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_closing_or_reopening_build_row_carries_the_radius_measured_now
+  3 failed, 1 passed, 1 skipped, 30 deselected in 0.12s
+reverted: md5 before f51ff0803e5eacfe88e4e71f91fdec90 after f51ff0803e5eacfe88e4e71f91fdec90 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 311 passed, 22 skipped in 7.64s']
+
+=== 2026-09-27T22:09:53 R21-M2-unmeasured-reads-zero
+mutation: {"old": "if br else dict(transitive=None, direct=None, severity_weight=None,", "new": "if br else dict(transitive=0, direct=0, severity_weight=1,"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r21
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_an_unreadable_dag_is_unmeasured_never_zero
+  1 failed, 3 passed, 1 skipped, 30 deselected in 0.10s
+reverted: md5 before f51ff0803e5eacfe88e4e71f91fdec90 after f51ff0803e5eacfe88e4e71f91fdec90 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 311 passed, 22 skipped in 7.50s']
+
+=== 2026-09-27T22:10:06 R21-M3-no-radius-on-closing-rows
+mutation: {"old": "owner=owner, gate=gate, state=\"CLOSED\", ts=ts, **sev)", "new": "owner=owner, gate=gate, state=\"CLOSED\", ts=ts)"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r21
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_closing_or_reopening_build_row_carries_the_radius_measured_now
+  1 failed, 3 passed, 1 skipped, 30 deselected in 0.15s
+reverted: md5 before f51ff0803e5eacfe88e4e71f91fdec90 after f51ff0803e5eacfe88e4e71f91fdec90 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 311 passed, 22 skipped in 8.76s']
+
+=== 2026-09-27T22:10:17 R21-M4-cycle-counts-itself
+mutation: {"old": "            if x == a or x in seen:", "new": "            if x in seen:"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r21
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_the_radius_is_the_count_of_active_assets_that_transitively_depend_on_it
+  1 failed, 3 passed, 1 skipped, 30 deselected in 0.13s
+reverted: md5 before f51ff0803e5eacfe88e4e71f91fdec90 after f51ff0803e5eacfe88e4e71f91fdec90 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 311 passed, 22 skipped in 8.44s']
+
+=== 2026-09-27T22:10:27 R21-M5-build-gaps-not-annotated
+mutation: {"old": "if crit.startswith(\"Build.\") and isinstance(a.get(\"blocking_radius\"), dict):", "new": "if False and isinstance(a.get(\"blocking_radius\"), dict):"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r21
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_root_and_a_leaf_with_the_same_verdict_open_differently_weighted_build_gaps
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_an_unreadable_dag_is_unmeasured_never_zero
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r21_a_closing_or_reopening_build_row_carries_the_radius_measured_now
+  3 failed, 1 passed, 1 skipped, 30 deselected in 0.11s
+reverted: md5 before f51ff0803e5eacfe88e4e71f91fdec90 after f51ff0803e5eacfe88e4e71f91fdec90 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 311 passed, 22 skipped in 7.70s']
+
+=== 2026-09-27T22:15:44 R23-without (WITHOUT the change: asset_census.py at 3f9a11428)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+  ERROR platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py - A...
+restored byte-identical: True
+
+=== 2026-09-27T22:17:19 R23-M1-prose-counts-as-query
+mutation: {"old": "                    if k2 < 0 or re.search(r\"\\bFROM\\b\", prev[k2:], re.I):\n                        continue", "new": "                    if False:\n                        continue"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_depth_is_the_share_of_rows_the_literal_pins_reach_counted_read_only
+  1 failed, 5 passed, 1 skipped, 35 deselected in 0.09s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 7.73s']
+
+=== 2026-09-27T22:17:29 R23-M2-other-alias-columns-counted
+mutation: {"old": "if name.lower() in lower and (not q or q.lower() in {m.lower() for m in mine}):", "new": "if name.lower() in lower:"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_width_counts_the_built_columns_some_capability_selects_and_names_the_dark_ones
+  1 failed, 5 passed, 1 skipped, 35 deselected in 0.12s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 8.00s']
+
+=== 2026-09-27T22:17:41 R23-M3-unpopulated-columns-count-as-built
+mutation: {"old": "    never = set(c.lower() for c in dc.get(\"never\", [])) if dc.get(\"rows\") else set()", "new": "    never = set()"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_width_counts_the_built_columns_some_capability_selects_and_names_the_dark_ones
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_a_run_time_column_list_makes_width_a_lower_bound
+  2 failed, 4 passed, 1 skipped, 35 deselected in 0.13s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 8.51s']
+
+=== 2026-09-27T22:17:52 R23-M4-dynamic-list-not-flagged
+mutation: {"old": "                    dynamic.append(mod)", "new": "                    pass"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_a_run_time_column_list_makes_width_a_lower_bound
+  1 failed, 5 passed, 1 skipped, 35 deselected in 0.10s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 8.61s']
+
+=== 2026-09-27T22:18:05 R23-M5-or-read-as-pins
+mutation: {"old": "    if re.search(r\"\\bOR\\b\", where, re.I):\n        return None", "new": "    if False:\n        return None"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_depth_is_never_narrowed_by_a_predicate_it_cannot_read[query(`SELECT a FROM t_r WHERE d = 'x' OR d = 'y'`)\n]
+  1 failed, 5 passed, 1 skipped, 35 deselected in 0.17s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 9.26s']
+
+=== 2026-09-27T22:18:17 R23-M6-missing-dir-reads-empty
+mutation: {"old": "        raise Unknown(f\"no capability directory at {caps_root}\")", "new": "        return {}"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_no_capability_reading_the_table_is_width_and_depth_zero_and_a_missing_directory_is_unmeasured
+  1 failed, 5 passed, 1 skipped, 35 deselected in 0.19s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 8.54s']
+
+=== 2026-09-27T22:18:28 R23-M7-keyword-alias-swallows-where
+mutation: {"old": "                tail = lit[m.end() if alias or not m.group(1) else m.start(1):]", "new": "                tail = lit[m.end():]"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_depth_is_the_share_of_rows_the_literal_pins_reach_counted_read_only
+  1 failed, 5 passed, 1 skipped, 35 deselected in 0.13s
+reverted: md5 before 6214415661fed8daf877ba5ed6ffe9a6 after 6214415661fed8daf877ba5ed6ffe9a6 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 317 passed, 23 skipped in 8.03s']
+
+=== 2026-09-27T22:18:43 R23-without-v2 (WITHOUT the change: asset_census.py at 3f9a11428)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r23
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_width_counts_the_built_columns_some_capability_selects_and_names_the_dark_ones
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_depth_is_the_share_of_rows_the_literal_pins_reach_counted_read_only
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_depth_is_never_narrowed_by_a_predicate_it_cannot_read[query(`SELECT a FROM t_r WHERE d = 'x' OR d = 'y'`)\n]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_depth_is_never_narrowed_by_a_predicate_it_cannot_read[query(`SELECT a FROM t_r WHERE d = 'x'`)\nquery(`SELECT b FROM t_r WHERE chart_id = $1`)\n]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_a_run_time_column_list_makes_width_a_lower_bound
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r23_no_capability_reading_the_table_is_width_and_depth_zero_and_a_missing_directory_is_unmeasured
+  6 failed, 1 skipped, 35 deselected in 0.11s
+restored byte-identical: True
+
+=== 2026-09-27T22:29:22 R20b-without (WITHOUT the change: asset_census.py at f032ecec5)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k multi_table_writer
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_is_replaced[-FAIL-plain-INSERTs into ['t_b'] with no delete or upsert of it]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_is_replaced[        conn.execute(f"DELETE FROM {self.t} WHERE chart_id = 1")\n-PARTIAL-the scope is not fully read]
+  2 failed, 1 passed, 42 deselected in 0.11s
+restored byte-identical: True
+
+=== 2026-09-27T22:30:01 R20b-M1-per-asset-pass
+mutation: {"old": "    if unreplaced and covered:\n", "new": "    if False and unreplaced and covered:\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k multi_table_writer
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_is_replaced[-FAIL-plain-INSERTs into ['t_b'] with no delete or upsert of it]
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_is_replaced[        conn.execute(f"DELETE FROM {self.t} WHERE chart_id = 1")\n-PARTIAL-the scope is not fully read]
+  2 failed, 1 passed, 42 deselected in 0.12s
+reverted: md5 before 557fe2d8959e7849ff07611ee4df3940 after 557fe2d8959e7849ff07611ee4df3940 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 320 passed, 23 skipped in 7.85s']
+
+=== 2026-09-27T22:30:11 R20b-M2-fail-on-unread-scope
+mutation: {"old": "        if not unresolved:\n            return FAIL, [f\"{what} \u2014 that table accretes", "new": "        if True:\n            return FAIL, [f\"{what} \u2014 that table accretes"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k multi_table_writer
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r20_a_multi_table_writer_passes_only_when_every_table_it_inserts_into_is_replaced[        conn.execute(f"DELETE FROM {self.t} WHERE chart_id = 1")\n-PARTIAL-the scope is not fully read]
+  1 failed, 2 passed, 42 deselected in 0.11s
+reverted: md5 before 557fe2d8959e7849ff07611ee4df3940 after 557fe2d8959e7849ff07611ee4df3940 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 320 passed, 23 skipped in 7.91s']
+
+=== 2026-09-27T22:48:40 R241b-without (WITHOUT the change: asset_census.py at ee2c7d7ee)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k guard_helper
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_a_guard_helper_raising_on_populated_output_holds_its_callers_delete[self._populated(conn)-        self._assert_empty(conn)\n-FAIL]
+  1 failed, 2 passed, 45 deselected in 0.09s
+restored byte-identical: True
+
+=== 2026-09-27T22:48:55 R241b-M1-helper-calls-ignored
+mutation: {"old": "            if name in raisers and name != f.name and \\\n", "new": "            if False and name in raisers and name != f.name and \\\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_a_guard_helper_raising_on_populated_output_holds_its_callers_delete[self._populated(conn)-        self._assert_empty(conn)\n-FAIL]
+  1 failed, 32 passed, 1 skipped, 14 deselected in 3.86s
+reverted: md5 before 39aeeab69577624bc1ba9d614760c257 after 39aeeab69577624bc1ba9d614760c257 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 323 passed, 23 skipped in 8.16s']
+
+=== 2026-09-27T22:49:11 R241b-M2-try-wrapped-counted
+mutation: {"old": "        tried = {id(c) for t in ast.walk(f) if isinstance(t, ast.Try) and t.handlers\n", "new": "        tried = {id(c) for t in ast.walk(f) if False and isinstance(t, ast.Try) and t.handlers\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k r241 or r20
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_r241_a_guard_helper_raising_on_populated_output_holds_its_callers_delete[self._populated(conn)-        try:\n            self._assert_empty(conn)\n        except RuntimeError:\n            pass\n-PASS]
+  1 failed, 32 passed, 1 skipped, 14 deselected in 4.22s
+reverted: md5 before 39aeeab69577624bc1ba9d614760c257 after 39aeeab69577624bc1ba9d614760c257 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 323 passed, 23 skipped in 8.07s']
+
+=== 2026-09-27T23:50:19 C3-without (WITHOUT the change: asset_census.py at 480d799af)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  2 failed, 1 skipped, 48 deselected in 0.22s
+restored byte-identical: True
+
+=== 2026-09-27T23:51:10 C3-without-v2 (WITHOUT the change: asset_census.py at 480d799af)
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  2 failed, 1 skipped, 48 deselected in 0.32s
+restored byte-identical: True
+
+=== 2026-09-27T23:51:36 C3-M1-registry-root-only
+mutation: {"old": "        for i, root in enumerate(CAPS_ROOTS):\n", "new": "        for i, root in enumerate(CAPS_ROOTS[:1]):\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3 or r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  2 failed, 6 passed, 2 skipped, 41 deselected in 0.19s
+reverted: md5 before 0119a90f6f43cfa264a25d2b7ecc9213 after 0119a90f6f43cfa264a25d2b7ecc9213 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 325 passed, 24 skipped in 12.87s']
+
+=== 2026-09-27T23:51:52 C3-M2-select-only-literals-dropped
+mutation: {"old": "if re.search(r\"\\b(?:FROM|JOIN|SELECT)\\b\", x, re.I)]", "new": "if re.search(r\"\\b(?:FROM|JOIN)\\b\", x, re.I)]"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3 or r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_table_read_only_by_an_mcp_tool_is_not_reported_dark
+  1 failed, 7 passed, 2 skipped, 41 deselected in 0.21s
+reverted: md5 before 0119a90f6f43cfa264a25d2b7ecc9213 after 0119a90f6f43cfa264a25d2b7ecc9213 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 325 passed, 24 skipped in 11.78s']
+
+=== 2026-09-27T23:52:03 C3-M3-missing-root-skipped
+mutation: {"old": "            out.update(capability_sql(root) if i == 0 else\n", "new": "            if i and not (ROOT / root).is_dir():\n                continue\n            out.update(capability_sql(root) if i == 0 else\n"}
+named tests: platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py -k c3 or r23
+under mutation (rc=1):
+  FAILED platform/scripts/governance/__tests__/test_w2_3_deeper_detectors.py::test_c3_a_missing_serving_root_leaves_reach_unmeasured_never_dark
+  1 failed, 7 passed, 2 skipped, 41 deselected in 0.11s
+reverted: md5 before 0119a90f6f43cfa264a25d2b7ecc9213 after 0119a90f6f43cfa264a25d2b7ecc9213 -> BYTE-IDENTICAL
+offline suite after revert: ['2 failed, 325 passed, 24 skipped in 8.68s']

@@ -1,0 +1,24 @@
+SECOND EMIT (C-KSHETRA code 2e1c06d1b over the base first emit's ledger copy) — transitions by type:
+   13  CLOSED   Build.contract
+   13  CLOSED   Build.registered
+    7  CLOSED   Idem.pattern
+   10  OPEN     Build.dep_liveness
+    2  OPEN     Dens.served
+    2  OPEN     Idem.pattern
+CLOSED 33; ka_kshetra-Idem.pattern closed: False
+closed before (f327ad680 simulation) but not now: ['ka_kshetra-Idem.pattern']
+closed now but not before: []
+OPEN ga_strength-Dens.served: measured: NO_DETECTOR — no capability module's code references ga_strength; named in comments only in: get_dasha_lord_capability.ts — the served surface cannot be attribu
+OPEN bo_anveshana-Build.dep_liveness: measured: 5/6 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_drishti (stale, chart 482012f1)'] — built, but an upstream has moved since / required: 
+OPEN bo_chart_gestalt-Build.dep_liveness: measured: 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_paths (stale, chart 482012f1)', 'bo_anveshana (stale, chart 482012f1)'] — built, bu
+OPEN bo_pramana_mapa-Build.dep_liveness: measured: 5/8 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_upaya (stale, chart 482012f1)', 'bo_drishti (stale, chart 482012f1)', 'bo_anveshana (st
+OPEN bo_samvada-Build.dep_liveness: measured: 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_upaya (stale, chart 482012f1)', 'bo_pramana_mapa (stale, chart 482012f1)'] — built, but
+OPEN bo_upaya-Idem.pattern: measured: DELETE FROM present but none names the asset's own table(s) ['bodha_rm_remedy_prescriptions', 'bodha_rm_resonances'] — it deletes ['bodha_rm_chart_summary', 'bo
+OPEN bo_upaya-Build.dep_liveness: measured: 4/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_motifs (stale, chart 482012f1)'] — built, but an upstream has moved since / require
+OPEN bo_yantra_mechanism-Build.dep_liveness: measured: 1/3 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_motifs (stale, chart 482012f1)', 'bo_cgm_paths (stale, chart 482012f1)'] — built, b
+OPEN ka_avadhi-Build.dep_liveness: measured: 2/3 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)'] — built, but an upstream has moved since / required:
+OPEN ka_gochara-Idem.pattern: measured: DELETE FROM present but none names the asset's own table(s) ['kala_gochara_windows'] — it deletes ['kala_gochara_windows_v2']; the replacement of its own rows i
+OPEN ka_kshetra-Build.dep_liveness: measured: 7/9 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)', 'bo_upaya (stale, chart 482012f1)'] — built, but an 
+OPEN ka_sangam-Build.dep_liveness: measured: 10/11 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_yojaka (stale, chart 482012f1)'] — built, but an upstream has moved since / required:
+OPEN ka_yojaka-Build.dep_liveness: measured: 6/7 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)'] — built, but an upstream has moved since / required:
+OPEN ph_nimitta-Dens.served: measured: 2 module(s): query_phala_calibration.ts, query_predictive_anchors.ts; declaring density_contract: 0 / required: the Dens gate's claim

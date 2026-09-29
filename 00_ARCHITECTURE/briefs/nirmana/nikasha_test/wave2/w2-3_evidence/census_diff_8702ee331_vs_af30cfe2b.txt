@@ -1,0 +1,4 @@
+verdicts base 2446 head 2446 keys equal: True
+verdict changes: 0 Counter()
+text-only changes: 10 Counter({'Reach.fields': 10})
+favourable (->PASS/N/A): 0

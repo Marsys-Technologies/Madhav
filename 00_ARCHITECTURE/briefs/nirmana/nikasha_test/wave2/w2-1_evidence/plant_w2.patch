@@ -1,0 +1,45 @@
+--- 00_ARCHITECTURE/briefs/nirmana/nikasha_test/harness/plant.py	2026-09-26 21:10:57
++++ /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/e1effe6d-cae4-4643-b098-d49444a83a68/scratchpad/w2-1/plant_w2.py	2026-09-27 15:02:54
+@@ -27,18 +27,16 @@
+ import time
+ from pathlib import Path
+ 
+-ROOT = Path("/Users/Dev/madhav-nikasha")
++ROOT = Path(os.environ["W2_PLANT_ROOT"])  # W2-1 copy: a scratch worktree, so code plants never touch the repo checkout
++OUT = Path(os.environ["W2_PLANT_OUT"])
+ NT = ROOT / "00_ARCHITECTURE" / "briefs" / "nirmana" / "nikasha_test"
+-SANDBOX_SOCK = NT / ".sandbox"
++SANDBOX_SOCK = Path("/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/nikasha_test/.sandbox")
+ INSPECTOR = ROOT / "platform" / "scripts" / "governance" / "asset_census.py"
+ PY = "/opt/homebrew/opt/python@3.13/bin/python3.13"
+ PSQL = "/opt/homebrew/bin/psql"
+-BASELINE = NT / "census" / "L0_sandbox2_20260926.json"
+-BASELINES = {"L0": BASELINE,
+-             "L3": NT / "census" / "L3_sandbox_20260926.json",
+-             "L4": NT / "census" / "L4_sandbox_20260926.json"}
+-PLANTS_DIR = NT / "census" / "plants"
+-RESULTS = NT / "harness" / "T1_RESULTS.json"
++BASELINES = {k: OUT / f"baseline_{k}.json" for k in ("L0", "L3", "L4")}  # W2-1: fresh clean baselines, same code
++PLANTS_DIR = OUT / "plants"
++RESULTS = OUT / "T1_RESULTS.json"
+ 
+ RANK = {"PASS": 3, "PARTIAL": 2, "FAIL": 0, "N/A": 1, "NO_DETECTOR": 1, "NOT_GENERIC": 1}
+ 
+@@ -207,7 +205,7 @@
+   verify=lambda c: scalar("SELECT rows_written FROM asset_throughput WHERE asset_id='bg_dignity_reference'") == "151")
+ 
+ P(id="build_completion_truncate", check="Build.completion", asset="bg_muhurta_lattice",
+-  expect="FAIL->PASS (inverted)",
++  expect="STAYS_FAIL",  # W2-1: R52 — after the truncation the check must read FAIL (was FAIL->PASS)
+   desc="TRUNCATE-equivalent: DELETE all 8579 rows from bg_muhurta_lattice while its build record "
+        "says rows_written=0. Inspector logic only fails on (rw=0 AND live>0); destroying data flips "
+        "FAIL->PASS. Expected NOT-detected-as-worsening (known defect R42 probe).",
+@@ -415,6 +413,8 @@
+             v0, v1 = base_v.get(p["asset"], {}).get(tc, "<absent>"), pv.get(p["asset"], {}).get(tc, "<absent>")
+             if exp.startswith("FAIL->"):
+                 oks.append(v0 == "FAIL" and v1 == exp.split("->")[1])
++            elif exp == "STAYS_FAIL":  # W2-1: destroying data must never read PASS
++                oks.append(v1 == "FAIL")
+             elif exp in ("PASS", "FAIL", "PARTIAL", "N/A"):
+                 oks.append(v1 == exp and v1 != v0)
+             else:  # severity-invisible etc.: verdict unchanged, measured must differ

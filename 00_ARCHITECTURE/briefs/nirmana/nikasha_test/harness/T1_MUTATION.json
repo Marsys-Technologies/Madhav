@@ -1,0 +1,11 @@
+{
+ "mutation": "Vocab.identity PASS/FAIL inverted in asset_census_mutant.py",
+ "plant": "INSERT 2 rows into phala_sankrama duplicating the declared composite natural key (chart_id,source_anchor_id,cdlm_cell_id,target_domain,relationship_type) with the two nullable members NULL (unique constraint admits NULL members; count(*)-count(DISTINCT key) becomes 1). L4 asset: no L0 target table has a nullable declared-key member (bg_sky_calendar's secondary_body_key is a GENERATED ALWAYS column that coalesces NULL to '', which physically blocks the duplicate \u2014 measured, not assumed).",
+ "control_verdict": "FAIL",
+ "mutant_verdict": "PASS",
+ "suite_notices": true,
+ "restore_ok": true,
+ "error": null,
+ "control_measured": "declared key (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type): 1 duplicate(s)",
+ "mutant_measured": "declared key (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type): 1 duplicate(s)"
+}

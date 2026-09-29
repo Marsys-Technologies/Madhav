@@ -1,0 +1,6 @@
+census 8f5e2fd29 (W2-2 §4 HEAD) vs 2e1c06d1b (C-KSHETRA), six layers, read-only
+verdict changes: 3
+   L2 bo_upaya Idem.pattern: PASS -> PARTIAL | DELETE FROM present but none names the asset's own table(s) ['bodha_rm_remedy_prescriptions', 'bodha_rm_resonances'] — it deletes ['bodha_rm_chart_summary', 'bodha_rm_dosha_remedy_bundles', 'bodha_rm_pattern_remedies']; the replac
+   L3 ka_gochara Idem.pattern: PASS -> PARTIAL | DELETE FROM present but none names the asset's own table(s) ['kala_gochara_windows'] — it deletes ['kala_gochara_windows_v2']; the replacement of its own rows is not measured here (it may delegate; verify there)
+   L3 ka_kshetra Idem.pattern: PASS -> FAIL | rebuild refused when target is populated: services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld after the output-existence probe _populated_owned_table) — the delete-then-insert path runs only on an output-empty chart, s
+text-only changes: 43 {('L1', 'Idem.pattern'): 1, ('L2', 'Idem.pattern'): 9, ('L3', 'Idem.pattern'): 15, ('L4', 'Idem.pattern'): 9, ('L5', 'Idem.pattern'): 9}

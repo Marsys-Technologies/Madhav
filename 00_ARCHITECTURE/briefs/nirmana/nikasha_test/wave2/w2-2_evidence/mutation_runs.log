@@ -1,0 +1,507 @@
+# W2-2 mutation runs — mut.sh NAME FILE TESTSEL [live]; live = pgenv read-only
+=== mutation R233-M1-raw-error-read on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (90 -> 50 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_c4_executed_equals_the_started_at_count
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_c4_executed_equals_the_started_at_count_over_all_rows
+2 failed, 2 passed, 45 deselected in 10.54s
+--- reverted (byte-identical)
+--- after revert:
+195 passed, 11 skipped, 21 deselected in 3.22s
+=== mutation R44-M1-last-row-wins on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (72 -> 65 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_the_latest_row_wins_whatever_the_read_order[newest_first]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_the_latest_row_wins_whatever_the_read_order[oldest_first]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_a_null_build_time_never_beats_a_measured_one
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_a_tie_is_ambiguous_and_completion_is_errored_closing_nothing
+4 failed, 1 passed in 13.13s
+--- reverted (byte-identical)
+--- after revert:
+199 passed, 12 skipped, 21 deselected in 3.06s
+=== mutation R44-M2-tie-not-flagged on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (82 -> 63 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_a_tie_is_ambiguous_and_completion_is_errored_closing_nothing
+1 failed, 4 passed in 12.25s
+--- reverted (byte-identical)
+--- after revert:
+199 passed, 12 skipped, 21 deselected in 3.14s
+=== without-the-change R44: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_the_latest_row_wins_whatever_the_read_order[newest_first]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_the_latest_row_wins_whatever_the_read_order[oldest_first]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_a_null_build_time_never_beats_a_measured_one
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r44_a_tie_is_ambiguous_and_completion_is_errored_closing_nothing
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r44_every_record_is_the_distinct_on_latest_row
+5 failed in 2.89s
+--- restored (byte-identical)
+=== without-the-change R49: asset_census.py at HEAD (live)
+                     error="post-write integrity check failed: integrity_check_sql → False")]
+>       assert "latest error (2026-09-10): post-write integrity check failed" in hi["measured"], hi
+E       assert 'latest error (2026-09-10): post-write integrity check failed' in 'most recent run error (2026-09-10); 2 error(s), 0 abort(s), 0 blocked_dependency (cascade, not counted as failure). UndefinedColumn: column d.dasha_start does not exist'
+E             - latest error (2026-09-10): post-write integrity check failed: integrity_check_sql → False
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_the_quoted_error_is_the_latest_not_the_first
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_attempts_of_simultaneous_runs_are_read_in_one_deterministic_order[as_inserted]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_attempts_of_simultaneous_runs_are_read_in_one_deterministic_order[reversed]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r49_every_quoted_error_is_the_latest_by_a_direct_query
+4 failed, 5 deselected in 9.51s
+--- restored (byte-identical)
+=== mutation R49-M1-first-error-kept on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (69 -> 95 chars)
+                     error="post-write integrity check failed: integrity_check_sql → False")]
+>       assert "latest error (2026-09-10): post-write integrity check failed" in hi["measured"], hi
+E       assert 'latest error (2026-09-10): post-write integrity check failed' in 'most recent run error (2026-09-10); 2 error(s), 0 abort(s), 0 blocked_dependency (cascade, not counted as failure). latest error (2026-07-04): UndefinedColumn: column d.dasha_start does not exist'
+E             - latest error (2026-09-10): post-write integrity check failed: integrity_check_sql → False
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_the_quoted_error_is_the_latest_not_the_first
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r49_every_quoted_error_is_the_latest_by_a_direct_query
+2 failed, 2 passed, 5 deselected in 6.74s
+--- reverted (byte-identical)
+--- after revert:
+1 failed, 201 passed, 13 skipped, 21 deselected in 3.19s
+=== mutation R49-M2-partial-order-key on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (62 -> 52 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_attempts_of_simultaneous_runs_are_read_in_one_deterministic_order[reversed]
+1 failed, 3 passed, 5 deselected in 4.23s
+--- reverted (byte-identical)
+--- after revert:
+1 failed, 201 passed, 13 skipped, 21 deselected in 3.37s
+# NOTE: the three R49 entries above ran on a first draft that put the date INTO sample_error; it broke B1's test_build_history_separates_blocked_from_genuine_error (after-revert line '1 failed'). Reworked (date in sample_error_when, rendered in the grading text); the R49 entries below supersede them.
+=== without-the-change R49: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_the_quoted_error_is_the_latest_not_the_first
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_attempts_of_simultaneous_runs_are_read_in_one_deterministic_order[as_inserted]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_attempts_of_simultaneous_runs_are_read_in_one_deterministic_order[reversed]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r49_every_quoted_error_is_the_latest_by_a_direct_query
+4 failed, 5 deselected in 5.73s
+--- restored (byte-identical)
+=== mutation R49-M1-first-error-kept on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (69 -> 95 chars)
+                     error="post-write integrity check failed: integrity_check_sql → False")]
+>       assert "latest error (2026-09-10): post-write integrity check failed" in hi["measured"], hi
+E       assert 'latest error (2026-09-10): post-write integrity check failed' in 'most recent run error (2026-09-10); 2 error(s), 0 abort(s), 0 blocked_dependency (cascade, not counted as failure). latest error (2026-07-04): UndefinedColumn: column d.dasha_start does not exist'
+E             At index 0 diff: 'UndefinedColumn: column d.dasha_start does not exist LINE 3:        d.dasha_start::date AS period_start,                ^ Traceback (most recent call last):   File "/Users/Dev/Vibe-Coding/Apps/Madhav/' != 'post-write integrity check failed: integrity_check_sql → False'
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_the_quoted_error_is_the_latest_not_the_first
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r49_every_quoted_error_is_the_latest_by_a_direct_query
+2 failed, 2 passed, 5 deselected in 4.09s
+--- reverted (byte-identical)
+--- after revert:
+202 passed, 13 skipped, 21 deselected in 3.25s
+=== mutation R49-M2-partial-order-key on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (62 -> 52 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_attempts_of_simultaneous_runs_are_read_in_one_deterministic_order[reversed]
+1 failed, 3 passed, 5 deselected in 4.00s
+--- reverted (byte-identical)
+--- after revert:
+202 passed, 13 skipped, 21 deselected in 3.20s
+=== mutation R49-M3-undated-quote on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (97 -> 50 chars)
+                     error="post-write integrity check failed: integrity_check_sql → False")]
+>       assert "latest error (2026-09-10): post-write integrity check failed" in hi["measured"], hi
+E       AssertionError: {'measured': 'most recent run error (2026-09-10); 2 error(s), 0 abort(s), 0 blocked_dependency (cascade, not counted as failure). post-write integrity check failed: integrity_check_sql → False', 'v': 'FAIL'}
+E       assert 'latest error (2026-09-10): post-write integrity check failed' in 'most recent run error (2026-09-10); 2 error(s), 0 abort(s), 0 blocked_dependency (cascade, not counted as failure). post-write integrity check failed: integrity_check_sql → False'
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r49_the_quoted_error_is_the_latest_not_the_first
+1 failed, 3 passed, 5 deselected in 4.54s
+--- reverted (byte-identical)
+--- after revert:
+202 passed, 13 skipped, 21 deselected in 3.18s
+=== without-the-change R45: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_a_dependency_not_lit_on_this_chart_never_reads_pass[lit only on another chart-rows0-FAIL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_a_dependency_not_lit_on_this_chart_never_reads_pass[stale here, lit on another chart (the live 10-asset shape)-rows1-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_a_dependency_not_lit_on_this_chart_never_reads_pass[error here, lit on another chart-rows2-FAIL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_an_open_dep_liveness_gap_does_not_close_on_another_charts_lit
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r45_dep_liveness_matches_a_direct_chart_scoped_query
+5 failed, 2 passed, 9 deselected in 2.76s
+--- restored (byte-identical)
+=== mutation R45-M1-stale-counts-live on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (66 -> 77 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_a_dependency_not_lit_on_this_chart_never_reads_pass[stale here, lit on another chart (the live 10-asset shape)-rows1-PARTIAL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_an_open_dep_liveness_gap_does_not_close_on_another_charts_lit
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r45_dep_liveness_matches_a_direct_chart_scoped_query
+3 failed, 4 passed, 9 deselected in 8.25s
+--- reverted (byte-identical)
+--- after revert:
+208 passed, 14 skipped, 21 deselected in 4.83s
+=== mutation R45-M2-other-chart-record-used on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (74 -> 156 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r45_a_dependency_not_lit_on_this_chart_never_reads_pass[lit only on another chart-rows0-FAIL]
+1 failed, 6 passed, 9 deselected in 28.66s
+--- reverted (byte-identical)
+--- after revert:
+208 passed, 14 skipped, 21 deselected in 3.60s
+=== without-the-change D6-item-2: asset_census.py at HEAD (live)
+ERROR platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py
+--- restored (byte-identical)
+=== mutation D6.2-M1-link-key-ignored on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (146 -> 54 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_completion_whose_build_record_was_rewritten_later_is_not_linked
+1 failed, 11 passed, 16 deselected in 17.06s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.12s
+=== mutation D6.2-M2-probe-green-without-era on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (88 -> 36 chars)
+12 passed, 16 deselected in 17.54s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.21s
+=== mutation D6.2-M3-probe-green-without-receipt on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (88 -> 69 chars)
+        disposition is unclassified NO_DETECTOR — never the closable 'failed before completion' N/A."""
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1788000030.0-False-NO_DETECTOR]
+1 failed, 11 passed, 16 deselected in 17.16s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.10s
+=== mutation D6.2-M4-call-site-unwired on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (226 -> 191 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_skip_keeps_earn_na_and_does_not_invent_a_baseline
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1788000030.0-True-N/A]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_failures_route_to_build_history_and_cost_fails_only_when_nothing_was_ever_measured
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_attempts_only_on_another_chart_are_no_detector_for_this_scope
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_unstarted_rows_are_not_attempts
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_global_build_record_links_the_latest_attempt_on_any_chart
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_with_migration_1094_absent_both_stay_no_detector_and_the_column_is_never_named
+9 failed, 3 passed, 16 deselected in 19.60s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.13s
+=== mutation D6.2-M5-duration-column-always-named on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (86 -> 77 chars)
+        """F12 (A_REVIEW.md): name the layer-wide read that failed, so the UNKNOWN says which one."""
+>           raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
+E           asset_census.Unknown: layer-wide read 'throughput' failed: ERROR:  column "duration_seconds" does not exist
+>           raise Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_with_migration_1094_absent_both_stay_no_detector_and_the_column_is_never_named
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_d6_2_every_latest_build_attempt_links_to_its_build_record_on_real_rows
+2 failed, 10 passed, 16 deselected in 2.58s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.16s
+=== mutation D6.2-M6-unstarted-rows-as-attempts on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (76 -> 47 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_unstarted_rows_are_not_attempts
+1 failed, 11 passed, 16 deselected in 16.14s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.13s
+=== mutation D6.2-M7-failed-read-as-never-attempted on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (54 -> 52 chars)
+        read NO_DETECTOR and an open Earn gap does not close. Fails if a failed attempt read is taken as
+        def failed_read(ids):
+        monkeypatch.setattr(ac, "latest_attempts", failed_read)
+>           assert res["v"] == ac.NO_DET and "attempt read failed" in res["measured"], (crit, res)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_r225_measure_with_the_instrument_present_reads_no_detector_and_closes_nothing
+1 failed, 1 passed, 47 deselected in 0.08s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.11s
+# NOTE: in the D6 item 2 block above, the without-the-change run ERRORED at collection (module-level ac.latest_attempts) and M2 SURVIVED (the pre-era attempt was not the latest). Both tests fixed; the entries below supersede those two.
+=== without-the-change D6-item-2: asset_census.py at HEAD (offline)
+ERROR: file or directory not found: and
+--- restored (byte-identical)
+=== mutation D6.2-M2-probe-green-without-era on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (88 -> 36 chars)
+ERROR: file or directory not found: and
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.39s
+=== mutation D6.2-M3-probe-green-without-receipt on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (88 -> 69 chars)
+ERROR: file or directory not found: and
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.35s
+# (the three entries just above failed to run: the selector was word-split by the script — rerun below with -k d6_2, offline so the live test skips)
+=== without-the-change D6-item-2: asset_census.py at HEAD (offline)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_linked_completion_write_grades_earn_pass_with_its_rate_and_cost_on_that_attempt
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_completion_whose_build_record_was_rewritten_later_is_not_linked
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_skip_keeps_earn_na_and_does_not_invent_a_baseline
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1788000030.0-True-N/A]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1787999970.0-True-NO_DETECTOR]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1788000030.0-False-NO_DETECTOR]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_failures_route_to_build_history_and_cost_fails_only_when_nothing_was_ever_measured
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_attempts_only_on_another_chart_are_no_detector_for_this_scope
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_unstarted_rows_are_not_attempts
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_a_global_build_record_links_the_latest_attempt_on_any_chart
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_with_migration_1094_absent_both_stay_no_detector_and_the_column_is_never_named
+11 failed, 1 skipped, 16 deselected in 0.24s
+--- restored (byte-identical)
+=== mutation D6.2-M2-probe-green-without-era on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (88 -> 36 chars)
+        disposition is unclassified NO_DETECTOR — never the closable 'failed before completion' N/A."""
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1787999970.0-True-NO_DETECTOR]
+1 failed, 10 passed, 1 skipped, 16 deselected in 0.08s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 3.19s
+=== mutation D6.2-M3-probe-green-without-receipt on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (88 -> 69 chars)
+        disposition is unclassified NO_DETECTOR — never the closable 'failed before completion' N/A."""
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_d6_2_probe_green_is_derived_never_assumed[1788000030.0-False-NO_DETECTOR]
+1 failed, 10 passed, 1 skipped, 16 deselected in 0.09s
+--- reverted (byte-identical)
+--- after revert:
+219 passed, 15 skipped, 21 deselected in 4.17s
+=== without-the-change R43: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_a_module_constant_register_is_recognised_and_a_twice_assigned_name_is_not_guessed
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_package_and_shim_imported_writers_are_recognised
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_the_resolved_writer_is_measured_not_no_detector[mi_const-L5]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_the_resolved_writer_is_measured_not_no_detector[ph_pkg-L4]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_the_resolved_writer_is_measured_not_no_detector[ka_svc-L3]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r43_every_writer_backed_active_asset_is_recognised
+6 failed, 28 deselected in 6.00s
+--- restored (byte-identical)
+=== mutation R43-M1-constants-unresolved on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (65 -> 17 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_a_module_constant_register_is_recognised_and_a_twice_assigned_name_is_not_guessed
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_the_resolved_writer_is_measured_not_no_detector[mi_const-L5]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r43_every_writer_backed_active_asset_is_recognised
+3 failed, 3 passed, 28 deselected in 8.55s
+--- reverted (byte-identical)
+--- after revert:
+224 passed, 16 skipped, 21 deselected in 3.10s
+=== mutation R43-M2-packages-unscanned on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (81 -> 61 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_package_and_shim_imported_writers_are_recognised
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_the_resolved_writer_is_measured_not_no_detector[ph_pkg-L4]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r43_every_writer_backed_active_asset_is_recognised
+3 failed, 3 passed, 28 deselected in 10.61s
+--- reverted (byte-identical)
+--- after revert:
+224 passed, 16 skipped, 21 deselected in 3.40s
+=== mutation R43-M3-shim-imports-unfollowed on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (59 -> 20 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_package_and_shim_imported_writers_are_recognised
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_the_resolved_writer_is_measured_not_no_detector[ka_svc-L3]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r43_every_writer_backed_active_asset_is_recognised
+3 failed, 3 passed, 28 deselected in 8.32s
+--- reverted (byte-identical)
+--- after revert:
+224 passed, 16 skipped, 21 deselected in 3.16s
+=== mutation R43-M4-ambiguous-constant-guessed on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (94 -> 94 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r43_a_module_constant_register_is_recognised_and_a_twice_assigned_name_is_not_guessed
+1 failed, 5 passed, 28 deselected in 13.19s
+--- reverted (byte-identical)
+--- after revert:
+224 passed, 16 skipped, 21 deselected in 3.17s
+=== without-the-change R46: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_view_is_counted_by_the_view_chart_scoped
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_declared_floor_is_graded_against_the_view_count[3-PASS]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_declared_floor_is_graded_against_the_view_count[10-FAIL]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_an_empty_view_fails_emptiness
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r46_bo_samvada_is_counted_by_its_view
+5 failed, 1 passed, 34 deselected in 3.57s
+--- restored (byte-identical)
+=== mutation R46-M1-view-not-counted on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (46 -> 17 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_view_is_counted_by_the_view_chart_scoped
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_declared_floor_is_graded_against_the_view_count[3-PASS]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r46_bo_samvada_is_counted_by_its_view
+3 failed, 3 passed, 34 deselected in 6.93s
+--- reverted (byte-identical)
+--- after revert:
+229 passed, 17 skipped, 21 deselected in 3.32s
+=== mutation R46-M2-view-compared-as-rows on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (64 -> 62 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_view_is_counted_by_the_view_chart_scoped
+1 failed, 5 passed, 34 deselected in 5.80s
+--- reverted (byte-identical)
+--- after revert:
+229 passed, 17 skipped, 21 deselected in 3.38s
+=== mutation R46-M3-view-count-not-chart-scoped on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (98 -> 41 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r46_a_view_is_counted_by_the_view_chart_scoped
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r46_bo_samvada_is_counted_by_its_view
+2 failed, 4 passed, 34 deselected in 5.30s
+--- reverted (byte-identical)
+--- after revert:
+229 passed, 17 skipped, 21 deselected in 3.28s
+=== without-the-change R50: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r50_a_line_that_is_not_one_whole_attempt_fails_the_read_instead_of_adding_a_run
+1 failed, 1 passed, 40 deselected in 19.52s
+--- restored (byte-identical)
+=== without-the-change R50-live-reconcile-vs-931dbc479: asset_census.py at 931dbc479 (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r50_runs_and_executed_equal_direct_counts_on_every_layer
+1 failed, 41 deselected in 8.87s
+--- restored (byte-identical)
+=== mutation R50-M1-short-lines-padded-and-counted on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (42 -> 58 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r50_a_line_that_is_not_one_whole_attempt_fails_the_read_instead_of_adding_a_run
+1 failed, 1 passed, 40 deselected in 19.42s
+--- reverted (byte-identical)
+--- after revert:
+230 passed, 18 skipped, 21 deselected in 3.35s
+=== without-the-change R51: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r51_l4_modules_are_attributed_by_code
+2 failed, 42 deselected in 1.51s
+--- restored (byte-identical)
+=== mutation R51-M1-comments-count-as-serving on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (28 -> 18 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r51_l4_modules_are_attributed_by_code
+2 failed, 42 deselected in 1.78s
+--- reverted (byte-identical)
+--- after revert:
+231 passed, 19 skipped, 21 deselected in 3.35s
+=== mutation R51-M2-line-comments-kept on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (68 -> 51 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r51_l4_modules_are_attributed_by_code
+2 failed, 42 deselected in 5.17s
+--- reverted (byte-identical)
+--- after revert:
+231 passed, 19 skipped, 21 deselected in 3.39s
+=== mutation R51-M3-strings-not-respected on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (25 -> 19 chars)
+2 passed, 42 deselected in 1.70s
+--- reverted (byte-identical)
+--- after revert:
+231 passed, 19 skipped, 21 deselected in 3.13s
+# NOTE: R51-M3 above SURVIVED (the fixture's // -in-a-string sat on a different line from the table reference). Fixture strengthened; re-run below supersedes it.
+=== mutation R51-M3-strings-not-respected on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (25 -> 19 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+1 failed, 1 passed, 42 deselected in 1.75s
+--- reverted (byte-identical)
+--- after revert:
+231 passed, 19 skipped, 21 deselected in 3.36s
+=== without-the-change R51: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r51_l4_modules_are_attributed_by_code
+2 failed, 42 deselected in 1.58s
+--- restored (byte-identical)
+# R51 revised before commit: the comment-only NO_DETECTOR guard added (§N.8: bg_dignity_reference FAIL->N/A and ga_strength PASS->N/A were not genuine). The R51 runs below are on the final code.
+=== without-the-change R51: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r51_l4_modules_are_attributed_by_code
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na[files0-NO_DETECTOR]
+3 failed, 1 passed, 42 deselected in 1.63s
+--- restored (byte-identical)
+=== mutation R51-M4-comment-only-reads-closable-na on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (60 -> 19 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na[files0-NO_DETECTOR]
+1 failed, 3 passed, 42 deselected in 1.63s
+--- reverted (byte-identical)
+--- after revert:
+233 passed, 19 skipped, 21 deselected in 3.51s
+=== mutation R51-M1-comments-count-as-serving on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (84 -> 83 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_a_module_that_only_mentions_the_table_in_a_comment_does_not_serve_it
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r51_l4_modules_are_attributed_by_code
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na[files0-NO_DETECTOR]
+3 failed, 1 passed, 42 deselected in 1.65s
+--- reverted (byte-identical)
+--- after revert:
+233 passed, 19 skipped, 21 deselected in 3.76s
+=== without-the-change R53: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[-owners0-FAIL-nothing to aim at]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT count(*) FROM t_main-owners1-FAIL-declaration is missing]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT (SELECT count(*) FROM t_main) + (SELECT count(*) FROM t_a) AS count-owners2-PASS-multi-table]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT count(*) FROM chart_facts WHERE chart_id = $1-owners3-PASS-partition of chart_facts, the declared target of ga_positions]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_an_unreadable_ownership_map_is_errored
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r53_no_writer_backed_data_asset_reads_the_closable_na
+6 failed, 1 passed, 46 deselected in 1.51s
+--- restored (byte-identical)
+=== mutation R53-M1-any-kind-waves-through on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (108 -> 95 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[-owners0-FAIL-nothing to aim at]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT count(*) FROM t_main-owners1-FAIL-declaration is missing]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT (SELECT count(*) FROM t_main) + (SELECT count(*) FROM t_a) AS count-owners2-PASS-multi-table]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT count(*) FROM chart_facts WHERE chart_id = $1-owners3-PASS-partition of chart_facts, the declared target of ga_positions]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_an_unreadable_ownership_map_is_errored
+5 failed, 2 passed, 46 deselected in 7.76s
+--- reverted (byte-identical)
+--- after revert:
+239 passed, 20 skipped, 21 deselected in 3.37s
+=== mutation R53-M2-unowned-single-table-passes on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (47 -> 48 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT count(*) FROM t_main-owners1-FAIL-declaration is missing]
+1 failed, 6 passed, 46 deselected in 7.73s
+--- reverted (byte-identical)
+--- after revert:
+239 passed, 20 skipped, 21 deselected in 3.20s
+=== mutation R53-M3-own-asset-counts-as-owner on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (72 -> 69 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r53_a_writer_backed_data_asset_without_a_target_is_graded_not_waved_through[SELECT count(*) FROM t_main-owners1-FAIL-declaration is missing]
+1 failed, 6 passed, 46 deselected in 7.51s
+--- reverted (byte-identical)
+--- after revert:
+239 passed, 20 skipped, 21 deselected in 3.46s
+=== without-the-change R54: asset_census.py at HEAD (offline)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r54_the_plants_worsening_is_visible_below_the_verdict
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r54_a_clean_alias_census_passes_with_severity_zero
+2 failed, 53 deselected in 0.09s
+--- restored (byte-identical)
+=== mutation R54-M1-severity-is-per-class-max on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (64 -> 99 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r54_the_plants_worsening_is_visible_below_the_verdict
+1 failed, 1 passed, 53 deselected in 0.08s
+--- reverted (byte-identical)
+--- after revert:
+241 passed, 20 skipped, 21 deselected in 8.74s
+=== mutation R54-M2-severity-dropped on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (68 -> 45 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r54_the_plants_worsening_is_visible_below_the_verdict
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r54_a_clean_alias_census_passes_with_severity_zero
+2 failed, 53 deselected in 0.09s
+--- reverted (byte-identical)
+--- after revert:
+241 passed, 20 skipped, 21 deselected in 3.93s
+=== without-the-change R232: asset_census.py at HEAD (live)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  // TODO: no density_contract yet\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  /** density_contract: to be added (F-S1) */\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  description: 'see the density_contract: docs',\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_an_open_dens_served_gap_does_not_close_on_a_comment
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_live_r232_every_declaring_module_declares_the_field
+5 failed, 1 passed, 55 deselected in 0.48s
+--- restored (byte-identical)
+=== mutation R232-M1-substring-match on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (71 -> 41 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  // TODO: no density_contract yet\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  /** density_contract: to be added (F-S1) */\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  description: 'see the density_contract: docs',\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_an_open_dens_served_gap_does_not_close_on_a_comment
+4 failed, 2 passed, 55 deselected in 0.72s
+--- reverted (byte-identical)
+--- after revert:
+246 passed, 21 skipped, 21 deselected in 3.16s
+=== mutation R232-M2-strings-not-blanked on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (71 -> 51 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  description: 'see the density_contract: docs',\n}\n-0]
+1 failed, 5 passed, 55 deselected in 3.19s
+--- reverted (byte-identical)
+--- after revert:
+# ==== finishing builder (W2-2 completion session): the R232-M2 entry above lost its after-revert line when the first builder was stopped; the tree was verified byte-identical to mut_backup.py before resuming. R232 test extended (template-literal mention, '?:' declaration, mention+declaration, emit control) and the snapshot @LIVE test removed; the R232 runs below are on that final test file and supersede the R232 entries above.
+=== mutation R232-M1-substring-match on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (71 -> 41 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  // TODO: no density_contract yet\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  /** density_contract: to be added (F-S1) */\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  description: 'see the density_contract: docs',\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  note: `density_contract: pending`,\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_an_open_dens_served_gap_does_not_close_on_a_comment[  // TODO: no density_contract yet\n}\n-FAIL-0]
+5 failed, 4 passed, 55 deselected in 0.20s
+--- reverted (byte-identical)
+--- after revert:
+250 passed, 20 skipped, 21 deselected in 3.48s
+=== mutation R232-M2-strings-not-blanked on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (71 -> 51 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  description: 'see the density_contract: docs',\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  note: `density_contract: pending`,\n}\n-0]
+2 failed, 7 passed, 55 deselected in 0.17s
+--- reverted (byte-identical)
+--- after revert:
+250 passed, 20 skipped, 21 deselected in 3.70s
+=== mutation R232-M3-comments-not-stripped on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (71 -> 41 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  /** density_contract: to be added (F-S1) */\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  description: 'see the density_contract: docs',\n}\n-0]
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  note: `density_contract: pending`,\n}\n-0]
+3 failed, 6 passed, 55 deselected in 0.20s
+--- reverted (byte-identical)
+--- after revert:
+250 passed, 20 skipped, 21 deselected in 4.87s
+=== mutation R232-M4-optional-property-unrecognised on platform/scripts/governance/asset_census.py (offline)
+ok: asset_census.py (59 -> 53 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_2_latest_row_registration_timing.py::test_r232_only_a_declared_density_contract_counts[  density_contract?: { paginated: false },\n}\n-1]
+1 failed, 8 passed, 55 deselected in 0.14s
+--- reverted (byte-identical)
+--- after revert:
+250 passed, 20 skipped, 21 deselected in 3.96s

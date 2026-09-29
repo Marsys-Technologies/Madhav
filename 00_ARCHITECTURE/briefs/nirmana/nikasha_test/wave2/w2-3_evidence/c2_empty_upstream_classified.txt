@@ -1,0 +1,62 @@
+WHOLE-REPLACEMENT SKIPS on empty input (review #7): 24
+  bg_concordance (PASS):
+      bg_concordance.py:86 `if not topic_rows: return` (run)
+      bg_concordance.py:108 `if tagged_chunks == 0: return` (run)
+  bg_rules (PASS):
+      brahmagyan/l0_rules.py:1507 `if upstream_chunks == 0: return` (seed_rules)
+  bo_arudha (PASS):
+      bo_arudha.py:158 `if not arudha_facts: continue` (run)
+      bo_arudha.py:170 `if not rows: continue` (run)
+  bo_grounding (PASS):
+      bo_grounding.py:159 `if not rows: continue` (run)
+  bo_nakshatra_semantic (PASS):
+      bo_nakshatra_semantic.py:156 `if not rows: continue` (run)
+  bo_samskara (PASS):
+      bo_samskara.py:234 `if not signals: return` (run_substep)
+  bo_special_lagna (PASS):
+      bo_special_lagna.py:143 `if not rows: continue` (run)
+  bo_vargottama_dhana (PASS):
+      bo_vargottama_dhana.py:139 `if not positions: continue` (run)
+      bo_vargottama_dhana.py:154 `if not rows: continue` (run)
+  ga_ayurdaya (PASS):
+      ga_writers/ga_ayurdaya_writer.py:273 `if not positions: return` (build_ga_ayurdaya_substep)
+      ga_writers/ga_ayurdaya_writer.py:277 `if not rows: return` (build_ga_ayurdaya_substep)
+  ga_condition (PASS):
+      ga_writers/ga_condition_writer.py:1447 `if not position_list: return` (build_ga_condition_substep)
+      ga_writers/ga_condition_writer.py:1618 `if not insert_rows: return` (build_ga_condition_substep)
+      ga_writers/ga_condition_writer.py:1185 `if not rows: return` (_insert_per_varga_avastha_rows)
+  ga_dashas (PASS):
+      ga_writers/ga_dashas_writer.py:3037 `if not rows: return` (_upsert_rows)
+  ga_prashna (PASS):
+      ga_writers/ga_prashna_writer.py:295 `if result is None: return` (seed_prashna_judgment)
+  ga_sade_sati (PASS):
+      ga_writers/ga_sade_sati_writer.py:1987 `if not moon_sign: continue` (build_ga_sade_sati)
+  ga_sensitive (PASS):
+      ga_writers/ga_sensitive_writer.py:2901 `if not rows: return` (_insert_rows)
+  ga_sensitive_degree (PASS):
+      ga_writers/ga_sensitive_degree_writer.py:802 `if not positions: return` (build_ga_sensitive_degree_substep)
+      ga_writers/ga_sensitive_degree_writer.py:813 `if not rows: return` (build_ga_sensitive_degree_substep)
+  ga_vichara (PASS):
+      ga_writers/ga_vichara_writer.py:964 `if not facts: return` (build_ga_vichara_substep)
+      ga_writers/ga_vichara_writer.py:970 `if not constants: return` (build_ga_vichara_substep)
+  ga_yoga (PASS):
+      ga_writers/ga_yoga_writer.py:2823 `if not facts: return` (build_ga_yoga_substep)
+      ga_writers/ga_yoga_writer.py:2831 `if not yoga_catalog: return` (build_ga_yoga_substep)
+  ka_avadhi (PASS):
+      ka_avadhi.py:203 `if not md_rows: return` (run)
+      ka_avadhi.py:316 `if not all_rows: return` (run)
+  ka_bhavishya_lekha (PASS):
+      ka_bhavishya_lekha.py:198 `if not darshana_rows: return` (run)
+  ka_yojaka (PASS):
+      ka_yojaka.py:91 `if not signals: return` (run)
+      ka_yojaka.py:434 `if not rows: return` (run)
+  mi_bhara (PASS):
+      mi_bhara.py:159 `if not lel_events: return` (run)
+  mi_bhavisya (PASS):
+      mi_bhavisya.py:85 `if not anchors: return` (run)
+  mi_gunanaka (PASS):
+      mi_gunanaka.py:294 `if not rows: return` (run)
+  mi_pariksha (PASS):
+      mi_pariksha.py:162 `if not events: return` (_substep_retrodiction)
+per-item filters only (not #7): ['bg_remedies', 'bo_sudarshana', 'ga_transit_anchors', 'mi_jivanaghatana']
+helper `if not rows: return` (delete scoped to new rows' keys): ['ga_ayurdaya', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree', 'ga_strength', 'ga_structural', 'ga_tajaka', 'ga_vargas']

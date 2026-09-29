@@ -1,0 +1,91 @@
+session_open:
+  session_id: NIKASHA_TEST_CAMPAIGN_P0
+  cowork_thread_name: "Madhav — Nikaṣa Test Campaign (nikasha-test)"
+  agent_name: kimi-k2 (Kimi Code, phases 0-5 at medium effort per campaign brief §3)
+  agent_version: kimi-code/kimi-for-coding
+  tool: "Kimi Code"
+  tool_profile: null
+  worktree_path: /Users/Dev/madhav-nikasha
+  step_number_or_macro_phase: M6+.nikasha-test.campaign
+  predecessor_session: none (campaign bootstrap; branch campaign/nikasha-test from origin/l3/kala-layer-briefs)
+  coordination:
+    coordination_ref: "campaign/nikasha-test (local worktree, no shared lease surface)"
+    lease_id: "n/a — dedicated worktree, sole writer per WORKTREE_ISOLATION_PROTOCOL"
+    lease_status_verified: true
+    lease_verified_at: "2026-09-26T00:00:00+05:30"
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/nikasha_test/STATE.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+      - ".conductor-state.json"
+      - ".gemini/project_state.md"
+      - "CLAUDECODE_BRIEF.md (not present in worktree)"
+  mandatory_reading_confirmation:
+    - file: CLAUDE.md
+      fingerprint_sha256: ff840981315a9321595d6ab531713eaa862c2bce78002625ddd548a5b11b297b
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/KIMI_CODE_ENVIRONMENT_PARITY_PROMPT_v1_0.md
+      fingerprint_sha256: fd19185043aa4c3fe50eb1b67ffaf4d6e3c1a1fa9f312b6f91e1a15f5a2a9c66
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      fingerprint_sha256: fb35d3abcd9336dc749d49ba459288316af0b1d0adb500177c950cdb435143dc
+      read_at: "2026-09-26T17:05:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_TEST_CAMPAIGN_PROMPT_v1_0.md
+      fingerprint_sha256: 71fdf42af1bde31edd3ed41858ce2df8d577ab7cb9b493aab143b01ef2e201b7
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v1_0.md
+      fingerprint_sha256: 112d29d3680f6c161d4409fbc43da5cb516f2ae8076d4929e71abf882629f192
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/nirmana/NATIVE_DECISIONS_2026-09-25_v1_0.md
+      fingerprint_sha256: 9cd273cb478bf65a3e3d090b25d350c52ddf91cd9e61230a8c344372ea3be92e
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/nirmana/BUILD_FAILURE_TRIAGE_2026-09-26_v1_0.md
+      fingerprint_sha256: f7d6d28d63d96155c184bcdca1e54752c8153eae95f07b4596d56cc49849cdf1
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/reviews/REVIEW_DATA_PLANE_FINAL_v1_0.md
+      fingerprint_sha256: d0627156432749adb6b39154022954c9da6a56241f39283427aa7552cc966386
+      read_at: "2026-09-26T17:00:00+05:30"
+    - file: 00_ARCHITECTURE/briefs/reviews/REVIEW_L0_STRATEGY_v2_0.md
+      fingerprint_sha256: d6e471178e4c2ab4d12b76dc9ed79b02199eedbbc2190b3ddd048a7dd5026e0f
+      read_at: "2026-09-26T17:00:00+05:30"
+  canonical_artifact_fingerprint_check:
+    - canonical_id: MADHAV_PRODUCT_DEFINITION (tier 1, SEALED — sha256 recorded, not edited)
+      declared_fingerprint: b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5
+      observed_fingerprint: b9c098cd390dd3b1d1ab99738f342ca95e01f3609ffcaca70a37e3f7979a52f5
+      match: true
+    - canonical_id: DATA_PLANE_VALUE_ARCHITECTURE (tier 2, SEALED)
+      declared_fingerprint: a7eaf821bf651b0bf8b60990371482d113e65d9948bc887bb79fe5e4734c38d7
+      observed_fingerprint: a7eaf821bf651b0bf8b60990371482d113e65d9948bc887bb79fe5e4734c38d7
+      match: true
+    - canonical_id: LAYER_TEMPLATE (tier 3, SEALED)
+      declared_fingerprint: 137ba6b9a4150a5c31c3c94658273337d0d6f72bfd77c5fedf4845547531fb49
+      observed_fingerprint: 137ba6b9a4150a5c31c3c94658273337d0d6f72bfd77c5fedf4845547531fb49
+      match: true
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/nirmana/nikasha_test/**
+      - 00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v1_0.md
+      - 00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md
+      - 00_ARCHITECTURE/briefs/nirmana/NIKASHA_IMPLEMENTATION_PLAN_v1_0.md
+      - platform/scripts/governance/asset_census.py
+      - 00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md
+      - 00_ARCHITECTURE/control/asset_census.json
+      - 00_ARCHITECTURE/control/asset_gaps.jsonl
+      - 00_ARCHITECTURE/control/asset_certs.jsonl
+      - .gitignore
+      - .agents/agents/**
+    must_not_touch:
+      - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md
+      - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md
+      - 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md
+      - platform/python-sidecar/orchestrator/**
+      - platform/src/lib/orchestrator/**
+      - 01_FACTS_LAYER/**
+      - 025_HOLISTIC_SYNTHESIS/**
+      - 03_DOMAIN_REPORTS/**
+      - production database (read-only via proxy 5433; mutations only in local sandbox)
+      - main branch (never push)
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: "Nikaṣa test campaign, NATIVE-AUTHORIZED execution authority = NIKASHA_TEST_CAMPAIGN_PROMPT_v1_0. Mirror discipline retired 2026-05-27; ND register has no open directives. Production read-only verified: default_transaction_read_only=on via proxy PGPORT=5433."

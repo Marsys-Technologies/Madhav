@@ -1,0 +1,1 @@
+{"old": "if re.search(r\"\\b(?:FROM|JOIN|SELECT)\\b\", x, re.I)]", "new": "if re.search(r\"\\b(?:FROM|JOIN)\\b\", x, re.I)]"}

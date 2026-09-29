@@ -1,0 +1,54 @@
+SECOND EMIT (HEAD code over the first emit's ledger copy) — transitions by type:
+   13  CLOSED   Build.contract
+   13  CLOSED   Build.registered
+    8  CLOSED   Idem.pattern
+   10  OPEN     Build.dep_liveness
+    2  OPEN     Dens.served
+
+CLOSED ka_dasha_kala-Build.registered: CLOSED by measurement: @register in services/ka_dasha_kala/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_dasha_kala-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_gochara_resonance-Build.registered: CLOSED by measurement: @register in services/ka_gochara_resonance/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_gochara_resonance-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_gochara_resonance-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ka_kota_chakra-Build.registered: CLOSED by measurement: @register in services/ka_kota_chakra/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_kota_chakra-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_kota_chakra-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ka_kshetra-Build.registered: CLOSED by measurement: @register in services/ka_kshetra/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_kshetra-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_kshetra-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ka_moorti_nirnaya-Build.registered: CLOSED by measurement: @register in services/ka_moorti_nirnaya/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_moorti_nirnaya-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_moorti_nirnaya-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ka_muhurta_seva-Build.registered: CLOSED by measurement: @register in services/ka_muhurta_seva/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_muhurta_seva-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_sudarshana_varsha-Build.registered: CLOSED by measurement: @register in services/ka_sudarshana_varsha/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_sudarshana_varsha-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_sudarshana_varsha-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ka_tithi_pravesha-Build.registered: CLOSED by measurement: @register in services/ka_tithi_pravesha/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_tithi_pravesha-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_tithi_pravesha-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ka_tulana-Build.registered: CLOSED by measurement: @register in services/ka_tulana/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_tulana-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_vedha_gochara-Build.registered: CLOSED by measurement: @register in services/ka_vedha_gochara/writer.py; registry agrees / required: the Build gate's claim
+CLOSED ka_vedha_gochara-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ka_vedha_gochara-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED ph_rectification-Build.registered: CLOSED by measurement: @register in ph_rectification/__init__.py; registry agrees / required: the Build gate's claim
+CLOSED ph_rectification-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED ph_rectification-Idem.pattern: CLOSED by measurement: DELETE FROM present (delete-then-insert) / required: the Idem gate's claim
+CLOSED mi_bhara-Build.registered: CLOSED by measurement: @register in mi_bhara.py; registry agrees / required: the Build gate's claim
+CLOSED mi_bhara-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+CLOSED mi_sankalpa-Build.registered: CLOSED by measurement: @register in mi_sankalpa.py; registry agrees / required: the Build gate's claim
+CLOSED mi_sankalpa-Build.contract: CLOSED by measurement: conformant / required: the Build gate's claim
+
+OPEN ga_strength-Dens.served: measured: NO_DETECTOR — no capability module's code references ga_strength; named in comments only in: get_dasha_lord_capability.ts — the served surface cannot 
+OPEN bo_anveshana-Build.dep_liveness: measured: 5/6 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_drishti (stale, chart 482012f1)'] — built, but an upstream has moved since / 
+OPEN bo_chart_gestalt-Build.dep_liveness: measured: 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_paths (stale, chart 482012f1)', 'bo_anveshana (stale, chart 482012f1)'] —
+OPEN bo_pramana_mapa-Build.dep_liveness: measured: 5/8 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_upaya (stale, chart 482012f1)', 'bo_drishti (stale, chart 482012f1)', 'bo_anv
+OPEN bo_samvada-Build.dep_liveness: measured: 3/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_upaya (stale, chart 482012f1)', 'bo_pramana_mapa (stale, chart 482012f1)'] — 
+OPEN bo_upaya-Build.dep_liveness: measured: 4/5 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_motifs (stale, chart 482012f1)'] — built, but an upstream has moved since
+OPEN bo_yantra_mechanism-Build.dep_liveness: measured: 1/3 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_cgm_motifs (stale, chart 482012f1)', 'bo_cgm_paths (stale, chart 482012f1)'] 
+OPEN ka_avadhi-Build.dep_liveness: measured: 2/3 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)'] — built, but an upstream has moved since /
+OPEN ka_kshetra-Build.dep_liveness: measured: 7/9 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)', 'bo_upaya (stale, chart 482012f1)'] — buil
+OPEN ka_sangam-Build.dep_liveness: measured: 10/11 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_yojaka (stale, chart 482012f1)'] — built, but an upstream has moved since /
+OPEN ka_yojaka-Build.dep_liveness: measured: 6/7 declared dependencies lit at chart 482012f1 (or global); stale: ['bo_pratijna (stale, chart 482012f1)'] — built, but an upstream has moved since /
+OPEN ph_nimitta-Dens.served: measured: 2 module(s): query_phala_calibration.ts, query_predictive_anchors.ts; declaring density_contract: 0 / required: the Dens gate's claim

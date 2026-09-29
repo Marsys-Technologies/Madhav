@@ -17,7 +17,7 @@ verdict: NONE
 
 # bg_panchanga — asset elevation brief (pilot 4 of 5)
 
-**Headline: the template disposes of a table-less asset honestly — six of eight gates are N/A with
+**Headline: the template disposes of a table-less asset honestly — six of nine gates are N/A with
 reasons — and the one thing a service needs, a service proof, has no detector.** `asset_throughput` says
 `state=lit, rows_written=0`: correct for a service, and indistinguishable from a failed build. That
 ambiguity is the finding.
@@ -88,7 +88,7 @@ whether every limb and its convention are exposed, not whether rows paginate. Re
 | Computational correctness | a limb recomputes a second way and matches | D3 — **does not exist** (G02) |
 | Delivery fidelity | every limb reaches a caller with its convention attached | the §1.1/§1.2 censuses — **not run** (G03) |
 
-## §4 · The eight gates — six N/A, each with its reason
+## §4 · The nine gates — six N/A, each with its reason
 
 | gate | verdict | reason / detector |
 |---|---|---|
@@ -100,6 +100,7 @@ whether every limb and its convention are exposed, not whether rows paginate. Re
 | **Carr** | **NO_DETECTOR** | D3 applies (recompute a limb a second way). Nothing does. |
 | **Narr** | **N/A** | emits structured limbs, not prose |
 | **Dens** | **N/A** | serves single-instant answers; no paginated or faceted row set to layer. Declared here so the N/A is a disposition, not a silence. |
+| **Build** | **PASS** | Measured against `asset_census.py --layer L0`, 2026-09-28: registered / contract / target / count-integrity / dep-liveness all **N/A** (no writer, no target table — a service by design, consistent with the four registry absences above); DAG, exercised (1 run) and history (1 complete, no error) all **PASS**. No FAIL among Build's nine sub-checks — the Build gate is cleanly separated from Earn's finding above: Build asks whether a rebuild would work (N/A for a service, honestly), Earn asks whether the service's *liveness* has a detector (it does not, G01/`Earn.service_state`). The two gates measuring different things and reaching different verdicts on the same asset is the design working as intended, not a contradiction. |
 
 **This is the pilot's main template result: a table-less asset is expressible without inventing a single
 row.** Four registry absences and six gate N/As all carry reasons; nothing had to be faked to make the

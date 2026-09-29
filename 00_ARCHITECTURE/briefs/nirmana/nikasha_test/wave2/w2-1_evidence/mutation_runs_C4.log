@@ -1,0 +1,19 @@
+# C4 mutations (W2-1_C1_REVIEW §7): state-list executed set (M2), ended_at marker (M5). Live = pgenv read-only.
+=== mutation C4-M2-state-list on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (36 -> 53 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c4_a_unstarted_aborted_and_blocked_error_rows_do_not_exercise_or_close
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c4_b_an_ended_but_never_started_row_is_not_executed
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_c4_executed_equals_the_started_at_count
+3 failed, 45 passed, 1 xfailed in 38.17s
+--- reverted (byte-identical)
+--- after revert:
+195 passed, 11 skipped, 21 deselected in 3.22s
+=== mutation C4-M5-ended_at on platform/scripts/governance/asset_census.py (live)
+ok: asset_census.py (51 -> 49 chars)
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c4_a_unstarted_aborted_and_blocked_error_rows_do_not_exercise_or_close
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_c4_b_an_ended_but_never_started_row_is_not_executed
+FAILED platform/scripts/governance/__tests__/test_w2_1_earned_verdicts.py::test_live_c4_executed_equals_the_started_at_count
+3 failed, 45 passed, 1 xfailed in 37.58s
+--- reverted (byte-identical)
+--- after revert:
+195 passed, 11 skipped, 21 deselected in 2.99s

@@ -1,0 +1,1 @@
+{"old": "        for i, root in enumerate(CAPS_ROOTS):\n", "new": "        for i, root in enumerate(CAPS_ROOTS[:1]):\n"}

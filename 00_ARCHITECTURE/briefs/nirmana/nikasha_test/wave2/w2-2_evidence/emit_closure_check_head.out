@@ -1,0 +1,28 @@
+appended rows: 574
+  OPEN (new)  Build.completion         38
+  OPEN (new)  Build.count_integrity    4
+  OPEN (new)  Build.dep_liveness       37
+  OPEN (new)  Build.history            83
+  OPEN (new)  Carr.detector            87
+  OPEN (new)  Complete.depth           51
+  OPEN (new)  Cost.baseline            87
+  OPEN (new)  Count.floor              16
+  OPEN (new)  Dens.served              37
+  OPEN (new)  Earn.build_record        87
+  OPEN (new)  Idem.pattern             40
+  OPEN (new)  Vocab.identity           7
+CLOSED rows lacking a genuine PASS / justified N/A: none
+N/A verdicts in the census outside the justified set (should be none after R53): 0
+all N/A verdicts in the census (criterion, reason prefix):
+      6 ('Build.completion', 'no count_sql and nothing to count: has_w')
+      5 ('Build.contract', 'no writer, and the registry agrees (has_')
+      2 ('Build.count_integrity', 'count_sql=no, integrity_check_sql=no')
+     28 ('Build.dep_liveness', 'no declared dependencies')
+      5 ('Build.exercised', 'never run, and it has no writer — consis')
+      6 ('Build.history', 'never run; check 7 owns this')
+      5 ('Build.registered', 'no writer, and the registry agrees (serv')
+      1 ('Build.target', "no target_table; asset_kind='data', has_")
+      6 ('Build.target', "no target_table; asset_kind='service', h")
+     23 ('Count.floor', 'target_floor=0: the registry declares ze')
+     26 ('Dens.served', '0 module(s): none; declaring density_con')
+      5 ('Idem.pattern', 'no writer, and the registry agrees (has_')
