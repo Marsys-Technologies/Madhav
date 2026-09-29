@@ -8352,3 +8352,12 @@ change to `AUTHORIZED_SOURCE_COMMITS`/`AUTHORITY_BINDINGS` is made or requested;
 - Evidence: full Vitest suite green; TypeScript green; lint has no errors; disposable PostgreSQL metering migration/ledger checks green; independent migration and code/security reviews completed. See task-owned `00_ARCHITECTURE/briefs/observatory_metering/PROGRESS.md` and the metering runbook for exact results and limitations.
 - No production operation, provider/CLI charge, deploy, application push, protected merge, credential change or other campaign-state edit performed. Migration remains unapplied outside disposable local verification and the metering flag defaults off.
 - This closes only the local implementation lease; no hosted acceptance or invoice accuracy is asserted.
+
+## 2026-09-30 — migration-number reservation: SUVARNA 1200–1299 (decision N-27)
+
+- **Campaign:** Suvarṇa (data-plane elevation on the Nikaṣa engine); session "Strategic Suvarṇa".
+- **Reserved:** migration numbers **1200–1299**, both folders (`platform/migrations`, `platform/supabase/migrations`).
+- **Verified free 2026-09-30:** nothing ≥ 1200 on `origin/main`, on any local or remote branch (2,220 scanned), in the 22 open PRs, or in production `_migrations_applied` (highest applied 1150; 1094–1096 unapplied).
+- **Permission amendment:** PR "settings: open migration numbers 1200–1299 for the Suvarṇa campaign (N-27)" narrows `main`'s `.claude/settings.json` deny to 1300+; 1120–1199 stays denied; L3 Kāla's 1071–1119 untouched.
+- **Rule:** one number at a time, placeholder commit on the lane branch, recorded in the queue line; never reuse a number; the build engine's 1094–1096 are renumbered into this range at landing (N-26).
+- **Contact:** the Suvarṇa decisions log (`/Users/Dev/suvarna/run/DECISIONS.jsonl`, N-27) and the tracker at http://127.0.0.1:8765.
