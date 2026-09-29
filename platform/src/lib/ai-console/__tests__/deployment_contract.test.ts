@@ -40,11 +40,11 @@ describe('AI Console production deployment contract', () => {
     expect(workflow).toContain('--vpc-egress=private-ranges-only')
   })
 
-  it('applies AI Console schema functions only through the protected migration window', () => {
+  it('routes function migrations through the protected window and table-only 1151 through routine migrations', () => {
     expect(snapshotRepair).toContain('CREATE OR REPLACE FUNCTION ai_snapshot_shape')
     expect(workflow).toContain('migrations+=(1124_ai_console_byok_routing.sql)')
     expect(workflow).toContain('migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)')
-    expect(workflow).toContain('migrations+=(1151_ai_console_model_shortlist.sql)')
+    expect(workflow).not.toContain('migrations+=(1151_ai_console_model_shortlist.sql)')
   })
 
   it('keeps the standing Pariprashna probe on the mandatory account default', () => {
