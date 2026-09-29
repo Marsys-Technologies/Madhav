@@ -126,8 +126,9 @@ async function generate(execution: ResolvedRoleExecution, descriptor: SafeProvid
         new StructuredOutputValidationError(execution.role, text), { retryCount })
     }
   }
+  const activeModelId = descriptor.modelId
   return { text, ...(request.responseSchema ? { structured } : {}), toolCalls, finishReason, usage, retryCount,
-    fallbackUsed: false, activeModelId: descriptor.modelId }
+    fallbackUsed: activeModelId !== descriptor.modelId, activeModelId }
 }
 
 function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecutorDescriptor,
@@ -216,7 +217,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
           controller.close()
           return
         }
-        const event = translate(next.value, retryCount, descriptor.modelId)
+        const event = translate(next.value, retryCount, descriptor.modelId, descriptor.modelId)
         if (!event) continue
         emitted = true
         controller.enqueue(event)
@@ -302,7 +303,8 @@ function callType(role: AiRole): QueryRequest['callType'] {
   return 'worker'
 }
 
-function translate(value: unknown, retryCount: number, activeModelId: string): RoleExecutionEvent | undefined {
+function translate(value: unknown, retryCount: number, requestedModelId: string,
+  activeModelId: string): RoleExecutionEvent | undefined {
   if (!value || typeof value !== 'object') return undefined
   const part = value as Record<string, unknown>
   if (part.type === 'text-delta' && typeof part.text === 'string') return { type: 'text_delta', text: part.text }
@@ -321,7 +323,7 @@ function translate(value: unknown, retryCount: number, activeModelId: string): R
     return { type: 'finish', finishReason: finishReason(part.finishReason),
       usage: { inputTokens, outputTokens,
         totalTokens: inputTokens === null || outputTokens === null ? null : inputTokens + outputTokens }, retryCount,
-      fallbackUsed: false, activeModelId }
+      fallbackUsed: activeModelId !== requestedModelId, activeModelId }
   }
   if (part.type === 'error') throw part.error
   return undefined
