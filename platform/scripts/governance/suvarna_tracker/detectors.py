@@ -10,6 +10,7 @@ status; no typed number does. Each detector:
 from __future__ import annotations
 
 import collections
+import datetime as dt
 import hashlib
 import json
 import os
@@ -20,8 +21,11 @@ import sys
 import threading
 import time
 import types
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
+from urllib.parse import urlparse
 
 from .events import now_iso
 
@@ -110,6 +114,21 @@ REGISTRY_COVERAGE_REQUIRED_KEYS = ("registry_revision", "inspector_commit", "cov
 ASSET_ELEVATION_TRACKER_REL_PATH = "00_ARCHITECTURE/control/asset_elevation_tracker.py"
 ELEVATION_NOT_WIRED_DETAIL = "unknown: exact ELEVATED not wired, E6.3t"
 
+# F7 (independent review): Track E §8 pins the E6.3 function's own interface as
+# `elevated_assets(ref, repo)` — a pure function of a git ref and a repo checkout path, never of
+# this tracker's own `Config` object (which the pre-fix callers passed instead; a conforming
+# implementation raises on that call). `ELEVATED_ASSETS_REF` is the ref the function is always
+# called with — the same ref its own module was just loaded from (`origin/main`), so "the function
+# we run" and "the ref we tell it we're running at" never disagree.
+ELEVATED_ASSETS_REF = "origin/main"
+
+# F8 (independent review): the frozen wave-membership map (asset_id -> level int), committed
+# alongside FAMILY_ASSETS.json at J1/E6.3. Once a plan item pins `spec['level_map']` (a rel path,
+# defaulting to this constant when the value is simply truthy-but-not-a-path — see `_level_map`),
+# wave membership comes from THIS file at the pinned `origin/main` ref, never the live registry
+# DAG — and its absence at that ref is an error, never a silent fallback to the DAG.
+DEFAULT_LEVEL_MAP_REL_PATH = "00_ARCHITECTURE/control/LEVEL_MAP.json"
+
 
 def _family_assets_rel_path() -> str:
     """`SUVARNA_FAMILY_ASSETS_PATH` overrides the default path (review #7) — a single configurable
@@ -161,7 +180,13 @@ def _fetch_nikasha_ref_if_needed(nikasha_root: str) -> None:
     (`origin/<branch>`) and the TTL has expired. A ref that is not remote-tracking (`HEAD`, a local
     branch) needs no fetch and this is a no-op. Best-effort: a failed fetch is not raised here — the
     caller's own `git show`/`rev-parse` against whatever is locally present surfaces that failure on
-    its own terms (consistent with `Detectors._fetch_main`, which is equally best-effort)."""
+    its own terms (consistent with `Detectors._fetch_main`, which is equally best-effort).
+
+    F12 (independent review): the TTL cache's own `"at"` timestamp advances ONLY on a successful
+    fetch (`rc == 0`) — the pre-fix code advanced it unconditionally, so a persistently failing
+    fetch (network down, auth expired) would still suppress every retry for the next 300s, leaving
+    every caller silently reading whatever was locally present arbitrarily far in the past. A
+    failed fetch now retries on the very next call instead of waiting out the TTL it never earned."""
     ref = _nikasha_ref()
     if not ref.startswith("origin/"):
         return
@@ -169,8 +194,9 @@ def _fetch_nikasha_ref_if_needed(nikasha_root: str) -> None:
     with _nikasha_fetch_lock:
         if time.time() - _nikasha_fetch_cache["at"] < 300:
             return
-        _run(["git", "fetch", "-q", "origin", branch], cwd=nikasha_root, timeout=90)
-        _nikasha_fetch_cache["at"] = time.time()
+        rc, _ = _run(["git", "fetch", "-q", "origin", branch], cwd=nikasha_root, timeout=90)
+        if rc == 0:
+            _nikasha_fetch_cache["at"] = time.time()
 
 
 def _git_show_text(nikasha_root: str, rel_path: str) -> str:
@@ -263,7 +289,11 @@ class Detectors:
            "assets_elevated": 60, "registry_coverage": 300, "ledger_no_open_gap_on": 20,
            "evidence_recent": 300,
            # v1.4 additions (review pass 2, §11.7)
-           "fk_no_cascade": 600, "acks_from": 20, "main_protected": 300}
+           "fk_no_cascade": 600, "acks_from": 20, "main_protected": 300,
+           # peer_tracker_item: another campaign's own tracker instance (e.g. Pravāha)
+           "peer_tracker_item": 60,
+           # v1.5 additions (Astra review fold): evidence_verified, ci_job_passed, elevated_interface_ok
+           "evidence_verified": 300, "ci_job_passed": 120, "elevated_interface_ok": 60}
 
     def __init__(self, cfg: Config, on_change=None):
         self.cfg = cfg
@@ -310,16 +340,46 @@ class Detectors:
             self.on_change()
 
     def get(self, spec: dict) -> DetectorResult | None:
+        """F12 (independent review): a cached result older than 3× its own type's TTL is never
+        served as-is — even a `done` — because that means the scheduled re-measurement (`poll`'s
+        own `_due` bookkeeping) has stopped happening, for whatever reason (the poll loop stalled,
+        a caller stopped polling this exact spec, …). Rather than keep answering with a
+        potentially long-stale fact, this reads `unknown` past that point: an unmeasured-recently
+        property is not a pass (CLAUDE.md §N.8). A result still within the 3×TTL window, or one
+        whose own `checked_at` cannot be parsed (never invents staleness on that alone), is
+        returned unchanged."""
+        typ = spec.get("type", "?")
         with self._lock:
-            return self.results.get(self.key(spec))
+            res = self.results.get(self.key(spec))
+        if res is None:
+            return None
+        try:
+            checked = dt.datetime.fromisoformat(res.checked_at)
+        except (ValueError, TypeError):
+            return res
+        if checked.tzinfo is None:
+            checked = checked.replace(tzinfo=dt.timezone.utc)
+        age_s = (dt.datetime.now(dt.timezone.utc) - checked).total_seconds()
+        stale_after = self.TTL.get(typ, 60) * 3
+        if age_s > stale_after:
+            return DetectorResult("unknown", f"{res.detail} (stale: last measured {age_s:.0f}s ago, "
+                                             f"over {stale_after}s without a re-measure)",
+                                  res.checked_at, res.source, res.progress)
+        return res
 
     # -- helpers ------------------------------------------------------------------------------
     def _fetch_main(self) -> None:
+        """F12 (independent review): `_last_fetch` advances ONLY on a successful fetch (`rc ==
+        0`) — the pre-fix code advanced it unconditionally, so a persistently failing fetch would
+        still suppress every retry for 300s, leaving every `origin/main`-reading detector silently
+        stuck on whatever was locally present arbitrarily far in the past. A failed fetch now
+        retries on the very next call."""
         with self._fetch_lock:
             if time.time() - self._last_fetch < 300:
                 return
-            _run(["git", "fetch", "-q", "origin", "main"], cwd=self.cfg.repo, timeout=90)
-            self._last_fetch = time.time()
+            rc, _ = _run(["git", "fetch", "-q", "origin", "main"], cwd=self.cfg.repo, timeout=90)
+            if rc == 0:
+                self._last_fetch = time.time()
 
     def _register_text(self) -> str:
         """The register's text at the committed ref (NIKASHA_REF, default HEAD) — never the
@@ -362,13 +422,16 @@ class Detectors:
         return fam, None
 
     def _load_exact_elevated_assets_fn(self):
-        """CODE-8: the E6.3 exact-ELEVATED function (`asset_elevation_tracker.py`), loaded fresh
-        from `origin/main` every call (never cached, never the working tree — the same discipline
-        `_family_assets()` uses for `FAMILY_ASSETS.json`, another J1/E6.3 control file). Returns a
-        callable `fn(cfg) -> set[str]` (the same shape as the retired proxy `elevated_assets()`
-        below), or `None` — never raises — when the module is not on main yet, fails to import, or
-        does not expose an `elevated_assets` callable. A caller getting `None` reports `error`
-        (`ELEVATION_NOT_WIRED_DETAIL`), never falls back to the proxy."""
+        """CODE-8 / F7: the E6.3 exact-ELEVATED function (`asset_elevation_tracker.py`), loaded
+        fresh from `origin/main` every call (never cached, never the working tree — the same
+        discipline `_family_assets()` uses for `FAMILY_ASSETS.json`, another J1/E6.3 control file).
+        Returns a callable `fn(ref, repo) -> set[str]` — Track E §8's own pinned interface, never
+        the retired one-argument `fn(cfg)` shape the pre-fix callers used (a conforming
+        implementation raises on that call) — or `None`, never raising, when the module is not on
+        main yet, fails to import, or does not expose an `elevated_assets` callable. A caller
+        getting `None` reports `error` (`ELEVATION_NOT_WIRED_DETAIL`), never falls back to the
+        retired proxy. Callers invoke the returned function as `fn(ELEVATED_ASSETS_REF, self.cfg.repo)`
+        — never `fn(self.cfg)`."""
         self._fetch_main()
         rc, out = _run(["git", "show", f"origin/main:{ASSET_ELEVATION_TRACKER_REL_PATH}"], cwd=self.cfg.repo, timeout=30)
         if rc != 0:
@@ -380,6 +443,27 @@ class Detectors:
             return None
         fn = getattr(module, "elevated_assets", None)
         return fn if callable(fn) else None
+
+    def _level_map(self, level_map_spec) -> tuple[dict | None, str | None]:
+        """F8: the frozen `LEVEL_MAP.json` (asset_id -> level int), read from the committed
+        `origin/main` ref — never the live registry DAG once a spec pins this. `level_map_spec` is
+        either the rel path itself (a string) or any other truthy value, which selects
+        `DEFAULT_LEVEL_MAP_REL_PATH`. Returns `(data, None)` on success, or `(None, "<detail>")`
+        when the file is absent or malformed at the ref — F8: absent is an ERROR here, never a
+        silent fallback to the live DAG."""
+        rel_path = level_map_spec if isinstance(level_map_spec, str) else DEFAULT_LEVEL_MAP_REL_PATH
+        self._fetch_main()
+        rc, out = _run(["git", "show", f"origin/main:{rel_path}"], cwd=self.cfg.repo, timeout=30)
+        if rc != 0:
+            return None, (f"LEVEL_MAP.json not found at origin/main:{rel_path} (F8: wave membership "
+                          f"must come from the frozen level map, not the live registry DAG)")
+        try:
+            data = json.loads(out)
+        except ValueError:
+            return None, f"LEVEL_MAP.json at origin/main:{rel_path} is not valid JSON"
+        if not isinstance(data, dict):
+            return None, f"LEVEL_MAP.json at origin/main:{rel_path} is not a JSON object"
+        return data, None
 
     def _withholding_has_entry(self, path: str, entry: str) -> bool:
         """Whether `entry` appears in the withholding list JSON, read at the pinned Nikaṣa ref (Fix
@@ -626,10 +710,16 @@ class Detectors:
         a wave that claims `exclude: family_set` cannot honestly complete before the exclusion list
         it depends on exists.
 
-        CODE-8: ELEVATED itself is read only from the E6.3 exact function
-        (`asset_elevation_tracker.py` at the committed Nikaṣa ref); until that module is on the ref
-        and loadable, this reads `error` (`ELEVATION_NOT_WIRED_DETAIL`), never the old one-
-        certification-and-no-open-gap proxy."""
+        CODE-8 / F7: ELEVATED itself is read only from the E6.3 exact function
+        (`asset_elevation_tracker.py` at the committed Nikaṣa ref), called with its own pinned
+        `(ref, repo)` interface (`ELEVATED_ASSETS_REF`, `self.cfg.repo`) — never the retired
+        `fn(self.cfg)` shape; until that module is on the ref and loadable, this reads `error`
+        (`ELEVATION_NOT_WIRED_DETAIL`), never the old one-certification-and-no-open-gap proxy.
+
+        F8: `spec['level_map']`, when set, pins wave membership to the frozen `LEVEL_MAP.json` at
+        the committed `origin/main` ref, never the live registry DAG — and its absence there is an
+        `error`, never a silent fallback. Omitting `level_map` entirely keeps the live-DAG reading
+        (backward compatible for items that have not been migrated to the frozen map yet)."""
         lo, hi = spec["levels"]
         elevated_fn = self._load_exact_elevated_assets_fn()
         if elevated_fn is None:
@@ -644,12 +734,19 @@ class Detectors:
                                                  "cannot honestly exclude the family set yet",
                                       now_iso(), "detector:levels_elevated")
             exclude = self._family_set_union(fam, "family_set")
-        levels = dag_levels(self)
+        level_map_spec = spec.get("level_map")
+        if level_map_spec:
+            level_map, err = self._level_map(level_map_spec)
+            if err:
+                return DetectorResult("error", err, now_iso(), "detector:levels_elevated")
+            levels = {a: lv for a, lv in level_map.items() if isinstance(lv, int)}
+        else:
+            levels = dag_levels(self)
         assets = [a for a, lv in levels.items() if lo <= lv <= hi and a not in exclude]
         if not assets:
             return DetectorResult("error", f"no assets at levels {lo}–{hi} after excluding the family set",
                                   now_iso(), "detector:levels_elevated")
-        elevated = elevated_fn(self.cfg)
+        elevated = elevated_fn(ELEVATED_ASSETS_REF, self.cfg.repo)
         n = sum(1 for a in assets if a in elevated)
         excl_note = f"; {len(exclude)} family/reader asset(s) excluded" if exclude else ""
         detail = f"{n}/{len(assets)} assets elevated (exact, E6.3){excl_note}"
@@ -701,13 +798,28 @@ class Detectors:
         detail = f"{n}/{len(paths)} paths on main; missing: {shown}"
         return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:main_has_files", n / len(paths))
 
+    # F10 (independent review): a scorecard whose generator/inspector never change again would
+    # otherwise certify the SAME PASS forever, however old — bounding staleness needs its own
+    # timestamp check, independent of the generator-hash/ancestry checks (which only ever prove
+    # "consistent with some point in the past", never "recent enough to trust today"). A week is
+    # long enough for a legitimate CI cadence, short enough that a stale scorecard cannot outlive
+    # an inspector change indefinitely.
+    DEFAULT_SCORECARD_MAX_AGE_HOURS = 168
+
     def d_scorecard_pass(self, spec):
-        """CODE-6 (Track E brief §5's scorecard schema): `tests[T]` is an object with a `verdict`
-        field, never a bare string. Done requires, in addition to every listed test's verdict being
-        PASS: the scorecard's own `generator_sha256` equals the sha256 of `git show <ref>:<generator>`
-        (the committed generator, never a typed/trusted hash), and `inspector_commit` is an
-        ancestor of `ref` (never merely present) — a scorecard whose generator has since changed, or
-        whose inspector commit was later rewound past, must not read `done` on stale trust alone.
+        """CODE-6 (Track E brief §5's scorecard schema) / F10 (independent review): `tests[T]` is
+        an object with `verdict` AND `command` fields, never a bare string or a verdict alone —
+        `command` is the evidence the test was actually *executed*, not merely typed in by hand.
+        Done requires, in addition to every listed test's verdict being PASS: a `run_id` (any
+        non-empty value — a scorecard with no run identity cannot be traced back to an actual
+        execution); a `generated_at` timestamp no older than `spec['max_age_hours']` (default
+        `DEFAULT_SCORECARD_MAX_AGE_HOURS`) — F10's own fix for the review's counterexample: an
+        old PASS whose inspector has since changed while the generator has not must not remain
+        `done` indefinitely, only until it goes stale; the scorecard's own `generator_sha256`
+        equals the sha256 of `git show <ref>:<generator>` (the committed generator, never a typed/
+        trusted hash); and `inspector_commit` is an ancestor of `ref` (never merely present) — a
+        scorecard whose generator has since changed, or whose inspector commit was later rewound
+        past, must not read `done` on stale trust alone.
 
         B7 (review pass 3): when the plan item's own spec pins `generator` (the path the plan model
         expects the scorecard to have been generated by), the scorecard's own `data["generator"]`
@@ -732,14 +844,32 @@ class Detectors:
 
         generator, generator_sha256 = data.get("generator"), data.get("generator_sha256")
         inspector_commit, results = data.get("inspector_commit"), data.get("tests")
+        run_id, generated_at = data.get("run_id"), data.get("generated_at")
         missing_fields = [k for k, v in (("generator", generator), ("generator_sha256", generator_sha256),
-                                         ("inspector_commit", inspector_commit)) if not v]
+                                         ("inspector_commit", inspector_commit), ("run_id", run_id),
+                                         ("generated_at", generated_at)) if not v]
         if missing_fields:
             return DetectorResult("pending", f"scorecard at {path} on {ref} missing: {', '.join(missing_fields)}",
                                   now_iso(), "detector:scorecard_pass")
         if not isinstance(results, dict):
             return DetectorResult("error", f"scorecard at {path} on {ref}: 'tests' is not an object",
                                   now_iso(), "detector:scorecard_pass")
+
+        # F10: freshness. Checked before the (more expensive) generator/ancestry git calls, same
+        # discipline as every other cheap-first validation in this detector.
+        try:
+            generated_dt = dt.datetime.fromisoformat(str(generated_at))
+        except ValueError:
+            return DetectorResult("error", f"scorecard at {path} on {ref}: generated_at ({generated_at!r}) "
+                                           "is not a valid ISO-8601 timestamp", now_iso(), "detector:scorecard_pass")
+        if generated_dt.tzinfo is None:
+            generated_dt = generated_dt.replace(tzinfo=dt.timezone.utc)
+        max_age_hours = spec.get("max_age_hours") or self.DEFAULT_SCORECARD_MAX_AGE_HOURS
+        age_hours = (dt.datetime.now(dt.timezone.utc) - generated_dt).total_seconds() / 3600.0
+        if age_hours > max_age_hours:
+            return DetectorResult("pending", f"scorecard at {path} on {ref} is {age_hours:.1f}h old "
+                                             f"(over {max_age_hours}h; run_id {run_id}) — too stale to "
+                                             "certify a currently-true result", now_iso(), "detector:scorecard_pass")
 
         pinned_generator = spec.get("generator")
         if pinned_generator and generator != pinned_generator:
@@ -766,6 +896,15 @@ class Detectors:
             return DetectorResult("pending", f"scorecard's inspector_commit {inspector_commit[:12]} is not an "
                                              f"ancestor of {ref}", now_iso(), "detector:scorecard_pass")
 
+        # F10: every named test's entry must carry a `command` (the evidence it was actually
+        # executed, not merely typed in by hand) as well as its `verdict` — a bare verdict alone
+        # is never proof of execution.
+        no_command = [t for t in tests if isinstance(results.get(t), dict) and not results[t].get("command")]
+        if no_command:
+            return DetectorResult("pending", f"scorecard at {path} on {ref}: test(s) missing a 'command' "
+                                             f"field (cannot prove they were actually executed): "
+                                             f"{', '.join(no_command)}", now_iso(), "detector:scorecard_pass")
+
         def _verdict(t: str) -> str:
             entry = results.get(t)
             return str(entry.get("verdict", "")) if isinstance(entry, dict) else ""
@@ -775,7 +914,8 @@ class Detectors:
         if missing:
             detail = f"{n}/{len(tests)} PASS on {ref}; missing/failing: {', '.join(missing)}"
             return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:scorecard_pass", n / len(tests))
-        return DetectorResult("done", f"all {len(tests)} tests PASS on {ref}; generator hash verified; "
+        return DetectorResult("done", f"all {len(tests)} tests PASS on {ref} (run_id {run_id}, "
+                                      f"{age_hours:.1f}h old); generator hash verified; "
                                       f"inspector commit {inspector_commit[:12]} is an ancestor of {ref}",
                               now_iso(), "detector:scorecard_pass", 1.0)
 
@@ -994,6 +1134,9 @@ class Detectors:
     # nothing checking that PR actually came from this campaign's own landing convention
     # (arch §12.2: "a PR to main comes from suvarna/land/<group>, cut from origin/main").
     WAVE_LANDING_HEAD_REF_PREFIX = "suvarna/land/"
+    # F13 (independent review): the landing PR's base branch must be exactly this — a PR merged
+    # into anything else is not evidence main ever received this wave's changes at all.
+    WAVE_LANDING_BASE_BRANCH = "main"
 
     def d_wave_deployed(self, spec):
         """Review pass 2 (#5/#6): ancestry, never substring; `suvarna-build` by full pinned path,
@@ -1001,7 +1144,15 @@ class Detectors:
 
         Review pass 3 (below-blocker): the landing PR's own head ref must be a Suvarṇa landing
         branch for this wave (`suvarna/land/<wave>...`) — a PR merged from anywhere else is not
-        evidence this wave actually landed, whatever LANDING.json claims."""
+        evidence this wave actually landed, whatever LANDING.json claims.
+
+        F13 (independent review): the pre-fix version checked ancestry and head-ref naming but
+        neither (a) that the PR's *base* branch was actually `main` — a PR merged into some other
+        branch proves nothing about what `main` received — nor (b) that the PR's changed files are
+        exactly the packet LANDING.json recorded — a wave whose PR silently dropped, or silently
+        added, files versus its own recorded packet must never read `deployed` on ancestry alone.
+        Both are checked here, before the deploy/ancestry step; `LANDING.json` must name its own
+        `packet` (the list of file paths this wave's landing was supposed to contain)."""
         wave = spec.get("wave")
         # `wave` alone (no prs/head_refs/numbers/paths) is not one of CODE-3's enumerated empty-
         # params cases, so this keeps the unconditional `pending` reading.
@@ -1015,12 +1166,24 @@ class Detectors:
         pr = landing.get("pr")
         if not pr:
             return DetectorResult("error", f"LANDING.json for {wave} names no PR", now_iso(), "detector:wave_deployed")
-        rc, out = _run(["gh", "pr", "view", str(pr), "--json", "state,mergeCommit,headRefName"], cwd=self.cfg.repo, timeout=60)
+        packet = landing.get("packet")
+        if not isinstance(packet, list) or not packet:
+            return DetectorResult("error", f"LANDING.json for {wave} names no packet file list (F13: the "
+                                           f"PR's changed files must equal the recorded packet)",
+                                  now_iso(), "detector:wave_deployed")
+        rc, out = _run(["gh", "pr", "view", str(pr), "--json", "state,mergeCommit,headRefName,baseRefName,files"],
+                       cwd=self.cfg.repo, timeout=60)
         if rc != 0:
             return DetectorResult("error", f"gh: {out.strip()[:160]}", now_iso(), "detector:wave_deployed")
         d = json.loads(out)
         if d["state"] != "MERGED":
             return DetectorResult("running", f"{wave} landing PR #{pr} open, not yet merged", now_iso(), "detector:wave_deployed", 0.5)
+        base_ref = str(d.get("baseRefName") or "")
+        if base_ref != self.WAVE_LANDING_BASE_BRANCH:
+            return DetectorResult("blocked", f"{wave} landing PR #{pr} base branch is {base_ref!r}, not "
+                                             f"{self.WAVE_LANDING_BASE_BRANCH!r} (F13: a PR merged into "
+                                             f"any other branch is not evidence main received this wave)",
+                                  now_iso(), "detector:wave_deployed")
         sha = (d.get("mergeCommit") or {}).get("oid")
         if not sha:
             return DetectorResult("error", f"PR #{pr}: no merge commit recorded", now_iso(), "detector:wave_deployed")
@@ -1030,6 +1193,25 @@ class Detectors:
             return DetectorResult("blocked", f"{wave} landing PR #{pr} head ref {head_ref!r} is not a "
                                              f"Suvarṇa landing branch for this wave (expected prefix "
                                              f"{expected_prefix!r})", now_iso(), "detector:wave_deployed")
+
+        # F13: the PR's changed files must equal the recorded packet — exactly, not merely
+        # overlap. A dropped or an extra file versus the recorded packet is never silently ignored.
+        files = d.get("files")
+        if not isinstance(files, list):
+            return DetectorResult("error", f"PR #{pr}: gh reported no files list", now_iso(), "detector:wave_deployed")
+        changed = {f.get("path") for f in files if isinstance(f, dict) and f.get("path")}
+        packet_set = set(packet)
+        if changed != packet_set:
+            missing_from_pr = sorted(packet_set - changed)
+            extra_in_pr = sorted(changed - packet_set)
+            parts = []
+            if missing_from_pr:
+                parts.append(f"packet file(s) not in the PR: {missing_from_pr[:8]}")
+            if extra_in_pr:
+                parts.append(f"PR file(s) not in the recorded packet: {extra_in_pr[:8]}")
+            return DetectorResult("blocked", f"{wave} landing PR #{pr} changed files do not equal the "
+                                             f"recorded packet; {'; '.join(parts)}", now_iso(), "detector:wave_deployed")
+
         rc2, out2 = self._run_preflight()
         if rc2 == self.PREFLIGHT_SCRIPT_MISSING:
             return DetectorResult("pending", f"suvarna-build not provisioned yet ({out2})", now_iso(), "detector:wave_deployed")
@@ -1053,8 +1235,9 @@ class Detectors:
                               now_iso(), "detector:wave_deployed", 0.75)
 
     def d_assets_elevated(self, spec):
-        """CODE-8: as `levels_elevated` — ELEVATED is read only from the E6.3 exact function; until
-        it is on the ref and loadable this reads `error`, never the retired proxy."""
+        """CODE-8 / F7: as `levels_elevated` — ELEVATED is read only from the E6.3 exact function,
+        called with its own pinned `(ref, repo)` interface, never the retired `fn(self.cfg)` shape;
+        until it is on the ref and loadable this reads `error`, never the retired proxy."""
         set_name = spec.get("set")
         if not set_name:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:assets_elevated")
@@ -1069,7 +1252,7 @@ class Detectors:
         assets = self._family_set_union(fam, set_name)
         if not assets:
             return DetectorResult("error", f"no asset set '{set_name}' in FAMILY_ASSETS.json", now_iso(), "detector:assets_elevated")
-        elevated = elevated_fn(self.cfg)
+        elevated = elevated_fn(ELEVATED_ASSETS_REF, self.cfg.repo)
         n = sum(1 for a in assets if a in elevated)
         detail = f"{n}/{len(assets)} '{set_name}' assets elevated (exact, E6.3)"
         if n == len(assets):
@@ -1077,15 +1260,28 @@ class Detectors:
         return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:assets_elevated", n / len(assets))
 
     def d_registry_coverage(self, spec):
-        """CODE-5 (substance #10a, review pass 2): read from `origin/main` (arch §11.7's own table:
-        the report is committed on main by E6.5's `asset_census.py --registry-check`) — the same
-        discipline `_family_assets()` uses, not the Nikaṣa register/ledger ref. An absent file reads
-        `pending` (unchanged). Every one of `registry_revision`, `inspector_commit`, `covered_cells`
-        and `uncovered_required_criteria` must be present, or this is an `error`, never `pending` —
-        an absent key is not evidence of coverage; a malformed or partial report must never read as
-        fully covered by omission (CLAUDE.md §N.8: a signal without the check that could report
-        otherwise is null, not green). Only once every key is present does a non-empty
-        `uncovered_required_criteria` read `pending`/`running`."""
+        """CODE-5 (substance #10a, review pass 2) / F11 (independent review): read from
+        `origin/main` (arch §11.7's own table: the report is committed on main by E6.5's
+        `asset_census.py --registry-check`) — the same discipline `_family_assets()` uses, not the
+        Nikaṣa register/ledger ref. An absent file reads `pending` (unchanged). Every one of
+        `registry_revision`, `inspector_commit`, `covered_cells` and `uncovered_required_criteria`
+        must be present, or this is an `error`, never `pending` — an absent key is not evidence of
+        coverage; a malformed or partial report must never read as fully covered by omission
+        (CLAUDE.md §N.8).
+
+        F11 hardens this further: a *present but null/empty* `registry_revision` or
+        `inspector_commit` is exactly as uninformative as an absent one — `error`, never `done` on
+        a report that names no real revision at all. `covered_cells` must be a genuine positive
+        integer — `covered_cells: 0` (or any non-positive value) paired with an empty
+        `uncovered_required_criteria` is indistinguishable from "the report measured nothing",
+        never `done` on that alone.
+
+        When `spec['required_criteria']` (a list of criterion names this item specifically cares
+        about) is given, `done` requires that NONE of them appear in the report's own
+        `uncovered_required_criteria` — a cross-check against this item's own declared scope,
+        never merely trusting the report's global list is empty. Omitting `required_criteria`
+        keeps the old, unscoped behaviour (the whole report's `uncovered_required_criteria` must
+        be empty)."""
         self._fetch_main()
         rc, out = _run(["git", "show", f"origin/main:{REGISTRY_COVERAGE_REL_PATH}"], cwd=self.cfg.repo, timeout=30)
         if rc != 0:
@@ -1102,18 +1298,46 @@ class Detectors:
             return DetectorResult("error", f"registry coverage report on main is missing required key(s): "
                                            f"{', '.join(missing)}; an absent key is not evidence of coverage",
                                   now_iso(), "detector:registry_coverage")
+
+        # F11: present-but-null is exactly as uninformative as absent.
+        null_fields = [k for k in ("registry_revision", "inspector_commit")
+                      if data.get(k) in (None, "")]
+        if null_fields:
+            return DetectorResult("error", f"registry coverage report on main has null/empty required "
+                                           f"field(s): {', '.join(null_fields)}; a null revision is not "
+                                           f"evidence of coverage", now_iso(), "detector:registry_coverage")
+        covered_cells = data.get("covered_cells")
+        if not isinstance(covered_cells, int) or isinstance(covered_cells, bool) or covered_cells <= 0:
+            return DetectorResult("error", f"registry coverage report on main has covered_cells={covered_cells!r} "
+                                           f"(must be a positive integer — a zero/absent count is not evidence "
+                                           f"of coverage)", now_iso(), "detector:registry_coverage")
+
         uncovered = data["uncovered_required_criteria"]
         if not isinstance(uncovered, list):
             return DetectorResult("error", "registry coverage report's uncovered_required_criteria is not a list",
                                   now_iso(), "detector:registry_coverage")
+
+        required_criteria = spec.get("required_criteria")
+        if required_criteria:
+            bad = [c for c in required_criteria if c in uncovered]
+            if bad:
+                shown = ", ".join(str(c) for c in bad[:5]) + ("…" if len(bad) > 5 else "")
+                n_ok = len(required_criteria) - len(bad)
+                return DetectorResult("running" if n_ok else "pending",
+                                      f"{n_ok}/{len(required_criteria)} of this item's required criteria "
+                                      f"covered; still uncovered: {shown}", now_iso(), "detector:registry_coverage",
+                                      n_ok / len(required_criteria))
+            return DetectorResult("done", f"all {len(required_criteria)} of this item's required criteria are "
+                                          f"covered (registry_revision {data['registry_revision']}, "
+                                          f"covered_cells {covered_cells})", now_iso(), "detector:registry_coverage", 1.0)
+
         if uncovered:
             shown = ", ".join(str(u) for u in uncovered[:5]) + ("…" if len(uncovered) > 5 else "")
-            return DetectorResult("running" if data.get("covered_cells") else "pending",
-                                  f"{len(uncovered)} required criteria still at detector: NONE: {shown}",
+            return DetectorResult("running", f"{len(uncovered)} required criteria still at detector: NONE: {shown}",
                                   now_iso(), "detector:registry_coverage")
         return DetectorResult("done", f"every core gate × layer cell is covered by a detector or a declared N/A "
                                       f"rule (registry_revision {data['registry_revision']}, "
-                                      f"covered_cells {data['covered_cells']})",
+                                      f"covered_cells {covered_cells})",
                               now_iso(), "detector:registry_coverage", 1.0)
 
     def d_evidence_recent(self, spec):
@@ -1169,60 +1393,72 @@ class Detectors:
     # Rule for all three, same as every other detector: read-only, empty params read `pending`
     # ("detector parameters not set yet"), never `done` without actually measuring.
 
-    # CODE-9's original check (`confdeltype='c'`, ON DELETE CASCADE) plus the below-blocker finding
-    # from review pass 3: a foreign key retyped to NO ACTION/RESTRICT (`confdeltype` 'a'/'r') is
-    # just as dangerous as CASCADE for this specific rebuild — plan §9's own words are "would refuse
-    # the L2 delete-then-insert" — so it is never silently read as `done` either. `allow:
-    # set_null|no_fk` on the item's own params is the one escape: the plan may deliberately accept a
-    # restricting FK for a referenced table it has separately decided is fine (e.g. because the real
-    # remediation is SET NULL or dropping the FK outright, and a transient restrict reading is not
-    # itself the gate).
-    FK_RESTRICTING_TYPES = ("a", "r")  # NO ACTION, RESTRICT
-    FK_RESTRICT_ALLOWED = ("set_null", "no_fk")
+    # F9 (independent review): the pre-fix check ignored `spec['target']` entirely, queried only
+    # CASCADE/NO ACTION/RESTRICT (never SET NULL/SET DEFAULT — both silently accepted for a
+    # `no_fk` target), and its `allow` escape could approve a restricting key outright. F9's fix:
+    # measure the item's own declared `target` — the delete rule the plan actually wants for every
+    # foreign key into the referenced table — and block on ANY other rule, no escape hatch.
+    FK_DELETE_TYPE_LABEL = {"c": "CASCADE", "a": "NO ACTION", "r": "RESTRICT", "n": "SET NULL", "d": "SET DEFAULT"}
+    # target -> the one confdeltype code that satisfies it (None = no FK at all may exist).
+    FK_TARGET_ACCEPTABLE_TYPE = {"no_fk": None, "set_null": "n", "set_default": "d"}
+    # F9: the independent refusal guard the plan may separately require for this referenced table
+    # (the recon's own C2 finding) — `spec['guard'] == 'present'` requires it to exist in the
+    # database; `'absent'` or omitted means this item makes no claim about it either way.
+    FK_GUARD_FUNCTION = "assert_l2_msr_delete_safe"
 
     def d_fk_no_cascade(self, spec):
-        """CODE-9 (S3, F3.FK): no foreign key into `spec['referenced']` may still have
-        `ON DELETE CASCADE` (`confdeltype = 'c'`) — read-only `pg_constraint`, as the reader.
-
-        Review pass 3 (below-blocker F3.FK): a key retyped to NO ACTION/RESTRICT is `blocked`, not
-        silently `done` — such a key would refuse the L2 delete-then-insert rebuild exactly as the
-        CASCADE it replaced would over-delete, just in the opposite direction (an error instead of a
-        silent cascade). `allow: set_null` or `allow: no_fk` on the item's spec is the one way past
-        this for a referenced table the plan has separately decided is fine."""
+        """F9 (S3, F3.FK, independent review): every foreign key into `spec['referenced']` must
+        have exactly the delete rule `spec['target']` calls for (`no_fk` — no FK may exist at all;
+        `set_null`; or `set_default`) — read-only `pg_constraint`, as the reader. Any other delete
+        rule on any foreign key into the referenced table is `blocked`, never silently `done` —
+        there is no `allow` escape (the pre-fix code's own hole: an item could approve a
+        restricting key on its own say-so). When `spec['guard'] == 'present'`, the independent
+        refusal-guard function (`assert_l2_msr_delete_safe`) must also exist in the database, or
+        this is `pending`, never `done` on the FK shape alone."""
         referenced = spec.get("referenced")
-        if not referenced:
+        target = spec.get("target")
+        if not referenced or not target:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:fk_no_cascade")
+        if target not in self.FK_TARGET_ACCEPTABLE_TYPE:
+            return DetectorResult("error", f"fk_no_cascade: unknown target {target!r} (expected one "
+                                           f"of {sorted(self.FK_TARGET_ACCEPTABLE_TYPE)})",
+                                  now_iso(), "detector:fk_no_cascade")
         try:
             rows = self._psql("select conrelid::regclass, conname, confdeltype from pg_constraint "
-                              f"where contype='f' and confrelid = '{referenced}'::regclass "
-                              "and confdeltype in ('c','a','r')")
+                              f"where contype='f' and confrelid = '{referenced}'::regclass")
         except RuntimeError as exc:
             return DetectorResult("error", f"fk_no_cascade: {str(exc)[:200]}", now_iso(), "detector:fk_no_cascade")
 
         def _name(r):
             return f"{r[0]}.{r[1]}" if len(r) > 1 else str(r)
 
-        cascade = [r for r in rows if len(r) > 2 and r[2] == "c"]
-        restricting = [r for r in rows if len(r) > 2 and r[2] in self.FK_RESTRICTING_TYPES]
-
-        if cascade:
-            names = [_name(r) for r in cascade]
+        acceptable = self.FK_TARGET_ACCEPTABLE_TYPE[target]
+        bad = [r for r in rows if len(r) > 2 and r[2] != acceptable]
+        if bad:
+            names = [f"{_name(r)} ({self.FK_DELETE_TYPE_LABEL.get(r[2], r[2])})" for r in bad]
             shown = ", ".join(names[:8]) + ("…" if len(names) > 8 else "")
-            return DetectorResult("pending", f"{len(cascade)} ON DELETE CASCADE foreign key(s) into "
-                                             f"{referenced}: {shown}", now_iso(), "detector:fk_no_cascade")
+            wants = "no foreign key at all" if target == "no_fk" else f"delete rule {self.FK_DELETE_TYPE_LABEL[acceptable]}"
+            return DetectorResult("blocked", f"{len(bad)} foreign key(s) into {referenced} do not "
+                                             f"satisfy target {target!r} ({wants}): {shown}",
+                                  now_iso(), "detector:fk_no_cascade")
 
-        allow = spec.get("allow")
-        if restricting and allow not in self.FK_RESTRICT_ALLOWED:
-            names = [_name(r) for r in restricting]
-            shown = ", ".join(names[:8]) + ("…" if len(names) > 8 else "")
-            return DetectorResult("blocked", f"{len(restricting)} restricting (NO ACTION/RESTRICT) foreign "
-                                             f"key(s) into {referenced}: {shown}; restrict would refuse the "
-                                             f"MSR rebuild", now_iso(), "detector:fk_no_cascade")
+        guard = spec.get("guard")
+        guard_note = ""
+        if guard == "present":
+            try:
+                grows = self._psql(f"select count(*) from pg_proc where proname = '{self.FK_GUARD_FUNCTION}'")
+            except RuntimeError as exc:
+                return DetectorResult("error", f"fk_no_cascade guard check: {str(exc)[:200]}",
+                                      now_iso(), "detector:fk_no_cascade")
+            present = bool(grows and grows[0] and grows[0][0] not in ("0", ""))
+            if not present:
+                return DetectorResult("pending", f"target {target} satisfied for {referenced}, but the "
+                                                 f"required refusal guard function "
+                                                 f"{self.FK_GUARD_FUNCTION} is not present in the database",
+                                      now_iso(), "detector:fk_no_cascade")
+            guard_note = f"; refusal guard {self.FK_GUARD_FUNCTION} present"
 
-        detail = f"no ON DELETE CASCADE foreign key into {referenced}"
-        if restricting:
-            detail += (f"; {len(restricting)} restricting foreign key(s) allowed by the item's own "
-                       f"params (allow={allow!r})")
+        detail = f"every foreign key into {referenced} satisfies target {target!r}{guard_note}"
         return DetectorResult("done", detail, now_iso(), "detector:fk_no_cascade", 1.0)
 
     def d_acks_from(self, spec):
@@ -1261,9 +1497,13 @@ class Detectors:
         detail = f"{n}/{len(actors)} acknowledged ({marker!r}); missing: {', '.join(missing)}"
         return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:acks_from", n / len(actors))
 
-    # CODE-11 near-blocker (review pass 3): `rules/branches/<branch>` names which rule fired but not
+    # CODE-11 / F5 (independent review): `rules/branches/<branch>` names which rule fired but not
     # who may bypass it — that lives on the ruleset itself. `bypass_actors` is fetched per ruleset id
-    # and checked against the native's own resolved user id, never trusted on the rule's say-so.
+    # and checked against the RESOLVED set of allowed logins, never trusted on the rule's say-so and
+    # never against a single hardcoded identity — N-28/N-29 (native rulings) mean the identity
+    # actually allowed to bypass/merge is the swarm's own dedicated GitHub identity (post-CI-green,
+    # post-gate-reviewer-accept), not "the native reviews" — so the allowed set is a param, resolved
+    # here, never assumed.
     def _ruleset_bypass_actors(self, ruleset_id) -> tuple[list[dict] | None, str | None]:
         data, err = self._gh_api_json(f"repos/{{owner}}/{{repo}}/rulesets/{ruleset_id}")
         if err is not None:
@@ -1281,10 +1521,10 @@ class Detectors:
             return None, f"users/{login}: no id in response"
         return data["id"], None
 
-    def _bypass_problems(self, ruleset_ids: list, bypass_only: str) -> tuple[list[str] | None, str | None]:
+    def _bypass_problems(self, ruleset_ids: list, allowed_logins: list[str]) -> tuple[list[str] | None, str | None]:
         """Returns `(problems, None)` — an empty list means every bypass actor on every named
-        ruleset is the native's own login — or `(None, "<error>")` on any `gh api` failure. Never
-        silently skips a ruleset id it was handed."""
+        ruleset resolves to one of `allowed_logins` — or `(None, "<error>")` on any `gh api`
+        failure. Never silently skips a ruleset id, or an allowed login, it was handed."""
         all_actors: list[dict] = []
         for rid in ruleset_ids:
             actors, err = self._ruleset_bypass_actors(rid)
@@ -1293,71 +1533,341 @@ class Detectors:
             all_actors.extend(actors)
         if not all_actors:
             return [], None
-        native_id, err2 = self._resolve_user_id(bypass_only)
-        if err2 is not None:
-            return None, f"gh api users/{bypass_only}: {err2}"
+        allowed_ids: set[int] = set()
+        for login in allowed_logins:
+            uid, err2 = self._resolve_user_id(login)
+            if err2 is not None:
+                return None, f"gh api users/{login}: {err2}"
+            allowed_ids.add(uid)
         extra = [a for a in all_actors
-                if not (a.get("actor_type") == "User" and a.get("actor_id") == native_id)]
+                if not (a.get("actor_type") == "User" and a.get("actor_id") in allowed_ids)]
         if not extra:
             return [], None
         shown = ", ".join(f"{a.get('actor_type')}:{a.get('actor_id')}" for a in extra[:5])
-        return [f"bypass actor(s) beyond {bypass_only}: {shown}"], None
+        return [f"bypass actor(s) beyond {', '.join(allowed_logins)}: {shown}"], None
 
-    def _main_protected_from_rules(self, pr_rules: list[dict], branch: str, bypass_only: str) -> "DetectorResult":
+    # F5: proving the merge model means proving all four of these hold, together — a passing
+    # review count alone (the pre-fix reading) proves nothing about who can skip it, whether CI is
+    # actually required, or whether the branch can be force-pushed/deleted out from under its own
+    # history. Each of these is an independent ruleset rule *type*; every one of them must be
+    # present among the branch's rules (not merely the pull_request rule) before this reads `done`.
+    MAIN_PROTECTED_REQUIRED_RULE_TYPES = ("required_status_checks", "non_fast_forward", "deletion")
+
+    def _main_protected_from_rules(self, all_rules: list[dict], pr_rules: list[dict], branch: str,
+                                   allowed_logins: list[str]) -> "DetectorResult":
         counts = [((r.get("parameters") or {}).get("required_approving_review_count") or 0) for r in pr_rules]
         best = max(counts) if counts else 0
         if best < 1:
-            note = f"; bypass expected: {bypass_only} (not independently verifiable from this endpoint)"
             return DetectorResult("pending", f"{branch} has a ruleset pull-request rule but 0 required "
-                                             f"approving reviews{note}", now_iso(), "detector:main_protected")
+                                             f"approving reviews", now_iso(), "detector:main_protected")
 
+        # F5: a pull-request rule with no ruleset_id cannot be traced to a ruleset detail endpoint
+        # at all, so bypass/allowed-identity restriction is NOT independently verifiable — this is
+        # `pending`, never `done` (the pre-fix code read this as `done` with bypass "not
+        # independently verifiable" noted in the detail; that note is not proof).
         ruleset_ids = sorted({r.get("ruleset_id") for r in pr_rules if r.get("ruleset_id") is not None},
                              key=str)
         if not ruleset_ids:
-            note = f"; bypass expected: {bypass_only} (not independently verifiable — no ruleset_id on the rule)"
-            return DetectorResult("done", f"{branch} protected by a ruleset pull-request rule requiring "
-                                          f"{best} approving review(s){note}", now_iso(), "detector:main_protected", 1.0)
-        problems, err = self._bypass_problems(ruleset_ids, bypass_only)
+            return DetectorResult("pending", f"{branch} has a ruleset pull-request rule with no "
+                                             f"ruleset_id — bypass/allowed-identity restriction is not "
+                                             f"independently verifiable this way; not proof of the merge "
+                                             f"model (F5)", now_iso(), "detector:main_protected")
+
+        missing_types = [t for t in self.MAIN_PROTECTED_REQUIRED_RULE_TYPES
+                        if not any(isinstance(r, dict) and r.get("type") == t for r in all_rules)]
+        if missing_types:
+            return DetectorResult("pending", f"{branch} ruleset is missing required rule type(s): "
+                                             f"{', '.join(missing_types)} (F5: required status checks, "
+                                             f"no force-push, no deletion — not merely a review count)",
+                                  now_iso(), "detector:main_protected")
+
+        status_rule = next((r for r in all_rules if isinstance(r, dict) and r.get("type") == "required_status_checks"), None)
+        contexts = ((status_rule.get("parameters") or {}).get("required_status_checks") or []) if status_rule else []
+        if not contexts:
+            return DetectorResult("pending", f"{branch} has a required_status_checks rule but it names no "
+                                             f"status checks", now_iso(), "detector:main_protected")
+
+        problems, err = self._bypass_problems(ruleset_ids, allowed_logins)
         if err is not None:
             return DetectorResult("error", err, now_iso(), "detector:main_protected")
         if problems:
             return DetectorResult("blocked", f"{branch} ruleset requires {best} approving review(s) but has "
                                              f"{'; '.join(problems)}", now_iso(), "detector:main_protected")
-        note = f"; bypass checked: only {bypass_only} (or none)"
-        return DetectorResult("done", f"{branch} protected by a ruleset pull-request rule requiring "
-                                      f"{best} approving review(s){note}", now_iso(), "detector:main_protected", 1.0)
+        return DetectorResult("done", f"{branch} protected by a ruleset requiring {best} approving "
+                                      f"review(s), {len(contexts)} required status check(s), no "
+                                      f"force-push, no deletion; bypass restricted to "
+                                      f"{', '.join(allowed_logins)} (or none)",
+                              now_iso(), "detector:main_protected", 1.0)
 
-    def _main_protected_from_classic(self, protection: object, branch: str, bypass_only: str) -> "DetectorResult":
-        note = f"; bypass expected: {bypass_only} (not independently verifiable from this endpoint)"
+    def _main_protected_from_classic(self, protection: object, branch: str, allowed_logins: list[str]) -> "DetectorResult":
+        """F5: classic branch protection has no per-actor bypass-actor endpoint at all (only
+        rulesets do) — so it can never independently prove who may skip its own rules, whatever
+        review count it requires. This is `pending`, never `done`; proving the merge model (F5)
+        requires a ruleset."""
         if not isinstance(protection, dict):
             return DetectorResult("pending", f"no branch protection configured for {branch}",
                                   now_iso(), "detector:main_protected")
         required = ((protection.get("required_pull_request_reviews") or {}).get("required_approving_review_count") or 0)
         if protection.get("required_pull_request_reviews") and required >= 1:
-            return DetectorResult("done", f"{branch} protected (classic) requiring {required} approving "
-                                          f"review(s){note}", now_iso(), "detector:main_protected", 1.0)
+            return DetectorResult("pending", f"{branch} protected (classic) requiring {required} approving "
+                                             f"review(s), but classic protection has no bypass-actor "
+                                             f"endpoint to independently verify who may skip it — a "
+                                             f"ruleset is required to prove the merge model (F5)",
+                                  now_iso(), "detector:main_protected")
         return DetectorResult("pending", f"{branch} branch protection does not yet require an approving "
-                                         f"review{note}", now_iso(), "detector:main_protected")
+                                         f"review", now_iso(), "detector:main_protected")
 
     def d_main_protected(self, spec):
-        """CODE-11 (S1, L.16b): `gh api repos/{owner}/{repo}/rules/branches/<branch>` (rulesets); if
-        no pull-request rule applies there, fall back to the classic `.../branches/<branch>/protection`.
-        Done once a pull-request rule requires at least one approving review; the bypass actor(s) are
-        reported in the detail (this endpoint does not itself let us verify who they are). Any 403,
-        404 or other failure on either call is `error`, never a silent 'not protected yet'."""
-        branch, bypass_only = spec.get("branch"), spec.get("bypass_only")
-        if not branch or not bypass_only:
+        """CODE-11 (S1, L.16b) / F5 (independent review): `gh api
+        repos/{owner}/{repo}/rules/branches/<branch>` (rulesets); if no pull-request rule applies
+        there, fall back to the classic `.../branches/<branch>/protection` (which can only ever
+        read `pending`, per F5 — see `_main_protected_from_classic`). `done` requires proving the
+        whole merge model, together: an approving-review requirement, required status checks
+        (CI-green), no force-push, no deletion, and every bypass actor resolving to one of
+        `spec['allowed_logins']` — the swarm's own dedicated merge identity and/or the native's,
+        never "the native reviews" alone (N-28/N-29). `allowed_logins` is a list; `bypass_only` (a
+        single login) is accepted as a backward-compatible alias for `[bypass_only]`. Any 403, 404
+        or other failure on any `gh api` call is `error`, never a silent 'not protected yet'."""
+        branch = spec.get("branch")
+        allowed_logins = spec.get("allowed_logins")
+        if not allowed_logins:
+            single = spec.get("bypass_only")
+            allowed_logins = [single] if single else []
+        if not branch or not allowed_logins:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:main_protected")
         rules, err = self._gh_api_json(f"repos/{{owner}}/{{repo}}/rules/branches/{branch}")
         if err is not None:
             return DetectorResult("error", f"gh api rules/branches/{branch}: {err}", now_iso(), "detector:main_protected")
-        pr_rules = [r for r in (rules or []) if isinstance(r, dict) and r.get("type") == "pull_request"]
+        all_rules = [r for r in (rules or []) if isinstance(r, dict)]
+        pr_rules = [r for r in all_rules if r.get("type") == "pull_request"]
         if pr_rules:
-            return self._main_protected_from_rules(pr_rules, branch, bypass_only)
+            return self._main_protected_from_rules(all_rules, pr_rules, branch, allowed_logins)
         protection, err2 = self._gh_api_json(f"repos/{{owner}}/{{repo}}/branches/{branch}/protection")
         if err2 is not None:
             return DetectorResult("error", f"gh api branches/{branch}/protection: {err2}", now_iso(), "detector:main_protected")
-        return self._main_protected_from_classic(protection, branch, bypass_only)
+        return self._main_protected_from_classic(protection, branch, allowed_logins)
+
+    def d_peer_tracker_item(self, spec):
+        """Reads another campaign's tracker instance (the same tracker software; e.g. Pravāha at
+        `http://127.0.0.1:8766/api/state`) and is `done` only when the named item's status there is
+        exactly the expected status (`spec['expect']`, default `'done'`). `spec['evidence_required']`
+        (default False), when true, also requires that item's own `evidence` field to be non-empty —
+        a peer tracker reporting `done` with no evidence behind it is not itself proof (CLAUDE.md
+        §N.8). An unreachable peer or a missing item is `pending`, never `error`/`done` — a peer
+        tracker being briefly unreachable, or an item not yet on its plan, is an expected, transient
+        state, not a broken measurement. A URL naming any host other than 127.0.0.1 is refused
+        before any request is made — this detector never fetches off-loopback."""
+        url, item_id = spec.get("url"), spec.get("item")
+        if not url or not item_id:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:peer_tracker_item")
+        try:
+            host = urlparse(url).hostname
+        except ValueError:
+            return DetectorResult("error", f"unparseable peer tracker URL: {url}", now_iso(), "detector:peer_tracker_item")
+        if host != PEER_TRACKER_ALLOWED_HOST:
+            return DetectorResult("error", f"refused: peer tracker URL must be on "
+                                           f"{PEER_TRACKER_ALLOWED_HOST!r} (got host {host!r})",
+                                  now_iso(), "detector:peer_tracker_item")
+        expect = spec.get("expect") or "done"
+        evidence_required = bool(spec.get("evidence_required"))
+        data, err = _peer_tracker_get(url)
+        if err is not None:
+            return DetectorResult("pending", f"peer tracker at {url} unreachable: {err}",
+                                  now_iso(), "detector:peer_tracker_item")
+        peer_item = _find_item_in_tracks(data, item_id)
+        if peer_item is None:
+            return DetectorResult("pending", f"item {item_id!r} not found in peer tracker at {url}",
+                                  now_iso(), "detector:peer_tracker_item")
+        status = peer_item.get("status")
+        if status != expect:
+            return DetectorResult("pending", f"{item_id} at {url} is {status!r}, expected {expect!r}",
+                                  now_iso(), "detector:peer_tracker_item")
+        if evidence_required and not peer_item.get("evidence"):
+            return DetectorResult("pending", f"{item_id} at {url} is {expect!r} but has no evidence",
+                                  now_iso(), "detector:peer_tracker_item")
+        detail = f"{item_id} at {url} is {expect!r}" + (" with evidence" if evidence_required else "")
+        return DetectorResult("done", detail, now_iso(), "detector:peer_tracker_item", 1.0)
+
+    # -- v1.5 additions (Astra review fold, plan set v1.5): evidence_verified, ci_job_passed,
+    # elevated_interface_ok ---------------------------------------------------------------------
+
+    def d_evidence_verified(self, spec):
+        """A provisioning/launch-gate evidence JSON written to disk at measurement time, under
+        `$SUVARNA_HOME/evidence/<path>` — never a live query (same discipline as `evidence_recent`,
+        which this generalizes). `done` requires every key in `spec['expect']` to be present in
+        the evidence file with EXACTLY that value — never a truthy/non-empty check alone, since a
+        gate like `{"refusal_path_present": false}` needs the FALSE reading, not merely "present".
+        Every name in `spec['required']` (if given) must also be present, any value. When
+        `spec['commit_key']`/`spec['commit']` pin a specific commit (a plan item's own way of
+        binding its evidence to a specific control-release commit without hardcoding the value
+        into the plan model — filled in later via `pinned_by`), the evidence file's own
+        `commit_key` field must equal it, or this is `pending`, never `done`. An empty `commit`
+        (not yet pinned) skips that one check, unaffected. `spec['max_age_hours']`, when given,
+        is enforced exactly as `evidence_recent` does."""
+        path = spec.get("path")
+        expect = spec.get("expect")
+        if not path or not isinstance(expect, dict) or not expect:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:evidence_verified")
+        full = os.path.join(self.cfg.home, "evidence", path)
+        if not os.path.exists(full):
+            return DetectorResult("pending", f"no evidence file yet at evidence/{path}", now_iso(), "detector:evidence_verified")
+        try:
+            mtime = os.path.getmtime(full)
+            with open(full, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError) as exc:
+            return DetectorResult("error", f"evidence/{path}: {type(exc).__name__}: {exc}"[:200],
+                                  now_iso(), "detector:evidence_verified")
+        if not isinstance(data, dict):
+            return DetectorResult("error", f"evidence/{path} is not a JSON object", now_iso(), "detector:evidence_verified")
+
+        required = spec.get("required") or []
+        missing_required = [k for k in required if k not in data]
+        if missing_required:
+            return DetectorResult("pending", f"evidence/{path} missing required key(s): {', '.join(missing_required)}",
+                                  now_iso(), "detector:evidence_verified")
+
+        commit_key, pinned_commit = spec.get("commit_key"), spec.get("commit")
+        if commit_key and pinned_commit:
+            actual_commit = data.get(commit_key)
+            if actual_commit != pinned_commit:
+                return DetectorResult("pending", f"evidence/{path}: {commit_key} ({actual_commit!r}) does "
+                                                 f"not match the pinned commit ({pinned_commit!r})",
+                                      now_iso(), "detector:evidence_verified")
+
+        mismatched = [(k, data.get(k), v) for k, v in expect.items() if data.get(k) != v]
+        if mismatched:
+            shown = "; ".join(f"{k}={got!r} (expected {want!r})" for k, got, want in mismatched[:5])
+            return DetectorResult("pending", f"evidence/{path} does not match expected: {shown}",
+                                  now_iso(), "detector:evidence_verified")
+
+        max_age_hours = spec.get("max_age_hours")
+        if max_age_hours:
+            age_h = (time.time() - mtime) / 3600.0
+            if age_h > max_age_hours:
+                return DetectorResult("pending", f"evidence/{path} is {age_h:.1f}h old (over {max_age_hours}h)",
+                                      now_iso(), "detector:evidence_verified")
+
+        return DetectorResult("done", f"evidence/{path} matches every expected field: {expect}",
+                              now_iso(), "detector:evidence_verified", 1.0)
+
+    def d_ci_job_passed(self, spec):
+        """A named CI job, within a named GitHub Actions workflow, having actually RUN (never a
+        text/file-existence match against the workflow's own YAML) and passed, on `origin/main`'s
+        current HEAD commit, for a commit that already contains every one of `spec['paths']`.
+        `spec['job']` is empty on every real item using this detector today (Track E has not yet
+        named the exact job — see `pinned_by`); the CODE-3 unpinned-spec convention applies via
+        `_params_not_set_result`, never a guess at which job to check."""
+        workflow, job, paths = spec.get("workflow"), spec.get("job"), spec.get("paths") or []
+        if not workflow or not job or not paths:
+            return self._params_not_set_result(spec, "ci_job_passed")
+        self._fetch_main()
+        missing = [p for p in paths if _run(["git", "cat-file", "-e", f"origin/main:{p}"],
+                                            cwd=self.cfg.repo, timeout=30)[0] != 0]
+        if missing:
+            shown = ", ".join(missing[:5])
+            return DetectorResult("pending", f"path(s) not yet on main: {shown}", now_iso(), "detector:ci_job_passed")
+        rc, head_out = _run(["git", "rev-parse", "origin/main"], cwd=self.cfg.repo, timeout=15)
+        if rc != 0:
+            return DetectorResult("error", f"cannot resolve origin/main: {head_out.strip()[:160]}",
+                                  now_iso(), "detector:ci_job_passed")
+        head_sha = head_out.strip()
+        workflow_file = os.path.basename(workflow)
+        runs_data, err = self._gh_api_json(f"repos/{{owner}}/{{repo}}/actions/workflows/{workflow_file}/"
+                                           f"runs?head_sha={head_sha}&per_page=5")
+        if err is not None:
+            return DetectorResult("error", f"gh api workflow runs: {err}", now_iso(), "detector:ci_job_passed")
+        runs = (runs_data or {}).get("workflow_runs") if isinstance(runs_data, dict) else None
+        if not runs:
+            return DetectorResult("pending", f"no CI run yet for {workflow_file} at origin/main ({head_sha[:12]})",
+                                  now_iso(), "detector:ci_job_passed")
+        run = runs[0]
+        if run.get("status") != "completed":
+            return DetectorResult("running", f"{workflow_file} run for {head_sha[:12]} still {run.get('status')}",
+                                  now_iso(), "detector:ci_job_passed", 0.5)
+        run_id = run.get("id")
+        jobs_data, err2 = self._gh_api_json(f"repos/{{owner}}/{{repo}}/actions/runs/{run_id}/jobs")
+        if err2 is not None:
+            return DetectorResult("error", f"gh api run jobs: {err2}", now_iso(), "detector:ci_job_passed")
+        jobs = (jobs_data or {}).get("jobs") if isinstance(jobs_data, dict) else None
+        matching = next((j for j in (jobs or []) if isinstance(j, dict) and j.get("name") == job), None)
+        if matching is None:
+            return DetectorResult("error", f"no job named {job!r} in {workflow_file} run {run_id}",
+                                  now_iso(), "detector:ci_job_passed")
+        conclusion = matching.get("conclusion")
+        if conclusion == "success":
+            return DetectorResult("done", f"{workflow_file}/{job} passed on {head_sha[:12]} (run {run_id})",
+                                  now_iso(), "detector:ci_job_passed", 1.0)
+        if conclusion in ("failure", "cancelled", "timed_out"):
+            return DetectorResult("blocked", f"{workflow_file}/{job} concluded {conclusion} on {head_sha[:12]} "
+                                             f"(run {run_id})", now_iso(), "detector:ci_job_passed")
+        return DetectorResult("running", f"{workflow_file}/{job} not yet concluded ({conclusion}) on "
+                                         f"{head_sha[:12]} (run {run_id})", now_iso(), "detector:ci_job_passed", 0.5)
+
+    def d_elevated_interface_ok(self, spec):
+        """F7 (independent review, E6.3t): the pre-fix E6.3t check verified only that the module
+        and a test file exist — never that the tracker's own caller could actually invoke the
+        pinned `elevated_assets(ref, repo)` interface successfully. This detector does exactly
+        that: loads the committed module (the same discipline `_load_exact_elevated_assets_fn`
+        always uses) and calls it with the real, pinned interface at `spec['ref']` (default
+        `ELEVATED_ASSETS_REF`) — `done` only when the call succeeds and returns a set/frozenset."""
+        ref = spec.get("ref") or ELEVATED_ASSETS_REF
+        elevated_fn = self._load_exact_elevated_assets_fn()
+        if elevated_fn is None:
+            return DetectorResult("error", ELEVATION_NOT_WIRED_DETAIL, now_iso(), "detector:elevated_interface_ok")
+        try:
+            result = elevated_fn(ref, self.cfg.repo)
+        except TypeError as exc:
+            return DetectorResult("blocked", f"elevated_assets does not accept the pinned (ref, repo) "
+                                             f"interface: {exc}"[:200], now_iso(), "detector:elevated_interface_ok")
+        except Exception as exc:  # noqa: BLE001 — a broken committed implementation is a real failure here
+            return DetectorResult("error", f"elevated_assets(ref, repo) raised: {type(exc).__name__}: {exc}"[:200],
+                                  now_iso(), "detector:elevated_interface_ok")
+        if not isinstance(result, (set, frozenset)):
+            return DetectorResult("blocked", f"elevated_assets(ref, repo) returned {type(result).__name__}, "
+                                             f"not a set", now_iso(), "detector:elevated_interface_ok")
+        return DetectorResult("done", f"elevated_assets({ref!r}, repo) called successfully via the real "
+                                      f"tracker caller; returned {len(result)} asset id(s)",
+                              now_iso(), "detector:elevated_interface_ok", 1.0)
+
+
+# --------------------------------------------------------------------------------------------
+# peer_tracker_item helpers (module-level, network-touching — no `self` needed)
+# --------------------------------------------------------------------------------------------
+
+PEER_TRACKER_ALLOWED_HOST = "127.0.0.1"
+PEER_TRACKER_TIMEOUT = 3.0
+
+
+def _peer_tracker_get(url: str) -> tuple[dict | None, str | None]:
+    """One read-only GET against a peer tracker's `/api/state`-shaped endpoint (127.0.0.1 only —
+    the caller has already refused any other host before this is ever called). Returns `(data,
+    None)` on success or `(None, "<detail>")` on any failure — timeout, connection refused,
+    non-JSON body, or a JSON body that is not an object."""
+    try:
+        with urllib.request.urlopen(url, timeout=PEER_TRACKER_TIMEOUT) as resp:  # noqa: S310 (127.0.0.1 only)
+            body = resp.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, OSError, TimeoutError) as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+    try:
+        data = json.loads(body)
+    except ValueError:
+        return None, "non-JSON response"
+    if not isinstance(data, dict):
+        return None, "response is not a JSON object"
+    return data, None
+
+
+def _find_item_in_tracks(data: dict, item_id: str) -> dict | None:
+    """The item dict with this id, from a `build_snapshot`-shaped `{'tracks': [{'items': [...]},
+    ...]}` response — or `None` if no track carries it."""
+    for tr in data.get("tracks") or []:
+        if not isinstance(tr, dict):
+            continue
+        for it in tr.get("items") or []:
+            if isinstance(it, dict) and it.get("id") == item_id:
+                return it
+    return None
 
 
 # --------------------------------------------------------------------------------------------

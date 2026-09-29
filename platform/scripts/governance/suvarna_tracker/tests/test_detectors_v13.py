@@ -5,6 +5,7 @@ the family-aware `levels_elevated` (`exclude: family_set`). No network, no real 
 psql/monitor/suvarna-build call is either a fake (via a wrapped `D._run`) or a real, local,
 offline git repo (the same pattern `test_detectors_server.py` already uses for the register).
 """
+import datetime as dt
 import hashlib
 import json
 import os
@@ -128,11 +129,12 @@ def fam_json(**overrides) -> str:
 
 
 def elevation_module_source(elevated_ids) -> str:
-    """A minimal, real `asset_elevation_tracker.py` stand-in: `elevated_assets(cfg)` returns exactly
-    `elevated_ids`, regardless of `cfg` — enough to exercise the CODE-8 "call the E6.3 function"
-    path without needing the real module (which does not exist yet)."""
+    """A minimal, real `asset_elevation_tracker.py` stand-in: `elevated_assets(ref, repo)` — Track E
+    §8's own pinned interface (F7, independent review) — returns exactly `elevated_ids`, regardless
+    of `ref`/`repo` — enough to exercise the CODE-8 "call the E6.3 function" path without needing
+    the real module (which does not exist yet)."""
     ids = ", ".join(repr(a) for a in elevated_ids)
-    return f"def elevated_assets(cfg):\n    return {{{ids}}}\n"
+    return f"def elevated_assets(ref, repo):\n    return {{{ids}}}\n"
 
 
 def _git(root, *args, env=None):
@@ -142,13 +144,30 @@ def _git(root, *args, env=None):
                           capture_output=True, text=True).stdout.strip()
 
 
+def passed(command="pytest -q", **overrides):
+    """A test entry shape F10 (independent review) requires: `verdict` + `command` (the evidence
+    it was actually executed, not merely typed in by hand)."""
+    d = {"verdict": "PASS", "command": command}
+    d.update(overrides)
+    return d
+
+
+def failed(command="pytest -q", **overrides):
+    d = {"verdict": "FAIL", "command": command}
+    d.update(overrides)
+    return d
+
+
 def make_scorecard_repo(tmp_path, name, tests_obj, generator_content="generator v1\n",
                         generator_path="generator.py", scorecard_path="scorecard.json",
-                        corrupt_generator_hash=False, inspector_commit_override=None):
+                        corrupt_generator_hash=False, inspector_commit_override=None,
+                        run_id="run-1", generated_at=None):
     """A real, local, offline two-commit git repo: commit 1 adds the generator (its sha becomes
     `inspector_commit`), commit 2 adds the scorecard referencing that generator's real sha256 and
-    that commit — everything CODE-6 checks (generator hash, inspector_commit ancestry) is exercised
-    against real git objects, no faking. Returns the repo path; `ref="HEAD"` is commit 2."""
+    that commit — everything CODE-6/F10 checks (generator hash, inspector_commit ancestry, run_id,
+    freshness) is exercised against real git objects, no faking. Returns the repo path;
+    `ref="HEAD"` is commit 2. `generated_at` defaults to "now" (real time) so the F10 freshness
+    check passes by default under `DEFAULT_SCORECARD_MAX_AGE_HOURS`."""
     root = tmp_path / name
     root.mkdir()
     _git(root, "init", "-q")
@@ -161,6 +180,9 @@ def make_scorecard_repo(tmp_path, name, tests_obj, generator_content="generator 
     scorecard = {"generator": generator_path,
                 "generator_sha256": "0" * 64 if corrupt_generator_hash else generator_sha256,
                 "inspector_commit": inspector_commit_override or inspector_commit,
+                "run_id": run_id,
+                "generated_at": (dt.datetime.now(dt.timezone.utc).isoformat() if generated_at is None
+                                else generated_at),
                 "tests": tests_obj}
     (root / scorecard_path).write_text(json.dumps(scorecard))
     _git(root, "add", "-A")
@@ -368,7 +390,7 @@ def test_scorecard_pass_not_yet_on_ref_is_pending(nik, tmp_path, monkeypatch):
 def test_scorecard_pass_all_pass_verified_generator_and_ancestor_commit_is_done(tmp_path):
     """CODE-6: `tests[T]` is an object with `verdict`; the generator hash and inspector_commit
     ancestry are checked against real git objects, not merely present."""
-    repo = make_scorecard_repo(tmp_path, "repo_sc_done", {"T1": {"verdict": "PASS"}, "T2": {"verdict": "PASS"}})
+    repo = make_scorecard_repo(tmp_path, "repo_sc_done", {"T1": passed(), "T2": passed()})
     d = dets(repo, repo)
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1", "T2"]}
     d.poll([spec])
@@ -380,7 +402,7 @@ def test_scorecard_pass_all_pass_verified_generator_and_ancestor_commit_is_done(
 def test_scorecard_pass_missing_generator_fields_is_pending_not_done(tmp_path):
     root = tmp_path / "repo_sc_missing"
     root.mkdir()
-    (root / "scorecard.json").write_text(json.dumps({"tests": {"T1": {"verdict": "PASS"}}}))
+    (root / "scorecard.json").write_text(json.dumps({"tests": {"T1": passed()}}))
     _git_init_commit(root)
     d = dets(str(root), str(root))
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
@@ -391,7 +413,7 @@ def test_scorecard_pass_missing_generator_fields_is_pending_not_done(tmp_path):
 
 
 def test_scorecard_pass_generator_hash_mismatch_is_pending_not_done(tmp_path):
-    repo = make_scorecard_repo(tmp_path, "repo_sc_hash_mismatch", {"T1": {"verdict": "PASS"}},
+    repo = make_scorecard_repo(tmp_path, "repo_sc_hash_mismatch", {"T1": passed()},
                                corrupt_generator_hash=True)
     d = dets(repo, repo)
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
@@ -416,7 +438,8 @@ def test_scorecard_pass_inspector_commit_not_ancestor_is_pending_not_done(tmp_pa
     other_sha = _git(root, "rev-parse", "HEAD")
     _git(root, "checkout", "-q", default_branch)
     scorecard = {"generator": "generator.py", "generator_sha256": hashlib.sha256(b"v1\n").hexdigest(),
-                "inspector_commit": other_sha, "tests": {"T1": {"verdict": "PASS"}}}
+                "inspector_commit": other_sha, "run_id": "run-1",
+                "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(), "tests": {"T1": passed()}}
     (root / "scorecard.json").write_text(json.dumps(scorecard))
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "scorecard")
@@ -433,7 +456,7 @@ def test_scorecard_pass_pinned_generator_mismatch_is_pending_not_done(tmp_path):
     item's spec pins a *different* generator path — the hash check alone cannot catch this (a
     scorecard trivially satisfies it by naming any committed file with that file's own real hash),
     so the pin comparison must independently catch the mismatch."""
-    repo = make_scorecard_repo(tmp_path, "repo_sc_pin_mismatch", {"T1": {"verdict": "PASS"}})
+    repo = make_scorecard_repo(tmp_path, "repo_sc_pin_mismatch", {"T1": passed()})
     d = dets(repo, repo)
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"],
             "generator": "platform/scripts/governance/nikasha_scorecard.py"}
@@ -446,7 +469,7 @@ def test_scorecard_pass_pinned_generator_mismatch_is_pending_not_done(tmp_path):
 def test_scorecard_pass_pinned_generator_match_is_done(tmp_path):
     """The mirror case: the scorecard's own `generator` matches the plan's pin exactly, and every
     other check passes — still `done`."""
-    repo = make_scorecard_repo(tmp_path, "repo_sc_pin_match", {"T1": {"verdict": "PASS"}},
+    repo = make_scorecard_repo(tmp_path, "repo_sc_pin_match", {"T1": passed()},
                                generator_path="platform/scripts/governance/nikasha_scorecard.py")
     d = dets(repo, repo)
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"],
@@ -459,7 +482,7 @@ def test_scorecard_pass_pinned_generator_match_is_done(tmp_path):
 def test_scorecard_pass_no_pin_in_spec_keeps_old_unpinned_behaviour(tmp_path):
     """A spec with no `generator` key is unaffected by B7 — whichever generator the scorecard names
     itself is still hash-checked, exactly as before."""
-    repo = make_scorecard_repo(tmp_path, "repo_sc_no_pin", {"T1": {"verdict": "PASS"}},
+    repo = make_scorecard_repo(tmp_path, "repo_sc_no_pin", {"T1": passed()},
                                generator_path="some/other/generator.py")
     d = dets(repo, repo)
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
@@ -470,12 +493,85 @@ def test_scorecard_pass_no_pin_in_spec_keeps_old_unpinned_behaviour(tmp_path):
 
 def test_scorecard_pass_failing_test_is_running_not_done(tmp_path):
     repo = make_scorecard_repo(tmp_path, "repo_sc_failing",
-                               {"T1": {"verdict": "PASS"}, "T2": {"verdict": "FAIL"}})
+                               {"T1": passed(), "T2": failed()})
     d = dets(repo, repo)
     spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1", "T2"]}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "running" and "T2" in r.detail
+
+
+# ---- F10 (independent review): run_id, freshness, and per-test 'command' ------------------------
+
+def test_scorecard_pass_missing_run_id_is_pending(tmp_path):
+    repo = make_scorecard_repo(tmp_path, "repo_sc_no_run_id", {"T1": passed()}, run_id=None)
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done" and "run_id" in r.detail
+
+
+def test_scorecard_pass_missing_generated_at_is_pending(tmp_path):
+    repo = make_scorecard_repo(tmp_path, "repo_sc_no_generated_at", {"T1": passed()}, generated_at="")
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done" and "generated_at" in r.detail
+
+
+def test_scorecard_pass_unparseable_generated_at_is_error(tmp_path):
+    repo = make_scorecard_repo(tmp_path, "repo_sc_bad_ts", {"T1": passed()}, generated_at="not-a-timestamp")
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "generated_at" in r.detail
+
+
+def test_scorecard_pass_stale_past_default_max_age_is_pending_never_done_forever(tmp_path):
+    """F10's core fix — the review's own counterexample: an old scorecard whose inspector has
+    since changed (simulated here simply by staleness — the ancestry check alone cannot detect a
+    LATER inspector change while an OLDER one remains a valid ancestor) must go stale, not remain
+    'done' indefinitely."""
+    old_ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=200)).isoformat()  # over the 168h default
+    repo = make_scorecard_repo(tmp_path, "repo_sc_stale", {"T1": passed()}, generated_at=old_ts)
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and "too stale" in r.detail
+
+
+def test_scorecard_pass_fresh_within_default_max_age_is_done(tmp_path):
+    recent_ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=1)).isoformat()
+    repo = make_scorecard_repo(tmp_path, "repo_sc_fresh", {"T1": passed()}, generated_at=recent_ts)
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_scorecard_pass_custom_max_age_hours_is_honoured(tmp_path):
+    old_ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=5)).isoformat()
+    repo = make_scorecard_repo(tmp_path, "repo_sc_custom_age", {"T1": passed()}, generated_at=old_ts)
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"], "max_age_hours": 1}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and "too stale" in r.detail
+
+
+def test_scorecard_pass_missing_command_on_a_test_entry_is_pending(tmp_path):
+    """F10: a bare verdict with no 'command' is never proof of execution."""
+    repo = make_scorecard_repo(tmp_path, "repo_sc_no_command", {"T1": {"verdict": "PASS"}})
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done" and "command" in r.detail and "T1" in r.detail
 
 
 # ============================================================================================
@@ -984,12 +1080,13 @@ def test_wave_deployed_missing_preflight_script_is_pending_not_error(tmp_path, m
     home = tmp_path / "home"
     landing_dir = home / "evidence" / "B.W0"
     landing_dir.mkdir(parents=True)
-    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 77}))
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 77, "packet": ["a.py"]}))
 
     def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
         if cmd[:3] == ["gh", "pr", "view"]:
             return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40},
-                                  "headRefName": "suvarna/land/B.W0-fold-1"})
+                                  "headRefName": "suvarna/land/B.W0-fold-1", "baseRefName": "main",
+                                  "files": [{"path": "a.py"}]})
         raise FileNotFoundError(f"[Errno 2] No such file or directory: {cmd[0]!r}")
 
     monkeypatch.setattr(D, "_run", fake)
@@ -1057,13 +1154,15 @@ def test_wave_deployed_done_when_landing_pr_merged_and_deployed(tmp_path, monkey
     home = tmp_path / "home"
     landing_dir = home / "evidence" / "B.W0"
     landing_dir.mkdir(parents=True)
-    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 77}))
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 77, "packet": ["a.py", "b.py"]}))
     repo, shas = make_commit_chain(tmp_path, "repo_wd_done", n=2)
     merge_sha, deployed_sha = shas[0], shas[1]
     build_cmd = D._suvarna_build_cmd()
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha},
-                                                                       "headRefName": "suvarna/land/B.W0-fold-1"})),
+                                                                       "headRefName": "suvarna/land/B.W0-fold-1",
+                                                                       "baseRefName": "main",
+                                                                       "files": [{"path": "a.py"}, {"path": "b.py"}]})),
         (lambda cmd: cmd[:2] == [build_cmd, "--preflight"], 0,
          json.dumps({"job_image_tag": f"gcr.io/proj/engine:build-{deployed_sha}"})),
     ])
@@ -1079,13 +1178,15 @@ def test_wave_deployed_running_when_merged_but_not_yet_a_descendant(tmp_path, mo
     home = tmp_path / "home"
     landing_dir = home / "evidence" / "B.W1"
     landing_dir.mkdir(parents=True)
-    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 78}))
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 78, "packet": ["a.py"]}))
     repo, shas = make_commit_chain(tmp_path, "repo_wd_running", n=2)
     merge_sha, older_sha = shas[1], shas[0]  # merge_sha (c1) is not an ancestor of c0
     build_cmd = D._suvarna_build_cmd()
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha},
-                                                                       "headRefName": "suvarna/land/B.W1-fold-1"})),
+                                                                       "headRefName": "suvarna/land/B.W1-fold-1",
+                                                                       "baseRefName": "main",
+                                                                       "files": [{"path": "a.py"}]})),
         (lambda cmd: cmd[:2] == [build_cmd, "--preflight"], 0,
          json.dumps({"job_image_tag": f"gcr.io/proj/engine:build-{older_sha}"})),
     ])
@@ -1104,11 +1205,12 @@ def test_wave_deployed_blocks_on_head_ref_from_a_different_wave(tmp_path, monkey
     home = tmp_path / "home"
     landing_dir = home / "evidence" / "B.W0"
     landing_dir.mkdir(parents=True)
-    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 90}))
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 90, "packet": ["a.py"]}))
     repo, shas = make_commit_chain(tmp_path, "repo_wd_wrong_wave", n=1)
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
-         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "headRefName": "suvarna/land/B.W1-fold-1"})),
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "headRefName": "suvarna/land/B.W1-fold-1",
+                    "baseRefName": "main"})),
     ])
     d = dets(nik, repo, home=str(home))
     spec = {"type": "wave_deployed", "wave": "B.W0"}
@@ -1123,11 +1225,12 @@ def test_wave_deployed_blocks_on_head_ref_from_a_non_landing_branch(tmp_path, mo
     home = tmp_path / "home"
     landing_dir = home / "evidence" / "B.W0"
     landing_dir.mkdir(parents=True)
-    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 91}))
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 91, "packet": ["a.py"]}))
     repo, shas = make_commit_chain(tmp_path, "repo_wd_not_landing", n=1)
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
-         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "headRefName": "some-random-branch"})),
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "headRefName": "some-random-branch",
+                    "baseRefName": "main"})),
     ])
     d = dets(nik, repo, home=str(home))
     spec = {"type": "wave_deployed", "wave": "B.W0"}
@@ -1136,17 +1239,94 @@ def test_wave_deployed_blocks_on_head_ref_from_a_non_landing_branch(tmp_path, mo
     assert r.status == "blocked" and "not a Suvarṇa landing branch" in r.detail
 
 
+# ---- F13 (independent review): base=main, and PR files == recorded packet, exactly -------------
+
+def test_wave_deployed_no_packet_in_landing_is_error(tmp_path, monkeypatch):
+    nik = make_nik(tmp_path, name="nik_wd_no_packet")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 200}))  # no packet field
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "packet" in r.detail
+
+
+def test_wave_deployed_blocks_when_base_is_not_main(tmp_path, monkeypatch):
+    """F13's core fix: a PR merged into any branch other than main is not evidence main received
+    this wave, whatever its head ref or ancestry looks like."""
+    nik = make_nik(tmp_path, name="nik_wd_wrong_base")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 201, "packet": ["a.py"]}))
+    repo, shas = make_commit_chain(tmp_path, "repo_wd_wrong_base", n=1)
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]},
+                    "headRefName": "suvarna/land/B.W0-fold-1", "baseRefName": "campaign/nikasha-test",
+                    "files": [{"path": "a.py"}]})),
+    ])
+    d = dets(nik, repo, home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "campaign/nikasha-test" in r.detail and "not" in r.detail
+
+
+def test_wave_deployed_blocks_when_pr_files_missing_a_packet_file(tmp_path, monkeypatch):
+    nik = make_nik(tmp_path, name="nik_wd_missing_packet_file")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 202, "packet": ["a.py", "b.py"]}))
+    repo, shas = make_commit_chain(tmp_path, "repo_wd_missing_packet_file", n=1)
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]},
+                    "headRefName": "suvarna/land/B.W0-fold-1", "baseRefName": "main",
+                    "files": [{"path": "a.py"}]})),  # b.py silently missing from the PR
+    ])
+    d = dets(nik, repo, home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "b.py" in r.detail and "not in the PR" in r.detail
+
+
+def test_wave_deployed_blocks_when_pr_has_an_extra_file_not_in_the_packet(tmp_path, monkeypatch):
+    nik = make_nik(tmp_path, name="nik_wd_extra_file")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 203, "packet": ["a.py"]}))
+    repo, shas = make_commit_chain(tmp_path, "repo_wd_extra_file", n=1)
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]},
+                    "headRefName": "suvarna/land/B.W0-fold-1", "baseRefName": "main",
+                    "files": [{"path": "a.py"}, {"path": "sneaky_extra.py"}]})),
+    ])
+    d = dets(nik, repo, home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "sneaky_extra.py" in r.detail and "not in the recorded packet" in r.detail
+
+
 def test_wave_deployed_blocks_on_missing_head_ref(tmp_path, monkeypatch):
     """A merged PR with no `headRefName` at all in the response must never be silently trusted."""
     nik = make_nik(tmp_path, name="nik_wd_missing_head_ref")
     home = tmp_path / "home"
     landing_dir = home / "evidence" / "B.W0"
     landing_dir.mkdir(parents=True)
-    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 92}))
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 92, "packet": ["a.py"]}))
     repo, shas = make_commit_chain(tmp_path, "repo_wd_missing_head_ref", n=1)
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
-         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}})),
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "baseRefName": "main"})),
     ])
     d = dets(nik, repo, home=str(home))
     spec = {"type": "wave_deployed", "wave": "B.W0"}
@@ -1186,6 +1366,20 @@ def _wrap_elevation_and_family(monkeypatch, elevation_source=None, family_json=N
         table.append((lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2],
                       1, "fatal: not on main"))
     wrap_run(monkeypatch, table)
+
+
+def test_assets_elevated_error_when_module_still_uses_the_retired_one_arg_signature(nik, tmp_path, monkeypatch):
+    """F7 (independent review): Track E §8 pins `elevated_assets(ref, repo)`; a committed module
+    still using the retired one-argument `elevated_assets(cfg)` shape must raise on the real
+    tracker's own call — surfaced here as `error`, never silently treated as wired."""
+    legacy_source = "def elevated_assets(cfg):\n    return {'clean_a'}\n"
+    _wrap_elevation_and_family(monkeypatch, elevation_source=legacy_source,
+                               family_json=fam_json(family_gochara=["clean_a"]))
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "assets_elevated", "set": "family_gochara"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
 
 
 def test_assets_elevated_error_before_e63_function_wired(nik, tmp_path, monkeypatch):
@@ -1300,6 +1494,69 @@ def test_registry_coverage_fully_covered_is_done(nik, tmp_path, monkeypatch):
     assert r.status == "done" and r.progress == 1.0
 
 
+# ---- F11 (independent review): null revisions, covered_cells > 0, params cross-check ------------
+
+def test_registry_coverage_null_registry_revision_is_error_never_done(nik, tmp_path, monkeypatch):
+    """The exact Q16 counterexample: null revisions + covered_cells=0 + empty uncovered list must
+    never read done — the pre-fix code's `k not in data` check treated a present-but-null value as
+    satisfying the key requirement."""
+    report = json.dumps({"registry_revision": None, "inspector_commit": "abc123",
+                         "uncovered_required_criteria": [], "covered_cells": 0})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "registry_coverage"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "registry_revision" in r.detail
+
+
+def test_registry_coverage_null_inspector_commit_is_error(nik, tmp_path, monkeypatch):
+    report = json.dumps({"registry_revision": 7, "inspector_commit": "",
+                         "uncovered_required_criteria": [], "covered_cells": 900})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "registry_coverage"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "inspector_commit" in r.detail
+
+
+@pytest.mark.parametrize("covered_cells", [0, -1, "900", None])
+def test_registry_coverage_covered_cells_not_a_positive_int_is_error(nik, tmp_path, monkeypatch, covered_cells):
+    report = json.dumps({"registry_revision": 7, "inspector_commit": "abc123",
+                         "uncovered_required_criteria": [], "covered_cells": covered_cells})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "registry_coverage"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "covered_cells" in r.detail
+
+
+def test_registry_coverage_required_criteria_param_covered_is_done(nik, tmp_path, monkeypatch):
+    """F11: cross-checks against a criterion list supplied in params — this item's own two
+    criteria are both covered, even though the report globally still has an unrelated open one."""
+    report = json.dumps({"registry_revision": 7, "inspector_commit": "abc123",
+                         "uncovered_required_criteria": ["Gate.L5.other"], "covered_cells": 900})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "registry_coverage", "required_criteria": ["Gate.L2.foo", "Gate.L2.bar"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_registry_coverage_required_criteria_param_uncovered_is_never_done(nik, tmp_path, monkeypatch):
+    report = json.dumps({"registry_revision": 7, "inspector_commit": "abc123",
+                         "uncovered_required_criteria": ["Gate.L2.foo"], "covered_cells": 900})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "registry_coverage", "required_criteria": ["Gate.L2.foo", "Gate.L2.bar"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done" and "Gate.L2.foo" in r.detail and "1/2" in r.detail
+
+
 # ============================================================================================
 # ledger_no_open_gap_on
 # ============================================================================================
@@ -1408,6 +1665,70 @@ def test_levels_elevated_exclude_family_set_drops_family_and_reader_assets(nik, 
     r = wait_result(d, spec)
     assert r.status == "done" and r.progress == 1.0
     assert "1 family/reader asset(s) excluded" in r.detail
+
+
+# ---- F8 (independent review): wave membership from the frozen LEVEL_MAP.json --------------------
+
+def test_levels_elevated_level_map_absent_at_ref_is_error_never_falls_back_to_the_dag(nik, tmp_path, monkeypatch):
+    """F8's core fix: once a spec pins `level_map`, the frozen file's absence is an error — never a
+    silent fallback to the live registry DAG (which the pre-fix code always used unconditionally)."""
+    table = [(lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2],
+              0, elevation_module_source(["clean_a"])),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.DEFAULT_LEVEL_MAP_REL_PATH in cmd[2],
+              1, "fatal: not on main")]
+    wrap_run(monkeypatch, table)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "levels_elevated", "levels": [0, 0], "level_map": True}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "LEVEL_MAP.json not found" in r.detail
+
+
+def test_levels_elevated_level_map_malformed_json_is_error(nik, tmp_path, monkeypatch):
+    table = [(lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2],
+              0, elevation_module_source(["clean_a"])),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.DEFAULT_LEVEL_MAP_REL_PATH in cmd[2],
+              0, "{not valid json")]
+    wrap_run(monkeypatch, table)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "levels_elevated", "levels": [0, 0], "level_map": True}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and "not valid JSON" in r.detail
+
+
+def test_levels_elevated_level_map_used_instead_of_live_dag_when_pinned(nik, tmp_path, monkeypatch):
+    """The frozen level map names a DIFFERENT level for 'clean_a' than the live registry DAG would
+    (no psql call is even wired here) — proving membership comes from the file, not the DAG."""
+    level_map = json.dumps({"clean_a": 0, "with_gap": 3})
+    table = [(lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2],
+              0, elevation_module_source(["clean_a"])),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.DEFAULT_LEVEL_MAP_REL_PATH in cmd[2],
+              0, level_map)]
+    wrap_run(monkeypatch, table)
+    d = dets(nik, str(tmp_path))  # no pgenv at all: a live DAG call would error (no credential)
+    spec = {"type": "levels_elevated", "levels": [0, 0], "level_map": True}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_levels_elevated_level_map_custom_path(nik, tmp_path, monkeypatch):
+    level_map = json.dumps({"clean_a": 0})
+    custom_path = "00_ARCHITECTURE/control/suvarna/LEVEL_MAP.json"
+    table = [(lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
+             (lambda cmd: cmd[:2] == ["git", "show"] and D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2],
+              0, elevation_module_source(["clean_a"])),
+             (lambda cmd: cmd[:2] == ["git", "show"] and custom_path in cmd[2], 0, level_map)]
+    wrap_run(monkeypatch, table)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "levels_elevated", "levels": [0, 0], "level_map": custom_path}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
 
 
 # ============================================================================================
@@ -1607,19 +1928,138 @@ def test_nikasha_fetch_is_ttl_cached_across_reads(nik, tmp_path, monkeypatch):
     assert len(fetched) == 1  # only the first call actually fetched; the rest were within the TTL
 
 
+# ---- F12 (independent review): a failed fetch must never earn the TTL it did not achieve --------
+
+def test_nikasha_fetch_failure_never_earns_the_ttl_retries_next_call(nik, tmp_path, monkeypatch):
+    """The pre-fix bug: `_nikasha_fetch_cache['at']` advanced unconditionally, so a persistently
+    failing fetch (network down) still suppressed every retry for the next 300s."""
+    monkeypatch.setenv("NIKASHA_REF", "origin/campaign/nikasha-test")
+    fetched = []
+    orig = D._run
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["git", "fetch"]:
+            fetched.append(tuple(cmd))
+            return 1, "fatal: unable to access 'https://...': Could not resolve host"
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+    for _ in range(3):
+        try:
+            D.register_text(nik)
+        except RuntimeError:
+            pass
+    assert len(fetched) == 3  # every call retried: the failed fetch never earned the 300s TTL
+    assert D._nikasha_fetch_cache["at"] == 0.0  # the cache timestamp never advanced on failure
+
+
+def test_fetch_main_failure_never_earns_the_ttl_retries_next_call(tmp_path, monkeypatch):
+    repo, _ = make_commit_chain(tmp_path, "repo_fetch_main_fail", n=1)
+    calls = []
+    orig = D._run
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["git", "fetch"]:
+            calls.append(tuple(cmd))
+            return 1, "fatal: could not read from remote repository"
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+    det = D.Detectors(D.Config(repo=repo, nikasha_root=repo, pgenv=None, home=repo))
+    det._fetch_main()
+    det._fetch_main()
+    assert len(calls) == 2  # the second call retried immediately: no TTL earned by the failure
+    assert det._last_fetch == 0.0
+
+
+def test_fetch_main_success_earns_the_ttl(tmp_path, monkeypatch):
+    repo, _ = make_commit_chain(tmp_path, "repo_fetch_main_ok", n=1)
+    calls = []
+    orig = D._run
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["git", "fetch"]:
+            calls.append(tuple(cmd))
+            return 0, ""
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+    det = D.Detectors(D.Config(repo=repo, nikasha_root=repo, pgenv=None, home=repo))
+    det._fetch_main()
+    det._fetch_main()
+    assert len(calls) == 1  # the second call was within the TTL the successful fetch earned
+    assert det._last_fetch > 0.0
+
+
+# ---- F12: a cached result older than 3x its own TTL is never served as-is, even 'done' ----------
+
+def test_get_serves_a_fresh_result_unchanged(nik, tmp_path, monkeypatch):
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:3] == ["gh", "pr", "view"],
+                            0, json.dumps({"state": "MERGED", "mergedAt": "2026-09-29"}))])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "pr_merged", "pr": 1}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done"
+
+
+def test_get_reads_unknown_past_three_times_ttl_even_for_a_done_result(nik, tmp_path):
+    """F12's core fix: a `done` result whose own TTL bookkeeping has stopped advancing (poll not
+    called again for this exact spec) must never be served as-is forever — past 3x its TTL it
+    reads `unknown`, not the stale `done`."""
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "pr_merged", "pr": 1}
+    k = d.key(spec)
+    ttl = d.TTL.get("pr_merged", 60)
+    stale_ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=ttl * 3 + 5)).isoformat(timespec="seconds")
+    with d._lock:
+        d.results[k] = D.DetectorResult("done", "PR #1 merged", stale_ts, "detector:pr_merged", 1.0)
+    r = d.get(spec)
+    assert r.status == "unknown" and "stale" in r.detail
+
+
+def test_get_serves_a_result_within_three_times_ttl_unchanged(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "pr_merged", "pr": 1}
+    k = d.key(spec)
+    ttl = d.TTL.get("pr_merged", 60)
+    fresh_ts = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=ttl)).isoformat(timespec="seconds")
+    with d._lock:
+        d.results[k] = D.DetectorResult("done", "PR #1 merged", fresh_ts, "detector:pr_merged", 1.0)
+    r = d.get(spec)
+    assert r.status == "done"
+
+
+def test_get_never_invents_staleness_on_an_unparseable_checked_at(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "pr_merged", "pr": 1}
+    k = d.key(spec)
+    with d._lock:
+        d.results[k] = D.DetectorResult("done", "PR #1 merged", "not-a-timestamp", "detector:pr_merged", 1.0)
+    r = d.get(spec)
+    assert r.status == "done"  # cannot tell age -> unchanged, never guessed stale
+
+
+def test_get_missing_result_is_none(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    assert d.get({"type": "pr_merged", "pr": 999}) is None
+
+
 # ============================================================================================
-# fk_no_cascade (CODE-9)
+# fk_no_cascade (CODE-9 / F9 — independent review)
 # ============================================================================================
 
 def test_fk_no_cascade_empty_params_is_pending(nik, tmp_path):
     d = dets(nik, str(tmp_path))
-    spec = {"type": "fk_no_cascade", "referenced": ""}
+    spec = {"type": "fk_no_cascade", "referenced": "", "target": ""}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
 
 
-def test_fk_no_cascade_no_rows_is_done(nik, tmp_path, monkeypatch):
+def test_fk_no_cascade_missing_target_is_pending(nik, tmp_path, monkeypatch):
+    """F9: `target` is now a required param — omitting it (the pre-fix shape every old spec used)
+    must never silently default to some particular delete rule."""
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
     wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, "")])
@@ -1627,85 +2067,158 @@ def test_fk_no_cascade_no_rows_is_done(nik, tmp_path, monkeypatch):
     spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "done" and r.progress == 1.0
-    assert "bodha_msr_signals" in r.detail
+    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
 
 
-def test_fk_no_cascade_rows_found_is_pending_listing_them(nik, tmp_path, monkeypatch):
-    """B7/F3.FK (review pass 3): the query now also selects `confdeltype`, so a real cascade row
-    carries a third field naming it."""
+def test_fk_no_cascade_unknown_target_is_error(nik, tmp_path, monkeypatch):
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
-    rows = ("kala_convergence\tkala_convergence_signal_id_fkey\tc\n"
-           "kala_darshana\tkala_darshana_signal_id_fkey\tc\n")
-    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
-    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "set_cascade"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "pending"
-    assert "kala_convergence" in r.detail and "2" in r.detail
+    assert r.status == "error" and "unknown target" in r.detail
+
+
+def test_fk_no_cascade_no_fk_target_with_no_rows_is_done(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, "")])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+    assert "bodha_msr_signals" in r.detail and "no_fk" in r.detail
+
+
+@pytest.mark.parametrize("delete_type", ["c", "a", "r", "n", "d"])
+def test_fk_no_cascade_no_fk_target_blocks_on_any_existing_fk(nik, tmp_path, monkeypatch, delete_type):
+    """F9's core fix: for target='no_fk', EVERY delete rule is a problem — including SET NULL and
+    SET DEFAULT, which the pre-fix query did not even measure (it queried only c/a/r) and so
+    silently accepted for a no_fk target."""
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = f"kala_convergence\tkala_convergence_signal_id_fkey\t{delete_type}\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "kala_convergence" in r.detail and "no_fk" in r.detail
+
+
+def test_fk_no_cascade_set_null_target_done_when_all_set_null(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_convergence\tkala_convergence_signal_id_fkey\tn\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "set_null"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+@pytest.mark.parametrize("delete_type", ["c", "a", "r", "d"])
+def test_fk_no_cascade_set_null_target_blocks_on_any_other_rule(nik, tmp_path, monkeypatch, delete_type):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = f"kala_convergence\tkala_convergence_signal_id_fkey\t{delete_type}\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "set_null"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked"
+
+
+def test_fk_no_cascade_set_default_target_done_when_all_set_default(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_convergence\tkala_convergence_signal_id_fkey\td\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "set_default"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
 
 
 def test_fk_no_cascade_without_credential_file_is_error(nik, tmp_path):
     d = dets(nik, str(tmp_path))  # pgenv=None
-    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk"}
     d.poll([spec])
     assert wait_result(d, spec).status == "error"
 
 
-# ---- fk_no_cascade: restricting (NO ACTION/RESTRICT) foreign keys (review pass 3, below-blocker) --
-
-def test_fk_no_cascade_restricting_fk_is_blocked(nik, tmp_path, monkeypatch):
+def test_fk_no_cascade_no_allow_escape_exists_anymore(nik, tmp_path, monkeypatch):
+    """F9: the pre-fix `allow` param could approve a restricting key outright — that escape is
+    removed. A stray `allow` key on the spec must not resurrect it."""
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
     rows = "kala_convergence\tkala_convergence_signal_id_fkey\tr\n"
     wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
-    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk", "allow": "no_fk"}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "blocked"
-    assert "restrict would refuse the MSR rebuild" in r.detail and "kala_convergence" in r.detail
 
 
-def test_fk_no_cascade_no_action_fk_is_blocked(nik, tmp_path, monkeypatch):
+# ---- fk_no_cascade: the independent refusal guard function (F9 / recon C2) ----------------------
+
+def _stateful_run(monkeypatch, outputs: list[tuple[int, str]]):
+    """`D._run` returns `outputs[i]` for the i-th `bash -c` call (the two sequential `_psql` calls
+    fk_no_cascade's guard check makes: the FK query, then the guard-function existence query);
+    falls back to the real `_run` for anything else (git, etc.)."""
+    orig = D._run
+    calls = {"n": 0}
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["bash", "-c"]:
+            i = calls["n"]
+            calls["n"] += 1
+            if i < len(outputs):
+                return outputs[i]
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+
+
+def test_fk_no_cascade_guard_present_required_and_missing_is_pending(nik, tmp_path, monkeypatch):
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
-    rows = "kala_darshana\tkala_darshana_signal_id_fkey\ta\n"
-    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    _stateful_run(monkeypatch, [(0, ""), (0, "0\n")])  # no FK rows; guard function absent
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
-    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk", "guard": "present"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "blocked" and "restrict would refuse the MSR rebuild" in r.detail
+    assert r.status == "pending" and "assert_l2_msr_delete_safe" in r.detail and "not present" in r.detail
 
 
-@pytest.mark.parametrize("allow", ["set_null", "no_fk"])
-def test_fk_no_cascade_restricting_fk_allowed_by_params_is_done(nik, tmp_path, monkeypatch, allow):
+def test_fk_no_cascade_guard_present_and_found_is_done(nik, tmp_path, monkeypatch):
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
-    rows = "kala_convergence\tkala_convergence_signal_id_fkey\tr\n"
-    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    _stateful_run(monkeypatch, [(0, ""), (0, "1\n")])  # no FK rows; guard function present
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
-    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "allow": allow}
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk", "guard": "present"}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "done" and r.progress == 1.0
-    assert "allowed by the item's own params" in r.detail
+    assert "assert_l2_msr_delete_safe" in r.detail and "present" in r.detail
 
 
-def test_fk_no_cascade_restricting_fk_not_allowed_by_unrelated_param_value_is_blocked(nik, tmp_path, monkeypatch):
-    """`allow` must be exactly `set_null` or `no_fk` — any other value is not the escape."""
+def test_fk_no_cascade_guard_absent_is_never_checked(nik, tmp_path, monkeypatch):
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
-    rows = "kala_convergence\tkala_convergence_signal_id_fkey\tr\n"
-    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, "")])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
-    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "allow": "restrict"}
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "target": "no_fk", "guard": "absent"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "blocked"
+    assert r.status == "done" and r.progress == 1.0
+    assert "assert_l2_msr_delete_safe" not in r.detail
 
 
 # ============================================================================================
@@ -1793,7 +2306,10 @@ def test_main_protected_empty_params_is_pending(nik, tmp_path):
     assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
 
 
-def test_main_protected_ruleset_pull_request_rule_is_done(nik, tmp_path, monkeypatch):
+def test_main_protected_ruleset_pull_request_rule_alone_is_pending(nik, tmp_path, monkeypatch):
+    """F5 (independent review): a pull-request rule alone — no ruleset_id, no required_status_checks/
+    non_fast_forward/deletion rules — proves nothing about who can bypass it, whether CI is
+    required, or force-push/deletion. This is `pending`, never `done` (the pre-fix reading)."""
     rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}}]
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
@@ -1802,11 +2318,13 @@ def test_main_protected_ruleset_pull_request_rule_is_done(nik, tmp_path, monkeyp
     spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "done" and r.progress == 1.0
-    assert "native" in r.detail
+    assert r.status == "pending" and "no ruleset_id" in r.detail
 
 
-def test_main_protected_no_rulesets_falls_back_to_classic_protection(nik, tmp_path, monkeypatch):
+def test_main_protected_no_rulesets_falls_back_to_classic_protection_which_is_always_pending(nik, tmp_path, monkeypatch):
+    """F5: classic branch protection has no bypass-actor endpoint at all — it can never
+    independently prove who may skip its own rules, so this is `pending`, never `done`, however
+    many approving reviews it requires."""
     protection = {"required_pull_request_reviews": {"required_approving_review_count": 2}}
     wrap_run(monkeypatch, [
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, "[]"),
@@ -1816,7 +2334,19 @@ def test_main_protected_no_rulesets_falls_back_to_classic_protection(nik, tmp_pa
     spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "done" and r.progress == 1.0
+    assert r.status == "pending" and "no bypass-actor endpoint" in r.detail
+
+
+def test_main_protected_classic_protection_with_no_review_requirement_is_pending(nik, tmp_path, monkeypatch):
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, "[]"),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "branches/main/protection" in cmd[2], 0, json.dumps({})),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending"
 
 
 def test_main_protected_no_protection_at_all_is_error(nik, tmp_path, monkeypatch):
@@ -1858,27 +2388,22 @@ def test_main_protected_ruleset_rule_with_zero_required_reviews_is_pending(nik, 
     assert r.status == "pending"
 
 
-# ---- main_protected: bypass actors, checked via the ruleset detail endpoint (item 8) -----------
+# ---- main_protected: F5 — proving the whole merge model, not only a review count ---------------
 
-def test_main_protected_ruleset_with_no_ruleset_id_is_done_unbypass_unchecked(nik, tmp_path, monkeypatch):
-    """No `ruleset_id` on the rule (the shape every prior test used): bypass cannot be checked this
-    way, so this stays `done`, unchanged — the only regression guard here is that adding the bypass
-    check must not turn an already-passing case into a failure."""
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}}]
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
-    ])
-    d = dets(nik, str(tmp_path))
-    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
-    d.poll([spec])
-    r = wait_result(d, spec)
-    assert r.status == "done" and r.progress == 1.0
+# The full rule set F5 requires: pull_request (with ruleset_id), required_status_checks (naming at
+# least one check), non_fast_forward (no force-push), deletion (no deletion). Every "done" test
+# below builds on this; every "missing a rule type" test removes exactly one.
+_FULL_RULESET_RULES = [
+    {"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42},
+    {"type": "required_status_checks", "parameters": {"required_status_checks": [{"context": "ci/tests"}]}, "ruleset_id": 42},
+    {"type": "non_fast_forward", "ruleset_id": 42},
+    {"type": "deletion", "ruleset_id": 42},
+]
 
 
 def test_main_protected_ruleset_id_with_no_bypass_actors_is_done(nik, tmp_path, monkeypatch):
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0, json.dumps({"bypass_actors": []})),
     ])
     d = dets(nik, str(tmp_path))
@@ -1886,12 +2411,12 @@ def test_main_protected_ruleset_id_with_no_bypass_actors_is_done(nik, tmp_path, 
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "done" and r.progress == 1.0
+    assert "required status check" in r.detail and "no force-push, no deletion" in r.detail
 
 
 def test_main_protected_ruleset_id_with_only_the_native_as_bypass_is_done(nik, tmp_path, monkeypatch):
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
          json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 7}]})),
         (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/native", 0, json.dumps({"id": 7})),
@@ -1903,10 +2428,29 @@ def test_main_protected_ruleset_id_with_only_the_native_as_bypass_is_done(nik, t
     assert r.status == "done" and r.progress == 1.0
 
 
-def test_main_protected_ruleset_id_with_an_extra_user_bypass_is_blocked(nik, tmp_path, monkeypatch):
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+def test_main_protected_allowed_logins_covers_the_swarms_own_merge_identity(nik, tmp_path, monkeypatch):
+    """N-28/N-29: merges to main are made by the swarm's own GitHub identity after CI green +
+    gate-reviewer accept — 'allowed_logins' is a set, not a single native login, and a bypass actor
+    resolving to EITHER allowed identity is fine."""
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
+         json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 55}]})),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/native", 0, json.dumps({"id": 7})),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/pb-3-bot", 0, json.dumps({"id": 55})),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "allowed_logins": ["native", "pb-3-bot"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_main_protected_ruleset_id_with_an_extra_user_bypass_is_blocked(nik, tmp_path, monkeypatch):
+    """The core F5 demonstration: the swarm's own identity, if it appears as a bypass actor without
+    being in `allowed_logins`, blocks — the swarm cannot grant itself an unreviewed merge path."""
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
          json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 7},
                                        {"actor_type": "User", "actor_id": 99}]})),
@@ -1920,11 +2464,10 @@ def test_main_protected_ruleset_id_with_an_extra_user_bypass_is_blocked(nik, tmp
 
 
 def test_main_protected_ruleset_id_with_a_non_user_bypass_is_blocked(nik, tmp_path, monkeypatch):
-    """A Team/Integration/OrganizationAdmin/RepositoryRole bypass actor is never the native's own
-    login, whatever its id — it is always outside `bypass_only`."""
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    """A Team/Integration/OrganizationAdmin/RepositoryRole bypass actor is never one of
+    `allowed_logins`, whatever its id."""
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
          json.dumps({"bypass_actors": [{"actor_type": "OrganizationAdmin", "actor_id": 1}]})),
     ])
@@ -1936,9 +2479,8 @@ def test_main_protected_ruleset_id_with_a_non_user_bypass_is_blocked(nik, tmp_pa
 
 
 def test_main_protected_ruleset_detail_403_is_error(nik, tmp_path, monkeypatch):
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 1, "gh: HTTP 403: Resource not accessible"),
     ])
     d = dets(nik, str(tmp_path))
@@ -1949,9 +2491,8 @@ def test_main_protected_ruleset_detail_403_is_error(nik, tmp_path, monkeypatch):
 
 
 def test_main_protected_users_lookup_failure_is_error(nik, tmp_path, monkeypatch):
-    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(_FULL_RULESET_RULES)),
         (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
          json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 7}]})),
         (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/native", 1, "gh: HTTP 404: Not Found"),
@@ -1961,6 +2502,35 @@ def test_main_protected_users_lookup_failure_is_error(nik, tmp_path, monkeypatch
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "error"
+
+
+# ---- F5 negative cases: each required rule type, missing one at a time -------------------------
+
+@pytest.mark.parametrize("missing_type", ["required_status_checks", "non_fast_forward", "deletion"])
+def test_main_protected_missing_a_required_rule_type_is_pending(nik, tmp_path, monkeypatch, missing_type):
+    rules = [r for r in _FULL_RULESET_RULES if r["type"] != missing_type]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and missing_type in r.detail
+
+
+def test_main_protected_required_status_checks_rule_with_no_contexts_is_pending(nik, tmp_path, monkeypatch):
+    rules = [r if r["type"] != "required_status_checks"
+            else {"type": "required_status_checks", "parameters": {"required_status_checks": []}, "ruleset_id": 42}
+            for r in _FULL_RULESET_RULES]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and "names no status checks" in r.detail
 
 
 # ============================================================================================

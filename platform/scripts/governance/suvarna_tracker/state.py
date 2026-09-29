@@ -21,6 +21,8 @@ from __future__ import annotations
 import collections
 import datetime as dt
 
+from .gates import evaluate_gate
+
 STATUS_ORDER = ["done", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
 
 
@@ -115,53 +117,12 @@ def item_status(item: dict, ix: dict, det_result: dict | None, decisions: dict |
     if last and last.get("progress") is not None:
         out["progress"] = last["progress"]
 
-    if item.get("detector"):
-        out["source"] = "detector:" + item["detector"]["type"]
-        if det_result is None:
-            out.update(status="unknown", detail="not yet measured")
-        else:
-            out["checked_at"] = det_result["checked_at"]
-            out["detail"] = det_result["detail"]
-            if det_result.get("progress") is not None:
-                out["progress"] = det_result["progress"]
-            ds = det_result["status"]
-            if ds == "done":
-                out["status"] = "done"
-                out["evidence"] = det_result["detail"]
-            elif ds == "error":
-                out["status"] = "unknown"
-            elif last and last["state"] == "done":
-                out.update(status="conflict", detail=f"an event claims done; the detector says: {det_result['detail']}")
-            elif last and last["state"] in ("running", "review", "blocked", "parked", "failed"):
-                out["status"] = last["state"]
-            elif ds in ("running", "blocked"):
-                out["status"] = ds
-                out["soft"] = True  # the detector sees activity, but no role has claimed the item
-        return out
-
-    if item.get("done_by") == "decision":
-        dec_id = item.get("decision", "")
-        out["source"] = "decision:" + (dec_id or "?")
-        log_state, log_rec = decision_log_status(dec_id, decisions)
-        if decisions is not None and log_state == "decided":
-            evidence = f"{log_rec.get('detail', '')} — {log_rec.get('source', '')}"
-            out.update(status="done", detail=log_rec.get("detail", ""), evidence=evidence,
-                       updated_at=log_rec.get("ts"))
-            return out
-        if decisions is not None and log_state == "delegated":
-            delegated_to = log_rec.get("delegated_to") or "?"
-            out.update(status="waiting", detail=f"delegated to {delegated_to}; not yet decided",
-                       updated_at=log_rec.get("ts"))
-            return out
-        st, dev = decision_status(ix["decisions"].get(dec_id, []))
-        if decisions is None and st in ("decided", "delegated"):
-            # Backward-compatible path: no authoritative log supplied — fall back to the old,
-            # event-driven behaviour so existing callers keep working unchanged.
-            out.update(status="done", detail=dev.get("detail", ""), evidence=dev.get("detail"), updated_at=dev["ts"])
-        elif st == "requested":
-            out.update(status="running", detail="awaiting the native", updated_at=dev["ts"])
-        elif last:
-            out["status"] = last["state"]
+    # F1 (independent review): every done_by:'decision' item and every detector-gated item is
+    # decided by the single, centralized, fail-closed gate evaluator — never by falling through to
+    # this item's own item events. See gates.py for the full rule set.
+    gate = evaluate_gate(item, decisions, det_result, ix)
+    if gate is not None:
+        out.update(gate)
         return out
 
     # done by event

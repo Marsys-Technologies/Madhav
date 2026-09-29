@@ -57,6 +57,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     __package__ = "suvarna_tracker"
 
+from suvarna_tracker import conductor_lock  # noqa: E402
 from suvarna_tracker.decisions import default_path as _decisions_default_path  # noqa: E402
 from suvarna_tracker.decisions import load_decisions  # noqa: E402
 from suvarna_tracker.detectors import _run as _det_run  # noqa: E402
@@ -93,6 +94,11 @@ N25_DECISION_ID = "N-25"
 CODEX_PATH = os.path.expanduser("~/.codex")
 MADHAV_ADMIN_PATH = os.path.expanduser("~/.config/madhav-admin")
 DBENV_PATHS = ("/Users/Dev/madhav-l3/dbenv.sh", "/Users/Dev/madhav-l3/dbenv_builder.sh")
+
+# F3 (independent review): the native's own Claude Code settings file — a fixed, native-account
+# path (mirrors DBENV_PATHS' own style: the native's home is not `~` once the swarm runs as a
+# separate user under N-25, so this is named explicitly, never re-derived via `~`).
+NATIVE_CLAUDE_SETTINGS_PATH = "/Users/Dev/.claude/settings.json"
 
 # A `decided` N-25 line's own `detail` text is classified into one of three outcomes (never a fourth
 # state fabricated as ok/block): "declined" (native accepted the risk of running as their own
@@ -229,6 +235,9 @@ class Config:
     # None = read SUVARNA_READER_SECDEF_ALLOW at check time; tests pass an explicit frozenset.
     secdef_allowlist: frozenset[str] | None = None
     conductor_stale_min: int = DEFAULT_CONDUCTOR_STALE_MIN
+    # F6: None = read SUVARNA_SESSIONS at check time (default "engine,exec"); tests pass an
+    # explicit tuple/list.
+    conductor_sessions: tuple[str, ...] | None = None
     now_fn: Callable[[], "dt.datetime"] | None = None
     notify_fn: Callable[[str], None] | None = None
     # CODE-13: decisions log path (default mirrors decisions.default_path()'s own env/home rule).
@@ -281,8 +290,12 @@ class Config:
         self.getuser_fn = self.getuser_fn or getpass.getuser
         self.isolation_access_fn = self.isolation_access_fn or os.access
         self.isolation_native_user_fn = self.isolation_native_user_fn or (lambda: os.environ.get("SUDO_USER"))
+        # F3 (independent review): the swarm's own reader credential (`self.pgenv`) must never be
+        # in this list — it must be READABLE by the swarm user to do its job at all (that was the
+        # pre-fix contradiction with check_credential's own mode-600 "must be readable" rule). The
+        # unreadable set is the native's own files only.
         self.isolation_unreadable_paths = self.isolation_unreadable_paths or tuple(
-            p for p in ((self.pgenv,) + DBENV_PATHS + (CODEX_PATH, MADHAV_ADMIN_PATH)) if p)
+            p for p in (DBENV_PATHS + (CODEX_PATH, MADHAV_ADMIN_PATH, NATIVE_CLAUDE_SETTINGS_PATH)) if p)
         self.isolation_settings_paths = self.isolation_settings_paths or (
             os.path.join(self.home, "config", "claude-settings.json"),
             os.path.expanduser("~/.claude/settings.json"),
@@ -708,11 +721,33 @@ def check_tracker(cfg: Config) -> CheckResult:
     return CheckResult("tracker", "warn", f"tracker unhealthy (status {status}, ok={data.get('ok')})")
 
 
-def _latest_conductor_heartbeat_ts(events_path: str) -> str | None:
-    """The ``ts`` of the newest ``kind: heartbeat, actor: conductor`` line in the event log, or
-    ``None`` if none has ever been written. Tolerant of a missing file and of malformed lines
-    (skipped, never fatal) — mirrors events.EventLog's own tolerance, but a single forward scan is
-    enough here since this check only ever needs the single newest timestamp."""
+# F6 (independent review): the pre-fix check took the newest heartbeat from ``actor: "conductor"``
+# regardless of which interim-runtime session sent it, so one healthy session could mask the other
+# going silent. Heartbeats now carry ``actor: "conductor:<session>"`` (conductor_lock.py's own
+# session concept) and this check evaluates each session named in ``SUVARNA_SESSIONS`` (default
+# below) independently.
+DEFAULT_CONDUCTOR_SESSIONS = ("engine", "exec")
+CONDUCTOR_SESSIONS_ENV = "SUVARNA_SESSIONS"
+
+
+def _conductor_sessions(cfg: Config) -> tuple[str, ...]:
+    if cfg.conductor_sessions:
+        return tuple(cfg.conductor_sessions)
+    raw = os.environ.get(CONDUCTOR_SESSIONS_ENV)
+    if raw:
+        parsed = tuple(s.strip() for s in raw.split(",") if s.strip())
+        if parsed:
+            return parsed
+    return DEFAULT_CONDUCTOR_SESSIONS
+
+
+def _latest_conductor_heartbeat_ts(events_path: str, session: str) -> str | None:
+    """The ``ts`` of the newest ``kind: heartbeat, actor: "conductor:<session>"`` line in the event
+    log, or ``None`` if none has ever been written for this session. Tolerant of a missing file
+    and of malformed lines (skipped, never fatal) — mirrors events.EventLog's own tolerance, but a
+    single forward scan is enough here since this check only ever needs the single newest
+    timestamp per session."""
+    actor = f"conductor:{session}"
     latest: str | None = None
     try:
         with open(events_path, encoding="utf-8") as f:
@@ -726,7 +761,7 @@ def _latest_conductor_heartbeat_ts(events_path: str) -> str | None:
                     continue
                 if not isinstance(ev, dict):
                     continue
-                if ev.get("kind") == "heartbeat" and ev.get("actor") == "conductor":
+                if ev.get("kind") == "heartbeat" and ev.get("actor") == actor:
                     ts = ev.get("ts")
                     if isinstance(ts, str) and (latest is None or ts > latest):
                         latest = ts
@@ -736,29 +771,45 @@ def _latest_conductor_heartbeat_ts(events_path: str) -> str | None:
 
 
 def check_conductor_heartbeat(cfg: Config) -> CheckResult:
-    """L.15: is either interim runtime session's Conductor still emitting its per-pass heartbeat
-    (arch §5.1)? ``ok`` with "no conductor yet" before the swarm has ever run — that is a fact about
-    campaign phase, not an environment failure, so it must never read as a problem. Otherwise ``warn``
-    once the newest heartbeat is older than ``conductor_stale_min`` (default 45) minutes; never
-    ``block`` — a stale Conductor is the watchdog's job (arch §5.5, charter G15), not a dispatch
-    gate, and this check only needs to make the staleness visible on the dashboard and in a
-    notification (--notify)."""
+    """L.15 / F6: is each named session's own Conductor still emitting its per-pass heartbeat (arch
+    §5.1)? ``ok`` with "no conductor yet" only when NONE of the sessions has ever heartbeated —
+    that is a fact about campaign phase, not an environment failure. A session that has never
+    heartbeated while ANOTHER session has is not itself a problem (it may simply not have started
+    yet) and is reported informationally, never as a warning on its own. Once a session HAS
+    heartbeated before, going stale (older than ``conductor_stale_min``, default 45 minutes) warns,
+    naming that session specifically — never masked by another, healthier session (the exact
+    pre-fix defect: a single session-blind ``actor: "conductor"`` read let one healthy session hide
+    the other going silent). Never ``block`` — a stale Conductor is the watchdog's job (arch §5.5,
+    charter G15), not a dispatch gate."""
     name = "conductor_heartbeat"
-    ts = _latest_conductor_heartbeat_ts(cfg.events_path)
-    if ts is None:
-        return CheckResult(name, "ok", "no conductor yet")
-    try:
-        seen = dt.datetime.fromisoformat(ts)
-    except ValueError:
-        return CheckResult(name, "warn", f"latest conductor heartbeat has an unparseable timestamp ({ts!r})")
-    if seen.tzinfo is None:
-        seen = seen.replace(tzinfo=dt.timezone.utc)
+    sessions = _conductor_sessions(cfg)
     now = cfg.now_fn() if cfg.now_fn else dt.datetime.now(dt.timezone.utc)
-    age_min = (now - seen).total_seconds() / 60.0
-    if age_min > cfg.conductor_stale_min:
-        return CheckResult(name, "warn",
-                            f"latest conductor heartbeat is {age_min:.0f} min old (over {cfg.conductor_stale_min})")
-    return CheckResult(name, "ok", f"latest conductor heartbeat is {age_min:.0f} min old")
+    never_seen, unparseable, stale, fresh = [], [], [], []
+    for s in sessions:
+        ts = _latest_conductor_heartbeat_ts(cfg.events_path, s)
+        if ts is None:
+            never_seen.append(s)
+            continue
+        try:
+            seen = dt.datetime.fromisoformat(ts)
+        except ValueError:
+            unparseable.append(s)
+            continue
+        if seen.tzinfo is None:
+            seen = seen.replace(tzinfo=dt.timezone.utc)
+        age_min = (now - seen).total_seconds() / 60.0
+        (stale if age_min > cfg.conductor_stale_min else fresh).append((s, age_min))
+
+    if not unparseable and not stale and not fresh:
+        return CheckResult(name, "ok", "no conductor yet")
+
+    parts = [f"{s}: {age:.0f} min old" for s, age in fresh]
+    parts += [f"{s}: never heartbeated" for s in never_seen]
+    problems = [f"{s}: {age:.0f} min old (over {cfg.conductor_stale_min})" for s, age in stale]
+    problems += [f"{s}: latest heartbeat has an unparseable timestamp" for s in unparseable]
+    if problems:
+        return CheckResult(name, "warn", "; ".join(problems + parts))
+    return CheckResult(name, "ok", "; ".join(parts))
 
 
 def _isolation_settings_hash_problems(cfg: Config) -> list[str]:
@@ -793,6 +844,38 @@ def _isolation_settings_hash_problems(cfg: Config) -> list[str]:
     return problems
 
 
+def _isolation_pgenv_problems(cfg: Config) -> list[str]:
+    """F3 (independent review): the swarm's own reader credential (`cfg.pgenv`) must be READABLE by
+    the swarm user and mode 600 — the isolation gate exists to keep the *native's* files and
+    credentials out of the swarm's reach, never to make the swarm's own working credential
+    unreadable to itself (that would simply make the swarm unable to do its job, and was the
+    pre-fix contradiction: `isolation_unreadable_paths` used to include `cfg.pgenv`, directly
+    against `check_credential`'s own "must be readable, mode 600" rule for the same file). Used by
+    both the 'declined' fallback-hardening path and the 'accepted' (N-25 in force) path — the
+    swarm needs its reader credential to work either way."""
+    if not cfg.pgenv:
+        return ["no reader credential path configured (SUVARNA_PGENV)"]
+    problems: list[str] = []
+    access = cfg.isolation_access_fn or os.access
+    try:
+        readable = access(cfg.pgenv, os.R_OK)
+    except OSError:
+        readable = False
+    if not readable:
+        problems.append(f"reader credential {cfg.pgenv} is not readable by the swarm user "
+                        "(it must be, to do its job — see F3)")
+    stat_fn = cfg.isolation_stat_fn or os.stat
+    try:
+        mode = stat_fn(cfg.pgenv).st_mode
+    except OSError:
+        problems.append(f"reader credential {cfg.pgenv} does not exist or could not be stat-ed")
+    else:
+        if mode & 0o077:
+            problems.append(f"reader credential {cfg.pgenv} is group- or world-readable "
+                            f"(mode {oct(mode & 0o777)}; expected 600)")
+    return problems
+
+
 def _isolation_measure(cfg: Config, current_user: str) -> list[str]:
     """CODE-12's "yes" (N-25 in force) measurements: stat/access only, never a credential's
     contents. Returns the list of problems found (empty = every measurement passed)."""
@@ -821,6 +904,7 @@ def _isolation_measure(cfg: Config, current_user: str) -> list[str]:
     if writable:
         problems.append(f"decisions log {cfg.decisions_path} is writable by {current_user!r}")
 
+    problems += _isolation_pgenv_problems(cfg)
     problems += _isolation_settings_hash_problems(cfg)
     return problems
 
@@ -851,6 +935,7 @@ def _isolation_measure_declined(cfg: Config) -> list[str]:
             problems.append(f"decisions log {cfg.decisions_path} is group- or world-writable "
                             f"(mode {oct(dmode & 0o777)})")
 
+    problems += _isolation_pgenv_problems(cfg)
     problems += _isolation_settings_hash_problems(cfg)
     return problems
 
@@ -1015,6 +1100,64 @@ def run_checks(cfg: Config) -> list[CheckResult]:
     return [_safe_check(name, cfg) for name in CHECK_NAMES]
 
 
+# --------------------------------------------------------------------------------------------
+# F3 (independent review): the launch check matrix is stage-aware. Only `builder_scope` has a
+# stage requirement later than "launch" today (Track E brief §8 E7: the builder identity is not
+# provisioned until E7.2, well after N-1 launch) — every other check is required from "launch",
+# unchanged.
+# --------------------------------------------------------------------------------------------
+
+STAGES = ("launch", "j1", "wave")
+DEFAULT_STAGE = "launch"
+
+# The earliest stage at which each check becomes a *required* check. A check not listed here is
+# required from "launch" (i.e. always, the pre-F3 default for every check). Never remove a check
+# from CHECK_NAMES/CHECK_FNS just because it is not required yet at some earlier stage — it still
+# runs and is still shown; it simply cannot block that earlier stage's launch decision.
+CHECK_REQUIRED_FROM_STAGE: dict[str, str] = {"builder_scope": "wave"}
+
+
+def _stage_index(stage: str) -> int:
+    try:
+        return STAGES.index(stage)
+    except ValueError:
+        return 0  # an unrecognised stage is never more permissive than "launch"
+
+
+def apply_stage(results: list[CheckResult], stage: str) -> list[CheckResult]:
+    """F3: only a check named in `CHECK_REQUIRED_FROM_STAGE` (today: `builder_scope`, required from
+    'wave') has a stage-dependent reading at all — every other check passes through unchanged at
+    every stage, exactly as before this function existed.
+
+    Before its own required-from stage, such a check's result is purely informational — any
+    non-`ok` reading is shown as `ok` with a "(not required at this stage)" note, so it can never
+    block or warn an earlier-stage launch decision it does not yet apply to. From its required-from
+    stage onward, a `warn` (could not be measured — e.g. "not provisioned yet") is `block`, never a
+    soft `warn` a required check could otherwise silently slip through on (CLAUDE.md §N.8: an
+    unmeasured required property is not a pass, and at the stage where it is required, it is not a
+    mere warning either). A genuine `ok` or a genuine `block` from the check's own measurement
+    passes through unchanged at every stage."""
+    idx = _stage_index(stage)
+    out = []
+    for r in results:
+        if r.name not in CHECK_REQUIRED_FROM_STAGE:
+            out.append(r)
+            continue
+        required_from = CHECK_REQUIRED_FROM_STAGE[r.name]
+        if idx < _stage_index(required_from):
+            if r.status != "ok":
+                out.append(CheckResult(r.name, "ok", f"{r.detail} (not required at this stage: {stage!r})"))
+            else:
+                out.append(r)
+        elif r.status == "warn":
+            out.append(CheckResult(r.name, "block",
+                                   f"{r.detail} (required at stage {stage!r}: an unmeasured required "
+                                   "check is block, never warn)"))
+        else:
+            out.append(r)
+    return out
+
+
 def overall_status(results: list[CheckResult]) -> str:
     if not results:
         return "ok"
@@ -1072,6 +1215,35 @@ def _repair_sleep(cfg: Config) -> list[str]:
         return [f"sleep_prevented: repair failed: {type(exc).__name__}: {exc}"]
 
 
+def _repair_conductor(cfg: Config, session: str) -> list[str]:
+    """F6 (independent review): the one hard rule this repair pass must never violate — a
+    Conductor whose lock (`conductor_lock.py`) is held by a live process is NEVER relaunched, full
+    stop, checked here explicitly before anything else. A genuinely stale session (heartbeat over
+    `conductor_stale_min` old, lock not held by a live process) is reported, not silently relaunched
+    — no automatic relaunch is wired here (the real launch needs a prompt/model/effort contract this
+    repair pass does not have); reporting the gap is the honest action, never a fabricated relaunch
+    that did not happen (CLAUDE.md §N.8)."""
+    ts = _latest_conductor_heartbeat_ts(cfg.events_path, session)
+    if ts is None:
+        return []  # never started this session: nothing to repair
+    try:
+        seen = dt.datetime.fromisoformat(ts)
+    except ValueError:
+        return []
+    if seen.tzinfo is None:
+        seen = seen.replace(tzinfo=dt.timezone.utc)
+    now = cfg.now_fn() if cfg.now_fn else dt.datetime.now(dt.timezone.utc)
+    age_min = (now - seen).total_seconds() / 60.0
+    if age_min <= cfg.conductor_stale_min:
+        return []  # fresh: nothing to repair
+    if conductor_lock.is_held_by_live_process(session, home=cfg.home):
+        return [f"conductor:{session}: heartbeat is {age_min:.0f} min old but its lock is held by "
+                f"a live process — not relaunched (F6: never relaunch a live lock)"]
+    return [f"conductor:{session}: heartbeat is {age_min:.0f} min old and its lock is not held by "
+            f"a live process; no automatic relaunch is wired yet (F6) — a human or the Conductor "
+            f"watchdog must restart session {session!r}"]
+
+
 def repair(cfg: Config, by_name: dict[str, CheckResult]) -> list[str]:
     """Attempt to fix the checks that can be fixed unattended. The hold switch, when on, suppresses
     every repair action (dispatch nothing new means nothing new — including a repair launch)."""
@@ -1087,6 +1259,10 @@ def repair(cfg: Config, by_name: dict[str, CheckResult]) -> list[str]:
     sleep = by_name.get("sleep_prevented")
     if sleep is not None and sleep.status != "ok":
         actions += _repair_sleep(cfg)
+    conductor_hb = by_name.get("conductor_heartbeat")
+    if conductor_hb is not None and conductor_hb.status != "ok":
+        for session in _conductor_sessions(cfg):
+            actions += _repair_conductor(cfg, session)
     return actions
 
 
@@ -1188,8 +1364,9 @@ def notify_on_change(cfg: Config, results: list[CheckResult], overall: str, chan
 # One run, printing, CLI
 # --------------------------------------------------------------------------------------------
 
-def run_once(cfg: Config, emit_flag: bool = False, repair_flag: bool = False, notify_flag: bool = False) -> dict:
-    results = run_checks(cfg)
+def run_once(cfg: Config, emit_flag: bool = False, repair_flag: bool = False, notify_flag: bool = False,
+            stage: str = DEFAULT_STAGE) -> dict:
+    results = apply_stage(run_checks(cfg), stage)
     by_name = {r.name: r for r in results}
     repairs = repair(cfg, by_name) if repair_flag else []
     overall = overall_status(results)
@@ -1219,6 +1396,7 @@ def run_once(cfg: Config, emit_flag: bool = False, repair_flag: bool = False, no
     return {
         "generated_at": now_iso(),
         "overall": overall,
+        "stage": stage,
         "checks": [r.to_dict() for r in results],
         "repairs": repairs,
         "emit_errors": emit_errors,
@@ -1248,7 +1426,7 @@ def _print(report: dict, as_json: bool) -> None:
 
 
 def watch(cfg: Config, seconds: int, emit_flag: bool, repair_flag: bool, as_json: bool,
-          notify_flag: bool = False) -> None:
+          notify_flag: bool = False, stage: str = DEFAULT_STAGE) -> None:
     interval = max(15, seconds)
     stop_event = threading.Event()
 
@@ -1258,7 +1436,7 @@ def watch(cfg: Config, seconds: int, emit_flag: bool, repair_flag: bool, as_json
     prev_handler = signal.signal(signal.SIGTERM, _on_term)
     try:
         while not stop_event.is_set():
-            report = run_once(cfg, emit_flag=emit_flag, repair_flag=repair_flag, notify_flag=notify_flag)
+            report = run_once(cfg, emit_flag=emit_flag, repair_flag=repair_flag, notify_flag=notify_flag, stage=stage)
             _print(report, as_json)
             stop_event.wait(interval)
     except KeyboardInterrupt:
@@ -1278,6 +1456,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
                     help="send a macOS notification (osascript) on a change of the non-ok set "
                          "(shares --emit's dedupe state)")
     ap.add_argument("--json", action="store_true", help="print the full report as JSON")
+    ap.add_argument("--stage", choices=STAGES, default=DEFAULT_STAGE,
+                    help="F3: which campaign stage's check requirements to apply — 'launch' (default), "
+                         "'j1', or 'wave'. A check not yet required at this stage is informational "
+                         "only (ok, noted); a required check that could not be measured is block, "
+                         "never a soft warn.")
     return ap
 
 
@@ -1285,9 +1468,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     cfg = default_config()
     if args.watch:
-        watch(cfg, args.watch, args.emit, args.repair, args.json, notify_flag=args.notify)
+        watch(cfg, args.watch, args.emit, args.repair, args.json, notify_flag=args.notify, stage=args.stage)
         return 0
-    report = run_once(cfg, emit_flag=args.emit, repair_flag=args.repair, notify_flag=args.notify)
+    report = run_once(cfg, emit_flag=args.emit, repair_flag=args.repair, notify_flag=args.notify, stage=args.stage)
     _print(report, args.json)
     return exit_code(report["overall"])
 

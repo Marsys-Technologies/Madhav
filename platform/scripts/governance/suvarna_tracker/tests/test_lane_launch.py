@@ -6,6 +6,7 @@ import os
 
 import pytest
 
+from suvarna_tracker import conductor_lock as CL
 from suvarna_tracker import lane_launch as LL
 from suvarna_tracker.events import EventLog
 
@@ -149,6 +150,63 @@ def test_launch_uses_explicit_prompt_file_over_default(tmp_path):
               prompt_file=str(custom), launch_fn=fn)
     argv = fn.calls[0]["argv"]
     assert argv[argv.index("-p") + 1] == "custom prompt\n"
+
+
+# ---- F6 (independent review): exclusive Conductor session launches --------------------------
+
+def test_conductor_launch_does_not_require_a_lane_worktree(tmp_path):
+    home = str(tmp_path / "home")  # no lanes/engine directory anywhere
+    fn = _fake_launch(pid=777)
+    result = LL.launch(home, "engine", "conductor", "sonnet-5", "medium",
+                       prompt_file=str(_write_prompt(tmp_path, "conduct\n")), launch_fn=fn)
+    assert result["pid"] == 777
+
+
+def test_second_conductor_launch_for_same_session_is_refused_with_exit_75(tmp_path):
+    home = str(tmp_path / "home")
+    prompt = str(_write_prompt(tmp_path, "conduct\n"))
+    fn1 = _fake_launch(pid=os.getpid())  # alive: our own test process
+    LL.launch(home, "engine", "conductor", "sonnet-5", "medium", prompt_file=prompt, launch_fn=fn1)
+    fn2 = _fake_launch(pid=4242)
+    with pytest.raises(LL.LaunchRefused) as exc_info:
+        LL.launch(home, "engine", "conductor", "sonnet-5", "medium", prompt_file=prompt, launch_fn=fn2)
+    assert exc_info.value.exit_code == CL.EXIT_LOCK_HELD == 75
+    assert fn2.calls == []  # never spawned
+
+
+def test_conductor_lock_is_updated_to_the_real_launched_pid(tmp_path):
+    home = str(tmp_path / "home")
+    prompt = str(_write_prompt(tmp_path, "conduct\n"))
+    fn = _fake_launch(pid=9999)
+    LL.launch(home, "engine", "conductor", "sonnet-5", "medium", prompt_file=prompt, launch_fn=fn)
+    status = CL.status("engine", home=home)
+    assert status["pid"] == 9999 and status["live"] is False  # 9999 is (almost certainly) not alive
+
+
+def test_different_conductor_sessions_launch_independently(tmp_path):
+    home = str(tmp_path / "home")
+    prompt = str(_write_prompt(tmp_path, "conduct\n"))
+    fn1 = _fake_launch(pid=os.getpid())
+    LL.launch(home, "engine", "conductor", "sonnet-5", "medium", prompt_file=prompt, launch_fn=fn1)
+    fn2 = _fake_launch(pid=os.getpid())
+    result = LL.launch(home, "exec", "conductor", "sonnet-5", "medium", prompt_file=prompt, launch_fn=fn2)
+    assert result["pid"] == os.getpid()
+
+
+def test_non_conductor_role_is_unaffected_by_conductor_lock(tmp_path):
+    """A builder lane launch for a qid that happens to share a name with a Conductor session must
+    not be gated by the conductor lock at all — the lock is keyed to role=='conductor' only."""
+    home = _make_lane(tmp_path, "engine")
+    CL.acquire("engine", home=home, pid=os.getpid())  # a live conductor lock for "engine"
+    fn = _fake_launch(pid=555)
+    result = LL.launch(home, "engine", "builder", "sonnet-5", "medium", launch_fn=fn)
+    assert result["pid"] == 555
+
+
+def _write_prompt(tmp_path, text):
+    p = tmp_path / "conductor_prompt.md"
+    p.write_text(text)
+    return p
 
 
 # ---- CLI ------------------------------------------------------------------------------------

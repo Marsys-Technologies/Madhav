@@ -39,15 +39,25 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     __package__ = "suvarna_tracker"
 
+from suvarna_tracker import conductor_lock  # noqa: E402
 from suvarna_tracker.events import append  # noqa: E402
 from suvarna_tracker.hold_guard import hold_present  # noqa: E402
 
 DEFAULT_HOME = "/Users/Dev/suvarna"
 DEFAULT_PROMPT_BASENAME = "PROMPT.md"
 
+# F6 (independent review): a role of "conductor" is a session, not a lane — its launch is
+# exclusive per session (conductor_lock.py), on top of every other precondition.
+CONDUCTOR_ROLE = "conductor"
+
 
 class LaunchRefused(ValueError):
-    pass
+    """`exit_code` lets a caller distinguish a lock-held refusal (75, F6) from every other
+    precondition refusal (2, unchanged) without string-matching the message."""
+
+    def __init__(self, message: str, exit_code: int = 2):
+        super().__init__(message)
+        self.exit_code = exit_code
 
 
 def home_dir() -> str:
@@ -85,13 +95,18 @@ def resolve_prompt(home: str, qid: str, prompt_file: str | None) -> str:
     return text
 
 
-def check_refusal(home: str, qid: str) -> str | None:
+def check_refusal(home: str, qid: str, role: str | None = None) -> str | None:
     """Pure precondition check (no side effects): the reason this launch must be refused, or `None`
     to proceed. Checked before the prompt is even read, so the cheapest, most decisive refusals
-    (hold, missing lane) never touch the filesystem beyond `os.path.exists`."""
+    (hold, missing lane) never touch the filesystem beyond `os.path.exists`.
+
+    F6: a `role == "conductor"` launch names a Conductor *session*, not a lane — it runs from hq,
+    never a per-qid lane worktree, so the "lane worktree exists" precondition does not apply to it
+    (its own exclusivity precondition — the conductor lock — is checked separately in `launch()`,
+    since acquiring it is a side effect this pure function deliberately does not perform)."""
     if hold_present(home):
         return "hold is set (charter §8): dispatch nothing new — refusing to launch a lane"
-    if not os.path.isdir(lane_dir(home, qid)):
+    if role != CONDUCTOR_ROLE and not os.path.isdir(lane_dir(home, qid)):
         return f"lane worktree does not exist yet: {lane_dir(home, qid)}"
     return None
 
@@ -109,10 +124,27 @@ def launch(home: str, qid: str, role: str, model: str, effort: str, prompt_file:
     """Check preconditions, read the prompt, start the lane's `claude` session detached, record its
     pid, and emit a `running` event. Raises `LaunchRefused` for every precondition failure — never
     launches a partial or silently-skipped process. `launch_fn` (real default: a detached
-    `subprocess.Popen`) is injectable so tests never spawn a real `claude` process."""
-    reason = check_refusal(home, qid)
+    `subprocess.Popen`) is injectable so tests never spawn a real `claude` process.
+
+    F6 (independent review): when `role == "conductor"`, `qid` names a Conductor *session*
+    (e.g. "engine", "exec"), not a lane, and its launch is exclusive — a second launch for the same
+    session while its lock is held by a live process is refused with `LaunchRefused.exit_code ==
+    conductor_lock.EXIT_LOCK_HELD` (75), never silently doubled up. The lock is reserved (under
+    this process's own pid, as a placeholder) before anything is spawned, so a refusal never leaves
+    a half-started process behind; once the real, detached process's pid is known, the lock is
+    updated to it so the lock outlives this short-lived launcher."""
+    reason = check_refusal(home, qid, role=role)
     if reason:
         raise LaunchRefused(reason)
+
+    if role == CONDUCTOR_ROLE:
+        try:
+            conductor_lock.acquire(qid, home=home)
+        except conductor_lock.LockHeld as exc:
+            raise LaunchRefused(f"conductor lock for session {qid!r} is held by a live process "
+                                f"(pid {exc.pid}, started {exc.started_at or '?'}); refusing a "
+                                f"second launch (F6)", exit_code=conductor_lock.EXIT_LOCK_HELD) from exc
+
     prompt = resolve_prompt(home, qid, prompt_file)
 
     lane = lane_dir(home, qid)
@@ -127,6 +159,9 @@ def launch(home: str, qid: str, role: str, model: str, effort: str, prompt_file:
     if launch_fn is None:
         launch_fn = _default_launch
     pid = launch_fn(argv, cwd=lane, log_path=log_path)
+
+    if role == CONDUCTOR_ROLE:
+        conductor_lock.update_pid(qid, pid, home=home)
 
     tmp = f"{pid_file}.tmp.{os.getpid()}"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -170,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
         result = launch(home, a.qid, a.role, a.model, a.effort, prompt_file=a.prompt_file)
     except LaunchRefused as exc:
         print(f"refused: {exc}", file=sys.stderr)
-        return 2
+        return exc.exit_code
     print(f"launched {result['qid']}: pid {result['pid']}, log {result['log_path']}")
     return 0
 

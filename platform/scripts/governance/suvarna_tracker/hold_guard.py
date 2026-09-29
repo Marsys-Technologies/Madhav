@@ -38,14 +38,32 @@ DEFAULT_HOME = "/Users/Dev/suvarna"
 
 # Bash substrings marking a command as production-visible or dispatch-like (charter §6, §8; arch
 # §6.2's level-wave script, the certification writer, and a PR merge are exactly the "starts new
-# work / changes what production serves" acts the hold is for).
+# work / changes what production serves" acts the hold is for). F4 (independent review) extends
+# this list with every lane/agent launch surface named in the review: the lane launcher (by module
+# name and by its own CODE-18 CLI entry point) and every CLI this campaign uses to start an agent
+# session unattended.
 DISPATCH_MARKERS = ("suvarna-build", "suvarna_level_wave", "nikasha_certify", "gh pr merge", "orchestrator",
-                    "--apply")
+                    "--apply", "lane_launch", "claude -p", "codex exec", "kimi -p",
+                    "python -m suvarna_tracker.lane_launch")
 
-# Matches any spelling of "remove the hold switch file": rm/unlink, with or without -f, with the
-# path written out, via $SUVARNA_HOME, or via a relative "run/SUVARNA_HOLD". Deliberately loose
-# (word-boundary anchored on the command name only) so a quoted or globbed path still trips it.
-_HOLD_DELETE_RE = re.compile(r"\b(rm|unlink)\b.*SUVARNA_HOLD")
+# F4 (independent review): "remove the hold switch file" is never only rm/unlink — mv (rename it
+# away), truncate, or any shell redirect ('>') can just as effectively destroy or empty it. Matched
+# as "the hold path appears anywhere in the command, together with one of these verbs or a redirect
+# anywhere in the command" — deliberately broad (never ordered, never anchored to a specific
+# argument position) so a quoted/globbed path, a variable indirection, or a command reordering
+# still trips it. The hold file is sacrosanct (charter §8: "only the native removes it"); a false
+# positive here just means rephrasing an unrelated command to avoid mentioning the hold path next
+# to a redirect, which is a small price for never under-refusing a real deletion/truncation attempt.
+_HOLD_DELETE_VERB_RE = re.compile(r"\b(rm|mv|unlink|truncate)\b")
+
+
+def targets_hold_delete(command: str) -> bool:
+    """True if a Bash command tries to remove, rename away, truncate, or otherwise clear/replace
+    the hold switch file, by any spelling."""
+    command = command or ""
+    if "SUVARNA_HOLD" not in command:
+        return False
+    return bool(_HOLD_DELETE_VERB_RE.search(command)) or ">" in command
 
 
 def home_dir() -> str:
@@ -64,11 +82,6 @@ def events_path(home: str | None = None) -> str:
     return os.environ.get("SUVARNA_EVENTS", os.path.join(home or home_dir(), "run", "EVENTS.jsonl"))
 
 
-def targets_hold_delete(command: str) -> bool:
-    """True if a Bash command tries to remove the hold switch file, by any spelling."""
-    return bool(_HOLD_DELETE_RE.search(command or ""))
-
-
 def is_dispatch_like(command: str) -> bool:
     return any(marker in (command or "") for marker in DISPATCH_MARKERS)
 
@@ -77,19 +90,50 @@ def matched_dispatch_marker(command: str) -> str | None:
     return next((m for m in DISPATCH_MARKERS if m in (command or "")), None)
 
 
+def classify_command(tool_input: dict | None) -> tuple[str, bool]:
+    """F4 (independent review): the command text to check, and whether `tool_input` actually
+    provided a usable string at all ("classifiable"). A missing/non-dict `tool_input`, or a
+    missing/non-string `command`, is never silently treated as "empty command, therefore not
+    dispatch-like" — that is exactly the "cannot classify" case `evaluate()` must fail closed on
+    while the hold is set. An explicit empty string IS classifiable (and is, correctly, not
+    dispatch-like) — it is the *absence* of a command that cannot be classified, not a short one."""
+    if not isinstance(tool_input, dict):
+        return "", False
+    cmd = tool_input.get("command")
+    if not isinstance(cmd, str):
+        return "", False
+    return cmd, True
+
+
 def evaluate(tool_name: str, tool_input: dict | None, home: str | None = None) -> tuple[bool, str]:
     """Pure function of one tool call plus the hold file's presence: (blocked, reason). Fully
-    testable without ever going through stdin or a real hook invocation."""
-    command = ""
-    if tool_name == "Bash":
-        command = str((tool_input or {}).get("command") or "")
+    testable without ever going through stdin or a real hook invocation.
 
-    # Always refused, hold or not: only the native removes the hold switch (charter §8).
-    if tool_name == "Bash" and targets_hold_delete(command):
+    F4: a Bash call whose command could not be classified at all (missing/malformed `tool_input`)
+    is refused while the hold is set ("cannot classify → refuse" — never assumed "not dispatch-like"
+    under uncertainty) and allowed through while the hold is off (a broken/incomplete payload must
+    never wedge non-dispatch work when there is nothing for the hold to enforce)."""
+    command, classifiable = ("", True)
+    if tool_name == "Bash":
+        command, classifiable = classify_command(tool_input)
+
+    # Always refused, hold or not: only the native removes the hold switch (charter §8). Checked
+    # before the classifiability gate below — a command we CAN read is checked for this
+    # unconditionally, regardless of what else about the call might be uncertain.
+    if tool_name == "Bash" and classifiable and targets_hold_delete(command):
         return True, ("the hold switch file may only be removed by the native (charter §8); "
                        "refused unconditionally, hold on or off")
 
-    if not hold_present(home):
+    hold_on = hold_present(home)
+
+    if tool_name == "Bash" and not classifiable:
+        if hold_on:
+            return True, ("hold is set: this Bash call's command could not be classified (missing "
+                          "or malformed tool_input) — refusing under uncertainty, never assumed "
+                          "safe (charter §8; F4)")
+        return False, ""
+
+    if not hold_on:
         return False, ""
 
     # New dispatches: the Agent tool starts a fresh subagent (charter §8: "dispatch nothing new").
@@ -97,8 +141,9 @@ def evaluate(tool_name: str, tool_input: dict | None, home: str | None = None) -
         return True, "hold is set: no new dispatch (charter §8) — Agent tool call refused"
 
     # Production-visible or dispatch-like Bash: the level-wave script, a build, a certification
-    # write, an orchestrator run, or an explicit --apply. Everything else in Bash (git, tests,
-    # reads, the census, emit/decide) is explicitly allowed through: "finish what is running."
+    # write, an orchestrator run, a lane launch, or an explicit --apply. Everything else in Bash
+    # (git, tests, reads, the census, emit/decide) is explicitly allowed through: "finish what is
+    # running."
     if tool_name == "Bash" and is_dispatch_like(command):
         marker = matched_dispatch_marker(command) or "?"
         return True, (f"hold is set: production-visible/dispatch-like Bash command refused "
@@ -117,6 +162,21 @@ def _emit_note(detail: str, home: str | None = None) -> None:
         pass
 
 
+def _handle_unclassifiable(detail: str) -> int:
+    """F4: the hook's own stdin (or the tool_name inside it) could not be parsed/classified at all
+    — we cannot rule out that this was an Agent dispatch or a dispatch-like Bash call hiding behind
+    a malformed payload. Fail closed (exit 2) while the hold is set; otherwise allow the call
+    through (exit 0) — a broken hook must never wedge non-dispatch work, but must never release an
+    unclassifiable call under uncertainty while there is a hold to enforce."""
+    if hold_present():
+        _emit_note(f"BLOCKED (cannot classify while hold is set): {detail}")
+        print(f"hold is set and this tool call could not be classified from its hook payload; "
+              f"refusing under uncertainty (charter §8; F4): {detail}", file=sys.stderr)
+        return 2
+    _emit_note(f"{detail}, allowing the tool call through (hold is off)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     raw = sys.stdin.read()
     try:
@@ -124,13 +184,13 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(payload, dict):
             raise ValueError("hook payload is not a JSON object")
     except (ValueError, TypeError) as exc:
-        # Malformed stdin never wedges the session: allow the call through, but make the gap
-        # visible rather than silent.
-        _emit_note(f"malformed hook stdin, allowing the tool call through: {type(exc).__name__}: {exc}")
-        return 0
+        return _handle_unclassifiable(f"malformed hook stdin: {type(exc).__name__}: {exc}")
 
-    tool_name = payload.get("tool_name") or ""
-    tool_input = payload.get("tool_input") or {}
+    tool_name = payload.get("tool_name")
+    if not isinstance(tool_name, str) or not tool_name:
+        return _handle_unclassifiable("hook stdin parsed but named no tool_name")
+
+    tool_input = payload.get("tool_input")
     blocked, reason = evaluate(tool_name, tool_input)
     if blocked:
         _emit_note(f"BLOCKED {tool_name or '?'}: {reason}")

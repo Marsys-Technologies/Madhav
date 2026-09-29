@@ -31,39 +31,44 @@ def _fixed_now(iso: str):
     return lambda: parsed
 
 
-# ---- conductor_heartbeat ------------------------------------------------------------------------
+# ---- conductor_heartbeat (F6: per-session — independent review) -------------------------------
+#
+# Heartbeats now carry actor: "conductor:<session>" (conductor_lock.py's own session concept),
+# never the session-blind "conductor" the pre-fix check read — a single healthy session could
+# otherwise mask another going silent. Tests below pin conductor_sessions=("engine", "exec")
+# explicitly so they never depend on $SUVARNA_SESSIONS or the module's own default.
 
 def test_conductor_heartbeat_ok_when_never_emitted(tmp_path):
-    c = cfg(tmp_path)
+    c = cfg(tmp_path, conductor_sessions=("engine", "exec"))
     r = M.check_conductor_heartbeat(c)
     assert r.status == "ok" and "no conductor yet" in r.detail
 
 
 def test_conductor_heartbeat_ok_when_fresh(tmp_path):
-    c = cfg(tmp_path)
+    c = cfg(tmp_path, conductor_sessions=("engine",))
     os.makedirs(c.run_dir, exist_ok=True)
-    append(c.events_path, {"kind": "heartbeat", "actor": "conductor", "detail": "queue: 1 running",
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "queue: 1 running",
                            "ts": "2026-09-29T12:00:00+00:00"})
     c.now_fn = _fixed_now("2026-09-29T12:10:00+00:00")
     r = M.check_conductor_heartbeat(c)
-    assert r.status == "ok" and "10 min old" in r.detail
+    assert r.status == "ok" and "10 min old" in r.detail and "engine" in r.detail
 
 
 def test_conductor_heartbeat_warn_when_stale(tmp_path):
-    c = cfg(tmp_path, conductor_stale_min=45)
+    c = cfg(tmp_path, conductor_stale_min=45, conductor_sessions=("engine",))
     os.makedirs(c.run_dir, exist_ok=True)
-    append(c.events_path, {"kind": "heartbeat", "actor": "conductor", "detail": "queue: 1 running",
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "queue: 1 running",
                            "ts": "2026-09-29T12:00:00+00:00"})
     c.now_fn = _fixed_now("2026-09-29T13:00:00+00:00")  # 60 min later
     r = M.check_conductor_heartbeat(c)
-    assert r.status == "warn" and "60 min old" in r.detail and "45" in r.detail
+    assert r.status == "warn" and "60 min old" in r.detail and "45" in r.detail and "engine" in r.detail
 
 
 def test_conductor_heartbeat_warn_never_block(tmp_path):
     """A stale Conductor is the watchdog's job (arch §5.5), not a dispatch gate: never block."""
-    c = cfg(tmp_path, conductor_stale_min=1)
+    c = cfg(tmp_path, conductor_stale_min=1, conductor_sessions=("engine",))
     os.makedirs(c.run_dir, exist_ok=True)
-    append(c.events_path, {"kind": "heartbeat", "actor": "conductor", "detail": "x",
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "x",
                            "ts": "2020-01-01T00:00:00+00:00"})
     c.now_fn = _fixed_now("2026-09-29T13:00:00+00:00")
     r = M.check_conductor_heartbeat(c)
@@ -71,20 +76,20 @@ def test_conductor_heartbeat_warn_never_block(tmp_path):
 
 
 def test_conductor_heartbeat_ignores_other_actors_and_kinds(tmp_path):
-    c = cfg(tmp_path)
+    c = cfg(tmp_path, conductor_sessions=("engine",))
     os.makedirs(c.run_dir, exist_ok=True)
-    append(c.events_path, {"kind": "note", "actor": "conductor", "detail": "not a heartbeat"})
+    append(c.events_path, {"kind": "note", "actor": "conductor:engine", "detail": "not a heartbeat"})
     append(c.events_path, {"kind": "heartbeat", "actor": "monitor", "detail": "not the conductor"})
     r = M.check_conductor_heartbeat(c)
     assert r.status == "ok" and "no conductor yet" in r.detail
 
 
 def test_conductor_heartbeat_picks_the_newest_line(tmp_path):
-    c = cfg(tmp_path)
+    c = cfg(tmp_path, conductor_sessions=("engine",))
     os.makedirs(c.run_dir, exist_ok=True)
-    append(c.events_path, {"kind": "heartbeat", "actor": "conductor", "detail": "old",
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "old",
                            "ts": "2026-09-29T10:00:00+00:00"})
-    append(c.events_path, {"kind": "heartbeat", "actor": "conductor", "detail": "new",
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "new",
                            "ts": "2026-09-29T12:00:00+00:00"})
     c.now_fn = _fixed_now("2026-09-29T12:05:00+00:00")
     r = M.check_conductor_heartbeat(c)
@@ -92,17 +97,17 @@ def test_conductor_heartbeat_picks_the_newest_line(tmp_path):
 
 
 def test_conductor_heartbeat_tolerates_missing_file(tmp_path):
-    c = cfg(tmp_path, events_path=str(tmp_path / "nonexistent" / "EVENTS.jsonl"))
+    c = cfg(tmp_path, events_path=str(tmp_path / "nonexistent" / "EVENTS.jsonl"), conductor_sessions=("engine",))
     r = M.check_conductor_heartbeat(c)
     assert r.status == "ok"
 
 
 def test_conductor_heartbeat_tolerates_malformed_lines(tmp_path):
-    c = cfg(tmp_path)
+    c = cfg(tmp_path, conductor_sessions=("engine",))
     os.makedirs(c.run_dir, exist_ok=True)
     with open(c.events_path, "w", encoding="utf-8") as f:
         f.write("not json at all\n")
-        f.write(json.dumps({"kind": "heartbeat", "actor": "conductor", "ts": "2026-09-29T12:00:00+00:00"}) + "\n")
+        f.write(json.dumps({"kind": "heartbeat", "actor": "conductor:engine", "ts": "2026-09-29T12:00:00+00:00"}) + "\n")
     c.now_fn = _fixed_now("2026-09-29T12:00:30+00:00")
     r = M.check_conductor_heartbeat(c)
     assert r.status == "ok"
@@ -112,6 +117,110 @@ def test_conductor_heartbeat_is_in_check_names_and_run_checks(tmp_path):
     assert "conductor_heartbeat" in M.CHECK_NAMES
     results = M.run_checks(cfg(tmp_path))
     assert any(r.name == "conductor_heartbeat" for r in results)
+
+
+# ---- F6 negative cases: one session's health must never mask another's -------------------------
+
+def test_conductor_heartbeat_one_session_stale_warns_even_though_another_is_fresh(tmp_path):
+    """The exact pre-fix defect: a session-blind read let a healthy session mask a silent one.
+    Per-session evaluation must name the stale session specifically, regardless of "exec" being
+    perfectly healthy."""
+    c = cfg(tmp_path, conductor_stale_min=45, conductor_sessions=("engine", "exec"))
+    os.makedirs(c.run_dir, exist_ok=True)
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "stale",
+                           "ts": "2026-09-29T10:00:00+00:00"})  # 3 hours old at "now" below
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:exec", "detail": "fresh",
+                           "ts": "2026-09-29T12:55:00+00:00"})  # 5 min old
+    c.now_fn = _fixed_now("2026-09-29T13:00:00+00:00")
+    r = M.check_conductor_heartbeat(c)
+    assert r.status == "warn"
+    assert "engine" in r.detail and "180 min old" in r.detail
+    assert "exec" in r.detail  # the healthy session is still named, informationally
+
+
+def test_conductor_heartbeat_session_never_seen_while_another_is_fresh_is_not_itself_a_problem(tmp_path):
+    """A session that has simply never started is a fact about campaign phase, not a fault — it
+    must not, on its own, turn an otherwise-healthy check into a warning."""
+    c = cfg(tmp_path, conductor_stale_min=45, conductor_sessions=("engine", "exec"))
+    os.makedirs(c.run_dir, exist_ok=True)
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "fresh",
+                           "ts": "2026-09-29T12:55:00+00:00"})
+    c.now_fn = _fixed_now("2026-09-29T13:00:00+00:00")
+    r = M.check_conductor_heartbeat(c)
+    assert r.status == "ok"
+    assert "engine" in r.detail and "exec" in r.detail and "never heartbeated" in r.detail
+
+
+def test_conductor_sessions_read_from_env(tmp_path, monkeypatch):
+    monkeypatch.setenv(M.CONDUCTOR_SESSIONS_ENV, "alpha, beta")
+    c = cfg(tmp_path)  # no explicit conductor_sessions: reads the env
+    assert M._conductor_sessions(c) == ("alpha", "beta")
+
+
+def test_conductor_sessions_default_is_engine_and_exec(tmp_path, monkeypatch):
+    monkeypatch.delenv(M.CONDUCTOR_SESSIONS_ENV, raising=False)
+    c = cfg(tmp_path)
+    assert M._conductor_sessions(c) == M.DEFAULT_CONDUCTOR_SESSIONS == ("engine", "exec")
+
+
+# ---- F6: repair() never relaunches a Conductor whose lock is held by a live process -------------
+
+from suvarna_tracker import conductor_lock as CL  # noqa: E402
+
+
+def _stale_engine_cfg(tmp_path, **kw):
+    c = cfg(tmp_path, conductor_stale_min=45, conductor_sessions=("engine",), **kw)
+    os.makedirs(c.run_dir, exist_ok=True)
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "x",
+                           "ts": "2026-09-29T10:00:00+00:00"})  # 3h old at the fixed "now" below
+    c.now_fn = _fixed_now("2026-09-29T13:00:00+00:00")
+    return c
+
+
+def test_repair_conductor_never_relaunches_a_lock_held_by_a_live_process(tmp_path):
+    c = _stale_engine_cfg(tmp_path)
+    CL.acquire("engine", home=c.home, pid=os.getpid())  # our own pid: definitely alive
+    actions = M._repair_conductor(c, "engine")
+    assert len(actions) == 1 and "not relaunched" in actions[0] and "live process" in actions[0]
+
+
+def test_repair_conductor_reports_gap_when_lock_not_live(tmp_path):
+    c = _stale_engine_cfg(tmp_path)
+    # no lock acquired at all: is_held_by_live_process is False
+    actions = M._repair_conductor(c, "engine")
+    assert len(actions) == 1 and "no automatic relaunch is wired" in actions[0]
+
+
+def test_repair_conductor_does_nothing_when_fresh(tmp_path):
+    c = cfg(tmp_path, conductor_stale_min=45, conductor_sessions=("engine",))
+    os.makedirs(c.run_dir, exist_ok=True)
+    append(c.events_path, {"kind": "heartbeat", "actor": "conductor:engine", "detail": "x",
+                           "ts": "2026-09-29T12:55:00+00:00"})
+    c.now_fn = _fixed_now("2026-09-29T13:00:00+00:00")
+    assert M._repair_conductor(c, "engine") == []
+
+
+def test_repair_conductor_does_nothing_when_never_started(tmp_path):
+    c = cfg(tmp_path, conductor_stale_min=45, conductor_sessions=("engine",))
+    assert M._repair_conductor(c, "engine") == []
+
+
+def test_repair_end_to_end_never_relaunches_live_conductor_lock(tmp_path):
+    """Integration: run_once's own --repair path, through the real check → repair wiring, still
+    honours the F6 guarantee."""
+    c = _stale_engine_cfg(tmp_path, pgenv=None)
+    CL.acquire("engine", home=c.home, pid=os.getpid())
+    report = M.run_once(c, repair_flag=True)
+    conductor_repairs = [a for a in report["repairs"] if a.startswith("conductor:engine")]
+    assert len(conductor_repairs) == 1 and "not relaunched" in conductor_repairs[0]
+
+
+def test_repair_conductor_suppressed_entirely_by_hold(tmp_path):
+    c = _stale_engine_cfg(tmp_path)
+    os.makedirs(c.run_dir, exist_ok=True)
+    open(c.hold_path, "w").close()
+    by_name = {"conductor_heartbeat": M.CheckResult("conductor_heartbeat", "warn", "engine stale")}
+    assert M.repair(c, by_name) == []
 
 
 # ---- --notify -------------------------------------------------------------------------------------

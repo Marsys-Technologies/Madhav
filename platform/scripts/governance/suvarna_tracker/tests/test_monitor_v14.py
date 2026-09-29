@@ -68,7 +68,15 @@ class _FakeStat:
 
 def _declined_cfg(tmp_path, detail="outcome=no — the native accepts the risk of running as the native "
                                     "account for now", **overrides):
-    kwargs = dict(getuser_fn=lambda: "abhisek",
+    # F3 (independent review): the isolation check now also confirms the swarm's own reader
+    # credential is readable (real os.access — a fake, unwritten pgenv path would otherwise fail
+    # this new requirement) and mode 600 (via the same isolation_stat_fn mock every other path uses
+    # here). A real, readable file is created below so the default "everything passes" fixture
+    # keeps meaning "everything passes" under the new requirement too.
+    pgenv_path = tmp_path / "pgenv.sh"
+    pgenv_path.write_text("# reader credential\n")
+    os.chmod(pgenv_path, 0o600)
+    kwargs = dict(getuser_fn=lambda: "abhisek", pgenv=str(pgenv_path),
                  isolation_stat_fn=lambda path: _FakeStat(0o100600),  # every path: mode 600
                  isolation_hash_fn=lambda path: "deadbeef")
     kwargs.update(overrides)
@@ -144,9 +152,17 @@ def test_isolation_decided_unclear_detail_warns(tmp_path):
 # -- decided yes: measured (CODE-12's stat/access/hash checks, all injectable) ----------------
 
 def _accepted_cfg(tmp_path, **overrides):
+    # F3 (independent review): the isolation check now also confirms the swarm's own reader
+    # credential is readable and mode 600 — the default fixture below reads it as such (readable
+    # via isolation_access_fn, mode 600 via isolation_stat_fn) so "everything passes" still means
+    # everything passes under the new requirement.
+    pgenv_path = str(tmp_path / "pgenv.sh")
     kwargs = dict(getuser_fn=lambda: "suvarna",
                  isolation_native_user_fn=lambda: "abhisek",
-                 isolation_access_fn=lambda path, mode: False,  # nothing readable/writable by default
+                 pgenv=pgenv_path,
+                 # nothing readable/writable by default, except the swarm's own reader credential
+                 isolation_access_fn=lambda path, mode: mode == os.R_OK and path == pgenv_path,
+                 isolation_stat_fn=lambda path: _FakeStat(0o100600),
                  isolation_hash_fn=lambda path: "deadbeef")
     kwargs.update(overrides)
     c = cfg(tmp_path, **kwargs)

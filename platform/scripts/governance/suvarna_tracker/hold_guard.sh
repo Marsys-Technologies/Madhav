@@ -34,10 +34,15 @@ fi
 # treat that as "no problem". Classify the tool call independently, with no dependency on
 # suvarna_tracker or PYTHONPATH.
 classification="$(printf '%s' "$payload" | python3 -c '
-import json, sys
+import json, re, sys
 
+# F4 (independent review): mirrors hold_guard.py'"'"'s own DISPATCH_MARKERS and hold-delete
+# detection — a broken PYTHONPATH must not narrow this fallback classifier'"'"'s coverage versus
+# the real guard it stands in for.
 DISPATCH_MARKERS = ("suvarna-build", "suvarna_level_wave", "nikasha_certify", "gh pr merge",
-                    "orchestrator", "--apply")
+                    "orchestrator", "--apply", "lane_launch", "claude -p", "codex exec", "kimi -p",
+                    "python -m suvarna_tracker.lane_launch")
+HOLD_DELETE_VERB_RE = re.compile(r"\b(rm|mv|unlink|truncate)\b")
 
 try:
     d = json.load(sys.stdin)
@@ -47,12 +52,24 @@ except Exception:
     d = {}
 
 tool_name = d.get("tool_name") or ""
-tool_input = d.get("tool_input") or {}
-command = str((tool_input or {}).get("command") or "") if tool_name == "Bash" else ""
+tool_input = d.get("tool_input")
+command = ""
+if tool_name == "Bash" and isinstance(tool_input, dict):
+    c = tool_input.get("command")
+    command = c if isinstance(c, str) else ""
 
-is_dispatch = tool_name == "Agent" or any(m in command for m in DISPATCH_MARKERS)
-print("dispatch" if is_dispatch else "other")
+if command and "SUVARNA_HOLD" in command and (HOLD_DELETE_VERB_RE.search(command) or ">" in command):
+    print("hold_delete")
+elif tool_name == "Agent" or any(m in command for m in DISPATCH_MARKERS):
+    print("dispatch")
+else:
+    print("other")
 ' 2>/dev/null)"
+
+if [ "$classification" = "hold_delete" ]; then
+  echo "hold-guard: the real guard failed to load or run (exit $guard_rc); the hold switch file may only be removed by the native (charter §8) — refused unconditionally (F4)" >&2
+  exit 2
+fi
 
 if [ "$classification" = "dispatch" ]; then
   echo "hold-guard: the real guard failed to load or run (exit $guard_rc); failing closed for a dispatch-like tool call (S14)" >&2

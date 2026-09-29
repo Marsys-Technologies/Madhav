@@ -69,6 +69,19 @@ def test_hold_blocks_every_dispatch_marker(tmp_path, marker):
     assert blocked and marker in reason
 
 
+@pytest.mark.parametrize("marker", ["lane_launch", "claude -p", "codex exec", "kimi -p",
+                                    "python -m suvarna_tracker.lane_launch"])
+def test_hold_blocks_every_f4_added_dispatch_marker(tmp_path, marker):
+    """F4 (independent review): the lane launcher and every agent-launching CLI this campaign uses
+    are dispatch-like too, not just the build/certify/merge surfaces the marker list originally
+    named."""
+    home = _set_hold(tmp_path)
+    blocked, reason = HG.evaluate("Bash", {"command": f"some command with {marker} in it"}, home=home)
+    # "lane_launch" is a substring of the longer "python -m suvarna_tracker.lane_launch" marker, so
+    # the shorter marker can be the one reported — what matters is that the call is blocked at all.
+    assert blocked and "charter §6, §8" in reason
+
+
 def test_hold_allows_non_dispatch_bash_to_finish(tmp_path):
     """'Finish the items already running' (charter §8): a plain git/test/read command is not
     production-visible or dispatch-like, so it must run through even while the hold is set."""
@@ -106,21 +119,55 @@ def test_hold_delete_refused_while_hold_is_set_too(tmp_path):
     assert blocked and "may only be removed by the native" in reason
 
 
+@pytest.mark.parametrize("command", [
+    "mv /Users/Dev/suvarna/run/SUVARNA_HOLD /tmp/moved-away",
+    "truncate -s 0 /Users/Dev/suvarna/run/SUVARNA_HOLD",
+    "echo cleared > /Users/Dev/suvarna/run/SUVARNA_HOLD",
+    ": > $SUVARNA_HOME/run/SUVARNA_HOLD",
+])
+def test_hold_delete_refused_for_f4_added_verbs_and_redirect(tmp_path, command):
+    """F4 (independent review): mv/truncate/redirect can destroy or empty the hold file just as
+    effectively as rm/unlink — the original regex only recognised rm/unlink."""
+    home = _no_hold_home(tmp_path)
+    blocked, reason = HG.evaluate("Bash", {"command": command}, home=home)
+    assert blocked and "may only be removed by the native" in reason
+
+
 def test_unrelated_rm_is_not_treated_as_hold_delete(tmp_path):
     home = _no_hold_home(tmp_path)
     blocked, reason = HG.evaluate("Bash", {"command": "rm -rf /Users/Dev/suvarna/lanes/old-lane"}, home=home)
     assert not blocked
 
 
-def test_missing_tool_input_does_not_crash(tmp_path):
+def test_missing_tool_input_is_refused_under_uncertainty_while_hold_is_set(tmp_path):
+    """F4 (independent review): a missing tool_input can never be classified as a command at all —
+    'cannot classify' fails closed while the hold is set (never assumed safe), rather than the
+    pre-fix reading of "no command text => not dispatch-like". Never crashes either way."""
     home = _set_hold(tmp_path)
     blocked, reason = HG.evaluate("Bash", None, home=home)
-    assert not blocked  # no command text => not dispatch-like, not a hold-delete
+    assert blocked and "could not be classified" in reason
 
 
-def test_empty_command_is_not_dispatch_like(tmp_path):
+def test_missing_tool_input_is_allowed_when_hold_is_off(tmp_path):
+    """The same uncertainty is not a reason to wedge non-dispatch work when there is no hold to
+    enforce in the first place."""
+    home = _no_hold_home(tmp_path)
+    blocked, reason = HG.evaluate("Bash", None, home=home)
+    assert not blocked
+
+
+def test_missing_command_key_is_refused_under_uncertainty_while_hold_is_set(tmp_path):
+    """F4: tool_input present but with no 'command' key at all is the same 'cannot classify' case
+    as a missing tool_input entirely — not the pre-fix reading of "empty command, not dispatch-like".
+    An explicit empty string command, by contrast, IS classifiable and safe (see below)."""
     home = _set_hold(tmp_path)
     blocked, reason = HG.evaluate("Bash", {}, home=home)
+    assert blocked and "could not be classified" in reason
+
+
+def test_explicit_empty_command_string_is_classifiable_and_not_dispatch_like(tmp_path):
+    home = _set_hold(tmp_path)
+    blocked, reason = HG.evaluate("Bash", {"command": ""}, home=home)
     assert not blocked
 
 
@@ -189,6 +236,45 @@ def test_main_non_object_json_stdin_exits_0(monkeypatch, tmp_path):
     monkeypatch.setenv("SUVARNA_HOME", home)
     monkeypatch.delenv("SUVARNA_EVENTS", raising=False)
     assert HG.main([]) == 0
+
+
+# ---- F4 (independent review): malformed stdin fails closed while the hold is set ----------------
+
+def test_main_malformed_stdin_exits_2_while_hold_is_set(monkeypatch, tmp_path, capsys):
+    home = _set_hold(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO("not json { at all"))
+    monkeypatch.setenv("SUVARNA_HOME", home)
+    monkeypatch.delenv("SUVARNA_EVENTS", raising=False)
+    rc = HG.main([])
+    assert rc == 2
+    assert "refusing under uncertainty" in capsys.readouterr().err
+    events = _events(os.path.join(home, "run", "EVENTS.jsonl"))
+    notes = [e for e in events if e["kind"] == "note" and e["actor"] == "hold-guard"]
+    assert len(notes) == 1 and "BLOCKED" in notes[0]["detail"]
+
+
+def test_main_empty_stdin_exits_2_while_hold_is_set(monkeypatch, tmp_path):
+    home = _set_hold(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    monkeypatch.setenv("SUVARNA_HOME", home)
+    monkeypatch.delenv("SUVARNA_EVENTS", raising=False)
+    assert HG.main([]) == 2
+
+
+def test_main_non_object_json_stdin_exits_2_while_hold_is_set(monkeypatch, tmp_path):
+    home = _set_hold(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(["not", "an", "object"])))
+    monkeypatch.setenv("SUVARNA_HOME", home)
+    monkeypatch.delenv("SUVARNA_EVENTS", raising=False)
+    assert HG.main([]) == 2
+
+
+def test_main_missing_tool_name_exits_2_while_hold_is_set(monkeypatch, tmp_path):
+    home = _set_hold(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"tool_input": {"command": "git status"}})))
+    monkeypatch.setenv("SUVARNA_HOME", home)
+    monkeypatch.delenv("SUVARNA_EVENTS", raising=False)
+    assert HG.main([]) == 2
 
 
 def test_main_never_crashes_when_events_log_unwritable(monkeypatch, tmp_path):
@@ -276,6 +362,31 @@ def test_wrapper_fails_closed_for_dispatch_like_bash_when_guard_cannot_load(tmp_
                      str(tmp_path), _BROKEN_PYTHONPATH)
     assert p.returncode == 2
     assert "failing closed" in p.stderr
+
+
+@pytest.mark.parametrize("marker", ["lane_launch", "claude -p", "codex exec", "kimi -p",
+                                    "python -m suvarna_tracker.lane_launch"])
+def test_wrapper_fails_closed_for_f4_added_dispatch_markers_when_guard_cannot_load(tmp_path, marker):
+    """F4 (independent review): the wrapper's own independent fallback classifier mirrors the same
+    extended marker list the real guard now uses — a broken PYTHONPATH must not narrow coverage."""
+    p = _run_wrapper({"tool_name": "Bash", "tool_input": {"command": f"some command with {marker} in it"}},
+                     str(tmp_path), _BROKEN_PYTHONPATH)
+    assert p.returncode == 2
+    assert "failing closed" in p.stderr
+
+
+@pytest.mark.parametrize("command", [
+    "rm /Users/Dev/suvarna/run/SUVARNA_HOLD",
+    "mv /Users/Dev/suvarna/run/SUVARNA_HOLD /tmp/gone",
+    "truncate -s 0 /Users/Dev/suvarna/run/SUVARNA_HOLD",
+    "echo x > /Users/Dev/suvarna/run/SUVARNA_HOLD",
+])
+def test_wrapper_refuses_hold_delete_when_guard_cannot_load(tmp_path, command):
+    """F4: the pre-fix wrapper fallback checked dispatch markers only — it never protected the hold
+    file itself when the real guard could not even load. Now it does, unconditionally."""
+    p = _run_wrapper({"tool_name": "Bash", "tool_input": {"command": command}}, str(tmp_path), _BROKEN_PYTHONPATH)
+    assert p.returncode == 2
+    assert "may only be removed by the native" in p.stderr
 
 
 def test_wrapper_allows_non_dispatch_bash_when_guard_cannot_load(tmp_path):
