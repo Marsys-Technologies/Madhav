@@ -328,9 +328,9 @@ Execution starts when the native approves this plan (N-1). Before that:
 | Permanent read-only database credential | native decided (N-20) | **done**: `~/.config/suvarna/pgenv.sh`, mode 600 |
 | Budget ceilings (N-15) | native | **decided: none**; spend is reported |
 | Two or three review passes of the plan set | Strategic Suvarṇa | after the documents |
-| Independent third-party review, findings folded | reviewer (GPT-6 Astra recommended) | after the review passes |
+| Independent third-party review, findings folded | GPT-6 Astra, extra-high effort (native, 2026-09-29) | after the review passes |
 
-- **The Nikaṣa Engine session may start before N-1** once its start prompt and the charter exist, if the native agrees: Track E is the longest stretch before the freeze and changes nothing another track depends on.
+- **No session starts before N-1** (native, 2026-09-29), including the Nikaṣa Engine session.
 
 ### 5.1 · Track E — the engine (session "Nikaṣa Engine")
 

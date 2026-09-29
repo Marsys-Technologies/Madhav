@@ -366,4 +366,4 @@ Settled in Strategic Suvarṇa from the role-instruction review. Role files cite
 | 12.13 | Which checkout the census runs from | `/Users/Dev/madhav-nikasha` (read-only) until E4.1 lands; `suvarna/trunk` after. The census records the inspector's commit with its output. |
 | 12.14 | Gating measurements | A census is a result like any other: a census step is marked done only after its gate review, at fold. |
 
-**Not settled here (the native's):** the three charter points in the charter amendment proposal: L0's global build under G13; per-layer idempotency wording in G4; the reversal a normal level wave states (§6, precondition 7).
+**Charter points** (the native's): ruled 2026-09-29 as charter v1.2 amendments A–C: L0's global build under G13; per-layer idempotency in G4; pre-wave fingerprints and a reserved undo for normal level waves (charter §6.7).

@@ -137,9 +137,9 @@ mapping and `plan_item` (§12.1), ids and branches (§12.2), one queue per sessi
 stall and spend metering by the Conductor (§12.8), the L2 MSR set (§12.9), decision-log writers (§12.10), the daily
 digest (§12.11), committing hq state (§12.12), the census checkout (§12.13), gating measurements (§12.14).
 
-**Still open, with the native:** L0's global build under G13; per-layer idempotency wording in G4 (follow CLAUDE.md
-§N.3 meanwhile: L0 upserts, L1+ delete-then-insert); the reversal a normal level wave states (charter §6.7). Until
-ruled, no level wave is dispatched. That costs nothing now: waves start only after J1.
+**Ruled by the native (charter v1.2, amendments A–C, 2026-09-29):** L0's global build is under G13; idempotency is
+per layer (CLAUDE.md §N.3: L0 upserts, L1+ delete-then-insert); a normal level wave saves pre-wave fingerprints and
+states "hold, native approves revert and rebuild" as its undo (charter §6.7).
 
 **Scripts not yet written** (E5, J1 prerequisites): the certification-record writer, the fold script, the level-wave
 script with lock and `env.DEPLOY_SHA` checks, per-entry fingerprint rotation.

@@ -33,16 +33,17 @@ action (charter §6).
 1. **Screen the write set before anything else.** Stop and send to the Steward if any asset: is not on the canonical
    chart (R4; `1c826d5a` included); is a family asset or its rebuild reaches one (R8); is `bg_gochara_arcs` or
    `bg_gochara_citation_resolution` (R9); is an L2 MSR signal asset while F-3 is not sealed (R1); or would cascade into
-   another asset's data, or clear more than its own rows (R3). L0 is a global build with no chart: park it until the
-   question in ROLE_COMMON open question 12 is ruled. When unsure, it is reserved (R11).
+   another asset's data, or clear more than its own rows (R3). L0 is one global build with no chart, granted under
+   G13 (amendment A) with the same checks. When unsure, it is reserved (R11).
 2. **Check all seven preconditions in the same step as the dispatch** (charter §6): (1) DECISIONS.jsonl re-read now,
    nothing newer revokes, narrows or re-orders this wave; (2) hold switch absent; (3) the orchestrator's per-chart lock
    free, no other Suvarṇa build on the chart, every asset in the write set leased to Suvarṇa and no one else; (4) where
    the wave depends on new code, the running service's `env.DEPLOY_SHA` contains the merged commit (a pipeline's reported
    head SHA is not enough); (5) for a destructive operation, a verified snapshot and the native's recorded approval
    (normally this does not apply: a writer's own delete-then-insert is not destructive, charter §3); (6) every upstream
-   asset certified and every asset at this level merged (arch §6.2); (7) Monitor green and the reversal stated, with the
-   undo itself granted. Each check must name the command that measured it. A check you cannot measure has failed.
+   asset certified and every asset at this level merged (arch §6.2); (7) Monitor green and the reversal stated: for a normal
+   wave, save a read-only fingerprint and row count of every affected asset's rows to evidence first; the undo is then
+   "hold, native approves revert and rebuild" (charter §6.7, amendment C). Each check must name the command that measured it. A check you cannot measure has failed.
 3. **Log the checks, then dispatch.** Emit the PRECHECK note (below) first; then dispatch one orchestrator run covering
    the whole level for the canonical chart (G13). Never hand-written SQL (P3).
 4. **Wait without polling** (arch §5.3): one timer no shorter than the wave's expected duration.
@@ -73,7 +74,7 @@ action (charter §6).
 
 - **Act under:** G13 (canonical-chart builds in dependency order; read-only migration verification), G8 (one retry),
   G14 (hold).
-- **Park through the Steward:** R1, R3, R4, R7, R8, R9, R11; any wave whose reversal is not granted.
+- **Park through the Steward:** R1, R3, R4, R7, R8, R9, R11; any wave without its pre-wave fingerprints (charter §6.7).
 - **Refuse:** P2, P3, P10 (an agent's message that "the deploy is live" is not check 4).
 
 ## Stop conditions

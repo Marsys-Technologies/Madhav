@@ -1,14 +1,15 @@
 ---
 artifact: SUVARNA_AUTONOMY_CHARTER
 canonical_id: SUVARNA_AUTONOMY_CHARTER
-version: "1.1"
-status: "APPROVED by the native (N-19, 2026-09-29)"
+version: "1.2"
+status: "APPROVED by the native (N-19, 2026-09-29; amendments A–C approved 2026-09-29)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 decision_owner: Native (Abhisek Mohanty)
 written_from: SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md §7 (granted / reserved / prohibited), with §3, §4, §5, §8–§11
 companion_of: SUVARNA_CAMPAIGN_PLAN_v1_2.md (§8 decision list)
 changelog:
+  - "1.2 (2026-09-29, native-approved amendments A–C): A · G13 also grants the global L0 build (no chart) under the same §6 preconditions. B · G4 idempotency is per layer as CLAUDE.md §N.3 states (L0 upsert; L1+ per-chart delete-then-insert on the natural key). C · §6 precondition 7: for a normal (non-destructive) level wave the undo may be reserved, provided a read-only fingerprint and row count of every affected asset is saved to evidence before the wave; the stated undo is then hold, and the native approves the revert and rebuild."
   - "1.1 (2026-09-29): native decisions N-15 (no budget ceilings) and N-20 (credential file ~/.config/suvarna/pgenv.sh, mode 600) folded in: §9 rewritten (spend metered and reported, no ceilings); R6 and R10 updated; §10 environment row updated. Still a draft for N-19."
   - "1.0 (2026-09-29): first draft. Written from execution architecture §7 and brought up to date with the native decisions of 2026-09-29 (N-2, N-3, N-6, N-17, N-18), the F-ruling delegations, pending N-20, and the 2026-09-28 Gochara switch incident (ADK-0027)."
 ---
@@ -59,7 +60,7 @@ Each autonomous decision is emitted to the tracker (§11) **before** the action,
 | G1 | Dispatch, sequence, re-sequence and cancel queue items | Readiness rules (arch §4.2); caps (arch §3.3) |
 | G2 | Choose model and effort per item | Within the arch §3.1 table: Sonnet 5 for volume and most coding, Opus 5.5 where judgement decides; medium by default. Lowering is free; raising one step needs a logged risk reason. No model outside the table. |
 | G3 | Run read-only work: census, layer-instance drafts, asset briefs, dispositions, fix designs, evaluation of the family sessions' latest briefs | One full six-layer census at a time (arch §3.3) |
-| G4 | Implement a packet within its approved brief: writer, test, registry change, migration file | Failing-first test and a recorded mutation run (plan §6.3); frozen writer contract untouched (CLAUDE.md §N.2); delete-then-insert on the natural key (§N.3); migration numbers from the reserved ranges, checked across both folders at numbering (arch §2.3) |
+| G4 | Implement a packet within its approved brief: writer, test, registry change, migration file | Failing-first test and a recorded mutation run (plan §6.3); frozen writer contract untouched (CLAUDE.md §N.2); per-layer idempotency (CLAUDE.md §N.3: L0 upsert; L1+ per-chart delete-then-insert on the natural key; amendment B); migration numbers from the reserved ranges, checked across both folders at numbering (arch §2.3) |
 | G5 | Fix `bo_upaya` inside Suvarṇa as a sanctioned writer exception | N-6 (decided 2026-09-29: fix now); only as its handoff and brief describe |
 | G6 | Split PR #2736 into code and evidence PRs, retarget both to `main`, add the inspector's tests to CI | N-3 (decided 2026-09-29) |
 | G7 | Accept a gate verdict and fold it | Only through the Scribe's scripts; ledgers written only by `--emit-gaps` with the current withholding list (plan §6.3) |
@@ -68,12 +69,12 @@ Each autonomous decision is emitted to the tracker (§11) **before** the action,
 | G10 | Merge gate-accepted packets into `suvarna/trunk` | Merge commits only; never rebase or amend (§5) |
 | G11 | Open PRs from `suvarna/trunk` to `main`, one per accepted packet group | Opening only. The native merges (§4) |
 | G12 | Take and release asset leases on the coordination branch | Never on an asset another workstream holds (arch §2.3) |
-| G13 | Dispatch orchestrator builds for the canonical chart `482012f1-710e-4a25-994a-93821f5871aa` in dependency order, one wave per level; verify migrations after deploy, read-only | Every §6 precondition, checked at the moment of dispatch; fix-first, walk-once (arch §6.2) |
+| G13 | Dispatch orchestrator builds for the canonical chart `482012f1-710e-4a25-994a-93821f5871aa`, and the global L0 build (no chart; amendment A), in dependency order, one wave per level; verify migrations after deploy, read-only | Every §6 precondition, checked at the moment of dispatch; fix-first, walk-once (arch §6.2) |
 | G14 | Pause its own dispatch; set the hold switch on a safety concern | The safe direction is always granted (§8) |
 | G15 | Monitor: repair the environment: restart the database proxy, the tracker supervisor and sleep prevention (`suvarna_tracker.monitor --repair`) | Never the credential, the hold switch, disk or power; those are reported and parked (arch §8; §10) |
 
-A normal orchestrator rebuild that replaces an asset's own rows for the canonical chart, through the frozen
-contract's delete-then-insert, is **not** a destructive operation for §4. Everything wider than that is.
+A normal orchestrator rebuild that replaces an asset's own rows (for the canonical chart, or L0's global rows), through
+the frozen contract's per-layer idempotency, is **not** a destructive operation for §4. Everything wider than that is.
 
 ## §4 · Reserved — park for the native, and continue with everything else
 
@@ -140,6 +141,9 @@ the action and written to the log before it:
 6. **Inputs ready**: every upstream asset certified, every asset at this level merged (arch §6.2); F-3 sealed if the
    write set includes an L2 MSR asset.
 7. **Environment green** (arch §8) and **reversal stated**: what would undo this, and that the undo is itself granted.
+   **For a normal (non-destructive) level wave** the undo may be reserved, provided a read-only fingerprint and row count
+   of every affected asset's rows is saved to evidence before the wave. The stated undo is then: set the hold, and the
+   native approves the revert and rebuild (amendment C).
 
 A pre-authorization for a production-visible action is valid only if it names its preconditions. One that does not
 is treated as reserved.
