@@ -87,8 +87,8 @@ within 45 d" formulations are withdrawn):
 
 1. **T-cover:** of the 46 held-out events, the fraction with at least one admitted window of the
    event's class containing the event's date (month-grain: month; year-grain: year; interval:
-   overlap) must be **≥ the v2.0 re-run figure of '3.0' on this identical registry** (value
-   printed in BASELINE_3_0_v2_0.md once computed — the bar equals the served floor), and every
+   overlap) must be **≥ 31/46** — the v2.0 re-run figure of '3.0' on this identical registry
+   (BASELINE_3_0_v2_0.md; the bar equals the served floor), and every
    miss must be named. Same tier policy for hits and for the burden below: an event either has
    a containing window or it does not, under one definition used identically everywhere
    (Kimi Q-M3).
