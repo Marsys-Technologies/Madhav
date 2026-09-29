@@ -38,10 +38,15 @@
  * (karaka-gender-neutrality, bhanga-unbuilt honesty, verdict-is-not-a-calibrated-posterior).
  *
  * WHAT THIS INSTRUMENT DOES NOT DO (honest gaps, not silently invented — B.10):
- *   - "notably-absent" yogas / bhanga (cancellation) checking needs the D3 "near-miss band"
- *     design §12 names as a FUTURE data-plane addition (a small stored column at L2 regen).
- *     That column does not exist yet on any canonical chart. `bhanga_checked` in the receipt
- *     is honestly `false` with a note, never fabricated.
+ *   - "notably-absent" yogas: FORMATION-GAP (near-miss) detection is NOT claimed (packet v1.2,
+ *     OSR-015: the dusthana gate is not a formation condition in BPHS Ch.41). Wealth reads the
+ *     SERVE-TIME formation band (NMB-CAND-v1): the python sidecar route yoga_formation_band
+ *     reports present / absent / indeterminate for a closed wealth-yoga candidate set from the
+ *     served generation's L1 facts + ga_yoga_firings, so `notably_absent_yogas` is an empty array
+ *     by design, served with band_coverage. Nothing is stored. Fenced to the served generation of
+ *     ga_yoga + ga_positions; an unproven source -- or any indeterminate candidate -- is
+ *     `source_unproven`, never a settled empty finding. Bhanga (cancellation) on fired yogas is
+ *     consulted from ga_yoga_firings.bhanga_active (A3/R-3).
  *   - The `verdict` is a DETERMINISTIC weighted aggregation of already-computed dignity/
  *     strength/aspect/vargottama signals — never an LLM synthesis, never a probability. Its
  *     epistemic grade is capped at `structural_prior`; `calibrated_posterior` is reserved for
@@ -91,6 +96,7 @@ import {
   fetchTajakaSourceFence,
   fetchWealthTajaka,
   fetchWealthReadingSourceFence,
+  fetchNotablyAbsentYogas,
   vargaConfirmedMark,
   JUDGMENT_READING_CHECKLIST_V2_CONTRACT,
   type ChecklistUnit,
@@ -1003,7 +1009,17 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         ? await fetchWealthTajaka(chart_id, ayanamsha_id, build_ids, as_of_date)
         : null
 
-      // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
+      // NMB-CAND-v1 (OSR-012 / OSR-015): the serve-time wealth-yoga formation band (present / absent /
+      // indeterminate; NO near_miss), fenced to the served generation of ga_yoga + ga_positions (NOT
+      // the five-producer wealth fence, and not bo_laksana: nothing is stored). The band is a
+      // wealth-yoga set; other domains are reported `not_joined` so an unchecked domain is never read
+      // as "no yoga nearly formed".
+      const notablyAbsent = spec.signal_domain === 'wealth'
+        ? await fetchNotablyAbsentYogas(chart_id, ayanamsha_id, generation)
+        : null
+      for (const factId of notablyAbsent?.fact_ids ?? []) fact_ids.add(factId)
+
+      // ── Step 7: bearing yogas/doshas (formed) — the formation band (no near-miss) is served for wealth ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
       // bhaṅga/cancellation state), not the MSR yoga signal projection — see the YOGA_* constants'
       // comment above for the full rationale. `domainActors` is the SAME actor set (bhāveśa +
@@ -1123,15 +1139,26 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       }
       // A3/R-3: bhaṅga (cancellation) state on a FIRED, formed yoga is now consulted directly
       // (see the ga_yoga_firings mapping above — bhanga_active discounts a firing's contribution
-      // to yogaTerm). What remains unbuilt is "notably-absent" near-miss detection — a yoga that
-      // did NOT fire but came close — a distinct, still-absent data-plane addition (design §12 D3).
-      judgment_flags.push(judgmentFlag(
-        'notably_absent_not_checked',
-        'near-miss ("almost formed but for one leg") yoga detection ' +
-        'requires a data-plane addition (design §12 D3) not yet built for any chart — reported ' +
-        'honestly, not fabricated. Bhaṅga (cancellation) state on FIRED yogas IS consulted above ' +
-        '(ga_yoga_firings.bhanga_active discounts a firing\'s verdict contribution, A3/R-3).',
-      ))
+      // to yogaTerm). "Notably-absent" near-miss detection — a yoga that did NOT fire but came
+      // close — is NOT claimed (packet v1.2): the formation band fetched above (wealth only)
+      // reports present / absent / indeterminate and never a formation gap.
+      // NMB-CAND-v1: the flag is RETIRED whenever the band was fully proven and determinate. It
+      // remains for every case where the band was NOT settled: a non-wealth domain (the band covers
+      // the closed wealth-yoga set only), a wealth read whose source is unproven, or any
+      // indeterminate candidate (`band_indeterminate`).
+      if (!notablyAbsent || notablyAbsent.state === 'source_unproven') {
+        judgment_flags.push(judgmentFlag(
+          'notably_absent_not_checked',
+          notablyAbsent
+            ? `near-miss yoga band (${notablyAbsent.candidate_set_version}) not served: source unproven ` +
+              `(${notablyAbsent.reason}) — this is NOT a finding that no yoga is nearly formed, and formation-gap ` +
+              'detection is not claimed. Bhaṅga ' +
+              '(cancellation) on FIRED yogas IS consulted above (ga_yoga_firings.bhanga_active, A3/R-3).'
+            : 'near-miss yoga detection covers only the closed wealth-yoga candidate set (NMB-CAND-v1); ' +
+              'this domain is not joined — reported honestly, not fabricated. Bhaṅga (cancellation) on ' +
+              'FIRED yogas IS consulted above (ga_yoga_firings.bhanga_active, A3/R-3).',
+        ))
+      }
 
       // ── Step 9: timing hooks (reuses get_dashas — no parallel dasha query) ──
       // CR-1/R-39/T-3: as_of_date (default today) now drives the "current" fetch instead
@@ -1401,9 +1428,9 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         yogas_checked: yogasChecked,
         // A3/R-3: bhaṅga (cancellation) state on FIRED yogas is now consulted (ga_yoga_firings.
         // bhanga_active discounts a firing's contribution to verdict.yoga_term — see Step 7 above).
-        // Distinct from "notably-absent" near-miss detection, which remains unbuilt (see the
-        // notably_absent_not_checked judgment_flag) — bhanga_checked is honestly true, not blanket
-        // false, now that it genuinely feeds the composite.
+        // Distinct from "notably-absent" near-miss detection (NOT claimed; the wealth formation
+        // band reports present/absent/indeterminate only; see notably_absent_yogas / the notably_absent_not_checked judgment_flag) —
+        // bhanga_checked is honestly true, not blanket false, now that it genuinely feeds the composite.
         bhanga_checked: true,
         timing_anchored: timingAnchored,
       }
@@ -1709,8 +1736,14 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         },
         {
           unit: 'notably_absent_yogas',
-          state: 'not_computed',
-          detail: 'near-miss yoga detection is not built; bhaṅga on fired yogas is distinct and already handled above',
+          state: notablyAbsent ? notablyAbsent.state : 'not_joined',
+          count: notablyAbsent?.notably_absent_yogas.length ?? 0,
+          detail: notablyAbsent
+            ? (notablyAbsent.state === 'source_unproven'
+              ? `yoga formation band (${notablyAbsent.candidate_set_version}) unproven: ${notablyAbsent.reason}; an unproven or indeterminate band is not an empty finding`
+              : `${notablyAbsent.candidate_set_version} serve-time formation band, present/absent/indeterminate only: formation-gap detection is not claimed, so an empty array is not a finding that no yoga is nearly formed; band_coverage carries the counts`)
+            : 'near-miss detection covers the closed wealth-yoga candidate set (NMB-CAND-v1) only; bhaṅga on fired yogas is distinct and already handled above',
+          drill: 'ganita_yoga_firings_get',
         },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
         { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, canonical domain='${spec.signal_domain}'${domain_resolution.is_exact ? '' : ` (requested '${requestedDomainKey ?? `bhāva ${spec.bhava}`}' — see domain_resolution, F-57)`} (MC-033)` },
@@ -1829,6 +1862,38 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             // leg reads as "this store covers N of 13 canonical domains and not this one" when
             // that is the truth, never as a clean-chart finding (§N.8).
             affliction_mechanisms_coverage,
+            // NMB-CAND-v1 (OSR-012 / OSR-015): ALWAYS an empty array -- near_miss is not a v1 state and
+            // formation-gap detection is not claimed. The candidate statuses (present / absent /
+            // indeterminate; overlapping, never summable), band_coverage, indeterminate candidates and
+            // ayanamsha sensitivity travel in the band block so the empty array is never the only
+            // signal: read the unit state (empty_for_this_chart / source_unproven / not_joined) with it.
+            notably_absent_yogas: notablyAbsent?.notably_absent_yogas ?? [],
+            notably_absent_yogas_band: notablyAbsent
+              ? {
+                state: notablyAbsent.state,
+                reason: notablyAbsent.reason,
+                band_coverage: notablyAbsent.band_coverage,
+                near_miss_capable_candidates: notablyAbsent.near_miss_capable_candidates,
+                formation_gap_detection: notablyAbsent.formation_gap_detection,
+                note: notablyAbsent.note,
+                overlap_note: notablyAbsent.overlap_note,
+                overlaps: notablyAbsent.overlaps,
+                classical_sources: notablyAbsent.classical_sources,
+                candidate_statuses: notablyAbsent.candidate_statuses,
+                indeterminate: notablyAbsent.indeterminate,
+                ayanamsha_id,
+                ayanamsha_sensitive: notablyAbsent.ayanamsha_sensitive,
+                ayanamsha_sensitive_by_candidate: notablyAbsent.ayanamsha_sensitive_by_candidate,
+                ayanamsha_sensitive_candidates: notablyAbsent.ayanamsha_sensitive_candidates,
+                ayanamsha_unchecked: notablyAbsent.ayanamsha_unchecked,
+                ayanamsha_sensitivity_note: notablyAbsent.ayanamsha_sensitivity_note,
+                candidate_set_version: notablyAbsent.candidate_set_version,
+                eligibility_rule_version: notablyAbsent.eligibility_rule_version,
+                band_version: notablyAbsent.band_version,
+                served_build_ids: notablyAbsent.served_build_ids,
+                scope: 'D1 rashi, whole-sign houses from lagna, no Chandra/Surya frame, no varga; tolerance none; present is decided only by L1 ga_yoga_firings; no formation-gap (near-miss) state',
+              }
+              : null,
             timing_hooks: timing,
             // T5 (PŪRTI): the three computed-but-never-joined classical legs, now served inline.
             sensitive_degree_firings: sensitive.firings,
