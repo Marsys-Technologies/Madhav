@@ -2,7 +2,8 @@
 
 Spec: 00_ARCHITECTURE/briefs/nirmana/purna_acceptance/
 NEAR_MISS_DOMAIN_PACKET_v1_0.md (OSR-009) as amended by
-NEAR_MISS_DOMAIN_PACKET_v1_1.md (OSR-012, section 7).
+NEAR_MISS_DOMAIN_PACKET_v1_1.md (OSR-012, section 7) and narrowed by
+NEAR_MISS_DOMAIN_PACKET_v1_2.md (OSR-015): `near_miss` is NOT a v1 state.
 
 Fake-connection tests: chart fixtures are real-shaped `chart_facts` rows
 evaluated through the REAL `ChartState` / `_check_house_lord_association` /
@@ -114,8 +115,17 @@ class FakeConn:
         raise AssertionError(f"unexpected SQL: {sql}")
 
 
-def run(facts, firings=None, **kw):
-    conn = FakeConn(facts, firings, **kw)
+# ga_yoga writes one row per FIRED yoga, so "L1 ran for this build" is proven by ANY
+# firing row of the served build. `l1_seen=True` adds one unrelated row; the
+# zero-row tests pass `l1_seen=False`.
+OTHER_ROW = {"kemadruma_yoga": {"fired": True}}
+
+
+def run(facts, firings=None, l1_seen=True, **kw):
+    merged = dict(firings or {})
+    if l1_seen:
+        merged.update(OTHER_ROW)
+    conn = FakeConn(facts, merged, **kw)
     return band.build_yoga_band(conn, CHART, AYA, BUILDS)
 
 
@@ -143,7 +153,9 @@ def scenario_present():
     return facts, firings
 
 
-def scenario_near_miss():
+def scenario_dusthana_association():
+    """(2,11) lords associate in house 8. The shipped detector does not fire; v1.2
+    removed the dusthana gate as a formation condition, so this is plain `absent`."""
     facts = make_facts()  # BASE: only (2,11) associates, in house 8 (dusthana)
     assert assoc_pairs(facts) == [(2, 11), (11, 2)]
     assert _detect_dhana_yoga_house_lords(ChartState(facts), {}) is None
@@ -168,19 +180,46 @@ def test_present_state_from_l1_firing_and_evaluator():
     assert rows["dhana_yoga_2_11"]["state"] == band.STATE_PRESENT
 
 
-def test_near_miss_gate_only_failure_with_contradicting_sibling():
-    facts, firings = scenario_near_miss()
+def test_dusthana_association_is_absent_never_near_miss():
+    facts, firings = scenario_dusthana_association()
     rows = by_id(run(facts, firings))
     gated = rows["dhana_yoga_house_lords"]
-    assert gated["state"] == band.STATE_NEAR_MISS
-    assert gated["reason"] == "gate_only_failure:association_in_dusthana"
+    assert gated["state"] == band.STATE_ABSENT
+    assert gated["reason"] == "no_formation"
+    assert gated["l1_firing_ids"] == []
+    assert all(l["leg"] == "lords_associate" for l in gated["legs"]), "no dusthana leg is exposed"
+    assert rows["dhana_yoga_2_11"]["state"] == band.STATE_PRESENT
+    # the present overlapping siblings are recorded on the non-present family row
     assert "dhana_yoga_2_11" in gated["contradicting_present_siblings"]
     assert "dhana_yoga_2_5_9_11" in gated["contradicting_present_siblings"]
-    assert gated["l1_firing_ids"] == []
-    legs = {(tuple(l["houses_ruled"]), l["leg"]): l["met"] for l in gated["legs"]}
-    assert legs[((2, 11), "lords_associate")] is True
-    assert legs[((2, 11), "association_not_in_dusthana")] is False
-    assert rows["dhana_yoga_2_11"]["state"] == band.STATE_PRESENT
+
+
+def test_no_row_ever_has_state_near_miss_and_near_miss_is_not_a_state():
+    assert not hasattr(band, "STATE_NEAR_MISS")
+    assert "near_miss" not in band.BAND_STATES
+    for scen in (scenario_present, scenario_dusthana_association, scenario_absent):
+        facts, firings = scen()
+        resp = run(facts, firings)
+        assert resp["near_miss_capable_candidates"] == 0
+        assert resp["band_coverage"]["near_miss"] == 0
+        assert sum(resp["band_coverage"][k] for k in ("present", "absent", "indeterminate")) == 6
+        for c in resp["candidates"]:
+            assert c["state"] != "near_miss"
+            assert "near_miss_capable" not in c
+            assert all("gate_failed" not in p for p in c["pairs"])
+
+
+def test_association_missing_is_absent():
+    facts, firings = scenario_absent()
+    gated = by_id(run(facts, firings))["dhana_yoga_house_lords"]
+    assert gated["state"] == band.STATE_ABSENT and gated["reason"] == "no_pair_associated"
+
+
+def test_route_source_has_no_dead_near_miss_branch():
+    src = (SIDECAR / "routers" / "yoga_formation_band.py").read_text()
+    body = src.split('"""', 2)[2]  # drop the module docstring
+    for dead in ("STATE_NEAR_MISS", "gate_failed", "DUSTHANAS", "near_miss_capable=", "gate_only_failure"):
+        assert dead not in body, dead
 
 
 def test_absent_state_no_association():
@@ -217,6 +256,33 @@ def test_indeterminate_on_l1_evaluator_disagreement_l1_only(caplog):
     assert "l1_evaluator_disagreement" in caplog.text  # logged, not fatal
 
 
+def test_zero_l1_firing_rows_makes_candidates_indeterminate_not_absent():
+    facts, _ = scenario_absent()
+    resp = run(facts, {}, l1_seen=False)
+    assert resp["ledger"]["l1_firing_rows_seen"] == 0
+    for c in resp["candidates"]:
+        assert c["state"] == band.STATE_INDETERMINATE, c["candidate_id"]
+        assert c["reason"] == "no_l1_firing_rows_seen"
+    assert resp["band_coverage"] == {"present": 0, "near_miss": 0, "absent": 0, "indeterminate": 6}
+
+
+def test_zero_l1_rows_reason_wins_over_disagreement_but_not_over_missing_input():
+    facts, _ = scenario_present()  # evaluator fires; no L1 rows at all
+    for c in run(facts, {}, l1_seen=False)["candidates"]:
+        if c["state"] == band.STATE_INDETERMINATE:
+            assert c["reason"] == "no_l1_firing_rows_seen"
+    gone = make_facts(drop={("VEN", "sign"), ("VEN", "house_d1")})
+    gated = by_id(run(gone, {}, l1_seen=False))["dhana_yoga_house_lords"]
+    assert gated["reason"].startswith("missing_input:")
+
+
+def test_any_l1_row_of_the_served_build_proves_ga_yoga_ran():
+    facts, _ = scenario_absent()
+    resp = run(facts, {}, l1_seen=True)  # only an unrelated yoga row exists
+    assert resp["ledger"]["l1_firing_rows_seen"] == 1
+    assert {c["state"] for c in resp["candidates"]} == {band.STATE_ABSENT}
+
+
 def test_indeterminate_on_l1_evaluator_disagreement_evaluator_only():
     facts, _ = scenario_present()
     gated = by_id(run(facts, {}))["dhana_yoga_house_lords"]  # evaluator fires; L1 has no row
@@ -224,37 +290,33 @@ def test_indeterminate_on_l1_evaluator_disagreement_evaluator_only():
     assert gated["disagreement"] == {"l1_fired": False, "evaluator_fired": True}
 
 
-def test_all_four_states_are_representable():
+def test_all_three_states_are_representable():
     states = set()
-    for scen in (scenario_present, scenario_near_miss, scenario_absent):
+    for scen in (scenario_present, scenario_dusthana_association, scenario_absent):
         facts, firings = scen()
         states |= {c["state"] for c in run(facts, firings)["candidates"]}
     states |= {c["state"] for c in run([], {})["candidates"]}
-    assert states == set(band.BAND_STATES)
+    assert states == set(band.BAND_STATES) == {"present", "absent", "indeterminate"}
 
 
 # ── Negative controls ────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("scenario", [scenario_present, scenario_near_miss, scenario_absent])
-def test_single_leg_candidates_are_never_near_miss(scenario):
+@pytest.mark.parametrize("scenario", [scenario_present, scenario_dusthana_association, scenario_absent])
+def test_single_leg_candidates_have_only_the_association_leg(scenario):
     facts, firings = scenario()
     rows = by_id(run(facts, firings))
-    for cid in band.SIBLING_IDS:
-        assert rows[cid]["state"] != band.STATE_NEAR_MISS, cid
-        assert rows[cid]["near_miss_capable"] is False
+    for cid in band.CANDIDATE_IDS:
+        assert rows[cid]["state"] != "near_miss", cid
         assert all(l["leg"] == "lords_associate" for l in rows[cid]["legs"])
 
 
-def test_same_lord_pair_never_near_miss():
+def test_same_lord_pair_is_never_associated():
     # Leo lagna: h2 Virgo and h11 Gemini are both ruled by Mercury -> same-lord (2,11) pair.
     facts = make_facts(lagna="leo", place=dict(BASE, MER="scorpio"))
     assert _lord_of_house(ChartState(facts), 2) == _lord_of_house(ChartState(facts), 11) == "mercury"
     gated = by_id(run(facts, {}))["dhana_yoga_house_lords"]
     pair = next(p for p in gated["pairs"] if p["houses_ruled"] == [2, 11])
-    assert pair["associated"] is False and pair["gate_failed"] is False and pair["evaluable"] is True
-    assert not any(
-        p["associated"] and p["gate_failed"] for p in gated["pairs"] if p["houses_ruled"] in ([2, 11], [11, 2])
-    )
+    assert pair["associated"] is False and pair["evaluable"] is True
 
 
 def test_bhanga_active_firing_stays_present_and_is_carried():
@@ -266,7 +328,7 @@ def test_bhanga_active_firing_stays_present_and_is_carried():
 
 
 def test_exactly_six_ids_in_candidate_order_and_versions():
-    facts, firings = scenario_near_miss()
+    facts, firings = scenario_dusthana_association()
     resp = run(facts, firings)
     assert [c["candidate_id"] for c in resp["candidates"]] == [
         "dhana_yoga_house_lords", "dhana_yoga_2_11", "dhana_yoga_5_9",
@@ -285,7 +347,7 @@ def test_excluded_yogas_are_not_candidates():
 
 
 def test_response_ledger_shape():
-    facts, firings = scenario_near_miss()
+    facts, firings = scenario_dusthana_association()
     resp = run(facts, firings)
     all_ids = {f["fact_id"] for f in facts}
     assert resp["scope"]["frame"] == "D1_rashi" and resp["scope"]["ayanamsha_id"] == AYA
@@ -303,10 +365,10 @@ def test_response_ledger_shape():
 
 
 def test_missing_catalog_degrades_honestly():
-    facts, firings = scenario_near_miss()
+    facts, firings = scenario_dusthana_association()
     c = by_id(run(facts, firings, catalog={}))["dhana_yoga_house_lords"]
     assert c["yoga_name"] is None and c["formation_text"] is None and c["classical_citations"] == []
-    assert c["state"] == band.STATE_NEAR_MISS
+    assert c["state"] == band.STATE_ABSENT
 
 
 def test_ambiguous_fact_values_are_dropped_and_reported_not_guessed():
@@ -357,9 +419,7 @@ def test_present_equals_detector_on_every_fixture_and_never_disagrees():
             assert gated["state"] != band.STATE_INDETERMINATE, (lagna, place)
             for c in run(facts, firings)["candidates"]:
                 seen_states.add(c["state"])
-                if c["state"] == band.STATE_NEAR_MISS:
-                    assert c["candidate_id"] == band.GATED_CANDIDATE and not detector_fires
-    assert {band.STATE_PRESENT, band.STATE_ABSENT, band.STATE_NEAR_MISS} <= seen_states
+    assert seen_states == {band.STATE_PRESENT, band.STATE_ABSENT}
 
 
 def test_sibling_present_equals_l1_relation_evaluator_on_every_fixture():
@@ -388,7 +448,7 @@ def test_candidate_pairs_come_from_the_shipped_tables():
 # ── Data access: fenced, pinned, ordered, read-only ──────────────────────────
 
 def test_every_read_is_build_fenced_and_facts_are_pinned_with_total_order():
-    facts, firings = scenario_near_miss()
+    facts, firings = scenario_dusthana_association()
     conn = FakeConn(facts, firings)
     band.build_yoga_band(conn, CHART, AYA, BUILDS)
     fenced = [(s, p) for s, p in conn.calls if "FROM chart_facts" in s or "FROM ga_yoga_firings" in s]
@@ -441,6 +501,117 @@ def test_no_registered_writer_closure_includes_the_route():
         assert "yoga_formation_band" not in py.read_text(encoding="utf-8"), py
 
 
+# ── v1.2 amendments: overlaps, source honesty, timeout ──────────────────────
+
+def test_rows_are_overlapping_statuses_not_a_yoga_count():
+    facts, firings = scenario_present()
+    resp = run(facts, firings)
+    assert resp["overlap_note"].startswith("Candidate rows are overlapping statuses")
+    assert "yoga count" in resp["overlap_note"]
+    ov = resp["overlaps"]
+    assert set(ov) == set(band.CANDIDATE_IDS)
+    # subsumption per packet v1.2 section 2
+    assert {"dhana_yoga_2_11", "dhana_yoga_5_9", "dhana_yoga_9_11"} <= set(ov["dhana_yoga_2_5_9_11"])
+    assert set(ov["dhana_yoga_house_lords"]) == set(band.SIBLING_IDS)  # overlaps all of them
+    assert "dhana_yoga_2_5_9_11" in ov["dhana_yoga_2_11"]
+    assert "dhana_yoga_lagna_2" not in ov["dhana_yoga_2_5_9_11"]  # (1,2) is not among 2/5/9/11
+    for c in resp["candidates"]:
+        assert c["overlaps"] == ov[c["candidate_id"]]
+        assert c["candidate_id"] not in c["overlaps"]
+        assert set(c["contradicting_present_siblings"]) <= set(c["overlaps"])
+        if c["state"] == band.STATE_PRESENT:
+            assert c["contradicting_present_siblings"] == []
+
+
+def test_source_citation_honesty_only_5th_9th_is_directly_in_ch41():
+    facts, firings = scenario_present()
+    resp = run(facts, firings)
+    src = resp["classical_sources"]
+    assert src["catalog_citation_carries_verse"] is False
+    assert src["directly_in_bphs_ch41_sloka_16"] == ["dhana_yoga_5_9"]
+    assert "general Parashari sambandha" in src["note"]
+    assert "Ch.41 sloka 16" in src["note"]
+    for c in resp["candidates"]:
+        basis = c["source_basis"]
+        assert basis["directly_in_bphs_ch41"] is (c["candidate_id"] == "dhana_yoga_5_9")
+        assert basis["verse"] == ("BPHS Ch.41 sloka 16 (5th and 9th lords)" if c["candidate_id"] == "dhana_yoga_5_9" else None)
+        if c["candidate_id"] != "dhana_yoga_5_9":
+            assert "general Parashari sambandha" in basis["basis"]
+        assert c["citation_carries_verse"] is False
+
+
+def test_route_connection_sets_statement_timeout_and_read_only(monkeypatch):
+    seen = {}
+
+    class C:
+        read_only = False
+
+    def fake_connect(url, **kw):
+        seen["url"], seen["kw"] = url, kw
+        return C()
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x/y")
+    monkeypatch.setattr(band.psycopg, "connect", fake_connect)
+    conn = band._connect()
+    assert conn.read_only is True
+    assert "statement_timeout=" in seen["kw"].get("options", "")
+    ms = int(seen["kw"]["options"].split("statement_timeout=")[1].split()[0])
+    assert 0 < ms <= 15000
+    assert seen["kw"].get("connect_timeout")
+
+
+# ── D: domain pins (BPHS lordship + Parashari aspects as the L1 detector codes them) ──
+
+def test_lordship_uses_only_the_seven_parashari_planets():
+    from ga_writers.ga_yoga_writer import NB_SIGN_LORDS
+    assert set(NB_SIGN_LORDS) == set(SIGNS)
+    assert set(NB_SIGN_LORDS.values()) == {"sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn"}
+    assert not {"rahu", "ketu"} & set(NB_SIGN_LORDS.values())
+    for sign, lord in {"aries": "mars", "scorpio": "mars", "aquarius": "saturn", "capricorn": "saturn",
+                       "pisces": "jupiter", "sagittarius": "jupiter", "cancer": "moon", "leo": "sun"}.items():
+        assert NB_SIGN_LORDS[sign] == lord  # no co-lordship for Scorpio/Aquarius
+    for lagna in SIGNS:
+        st = ChartState(make_facts(lagna=lagna))
+        for h in range(1, 13):
+            assert _lord_of_house(st, h) in NB_SIGN_LORDS.values()
+
+
+def test_special_aspects_are_the_classical_parashari_set():
+    from ga_writers.ga_yoga_writer import _nb_aspects_house
+    expect = {"mars": {4, 7, 8}, "jupiter": {5, 7, 9}, "saturn": {3, 7, 10},
+              "sun": {7}, "moon": {7}, "mercury": {7}, "venus": {7}}
+    for planet, offsets in expect.items():
+        got = {t for t in range(1, 13) if _nb_aspects_house(planet, 1, t)}
+        assert got == {((o - 1) % 12) + 1 for o in offsets}, planet
+    assert _nb_aspects_house("mars", 5, 8) and _nb_aspects_house("mars", 5, 12)  # 4th and 8th from house 5
+    assert _nb_aspects_house("jupiter", 11, 3) and _nb_aspects_house("jupiter", 11, 7)  # 5th and 9th from house 11
+    assert _nb_aspects_house("saturn", 10, 12) and _nb_aspects_house("saturn", 10, 7)  # 3rd and 10th from house 10
+
+
+def test_mutual_aspect_honours_special_aspects_and_requires_both_directions():
+    from ga_writers.ga_yoga_writer import _planets_associated
+    # Mars 4th aspect <-> Saturn 10th aspect: Mars h1, Saturn h4 -> mutual (both special).
+    st = ChartState(make_facts(place=dict(BASE, MAR="aries", SAT="cancer")))
+    assert _planets_associated(st, "mars", "saturn") == "mutual_aspect"
+    # Universal 7th <-> 7th is mutual.
+    st = ChartState(make_facts(place=dict(BASE, MER="aries", VEN="libra")))
+    assert _planets_associated(st, "mercury", "venus") == "mutual_aspect"
+    # Jupiter's 5th aspect is one-sided (Venus casts only the 7th): NOT an association.
+    st = ChartState(make_facts(place=dict(BASE, JUP="aries", VEN="leo")))
+    assert _planets_associated(st, "jupiter", "venus") is None
+    # Mars's 4th aspect one-sided onto Mercury: NOT an association.
+    st = ChartState(make_facts(place=dict(BASE, MAR="aries", MER="cancer")))
+    assert _planets_associated(st, "mars", "mercury") is None
+
+
+def test_exchange_and_conjunction_modes_are_sign_based():
+    from ga_writers.ga_yoga_writer import _planets_associated
+    st = ChartState(make_facts(place=dict(BASE, MAR="taurus", VEN="aries")))
+    assert _planets_associated(st, "mars", "venus") == "exchange"
+    st = ChartState(make_facts(place=dict(BASE, MAR="gemini", VEN="gemini")))
+    assert _planets_associated(st, "mars", "venus") == "conjunction"  # same whole-sign house, no orb
+
+
 # ── HTTP surface ─────────────────────────────────────────────────────────────
 
 class _CtxConn(FakeConn):
@@ -459,7 +630,7 @@ def client(monkeypatch):
     app = FastAPI()
     app.include_router(band.router, prefix="/api/compute")
     monkeypatch.setenv("PYTHON_SIDECAR_API_KEY", "test-key")
-    facts, firings = scenario_near_miss()
+    facts, firings = scenario_dusthana_association()
     monkeypatch.setattr(band, "_connect", lambda: _CtxConn(facts, firings))
     return TestClient(app)
 
@@ -473,7 +644,8 @@ def test_http_success_returns_six_rows(client):
     assert r.status_code == 200
     body = r.json()
     assert len(body["candidates"]) == 6
-    assert {c["candidate_id"]: c["state"] for c in body["candidates"]}["dhana_yoga_house_lords"] == "near_miss"
+    assert {c["candidate_id"]: c["state"] for c in body["candidates"]}["dhana_yoga_house_lords"] == "absent"
+    assert body["near_miss_capable_candidates"] == 0 and body["band_coverage"]["near_miss"] == 0
 
 
 def test_http_auth_is_fail_closed(client, monkeypatch):
@@ -564,8 +736,8 @@ class TestAgainstPostgres:
                 (CHART, build_id, aya, f["fact_category"], f["fact_subject"], f["fact_key"],
                  f["fact_value_text"], f["fact_value_num"]))
 
-    def test_near_miss_over_real_sql_and_build_fence(self, conn):
-        facts, firings = scenario_near_miss()
+    def test_dusthana_association_is_absent_over_real_sql_and_build_fence(self, conn):
+        facts, firings = scenario_dusthana_association()
         self._load(conn, facts, B_POS)
         # A stale, UNSERVED generation with a conflicting Venus sign must be invisible.
         stale = "00000000-0000-0000-0000-00000000dead"
@@ -579,7 +751,8 @@ class TestAgainstPostgres:
         resp = band.build_yoga_band(conn, CHART, AYA, BUILDS)
         rows = by_id(resp)
         assert len(resp["candidates"]) == 6
-        assert rows["dhana_yoga_house_lords"]["state"] == band.STATE_NEAR_MISS
+        assert rows["dhana_yoga_house_lords"]["state"] == band.STATE_ABSENT
+        assert resp["near_miss_capable_candidates"] == 0
         assert rows["dhana_yoga_2_11"]["state"] == band.STATE_PRESENT
         assert resp["ledger"]["ambiguous_facts"] == []
         db_fact_ids = {r["fact_id"] for r in conn.execute(
@@ -593,8 +766,27 @@ class TestAgainstPostgres:
         assert {c["state"] for c in resp["candidates"]} == {band.STATE_INDETERMINATE}
 
     def test_connection_is_left_uncommitted_and_unmodified(self, conn):
-        facts, firings = scenario_near_miss()
+        facts, firings = scenario_dusthana_association()
         self._load(conn, facts, B_POS)
         before = conn.execute("SELECT count(*) AS n FROM chart_facts").fetchone()["n"]
         band.build_yoga_band(conn, CHART, AYA, BUILDS)
         assert conn.execute("SELECT count(*) AS n FROM chart_facts").fetchone()["n"] == before
+
+    def test_zero_l1_rows_indeterminate_and_any_row_proves_l1_ran(self, conn):
+        facts, _ = scenario_absent()
+        self._load(conn, facts, B_POS)
+        resp = band.build_yoga_band(conn, CHART, AYA, BUILDS)
+        assert {c["reason"] for c in resp["candidates"]} == {"no_l1_firing_rows_seen"}
+        conn.execute("INSERT INTO ga_yoga_firings (chart_id, build_id, ayanamsha_id, yoga_canonical_id)"
+                     " VALUES (%s,%s,%s,%s)", (CHART, B_YOGA, AYA, "kemadruma_yoga"))
+        resp = band.build_yoga_band(conn, CHART, AYA, BUILDS)
+        assert {c["state"] for c in resp["candidates"]} == {band.STATE_ABSENT}
+        assert resp["ledger"]["l1_firing_rows_seen"] == 1
+
+    def test_statement_timeout_option_is_accepted_by_postgres(self, conn):
+        import psycopg
+        c2 = psycopg.connect(_DB_URL, options="-c statement_timeout=5000")
+        try:
+            assert c2.execute("SHOW statement_timeout").fetchone()[0] == "5s"
+        finally:
+            c2.close()

@@ -2,8 +2,11 @@
 
 Ratified spec: 00_ARCHITECTURE/briefs/nirmana/purna_acceptance/
 NEAR_MISS_DOMAIN_PACKET_v1_0.md (OSR-009) as amended by
-NEAR_MISS_DOMAIN_PACKET_v1_1.md (OSR-012): the producer is a SERVE-TIME
-derivation behind this sidecar route. Nothing is persisted; there is no
+NEAR_MISS_DOMAIN_PACKET_v1_1.md (OSR-012) and NARROWED by
+NEAR_MISS_DOMAIN_PACKET_v1_2.md (OSR-015): `near_miss` is NOT a v1 state. The
+dusthana placement gate is not a formation condition in BPHS Ch.41, so the
+route serves only present / absent / indeterminate. The producer is a
+SERVE-TIME derivation behind this sidecar route. Nothing is persisted; there is no
 migration, no registered writer and no writer-digest / layer-pin change. This
 module is imported ONLY by `main.py`; no `@register`ed writer imports it, so
 every writer's source closure (and therefore every writer digest) is
@@ -22,9 +25,11 @@ tolerance, weight or yoga (packet section 0):
     edited.
   * No tolerance: no orb, percentage, one-sided-aspect relaxation or
     `partial_formation_threshold` (which has no authoritative reader).
-  * `near_miss` exists ONLY for the gated detector `dhana_yoga_house_lords`:
-    at least one lord pair is associated and the dusthana placement gate is
-    its sole failing leg. "Association missing" is never a near-miss.
+  * No formation-gap ("near miss") detection is claimed or exposed; the
+    response carries `near_miss_capable_candidates: 0` and
+    `band_coverage.near_miss: 0` so a consumer can never read a gap finding.
+  * The six rows are overlapping candidate STATUSES of one wealth-yoga family,
+    not six independent findings (packet v1.2 section 2): see `overlaps`.
 
 Data access (N.5 / N.7 item 2): every `chart_facts` and `ga_yoga_firings`
 read is fenced with `build_id = ANY(served_build_ids)` (the caller's validated
@@ -53,7 +58,6 @@ from pydantic import BaseModel, Field
 
 from ga_writers.ga_yoga_writer import (
     DHANA_HOUSE_LORD_HOUSES,
-    DUSTHANAS,
     R6A2_LORD_ASSOCIATION_RELATIONS,
     ChartState,
     _check_house_lord_association,
@@ -72,12 +76,40 @@ ELIGIBILITY_RULE_VERSION = "NMB-ELIG-v1"
 ENGINE_VERSION = "yoga_formation_band_route_v1"
 
 STATE_PRESENT = "present"
-STATE_NEAR_MISS = "near_miss"
 STATE_ABSENT = "absent"
 STATE_INDETERMINATE = "indeterminate"
-BAND_STATES = (STATE_PRESENT, STATE_NEAR_MISS, STATE_ABSENT, STATE_INDETERMINATE)
+BAND_STATES = (STATE_PRESENT, STATE_ABSENT, STATE_INDETERMINATE)
+# Wire-format keys of `band_coverage`: `near_miss` is always 0 (packet v1.2).
+COVERAGE_KEYS = ("present", "near_miss", "absent", "indeterminate")
+NEAR_MISS_CAPABLE_CANDIDATES = 0
 
-GATED_CANDIDATE = "dhana_yoga_house_lords"
+STATEMENT_TIMEOUT_MS = 8000
+CONNECT_TIMEOUT_S = 5
+
+OVERLAP_NOTE = (
+    "Candidate rows are overlapping statuses of one wealth-yoga family, not independent "
+    "findings: dhana_yoga_2_5_9_11 subsumes dhana_yoga_2_11, dhana_yoga_5_9 and "
+    "dhana_yoga_9_11, and dhana_yoga_house_lords overlaps all of them. Do not sum the rows "
+    "into a yoga count. Formation-gap detection is not claimed."
+)
+
+# Source honesty (packet v1.2 section 1). The L0 catalogue cites "BPHS Ch.41" with no verse.
+# Only the 5th/9th lord pair is directly in Ch.41 sloka 16; the other pair rules rest on
+# general Parashari sambandha (conjunction, exchange, mutual aspect).
+DIRECT_CH41_CANDIDATES = ("dhana_yoga_5_9",)
+DIRECT_CH41_VERSE = "BPHS Ch.41 sloka 16 (5th and 9th lords)"
+GENERAL_BASIS = (
+    "general Parashari sambandha (conjunction, exchange, mutual aspect between the lords); "
+    "not stated in the Ch.41 text"
+)
+SOURCE_NOTE = (
+    "The catalogue citation 'Ch.41 Dhana Yoga adhyaya' carries no verse. Only the 5th/9th lord "
+    "pair is directly in BPHS Ch.41 sloka 16; the 2nd/11th, lagna/2nd, 9th/11th and any-pair "
+    "candidates rest on general Parashari sambandha (conjunction, exchange, mutual aspect) and "
+    "translator's notes, not on Ch.41 text."
+)
+
+GATED_CANDIDATE = "dhana_yoga_house_lords"  # the family detector; evaluator of record = the real L1 detector
 
 # The closed candidate set (packet section 2). Order is the emission order.
 CANDIDATE_IDS: tuple[str, ...] = (
@@ -154,12 +186,11 @@ def _lord_inputs(state: ChartState, house: int) -> dict[str, Any]:
 def analyse_pair(state: ChartState, h1: int, h2: int) -> dict[str, Any]:
     """Leg-level analysis of one lord pair.
 
-    Legs (both mandatory, no optional legs, no tolerance):
-      lords_associate             -- `_check_house_lord_association` (distinct
-                                     lords; conjunction / exchange / mutual
-                                     Parashari aspect)
-      association_not_in_dusthana -- meeting placement houses avoid 6/8/12
-                                     (applies only to the gated detector)
+    Single leg, no tolerance:
+      lords_associate -- `_check_house_lord_association` (distinct lords;
+                         conjunction / exchange / mutual Parashari aspect)
+    The placement of the meeting is recorded for the ledger only; it never
+    changes the state (the dusthana gate is not exposed, packet v1.2).
     """
     a = _lord_inputs(state, h1)
     b = _lord_inputs(state, h2)
@@ -171,14 +202,13 @@ def analyse_pair(state: ChartState, h1: int, h2: int) -> dict[str, Any]:
         "associated": False,
         "association_mode": None,
         "placement_houses": [],
-        "gate_failed": False,
     }
     if a["lord"] is None or b["lord"] is None:
         out["evaluable"] = False
         out["missing"] = sorted(set(a["missing"] + b["missing"]))
         return out
     if a["lord"] == b["lord"]:
-        # Same lord for both houses: never associated, never a near-miss
+        # Same lord for both houses: never associated
         # (`_check_house_lord_association` returns None for l1 == l2). No
         # placement input is needed to know that.
         return out
@@ -192,7 +222,6 @@ def analyse_pair(state: ChartState, h1: int, h2: int) -> dict[str, Any]:
         out["associated"] = True
         out["association_mode"] = hit["association_mode"]
         out["placement_houses"] = list(hit["placement_houses"])
-        out["gate_failed"] = any(h in DUSTHANAS for h in hit["placement_houses"])
     return out
 
 
@@ -217,14 +246,15 @@ def _pair_fact_ids(
 
 def _decide(
     cid: str, l1_fired: bool, l1_row: dict[str, Any] | None, evaluator_fires: bool,
-    analyses: list[dict[str, Any]], *, near_miss_capable: bool,
+    analyses: list[dict[str, Any]], *, l1_rows_seen: int,
 ) -> dict[str, Any]:
-    """State machine per packet section 4. Precedence: present, indeterminate,
-    near_miss, absent."""
+    """State machine (packet v1.2). Precedence: present, indeterminate, absent.
+    `l1_rows_seen` is the number of ga_yoga_firings rows of the served build (any
+    yoga); zero means ga_yoga's output for this build was not observed, so a
+    non-firing proves nothing."""
     res: dict[str, Any] = {
         "candidate_id": cid,
         "analyses": analyses,
-        "near_miss_capable": near_miss_capable,
         "l1_firing_ids": [l1_row["id"]] if l1_row and l1_row.get("id") is not None else [],
         "l1_bhanga_active": (l1_row.get("bhanga_active") if l1_row else None),
         "contradicting_present_siblings": [],
@@ -235,6 +265,9 @@ def _decide(
         res["state"] = STATE_PRESENT
         res["reason"] = "l1_firing_and_evaluator_agree"
         return res
+    disagreement = (
+        {"l1_fired": l1_fired, "evaluator_fired": evaluator_fires} if l1_fired != evaluator_fires else None
+    )
     unevaluable = [a for a in analyses if not a["evaluable"]]
     if unevaluable:
         # An unevaluable pair makes the evaluator's "no fire" untrustworthy, so
@@ -242,58 +275,76 @@ def _decide(
         res["state"] = STATE_INDETERMINATE
         missing = sorted({m for a in unevaluable for m in a["missing"]})
         res["reason"] = "missing_input:" + ",".join(missing)
-        if l1_fired != evaluator_fires:
-            res["disagreement"] = {"l1_fired": l1_fired, "evaluator_fired": evaluator_fires}
+        res["disagreement"] = disagreement
         return res
-    if l1_fired != evaluator_fires:
+    if l1_rows_seen == 0:
+        res["state"] = STATE_INDETERMINATE
+        res["reason"] = "no_l1_firing_rows_seen"
+        res["disagreement"] = disagreement
+        return res
+    if disagreement:
         res["state"] = STATE_INDETERMINATE
         res["reason"] = "l1_evaluator_disagreement"
-        res["disagreement"] = {"l1_fired": l1_fired, "evaluator_fired": evaluator_fires}
-        return res
-    if near_miss_capable and any(a["associated"] and a["gate_failed"] for a in analyses):
-        res["state"] = STATE_NEAR_MISS
-        res["reason"] = "gate_only_failure:association_in_dusthana"
+        res["disagreement"] = disagreement
         return res
     res["state"] = STATE_ABSENT
     res["reason"] = "no_pair_associated" if not any(a["associated"] for a in analyses) else "no_formation"
     return res
 
 
+def candidate_overlaps() -> dict[str, list[str]]:
+    """Static overlap/subsumption map derived from the candidates' house pairs
+    (packet v1.2 section 2). Two candidates overlap when they share an unordered
+    house pair; the family detector `dhana_yoga_house_lords` is declared to overlap
+    every sibling (it is the any-lord-pair family detector)."""
+    keys = {cid: {frozenset(p) for p in candidate_pairs(cid)} for cid in CANDIDATE_IDS}
+    out: dict[str, list[str]] = {}
+    for cid in CANDIDATE_IDS:
+        others = []
+        for other in CANDIDATE_IDS:
+            if other == cid:
+                continue
+            if GATED_CANDIDATE in (cid, other) or keys[cid] & keys[other]:
+                others.append(other)
+        out[cid] = others
+    return out
+
+
 def evaluate_candidates(
-    state: ChartState, firings: dict[str, dict[str, Any]],
+    state: ChartState, firings: dict[str, dict[str, Any]], l1_rows_seen: int,
 ) -> dict[str, dict[str, Any]]:
     """`firings` maps canonical_id -> {"id", "fired", "bhanga_active"} from
-    ga_yoga_firings; an absent key means no L1 row in the served generation."""
+    ga_yoga_firings; an absent key means no L1 row for that yoga in the served
+    generation. `l1_rows_seen` counts ALL ga_yoga_firings rows of the served build."""
     results: dict[str, dict[str, Any]] = {}
 
     def l1(cid: str) -> tuple[bool, dict[str, Any] | None]:
         row = firings.get(cid)
         return bool(row and row.get("fired")), row
 
-    # Siblings first: the gated candidate's contradiction record needs them.
     for cid in SIBLING_IDS:
         analyses = [analyse_pair(state, h1, h2) for h1, h2 in candidate_pairs(cid)]
         evaluator_fires = any(a["associated"] for a in analyses)
         l1_fired, row = l1(cid)
-        results[cid] = _decide(cid, l1_fired, row, evaluator_fires, analyses, near_miss_capable=False)
+        results[cid] = _decide(cid, l1_fired, row, evaluator_fires, analyses, l1_rows_seen=l1_rows_seen)
 
     analyses = [analyse_pair(state, h1, h2) for h1, h2 in candidate_pairs(GATED_CANDIDATE)]
     # The real L1 detector is the evaluator of record for "formation holds".
     evaluator_fires = _detect_dhana_yoga_house_lords(state, {}) is not None
     l1_fired, row = l1(GATED_CANDIDATE)
-    gated = _decide(GATED_CANDIDATE, l1_fired, row, evaluator_fires, analyses, near_miss_capable=True)
-    if gated["state"] == STATE_NEAR_MISS:
-        near_keys = {frozenset(a["houses_ruled"]) for a in analyses if a["associated"] and a["gate_failed"]}
-        contradicting = []
-        for cid in SIBLING_IDS:
-            sib = results[cid]
-            if sib["state"] != STATE_PRESENT:
-                continue
-            sib_keys = {frozenset(a["houses_ruled"]) for a in sib["analyses"] if a["associated"]}
-            if sib_keys & near_keys:
-                contradicting.append(cid)
-        gated["contradicting_present_siblings"] = sorted(contradicting)
-    results[GATED_CANDIDATE] = gated
+    results[GATED_CANDIDATE] = _decide(
+        GATED_CANDIDATE, l1_fired, row, evaluator_fires, analyses, l1_rows_seen=l1_rows_seen,
+    )
+
+    # Record, on every non-present row, the present candidates it overlaps: the rows are
+    # overlapping statuses, so a present overlapping row is context, never an independent finding.
+    overlaps = candidate_overlaps()
+    for cid, res in results.items():
+        if res["state"] == STATE_PRESENT:
+            continue
+        res["contradicting_present_siblings"] = sorted(
+            o for o in overlaps[cid] if results[o]["state"] == STATE_PRESENT
+        )
     return results
 
 
@@ -315,7 +366,6 @@ SELECT id, yoga_canonical_id, fired, bhanga_active
   FROM ga_yoga_firings
  WHERE chart_id = %s::uuid AND ayanamsha_id = %s
    AND build_id = ANY(%s::uuid[])
-   AND yoga_canonical_id = ANY(%s)
  ORDER BY yoga_canonical_id, id
 """
 
@@ -404,23 +454,16 @@ def _citations(catalog_row: dict | None) -> list[str]:
 
 
 def _leg_records(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Ledger of the per-pair legs. `met` is True/False/None (None =
-    unevaluable, or gate not reached because the association leg failed)."""
-    legs: list[dict[str, Any]] = []
-    for a in result["analyses"]:
-        associated: bool | None = a["associated"] if a["evaluable"] else None
-        legs.append({
+    """Ledger of the per-pair association leg. `met` is True/False/None
+    (None = unevaluable). There is no second leg (packet v1.2)."""
+    return [
+        {
             "houses_ruled": a["houses_ruled"], "lords": a["lords"], "leg": "lords_associate",
-            "met": associated, "association_mode": a["association_mode"],
-        })
-        if result["near_miss_capable"]:
-            legs.append({
-                "houses_ruled": a["houses_ruled"], "lords": a["lords"],
-                "leg": "association_not_in_dusthana",
-                "met": (None if not associated else not a["gate_failed"]),
-                "placement_houses": a["placement_houses"],
-            })
-    return legs
+            "met": a["associated"] if a["evaluable"] else None,
+            "association_mode": a["association_mode"],
+        }
+        for a in result["analyses"]
+    ]
 
 
 def _pair_records(result: dict[str, Any]) -> list[dict[str, Any]]:
@@ -429,10 +472,18 @@ def _pair_records(result: dict[str, Any]) -> list[dict[str, Any]]:
             "houses_ruled": a["houses_ruled"], "lords": a["lords"], "evaluable": a["evaluable"],
             "missing": a["missing"], "associated": a["associated"],
             "association_mode": a["association_mode"], "placement_houses": a["placement_houses"],
-            "gate_failed": a["gate_failed"],
         }
         for a in result["analyses"]
     ]
+
+
+def _source_basis(cid: str) -> dict[str, Any]:
+    direct = cid in DIRECT_CH41_CANDIDATES
+    return {
+        "directly_in_bphs_ch41": direct,
+        "verse": DIRECT_CH41_VERSE if direct else None,
+        "basis": ("BPHS Ch.41 sloka 16" if direct else GENERAL_BASIS),
+    }
 
 
 def build_yoga_band(
@@ -446,16 +497,21 @@ def build_yoga_band(
     state = ChartState(facts)
     sign_ids, house_ids, lagna_id = _index_fact_ids(facts)
 
-    firing_rows = _rows(conn, _FIRINGS_SQL, [chart_id, ayanamsha_id, build_ids, list(CANDIDATE_IDS)])
+    # ALL firing rows of the served build (ga_yoga writes one row per fired yoga): any row proves
+    # ga_yoga's output for this build was observed; zero rows proves nothing (`no_l1_firing_rows_seen`).
+    firing_rows = _rows(conn, _FIRINGS_SQL, [chart_id, ayanamsha_id, build_ids])
     firings: dict[str, dict[str, Any]] = {}
     for r in firing_rows:
+        if str(r["yoga_canonical_id"]) not in CANDIDATE_IDS:
+            continue
         # UNIQUE (chart_id, ayanamsha_id, yoga_canonical_id): one row each.
         firings[str(r["yoga_canonical_id"])] = {
             "id": r.get("id"), "fired": bool(r.get("fired")), "bhanga_active": r.get("bhanga_active"),
         }
     catalog = {str(r["canonical_id"]): r for r in _rows(conn, _CATALOG_SQL, [list(CANDIDATE_IDS)])}
 
-    results = evaluate_candidates(state, firings)
+    results = evaluate_candidates(state, firings, len(firing_rows))
+    overlaps = candidate_overlaps()
 
     candidates: list[dict[str, Any]] = []
     consumed: set[str] = set()
@@ -474,7 +530,9 @@ def build_yoga_band(
             "yoga_name": (cat or {}).get("name_en"),
             "formation_text": (cat or {}).get("formation_text"),
             "classical_citations": _citations(cat),
-            "near_miss_capable": result["near_miss_capable"],
+            "citation_carries_verse": False,
+            "source_basis": _source_basis(cid),
+            "overlaps": overlaps[cid],
             "state": result["state"],
             "reason": result["reason"],
             "legs": _leg_records(result),
@@ -489,12 +547,24 @@ def build_yoga_band(
     if len(candidates) != len(CANDIDATE_IDS):  # pragma: no cover - structural guard
         raise RuntimeError(f"expected {len(CANDIDATE_IDS)} band candidates, built {len(candidates)}")
 
+    coverage = {k: 0 for k in COVERAGE_KEYS}
+    for c in candidates:
+        coverage[c["state"]] += 1
     return {
         "band_version": BAND_VERSION,
         "candidate_set_version": CANDIDATE_SET_VERSION,
         "eligibility_rule_version": ELIGIBILITY_RULE_VERSION,
         "engine_version": ENGINE_VERSION,
         "tolerance": "none",
+        "near_miss_capable_candidates": NEAR_MISS_CAPABLE_CANDIDATES,
+        "band_coverage": coverage,
+        "overlap_note": OVERLAP_NOTE,
+        "overlaps": overlaps,
+        "classical_sources": {
+            "catalog_citation_carries_verse": False,
+            "directly_in_bphs_ch41_sloka_16": list(DIRECT_CH41_CANDIDATES),
+            "note": SOURCE_NOTE,
+        },
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "served_build_ids": sorted(build_ids),
@@ -509,6 +579,7 @@ def build_yoga_band(
             "fact_rows_read": len(raw_facts),
             "ambiguous_facts": ambiguous,
             "l1_firing_rows_seen": len(firing_rows),
+            "l1_candidate_firing_rows_seen": len(firings),
             "evaluators": [
                 "ChartState", "_lord_of_house", "_house_of_planet",
                 "_check_house_lord_association", "_detect_dhana_yoga_house_lords",
@@ -545,7 +616,10 @@ def _db_url() -> str:
 
 
 def _connect() -> Any:
-    conn = psycopg.connect(_db_url(), row_factory=psycopg.rows.dict_row)
+    conn = psycopg.connect(
+        _db_url(), row_factory=psycopg.rows.dict_row,
+        options=f"-c statement_timeout={STATEMENT_TIMEOUT_MS}", connect_timeout=CONNECT_TIMEOUT_S,
+    )
     conn.read_only = True
     return conn
 
