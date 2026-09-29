@@ -262,6 +262,9 @@ DENY_PATTERNS = (
     "message_parts", "mcp_sessions", "planner_managed_prashna_jobs", "admin_audit_log", "audit_log",
     "audit_events", "ai_custom_configurations", "ai_user_defaults", "ai_cli_grants", "chart_subject_consent%",
     "messages", "documents", "reports", "chat_attachments", "message_feedback",
+    "ai_configuration_audit_log", "ai_conversation_selections", "ai_custom_configuration_roles",
+    "ai_turn_routing_snapshots", "llm_usage_events", "notification_views", "pending_streams", "personas",
+    "projects", "query_trace_steps", "eval_runs",
 )
 CHARTS_GRANTED_COLUMNS = ("id", "chart_id", "role", "ayanamsa", "house_system", "created_at", "created_at_iso")
 CHART_GRANTS_GRANTED_COLUMNS = ("chart_id", "principal_id")
@@ -292,7 +295,8 @@ def _table_select_sql(relname: str) -> str:
 _REL_SCOPE = "not (n.nspname ~ '^pg_toast' or n.nspname ~ '^pg_temp_')"
 _SELF_PRIVILEGE_SQL = " ".join(f"""
 with me as (select oid from pg_roles where rolname = current_user),
-rels as (select c.oid, c.relkind from pg_class c join pg_namespace n on n.oid = c.relnamespace where {_REL_SCOPE}),
+rels as (select c.oid, c.relkind from pg_class c join pg_namespace n on n.oid = c.relnamespace where {_REL_SCOPE}
+  and not (n.nspname = 'pg_catalog' and c.relname = 'pg_settings')),
 facts(k, v) as (
   select 'current_user', current_user::text
   union all select 'session_user', session_user::text
@@ -308,7 +312,7 @@ facts(k, v) as (
   union all select 'column_write', count(*)::text from rels where relkind in ('r','p','v','m','f')
     and has_any_column_privilege(current_user, oid, 'INSERT,UPDATE,REFERENCES')
   union all select 'sequence_write', count(*)::text from rels where relkind = 'S'
-    and has_sequence_privilege(current_user, oid, 'USAGE,UPDATE')
+    and case when relkind = 'S' then has_sequence_privilege(current_user, oid, 'USAGE,UPDATE') else false end
   union all select 'database_create', has_database_privilege(current_user, current_database(), 'CREATE')::text
   union all select 'database_temp', has_database_privilege(current_user, current_database(), 'TEMPORARY')::text
   union all select 'schema_create', count(*)::text from pg_namespace n where {_REL_SCOPE}

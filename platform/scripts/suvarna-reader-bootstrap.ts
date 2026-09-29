@@ -95,6 +95,10 @@ export const DENY_PATTERNS = [
   'message_parts', 'mcp_sessions', 'planner_managed_prashna_jobs', 'admin_audit_log', 'audit_log',
   'audit_events', 'ai_custom_configurations', 'ai_user_defaults', 'ai_cli_grants', 'chart_subject_consent%',
   'messages', 'documents', 'reports', 'chat_attachments', 'message_feedback',
+  // First production dry run (2026-09-29): user-keyed operational data Suvarṇa does not need.
+  'ai_configuration_audit_log', 'ai_conversation_selections', 'ai_custom_configuration_roles',
+  'ai_turn_routing_snapshots', 'llm_usage_events', 'notification_views', 'pending_streams', 'personas',
+  'projects', 'query_trace_steps', 'eval_runs',
 ] as const
 
 /** Tables data-plane-ownership-status.ts (the deploy gate) reads, so the post-apply gate run works as
@@ -545,8 +549,11 @@ async function nirmanaInvariants(s: Session): Promise<Invariant[]> {
         AND NOT has_schema_privilege(ids.migrator, ids.ev_ns, 'USAGE')
         AND NOT has_schema_privilege(ids.ev_owner, ids.pub_ns, 'CREATE') AND NOT has_schema_privilege(ids.ingress, ids.pub_ns, 'CREATE')
         AND NOT has_schema_privilege(ids.control, ids.pub_ns, 'CREATE') AND NOT has_schema_privilege(ids.migrator, ids.pub_ns, 'CREATE')
-        AND has_schema_privilege(ids.ingress, ids.pub_ns, 'USAGE') AND has_schema_privilege(ids.control, ids.pub_ns, 'USAGE')
-        AND has_schema_privilege(ids.migrator, ids.pub_ns, 'USAGE') FROM ids), false) AS n9_writer_schema_envelopes
+        -- The Nirmāṇa preflight once granted these writers USAGE on public. The later data-plane ownership
+        -- handoff reset public's ACL to an exact list without them, and data-plane-ownership-status.ts
+        -- enforces that list on every deploy; production confirms (2026-09-29): none of the three has it.
+        -- So public USAGE is not required here; public CREATE stays forbidden above.
+        FROM ids), false) AS n9_writer_schema_envelopes
   `, [[...NIRMANA_ROLES], [...NIRMANA_TABLES], [...NIRMANA_FUNCTIONS]])
   return Object.entries(row ?? {}).map(([id, ok]) => ({ id, ok: ok === true }))
 }
@@ -1148,6 +1155,7 @@ async function verify(s: Session, reader: string, version: number, set: ReadSet,
                           CASE WHEN has_table_privilege($1::oid, c.oid, 'TRIGGER') THEN 'TRIGGER' END) AS privs
       FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
      WHERE c.relkind IN ('r','p','v','m','f') AND n.nspname !~ '^pg_toast' AND n.nspname !~ '^pg_temp_'
+       AND NOT (n.nspname='pg_catalog' AND c.relname='pg_settings')  -- PostgreSQL grants UPDATE on this view to PUBLIC by design: it only runs SET for the caller's own session
        AND has_table_privilege($1::oid, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') ORDER BY 1
   `, [reader])
   out.check('V8 no relation write privilege', relWrite.length === 0, `${relWrite.length} relation(s) with INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER`)
@@ -1156,6 +1164,7 @@ async function verify(s: Session, reader: string, version: number, set: ReadSet,
   const colWrite = await s.rows<{ name: string }>(`
     SELECT format('%I.%I', n.nspname, c.relname) AS name FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
      WHERE c.relkind IN ('r','p','v','m','f') AND n.nspname !~ '^pg_toast' AND n.nspname !~ '^pg_temp_'
+       AND NOT (n.nspname='pg_catalog' AND c.relname='pg_settings')  -- PostgreSQL grants UPDATE on this view to PUBLIC by design: it only runs SET for the caller's own session
        AND has_any_column_privilege($1::oid, c.oid, 'INSERT,UPDATE,REFERENCES') ORDER BY 1
   `, [reader])
   out.check('V8b no column write privilege', colWrite.length === 0, `${colWrite.length} relation(s) with column INSERT/UPDATE/REFERENCES`)
@@ -1164,7 +1173,8 @@ async function verify(s: Session, reader: string, version: number, set: ReadSet,
   const seq = await s.rows<{ name: string }>(`
     SELECT format('%I.%I', n.nspname, c.relname) AS name FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
      WHERE c.relkind='S' AND n.nspname !~ '^pg_toast' AND n.nspname !~ '^pg_temp_'
-       AND has_sequence_privilege($1::oid, c.oid, 'USAGE,UPDATE') ORDER BY 1
+       -- CASE guards evaluation order: the planner may call the function before the relkind filter
+       AND CASE WHEN c.relkind='S' THEN has_sequence_privilege($1::oid, c.oid, 'USAGE,UPDATE') ELSE false END ORDER BY 1
   `, [reader])
   out.check('V9 no sequence USAGE/UPDATE', seq.length === 0, `${seq.length} sequence(s)`)
   if (seq.length) out.list('advanceable sequences', seq.map((r) => r.name))
@@ -1609,7 +1619,7 @@ async function proveReaderLogin(out: Reporter, route: AdminRoute, password: stri
            WHERE n.nspname !~ '^pg_toast' AND n.nspname !~ '^pg_temp_' AND (
              (c.relkind IN ('r','p','v','m','f') AND (has_table_privilege(current_user, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
                 OR has_any_column_privilege(current_user, c.oid, 'INSERT,UPDATE,REFERENCES')))
-             OR (c.relkind='S' AND has_sequence_privilege(current_user, c.oid, 'USAGE,UPDATE'))))
+             OR (CASE WHEN c.relkind='S' THEN has_sequence_privilege(current_user, c.oid, 'USAGE,UPDATE') ELSE false END)))
          + (SELECT count(*) FROM pg_catalog.pg_namespace WHERE nspname !~ '^pg_toast' AND nspname !~ '^pg_temp_' AND has_schema_privilege(current_user, oid, 'CREATE'))
         )::text AS writes,
         has_database_privilege(current_user, current_database(), 'CREATE') AS creates

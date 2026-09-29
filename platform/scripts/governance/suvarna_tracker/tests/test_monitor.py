@@ -432,7 +432,7 @@ def test_self_privilege_sql_has_exposure_facts():
     assert "has_column_privilege(current_user, c.oid, a.attnum, 'SELECT')" in sql
     assert "a.attname <> all (array['id','chart_id','role','ayanamsa','house_system','created_at','created_at_iso']::name[])" in sql
     assert "a.attname <> all (array['chart_id','principal_id']::name[])" in sql
-    assert "c.relname like any (array['profiles'," in sql and "'message_feedback']" in sql
+    assert "c.relname like any (array['profiles'," in sql and "'eval_runs']" in sql
 
 
 def test_self_privilege_secdef_excludes_trigger_functions():
