@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -1531,6 +1532,17 @@ def test_readmission_classifications_equal_the_actual_digest_delta(layer: str) -
     assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
 
 
+def _is_baseline_or_ancestor(snapshot: str, baseline: str) -> bool:
+    if snapshot == baseline:
+        return True
+    repo_root = Path(__file__).resolve().parents[3]
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", snapshot, baseline],
+        cwd=repo_root, capture_output=True, text=True, check=False,
+    )
+    return result.returncode == 0
+
+
 def test_readmission_archived_predecessors_name_the_protected_baseline() -> None:
     # A0.6: every D-E022 archived predecessor must name the protected baseline
     # as its historical snapshot, or the merge queue's delivery-topology check
@@ -1540,7 +1552,11 @@ def test_readmission_archived_predecessors_name_the_protected_baseline() -> None
     for layer in READMISSION_LAYERS:
         archived = LIVE_PINS["history"][layer][-1]
         assert archived["generation_id"] == READMISSION[layer]["supersedes"]
-        assert archived["historical_snapshot_commit"] == baseline
+        # Point-in-time rule (A0.6): while the re-admission is the newest change the snapshot
+        # equals the protected baseline. Once that change has merged, later baselines
+        # advance, so the invariant that keeps the delivery-topology check resolvable is
+        # "the snapshot is the baseline or an ancestor of it" — a protected commit.
+        assert _is_baseline_or_ancestor(archived["historical_snapshot_commit"], baseline)
         assert archived["superseded_by_generation_id"] == (
             LIVE_PINS["layers"][layer]["generation_id"]
         )
