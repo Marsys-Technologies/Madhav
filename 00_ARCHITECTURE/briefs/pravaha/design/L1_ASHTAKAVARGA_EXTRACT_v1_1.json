@@ -1,0 +1,1398 @@
+{
+ "artifact": "L1_ASHTAKAVARGA_EXTRACT",
+ "version": "1.1",
+ "pinned_at": "2026-09-29",
+ "pinned_by": "Stream B (read-only SELECT; steward B3.8 addendum item 2)",
+ "supersedes_note": "extends, does not replace, L1_ASHTAKAVARGA_EXTRACT_v1_0.json (sha256 312de09e\u2026), which carries the BAV+SARVA rows; v1_1 adds reductions and pi\u1e47\u1e0das",
+ "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+ "predicate": "chart_facts where chart_id='482012f1-\u2026' and ayanamsha_id='lahiri_chitrapaksha' and fact_category in (ashtakavarga_trikona_shodhana, ashtakavarga_ekadhipathya_shodhana, ashtakavarga_pinda_bhinna, ashtakavarga_pinda_raasi, ashtakavarga_pinda_sodhita, ashtakavarga_pinda_sarva)",
+ "build_id": "aa9602ce-79df-4675-91c0-d08ade003d67",
+ "engine_version": "pyjhora/1.0.0",
+ "verification_pass_status": "single_pass",
+ "ayanamsha_used": "lahiri_chitrapaksha",
+ "ayanamshas_available_unused": [
+  "krishnamurti",
+  "raman",
+  "surya_siddhanta_classical",
+  "true_chitra"
+ ],
+ "notes": [
+  "ekadhipathya_shodhana rows equal the trikona_shodhana rows for every subject-sign in this chart (no dual-lordship reduction triggered); both pinned as stored.",
+  "pinda_sodhita = pinda_bhinna + pinda_raasi per subject (checked: e.g. SUN 49+155=204; SARVA 389+812=1201).",
+  "pinda_sarva subject values sum to 337 = SARVA bindu total; pyjhora's sodhaya_pindas does not emit this per-subject split, so the recompute check below does not cover it (internally consistent: 48+49+39+54+56+52+39=337)."
+ ],
+ "consistency_check": {
+  "method": "same independent recomputation as v1_0 (pyjhora 1.0.0 from graha_position build 1c092ffb longitudes): _trikona_sodhana reproduces all 84 trikona values exactly; sodhaya_pindas reproduces all 7 bhinna (49/55/62/66/82/39/36), all 7 raasi (155/107/160/132/105/87/66) and all 7 sodhita (204/162/222/198/187/126/102) pi\u1e47\u1e0das exactly; SARVA sums consistent (389/812/1201).",
+  "result": "all covered rows match exactly"
+ },
+ "rows": [
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 1,
+   "reduced_bindus": 3,
+   "fact_id": "442fe00798844077"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 1,
+   "reduced_bindus": 3,
+   "fact_id": "71764e4d8c143c68"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 2,
+   "reduced_bindus": 2,
+   "fact_id": "a7ac7529d8464e10"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 2,
+   "reduced_bindus": 2,
+   "fact_id": "ee630df150c9c144"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 3,
+   "reduced_bindus": 3,
+   "fact_id": "a7588d5b7e8f24f6"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 3,
+   "reduced_bindus": 3,
+   "fact_id": "e5efa358c53eead5"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 4,
+   "reduced_bindus": 3,
+   "fact_id": "26a48e15862420b2"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 4,
+   "reduced_bindus": 3,
+   "fact_id": "ea9cf08af6616935"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 5,
+   "reduced_bindus": 2,
+   "fact_id": "431fd52d360b0cb7"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 5,
+   "reduced_bindus": 2,
+   "fact_id": "d2e3cf456dba100d"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 6,
+   "reduced_bindus": 0,
+   "fact_id": "3cdf15a24ce8c66d"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 6,
+   "reduced_bindus": 0,
+   "fact_id": "afb6151c8c1ebb75"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 7,
+   "reduced_bindus": 3,
+   "fact_id": "de743fc78e85efef"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 7,
+   "reduced_bindus": 3,
+   "fact_id": "11e4aa6f9296d4af"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 8,
+   "reduced_bindus": 4,
+   "fact_id": "88e4f53ca2015117"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 8,
+   "reduced_bindus": 4,
+   "fact_id": "1087c0b2c22aff19"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "2e9d2b3c3aa39005"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "fd328c0531e5b10f"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 10,
+   "reduced_bindus": 1,
+   "fact_id": "c6561310b6ad6922"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 10,
+   "reduced_bindus": 1,
+   "fact_id": "6162c9f68b68cf47"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 11,
+   "reduced_bindus": 0,
+   "fact_id": "07ee268fb6550777"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 11,
+   "reduced_bindus": 0,
+   "fact_id": "6be699ed8743166f"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SUN",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "af815dd4f9ae86db"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SUN",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "61c97324b4200e4f"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 1,
+   "reduced_bindus": 0,
+   "fact_id": "2b31d6d4cb0ef40c"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 1,
+   "reduced_bindus": 0,
+   "fact_id": "12af394cbd7f31a6"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "07d6164b8273570d"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "1ecdeb2b7b676157"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 3,
+   "reduced_bindus": 0,
+   "fact_id": "b001041a54b65009"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 3,
+   "reduced_bindus": 0,
+   "fact_id": "adc26662f3206913"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 4,
+   "reduced_bindus": 1,
+   "fact_id": "4084fc12b29eb9eb"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 4,
+   "reduced_bindus": 1,
+   "fact_id": "0fc0c08f30bc78eb"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 5,
+   "reduced_bindus": 3,
+   "fact_id": "db7a6c22dc07a8e3"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 5,
+   "reduced_bindus": 3,
+   "fact_id": "5ddd5c4b57253220"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 6,
+   "reduced_bindus": 2,
+   "fact_id": "ec9defa11043523a"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 6,
+   "reduced_bindus": 2,
+   "fact_id": "3b405a8d608db941"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 7,
+   "reduced_bindus": 1,
+   "fact_id": "7575099a4dc3ca5a"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 7,
+   "reduced_bindus": 1,
+   "fact_id": "39eaccbc7b96c4a9"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 8,
+   "reduced_bindus": 0,
+   "fact_id": "7ae5ac2b09d67603"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 8,
+   "reduced_bindus": 0,
+   "fact_id": "b8af1e1c7e4c2b99"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 9,
+   "reduced_bindus": 1,
+   "fact_id": "25f4e28bb973b93b"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 9,
+   "reduced_bindus": 1,
+   "fact_id": "a4938d0b4c80a05a"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 10,
+   "reduced_bindus": 2,
+   "fact_id": "8d2e2aac7834fb2d"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 10,
+   "reduced_bindus": 2,
+   "fact_id": "81b0e87396f842c5"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 11,
+   "reduced_bindus": 1,
+   "fact_id": "ee5f669802439b35"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 11,
+   "reduced_bindus": 1,
+   "fact_id": "dc188993bc8932c3"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MOON",
+   "sign": 12,
+   "reduced_bindus": 2,
+   "fact_id": "ee6e81ffe4646e7b"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MOON",
+   "sign": 12,
+   "reduced_bindus": 2,
+   "fact_id": "0777606a37a6d8be"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 1,
+   "reduced_bindus": 3,
+   "fact_id": "29c8a93ed4409e09"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 1,
+   "reduced_bindus": 3,
+   "fact_id": "83b506a1c38fc8d7"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 2,
+   "reduced_bindus": 4,
+   "fact_id": "e531730d02835c91"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 2,
+   "reduced_bindus": 4,
+   "fact_id": "747d824902360a2c"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 3,
+   "reduced_bindus": 3,
+   "fact_id": "e18a9a3b711f137b"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 3,
+   "reduced_bindus": 3,
+   "fact_id": "981ab694dacfd913"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 4,
+   "reduced_bindus": 2,
+   "fact_id": "f0eff6fba75e62d3"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 4,
+   "reduced_bindus": 2,
+   "fact_id": "4c2a03620d65d0b6"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 5,
+   "reduced_bindus": 1,
+   "fact_id": "8c6071833b85eb3a"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 5,
+   "reduced_bindus": 1,
+   "fact_id": "89d51b7152b9fc4b"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 6,
+   "reduced_bindus": 0,
+   "fact_id": "0da3265a3e32a0b1"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 6,
+   "reduced_bindus": 0,
+   "fact_id": "6e49fd1323b20ed5"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 7,
+   "reduced_bindus": 4,
+   "fact_id": "83302795599e85bb"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 7,
+   "reduced_bindus": 4,
+   "fact_id": "e9d64b389ee060d4"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 8,
+   "reduced_bindus": 3,
+   "fact_id": "220e3c9412e8de4c"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 8,
+   "reduced_bindus": 3,
+   "fact_id": "d12640cb41aec87f"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "83ca72154ed8ae73"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "3c8770e28521adc2"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 10,
+   "reduced_bindus": 1,
+   "fact_id": "a5d6171b486bafd1"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 10,
+   "reduced_bindus": 1,
+   "fact_id": "0008b6da4d3ef41c"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 11,
+   "reduced_bindus": 0,
+   "fact_id": "a213d32411998210"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 11,
+   "reduced_bindus": 0,
+   "fact_id": "531456a18f0ed6d7"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MAR",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "ae6545fc9edaf8a8"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MAR",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "35b927df71d4251d"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 1,
+   "reduced_bindus": 1,
+   "fact_id": "c535445b6754738a"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 1,
+   "reduced_bindus": 1,
+   "fact_id": "41d8a7f851a07598"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 2,
+   "reduced_bindus": 3,
+   "fact_id": "7a726031797f9ff5"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 2,
+   "reduced_bindus": 3,
+   "fact_id": "6301259309eb2073"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 3,
+   "reduced_bindus": 2,
+   "fact_id": "20d0cee6e6598d4a"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 3,
+   "reduced_bindus": 2,
+   "fact_id": "60220d65f72b8510"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 4,
+   "reduced_bindus": 3,
+   "fact_id": "337ef0201d2cb821"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 4,
+   "reduced_bindus": 3,
+   "fact_id": "38fad9b974b17865"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 5,
+   "reduced_bindus": 0,
+   "fact_id": "e5c4872d1c564fab"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 5,
+   "reduced_bindus": 0,
+   "fact_id": "9450c13c63f12f56"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 6,
+   "reduced_bindus": 0,
+   "fact_id": "ba7b5e75359870d6"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 6,
+   "reduced_bindus": 0,
+   "fact_id": "d8b078c99aa8514e"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 7,
+   "reduced_bindus": 3,
+   "fact_id": "cd0b92184d714bea"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 7,
+   "reduced_bindus": 3,
+   "fact_id": "abfffc1234e660e6"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 8,
+   "reduced_bindus": 4,
+   "fact_id": "ecf5559ef8c21b6f"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 8,
+   "reduced_bindus": 4,
+   "fact_id": "0dd5f2db3737264d"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 9,
+   "reduced_bindus": 1,
+   "fact_id": "b7d18a6b652c8768"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 9,
+   "reduced_bindus": 1,
+   "fact_id": "e07b9f107f78c19d"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 10,
+   "reduced_bindus": 1,
+   "fact_id": "f9254741c71953a1"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 10,
+   "reduced_bindus": 1,
+   "fact_id": "c948690048e07855"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 11,
+   "reduced_bindus": 0,
+   "fact_id": "fdaf59702820534e"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 11,
+   "reduced_bindus": 0,
+   "fact_id": "f471f26d5a31fbcc"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "MER",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "d3c2711de2195c60"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "MER",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "a103dcdefacd2307"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 1,
+   "reduced_bindus": 1,
+   "fact_id": "40ff8207b69edf80"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 1,
+   "reduced_bindus": 1,
+   "fact_id": "452b26ba666d7c7f"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "812dd9ac861660a9"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "08ab35955ebea9c2"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 3,
+   "reduced_bindus": 0,
+   "fact_id": "9002d7d4c7cc3c63"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 3,
+   "reduced_bindus": 0,
+   "fact_id": "bf719df95c92e97b"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 4,
+   "reduced_bindus": 1,
+   "fact_id": "8dd77215ac3882c0"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 4,
+   "reduced_bindus": 1,
+   "fact_id": "989309bef78c089c"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 5,
+   "reduced_bindus": 1,
+   "fact_id": "df4262d5830230d7"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 5,
+   "reduced_bindus": 1,
+   "fact_id": "b5e6bfc80886579e"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 6,
+   "reduced_bindus": 2,
+   "fact_id": "ec9bfb3ca585cef2"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 6,
+   "reduced_bindus": 2,
+   "fact_id": "cce0ea7c89e7bcae"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 7,
+   "reduced_bindus": 4,
+   "fact_id": "a608c857e8bfafae"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 7,
+   "reduced_bindus": 4,
+   "fact_id": "a5e3e479d8166df9"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 8,
+   "reduced_bindus": 0,
+   "fact_id": "4d3f4c89dd04cd11"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 8,
+   "reduced_bindus": 0,
+   "fact_id": "3570eba2a0d00939"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "d34494185d85ac97"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "ab09c20cfc5d374d"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 10,
+   "reduced_bindus": 2,
+   "fact_id": "62b17722e6a3fcd4"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 10,
+   "reduced_bindus": 2,
+   "fact_id": "38ab48c8deca2ca2"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 11,
+   "reduced_bindus": 2,
+   "fact_id": "d367eddab1c582c6"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 11,
+   "reduced_bindus": 2,
+   "fact_id": "f3f328054de9ad83"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "JUP",
+   "sign": 12,
+   "reduced_bindus": 1,
+   "fact_id": "a3c589bc372385d6"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "JUP",
+   "sign": 12,
+   "reduced_bindus": 1,
+   "fact_id": "2e9f1f0a9fed309e"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 1,
+   "reduced_bindus": 0,
+   "fact_id": "48a8724a507a387b"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 1,
+   "reduced_bindus": 0,
+   "fact_id": "384ed0dfabb9ec96"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "258ded4f6947e932"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "a560f415d9c05032"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 3,
+   "reduced_bindus": 2,
+   "fact_id": "bee312bcceb3e68e"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 3,
+   "reduced_bindus": 2,
+   "fact_id": "e49b76164810bb78"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 4,
+   "reduced_bindus": 1,
+   "fact_id": "550f4d3341511e9c"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 4,
+   "reduced_bindus": 1,
+   "fact_id": "b94041745c79165c"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 5,
+   "reduced_bindus": 2,
+   "fact_id": "051aedfecb23bcd8"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 5,
+   "reduced_bindus": 2,
+   "fact_id": "e398c264bd7df472"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 6,
+   "reduced_bindus": 1,
+   "fact_id": "acbd088d67fb54f2"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 6,
+   "reduced_bindus": 1,
+   "fact_id": "d2b996f6913c1402"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 7,
+   "reduced_bindus": 0,
+   "fact_id": "dc00ca5877172563"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 7,
+   "reduced_bindus": 0,
+   "fact_id": "a7cb06d0f6b4f0c3"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 8,
+   "reduced_bindus": 0,
+   "fact_id": "b3eba6f7ed7aa9ff"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 8,
+   "reduced_bindus": 0,
+   "fact_id": "0fb06d06e400859f"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 9,
+   "reduced_bindus": 2,
+   "fact_id": "f5bbc8f6d66f3f7f"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 9,
+   "reduced_bindus": 2,
+   "fact_id": "61c1601eaeeea571"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 10,
+   "reduced_bindus": 0,
+   "fact_id": "375dc0a3361a0ff3"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 10,
+   "reduced_bindus": 0,
+   "fact_id": "38ece8e9827ee8bd"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 11,
+   "reduced_bindus": 1,
+   "fact_id": "986ef6ef8c0fb759"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 11,
+   "reduced_bindus": 1,
+   "fact_id": "c7ec1aea36d021e8"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "VEN",
+   "sign": 12,
+   "reduced_bindus": 1,
+   "fact_id": "518ed3cb08b1e7d6"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "VEN",
+   "sign": 12,
+   "reduced_bindus": 1,
+   "fact_id": "992d93056f411107"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 1,
+   "reduced_bindus": 0,
+   "fact_id": "c18b5eb81ebdbeb6"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 1,
+   "reduced_bindus": 0,
+   "fact_id": "bf5b880cd7299ded"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "9404bbbb10776ee0"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 2,
+   "reduced_bindus": 0,
+   "fact_id": "f996bbbbbe05c2a6"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 3,
+   "reduced_bindus": 0,
+   "fact_id": "3b72e2ed05454f84"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 3,
+   "reduced_bindus": 0,
+   "fact_id": "d4d1a9d68f8f82f5"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 4,
+   "reduced_bindus": 2,
+   "fact_id": "8e3231549a700e4d"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 4,
+   "reduced_bindus": 2,
+   "fact_id": "7a0d0b22abf74189"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 5,
+   "reduced_bindus": 0,
+   "fact_id": "273664de1b291a04"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 5,
+   "reduced_bindus": 0,
+   "fact_id": "98327c0fffa589c8"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 6,
+   "reduced_bindus": 1,
+   "fact_id": "c57825bbf126de02"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 6,
+   "reduced_bindus": 1,
+   "fact_id": "a50352b5a2dcaa6a"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 7,
+   "reduced_bindus": 2,
+   "fact_id": "6a01475f17b236e4"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 7,
+   "reduced_bindus": 2,
+   "fact_id": "0278b5ee772fbf9d"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 8,
+   "reduced_bindus": 2,
+   "fact_id": "4ea903fe70672138"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 8,
+   "reduced_bindus": 2,
+   "fact_id": "49be0176b9858c70"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "30189230fd119337"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 9,
+   "reduced_bindus": 0,
+   "fact_id": "7a23ef103f9e6a38"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 10,
+   "reduced_bindus": 0,
+   "fact_id": "ba19f4823c13aa5e"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 10,
+   "reduced_bindus": 0,
+   "fact_id": "7df956071baa9eb4"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 11,
+   "reduced_bindus": 2,
+   "fact_id": "fca1ca1e9bead00d"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 11,
+   "reduced_bindus": 2,
+   "fact_id": "70b96c8ed8d68f64"
+  },
+  {
+   "category": "ashtakavarga_trikona_shodhana",
+   "subject": "SAT",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "245665cf373a6d0a"
+  },
+  {
+   "category": "ashtakavarga_ekadhipathya_shodhana",
+   "subject": "SAT",
+   "sign": 12,
+   "reduced_bindus": 0,
+   "fact_id": "9a675565aac6ee15"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "SUN",
+   "total": 49,
+   "fact_id": "b51fc2aec9552a0f"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "MOON",
+   "total": 55,
+   "fact_id": "842ff3f897567712"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "MAR",
+   "total": 62,
+   "fact_id": "cae946abe2598f25"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "MER",
+   "total": 66,
+   "fact_id": "d704700a7b2202d1"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "JUP",
+   "total": 82,
+   "fact_id": "47879fa8ac06e51f"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "VEN",
+   "total": 39,
+   "fact_id": "b1b4d88275572019"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "SAT",
+   "total": 36,
+   "fact_id": "85908138aa3b7191"
+  },
+  {
+   "category": "ashtakavarga_pinda_bhinna",
+   "subject": "SARVA",
+   "total": 389,
+   "fact_id": "a7fee1b729216d3f"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "SUN",
+   "total": 155,
+   "fact_id": "eeec3233874112b9"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "MOON",
+   "total": 107,
+   "fact_id": "3ae9dabce0941c54"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "MAR",
+   "total": 160,
+   "fact_id": "8a7c98154dc58d1b"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "MER",
+   "total": 132,
+   "fact_id": "ef06ec168fdbc7db"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "JUP",
+   "total": 105,
+   "fact_id": "b62b99f9e706b7d7"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "VEN",
+   "total": 87,
+   "fact_id": "ba7860774f1afdd0"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "SAT",
+   "total": 66,
+   "fact_id": "e1576ce4d5ac066c"
+  },
+  {
+   "category": "ashtakavarga_pinda_raasi",
+   "subject": "SARVA",
+   "total": 812,
+   "fact_id": "e5b4b5cd36c28f7f"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "SUN",
+   "total": 204,
+   "fact_id": "c05ab5959cba4906"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "MOON",
+   "total": 162,
+   "fact_id": "52dcc76b81fe9a73"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "MAR",
+   "total": 222,
+   "fact_id": "4c465b066f879689"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "MER",
+   "total": 198,
+   "fact_id": "675288faecd36a99"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "JUP",
+   "total": 187,
+   "fact_id": "dec4e8378da70dda"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "VEN",
+   "total": 126,
+   "fact_id": "0995ded13cb633a6"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "SAT",
+   "total": 102,
+   "fact_id": "b5be85820bf554ef"
+  },
+  {
+   "category": "ashtakavarga_pinda_sodhita",
+   "subject": "SARVA",
+   "total": 1201,
+   "fact_id": "35434dc2818cbcdf"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "SUN",
+   "total": 48,
+   "fact_id": "76c93c426616202a"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "MOON",
+   "total": 49,
+   "fact_id": "0268b8bc9f3e0544"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "MAR",
+   "total": 39,
+   "fact_id": "a139eafbfac234fe"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "MER",
+   "total": 54,
+   "fact_id": "e6cc290d2dfe4bee"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "JUP",
+   "total": 56,
+   "fact_id": "cf651b11591b4abf"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "VEN",
+   "total": 52,
+   "fact_id": "0a52e5373e525025"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "SAT",
+   "total": 39,
+   "fact_id": "0495f790e729b158"
+  },
+  {
+   "category": "ashtakavarga_pinda_sarva",
+   "subject": "SARVA",
+   "total": 337,
+   "fact_id": "330cca2e92e0d5a0"
+  }
+ ]
+}
