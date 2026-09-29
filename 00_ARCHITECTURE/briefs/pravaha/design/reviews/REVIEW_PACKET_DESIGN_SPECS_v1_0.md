@@ -93,3 +93,38 @@ stated as a note, not a veto.
 
 Your review will be stored **unedited** under `design/reviews/` and reconciled finding-by-finding
 at B3.6 (accepted / amended / refuted with evidence / deferred).
+
+---
+
+## 5. Measurement surface — also under your review (added 2026-09-29, steward instruction)
+
+The design-freeze review now also covers the measurement artifacts. Judge each on its own terms
+and answer the four explicit questions below.
+
+**Additional documents:**
+8. `measurement/EVALUATION_PROTOCOL_v1_0.md` — the pre-declared protocol (partition, controls,
+   metrics, thresholds).
+9. `measurement/EVALUATION_PROTOCOL_v1_1.md` — disclosed amendment after the '3.0' pass
+   (co-primaries, degeneracy tests).
+10. `measurement/EVALUATION_PROTOCOL_v1_2-DRAFT.md` — draft on the steward's four instructions
+    (T-rank restored with a validity floor; T-FP derived from event density; T-time as a single
+    capped-miss median rule).
+11. `measurement/BASELINE_3_0_v1_0.md` — the '3.0' scoring pass (with its disclosed deviation:
+    it ran before the protocol review closed; the measurement stands, taken under an unreviewed
+    protocol).
+12. `design/GOCHARA_TEST_ORACLES_v1_0.json` — 22 machine-readable oracles for B5.3/A5.5.
+
+**Explicit questions (the steward's items 1–4, plus the oracles):**
+- **Q-M1 (deviation):** given that B4.3 scored before review, is the remediation adequate
+  (measurement stands, disclosed, nothing further scored until review closes) — or should the
+  '3.0' pass be re-run after review?
+- **Q-M2 (T-rank):** is the v1.2 restoration sound — median percentile ≤ 25 over N ≥ 3 events,
+  validity floor of 12, and "rank-unproven blocks the flip"? Is 12 the right floor for 23
+  timing-usable held-out events?
+- **Q-M3 (T-FP):** is the density derivation fair (8 adverse events × 90 d / 10,587 d ≈ 6.8 %;
+  bar at 3 × = ≤ 20 % per adverse class)? If you would derive the bar differently, show how.
+- **Q-M4 (T-time):** is the single capped-miss median rule (miss = 182 d enters the median;
+  median ≤ 45 d over the 7 exact-date events) the right shape? Is 182 d the right cap?
+- **Q-M5 (oracles):** can every oracle in the JSON fail (§N.8)? Is any load-bearing defect of
+  v3.0 §1 (findings 1–27, N1–N9) left unguarded? Is any oracle's arithmetic wrong (recompute
+  the signs/houses yourself)?

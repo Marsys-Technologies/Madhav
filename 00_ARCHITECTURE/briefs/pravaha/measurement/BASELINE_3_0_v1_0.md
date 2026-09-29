@@ -6,6 +6,14 @@ status: CURRENT
 date: 2026-09-29
 author: "Stream B (Śāstra)"
 protocol: "measurement/EVALUATION_PROTOCOL_v1_0.md (PRE_DECLARED 2026-09-29); this is the B4.3 scoring pass for generation '3.0'"
+deviation_disclosure: >
+  DISCLOSED PROCESS DEVIATION (steward review, 2026-09-29): protocol v1.0's own header and the
+  campaign plan state that scoring begins only after the protocol's independent review closes
+  (B4.2 is a gate). This scoring pass ran BEFORE that review closed — Stream B took B4.3 from the
+  tracker's READY list without waiting for the review. The measurement stands (the protocol was
+  fully pre-declared before any scoring, so no figure here influenced a threshold), but it was
+  taken under an UNREVIEWED protocol. Per the steward's instruction, nothing further (B4.4 '4.1'
+  or any other generation) is scored until the native reports the protocol review is done.
 chart: "482012f1-710e-4a25-994a-93821f5871aa"
 access: "amjis (production), read-only SELECTs via the session MCP postgres tool; all queries run 2026-09-29; no writes, no pravaha CLI"
 ---

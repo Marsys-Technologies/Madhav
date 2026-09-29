@@ -18,6 +18,12 @@ reason: >
   meaningless rank medians. The endpoint set is sharpened now — before the candidates that will be
   judged by it exist as scored artifacts — so the standard cannot be accused of fitting the
   candidate. This is the v1.0 §5.5 amendment path, used exactly as declared.
+deviation_disclosure: >
+  DISCLOSED PROCESS DEVIATION (steward review, 2026-09-29): B4.3 scored '3.0' before the B4.2
+  protocol review closed, contrary to v1.0's own gate language. The '3.0' measurement stands but
+  was taken under an unreviewed protocol; no further generation is scored until the native reports
+  the protocol review is done. This v1.1 (and the v1.2 draft) form part of the review surface for
+  that review.
 ---
 
 # Evaluation protocol v1.1 — amendment to v1.0 (only the deltas)
