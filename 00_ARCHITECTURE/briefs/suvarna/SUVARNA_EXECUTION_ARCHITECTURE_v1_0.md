@@ -1,13 +1,14 @@
 ---
 artifact: SUVARNA_EXECUTION_ARCHITECTURE
 canonical_id: SUVARNA_EXECUTION_ARCHITECTURE
-version: "1.1"
+version: "1.2"
 status: DRAFT — for native review
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 companion_of: SUVARNA_CAMPAIGN_PLAN_v1_2.md (the what and when; this document is the how)
 decision_owner: Native (Abhisek Mohanty)
 changelog:
+  - "1.2 (2026-09-29): §12 operating conventions added, settling the open questions the role-instruction draft raised (queue-to-tracker mapping, ids, one queue per session, leases on campaign-coordination, migration reservations, output paths, ledger folds before landing, stall and spend metering, the L2 MSR set, decision-log writers, digest, hq commits, census checkout). Four missing scripts assigned to Track E as J1 prerequisites (plan §5.1 E5). Three charter points left for the native."
   - "1.1 (2026-09-29): real-time visibility made a first-class requirement (native, 2026-09-28): new principle 9, new §11 (the tracker: one event log as the single source of truth, detectors decide done, live push, resilience), emit duties added to the queue life (§4.3), the conductor loop (§5.1), the Monitor (§8) and restartability (§10). The tracker is built and tested (34 tests)."
   - "1.0 (2026-09-28): first draft. Isolation, the swarm, models and effort, the work queue, the build strategy, autonomy and its limits, environment, cost control."
 ---
@@ -343,3 +344,26 @@ A role that cannot emit (the log unwritable) stops and reports; it does not cont
 - **Database credential source.** The detectors that read the database use a read-only environment file. Today that file sits in a session scratch folder; a permanent location is needed before execution (decision for the native).
 - **Local only.** The tracker listens on `127.0.0.1`. Viewing from another device needs a decision on how to expose it safely.
 - **The plan model is hand-kept.** A change to the plan must be made in the plan document and in `plan_model.json` together; the Scribe checks they agree at every fold.
+
+## §12 · Operating conventions (settled 2026-09-29)
+
+Settled in Strategic Suvarṇa from the role-instruction review. Role files cite these by number.
+
+| # | Question | Convention |
+|---|---|---|
+| 12.1 | How a queue item reaches the tracker | Each queue line carries **`plan_item`**, the `plan_model.json` id it rolls up to. Events name `plan_item` in `--item` and the queue id in `--step`, so a packet's events never change the whole item's status. Only the Conductor emits whole-item `running`/`blocked`/`parked`; only the Scribe emits `done`, and never on an item a detector or a native decision closes. |
+| 12.2 | Ids and branches | Queue id: `<plan_item>-<kind>-<nnn>` (e.g. `A.L2-brief-014`). Lane branch: `suvarna/lane/<queue id>`. Lane worktree: `$SUVARNA_HOME/lanes/<queue id>`. |
+| 12.3 | One Conductor or two | **One per session, one queue per Conductor**: `QUEUE.jsonl` (Exec Suvarṇa) and `QUEUE_ENGINE.jsonl` (Nikaṣa Engine), both in `hq/00_ARCHITECTURE/control/suvarna/state/`. Each has one writer. |
+| 12.4 | Leases | The project's existing mechanism: a row in `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md` on branch `origin/campaign-coordination`, claimed before and released after. Lease id: `SUVARNA-<queue id>`. The L3 family assets are never leased by Suvarṇa (N-17, charter R8). |
+| 12.5 | Migration numbers | The project's existing convention: reserve one number at a time with a placeholder commit after a fresh `origin/main` and open-PR sweep (take the maximum across `platform/migrations` and `platform/supabase/migrations`), record the reservation commit in the queue line, never reuse a number. |
+| 12.6 | Where committed outputs live | On the lane branch, merged to `suvarna/trunk`: layer instances `00_ARCHITECTURE/briefs/suvarna/layers/<Lx>/`; asset briefs `…/layers/<Lx>/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md`; fix designs `…/layers/<Lx>/designs/`; gate reviews `…/reviews/<queue id>_REVIEW.md` (committed, for audit). Raw evidence stays in `$SUVARNA_HOME/evidence/<queue id>/` (not committed). |
+| 12.7 | Register and ledger folds before landing | Until E4.1 lands the Nikaṣa tooling and ledgers on `main`, **only the Nikaṣa Engine session folds** into the register and ledgers on `campaign/nikasha-test`. Exec Suvarṇa's Scribe files a fold request (a `note` plus a file in evidence). After E4.1, folds happen on `suvarna/trunk` and the tracker's `NIKASHA_ROOT` points there. |
+| 12.8 | Stall detection and spend | **The Conductor** does both: an agent with no event and no commit for 10 minutes is stalled (restart from its last commit); after every agent run it emits `metric` events for tokens used, by role and stage (N-15: reported, not capped). The Monitor stays an environment checker; the Conductor runs `monitor --once` before each dispatch and pauses on exit 2. |
+| 12.9 | Which assets are "L2 MSR" (charter R1, F-3) | Any asset whose rows land in `bodha_msr_signals` or in a table with a cascading foreign key to it, measured from the live schema. The L2 analyst records the measured list in the L2 layer instance; until then the whole `bo_*` set that writes signals is treated as MSR. |
+| 12.10 | Who writes `DECISIONS.jsonl` | Strategic Suvarṇa and the Steward, and only the native's own words with their source (where, when). Each line names its writer. Nothing else is a decision (charter §2, P10). |
+| 12.11 | Daily digest | Written by the Steward to `hq/…/state/DIGEST_<date>.md` and announced as a tracker `note`; the native reads it from the dashboard. |
+| 12.12 | Committing `suvarna/hq` state | The queue's and log's writers commit their own file on `suvarna/hq` at every fold and at least hourly, `git commit -- <path>` only. |
+| 12.13 | Which checkout the census runs from | `/Users/Dev/madhav-nikasha` (read-only) until E4.1 lands; `suvarna/trunk` after. The census records the inspector's commit with its output. |
+| 12.14 | Gating measurements | A census is a result like any other: a census step is marked done only after its gate review, at fold. |
+
+**Not settled here (the native's):** the three charter points in the charter amendment proposal: L0's global build under G13; per-layer idempotency wording in G4; the reversal a normal level wave states (§6, precondition 7).

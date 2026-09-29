@@ -196,7 +196,7 @@ Hybrid, as in the rest of the plan: design runs in parallel now; production chan
 - Agree the hand-over point: Suvarṇa leaves the family alone until the workstream finishes and PR #2731 merges.
   - No rebuild from `main` (it would erase stamps and invalidate the candidate).
   - No registry re-seed (it would re-arm the century writer).
-- Take asset leases on Saṅgam and Kṣetra for design work only.
+- ~~Take asset leases on Saṅgam and Kṣetra for design work only.~~ Superseded by N-17 (2026-09-29): the family sessions own them; Suvarṇa never leases them.
 
 ### F1 · Design, in parallel (starts now, read-only and fixtures only)
 

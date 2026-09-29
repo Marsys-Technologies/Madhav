@@ -289,7 +289,7 @@ NOW ─┬─ TRACK E  Engine: tools · build engine · 32 clause fixes · bo_up
 
 | Gate | Passes when | Who rules |
 |---|---|---|
-| **J1 · Engine freeze** | T1–T5 pass in production tooling on `main`; the combined reopen is re-sealed (T1 → T2 → T3); tier 4 and the L0 instance are accepted; R24, R39 and R71 closed; R244 closed or deferred with withholding (N-6); the build engine deployed and its migrations verified | **native** |
+| **J1 · Engine freeze** | E5's four scripts exist, are tested and reviewed; T1–T5 pass in production tooling on `main`; the combined reopen is re-sealed (T1 → T2 → T3); tier 4 and the L0 instance are accepted; R24, R39 and R71 closed; R244 closed or deferred with withholding (N-6); the build engine deployed and its migrations verified | **native** |
 | **G2 · Loop proven** | dependency levels 0–2 certified; cost per asset measured; §5.4's lifecycle confirmed or revised | **native**; a checkpoint, not a stop, unless the native halts |
 | **G3.Lx · Layer close** | that layer CLOSED (§1.2) | **native**, batched |
 | **G4 · Campaign complete** | §1.3 | **native** |
@@ -364,7 +364,14 @@ Four workstreams, running in parallel.
 - Fix `bo_upaya` as a sanctioned writer exception (N-6: fix now, approved): about half a day. It unblocks R246, `ka_kshetra` (which reads from it) and the end of the withholding.
 - **Rough size:** 10–20 hours.
 
-- **Track E total to the freeze: roughly 90–150 hours of agent effort**, split across parallel lanes. The derivability work moves to Track A (below); it is not removed, only taken off the engine's path.
+**E5 · Execution tooling (found by the role-instruction review, 2026-09-29).** Nothing exists yet for:
+- writing certification records to `asset_certs.jsonl` (reviewed, idempotent on a copy first; plan §6.3);
+- the fold script (register row states, ledger emit with the withholding list, computed tallies, fingerprints, drift);
+- the level-wave script, with a read-only check of the orchestrator's per-chart lock and of the running service's `env.DEPLOY_SHA`;
+- per-entry manifest fingerprint rotation (`manifest_fingerprint.py` restamps only the root).
+- All four are **J1 prerequisites**: Track B cannot certify or build without them. **Rough size:** 15–25 hours.
+
+- **Track E total to the freeze: roughly 105–175 hours of agent effort** (E5 added), split across parallel lanes. The derivability work moves to Track A (below); it is not removed, only taken off the engine's path.
 
 ### 5.2 · Track A — analysis, all layers at once (session "Exec Suvarṇa")
 

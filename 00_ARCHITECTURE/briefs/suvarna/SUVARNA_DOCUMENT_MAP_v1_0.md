@@ -25,8 +25,9 @@ Branches: **S** = `strategy/suvarna-plan` · **N** = `campaign/nikasha-test` · 
 |---|---|---|---|
 | `briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_2.md` | S | draft v1.2, for native review | The master plan: end state, standard, tracks, gates, launch readiness (§5.0b), decisions with status |
 | `briefs/suvarna/SUVARNA_AUTONOMY_CHARTER_v1_0.md` | S | draft, for N-19 | What the swarm decides alone, parks for the native, or refuses |
-| `control/suvarna/state/DECISIONS.jsonl`, `QUEUE.jsonl` | S → `suvarna/hq` | living, append-only | The native's decisions with sources; the work queue |
-| `briefs/suvarna/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` | S | draft v1.1 | How it runs: isolation, swarm, queue, builds, autonomy, cost, real-time visibility (§11) |
+| `control/suvarna/state/DECISIONS.jsonl`, `QUEUE.jsonl`, `QUEUE_ENGINE.jsonl` | S → `suvarna/hq` | living, append-only | The native's decisions with sources; one work queue per execution session |
+| `briefs/suvarna/roles/ROLE_*_v1_0.md` (shared rules + 9 roles) | S | draft, reviewed | Instructions each swarm agent receives at dispatch |
+| `briefs/suvarna/SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` | S | draft v1.2 | How it runs: isolation, swarm, queue, builds, autonomy, cost, real-time visibility (§11), operating conventions (§12) |
 | `control/suvarna/plan_model.json` | S | living | The plan in machine form: tracks, items, dependencies, decisions, done-detectors. Drives the tracker |
 | `platform/scripts/governance/suvarna_tracker/` | S | built, 36 tests | The real-time campaign tracker (event log, detectors, live dashboard) |
 | `briefs/suvarna/prompts/L3_{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_PROMPT_v1_0.md` | S | ready | Start prompts for the three L3 family sessions, which each seal a final brief and implement it (native, 2026-09-29) |
