@@ -132,15 +132,15 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     const expected = {
       L0: { generation: 'l0:7d40f8c70640:64b8859fe692', supersedes: 'l0:d2369b888e76:3dda261170ee', changed: 9, history: 2 },
       L2: { generation: 'l2:7d40f8c70640:dbbbb24c09cb', supersedes: 'l2:149f8479ac4e:51d3164426ac', changed: 23, history: 3 },
-      L3: { generation: 'l3:7d40f8c70640:dfcf30d8b3d2', supersedes: 'l3:87cc8c9baf89:002a118b218e', changed: 6, history: 5 },
+      L3: { generation: 'l3:7d40f8c70640:dfcf30d8b3d2', supersedes: 'l3:87cc8c9baf89:002a118b218e', changed: 6, history: 6 },
     } as const
     for (const layer of ['L0', 'L2', 'L3'] as const) {
-      // L0 and L2 repair successors are still the live pins. On L3 the later
-      // D-E022 merge readmission (PR #2731) is live, so the repair successor is
-      // the most recent archived entry. Every assertion is unchanged, only
-      // rebased onto that entry.
+      // L0 and L2 repair successors are still the live pins. On L3 the two
+      // later D-E022 merge readmission successors (PR #2731) are live/archived
+      // after it, so the repair successor is the archived entry at -2. Every
+      // assertion is unchanged, only rebased onto that entry.
       const pin = layer === 'L3'
-        ? layerPinRecord.history.L3.at(-1)!.pin
+        ? layerPinRecord.history.L3.at(-2)!.pin
         : layerPinRecord.layers[layer]
       const want = expected[layer]
       expect(pin.generation_id).toBe(want.generation)
@@ -154,7 +154,7 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       expect(Object.values(pin.admission?.delta_classifications ?? {})).not.toContain('unapproved_foreign_source')
       // the predecessor is archived whole, and named by the successor
       const archived = layer === 'L3'
-        ? layerPinRecord.history.L3.at(-2)!
+        ? layerPinRecord.history.L3.at(-3)!
         : layerPinRecord.history[layer].at(-1)!
       expect(archived.generation_id).toBe(want.supersedes)
       expect(archived.superseded_by_generation_id).toBe(want.generation)
@@ -227,7 +227,7 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_KSHETRA_GATE_ACCEPTANCE_v1_0.md',
       sha256: '687eed0309e906730364a394fb674ebac17ce58220309308bfcf071ac972175d',
     }])
-    expect(layerPinRecord.history.L3).toHaveLength(5)
+    expect(layerPinRecord.history.L3).toHaveLength(6)
     expect(layerPinRecord.layers.L4.admission.delta_classifications).toEqual({
       ph_muhurta: 'derived_import_change',
       ph_rectification: 'derived_import_change',
@@ -375,20 +375,24 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // Evidence: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_E022_PINS_READMISSION_AUTHORITY_v1_0.md
     const decision = 'D-E022'
     const authority = '442f1ed955a701008b2a975c7df80d543fbbc67a'
-    const source = 'f4cba9d606abffd6c73bee42307ea8cbfd733ae6'
+    // L1 has one D-E022 successor (source f4cba9d6). L3 has TWO: the DP-SD-010
+    // serialization fix on gochara_kernel/knots.py (same A0.3 repair) moved the
+    // knots-closure digests after the first L3 successor was admitted, and the
+    // fail-closed design admits a second, append-only successor (source ad22bef06)
+    // rather than editing the first.
     const expected = {
-      L1: { generation: 'l1:f4cba9d606ab:b3674dfbfa91', supersedes: 'l1:149f8479ac4e:93de3b2c84b7', changed: 6, history: 3 },
-      L3: { generation: 'l3:f4cba9d606ab:64ca6e06c175', supersedes: 'l3:7d40f8c70640:dfcf30d8b3d2', changed: 7, history: 5 },
+      L1: { generation: 'l1:f4cba9d606ab:b3674dfbfa91', supersedes: 'l1:149f8479ac4e:93de3b2c84b7', changed: 6, history: 3, source: 'f4cba9d606abffd6c73bee42307ea8cbfd733ae6' },
+      L3: { generation: 'l3:ad22bef06784:d1bf773c4d94', supersedes: 'l3:f4cba9d606ab:64ca6e06c175', changed: 3, history: 6, source: 'ad22bef06784bf3326a3b6fb36660bdad84cb805' },
     } as const
     for (const layer of ['L1', 'L3'] as const) {
       const pin = layerPinRecord.layers[layer]
       const want = expected[layer]
       expect(pin.generation_id).toBe(want.generation)
       expect(pin.supersedes_generation_id).toBe(want.supersedes)
-      expect(pin.convergence_commit).toBe(source)
+      expect(pin.convergence_commit).toBe(want.source)
       expect(pin.admission?.authority_decision).toBe(decision)
       expect(pin.admission?.authority_commit).toBe(authority)
-      expect(pin.admission?.source_commit).toBe(source)
+      expect(pin.admission?.source_commit).toBe(want.source)
       expect(pin.admission?.changed_assets).toHaveLength(want.changed)
       expect(Object.keys(pin.admission?.delta_classifications ?? {})).toEqual(pin.admission?.changed_assets)
       expect(Object.values(pin.admission?.delta_classifications ?? {})).not.toContain('unapproved_foreign_source')
@@ -411,7 +415,22 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       ga_structural: 'derived_import_change',
       ga_yoga: 'derived_import_change',
     })
+    // the live L3 admission is the knots-cascade successor: three writers whose
+    // digests moved only through the serialized gochara_kernel/knots.py import
     expect(layerPinRecord.layers.L3.admission?.delta_classifications).toEqual({
+      ka_gochara_v3_century_materialize: 'derived_import_change',
+      ka_moorti_nirnaya: 'derived_import_change',
+      ka_sangam: 'derived_import_change',
+    })
+    // the first L3 readmission successor (the merge delta) is archived whole,
+    // immutable, and still fully classified
+    const firstL3 = layerPinRecord.history.L3.at(-1)!.pin
+    expect(firstL3.generation_id).toBe('l3:f4cba9d606ab:64ca6e06c175')
+    expect(firstL3.supersedes_generation_id).toBe('l3:7d40f8c70640:dfcf30d8b3d2')
+    expect(firstL3.convergence_commit).toBe('f4cba9d606abffd6c73bee42307ea8cbfd733ae6')
+    expect(firstL3.admission?.authority_decision).toBe(decision)
+    expect(firstL3.admission?.authority_commit).toBe(authority)
+    expect(firstL3.admission?.delta_classifications).toEqual({
       ka_gochara: 'derived_import_change',
       ka_gochara_resonance: 'approved_intentional_and_derived_import_change',
       ka_gochara_v3_century_materialize: 'approved_intentional_and_derived_import_change',

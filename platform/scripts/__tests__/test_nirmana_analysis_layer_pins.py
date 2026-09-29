@@ -67,9 +67,12 @@ def replace_layer_writers(
 # every PR entering the merge queue while the tool's own --check stayed green.
 READMISSION_LAYERS = ("L1", "L3")
 REPAIR_LAYERS = ("L0", "L2", "L3")
+# L3 carries TWO D-E022 readmission successors (the DP-SD-010 knots.py digest
+# cascade required a second append-only admission); L1 carries one.
+READMISSION_REWINDS = ("L1", "L3", "L3")
 POST_REPAIR_PINS = LIVE_PINS
 POST_REPAIR_INVENTORY = LIVE_INVENTORY
-for _layer in READMISSION_LAYERS:
+for _layer in READMISSION_REWINDS:
     POST_REPAIR_INVENTORY = replace_layer_writers(
         POST_REPAIR_INVENTORY, _layer, POST_REPAIR_PINS["history"][_layer][-1]["writer_digests"]
     )
@@ -1410,32 +1413,64 @@ def test_repair_authority_chain_binds_the_recorded_decision_document() -> None:
 # (membership unchanged). The native authorised re-admission per
 # MERGE_HYGIENE_12_10c_RUNBOOK step 2; the authority evidence document is
 # 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_E022_PINS_READMISSION_AUTHORITY_v1_0.md.
+#
+# L3 carries TWO D-E022 successors: the DP-SD-010 serialization fix on
+# services/gochara_kernel/knots.py (swiss_state_boundary compliance, same A0.3
+# repair) moved the knots-closure writer digests after the first L3 successor
+# was admitted. Fail-closed design: a second append-only successor, never an
+# edit of the first. L1 carries exactly one.
 READMISSION_DECISION = "D-E022"
 # The authority identity (first commit of the evidence document) and the pinned
-# source commit are DIFFERENT commits, on purpose (same pattern as the L0 repair):
-# the source is the identity-bound amendment of the evidence document, a docs-only
-# commit on top of the merge, whose committed writer inventory is byte-identical
-# to the merged tree's derived inventory.
+# source commits are DIFFERENT commits, on purpose (same pattern as the L0
+# repair): each source is a commit whose committed writer inventory is
+# byte-identical to the tree its successor pins.
 READMISSION_AUTHORITY = "442f1ed955a701008b2a975c7df80d543fbbc67a"
-READMISSION_SOURCE = "f4cba9d606abffd6c73bee42307ea8cbfd733ae6"
-READMISSION_INTENTIONAL = {"ga_strength", "ga_sensitive"}
-READMISSION_BOTH = {
-    "ka_gochara_resonance", "ka_gochara_v3_century_materialize",
-    "ka_kshetra", "ka_moorti_nirnaya", "ka_vedha_gochara",
+READMISSION = {
+    "L1": {
+        "source": "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
+        "supersedes": "l1:149f8479ac4e:93de3b2c84b7",
+        "successors": 1,
+        "intentional": {"ga_strength", "ga_sensitive"},
+        "both": set(),
+    },
+    "L3": {
+        "source": "ad22bef06784bf3326a3b6fb36660bdad84cb805",
+        "supersedes": "l3:f4cba9d606ab:64ca6e06c175",
+        "successors": 2,
+        "intentional": set(),
+        "both": set(),
+    },
 }
+# The first L3 readmission successor (merge delta, source f4cba9d6) is now
+# archived; it remains asserted, immutable, below.
+READMISSION_L3_FIRST = {
+    "generation": "l3:f4cba9d606ab:64ca6e06c175",
+    "supersedes": "l3:7d40f8c70640:dfcf30d8b3d2",
+    "source": "f4cba9d606abffd6c73bee42307ea8cbfd733ae6",
+    "both": {
+        "ka_gochara_resonance", "ka_gochara_v3_century_materialize",
+        "ka_kshetra", "ka_moorti_nirnaya", "ka_vedha_gochara",
+    },
+}
+
+
+def _predecessor_document(layer: str) -> dict:
+    """The live document rewound past exactly this layer's live successor."""
+    return rewind_layer(LIVE_PINS, layer)
 
 
 @pytest.mark.parametrize("layer", READMISSION_LAYERS)
 def test_readmission_successor_is_append_only_and_names_its_exact_predecessor(layer: str) -> None:
-    delivered_active = POST_REPAIR_PINS["layers"][layer]
+    predecessor_document = _predecessor_document(layer)
+    delivered_active = predecessor_document["layers"][layer]
     live_active = LIVE_PINS["layers"][layer]
-    delivered_history = POST_REPAIR_PINS["history"][layer]
+    delivered_history = predecessor_document["history"][layer]
     live_history = LIVE_PINS["history"][layer]
 
     # every previously packaged history entry survives byte-for-byte, in order
     assert live_history[: len(delivered_history)] == delivered_history
     assert len(live_history) == len(delivered_history) + 1
-    # the repair-era active pin is archived whole as the new predecessor
+    # the immediate predecessor pin is archived whole
     archived = live_history[-1]
     assert archived["pin"] == delivered_active
     assert archived["generation_id"] == (
@@ -1443,43 +1478,79 @@ def test_readmission_successor_is_append_only_and_names_its_exact_predecessor(la
     )
     assert live_active["supersedes_generation_id"] == archived["generation_id"]
     assert archived["superseded_by_generation_id"] == live_active["generation_id"]
-    # and the predecessor's writer slice is exactly what the repair-era inventory said
+    # and the predecessor's writer slice is exactly what its inventory said
     assert archived["writer_digests"] == pins_module.layer_writer_slice(
-        POST_REPAIR_INVENTORY, pins_module.LAYER_PREFIX[layer]
+        replace_layer_writers(
+            LIVE_INVENTORY, layer, archived["writer_digests"]
+        ),
+        pins_module.LAYER_PREFIX[layer],
     )
 
 
 @pytest.mark.parametrize("layer", READMISSION_LAYERS)
 def test_readmission_successor_records_the_approved_decision_and_source(layer: str) -> None:
+    expected = READMISSION[layer]
     admission = LIVE_PINS["layers"][layer]["admission"]
     assert admission["authority_decision"] == READMISSION_DECISION
     assert admission["authority_commit"] == READMISSION_AUTHORITY
-    assert admission["source_commit"] == READMISSION_SOURCE
-    assert READMISSION_AUTHORITY != READMISSION_SOURCE
-    assert LIVE_PINS["layers"][layer]["convergence_commit"] == READMISSION_SOURCE
+    assert admission["source_commit"] == expected["source"]
+    assert READMISSION_AUTHORITY != expected["source"]
+    assert LIVE_PINS["layers"][layer]["convergence_commit"] == expected["source"]
+    assert LIVE_PINS["layers"][layer]["supersedes_generation_id"] == expected["supersedes"]
     assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS[layer]
     assert "source_acceptance" not in admission
-    assert pins_module.AUTHORIZED_SOURCE_COMMITS[READMISSION_DECISION][layer] == frozenset({READMISSION_SOURCE})
+    assert expected["source"] in pins_module.AUTHORIZED_SOURCE_COMMITS[READMISSION_DECISION][layer]
+    # exactly the recorded number of D-E022 successors exists on this layer
+    decision_admissions = [
+        entry["pin"].get("admission", {})
+        for entry in LIVE_PINS["history"][layer]
+    ] + [admission]
+    assert sum(
+        1 for item in decision_admissions
+        if item.get("authority_decision") == READMISSION_DECISION
+    ) == expected["successors"]
 
 
 @pytest.mark.parametrize("layer", READMISSION_LAYERS)
 def test_readmission_classifications_equal_the_actual_digest_delta(layer: str) -> None:
+    expected = READMISSION[layer]
     prefix = pins_module.LAYER_PREFIX[layer]
-    before = pins_module.layer_writer_slice(POST_REPAIR_INVENTORY, prefix)
+    before = LIVE_PINS["history"][layer][-1]["writer_digests"]
     after = pins_module.layer_writer_slice(LIVE_INVENTORY, prefix)
     exact_delta = sorted(a for a in set(before) | set(after) if before.get(a) != after.get(a))
     admission = LIVE_PINS["layers"][layer]["admission"]
     assert admission["changed_assets"] == exact_delta
     assert exact_delta, "a successor with no delta must not have been admitted"
     for asset_id, classification in admission["delta_classifications"].items():
-        if asset_id in READMISSION_BOTH:
-            expected = "approved_intentional_and_derived_import_change"
-        elif asset_id in READMISSION_INTENTIONAL:
-            expected = "approved_intentional_change"
+        if asset_id in expected["both"]:
+            expected_class = "approved_intentional_and_derived_import_change"
+        elif asset_id in expected["intentional"]:
+            expected_class = "approved_intentional_change"
         else:
-            expected = "derived_import_change"
-        assert classification == expected, asset_id
+            expected_class = "derived_import_change"
+        assert classification == expected_class, asset_id
     assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
+
+
+def test_readmission_first_l3_successor_is_archived_whole_and_immutable() -> None:
+    archived = LIVE_PINS["history"]["L3"][-1]
+    assert archived["generation_id"] == READMISSION_L3_FIRST["generation"]
+    assert archived["superseded_by_generation_id"] == LIVE_PINS["layers"]["L3"]["generation_id"]
+    pin = archived["pin"]
+    assert pin["supersedes_generation_id"] == READMISSION_L3_FIRST["supersedes"]
+    assert pin["convergence_commit"] == READMISSION_L3_FIRST["source"]
+    admission = pin["admission"]
+    assert admission["authority_decision"] == READMISSION_DECISION
+    assert admission["authority_commit"] == READMISSION_AUTHORITY
+    assert admission["source_commit"] == READMISSION_L3_FIRST["source"]
+    assert len(admission["changed_assets"]) == 7
+    for asset_id, classification in admission["delta_classifications"].items():
+        expected_class = (
+            "approved_intentional_and_derived_import_change"
+            if asset_id in READMISSION_L3_FIRST["both"]
+            else "derived_import_change"
+        )
+        assert classification == expected_class, asset_id
 
 
 def test_readmission_leaves_every_other_layer_and_the_definitions_untouched() -> None:
@@ -1495,9 +1566,15 @@ def test_readmission_leaves_every_other_layer_and_the_definitions_untouched() ->
 def test_readmission_only_l1_l3_are_authorised_for_the_decision() -> None:
     authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[READMISSION_DECISION]
     assert set(authorised) == set(READMISSION_LAYERS)
+    assert authorised["L1"] == frozenset({READMISSION["L1"]["source"]})
+    assert authorised["L3"] == frozenset({
+        READMISSION["L3"]["source"], READMISSION_L3_FIRST["source"]
+    })
     for layer in ("L0", "L2", "L4", "L5"):
         with pytest.raises(SystemExit, match="is not authorized by"):
-            pins_module.validate_authorized_source(READMISSION_DECISION, layer, READMISSION_SOURCE)
+            pins_module.validate_authorized_source(
+                READMISSION_DECISION, layer, READMISSION["L3"]["source"]
+            )
 
 
 def test_readmission_authority_chain_binds_the_recorded_decision_document() -> None:
