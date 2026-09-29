@@ -197,9 +197,12 @@ delivery** and consolidated into the single re-based L3 successor
 `l3:333eb7abcac3:d1bf773c4d94` (§2g) — same content identity (`d1bf773c4d94`), same D-E022
 authority, source re-pinned to the origin/main merge commit. The ratified
 `l3:ad22bef06784:d1bf773c4d94` never reached main and exists only in this lane's git
-history. The re-based successors carry new generation ids and are listed in the verdict as
-**awaiting native ratification** (the A0.6 instruction authorised the re-base; the new ids
-are disclosed for the record).
+history.
+
+**RATIFIED (native, 2026-09-30):** the re-based D-E022 successors
+`l1:333eb7abcac3:b3674dfbfa91` and `l3:333eb7abcac3:d1bf773c4d94` are ratified; they replace
+the withdrawn lane-only ids, and the earlier ratification of
+`l3:ad22bef06784:d1bf773c4d94` is superseded by this one. No ratification item remains open.
 
 ### 2g. A0.6 — merge-queue ejection repair (delivery-topology pins failure)
 
@@ -271,9 +274,11 @@ NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY=1 \
 ```
 
 Before the re-base, the identical simulation reproduced the queue's failure set exactly
-(5 failures, above). **Note:** if main moves before the re-queue lands, step 2 must be
-redone against the new main head (the successor source and the archived snapshots re-point
-to the new baseline; the A0.6 instruction covers the redo).
+(5 failures, above). **Steward independently reproduced the delivery check on a squash of
+`f2598dbc5` onto `cbded8e54` (2026-09-30): exit 0; pins pytest delivery mode 69 passed /
+3 skipped** — matches this lane's evidence. **Note:** if main moves before the re-queue
+lands, step 2 must be redone against the new main head (the successor source and the
+archived snapshots re-point to the new baseline; the A0.6 instruction covers the redo).
 
 First-pass sections 2a/2b below are kept for the record.
 
@@ -496,14 +501,19 @@ A0.6 (2026-09-30): the merge-queue ejection is repaired (§2g). The delivered D-
 successors are now `l1:333eb7abcac3:b3674dfbfa91` and `l3:333eb7abcac3:d1bf773c4d94`
 (content identities unchanged — `b3674dfbfa91`, `d1bf773c4d94`; source re-pinned to the
 origin/main merge commit `333eb7abca…` because the squash topology makes lane-only sources
-undeliverable). **Disclosure, awaiting native ratification:** the re-based generation ids
-differ from the ratified ones; the native's A0.6 instruction authorised the re-base, and the
-new ids are recorded here for ratification. The D-E022 authority document, review artifacts,
-classifications, and receipt membership are unchanged.
+undeliverable). **RATIFIED by the native, 2026-09-30** — they replace the withdrawn
+lane-only ids; the earlier ratification of `l3:ad22bef06784:d1bf773c4d94` is superseded.
+The steward independently reproduced the §2g delivery check on a squash of `f2598dbc5` onto
+`cbded8e54` (exit 0; pins pytest 69/3). **No standing native items remain.**
 
-CI at fourth-pass HEAD: pending push (this section updates when the run lands). Local
-evidence: §2g step 3 plus pins pytest 69/3, receipts 40/40, TS scripts 118/118,
+CI at fourth-pass HEAD `f2598dbc5`: 34 pass / 15 skipping / 0 fail; PR MERGEABLE/CLEAN.
+Local evidence: §2g step 3 plus pins pytest 69/3, receipts 40/40, TS scripts 118/118,
 golden-stream 56/56, mr06 6/6, provenance `--check` exit 0, census `:check` green.
+
+(Record-keeping note: this ratification/steward-reproduction paragraph was committed on the
+lane AFTER `f2598dbc5` but deliberately NOT pushed, per the native's 2026-09-30 instruction
+— the steward re-queues #2731 at head `f2598dbc5` with main at `cbded8e54`; the packet
+update lands with post-merge hygiene.)
 
 **Merging #2731 is the native's action — re-queue immediately after this push** (if main
 moves in between, §2g step 2 must be redone against the new main head). Once it lands, this
@@ -549,8 +559,8 @@ question (now sharper: the ka_gochara seed row catalogs the `'4.0'` surface per 
 century materializer's row counts `g3_%` on `_v2`; `'3.0'` on `kala_gochara_windows` has no
 seed owner — migration-only by design or a gap is the native's call).
 
-Next native actions: **re-queue + merge + deploy #2731** (one disclosure pending
-ratification: the re-based D-E022 generation ids, §2g/§2f amendment); then DEPLOY_SHA
+Next native actions: **re-queue + merge + deploy #2731** (re-based D-E022 generation ids
+RATIFIED 2026-09-30, §2f/§2g — no standing items); then DEPLOY_SHA
 verification → Cloud-Run century rebuild → flips under trigger #0 + soaks (ADK-0028 amended
 sequence). Reminder carried from the 1086 ruling: deploy applies 1086, but no ga_strength
 rebuild is authorised — that decision is separate and later.
