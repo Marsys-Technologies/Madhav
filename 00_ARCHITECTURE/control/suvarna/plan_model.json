@@ -5,6 +5,7 @@
   "plan_ref": "00_ARCHITECTURE/briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_1.md",
   "tracks": [
     {"id": "FIRST", "title": "First items", "mode": "parallel", "plain": "Small jobs that run first, alongside everything else"},
+    {"id": "LAUNCH", "title": "Launch readiness", "mode": "hybrid", "plain": "What must be true before execution starts: documents, setup, reviews, then the native's approval"},
     {"id": "E", "title": "Track E — Nikaṣa engine", "mode": "parallel", "plain": "Finish the engine: tools, build engine, clause fixes, landing"},
     {"id": "A", "title": "Track A — Analysis, all layers", "mode": "parallel", "plain": "Read-only: census, layer plans, asset briefs, fix designs — all six layers at once"},
     {"id": "F", "title": "Track F — L3 focus families", "mode": "hybrid", "plain": "Three family sessions (Gochara, Saṅgam, Kṣetra) each seal a final brief and implement it; Suvarṇa's L3 analysis evaluates their latest versions"},
@@ -20,7 +21,17 @@
     {"id": "FI-4", "track": "FIRST", "title": "Register table well-formed (R244, R246, R99 repaired)", "depends_on": [], "detector": {"type": "register_wellformed"}},
     {"id": "FI-5", "track": "FIRST", "title": "Suvarṇa recorded in CURRENT_STATE on main", "depends_on": ["FI-2"], "detector": {"type": "main_file_contains", "path": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "pattern": "SUVAR[NṆ]A|Suvar[nṇ]a"}},
     {"id": "FI-6", "track": "FIRST", "title": "Sessions named: Strategic Suvarṇa · Nikaṣa Engine · Exec Suvarṇa", "depends_on": [], "done_by": "event"},
-    {"id": "FI-7", "track": "FIRST", "title": "Native approves the plan (N-1)", "depends_on": [], "done_by": "decision", "decision": "N-1"},
+    {"id": "FI-7", "track": "FIRST", "title": "Native approves the plan (N-1)", "depends_on": ["L.8", "L.9"], "done_by": "decision", "decision": "N-1"},
+    {"id": "L.1", "lane": "Documents", "title": "Plan brought up to date (v1.2): family sessions, today's decisions, the tracker", "depends_on": [], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.2", "lane": "Documents", "title": "Autonomy charter drafted: what the swarm decides, parks, refuses (for N-19)", "depends_on": [], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.3", "lane": "Documents", "title": "Role prompts for the swarm: conductor, steward, architect, analyst, builder, gate reviewer, build operator, scribe, monitor", "depends_on": ["L.2"], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.4", "lane": "Documents", "title": "Runbook and start prompts for the Exec Suvarṇa and Nikaṣa Engine sessions", "depends_on": ["L.3"], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.5", "lane": "Setup", "title": "Isolation set up: /Users/Dev/suvarna folders; suvarna/hq and suvarna/trunk branches (N-18)", "depends_on": [], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.6", "lane": "Setup", "title": "Monitor: environment checks (database proxy, credential, power, hold switch, disk, tracker)", "depends_on": [], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.7d", "lane": "Setup", "title": "Native decides where the read-only database credential lives (N-20)", "depends_on": [], "track": "LAUNCH", "done_by": "decision", "decision": "N-20"},
+    {"id": "L.7", "lane": "Setup", "title": "Permanent read-only database credential in place (N-20)", "depends_on": ["L.7d"], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.8", "lane": "Review", "title": "Two or three review passes of the whole plan set; findings folded", "depends_on": ["L.1", "L.2", "L.3", "L.4"], "track": "LAUNCH", "done_by": "event"},
+    {"id": "L.9", "lane": "Review", "title": "Independent third-party review; findings folded", "depends_on": ["L.8"], "track": "LAUNCH", "done_by": "event"},
     {"id": "E1.1", "track": "E", "lane": "E1 Tooling", "title": "Re-measure T1–T5 on today's tooling; publish the scorecard", "depends_on": ["FI-7"], "done_by": "event"},
     {"id": "E1.2", "track": "E", "lane": "E1 Tooling", "title": "Detector gaps closed (R245, R248, R249, R250)", "depends_on": ["E1.1"], "detector": {"type": "register_rows_closed", "rows": ["R245", "R248", "R249", "R250"]}},
     {"id": "E1.3", "track": "E", "lane": "E1 Tooling", "title": "Provenance rows closed (R226 --live, R228, R229)", "depends_on": ["E1.1"], "detector": {"type": "register_rows_closed", "rows": ["R226", "R228", "R229"]}},
@@ -112,6 +123,7 @@
     {"id": "F-4", "title": "Kṣetra: stay at 6 classes", "recommendation": "Stay until correct"},
     {"id": "F-5", "title": "Gochara: served horizon for the new generation", "recommendation": "Full century — settled by F-0 (ADK-0027)"},
     {"id": "F-6", "title": "Saṅgam: the Mode D design", "recommendation": "Decide with F-2"},
-    {"id": "N-CLOSE", "title": "Accept the closure report", "recommendation": "—"}
+    {"id": "N-CLOSE", "title": "Accept the closure report", "recommendation": "—"},
+    {"id": "N-20", "title": "Where the permanent read-only database credential lives", "recommendation": "A file outside every repository (mode 600), refreshed once per session from Secret Manager by the Monitor"}
   ]
 }
