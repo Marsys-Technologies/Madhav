@@ -11,6 +11,7 @@ plan_model: 00_ARCHITECTURE/control/pravaha/plan_model.json
 tracker: "http://127.0.0.1:8766 — see PRAVAHA_EXECUTION_ARCHITECTURE_v1_0.md"
 chart_scope: "482012f1-710e-4a25-994a-93821f5871aa (Abhisek Mohanty) only — native directive 2026-09-29; no build for 1c826d5a"
 changelog:
+  - "1.0b (2026-09-29): native rule added to §7 — all reviews are initiated by the native only."
   - "1.0a (2026-09-29): the three late decisions (D-SPECS, D-FLIP, D-T2) now depend on their inputs (B3.6, J2, J2) in the plan model, so the tracker shows them as not yet due instead of ready; the native ruled the other 16 decisions ('Accept all recommendations')."
   - "1.0 (2026-09-29): first version, written at the native's instruction to fold the Gochara forward program (open items 1–12, phases 0–6) into one campaign with a real-time tracker and two parallel streams."
 ---
@@ -204,6 +205,7 @@ Record a ruling with `pravaha decide <ID> --detail "<your words>"` (or tell the 
 
 ## 7. Standing rules (both streams, every phase)
 
+- **Reviews are initiated by the native only** (native, 2026-09-29: *"going forward all reviews are to be initiated by me, you don't do it for this campaign"*). Streams and the steward prepare review packets and hand them to the native; nobody dispatches Kimi K3, GPT-6 Astra or any other reviewer. A gate item waiting on a review is parked with its packet path until the native reports the review is done.
 - No local century enumeration (ADK-0028). Century builds run only as the Cloud Run job, only with D-CLOUD.
 - No flip of `'4.1'`. No flip of anything without D-FLIP.
 - No calibration or weight-fitting on the collapsed score.

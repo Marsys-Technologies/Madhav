@@ -93,9 +93,10 @@ export PRAVAHA_STREAM=A                   # or B — set once at session start
 8. **Need the native?** Write the decision's page into the decision packet (Stream B) or your escalation file
    (Stream A), then `$P request <D-ID> --detail "<path to the page>"`. Continue with other READY work.
 9. **Measurements** (benchmarks, root counts, retrodiction scores): `$P metric <name> <value> --detail "<how measured>"`.
-10. **Never** edit the plan model, never emit for the other stream's items, never mark a join or a decision item done.
+10. **Reviews are the native's to start.** When a gate needs independent review, write the review packet, emit `$P park <ID> --detail "review packet ready at <path>; awaiting the native"`, and move to the next READY item. Never dispatch a reviewer yourself.
+11. **Never** edit the plan model, never emit for the other stream's items, never mark a join or a decision item done.
     If the plan is wrong, write a note (`$P note --detail "..."`) and tell the native.
-11. **If `pravaha` exits 3** (cannot write the event log): stop all work and tell the native.
+12. **If `pravaha` exits 3** (cannot write the event log): stop all work and tell the native.
 
 ## 6. Roles
 
