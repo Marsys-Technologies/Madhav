@@ -8339,3 +8339,15 @@ IST), Purna will push a plain non-force merge commit plus the admissions to the 
 SHA here) or, if the push is not permitted, open a superseding PR preserving history. No generator edit and no
 change to `AUTHORIZED_SOURCE_COMMITS`/`AUTHORITY_BINDINGS` is made or requested; the second L3 successor
 (`ad22bef06`) awaiting Native ratification is left untouched.
+
+
+---
+
+## 2026-09-29 — lease release: OBSERVATORY-METERING-20260929
+
+- Lease ID: L-OBSERVATORY-METERING-20260929; holder: Codex.
+- Released: 2026-09-29T16:55:04.288842+00:00; status: RELEASED — LOCAL IMPLEMENTATION COMPLETE, RETAINED FOR REVIEW.
+- Worktree retained: `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`; branch `codex/observatory-metering`; application changes remain uncommitted under GIP P.4.
+- Evidence: full Vitest suite green; TypeScript green; lint has no errors; disposable PostgreSQL metering migration/ledger checks green; independent migration and code/security reviews completed. See task-owned `00_ARCHITECTURE/briefs/observatory_metering/PROGRESS.md` and the metering runbook for exact results and limitations.
+- No production operation, provider/CLI charge, deploy, application push, protected merge, credential change or other campaign-state edit performed. Migration remains unapplied outside disposable local verification and the metering flag defaults off.
+- This closes only the local implementation lease; no hosted acceptance or invoice accuracy is asserted.
