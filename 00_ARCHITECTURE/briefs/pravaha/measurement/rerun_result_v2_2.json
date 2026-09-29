@@ -1,0 +1,749 @@
+{
+ "artifact": "rerun_result",
+ "version": "2.2",
+ "protocol": "EVALUATION_PROTOCOL_v2_2",
+ "registry": "event_registry_v2_2.json",
+ "extract": "baseline_3_0_extract_v1_0.json",
+ "extract_sha256": "70ba61421915db2ec3fcf3d1a23bc0ad80d43055b0d0bcc656e5a89079ef84ff",
+ "input_adapter": {
+  "status": "PASS",
+  "rule": "all raw si >= 0 (valence domain {gain,loss,mixed,neutral} is descriptive; convention is on si sign)"
+ },
+ "source_reconciliation": {
+  "status": "MATCH",
+  "detail": {
+   "timing": [
+    32,
+    32
+   ],
+   "year": [
+    15,
+    15
+   ],
+   "exact": [
+    5,
+    5
+   ],
+   "interval": [
+    4,
+    4
+   ]
+  }
+ },
+ "dedup_table": {
+  "achievement_recognition": [
+   10,
+   10
+  ],
+  "bereavement": [
+   10,
+   10
+  ],
+  "birth_anchor": [
+   10,
+   10
+  ],
+  "business_launch": [
+   30,
+   30
+  ],
+  "career_advancement": [
+   10,
+   10
+  ],
+  "career_change": [
+   30,
+   30
+  ],
+  "career_entry": [
+   10,
+   10
+  ],
+  "career_setback": [
+   70,
+   10
+  ],
+  "childbirth": [
+   10,
+   10
+  ],
+  "chronic_onset": [
+   70,
+   10
+  ],
+  "education_milestone": [
+   40,
+   40
+  ],
+  "exam_outcome": [
+   10,
+   10
+  ],
+  "financial_deception": [
+   70,
+   10
+  ],
+  "foreign_settlement": [
+   30,
+   20
+  ],
+  "illness_acute": [
+   10,
+   10
+  ],
+  "major_gain": [
+   70,
+   10
+  ],
+  "major_loss": [
+   70,
+   10
+  ],
+  "marriage": [
+   10,
+   10
+  ],
+  "parental_event": [
+   70,
+   10
+  ],
+  "property_acquisition": [
+   10,
+   10
+  ],
+  "psychological_arc": [
+   64,
+   10
+  ],
+  "relocation": [
+   70,
+   10
+  ],
+  "romantic_start": [
+   10,
+   10
+  ],
+  "separation": [
+   30,
+   30
+  ],
+  "spiritual_turn": [
+   70,
+   10
+  ],
+  "surgery": [
+   10,
+   10
+  ],
+  "travel_event": [
+   10,
+   10
+  ]
+ },
+ "degeneracy": {
+  "era_indiscriminate": true,
+  "identical_pairs": [
+   210,
+   351
+  ],
+  "two_horns": {
+   "achievement_recognition": "high",
+   "bereavement": "high",
+   "birth_anchor": "high",
+   "business_launch": "low",
+   "career_advancement": "high",
+   "career_change": "low",
+   "career_entry": "high",
+   "career_setback": "high",
+   "childbirth": "high",
+   "chronic_onset": "high",
+   "education_milestone": "low",
+   "exam_outcome": "high",
+   "financial_deception": "high",
+   "foreign_settlement": "low",
+   "illness_acute": "high",
+   "major_gain": "high",
+   "major_loss": "high",
+   "marriage": "high",
+   "parental_event": "high",
+   "property_acquisition": "high",
+   "psychological_arc": "high",
+   "relocation": "high",
+   "romantic_start": "high",
+   "separation": "low",
+   "spiritual_turn": "high",
+   "surgery": "high",
+   "travel_event": "high"
+  },
+  "gain_tally": {
+   "high": 14,
+   "low": 4,
+   "ok": 0
+  }
+ },
+ "t_cover": {
+  "hits": 32,
+  "total": 47,
+  "misses": [
+   "EVT.2001.03.XX.01",
+   "EVT.2003.06.XX.01",
+   "EVT.2007.06.XX.02",
+   "EVT.2008.06.09.01",
+   "EVT.2011.01.XX.01",
+   "EVT.2011.06.XX.01",
+   "EVT.2013.03.XX.01",
+   "EVT.2017.03.XX.01",
+   "EVT.2019.05.XX.01",
+   "EVT.2022.10.XX.01",
+   "EVT.2023.06.XX.01",
+   "EVT.2023.07.XX.01",
+   "EVT.2024.02.16.01",
+   "EVT.2000.XX.XX.01",
+   "EVT.2021.XX.XX.02"
+  ],
+  "bar": "32/47",
+  "pass": true
+ },
+ "t_time": {
+  "capped_median_days": 182,
+  "misses": 2,
+  "uncapped_hits": [
+   [
+    "EVT.1998.02.16.01",
+    686
+   ],
+   [
+    "EVT.2007.06.10.01",
+    998
+   ],
+   [
+    "EVT.2026.03.20.01",
+    333
+   ]
+  ],
+  "n_exact": 5,
+  "bar_days": 45,
+  "pass": false
+ },
+ "t_rank": {
+  "status": "VOID",
+  "reason": "era-fingerprint 59.8% >= 50%",
+  "eligible": 0,
+  "floor": 17,
+  "timing_usable": 32
+ },
+ "t_fp": {
+  "bereavement": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  },
+  "career_setback": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  },
+  "chronic_onset": {
+   "burden_pct": 99.8742,
+   "budget_pct": 5.2255,
+   "pass": false
+  },
+  "financial_deception": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  },
+  "illness_acute": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  },
+  "parental_event": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  },
+  "separation": {
+   "burden_pct": 0.0871,
+   "budget_pct": 2.6127,
+   "pass": true
+  },
+  "surgery": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  },
+  "major_loss": {
+   "burden_pct": 99.8742,
+   "budget_pct": 2.6127,
+   "pass": false
+  }
+ },
+ "t_honesty": {
+  "status": "UNVERIFIABLE",
+  "reason": "no computation-coverage manifest exists for '3.0' (manifest is a build requirement for future generations)"
+ },
+ "random_controls": {
+  "file": "random_controls_v1_2.json",
+  "seed": 482012,
+  "total_hits": 638,
+  "total_draws": 940
+ },
+ "per_event": [
+  {
+   "eid": "EVT.1998.02.16.01",
+   "cls": "romantic_start",
+   "grain": "exact",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2001.03.XX.01",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2003.06.XX.01",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2004.01.XX.01",
+   "cls": "romantic_start",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 2,
+   "hit": true,
+   "pct": 50.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2007.06.XX.01",
+   "cls": "surgery",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2007.06.XX.02",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2007.06.10.01",
+   "cls": "career_entry",
+   "grain": "exact",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2008.06.09.01",
+   "cls": "career_change",
+   "grain": "exact",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2009.06.XX.01",
+   "cls": "bereavement",
+   "grain": "interval",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2010.12.XX.01",
+   "cls": "travel_event",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2011.01.XX.01",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2011.06.XX.01",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2012.09.XX.01",
+   "cls": "achievement_recognition",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2012.10.XX.01",
+   "cls": "romantic_start",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2013.03.XX.01",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2013.05.XX.01",
+   "cls": "career_entry",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2017.03.XX.01",
+   "cls": "career_change",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2019.05.XX.01",
+   "cls": "foreign_settlement",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2021.01.XX.01",
+   "cls": "illness_acute",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2022.10.XX.01",
+   "cls": "separation",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2023.05.XX.01",
+   "cls": "relocation",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2023.06.XX.01",
+   "cls": "education_milestone",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2023.07.XX.01",
+   "cls": "business_launch",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 0,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2024.02.16.01",
+   "cls": "business_launch",
+   "grain": "exact",
+   "tier": "held_out_timing",
+   "N": 3,
+   "hit": false,
+   "pct": null,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2025.05.XX.01",
+   "cls": "financial_deception",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2025.06.XX.01",
+   "cls": "spiritual_turn",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2025.07.XX.01",
+   "cls": "major_gain",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2025.11.XX.01",
+   "cls": "spiritual_turn",
+   "grain": "month",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2026.01.XX.01",
+   "cls": "psychological_arc",
+   "grain": "interval",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2026.03.20.01",
+   "cls": "major_gain",
+   "grain": "exact",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2007.XX.XX.03",
+   "cls": "chronic_onset",
+   "grain": "interval",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.2021.XX.XX.03",
+   "cls": "property_acquisition",
+   "grain": "interval",
+   "tier": "held_out_timing",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0,
+   "rank_status": "void_era"
+  },
+  {
+   "eid": "EVT.1998.XX.XX.02",
+   "cls": "spiritual_turn",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2000.XX.XX.01",
+   "cls": "education_milestone",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 0,
+   "hit": false,
+   "pct": null
+  },
+  {
+   "eid": "EVT.2002.XX.XX.01",
+   "cls": "chronic_onset",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2002.XX.XX.02",
+   "cls": "spiritual_turn",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2004.XX.XX.02",
+   "cls": "education_milestone",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 3,
+   "hit": true,
+   "pct": 33.333333333333336
+  },
+  {
+   "eid": "EVT.2010.XX.XX.01",
+   "cls": "major_gain",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2010.XX.XX.02",
+   "cls": "spiritual_turn",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2012.XX.XX.02",
+   "cls": "achievement_recognition",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2013.XX.XX.01",
+   "cls": "parental_event",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2015.XX.XX.01",
+   "cls": "spiritual_turn",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2016.XX.XX.01",
+   "cls": "career_setback",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2021.XX.XX.02",
+   "cls": "education_milestone",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 0,
+   "hit": false,
+   "pct": null
+  },
+  {
+   "eid": "EVT.2022.XX.XX.02",
+   "cls": "romantic_start",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2024.XX.XX.01",
+   "cls": "spiritual_turn",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 2,
+   "hit": true,
+   "pct": 0.0
+  },
+  {
+   "eid": "EVT.2025.XX.XX.01",
+   "cls": "spiritual_turn",
+   "grain": "year",
+   "tier": "held_out_year",
+   "N": 1,
+   "hit": true,
+   "pct": 0.0
+  }
+ ]
+}
