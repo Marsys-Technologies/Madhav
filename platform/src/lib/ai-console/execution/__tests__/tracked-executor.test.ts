@@ -19,6 +19,7 @@ function executor(options?: { fail?: boolean }): RoleExecutor {
       if (options?.fail) throw new Error('raw provider secret')
       return {
         text: 'private output', toolCalls: [], finishReason: 'stop', retryCount: 0,
+        fallbackUsed: false, activeModelId: 'model-1',
         usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
       }
     },
@@ -27,6 +28,7 @@ function executor(options?: { fail?: boolean }): RoleExecutor {
         start(controller) {
           controller.enqueue({ type: 'text_delta', text: 'private output' })
           controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+            fallbackUsed: false, activeModelId: 'model-1',
             usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
           controller.close()
         },
@@ -106,6 +108,7 @@ describe('trackRoleExecutor', () => {
     delegate.stream = () => new ReadableStream<RoleExecutionEvent>({
       start(controller) {
         controller.enqueue({ type: 'finish', finishReason: 'stop', retryCount: 0,
+          fallbackUsed: false, activeModelId: 'model-1',
           usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 } })
       },
     })

@@ -56,6 +56,7 @@ describe('createInterpretationCaller — BYOK repair authority', () => {
   const executor = (): RoleExecutor => ({
     descriptor: { role: 'worker', providerId: 'openai', connectionId: 'c', modelId: 'm' },
     generate: vi.fn(async () => ({ text: valid, toolCalls: [], finishReason: 'stop', retryCount: 0,
+      fallbackUsed: false, activeModelId: 'm',
       usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } })),
     stream: vi.fn(),
   })

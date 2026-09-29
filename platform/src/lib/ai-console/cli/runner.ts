@@ -11,7 +11,7 @@ import { z } from 'zod'
 import { AiConsoleError } from '../errors'
 import { withCliInvocationAuthorization, type CliInvocationHandle } from '../repository'
 import { CliIdSchema, type CliId } from '../types'
-import { buildExecutionArgs, CLI_REGISTRY, validateCliModelId, type CliDefinition } from './registry'
+import { buildExecutionArgs, CLI_REGISTRY, isSupportedCliVersion, validateCliModelId, type CliDefinition } from './registry'
 import { parseCliModelCatalog, type CliDiscoveredModel } from './catalog'
 
 export interface CliProcessResult {
@@ -300,7 +300,7 @@ class GovernedCliRunner implements CliRunner {
   async confirmValidation(cliId: CliId, identity: CliInstallationIdentity, version: string,
     modelIds: readonly (string | null)[]): Promise<void> {
     const definition = this.definition(cliId)
-    if (!definition.execution || version !== definition.supportedVersion || identity.cliId !== definition.id) {
+    if (!definition.execution || !isSupportedCliVersion(definition, version) || identity.cliId !== definition.id) {
       throw new AiConsoleError('AI_CLI_UNREACHABLE')
     }
     try { await assertCurrentInstallationIdentity(definition, identity) }

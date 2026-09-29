@@ -108,6 +108,7 @@ function fakeExecutor(role: 'planner' | 'deep_planner' | 'worker', outputs: stri
     generate: vi.fn(async () => {
       const text = outputs.shift() ?? VALID_PLAN_JSON
       return { text, toolCalls: [], finishReason: 'stop', retryCount: 0,
+        fallbackUsed: false, activeModelId: `${role}-model`,
         usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }
     }),
     stream: vi.fn(),
@@ -126,6 +127,27 @@ describe('callPipelinePlanner — exact BYOK role injection', () => {
     expect(planner.generate).toHaveBeenCalledOnce()
     expect(deep.generate).not.toHaveBeenCalled()
     expect(runAdapter).not.toHaveBeenCalled()
+  })
+
+  it('reports the actual Default model when the selected BYOK planner falls back', async () => {
+    const planner = fakeExecutor('planner', [VALID_PLAN_JSON])
+    vi.mocked(planner.generate).mockResolvedValueOnce({
+      text: VALID_PLAN_JSON,
+      toolCalls: [],
+      finishReason: 'stop',
+      retryCount: 0,
+      fallbackUsed: true,
+      activeModelId: 'default-planner-model',
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    })
+    const outcome = await callPipelinePlanner(CLASSIFIED_QUERY, [], 'ignored', 'chart-1', undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      { plannerExecutor: planner, deepPlannerExecutor: fakeExecutor('deep_planner', []),
+        workerExecutor: fakeExecutor('worker', []) })
+
+    if (outcome.outcome !== 'plan') throw new Error('expected a plan')
+    expect(outcome.metrics.fallback_used).toBe(true)
+    expect(outcome.metrics.active_model_id).toBe('default-planner-model')
   })
 
   it('uses Deep Planner for deterministic deep policy', async () => {

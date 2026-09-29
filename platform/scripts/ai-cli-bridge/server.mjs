@@ -28,19 +28,19 @@ if (token.length < 32) throw new Error('Bridge token is invalid')
 
 const definitions = Object.freeze({
   codex: Object.freeze({
-    path: join(HOME, '.local/bin/codex'), version: '0.158.0', versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/codex'), versions: ['0.158.0'], versionArgs: ['--version'],
     authArgs: ['login', 'status'],
   }),
   claude_code: Object.freeze({
-    path: join(HOME, '.local/bin/claude'), version: '2.1.284', versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/claude'), versions: ['2.1.284'], versionArgs: ['--version'],
     authArgs: ['auth', 'status'],
   }),
   gemini_antigravity: Object.freeze({
-    path: join(HOME, '.local/bin/agy'), version: '1.2.12', versionArgs: ['--version'],
+    path: join(HOME, '.local/bin/agy'), versions: ['1.2.12', '1.2.13'], versionArgs: ['--version'],
     catalogArgs: ['models'],
   }),
   kimi_code: Object.freeze({
-    path: join(HOME, '.kimi-code/bin/kimi'), version: '2.1.1', versionArgs: ['--version'],
+    path: join(HOME, '.kimi-code/bin/kimi'), versions: ['2.1.1'], versionArgs: ['--version'],
     catalogArgs: ['provider', 'list', '--json'],
   }),
 })
@@ -82,7 +82,7 @@ async function invoke(payload) {
     const current = await inspectInstallation(payload.cliId, definition)
     if (JSON.stringify(current) !== JSON.stringify(payload.identity)) throw bridgeError('AI_CLI_UNREACHABLE')
     const version = await runCommand(payload.cliId, definition.path, definition.versionArgs, '')
-    if (payload.version !== definition.version || !containsVersion(version.stdout, definition.version)) {
+    if (!definition.versions.includes(payload.version) || !containsVersion(version.stdout, payload.version)) {
       throw bridgeError('AI_CLI_UNREACHABLE')
     }
     if (!payload.modelIds.includes(null)) throw bridgeError('AI_CLI_UNREACHABLE')

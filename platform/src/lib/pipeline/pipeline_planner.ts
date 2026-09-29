@@ -492,6 +492,8 @@ export async function callPipelinePlanner(
         abortSignal: byok?.abortSignal,
         maxOutputTokens: byok?.maxOutputTokens,
       })
+      fallbackWasUsed = result.fallbackUsed
+      activeModelId = result.activeModelId
       interaction = { finalText: result.text, usage: {
         inputTokens: result.usage.inputTokens ?? 0,
         outputTokens: result.usage.outputTokens ?? 0,

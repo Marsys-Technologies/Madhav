@@ -80,7 +80,9 @@ async function generate(execution: ResolvedRoleExecution, definition: CliDefinit
         }
       }
       return { text: parsed.text, ...(request.responseSchema ? { structured } : {}), toolCalls: [],
-        finishReason: 'stop', usage: parsed.usage, retryCount }
+        finishReason: 'stop', usage: parsed.usage, retryCount, fallbackUsed: false,
+        activeModelId: execution.target.kind === 'local_cli'
+          ? execution.target.modelId ?? `${execution.target.cliId}:built-in-default` : 'selected-model' }
     } catch (error) {
       if (request.abortSignal?.aborted) throw attachSafeExecutionFailureFacts(
         new AiConsoleError('AI_EXECUTION_FAILED', execution.role), { retryCount })
@@ -127,7 +129,7 @@ function stream(execution: ResolvedRoleExecution, definition: CliDefinition, run
         events = []
         if (result.text) events.push({ type: 'text_delta', text: result.text })
         events.push({ type: 'finish', finishReason: result.finishReason, usage: result.usage,
-          retryCount: result.retryCount })
+          retryCount: result.retryCount, fallbackUsed: result.fallbackUsed, activeModelId: result.activeModelId })
       })
       try { await loading }
       catch (error) { controller.error(error); return }
