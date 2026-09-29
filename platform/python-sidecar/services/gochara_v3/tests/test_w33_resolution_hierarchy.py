@@ -41,7 +41,6 @@ from services.gochara_v3.resolution_hierarchy import (
     PEAK_SCAN_STRIDE_DAYS,
     ADMISSION_PERCENTILE,
     MIN_PEAK_SEPARATION_DAYS,
-    MAX_PEAKS_PER_ERA_WINDOW,
     ZERO_PEAKS_ERA_WINDOW_TOO_SHORT,
     ZERO_PEAKS_FLAT_LAMBDA_CURVE,
     ZERO_PEAKS_NO_CANDIDATE_ABOVE_P90,
@@ -489,69 +488,88 @@ class TestR83Admission:
 
 
 # ---------------------------------------------------------------------------
-# R8.4 — retention: rank + greedy separation + cap
+# R8.4 — retention: cap-free by default (N-17/H-5); separation as a
+# serve-time trim. The pre-N-17 cap tests (MAX_PEAKS_PER_ERA_WINDOW=3)
+# were REMOVED with the cap itself; the frozen legacy baseline they pinned
+# is still reproduced in tests/l3/gochara/test_wp3b_legacy_semantics.py
+# (test_f10_peak_cap_truncation, re-pinned as legacy-superseded).
 # ---------------------------------------------------------------------------
 
 class TestR84Retention:
-    def test_retention_cap_and_separation(self):
-        """8 admitted candidates, two 40 days apart (must collapse to the
-        higher one) -> exactly 3 retained, none within 90 days of another."""
+    def test_retention_default_persists_all_admitted(self):
+        """N-17/H-5 golden: with NO trim requested (the default), ALL 8
+        admitted candidates persist — no cap, no separation filter —
+        sorted jd ASCENDING, including candidates 40 days apart and
+        candidates beyond the legacy cap of 3."""
         admitted = [
             PeakCandidate(jd=0.0, lam=0.99),
-            PeakCandidate(jd=40.0, lam=0.80),   # within 90d of jd=0 -> dropped
+            PeakCandidate(jd=40.0, lam=0.80),
             PeakCandidate(jd=200.0, lam=0.95),
-            PeakCandidate(jd=210.0, lam=0.70),  # within 90d of jd=200 -> dropped
+            PeakCandidate(jd=210.0, lam=0.70),
             PeakCandidate(jd=500.0, lam=0.90),
-            PeakCandidate(jd=800.0, lam=0.60),  # far enough from all -> would be 4th, capped out
+            PeakCandidate(jd=800.0, lam=0.60),
             PeakCandidate(jd=1000.0, lam=0.55),
             PeakCandidate(jd=1200.0, lam=0.50),
         ]
         retained = retain_candidates(admitted)
-        assert len(retained) == 3
+        assert len(retained) == 8
+        assert [r.jd for r in retained] == sorted(r.jd for r in retained)
+
+    def test_retention_trim_enforces_separation_without_cap(self):
+        """With the serve-time trim applied (min_separation_days=90), the
+        same 8 candidates trim to 6 — the two sub-90-day followers drop —
+        and NO cap truncates the survivors (the pre-N-17 cap of 3 is gone)."""
+        admitted = [
+            PeakCandidate(jd=0.0, lam=0.99),
+            PeakCandidate(jd=40.0, lam=0.80),   # within 90d of jd=0, lower λ -> trimmed
+            PeakCandidate(jd=200.0, lam=0.95),
+            PeakCandidate(jd=210.0, lam=0.70),  # within 90d of jd=200, lower λ -> trimmed
+            PeakCandidate(jd=500.0, lam=0.90),
+            PeakCandidate(jd=800.0, lam=0.60),
+            PeakCandidate(jd=1000.0, lam=0.55),
+            PeakCandidate(jd=1200.0, lam=0.50),
+        ]
+        retained = retain_candidates(admitted, min_separation_days=MIN_PEAK_SEPARATION_DAYS)
         jds = sorted(r.jd for r in retained)
-        assert jds == [0.0, 200.0, 500.0]
+        assert jds == [0.0, 200.0, 500.0, 800.0, 1000.0, 1200.0]
         for i in range(len(jds)):
             for j in range(i + 1, len(jds)):
                 assert abs(jds[i] - jds[j]) >= MIN_PEAK_SEPARATION_DAYS
 
-    def test_retention_cap_removed_or_widened_changes_result(self):
-        """Mutation check: changing max_peaks changes the retained count —
-        proves the cap parameter is load-bearing."""
-        admitted = [
-            PeakCandidate(jd=jd, lam=0.9 - i * 0.01)
-            for i, jd in enumerate([0.0, 200.0, 500.0, 800.0, 1200.0])
-        ]
-        retained_cap3 = retain_candidates(admitted, max_peaks=3)
-        retained_cap4 = retain_candidates(admitted, max_peaks=4)
-        assert len(retained_cap3) == 3
-        assert len(retained_cap4) == 4
-
-    def test_retention_separation_removed_changes_result(self):
-        """Mutation check: reducing min_separation_days changes which
-        candidates survive — proves separation is load-bearing."""
+    def test_retention_trim_is_load_bearing(self):
+        """Mutation check (replacing the removed cap-mutation check):
+        requesting the trim changes the retained count vs the cap-free
+        default — proves the trim parameter is load-bearing."""
         admitted = [
             PeakCandidate(jd=0.0, lam=0.99),
             PeakCandidate(jd=40.0, lam=0.80),
         ]
-        retained_default_sep = retain_candidates(admitted, min_separation_days=90.0)
-        retained_no_sep = retain_candidates(admitted, min_separation_days=0.0)
-        assert len(retained_default_sep) == 1
-        assert len(retained_no_sep) == 2
+        retained_trimmed = retain_candidates(admitted, min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+        retained_default = retain_candidates(admitted)
+        retained_zero_sep = retain_candidates(admitted, min_separation_days=0.0)
+        assert len(retained_trimmed) == 1
+        assert len(retained_default) == 2
+        assert len(retained_zero_sep) == 2
 
-    def test_retention_is_deterministic_on_ties(self):
-        """Equal λ, different jd -- tiebreak is jd ASC, deterministic across
-        repeated calls."""
+    def test_retention_plateau_ties_never_dropped(self):
+        """Kernel admit_peaks semantics (WP2 case 12): equal-λ candidates
+        are plateau ties — ALL rank 1 — so the trim must NEVER drop one
+        for sitting within min_separation_days of another tie. Three
+        λ=0.9 candidates at jd 0/40/1000 all survive a 90-day trim, and
+        the emission order is deterministic (jd ASC) across repeated calls."""
         admitted = [
             PeakCandidate(jd=500.0, lam=0.9),
             PeakCandidate(jd=0.0, lam=0.9),
-            PeakCandidate(jd=1000.0, lam=0.9),
+            PeakCandidate(jd=40.0, lam=0.9),
         ]
-        r1 = retain_candidates(admitted)
-        r2 = retain_candidates(admitted)
-        assert [c.jd for c in r1] == [c.jd for c in r2]
-        # With all λ tied, rank order is jd ASC -> first-ranked is jd=0.0.
-        ranked_first = sorted(admitted, key=lambda c: (-c.lam, c.jd))[0]
-        assert ranked_first.jd == 0.0
+        r1 = retain_candidates(admitted, min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+        r2 = retain_candidates(admitted, min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+        assert [c.jd for c in r1] == [c.jd for c in r2] == [0.0, 40.0, 500.0]
+        # A strictly-lower-λ candidate inside the separation window of a
+        # retained tie still drops — the tie exemption is for TIES only.
+        admitted_with_lower = admitted + [PeakCandidate(jd=60.0, lam=0.8)]
+        trimmed = retain_candidates(admitted_with_lower, min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+        assert [c.jd for c in trimmed] == [0.0, 40.0, 500.0]
 
 
 # ---------------------------------------------------------------------------
@@ -699,8 +717,9 @@ class TestR85DayRefinement:
 
 class TestR86RowCardinality:
     def test_row_cardinality_identity(self):
-        """month row count == day row count == retained peak count, and
-        both are <= 3 * era_window_count."""
+        """month row count == day row count == retained peak count. N-17/H-5:
+        under the cap-free default, retained == admitted (the pre-N-17
+        `<= 3 * era_window_count` cap-derived bound is gone)."""
         start_jd = _BASE_JD
 
         def curve(jd: float) -> float:
@@ -724,7 +743,13 @@ class TestR86RowCardinality:
             result = build_resolution_hierarchy(MagicMock(), MagicMock(), start_jd, start_jd + 1200.0, config)
 
         assert len(result.month_windows) == len(result.day_windows) == result.peaks_retained
-        assert result.peaks_retained <= 3 * result.era_window_count
+        assert result.peaks_retained == result.peaks_admitted, (
+            "N-17/H-5 VIOLATION: under the default (no serve-time trim) every "
+            "admitted peak must persist — peaks_retained must equal the "
+            f"pre-trim peaks_admitted ({result.peaks_admitted}), got "
+            f"{result.peaks_retained}."
+        )
+        assert result.trim_applied is False
 
     def test_flat_curve_emits_era_only(self):
         """A flat era window (no genuine peak) produces the era row but
@@ -748,34 +773,46 @@ class TestR86RowCardinality:
 
 
 # ---------------------------------------------------------------------------
-# R8.7 — anti-explosion invariant (F3/F3b + PK-R-8)
+# R8.7 — anti-explosion invariant (F3/F3b + PK-R-8), N-17/H-5 form
 # ---------------------------------------------------------------------------
 #
 # BACKGROUND (F3/F3b): the pre-PK-R-8 tiling design, applied naively to a
 # multi-year era window, could subdivide into dozens of month rows and
 # hundreds of day rows per era window per event class -- a corpus-scale
-# explosion (F3/F3b, the finding this ruling and R8.4's MAX_PEAKS_PER_ERA_
-# WINDOW=3 cap directly close). This test is PINNED to that finding and to
-# PK-R-8 explicitly so it cannot be deleted later as "just an arbitrary
-# assertion" -- it is the corpus-shape regression guard for a real,
-# previously-observed defect class.
+# explosion. PK-R-8 closed it with peak-anchoring plus the R8.4
+# MAX_PEAKS_PER_ERA_WINDOW=3 admission cap. N-17/H-5 (2026-09-24) REMOVED
+# that cap: what now bounds write-time row counts is the admission gate
+# itself (genuine local maxima clearing the era window's own P90), and any
+# further reduction is a SERVE-TIME TRIM concern (the serving layer passes
+# min_separation_days; P-1e's H-5 serving rule). This test is PINNED to
+# that history explicitly so it cannot be deleted later as "just an
+# arbitrary assertion": it guards (a) that no tiling-style explosion can
+# reappear (rows are EXACTLY 1 era + 2 per admitted peak, never a
+# fixed-step subdivision product), and (b) that the N-17 persistence
+# identity holds at corpus scale.
 
 class TestR87AntiExplosion:
-    def test_real_corpus_shape_does_not_explode(self):
+    def test_real_corpus_shape_tracks_admission_not_a_cap(self):
         """Run the producer against a 3,647-day era window (a realistic
         decade-scale span) with lambda_thresh=0.0 (the writer's own
-        structural-prior gate) -- total rows must stay <= 7 (1 era + <=3
-        month + <=3 day), day rows must stay <= 3 (F3/F3b + PK-R-8).
+        structural-prior gate) -- the row count must be EXACTLY
+        1 + 2*peaks_admitted (1 era + 1 month + 1 day per admitted peak),
+        with peaks_retained == peaks_admitted under the N-17/H-5 cap-free
+        default, and the admitted count must be the genuine local-maxima
+        count of the signal (5 bumps -> 5 peaks), NOT a tiling product
+        (which would yield ~ceil(3647/30)=122 month rows and ~3647 day
+        rows -- the F3/F3b explosion).
 
         SCOPE NOTE (MR-45 correction, register
-        MASTER_REMEDIATION_REGISTER_v2_0.md): this bound of 7 is PER ERA
+        MASTER_REMEDIATION_REGISTER_v2_0.md): this bound is PER ERA
         WINDOW (this test constructs exactly one). It is NOT a per-substep
         bound -- a single substep's build_resolution_hierarchy call can
         return MULTIPLE era windows (production-confirmed: chart
-        482012f1, career_setback::g3_2014_2024), so the honest per-substep
-        bound is `N_era + 2*min(3*N_era, ceil(decade_days/90))`, not a flat
-        7. See ka_gochara_v3_century_materialize.py's R8.13 docstring
-        section for the corrected disclosure."""
+        482012f1, career_setback::g3_2014_2024). The pre-N-17 per-substep
+        bound `N_era + 2*min(3*N_era, ceil(decade_days/90))` no longer
+        applies (its min() term came from the removed cap); the honest
+        post-N-17 shape is `N_era + 2*total_admitted`, with any further
+        reduction deferred to the serving layer's trim."""
         span_days = 3647.0
         start_jd = _BASE_JD
 
@@ -803,15 +840,24 @@ class TestR87AntiExplosion:
             config = _make_threshold_config(lambda_thresh=0.0)
             result = build_resolution_hierarchy(MagicMock(), MagicMock(), start_jd, start_jd + span_days, config)
 
-        total_rows = len(result.era_windows) + len(result.month_windows) + len(result.day_windows)
-        assert total_rows <= 7, (
-            f"R8.7 ANTI-EXPLOSION VIOLATION (F3/F3b + PK-R-8): total_rows={total_rows} "
-            f"exceeds the closed-form bound of 7 (1 era + <=3 month + <=3 day) for a "
-            f"single {span_days}-day era window."
+        assert result.peaks_admitted == 5, (
+            f"fixture regression: the 5-bump signal must admit exactly its 5 "
+            f"genuine local maxima (got {result.peaks_admitted}) -- admission "
+            f"is the anti-explosion gate now, so it must track the signal's "
+            f"real structure, not a coarse-grid artifact count."
         )
-        assert len(result.day_windows) <= 3, (
-            f"R8.7 VIOLATION: day_windows={len(result.day_windows)} exceeds "
-            f"MAX_PEAKS_PER_ERA_WINDOW=3."
+        assert result.peaks_retained == result.peaks_admitted, (
+            "N-17/H-5 VIOLATION: cap-free default must persist every admitted "
+            f"peak ({result.peaks_admitted} admitted, {result.peaks_retained} "
+            "retained) -- the removed MAX_PEAKS_PER_ERA_WINDOW cap must not "
+            "still be truncating."
+        )
+        total_rows = len(result.era_windows) + len(result.month_windows) + len(result.day_windows)
+        assert total_rows == 1 + 2 * result.peaks_admitted == 11, (
+            f"R8.7 ANTI-EXPLOSION VIOLATION (F3/F3b + PK-R-8, N-17 form): "
+            f"total_rows={total_rows} -- expected exactly 1 era + 2 rows per "
+            f"admitted peak for a single {span_days}-day era window. Anything "
+            f"larger is the tiling-explosion class returning."
         )
 
 
@@ -848,7 +894,9 @@ class TestMR44PooledRetention:
         with), but the two candidates' jds are only 7 days apart (well
         inside MIN_PEAK_SEPARATION_DAYS=90). Naive per-group retention
         (the pre-MR-44 behaviour: retain_candidates called separately per
-        group) would keep BOTH. retain_candidates_pooled must keep only the
+        group) would keep BOTH. retain_candidates_pooled WITH THE TRIM
+        REQUESTED (N-17/H-5: the trim is now an explicit serve-time
+        parameter, no longer the default) must keep only the
         higher-lambda one, GLOBALLY."""
         era0_admitted = [PeakCandidate(jd=42.0, lam=0.90)]
         era1_admitted = [PeakCandidate(jd=49.0, lam=0.95)]
@@ -864,7 +912,10 @@ class TestMR44PooledRetention:
             "both single-candidate groups"
         )
 
-        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        pooled = retain_candidates_pooled(
+            [era0_admitted, era1_admitted],
+            min_separation_days=MIN_PEAK_SEPARATION_DAYS,
+        )
 
         assert len(pooled) == 2, "result must be index-aligned with input (2 era groups)"
         total_retained = sum(len(bucket) for bucket in pooled)
@@ -887,7 +938,10 @@ class TestMR44PooledRetention:
         MR-44: 'preserve the actual existing tie-break rule')."""
         era0_admitted = [PeakCandidate(jd=500.0, lam=0.9)]
         era1_admitted = [PeakCandidate(jd=0.0, lam=0.9)]
-        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        pooled = retain_candidates_pooled(
+            [era0_admitted, era1_admitted],
+            min_separation_days=MIN_PEAK_SEPARATION_DAYS,
+        )
         # jd=0.0 (era1) ranks first on the tie-break and is retained; jd=500
         # is >=90 days away so it also survives separation -- but the RANK
         # order (which one is considered "first") must still be jd ASC.
@@ -902,13 +956,16 @@ class TestMR44PooledRetention:
             "both should survive: 500 days apart clears MIN_PEAK_SEPARATION_DAYS=90"
         )
 
-    def test_pooled_retention_caps_per_era_window_not_globally(self):
-        """Register MR-44's ruled interpretation of PK-R-8 R8.4: the cap
-        stays PER-ERA-WINDOW (MAX_PEAKS_PER_ERA_WINDOW=3 for EACH era
-        window), not a shared decade-wide total. Two era windows, each
-        with 3 well-separated admitted candidates (6 total, all >=90 days
-        from every other candidate including cross-group) -- pooled
-        retention must keep all 6 (3 per era window), not cap at 3 total."""
+    def test_pooled_retention_no_per_era_cap_under_trim(self):
+        """N-17/H-5 supersession of the per-era cap: with the trim
+        requested, the ONLY filter is global separation — no per-era-window
+        count cap. Two era windows, each with 3 well-separated admitted
+        candidates (6 total, all >=90 days from every other candidate
+        including cross-group) -- pooled retention must keep all 6. (The
+        pre-N-17 version of this test asserted the same 6, but for the
+        reason "the cap stays per-era at 3 each"; the cap itself is now
+        gone, so this pins the same outcome against the REAL risk under
+        N-17: someone reintroducing a cap while wiring the trim.)"""
         era0_admitted = [
             PeakCandidate(jd=0.0, lam=0.9),
             PeakCandidate(jd=200.0, lam=0.8),
@@ -919,23 +976,26 @@ class TestMR44PooledRetention:
             PeakCandidate(jd=1200.0, lam=0.8),
             PeakCandidate(jd=1400.0, lam=0.7),
         ]
-        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        pooled = retain_candidates_pooled(
+            [era0_admitted, era1_admitted],
+            min_separation_days=MIN_PEAK_SEPARATION_DAYS,
+        )
         assert len(pooled[0]) == 3, (
-            f"MR-44 VIOLATION: era window 0 retained {len(pooled[0])}, expected 3 "
-            f"-- the per-era-window cap must not be reduced by pooling."
+            f"N-17/H-5 VIOLATION: era window 0 retained {len(pooled[0])}, "
+            f"expected 3 -- no per-era cap may truncate under the trim."
         )
         assert len(pooled[1]) == 3, (
-            f"MR-44 VIOLATION: era window 1 retained {len(pooled[1])}, expected 3."
+            f"N-17/H-5 VIOLATION: era window 1 retained {len(pooled[1])}, "
+            f"expected 3."
         )
 
-    def test_pooled_retention_cap_exhaustion_across_eras(self):
-        """A single era window whose OWN 4th-best candidate is beaten by a
-        SIBLING era window's higher-lambda candidate for a *global*
-        separation slot is a different case from the cap test above --
-        here we confirm cap enforcement is genuinely PER era-window-index
-        (using per_era_count), not e.g. accidentally shared. 4 candidates
-        in era0 (well separated) must retain only its own top 3 by lambda,
-        regardless of era1 being empty."""
+    def test_pooled_retention_no_per_era_cap_even_with_four_in_one_era(self):
+        """The direct cap-removal detector (replaces the pre-N-17
+        cap-exhaustion test): ONE era window with 4 well-separated
+        admitted candidates (all >=90 days apart) must retain ALL 4 under
+        the trim -- the pre-N-17 code capped this at 3
+        (MAX_PEAKS_PER_ERA_WINDOW). If a per-era cap ever returns, this
+        goes RED."""
         era0_admitted = [
             PeakCandidate(jd=0.0, lam=0.9),
             PeakCandidate(jd=200.0, lam=0.8),
@@ -943,10 +1003,31 @@ class TestMR44PooledRetention:
             PeakCandidate(jd=600.0, lam=0.6),
         ]
         era1_admitted: list[PeakCandidate] = []
-        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
-        assert len(pooled[0]) == 3
-        assert sorted(c.lam for c in pooled[0]) == [0.7, 0.8, 0.9]
+        pooled = retain_candidates_pooled(
+            [era0_admitted, era1_admitted],
+            min_separation_days=MIN_PEAK_SEPARATION_DAYS,
+        )
+        assert len(pooled[0]) == 4, (
+            f"N-17/H-5 VIOLATION: 4 well-separated candidates in one era "
+            f"window must all survive the trim (got {len(pooled[0])}) -- "
+            f"the removed MAX_PEAKS_PER_ERA_WINDOW=3 cap must not still be "
+            f"truncating."
+        )
+        assert sorted(c.lam for c in pooled[0]) == [0.6, 0.7, 0.8, 0.9]
         assert pooled[1] == []
+
+    def test_pooled_retention_default_persists_everything(self):
+        """N-17/H-5 golden: with NO trim requested (the default), pooled
+        retention persists EVERY admitted candidate from every era window
+        -- including two candidates only 7 days apart ACROSS era windows
+        (the exact MR-44 collision pair, which only the explicit trim
+        resolves now)."""
+        era0_admitted = [PeakCandidate(jd=42.0, lam=0.90)]
+        era1_admitted = [PeakCandidate(jd=49.0, lam=0.95)]
+        pooled = retain_candidates_pooled([era0_admitted, era1_admitted])
+        assert len(pooled) == 2, "result must stay index-aligned with input"
+        assert [c.jd for c in pooled[0]] == [42.0]
+        assert [c.jd for c in pooled[1]] == [49.0]
 
     # -- End-to-end reproduction against build_resolution_hierarchy --------
 
@@ -997,12 +1078,15 @@ class TestMR44PooledRetention:
         return start_jd, curve, series_jds, series_lambdas, interval_a, interval_b
 
     def test_build_resolution_hierarchy_no_cross_interval_duplicate_peak_dates(self):
-        """The PRIMARY MR-44 gate: on the two-interval collision fixture,
-        build_resolution_hierarchy must produce ZERO duplicate peak_jd
-        values across day_windows. Exactly one peak is retained overall
-        (the higher-lambda one, interval B's) -- interval A's candidate is
-        honestly dropped for losing the pooled cross-interval separation
-        check, not silently duplicated."""
+        """The PRIMARY MR-44 gate, N-17/H-5 form: on the two-interval
+        collision fixture, build_resolution_hierarchy WITH THE SERVE-TIME
+        TRIM REQUESTED (min_separation_days=90 -- an explicit parameter
+        since N-17, no longer the default) must produce ZERO duplicate
+        peak_jd values across day_windows. Exactly one peak is retained
+        overall (the higher-lambda one, interval B's) -- interval A's
+        candidate is honestly dropped for losing the pooled cross-interval
+        separation check, not silently duplicated. The pre-trim count
+        (peaks_admitted=2) is still returned."""
         start_jd, curve, series_jds, series_lambdas, interval_a, interval_b = (
             self._two_interval_collision_fixture()
         )
@@ -1017,6 +1101,7 @@ class TestMR44PooledRetention:
         ):
             result = build_resolution_hierarchy(
                 MagicMock(), MagicMock(), start_jd, start_jd + 91.0, config,
+                min_separation_days=MIN_PEAK_SEPARATION_DAYS,
             )
 
         assert len(result.era_windows) == 2, "both context/era rows still emitted"
@@ -1034,8 +1119,11 @@ class TestMR44PooledRetention:
 
         # Exactly one peak retained globally (interval B's higher-lambda
         # candidate); interval A's candidate lost the pooled competition.
+        # N-17/H-5: peaks_admitted is the PRE-TRIM count (2); trim_applied
+        # marks that a serve-time trim ran.
         assert result.peaks_admitted == 2
         assert result.peaks_retained == 1
+        assert result.trim_applied is True
         assert len(result.month_windows) == 1
         assert len(result.day_windows) == 1
         # The surviving peak is the higher-lambda one, refined to the
@@ -1101,14 +1189,17 @@ class TestMR44PooledRetention:
         retain_candidates_pooled with a function that emulates the exact
         PRE-FIX defect -- retention scoped to each era window
         independently, zero cross-interval separation awareness -- and
-        confirm build_resolution_hierarchy, run through THAT mutant, DOES
-        reproduce the duplicate peak_jd this file's primary test proves is
-        absent from the real (fixed) implementation. This is the literal
-        'revert to per-interval retention -> test goes RED' proof: if
-        build_resolution_hierarchy's call to retain_candidates_pooled were
-        ever reverted/replaced by this same per-interval-only mutant, the
-        primary no-duplicates assertion above would fail exactly as
-        demonstrated here."""
+        confirm build_resolution_hierarchy, run through THAT mutant with
+        the serve-time trim requested, DOES reproduce the duplicate
+        peak_jd this file's primary test proves is absent from the real
+        (fixed) implementation. This is the literal 'revert to per-interval
+        retention -> test goes RED' proof: if build_resolution_hierarchy's
+        call to retain_candidates_pooled were ever reverted/replaced by
+        this same per-interval-only mutant, the primary no-duplicates
+        assertion above would fail exactly as demonstrated here.
+        (N-17/H-5: the trim is passed explicitly so this test compares
+        trim-vs-trim; the mutant ignores it, which is exactly the defect
+        class under test.)"""
         start_jd, curve, series_jds, series_lambdas, interval_a, interval_b = (
             self._two_interval_collision_fixture()
         )
@@ -1131,6 +1222,7 @@ class TestMR44PooledRetention:
         ):
             mutant_result = build_resolution_hierarchy(
                 MagicMock(), MagicMock(), start_jd, start_jd + 91.0, config,
+                min_separation_days=MIN_PEAK_SEPARATION_DAYS,
             )
 
         mutant_peak_dates = [round(w.peak_jd, 6) for w in mutant_result.day_windows]
@@ -1426,6 +1518,7 @@ class TestMR45ZeroPeaksLostToPooledRetentionReachability:
         ):
             result = build_resolution_hierarchy(
                 MagicMock(), MagicMock(), era0_jd - 10.0, era2_jd + 20.0, config,
+                min_separation_days=MIN_PEAK_SEPARATION_DAYS,
             )
 
         assert len(result.era_windows) == 3, "fixture regression: expected 3 era windows"
@@ -1511,6 +1604,7 @@ class TestMR45ZeroPeaksLostToPooledRetentionReachability:
         ):
             result = build_resolution_hierarchy(
                 MagicMock(), MagicMock(), era0_jd - 20.0, era1_jd + 20.0, config,
+                min_separation_days=MIN_PEAK_SEPARATION_DAYS,
             )
 
         # Aggregate alone (the pre-MR-45 surface) is silent: total_retained
@@ -1529,6 +1623,104 @@ class TestMR45ZeroPeaksLostToPooledRetentionReachability:
             "(simulating the pre-MR-45 code) stayed silent -- the per-era "
             "field is not actually closing the reachability gap."
         )
+
+
+# ---------------------------------------------------------------------------
+# N-17 / H-5 — cap-free admission golden test (GOCHARA_REMAINDER_EXECUTION_
+# BRIEF_v1_0 §4.2, 2026-09-24). Pins the ruling end-to-end: every admitted
+# peak persists by default; the 90-day separation filter is a serve-time
+# trim parameter (default = no trim); plateau ties all rank 1 and are
+# never dropped by a trim; the pre-trim count is always returned. The
+# frozen legacy baseline (MAX_PEAKS_PER_ERA_WINDOW=3, separation always
+# on) stays pinned in tests/l3/gochara/test_wp3b_legacy_semantics.py
+# (test_f10_peak_cap_truncation, re-labelled legacy-superseded).
+# ---------------------------------------------------------------------------
+
+class TestN17CapFreeAdmission:
+    def test_golden_default_persists_every_admitted_peak_including_ties(self):
+        """GOLDEN (unit): >=4 admitted peaks, including a λ-tie pair 40
+        days apart (inside the legacy 90-day separation), ALL persist
+        under the default — jd ASC, nothing capped, nothing trimmed."""
+        admitted = [
+            PeakCandidate(jd=500.0, lam=0.95),
+            PeakCandidate(jd=0.0, lam=0.90),
+            PeakCandidate(jd=40.0, lam=0.90),   # plateau tie with jd=0, 40d away
+            PeakCandidate(jd=1200.0, lam=0.80),
+        ]
+        retained = retain_candidates(admitted)
+        assert [c.jd for c in retained] == [0.0, 40.0, 500.0, 1200.0]
+
+        pooled = retain_candidates_pooled([[admitted[1], admitted[2]], [admitted[0], admitted[3]]])
+        assert [c.jd for c in pooled[0]] == [0.0, 40.0]
+        assert [c.jd for c in pooled[1]] == [500.0, 1200.0]
+
+    def test_golden_trim_enforces_separation_but_ties_survive(self):
+        """GOLDEN (unit, trim requested): the 90-day trim drops the
+        strictly-lower-λ candidate inside the window, keeps the plateau
+        tie, and drops nothing for any cap reason."""
+        admitted = [
+            PeakCandidate(jd=0.0, lam=0.90),
+            PeakCandidate(jd=40.0, lam=0.90),   # tie -> survives
+            PeakCandidate(jd=60.0, lam=0.80),   # strictly lower, 60d from jd=0 -> trimmed
+            PeakCandidate(jd=500.0, lam=0.95),
+            PeakCandidate(jd=1200.0, lam=0.80),
+        ]
+        trimmed = retain_candidates(admitted, min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+        assert [c.jd for c in trimmed] == [0.0, 40.0, 500.0, 1200.0]
+
+    def test_golden_end_to_end_default_persists_and_reports_pre_trim_count(self):
+        """GOLDEN (end-to-end): on the MR-44 two-interval collision
+        fixture, the DEFAULT build_resolution_hierarchy call now persists
+        BOTH admitted peaks (peaks_retained == peaks_admitted == 2,
+        trim_applied False) -- even though their day-refined dates
+        coincide (both refine to the shared spike at offset 45.0). That
+        write-time duplicate is the documented N-17 edge case: the
+        writer's per-row honest-skip on the natural-key conflict is the
+        backstop, and the serving layer's trim (P-1e) is the
+        deduplication point. The SAME fixture WITH the trim requested
+        retains 1, still reports the pre-trim count (2), and marks
+        trim_applied True."""
+        start_jd, curve, series_jds, series_lambdas, interval_a, interval_b = (
+            TestMR44PooledRetention._two_interval_collision_fixture()
+        )
+        config = _make_threshold_config(lambda_thresh=0.5)
+
+        with patch(
+            "services.gochara_v3.resolution_hierarchy.find_threshold_crossings",
+            return_value=([interval_a, interval_b], series_jds, series_lambdas),
+        ), patch(
+            "services.gochara_v3.resolution_hierarchy._eval_single",
+            side_effect=lambda swe, context, jd: curve(float(jd)),
+        ):
+            default_result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), start_jd, start_jd + 91.0, config,
+            )
+            trimmed_result = build_resolution_hierarchy(
+                MagicMock(), MagicMock(), start_jd, start_jd + 91.0, config,
+                min_separation_days=MIN_PEAK_SEPARATION_DAYS,
+            )
+
+        # Cap-free default: everything persists; pre-trim count returned.
+        assert default_result.trim_applied is False
+        assert default_result.peaks_admitted == 2
+        assert default_result.peaks_retained == 2
+        assert len(default_result.month_windows) == 2
+        assert len(default_result.day_windows) == 2
+        for acc in default_result.era_window_accounting:
+            assert acc.trim_applied is False
+            assert acc.peaks_retained == acc.peaks_admitted
+
+        # Trim requested: separation enforced, ties/nearby lower-λ peaks
+        # drop, pre-trim count STILL returned.
+        assert trimmed_result.trim_applied is True
+        assert trimmed_result.peaks_admitted == 2
+        assert trimmed_result.peaks_retained == 1
+        assert len(trimmed_result.day_windows) == 1
+        era_a_accounting = trimmed_result.era_window_accounting[0]
+        assert era_a_accounting.trim_applied is True
+        assert era_a_accounting.peaks_admitted == 1  # era A's own pre-trim count
+        assert era_a_accounting.peaks_retained == 0
+        assert era_a_accounting.zero_peaks_reason == ZERO_PEAKS_LOST_TO_POOLED_RETENTION
 
 
 # ---------------------------------------------------------------------------

@@ -203,6 +203,7 @@ describe('matchOpenPredictionsForLelEvent', () => {
       observation_window: '[2027-04-09,2027-08-19)',
       milestone_set: null,
       model: 'x', formula_version: 'v1', confidence: 0.6,
+      contact_id: null,
       falsifier: 'f', as_of: '2026-07-19T00:00:00Z', generator_class: 'reading_synthesis',
       configuration_signature: null, lifecycle_status: 'open',
       matched_event_id: null, matched_at: null, match_note: null,

@@ -113,14 +113,35 @@ class TestExtensionTargetTypes:
     linkage up as classically-cited just because the underlying primitive is)."""
 
     def test_sensitive_degree_rows(self):
+        # N-12 R-1 / F-19: only POSITIVE check results become targets. The
+        # positive vocabulary is pinned from ga_sensitive_degree_writer
+        # (kartari -> papa_kartari | shubha_kartari | none).
         rows = _build_sensitive_degree_rows("marriage", [
-            {"fact_id": "abc123", "fact_subject": "VEN", "fact_key": "mrityu_bhaga"},
+            {"fact_id": "abc123", "fact_subject": "VEN", "fact_key": "kartari",
+             "fact_value_text": "papa_kartari"},
         ])
         assert len(rows) == 1
         assert rows[0]["target_type"] == "sensitive_degree"
         assert rows[0]["target_ref"] == "abc123"
         assert rows[0]["classical_citation"] is None
         assert rows[0]["uncited_extension"] is True
+        assert rows[0]["target_resolution_state"] == "resolved"
+
+    def test_sensitive_degree_negative_results_zero_rows(self):
+        # N-12 R-1 / F-19: negative-result rows (not_gandanta, not_fired,
+        # not_pushkara, kartari=none) produce ZERO target rows — removed at
+        # the resonance layer, never carried as 'inapplicable'.
+        rows = _build_sensitive_degree_rows("marriage", [
+            {"fact_id": "n1", "fact_subject": "MOON", "fact_key": "gandanta",
+             "fact_value_text": "not_gandanta"},
+            {"fact_id": "n2", "fact_subject": "SAT", "fact_key": "mrityu_bhaga",
+             "fact_value_text": "not_fired"},
+            {"fact_id": "n3", "fact_subject": "JUP", "fact_key": "pushkara",
+             "fact_value_text": "not_pushkara"},
+            {"fact_id": "n4", "fact_subject": "MAR", "fact_key": "kartari",
+             "fact_value_text": "none"},
+        ])
+        assert rows == []
 
     def test_arudha_rows(self):
         rows = _build_arudha_rows("marriage", [{"fact_id": "arudha1", "fact_subject": "ARUDHA_A7"}])
@@ -150,16 +171,26 @@ class TestBuildResonanceRows:
                 {"id": 34, "rule_type": "favourable", "graha": "venus", "primary_house": 2,
                  "classical_citation": "BPHS Ch.29"},
             ],
-            sensitive_fact_rows=[{"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga"}],
-            arudha_fact_rows=[{"fact_id": "f2", "fact_subject": "ARUDHA_A7"}],
+            sensitive_fact_rows=[{"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga",
+                                  "fact_value_text": "fired"}],  # N-12 R-1: positive result only
+            arudha_fact_rows=[{"fact_id": "f2", "fact_subject": "ARUDHA_A7",
+                               "fact_value_text": "Gemini"}],  # N-12 R-2: sign-level interval
             yoga_firing_rows=[{"yoga_canonical_id": "some_yoga"}],
             dasha_rows=[{"lord_graha": "Venus"}],
         )
         target_types = {r["target_type"] for r in rows}
+        # M-6 (WP1_CONTRACTS §2.2 item 11): build_resonance_rows also emits one
+        # bhava_arudha row per numeric house in `houses` (BHAVA_ARUDHA_A7/A2 here).
+        # The gulika_mandi_distance / yamakantaka_difference types are run()-level
+        # only (M6_EVENT_CLASSES = bereavement, illness_acute), never built here.
         assert target_types == {
             "bhava", "lord", "karaka", "mechanism_node",
             "sensitive_degree", "arudha", "yoga_constituent", "dasha_lord_portfolio",
+            "bhava_arudha",
         }
+        # R-6: every emitted row carries a valid stored resolution state.
+        for r in rows:
+            assert r["target_resolution_state"] in ("resolved", "unavailable", "unqualified")
 
     def test_dedup_on_target_type_and_ref(self):
         """Two identical (target_type, target_ref) pairs collapse to one row —
@@ -181,8 +212,10 @@ class TestBuildResonanceRows:
                 {"id": 26, "rule_type": "favourable", "graha": "jupiter", "primary_house": 2,
                  "classical_citation": "BPHS Ch.29"},
             ],
-            sensitive_fact_rows=[{"fact_id": "s1", "fact_subject": "JUP", "fact_key": "gandanta"}],
-            arudha_fact_rows=[{"fact_id": "a1", "fact_subject": "ARUDHA_A2"}],
+            sensitive_fact_rows=[{"fact_id": "s1", "fact_subject": "JUP", "fact_key": "gandanta",
+                                  "fact_value_text": "gandanta"}],  # N-12 R-1: positive only
+            arudha_fact_rows=[{"fact_id": "a1", "fact_subject": "ARUDHA_A2",
+                               "fact_value_text": "Taurus"}],  # N-12 R-2
             yoga_firing_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords"}],
             dasha_rows=[{"lord_graha": "Jupiter"}],
         )
@@ -354,7 +387,8 @@ def _fixture_script():
             {"id": 47, "rule_type": "unfavourable", "graha": "venus", "primary_house": 7,
              "classical_citation": "BPHS Ch.29 (Gochara Phala — Transit Results)"},
         ]),
-        ("FROM chart_facts", [{"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga"}]),
+        ("FROM chart_facts", [{"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga",
+                               "fact_value_text": "not_fired"}]),  # N-12 R-1: negative -> zero sensitive rows
         ("FROM ga_yoga_firings", [{"yoga_canonical_id": "dhana_yoga_house_lords"}]),
         ("FROM chart_dashas", [{"lord_graha": "Venus"}]),
     ]
@@ -374,9 +408,23 @@ def test_writer_inserts_expected_rows_for_fixture_chart():
     # (sensitive_degree_check AND arudha_pada) match "FROM chart_facts" and
     # get the SAME fixture row — this mirrors that in the manual recompute
     # below (arudha_fact_rows = the same fixture row as sensitive_fact_rows).
-    # Total row count = 3 event classes x rows-per-class from build_resonance_rows.
+    # N-12 R-1 (2026-09-23): the shared fixture row is now a NEGATIVE
+    # sensitive check (mrityu_bhaga='not_fired') -> sensitive_degree
+    # contributes ZERO rows (negative results are removed at the resonance
+    # layer, F-19). The same row feeds the arudha builder, where
+    # 'not_fired' is not a sign name -> the arudha row is still emitted
+    # (counted) but stamped target_resolution_state='unavailable' (R-2/R-6).
+    # Per-class row count = 11: 2 bhava + 1 lord + 1 karaka + 2
+    # mechanism + 0 sensitive + 1 arudha(unavailable) + 1 yoga + 1 dasha
+    # + 2 bhava_arudha (M-6, WP1_CONTRACTS §2.2 item 11 — one per numeric
+    # house in the signature; both 'unavailable' since the fixture's
+    # fact_subject is VEN, not ARUDHA_A{h}).
+    from services.gochara_grammar.derived_points import (
+        M6_EVENT_CLASSES, YAMAKANTAKA_FORMULAS,
+    )
     from services.ka_gochara_resonance.writer import build_resonance_rows
-    _shared_fact_row = {"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga"}
+    _shared_fact_row = {"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga",
+                        "fact_value_text": "not_fired"}
     per_class = len(build_resonance_rows(
         "marriage",
         houses=["7", "2"], lords=["7L"], karakas=["Venus"],
@@ -392,7 +440,13 @@ def test_writer_inserts_expected_rows_for_fixture_chart():
         yoga_firing_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords"}],
         dasha_rows=[{"lord_graha": "Venus"}],
     ))
-    assert result.rows_inserted == per_class * len(TARGET_EVENT_CLASSES)
+    # M-6 (WP1_CONTRACTS §2.2 items 9-10): run() additionally appends the
+    # derived transit targets once per chart — 1 gulika_mandi_distance +
+    # len(YAMAKANTAKA_FORMULAS) yamakantaka_difference rows for each class in
+    # M6_EVENT_CLASSES (bereavement, illness_acute). These are run()-level,
+    # never built by build_resonance_rows, so they are added here.
+    m6_rows = (1 + len(YAMAKANTAKA_FORMULAS)) * len(M6_EVENT_CLASSES)
+    assert result.rows_inserted == per_class * len(TARGET_EVENT_CLASSES) + m6_rows
     assert len(sink["inserted"]) == result.rows_inserted
     assert len(sink["deletes"]) == 1
     assert sink["deletes"][0] == (CHART_ID,)

@@ -71,6 +71,20 @@ retainable peaks across the whole decade at ceil(decade_days/90); each
 retained peak contributes one month row + one day row, hence the factor of
 2; the leading N_era term is the era-tier rows themselves).
 
+N-17/H-5 SUPERSESSION NOTE (2026-09-24, GOCHARA_REMAINDER_EXECUTION_BRIEF
+v1_0 §4.2): the MAX_PEAKS_PER_ERA_WINDOW=3 admission cap was REMOVED from
+services/gochara_v3/resolution_hierarchy.py — admission is now cap-free
+and every admitted peak persists by default; the 90-day separation filter
+is a serve-time trim parameter (min_separation_days, default = no trim,
+pre-trim count returned via HierarchyResult.peaks_admitted/trim_applied).
+The min(3*N_era, ...) term above is therefore historical: the write-time
+shape is now `N_era + 2*total_admitted`, and any further reduction is the
+serving layer's trim (P-1e H-5 serving rule). This writer calls
+build_resolution_hierarchy with the default (no trim) — the ledger writes
+ALL admitted peaks; the per-row honest-skip on natural-key conflict is
+the backstop for cross-interval peak-date duplicates that the removed
+cap/trim used to prevent at write time.
+
 MR-38 — FINGERPRINT VERSION FOLD (row-shape scope only)
 ----------------------------------------------------------
 MR-13/14 changed the row shape this writer produces (added term_breakdown /

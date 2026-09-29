@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.88
+version: 6.91
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,30 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.91 (2026-09-27, L3-GOCHARA-WP0-7-ADK0018-20260927; renumbered from v6.89 at the 2026-09-29 origin/main merge — main independently used v6.87–v6.88 for the AI-CLI-VM-BRIDGE and NIRMANA-SUPERSESSION entries; earlier renumbered from v6.82 at the prior origin/main merge): §2 top banner replaced for the
+    ADK-0018 final-runway session — (a) ADK-0017 carried block 4 CLOSED on-branch:
+    step06a_class_context.py wires the step06b --class-context-json from the real L1
+    permission machinery (gochara_intensity.permission union over candidate-contact t_exact
+    instants + served resonance-map fetch + valence), honest skip preserved, no production
+    access needed; (b) 12.10c merge-hygiene runbook documented (not executed) with verified
+    generator commands and the conjunct-(j)/1072 note; (c)
+    REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md drafted (DRAFT_AWAITING_NATIVE — three-link
+    chain, evidence index, preconditions, rollback, owed-ledger backfill); gochara battery
+    363 passed, 0 failed (357 + 6 new step06a); disposable containers torn down at close;
+    CLAUDECODE_BRIEF.md stays ACTIVE (WP10 production tranches still incomplete).
+  - v6.90 (2026-09-24, L3-GOCHARA-WP0-7-CLOSE-20260924; renumbered from v6.88 at the 2026-09-29 origin/main merge; earlier renumbered from v6.81): §2 top banner updated for the WP0-7
+    closing session — §12 close-out items landed (12.3/12.4/12.5/12.9), gochara battery 334
+    passed, WP10 tranche 1 attempted per the now-true flags and HALTED at step 3 (E-015:
+    `amjis_app` lacks CREATE on schema public; production verified byte-identical), tranche 2
+    NOT STARTED (precondition + E-012 writer gate), all disposable containers torn down, PR
+    #2731 remains the open review surface; CLAUDECODE_BRIEF.md stays ACTIVE.
+  - v6.89 (2026-09-24, L3-GOCHARA-WP0-7-REMAINDER-20260924; renumbered from v6.87 at the 2026-09-29 origin/main merge; earlier renumbered from v6.80 — main independently used v6.80-v6.86 for the Jataka/Nirmana chain): §2 banner added for the L3
+    gochara WP0-7 remainder campaign close — remainder brief §4–§8 complete and §7.A (WP10
+    cutover runbook as runnable artifacts + disposable-DB rehearsal) landed on branch
+    l3/gochara-autonomous-wp0-7 (PR #2731, open); WP10 production tranches remain blocked on
+    the brief's false tranche flags; the Kṣetra rulings 7/8/9 reviewer is still the native's
+    to name; root CLAUDECODE_BRIEF.md stays ACTIVE (L3 data-plane elevation close condition
+    not met).
   - v6.88 (2026-09-29, NIRMANA-SUPERSESSION-20260928; recorded 2026-09-28, renumbered from 6.87 at merge because main took 6.87 for PR 2753): Native decision recorded — the Nirmāṇa
     elevation campaign is OFF (did not meet the quality, depth and efficiency criteria) and will
     not resume. Successor: the Nikaṣa engine (campaign/nikasha-test, PR #2736), then an elevation
@@ -6209,6 +6233,29 @@ block (post-rebuild era), and proceeds.
 > pushed, applied, deployed, merged or production-verified. Database access used only as
 > narrowly, explicitly, live-authorized by the native for this one action, read-only-enforced
 > throughout, no credential echoed or logged.
+> 🟣 **L3 GOCHARA WP0–7 — ADK-0018 FINAL RUNWAY (2026-09-27, session
+> L3-GOCHARA-WP0-7-ADK0018-20260927).** Branch `l3/gochara-autonomous-wp0-7` (**PR #2731 open
+> against `main`, unmerged**). All four ADK-0018 runway items landed: **(a) class-context
+> permission wiring CLOSED on-branch** (ADK-0017 carried block 4 / E-012 follow-through) —
+> new producer `step06a_class_context.py` emits step06b's `--class-context-json` from the
+> real L1 machinery (`gochara_intensity.permission.compute_permission` union over the class's
+> candidate-contact `t_exact` instants, served resonance-map fetch, valence read); honest skip
+> preserved (unresolved targets omit the class; `t_exact`-NULL contacts excluded and counted);
+> **no production access was needed**, so no E-020 escalation. **(b) 12.10c merge-hygiene
+> runbook** written (`gochara_wp0_7/MERGE_HYGIENE_12_10c_RUNBOOK.md`) — verified generator
+> commands for the writer digests, the L3 pin re-admission and the capability-estate census
+> under `NATIVE-2026-09-24-L0-REPAIR-REPIN`, conjunct-(j)/1072 note carried; documented, NOT
+> executed. **(c)** `wp7_packets/REVIEW_REQUEST_PRODUCTION_APPLICATION_SET.md` drafted
+> (**DRAFT_AWAITING_NATIVE**) — the three-link chain (§12.9 overlay fingerprint rebuild →
+> candidate build production run 6/6a/6b with E-018 candidate-1 params → authority flip steps
+> 7–10 with `evidence_ref=manifest_id`), evidence index, preconditions, per-link rollback, and
+> the owed `_migrations_applied` backfill (1080–1084/1087/1091) as a same-session native item;
+> nothing marked REVIEWED. **(d)** close artifacts per §H. Gochara battery **363 passed, 0
+> failed** (357 + 6 new step06a tests) on disposable DBs only; no production contact at any
+> point. Both disposable containers (`gochara-wp6-disposable`, `gochara-wp10-disposable`) torn
+> down at close; none remain. Root `CLAUDECODE_BRIEF.md` stays `status: ACTIVE` — the L3
+> data-plane elevation close condition is not met while the WP10 production tranches are
+> incomplete.
 
 > 🟠 **DUAL DATA-PLANE CAMPAIGN SPLIT (2026-09-20, DP-SD-021).** Native-authorized platform split:
 > **Pūrṇa Anveṣaṇa continues in Codex** (product-completion closure — Portal/managed-MCP/raw-MCP

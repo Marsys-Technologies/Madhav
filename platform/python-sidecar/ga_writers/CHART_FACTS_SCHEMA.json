@@ -858,6 +858,42 @@
       },
       "render_template": "{graha} ashtakavarga sign {sign}: {bindus} bindu ({ayanamsha})."
     },
+    "ashtakavarga_bindu_contributor": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "SUN",
+        "MOON",
+        "MAR",
+        "MER",
+        "JUP",
+        "VEN",
+        "SAT"
+      ],
+      "allowed_keys": {
+        "bindus": {
+          "value_type": "num",
+          "unit": "bindu",
+          "range": [
+            0,
+            1
+          ],
+          "precision": 0,
+          "verification_min": "single_pass"
+        }
+      },
+      "subject_compound_note": "G-10 (GOCHARA ruling sheet M-7): the per-contributor BAV matrix (PyJHora prastara). Subject encodes graha+contributor+sign as 'SUN-CONTRIBUTOR_MOON-SIGN_9' (contributor in SUN/MOON/MAR/MER/JUP/VEN/SAT/LAGNA; SIGN_1=Aries..SIGN_12=Pisces, absolute rasi). Value is the single 0/1 bindu the contributor donates to the graha's BAV in that sign (BPHS ch.66 dot/rekha semantics). Sum over the 8 contributors equals ashtakavarga_bindu_sign for the same graha+sign. Nadi kakshya rows PG1615/PG1616 attest the doctrine at TESTIMONY grade (N-21: testimony never supplies computation weight; values come from the verified PyJHora engine). 7 grahas x 8 contributors x 12 signs = 672 rows per (chart, ayanamsha).",
+      "since_engine_version": "pyjhora/1.0.0",
+      "retrieval_hints": {
+        "common_query_patterns": [
+          "graha_summary",
+          "transit_sign_summary",
+          "kakshya_transit"
+        ],
+        "mv_preferred": "mv_chart_ashtakavarga_summary"
+      },
+      "render_template": "{graha} BAV contributor {contributor} -> sign {sign}: {bindus} bindu ({ayanamsha})."
+    },
     "ashtakavarga_pinda_sodhita": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",

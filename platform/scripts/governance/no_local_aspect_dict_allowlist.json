@@ -4,8 +4,13 @@
   "entries": [
     {
       "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-      "line": 224,
-      "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle."
+      "line": 230,
+      "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle. Line updated 224→230 (2026-09-29, l3/gochara-autonomous-wp0-7): branch insertions above (_citation_human_strength G-10 clause, +6 lines) shifted the unchanged, byte-identical dict; verified against origin/main:224-232."
+    },
+    {
+      "file": "platform/python-sidecar/services/gochara_kernel/convention.py",
+      "line": 45,
+      "justification": "SPECIAL_DRISHTI_DEG is the DELIBERATE pinned doctrine for the new gochara kernel, not an oracle bypass: WP1_CONTRACTS.md §7 + §2.2 N-14 (RULED) — Rāhu/Ketu cast NO dṛṣṭi (empty angle set), superseding the served nodal entries (F-29). brahmagyan.aspects.get_graha_aspects() carries the OPPOSITE nodal convention ('Rahu/Ketu cast the same special aspects as Jupiter', aspects.py:26), so importing it would violate the N-14 ruling. B-02 migration would require an oracle-side doctrinal change first; out of this lane's scope."
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",

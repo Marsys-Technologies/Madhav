@@ -6,7 +6,7 @@ Verifies:
 2. Every entry is a canonical brahma_event_ontology event_class_id (matches DOMAIN_MAP).
 3. TARGET_EVENT_CLASSES covers the complete DOMAIN_MAP (no canonical class missing).
 4. No duplicates in the tuple.
-5. FORMULA_VERSION is updated to v2.0.
+5. FORMULA_VERSION is updated (v2.0 for W3.1; v2.1 for the M-6 derived target rows).
 6. COVERAGE_QUALITY_NOTES exists and has one entry per event class.
 7. The 6 original classes (legacy 3 + health/adverse 3) remain in their historical positions
    (legacy-first ordering guarantee — ka_gochara_sweep substep-plan stability).
@@ -66,12 +66,14 @@ def test_no_duplicates_in_target_event_classes():
     assert dupes == [], f"Duplicate event classes found in TARGET_EVENT_CLASSES: {dupes}"
 
 
-# ── 5. FORMULA_VERSION bumped to v2.0 ────────────────────────────────────────
+# ── 5. FORMULA_VERSION bumped (v2.1: M-6 derived target rows) ───────────────
 
 def test_formula_version_is_v2():
-    assert FORMULA_VERSION == "ka_gochara_resonance_v2.0", (
-        f"Expected FORMULA_VERSION='ka_gochara_resonance_v2.0'; got '{FORMULA_VERSION}'. "
-        "W3.1 requires a version bump to signal the expanded 27-class scope."
+    assert FORMULA_VERSION == "ka_gochara_resonance_v2.1", (
+        f"Expected FORMULA_VERSION='ka_gochara_resonance_v2.1'; got '{FORMULA_VERSION}'. "
+        "W3.1 bumped to v2.0 for the expanded 27-class scope; M-6 (remainder "
+        "brief §4.4) bumps to v2.1 — the emitted row set changes "
+        "(gulika_mandi_distance, yamakantaka_difference, bhava_arudha added)."
     )
 
 

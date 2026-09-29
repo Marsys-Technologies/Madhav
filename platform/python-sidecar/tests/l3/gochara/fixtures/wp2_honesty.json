@@ -1,0 +1,116 @@
+{
+  "_meta": {
+    "artifact": "wp2_honesty",
+    "version": "1.0",
+    "date": "2026-09-23",
+    "executes": "KIMI_AUTONOMOUS_EXECUTION_PROMPT_GOCHARA_v1_0.md §4 WP2 (honesty cases) + WP1_CONTRACTS.md §2 (target-resolution contract), §4 (coverage), §5.4 (lifecycle)",
+    "independence_statement": "Every expected answer herein is independently derived from the pinned contracts and stated logic; no legacy system output was consulted and no ephemeris is involved. These are state-based expectations.",
+    "chart_id_rule": "All chart ids are synthetic wp2-synth-* ids. No real chart id appears anywhere in this file.",
+    "target_resolution_state_vocab": ["resolved", "unavailable", "unqualified"],
+    "completeness_state_note": "Six F06 completeness states; an honest state is always stored, never a 0.0 score or an empty list standing in for one (plan §4.6, §N.7 item 6)."
+  },
+  "cases": {
+    "case_07_negative_sensitive_degree_zero_targets": {
+      "id": "wp2-hon-07",
+      "description": "Negative-result sensitive-degree checks must produce ZERO targets: the negative predicates are removed at the resonance layer (N-12, WP3c R-1), never carried as targets and never stored as 'inapplicable'.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000007",
+      "derivation": "hand-specified per WP1_CONTRACTS.md §2.2 item 8 + §2.1",
+      "inputs": {
+        "resonance_rows": [
+          {"event_class": "marriage", "target_type": "sensitive_degree", "target_ref": "wp2synth.moon.gandanta.check", "check_result": "not_gandanta", "fact_subject": "MOON"},
+          {"event_class": "longevity", "target_type": "sensitive_degree", "target_ref": "wp2synth.sun.mrityu.check", "check_result": "mrityu_bhaga=not_fired", "fact_subject": "SUN"},
+          {"event_class": "wealth_gain", "target_type": "sensitive_degree", "target_ref": "wp2synth.ven.pushkara.check", "check_result": "not_pushkara", "fact_subject": "VEN"},
+          {"event_class": "career_advancement", "target_type": "sensitive_degree", "target_ref": "wp2synth.sat.kartari.check", "check_result": "kartari=none", "fact_subject": "SAT"}
+        ]
+      },
+      "expected": {
+        "resolved_target_count": 0,
+        "carried_target_count": 0,
+        "inapplicable_state_stored": false,
+        "note": "All four negative predicates (not_gandanta, mrityu_bhaga=not_fired, not_pushkara, kartari=none) are dropped at the resonance build (R-1). There is no row left to carry a state -- the honest outcome is the ABSENCE of the row, not a row marked negative. Positive predicates (papa_kartari, shubha_kartari, pushkara) still resolve to the subject graha's own degree and merge into that graha's independence_group."
+      }
+    },
+    "case_08_cusp_placeholder_arudha": {
+      "id": "wp2-hon-08",
+      "description": "Arudha target whose stored longitude_sidereal is exactly 30*(sign-1) = 270.0000 (a cusp placeholder, F-20): no point contact may EVER be generated against 270.0000; the target resolves as the sign-level interval only.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000008",
+      "derivation": "hand-specified per WP1_CONTRACTS.md §2.2 item 6 + §2.3 (F-20)",
+      "inputs": {
+        "resonance_row": {"event_class": "wealth_gain", "target_type": "arudha", "target_ref": "ARUDHA.A7.SIGN"},
+        "chart_facts": [
+          {"fact_category": "arudha_pada", "fact_subject": "A7", "fact_key": "sign", "fact_value_text": "Capricorn"},
+          {"fact_category": "arudha_pada", "fact_subject": "A7", "fact_key": "longitude_sidereal", "fact_value_num": 270.0}
+        ]
+      },
+      "expected": {
+        "target_resolution_state": "resolved",
+        "object_kind": "interval",
+        "span_deg": [270.0, 300.0],
+        "target_sign": "Capricorn",
+        "point_contact_count_against_placeholder": 0,
+        "forbidden_point_longitudes": [270.0],
+        "allowed_relations_on_interval": ["sign_ingress", "residence"],
+        "test_failure_condition": "Any degree-level contact (conjunction/drishti/return/kakshya) with target_longitude_deg = 270.0 is a failure: the cited fact does not actually carry that degree. A degree-level arudha is M-5/M-6, out of scope for this run."
+      }
+    },
+    "case_09_dangling_yoga_id": {
+      "id": "wp2-hon-09",
+      "description": "Resonance target references yoga id 'ardhachandra' with NO live ga_yoga_firings row: the resolution state 'unavailable' must be recorded (R-6), never a silent skip and never an invented degree.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000009",
+      "derivation": "hand-specified per WP1_CONTRACTS.md §2.2 item 7 + F-21 (mirrors the live ardhachandra/chatra dangling case)",
+      "inputs": {
+        "resonance_row": {"event_class": "career_advancement", "target_type": "yoga_constituent", "target_ref": "ardhachandra"},
+        "ga_yoga_firings": []
+      },
+      "expected": {
+        "resolved_target_count": 0,
+        "unresolved": [
+          {"target_type": "yoga_constituent", "target_ref": "ardhachandra", "target_resolution_state": "unavailable", "reason": "no ga_yoga_firings row with fired=true for this yoga id"}
+        ],
+        "invented_degree": null,
+        "stored_on": "gochara_resonance_map.target_resolution_state (R-6) and counted in kala_gochara_coverage.targets_unresolved + target_resolution_state_counts",
+        "silence_is_failure": "No emitted row AND no recorded state, or a fabricated longitude, is a test failure."
+      }
+    },
+    "case_10_missing_overlay": {
+      "id": "wp2-hon-10",
+      "description": "Interval where the Vedha/Moorti overlay is absent (beyond its coverage, e.g. +/-60 d around computed instants or +400 d style extension limits): quality_gates must be reported unavailable, NEVER defaulted to 1.0; the coverage manifest records unavailable_inputs.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000010",
+      "derivation": "hand-specified per WP1_CONTRACTS.md §4 (unavailable_inputs) + §2.1 (overlay beyond horizon -> unavailable)",
+      "inputs": {
+        "query_interval_utc": ["2028-01-01T00:00:00Z", "2028-03-01T00:00:00Z"],
+        "overlay_coverage_utc": ["2025-01-01T00:00:00Z", "2027-12-31T00:00:00Z"],
+        "overlay_kinds": ["vedha", "moorti"]
+      },
+      "expected": {
+        "quality_gates": null,
+        "quality_gates_defaulted_to_one": false,
+        "completeness_state": "unavailable",
+        "coverage_record": {
+          "unavailable_inputs": {
+            "vedha_overlay": {"reason": "beyond_overlay_horizon", "span_utc": ["2028-01-01T00:00:00Z", "2028-03-01T00:00:00Z"]},
+            "moorti_overlay": {"reason": "beyond_overlay_horizon", "span_utc": ["2028-01-01T00:00:00Z", "2028-03-01T00:00:00Z"]}
+          },
+          "declared_absent": true
+        },
+        "lambda_scoring_effect": "WP2 oracle contract: with quality_gates unavailable the scored lambda for the interval is NOT computable as a number; the projection must emit the honest unavailable state. quality_gates=1.0-by-default would certify un-vetted intervals as fully gated -- a test failure (F06/§N.7 item 6)."
+      }
+    },
+    "case_11_solver_exception": {
+      "id": "wp2-hon-11",
+      "description": "A primitive that raises mid-evaluation: the failure must propagate as an explicit failure state on the row (F-08 / H-2) -- NEVER surface as a 0.0 score that a >= threshold then certifies as 'active'.",
+      "chart_id": "wp2-synth-00000000-0000-4000-8000-000000000011",
+      "derivation": "hand-specified per plan §8.1 H-2 + §4.2 (near_station_unresolved propagation) + F-08",
+      "inputs": {
+        "primitive": "kakshya_cell_crossing",
+        "behavior": "raises RuntimeError('kakshya boundary row missing for chart wp2-synth-...011') mid-evaluation of one (body, target) row; all other rows evaluate normally"
+      },
+      "expected_failure_representation": {
+        "pinned": "completeness_state='unqualified' on the failed row, with failure_detail={'primitive': 'kakshya_cell_crossing', 'error_class': 'RuntimeError', 'message': 'kakshya boundary row missing', 'row_identity': '<chart_id, body, target_ref>'}; the EvaluationFailure is additionally available as a raised exception to the caller (plan §4.2: near_station_unresolved propagates completeness_state='unqualified' into the row, never a silent boolean). The other rows in the same build are unaffected.",
+        "lambda_on_failed_row": null,
+        "score_zero_certified_active": false,
+        "test_failure_condition": "Any path where the raised exception is swallowed and the row scores 0.0 (which an >= active_threshold comparison would then certify 'inactive-but-evaluated', or worse 'active' after clamping) is the exact F-08 defect and fails this fixture."
+      }
+    }
+  }
+}

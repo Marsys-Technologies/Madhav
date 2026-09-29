@@ -39,6 +39,7 @@ Scope note (single ayanamsha, 8-of-9 grahas): see logic.py module docstring.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, timedelta
 from typing import Any
@@ -47,9 +48,13 @@ import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
+from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 from services.ka_moorti_nirnaya.logic import (
     MOORTI_GRAHAS,
     detect_sign_runs,
+    moorti_corpus_verifiable,
+    moorti_source_qualification,
+    moorti_upstream_fingerprint,
     nakshatra_offset_from_janma,
 )
 
@@ -61,9 +66,20 @@ CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 SIGN_SIZE_DEG = 30.0
 
 # Scanned horizon around "now" at build time — matches ka_kota_chakra's own
-# convention exactly (day-grade, not a W2G sub-day precision claim).
+# convention exactly (day-grade, not a W2G sub-day precision claim). WP9 5.3
+# (F-11): the caller may pass the REQUESTED horizon explicitly via
+# ctx.config['horizon_start'] / ['horizon_end']; this window is only the
+# default, never silently treated as the requested coverage.
 HORIZON_BACK_DAYS = 60
 HORIZON_FORWARD_DAYS = 400
+
+# WP9 5.3: grade each non-truncated sign run at the TRUE ingress instant,
+# solved on the kernel's sign_ingress machinery from the same daily series
+# the day-grade path reads. Rows graded this way are stamped
+# precision_regime='instant_grain'; any failure falls back per-run to the
+# day-grade path with the honest 'date_grain' stamp (never an instant claim
+# on day-grade evidence).
+KERNEL_INSTANT_GRADING = True
 
 _FETCH_JANMA_MOON_SQL = """
 SELECT fact_id, fact_value_num
@@ -92,13 +108,17 @@ INSERT INTO kala_moorti_nirnaya (
     window_start, window_end, start_truncated, end_truncated,
     moorti_computed, moon_nakshatra_idx_at_ingress, moon_nakshatra_name_at_ingress,
     janma_nakshatra_idx, janma_nakshatra_fact_id, nakshatra_offset,
-    moorti_name, quality_tier, phala_brief, moorti_classical_citation, formula_version
+    moorti_name, quality_tier, phala_brief, moorti_classical_citation,
+    source_qualification, precision_regime, corpus_verifiable, formula_version,
+    upstream_fingerprint
 ) VALUES (
     %(chart_id)s, %(ayanamsha_id)s, %(graha)s, %(target_sign_idx)s, %(target_sign_name)s,
     %(window_start)s, %(window_end)s, %(start_truncated)s, %(end_truncated)s,
     %(moorti_computed)s, %(moon_nakshatra_idx_at_ingress)s, %(moon_nakshatra_name_at_ingress)s,
     %(janma_nakshatra_idx)s, %(janma_nakshatra_fact_id)s, %(nakshatra_offset)s,
-    %(moorti_name)s, %(quality_tier)s, %(phala_brief)s, %(moorti_classical_citation)s, %(formula_version)s
+    %(moorti_name)s, %(quality_tier)s, %(phala_brief)s, %(moorti_classical_citation)s,
+    %(source_qualification)s, %(precision_regime)s, %(corpus_verifiable)s, %(formula_version)s,
+    %(upstream_fingerprint)s::jsonb
 )
 ON CONFLICT (chart_id, ayanamsha_id, graha, window_start) DO NOTHING
 """
@@ -140,6 +160,73 @@ def _compute_ayanamsha_offset(reference_date: date) -> float:
 
     jd = _tropical_to_jd(reference_date)
     return derive_sidereal(0.0, jd, CANONICAL_AYANAMSHA)["ayanamsha_offset"]
+
+
+def _config_horizon_date(value: Any) -> date | None:
+    """Parse an optional caller-passed horizon bound (date or ISO string)."""
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(str(value))
+
+
+def _build_kernel_arcs(
+    daily_by_body: dict[str, list[tuple[date, float]]], bodies: tuple[str, ...],
+) -> tuple[dict[str, Any], dict[str, list[Any]]]:
+    """WP9 5.3: decompose each body's daily series into the kernel's arc
+    substrate and solve its sign_ingress boundary roots — the TRUE ingress
+    instants the instant-grade moorti path is graded at. Built from the SAME
+    daily rows the day-grade path reads (no second data source). Roots are
+    Swiss-refined where the ephemeris backend is available; otherwise the
+    kernel's spline roots over its own arcs stand (still a solved sub-day
+    instant, never a civil-date claim). Per-body failures are honest
+    fallbacks (that body simply grades day-grain)."""
+    from services.gochara_kernel import arcs as kernel_arcs
+    from services.gochara_kernel.contacts import find_boundary_roots
+
+    index_by_body: dict[str, Any] = {}
+    roots_by_body: dict[str, list[Any]] = {}
+    for body in bodies:
+        daily = daily_by_body.get(body) or []
+        if len(daily) < 4:
+            continue
+        jds = [_date_to_jd(d) for d, _lon in daily]
+        lons = [lon for _d, lon in daily]
+        try:
+            idx = kernel_arcs.build_arc_index(body, jds, lons)
+            try:
+                roots = find_boundary_roots(idx, body, "sign_ingress", refine=True)
+            except Exception:  # noqa: BLE001 — no Swiss backend in this env
+                roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
+            roots_by_body[body] = roots
+            index_by_body[body] = idx
+        except Exception as exc:  # noqa: BLE001 — honest per-body fallback
+            logger.warning(
+                "[ka_moorti_nirnaya] kernel arc build failed for %s: %s — "
+                "that body grades day-grain", body, exc,
+            )
+    return index_by_body, roots_by_body
+
+
+def _match_ingress_instant(
+    roots: list[Any] | None, index: Any, run: dict[str, Any],
+) -> float | None:
+    """The true ingress instant (jd) opening a non-truncated sign run: the
+    sign_ingress root within ±1.5 d of the run's day-grade start whose
+    post-crossing position is inside the run's sign (retrograde re-entries
+    cross the sign's TOP edge downward — checking the position after the root
+    handles both directions). None → caller falls back to day-grade."""
+    if not roots or index is None:
+        return None
+    start_jd = _date_to_jd(run["start_date"])
+    for root in roots:
+        if abs(root.exact_jd - start_jd) > 1.5:
+            continue
+        after = index.lon_unwrapped(root.exact_jd + 0.05) % 360.0
+        if int(after // SIGN_SIZE_DEG) % 12 == run["sign_idx"]:
+            return root.exact_jd
+    return None
 
 
 def _fetch_daily_sidereal_by_body(
@@ -194,6 +281,9 @@ class KaMoortiNirnayaWriter(WriterBase):
         janma_nak_idx, janma_fact_id = janma
 
         moorti_table = _fetch_moorti_table(conn)
+        # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
+        # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
+        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(moorti_table))
         if not moorti_table:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -201,8 +291,14 @@ class KaMoortiNirnayaWriter(WriterBase):
             )
 
         today = date.today()
-        horizon_start = today - timedelta(days=HORIZON_BACK_DAYS)
-        horizon_end = today + timedelta(days=HORIZON_FORWARD_DAYS)
+        # WP9 5.3 (F-11): requested horizon may be passed explicitly; the
+        # ±60/+400 d window is only the default.
+        horizon_start = _config_horizon_date(ctx.config.get("horizon_start")) or (
+            today - timedelta(days=HORIZON_BACK_DAYS)
+        )
+        horizon_end = _config_horizon_date(ctx.config.get("horizon_end")) or (
+            today + timedelta(days=HORIZON_FORWARD_DAYS)
+        )
 
         offset = _compute_ayanamsha_offset(today)
         bodies_needed = MOORTI_GRAHAS + ("Moon",)
@@ -229,6 +325,15 @@ class KaMoortiNirnayaWriter(WriterBase):
             d: int(lon // NAK_SIZE_DEG) % 27 for d, lon in moon_daily
         }
 
+        arc_index_by_body: dict[str, Any] = {}
+        ingress_roots_by_body: dict[str, list[Any]] = {}
+        if KERNEL_INSTANT_GRADING:
+            arc_index_by_body, ingress_roots_by_body = _build_kernel_arcs(
+                daily_by_body, bodies_needed,
+            )
+        instant_graded = 0
+        day_grade_misclassified = 0
+
         all_rows: list[dict] = []
         grahas_with_data = 0
         for graha in MOORTI_GRAHAS:
@@ -241,6 +346,7 @@ class KaMoortiNirnayaWriter(WriterBase):
 
             for run in runs:
                 moorti_computed = not run["start_truncated"]
+                graded_regime = "date_grain"
                 row: dict[str, Any] = {
                     "chart_id": chart_id,
                     "ayanamsha_id": CANONICAL_AYANAMSHA,
@@ -261,11 +367,42 @@ class KaMoortiNirnayaWriter(WriterBase):
                     "quality_tier": None,
                     "phala_brief": None,
                     "moorti_classical_citation": None,
+                    "upstream_fingerprint": upstream_fp_json,
+                    # WP9 overlay stamps (migration 1082). Verse-cited + corpus-
+                    # verifiable exactly when the moorti restates bg_transit_moorti
+                    # (moorti_computed); unsourced otherwise. precision_regime is
+                    # re-stamped below from the FINAL grading path: instant_grain
+                    # when the kernel's sign_ingress instant graded the row,
+                    # date_grain otherwise (WP9 5.3).
+                    "source_qualification": moorti_source_qualification(moorti_computed),
+                    "precision_regime": "date_grain",
+                    "corpus_verifiable": moorti_corpus_verifiable(moorti_computed),
                     "formula_version": FORMULA_VERSION,
                 }
 
                 if moorti_computed:
-                    moon_nak_idx = moon_nak_by_date.get(run["start_date"])
+                    # WP9 5.3: grade at the TRUE kernel sign-ingress instant
+                    # when it solves (instant_grain); else the ingress DATE's
+                    # daily Moon (date_grain). The day-grade misclassification
+                    # count — runs where the two grades disagree on the Moon's
+                    # nakshatra — feeds the error-rate report.
+                    moon_nak_idx = None
+                    instant_jd = _match_ingress_instant(
+                        ingress_roots_by_body.get(graha),
+                        arc_index_by_body.get(graha),
+                        run,
+                    )
+                    moon_index = arc_index_by_body.get("Moon")
+                    if instant_jd is not None and moon_index is not None:
+                        moon_lon = moon_index.lon_unwrapped(instant_jd) % 360.0
+                        moon_nak_idx = int(moon_lon // NAK_SIZE_DEG) % 27
+                        graded_regime = "instant_grain"
+                        instant_graded += 1
+                        day_nak = moon_nak_by_date.get(run["start_date"])
+                        if day_nak is not None and day_nak != moon_nak_idx:
+                            day_grade_misclassified += 1
+                    else:
+                        moon_nak_idx = moon_nak_by_date.get(run["start_date"])
                     if moon_nak_idx is not None:
                         offset_key = nakshatra_offset_from_janma(moon_nak_idx, janma_nak_idx)
                         moorti_row = moorti_table.get(offset_key)
@@ -294,6 +431,15 @@ class KaMoortiNirnayaWriter(WriterBase):
                         # ephemeris_daily) — honest gap, not guessed.
                         row["moorti_computed"] = False
 
+                # Stamps follow the FINAL moorti_computed (the defensive paths
+                # above can flip it after row creation). precision_regime follows
+                # the FINAL state too: an instant claim only stands on a computed
+                # row actually graded at the kernel ingress instant.
+                row["source_qualification"] = moorti_source_qualification(row["moorti_computed"])
+                row["corpus_verifiable"] = moorti_corpus_verifiable(row["moorti_computed"])
+                row["precision_regime"] = (
+                    graded_regime if row["moorti_computed"] else "date_grain"
+                )
                 all_rows.append(row)
 
         if not all_rows:
@@ -311,6 +457,9 @@ class KaMoortiNirnayaWriter(WriterBase):
             cur.executemany(_INSERT_SQL, all_rows)
 
         computed_count = sum(1 for r in all_rows if r["moorti_computed"])
+        misclass_rate = (
+            day_grade_misclassified / instant_graded if instant_graded else 0.0
+        )
         logger.info(
             "[ka_moorti_nirnaya] %d sign-run rows (%d moorti-computed) for chart %s across %d/%d grahas",
             len(all_rows), computed_count, chart_id, grahas_with_data, len(MOORTI_GRAHAS),
@@ -319,5 +468,8 @@ class KaMoortiNirnayaWriter(WriterBase):
             asset_id=self.asset_id, rows_inserted=len(all_rows),
             notes=f"grahas_with_data={grahas_with_data}/{len(MOORTI_GRAHAS)};"
                   f"moorti_computed={computed_count}/{len(all_rows)};"
-                  f"horizon={horizon_start}..{horizon_end}",
+                  f"horizon={horizon_start}..{horizon_end};"
+                  f"kernel_instant_graded={instant_graded};"
+                  f"day_grade_misclassified={day_grade_misclassified};"
+                  f"day_grade_misclassification_rate={misclass_rate:.4f}",
         )

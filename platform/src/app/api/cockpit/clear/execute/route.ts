@@ -11,6 +11,7 @@ interface RegistryRow extends RegistryEntry {
   scope: string
   target_table: string | null
   count_sql: string | null
+  is_active?: boolean | null
 }
 
 async function requireUser() {
@@ -82,18 +83,37 @@ export async function POST(req: NextRequest) {
 
   // Load registry
   const [{ rows: registry }, { rows: protectedRows }] = await Promise.all([
+    // B1 (Kāla pre-elevation Phase 1.1): `WHERE is_active` must be re-derived here
+    // BYTE-FOR-BYTE as in clear/route.ts's preview. The two routes compute
+    // `affectedAssetIds` independently and hash it; if only one filtered, either the
+    // hash would never match a genuine preview (the route breaks) or — worse — the
+    // preview would hide the retired asset while this loop still DELETEd its rows.
+    // Same reason the protected-asset exclusion below is re-derived rather than
+    // trusted from the preview.
     query<RegistryRow>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-              scope, target_table, count_sql
-       FROM asset_registry ORDER BY layer, sort_order`
+              scope, target_table, count_sql,
+              COALESCE(is_active, TRUE) AS is_active
+       FROM asset_registry
+       WHERE COALESCE(is_active, TRUE)
+       ORDER BY layer, sort_order`
     ),
-    // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2. Re-derived identically to
+    // ṢAḌ-DARŚANA sweep-protection Phase 1a, Layer 1/2. Re-derived identically to
     // clear/route.ts's preview so a protected asset is excluded from BOTH the hash
     // input AND the actual DELETE loop below — a protected pair is never merely hidden
     // from the preview while still being cleared here, and the hash still matches a
-    // preview computed the same way. kala_gochara_windows additionally carries a
-    // DB-level trigger guard (migration 540) as defense-in-depth; this exclusion is
-    // the ONLY guard for any other asset a native later adds to build_protected_assets.
+    // preview computed the same way.
+    //
+    // CORRECTED 2026-09-22 (B1): this comment used to claim kala_gochara_windows
+    // "additionally carries a DB-level trigger guard (migration 540) as
+    // defense-in-depth". That had been FALSE since 2026-08-23 — migration 588
+    // dropped both migration-540 triggers and the migration-566 gen-3.0 trigger, and
+    // emptied build_protected_assets. Measured 2026-09-22: zero non-internal triggers
+    // on any kala_* table (positive control: 130 exist elsewhere in `public`), zero
+    // rows in build_protected_assets. Migration 1071 restores a DB-level guard —
+    // keyed on the row's own `generation`, per migration 588's own instruction that a
+    // reinstated protection be keyed on (table, generation) rather than asset_id so it
+    // cannot again block the writer it is meant to protect.
     query<{ asset_id: string }>(
       'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
       [chart_id]
@@ -160,10 +180,41 @@ export async function POST(req: NextRequest) {
       if (asset.asset_id in EXPLICIT_CLEAR_OPS) {
         const explicitOps = EXPLICIT_CLEAR_OPS[asset.asset_id]
         if (explicitOps === null) continue  // no data rows, skip cleanly
-        ops = explicitOps.map(op => ({
-          sql: op.sql,
-          params: op.sql.includes('$1') ? [chart_id] : [],
-        }))
+
+        // WP7 C-1 guard: an op carrying `guard` must be evaluated BEFORE any
+        // statement of the asset runs. Guard matches + non-release principal →
+        // refuse the whole asset (no SAVEPOINT, no statements). Guard matches +
+        // release authority → proceed, with `guard.cascade` statements appended
+        // so the cascade shares the asset's SAVEPOINT.
+        const guard = explicitOps.find(op => op.guard)?.guard
+        if (guard) {
+          const guardResult = await client.query(
+            guard.sql,
+            guard.sql.includes('$1') ? [chart_id] : []
+          )
+          if ((guardResult.rowCount ?? 0) > 0 && !isSuperAdmin) {
+            failed_tables.push({ table: asset.asset_id, error: guard.refuse_message })
+            continue
+          }
+          if ((guardResult.rowCount ?? 0) > 0 && guard.cascade?.length) {
+            ops = [
+              ...explicitOps.map(op => ({
+                sql: op.sql,
+                params: op.sql.includes('$1') ? [chart_id] : [],
+              })),
+              ...guard.cascade.map(sql => ({
+                sql,
+                params: sql.includes('$1') ? [chart_id] : [],
+              })),
+            ]
+          }
+        }
+        if (!ops) {
+          ops = explicitOps.map(op => ({
+            sql: op.sql,
+            params: op.sql.includes('$1') ? [chart_id] : [],
+          }))
+        }
       } else if (asset.count_sql) {
         const deleteSql = deriveDeleteSqlFromCountSql(asset.count_sql)
         if (deleteSql) {
