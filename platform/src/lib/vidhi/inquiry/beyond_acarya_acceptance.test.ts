@@ -73,6 +73,14 @@ const historicalV10 = {
   artifact_hash: 'sha256:f988b6fd13fd1c2b667c66206444a7bbd030e369a748ecd1ea63a6d5f063cf8a',
 } as const
 
+// The Kāla B1 gochara re-identification successor of v10. Immutable since the WP10
+// migration-1091 registry-identity reconciliation (v12) superseded it.
+const historicalV11 = {
+  capability_content_hash: 'sha256:e6c208210c310bf19257be96897b5eb225610b7d5c03efb420da53ea46fdfd5d',
+  report_hash: 'sha256:773dd150de295ed561b42402fc4209228574ed8c07653bc414368606a48af8bc',
+  artifact_hash: 'sha256:5c840cf8efacbbf06eb83de5973f3f984ffe3e3e742749755a987e4098555081',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -111,16 +119,18 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    // Kāla B1 gochara re-identification boundary (native ruling recorded in ka_gochara.py's
-    // module docstring; W0 census #4, MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md;
-    // seed caught up in cacc72440, 2026-09-22): ka_gochara now writes kala_gochara_windows_v2
-    // generation='2.0' and never the protected kala_gochara_windows corpus. The seed correction
-    // moved the producer_contract_fingerprint and the snapshot was regenerated on the merged
-    // tree (68a56814a, Density Census §N.6, 182 SCUs, codegen:capability-knowledge:check green),
-    // so capability_content_hash/report_hash move once more — no denominator changed (see the
-    // metrics assertions above and the v11 pin test below; identical to v7, v8, v9 and v10's
-    // own metrics).
-    expect(report.report_hash).toBe('sha256:773dd150de295ed561b42402fc4209228574ed8c07653bc414368606a48af8bc')
+    // WP10 migration-1091 registry-identity reconciliation boundary (steward review of
+    // Pravaha A0.3/A0.4, 2026-09-29): the ka_gochara seed literal was re-identified from the
+    // pre-1091 Kāla B1 writer-module identity (kala_gochara_windows_v2/'2.0') to the applied,
+    // native-authorised 1091 registry identity (kala_gochara_windows/'4.0', written by the
+    // kala_gochara_cutover scripts; integrity conjunct (j) pins target_table = count_sql
+    // relation). The seed correction moved the producer_contract_fingerprint and the snapshot
+    // was regenerated on the merged tree (a35eff544, Density Census §N.6, 182 SCUs,
+    // codegen:capability-knowledge:check green). capability_content_hash/report_hash coincide
+    // byte-for-byte with v10 — the census-visible catalog identity returned to the production
+    // relation and no SCU, edge, proof kind or availability disposition changed (see the
+    // metrics assertions above and the v12 pin test below; identical to v7-v11's own metrics).
+    expect(report.report_hash).toBe('sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -418,9 +428,31 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v11 source-successor artifact to the current executable report without claiming live acceptance (Kāla B1 gochara re-identification snapshot regen)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v11 source-successor artifact immutable after the WP10 registry-1091 reconciliation advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v11.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV11.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v11',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v10.json',
+        capability_content_hash: historicalV10.capability_content_hash,
+        report_hash: historicalV10.report_hash,
+      },
+      capability_content_hash: historicalV11.capability_content_hash,
+      report_hash: historicalV11.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: 'cacc72440f98f79486ef679e046e2dbe1d687eb9',
+    })
+  })
+
+  it('pins the v12 source-successor artifact to the current executable report without claiming live acceptance (WP10 migration-1091 registry identity reconciliation)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v12.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -428,12 +460,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v11',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v12',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v10.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v11.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV10.capability_content_hash,
-        report_hash: historicalV10.report_hash,
+        capability_content_hash: historicalV11.capability_content_hash,
+        report_hash: historicalV11.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -476,10 +508,11 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // The Kāla B1 gochara re-identification commit (cacc72440, native ruling per ka_gochara.py's
-      // module docstring + W0 census #4) whose seed correction moved the producer-contract
-      // fingerprint; the later commit 68a56814a only regenerates the snapshot on the merged tree.
-      evaluated_source_revision: 'cacc72440f98f79486ef679e046e2dbe1d687eb9',
+      // The WP10 migration-1091 registry-identity reconciliation commit (steward review of
+      // Pravaha A0.3/A0.4, blocking item 2): seed literal mirrors the applied, native-authorised
+      // 1091 row (kala_gochara_windows/'4.0'), moving the producer-contract fingerprint;
+      // the snapshot regeneration is part of the same commit.
+      evaluated_source_revision: 'a35eff5449080b0bf271514a28b1dc57d10d9591',
     })
   })
 })
