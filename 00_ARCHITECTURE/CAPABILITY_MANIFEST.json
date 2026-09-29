@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-28T04:49:48+05:30",
+  "generated_at": "2026-09-29T06:35:34+05:30",
   "generator_version": "1.0",
   "entry_count": 141,
-  "fingerprint": "39af5b9600c58ed7",
+  "fingerprint": "4dfdc5cb5177a13f",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -2007,9 +2007,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "5b40ebbd2a3b493c8b1ca68217061a34ac37bfbe8b29d7e8aadea944d86b782d",
+      "fingerprint": "67ca971a7ba9752cd5ac48c4924263d977634cdd101cc1247bdff1d56412564b",
       "native_id": "project",
-      "last_verified_session": "NIKASHA-WAVE3-FOLD-20260928",
+      "last_verified_session": "SUVARNA-FI3-FI4-REGISTER-REPAIR-20260929",
       "last_verified_on": "2026-09-28",
       "note": "nikasha-test change register; supersedes v1.0; 214 rows with severity/depends_on/effort"
     },
