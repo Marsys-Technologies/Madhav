@@ -410,7 +410,7 @@ export async function POST(request: Request) {
     if (isCorrectionArchived(existing)) return archivedReadOnlyResponse()
   }
 
-  // Jātaka chart workspace: the same shared readiness gate as Paripraśna — only a
+  // Jātaka chart workspace: legacy consult remains readiness-gated — only a
   // Ready chart produces a new reading (fails closed if readiness is unreadable).
   // Checked after the archive lock (which names the more specific reason) and
   // before any conversation insert.

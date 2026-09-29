@@ -59,6 +59,37 @@ afterEach(() => {
 })
 
 describe('PariprashnaApp history merge (V3-E-012a)', () => {
+  it('shows a non-blocking readiness notice when the chart is only partially computed', () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
+
+    render(
+      <PariprashnaApp
+        chartPin={CHART_PIN}
+        chartId="c-1"
+        readiness={{ state: 'partially-built', percent: 33, label: 'Partially built' }}
+      />,
+    )
+
+    const notice = screen.getByTestId('pp-readiness-notice')
+    expect(notice).toHaveTextContent('33%')
+    expect(notice).toHaveTextContent(/available material/i)
+    expect(notice).toHaveTextContent(/may be incomplete/i)
+  })
+
+  it('does not show the partial-readiness notice for a fully ready chart', () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ conversations: [] }) } as Response)
+
+    render(
+      <PariprashnaApp
+        chartPin={CHART_PIN}
+        chartId="c-1"
+        readiness={{ state: 'ready', percent: 100, label: 'Ready' }}
+      />,
+    )
+
+    expect(screen.queryByTestId('pp-readiness-notice')).not.toBeInTheDocument()
+  })
+
   it('renders fetched past readings in the sidebar once GET /api/conversations resolves', async () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
