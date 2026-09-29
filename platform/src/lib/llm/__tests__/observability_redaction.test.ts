@@ -77,7 +77,7 @@ const safe = {
   cli_id: null, built_in_default: false, terminal_status: 'success',
   started_at: '2026-09-27T00:00:00.000Z', finished_at: '2026-09-27T00:00:00.010Z',
   latency_ms: 10, input_tokens: null, output_tokens: null, total_tokens: null,
-  retry_count: null, error_code: null, fallback_used: false,
+  retry_count: null, error_code: null, fallback_used: false, fallback_from_correlation_id: null,
 } as const
 
 describe('AI routing observability redaction', () => {

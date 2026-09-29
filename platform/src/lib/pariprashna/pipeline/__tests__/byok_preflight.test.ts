@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const m = vi.hoisted(() => ({
   order: [] as string[],
   prepare: vi.fn(), build: vi.fn(),
-  createExecutor: vi.fn(), trackExecutor: vi.fn(), admit: vi.fn(),
+  createExecutor: vi.fn(), trackExecutor: vi.fn(), createFallbackExecutor: vi.fn(), admit: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/access-control', () => ({ getServerUserWithProfile: vi.fn() }))
@@ -13,7 +13,10 @@ vi.mock('@/lib/ai-console/repository', () => ({
 vi.mock('@/lib/ai-console/routing', () => ({
   buildResolvedExecutionPlan: m.build,
 }))
-vi.mock('@/lib/ai-console/execution', () => ({ createRoleExecutor: m.createExecutor }))
+vi.mock('@/lib/ai-console/execution', () => ({
+  createRoleExecutor: m.createExecutor,
+  createDefaultFallbackExecutor: m.createFallbackExecutor,
+}))
 vi.mock('@/lib/ai-console/execution/tracked-executor', () => ({ trackRoleExecutor: m.trackExecutor }))
 vi.mock('@/lib/limits/byok_admission', () => ({ admitByokTurn: m.admit }))
 
@@ -39,6 +42,47 @@ describe('prepareByokTurn', () => {
     m.admit.mockImplementation(() => { m.order.push('admit'); return { allowed: true, release: vi.fn() } })
     m.createExecutor.mockImplementation((role) => { m.order.push(`executor:${role.role}`); return { descriptor: { role: role.role, ...target } } })
     m.trackExecutor.mockImplementation(executor => executor)
+    m.createFallbackExecutor.mockImplementation((selected) => selected)
+  })
+
+  it('wraps every distinct selected role with its atomically snapshotted Default role', async () => {
+    const explicit = { kind: 'explicit' as const, choice: {
+      kind: 'local_cli' as const, cliId: 'gemini_antigravity' as const, modelId: null,
+    } }
+    const fallbackTarget = { ...target, modelId: 'default-model' }
+    const fallbackSnapshot = { roles: { synthesizer: fallbackTarget, planner: fallbackTarget,
+      deep_planner: fallbackTarget, worker: fallbackTarget } }
+    m.prepare.mockResolvedValueOnce({
+      selection: explicit, resolution: { id: 'selected' }, safeSnapshot: snapshot,
+      snapshotId: '30000000-0000-4000-8000-000000000003',
+      fallback: {
+        resolution: { id: 'default' }, safeSnapshot: fallbackSnapshot,
+        snapshotId: '30000000-0000-4000-8000-000000000004',
+      },
+    })
+    m.build.mockImplementationOnce(() => ({ roles })).mockImplementationOnce(() => ({
+      roles: Object.fromEntries(['synthesizer', 'planner', 'deep_planner', 'worker']
+        .map(role => [role, { role, fallback: true }])),
+    }))
+    m.createExecutor.mockImplementation(role => ({ descriptor: role.fallback
+      ? { role: role.role, ...fallbackTarget } : { role: role.role, ...target } }))
+
+    await prepareByokTurn({ userId: USER, role: 'guest', chartId: CHART,
+      conversationId: CONVERSATION, isFirstTurn: true, turnId: TURN,
+      requestedSelection: explicit, questionChars: 12 })
+
+    expect(m.build).toHaveBeenCalledTimes(2)
+    expect(m.trackExecutor).toHaveBeenCalledTimes(8)
+    expect(m.createFallbackExecutor).toHaveBeenCalledTimes(4)
+    for (const call of m.trackExecutor.mock.calls.slice(4)) {
+      expect(call[1]).toMatchObject({
+        snapshotId: '30000000-0000-4000-8000-000000000004',
+        observation: {
+          snapshot: fallbackSnapshot,
+          fallback: { fromCorrelationId: TURN },
+        },
+      })
+    }
   })
 
   it('persists a first-turn selection before one resolve, snapshot, admission and all executors', async () => {

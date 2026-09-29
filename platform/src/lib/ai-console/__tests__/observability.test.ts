@@ -91,6 +91,17 @@ describe('safe AI routing observations', () => {
     { snapshotId: ids.snapshot, snapshot: snapshot() }, terminal())).toThrow(/does not match/)
   })
 
+  it('records an explicitly linked default fallback without weakening exact snapshot matching', () => {
+    const projected = projectRoleInvocationObservation({ role: 'planner', providerId: 'google',
+      connectionId: ids.connection, modelId: 'gemini-test' },
+    { snapshotId: ids.snapshot, snapshot: snapshot(),
+      fallback: { fromCorrelationId: 'selected-turn-1' } }, terminal())
+    expect(projected).toMatchObject({
+      fallback_used: true,
+      fallback_from_correlation_id: 'selected-turn-1',
+    })
+  })
+
   it('records one strict external-synthesis marker without usage identity', async () => {
     externalWrite.mockClear()
     observeMcpExternalSynthesis(snapshot({ source: 'mcp', conversationId: null }))
