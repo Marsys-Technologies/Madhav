@@ -835,3 +835,31 @@ and will run through migrate.ts (never apply_migration.sh).
 - **Decision needed from native:** none for this entry — it records a native
   directive already given. Next native action in the sequence is the
   merge-readiness packet review and the #2731 merge/deploy.
+
+## E-022 — PR #2731 merge-readiness: pins re-admission authority (12.10c step 2) is the native's call
+
+- **What:** The merge-readiness packet
+  (`wp7_packets/MERGE_READINESS_PACKET_PR2731.md`, verdict HOLDING) is otherwise
+  assembled: merge conflicts resolved and verified, CI repaired branch-local down
+  to two failing checks — Governance Gates (`pins --check`) and Unit Tests
+  (`nirmana-analysis-receipts.test.ts`, 3 assertions) — both with the same root
+  cause: the branch's own writer edits moved the L1 (`ga_`: G-10 `1fab2364e`,
+  M-6 `ddf985751`) and L3 (`ka_`: ~14 lane commits) provenance-inventory
+  aggregates off the committed pins, and re-admitting new pins requires a native
+  authority value. The runbook's named authority
+  `NATIVE-2026-09-24-L0-REPAIR-REPIN` is scoped to the L0-repair change set and
+  already consumed; writing successor pins under it would fabricate the
+  authority field (§N.8).
+- **Decision needed from native:** provide (or formally delegate) the repin
+  authority for 12.10c step 2 — a named ruling under which the new pins may be
+  written. Mechanics are staged (read-only DB + runbook §2 command) and run in
+  minutes once authority exists.
+- **Two further stop items carried by the packet (unchanged):** (i) whether
+  deploy-time application of cherry-picked-but-unapplied migrations 1071/1072 is
+  intended (1072 flips `target_table` and would break conjunct (j) if applied
+  uncoordinated); (ii) confirmation with the L1 lane that migration 1086
+  (ga_strength digest spec) should apply at deploy.
+- **State:** production untouched since migration 1150's authorized apply;
+  authority '3.0' both charts; chart-1 '4.0' label burned; chart-2 '4.0'
+  candidate rows retained per ADK-0028; century rebuild awaits the Cloud Run
+  path post-deploy.
