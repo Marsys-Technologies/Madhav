@@ -82,7 +82,7 @@ export type CliCardDto =
 export interface CliStateDto { clis: CliCardDto[] }
 
 export interface ConsoleMutation {
-  (url: string, init: RequestInit, successMessage: string): Promise<unknown>
+  (url: string, init: RequestInit, successMessage: string | ((result: unknown) => string)): Promise<unknown>
 }
 
 export const ROLE_LABELS: Record<AiRole, string> = {

@@ -84,6 +84,7 @@
 }
 .pp-root .aic-status { display: inline-flex; align-items: center; gap: 7px; color: var(--pp-ink-dim); font-size: 12px; }
 .pp-root .aic-status svg { width: 15px; height: 15px; color: var(--pp-gold); }
+.pp-root .aic-failure-guidance { margin: 8px 0 0; color: var(--pp-ink-dim); font-size: 12px; line-height: 1.5; }
 .pp-root .aic-model-list { border-top: 1px solid var(--pp-rule); }
 .pp-root .aic-model-row {
   position: relative;

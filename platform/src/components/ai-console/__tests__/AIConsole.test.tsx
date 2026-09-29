@@ -49,7 +49,7 @@ interface SetupOptions {
   cliPending?: boolean
   cliResponse?: CliStateDto
   duplicateNameError?: boolean
-  validationNeedsAttention?: boolean
+  validationResponse?: unknown
 }
 
 function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
@@ -64,7 +64,7 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
     if (String(url) === '/api/ai-console' && options.aggregatePending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
-    if (String(url).endsWith('/validate') && options.validationNeedsAttention) return response({ validation: { state: 'needs_attention', modelCount: 0 } })
+    if (String(url).endsWith('/validate') && init?.method === 'POST' && options.validationResponse) return response(options.validationResponse)
     if (String(url) === '/api/ai-console/configurations' && init?.method === 'POST'
       && options.duplicateNameError && String(init.body).includes('duplicateFrom')) {
       return response({ error: 'name_conflict' }, 409)
@@ -210,6 +210,30 @@ describe('AI Console', () => {
     expect(screen.getAllByText('Built-in default').length).toBeGreaterThan(0)
   })
 
+  it('explains saved billing and unknown failures without claiming their keys are rejected', async () => {
+    setup({ connections: [
+      { ...state.connections[0], validationState: 'needs_attention', confirmedValid: false, lastErrorCode: 'AI_BILLING_UNAVAILABLE' },
+      { ...state.connections[0], id: '33333333-3333-4333-8333-333333333333', providerId: 'anthropic', name: 'Anthropic',
+        validationState: 'needs_attention', confirmedValid: false, lastErrorCode: 'AI_EXECUTION_FAILED' },
+    ] })
+    await screen.findByText('Personal OpenAI')
+    expect(screen.getByText(/API billing, credits, or a spending limit is blocking this connection/)).toBeTruthy()
+    expect(screen.getByText(/precise reason was not identified/)).toBeTruthy()
+    expect(screen.queryByText(/provider rejected this key/i)).toBeNull()
+  })
+
+  it('does not announce success when a connection test returns needs attention', async () => {
+    const { calls } = setup(undefined, { validationResponse: { validation: { state: 'needs_attention', modelCount: 0,
+      error: { code: 'AI_EXECUTION_FAILED' } } } })
+    await screen.findByText('Personal OpenAI')
+    fireEvent.click(screen.getByRole('button', { name: 'Test Personal OpenAI connection' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('checkbox'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
+    await waitFor(() => expect(calls.some(([url]) => String(url).endsWith('/validate'))).toBe(true))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Connection is not ready. Review the reason on its card.'))
+  })
+
   it('sends the exact four-role configuration choice and waits for accepted mutation', async () => {
     const { calls } = setup()
     const radio = await screen.findByRole('radio', { name: /use research quartet as default ai/i })
@@ -239,12 +263,12 @@ describe('AI Console', () => {
   })
 
   it('does not announce success when a validation request returns needs attention', async () => {
-    setup(undefined, { validationNeedsAttention: true })
+    setup(undefined, { validationResponse: { validation: { state: 'needs_attention', modelCount: 0 } } })
     await userEvent.click(await screen.findByRole('button', { name: 'Test Personal OpenAI connection' }))
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('checkbox'))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Validation needs attention'))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Connection is not ready'))
   })
 
   it('associates each provider editor error only with its exact repair control', async () => {

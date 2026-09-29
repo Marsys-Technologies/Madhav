@@ -98,10 +98,7 @@ export function AIConsole() {
     setStatus('Working…')
     try {
       const result = await mutation.mutateAsync({ url, init })
-      const validation = typeof result === 'object' && result !== null && 'validation' in result
-        ? (result as { validation?: { state?: string } }).validation : null
-      setStatus(validation && !['validated', 'reachable'].includes(validation.state ?? '')
-        ? 'Validation needs attention. Review this connection before using it.' : successMessage)
+      setStatus(typeof successMessage === 'function' ? successMessage(result) : successMessage)
       return result
     } catch (error) {
       const message = error instanceof SafeRequestError ? error.message : 'The request could not be completed safely.'

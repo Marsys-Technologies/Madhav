@@ -18,6 +18,23 @@ const STATUS_LABELS: Record<ProviderConnectionDto['validationState'], string> = 
   invalid: 'Credential rejected', unreachable: 'Provider unreachable',
 }
 
+const FAILURE_GUIDANCE: Record<string, string> = {
+  AI_BILLING_UNAVAILABLE: 'API billing, credits, or a spending limit is blocking this connection. Check the provider account, then test again.',
+  AI_CONNECTION_INVALID: 'The provider rejected this key. Replace it with a key for the correct API product, then test again.',
+  AI_PERMISSION_DENIED: 'The provider denied access. Check this key’s workspace and model permissions.',
+  AI_MODEL_UNAVAILABLE: 'The provider did not make the tested model available to this key.',
+  AI_RATE_LIMITED: 'The provider rate limit was reached. Wait before testing again.',
+  AI_PROVIDER_UNREACHABLE: 'The provider could not be reached. Test again when its service is available.',
+  AI_EXECUTION_FAILED: 'The provider check failed, but the precise reason was not identified. Check the provider account and API access before testing again.',
+}
+
+function validationFeedback(result: unknown): string {
+  const validation = result && typeof result === 'object' && 'validation' in result ? result.validation : null
+  if (!validation || typeof validation !== 'object' || !('state' in validation)) return 'Connection test returned no readable verdict.'
+  if (validation.state === 'validated') return 'Connection validated. Its compatible models are now available.'
+  return 'Connection is not ready. Review the reason on its card.'
+}
+
 function StatusMark({ state }: { state: ProviderConnectionDto['validationState'] }) {
   const Icon = state === 'validated' ? CheckCircle2 : state === 'validating' ? CircleDashed
     : state === 'untested' ? Clock3 : state === 'invalid' ? ShieldAlert : AlertCircle
@@ -91,7 +108,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       if (editor.kind === 'add') {
         await mutate('/api/ai-console/connections', {
           method: 'POST', body: JSON.stringify({ name: name.trim(), providerId, apiKey, acknowledgeCharge: true }),
-        }, 'Connection saved and tested.')
+        }, validationFeedback)
       } else if (editor.kind === 'rename') {
         await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
           method: 'PATCH', body: JSON.stringify({ name: name.trim() }),
@@ -99,11 +116,11 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       } else if (editor.kind === 'replace') {
         await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
           method: 'PATCH', body: JSON.stringify({ apiKey, acknowledgeCharge: true }),
-        }, 'Credential replaced and tested.')
+        }, validationFeedback)
       } else {
         await mutate(`/api/ai-console/connections/${editor.connection.id}/validate`, {
           method: 'POST', body: JSON.stringify({ acknowledgeCharge: true }),
-        }, 'Connection test completed.')
+        }, validationFeedback)
       }
       setApiKey('')
       setEditor(null)
@@ -209,6 +226,9 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                   </div>
                   <p className="aic-mask" aria-label="Saved credential mask">{connection.maskedSuffix}</p>
                   <p className="aic-meta">Last check · {formatCheckedAt(connection.lastCheckedAt ?? connection.lastValidatedAt)}</p>
+                  {connection.validationState !== 'validated' && connection.lastErrorCode && (
+                    <p className="aic-failure-guidance">{FAILURE_GUIDANCE[connection.lastErrorCode] ?? FAILURE_GUIDANCE.AI_EXECUTION_FAILED}</p>
+                  )}
                   {connection.deletedAt && <p className="aic-status"><AlertCircle aria-hidden="true" />Deleted connection — retained because a saved choice refers to it</p>}
                   {!connection.deletedAt && <div className="aic-actions">
                     <button className="aic-button" data-primary="true" type="button" onClick={() => { setModelManager(connection); setModelQuery(''); setModelRole('all'); setVisibleLimit(30); setModelCharge(false) }}>Manage models ({models.length}/{catalogCount})</button>

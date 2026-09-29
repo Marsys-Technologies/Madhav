@@ -90,9 +90,10 @@ export async function boundedFetch(url: string, init: RequestInit, timeoutMs: nu
     if (controller.signal.aborted) throw expired ? new AiConsoleError('AI_PROVIDER_UNREACHABLE') : fail()
     const response = await Promise.race([fetch(url, { ...init, signal: controller.signal, redirect: 'error', cache: 'no-store' }), abortRace])
     if (response.status < 200 || response.status >= 300) {
-      // Only these 429s need body evidence to distinguish billing from throttling.
+      // Read only bounded, documented discriminators; never retain provider text.
       // Definitive HTTP states must survive stalled/reset/erroring response bodies.
-      const needsDiscriminator = response.status === 429 && (providerId === 'openai' || providerId === 'kimi')
+      const needsDiscriminator = (response.status === 429 && (providerId === 'openai' || providerId === 'kimi'))
+        || (response.status === 400 && providerId === 'anthropic')
       // Retain no message/body: only allowlisted machine discriminators escape.
       let billing = false
       const bytes = new Uint8Array(4096)
@@ -110,6 +111,12 @@ export async function boundedFetch(url: string, init: RequestInit, timeoutMs: nu
                   billing = (typeof error.code === 'string' && codes.includes(error.code)) || error.type === 'insufficient_quota'
                 }
                 if (response.status === 429 && providerId === 'kimi') billing = error.type === 'exceeded_current_quota_error'
+                if (providerId === 'anthropic') {
+                  // Anthropic uses 400 for user-set organization/workspace spend limits.
+                  billing = (response.status === 400 && error.type === 'invalid_request_error'
+                    && typeof error.message === 'string'
+                    && /^You have reached your specified (?:workspace )?API usage limits\b/.test(error.message))
+                }
               } catch { /* Malformed error content never overrides the HTTP class. */ }
               break
             }
