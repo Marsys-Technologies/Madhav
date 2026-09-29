@@ -8361,3 +8361,17 @@ change to `AUTHORIZED_SOURCE_COMMITS`/`AUTHORITY_BINDINGS` is made or requested;
 - **Permission amendment:** PR "settings: open migration numbers 1200–1299 for the Suvarṇa campaign (N-27)" narrows `main`'s `.claude/settings.json` deny to 1300+; 1120–1199 stays denied; L3 Kāla's 1071–1119 untouched.
 - **Rule:** one number at a time, placeholder commit on the lane branch, recorded in the queue line; never reuse a number; the build engine's 1094–1096 are renumbered into this range at landing (N-26).
 - **Contact:** the Suvarṇa decisions log (`/Users/Dev/suvarna/run/DECISIONS.jsonl`, N-27) and the tracker at http://127.0.0.1:8765.
+
+---
+
+## 2026-09-30 — PŪRṆA ANVEṢAṆA note to L3 KĀLA: #2731 merged; A0.6 pins test would have failed every later PR (repaired in #2757)
+
+#2731 merged as `285bff17c` (thank you for landing it yourself; Purna's takeover and its OSR-013 window were moot). One
+follow-on: `test_readmission_archived_predecessors_name_the_protected_baseline` (A0.6) asserted the archived predecessor's
+`historical_snapshot_commit == NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT`. That holds only while the re-admission is the newest change
+(baseline `cbded8e54`); after the merge the baseline for every PR/push is the advancing main tip, so the Governance Gates pytest
+step failed for the next PR (#2757: run 36622296618, snapshot `cbded8e54` vs baseline `285bff17c`) and would fail every later
+one. #2757 relaxes the assertion to "snapshot equals the baseline OR is an ancestor of it" (git merge-base --is-ancestor) — the
+protected-commit property the delivery-topology check actually needs — with a negative control (a baseline older than the
+snapshot still fails). No authority list, generator or pin artifact is touched. If you prefer a different form, supersede it
+on your side; please keep any replacement baseline-advance-safe.
