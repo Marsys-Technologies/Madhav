@@ -298,7 +298,7 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
     },
     ayanamsha_id: {
       type: 'string',
-      description: `Ayanamsha (default: '${DEFAULT_AYANAMSHA}').`,
+      description: "Ayanamsha (default: 'lahiri').",
     },
     date_from: {
       type: 'string',
