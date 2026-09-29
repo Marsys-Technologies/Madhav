@@ -134,6 +134,11 @@ BEGIN
   THEN
     -- Behavioural proof (a catalog check alone is the "installed but inert" shape, CLAUDE.md N.8):
     -- a no-op UPDATE of a v1 row must be refused with the production guard's message. Needs no CREATE.
+    IF NOT has_table_privilege(current_user, to_regclass('public.kala_gochara_windows'), 'SELECT')
+       OR NOT has_table_privilege(current_user, to_regclass('public.kala_gochara_windows'), 'UPDATE') THEN
+      RAISE NOTICE 'migration 1071: stricter production guard bound and enabled (catalog-verified); behavioural probe NOT RUN (migration login lacks SELECT/UPDATE on kala_gochara_windows; honest skip, not a pass)';
+      RETURN;
+    END IF;
     SELECT chart_id INTO probe_chart FROM kala_gochara_windows WHERE generation = 'v1' LIMIT 1;
     IF probe_chart IS NULL THEN
       RAISE NOTICE 'migration 1071: stricter production guard bound and enabled; behavioural probe NOT RUN (no generation=v1 row present; honest skip, not a pass)';
@@ -154,8 +159,9 @@ BEGIN
   END IF;
 
   IF to_regclass('public.kala_gochara_windows') IS NULL THEN
-    RAISE NOTICE 'migration 1071: kala_gochara_windows does not exist yet; nothing to guard (no-op)';
-    RETURN;
+    -- Fail loudly: a NOTICE here would be recorded as applied and the guard would never be installed
+    -- (the original file also failed on CREATE TRIGGER when the table was missing).
+    RAISE EXCEPTION 'migration 1071: kala_gochara_windows is missing; cannot install the generation guard';
   END IF;
 
   EXECUTE $ddl1071$

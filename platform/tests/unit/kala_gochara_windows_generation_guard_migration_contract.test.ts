@@ -54,6 +54,26 @@ describe('migration 1071 conditional guard install', () => {
     expect(createPath).not.toContain('GOCHARA GENERATION GUARD')
   })
 
+  it('fails loudly (never records a silent no-op) when the guarded table is missing', () => {
+    expect(code).toContain("RAISE EXCEPTION 'migration 1071: kala_gochara_windows is missing; cannot install the generation guard'")
+    expect(code).not.toContain('nothing to guard (no-op)')
+  })
+
+  it('degrades the probe honestly when the migration login lacks SELECT/UPDATE (never a crash, never a pass)', () => {
+    expect(code).toContain("has_table_privilege(current_user, to_regclass('public.kala_gochara_windows'), 'SELECT')")
+    expect(code).toContain("has_table_privilege(current_user, to_regclass('public.kala_gochara_windows'), 'UPDATE')")
+    expect(code).toContain('migration login lacks SELECT/UPDATE on kala_gochara_windows')
+  })
+
+  it('pins the probe structure so weakening it fails the test', () => {
+    const predicate = code.slice(code.indexOf('DO $mig1071$'), code.indexOf('EXECUTE $ddl1071$'))
+    expect(predicate).toMatch(/IF NOT refused THEN\s+RAISE EXCEPTION 'migration 1071: stricter production guard is bound but a generation=v1 UPDATE was permitted/)
+    expect(predicate).toContain('refused := true')
+    expect(predicate).toMatch(/UPDATE kala_gochara_windows SET valence = valence\s+WHERE chart_id = probe_chart AND generation = 'v1'\s+AND id = \(SELECT MIN\(id\)/)
+    expect(predicate.match(/AND NOT t\.tgisinternal/g)?.length).toBe(2)
+    expect(predicate).toContain("IF to_regclass('public.kala_gochara_windows') IS NOT NULL")
+  })
+
   it('has no transaction control (the migration runner wraps each file)', () => {
     expect(code).not.toMatch(/^\s*(BEGIN|COMMIT);/m)
   })
