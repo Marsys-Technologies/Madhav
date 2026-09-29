@@ -2,7 +2,7 @@
 artifact: SUVARNA_AUTONOMY_CHARTER
 canonical_id: SUVARNA_AUTONOMY_CHARTER
 version: "1.1"
-status: "DRAFT — for native approval (N-19)"
+status: "APPROVED by the native (N-19, 2026-09-29)"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 decision_owner: Native (Abhisek Mohanty)

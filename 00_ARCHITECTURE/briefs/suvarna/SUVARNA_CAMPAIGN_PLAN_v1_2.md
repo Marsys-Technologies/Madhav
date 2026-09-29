@@ -320,7 +320,7 @@ Execution starts when the native approves this plan (N-1). Before that:
 | Item | Owner | State (2026-09-29) |
 |---|---|---|
 | This plan brought up to date (v1.2) | Strategic Suvarṇa | this document |
-| Autonomy charter drafted | Strategic Suvarṇa | drafted (v1.1); approval is N-19 |
+| Autonomy charter | Strategic Suvarṇa | **approved** (v1.1, N-19) |
 | Role prompts for the swarm, each reporting to the tracker | Strategic Suvarṇa | after the charter |
 | Runbook, and start prompts for Exec Suvarṇa and Nikaṣa Engine | Strategic Suvarṇa | after the role prompts |
 | Isolation: `/Users/Dev/suvarna`, branches `suvarna/hq` and `suvarna/trunk` | Strategic Suvarṇa | **done** |
@@ -532,7 +532,7 @@ In the order they are needed. Status as of 2026-09-29; the live record is the de
 | N-16 | Nirmāṇa's database record: leave it reading "frozen", or supersede it with the privileged control writer | any time | Leave it | open |
 | N-17 | Track F: how Suvarṇa relates to the L3 families | now | — | **decided:** three family sessions own them; Suvarṇa evaluates (§5.3) |
 | N-18 | Isolation: dedicated folder and branch model | now | Yes | **decided: yes**; set up 2026-09-29 |
-| N-19 | Approve the autonomy charter | before execution | Review the draft | **requested**: draft v1.1 ready |
+| N-19 | Approve the autonomy charter | before execution | Review the draft | **decided: approved** (v1.1) |
 | N-20 | Where the permanent read-only database credential lives | before launch | A file outside every repository (mode 600) | **decided:** `~/.config/suvarna/pgenv.sh`, set up 2026-09-29 |
 | F-0 | Gochara: deploy before switching authority | now | Yes | **decided: yes** (ADK-0027) |
 | F-5 | Gochara: served horizon | — | — | **decided: full century** (by F-0) |
