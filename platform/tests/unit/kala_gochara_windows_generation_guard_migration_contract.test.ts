@@ -11,11 +11,26 @@ const sql = readFileSync(
 const code = sql.split('\n').filter((line) => !line.trim().startsWith('--')).join('\n')
 
 describe('migration 1071 conditional guard install', () => {
-  it('skips only when the stricter production guard exists, is enabled on BOTH row and truncate, and is bound', () => {
+  it('skips only when the stricter production guard is bound by OID, function, events and enabled mode on BOTH triggers', () => {
     expect(code).toContain("to_regprocedure('public.kala_gochara_generation_guard()') IS NOT NULL")
-    expect(code).toMatch(/t\.tgname = 'trg_kgw_generation_guard_row'\s+AND t\.tgenabled = 'O'/)
-    expect(code).toMatch(/t\.tgname = 'trg_kgw_generation_guard_truncate'\s+AND t\.tgenabled = 'O'/)
-    expect(code).toContain('verified, nothing to create')
+    for (const [name, tgtype] of [['trg_kgw_generation_guard_row', 27], ['trg_kgw_generation_guard_truncate', 34]] as const) {
+      const block = code.slice(code.indexOf(`t.tgname = '${name}'`))
+      expect(block).toContain("t.tgrelid = to_regclass('public.kala_gochara_windows')")
+      expect(block.slice(0, 400)).toContain("t.tgfoid = to_regprocedure('public.kala_gochara_generation_guard()')")
+      expect(block.slice(0, 400)).toContain(`t.tgtype = ${tgtype} AND t.tgenabled = 'O'`)
+    }
+  })
+
+  it('never uses a literal ::regclass/::regprocedure cast in the skip predicate (plan-time error on fresh databases)', () => {
+    const predicate = code.slice(code.indexOf('DO $mig1071$'), code.indexOf('EXECUTE $ddl1071$'))
+    expect(predicate).not.toMatch(/'[^']+'::regclass|'[^']+'::regprocedure/)
+  })
+
+  it('proves the skip behaviourally: a v1 UPDATE must be refused with the production guard message, else RAISE', () => {
+    const predicate = code.slice(code.indexOf('DO $mig1071$'), code.indexOf('EXECUTE $ddl1071$'))
+    expect(predicate).toContain("SQLERRM LIKE '%GOCHARA GENERATION GUARD%'")
+    expect(predicate).toContain('the guard is installed but inert')
+    expect(predicate).toContain('behavioural probe NOT RUN (no generation=v1 row present')
   })
 
   it('carries the original DDL unchanged inside a guarded EXECUTE with distinct dollar-quote tags', () => {
@@ -31,8 +46,10 @@ describe('migration 1071 conditional guard install', () => {
   it('never skips silently: the create path keeps its fail-closed catalog checks and behavioural self-test', () => {
     expect(code).toContain('migration 1071 did not take effect; still missing:')
     expect(code).toContain("migration 1071 self-test FAILED: a generation=''v1'' UPDATE was permitted")
-    // The self-test accepts this migration's refusal text AND the production guard's.
-    expect(code).toMatch(/SQLERRM LIKE '%BUILD-PROTECTED%' OR SQLERRM LIKE '%GOCHARA GENERATION GUARD%'/)
+    // The create-path self-test accepts only this migration's own refusal text.
+    const createPath = code.slice(code.indexOf('EXECUTE $ddl1071$'))
+    expect(createPath).toContain("SQLERRM LIKE '%BUILD-PROTECTED%'")
+    expect(createPath).not.toContain('GOCHARA GENERATION GUARD')
   })
 
   it('has no transaction control (the migration runner wraps each file)', () => {

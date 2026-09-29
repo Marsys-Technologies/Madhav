@@ -107,18 +107,49 @@
 -- carried unchanged inside the guarded EXECUTE (minus BEGIN/COMMIT, which the runner supplies).
 
 DO $mig1071$
+DECLARE
+  probe_chart uuid;
+  refused     boolean := false;
 BEGIN
-  IF to_regprocedure('public.kala_gochara_generation_guard()') IS NOT NULL
+  -- Skip ONLY when the stricter production guard is genuinely bound: the trigger belongs to
+  -- public.kala_gochara_windows (OID, not name), calls public.kala_gochara_generation_guard() (tgfoid),
+  -- has the exact events (tgtype 27 = row/BEFORE/DELETE|UPDATE, 34 = statement/BEFORE/TRUNCATE) and is
+  -- enabled in origin mode ('O'). to_regclass()/to_regprocedure() calls are used instead of literal
+  -- ::regclass/::regprocedure casts because a literal cast of a missing object raises at plan time even
+  -- behind an AND, which would break fresh databases.
+  IF to_regclass('public.kala_gochara_windows') IS NOT NULL
+     AND to_regprocedure('public.kala_gochara_generation_guard()') IS NOT NULL
      AND EXISTS (
-       SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
-        WHERE c.relname = 'kala_gochara_windows' AND t.tgname = 'trg_kgw_generation_guard_row'
-          AND t.tgenabled = 'O' AND NOT t.tgisinternal)
+       SELECT 1 FROM pg_trigger t
+        WHERE t.tgrelid = to_regclass('public.kala_gochara_windows')
+          AND t.tgname = 'trg_kgw_generation_guard_row'
+          AND t.tgfoid = to_regprocedure('public.kala_gochara_generation_guard()')
+          AND t.tgtype = 27 AND t.tgenabled = 'O' AND NOT t.tgisinternal)
      AND EXISTS (
-       SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
-        WHERE c.relname = 'kala_gochara_windows' AND t.tgname = 'trg_kgw_generation_guard_truncate'
-          AND t.tgenabled = 'O' AND NOT t.tgisinternal)
+       SELECT 1 FROM pg_trigger t
+        WHERE t.tgrelid = to_regclass('public.kala_gochara_windows')
+          AND t.tgname = 'trg_kgw_generation_guard_truncate'
+          AND t.tgfoid = to_regprocedure('public.kala_gochara_generation_guard()')
+          AND t.tgtype = 34 AND t.tgenabled = 'O' AND NOT t.tgisinternal)
   THEN
-    RAISE NOTICE 'migration 1071: stricter production guard (kala_gochara_generation_guard, row + truncate triggers, enabled) already installed; verified, nothing to create';
+    -- Behavioural proof (a catalog check alone is the "installed but inert" shape, CLAUDE.md N.8):
+    -- a no-op UPDATE of a v1 row must be refused with the production guard's message. Needs no CREATE.
+    SELECT chart_id INTO probe_chart FROM kala_gochara_windows WHERE generation = 'v1' LIMIT 1;
+    IF probe_chart IS NULL THEN
+      RAISE NOTICE 'migration 1071: stricter production guard bound and enabled; behavioural probe NOT RUN (no generation=v1 row present; honest skip, not a pass)';
+      RETURN;
+    END IF;
+    BEGIN
+      UPDATE kala_gochara_windows SET valence = valence
+       WHERE chart_id = probe_chart AND generation = 'v1'
+         AND id = (SELECT MIN(id) FROM kala_gochara_windows WHERE chart_id = probe_chart AND generation = 'v1');
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM LIKE '%GOCHARA GENERATION GUARD%' THEN refused := true; ELSE RAISE; END IF;
+    END;
+    IF NOT refused THEN
+      RAISE EXCEPTION 'migration 1071: stricter production guard is bound but a generation=v1 UPDATE was permitted; the guard is installed but inert';
+    END IF;
+    RAISE NOTICE 'migration 1071: stricter production guard verified (bound, enabled, refuses a v1 UPDATE); nothing to create';
     RETURN;
   END IF;
 
@@ -272,7 +303,7 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     -- Only OUR refusal counts. Any other raise_exception (a constraint, a
     -- different trigger) must not be mistaken for the guard working.
-    IF SQLERRM LIKE '%BUILD-PROTECTED%' OR SQLERRM LIKE '%GOCHARA GENERATION GUARD%' THEN
+    IF SQLERRM LIKE '%BUILD-PROTECTED%' THEN
       refused := true;
     ELSE
       RAISE;
