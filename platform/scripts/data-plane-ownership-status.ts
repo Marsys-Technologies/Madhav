@@ -436,6 +436,8 @@ export async function readDataPlaneOwnershipStatus(
         SELECT 1 FROM actual a WHERE
           NOT EXISTS (SELECT 1 FROM allowed x WHERE x.grantee=a.grantee AND x.privilege_type=a.privilege_type)
           AND NOT (a.layer='L1' AND a.grantee='data_plane_l2_owner' AND a.privilege_type='SELECT')
+          -- Suvarṇa D6 (native, 2026-09-29): the read-only campaign login may SELECT; nothing else.
+          AND NOT (a.grantee='suvarna_reader' AND a.privilege_type='SELECT')
           AND a.grantee<>a.owner_name
       ) OR EXISTS (
         SELECT 1 FROM protected p CROSS JOIN allowed x
@@ -464,6 +466,8 @@ export async function readDataPlaneOwnershipStatus(
           AND NOT (a.layer='L1' AND a.grantee='data_plane_l2_owner' AND (
             a.privilege_type='SELECT' OR (a.relname='l1_data_plane_generation_heads' AND a.privilege_type='UPDATE')
           ))
+          -- Suvarṇa D6 (native, 2026-09-29): the read-only campaign login may SELECT; nothing else.
+          AND NOT (a.grantee='suvarna_reader' AND a.privilege_type='SELECT')
       ) OR EXISTS (
         SELECT 1 FROM protected p CROSS JOIN unnest(ARRAY['data_plane_builder','data_plane_verifier','data_plane_migrator','amjis_app']) g
         WHERE NOT EXISTS (SELECT 1 FROM actual a WHERE a.relname=p.relname AND a.grantee=g AND a.privilege_type='SELECT')
@@ -496,6 +500,10 @@ export async function readDataPlaneOwnershipStatus(
         UNION ALL
         SELECT 'purna_inquiry_owner','USAGE'
          WHERE to_regrole('purna_inquiry_owner') IS NOT NULL
+        UNION ALL
+        -- Suvarṇa D6 (native, 2026-09-29): USAGE only, and only once the role exists.
+        SELECT 'suvarna_reader','USAGE'
+         WHERE to_regrole('suvarna_reader') IS NOT NULL
       )
       SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(grantee,privilege_type)
                      WHERE a.grantee IS NULL OR e.grantee IS NULL) AS unsafe
