@@ -19,7 +19,8 @@ type Client = Pick<PoolClient, 'query'>
 type Row = Record<string, unknown>
 const nameSchema = z.string().trim().min(1).max(120)
 const uuidSchema = z.string().uuid()
-const safeColumns = 'id,provider_id,name,masked_suffix,validation_state,credential_validity'
+const safeColumns = 'id,provider_id,name,anthropic_workspace_id,masked_suffix,validation_state,credential_validity'
+const workspaceIdSchema = z.string().regex(/^wrkspc_[A-Za-z0-9]{20,64}$/).nullable()
 const notFound = () => new AiConsoleError('AI_CHOICE_BROKEN')
 const providerConnectionErrorSchema = z.enum([
   'AI_CONNECTION_INVALID', 'AI_MODEL_UNAVAILABLE', 'AI_ROLE_INCOMPATIBLE',
@@ -55,7 +56,8 @@ async function assertAssignments(client: Client, userId: string, assignments: Ro
 function required<T>(rows: T[]): T { if (!rows.length) throw notFound(); return rows[0] }
 function safeConnection(row: Row): SafeProviderConnection {
   return SafeProviderConnectionSchema.parse({ id: row.id, providerId: row.provider_id,
-    name: row.name, maskedSuffix: row.masked_suffix, validationState: row.validation_state,
+    name: row.name, ...(row.anthropic_workspace_id ? { workspaceId: row.anthropic_workspace_id } : {}),
+    maskedSuffix: row.masked_suffix, validationState: row.validation_state,
     confirmedValid: row.credential_validity === 'valid' })
 }
 function credentialParams(e: EncryptedCredential) {
@@ -350,14 +352,30 @@ export async function loadRoutingResolution(userId: string, input: unknown, conv
 }
 
 export async function createConnection(userId: string, input: unknown, encrypted: EncryptedCredential) {
-  const data = z.object({ providerId: ProviderIdSchema, name: nameSchema }).strict().parse(input)
+  const data = z.object({ providerId: ProviderIdSchema, name: nameSchema,
+    workspaceId: workspaceIdSchema.optional() }).strict().parse(input)
+  if (data.providerId !== 'anthropic' && data.workspaceId) throw new AiConsoleError('AI_EXECUTION_FAILED')
   return withUserTransaction(userId, async client => {
     const row = required((await client.query(`INSERT INTO ai_provider_connections
-      (user_id,provider_id,name,credential_ciphertext,credential_nonce,credential_tag,wrapped_dek,wrap_nonce,wrap_tag,kek_version,masked_suffix,keyed_fingerprint)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING ${safeColumns}`,
-    [userId, data.providerId, data.name, ...credentialParams(encrypted)])).rows)
+      (user_id,provider_id,name,credential_ciphertext,credential_nonce,credential_tag,wrapped_dek,wrap_nonce,wrap_tag,kek_version,masked_suffix,keyed_fingerprint,anthropic_workspace_id)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${safeColumns}`,
+    [userId, data.providerId, data.name, ...credentialParams(encrypted), data.workspaceId ?? null])).rows)
     await writeAiAudit(client, userId, { event: 'connection_created', connectionId: row.id })
     return safeConnection(row)
+  })
+}
+/** Workspace edits revalidate the existing key without requiring its plaintext again. */
+export async function updateConnectionWorkspace(userId: string, connectionId: string, workspaceId: string | null) {
+  const parsed = workspaceIdSchema.parse(workspaceId)
+  return withUserTransaction(userId, async client => {
+    const row = required((await client.query(`UPDATE ai_provider_connections SET anthropic_workspace_id=$3,
+      credential_version=credential_version+1,credential_validity='unknown',validation_state='untested',
+      last_validated_at=NULL,last_checked_at=NULL,last_error_code=NULL,updated_at=now()
+      WHERE user_id=$1 AND id=$2 AND provider_id='anthropic' AND deleted_at IS NULL
+      RETURNING ${safeColumns},credential_version`, [userId, connectionId, parsed])).rows)
+    await invalidateCatalog(client, userId, connectionId)
+    await writeAiAudit(client, userId, { event: 'connection_updated', connectionId })
+    return { connection: safeConnection(row), credentialVersion: Number(row.credential_version) }
   })
 }
 export async function renameConnection(userId: string, connectionId: string, name: string) {
@@ -662,7 +680,7 @@ function encryptedCredential(row: Row): EncryptedCredential {
   const record: EncryptedCredential = { ciphertext: row.credential_ciphertext as Buffer, nonce: row.credential_nonce as Buffer,
     authTag: row.credential_tag as Buffer, wrappedDataKey: row.wrapped_dek as Buffer, wrapNonce: row.wrap_nonce as Buffer,
     wrapAuthTag: row.wrap_tag as Buffer, keyVersion: String(row.kek_version), mask: String(row.masked_suffix),
-    fingerprint: String(row.keyed_fingerprint) }
+    fingerprint: String(row.keyed_fingerprint), ...(row.anthropic_workspace_id ? { workspaceId: String(row.anthropic_workspace_id) } : {}) }
   Object.defineProperties(record, { toJSON: { value: () => '[REDACTED]' }, [inspect.custom]: { value: () => '[REDACTED]' } })
   return record
 }
@@ -675,7 +693,7 @@ export async function loadRuntimeModelCredential(input: { userId: string; connec
   if (!parsed.success) throw notFound()
   const target = parsed.data
   const row = required((await query(`SELECT c.credential_ciphertext,c.credential_nonce,c.credential_tag,c.wrapped_dek,
-    c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint FROM ai_provider_connections c
+    c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint,c.anthropic_workspace_id FROM ai_provider_connections c
     JOIN profiles p ON p.id=c.user_id JOIN ai_connection_models m ON m.connection_id=c.id AND m.model_id=$5
     WHERE c.user_id=$1 AND c.id=$2 AND c.provider_id=$3 AND c.credential_version=$4
     AND c.deleted_at IS NULL AND c.credential_validity='valid' AND p.status='active' AND m.available=true`,
@@ -687,7 +705,7 @@ export async function loadRuntimeModelCredential(input: { userId: string; connec
 export async function loadConnectionCredential(userId: string, connectionId: string, credentialVersion: number): Promise<EncryptedCredential> {
   if (!uuidSchema.safeParse(connectionId).success || !z.number().int().positive().safeParse(credentialVersion).success) throw notFound()
   const row = required((await query(`SELECT c.credential_ciphertext,c.credential_nonce,c.credential_tag,c.wrapped_dek,
-    c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint FROM ai_provider_connections c
+    c.wrap_nonce,c.wrap_tag,c.kek_version,c.masked_suffix,c.keyed_fingerprint,c.anthropic_workspace_id FROM ai_provider_connections c
     JOIN profiles p ON p.id=c.user_id WHERE c.user_id=$1 AND c.id=$2 AND c.credential_version=$3
     AND c.deleted_at IS NULL AND p.status='active'`, [userId, connectionId, credentialVersion])).rows)
   return encryptedCredential(row)

@@ -22,6 +22,30 @@ function completion(provider: ProviderId) {
 const hosts: Record<ProviderId, string> = { openai: 'api.openai.com', anthropic: 'api.anthropic.com', google: 'generativelanguage.googleapis.com', xai: 'api.x.ai', deepseek: 'api.deepseek.com', kimi: 'api.moonshot.ai', openrouter: 'openrouter.ai' }
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() })
 
+it('sends the selected Anthropic workspace for catalog, probe, and runtime requests', async () => {
+  const workspaceId = 'wrkspc_01JEueaSaKJ72sh4drDASzH2'
+  const http = vi.fn()
+    .mockResolvedValueOnce(Response.json(catalog('anthropic')))
+    .mockResolvedValueOnce(Response.json(completion('anthropic')))
+    .mockResolvedValueOnce(Response.json({ id: 'test-id', type: 'message', role: 'assistant',
+      model: ids.anthropic, content: [{ type: 'text', text: 'OK' }], stop_reason: 'end_turn',
+      stop_sequence: null, usage: { input_tokens: 4, output_tokens: 1 } }))
+  vi.stubGlobal('fetch', http)
+  const adapter = getProviderAdapter('anthropic')
+  const models = await adapter.discover(key, signal(), undefined, workspaceId)
+  await adapter.probe(key, models[0], signal(), undefined, workspaceId)
+  const binding = adapter.createRuntimeBinding(key, models[0], undefined, workspaceId)
+  await (binding.model as LanguageModelV3).doGenerate({
+    prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }], maxOutputTokens: 16,
+  })
+  expect(http).toHaveBeenCalledTimes(3)
+  for (const [, init] of http.mock.calls) {
+    expect(new Headers(init.headers).get('anthropic-workspace-id')).toBe(workspaceId)
+    expect(new Headers(init.headers).get('x-api-key')).toBe(key)
+  }
+  binding.dispose()
+})
+
 describe.each(PROVIDER_IDS)('%s authenticated provider contract', provider => {
   it('redacts SDK parse errors from malformed successful runtime responses', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ error: key })))

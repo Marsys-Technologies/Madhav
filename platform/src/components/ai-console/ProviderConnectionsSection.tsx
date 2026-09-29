@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle2, CircleDashed, Clock3, Plus, ShieldAlert, Pencil, Trash2, RotateCw } from 'lucide-react'
+import { AlertCircle, CheckCircle2, CircleDashed, Clock3, Plus, ShieldAlert, Pencil, Trash2, RotateCw, Settings2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { AiChoiceRadio } from './AiChoiceRadio'
@@ -45,6 +45,7 @@ type Editor =
   | { kind: 'add' }
   | { kind: 'rename'; connection: ProviderConnectionDto }
   | { kind: 'replace'; connection: ProviderConnectionDto }
+  | { kind: 'workspace'; connection: ProviderConnectionDto }
   | { kind: 'test'; connection: ProviderConnectionDto }
   | null
 
@@ -58,7 +59,7 @@ interface Props {
   onConfigureRoles: (connectionId: string) => void
 }
 
-type ProviderErrorTarget = 'name' | 'apiKey' | 'acknowledgement' | 'form'
+type ProviderErrorTarget = 'name' | 'apiKey' | 'workspaceId' | 'acknowledgement' | 'form'
 interface ProviderFieldError { message: string; target: ProviderErrorTarget }
 
 export function ProviderConnectionsSection({ state, loading, error, mutationPending, mutate, onSelectDefault, onConfigureRoles }: Props) {
@@ -66,6 +67,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
   const [name, setName] = useState('')
   const [providerId, setProviderId] = useState<ProviderId>('openai')
   const [apiKey, setApiKey] = useState('')
+  const [workspaceId, setWorkspaceId] = useState('')
   const [acknowledgeCharge, setAcknowledgeCharge] = useState(false)
   const [fieldError, setFieldError] = useState<ProviderFieldError | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProviderConnectionDto | null>(null)
@@ -85,6 +87,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
     setName(next.kind === 'rename' ? next.connection.name : '')
     setProviderId(next.kind === 'add' ? 'openai' : next.connection.providerId)
     setApiKey('')
+    setWorkspaceId(next.kind === 'add' ? '' : next.connection.workspaceId ?? '')
     setAcknowledgeCharge(false)
     setFieldError(null)
   }
@@ -99,6 +102,11 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       setFieldError({ message: 'Enter the API key.', target: 'apiKey' })
       return
     }
+    if ((editor.kind === 'workspace' || (editor.kind === 'add' && providerId === 'anthropic'))
+      && workspaceId.trim() && !/^wrkspc_[A-Za-z0-9]{20,64}$/.test(workspaceId.trim())) {
+      setFieldError({ message: 'Enter a valid Claude workspace ID, starting with wrkspc_.', target: 'workspaceId' })
+      return
+    }
     if (editor.kind !== 'rename' && !acknowledgeCharge) {
       setFieldError({ message: 'Acknowledge the provider charge disclosure to continue.', target: 'acknowledgement' })
       return
@@ -107,7 +115,8 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
     try {
       if (editor.kind === 'add') {
         await mutate('/api/ai-console/connections', {
-          method: 'POST', body: JSON.stringify({ name: name.trim(), providerId, apiKey, acknowledgeCharge: true }),
+          method: 'POST', body: JSON.stringify({ name: name.trim(), providerId, apiKey,
+            ...(providerId === 'anthropic' ? { workspaceId: workspaceId.trim() || null } : {}), acknowledgeCharge: true }),
         }, validationFeedback)
       } else if (editor.kind === 'rename') {
         await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
@@ -117,12 +126,17 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
         await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
           method: 'PATCH', body: JSON.stringify({ apiKey, acknowledgeCharge: true }),
         }, validationFeedback)
+      } else if (editor.kind === 'workspace') {
+        await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
+          method: 'PATCH', body: JSON.stringify({ workspaceId: workspaceId.trim() || null, acknowledgeCharge: true }),
+        }, validationFeedback)
       } else {
         await mutate(`/api/ai-console/connections/${editor.connection.id}/validate`, {
           method: 'POST', body: JSON.stringify({ acknowledgeCharge: true }),
         }, validationFeedback)
       }
       setApiKey('')
+      setWorkspaceId('')
       setEditor(null)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The request could not be completed safely.'
@@ -225,6 +239,8 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                     <StatusMark state={connection.validationState} />
                   </div>
                   <p className="aic-mask" aria-label="Saved credential mask">{connection.maskedSuffix}</p>
+                  {connection.providerId === 'anthropic' && !connection.workspaceId && connection.validationState !== 'validated' &&
+                    <p className="aic-meta">Organization-wide Claude keys need a workspace ID. Set it here, then test the existing key.</p>}
                   <p className="aic-meta">Last check · {formatCheckedAt(connection.lastCheckedAt ?? connection.lastValidatedAt)}</p>
                   {connection.validationState !== 'validated' && connection.lastErrorCode && (
                     <p className="aic-failure-guidance">{FAILURE_GUIDANCE[connection.lastErrorCode] ?? FAILURE_GUIDANCE.AI_EXECUTION_FAILED}</p>
@@ -237,6 +253,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                     <div className="aic-card-menu" aria-label={`${connection.name} more actions`}>
                       <button className="aic-button aic-icon-button" type="button" aria-label={`Test ${connection.name} connection`} title="Test connection" onClick={() => openEditor({ kind: 'test', connection })}><RotateCw aria-hidden="true" /></button>
                       <button className="aic-button aic-icon-button" type="button" aria-label={`Rename ${connection.name} connection`} title="Rename" onClick={() => openEditor({ kind: 'rename', connection })}><Pencil aria-hidden="true" /></button>
+                      {connection.providerId === 'anthropic' && <button className="aic-button aic-icon-button" type="button" aria-label="Workspace ID" title="Workspace ID" onClick={() => openEditor({ kind: 'workspace', connection })}><Settings2 aria-hidden="true" /></button>}
                       <button className="aic-button aic-icon-button" data-danger="true" type="button" aria-label={`Delete ${connection.name} connection`} title="Delete" onClick={() => previewDelete(connection)}><Trash2 aria-hidden="true" /></button>
                     </div>
                   </div>}
@@ -280,13 +297,14 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       <Dialog open={editor !== null} onOpenChange={open => { if (!open) { setEditor(null); setApiKey('') } }}>
         <DialogContent className="pp-root aic-dialog">
           <DialogHeader>
-            <DialogTitle>{editor?.kind === 'add' ? 'Add provider connection' : editor?.kind === 'rename' ? 'Rename connection' : editor?.kind === 'replace' ? 'Replace API key' : 'Test connection'}</DialogTitle>
+            <DialogTitle>{editor?.kind === 'add' ? 'Add provider connection' : editor?.kind === 'rename' ? 'Rename connection' : editor?.kind === 'replace' ? 'Replace API key' : editor?.kind === 'workspace' ? 'Set Claude workspace' : 'Test connection'}</DialogTitle>
             <DialogDescription>{editor?.kind === 'rename' ? 'Names distinguish multiple credentials from the same provider.' : state?.validationDisclosure}</DialogDescription>
           </DialogHeader>
           <div className="aic-form">
             {editor?.kind === 'add' && <div className="aic-field"><label htmlFor="aic-provider">Provider</label><select id="aic-provider" value={providerId} onChange={event => setProviderId(event.target.value as ProviderId)}>{PROVIDERS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div>}
             {(editor?.kind === 'add' || editor?.kind === 'rename') && <div className="aic-field"><label htmlFor="aic-connection-name">Connection name</label><input id="aic-connection-name" value={name} onChange={event => { setName(event.target.value); if (fieldError?.target === 'name') setFieldError(null) }} aria-invalid={fieldError?.target === 'name' || undefined} aria-describedby={fieldError?.target === 'name' ? 'aic-provider-error' : undefined} autoComplete="off" /></div>}
             {(editor?.kind === 'add' || editor?.kind === 'replace') && <div className="aic-field"><label htmlFor="aic-api-key">API key</label><input id="aic-api-key" type="password" value={apiKey} onChange={event => { setApiKey(event.target.value); if (fieldError?.target === 'apiKey') setFieldError(null) }} aria-invalid={fieldError?.target === 'apiKey' || undefined} aria-describedby={fieldError?.target === 'apiKey' ? 'aic-provider-error' : undefined} autoComplete="new-password" /></div>}
+            {((editor?.kind === 'add' && providerId === 'anthropic') || editor?.kind === 'workspace') && <div className="aic-field"><label htmlFor="aic-workspace-id">Claude workspace ID (for organization-wide keys)</label><input id="aic-workspace-id" value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); if (fieldError?.target === 'workspaceId') setFieldError(null) }} aria-invalid={fieldError?.target === 'workspaceId' || undefined} aria-describedby={fieldError?.target === 'workspaceId' ? 'aic-provider-error' : undefined} placeholder="wrkspc_…" autoComplete="off" /><p className="aic-meta">Find the ID in Claude Platform → Settings → Workspaces. Leave blank for a workspace-scoped key.</p></div>}
             {editor?.kind !== 'rename' && <label className="aic-disclosure" htmlFor="aic-charge-acknowledgement"><input id="aic-charge-acknowledgement" type="checkbox" checked={acknowledgeCharge} onChange={event => { setAcknowledgeCharge(event.target.checked); if (fieldError?.target === 'acknowledgement') setFieldError(null) }} aria-invalid={fieldError?.target === 'acknowledgement' || undefined} aria-describedby={fieldError?.target === 'acknowledgement' ? 'aic-provider-error' : undefined} /> I understand that testing makes a tiny provider request and may create a small charge.</label>}
             {fieldError && <p id="aic-provider-error" className="aic-field-error" role="alert">{fieldError.message}</p>}
           </div>

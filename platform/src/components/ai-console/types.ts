@@ -13,6 +13,7 @@ export type ConfigurationKind = 'provider_preset' | 'cli_preset' | 'custom_api' 
 export interface ProviderConnectionDto {
   id: string
   providerId: ProviderId
+  workspaceId?: string | null
   name: string
   maskedSuffix: string
   validationState: 'untested' | 'validating' | 'validated' | 'needs_attention' | 'invalid' | 'unreachable'

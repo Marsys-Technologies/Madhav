@@ -27,9 +27,9 @@ export interface OwnedConnectionRuntimeBinding extends RuntimeModelBinding {
 export type RequestPreflight = () => Promise<void>
 export interface ProviderValidationAdapter {
   readonly providerId: ProviderId
-  discover(apiKey: string, signal: AbortSignal, preflight?: RequestPreflight): Promise<DiscoveredModel[]>
-  probe(apiKey: string, model: DiscoveredModel, signal: AbortSignal, preflight?: RequestPreflight): Promise<ProbeUsage>
-  createRuntimeBinding(apiKey: string, model: DiscoveredModel, preflight?: RequestPreflight): RuntimeModelBinding
+  discover(apiKey: string, signal: AbortSignal, preflight?: RequestPreflight, workspaceId?: string | null): Promise<DiscoveredModel[]>
+  probe(apiKey: string, model: DiscoveredModel, signal: AbortSignal, preflight?: RequestPreflight, workspaceId?: string | null): Promise<ProbeUsage>
+  createRuntimeBinding(apiKey: string, model: DiscoveredModel, preflight?: RequestPreflight, workspaceId?: string | null): RuntimeModelBinding
 }
 
 export const PROVIDER_BASE_URLS = Object.freeze({
@@ -53,10 +53,16 @@ export function object(value: unknown): Record<string, unknown> {
 export function tokenCount(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
 }
-export function providerHeaders(provider: ProviderId, key: string): Headers {
+export function providerHeaders(provider: ProviderId, key: string, workspaceId?: string | null): Headers {
   assertApiKey(key)
   const headers = new Headers({ 'Content-Type': 'application/json', Accept: 'application/json' })
-  if (provider === 'anthropic') { headers.set('x-api-key', key); headers.set('anthropic-version', '2023-06-01') }
+  if (provider === 'anthropic') {
+    headers.set('x-api-key', key); headers.set('anthropic-version', '2023-06-01')
+    if (workspaceId) {
+      if (!/^wrkspc_[A-Za-z0-9]{20,64}$/.test(workspaceId)) throw fail()
+      headers.set('anthropic-workspace-id', workspaceId)
+    }
+  }
   else if (provider === 'google') headers.set('x-goog-api-key', key)
   else headers.set('Authorization', `Bearer ${key}`)
   return headers
@@ -162,9 +168,9 @@ export async function boundedFetch(url: string, init: RequestInit, timeoutMs: nu
   }
 }
 
-export async function providerJson(provider: ProviderId, key: string, path: string, signal: AbortSignal, body?: unknown, preflight?: RequestPreflight): Promise<Record<string, unknown>> {
+export async function providerJson(provider: ProviderId, key: string, path: string, signal: AbortSignal, body?: unknown, preflight?: RequestPreflight, workspaceId?: string | null): Promise<Record<string, unknown>> {
   const response = await boundedFetch(PROVIDER_BASE_URLS[provider] + path,
-    { method: body === undefined ? 'GET' : 'POST', headers: providerHeaders(provider, key), signal,
+    { method: body === undefined ? 'GET' : 'POST', headers: providerHeaders(provider, key, workspaceId), signal,
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, 15_000, body === undefined ? 2_097_152 : 65_536, provider, preflight)
   try {
     const parsed: unknown = await response.json()
@@ -175,7 +181,7 @@ export async function providerJson(provider: ProviderId, key: string, path: stri
 
 /** No key or SDK object is enumerable/serializable. Disposal revokes even extracted models. */
 export function runtimeBinding(providerId: ProviderId, apiKey: string, modelId: string,
-  create: (http: typeof fetch) => LanguageModelV3, preflight?: RequestPreflight): RuntimeModelBinding {
+  create: (http: typeof fetch) => LanguageModelV3, preflight?: RequestPreflight, workspaceId?: string | null): RuntimeModelBinding {
   assertApiKey(apiKey)
   let secret: string | undefined = apiKey
   const lifetime = new AbortController()
@@ -189,7 +195,7 @@ export function runtimeBinding(providerId: ProviderId, apiKey: string, modelId: 
       : providerId === 'google' ? [`/models/${modelId}:generateContent`, `/models/${modelId}:streamGenerateContent?alt=sse`].includes(suffix)
         : suffix === '/chat/completions'
     if (!url.href.startsWith(base + '/') || !allowed || init?.method !== 'POST') throw fail()
-    const request = { ...init, headers: providerHeaders(providerId, secret), signal: AbortSignal.any([lifetime.signal, ...(init.signal ? [init.signal] : [])]) }
+    const request = { ...init, headers: providerHeaders(providerId, secret, workspaceId), signal: AbortSignal.any([lifetime.signal, ...(init.signal ? [init.signal] : [])]) }
     if (providerId !== 'anthropic' && providerId !== 'google') {
       let payload: Record<string, unknown>
       try { payload = object(JSON.parse(String(request.body))) } catch { throw fail() }

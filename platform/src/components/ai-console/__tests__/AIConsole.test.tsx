@@ -222,6 +222,25 @@ describe('AI Console', () => {
     expect(screen.queryByText(/provider rejected this key/i)).toBeNull()
   })
 
+  it('offers an Anthropic workspace edit without asking for the saved key again', async () => {
+    const { calls } = setup({ connections: [{ ...state.connections[0], providerId: 'anthropic',
+      name: 'Claude', validationState: 'needs_attention', confirmedValid: false, lastErrorCode: 'AI_EXECUTION_FAILED' }] })
+    await screen.findByText('Claude')
+    expect(screen.getByText(/Organization-wide Claude keys need a workspace ID/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Workspace ID' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).queryByLabelText('API key')).toBeNull()
+    fireEvent.change(within(dialog).getByLabelText(/Claude workspace ID/),
+      { target: { value: 'wrkspc_01JEueaSaKJ72sh4drDASzH2' } })
+    fireEvent.click(within(dialog).getByRole('checkbox'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url).endsWith(`connections/${CONNECTION_ID}`)
+      && init?.method === 'PATCH')).toBe(true))
+    const mutation = calls.find(([url, init]) => String(url).endsWith(`connections/${CONNECTION_ID}`)
+      && init?.method === 'PATCH')!
+    expect(JSON.parse(String(mutation[1]?.body))).toEqual({ workspaceId: 'wrkspc_01JEueaSaKJ72sh4drDASzH2', acknowledgeCharge: true })
+  })
+
   it('does not announce success when a connection test returns needs attention', async () => {
     const { calls } = setup(undefined, { validationResponse: { validation: { state: 'needs_attention', modelCount: 0,
       error: { code: 'AI_EXECUTION_FAILED' } } } })

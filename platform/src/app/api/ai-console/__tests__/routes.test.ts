@@ -7,7 +7,7 @@ import { checkRpm, __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(), flag: vi.fn(), encrypt: vi.fn(), validate: vi.fn(), testModel: vi.fn(),
   listAiConsoleState: vi.fn(), createConnection: vi.fn(), renameConnection: vi.fn(),
-  replaceConnectionCredential: vi.fn(), saveConfiguration: vi.fn(), duplicateConfiguration: vi.fn(),
+  replaceConnectionCredential: vi.fn(), updateConnectionWorkspace: vi.fn(), saveConfiguration: vi.fn(), duplicateConfiguration: vi.fn(),
   previewChoiceDependencies: vi.fn(), deleteConnection: vi.fn(), deleteConfiguration: vi.fn(), setUserDefault: vi.fn(), deselectProviderModel: vi.fn(),
 }))
 vi.mock('@/lib/auth/access-control', () => ({ getServerUserWithProfile: mocks.auth }))
@@ -55,6 +55,7 @@ beforeEach(() => {
   mocks.createConnection.mockResolvedValue(safeConnection)
   mocks.renameConnection.mockResolvedValue({ ...safeConnection, name: 'Renamed' })
   mocks.replaceConnectionCredential.mockResolvedValue({ connection: safeConnection, credentialVersion: 4 })
+  mocks.updateConnectionWorkspace.mockResolvedValue({ connection: { ...safeConnection, providerId: 'anthropic' }, credentialVersion: 5 })
   mocks.validate.mockResolvedValue({ state: 'validated', modelCount: 1 })
   mocks.saveConfiguration.mockResolvedValue({ id: configId, name: 'Four roles', version: 4, roles,
     configurationKind: 'provider_preset', ownerConnectionId: id, ownerCliId: null })
@@ -453,6 +454,21 @@ describe('AI Console safe API contracts', () => {
     expect(mocks.setUserDefault).not.toHaveBeenCalled()
   })
 
+  it('accepts a workspace ID only for an Anthropic connection', async () => {
+    const workspaceId = 'wrkspc_01JEueaSaKJ72sh4drDASzH2'
+    const apiKey = randomUUID()
+    const ok = await connections.POST(request('POST', { name: 'Claude', providerId: 'anthropic',
+      apiKey, workspaceId, acknowledgeCharge: true }))
+    expect(ok.status).toBe(201)
+    expect(mocks.createConnection).toHaveBeenCalledWith('owner',
+      { name: 'Claude', providerId: 'anthropic', workspaceId }, expect.anything())
+    mocks.createConnection.mockClear()
+    const rejected = await connections.POST(request('POST', { name: 'OpenAI', providerId: 'openai',
+      apiKey, workspaceId, acknowledgeCharge: true }))
+    expect(rejected.status).toBe(400)
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+  })
+
   it.each(['invalid', 'unreachable', 'needs_attention'] as const)('returns the saved connection with honest %s validation', async state => {
     mocks.validate.mockResolvedValue({ state, modelCount: 0, error: new AiConsoleError('AI_PROVIDER_UNREACHABLE').toJSON() })
     const persisted = makeState()
@@ -506,6 +522,16 @@ describe('AI Console safe API contracts', () => {
     expect(mocks.replaceConnectionCredential).toHaveBeenCalledWith('owner', id, mocks.encrypt.mock.results[0].value)
     expect(mocks.validate).toHaveBeenCalledWith('owner', id, { credentialVersion: 4, signal: req.signal })
     expect(await response.text()).not.toContain(apiKey)
+  })
+
+  it('updates an Anthropic workspace and revalidates the saved key without re-encryption', async () => {
+    const workspaceId = 'wrkspc_01JEueaSaKJ72sh4drDASzH2'
+    const req = request('PATCH', { workspaceId, acknowledgeCharge: true })
+    const response = await connection.PATCH(req, context())
+    expect(response.status).toBe(200)
+    expect(mocks.updateConnectionWorkspace).toHaveBeenCalledWith('owner', id, workspaceId)
+    expect(mocks.encrypt).not.toHaveBeenCalled()
+    expect(mocks.validate).toHaveBeenCalledWith('owner', id, { credentialVersion: 5, signal: req.signal })
   })
 
   it('rejects combined rename and replacement before any mutation', async () => {

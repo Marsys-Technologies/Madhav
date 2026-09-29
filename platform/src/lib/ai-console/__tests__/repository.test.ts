@@ -245,7 +245,7 @@ describe('owned AI configuration repository', () => {
     const result = await repository.createConnection('alice', { providerId: 'openai', name: 'Personal' }, encrypted)
     expect(result).toEqual({ id: connectionId, providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated', confirmedValid: true })
     const insert = calls().find(c => c.sql.startsWith('INSERT INTO ai_provider_connections'))!
-    expect(insert.params).toEqual(['alice', 'openai', 'Personal', encrypted.ciphertext, encrypted.nonce, encrypted.authTag, encrypted.wrappedDataKey, encrypted.wrapNonce, encrypted.wrapAuthTag, 'test', '••••1234', encrypted.fingerprint])
+    expect(insert.params).toEqual(['alice', 'openai', 'Personal', encrypted.ciphertext, encrypted.nonce, encrypted.authTag, encrypted.wrappedDataKey, encrypted.wrapNonce, encrypted.wrapAuthTag, 'test', '••••1234', encrypted.fingerprint, null])
   })
   it('selects credential validity only to derive the safe confirmation boolean', async () => {
     respond(sql => sql.includes('FROM ai_provider_connections') ? [safeConnection] : undefined)
@@ -267,6 +267,16 @@ describe('owned AI configuration repository', () => {
     expect(statements.some(c => c.sql.includes('UPDATE ai_connection_models') && c.sql.includes('available=false') && c.sql.includes('user_id'))).toBe(true)
     expect(statements.at(-1)?.sql).toBe('COMMIT')
     expect(statements.find(c => c.sql.startsWith('INSERT INTO ai_configuration_audit_log'))?.params).toContain('connection_credential_replaced')
+  })
+  it('changes only an owned Anthropic workspace, versions the connection, and invalidates its models', async () => {
+    validTransport()
+    const workspaceId = 'wrkspc_01JEueaSaKJ72sh4drDASzH2'
+    await repository.updateConnectionWorkspace('alice', connectionId, workspaceId)
+    const update = calls().find(c => c.sql.includes('SET anthropic_workspace_id=$3'))!
+    expect(update.params).toEqual(['alice', connectionId, workspaceId])
+    expect(update.sql).toContain("provider_id='anthropic'")
+    expect(update.sql).toContain('credential_version=credential_version+1')
+    expect(calls().some(c => c.sql.includes('UPDATE ai_connection_models') && c.sql.includes('available=false'))).toBe(true)
   })
   it('rejects stale validation before replacing the catalog after a credential race', async () => {
     expect(repository).toHaveProperty('storeConnectionValidation')
