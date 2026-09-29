@@ -28,6 +28,7 @@ interface RegistryRow extends RegistryEntry {
   count_sql: string | null
   english_name?: string
   sanskrit_name?: string
+  is_active?: boolean | null
 }
 
 async function requireUser() {
@@ -111,13 +112,52 @@ export async function POST(req: NextRequest) {
 
   // Load registry (including names + layer for E1/E2 structured display)
   const [{ rows: registry }, { rows: protectedRows }] = await Promise.all([
+    // B1 (Kāla pre-elevation Phase 1.1, Strategy W0 "make the programme safe"):
+    // `WHERE is_active` is the FIRST of two independent layers keeping a RETIRED
+    // asset out of a destructive Clear; `filterScopeAssets` is the second, so
+    // neither is load-bearing alone. Without it, `ka_gochara_sweep`
+    // (is_active=false, scope='per_chart', layer='kala') was in scope for a
+    // layer-scoped Clear that any chart OWNER can issue (allowedScopes below is
+    // ['per_chart'] for a non-super-admin), and the execute route's count_sql
+    // branch turned its registry count_sql into
+    //   DELETE FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'
+    // — 38,287 rows with no registered writer, which the L3 strategy declares
+    // "retired, snapshot-protected and never rebuildable".
+    //
+    // Every sibling cockpit route already filters this column (refresh/route.ts:49,
+    // status/route.ts:11, runs/route.ts:243, stats/route.ts:257), so the BUILD path
+    // could never touch the retired asset while the DELETE path could. This pair was
+    // the lone omission, not a deliberate exception.
+    //
+    // Consequence accepted deliberately: an inactive asset is also absent from
+    // `computeDownstreamClosure` and the label map below. That is correct — a
+    // retired asset is never rebuilt, so marking it "stale" would be a rebuild
+    // prompt for something that can never be rebuilt. `COALESCE` because the
+    // column is nullable (DEFAULT true); production holds zero NULLs today, and
+    // a future NULL must mean "active", not "silently unclearable".
     query<RegistryRow>(
       `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds,
-              scope, target_table, count_sql, english_name, sanskrit_name
-       FROM asset_registry ORDER BY layer, sort_order`
+              scope, target_table, count_sql, english_name, sanskrit_name,
+              COALESCE(is_active, TRUE) AS is_active
+       FROM asset_registry
+       WHERE COALESCE(is_active, TRUE)
+       ORDER BY layer, sort_order`
     ),
-    // SHAD-DARSHANA sweep-protection Phase 1a, Layer 1/2 — the clear-preview guard.
-    // asset_ids protected for THIS chart_id (build_protected_assets, migration 540).
+    // ṢAḌ-DARŚANA sweep-protection Phase 1a, Layer 1/2 — the clear-preview guard.
+    // asset_ids protected for THIS chart_id in `build_protected_assets` (table from
+    // migration 540; rows re-established for the retired sweep by migration 1072).
+    //
+    // HONEST SCOPE (CLAUDE.md §N.8): migration 540's companion DB triggers on
+    // kala_gochara_windows were DROPPED by migration 588 and this table emptied, so
+    // between 2026-08-23 and migration 1071 this route-level withholding had NO
+    // database-level backstop. Migration 1071 restores one, keyed on the row's own
+    // `generation` rather than on an asset_id.
+    //
+    // Also honest: this query reads `asset_id` only, so withholding is asset-level,
+    // while `build_protected_assets.protected_generations` is generation-level. For
+    // `ka_gochara_sweep` the two coincide (every row it ever wrote is generation='v1'),
+    // but this route does not and cannot enforce the finer claim — migration 1071's
+    // trigger is the generation-precise detector. See PHASE1_1_B1_CLOSURE.md.
     query<{ asset_id: string }>(
       'SELECT asset_id FROM build_protected_assets WHERE chart_id=$1',
       [chart_id]
