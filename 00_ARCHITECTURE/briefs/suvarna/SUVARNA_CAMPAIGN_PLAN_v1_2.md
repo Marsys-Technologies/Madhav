@@ -1,12 +1,12 @@
 ---
 artifact: SUVARNA_CAMPAIGN_PLAN
 canonical_id: SUVARNA_CAMPAIGN_PLAN
-version: "1.1"
-status: "SUPERSEDED by SUVARNA_CAMPAIGN_PLAN_v1_2.md (2026-09-29)"
+version: "1.2"
+status: DRAFT — for native review (several review rounds expected before any execution)
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
 decision_owner: Native (Abhisek Mohanty)
-supersedes: "SUVARNA_CAMPAIGN_PLAN_v1_0.md. Earlier: succeeds the Nirmāṇa elevation campaign (see NIRMANA_SUPERSESSION_RECORD_v1_0.md, PR #2751)."
+supersedes: "SUVARNA_CAMPAIGN_PLAN_v1_1.md (v1.0 before it). Earlier: succeeds the Nirmāṇa elevation campaign (see NIRMANA_SUPERSESSION_RECORD_v1_0.md, PR #2751)."
 inherits:
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md                                  # tier 1 (sealed)
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md         # tier 2 (sealed)
@@ -18,7 +18,7 @@ uses: >
   the delta ledger (asset_gaps.jsonl), the certification ledger (asset_certs.jsonl), the change
   register (NIKASHA_CHANGE_REGISTER_v2_0.md) and the implementation plan (NIKASHA_IMPLEMENTATION_PLAN_v1_0.md).
 changelog:
-  - "1.1-superseded (2026-09-29): status set to SUPERSEDED by v1.2; supersedes value quoted (its unquoted colon made the frontmatter invalid YAML). No other change."
+  - "1.2 (2026-09-29, native decisions and launch readiness): the three L3 focus families move to three family sessions that each seal a final brief and implement it; Suvarṇa's L3 analysis evaluates their latest versions (N-17). Decisions N-2, N-3, N-6, N-18 approved; F-0 and F-5 decided; F-1–F-4 and F-6 delegated to the family sessions; N-19 (charter) drafted; N-20 added. New §5.0b launch readiness (what must be true before execution starts). The real-time tracker becomes the tracking surface (§9). §3 updated: register tallies repaired (v2.8), the 2026-09-28 Gochara switch and its reversal (ADK-0027), isolation set up."
   - "1.1 (2026-09-28, native review pass 1): the stage sequence becomes parallel tracks with one join. Stage 0 dissolves into first items (hours, not days). The derivability work moves off the engine path into the parallel analysis track, bringing the engine-to-freeze estimate from 240–310 to 90–150 hours. L1–L5 run as dependency waves, not layer gates. New Track F for the L3 focus families (Sangam, Kshetra, Gochara). Companion documents added: execution architecture, L3 focus families, document map, review package."
   - "1.0 (2026-09-28): first full draft. Built on a fact baseline measured the same day (Appendix A)."
 ---
@@ -35,7 +35,8 @@ changelog:
 | **Nikaṣa** (निकष, touchstone) | The engine. The system that tests and certifies an asset: four tiers, inspector, tracker, ledgers, detectors. If decision N-2 is approved, it also takes in the build engine it depends on. |
 | **Strategic Suvarṇa** | This session. Plans, discusses, rules, writes briefs. Never executes. |
 | **Nikaṣa Engine** | The session that builds and freezes the engine (Track E). |
-| **Exec Suvarṇa** | The session that runs the elevation (Stages 2–4). |
+| **Exec Suvarṇa** | The session that runs the elevation (Tracks A, I, B). |
+| **L3 Gochara · L3 Saṅgam · L3 Kṣetra** | Three family sessions. Each seals a final brief for its family and implements it (N-17). Not part of the Suvarṇa swarm; not bound by its charter. |
 
 - Suvarṇa is what the touchstone tests. The engine is finished first; the campaign runs on it.
 - "Nirmāṇa" now names two things: the superseded elevation campaign, and a still-live build-engine
@@ -44,7 +45,7 @@ changelog:
 ### 0.2 · What this document is
 
 - The master plan. It fixes the end state, the standard, the tracks, the gates and the operating model.
-- **Companions:** `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (how it runs), `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` (the three L3 families), `SUVARNA_DOCUMENT_MAP_v1_0.md` (every document in the campaign).
+- **Companions:** `SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md` (how it runs, including the real-time tracker, §11), `SUVARNA_AUTONOMY_CHARTER_v1_0.md` (what the swarm may decide), `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` (the three L3 families), `SUVARNA_DOCUMENT_MAP_v1_0.md` (every document in the campaign).
 - Each stage gets its own brief later. A brief never contradicts this plan; if it must, the plan is revised first (§10).
 - It is written to be reviewed. Every figure has a source in Appendix A.
 
@@ -200,7 +201,7 @@ One elevation definition. A fixed core for every asset. Declared additions where
 
 ### 3.4 · The change register
 
-Measured by counting rows, not by the header tally (which has drifted; see §5.0).
+Counted from the rows. The header tallies drifted and were repaired on 2026-09-29 (register v2.8); the tracker's detectors now check them on every change.
 
 | | Rows |
 |---|---|
@@ -246,7 +247,8 @@ The engine is frozen when five tests pass in production tooling and every regist
 
 ### 3.8 · Live work elsewhere
 
-- **L3 Gochara workstream** (`l3/gochara-autonomous-wp0-7`). Active today. It applied a production migration (1150) to `ka_gochara`, which is a Suvarṇa L3 asset.
+- **L3 Gochara workstream** (`l3/gochara-autonomous-wp0-7`). It applied a production migration (1150) to `ka_gochara`. On 2026-09-28 it switched the canonical chart to `'4.0'` before the deploy-before-switch directive (F-0) arrived, and reversed it six minutes later; nothing consumed the switched data (ADK-0027). It now rebuilds on the full century under `'4.1'`; the native has put its execution on hold.
+- **Three L3 family sessions** (from 2026-09-29): Gochara, Saṅgam and Kṣetra each seal a final brief and implement it (N-17).
 - **Pūrṇa**, **Jātaka**: separate campaigns with their own migration reservations.
 
 ---
@@ -260,8 +262,8 @@ NOW ─┬─ TRACK E  Engine: tools · build engine · 32 clause fixes · bo_up
      │           census · layer-instance drafts · asset briefs · dispositions · fix       │   one combined reopen
      │           designs · harvest of what the tiers are missing                          │   (clause fixes + derivability)
      │                                                                                    │   + ENGINE FREEZE (native)
-     └─ TRACK F  L3 focus families: Sangam · Kshetra · Gochara — algorithm and            │
-                 enrichment design, coordinated with the live Gochara workstream  ────────┘
+     └─ TRACK F  L3 focus families: Gochara · Saṅgam · Kṣetra — run by three family       │
+                 sessions (sealed brief, then implementation); Suvarṇa evaluates  ─────────┘
                                                                                           │
      TRACK I  Implementation: fixes for every layer, in parallel lanes  ◄─────────────────┤
               (tier-independent fixes may start before J1; certified only after it)       │
@@ -304,12 +306,31 @@ These are small and run first, alongside everything else.
 
 | Item | Why | Effort |
 |---|---|---|
-| Relay R240 to the L3 Gochara workstream **today** | They are changing `ka_gochara` in production now | minutes |
-| Merge PR #2751 (Nirmāṇa supersession) | A fresh session must find the decision first | CI wait only |
-| Fix the register's header tallies and make them computed | They drifted (190 recorded vs 180 counted) | ~1 hour |
-| Repair the three rows that break the register table (R244, R246, R99) | Tools misread them | minutes |
-| Record Suvarṇa and this plan in `CURRENT_STATE` | Same reason as the supersession | minutes |
-| Name the sessions | Strategic Suvarṇa · Nikaṣa Engine · Exec Suvarṇa | — |
+| Relay F-0 and R240 to the L3 Gochara workstream | They were changing `ka_gochara` in production | **done** 2026-09-28 (ADK-0027) |
+| Merge PR #2751 (Nirmāṇa supersession) | A fresh session must find the decision first | open; the native merges |
+| Fix the register's header tallies | They drifted (190 recorded vs 180 counted) | **done** 2026-09-29 (v2.8; detector-checked) |
+| Repair the rows that break the register table (R244, R246; R99 was well-formed) | Tools misread them | **done** 2026-09-29 |
+| Record Suvarṇa and this plan in `CURRENT_STATE` | Same reason as the supersession | after PR #2751 |
+| Name the sessions | Strategic Suvarṇa · Nikaṣa Engine · Exec Suvarṇa | **done** |
+
+### 5.0b · Launch readiness — what must be true before execution starts
+
+Execution starts when the native approves this plan (N-1). Before that:
+
+| Item | Owner | State (2026-09-29) |
+|---|---|---|
+| This plan brought up to date (v1.2) | Strategic Suvarṇa | this document |
+| Autonomy charter drafted | Strategic Suvarṇa | drafted; approval is N-19 |
+| Role prompts for the swarm, each reporting to the tracker | Strategic Suvarṇa | after the charter |
+| Runbook, and start prompts for Exec Suvarṇa and Nikaṣa Engine | Strategic Suvarṇa | after the role prompts |
+| Isolation: `/Users/Dev/suvarna`, branches `suvarna/hq` and `suvarna/trunk` | Strategic Suvarṇa | **done** |
+| Monitor: environment checks and repair | Strategic Suvarṇa | in progress |
+| Permanent read-only database credential | native decides (N-20), then set up | open |
+| Budget ceilings per stage (N-15) | native | open; under the charter a stage without a ceiling does not start |
+| Two or three review passes of the plan set | Strategic Suvarṇa | after the documents |
+| Independent third-party review, findings folded | reviewer (GPT-6 Astra recommended) | after the review passes |
+
+- **The Nikaṣa Engine session may start before N-1** once its start prompt and the charter exist, if the native agrees: Track E is the longest stretch before the freeze and changes nothing another track depends on.
 
 ### 5.1 · Track E — the engine (session "Nikaṣa Engine")
 
@@ -330,7 +351,7 @@ Four workstreams, running in parallel.
 - **Rough size:** 20–30 hours.
 
 **E3 · The build engine.**
-- Bring the `campaign/nirmana-engine` work under this track (N-2).
+- Bring the `campaign/nirmana-engine` work under this track (N-2, approved 2026-09-29).
 - Land it: PR to `main`, review, deploy.
 - Apply and verify migrations 1094 and 1095.
 - Finish the carried items: A2b, A3b, R217.
@@ -339,8 +360,8 @@ Four workstreams, running in parallel.
 - **Rough size:** 30–50 hours to the freeze; C1 and C2 afterwards.
 
 **E4 · Landing and the `bo_upaya` fix.**
-- Split PR #2736 into code and evidence PRs, retarget both to `main`, and add the inspector's tests to CI (N-3).
-- Fix `bo_upaya` as a sanctioned writer exception, if N-6 says so: about half a day. It unblocks R246, `ka_kshetra` (which reads from it) and the end of the withholding.
+- Split PR #2736 into code and evidence PRs, retarget both to `main`, and add the inspector's tests to CI (N-3, approved).
+- Fix `bo_upaya` as a sanctioned writer exception (N-6: fix now, approved): about half a day. It unblocks R246, `ka_kshetra` (which reads from it) and the end of the withholding.
 - **Rough size:** 10–20 hours.
 
 - **Track E total to the freeze: roughly 90–150 hours of agent effort**, split across parallel lanes. The derivability work moves to Track A (below); it is not removed, only taken off the engine's path.
@@ -366,12 +387,13 @@ For each layer:
 
 ### 5.3 · Track F — the L3 focus families
 
-Sangam, Kshetra and the Gochara family get dedicated algorithm and enrichment work, beyond conformance to the nine gates.
+Gochara, Saṅgam and Kṣetra get dedicated algorithm and enrichment work, beyond conformance to the nine gates.
 
-- **Starts now,** in parallel with Tracks E and A.
-- **Led by the Architect** (Opus), with Analysts for the evidence work.
-- **Coordinated with the live L3 Gochara workstream.** Nothing it owns is touched until the two workstreams agree a hand-over.
-- **Its own document:** `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md`, which reconciles each family's current state and prices what "fully enriched" would take.
+- **Run by three family sessions (N-17, 2026-09-29).** L3 Gochara, L3 Saṅgam and L3 Kṣetra each verify their family's state, bring its rulings to the native (Saṅgam: F-2, F-3, F-6; Kṣetra: F-1, F-4), write a final brief on the tier-4 template, have it independently reviewed, get it sealed by the native, and implement it. Start prompts: `prompts/L3_{GOCHARA,SANGAM,KSHETRA}_FINAL_BRIEF_PROMPT_v1_0.md`.
+- **Suvarṇa does not change their code or data.** Its L3 analysis (Track A) evaluates their latest briefs and re-measures their assets independently with the inspector. Their claims are evidence, not verdicts.
+- **Two links still bind Suvarṇa:** Saṅgam and Kṣetra rebuild only on Gochara's new generation; and **no L2 MSR asset is rebuilt until F-3 (the cascade lock) is sealed.**
+- **The families report to the tracker** under items F1.G/F1.S/F1.K (sealed briefs) and F3.G/F3.S/F3.K (implemented).
+- **Background:** `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` reconciles each family's current state and prices "fully enriched".
 
 ### 5.4 · The per-asset lifecycle (Tracks I and B)
 
@@ -392,7 +414,7 @@ Sangam, Kshetra and the Gochara family get dedicated algorithm and enrichment wo
 | L0 | Global, no chart. Top of the map. The first certifications. |
 | L1 | Chart-scoped. Canonical chart first (N-12). |
 | L2 | `bo_upaya`'s fix, if not already done in Track E. Six chart-conditional rebuilds (R243) are recorded as such. N/A policy for "writes nothing to its own table" assets (N-13). |
-| L3 | Track F's three families. Six tables empty for the canonical chart. `kala_field` holds 10.98 million rows, so the heaviest census and rebuild costs are here. |
+| L3 | The three focus families are owned by their family sessions; Suvarṇa evaluates them. Six tables empty for the canonical chart. `kala_field` holds 10.98 million rows, so the heaviest census and rebuild costs are here. |
 | L4 | Nothing kept from Nirmāṇa. Three assets record 139 rows written against 4 present. |
 | L5 | Calibration fills over time by design. `lel_events` has no writer (R236). |
 
@@ -417,7 +439,7 @@ Strategic Suvarṇa ──brief──► native approves ──► Nikaṣa Engi
 
 - **Strategic Suvarṇa** writes every brief, prepares every native decision and folds strategy changes into this plan.
 - **Execution sessions** run packets: build → report → gate review → corrections → fold. They never change this plan; they raise findings.
-- A new session is opened only when a track needs its own context. The plan names it first.
+- A new session is opened only when a track needs its own context. The plan names it first. The three L3 family sessions are the first such case (§5.3).
 - **Isolation.** The campaign runs in its own folder (`/Users/Dev/suvarna/`), on its own branches (`suvarna/hq`, `suvarna/trunk`, lane branches), with its own hold switch. Other campaigns continue untouched. Details: execution architecture §2.
 
 ### 6.2 · Roles and models
@@ -464,7 +486,7 @@ Nikaṣa only read production. Suvarṇa changes writers and rebuilds assets.
 
 - **Track E to the freeze:** roughly 90–150 hours of agent effort, across parallel lanes (§5.1).
 - **Track A:** about 157 hours of derivability work plus briefs for 127 assets, spread across up to six analysts; re-estimated after the first layer.
-- **Track F:** priced in the L3 focus-families document.
+- **Track F:** priced in the L3 focus-families document; spent by the family sessions, not by Suvarṇa.
 - **Tracks I and B:** estimated at G2 from measured cost per asset.
 - **Hours are agent effort, not calendar time.** Parallel lanes compress the calendar; the build chain does not compress (execution architecture §6).
 - **Review effort is on top:** one gate review per packet, deeper for high-risk packets.
@@ -477,9 +499,9 @@ Nikaṣa only read production. Suvarṇa changes writers and rebuilds assets.
 |---|---|---|---|---|
 | Build engine landed and deployed | Nikaṣa Engine, if N-2 is approved | J1 | 200 commits, no PR | E3 |
 | Migrations 1094, 1095 in production | deploy pipeline | R55, R38 | not applied | E3 |
-| `bo_upaya` fix (restore the delete) | L2 writer owner; with Nirmāṇa off, Suvarṇa L2 by default | R246; lifting the withholding | direction ruled, handoff written | N-6 |
+| `bo_upaya` fix (restore the delete) | Suvarṇa, Track E (N-6: fix now) | R246; lifting the withholding | direction ruled, handoff written | E4 |
 | C1 crash and orphan handling | build engine | clean build-history verdicts | not started | E3 |
-| L3 Gochara workstream | its own sessions | Suvarṇa L3 | active; changing `ka_gochara` | coordination rule (below) |
+| L3 family sessions (Gochara, Saṅgam, Kṣetra) | their own sessions (N-17) | Suvarṇa L3 evaluation; L2 MSR rebuilds (F-3) | briefs being written; Gochara execution on hold | they report to the tracker; Suvarṇa never changes their assets |
 | Migration number ranges | Pūrṇa, Jātaka, L3 | every migration | reserved ranges exist | check reservations before numbering |
 
 **Coordination rule with live workstreams:** before Suvarṇa touches an asset another live workstream is changing, the two agree who owns that asset for the period. Findings go both ways. The rule is recorded in the stage brief.
@@ -488,33 +510,40 @@ Nikaṣa only read production. Suvarṇa changes writers and rebuilds assets.
 
 ## §8 · Native decision points
 
-In the order they are needed.
+In the order they are needed. Status as of 2026-09-29; the live record is the decisions log (`hq/00_ARCHITECTURE/control/suvarna/state/DECISIONS.jsonl`) and the tracker.
 
-| ID | Decision | When | Recommendation |
-|---|---|---|---|
-| N-1 | Approve this plan (after review rounds) | now | — |
-| N-2 | Fold the build-engine work (`campaign/nirmana-engine`) into the Nikaṣa Engine session | now | Yes. It has no running campaign, and the engine freeze depends on it. |
-| N-3 | Landing approach for PR #2736: split into code and evidence, retarget to `main` | now | Yes. |
-| N-4 | Approve each reopen agenda: T1, then T2, then T3 | E2, three times | Review each as presented. |
-| N-5 | Sign each re-seal | E2, three times | — |
-| N-6 | `bo_upaya`: fix now (Track E) as a sanctioned writer exception, or defer to L2 with the withholding in force | now | Fix now. Half a day, and it unblocks R246 and ends the withholding. |
-| N-7 | Accept tier 4; accept the L0 instance | end of E2 | — |
-| N-8 | Engine freeze | J1 | — |
-| N-9 | L0 pilot results and rollout pace | G2 | — |
-| N-10 | Accept each layer instance; sign each layer close | per layer, batched | — |
-| N-11 | Approve asset-specific addition classes (§2.3) | before L2, at the latest | Decide per class. |
-| N-12 | Elevation certifies the canonical chart only, or several charts | before L1 | Canonical chart first; multi-chart as a recorded addition. |
-| N-13 | N/A policy for "writes nothing to its own table" and "update-only" assets (R247) | before L2 | — |
-| N-14 | Data findings with owners outside the inspector: `lel_events` (R236), `build_dependencies` (R219), `ka_gochara` registry (R240) | per layer | — |
-| N-15 | Pace and budget: model routing, review depth, spend ceiling per track | now | Ceilings per track, reviewed weekly. |
-| N-17 | Track F: how Suvarṇa relates to the live L3 Gochara workstream — coordinate, or absorb it at a hand-over point | now | See the L3 focus-families document. |
-| N-18 | Isolation: approve the dedicated folder and branch model | now | Yes. |
-| N-19 | Approve the autonomy charter (granted, reserved, prohibited powers) | before execution | Review with the charter draft. |
-| N-16 | Nirmāṇa's database record: leave it reading "frozen", or supersede it with the privileged control writer | any time | Leave it. The decision is recorded in governance. |
+| ID | Decision | When | Recommendation | Status |
+|---|---|---|---|---|
+| N-1 | Approve this plan (after review rounds) | after §5.0b | — | open: the native is reviewing |
+| N-2 | Fold the build-engine work (`campaign/nirmana-engine`) into the Nikaṣa Engine session | now | Yes | **decided: yes** (2026-09-29) |
+| N-3 | Landing approach for PR #2736: split into code and evidence, retarget to `main` | now | Yes | **decided: yes** |
+| N-4 | Approve each reopen agenda: T1, then T2, then T3 | E2, three times | Review each as presented | open |
+| N-5 | Sign each re-seal | E2, three times | — | open |
+| N-6 | `bo_upaya`: fix now (Track E) as a sanctioned writer exception, or defer to L2 | now | Fix now | **decided: fix now** |
+| N-7 | Accept tier 4; accept the L0 instance | end of E2 | — | open |
+| N-8 | Engine freeze | J1 | — | open |
+| N-9 | L0 pilot results and rollout pace | G2 | — | open |
+| N-10 | Accept each layer instance; sign each layer close | per layer, batched | — | open |
+| N-11 | Approve asset-specific addition classes (§2.3) | before L2, at the latest | Decide per class | open |
+| N-12 | Elevation certifies the canonical chart only, or several charts | before L1 | Canonical chart first; multi-chart as a recorded addition | open |
+| N-13 | N/A policy for "writes nothing to its own table" and "update-only" assets (R247) | before L2 | — | open |
+| N-14 | Data findings with owners outside the inspector: `lel_events` (R236), `build_dependencies` (R219), `ka_gochara` registry (R240) | per layer | — | open; R240 now sits with L3 Gochara |
+| N-15 | Pace and budget: model routing, review depth, spend ceiling per stage and track | **before launch** | Ceilings per track, reviewed weekly | open; under the charter a stage without a ceiling does not start |
+| N-16 | Nirmāṇa's database record: leave it reading "frozen", or supersede it with the privileged control writer | any time | Leave it | open |
+| N-17 | Track F: how Suvarṇa relates to the L3 families | now | — | **decided:** three family sessions own them; Suvarṇa evaluates (§5.3) |
+| N-18 | Isolation: dedicated folder and branch model | now | Yes | **decided: yes**; set up 2026-09-29 |
+| N-19 | Approve the autonomy charter | before execution | Review the draft | **requested**: draft v1.0 ready |
+| N-20 | Where the permanent read-only database credential lives | before launch | A file outside every repository (mode 600), refreshed once per session by the Monitor | open (new) |
+| F-0 | Gochara: deploy before switching authority | now | Yes | **decided: yes** (ADK-0027) |
+| F-5 | Gochara: served horizon | — | — | **decided: full century** (by F-0) |
+| F-2, F-3, F-6 | Saṅgam: keep or retire into `kala_field`; the cascade lock; Mode D | before Saṅgam design | — | **delegated** to L3 Saṅgam; the native seals. F-3 gates L2 MSR rebuilds |
+| F-1, F-4 | Kṣetra: W7 or interim clear; 6 classes or more | before Kṣetra rebuild | — | **delegated** to L3 Kṣetra; the native seals |
 
 ---
 
 ## §9 · Tracking
+
+**The live view is the real-time tracker** (execution architecture §11): the plan model (`00_ARCHITECTURE/control/suvarna/plan_model.json`), an append-only event log every role writes to as things happen, and detectors that decide "done" wherever a check exists. It shows what runs in parallel and in sequence, where we are, what is next, what waits on the native, and the measures below, within about a second of a change. The plan model changes with this plan, in the same commit.
 
 **Weekly scorecard** (from the tracker and ledgers, never typed by hand):
 
@@ -556,6 +585,9 @@ In the order they are needed.
 | Review fatigue | gates accept quickly | Fresh reviewer per packet; independent reviewers for plans and rulings. |
 | Scope creep from opportunities | layers slow down | Opportunities never block; ruled in batches. |
 | Implementation larger than expected | measured cost per asset high at G2 | Re-estimate at G2 from measured data; the native sets the pace. |
+| A production-visible action on a stale authorization | an agent acts on an older approval after a newer directive (the 2026-09-28 Gochara switch) | Charter §2 and §6: newest decision wins unread; decisions log re-read at the moment of action; named preconditions; reversal is the safe direction. |
+| The live view drifts from work owned elsewhere | the tracker shows a family session's item out of date | The family prompts require them to report to the tracker; detectors read their commits where possible. |
+| L2 and L3 collide through the cascade lock | an L2 MSR rebuild wipes Saṅgam, or is refused by it | No L2 MSR rebuild before F-3 is sealed (charter R1). |
 
 ---
 
@@ -576,6 +608,8 @@ In the order they are needed.
 | Build engine | 200 commits not on `main`; no PR | `git rev-list --count origin/main..campaign/nirmana-engine`; `gh pr list` |
 | Last Nirmāṇa commit | `badc3f9bc`, 2026-09-09 | `campaign/nirmana-autonomous` |
 | L3 Gochara | migration 1150 applied to production 2026-09-28 | `l3/gochara-autonomous-wp0-7` log |
+| Register tallies repaired | v2.8, 252 rows, 180 open | `NIKASHA_CHANGE_REGISTER_v2_0.md` @ `2a78ec64d`; tracker detectors `register_tally_consistent`, `register_wellformed` |
+| Gochara switch and reversal | 19:22:58 → 19:29 UTC 2026-09-28; no consumer | ADK-0027 (`33b725778`); Gochara session's read-only check |
 
 ## Appendix B · Glossary
 

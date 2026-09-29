@@ -2,7 +2,7 @@
   "schema_version": 1,
   "campaign": "Suvarṇa",
   "engine": "Nikaṣa",
-  "plan_ref": "00_ARCHITECTURE/briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_1.md",
+  "plan_ref": "00_ARCHITECTURE/briefs/suvarna/SUVARNA_CAMPAIGN_PLAN_v1_2.md",
   "tracks": [
     {"id": "FIRST", "title": "First items", "mode": "parallel", "plain": "Small jobs that run first, alongside everything else"},
     {"id": "LAUNCH", "title": "Launch readiness", "mode": "hybrid", "plain": "What must be true before execution starts: documents, setup, reviews, then the native's approval"},

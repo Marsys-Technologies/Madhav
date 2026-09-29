@@ -5,7 +5,7 @@ version: "1.1"
 status: DRAFT — for native review
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
-companion_of: SUVARNA_CAMPAIGN_PLAN_v1_1.md (the what and when; this document is the how)
+companion_of: SUVARNA_CAMPAIGN_PLAN_v1_2.md (the what and when; this document is the how)
 decision_owner: Native (Abhisek Mohanty)
 changelog:
   - "1.1 (2026-09-29): real-time visibility made a first-class requirement (native, 2026-09-28): new principle 9, new §11 (the tracker: one event log as the single source of truth, detectors decide done, live push, resilience), emit duties added to the queue life (§4.3), the conductor loop (§5.1), the Monitor (§8) and restartability (§10). The tracker is built and tested (34 tests)."

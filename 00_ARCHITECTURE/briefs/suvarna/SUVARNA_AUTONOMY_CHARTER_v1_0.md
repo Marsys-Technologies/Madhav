@@ -7,7 +7,7 @@ produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 decision_owner: Native (Abhisek Mohanty)
 written_from: SUVARNA_EXECUTION_ARCHITECTURE_v1_0.md §7 (granted / reserved / prohibited), with §3, §4, §5, §8–§11
-companion_of: SUVARNA_CAMPAIGN_PLAN_v1_1.md (§8 decision list)
+companion_of: SUVARNA_CAMPAIGN_PLAN_v1_2.md (§8 decision list)
 changelog:
   - "1.0 (2026-09-29): first draft. Written from execution architecture §7 and brought up to date with the native decisions of 2026-09-29 (N-2, N-3, N-6, N-17, N-18), the F-ruling delegations, pending N-20, and the 2026-09-28 Gochara switch incident (ADK-0027)."
 ---
@@ -36,7 +36,7 @@ In precedence order. A higher source always wins; a lower one never widens a hig
    with its source: the native's own words, where and when. A decision the native delegates by name (e.g. to Fable,
    plan §6.2, or to a family session) counts as the native's, within its named scope only.
 2. **This charter.**
-3. **The plan** (`SUVARNA_CAMPAIGN_PLAN_v1_1.md`) and its companion execution architecture, then the stage brief.
+3. **The plan** (`SUVARNA_CAMPAIGN_PLAN_v1_2.md`) and its companion execution architecture, then the stage brief.
    A brief never contradicts the plan (plan §0.2).
 4. **The role prompt.**
 

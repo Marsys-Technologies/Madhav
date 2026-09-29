@@ -5,7 +5,7 @@ version: "1.1"
 status: DRAFT — for native review
 produced_on: 2026-09-28
 produced_in: session "Strategic Suvarṇa"
-companion_of: SUVARNA_CAMPAIGN_PLAN_v1_1.md §5.3 (Track F)
+companion_of: SUVARNA_CAMPAIGN_PLAN_v1_2.md §5.3 (Track F)
 evidence: >
   Three read-only reconciliations, 2026-09-28, each with a source for every claim:
   l3_recon/GOCHARA_RECON.md · l3_recon/KSHETRA_RECON.md · l3_recon/SANGAM_RECON.md.
