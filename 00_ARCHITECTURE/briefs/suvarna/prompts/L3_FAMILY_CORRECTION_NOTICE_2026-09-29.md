@@ -1,53 +1,80 @@
 ---
 artifact: L3_FAMILY_CORRECTION_NOTICE
-version: "1.2"
-status: READY — paste into each L3 family session (Gochara, Saṅgam, Kṣetra)
+version: "1.3"
+status: "PRE-FINAL v1.5 — for the parallel independent reviews (GPT-6 Astra, Kimi K3; N-30); then reconciled by Strategic Suvarṇa into the final set; then N-1. Once final: published on the campaign-coordination branch for the Pravāha campaign and for any Saṅgam/Kṣetra session the native opens (no native paste)."
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa" (plan item FI-8)
 changelog:
+  - "1.3 (2026-09-30, v1.5 fold): re-addressed to the Pravāha campaign (steward) and to any Saṅgam/Kṣetra session the native opens; there is no separate L3 Gochara session (fold spec §5). Published on the campaign-coordination branch, no native paste (N-28); FI-8 is no longer an N-1 prerequisite. The acknowledgement is a tracker note whose detail is exactly 'ACK FI-8 notice v1.3' (version-bound). New content: F-3's concrete form (N-32); D2's certification condition with Pravāha's agreement (nothing certifiable until the registered writer produces '5.0'); each campaign's decisions in its own log, Suvarṇa's log citing Pravāha's ids (D-SCOPE, D-41, D-BRIEF, D-CLOUD, D-FLIP, ADK-0029); the nine-gate mapping of Gochara is Suvarṇa's own work; the Gochara prompt retired (superseded by the sealed v3.0 doctrine, D-BRIEF); seals and rulings by Strategic Suvarṇa (N-28); tools from /Users/Dev/suvarna/control (N-37)."
   - "1.2 (2026-09-30, review pass 3): prompts now v1.3. The census runs through the validated wrapper census_run (the lock no longer wraps an arbitrary command); the acknowledgement names notice v1.2 and prompt v1.3."
   - "1.1 (2026-09-29, review pass 2): prompts now v1.2. Absolute evidence folder; tools from the hq worktree; the leftover 'emit it as decided' line removed; the sealed brief reported as review, closed by Strategic Suvarṇa's seal record (SEAL-G/S/K); F-3 now means the cascade removed on all eight foreign keys; an acknowledgement note closes FI-8."
   - "1.0 (2026-09-29): corrections found by Suvarṇa review pass 1, relayed as a report."
 ---
 
-# Corrections to your start prompt (a report from Strategic Suvarṇa, not a new instruction)
+# Corrections from Strategic Suvarṇa (a report, not an instruction)
 
-Your prompt has been corrected to v1.3. Please re-read it:
-`/Users/Dev/madhav-suvarna-plan/00_ARCHITECTURE/briefs/suvarna/prompts/L3_<GOCHARA|SANGAM|KSHETRA>_FINAL_BRIEF_PROMPT_v1_0.md`
+**To:** the Pravāha campaign (its steward), and any L3 Saṅgam or L3 Kṣetra session the native opens.
+**Where:** published on the campaign-coordination branch (`origin/campaign-coordination`); nobody pastes it.
 
-What changed:
+## For the Pravāha campaign
 
-1. **The census command.** The census runs through one validated wrapper, which takes the lock, sources the read-only
-   credential and runs only the inspector. `--out` must be a file at an **absolute** path; create the folder first.
-   From any folder:
+1. **No prompt of ours applies to you.** The Suvarṇa "L3 Gochara" prompt is retired: your sealed doctrine
+   `FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md` is the Gochara final brief (D-BRIEF), and Suvarṇa treats it as satisfying
+   its own seal item SEAL-G.
+2. **Separate logs.** Each campaign records its own rulings in its own log. Suvarṇa's decisions log records only
+   Suvarṇa decisions, written only by Strategic Suvarṇa; for Gochara facts it cites your ids (D-SCOPE, D-41, D-BRIEF,
+   D-CLOUD, D-FLIP, ADK-0029). Suvarṇa's tracker reads your item states (B0.2, J2, A1.2, A5.3, A5.6, A6.1, A6.2) from
+   your tracker's `/api/state` (a read-only `peer_tracker_item` detector); it never asks you to emit into ours beyond
+   the acknowledgement below.
+3. **Certification (D2), as you agreed.** A Gochara asset is certified by Suvarṇa's independent re-measure, and only
+   when built by an **orchestrator run** of the registered writer, never by a cutover script: nothing is certifiable
+   until the registered writer produces `'5.0'`.
+4. **The nine-gate mapping is ours.** Mapping your doctrine onto the tier-4 template's nine gates is Suvarṇa's own
+   L3 analysis (A.L3); it is never required of you.
+5. **F-3 (for information; no Gochara table is among the keys).** See §F-3 below.
+
+## For a Saṅgam or Kṣetra session the native opens
+
+Your prompt is `…/briefs/suvarna/prompts/L3_<SANGAM|KSHETRA>_FINAL_BRIEF_PROMPT_v1_0.md` at v1.4 (under
+`/Users/Dev/madhav-suvarna-plan/00_ARCHITECTURE/`). What changed since v1.3:
+
+1. **Seals and rulings are Strategic Suvarṇa's (N-28).** It decides F-1, F-2, F-4 and F-6 on your recommendation and
+   seals your brief (SEAL-S, SEAL-K). You record your own decisions only in your own log and emit only `requested` and
+   `review` to Suvarṇa's tracker, never `decided` or a sealed `done`.
+2. **Implementation ownership is decided at J1 (J1.FO).** A session that has acknowledged this notice or committed on
+   its family branches owns implementation, and charter R8 then protects it; otherwise Suvarṇa implements.
+3. **Certification (D2):** as in item 3 above; your assets also wait for `'5.0'` served on the canonical chart.
+4. **Inputs:** Pravāha's consumer contract
+   `/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/L3_FAMILY_COORDINATION_v1_0.md`.
+5. **The census** runs only through the wrapper, with an absolute `--out` (exit 75 = another census is running; wait):
    ```
    mkdir -p /Users/Dev/suvarna/evidence/l3-<family>-<date>
-   export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+   export PYTHONPATH=/Users/Dev/suvarna/control/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
    python3 -m suvarna_tracker.census_run --layer L3 --out /Users/Dev/suvarna/evidence/l3-<family>-<date>/census_L3.json \
      --wait 900 --emit --actor l3-<family>
    ```
-   The lock makes sure only one census runs at a time across all sessions (exit 75 = another census is running; wait
-   and retry). The earlier `census_lock … -- bash -c '…'` form (notice v1.1, prompts v1.2) is retired.
-2. **Certification (native decision D2).** Your assets are certified by Suvarṇa's independent re-measure, and only if
-   they were built by an **orchestrator run**, never by a hand-run cutover script. For Gochara: no certification until
-   the registered writer produces the new generation.
-3. **Rulings.** When the native seals one of your family's rulings (F-1…F-6), Strategic Suvarṇa records it as `decided`
-   in the authoritative decisions log. Your session emits `requested` only, never `decided`. (v1.1 of your prompt still
-   had one line saying otherwise; it is removed.)
-4. **Your sealed brief.** Report it as `review` with the sealed path and commit as evidence. F1.G/F1.S/F1.K close when
-   Strategic Suvarṇa records the native's seal (SEAL-G, SEAL-S, SEAL-K).
-5. **Template revision.** Write in your brief's frontmatter which revision of the tier-4 template it follows. The
-   template is re-sealed at the engine freeze, and Suvarṇa maps briefs to the new revision afterwards.
-6. **F-3 (for Saṅgam; for information to the others).** Measured 2026-09-29: eight `ON DELETE CASCADE` foreign keys
-   point at `bodha_msr_signals`, from `kala_convergence` and from `kala_darshana`, `kala_bhavishya`, `kala_activation`,
-   `kala_obstruction`, `bodha_signal_embeddings`, `bodha_contradictions`. Suvarṇa's first rebuild wave contains two
-   writers that delete signals, so it waits until F-3 removes the cascade on all eight keys and the change is applied.
-7. **Saṅgam only.** Your unapplied migrations are 1088, 1089, 1090, 1092 and 1093; 1091 belongs to the Gochara lane and
-   is applied.
+6. **Destructive operations** need a rebuild plan, a serving guard and recorded pre-op fingerprints/counts (N-29, N-33),
+   not a snapshot and not the native's approval.
+7. **Saṅgam only.** Your unapplied migrations are 1088, 1089, 1090, 1092 and 1093; 1091 is Gochara's and is applied.
 
-**Please acknowledge** once you have read this, so Suvarṇa's launch item FI-8 can close:
+## F-3 (decided, N-32)
+
+Eight `ON DELETE CASCADE` foreign keys point at `bodha_msr_signals` (from `kala_convergence`, `kala_darshana`,
+`kala_bhavishya`, `kala_activation`, `kala_obstruction`, `bodha_signal_embeddings`, `bodha_contradictions` ×2).
+Suvarṇa's Track E migration **drops all eight** (target: no foreign key) and replaces `assert_l2_msr_delete_safe` so it
+never refuses (it keeps its admitted-asset-context check and records referencing-row counts as build evidence).
+Derived rows are regenerable: the downstream is rebuilt in wave order, and the owner of `kala_convergence` is notified by
+lease note before the migration and before each L2 MSR wave. `ON DELETE SET NULL` was rejected: 4 of the 8 columns are
+NOT NULL (measured 2026-09-30). `kala_convergence`'s own downstream cascades (into `kala_darshana`, `kala_obstruction`,
+`phala_anchors`, and on to `phala_*`) stay; each wave's impact statement lists them.
+
+## Acknowledge
+
+Once you have read this, emit one tracker note whose detail is exactly `ACK FI-8 notice v1.3` (the version is part of
+it; an acknowledgement of an earlier version does not count):
 ```
-python3 -m suvarna_tracker.emit note --actor l3-<family> --detail "ACK FI-8: correction notice v1.2 read; prompt v1.3"
+export PYTHONPATH=/Users/Dev/suvarna/control/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+python3 -m suvarna_tracker.emit note --actor <pravaha|l3-sangam|l3-kshetra> --detail "ACK FI-8 notice v1.3"
 ```
 
-If anything you have already done conflicts with these, tell the native; nothing here asks you to undo work.
+If anything you have already done conflicts with this, tell Strategic Suvarṇa; nothing here asks you to undo work.

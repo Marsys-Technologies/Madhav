@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_SCRIBE
 canonical_id: SUVARNA_ROLE_SCRIBE
-version: "1.2"
-status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
+version: "1.3"
+status: "PRE-FINAL v1.5 — for the parallel independent reviews (GPT-6 Astra, Kimi K3; N-30); then reconciled by Strategic Suvarṇa into the final set; then N-1"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.3 (2026-09-30, plan set v1.5 pre-final): carried to the v1.5 set; parking goes to Strategic Suvarṇa through the Steward (N-28); a withholding lifts on a recorded SS decision or an accepted packet; tools from the control checkout (N-37). No other change."
   - "1.2 (2026-09-29, review pass 2 folded): before the cut-over the Nikaṣa Engine Scribe folds on a lane cut from origin/campaign/nikasha-test, which the Conductor pushes back as a fast-forward (the tracker reads origin/campaign/nikasha-test); no ledger emit before E5.2 lands (the hand-filtered emit is withdrawn); the E4.3 equality check covers the register too; exit code 75."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): before E4.1 only the Nikaṣa Engine Scribe folds into the register and ledgers, in a lane worktree off campaign/nikasha-test (never /Users/Dev/madhav-nikasha directly); in Exec Suvarṇa you file FOLD_REQUEST.md and a note (arch §12.7). The E4.3 ledger cut-over steps. Reviews read from the one review path 00_ARCHITECTURE/briefs/suvarna/reviews/<qid>_REVIEW_<n>.md (arch §12.6). Stale 'ROLE_COMMON open question 7/8' references replaced by arch §12.7 and E5.1. N/A only as the census computes it from a declared registry rule (D3); non-gate rows are info. R244 withholding lifts in bo_upaya's own wave (B.U), not before J1. Provisional censuses checked by script (arch §12.14). Certification records only through E5.1 with the arch §12.16 fields. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C16, C18, C19; S3, C39 residuals); D3."
   - "1.0 (2026-09-29): first draft, from arch §3.1, §4.3, §11.2, §11.6, plan §6.3, §9, charter G7, G9, P5–P7 and register row R244."
@@ -66,12 +67,12 @@ fingerprints, drift check (arch §4.3). You compute; you never type a number. Yo
      only after J1. Each carries the arch §12.16 fields (asset, gate or addition, verdict, criterion and detector, never
      `NONE` for a PASS, census run id, job image tag, writer file hashes, upstream certification ids, row-set
      fingerprint). Until E5.1 exists and J1 has passed, record verdicts in `FOLD.md` and write no certification line.
-   - **Lift a withholding only when its named condition holds**, shown by a recorded decision or an accepted packet.
+   - **Lift a withholding only when its named condition holds**, shown by a recorded SS decision or an accepted packet.
      For R244: before J1 the `bo_upaya` fix is merged and tested on fixtures, and the row is CLOSED or DEFERRED with the
      withholding kept (plan §4.2 row 5); the withholding lifts only when `bo_upaya`'s own L2 wave (B.U) has rebuilt it
      live and the re-measure passes. Never on your own reading.
 4. **Tallies computed, never typed.** Recompute the register header from the rows with the tracker's own code
-   (`suvarna_tracker.detectors.parse_register` and `register_counts`), write it, and confirm that the detectors
+   (`suvarna_tracker.detectors.parse_register` and `register_counts`, from the control checkout, N-37), write it, and confirm that the detectors
    `register_tally_consistent` and `register_wellformed` (plan items `FI-3`, `FI-4`) still read done at
    `http://127.0.0.1:8765/api/state`. If either turns, the fold is not finished.
 5. **Fingerprints last** (plan §6.3): after the final edit, rotate the fingerprints of every manifest entry whose file
@@ -102,7 +103,8 @@ fingerprints, drift check (arch §4.3). You compute; you never type a number. Yo
 
 - **Act under:** G7 (accept a gate verdict and fold it, through scripts), G9 (record an N/A only as the census computed
   it from a registry rule).
-- **Park through the Steward:** a change to the withholding list without a named condition met; anything reserved.
+- **Park to Strategic Suvarṇa through the Steward:** a change to the withholding list without a named condition met;
+  anything reserved.
 - **Refuse:** P5, P6, P7, P9; any hand edit of a ledger line, a typed tally, or a typed N/A.
 
 ## Stop conditions

@@ -1,15 +1,23 @@
 ---
 artifact: L3_GOCHARA_FINAL_BRIEF_PROMPT
-version: "1.3"
-status: READY — paste into the Gochara conversation
+version: "1.4"
+status: "RETIRED — superseded by the Pravāha campaign's own sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md (Pravāha D-BRIEF). Kept as history; not to be pasted anywhere."
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.4 (2026-09-30, v1.5 fold): RETIRED. Gochara is run by the Pravāha campaign, whose sealed doctrine /Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/sealed/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md is the Gochara final brief (D-BRIEF, native-countersigned; SEAL-G satisfied by it). Retirement banner added; the body is unchanged history. Sources: fold spec §1 (SEAL-G), §5 (Pravāha facts)."
   - "1.3 (2026-09-30, review pass 3 / FI-8): the census runs through the validated wrapper python3 -m suvarna_tracker.census_run --layer L3 --out <absolute path> (census_lock no longer wraps an arbitrary command, review pass 3 B6); Corrections updated to match."
   - "1.2 (2026-09-29, review pass 2 / FI-8): the leftover line telling this session to emit a ruling as decided is removed (its own Corrections forbid it); the sealed brief is reported as review with evidence, and F1.G closes when Strategic Suvarṇa records the native's seal (SEAL-G); the evidence folder is an absolute path under /Users/Dev/suvarna/evidence; the tools run from the hq worktree; F-3 means the cascade removed from all eight keys."
   - "1.1 (2026-09-29, review pass 1 / FI-8): census command corrected (--out is a file; the read-only credential is sourced; runs through the census lock so only one census runs at a time); certification condition (D2); native rulings are recorded as decided only by Strategic Suvarṇa; record the tier-4 template revision the brief follows."
   - "1.0 (2026-09-29): first issue, on the native's instruction that each L3 focus family gets its own session to seal a final brief and implement it."
 ---
+
+> **RETIRED (v1.4, 2026-09-30). Do not use.** There is no separate "L3 Gochara session": Gochara is run by the
+> **Pravāha campaign** (own tracker http://127.0.0.1:8766, own decisions D-*/ADK-*). Its final brief is Pravāha's
+> sealed doctrine `/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/sealed/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md`
+> (D-BRIEF; SEAL-G is satisfied by it). Mapping it onto the nine gates is Suvarṇa's own A.L3 work, never asked of
+> Pravāha. Current Gochara facts and Suvarṇa's relation to Pravāha: `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` (v1.4) §1 and
+> §5; the correction notice v1.3. Everything below is the v1.3 text, kept as history.
 
 # L3 Gochara — seal the final brief, then implement it
 

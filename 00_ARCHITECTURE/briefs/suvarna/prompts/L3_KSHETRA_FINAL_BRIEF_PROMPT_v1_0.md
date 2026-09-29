@@ -1,10 +1,11 @@
 ---
 artifact: L3_KSHETRA_FINAL_BRIEF_PROMPT
-version: "1.3"
-status: READY — paste into a new conversation
+version: "1.4"
+status: "KEPT — used only if the native opens such a session; otherwise Suvarṇa's Architect-led Track F lanes use the same content as their lane brief. PRE-FINAL v1.5 — for the parallel independent reviews (GPT-6 Astra, Kimi K3; N-30); then reconciled by Strategic Suvarṇa into the final set; then N-1"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.4 (2026-09-30, v1.5 fold): kept, used only if the native opens an L3 Kṣetra session; otherwise the lane brief of Suvarṇa's Track F Architect lanes (fold spec §5). Rulings and the seal are Strategic Suvarṇa's (N-28: F-1/F-4 decided by SS on this session's recommendation; SEAL-K); each campaign records decisions only in its own log, and only SS writes Suvarṇa's. F-3 decided (N-32), for information. Gochara = the Pravāha campaign: '5.0' (D-41), 482012f1 only (D-SCOPE); PR #2731 merged as 285bff17c (the Kṣetra writer change is on main); Pravāha's L3_FAMILY_COORDINATION_v1_0.md is an input. Implementation ownership at J1 (J1.FO). The interim clear and any destructive op per N-29/N-33 (rebuild plan, serving guard, fingerprints; no snapshot/native approval); merges through merge_gate (N-25b, N-38); tools from /Users/Dev/suvarna/control (N-37); census via census_run."
   - "1.3 (2026-09-30, review pass 3 / FI-8): the census runs through the validated wrapper python3 -m suvarna_tracker.census_run --layer L3 --out <absolute path> (census_lock no longer wraps an arbitrary command, review pass 3 B6); Corrections updated to match."
   - "1.2 (2026-09-29, review pass 2 / FI-8): the leftover line telling this session to emit a ruling as decided is removed (its own Corrections forbid it); the sealed brief is reported as review with evidence, and F1.K closes when Strategic Suvarṇa records the native's seal (SEAL-K); the evidence folder is an absolute path under /Users/Dev/suvarna/evidence; the tools run from the hq worktree; F-3 means the cascade removed from all eight keys."
   - "1.1 (2026-09-29, review pass 1 / FI-8): census command corrected (--out is a file; the read-only credential is sourced; runs through the census lock so only one census runs at a time); certification condition (D2); native rulings are recorded as decided only by Strategic Suvarṇa; record the tier-4 template revision the brief follows."
@@ -13,7 +14,14 @@ changelog:
 
 # L3 Kṣetra — seal the final brief, then implement it
 
-**Session name:** L3 Kṣetra. You own the Kṣetra family end to end: a final brief the native seals, then its implementation. The Suvarṇa campaign will not change Kṣetra code; its L3 analysis will evaluate whatever you have produced most recently.
+**Use (v1.4).** This prompt is used only if the native opens an L3 Kṣetra session. Otherwise Suvarṇa's Track F
+Architect lanes use the same content as their lane brief (design: the final brief, F1.K). Wherever it says "this
+session", read "the lane" in that case.
+
+**Session name:** L3 Kṣetra. You own the Kṣetra design: a final brief that Strategic Suvarṇa seals (SEAL-K, N-28).
+**Implementation ownership is decided by Strategic Suvarṇa at J1 (J1.FO):** a family session that has acknowledged the
+correction notice (FI-8) or shown commits on `kshetra/*` branches owns implementation, and charter R8 then protects it;
+otherwise the Suvarṇa swarm implements it as ordinary Track I/B work.
 
 ## 1 · Where things stand (verify every line before relying on it)
 
@@ -29,7 +37,7 @@ changelog:
 - **The only published field** is a 6-class run on `1c826d5a…` from 2026-08-12. It predates later fixes and has the same axis defect.
 - **Rebuilds are refused by design.** Since PR #2607 the writer raises `KshetraReplacementHeld` on any populated chart until versioned publish-then-switch storage (W7) exists. W7 is not built.
 - **Stage 3** (code fixes proven on fixtures) was authorized on 2026-09-24 and never started. No Kṣetra code has changed on `main` since #2607.
-- **A Kṣetra writer change sits on the Gochara lane's branch**, not on `main`. Its migration 1084 is already applied in production, and it lands with PR #2731.
+- **A Kṣetra writer change was carried on the Gochara branch** and is now on `main`: PR #2731 merged 2026-09-30 as `285bff17c`. Its migration 1084 is applied in production.
 - **Other defects:**
   - the null test is scoped to the whole chart instead of per route;
   - the synthetic-baseline flag is computed, then dropped;
@@ -38,22 +46,24 @@ changelog:
   - phantom dependencies (`bo_upaya`, `bo_sangati`, declared but never read) and about ten real reads left undeclared, including Gochara's windows;
   - nothing serves `kala_field` (`query_field_trajectory` does not exist), and L5's `mi_bhara` attaches to an arbitrary unpublished snapshot;
   - real priors exist for only 6 classes, with no fitted weights.
-- **Upstream Gochara is changing.** It moves from `'3.0'` to a new full-century generation, and Kṣetra must be rebuilt on it. The L3 Gochara session publishes the interface (table, generation, authority filter, horizon).
+- **Upstream Gochara is changing.** Gochara is run by the **Pravāha campaign** (tracker http://127.0.0.1:8766). It moves from `'3.0'` to a new full-century generation labelled **`'5.0'`** (D-41), built for `482012f1` only (D-SCOPE), and Kṣetra must be rebuilt on it. Pravāha's consumer contract states the interface (the three objects, frames, coverage, lineage).
 
 **Read first:**
 1. `/Users/Dev/madhav-suvarna-plan/00_ARCHITECTURE/briefs/suvarna/l3_recon/KSHETRA_RECON.md` (the current state, with a source for every claim).
-2. `/Users/Dev/madhav-suvarna-plan/00_ARCHITECTURE/briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` §3 and §4.
-3. The family's own documents, as cited in the reconciliation report: `KSHETRA_ELEVATION_BRIEF_v1_0.md`, `KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md`, `KSHETRA_RULING_SHEET_v1_0.md`, `KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md`, `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md`, `KSHETRA_INBOUND_RECONCILIATION_v1_0.md`.
+2. `/Users/Dev/madhav-suvarna-plan/00_ARCHITECTURE/briefs/suvarna/SUVARNA_L3_FOCUS_FAMILIES_v1_0.md` (v1.4) §3 and §4.
+3. Pravāha's consumer contract `/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/L3_FAMILY_COORDINATION_v1_0.md` (an input to the brief).
+4. The family's own documents, as cited in the reconciliation report: `KSHETRA_ELEVATION_BRIEF_v1_0.md`, `KSHETRA_ECOSYSTEM_ELEVATION_PLAN_v1_0.md`, `KSHETRA_RULING_SHEET_v1_0.md`, `KSHETRA_STAGE3_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md`, `KSHETRA_ABLATION_PREREGISTRATION_v1_0.md`, `KSHETRA_INBOUND_RECONCILIATION_v1_0.md`.
 
 ## 2 · Settle these first
 
-Your brief brings each of these rulings to the native, with options, a recommendation and its consequence:
+Your brief brings each of these rulings to Strategic Suvarṇa, with options, a recommendation and its consequence; Strategic Suvarṇa decides on that recommendation (N-28):
 
 - **F-1 — the rebuild path.**
-  - Option 1: build W7 first. The recommendation to test is to generalise Gochara's "build a candidate generation, then switch authority" pattern rather than build a second mechanism. Confirm or refute this with the L3 Gochara session.
-  - Option 2: authorize an interim archive-and-clear of about 11 million rows (about 6.7 GB) with a verified snapshot.
+  - Option 1: build W7 first. The recommendation to test is to generalise Gochara's "build a candidate generation, then switch authority" pattern (the serving-guard pattern, N-33) rather than build a second mechanism. Confirm or refute this against Pravāha's design documents; questions to Pravāha go through Strategic Suvarṇa as reports.
+  - Option 2: an interim clear of about 11 million rows (about 6.7 GB) under a rebuild plan, a serving guard (a disclosed maintenance window if no authority switch exists) and recorded pre-op fingerprints/counts (N-29, N-33).
 - **F-4 — scope.** Stay at 6 classes (ruling 1 made the 6-class run the product), or reopen it.
-- **The Saṅgam question (F-2) touches you.** ŚAḌ-DARŚANA would retire Saṅgam into `kala_field`. The L3 Saṅgam session will ask you; answer from Kṣetra's side before it recommends.
+- **The Saṅgam question (F-2) touches you.** ŚAḌ-DARŚANA would retire Saṅgam into `kala_field`. Whoever designs Saṅgam (a Saṅgam session, or Track F's Saṅgam lane) will ask you; answer from Kṣetra's side before it recommends.
+- **F-3 is decided (N-32), for information:** the eight foreign keys into `bodha_msr_signals` are dropped by Suvarṇa's Track E; no Kṣetra table is among them.
 
 ## 3 · The brief
 
@@ -63,7 +73,7 @@ Write `00_ARCHITECTURE/briefs/l3_families/KSHETRA_FINAL_BRIEF_v1_0.md`.
 2. **Measure before you write.** Run the Nikaṣa inspector for L3 only, read-only:
    ```
    mkdir -p /Users/Dev/suvarna/evidence/l3-kshetra-<date>   # --out must be an absolute path; create the folder first
-   export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+   export PYTHONPATH=/Users/Dev/suvarna/control/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
    python3 -m suvarna_tracker.census_run --layer L3 --out /Users/Dev/suvarna/evidence/l3-kshetra-<date>/census_L3.json \
      --wait 900 --emit --actor l3-kshetra
    ```
@@ -85,9 +95,9 @@ Write `00_ARCHITECTURE/briefs/l3_families/KSHETRA_FINAL_BRIEF_v1_0.md`.
 1. Review your own draft.
 2. Send it to an independent reviewer: a fresh Opus 5.5 agent at high effort, told to break it.
 3. Fix what the reviewer finds.
-4. Give the native a one-page summary.
-5. The native seals it: status `SEALED`, a version and a changelog.
-6. Land it on `main` through its own PR, which the native merges.
+4. Give Strategic Suvarṇa a one-page summary with the reviewer's findings and their disposition.
+5. Strategic Suvarṇa seals it (SEAL-K, N-28): status `SEALED`, a version and a changelog.
+6. Land it on `main` through its own PR (a Suvarṇa lane merges through the merge gate, N-25b, N-38).
 
 Nothing is implemented before the seal.
 
@@ -99,14 +109,14 @@ Nothing is implemented before the seal.
   - per-chart delete-then-insert (§N.3);
   - surgical migrations, verified as applied, and never edited after they are applied (§N.4);
   - production data changes only through migrations and the orchestrator.
-- **Clearing the 8.57 million leftover rows is a destructive operation.** It needs a verified snapshot and the native's approval, and `KshetraReplacementHeld` stays in force until W7 or F-1 says otherwise.
-- **The production rebuild waits for** Gochara's new generation live on the canonical chart, and for PR #2731 on `main` (it carries the Kṣetra writer change). PRs to `main` are merged by the native.
+- **Clearing the 8.57 million leftover rows is a destructive operation.** It needs a rebuild plan, a serving guard and recorded pre-op fingerprints/counts, and a Strategic Suvarṇa decision (N-29, N-33; no dump), and `KshetraReplacementHeld` stays in force until W7 or F-1 says otherwise.
+- **The production rebuild waits for** Gochara's `'5.0'` live on the canonical chart (Pravāha A6.1, gated on its N-FLIP). PR #2731 (the Kṣetra writer change) is on `main`. PRs to `main` merge through the merge gate (N-25b, N-38).
 - **"Done" means tests pass in production tooling and the inspector's re-measure shows the gates passing.** Suvarṇa re-measures independently (§N.8).
 
 ## 6 · Boundaries
 
-- Work in your own worktree: `git worktree add /Users/Dev/madhav-l3/kshetra-final -b l3/kshetra-final origin/main`. The older Kṣetra worktrees and branches are history: read them, don't build on them blindly.
-- Do not touch Gochara or Saṅgam code (including the Kṣetra change on the Gochara branch, which lands with #2731), L4 or L5 assets, or the Nikaṣa ledgers. Record anything they need as a finding for the native.
+- Work in your own worktree: `git worktree add /Users/Dev/madhav-l3/kshetra-final -b l3/kshetra-final origin/main` (a Suvarṇa lane uses its own lane worktree). The older Kṣetra worktrees and branches are history: read them, don't build on them blindly.
+- Do not touch Gochara (Pravāha's) or Saṅgam code, L4 or L5 assets, or the Nikaṣa ledgers. Record anything they need as a finding for Strategic Suvarṇa.
 - **Database:** read-only through the project's usual access. Never print or copy credentials, and never call `gcloud` per command.
 - **Git:**
   - commit with `git commit -- <paths>`;
@@ -118,22 +128,22 @@ Nothing is implemented before the seal.
 The tracker is at http://127.0.0.1:8765. Your items are **F1.K** (the brief, sealed) and **F3.K** (the brief implemented).
 
 ```
-export PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+export PYTHONPATH=/Users/Dev/suvarna/control/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
 python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state running --detail "<what you are doing>"
 python3 -m suvarna_tracker.emit decision --actor l3-kshetra --decision F-1 --state requested --detail "<options + recommendation>"
-python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state review --evidence "<sealed brief path + commit>" --detail "sealed by the native; for SEAL-K"
+python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state review --evidence "<brief path + commit>" --detail "reviewed; for SEAL-K"
 ```
 
-- Use `blocked` with a reason whenever you are waiting on the native.
-- When the native rules on F-1 or F-4, tell Strategic Suvarṇa; it records the ruling. This session emits only `requested`.
+- Use `blocked` with a reason whenever you are waiting on a decision.
+- Strategic Suvarṇa decides F-1 and F-4 on your recommendation and records them in Suvarṇa's log (`$SUVARNA_HOME/authority/DECISIONS.jsonl`); nobody else writes that log. A native-opened session records its own decisions only in its own log and emits only `requested` here.
 - A `done` without evidence is refused. F1.K reads done only when Strategic Suvarṇa records the seal (SEAL-K); your own events are evidence, not decisions.
 
-## Corrections (v1.1, 2026-09-29; census wording updated in v1.3, 2026-09-30)
+## Corrections (v1.1, 2026-09-29; census wording updated in v1.3, 2026-09-30; rulings and seals updated in v1.4, 2026-09-30)
 
-- **Certification (native decision D2).** A family asset is certified by Suvarṇa's independent re-measure, and only when it was built by an **orchestrator run**, never by a hand-run cutover script. (For Gochara this means no certification until the registered writer produces the new generation.)
-- **Rulings.** When the native seals one of this family's rulings, **Strategic Suvarṇa records it** as `decided` in the authoritative decisions log. This session emits `requested` only, never `decided`.
+- **Certification (D2).** A family asset is certified by Suvarṇa's independent re-measure, and only when it was built by an **orchestrator run**, never by a hand-run cutover script. (For Gochara, Pravāha agreed: nothing is certifiable until the registered writer produces `'5.0'`.)
+- **Rulings and seals (v1.4, N-28).** Strategic Suvarṇa decides this family's rulings on the owning session's recommendation (or from Track F's own design lanes) and seals the brief; it alone records them as `decided` in Suvarṇa's decisions log. This session emits `requested` only, never `decided`.
 - **One census at a time.** Always run the census with the `census_run` command above (it takes the census lock itself); exit code 75 means another census is running: wait and retry.
 - **The census command (v1.3).** The census now runs through the wrapper `python3 -m suvarna_tracker.census_run --layer L3 --out <absolute path>`, which takes the lock, sources the read-only credential and runs only the inspector. The earlier form, `census_lock … -- bash -c '…'`, is retired: the lock no longer wraps an arbitrary command.
 - **Template revision.** State in the brief's frontmatter which revision of the tier-4 template it follows (it is re-sealed at the engine freeze; Suvarṇa maps briefs to the new revision afterwards).
 
-**Start by:** verifying §1 against the live sources, then telling the native in plain language what differs from this prompt. Then bring the F-1 recommendation.
+**Start by:** verifying §1 against the live sources, then reporting to Strategic Suvarṇa (a tracker note) what differs from this prompt. Then bring the F-1 recommendation.

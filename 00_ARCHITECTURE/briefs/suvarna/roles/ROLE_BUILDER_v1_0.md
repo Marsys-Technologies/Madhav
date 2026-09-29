@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_BUILDER
 canonical_id: SUVARNA_ROLE_BUILDER
-version: "1.2.1"
-status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
+version: "1.3"
+status: "PRE-FINAL v1.5 — for the parallel independent reviews (GPT-6 Astra, Kimi K3; N-30); then reconciled by Strategic Suvarṇa into the final set; then N-1"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.3 (2026-09-30, plan set v1.5 pre-final): migrations in 1200–1299 (N-27 decided); applied by the deploy pipeline after the swarm identity merges the landing PR through the merge gate, replacing 'after the native merges' (N-25b, N-38); a destructive migration needs an SS decision with rebuild plan, serving guard and recorded fingerprint/counts, not native approval (N-29, N-33). New sanctioned Track E packet: F-3 per N-32 (drop the eight FKs into bodha_msr_signals; non-refusing assert_l2_msr_delete_safe; F3.FK, F3.GUARD, F3.PROOF). E7.1 grant tests extended to the global-L0 build grant (N-31)."
   - "1.2.1 (2026-09-30, review pass 3; REVIEW_PASS3_DISPOSITION_v1_0.md): migrations only in the N-27 Suvarṇa range and only after the deny-list amendment (E0.1) is on main; never around the deny."
   - "1.2 (2026-09-29, review pass 2): lane base is always suvarna/trunk; the #2736 split is built fresh, the engine commits cherry-picked; landing branches from origin/main; the bo_upaya test path pinned."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): step 4 migration numbers per arch §12.5 (fresh origin/main and open-PR sweep, maximum across both migration folders and the other campaigns' reserved ranges, placeholder committed and pushed on the lane branch, never main, never reused); the 'no reserved migration range' stop condition dropped (Suvarṇa has none, by design). Lane base branches per arch §12.2. bo_upaya: fix per its handoff, merged and tested on fixtures, no live rebuild before its wave (B.U). Sanctioned Track E packets extended to E5–E7 per the Track E brief; E7.1 (auth) needs a security review. Stage brief replaced by track and asset briefs. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C22; S3, S27 residuals); D1."
@@ -48,8 +49,8 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
      pin `fact_key` with a total `ORDER BY` (§N.7). No wrapper constant shadowing an L1 value. Honest null, never an
      invented default (§N.7, P8). Verification tiers via `brahmagyan/verification_vocab.py` constants (§N.4).
    - **Registry rows** carry a correct chart-scoped `count_sql` (§N.4 cockpit truth).
-4. **Migrations** (G4, §N.4, arch §12.5): surgical and single-purpose, **only in the Suvarṇa range** (1200–1299 once N-27
-   is decided) and **only after its deny-list amendment is on `main`** (plan item E0.1). Until then main's
+4. **Migrations** (G4, §N.4, arch §12.5): surgical and single-purpose, **only in the Suvarṇa range** (1200–1299, N-27)
+   and **only after its deny-list amendment is on `main`** (plan item E0.1). Until then main's
    `.claude/settings.json` denies the edit: stop and hand back `blocked` ("waiting for E0.1"); never write the file in
    `platform/supabase/migrations/` or by another route to step around the deny (P13). **Reserve one number at the moment
    you need it:** `git fetch -q origin main` and sweep open PRs (`gh pr list --state open --json files`); take the next
@@ -58,8 +59,9 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
    your lane branch** and push the lane branch at once (never `main`, P9; never a number already used). Emit
    `EMIT note --actor builder --detail "[<qid>] MIGRATION RESERVED <n>"` so the Conductor records it in the queue line
    and on the coordination branch. Never edit a migration that has been applied (P4): write a new one. Never apply it
-   yourself: the deploy pipeline applies it after the native merges (R7, P3). No drop, truncate or row deletion by
-   migration (R3).
+   yourself: the deploy pipeline applies it after the swarm identity merges the landing PR through the merge gate
+   (N-25b, N-38; P3). No drop, truncate or row deletion by migration (R3) unless Strategic Suvarṇa has recorded a
+   decision for it with its rebuild plan, serving guard and recorded pre-op fingerprint/counts (N-29, N-33).
 5. **Make the test pass**, then **record a mutation run**: break the change on purpose (revert a line, flip a
    condition), show the test fails, restore. Save it as `$SUVARNA_HOME/evidence/<qid>/mutation_run.txt`.
 6. **Run the checks** the touched code has (unit tests, type check, lint) and save the output in the evidence folder.
@@ -73,14 +75,20 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
   `campaign/nikasha-test`, read-only) (G5, N-6). The fix and its source-order test (`platform/python-sidecar/tests/l2/test_bo_upaya_source_order.py`) are merged and tested on fixtures (E4.2); **no live rebuild before J1**: its live proof
   comes in its own L2 wave (B.U).
 - PR #2736's split into code and evidence PRs to `main`, built as fresh branches from `suvarna/trunk` (never by retargeting #2736), with the inspector's tests added to CI (G6, N-3). The build engine's 10 commits are cherry-picked with `-x`; nothing is branched from a source branch.
-- E5 execution tooling, E6 gate detectors, E7.1 the dispatch-only `build` grant (auth code: its PR needs a security
-  review, and tests proving a `build` grantee is refused `clear_before`, the clear routes, `layer=brahmagyan` and every
-  other chart).
+- E5 execution tooling, E6 gate detectors, E7.1 the dispatch-only `build` grant on the canonical chart and the
+  server-enforced global-L0 build grant (N-31: asset list ⊆ active L0 assets, never `clear_before`, never L1+, never a
+  family input; not `super_admin`) (auth code: its PR needs a security review, and tests proving a grantee is refused
+  `clear_before`, the clear routes, every other chart, and any L0 run outside that grant).
+- **F-3 (N-32), Track E, in the Suvarṇa range:** `ALTER TABLE … DROP CONSTRAINT` for all eight FKs into
+  `bodha_msr_signals` (target `no_fk`); `CREATE OR REPLACE FUNCTION assert_l2_msr_delete_safe` without the refusal
+  branch, keeping its admitted-asset-context check and recording referencing-row counts as build evidence. Acceptance
+  F3.FK, F3.GUARD and F3.PROOF (on the rehearsal database). Coordinated by lease or notification with whoever owns
+  Saṅgam, and by lease note with the `kala_convergence` owner.
 
 ## Outputs and where they go
 
 - Commits on your lane branch (from `suvarna/trunk`); the Conductor merges accepted work into `suvarna/trunk` (G10) and
-  into the landing branch cut from `origin/main` for its PR (G11).
+  into the landing branch cut from `origin/main` for its PR (G11), which it merges only through the merge gate (N-38).
 - Evidence in `$SUVARNA_HOME/evidence/<qid>/`: `test_fails_before.txt`, `mutation_run.txt`, check outputs, a short
   `CHANGE.md` (what changed, which gate or gap row it answers, commit SHAs, any migration number reserved).
 
@@ -94,7 +102,7 @@ tooling, gate detectors, build identity) or "Exec Suvarṇa" (Track I: fixes).
 ## Authority
 
 - **Act under:** G4 (implement within the brief), G5 (`bo_upaya`), G6 (PR #2736 split), G2 (effort per arch §3.1).
-- **Park through the Steward:** R2, R3, R5, R8, R9, R11.
+- **Park to Strategic Suvarṇa through the Steward:** R2, R3, R5, R8, R9, R11.
 - **Refuse:** P3, P4, P5, P8, P9.
 
 ## Stop conditions

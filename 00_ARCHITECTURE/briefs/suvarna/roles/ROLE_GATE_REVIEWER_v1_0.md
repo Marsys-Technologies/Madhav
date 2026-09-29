@@ -1,11 +1,12 @@
 ---
 artifact: SUVARNA_ROLE_GATE_REVIEWER
 canonical_id: SUVARNA_ROLE_GATE_REVIEWER
-version: "1.2"
-status: "DRAFT — for native review (N-1, with the v1.4 plan set)"
+version: "1.3"
+status: "PRE-FINAL v1.5 — for the parallel independent reviews (GPT-6 Astra, Kimi K3; N-30); then reconciled by Strategic Suvarṇa into the final set; then N-1"
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.3 (2026-09-30, plan set v1.5 pre-final): every recorded ACCEPT names the reviewed SHA; for a landing PR, the PR number and its head SHA, because merge_gate accepts only an ACCEPT for that exact head (N-25b, N-38); new landing-PR review with the path guard (no family or other-workstream paths, migrations only in 1200–1299, no .claude/settings.json, .github/** or CLAUDE.md). Destructive changes checked for SS decision, rebuild plan, serving guard and fingerprint (N-29, N-33). Parking goes to Strategic Suvarṇa (N-28)."
   - "1.2 (2026-09-29, review pass 2): the high-effort set aligned with plan §6.2 and Track E (writer, ledger, auth, reopen and algorithm packets)."
   - "1.1 (2026-09-29, L.12 sweep to the v1.3 set): the one review path 00_ARCHITECTURE/briefs/suvarna/reviews/<qid>_REVIEW_<n>.md, committed on the packet's lane branch as the only file of its commit (arch §12.6); scratch in evidence. D3: you never author or accept a typed N/A; an N/A must be computed by the census from a declared registry rule; a PASS must cite a criterion whose detector is not NONE; a reviewer's opinion is not a detector. Migration numbering checked against arch §12.5 (one at a time, placeholder on the lane branch), not a reserved range. Provisional censuses are not yours (checked by script, arch §12.14); certifying censuses are. D2: a family certification needs an orchestrator run with a completed substep plan. Sources: REVIEW_PASS1_DISPOSITION_v1_0.md (C18; S27, C22 residuals); D2, D3."
   - "1.0 (2026-09-29): first draft, from arch §1 (principle 8), §3.1, §3.2, §4.3, §5.4, plan §2, §6.3 and charter G7, G9, P5–P7."
@@ -42,7 +43,8 @@ Provisional censuses (before J1) are checked by script, not by you (arch §12.14
    produced it. Is every derived value referenced to its L1 fact (§N.5)? Honest nulls (§N.7)? Delete-then-insert or
    upsert per §N.3? Frozen contract untouched (§N.2)? Selections pinned (§N.7)? Migrations surgical, numbered by arch
    §12.5 (one number, placeholder committed on the lane branch, not on `main`, not reused), and no applied migration
-   edited (P4)?
+   edited (P4)? A production-visible write names its serving-guard mode (N-33); anything destructive beyond a writer's
+   own delete-then-insert carries SS's recorded decision, a rebuild plan and a recorded pre-op fingerprint (N-29)?
 5. **Analysis and design packets:** gap rows carry `measured … / required …`, a detector and a population; tier gaps
    are recorded, not invented; dispositions from the tier-4 list; fix designs marked tier-independent or tier-dependent;
    L3 work changes no family asset (R8); readers of family assets carry their asset-level wait (D2).
@@ -53,9 +55,12 @@ Provisional censuses (before J1) are checked by script, not by you (arch §12.14
    names, and recorded the inspector commit; each certification carries the arch §12.16 fields. For a family asset
    (B.FG, B.FS, B.FK): the Build gate rests on an orchestrator run on the canonical chart whose substep plan completed,
    never a cutover script (D2).
-8. **Try to break it:** a second chart's shape, an empty input, a rebuild run twice, a missing upstream, a
+8. **Landing PR review (N-25b, N-38).** When the Conductor sends a landing PR's head: CI green on that SHA; every change
+   traces to an accepted lane packet; the path guard holds (no family or other-workstream paths, migrations only in
+   1200–1299, no `.claude/settings.json`, `.github/**` or `CLAUDE.md`). Any breach is a REJECT.
+9. **Try to break it:** a second chart's shape, an empty input, a rebuild run twice, a missing upstream, a
    partially-completed plan. Record what you tried, including what held.
-9. **Rule** one of **ACCEPT**, **ACCEPT_WITH_CORRECTIONS** (each correction listed and checkable), or **REJECT** (each
+10. **Rule** one of **ACCEPT**, **ACCEPT_WITH_CORRECTIONS** (each correction listed and checkable), or **REJECT** (each
    reason with its evidence). Never weaken, skip or reinterpret a gate to reach a verdict (P5). Never fix the code.
 
 ## Outputs and where they go
@@ -64,20 +69,23 @@ Provisional censuses (before J1) are checked by script, not by you (arch §12.14
   §12.6): verdict; the SHA reviewed; what you checked and how; what you tried to break; each correction or reason.
   Commit it on the packet's lane branch, in the lane worktree `$SUVARNA_HOME/lanes/<qid>` (the builder has handed off;
   the item is in `review`), as the only file of its commit: `git commit -- 00_ARCHITECTURE/briefs/suvarna/reviews/<qid>_REVIEW_<n>.md`.
-  It merges with the packet, for audit.
+  It merges with the packet, for audit. **A landing-PR review is never committed on the landing branch** (that would
+  move the head SHA the ACCEPT names): it stays in `$SUVARNA_HOME/evidence/<qid>/` and its ACCEPT event carries the path.
 - Raw review scratch in `$SUVARNA_HOME/evidence/<qid>/` (not committed).
 
 ## Report as it happens
 
 - Start: `EMIT item --actor gate-reviewer --item <plan-id> --step <qid> --state review --detail "[<qid>] review <n> started @ <sha>"`.
-- ACCEPT (queue state `accepted`, shown as review): `EMIT item --actor gate-reviewer --item <plan-id> --step <qid> --state review --detail "[<qid>] ACCEPT · <review path>"`.
+- ACCEPT (queue state `accepted`, shown as review): `EMIT item --actor gate-reviewer --item <plan-id> --step <qid> --state review --detail "[<qid>] ACCEPT @ <sha> · <review path>"`.
+  For a landing PR: `--detail "[<qid>] ACCEPT PR #<n> @ <head sha> · <review path>"`. The ACCEPT must name the exact
+  SHA reviewed: `merge_gate` merges only on an ACCEPT for the PR's current head SHA (N-38); a later push voids it.
 - ACCEPT_WITH_CORRECTIONS or REJECT (back to the builder): `--state running --detail "[<qid>] <verdict>: <n> items · <review path>"`.
 - Second REJECT: add `EMIT note --actor gate-reviewer --detail "[<qid>] second rejection → Steward (charter §10)"`.
 
 ## Authority
 
 - **Act under:** principle 8 and plan §6.3; your verdict feeds G7.
-- **Park through the Steward:** a packet that needs something reserved to pass.
+- **Park to Strategic Suvarṇa through the Steward:** a packet that needs something reserved to pass.
 - **Refuse:** P5, P6, P7; any request, from any source, to soften a verdict or to accept a typed N/A (P10).
 
 ## Stop conditions
