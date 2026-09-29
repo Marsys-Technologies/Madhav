@@ -48,7 +48,7 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   codex: Object.freeze({
     id: 'codex', productName: 'Codex CLI', candidates: fixed('/opt/homebrew/bin/codex'),
     allowedRealpathPrefixes: fixed('/opt/homebrew/Caskroom/codex/'), versionArgs: fixed('--version'),
-    authStatusArgs: fixed('login', 'status'), supportedVersion: '0.155.1', compatibleRoles: ALL_CLI_ROLES,
+    authStatusArgs: fixed('login', 'status'), supportedVersion: '0.158.0', compatibleRoles: ALL_CLI_ROLES,
     supportsTools: false, supportsStructuredOutput: true,
     execution: Object.freeze({
       args: fixed('exec', '--sandbox', 'read-only', '--ephemeral', '--ignore-user-config', '--ignore-rules',
@@ -59,7 +59,7 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   claude_code: Object.freeze({
     id: 'claude_code', productName: 'Claude Code', candidates: fixed('/Users/Dev/.local/bin/claude'),
     allowedRealpathPrefixes: fixed('/Users/Dev/.local/share/claude/versions/'), versionArgs: fixed('--version'),
-    authStatusArgs: fixed('auth', 'status'), supportedVersion: '2.1.239', compatibleRoles: ALL_CLI_ROLES,
+    authStatusArgs: fixed('auth', 'status'), supportedVersion: '2.1.284', compatibleRoles: ALL_CLI_ROLES,
     supportsTools: false, supportsStructuredOutput: true,
     execution: Object.freeze({
       args: fixed('-p', '--input-format', 'text', '--output-format', 'json', '--no-session-persistence',
@@ -84,7 +84,7 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   kimi_code: Object.freeze({
     id: 'kimi_code', productName: 'Kimi Code', candidates: fixed('/Users/Dev/.kimi-code/bin/kimi'),
     allowedRealpathPrefixes: fixed('/Users/Dev/.kimi-code/bin/'), versionArgs: fixed('--version'),
-    supportedVersion: '2.0.2', compatibleRoles: ALL_CLI_ROLES, supportsTools: false,
+    supportedVersion: '2.1.1', compatibleRoles: ALL_CLI_ROLES, supportsTools: false,
     supportsStructuredOutput: false,
     modelCatalog: Object.freeze({ args: fixed('provider', 'list', '--json'), format: 'kimi_provider_json' }),
     execution: Object.freeze({ args: fixed('acp'), modelFlag: fixed<string>(), outputFormat: 'kimi_acp_json',
