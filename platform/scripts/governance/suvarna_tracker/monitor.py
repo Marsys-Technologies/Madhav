@@ -1,13 +1,14 @@
 """Suvarṇa Monitor — the environment checker for the autonomous campaign.
 
-    python -m suvarna_tracker.monitor [--once | --watch SECONDS] [--emit] [--repair] [--json]
+    python -m suvarna_tracker.monitor [--once | --watch SECONDS] [--emit] [--repair] [--notify] [--json]
 
-Eight checks decide whether the environment the campaign runs in is sound: the DB proxy port, the
+Nine checks decide whether the environment the campaign runs in is sound: the DB proxy port, the
 read-only credential file's permissions, whether the credential can actually write (review #16 —
 permissions alone don't prove the DB role itself is read-only), the laptop's power state, whether
-sleep is prevented, the hold switch, free disk space, and the tracker's own health endpoint. Each
-returns ``ok`` / ``warn`` / ``block``; the overall status is the worst of the eight, and the process
-exit code mirrors it (0 / 1 / 2) so this doubles as a CI-style gate.
+sleep is prevented, the hold switch, free disk space, the tracker's own health endpoint, and (L.15)
+whether either interim runtime session's Conductor is still heartbeating. Each returns ``ok`` /
+``warn`` / ``block``; the overall status is the worst of the nine, and the process exit code mirrors
+it (0 / 1 / 2) so this doubles as a CI-style gate.
 
 Design rules:
 - **Never fabricate a pass.** A check that cannot measure reports ``warn`` with the reason, never
@@ -20,10 +21,14 @@ Design rules:
 - **Injectable everything that touches the outside world.** ``Config`` carries the port numbers, the
   paths, and every subprocess/HTTP/disk helper as fields with real defaults, so tests can swap in
   fakes without any real network call beyond 127.0.0.1 and without spawning any real process.
+- **A failed or blocked notification never fails the monitor.** ``--notify`` shares ``--emit``'s own
+  change-dedupe (``monitor_state.json``'s ``non_ok`` field) so a native watching the Mac's notification
+  centre sees exactly one alert per state change, not one every ``--watch`` tick.
 """
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import fnmatch
 import json
 import os
@@ -54,8 +59,14 @@ from suvarna_tracker.events import append, now_iso  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-CHECK_NAMES = ("db_proxy", "credential", "credential_readonly", "power", "sleep_prevented", "hold", "disk", "tracker")
+CHECK_NAMES = ("db_proxy", "credential", "credential_readonly", "power", "sleep_prevented", "hold", "disk",
+               "tracker", "conductor_heartbeat")
 STATUS_RANK = {"ok": 0, "warn": 1, "block": 2}
+
+# L.15: default staleness threshold for the conductor_heartbeat check (arch §5.1's heartbeat-per-pass
+# contract; three missed loop intervals is the watchdog's own relaunch threshold, arch §5.5 — a wider
+# default here means this check warns before the watchdog would act, never after).
+DEFAULT_CONDUCTOR_STALE_MIN = 45
 
 
 # --------------------------------------------------------------------------------------------
@@ -104,6 +115,22 @@ def _default_credential_query_fn(pgenv: str, sql: str, timeout: int = 10) -> tup
     return p.returncode, p.stdout, p.stderr
 
 
+_APPLESCRIPT_MAX_LEN = 200
+
+
+def _default_notify(summary: str) -> None:
+    """Fire a macOS notification via ``osascript``. Escapes backslash-then-quote (that order matters:
+    escaping quotes first would double-escape the backslashes just inserted) so a check detail can
+    never break out of the AppleScript string literal, truncates to a sane length, and never raises —
+    a notification is a convenience, never a reason to fail the monitor."""
+    safe = (summary or "").replace("\\", "\\\\").replace('"', '\\"')[:_APPLESCRIPT_MAX_LEN]
+    script = f'display notification "{safe}" with title "Suvarṇa Monitor"'
+    try:
+        subprocess.run(["osascript", "-e", script], timeout=5, capture_output=True)
+    except Exception:  # noqa: BLE001 — a failed notification must never fail the monitor
+        pass
+
+
 def _default_disk_free_bytes(path: str) -> float:
     p = os.path.abspath(path)
     while not os.path.exists(p):
@@ -141,6 +168,9 @@ class Config:
     credential_query_fn: Callable[[str, str, int], tuple[int, str, str]] | None = None
     # None = read SUVARNA_READER_SECDEF_ALLOW at check time; tests pass an explicit frozenset.
     secdef_allowlist: frozenset[str] | None = None
+    conductor_stale_min: int = DEFAULT_CONDUCTOR_STALE_MIN
+    now_fn: Callable[[], "dt.datetime"] | None = None
+    notify_fn: Callable[[str], None] | None = None
 
     def __post_init__(self) -> None:
         self.run_dir = self.run_dir or os.path.join(self.home, "run")
@@ -154,6 +184,8 @@ class Config:
         self.launch_fn = self.launch_fn or _default_launch
         self.disk_free_fn = self.disk_free_fn or _default_disk_free_bytes
         self.credential_query_fn = self.credential_query_fn or _default_credential_query_fn
+        self.now_fn = self.now_fn or (lambda: dt.datetime.now(dt.timezone.utc))
+        self.notify_fn = self.notify_fn or _default_notify
 
     @property
     def tracker_stop_path(self) -> str:
@@ -168,6 +200,7 @@ def default_config() -> Config:
         db_port=int(os.environ.get("SUVARNA_DB_PORT", "5433")),
         tracker_port=int(os.environ.get("SUVARNA_TRACKER_PORT", "8765")),
         events_path=os.environ.get("SUVARNA_EVENTS", os.path.join(home, "run", "EVENTS.jsonl")),
+        conductor_stale_min=int(os.environ.get("SUVARNA_CONDUCTOR_STALE_MIN", str(DEFAULT_CONDUCTOR_STALE_MIN))),
     )
 
 
@@ -569,6 +602,59 @@ def check_tracker(cfg: Config) -> CheckResult:
     return CheckResult("tracker", "warn", f"tracker unhealthy (status {status}, ok={data.get('ok')})")
 
 
+def _latest_conductor_heartbeat_ts(events_path: str) -> str | None:
+    """The ``ts`` of the newest ``kind: heartbeat, actor: conductor`` line in the event log, or
+    ``None`` if none has ever been written. Tolerant of a missing file and of malformed lines
+    (skipped, never fatal) — mirrors events.EventLog's own tolerance, but a single forward scan is
+    enough here since this check only ever needs the single newest timestamp."""
+    latest: str | None = None
+    try:
+        with open(events_path, encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(ev, dict):
+                    continue
+                if ev.get("kind") == "heartbeat" and ev.get("actor") == "conductor":
+                    ts = ev.get("ts")
+                    if isinstance(ts, str) and (latest is None or ts > latest):
+                        latest = ts
+    except FileNotFoundError:
+        pass
+    return latest
+
+
+def check_conductor_heartbeat(cfg: Config) -> CheckResult:
+    """L.15: is either interim runtime session's Conductor still emitting its per-pass heartbeat
+    (arch §5.1)? ``ok`` with "no conductor yet" before the swarm has ever run — that is a fact about
+    campaign phase, not an environment failure, so it must never read as a problem. Otherwise ``warn``
+    once the newest heartbeat is older than ``conductor_stale_min`` (default 45) minutes; never
+    ``block`` — a stale Conductor is the watchdog's job (arch §5.5, charter G15), not a dispatch
+    gate, and this check only needs to make the staleness visible on the dashboard and in a
+    notification (--notify)."""
+    name = "conductor_heartbeat"
+    ts = _latest_conductor_heartbeat_ts(cfg.events_path)
+    if ts is None:
+        return CheckResult(name, "ok", "no conductor yet")
+    try:
+        seen = dt.datetime.fromisoformat(ts)
+    except ValueError:
+        return CheckResult(name, "warn", f"latest conductor heartbeat has an unparseable timestamp ({ts!r})")
+    if seen.tzinfo is None:
+        seen = seen.replace(tzinfo=dt.timezone.utc)
+    now = cfg.now_fn() if cfg.now_fn else dt.datetime.now(dt.timezone.utc)
+    age_min = (now - seen).total_seconds() / 60.0
+    if age_min > cfg.conductor_stale_min:
+        return CheckResult(name, "warn",
+                            f"latest conductor heartbeat is {age_min:.0f} min old (over {cfg.conductor_stale_min})")
+    return CheckResult(name, "ok", f"latest conductor heartbeat is {age_min:.0f} min old")
+
+
 _CHECK_FNS: dict[str, Callable[[Config], CheckResult]] = {
     "db_proxy": check_db_proxy,
     "credential": check_credential,
@@ -578,6 +664,7 @@ _CHECK_FNS: dict[str, Callable[[Config], CheckResult]] = {
     "hold": check_hold,
     "disk": check_disk,
     "tracker": check_tracker,
+    "conductor_heartbeat": check_conductor_heartbeat,
 }
 
 
@@ -679,6 +766,7 @@ _SHORT = {
     ("hold", "block"): "on",
     ("disk", "block"): "critical", ("disk", "warn"): "low",
     ("tracker", "warn"): "unreachable",
+    ("conductor_heartbeat", "warn"): "stale",
 }
 
 
@@ -707,10 +795,20 @@ def _save_state(cfg: Config, state: dict) -> None:
     os.replace(tmp, cfg.state_path)  # atomic
 
 
-def emit(cfg: Config, results: list[CheckResult], overall: str, repairs: list[str]) -> list[str]:
+def _non_ok_names(results: list[CheckResult]) -> list[str]:
+    return sorted(r.name for r in results if r.status != "ok")
+
+
+def emit(cfg: Config, results: list[CheckResult], overall: str, repairs: list[str],
+         changed: bool | None = None) -> list[str]:
     """Append a heartbeat every call, plus a note when the non-ok set changed since the last run
     (dedupe via monitor_state.json) and one note per repair action taken. Never raises — every
-    failure is caught and returned as a string in the result."""
+    failure is caught and returned as a string in the result.
+
+    ``changed``, when given, is used instead of re-deriving it from state: ``run_once`` computes it
+    once so ``--emit`` and ``--notify`` agree on the same answer and the state is saved exactly once
+    per run. ``None`` (the default; every direct caller before --notify existed) recomputes it here,
+    unchanged from the original behaviour."""
     errors: list[str] = []
     summary = _summary_line(overall, results)
 
@@ -722,9 +820,11 @@ def emit(cfg: Config, results: list[CheckResult], overall: str, repairs: list[st
 
     _append({"kind": "heartbeat", "actor": "monitor", "detail": summary}, "heartbeat")
 
-    non_ok = sorted(r.name for r in results if r.status != "ok")
-    prev = _load_state(cfg)
-    if prev.get("non_ok") != non_ok:
+    non_ok = _non_ok_names(results)
+    if changed is None:
+        prev = _load_state(cfg)
+        changed = prev.get("non_ok") != non_ok
+    if changed:
         _append({"kind": "note", "actor": "monitor", "detail": summary}, "note")
 
     for action in repairs:
@@ -737,22 +837,56 @@ def emit(cfg: Config, results: list[CheckResult], overall: str, repairs: list[st
     return errors
 
 
+def notify_on_change(cfg: Config, results: list[CheckResult], overall: str, changed: bool) -> None:
+    """Fire exactly one macOS notification per state change (the same ``changed`` --emit computes),
+    via ``cfg.notify_fn`` (real default: ``osascript``). Never raises."""
+    if not changed:
+        return
+    try:
+        cfg.notify_fn(_summary_line(overall, results))
+    except Exception:  # noqa: BLE001 — a failed notification must never fail the monitor
+        pass
+
+
 # --------------------------------------------------------------------------------------------
 # One run, printing, CLI
 # --------------------------------------------------------------------------------------------
 
-def run_once(cfg: Config, emit_flag: bool = False, repair_flag: bool = False) -> dict:
+def run_once(cfg: Config, emit_flag: bool = False, repair_flag: bool = False, notify_flag: bool = False) -> dict:
     results = run_checks(cfg)
     by_name = {r.name: r for r in results}
     repairs = repair(cfg, by_name) if repair_flag else []
     overall = overall_status(results)
-    emit_errors = emit(cfg, results, overall, repairs) if emit_flag else []
+
+    # Computed once so --emit and --notify agree on the same "did the non-ok set change" answer
+    # and monitor_state.json is saved exactly once per run, whichever flags are active.
+    changed = None
+    if emit_flag or notify_flag:
+        non_ok = _non_ok_names(results)
+        changed = _load_state(cfg).get("non_ok") != non_ok
+
+    emit_errors: list[str] = []
+    if emit_flag:
+        emit_errors = emit(cfg, results, overall, repairs, changed=changed)
+    elif notify_flag:
+        # --notify alone still needs the state saved, so its own dedupe persists across runs.
+        try:
+            _save_state(cfg, {"non_ok": _non_ok_names(results), "at": now_iso()})
+        except Exception as exc:  # noqa: BLE001
+            emit_errors.append(f"state save failed: {type(exc).__name__}: {exc}")
+
+    notified = False
+    if notify_flag and changed:
+        notify_on_change(cfg, results, overall, changed)
+        notified = True
+
     return {
         "generated_at": now_iso(),
         "overall": overall,
         "checks": [r.to_dict() for r in results],
         "repairs": repairs,
         "emit_errors": emit_errors,
+        "notified": notified,
     }
 
 
@@ -777,7 +911,8 @@ def _print(report: dict, as_json: bool) -> None:
         _print_human(report)
 
 
-def watch(cfg: Config, seconds: int, emit_flag: bool, repair_flag: bool, as_json: bool) -> None:
+def watch(cfg: Config, seconds: int, emit_flag: bool, repair_flag: bool, as_json: bool,
+          notify_flag: bool = False) -> None:
     interval = max(15, seconds)
     stop_event = threading.Event()
 
@@ -787,7 +922,7 @@ def watch(cfg: Config, seconds: int, emit_flag: bool, repair_flag: bool, as_json
     prev_handler = signal.signal(signal.SIGTERM, _on_term)
     try:
         while not stop_event.is_set():
-            report = run_once(cfg, emit_flag=emit_flag, repair_flag=repair_flag)
+            report = run_once(cfg, emit_flag=emit_flag, repair_flag=repair_flag, notify_flag=notify_flag)
             _print(report, as_json)
             stop_event.wait(interval)
     except KeyboardInterrupt:
@@ -803,6 +938,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     mode.add_argument("--watch", type=int, metavar="SECONDS", help="loop, re-checking every SECONDS (minimum 15)")
     ap.add_argument("--emit", action="store_true", help="append a heartbeat (and note on change) to the event log")
     ap.add_argument("--repair", action="store_true", help="conservatively try to fix what can be fixed unattended")
+    ap.add_argument("--notify", action="store_true",
+                    help="send a macOS notification (osascript) on a change of the non-ok set "
+                         "(shares --emit's dedupe state)")
     ap.add_argument("--json", action="store_true", help="print the full report as JSON")
     return ap
 
@@ -811,9 +949,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     cfg = default_config()
     if args.watch:
-        watch(cfg, args.watch, args.emit, args.repair, args.json)
+        watch(cfg, args.watch, args.emit, args.repair, args.json, notify_flag=args.notify)
         return 0
-    report = run_once(cfg, emit_flag=args.emit, repair_flag=args.repair)
+    report = run_once(cfg, emit_flag=args.emit, repair_flag=args.repair, notify_flag=args.notify)
     _print(report, args.json)
     return exit_code(report["overall"])
 

@@ -1,0 +1,92 @@
+{
+  "_meta": {
+    "generated_by": "suvarna_tracker.runtime_settings (L.15 interim runtime safeguards)",
+    "purpose": "Local, uncommitted permission allowlist for the two Suvarna execution sessions run unattended in /Users/Dev/suvarna/hq (Claude Code v2.1.239, --permission-mode dontAsk). Never committed: this file is .claude/settings.local.json, not .claude/settings.json.",
+    "findings_v2_1_239": [
+      "permissions.allow/deny path rules for file tools only match on the canonical form Read(<glob>) or Edit(<glob>); Read(<glob>) governs Read/Glob/Grep/NotebookRead together, and Edit(<glob>) governs Edit/Write/MultiEdit/NotebookEdit together (confirmed via `claude --debug`: Write(<glob>), Glob(<glob>), MultiEdit(<glob>) and NotebookEdit(<glob>) are all logged as dead rules, 'not matched by file permission checks'). This template therefore never writes a Write(...) or Glob(...) path rule -- it would silently grant nothing.",
+      "Bash(<prefix> *) matches a Bash command by prefix, with the space before '*' significant (Bash(git status*) is a different, looser match than Bash(git status *)); a chained command (a && b) appears to require each segment to independently match an allow rule.",
+      "permissions.disableBypassPermissionsMode is included per the L.15 brief but its effect could NOT be confirmed in this install: no lint/validation message appeared for it, but the settings loader also does not warn on entirely invented keys (checked with a nonsense key), so absence of a warning is not confirmation. The real enforcement in this template is structural: defaultMode is 'dontAsk' (never 'bypassPermissions'), and the deny list separately refuses any Bash invocation that itself tries to pass --dangerously-skip-permissions or a bypassPermissions mode. See INTERIM_RUNTIME_v1_0.md for the full account."
+    ]
+  },
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "Read",
+      "Read(**)",
+      "Glob",
+      "Grep",
+      "Agent(*)",
+      "TodoWrite",
+      "Edit(/Users/Dev/suvarna/lanes/**)",
+      "Edit(/Users/Dev/suvarna/evidence/**)",
+      "Edit(/Users/Dev/suvarna/hq/00_ARCHITECTURE/control/suvarna/state/**)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git rev-parse *)",
+      "Bash(git remote *)",
+      "Bash(git tag *)",
+      "Bash(git ls-files *)",
+      "Bash(git ls-remote *)",
+      "Bash(git rev-list *)",
+      "Bash(git blame *)",
+      "Bash(git worktree list*)",
+      "Bash(git worktree add *)",
+      "Bash(git worktree remove *)",
+      "Bash(git commit -- *)",
+      "Bash(git fetch *)",
+      "Bash(git merge --no-edit *)",
+      "Bash(git push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr checks *)",
+      "Bash(python3 -m suvarna_tracker.* *)",
+      "Bash(python3 -m pytest *)",
+      "Bash(source ~/.config/suvarna/pgenv.sh)",
+      "Bash(psql *)",
+      "Bash(npx --no-install tsx *)"
+    ],
+    "deny": [
+      "Read(/Users/Dev/.config/**)",
+      "Edit(/Users/Dev/.config/**)",
+      "Read(/Users/Dev/.codex/**)",
+      "Edit(/Users/Dev/.codex/**)",
+      "Bash(cat ~/.config/*)",
+      "Bash(printenv*)",
+      "Bash(env)",
+      "Bash(set -x*)",
+      "Bash(git push * main*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git rebase*)",
+      "Bash(git commit --amend*)",
+      "Bash(git add -A*)",
+      "Bash(git add .*)",
+      "Bash(git stash*)",
+      "Bash(gh pr merge*)",
+      "Bash(gcloud *)",
+      "Bash(rm -rf *)",
+      "Bash(* --dangerously-skip-permissions*)",
+      "Bash(claude * bypassPermissions*)"
+    ],
+    "ask": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna python3 -m suvarna_tracker.hold_guard",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

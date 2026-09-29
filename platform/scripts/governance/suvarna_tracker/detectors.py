@@ -73,10 +73,53 @@ CERTS_REL_PATH = "00_ARCHITECTURE/control/asset_certs.jsonl"
 # self-check report (in the Nikaṣa root, alongside the register and ledgers it is measured
 # against). Until each lands, its detector(s) correctly read `pending` — "an expected input that
 # does not exist yet reads pending" (arch §11.7 rule).
-FAMILY_ASSETS_REL_PATH = "00_ARCHITECTURE/control/suvarna/FAMILY_ASSETS.json"
+#
+# Review pass 2 (consistency #7): the tracker's own hardcoded path disagreed with the plan model
+# and Track E brief's `00_ARCHITECTURE/control/FAMILY_ASSETS.json` (no `suvarna/` subdirectory),
+# so the wave/family detectors would never see the file once E6.3 actually landed it. The path is
+# now one configurable setting, `SUVARNA_FAMILY_ASSETS_PATH`, defaulting to the plan model/Track E
+# path — never a second hardcoded copy that can drift from it again.
+DEFAULT_FAMILY_ASSETS_REL_PATH = "00_ARCHITECTURE/control/FAMILY_ASSETS.json"
 REGISTRY_COVERAGE_REL_PATH = "00_ARCHITECTURE/control/registry_coverage_report.json"
 
+# Review pass 2 (consistency #6, substance): `NIKASHA_WITHHOLDING.json` (E5.2 fold script; ROLE_SCRIBE
+# §"current withholding list") — the committed record of which register rows are DEFERRED with a
+# withholding actually in force, read at the pinned Nikaṣa ref, same discipline as the register.
+DEFAULT_WITHHOLDING_REL_PATH = "00_ARCHITECTURE/control/NIKASHA_WITHHOLDING.json"
+
 PARAMS_NOT_SET = "detector parameters not set yet"
+
+
+def _family_assets_rel_path() -> str:
+    """`SUVARNA_FAMILY_ASSETS_PATH` overrides the default path (review #7) — a single configurable
+    constant instead of a second hardcoded copy that can drift from the plan model/Track E brief."""
+    return os.environ.get("SUVARNA_FAMILY_ASSETS_PATH") or DEFAULT_FAMILY_ASSETS_REL_PATH
+
+
+# Review pass 2 (consistency #6): the tracker called a bare `suvarna-build`, a PATH lookup that
+# fails since `run_tracker.sh` never adds `~/.config/suvarna/bin` to PATH, and passed a `--json`
+# flag no document specifies. `SUVARNA_BUILD_CMD` pins the full path (never a bare-name lookup);
+# the default matches every document that names it (ROLE_BUILD_OPERATOR, runbook, charter):
+# `~/.config/suvarna/bin/suvarna-build`, mode 700, provisioned by the native at E7.2.
+DEFAULT_SUVARNA_BUILD_CMD = os.path.expanduser("~/.config/suvarna/bin/suvarna-build")
+
+
+def _suvarna_build_cmd() -> str:
+    return os.environ.get("SUVARNA_BUILD_CMD") or DEFAULT_SUVARNA_BUILD_CMD
+
+
+# The build engine's own contract (Track E brief §1 E3.7, §5 E5.3, §8 E7): `suvarna-build
+# --preflight` prints `{job_image_tag, deployed_sha}` — no `--json` flag anywhere the brief names
+# it, and the serving key is `deployed_sha`, never `web_sha` (review #6).
+_TRAILING_SHA_RE = re.compile(r"([0-9a-f]{7,40})$")
+
+
+def _extract_trailing_sha(value: str) -> str | None:
+    """The commit SHA a job image tag is required to end with (charter §6 precondition 4: "a writer
+    change needs `job_image_tag` to end with the merged commit's SHA"). `None` when the tag's tail
+    is not hex — the caller reports that as `error`, never guesses a SHA out of an arbitrary tag."""
+    m = _TRAILING_SHA_RE.search((value or "").strip())
+    return m.group(1) if m else None
 
 
 def _nikasha_ref() -> str:
@@ -169,7 +212,8 @@ class Detectors:
            "prs_merged": 120, "main_has_files": 300, "scorecard_pass": 300,
            "migrations_applied": 60, "register_rows_state": 20, "register_freeze_clean": 20,
            "monitor_check_ok": 60, "deployed_contains": 600, "wave_deployed": 600,
-           "assets_elevated": 60, "registry_coverage": 300, "ledger_no_open_gap_on": 20}
+           "assets_elevated": 60, "registry_coverage": 300, "ledger_no_open_gap_on": 20,
+           "evidence_recent": 300}
 
     def __init__(self, cfg: Config, on_change=None):
         self.cfg = cfg
@@ -248,10 +292,26 @@ class Detectors:
         None (never raises) when the file is not on main yet — that is the expected pre-E6.3 state,
         and callers turn it into `pending`, not `error`."""
         self._fetch_main()
-        rc, out = _run(["git", "show", f"origin/main:{FAMILY_ASSETS_REL_PATH}"], cwd=self.cfg.repo, timeout=30)
+        rc, out = _run(["git", "show", f"origin/main:{_family_assets_rel_path()}"], cwd=self.cfg.repo, timeout=30)
         if rc != 0:
             return None
         return json.loads(out)
+
+    def _withholding_has_entry(self, path: str, entry: str) -> bool:
+        """Whether `entry` appears in the withholding list JSON, read at the pinned Nikaṣa ref (Fix
+        5 discipline — never the working tree). Returns `False` (never raises) when the file is
+        absent or malformed: an absent withholding list is not evidence a withholding is in force
+        (review pass 2, R244-deferred finding — a DEFERRED register row must not count on its own
+        say-so; the withholding it claims has to be independently verified present)."""
+        try:
+            data = json.loads(_git_show_text(self.cfg.nikasha_root, path))
+        except (RuntimeError, ValueError):
+            return False
+        if isinstance(data, list):
+            return entry in data
+        if isinstance(data, dict):
+            return entry in data or entry in (data.get("entries") or data.get("withheld") or [])
+        return False
 
     @staticmethod
     def _family_set_union(fam: dict, set_name: str | None = None) -> set[str]:
@@ -268,6 +328,66 @@ class Detectors:
             if k.startswith("family_") and isinstance(v, list):
                 out.update(v)
         return out
+
+    # -- PR pinning by head ref (review #9/consistency #9): `prs_merged` and `deployed_contains`
+    # resolve a lane's head ref (branch name) to its PR via `gh pr list`, in addition to accepting
+    # explicit PR numbers — so a spec can be written before a PR exists to number, per Track E §3.2.
+    def _resolved_pr_numbers(self, spec: dict) -> tuple[list[int], list[str]]:
+        """`spec['prs']` (explicit numbers) plus `spec['head_refs']` (branch names) resolved via
+        `gh pr list --state all --head <ref> --json number,state,mergedAt` (read-only). Returns
+        (numbers, unresolved_refs) — a head ref matching no PR yet is not an error (the lane may
+        simply not have opened its PR yet); it comes back in `unresolved_refs` so the caller reads
+        `pending`, never silently drops it and never reads `done` short of every head ref's own PR.
+        Raises RuntimeError only when the `gh` call itself fails (network/auth/rate-limit)."""
+        prs = list(spec.get("prs") or [])
+        unresolved: list[str] = []
+        for ref in spec.get("head_refs") or []:
+            rc, out = _run(["gh", "pr", "list", "--state", "all", "--head", ref,
+                            "--json", "number,state,mergedAt"], cwd=self.cfg.repo, timeout=60)
+            if rc != 0:
+                raise RuntimeError(f"gh pr list --head {ref}: {out.strip()[:160]}")
+            found = json.loads(out)
+            if not found:
+                unresolved.append(ref)
+                continue
+            found.sort(key=lambda d: (d.get("state") == "MERGED", d.get("number", 0)), reverse=True)
+            prs.append(found[0]["number"])
+        return prs, unresolved
+
+    # -- git ancestry (review #5/#7): "our commit is deployed" is never string equality or a
+    # substring test — other workstreams deploy to `main` too, so a tag/SHA that once matched can
+    # stop matching after any later, unrelated deploy even though the original commit is still very
+    # much live. The only test that stays true across every later deploy is ancestry.
+    def _fetch_commit(self, sha: str) -> None:
+        """Best-effort fetch of a single commit object by SHA (read-only), so an ancestry check can
+        run without a full clone. Never raises: if the remote refuses (some servers require
+        `uploadpack.allowReachableSHA1InWant`/`allowAnySHA1InWant`) or there is no such remote, the
+        caller's own existence re-check reports that failure — this is purely an attempt."""
+        rc, _ = _run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=self.cfg.repo, timeout=15)
+        if rc == 0:
+            return
+        _run(["git", "fetch", "-q", "origin", sha], cwd=self.cfg.repo, timeout=60)
+
+    def _is_ancestor(self, ancestor_sha: str, descendant_sha: str) -> bool:
+        """True iff `ancestor_sha` is reachable from `descendant_sha` — `git merge-base
+        --is-ancestor`, evaluated in `self.cfg.repo` after fetching either commit by SHA if it is
+        not already present locally (read-only). A commit is its own ancestor, so this also covers
+        the "equal to" case ROLE_BUILD_OPERATOR names for a serving deploy's `deployed_sha`. Raises
+        RuntimeError if either commit still cannot be resolved after the fetch attempt — the caller
+        reports `error`, never silently treats an unresolved commit as "not an ancestor"."""
+        for sha in (ancestor_sha, descendant_sha):
+            self._fetch_commit(sha)
+            rc, _ = _run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], cwd=self.cfg.repo, timeout=15)
+            if rc != 0:
+                raise RuntimeError(f"commit {sha[:12]} not resolvable locally (fetch attempted)")
+        rc, _ = _run(["git", "merge-base", "--is-ancestor", ancestor_sha, descendant_sha],
+                     cwd=self.cfg.repo, timeout=30)
+        return rc == 0
+
+    def _run_preflight(self) -> tuple[int, str]:
+        """`suvarna-build --preflight` via the pinned full path (review #6 — never a bare-name PATH
+        lookup, never `--json`: neither is in the Track E brief's own contract)."""
+        return _run([_suvarna_build_cmd(), "--preflight"], timeout=60)
 
     # -- detectors ----------------------------------------------------------------------------
     def d_pr_merged(self, spec):
@@ -391,8 +511,12 @@ class Detectors:
     # -- v1.3 additions (arch §11.7, built by L.13) --------------------------------------------
 
     def d_prs_merged(self, spec):
-        prs = spec.get("prs") or []
-        if not prs:
+        try:
+            prs, unresolved = self._resolved_pr_numbers(spec)
+        except RuntimeError as exc:
+            return DetectorResult("error", f"gh: {str(exc)[:200]}", now_iso(), "detector:prs_merged")
+        total = len(prs) + len(unresolved)
+        if total == 0:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:prs_merged")
         merged, open_, closed = [], [], []
         for pr in prs:
@@ -401,10 +525,12 @@ class Detectors:
                 return DetectorResult("error", f"gh: {out.strip()[:160]}", now_iso(), "detector:prs_merged")
             d = json.loads(out)
             (merged if d["state"] == "MERGED" else open_ if d["state"] == "OPEN" else closed).append(pr)
-        frac = len(merged) / len(prs)
-        if len(merged) == len(prs):
-            return DetectorResult("done", f"all {len(prs)} PRs merged", now_iso(), "detector:prs_merged", 1.0)
-        detail = f"{len(merged)}/{len(prs)} merged"
+        frac = len(merged) / total
+        if len(merged) == total and not unresolved:
+            return DetectorResult("done", f"all {total} PRs merged", now_iso(), "detector:prs_merged", 1.0)
+        detail = f"{len(merged)}/{total} merged"
+        if unresolved:
+            detail += f"; no PR yet for head ref(s): {', '.join(unresolved)}"
         if open_:
             detail += f"; open: {open_}"
         if closed:
@@ -469,6 +595,12 @@ class Detectors:
         return DetectorResult("running" if n_applied else "pending", detail, now_iso(), "detector:migrations_applied", n_applied / len(nums))
 
     def d_register_rows_state(self, spec):
+        """Review pass 2 (R244-deferred finding, substance #10/consistency #9): a row read as
+        DEFERRED is not, by itself, evidence that the withholding it claims is actually in force or
+        that the fix it defers to has landed — both are independently verifiable and, when the spec
+        pins them, are now verified before a DEFERRED row counts as satisfying `states`. Neither
+        `deferred_withholding_entry` nor `deferred_pr` is required: omit both and every DEFERRED row
+        counts exactly as before (this generic detector backs many items, not only the R244 one)."""
         rows, states = spec.get("rows") or [], spec.get("states") or []
         if not rows or not states:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:register_rows_state")
@@ -476,20 +608,64 @@ class Detectors:
         missing = [r for r in rows if r not in reg["rows"]]
         if missing:
             return DetectorResult("error", "rows not in register: " + ", ".join(missing), now_iso(), "detector:register_rows_state")
-        ok = [r for r in rows if reg["rows"][r]["state_class"] in states]
+
+        withholding_entry = spec.get("deferred_withholding_entry")
+        withholding_path = spec.get("deferred_withholding_path") or DEFAULT_WITHHOLDING_REL_PATH
+        deferred_pr = spec.get("deferred_pr")
+
+        ok, notes = [], []
+        for r in rows:
+            sc = reg["rows"][r]["state_class"]
+            if sc not in states:
+                continue
+            if sc != "DEFERRED":
+                ok.append(r)
+                continue
+            if withholding_entry and not self._withholding_has_entry(withholding_path, withholding_entry):
+                notes.append(f"{r}: DEFERRED but withholding entry '{withholding_entry}' not found at {withholding_path}")
+                continue
+            if deferred_pr is not None:
+                rc, out = _run(["gh", "pr", "view", str(deferred_pr), "--json", "state"], cwd=self.cfg.repo, timeout=60)
+                if rc != 0:
+                    notes.append(f"{r}: DEFERRED but its fix PR #{deferred_pr} could not be checked ({out.strip()[:100]})")
+                    continue
+                if json.loads(out).get("state") != "MERGED":
+                    notes.append(f"{r}: DEFERRED but its fix PR #{deferred_pr} is not merged")
+                    continue
+            ok.append(r)
+
         n = len(ok)
         if n == len(rows):
             return DetectorResult("done", f"all {len(rows)} rows in {states}", now_iso(), "detector:register_rows_state", 1.0)
         bad = [f"{r}={reg['rows'][r]['state_class']}" for r in rows if r not in ok]
         detail = f"{n}/{len(rows)} in {states}; not yet: {', '.join(bad)}"
+        if notes:
+            detail += "; " + "; ".join(notes)
         return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:register_rows_state", n / len(rows))
 
     def d_register_freeze_clean(self, spec):
+        """Review pass 2 (substance #10c): a register that fails to parse (a table-layout/format
+        change, an empty file, a bad ref) must never read `done` just because it happens to yield
+        zero BLOCKS_FREEZE rows — that is indistinguishable from "every blocker really is closed"
+        unless the register actually parsed at least some rows. Also names the ref/commit this
+        result is computed from, so "the register was actually read at the pinned ref" is an
+        auditable fact in the detail, not an assumption."""
         allow_deferred = set(spec.get("allow_deferred") or [])
+        ref = _nikasha_ref()
+        rc, ref_out = _run(["git", "-C", self.cfg.nikasha_root, "rev-parse", ref], timeout=15)
+        if rc != 0:
+            return DetectorResult("error", f"cannot resolve register ref {ref}: {ref_out.strip()[:160]}",
+                                  now_iso(), "detector:register_freeze_clean")
+        ref_sha = ref_out.strip()
         reg = parse_register(self._register_text())
+        if not reg["rows"]:
+            return DetectorResult("error", f"register at {ref} ({ref_sha[:12]}) parsed zero rows — cannot "
+                                           "distinguish 'no BLOCKS_FREEZE rows' from 'could not parse the "
+                                           "register' (a layout/format change)", now_iso(), "detector:register_freeze_clean")
         blockers = {rid: r for rid, r in reg["rows"].items() if r["severity"].strip().upper().startswith("BLOCKS_FREEZE")}
         if not blockers:
-            return DetectorResult("done", "no BLOCKS_FREEZE rows in the register", now_iso(), "detector:register_freeze_clean", 1.0)
+            return DetectorResult("done", f"no BLOCKS_FREEZE rows among {len(reg['rows'])} parsed rows "
+                                          f"(register {ref} at {ref_sha[:12]})", now_iso(), "detector:register_freeze_clean", 1.0)
         bad = []
         for rid, r in blockers.items():
             sc = r["state_class"]
@@ -500,8 +676,9 @@ class Detectors:
             bad.append(f"{rid}={sc}")
         n_ok = len(blockers) - len(bad)
         if not bad:
-            return DetectorResult("done", f"all {len(blockers)} BLOCKS_FREEZE rows closed", now_iso(), "detector:register_freeze_clean", 1.0)
-        detail = f"{n_ok}/{len(blockers)} BLOCKS_FREEZE rows clean; open: {', '.join(bad)}"
+            return DetectorResult("done", f"all {len(blockers)} BLOCKS_FREEZE rows closed (register {ref} at {ref_sha[:12]})",
+                                  now_iso(), "detector:register_freeze_clean", 1.0)
+        detail = f"{n_ok}/{len(blockers)} BLOCKS_FREEZE rows clean; open: {', '.join(bad)} (register {ref} at {ref_sha[:12]})"
         return DetectorResult("running" if n_ok else "pending", detail, now_iso(), "detector:register_freeze_clean", n_ok / len(blockers))
 
     def d_monitor_check_ok(self, spec):
@@ -525,9 +702,23 @@ class Detectors:
         return DetectorResult(status, f"{check}: {c['detail']}", now_iso(), "detector:monitor_check_ok")
 
     def d_deployed_contains(self, spec):
-        component, prs = spec.get("component") or "job", spec.get("prs") or []
-        if not prs:
+        """Review pass 2 (#5/#6/#7/#9): "contains" is git ancestry, never string equality or a
+        substring test (other workstreams deploy to `main` too, and a tag that once matched can
+        stop matching after any later, unrelated deploy). PRs may be pinned by number (`prs`) or by
+        head ref (`head_refs`, resolved via `gh pr list`). `suvarna-build` is invoked by its full
+        pinned path with no `--json` flag, and the serving key read is `deployed_sha`, never
+        `web_sha` — the Track E brief's own contract (§1 E3.7, §5 E5.3, §8 E7)."""
+        component = spec.get("component") or "job"
+        try:
+            prs, unresolved = self._resolved_pr_numbers(spec)
+        except RuntimeError as exc:
+            return DetectorResult("error", f"gh: {str(exc)[:200]}", now_iso(), "detector:deployed_contains")
+        total = len(prs) + len(unresolved)
+        if total == 0:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:deployed_contains")
+        if unresolved:
+            return DetectorResult("pending", f"no PR yet for head ref(s): {', '.join(unresolved)}",
+                                  now_iso(), "detector:deployed_contains")
         merge_shas = []
         for pr in prs:
             rc, out = _run(["gh", "pr", "view", str(pr), "--json", "state,mergeCommit"], cwd=self.cfg.repo, timeout=60)
@@ -540,21 +731,45 @@ class Detectors:
             if not sha:
                 return DetectorResult("error", f"PR #{pr}: no merge commit recorded", now_iso(), "detector:deployed_contains")
             merge_shas.append(sha)
-        rc, out = _run(["suvarna-build", "--preflight", "--json"], timeout=60)
+        rc, out = self._run_preflight()
         if rc != 0:
             return DetectorResult("error", f"suvarna-build --preflight: {out.strip()[:200]}", now_iso(), "detector:deployed_contains")
-        pre = json.loads(out)
-        tag = pre.get("job_image_tag") if component == "job" else pre.get("web_sha")
-        if not tag:
-            return DetectorResult("error", f"preflight reported no {component} tag/sha", now_iso(), "detector:deployed_contains")
-        missing = [s for s in merge_shas if s[:12] not in tag]
+        try:
+            pre = json.loads(out)
+        except ValueError:
+            return DetectorResult("error", f"suvarna-build --preflight: non-JSON output: {out.strip()[:160]}",
+                                  now_iso(), "detector:deployed_contains")
+        if component == "job":
+            raw = pre.get("job_image_tag")
+            if not raw:
+                return DetectorResult("error", "preflight reported no job_image_tag", now_iso(), "detector:deployed_contains")
+            descendant = _extract_trailing_sha(raw)
+            if not descendant:
+                return DetectorResult("error", f"job_image_tag has no trailing commit SHA: {raw[:80]}",
+                                      now_iso(), "detector:deployed_contains")
+            shown = raw[:24]
+        else:
+            descendant = pre.get("deployed_sha")
+            if not descendant:
+                return DetectorResult("error", "preflight reported no deployed_sha", now_iso(), "detector:deployed_contains")
+            shown = descendant[:12]
+        missing = []
+        for s in merge_shas:
+            try:
+                if not self._is_ancestor(s, descendant):
+                    missing.append(s)
+            except RuntimeError as exc:
+                return DetectorResult("error", f"ancestry check for {s[:12]}: {exc}", now_iso(), "detector:deployed_contains")
         n_ok = len(merge_shas) - len(missing)
         if not missing:
-            return DetectorResult("done", f"{component} deploy ({tag[:12]}) contains all {len(prs)} merges", now_iso(), "detector:deployed_contains", 1.0)
-        detail = f"{n_ok}/{len(prs)} merges present in the {component} deploy ({tag[:12]})"
-        return DetectorResult("running" if n_ok else "pending", detail, now_iso(), "detector:deployed_contains", n_ok / len(prs))
+            return DetectorResult("done", f"{component} deploy ({shown}) contains all {total} merges (ancestry)",
+                                  now_iso(), "detector:deployed_contains", 1.0)
+        detail = f"{n_ok}/{total} merges are ancestors of the {component} deploy ({shown})"
+        return DetectorResult("running" if n_ok else "pending", detail, now_iso(), "detector:deployed_contains", n_ok / total)
 
     def d_wave_deployed(self, spec):
+        """Review pass 2 (#5/#6): ancestry, never substring; `suvarna-build` by full pinned path,
+        no `--json`."""
         wave = spec.get("wave")
         if not wave:
             return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:wave_deployed")
@@ -575,14 +790,25 @@ class Detectors:
         sha = (d.get("mergeCommit") or {}).get("oid")
         if not sha:
             return DetectorResult("error", f"PR #{pr}: no merge commit recorded", now_iso(), "detector:wave_deployed")
-        rc2, out2 = _run(["suvarna-build", "--preflight", "--json"], timeout=60)
+        rc2, out2 = self._run_preflight()
         if rc2 != 0:
             return DetectorResult("error", f"suvarna-build --preflight: {out2.strip()[:200]}", now_iso(), "detector:wave_deployed")
-        pre = json.loads(out2)
+        try:
+            pre = json.loads(out2)
+        except ValueError:
+            return DetectorResult("error", f"suvarna-build --preflight: non-JSON output: {out2.strip()[:160]}",
+                                  now_iso(), "detector:wave_deployed")
         tag = pre.get("job_image_tag") or ""
-        if sha[:12] in tag:
-            return DetectorResult("done", f"{wave} landing PR #{pr} merged and deployed ({tag[:12]})", now_iso(), "detector:wave_deployed", 1.0)
-        return DetectorResult("running", f"{wave} landing PR #{pr} merged ({sha[:12]}) but not yet in the deployed tag ({tag[:12]})",
+        descendant = _extract_trailing_sha(tag)
+        if not descendant:
+            return DetectorResult("error", f"job_image_tag has no trailing commit SHA: {tag[:80]}", now_iso(), "detector:wave_deployed")
+        try:
+            deployed = self._is_ancestor(sha, descendant)
+        except RuntimeError as exc:
+            return DetectorResult("error", f"ancestry check for {sha[:12]}: {exc}", now_iso(), "detector:wave_deployed")
+        if deployed:
+            return DetectorResult("done", f"{wave} landing PR #{pr} merged and deployed ({tag[:24]})", now_iso(), "detector:wave_deployed", 1.0)
+        return DetectorResult("running", f"{wave} landing PR #{pr} merged ({sha[:12]}) but not yet an ancestor of the deployed tag ({tag[:24]})",
                               now_iso(), "detector:wave_deployed", 0.75)
 
     def d_assets_elevated(self, spec):
@@ -603,12 +829,25 @@ class Detectors:
         return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:assets_elevated", n / len(assets))
 
     def d_registry_coverage(self, spec):
+        """Review pass 2 (substance #10a): an absent file reads `pending` (unchanged). An absent
+        `uncovered_required_criteria`/`uncovered` *key* must also read `pending`, never `done` —
+        the previous code treated "the report doesn't mention it" the same as "the report measured
+        it and found nothing uncovered", so a malformed or partial report could read as fully
+        covered by omission alone (CLAUDE.md §N.8: a signal without the check that could report
+        otherwise is null, not green)."""
         try:
             text = _git_show_text(self.cfg.nikasha_root, REGISTRY_COVERAGE_REL_PATH)
         except RuntimeError:
             return DetectorResult("pending", "registry coverage report not yet on the ref (built by E6.1/E6.5)",
                                   now_iso(), "detector:registry_coverage")
-        data = json.loads(text)
+        try:
+            data = json.loads(text)
+        except ValueError:
+            return DetectorResult("error", "registry coverage report is not valid JSON", now_iso(), "detector:registry_coverage")
+        if not isinstance(data, dict) or not ("uncovered_required_criteria" in data or "uncovered" in data):
+            return DetectorResult("pending", "registry coverage report names no uncovered_required_criteria/"
+                                             "uncovered key yet; an absent key is not evidence of coverage",
+                                  now_iso(), "detector:registry_coverage")
         uncovered = data.get("uncovered_required_criteria") or data.get("uncovered") or []
         if uncovered:
             shown = ", ".join(str(u) for u in uncovered[:5]) + ("…" if len(uncovered) > 5 else "")
@@ -617,6 +856,42 @@ class Detectors:
                                   now_iso(), "detector:registry_coverage")
         return DetectorResult("done", "every core gate × layer cell is covered by a detector or a declared N/A rule",
                               now_iso(), "detector:registry_coverage", 1.0)
+
+    def d_evidence_recent(self, spec):
+        """A provisioning-evidence JSON written to disk at provisioning time, under
+        `$SUVARNA_HOME/evidence/<path>` — never a live query. Built to replace the `builder_scope`
+        Monitor check (Track E brief §8 E7.3), which cannot run as `suvarna_reader`: D6 withholds
+        both `chart_grants.permission` and `profiles` from that login, so no live read can measure
+        the builder's actual grant row (review pass 2 finding 3 / substance #14). The provisioning
+        step (E7.2, run by the native with a privileged credential) writes the evidence file once;
+        this detector only ever reads it back off disk, and reports `pending` — never `done` — for
+        every way that file can fail to prove what it claims: missing, unparseable, missing a
+        required key, or older than `max_age_hours`."""
+        path, max_age_hours = spec.get("path"), spec.get("max_age_hours")
+        required_keys = spec.get("required_keys") or []
+        if not path or not max_age_hours:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:evidence_recent")
+        full = os.path.join(self.cfg.home, "evidence", path)
+        if not os.path.exists(full):
+            return DetectorResult("pending", f"no evidence file yet at evidence/{path}", now_iso(), "detector:evidence_recent")
+        try:
+            mtime = os.path.getmtime(full)
+            with open(full, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError) as exc:
+            return DetectorResult("error", f"evidence/{path}: {type(exc).__name__}: {exc}"[:200], now_iso(), "detector:evidence_recent")
+        if not isinstance(data, dict):
+            return DetectorResult("error", f"evidence/{path} is not a JSON object", now_iso(), "detector:evidence_recent")
+        missing_keys = [k for k in required_keys if data.get(k) in (None, "")]
+        if missing_keys:
+            return DetectorResult("pending", f"evidence/{path} missing key(s): {', '.join(missing_keys)}",
+                                  now_iso(), "detector:evidence_recent")
+        age_h = (time.time() - mtime) / 3600.0
+        if age_h > max_age_hours:
+            return DetectorResult("pending", f"evidence/{path} is {age_h:.1f}h old (over {max_age_hours}h)",
+                                  now_iso(), "detector:evidence_recent")
+        return DetectorResult("done", f"evidence/{path} is {age_h:.1f}h old, all required key(s) present",
+                              now_iso(), "detector:evidence_recent", 1.0)
 
     def d_ledger_no_open_gap_on(self, spec):
         prefixes = spec.get("criteria_prefixes") or []
