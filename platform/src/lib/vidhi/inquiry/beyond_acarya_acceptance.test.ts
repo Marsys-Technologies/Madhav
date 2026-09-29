@@ -65,6 +65,14 @@ const historicalV9 = {
   artifact_hash: 'sha256:ce77568e7d7d4d79d68f1c0359932ef12503984ee6d2528cde9f711750d32ed9',
 } as const
 
+// The fence-and-successor-envelope follow-up successor of v9. Immutable since the Kāla B1
+// gochara re-identification lane's snapshot regeneration (v11) superseded it.
+const historicalV10 = {
+  capability_content_hash: 'sha256:9b47461d6716337149dd636cc2d6bed3a7506d86bc15aea51c727d9ba1955f58',
+  report_hash: 'sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde',
+  artifact_hash: 'sha256:f988b6fd13fd1c2b667c66206444a7bbd030e369a748ecd1ea63a6d5f063cf8a',
+} as const
+
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
   scuId: string,
@@ -103,11 +111,16 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    // Follow-up boundary (Packet A): capability_content_hash/report_hash move once more, for the
-    // seven leaf build_id declarations that let the composites' legs (and inquiry-dispatched
-    // reads) be fenced to the served generation — no denominator changed (see the metrics
-    // assertions above and the v10 pin test below; identical to v7, v8 and v9's own metrics).
-    expect(report.report_hash).toBe('sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde')
+    // Kāla B1 gochara re-identification boundary (native ruling recorded in ka_gochara.py's
+    // module docstring; W0 census #4, MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md;
+    // seed caught up in cacc72440, 2026-09-22): ka_gochara now writes kala_gochara_windows_v2
+    // generation='2.0' and never the protected kala_gochara_windows corpus. The seed correction
+    // moved the producer_contract_fingerprint and the snapshot was regenerated on the merged
+    // tree (68a56814a, Density Census §N.6, 182 SCUs, codegen:capability-knowledge:check green),
+    // so capability_content_hash/report_hash move once more — no denominator changed (see the
+    // metrics assertions above and the v11 pin test below; identical to v7, v8, v9 and v10's
+    // own metrics).
+    expect(report.report_hash).toBe('sha256:773dd150de295ed561b42402fc4209228574ed8c07653bc414368606a48af8bc')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -383,9 +396,31 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v10 source-successor artifact to the current executable report without claiming live acceptance (fence-and-successor-envelope follow-up)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v10 source-successor artifact immutable after the Kāla B1 gochara re-identification advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v10.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV10.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v10',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v9.json',
+        capability_content_hash: historicalV9.capability_content_hash,
+        report_hash: historicalV9.report_hash,
+      },
+      capability_content_hash: historicalV10.capability_content_hash,
+      report_hash: historicalV10.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '5c114e53031c3e43f3f30c3dd36ed0694d19f3cc',
+    })
+  })
+
+  it('pins the v11 source-successor artifact to the current executable report without claiming live acceptance (Kāla B1 gochara re-identification snapshot regen)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v11.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -393,12 +428,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v10',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v11',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v9.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v10.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV9.capability_content_hash,
-        report_hash: historicalV9.report_hash,
+        capability_content_hash: historicalV10.capability_content_hash,
+        report_hash: historicalV10.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -441,9 +476,10 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // The follow-up source commit (5c114e530) whose tree this report was evaluated against, not
-      // the later commits that regenerate the snapshot, the census and this successor.
-      evaluated_source_revision: '5c114e53031c3e43f3f30c3dd36ed0694d19f3cc',
+      // The Kāla B1 gochara re-identification commit (cacc72440, native ruling per ka_gochara.py's
+      // module docstring + W0 census #4) whose seed correction moved the producer-contract
+      // fingerprint; the later commit 68a56814a only regenerates the snapshot on the merged tree.
+      evaluated_source_revision: 'cacc72440f98f79486ef679e046e2dbe1d687eb9',
     })
   })
 })

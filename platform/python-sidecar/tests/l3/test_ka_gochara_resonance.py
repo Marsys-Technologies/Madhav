@@ -179,9 +179,14 @@ class TestBuildResonanceRows:
             dasha_rows=[{"lord_graha": "Venus"}],
         )
         target_types = {r["target_type"] for r in rows}
+        # M-6 (WP1_CONTRACTS §2.2 item 11): build_resonance_rows also emits one
+        # bhava_arudha row per numeric house in `houses` (BHAVA_ARUDHA_A7/A2 here).
+        # The gulika_mandi_distance / yamakantaka_difference types are run()-level
+        # only (M6_EVENT_CLASSES = bereavement, illness_acute), never built here.
         assert target_types == {
             "bhava", "lord", "karaka", "mechanism_node",
             "sensitive_degree", "arudha", "yoga_constituent", "dasha_lord_portfolio",
+            "bhava_arudha",
         }
         # R-6: every emitted row carries a valid stored resolution state.
         for r in rows:
@@ -409,8 +414,14 @@ def test_writer_inserts_expected_rows_for_fixture_chart():
     # layer, F-19). The same row feeds the arudha builder, where
     # 'not_fired' is not a sign name -> the arudha row is still emitted
     # (counted) but stamped target_resolution_state='unavailable' (R-2/R-6).
-    # New per-class row count = 9: 2 bhava + 1 lord + 1 karaka + 2
-    # mechanism + 0 sensitive + 1 arudha(unavailable) + 1 yoga + 1 dasha.
+    # Per-class row count = 11: 2 bhava + 1 lord + 1 karaka + 2
+    # mechanism + 0 sensitive + 1 arudha(unavailable) + 1 yoga + 1 dasha
+    # + 2 bhava_arudha (M-6, WP1_CONTRACTS §2.2 item 11 — one per numeric
+    # house in the signature; both 'unavailable' since the fixture's
+    # fact_subject is VEN, not ARUDHA_A{h}).
+    from services.gochara_grammar.derived_points import (
+        M6_EVENT_CLASSES, YAMAKANTAKA_FORMULAS,
+    )
     from services.ka_gochara_resonance.writer import build_resonance_rows
     _shared_fact_row = {"fact_id": "f1", "fact_subject": "VEN", "fact_key": "mrityu_bhaga",
                         "fact_value_text": "not_fired"}
@@ -429,7 +440,13 @@ def test_writer_inserts_expected_rows_for_fixture_chart():
         yoga_firing_rows=[{"yoga_canonical_id": "dhana_yoga_house_lords"}],
         dasha_rows=[{"lord_graha": "Venus"}],
     ))
-    assert result.rows_inserted == per_class * len(TARGET_EVENT_CLASSES)
+    # M-6 (WP1_CONTRACTS §2.2 items 9-10): run() additionally appends the
+    # derived transit targets once per chart — 1 gulika_mandi_distance +
+    # len(YAMAKANTAKA_FORMULAS) yamakantaka_difference rows for each class in
+    # M6_EVENT_CLASSES (bereavement, illness_acute). These are run()-level,
+    # never built by build_resonance_rows, so they are added here.
+    m6_rows = (1 + len(YAMAKANTAKA_FORMULAS)) * len(M6_EVENT_CLASSES)
+    assert result.rows_inserted == per_class * len(TARGET_EVENT_CLASSES) + m6_rows
     assert len(sink["inserted"]) == result.rows_inserted
     assert len(sink["deletes"]) == 1
     assert sink["deletes"][0] == (CHART_ID,)

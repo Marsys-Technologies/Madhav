@@ -17,8 +17,11 @@ REMEDIATION (what MR-06 implements):
      - ka_gochara_sweep: catalog_status='RETIRED', is_active=false
      - ka_gochara_v2_materialize: removed from seed
      - ka_gochara: catalog_status='CURRENT', is_active=true, storage_type='postgres_table',
-       target_table='kala_gochara_windows', generation='3.0' count_sql
-       (PARIṢKĀRA MR-40, 2026-08-11: corrected from 'kala_gochara_windows_v2' — see note below)
+       target_table='kala_gochara_windows_v2', generation='2.0' count_sql
+       (KĀLA B1 CORRECTION, 2026-09-22, supersedes the MR-40 repoint: native ruling
+           recorded in writers/ka_gochara.py's module docstring — this writer's ONLY
+           output relation is kala_gochara_windows_v2 and it never names the protected
+           kala_gochara_windows corpus — see note below)
   2. The ON-CONFLICT UPDATE clause in asset_registry_seed.ts guards against
      resurrecting a RETIRED asset: it does NOT overwrite catalog_status when
      the existing row is already RETIRED.
@@ -30,8 +33,9 @@ WHAT THESE TESTS VERIFY (all offline/static, no DB required):
   1. Seed ka_gochara_sweep entry declares catalog_status='RETIRED' and is_active=false.
   2. Seed does NOT contain an asset_id='ka_gochara_v2_materialize' entry.
   3. Seed ka_gochara entry is post-cutover: storage_type='postgres_table',
-     target_table='kala_gochara_windows', count_sql references generation='3.0'
-     against that same table.
+     target_table='kala_gochara_windows_v2', count_sql references
+     generation='2.0' against that same table, and NEVER names the protected
+     kala_gochara_windows corpus (native ruling, Kāla B1 2026-09-22).
   4. The ON-CONFLICT UPDATE clause in asset_registry_seed.ts does NOT overwrite
      catalog_status unconditionally — it guards RETIRED rows.
   5. Migration 566 exists and contains a BEFORE DELETE trigger body that raises
@@ -51,6 +55,19 @@ after a change nobody re-checked this test against. Updated to the
 post-repoint truth; see MR-40 in MASTER_REMEDIATION_REGISTER_v2_0.md for
 the full incident and PARISHKARA_LEDGER.md's "MR-24 FINAL RE-RUN" entry for
 live evidence (89/85 real rows, cockpit read 0 pre-fix).
+
+KĀLA B1 CORRECTION (2026-09-22, pre-elevation Phase 1.1) — SUPERSEDES the
+MR-40 repoint above: the writer has since been rewritten under a NATIVE
+RULING recorded verbatim in writers/ka_gochara.py's module docstring ("this
+writer's only DELETE/SELECT/INSERT target is kala_gochara_windows_v2 --
+there is no code path, error branch, or override that ever names
+kala_gochara_windows"). kala_gochara_windows generation='3.0' belongs to
+ka_gochara_v3_century_materialize, a separate asset. W0 census #4
+(MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md) settles the same
+identity: ka_gochara → kala_gochara_windows_v2 + kala_gochara_v2_build_state.
+Test 3 now pins that ruled identity and keeps the never-touch-the-protected-
+corpus assertion in inverted form (must NOT target/count the protected
+kala_gochara_windows relation).
 """
 from __future__ import annotations
 
@@ -168,23 +185,37 @@ def test_seed_ka_gochara_v2_materialize_absent():
 # ── Test 3: ka_gochara seed entry is post-cutover materializer ───────────────
 
 def test_seed_ka_gochara_is_post_cutover_materializer():
-    """ka_gochara seed entry must reflect post-cutover per-chart materializer identity.
+    """ka_gochara seed entry must reflect the current native-ruled materializer identity.
 
-    Post-cutover (W6.4, migration 563) AND post-W5.4-UTK-R1-repoint (MR-40,
-    2026-08-11 — see module docstring for the incident this test's own prior
-    version contributed to):
+    Post-cutover (W6.4, migration 563) AND post-KĀLA-B1-CORRECTION
+    (2026-09-22, pre-elevation Phase 1.1). The writer was rewritten under a
+    NATIVE RULING recorded verbatim in `writers/ka_gochara.py`'s module
+    docstring: "this writer's only DELETE/SELECT/INSERT target is
+    kala_gochara_windows_v2 -- there is no code path, error branch, or
+    override that ever names kala_gochara_windows". W0 census #4
+    (MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md) settles the same
+    identity: ka_gochara → kala_gochara_windows_v2 + kala_gochara_v2_build_state.
       - storage_type: 'postgres_table' (was 'service')
-      - target_table: 'kala_gochara_windows' (the PRODUCTION authority surface
-        per the writer's W5.4 UTK-R1 repoint — NOT 'kala_gochara_windows_v2',
-        which is a calibration/staging copy only, generation='g3_utkarsha')
-      - count_sql references generation='3.0' AGAINST kala_gochara_windows
-        (the authoritative generation on the authoritative table)
+      - target_table: 'kala_gochara_windows_v2' — this writer's ONLY output
+        relation. The protected kala_gochara_windows corpus belongs to the
+        retired ka_gochara_sweep (generation='v1') and to
+        ka_gochara_v3_century_materialize (generation='3.0'); ka_gochara must
+        NEVER name it.
+      - count_sql references generation='2.0' AGAINST kala_gochara_windows_v2
+        (ka_gochara.py TABLE/GENERATION_V2; DELETE scoped to
+        chart_id × event_class × generation='2.0', INSERT carries '2.0')
       - scope: 'per_chart' (was 'global')
       - catalog_status: 'CURRENT'
       - is_active: true
 
     The old service-asset entry (storage_type='service', scope='global') was
     deleted by migration 563 and replaced with the renamed materializer.
+
+    This test previously pinned kala_gochara_windows generation='3.0' (MR-40,
+    W5.4 UTK-R1 repoint). That identity was correct once, then superseded by
+    the native ruling above — the same staleness failure mode MR-40 itself
+    documented. Re-pointed, not weakened: the never-touch-the-protected-corpus
+    assertion is retained in inverted form.
     """
     src = _read(_SEED)
     block = _extract_asset_block(src, "ka_gochara")
@@ -195,31 +226,39 @@ def test_seed_ka_gochara_is_post_cutover_materializer():
         "ka_gochara seed entry must have storage_type: 'postgres_table' post-cutover "
         f"(found block: {block[:400]!r})"
     )
-    # Must target kala_gochara_windows (the production authority surface,
-    # MR-40) -- NOT kala_gochara_windows_v2, the calibration/staging copy.
-    assert re.search(r"target_table\s*:\s*['\"]kala_gochara_windows['\"]", block), (
-        "ka_gochara seed entry must have target_table: 'kala_gochara_windows' "
-        "(the W5.4 UTK-R1 production authority surface — MR-40) "
+    # Must target kala_gochara_windows_v2 — the writer's ONLY output relation
+    # per the native ruling in writers/ka_gochara.py's module docstring.
+    assert re.search(r"target_table\s*:\s*['\"]kala_gochara_windows_v2['\"]", block), (
+        "ka_gochara seed entry must have target_table: 'kala_gochara_windows_v2' "
+        "(native ruling recorded in ka_gochara.py docstring; W0 census #4) "
         f"(found block: {block[:400]!r})"
     )
-    # Must NOT target the calibration/staging copy — this is the exact MR-40
-    # regression: a count_sql that reads kala_gochara_windows_v2 with
-    # generation='3.0' silently counts zero forever (that table never
-    # carries generation='3.0', only '2.0'/'g3_utkarsha').
-    assert not re.search(r"target_table\s*:\s*['\"]kala_gochara_windows_v2['\"]", block), (
-        "ka_gochara seed entry must NOT target kala_gochara_windows_v2 "
-        "(MR-40 regression: that table is calibration/staging only, never "
-        f"carries generation='3.0') (found block: {block[:400]!r})"
+    # Must NOT target the protected kala_gochara_windows corpus — that corpus
+    # holds generation='v1' (retired ka_gochara_sweep) and generation='3.0'
+    # (ka_gochara_v3_century_materialize) rows and is guarded by migration
+    # 1071's generation-keyed trigger. `kala_gochara_windows_v2` contains the
+    # substring, so anchor on the quoted literal without the _v2 suffix.
+    assert not re.search(r"target_table\s*:\s*['\"]kala_gochara_windows['\"]", block), (
+        "ka_gochara seed entry must NOT target the protected "
+        "kala_gochara_windows corpus (native ruling: ka_gochara.py never "
+        f"names it) (found block: {block[:400]!r})"
     )
-    # count_sql must reference generation='3.0' (the authoritative generation)
-    assert re.search(r"count_sql\s*:.*generation.*3\.0", block, re.DOTALL), (
-        "ka_gochara seed count_sql must reference generation='3.0' "
-        f"(found block: {block[:400]!r})"
+    # count_sql must reference generation='2.0' (this writer's own generation)
+    assert re.search(r"count_sql\s*:.*generation.*2\.0", block, re.DOTALL), (
+        "ka_gochara seed count_sql must reference generation='2.0' "
+        f"(ka_gochara.py GENERATION_V2) (found block: {block[:400]!r})"
     )
-    # count_sql must query kala_gochara_windows, not the _v2 staging copy.
-    assert re.search(r"count_sql\s*:\s*[\"'].*FROM kala_gochara_windows\s", block), (
-        "ka_gochara seed count_sql must SELECT FROM kala_gochara_windows "
-        f"(the production authority table, not _v2) (found block: {block[:400]!r})"
+    # count_sql must query kala_gochara_windows_v2, not the protected corpus.
+    assert re.search(r"count_sql\s*:\s*[\"'].*FROM kala_gochara_windows_v2\s", block), (
+        "ka_gochara seed count_sql must SELECT FROM kala_gochara_windows_v2 "
+        f"(the writer's own relation, not the protected corpus) (found block: {block[:400]!r})"
+    )
+    # count_sql must NOT touch the protected kala_gochara_windows table at all
+    # (a FROM kala_gochara_windows<space> that is not _v2 is the regression).
+    assert not re.search(r"count_sql\s*:\s*[\"'].*FROM kala_gochara_windows\s", block), (
+        "ka_gochara seed count_sql must NOT SELECT FROM the protected "
+        "kala_gochara_windows corpus (native ruling: that relation belongs to "
+        f"ka_gochara_sweep / ka_gochara_v3_century_materialize) (found block: {block[:400]!r})"
     )
     # Must be per_chart scope
     assert re.search(r"scope\s*:\s*['\"]per_chart['\"]", block), (

@@ -84,6 +84,13 @@ EXPECTED_OPERATION_OWNERS = {
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_retrogrades"),
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_sign_changes"),
     ("ga_writers/ga_sade_sati_writer.py", "_lookup_tara_bala_for_saturn_at"),
+    # Lane l3/gochara-autonomous-wp0-7 added _derive_ashtakavarga_prastara
+    # (G-10 / ruling sheet M-7, N-21 testimony grade) already decorated with
+    # @serialized_swiss_state; registered here as a compliant boundary owner.
+    (
+        "ga_writers/ga_strength_writer.py",
+        "_derive_ashtakavarga_prastara",
+    ),
     (
         "ga_writers/ga_strength_writer.py",
         "_derive_ashtakavarga_shodhana_grids",
@@ -142,6 +149,7 @@ EXPECTED_OPERATION_OWNERS = {
     ("routers/ephemeris.py", "_calculate_sidereal_positions"),
     ("routers/pyhora.py", "compute_natal"),
     ("routers/pyhora.py", "smoke_test"),
+    ("services/gochara_kernel/knots.py", "calc_sidereal_lon"),
     ("services/gochara_v3/engine.py", "_evaluate_single_from_context"),
     ("services/gochara_v3/mechanisms/w30_nodal_drishti.py", "compute"),
     ("services/ka_kshetra/stage0_kinematics.py", "_sidereal_offset_series"),

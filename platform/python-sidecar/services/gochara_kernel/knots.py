@@ -30,6 +30,8 @@ from typing import Any
 
 import swisseph as swe
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 EPHE_FLAGS = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
 
 # swe planet ids for the nine grahas. Rāhu/Ketu both resolve to MEAN_NODE
@@ -99,11 +101,14 @@ def _check_retflag(body: str, retflag: int) -> str:
     return "swieph"
 
 
+@serialized_swiss_state
 def calc_sidereal_lon(body: str, jd_ut: float, ephe_path: str | None) -> tuple[float, int]:
     """One sidereal longitude probe. Returns (longitude_deg, retflag).
 
     The caller asserts `retflag & 2` (F-14); this function is the single seam
-    through which every Swiss call in the kernel passes.
+    through which every Swiss call in the kernel passes. DP-SD-010: the seam
+    is serialized under SWISS_STATE_LOCK so process-wide Swiss state
+    (sid mode / ephe path) cannot interleave across threads.
     """
     if ephe_path is not None:
         swe.set_ephe_path(ephe_path)
