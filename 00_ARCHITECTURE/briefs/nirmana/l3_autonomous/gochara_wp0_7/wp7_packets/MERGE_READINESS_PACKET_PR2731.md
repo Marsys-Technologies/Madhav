@@ -1,14 +1,30 @@
 # MERGE READINESS PACKET — PR #2731 (`l3/gochara-autonomous-wp0-7`)
 
 - **Produced:** 2026-09-29, executor lane `l3/gochara-autonomous-wp0-7` @ `800057a73`
+- **Refreshed:** 2026-09-29 second pass (Pravāha A0.3/A0.4) @ **`650846852`** — second
+  origin/main merge `8eeeb6e2a` landed (A0.2), pins re-admission executed under **D-E022**
+  (A0.3), **CI fully green**. Sections 2, 2c, 3, 4 and the verdict supersede their first-pass
+  content where marked; unmarked first-pass content stands.
 - **Governing:** ADK-0027 (native directive F-0, precondition 1 — deploy-before-flip),
-  ADK-0028 (light-work scope; Cloud-Run-only century rebuild), ESCALATIONS.md E-020/E-021.
+  ADK-0028 (light-work scope; Cloud-Run-only century rebuild), ESCALATIONS.md E-020/E-021/E-022,
+  **D-E022** (native, 2026-09-29: "Accept all recommendations." — pins re-admission at the
+  #2731 merge authorised per MERGE_HYGIENE_12_10c_RUNBOOK).
 - **Scope of this packet:** readiness evidence for the NATIVE's merge of #2731 into `main`.
   Nothing here merges, applies, or flips anything.
 
 ---
 
 ## 1. CONFLICT RESOLUTIONS — merge commit `f95cf19af` (origin/main → this branch, 2026-09-29)
+
+### 1a. Second merge — `8eeeb6e2a` (origin/main `55ec5e355` → this branch, 2026-09-29, Pravāha A0.2)
+
+A second origin/main merge landed after the first-pass packet. Only conflict:
+`00_ARCHITECTURE/CURRENT_STATE_v1_0.md`, resolved as union — this lane's changelog entries
+renumbered v6.87/6.88/6.89 → **v6.89/6.90/6.91** with in-text renumber disclosure, frontmatter
+version **6.91**, main's v6.87/v6.88 kept verbatim. `SESSION_LOG.md` pure additions
+(858+/0−). All other 36 merge-changed files byte-identical to main; zero gochara-scope
+overlap; merge commit, no history rewrite. Independently PRAMĀṆIN-verified (5/6 claims
+fully, one count corrected and accepted). First-pass conflict table below stands for `f95cf19af`.
 
 Merge authorized explicitly by F-0 (ADK-0027 §2: merge commit, not rebase, narrows
 ADK-0010(iii) for this purpose only). Four files conflicted; all are docs/governance files.
@@ -29,8 +45,46 @@ All other merge content arrived cleanly (Jātaka/AI-console migrations 1120–11
 
 ## 2. CI STATUS
 
-`gh pr view 2731 --json mergeable,mergeStateStatus`:
-**`mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED`.**
+### 2.0 CURRENT (second pass, HEAD `650846852`, 2026-09-29 ~12:05 UTC)
+
+**`gh pr checks 2731 --watch` exit 0: every check green — 1514 pass, 0 fail.**
+`gh pr view 2731 --json mergeable,mergeStateStatus`: **`MERGEABLE` / `CLEAN`**.
+
+Repairs executed in this pass (commits `442f1ed9`, `f4cba9d6`, `ec98215b`, `6f145dd87`,
+`ad22bef06`, `19a8fffce`, `650846852`):
+
+1. **Pins re-admission (12.10c step 2) under D-E022** — see §2c (RESOLVED).
+2. **Pre-existing lane test failures** (red on the lane before either merge; verified failing
+   at `23b3d4953` and at merge `8eeeb6e2a`, green on main) — all repaired by re-pointing
+   tests at the lane's ruled truth or fixing genuinely non-compliant code, never by weakening:
+   - `test_swiss_state_boundary.py` — `gochara_kernel/knots.py` `calc_sidereal_lon` (the
+     kernel's single Swiss seam) was calling Swiss without the DP-SD-010 serialized boundary:
+     **code fixed** (`@serialized_swiss_state`), and the G-10 prastara owner
+     (`ga_strength_writer._derive_ashtakavarga_prastara`, already decorated) registered in
+     `EXPECTED_OPERATION_OWNERS` (G-10 / ruling sheet M-7 / N-21).
+   - `test_mr06_cutover_durability.py` — re-pointed to the ruled ka_gochara identity
+     (`kala_gochara_windows_v2`, generation `'2.0'`; Kāla B1 correction 2026-09-22, recorded
+     verbatim in `ka_gochara.py`'s module docstring), with **new negative assertions** that
+     ka_gochara never targets the protected `kala_gochara_windows` corpus.
+   - `tests/l3/test_ka_gochara_resonance.py` — re-pointed to the M-6 taxonomy
+     (`bhava_arudha` target type + 10 run()-level M-6 derived rows; WP1_CONTRACTS §2.2
+     items 9–11; count assertion now computed from the writer's own constants: 297+10=307).
+   - `beyond_acarya_acceptance.test.ts` — hashes advanced per the file's own v-succession
+     convention: new immutable artifact `BEYOND_ACARYA_ACCEPTANCE_v11.json` (v10 preserved
+     as immutable historical; metrics unchanged — only `content_hash`/`report_hash` moved via
+     the ka_gochara re-identification + §N.6 snapshot regen `68a56814a`).
+   - `route_golden_stream.test.ts` — two baselines (`branch-deep-dive`,
+     `branch-completeness-receipt`) regenerated via the harness's own
+     `PARIPRASHNA_PORTS_BASELINE=write` convention; only the embedded closure-receipt hash
+     moved (capability-snapshot cascade); the other 35 baselines byte-identical.
+3. **Digest cascade from the knots.py fix** — handled with a **second append-only L3
+   successor** (`l3:ad22bef06784:d1bf773c4d94`, source `ad22bef06`) under the same D-E022
+   authority; the first successor is archived whole and immutable (asserted in both test
+   suites). Pin/receipt test suites extended per the "rewind, do not weaken" convention:
+   `test_nirmana_analysis_layer_pins.py` 69 passed / 3 skipped;
+   `nirmana-analysis-receipts.test.ts` 13 passed.
+
+First-pass sections 2a/2b below are kept for the record.
 
 ### 2a. State at packet time (HEAD `800057a73`, queried ~05:00 IST) — SUPERSEDED
 
@@ -57,7 +111,29 @@ readiness work began; PR checks run on `refs/pull/2731/merge` against current ma
 this does not invalidate the results above. Re-merging main again was NOT done — F-0's
 merge authorization was scoped to the one conflict-resolution merge.
 
-### 2c. STOP ITEM — nirmana layer-pins re-admission (12.10c step 2) requires native authority
+### 2c. RESOLVED (second pass) — nirmana layer-pins re-admission executed under D-E022
+
+**Resolution:** the native issued **D-E022** (2026-09-29, recorded in pravaha
+`EVENTS.jsonl`: "Accept all recommendations." — pins re-admission at the #2731 merge
+authorised, per MERGE_HYGIENE_12_10c_RUNBOOK). Executed in A0.3:
+
+- **Authority evidence:** `00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_E022_PINS_READMISSION_AUTHORITY_v1_0.md`
+  (introduced `442f1ed9`; identity-bound amendment `f4cba9d6`), registered in the generator's
+  `AUTHORITY_BINDINGS["D-E022"]` + `AUTHORIZED_SOURCE_COMMITS["D-E022"]` (`ec98215b`).
+- **Successors admitted** (`nirmana_analysis_layer_pins.py --admit-successor`, fail-closed,
+  append-only; membership unchanged everywhere):
+  - L1: `l1:f4cba9d606ab:b3674dfbfa91` (supersedes `l1:149f8479ac4e:93de3b2c84b7`; 6 assets:
+    `ga_strength`/`ga_sensitive` `approved_intentional_change`, 4 `derived_import_change`).
+  - L3 #1: `l3:f4cba9d606ab:64ca6e06c175` (supersedes `l3:7d40f8c70640:dfcf30d8b3d2`; 7 assets:
+    5 `approved_intentional_and_derived_import_change`, 2 `derived_import_change`).
+  - L3 #2: `l3:ad22bef06784:d1bf773c4d94` (supersedes L3 #1; 3 knots-closure writers,
+    all `derived_import_change` — DP-SD-010 serialization cascade, §2.0 item 3).
+- `--check --protected-baseline-commit 55ec5e355…` exit 0 locally; the CI Governance Gates
+  pins step is green at `650846852`; `nirmana-analysis-receipts.test.ts` green.
+
+First-pass stop-item text below kept for the record.
+
+<details><summary>First-pass §2c (STOP ITEM, superseded)</summary>
 
 Root cause, precisely: this branch's own writer edits since the pinned convergence
 commits moved two layers' writer-inventory aggregates —
@@ -87,7 +163,14 @@ per runbook §2) are staged and can run within minutes once authority exists.
 Also noted: `nirmana-analysis-receipts.test.ts` (Unit Tests) fails on the same staleness;
 it goes green when the pins do.
 
+</details>
+
 ## 3. DEPLOY MIGRATION LIST — `migrate.ts --dry-run` against production
+
+**Re-run 2026-09-29 second pass (HEAD `650846852`): would-apply set is unchanged —
+exactly `{1071, 1072, 1086}`** (same method as below: fresh secret, own proxy on 55440,
+role `amjis_app`, `--dry-run` only, proxy torn down after; only pre-existing DVA-RULING-73
+disclosures emitted).
 
 Method: fresh `amjis-pipeline-db-url` from Secret Manager
 (`gcloud secrets versions access latest … --project=madhav-astrology`), own
@@ -126,6 +209,22 @@ Assessment:
 
 ## 4. 12.10c RUNBOOK STATUS
 
+**SECOND PASS (2026-09-29, HEAD `650846852`): steps 1–3 ALL EXECUTED.**
+
+- **Step 1 (writer digests):** `provenance_inventory --check` exit 0 at HEAD (regenerated
+  once more in `ad22bef06` after the knots.py DP-SD-010 fix moved three digests).
+- **Step 2 (pins re-admission):** EXECUTED under **D-E022** — §2c. Three successors
+  (L1 ×1, L3 ×2), all append-only with per-asset classifications.
+- **Step 3 (capability-estate census):** `codegen:capability-estate-census:check` green at
+  HEAD (regenerated after each tree-moving commit in this pass).
+- **Step 4 (1072 interplay):** recorded note, nothing to run.
+- **Step 5 (commit):** fully applied across `442f1ed9`…`650846852`.
+
+First-pass duty-assessment text below is kept for the record; its "pending native go"
+recommendation was answered by D-E022.
+
+<details><summary>First-pass §4 (superseded)</summary>
+
 `MERGE_HYGIENE_12_10c_RUNBOOK.md` — documented 2026-09-27. **Execution state as of
 2026-09-29 (this lane, on-branch, per the packet §4 duty assignment): step 1 EXECUTED
 (writer digests regenerated, `--check` green), step 3 EXECUTED (census regenerated, check
@@ -158,6 +257,8 @@ Consequences:
 3. If the L0 lane still merges after #2731, the runbook's original second-merger hygiene
    applies to THAT merge unchanged.
 
+</details>
+
 ## 5. F-0 PRECONDITIONS TABLE
 
 | Precondition | Status | Evidence / note |
@@ -171,7 +272,26 @@ Consequences:
 
 ---
 
-## HEADLINE VERDICT: **HOLDING** (updated 2026-09-29, HEAD `66d168174`)
+## HEADLINE VERDICT: **READY, TWO NATIVE DECISIONS STANDING** (updated 2026-09-29 second pass, HEAD `650846852`)
+
+**CI is fully green (1514 pass / 0 fail) and the PR is MERGEABLE/CLEAN.** First-pass stop
+item 1 (pins re-admission authority) is **RESOLVED by D-E022** — §2c.
+
+Stop items still standing, both native territory, both unchanged from first pass:
+
+1. **STOP-LEVEL: deploy runner would apply 1071 + 1072 at merge** — intended? (1072 flips
+   `target_table` and breaks conjunct (j) if applied uncoordinated; standing instruction is
+   DO NOT apply locally.) Re-confirmed by second-pass dry-run (§3). Native decision required.
+2. **OPEN native coordination: 1086** — the native must confirm with the L1 lane that
+   applying it at deploy is intended. Not confirmable by this lane.
+
+New non-blocking note from the second pass: no seed entry in `asset_registry_seed.ts`
+currently owns `kala_gochara_windows` generation `'3.0'` — `ka_gochara` is ruled to
+`_v2`/`'2.0'` only, and `ka_gochara_v3_century_materialize`'s seed entry targets `_v2` with
+`generation LIKE 'g3_%'`. Whether the `'3.0'` surface needs a seed row (or is deliberately
+migration-only) is a native/L3-plan question, not a merge blocker.
+
+<details><summary>First-pass verdict (HOLDING, superseded)</summary>
 
 Stop items, in order:
 
@@ -199,10 +319,12 @@ pin re-admission) STOPPED** — §2c, native authority needed; step 4 (1072 inte
 recorded note, nothing to run; step 5 (commit) partially applied (steps 1+3 outputs
 committed in `bd5c34fb0`).
 
+</details>
+
 Non-blocking, recorded: Disclosure 3 (R240); chart-1 `'4.0'` burned; chart-2 candidate
 retention; soak trigger #0 added to `step09_soak_checklist.md`; frozen seven + 1150 verified
 absent from the deploy pending list.
 
-Next native actions: issue the pins authority decision (stop item 1); rule on stop items
-2–3; merge + deploy #2731 when green; then DEPLOY_SHA verification → Cloud-Run century
-rebuild → flips under trigger #0 + soaks (ADK-0028 amended sequence).
+Next native actions: rule on the two standing stop items; merge + deploy #2731; then
+DEPLOY_SHA verification → Cloud-Run century rebuild → flips under trigger #0 + soaks
+(ADK-0028 amended sequence).
