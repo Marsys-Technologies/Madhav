@@ -7,7 +7,7 @@
 - **Refreshed:** 2026-09-29 **third pass** (Pravāha A0.5 — steward review of A0.3/A0.4) @
   **`04850a7ef`** — **BLOCKING ka_gochara registry-identity conflict reconciled to migration
   1091** (§2d), golden-baseline renumbering dispositioned (§2e), second D-E022 successor
-  listed for native ratification (§2f). Sections 2d, 2e, 2f, 3 and the verdict supersede
+  ratified by the native (§2f). Sections 2d, 2e, 2f, 3 and the verdict supersede
   their second-pass content where marked; unmarked earlier content stands.
 - **Governing:** ADK-0027 (native directive F-0, precondition 1 — deploy-before-flip),
   ADK-0028 (light-work scope; Cloud-Run-only century rebuild), ESCALATIONS.md E-020/E-021/E-022,
@@ -177,15 +177,14 @@ ordering, so the content-hash cascade re-sorts an unchanged set. The same holds 
 pass's re-baseline (`a35eff544`; multiset identical again, 25=25 both files). The receipt
 hash moves because the closure receipt covers the content hash; that is its purpose.
 
-### 2f. Second D-E022 L3 successor — AWAITING NATIVE RATIFICATION (steward item 4)
+### 2f. Second D-E022 L3 successor — **RATIFIED by the native, 2026-09-29** (steward item 4)
 
 The second L3 pins successor `l3:ad22bef06784:d1bf773c4d94` (admission commit `19a8fffce`,
 covering the three knots-closure writers whose digests the DP-SD-010 `knots.py` fix moved)
-was admitted under this lane's own reading of D-E022's scope — **self-authorised, now
-listed for native ratification**. If the native declines to ratify, the remediation is a
-third append-only successor restoring the prior digests (the admission log is append-only;
-nothing is edited in place). The first L1/L3 successors (`6f145dd87`) were covered by
-D-E022 directly and are not in question.
+was admitted under this lane's own reading of D-E022's scope and was listed here as
+self-authorised, awaiting ratification. **The native ratified it on 2026-09-29** — the
+successor stands as admitted; no remediation applies. The first L1/L3 successors
+(`6f145dd87`) were covered by D-E022 directly.
 
 First-pass sections 2a/2b below are kept for the record.
 
@@ -302,9 +301,10 @@ Assessment (third pass):
   `build_protected_assets` INSERT for the retired sweep — already satisfied in production
   (3 rows / 3 v1 charts, read-only verified 2026-09-29), so its gate passes as an honest
   no-op. Deploy-time application at merge carries no remaining registry risk.
-- **1086 — ga_strength digest spec.** STILL OPEN native-coordination item: F-0 requires the
-  **native** to confirm with the **L1 lane** that applying 1086 at deploy is intended.
-  This is now the **only** standing deploy-list question.
+- **1086 — ga_strength digest spec.** **CONFIRMED — native ruling 2026-09-29:** the native
+  has confirmed with the L1 lane that applying 1086 at merge is intended. **Scope limit
+  recorded verbatim:** the ga_strength **rebuild is NOT authorised by this ruling** — after
+  deploy, do not rebuild ga_strength for any chart; that is a separate, later decision.
 - **Frozen seven (1080, 1081, 1082, 1083, 1084, 1087, 1091) and 1150 — VERIFIED ABSENT
   from the pending list.** Production `_migrations_applied` already carries 1080–1084,
   1087, 1091 (2026-09-24) and 1150 (2026-09-28) — consistent with the f0p2 evidence
@@ -378,35 +378,26 @@ Consequences:
 
 ---
 
-## HEADLINE VERDICT: **READY — ONE STANDING NATIVE COORDINATION ITEM + ONE RATIFICATION** (updated 2026-09-29 third pass, HEAD `04850a7ef`)
+## HEADLINE VERDICT: **READY — NO STANDING NATIVE ITEMS** (final, 2026-09-29, HEAD `25bb4fc3b`)
 
-All five steward-review items are dispositioned:
+Native rulings of 2026-09-29 closed the last two items:
 
-1. Accepted items stand (CI repair, D-E022 first successor, resonance/beyond_acarya/swiss
-   changes, 1071 ruled safe to apply at merge).
-2. **BLOCKING ka_gochara registry identity conflict — RECONCILED** to migration 1091
-   (§2d): 1072 Part 1 withdrawn; seed literal mirrors the 1091 row; both detectors
-   re-pointed with conjunct-(j) negative assertions; production read-only evidence shows
-   conjunct (j) holding and the 1150-form `integrity_check_sql` evaluating `t` — which IS
-   the post-merge state for that row, since nothing in the pending set touches it anymore.
-3. Golden re-baseline renumbering — dispositioned: **no capability entered** (182 SCUs,
-   byte-identical snapshot across `ad22bef06`; identical 25-obligation multiset in both
-   re-baselined scenarios); the obl-NNN renumbering is hash-order churn (§2e).
-4. Second D-E022 L3 successor (`l3:ad22bef06784:d1bf773c4d94`, commit `19a8fffce`) —
-   **listed as AWAITING NATIVE RATIFICATION** (§2f). Non-blocking for merge: if declined,
-   remediation is a third append-only successor, not an edit.
-5. Standing native item after this pass: **1086 L1-lane confirmation only** (§3).
+1. **1086 applies at merge — CONFIRMED** (native's L1-lane confirmation, §3). Scope limit:
+   the ga_strength rebuild is NOT authorised by this ruling — no ga_strength rebuild for
+   any chart after deploy; that is a separate, later decision.
+2. **Second D-E022 successor RATIFIED** (`l3:ad22bef06784:d1bf773c4d94`, §2f).
+3. **No standing native items remain for the merge.**
 
-CI at HEAD `04850a7ef`: `gh pr checks 2731 --watch` exit 0 — **34 pass / 15 skipping /
-0 fail**; PR **MERGEABLE/CLEAN**. Local evidence for everything the
-reconciliation touched: mr06 6/6, seed parity + DAG parity 17/17, golden-stream 56/56,
-beyond_acarya 21/21 (+ fork 6/6), knowledge 38/38, pins py 69 passed/3 skipped, TS scripts
-118/118, writer digests `--check` exit 0, layer pins `--check` current, both codegen
-`:check`s green.
+Steward-verified against production 2026-09-29: 1072 no longer touches ka_gochara, the seed
+equals the live 1091 row, the live integrity check evaluates `t`, and the 3 sweep-protection
+rows are present. CI at HEAD: 34 pass / 15 skipping / 0 fail; PR MERGEABLE/CLEAN. Local
+evidence for everything the reconciliation touched (§2d): mr06 6/6, seed parity + DAG parity
+17/17, golden-stream 56/56, beyond_acarya 21/21 (+ fork 6/6), knowledge 38/38, pins py
+69 passed/3 skipped, TS scripts 118/118, writer digests `--check` exit 0, layer pins current,
+both codegen `:check`s green.
 
-**Merging #2731 remains the native's action.** Post-merge: A1.1 detects the merge
-automatically; A1.2 (DEPLOY_SHA) and A1.3 (post-merge hygiene) follow per the campaign
-plan.
+**Merging #2731 is the native's action.** This lane now waits for A1.1 to detect the merge,
+then proceeds to A1.2 (DEPLOY_SHA) and A1.3 (post-merge hygiene).
 
 <details><summary>First-pass verdict (HOLDING, superseded)</summary>
 
@@ -447,6 +438,7 @@ question (now sharper: the ka_gochara seed row catalogs the `'4.0'` surface per 
 century materializer's row counts `g3_%` on `_v2`; `'3.0'` on `kala_gochara_windows` has no
 seed owner — migration-only by design or a gap is the native's call).
 
-Next native actions: confirm 1086 with the L1 lane; ratify (or decline) the second D-E022
-successor (§2f); merge + deploy #2731; then DEPLOY_SHA verification → Cloud-Run century
-rebuild → flips under trigger #0 + soaks (ADK-0028 amended sequence).
+Next native actions: **merge + deploy #2731** (no standing items remain); then DEPLOY_SHA
+verification → Cloud-Run century rebuild → flips under trigger #0 + soaks (ADK-0028 amended
+sequence). Reminder carried from the 1086 ruling: deploy applies 1086, but no ga_strength
+rebuild is authorised — that decision is separate and later.
