@@ -208,8 +208,8 @@ separation class and **against** the marriage class). Negatives are never clampe
 2. `outcome_valence_for_native` reports the *native's* interest (favourable marriage window vs
    favourable bereavement window are both "admitted" — their outcome valences differ).
 3. `unqualified` is the honest state when operands are unresolved (ADK-0026; §N.7 honest null) —
-   never a favourable-sounding default. E12's defect (1,435 era rows all "favourable", incl.
-   separation/deception/bereavement) is the regression this field exists to prevent.
+   never a favourable-sounding default. Finding #12's defect (1,435 era rows all "favourable",
+   incl. separation/deception/bereavement — E5) is the regression this field exists to prevent.
 4. Valence is computed at evaluation time from class polarity + record content; it is never
    copied class-blind from the rule row.
 
