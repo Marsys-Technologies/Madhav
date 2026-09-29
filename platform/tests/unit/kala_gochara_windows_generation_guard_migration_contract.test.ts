@@ -14,10 +14,12 @@ describe('migration 1071 conditional guard install', () => {
   it('skips only when the stricter production guard is bound by OID, function, events and enabled mode on BOTH triggers', () => {
     expect(code).toContain("to_regprocedure('public.kala_gochara_generation_guard()') IS NOT NULL")
     for (const [name, tgtype] of [['trg_kgw_generation_guard_row', 27], ['trg_kgw_generation_guard_truncate', 34]] as const) {
-      const block = code.slice(code.indexOf(`t.tgname = '${name}'`))
+      const at = code.indexOf(`t.tgname = '${name}'`)
+      expect(at).toBeGreaterThan(0)
+      const block = code.slice(Math.max(0, at - 120), at + 400) // one EXISTS() clause: tgrelid precedes tgname
       expect(block).toContain("t.tgrelid = to_regclass('public.kala_gochara_windows')")
-      expect(block.slice(0, 400)).toContain("t.tgfoid = to_regprocedure('public.kala_gochara_generation_guard()')")
-      expect(block.slice(0, 400)).toContain(`t.tgtype = ${tgtype} AND t.tgenabled = 'O'`)
+      expect(block).toContain("t.tgfoid = to_regprocedure('public.kala_gochara_generation_guard()')")
+      expect(block).toContain(`t.tgtype = ${tgtype} AND t.tgenabled = 'O'`)
     }
   })
 
