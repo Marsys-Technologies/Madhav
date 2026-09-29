@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { AlertCircle, CheckCircle2, CircleDashed, Clock3, ShieldX, TerminalSquare } from 'lucide-react'
 import { AiChoiceRadio } from './AiChoiceRadio'
 import { choicesEqual, formatCheckedAt, supportsEveryRole, type AiChoice, type AiConsoleStateDto, type CliCardDto, type ConsoleMutation } from './types'
@@ -24,12 +25,24 @@ interface Props {
   mutationPending: boolean
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
+  onConfigureRoles?: (cliId: CliCardDto['cliId']) => void
 }
 
-export function LocalClisSection({ state, clis, loading, error, aggregateStatus, mutationPending, mutate, onSelectDefault }: Props) {
+export function LocalClisSection({ state, clis, loading, error, aggregateStatus, mutationPending, mutate, onSelectDefault, onConfigureRoles }: Props) {
+  const [candidateIds, setCandidateIds] = useState<Record<string, string>>({})
   async function testCli(cli: CliCardDto) {
     try {
       await mutate(`/api/ai-console/clis/${cli.cliId}/validate`, { method: 'POST', body: JSON.stringify({}) }, `${cli.productName} validation completed.`)
+    } catch { /* safe status is announced centrally */ }
+  }
+  async function addCandidate(cli: CliCardDto) {
+    const modelId = candidateIds[cli.cliId]?.trim()
+    if (!modelId) return
+    try {
+      await mutate(`/api/ai-console/clis/${cli.cliId}/models`, {
+        method: 'POST', body: JSON.stringify({ modelId }),
+      }, `${cli.productName} model tested and added.`)
+      setCandidateIds(current => ({ ...current, [cli.cliId]: '' }))
     } catch { /* safe status is announced centrally */ }
   }
   const cliDefault = state?.defaultChoice?.kind === 'local_cli' ? state.defaultChoice : null
@@ -52,7 +65,12 @@ export function LocalClisSection({ state, clis, loading, error, aggregateStatus,
               {isPrivate ? <p className="aic-section-copy">An administrator must grant access before host availability can be shown.</p> : <>
                 <p className="aic-meta">{cli.detectedProduct ?? 'Product not detected'}{cli.detectedVersion ? ` · ${cli.detectedVersion}` : ''}</p>
                 <p className="aic-meta">Last check · {formatCheckedAt(cli.lastCheckedAt)}</p>
-                <div className="aic-actions"><button className="aic-button" type="button" disabled={mutationPending} onClick={() => testCli(cli)}>Test local CLI</button></div>
+                <div className="aic-actions"><button className="aic-button" type="button" disabled={mutationPending} onClick={() => testCli(cli)}>Test local CLI</button>{cli.state === 'reachable' && <button className="aic-button" data-primary="true" type="button" onClick={() => onConfigureRoles?.(cli.cliId)}>Configure four roles</button>}</div>
+                {cli.state === 'reachable' && (cli.cliId === 'codex' || cli.cliId === 'claude_code') && <div className="aic-cli-manual">
+                  <p className="aic-section-copy">This CLI does not publish a model catalog here. Enter an exact model ID to test it through the local subscription, then assign it to roles in a configuration.</p>
+                  <div className="aic-field"><label htmlFor={`aic-cli-model-${cli.cliId}`}>Exact model ID for {cli.productName}</label><input id={`aic-cli-model-${cli.cliId}`} value={candidateIds[cli.cliId] ?? ''} onChange={event => setCandidateIds(current => ({ ...current, [cli.cliId]: event.target.value }))} placeholder="Model ID from this CLI" autoComplete="off" /></div>
+                  <button className="aic-button" type="button" disabled={mutationPending || !candidateIds[cli.cliId]?.trim()} onClick={() => addCandidate(cli)}>Test and add CLI model</button>
+                </div>}
               </>}
             </div>
             {!isPrivate && <div className="aic-model-list" aria-label={`${cli.productName} models`}>

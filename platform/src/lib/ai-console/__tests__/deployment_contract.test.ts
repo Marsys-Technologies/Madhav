@@ -44,6 +44,7 @@ describe('AI Console production deployment contract', () => {
     expect(snapshotRepair).toContain('CREATE OR REPLACE FUNCTION ai_snapshot_shape')
     expect(workflow).toContain('migrations+=(1124_ai_console_byok_routing.sql)')
     expect(workflow).toContain('migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)')
+    expect(workflow).toContain('migrations+=(1151_ai_console_model_shortlist.sql)')
   })
 
   it('keeps the standing Pariprashna probe on the mandatory account default', () => {

@@ -92,6 +92,8 @@ export interface CliRunner {
   runAuthValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliProcessResult>
   runModelCatalogValidation(userId: string, cliId: CliId, signal?: AbortSignal): Promise<CliDiscoveredModel[]>
   runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal): Promise<CliProcessResult>
+  runModelProbeValidation(userId: string, cliId: CliId, modelId: string, stdin: string, signal?: AbortSignal): Promise<CliProcessResult>
+  confirmManualModel(cliId: CliId, identity: CliInstallationIdentity, modelId: string): Promise<void>
   runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
     responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }): Promise<CliProcessResult>
   inspectForTests(): { active: number; queued: number }
@@ -170,6 +172,18 @@ class RemoteCliRunner implements CliRunner {
 
   runProbeValidation(userId: string, cliId: CliId, stdin: string, signal?: AbortSignal) {
     return this.runAuthorized(userId, cliId, { operation: 'probe', cliId, stdin }, signal, 'validation')
+  }
+
+  runModelProbeValidation(userId: string, cliId: CliId, modelId: string, stdin: string, signal?: AbortSignal) {
+    return this.runAuthorized(userId, cliId, { operation: 'probe_model', cliId,
+      modelId: validateConfirmedModelId(modelId), stdin }, signal, 'validation')
+  }
+
+  async confirmManualModel(cliId: CliId, identity: CliInstallationIdentity, modelId: string) {
+    const current = this.confirmed.get(cliId)
+    if (!current || !isDeepStrictEqual(current.identity, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    this.confirmed.set(cliId, Object.freeze({ ...current,
+      modelIds: new Set([...current.modelIds, validateConfirmedModelId(modelId)]) }))
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
@@ -349,6 +363,20 @@ class GovernedCliRunner implements CliRunner {
     return await this.runFixedAuthorized(userId, cliId, buildExecutionArgs(definition, null),
       encodeCliStdin(definition, stdin), signal,
       undefined, 'validation')
+  }
+
+  async runModelProbeValidation(userId: string, cliId: CliId, modelId: string, stdin: string, signal?: AbortSignal) {
+    const definition = this.invocableDefinition(cliId)
+    if (definition.modelCatalog || !definition.authStatusArgs) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    return this.runFixedAuthorized(userId, cliId, buildExecutionArgs(definition, validateConfirmedModelId(modelId)),
+      encodeCliStdin(definition, stdin), signal, undefined, 'validation')
+  }
+
+  async confirmManualModel(cliId: CliId, identity: CliInstallationIdentity, modelId: string) {
+    const current = this.confirmedIdentities.get(cliId)
+    if (!current || !isDeepStrictEqual(current.identity, identity)) throw new AiConsoleError('AI_CLI_UNREACHABLE')
+    this.confirmedIdentities.set(cliId, Object.freeze({ ...current,
+      modelIds: new Set([...current.modelIds, validateConfirmedModelId(modelId)]) }))
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;

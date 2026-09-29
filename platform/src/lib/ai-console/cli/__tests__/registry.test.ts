@@ -20,7 +20,7 @@ describe('closed CLI registry', () => {
     })
     expect(CLI_REGISTRY.kimi_code).toMatchObject({
       candidates: ['/Users/Dev/.kimi-code/bin/kimi'], supportedVersion: '2.1.1',
-      compatibleRoles: AI_ROLES,
+      compatibleRoles: ['synthesizer'],
       modelCatalog: { args: ['provider', 'list', '--json'], format: 'kimi_provider_json' },
       execution: { transport: 'kimi_acp', outputFormat: 'kimi_acp_json' },
     })
@@ -69,6 +69,6 @@ describe('closed CLI registry', () => {
     expect(CLI_REGISTRY.codex.compatibleRoles).toEqual(AI_ROLES)
     expect(CLI_REGISTRY.claude_code.compatibleRoles).toEqual(AI_ROLES)
     expect(CLI_REGISTRY.gemini_antigravity.compatibleRoles).toEqual(AI_ROLES)
-    expect(CLI_REGISTRY.kimi_code.compatibleRoles).toEqual(AI_ROLES)
+    expect(CLI_REGISTRY.kimi_code.compatibleRoles).toEqual(['synthesizer'])
   })
 })

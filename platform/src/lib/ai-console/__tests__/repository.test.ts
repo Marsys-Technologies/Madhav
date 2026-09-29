@@ -28,6 +28,7 @@ const mcpCorrelationId = '00000000-0000-4000-8000-000000000004'
 const choice = { kind: 'provider_model' as const, connectionId, modelId: 'model-a' }
 const assignments = { synthesizer: choice, planner: choice, deep_planner: choice, worker: choice }
 const safeConnection = { id: connectionId, provider_id: 'openai', name: 'Personal', masked_suffix: '••••1234', validation_state: 'validated', credential_version: '1', credential_validity: 'valid', deleted_at: null }
+const testedModel = { user_selected: true, plain_tested_at: new Date(), tested_credential_version: 1, credential_version: 1 }
 const encrypted: EncryptedCredential = {
   ciphertext: Buffer.alloc(2), nonce: Buffer.alloc(12), authTag: Buffer.alloc(16), wrappedDataKey: Buffer.alloc(32),
   wrapNonce: Buffer.alloc(12), wrapAuthTag: Buffer.alloc(16), keyVersion: 'test', mask: '••••1234', fingerprint: 'f'.repeat(64),
@@ -42,7 +43,7 @@ function validTransport() {
   respond(sql => {
     if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
     if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
-    if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true }]
+    if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true, ...testedModel }]
     if (sql.includes('RETURNING')) return [{ ...safeConnection, id: configurationId, version: '2' }]
   })
 }
@@ -301,7 +302,7 @@ describe('owned AI configuration repository', () => {
   ] as const)('allows a validating direct default only with %s retained credential authority', async (validity, accepted) => {
     respond(sql => {
       if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: 'validating', credential_validity: validity }]
-      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true, ...testedModel }]
       return undefined
     })
     const result = repository.setUserDefault('alice', choice)
@@ -316,7 +317,7 @@ describe('owned AI configuration repository', () => {
   ] as const)('allows a validating provider in a saved configuration only with %s retained credential authority', async (validity, accepted) => {
     respond(sql => {
       if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, validation_state: 'validating', credential_validity: validity }]
-      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true, ...testedModel }]
       if (sql.includes('RETURNING')) return [{ id: configurationId, version: '1' }]
       return undefined
     })
@@ -328,7 +329,7 @@ describe('owned AI configuration repository', () => {
   it('requires every role for direct defaults and explicit conversation models', async () => {
     respond(sql => {
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
-      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: ['synthesizer', 'planner', 'deep_planner'], available: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: ['synthesizer', 'planner', 'deep_planner'], available: true, ...testedModel }]
       if (sql.includes('FROM conversations')) return [{ id: conversationId }]
     })
     await expect(repository.setUserDefault('alice', choice)).rejects.toMatchObject({ code: 'AI_ROLE_INCOMPATIBLE' })
@@ -338,7 +339,7 @@ describe('owned AI configuration repository', () => {
   it('allows a partial-capability model only in its compatible custom role', async () => {
     respond((sql, params) => {
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
-      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: params[2] === 'synthesis-only' ? ['synthesizer'] : AI_ROLES, available: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: params[2] === 'synthesis-only' ? ['synthesizer'] : AI_ROLES, available: true, ...testedModel }]
       if (sql.includes('RETURNING')) return [{ id: configurationId, version: '1' }]
     })
     const roles = { ...assignments, synthesizer: { ...choice, modelId: 'synthesis-only' } }
@@ -526,7 +527,7 @@ describe('owned AI configuration repository', () => {
     respond(sql => {
       if (sql.includes('FROM ai_custom_configuration_roles')) return AI_ROLES.map(role => ({ role, kind: 'provider_model', connection_id: connectionId, model_id: 'model-a' }))
       if (sql.includes('FROM ai_provider_connections')) return [safeConnection]
-      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES }]
+      if (sql.includes('FROM ai_connection_models')) return [{ compatible_roles: AI_ROLES, available: true, ...testedModel }]
       if (sql.includes('FROM ai_custom_configurations') || sql.includes('RETURNING')) return [{ id: configurationId, name: 'Copy', version: '1' }]
     })
     const result = await repository.duplicateConfiguration('alice', conversationId, 'Copy')

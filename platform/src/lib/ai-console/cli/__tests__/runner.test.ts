@@ -240,6 +240,20 @@ describe('governed CLI runner', () => {
       .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
   })
 
+  it('probes an exact manual model through CLI argv before admitting its execution', async () => {
+    const { definition } = await fixture('process.stdout.write(JSON.stringify(process.argv.slice(2)))')
+    const runner = createCliRunner({ registry: { codex: definition } })
+    const identity = await runner.inspectInstallation('codex')
+    await runner.confirmValidation('codex', identity, '1.0.0', [null])
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'manual-model', stdin: '' }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    const probe = await runner.runModelProbeValidation('alice', 'codex', 'manual-model', 'Reply OK.')
+    expect(probe.stdout).toBe('["run","-m","manual-model"]')
+    await runner.confirmManualModel('codex', identity, 'manual-model')
+    await expect(runner.runExecution('alice', 'codex', { modelId: 'manual-model', stdin: '' }))
+      .resolves.toMatchObject({ stdout: '["run","-m","manual-model"]' })
+  })
+
   it('runs Kimi over ACP in plan mode, with no MCP servers, and denies tool permission', async () => {
     const { definition } = await fixture(`
       const readline=require('node:readline'); const rl=readline.createInterface({input:process.stdin});

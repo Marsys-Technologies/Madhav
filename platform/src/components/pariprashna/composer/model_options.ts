@@ -62,6 +62,8 @@ export interface AiChoicesAggregateDto {
     displayName: string
     compatibleRoles: AiRole[]
     available: boolean
+    userSelected?: boolean
+    plainTestedAt?: string | null
   }>
   configurations: Array<{
     id: string
@@ -186,7 +188,7 @@ export function buildAiChoiceOptions(
   for (const connection of aggregate.connections) {
     for (const model of aggregate.models.filter(row => row.connectionId === connection.id)) {
       const choice: ProviderChoiceDto = { kind: 'provider_model', connectionId: connection.id, modelId: model.modelId }
-      if (!choiceUsable(aggregate, clis, choice)) continue
+      if (!model.userSelected || !model.plainTestedAt || !choiceUsable(aggregate, clis, choice)) continue
       const selection = explicit(choice)
       options.push({ key: selectionKey(selection), group: 'Provider connections', label: `${connection.name} · ${model.displayName}`, selection, disabled: false })
     }
@@ -211,8 +213,11 @@ export function buildAiChoiceOptions(
 
   const selectedKey = selectionKey(view.selection)
   if (!options.some(option => option.key === selectedKey)) {
-    options.splice(1, 0, { key: selectedKey, group: null, label: view.label || 'Unavailable AI choice',
-      detail: view.remediation ?? 'Repair this choice in AI Console.', selection: view.selection, disabled: true })
+    const savedChoice = view.selection.kind === 'explicit' ? view.selection.choice : null
+    const stillUsable = savedChoice !== null && choiceUsable(aggregate, clis, savedChoice)
+    options.splice(1, 0, { key: selectedKey, group: null, label: view.label || (savedChoice ? choiceLabel(aggregate, clis, savedChoice) : 'Unavailable AI choice'),
+      detail: stillUsable ? 'Saved for this conversation; add it to your shortlist to choose it elsewhere.'
+        : view.remediation ?? 'Repair this choice in AI Console.', selection: view.selection, disabled: !stillUsable })
   }
   return options
 }
