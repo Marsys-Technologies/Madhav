@@ -1616,7 +1616,9 @@ async function proveReaderLogin(out: Reporter, route: AdminRoute, password: stri
     const { rows: [r] } = await pool.query<{ who: string; ro: string; writes: string; creates: boolean }>(`
       SELECT current_user::text AS who, current_setting('default_transaction_read_only') AS ro,
         ((SELECT count(*) FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-           WHERE n.nspname !~ '^pg_toast' AND n.nspname !~ '^pg_temp_' AND (
+           WHERE n.nspname !~ '^pg_toast' AND n.nspname !~ '^pg_temp_'
+             AND NOT (n.nspname='pg_catalog' AND c.relname='pg_settings')  -- PUBLIC UPDATE by design = SET for own session
+             AND (
              (c.relkind IN ('r','p','v','m','f') AND (has_table_privilege(current_user, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
                 OR has_any_column_privilege(current_user, c.oid, 'INSERT,UPDATE,REFERENCES')))
              OR (CASE WHEN c.relkind='S' THEN has_sequence_privilege(current_user, c.oid, 'USAGE,UPDATE') ELSE false END)))
