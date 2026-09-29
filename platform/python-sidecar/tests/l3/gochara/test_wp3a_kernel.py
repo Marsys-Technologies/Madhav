@@ -348,6 +348,89 @@ def test_case_06_special_drishti_table():
     assert len(eps_rah_conj) > 0  # nodes remain full conjunction agents/targets
 
 
+# ── O-AD-1…4 — aspect direction, computed never mirrored (spec §6.2 inv 6) ──
+#
+# GOCHARA_TEST_ORACLES_v1_4.json O-AD-1..O-AD-4 (literal fixtures, tolerance
+# ±1 arcmin), plus the two brief cases (Saturn at Libra 24°15′ → Sagittarius
+# 24°15′ by the 3rd aspect; Mars at Aries 10° → Cancer 10° by the 4th).
+# Forward count: the aspect from body b falls at (λ_b + angle) mod 360, so the
+# contact occurs with the body at (target − angle) mod 360. The mirrored
+# implementation (target + angle) is the mutation that must fail.
+
+OAD_SWEEP_RATE = 0.5  # °/day synthetic sweep
+OAD_TIME_TOL_DAYS = (1.0 / 60.0) / OAD_SWEEP_RATE  # ±1 arcmin of longitude
+
+# (oracle, body, target_deg, aspect_deg, body_longitude_at_contact)
+OAD_CASES = [
+    ("O-AD-1", "Mars", 0.0, 90.0, 270.0),     # Mars 4th  → body at 0−90
+    ("O-AD-2", "Mars", 0.0, 210.0, 150.0),    # Mars 8th  → body at 0−210
+    ("O-AD-3", "Saturn", 0.0, 60.0, 300.0),   # Saturn 3rd → body at 0−60
+    ("O-AD-4", "Saturn", 0.0, 270.0, 90.0),   # Saturn 10th → body at 0−270
+    ("brief-1", "Saturn", 264.25, 60.0, 204.25),   # Libra 24°15′ → Sag 24°15′
+    ("brief-2", "Mars", 100.0, 90.0, 10.0),        # Aries 10° → Cancer 10°
+]
+
+
+def _oad_index(body: str) -> tuple[arcs.ArcIndex, float]:
+    """A 0.5°/day sweep starting at 0° — over three years it crosses every
+    level in [0,360) several times, so both the true level (target−angle) and
+    the mirrored level (target+angle) are traversed; only the true one may
+    produce a root at this aspect."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+    jds, lons = daily_knots(
+        date(2026, 1, 1), date(2029, 1, 1),
+        lambda jd: OAD_SWEEP_RATE * (jd - t0),
+    )
+    return arcs.build_arc_index(
+        body, jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC
+    ), t0
+
+
+@pytest.mark.parametrize(
+    "oracle,body,target,aspect,body_lon", OAD_CASES,
+    ids=[c[0] for c in OAD_CASES],
+)
+def test_oad_aspect_direction(oracle, body, target, aspect, body_lon):
+    idx, t0 = _oad_index(body)
+    roots = contacts.find_roots(
+        idx, body, "drishti_contact", target, refine=False
+    )
+    hits = [r for r in roots if r.aspect_deg == aspect]
+    assert hits, f"{oracle}: no {aspect}°-aspect root found for {body}"
+
+    # then-clause: the level is (target − angle) mod 360 and the root occurs
+    # with the body there (first crossing at t0 + body_lon / rate).
+    assert all(
+        r.level_deg == pytest.approx((target - aspect) % 360.0, abs=1e-9)
+        for r in hits
+    )
+    t_true = t0 + (body_lon % 360.0) / OAD_SWEEP_RATE
+    assert any(
+        abs(r.spline_exact_jd - t_true) < OAD_TIME_TOL_DAYS for r in hits
+    ), f"{oracle}: no root with the body at {body_lon}° (target − {aspect}°)"
+
+    # mutation detector: an implementation computing target + angle roots the
+    # aspect with the body at (target + angle) mod 360 — that instant must
+    # carry NO root at this aspect.
+    t_mirror = t0 + ((target + aspect) % 360.0) / OAD_SWEEP_RATE
+    assert not any(
+        abs(r.spline_exact_jd - t_mirror) < OAD_TIME_TOL_DAYS for r in hits
+    ), f"{oracle}: mirrored direction produced a root at target + {aspect}°"
+
+
+def test_oad_levels_computed_as_target_minus_angle():
+    """Direct statement of the rule the mutation flips: for the 0° target the
+    solved levels are 300/150/270/90 for Saturn-3rd/Mars-8th/Saturn-10th/
+    Mars-4th — never 60/210/90→270."""
+    levels = dict(contacts._levels_for_relation("Saturn", "drishti_contact", 0.0))
+    assert levels[60.0] == pytest.approx(300.0)
+    assert levels[270.0] == pytest.approx(90.0)
+    assert levels[180.0] == pytest.approx(180.0)  # 7th: self-mirror invariant
+    levels = dict(contacts._levels_for_relation("Mars", "drishti_contact", 0.0))
+    assert levels[90.0] == pytest.approx(270.0)
+    assert levels[210.0] == pytest.approx(150.0)
+
+
 # ── Case 12 — plateau ties in peak detection ────────────────────────────────
 
 def test_case_12_plateau_ties():

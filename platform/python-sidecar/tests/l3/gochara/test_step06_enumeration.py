@@ -295,16 +295,19 @@ def test_orb_regime_return_gating_and_boundary_attachment():
     h0 = _jd(2026, 1, 1)
 
     def curve(jd):
-        return 150.0 + 0.25 * (jd - h0)  # sweeps 150 → ~241 inside the horizon
+        return 100.0 + 0.25 * (jd - h0)  # sweeps 100 → ~191 inside the horizon
 
     index = _index("Saturn", date(2025, 12, 1), date(2027, 3, 1), curve)
     horizon = (_jd(2026, 1, 1), _jd(2027, 1, 1))
     targets = [
-        # conjunction at 180 (t=120d) + 3rd-aspect drishti level 240 (t=360d);
+        # conjunction at 180 (t=320d) + 3rd-aspect drishti level 120 (t=80d) —
+        # aspect direction is the forward count (spec §6.2 inv 6): Saturn's
+        # 3rd aspect from λ falls at λ+60, so the aspect lands on target 180
+        # with the body at (180 − 60) mod 360 = 120;
         # owner Mars → no return
         _point_target(180.0, "Mars", "karaka", "Mars"),
         # owner Saturn → return present at 0.5°
-        _point_target(200.125, "Saturn", "sensitive_degree", "chk"),
+        _point_target(150.125, "Saturn", "sensitive_degree", "chk"),
     ]
     eps, stats = drv.enumerate_body(
         index, "Saturn", targets, horizon, 5.0, BACKEND,

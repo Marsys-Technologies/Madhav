@@ -74,7 +74,7 @@ class Episode:
     relation: str
     aspect_deg: float
     target_deg: float
-    level_deg: float            # effective longitude reached (target+aspect mod 360)
+    level_deg: float            # effective longitude reached (target−aspect mod 360)
     t_in: float                 # jd
     t_exact: float | None       # jd; None when no exact crossing inside the horizon
     t_out: float                # jd

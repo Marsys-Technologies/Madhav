@@ -3,8 +3,11 @@ Swiss bisection at the instant (plan §4.2).
 
 Relations (plan §4.2, WP1_CONTRACTS.md §2.2 N-14, §7):
   conjunction      — separation root, target longitude, orb per orb_conj_*
-  drishti_contact  — directed special dṛṣṭi: body at target + angle for each
-                     angle in the per-graha table; nodes cast NONE (N-14)
+  drishti_contact  — directed special dṛṣṭi: body at target − angle for each
+                     angle in the per-graha table (forward count: the aspect
+                     from body b falls at (λ_b + angle) mod 360, so the aspect
+                     lands on the target when λ_b = (target − angle) mod 360 —
+                     GOCHARA_DESIGN_SPECS §6.2 inv 6); nodes cast NONE (N-14)
   return           — separation root like conjunction, orb per orb_return_*
   sign_ingress / nakshatra_ingress / kakshya_cell_crossing — boundary roots at
                      30° / 13°20′ / 3°75′ grid edges (boundary-exact, no orb —
@@ -49,7 +52,7 @@ class ContactRoot:
     relation: str
     target_deg: float        # the target longitude the relation is measured on
     aspect_deg: float        # dṛṣṭi angle for drishti_contact, else 0.0
-    level_deg: float         # the effective longitude reached (= (target+aspect) % 360)
+    level_deg: float         # the effective longitude reached (= (target−aspect) % 360)
     spline_exact_jd: float   # root of the spline (arc index stage)
     exact_jd: float          # refined by direct Swiss bisection at the instant
     bracket: tuple[float, float]
@@ -209,7 +212,12 @@ def _levels_for_relation(body: str, relation: str, target_deg: float) -> list[tu
     if relation == "drishti_contact":
         # N-14: nodes cast no dṛṣṭi at all — an empty angle list means the
         # relation simply has no roots for this body (never an error state).
-        return [(a, (t + a) % 360.0) for a in drishti_angles(body)]
+        # Direction (GOCHARA_DESIGN_SPECS §6.2 inv 6 — computed, never
+        # mirrored): a special aspect from body b falls at (λ_b + angle)
+        # mod 360 (Mars 4th/8th +90/+210, Saturn 3rd/10th +60/+270, Jupiter
+        # 5th/9th +120/+240), so the aspect lands on the target when the body
+        # sits at (target − angle) mod 360.
+        return [(a, (t - a) % 360.0) for a in drishti_angles(body)]
     raise ValueError(f"relation {relation!r} has no exact-separation levels")
 
 
