@@ -65,8 +65,9 @@ export const READER_ROLE_CONFIG = [
   ['statement_timeout', '120s'],
   ['idle_in_transaction_session_timeout', '60s'],
   ['lock_timeout', '5s'],
-  ['temp_file_limit', '1GB'],
 ] as const
+// temp_file_limit is deliberately NOT a role default (review of 4b979ce52, M6): it is superuser-only, and the
+// instance-level Cloud SQL flag bounds temp-file use for every role, the reader included.
 /** Credential directory (read by the Monitor) and the separate admin directory that holds any
  *  backup of the write-capable app-login file — never the credential directory. */
 export const CREDENTIAL_DIR = (): string => join(homedir(), '.config', 'suvarna')
@@ -96,21 +97,36 @@ export const DENY_PATTERNS = [
   'messages', 'documents', 'reports', 'chat_attachments', 'message_feedback',
 ] as const
 
-/** Column-level SELECT on public.charts: only columns carrying no birth data and no personal
- *  identifier (from 001_baseline.sql / 0001_brahma_baseline.sql). Every other column — including any
- *  production column not named here — is withheld and printed as such. */
+/** Tables data-plane-ownership-status.ts (the deploy gate) reads, so the post-apply gate run works as
+ *  the reader (review of 4b979ce52, L7). Granted when present; absent while the data-plane boundary is unmarked. */
+export const GATE_READ_SET = [
+  'l1_data_plane_function_attestations', 'l1_data_plane_policy_attestations', 'l1_data_plane_view_attestations',
+  'l1_data_plane_trigger_attestations', 'l1_data_plane_sequence_attestations',
+  'l2_data_plane_function_attestations', 'l2_data_plane_policy_attestations', 'l2_data_plane_view_attestations',
+  'l2_data_plane_trigger_attestations', 'l2_data_plane_sequence_attestations', 'l2_data_plane_manifest_attestations',
+  'l2_data_plane_asset_outputs',
+] as const
+
+/** Column-level SELECT only (from 001_baseline.sql / 0001_brahma_baseline.sql). `charts`: columns with
+ *  no birth data and no personal identifier. `chart_grants`: exactly what charts' chart_grant_policy
+ *  subquery reads (chart_id, principal_id). Every other column — including any production column not
+ *  named here — is withheld and printed as such. */
 export const CHARTS_RELATION = 'charts'
 export const CHARTS_GRANTED_COLUMNS = [
   'id', 'chart_id', 'role', 'ayanamsa', 'house_system', 'created_at', 'created_at_iso',
 ] as const
-/** Known withheld columns (reported with their reason); the live withheld list is computed. */
-export const CHARTS_WITHHELD_KNOWN = [
-  'client_id', 'name', 'birth_date', 'birth_time', 'birth_place', 'birth_lat', 'birth_lng',
-  'native_id', 'owner_id', 'subject_name', 'preferred_name', 'timezone_id',
-] as const
+export const CHART_GRANTS_RELATION = 'chart_grants'
+export const CHART_GRANTS_GRANTED_COLUMNS = ['chart_id', 'principal_id'] as const
+export const COLUMN_GRANTS: Readonly<Record<string, readonly string[]>> = {
+  [CHARTS_RELATION]: CHARTS_GRANTED_COLUMNS,
+  [CHART_GRANTS_RELATION]: CHART_GRANTS_GRANTED_COLUMNS,
+}
 
-const PII_COLUMN_REGEX =
-  '(^|_)(email|phone|mobile|birth|dob|first_name|last_name|full_name|display_name|subject_name|preferred_name|address|ip|uid|password|token|secret|api_key|latitude|longitude)(_|$)'
+/** PII/identifier-looking column names (review of 4b979ce52, M2 widened). json/jsonb columns are flagged too. */
+export const PII_COLUMN_REGEX =
+  '(^|_)(email|phone|mobile|birth|dob|name|first_name|last_name|full_name|display_name|subject_name|preferred_name|'
+  + 'lat|lng|lon|latitude|longitude|place|city|location|tz|timezone|address|ip|uid|principal_id|client_id|owner_id|'
+  + 'user_id|granted_by|triggered_by|native_id|password|token|secret|api_key)(_|$)'
 
 const NIRMANA_ROLES = ['nirmana_evidence_owner', 'nirmana_evidence_ingress_writer', 'nirmana_campaign_control_writer', 'nirmana_migrator'] as const
 const NIRMANA_TABLES = ['nirmana_elevation_campaign_definitions', 'nirmana_elevation_campaign_events', 'nirmana_elevation_asset_labels'] as const
@@ -131,6 +147,14 @@ export type Mode = 'dry-run' | 'apply'
 export interface Options {
   mode: Mode; rollback: boolean; dataPlaneGateAmended: boolean; acceptSecdef: string[]
   acceptPii: string[]; acceptView: string[]; expectPlan: string | null
+}
+
+/** Never echo argument text (it could be a pasted secret): a `--flag[=…]` shows only the flag name
+ *  before '=' (and only if it looks like a flag name); anything else is "positional argument". */
+export function describeArgument(arg: string): string {
+  if (!arg.startsWith('--')) return 'positional argument'
+  const name = arg.split('=', 1)[0]
+  return /^--[A-Za-z0-9-]{1,40}$/.test(name) ? name : 'unrecognised flag'
 }
 
 export function parseArgs(argv: readonly string[]): Options | 'help' {
@@ -164,7 +188,7 @@ export function parseArgs(argv: readonly string[]): Options | 'help' {
       if (!/^[0-9a-f]{64}$/.test(sha)) throw new Error('--expect-plan takes the 64-hex sha256 the dry run printed.')
       expectPlan = sha
     } else {
-      throw new Error(`Unknown argument: ${arg.slice(0, 40)}`)
+      throw new Error(`Unknown argument: ${describeArgument(arg)}`)
     }
   }
   if (rollback && (dataPlaneGateAmended || acceptSecdef.length || acceptPii.length || acceptView.length || expectPlan)) {
@@ -177,41 +201,79 @@ export function parseArgs(argv: readonly string[]): Options | 'help' {
   return { mode: resolved, rollback, dataPlaneGateAmended, acceptSecdef, acceptPii, acceptView, expectPlan }
 }
 
-/** --data-plane-gate-amended is only credible if the gate this checkout would deploy names the
- *  reader. Resolved relative to this script's directory (the checked-out branch), never the cwd. */
+/** Strip TS and SQL comments so a comment can never satisfy the amendment match. Stripping can only
+ *  remove text, so an odd case (a `--` inside a string) fails closed. */
+export function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ').replace(/--[^\n]*/g, ' ')
+}
+
+/** The tolerant clauses runbook §0 specifies, as code: the conditional schema-ACL row for the reader,
+ *  and the reader's SELECT exception in both the protected-table and the history-table ACL checks.
+ *  Returns what is missing (empty = amendment present). */
+export function gateAmendmentMissing(gateSource: string): string[] {
+  const code = stripComments(gateSource)
+  const missing: string[] = []
+  if (!/SELECT\s+'suvarna_reader'\s*,\s*'USAGE'\s+WHERE\s+to_regrole\(\s*'suvarna_reader'\s*\)\s+IS\s+NOT\s+NULL/i.test(code)) {
+    missing.push("schemaAcl row SELECT 'suvarna_reader','USAGE' WHERE to_regrole('suvarna_reader') IS NOT NULL")
+  }
+  const selectException = /AND\s+NOT\s*\(\s*\w+\.grantee\s*=\s*'suvarna_reader'\s+AND\s+\w+\.privilege_type\s*=\s*'SELECT'\s*\)/gi
+  const n = code.match(selectException)?.length ?? 0
+  if (n < 2) missing.push(`AND NOT (a.grantee='suvarna_reader' AND a.privilege_type='SELECT') in aclSurface and historyAcl (found ${n}/2)`)
+  return missing
+}
+
+/** --data-plane-gate-amended is only credible if the gate this checkout would deploy carries the
+ *  amendment's actual clauses. Resolved relative to this script's directory (the checked-out
+ *  branch), never the cwd. */
 export function assertGateAmendmentPresent(scriptDir: string = __dirname): void {
   const gate = join(scriptDir, 'data-plane-ownership-status.ts')
   let text: string
   try { text = readFileSync(gate, 'utf8') } catch {
     throw new Error('--data-plane-gate-amended refused: data-plane-ownership-status.ts not found next to this script.')
   }
-  if (!text.includes(READER)) {
-    throw new Error(`--data-plane-gate-amended refused: the checked-out data-plane-ownership-status.ts does not mention ${READER}; the amendment is not on this branch.`)
+  const missing = gateAmendmentMissing(text)
+  if (missing.length) {
+    throw new Error(`--data-plane-gate-amended refused: the checked-out data-plane-ownership-status.ts lacks the amendment clause(s): ${missing.join('; ')}.`)
   }
 }
 
-/** The plan the native reviews, in canonical form; its sha256 binds --apply to it. */
+/** The plan the native reviews, in canonical form; its sha256 binds --apply to it (review of 4b979ce52, M5). */
 export interface PlanSpec {
   targets: string[]
   columnGrants: Array<{ relation: string; granted: string[]; withheld: string[] }>
   excluded: Array<{ relation: string; reason: string }>
-  acceptedPii: string[]
+  /** Every readable PII/json column set, accepted or not (a non-accepted one fails the run anyway). */
+  pii: Array<{ relation: string; columns: string[]; accepted: boolean }>
+  acceptedSecdef: string[]
+  staleRevokes: string[]
+  scriptSha256: string
 }
 
+/** Code-unit order (never locale order), so the hash is identical on every machine. */
+const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+const sortedCodeUnit = (items: readonly string[]): string[] => [...items].sort(byCodeUnit)
+
 export function canonicalPlan(plan: PlanSpec): string {
-  const lines: string[] = ['suvarna-reader-plan v1']
-  for (const t of [...plan.targets].sort()) lines.push(`target ${t}`)
-  for (const c of [...plan.columnGrants].sort((a, b) => a.relation.localeCompare(b.relation))) {
-    lines.push(`columns ${c.relation} granted=${[...c.granted].sort().join(',')} withheld=${[...c.withheld].sort().join(',')}`)
-  }
-  for (const e of [...plan.excluded].sort((a, b) => a.relation.localeCompare(b.relation) || a.reason.localeCompare(b.reason))) {
-    lines.push(`excluded ${e.relation} ${e.reason}`)
-  }
-  for (const p of [...plan.acceptedPii].sort()) lines.push(`accepted-pii ${p}`)
-  return `${lines.join('\n')}\n`
+  const lines: string[] = []
+  const add = (...parts: unknown[]): void => { lines.push(JSON.stringify(parts)) }
+  add('format', 'suvarna-reader-plan v2')
+  add('script-sha256', plan.scriptSha256)
+  add('connection-limit', CONNECTION_LIMIT)
+  add('read-schemas', sortedCodeUnit(READ_SCHEMAS))
+  for (const [k, v] of READER_ROLE_CONFIG) add('role-config', k, v)
+  for (const t of plan.targets) add('target', t)
+  for (const c of plan.columnGrants) add('columns', c.relation, sortedCodeUnit(c.granted), sortedCodeUnit(c.withheld))
+  for (const e of plan.excluded) add('excluded', e.relation, e.reason)
+  for (const p of plan.pii) add('pii', p.relation, sortedCodeUnit(p.columns), p.accepted ? 'accepted' : 'not-accepted')
+  for (const f of plan.acceptedSecdef) add('accepted-secdef', f)
+  for (const r of plan.staleRevokes) add('stale-revoke', r)
+  return `${sortedCodeUnit(lines).join('\n')}\n`
 }
 
 export const planHash = (plan: PlanSpec): string => createHash('sha256').update(canonicalPlan(plan)).digest('hex')
+
+/** sha256 of this script file itself, bound into the plan. */
+export const scriptSha256 = (file: string = __filename): string => createHash('sha256').update(readFileSync(file)).digest('hex')
 
 /** Redact base64-looking runs (>= 20 chars) from anything gcloud writes to stderr. */
 export const redactGcloud = (text: string): string => text.replace(/[A-Za-z0-9+/=_-]{20,}/g, '[redacted]')
@@ -698,14 +760,14 @@ async function readerGrants(s: Session, reader: string): Promise<ReaderGrant[]> 
   `, [reader])
 }
 
-const CHARTS_FQ = `public.${CHARTS_RELATION}`
+const COLUMN_GRANT_FQ = new Set(Object.keys(COLUMN_GRANTS).map((name) => `public.${name}`))
 
 /** Only the shapes this script itself creates are acceptable on a pre-existing reader: table SELECT,
- *  column SELECT on public.charts only, USAGE on the read schemas, CONNECT on this database. */
+ *  column SELECT on the column-granted relations only, USAGE on the read schemas, CONNECT here. */
 function unexpectedReaderGrants(grants: readonly ReaderGrant[]): ReaderGrant[] {
   return grants.filter((g) => !(
     (g.kind === 'relation' && g.privilege === 'SELECT' && ['r', 'p', 'v', 'm', 'f'].includes(g.subkind))
-    || (g.kind === 'column' && g.privilege === 'SELECT' && g.relation === CHARTS_FQ)
+    || (g.kind === 'column' && g.privilege === 'SELECT' && COLUMN_GRANT_FQ.has(g.relation))
     || (g.kind === 'schema' && g.privilege === 'USAGE' && (READ_SCHEMAS as readonly string[]).includes(g.object))
     || (g.kind === 'database' && g.subkind === 'current' && g.privilege === 'CONNECT')
   ))
@@ -767,24 +829,89 @@ interface ReadSet {
   denied: Array<Relation & { reason: string }>
   unresolvedRegistry: string[]
   columnGrants: ColumnGrant[]
-  /** Targets with PII-looking columns the reader can read (column-granted relations: granted columns only). */
-  pii: Array<{ relation: string; columns: string[]; accepted: boolean }>
   /** Read-set views kept only because of --accept-view, with the RLS tables they reach. */
   acceptedViews: string[]
 }
 
-export const planOf = (set: ReadSet): PlanSpec => ({
-  targets: set.targets.map(fq),
-  columnGrants: set.columnGrants.map((c) => ({ relation: fq(c.relation), granted: c.granted, withheld: c.withheld })),
-  excluded: set.denied.map((d) => ({ relation: fq(d), reason: d.reason })),
-  acceptedPii: set.pii.filter((p) => p.accepted).map((p) => p.relation),
-})
+/** L2: amjis_app reads its own control tables. Assert each is a plain table (a view or foreign table
+ *  would run someone else's code as amjis_app) and read with row_security off, so a policy can only
+ *  make the read fail loudly, never filter it silently. */
+async function readAsApp<T>(s: Session, tables: readonly string[], fn: () => Promise<T>): Promise<T> {
+  const kinds = await s.rows<{ name: string; relkind: string | null }>(`
+    SELECT t.name, c.relkind::text AS relkind FROM unnest($1::text[]) t(name)
+      LEFT JOIN pg_catalog.pg_class c ON c.relname=t.name
+       AND c.relnamespace=(SELECT oid FROM pg_catalog.pg_namespace WHERE nspname='public')
+  `, [[...tables]])
+  const bad = kinds.filter((k) => k.relkind !== 'r')
+  if (bad.length) throw new Error(`Refusing to read as amjis_app: ${bad.map((k) => `public.${k.name} relkind=${k.relkind ?? 'absent'}`).join(', ')} (must be ordinary tables).`)
+  await s.exec('SET LOCAL row_security = off')
+  const result = await s.asRole('amjis_app', fn)
+  await s.exec('SET LOCAL row_security = on')
+  return result
+}
+
+/** Per view/matview root: RLS tables, column-granted relations and withheld columns in its
+ *  dependency closure, and whether it (or any view on the way) runs with definer rights. */
+interface ViewReach { oid: string; name: string; relkind: string; rls: string | null; cg: string | null; withheld: string | null; definer: boolean }
+
+async function viewReach(s: Session, rootOids: readonly string[], cg: readonly ColumnGrant[]): Promise<Map<string, ViewReach>> {
+  if (!rootOids.length) return new Map()
+  const withheldRel = cg.flatMap((c) => c.withheld.map(() => c.relation.oid))
+  const withheldCol = cg.flatMap((c) => c.withheld)
+  const rows = await s.rows<ViewReach>(`
+    WITH RECURSIVE dep(root, ref) AS (
+      SELECT r.oid, r.oid FROM unnest($1::oid[]) r(oid)
+      UNION
+      SELECT dep.root, d.refobjid FROM dep JOIN pg_catalog.pg_rewrite rw ON rw.ev_class=dep.ref
+        JOIN pg_catalog.pg_depend d ON d.classid='pg_catalog.pg_rewrite'::regclass AND d.objid=rw.oid
+         AND d.refclassid='pg_catalog.pg_class'::regclass AND d.refobjid<>rw.ev_class
+    ),
+    info AS (
+      SELECT c.oid, c.relkind, c.relrowsecurity, format('%s.%s', n.nspname, c.relname) AS name,
+             (c.relkind='v' AND EXISTS (SELECT 1 FROM unnest(COALESCE(c.reloptions, ARRAY[]::text[])) o
+                WHERE lower(o) IN ('security_invoker=true','security_invoker=on','security_invoker=1','security_invoker=yes'))) AS invoker
+        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    ),
+    withheld_refs AS (
+      SELECT DISTINCT dep.root, format('%s(%I)', a.attrelid::regclass::text, a.attname) AS col
+        FROM dep JOIN pg_catalog.pg_rewrite rw ON rw.ev_class=dep.ref
+        JOIN pg_catalog.pg_depend d ON d.classid='pg_catalog.pg_rewrite'::regclass AND d.objid=rw.oid
+         AND d.refclassid='pg_catalog.pg_class'::regclass AND d.refobjsubid > 0
+        JOIN pg_catalog.pg_attribute a ON a.attrelid=d.refobjid AND a.attnum=d.refobjsubid
+        JOIN unnest($3::oid[], $4::text[]) w(rel, col) ON w.rel=a.attrelid AND w.col=a.attname
+    ),
+    agg AS (
+      SELECT dep.root,
+             string_agg(DISTINCT t.name, ', ' ORDER BY t.name) FILTER (WHERE dep.ref<>dep.root AND t.relrowsecurity AND t.relkind IN ('r','p')) AS rls,
+             string_agg(DISTINCT t.name, ', ' ORDER BY t.name) FILTER (WHERE dep.ref<>dep.root AND t.oid=ANY($2::oid[])) AS cg,
+             bool_or(t.relkind IN ('v','m') AND NOT t.invoker) AS definer
+        FROM dep JOIN info t ON t.oid=dep.ref GROUP BY dep.root
+    )
+    SELECT agg.root::text AS oid, root.name, root.relkind::text AS relkind, agg.rls, agg.cg,
+           (SELECT string_agg(w.col, ', ' ORDER BY w.col) FROM withheld_refs w WHERE w.root=agg.root) AS withheld,
+           COALESCE(agg.definer, false) AS definer
+      FROM agg JOIN info root ON root.oid=agg.root
+  `, [[...rootOids], cg.map((c) => c.relation.oid), withheldRel, withheldCol])
+  return new Map(rows.map((r) => [r.oid, r]))
+}
+
+/** Why a view/matview must not be readable, or null. Reading a withheld column, or reaching a
+ *  column-granted relation with definer rights, is never acceptable (it would undo the column grant);
+ *  reaching an RLS table with definer rights is acceptable only via --accept-view. */
+export function viewVerdict(v: Pick<ViewReach, 'relkind' | 'rls' | 'cg' | 'withheld' | 'definer'>, accepted: boolean):
+  { reason: string; overridable: boolean } | null {
+  const kind = v.relkind === 'm' ? 'materialized view' : 'view'
+  if (v.withheld) return { reason: `${kind} reads withheld column(s): ${v.withheld}`, overridable: false }
+  if (v.cg && v.definer) return { reason: `${kind} with definer rights reaches column-granted relation(s): ${v.cg}`, overridable: false }
+  if (v.rls && v.definer && !accepted) return { reason: `${kind} without security_invoker reaches RLS table(s): ${v.rls}`, overridable: true }
+  return null
+}
 
 async function computeReadSet(s: Session, options: Options): Promise<ReadSet> {
   const [census] = await s.rows<{ exists: boolean }>(`SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname=$1) AS exists`, [CENSUS_ROLE])
   if (!census?.exists) throw new Error(`${CENSUS_ROLE} is absent: the census half of the read set cannot be derived. Refusing.`)
   // asset_registry is only readable through its owner's public-schema USAGE.
-  const registryRaw = await s.asRole('amjis_app', () => s.rows<{ t: string }>(`
+  const registryRaw = await readAsApp(s, ['asset_registry'], () => s.rows<{ t: string }>(`
     SELECT DISTINCT btrim(target_table) AS t FROM public.asset_registry
      WHERE target_table IS NOT NULL AND btrim(target_table) <> '' ORDER BY 1
   `))
@@ -796,16 +923,36 @@ async function computeReadSet(s: Session, options: Options): Promise<ReadSet> {
     census AS (SELECT r.oid, 'census' AS src FROM rels r WHERE has_table_privilege((SELECT oid FROM pg_catalog.pg_roles WHERE rolname=$4), r.oid, 'SELECT')),
     registry AS (SELECT r.oid, 'asset_registry' AS src FROM rels r WHERE r.nspname='public' AND r.relname=ANY($1::text[])),
     fixed AS (SELECT r.oid, 'fixed' AS src FROM rels r WHERE r.nspname='public' AND r.relname=ANY($2::text[])),
+    gate AS (SELECT r.oid, 'gate' AS src FROM rels r WHERE r.nspname='public' AND r.relname=ANY($5::text[])),
     evidence AS (SELECT r.oid, 'nirmana_evidence' AS src FROM rels r WHERE r.nspname='nirmana_evidence'),
-    sources AS (SELECT * FROM census UNION ALL SELECT * FROM registry UNION ALL SELECT * FROM fixed UNION ALL SELECT * FROM evidence)
+    sources AS (SELECT * FROM census UNION ALL SELECT * FROM registry UNION ALL SELECT * FROM fixed UNION ALL SELECT * FROM gate
+                UNION ALL SELECT * FROM evidence)
     SELECT r.oid::text AS oid, r.nspname AS schema, r.relname AS name, r.relkind::text AS relkind,
            pg_get_userbyid(r.relowner) AS owner, array_agg(DISTINCT s.src ORDER BY s.src) AS sources
       FROM sources s JOIN rels r ON r.oid=s.oid GROUP BY 1, 2, 3, 4, 5 ORDER BY 2, 3
-  `, [registryNames, [...FIXED_READ_SET], [...READ_SCHEMAS], CENSUS_ROLE])
+  `, [registryNames, [...FIXED_READ_SET], [...READ_SCHEMAS], CENSUS_ROLE, [...GATE_READ_SET]])
   const present = new Set(relations.filter((r) => r.schema === 'public').map((r) => r.name))
   const missingFixed = FIXED_READ_SET.filter((name) => !present.has(name))
   if (missingFixed.length) throw new Error(`Required read-set relations are absent from public: ${missingFixed.join(', ')}.`)
   const unresolvedRegistry = registryRaw.map((r) => r.t).filter((t) => !present.has(t.replace(/^public\./, '')))
+
+  // Column-level grants (charts, chart_grants) are decided first: view exclusion depends on them.
+  const columnGrants: ColumnGrant[] = []
+  for (const [name, allowedList] of Object.entries(COLUMN_GRANTS)) {
+    const rel = relations.find((t) => t.schema === 'public' && t.name === name)
+    if (!rel) continue
+    if (!['r', 'p'].includes(rel.relkind)) throw new Error(`public.${name} is relkind ${rel.relkind}, expected a table; refusing a column grant.`)
+    const cols = (await s.rows<{ name: string }>(`
+      SELECT attname::text AS name FROM pg_catalog.pg_attribute WHERE attrelid=$1::oid AND attnum > 0 AND NOT attisdropped ORDER BY attnum
+    `, [rel.oid])).map((c) => c.name)
+    const allowed = new Set<string>(allowedList)
+    columnGrants.push({
+      relation: rel,
+      granted: cols.filter((c) => allowed.has(c)),
+      withheld: cols.filter((c) => !allowed.has(c)),
+      missingAllowed: allowedList.filter((c) => !cols.includes(c)),
+    })
+  }
 
   const deniedByName = new Set((await s.rows<{ oid: string }>(`
     SELECT c.oid::text AS oid FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
@@ -820,79 +967,26 @@ async function computeReadSet(s: Session, options: Options): Promise<ReadSet> {
      WHERE tn.nspname='auth' OR (tn.nspname=ANY($3::text[]) AND t.relname LIKE ANY($2::text[]))
      GROUP BY dep.root
   `, [viewOids, [...DENY_PATTERNS], [...READ_SCHEMAS]])).map((r) => [r.oid, r.via] as const))
-
-  // Views/materialized views that reach a row-level-security table while running with a definer's
-  // rights: the root (or any view/matview on the way) lacks security_invoker=true, and a matview
-  // never has it. Such a relation returns rows the table's policies would filter for the reader.
-  const rlsBypass = new Map((await s.rows<{ oid: string; rls: string }>(`
-    WITH RECURSIVE dep(root, ref) AS (${VIEW_DEP_CTE_BODY}),
-    info AS (
-      SELECT c.oid, c.relkind, c.relrowsecurity, format('%I.%I', n.nspname, c.relname) AS name,
-             (c.relkind='v' AND EXISTS (SELECT 1 FROM unnest(COALESCE(c.reloptions, ARRAY[]::text[])) o
-                WHERE lower(o) IN ('security_invoker=true','security_invoker=on','security_invoker=1','security_invoker=yes'))) AS invoker
-        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-    ),
-    agg AS (
-      SELECT dep.root,
-             string_agg(DISTINCT t.name, ', ' ORDER BY t.name) FILTER (WHERE t.relrowsecurity AND t.relkind IN ('r','p')) AS rls,
-             bool_or(t.relkind IN ('v','m') AND NOT t.invoker) AS definer_on_path
-        FROM dep JOIN info t ON t.oid=dep.ref GROUP BY dep.root
-    )
-    SELECT agg.root::text AS oid, agg.rls FROM agg JOIN info root ON root.oid=agg.root
-     WHERE agg.rls IS NOT NULL AND (NOT root.invoker OR agg.definer_on_path)
-  `, [viewOids])).map((r) => [r.oid, r.rls] as const))
+  const reach = await viewReach(s, viewOids, columnGrants)
 
   const acceptView = new Set(options.acceptView)
   const targets: Relation[] = []
   const denied: Array<Relation & { reason: string }> = []
   const acceptedViews: string[] = []
   for (const r of relations) {
+    const v = reach.get(r.oid)
+    const verdict = v ? viewVerdict(v, acceptView.has(fq(r))) : null
     if (deniedByName.has(r.oid)) denied.push({ ...r, reason: 'deny-list' })
     else if (viewDeps.has(r.oid)) denied.push({ ...r, reason: `view reads denied/auth relation(s): ${viewDeps.get(r.oid)}` })
-    else if (rlsBypass.has(r.oid) && !acceptView.has(fq(r))) {
-      denied.push({ ...r, reason: `${r.relkind === 'm' ? 'materialized view' : 'view'} without security_invoker reaches RLS table(s): ${rlsBypass.get(r.oid)} (--accept-view=${fq(r)} to keep)` })
-    } else {
-      if (rlsBypass.has(r.oid)) acceptedViews.push(`${fq(r)} reaches RLS table(s) ${rlsBypass.get(r.oid)} — ACCEPTED via --accept-view`)
+    else if (verdict) denied.push({ ...r, reason: verdict.overridable ? `${verdict.reason} (--accept-view=${fq(r)} to keep)` : verdict.reason })
+    else {
+      if (v?.rls && v.definer) acceptedViews.push(`${fq(r)} reaches RLS table(s) ${v.rls} — ACCEPTED via --accept-view`)
       targets.push(r)
     }
   }
-
-  // public.charts: column-level SELECT only.
-  const columnGrants: ColumnGrant[] = []
-  const charts = targets.find((t) => t.schema === 'public' && t.name === CHARTS_RELATION)
-  if (charts) {
-    const cols = (await s.rows<{ name: string }>(`
-      SELECT attname::text AS name FROM pg_catalog.pg_attribute WHERE attrelid=$1::oid AND attnum > 0 AND NOT attisdropped ORDER BY attnum
-    `, [charts.oid])).map((c) => c.name)
-    const allowed = new Set<string>(CHARTS_GRANTED_COLUMNS)
-    columnGrants.push({
-      relation: charts,
-      granted: cols.filter((c) => allowed.has(c)),
-      withheld: cols.filter((c) => !allowed.has(c)),
-      missingAllowed: CHARTS_GRANTED_COLUMNS.filter((c) => !cols.includes(c)),
-    })
-  }
-
-  // PII-looking columns the reader would be able to read.
-  const piiRows = await s.rows<{ oid: string; col: string }>(`
-    SELECT c.oid::text AS oid, a.attname::text AS col
-      FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid=a.attrelid
-     WHERE c.oid=ANY($1::oid[]) AND a.attnum > 0 AND NOT a.attisdropped AND a.attname ~* $2
-     ORDER BY c.oid, a.attnum
-  `, [targets.map((t) => t.oid), PII_COLUMN_REGEX])
-  const acceptPii = new Set(options.acceptPii)
-  const piiByRel = new Map<string, string[]>()
-  for (const row of piiRows) {
-    const cg = columnGrants.find((c) => c.relation.oid === row.oid)
-    if (cg && !cg.granted.includes(row.col)) continue
-    const rel = targets.find((t) => t.oid === row.oid)
-    if (!rel) continue
-    piiByRel.set(fq(rel), [...(piiByRel.get(fq(rel)) ?? []), row.col])
-  }
-  const pii = [...piiByRel.entries()].sort(([a], [b]) => a.localeCompare(b))
-    .map(([relation, columns]) => ({ relation, columns, accepted: acceptPii.has(relation) }))
-
-  return { targets, denied, unresolvedRegistry, columnGrants, pii, acceptedViews }
+  // A column-granted relation is only granted if it survived the deny/view filters.
+  const kept = columnGrants.filter((c) => targets.some((t) => t.oid === c.relation.oid))
+  return { targets, denied, unresolvedRegistry, columnGrants: kept, acceptedViews }
 }
 
 /** Recursive view-dependency body: (root view/matview, relation it reads), transitively. $1 = roots. */
@@ -910,7 +1004,9 @@ const VIEW_DEP_CTE_BODY = `
 // Grants
 // ------------------------------------------------------------------------------------------------
 
-async function grantReadSet(s: Session, set: ReadSet, staleSelects: ReaderGrant[]): Promise<void> {
+/** Returns the stale revokes made (bound into the plan hash). */
+async function grantReadSet(s: Session, set: ReadSet, staleSelects: ReaderGrant[]): Promise<string[]> {
+  const staleRevokes: string[] = []
   const out = s.out
   out.section('Grants (each made as the object owner)')
   await s.exec(`DO $$ BEGIN EXECUTE format('GRANT CONNECT ON DATABASE %I TO ${qi(READER)}', current_database()); END $$`)
@@ -937,6 +1033,7 @@ async function grantReadSet(s: Session, set: ReadSet, staleSelects: ReaderGrant[
     if (staleKeys.has(key)) continue
     staleKeys.add(key)
     await s.asRole(g.grantor, () => s.exec(`REVOKE SELECT ON TABLE ${g.relation} FROM ${qi(READER)}`))
+    staleRevokes.push(`${g.relation} by ${g.grantor}`)
     out.line(`   REVOKED pre-existing SELECT on ${g.relation} (as ${g.grantor}) — not in the table-level read set; re-granted below if planned`)
   }
 
@@ -959,13 +1056,15 @@ async function grantReadSet(s: Session, set: ReadSet, staleSelects: ReaderGrant[
     out.line(`   SELECT on ${rels.length} relation(s) as owner ${owner}`)
   }
   out.line('   Sequences: none (by design).')
+  return staleRevokes
 }
 
 // ------------------------------------------------------------------------------------------------
 // Verification (effective privileges, evaluated for suvarna_reader inside the transaction)
 // ------------------------------------------------------------------------------------------------
 
-async function verify(s: Session, reader: string, version: number, set: ReadSet, options: Options): Promise<void> {
+/** Returns the accepted SECURITY DEFINER signatures actually reachable (bound into the plan hash). */
+async function verify(s: Session, reader: string, version: number, set: ReadSet, options: Options): Promise<{ acceptedSecdef: string[] }> {
   const out = s.out
   out.section('Verification — effective privileges of suvarna_reader')
 
@@ -1071,11 +1170,13 @@ async function verify(s: Session, reader: string, version: number, set: ReadSet,
   if (seq.length) out.list('advanceable sequences', seq.map((r) => r.name))
 
   // No schema-USAGE condition: a function in a schema the reader cannot use is still invocable
-  // through an operator, cast, aggregate or trigger. EXECUTE alone counts.
+  // through an operator, cast or aggregate. EXECUTE alone counts. Trigger and event-trigger functions
+  // are excluded (L8): they cannot be called directly, only fired by DML/DDL the reader cannot issue.
   const secdef = await s.rows<{ sig: string; owner: string }>(`
     SELECT p.oid::regprocedure::text AS sig, pg_get_userbyid(p.proowner) AS owner
       FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
      WHERE p.prosecdef AND n.nspname <> 'pg_catalog'
+       AND p.prorettype NOT IN ('pg_catalog.trigger'::regtype, 'pg_catalog.event_trigger'::regtype)
        AND has_function_privilege($1::oid, p.oid, 'EXECUTE') ORDER BY 1
   `, [reader])
   const accepted = new Set(options.acceptSecdef)
@@ -1140,15 +1241,55 @@ async function verify(s: Session, reader: string, version: number, set: ReadSet,
      ORDER BY 1
   `, [reader, set.targets.map((t) => t.oid)])
   out.info('V14 readable beyond the read set', extra.length ? `${extra.length} relation(s), normally via PUBLIC grants: ${extra.map((e) => e.name).join(', ')}` : 'none')
+
+  // V16 (M3): no relation the reader can read, in any schema, has a withheld column of a
+  // column-granted relation in its view-dependency closure (pg_depend.refobjsubid).
+  const readableViews = (await s.rows<{ oid: string }>(`
+    SELECT c.oid::text AS oid FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+     WHERE c.relkind IN ('v','m') AND n.nspname NOT IN ('pg_catalog','information_schema')
+       AND has_any_column_privilege($1::oid, c.oid, 'SELECT')
+  `, [reader])).map((r) => r.oid)
+  const withheldReaders = [...(await viewReach(s, readableViews, set.columnGrants)).values()].filter((v) => v.withheld)
+  out.check('V16 no readable relation depends on a withheld column', withheldReaders.length === 0,
+    `${withheldReaders.length} readable view(s)/matview(s) over withheld ${set.columnGrants.map((c) => fq(c.relation)).join('/') || '(none)'} columns`)
+  if (withheldReaders.length) out.list('readable relations reading withheld columns', withheldReaders.map((v) => `${v.name}: ${v.withheld}`))
+  return { acceptedSecdef: secdef.filter((f) => accepted.has(f.sig)).map((f) => f.sig) }
 }
 
 // ------------------------------------------------------------------------------------------------
 // Report: RLS and PII the native must knowingly accept
 // ------------------------------------------------------------------------------------------------
 
-async function reportRlsAndPii(s: Session, reader: string, set: ReadSet, options: Options): Promise<void> {
+interface PiiEntry { relation: string; columns: string[]; accepted: boolean }
+
+/** M1: after the grants, audit every relation the reader can actually read — the planned targets
+ *  PLUS any relation in READ_SCHEMAS readable by other means (PUBLIC grants) — for RLS, PII/json
+ *  columns (only columns it can read) and definer views. Returns the PII entries (bound into the hash). */
+async function auditReadable(s: Session, reader: string, set: ReadSet, options: Options): Promise<PiiEntry[]> {
   const out = s.out
-  out.section('Row-level security on the read set (no policy is added — the native decides)')
+  const readable = await s.rows<{ oid: string; name: string; relkind: string }>(`
+    SELECT c.oid::text AS oid, format('%s.%s', n.nspname, c.relname) AS name, c.relkind::text AS relkind
+      FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+     WHERE n.nspname=ANY($2::text[]) AND c.relkind IN ('r','p','v','m','f')
+       AND (c.oid=ANY($3::oid[]) OR (has_schema_privilege($1::oid, n.oid, 'USAGE') AND has_any_column_privilege($1::oid, c.oid, 'SELECT')))
+     ORDER BY 2
+  `, [reader, [...READ_SCHEMAS], set.targets.map((t) => t.oid)])
+  const readableOids = readable.map((r) => r.oid)
+  const targetOids = new Set(set.targets.map((t) => t.oid))
+  const extras = readable.filter((r) => !targetOids.has(r.oid))
+  out.section(`Audit of everything suvarna_reader can read in ${READ_SCHEMAS.join(', ')} (${readable.length} relation(s): ${set.targets.length} planned + ${extras.length} readable otherwise)`)
+  out.list('readable beyond the plan (PUBLIC or other grants) — audited below like the plan', extras.map((e) => `${e.name} [${e.relkind}]`))
+
+  // Definer views among ALL readable relations (the plan already excluded its own).
+  const reach = await viewReach(s, readable.filter((r) => r.relkind === 'v' || r.relkind === 'm').map((r) => r.oid), set.columnGrants)
+  const acceptView = new Set(options.acceptView)
+  const badViews = [...reach.values()].map((v) => ({ v, verdict: viewVerdict(v, acceptView.has(v.name)) }))
+    .filter((x) => x.verdict !== null)
+  out.check('A1 no readable definer view over RLS / column-granted data', badViews.length === 0,
+    `${badViews.length} readable view(s)/matview(s) that must not be readable (revoke the grant that exposes them, or --accept-view for RLS-only cases)`)
+  out.list('readable views that fail', badViews.map((x) => `${x.v.name} — ${x.verdict?.reason}`))
+
+  out.section('Row-level security on everything readable (no policy is added — the native decides)')
   const rls = await s.rows<{ name: string; applicable: boolean; policies: string | null }>(`
     SELECT format('%I.%I', n.nspname, c.relname) AS name,
            EXISTS (SELECT 1 FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid AND p.polpermissive AND p.polcmd IN ('r','*')
@@ -1158,38 +1299,54 @@ async function reportRlsAndPii(s: Session, reader: string, set: ReadSet, options
               FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies
       FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
      WHERE c.oid=ANY($2::oid[]) AND c.relrowsecurity ORDER BY 1
-  `, [reader, set.targets.map((t) => t.oid)])
+  `, [reader, readableOids])
   out.list('RLS on, NO applicable SELECT policy → suvarna_reader silently sees ZERO rows',
     rls.filter((r) => !r.applicable).map((r) => `${r.name}  policies: ${r.policies ?? 'none'}`))
   out.list('RLS on, a PUBLIC/reader policy applies → rows filtered by the policy expression',
     rls.filter((r) => r.applicable).map((r) => `${r.name}  policies: ${r.policies ?? 'none'}`))
   const policyDeps = await s.rows<{ line: string }>(`
     SELECT format('%I.%I policy %s needs %s', n.nspname, c.relname, p.polname,
-             CASE WHEN d.refclassid='pg_catalog.pg_class'::regclass THEN d.refobjid::regclass::text ELSE d.refobjid::regprocedure::text END) AS line
+             CASE WHEN d.refclassid='pg_catalog.pg_class'::regclass THEN d.refobjid::regclass::text ELSE d.refobjid::regprocedure::text END
+             || CASE WHEN d.refclassid='pg_catalog.pg_class'::regclass AND d.refobjsubid > 0
+                     THEN format('(%s)', (SELECT attname FROM pg_catalog.pg_attribute WHERE attrelid=d.refobjid AND attnum=d.refobjsubid)) ELSE '' END) AS line
       FROM pg_catalog.pg_policy p JOIN pg_catalog.pg_class c ON c.oid=p.polrelid JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
       JOIN pg_catalog.pg_depend d ON d.classid='pg_catalog.pg_policy'::regclass AND d.objid=p.oid AND d.refclassid IN ('pg_catalog.pg_class'::regclass, 'pg_catalog.pg_proc'::regclass)
      WHERE c.oid=ANY($2::oid[]) AND c.relrowsecurity AND p.polcmd IN ('r','*') AND (0=ANY(p.polroles) OR $1::oid=ANY(p.polroles))
        AND NOT (d.refclassid='pg_catalog.pg_class'::regclass AND d.refobjid=c.oid)
        AND NOT CASE WHEN d.refclassid='pg_catalog.pg_class'::regclass
              THEN has_schema_privilege($1::oid, (SELECT relnamespace FROM pg_catalog.pg_class WHERE oid=d.refobjid), 'USAGE')
-                  AND has_any_column_privilege($1::oid, d.refobjid, 'SELECT')
+                  AND CASE WHEN d.refobjsubid > 0 THEN has_column_privilege($1::oid, d.refobjid, d.refobjsubid::smallint, 'SELECT')
+                           ELSE has_any_column_privilege($1::oid, d.refobjid, 'SELECT') END
              ELSE has_schema_privilege($1::oid, (SELECT pronamespace FROM pg_catalog.pg_proc WHERE oid=d.refobjid), 'USAGE')
                   AND has_function_privilege($1::oid, d.refobjid, 'EXECUTE') END
      ORDER BY 1
-  `, [reader, set.targets.map((t) => t.oid)])
-  out.list('applicable policies that reference objects suvarna_reader cannot use (queries will ERROR)', policyDeps.map((p) => p.line))
+  `, [reader, readableOids])
+  out.list('applicable policies that reference objects/columns suvarna_reader cannot use (queries will ERROR)', policyDeps.map((p) => p.line))
 
-  out.section('PII in the read set')
-  const piiFailures = set.pii.filter((p) => !p.accepted)
+  out.section('PII in everything readable (only columns suvarna_reader can actually SELECT)')
+  const piiRows = await s.rows<{ name: string; col: string }>(`
+    SELECT format('%s.%s', n.nspname, c.relname) AS name,
+           a.attname || CASE WHEN a.atttypid IN ('pg_catalog.json'::regtype, 'pg_catalog.jsonb'::regtype) THEN '(' || format_type(a.atttypid, NULL) || ')' ELSE '' END AS col
+      FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class c ON c.oid=a.attrelid JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+     WHERE c.oid=ANY($1::oid[]) AND a.attnum > 0 AND NOT a.attisdropped
+       AND has_column_privilege($3::oid, c.oid, a.attnum, 'SELECT')
+       AND (a.attname ~* $2 OR a.atttypid IN ('pg_catalog.json'::regtype, 'pg_catalog.jsonb'::regtype))
+     ORDER BY 1, a.attnum
+  `, [readableOids, PII_COLUMN_REGEX, reader])
+  const acceptPii = new Set(options.acceptPii)
+  const byRel = new Map<string, string[]>()
+  for (const r of piiRows) byRel.set(r.name, [...(byRel.get(r.name) ?? []), r.col])
+  const pii: PiiEntry[] = [...byRel.entries()].map(([relation, columns]) => ({ relation, columns, accepted: acceptPii.has(relation) }))
+  const piiFailures = pii.filter((p) => !p.accepted)
   out.check('PII columns', piiFailures.length === 0,
-    `${set.pii.length} readable relation(s) with PII/credential-looking columns (column-granted relations: granted columns only), `
-      + `${set.pii.length - piiFailures.length} accepted via --accept-pii`)
-  out.list('readable PII-looking columns (FAIL unless --accept-pii=<schema.rel>)',
-    set.pii.map((p) => `${p.relation}: ${p.columns.join(', ')}${p.accepted ? ' [ACCEPTED]' : ''}`))
-  const unusedPii = options.acceptPii.filter((rel) => !set.pii.some((p) => p.relation === rel))
+    `${pii.length} readable relation(s) with PII/identifier-looking or json/jsonb columns, ${pii.length - piiFailures.length} accepted via --accept-pii`)
+  out.list('readable PII-looking / json columns (FAIL unless --accept-pii=<schema.rel>)',
+    pii.map((p) => `${p.relation}: ${p.columns.join(', ')}${p.accepted ? ' [ACCEPTED]' : ''}`))
+  const unusedPii = options.acceptPii.filter((rel) => !pii.some((p) => p.relation === rel))
   if (unusedPii.length) out.info('PII accept', `--accept-pii values matching nothing readable: ${unusedPii.join('; ')}`)
   const unusedView = options.acceptView.filter((rel) => !set.acceptedViews.some((v) => v.startsWith(`${rel} `)))
   if (unusedView.length) out.info('view accept', `--accept-view values matching no RLS-reaching definer view: ${unusedView.join('; ')}`)
+  return pii
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1199,7 +1356,7 @@ async function reportRlsAndPii(s: Session, reader: string, set: ReadSet, options
 interface Markers { nirmana: boolean; dataPlane: number; dataPlaneHistory: boolean; purna: boolean }
 
 async function readMarkers(s: Session): Promise<Markers> {
-  const [row] = await s.asRole('amjis_app', () => s.rows<{ nirmana: boolean; data_plane: number; purna: boolean }>(`
+  const [row] = await readAsApp(s, ['_migrations_applied'], () => s.rows<{ nirmana: boolean; data_plane: number; purna: boolean }>(`
     SELECT EXISTS (SELECT 1 FROM public._migrations_applied WHERE filename=$1) AS nirmana,
            (SELECT count(DISTINCT filename)::int FROM public._migrations_applied WHERE filename=ANY($2::text[])) AS data_plane,
            EXISTS (SELECT 1 FROM public._migrations_applied WHERE filename=$3) AS purna
@@ -1316,16 +1473,26 @@ function gcloudReadiness(out: Reporter, apply: boolean): boolean {
   return created.status === 0
 }
 
-/** Adds the password as a new version (via stdin) and returns the version id. */
-function addSecretVersion(password: string): string {
+/** L5: disable every ENABLED version created since `sinceIso` (this run). Returns what happened. */
+function disableVersionsSince(sinceIso: string): string {
+  const list = gcloud(['secrets', 'versions', 'list', SECRET_NAME, `--project=${GCP_PROJECT}`,
+    `--filter=state:ENABLED AND createTime>="${sinceIso}"`, '--format=value(name)'])
+  if (list.status !== 0) return `could not list versions created since ${sinceIso}: ${short(list.stderr)} — disable them by hand`
+  const ids = list.stdout.split(/\s+/).map((n) => secretVersionId(n)).filter((id): id is string => id !== null)
+  if (!ids.length) return `no version created since ${sinceIso}`
+  return ids.map((id) => disableSecretVersion(id).detail).join('; ')
+}
+
+/** Adds the password as a new version (via stdin) and returns the version id. On any failure, every
+ *  version created since `runStartIso` is disabled before the error propagates (nothing commits). */
+function addSecretVersion(password: string, runStartIso: string): string {
   const added = gcloud(['secrets', 'versions', 'add', SECRET_NAME, '--data-file=-', `--project=${GCP_PROJECT}`, '--format=value(name)'], password)
-  if (added.status !== 0) throw new Error(`Secret Manager version add failed: ${short(added.stderr)}`)
-  const id = secretVersionId(added.stdout)
-  if (!id) {
-    throw new Error(`Secret Manager version add reported success but its version name could not be read; nothing committed. `
-      + `Disable the newest version of ${SECRET_NAME} by hand: gcloud secrets versions list ${SECRET_NAME} --project=${GCP_PROJECT}`)
-  }
-  return id
+  const id = added.status === 0 ? secretVersionId(added.stdout) : null
+  if (id) return id
+  const cleanup = disableVersionsSince(runStartIso)
+  throw new Error(added.status !== 0
+    ? `Secret Manager version add failed: ${short(added.stderr)}; cleanup: ${cleanup}; nothing committed.`
+    : `Secret Manager version add reported success but its version name could not be read; cleanup: ${cleanup}; nothing committed.`)
 }
 
 /** After a proven apply: every other ENABLED version of the secret is disabled (best effort, reported). */
@@ -1615,41 +1782,69 @@ async function setReaderRoleDefaults(s: Session): Promise<void> {
 }
 
 /** The CREATE/ALTER ROLE … PASSWORD statements carry the SCRAM verifier; pg_stat_statements (with
- *  track_utility) stores their text. Reset exactly those entries, best effort; never passes the
- *  verifier as a parameter (it would reach logs), matching on the role name and PASSWORD instead. */
-async function resetVerifierStatements(s: Session): Promise<void> {
+ *  track_utility) stores their text. Reset exactly those entries, inside the transaction and before
+ *  COMMIT (L1), under a savepoint so a failure can never abort the transaction; best effort. Never
+ *  passes the verifier as a parameter (it would reach logs): matches on the role name and PASSWORD.
+ *  `reset=false` (dry run) only reports whether a reset would be possible. On Cloud SQL expect
+ *  "not reset": the reset function is normally not granted to postgres. */
+async function resetVerifierStatements(s: Session, reset: boolean): Promise<void> {
+  await s.exec('SAVEPOINT pgss_reset')
   try {
     const [ext] = await s.rows<{ nsp: string | null; callable: boolean }>(`
       SELECT n.nspname::text AS nsp,
-             COALESCE(pg_catalog.has_function_privilege(pg_catalog.to_regprocedure(pg_catalog.format('%I.pg_stat_statements_reset(oid,oid,bigint)', n.nspname)), 'EXECUTE'), false) AS callable
+             COALESCE(pg_catalog.has_schema_privilege(n.oid, 'USAGE')
+                      AND pg_catalog.has_function_privilege(pg_catalog.to_regprocedure(pg_catalog.format('%I.pg_stat_statements_reset(oid,oid,bigint)', n.nspname)), 'EXECUTE'), false) AS callable
         FROM pg_catalog.pg_extension e JOIN pg_catalog.pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='pg_stat_statements'
     `)
-    if (!ext?.nsp) { s.out.info('pg_stat_statements', 'extension not installed: nothing to reset'); return }
-    if (!ext.callable) { s.out.info('pg_stat_statements', `installed in ${ext.nsp} but pg_stat_statements_reset(oid,oid,bigint) is not callable by ${ADMIN_ROLE}: entries NOT reset — ask a superuser to reset them`); return }
-    const nsp = qi(ext.nsp)
-    const hits = await s.rows<{ userid: string; dbid: string; queryid: string }>(`
-      SELECT userid::text, dbid::text, queryid::text FROM ${nsp}.pg_stat_statements
-       WHERE query ~* '^\\s*(CREATE|ALTER)\\s+ROLE' AND pg_catalog.strpos(query, $1) > 0 AND pg_catalog.strpos(pg_catalog.upper(query), 'PASSWORD') > 0
-    `, [qi(READER)])
-    for (const h of hits) {
-      await s.rows(`SELECT ${nsp}.pg_stat_statements_reset($1::oid, $2::oid, $3::bigint)`, [h.userid, h.dbid, h.queryid])
+    if (!ext?.nsp) s.out.info('pg_stat_statements', 'extension not installed: nothing to reset')
+    else if (!ext.callable) {
+      s.out.info('pg_stat_statements', `installed in ${ext.nsp} but not callable by ${ADMIN_ROLE} (schema USAGE + EXECUTE on pg_stat_statements_reset(oid,oid,bigint)): entries NOT reset — expected on Cloud SQL; see runbook §2`)
+    } else if (!reset) {
+      s.out.info('pg_stat_statements', `reset is callable; --apply resets the ${READER} PASSWORD statement entries before COMMIT`)
+    } else {
+      const nsp = qi(ext.nsp)
+      const hits = await s.rows<{ userid: string; dbid: string; queryid: string }>(`
+        SELECT userid::text, dbid::text, queryid::text FROM ${nsp}.pg_stat_statements
+         WHERE query ~* '^\\s*(CREATE|ALTER)\\s+ROLE' AND pg_catalog.strpos(query, $1) > 0 AND pg_catalog.strpos(pg_catalog.upper(query), 'PASSWORD') > 0
+      `, [qi(READER)])
+      for (const h of hits) await s.rows(`SELECT ${nsp}.pg_stat_statements_reset($1::oid, $2::oid, $3::bigint)`, [h.userid, h.dbid, h.queryid])
+      s.out.line(`   pg_stat_statements: ${hits.length} ${READER} PASSWORD statement entr(ies) reset`)
     }
-    s.out.line(`   pg_stat_statements: ${hits.length} ${READER} PASSWORD statement entr(ies) reset`)
+    await s.exec('RELEASE SAVEPOINT pgss_reset')
   } catch (error) {
+    await s.exec('ROLLBACK TO SAVEPOINT pgss_reset')
+    await s.exec('RELEASE SAVEPOINT pgss_reset')
     s.out.info('pg_stat_statements', `reset failed (best effort): ${short(error instanceof Error ? error.message : String(error))}`)
   }
+}
+
+/** L5: between adding the secret version and knowing the COMMIT outcome, SIGINT/SIGTERM disables the
+ *  just-added version (or, if the add itself was interrupted, every version created since run start)
+ *  and exits; the uncommitted transaction dies with the connection. Returns the uninstaller. */
+function installSecretGuard(state: { versionId: string | null }, runStartIso: string): () => void {
+  const handler = (signal: NodeJS.Signals): void => {
+    const detail = state.versionId ? disableSecretVersion(state.versionId).detail : disableVersionsSince(runStartIso)
+    process.stderr.write(`\n${signal}: interrupted with a Secret Manager version possibly added; ${detail}. `
+      + `COMMIT outcome unknown: check pg_roles for ${READER}; re-run --apply (it resets the password).\n`)
+    process.exit(130)
+  }
+  process.once('SIGINT', handler)
+  process.once('SIGTERM', handler)
+  return () => { process.removeListener('SIGINT', handler); process.removeListener('SIGTERM', handler) }
 }
 
 export async function runSuvarnaReaderBootstrap(options: Options, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
   const out = new Reporter()
   const route = validateAdminRoute(env[ADMIN_URL])
   if (options.dataPlaneGateAmended) assertGateAmendmentPresent()
+  // 60 s before now: margin for clock skew against Secret Manager's createTime (L5 cleanup filter).
+  const runStartIso = new Date(Date.now() - 60_000).toISOString()
   const password = generatePassword()
   const verifier = scramVerifier(password)
   out.protect(password)
   out.protect(verifier)
 
-  out.line(`Suvarṇa D6 reader bootstrap — mode: ${options.mode.toUpperCase()}${options.dataPlaneGateAmended ? ' (data-plane gate declared amended; amendment found in the checked-out gate)' : ''}`)
+  out.line(`Suvarṇa D6 reader bootstrap — mode: ${options.mode.toUpperCase()}${options.dataPlaneGateAmended ? ' (data-plane gate declared amended; amendment clauses found in the checked-out gate)' : ''}`)
   out.line(`Target: database "${route.database}" via ${route.host}:${route.port} as ${ADMIN_ROLE} (URL itself never printed)`)
 
   out.section(options.mode === 'apply' ? 'Apply prerequisites' : 'Apply prerequisites (read-only preview)')
@@ -1669,7 +1864,8 @@ export async function runSuvarnaReaderBootstrap(options: Options, env: NodeJS.Pr
     client.release()
     await pool.end().catch(() => undefined)
   }
-  let versionId: string | null = null
+  const guardState: { versionId: string | null } = { versionId: null }
+  let uninstallGuard: (() => void) | null = null
   try {
     const actor = await beginAsAdmin(s, route)
 
@@ -1689,7 +1885,7 @@ export async function runSuvarnaReaderBootstrap(options: Options, env: NodeJS.Pr
       out.line(`   ${READER} created: LOGIN NOINHERIT NOCREATEDB NOCREATEROLE CONNECTION LIMIT ${CONNECTION_LIMIT}, SCRAM verifier computed client-side`)
     }
     await setReaderRoleDefaults(s)
-    out.line('   (role defaults are a belt and resource bound; the grants below are the real boundary)')
+    out.line('   (role defaults are a belt and resource bound; the grants below are the real boundary; temp_file_limit is the instance flag)')
     const reader = await readerOid(s)
     if (!reader) throw new Error(`${READER} not visible after creation.`)
 
@@ -1698,7 +1894,7 @@ export async function runSuvarnaReaderBootstrap(options: Options, env: NodeJS.Pr
 
     out.section('Plan — read set (printed in full)')
     const bySource = (src: string): number => set.targets.filter((t) => t.sources.includes(src)).length
-    out.line(`   ${set.targets.length} relation(s) to be SELECT-able: census=${bySource('census')} asset_registry=${bySource('asset_registry')} fixed=${bySource('fixed')} nirmana_evidence=${bySource('nirmana_evidence')} (overlapping)`)
+    out.line(`   ${set.targets.length} relation(s) to be SELECT-able: census=${bySource('census')} asset_registry=${bySource('asset_registry')} fixed=${bySource('fixed')} gate=${bySource('gate')} nirmana_evidence=${bySource('nirmana_evidence')} (overlapping)`)
     out.list('owners (grants are made as each)', [...new Set(set.targets.map((t) => t.owner))].sort()
       .map((owner) => `${owner}: ${set.targets.filter((t) => t.owner === owner).length}`))
     out.list('relations', set.targets.map((t) => `${fq(t)} [${t.relkind}] owner=${t.owner} from=${t.sources.join('+')}${
@@ -1708,29 +1904,40 @@ export async function runSuvarnaReaderBootstrap(options: Options, env: NodeJS.Pr
       out.list(`${fq(cg.relation)} columns WITHHELD (birth data / personal identifiers / not allow-listed)`, cg.withheld)
       if (cg.missingAllowed.length) out.info('columns', `${fq(cg.relation)}: allow-listed columns absent in this database: ${cg.missingAllowed.join(', ')}`)
     }
-    out.list('EXCLUDED (deny-list, view over denied/auth data, or definer view reaching an RLS table)', set.denied.map((d) => `${fq(d)} — ${d.reason}`))
+    out.list('EXCLUDED (deny-list; view over denied/auth data; view reading withheld columns or reaching column-granted/RLS data with definer rights)',
+      set.denied.map((d) => `${fq(d)} — ${d.reason}`))
     if (set.acceptedViews.length) out.list('views kept by --accept-view', set.acceptedViews)
     if (set.unresolvedRegistry.length) out.list('asset_registry.target_table values with no relation in public (ignored)', set.unresolvedRegistry)
-    const plan = planOf(set)
+
+    const staleRevokes = await grantReadSet(s, set, staleSelects)
+    await s.removeTemporaryMemberships()
+    out.line(`   temporary owner memberships used and removed in this transaction: ${s.temporaryMemberships.join(', ') || 'none'}`)
+
+    const { acceptedSecdef } = await verify(s, reader, actor.version, set, options)
+    const invariantsAfter = await invariantState(s)
+    reportInvariants(out, markers, invariantsBefore, invariantsAfter, options)
+    reportSnapshots(out, snapshotBefore, await takeSnapshot(s, reader))
+    const pii = await auditReadable(s, reader, set, options)
+
+    // M5: the hash covers the plan AND what the run measured after granting (PII, accepted secdef,
+    // stale revokes), plus this script's own bytes and its fixed parameters.
+    out.section('Plan hash')
+    const plan: PlanSpec = {
+      targets: set.targets.map(fq),
+      columnGrants: set.columnGrants.map((c) => ({ relation: fq(c.relation), granted: c.granted, withheld: c.withheld })),
+      excluded: set.denied.map((d) => ({ relation: fq(d), reason: d.reason })),
+      pii, acceptedSecdef, staleRevokes, scriptSha256: scriptSha256(),
+    }
     const sha = planHash(plan)
-    out.line(`   PLAN SHA256: ${sha}   (sha256 over the sorted targets, the column-level grant spec and every exclusion decision)`)
+    out.line(`   script sha256: ${plan.scriptSha256}`)
+    out.line(`   PLAN SHA256: ${sha}`)
     if (options.expectPlan) {
-      out.check('PLAN matches --expect-plan', options.expectPlan === sha, options.expectPlan === sha ? 'the reviewed plan' : `expected ${options.expectPlan}, computed ${sha}: the plan changed since the reviewed dry run`)
+      out.check('PLAN matches --expect-plan', options.expectPlan === sha, options.expectPlan === sha ? 'the reviewed plan' : `expected ${options.expectPlan}, computed ${sha}: the plan, the measured state or the script changed since the reviewed dry run`)
     } else if (options.mode === 'apply') {
       out.check('PLAN matches --expect-plan', false, '--apply without --expect-plan')
     } else {
       out.info('PLAN', `to apply exactly this plan: --apply --expect-plan=${sha}`)
     }
-
-    await grantReadSet(s, set, staleSelects)
-    await s.removeTemporaryMemberships()
-    out.line(`   temporary owner memberships used and removed in this transaction: ${s.temporaryMemberships.join(', ') || 'none'}`)
-
-    await verify(s, reader, actor.version, set, options)
-    const invariantsAfter = await invariantState(s)
-    reportInvariants(out, markers, invariantsBefore, invariantsAfter, options)
-    reportSnapshots(out, snapshotBefore, await takeSnapshot(s, reader))
-    await reportRlsAndPii(s, reader, set, options)
 
     out.section('Outcome')
     if (out.failures.length) {
@@ -1740,36 +1947,43 @@ export async function runSuvarnaReaderBootstrap(options: Options, env: NodeJS.Pr
       return false
     }
     if (options.mode === 'dry-run') {
+      await resetVerifierStatements(s, false)
       await s.exec('ROLLBACK')
       out.line(`RESULT: PASS (dry run) — every check passed; transaction rolled back, nothing persisted. PLAN SHA256: ${sha}`)
       return true
     }
 
-    versionId = addSecretVersion(password)
-    out.line(`   Secret Manager: version ${versionId} of ${SECRET_NAME} added (${GCP_PROJECT}); value fed via stdin, never printed`)
+    await resetVerifierStatements(s, true)
+    uninstallGuard = installSecretGuard(guardState, runStartIso)
+    guardState.versionId = addSecretVersion(password, runStartIso)
+    out.line(`   Secret Manager: version ${guardState.versionId} of ${SECRET_NAME} added (${GCP_PROJECT}); value fed via stdin, never printed`)
   } catch (error) {
+    uninstallGuard?.()
     await client.query('ROLLBACK').catch(() => undefined)
     throw new Error(out.redact(error instanceof Error ? error.message : String(error)))
   } finally {
     // Every path out of the transaction block except "secret version added, COMMIT next" releases here.
-    if (versionId === null) await release()
+    if (guardState.versionId === null) await release()
   }
+  const versionId = guardState.versionId
   if (versionId === null) throw new Error('internal: no secret version after a passing apply')
 
-  // COMMIT in its own try: on failure the outcome is unknown (the server may have committed before the
-  // connection broke), so the just-added secret version is disabled and the operator re-runs --apply.
+  // COMMIT in its own try (L4: only a COMMIT command tag counts; an aborted transaction answers
+  // ROLLBACK). On failure or an unknown outcome the just-added secret version is disabled.
   try {
-    await s.exec('COMMIT')
+    const res = await client.query('COMMIT')
+    if (res.command !== 'COMMIT') throw new Error(`server answered ${res.command ?? 'nothing'} to COMMIT`)
     out.line('   COMMIT: role, grants, role defaults and password are live')
   } catch (error) {
     const disabled = disableSecretVersion(versionId)
+    uninstallGuard?.()
     out.line(`   COMMIT failed: ${short(out.redact(error instanceof Error ? error.message : String(error)))}`)
     out.line(`   Secret Manager: ${disabled.detail}`)
     out.line(`RESULT: COMMIT outcome unknown: check pg_roles for ${READER}; re-run --apply (it resets the password).`)
     await release()
     return false
   }
-  await resetVerifierStatements(s)
+  uninstallGuard?.()
   await release()
 
   out.section('Post-commit')

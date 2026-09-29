@@ -1,7 +1,7 @@
 ---
 artifact: D6_SUVARNA_READER_RUNBOOK
 canonical_id: D6_SUVARNA_READER_RUNBOOK
-version: "1.1"
+version: "1.2"
 status: DRAFT — for native review; nothing has been run against any database
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa" (D6 implementation draft)
@@ -11,6 +11,7 @@ tooling:
   - platform/scripts/governance/suvarna_tracker/monitor.py (checks credential and credential_readonly)
 supersedes: platform/scripts/governance/suvarna_tracker/setup_reader.sh (deleted — it assumed the app login could set passwords; it cannot)
 changelog:
+  - "1.2 (2026-09-29): security review of 4b979ce52 applied. M1: the PII, RLS and definer-view checks now run after the grants over everything the reader can read in public/nirmana_evidence (the plan plus anything readable through PUBLIC or other grants), counting only columns it can SELECT (new check A1). M2: public.chart_grants is column-level too (chart_id, principal_id only; granted_by and the rest withheld); the PII name pattern is widened (name, lat/lng/lon, place, city, location, tz/timezone, principal_id, client_id, owner_id, user_id, granted_by, triggered_by, native_id) and json/jsonb columns need --accept-pii as well. M3: any definer view or materialized view whose dependency closure reaches charts or chart_grants is excluded regardless of RLS (not overridable), any view reading a withheld column is excluded, and V16 proves no readable relation depends on a withheld column. M4: the Monitor BLOCKs on table-level SELECT on charts/chart_grants, any readable withheld column of either, and any readable deny-listed relation. M5: the plan hash now also covers the PII entries, the accepted SECURITY DEFINER set, this script's own sha256, the role defaults, connection limit, read schemas and stale revokes; lines are JSON-encoded and code-unit sorted; the hash is printed after the grants and checks. M6: temp_file_limit dropped from the role defaults (instance flag instead). L1: pg_stat_statements reset needs schema USAGE, runs before COMMIT under a savepoint; expect 'not reset' on Cloud SQL; pgaudit and Query Insights noted. L2: the amjis_app reads assert ordinary tables and run with row_security off. L3: unknown arguments are never echoed. L4: a COMMIT answered by anything but COMMIT is a failure. L5: SIGINT/SIGTERM after the secret add disables the version; a failed add disables every version created since run start. L6: wording on a role changing its own password/settings; the Monitor BLOCKs if the role's read-only default is missing. L7: the deploy gate's attestation tables and l2_data_plane_asset_outputs are in the read set, so the post-apply gate run works as the reader. L8: trigger/event-trigger functions excluded from the SECURITY DEFINER checks. L9: --data-plane-gate-amended now requires the amendment's actual clauses (comments stripped). L10: the Monitor also flags stray .pgenv.*.tmp files."
   - "1.1 (2026-09-29): security review 2 applied. (1) The write-capable app-login backup moves to ~/.config/madhav-admin/ (dir 700, files 600, never overwritten); rollback restores from there; the Monitor WARNs on any pgenv*.bak* / pgenv.previous* beside the credential. (2) SET LOCAL search_path = pg_catalog, pg_temp is the first statement of every transaction; every relation is schema-qualified; the roles snapshot also compares rolvaliduntil, rolconfig and per-database role settings. (3) The COMMIT runs in its own try: on failure the new Secret Manager version is disabled and the run reports 'COMMIT outcome unknown'; after a proven apply older versions are disabled. (4) --apply needs --expect-plan=<sha256>; the dry run prints the plan, EXCLUDED and PII lists in full with that hash (targets + column spec + exclusion decisions). (5) Role defaults: statement_timeout 120s, idle_in_transaction_session_timeout 60s, lock_timeout 5s, temp_file_limit 1GB, read-only on; the Monitor WARNs if they differ and BLOCKs on owned large objects. (6) public.charts is granted column-level SELECT on 7 non-personal columns only; definer views/matviews reaching an RLS table are excluded unless --accept-view. (7) Deny list widened by 15 patterns; any readable PII-looking column fails the dry run unless --accept-pii. (8) SECURITY DEFINER checks drop the schema-USAGE condition (bootstrap and Monitor). (9) pg_shdepend catch-all for ACL dependencies (bootstrap V15, existing-reader refusal, Monitor). (10) Monitor requires session_user = current_user = suvarna_reader and reports the session read-only value (with its source) separately from the role default. (11) Monitor shlex-quotes path and SQL and pins search_path. (12) gcloud runs with a minimal environment; its stderr is redacted. (13) SCRAM verifier exposure documented; pg_stat_statements entries reset after apply (best effort). (14) Atomic writes unlink the temp file if the rename fails. (15) Rollback restores only over a file with PGUSER=suvarna_reader and keeps the replaced file. (16) --data-plane-gate-amended is refused unless the checked-out gate names suvarna_reader; runbook adds subshell / unset, npx --no-install, the post-apply gate run, and 'never during a deploy or migration'. Also corrected: §5's charts RLS description (chart_service_policy exposes all rows when app.principal_id is unset)."
   - "1.0 (2026-09-29): first runbook. Blocking prerequisite found while drafting: the deployed data-plane gate (data-plane-ownership-status.ts) rejects any new grantee on schema public and on the protected L1/L2 tables, so it must be amended and deployed before --apply. Rollback is a script mode because a hand-typed REVOKE by postgres cannot remove owner-made grants."
 ---
@@ -25,10 +26,14 @@ has no write to application data. It replaces `amjis_app`, the app login Suvar�
 sequence write, no CREATE, no ownership, no role membership, no reachable SECURITY DEFINER function
 (unless accepted by name). Residual surfaces remain and are limited and monitored:
 
-- its own role settings (it can `SET` the user-settable ones in its own session, e.g. raise
-  `statement_timeout`; it cannot change `temp_file_limit`, which is superuser-only);
-- session-local temporary objects (through the database's PUBLIC `TEMPORARY`), capped by
-  `temp_file_limit = 1GB`;
+- its own password and role settings: any role can `SET default_transaction_read_only = off` in its
+  own session and then run `ALTER ROLE suvarna_reader PASSWORD …` or `ALTER ROLE suvarna_reader SET
+  <user-settable parameter> …` on itself (PostgreSQL lets a role change its own password and its own
+  user-level settings). That cannot touch application data. The Monitor BLOCKs if the role's own
+  `default_transaction_read_only = on` default disappears and WARNs on any other drift of its
+  defaults; a changed password shows up as the credential file failing to log in;
+- session-local temporary objects (through the database's PUBLIC `TEMPORARY`), bounded by the
+  instance-level `temp_file_limit` flag (it is not a role default: it is superuser-only);
 - large objects, if it turns off `default_transaction_read_only` in its own session (the Monitor
   BLOCKs if it owns any);
 - advisory locks (session-scoped, released on disconnect).
@@ -73,8 +78,10 @@ this: the checks D3, D4 and D5 print **DATA-PLANE GATE CONFLICT**, and the run f
 
 Once the amendment is **merged and deployed**, pass `--data-plane-gate-amended`. The script refuses
 that flag unless the `data-plane-ownership-status.ts` next to it (the checked-out branch, resolved
-from the script's own directory) mentions `suvarna_reader`, so run it from a checkout that contains
-the amendment. It then accepts only the reader's own `SELECT`/`USAGE` entries in D3–D5, and still
+from the script's own directory) contains the amendment's actual clauses, with comments stripped: the
+`SELECT 'suvarna_reader','USAGE' WHERE to_regrole('suvarna_reader') IS NOT NULL` row and the
+`AND NOT (a.grantee='suvarna_reader' AND a.privilege_type='SELECT')` exception at least twice. Run it
+from a checkout that contains the amendment. It then accepts only the reader's own `SELECT`/`USAGE` entries in D3–D5, and still
 fails on anything else.
 
 If the native decides not to amend the gate, D6 cannot proceed as designed. Without `USAGE` on
@@ -128,27 +135,29 @@ npx --no-install tsx scripts/suvarna-reader-bootstrap.ts --data-plane-gate-amend
 1. **Actor and role.** `actor: postgres (CREATEROLE), server_version_num=15…`. Then the role is
    either created, or found to exist and pass the normalisation checks: not elevated, no
    memberships, owns nothing, no ACL dependency outside this database's relations/schemas/CONNECT,
-   and holds only table SELECT, column SELECT on `public.charts`, schema USAGE and CONNECT.
-   Then the role defaults, one line each (see §5). If `temp_file_limit` is refused (it is a
-   superuser-only setting and Cloud SQL's `postgres` may lack `SET` on it), the run shows
-   `R role default temp_file_limit` FAIL and rolls back: stop and decide.
+   and holds only table SELECT, column SELECT on `public.charts` / `public.chart_grants`, schema
+   USAGE and CONNECT.
+   Then the role defaults, one line each (see §5). Any refused setting shows as an
+   `R role default …` FAIL and the run rolls back.
 2. **The plan, printed in full** (nothing is truncated):
    - The read set, counted by source: census, asset_registry, fixed, nirmana_evidence.
-   - The owner of each group, and every relation in it. `public.charts` is marked `COLUMN-LEVEL`.
-   - `public.charts columns GRANTED` and `public.charts columns WITHHELD` (§5).
-   - An **EXCLUDED** list: deny-list matches; any view that reads `auth` or a denied table; and any
-     view or materialized view that reaches a row-level-security table without
-     `security_invoker=true` (on the view itself and on every view on the way; a materialized view
-     never qualifies). Keep one only with `--accept-view=<schema.rel>`, repeatable.
+   - The owner of each group, and every relation in it. `public.charts` and `public.chart_grants`
+     are marked `COLUMN-LEVEL`. The deploy gate's attestation tables and
+     `l2_data_plane_asset_outputs` appear with source `gate` when the data-plane boundary exists.
+   - `… columns GRANTED` and `… columns WITHHELD` for both column-level relations (§5).
+   - An **EXCLUDED** list:
+     - deny-list matches, and any view that reads `auth` or a denied table;
+     - any view that reads a withheld column of `charts`/`chart_grants` (never overridable);
+     - any view or materialized view running with definer rights (no `security_invoker=true` on
+       it or on any view on the way; a materialized view never qualifies) that reaches `charts` or
+       `chart_grants` at all (never overridable: it would undo the column grant), or that reaches a
+       row-level-security table (keep one only with `--accept-view=<schema.rel>`, repeatable).
    - Any `asset_registry.target_table` value that has no table.
-   - **`PLAN SHA256: <64 hex>`** — sha256 over the sorted `schema.name` targets, the column-level
-     grant spec (granted and withheld columns) and every exclusion decision (and any accepted PII
-     relation). Write it down: `--apply` needs it.
 3. **The grants.**
    - CONNECT.
    - USAGE on `public` (made as `data_plane_schema_owner`) and on `nirmana_evidence` (made as
      `nirmana_evidence_owner`).
-   - Column SELECT on `public.charts`, with the withheld list.
+   - Column SELECT on `public.charts` and `public.chart_grants`, each with its withheld list.
    - One SELECT line per owner.
    - "Sequences: none".
    - The temporary memberships that were used and removed. Expect some of `amjis_app`, the
@@ -156,19 +165,23 @@ npx --no-install tsx scripts/suvarna-reader-bootstrap.ts --data-plane-gate-amend
 4. **V0–V15 all PASS:**
    - V0: LOGIN NOINHERIT, connection limit 10, and the role defaults exactly as listed in §5 (every
      database);
-   - V1–V3: CONNECT, USAGE, SELECT on every table-level target; **V3b**: on `public.charts` every
-     granted column selectable, no withheld column selectable, no table-level SELECT;
+   - V1–V3: CONNECT, USAGE, SELECT on every table-level target; **V3b**: on `public.charts` and
+     `public.chart_grants` every granted column selectable, no withheld column selectable, no
+     table-level SELECT;
    - V4–V9: no memberships, owns nothing, no database or schema CREATE, no
      INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER on any relation (table or column level), no
      sequence USAGE/UPDATE;
    - V10: no executable SECURITY DEFINER function outside `pg_catalog` **in any schema** — schema
      USAGE is not required, because an operator, cast or aggregate can call a function in a schema
-     the reader cannot use;
+     the reader cannot use. Trigger and event-trigger functions are left out: they cannot be called,
+     only fired by DML/DDL the reader cannot issue;
    - V11–V13: schema `auth` and any view over it unreachable; deny-listed tables unreadable; no
      default-privilege grants to the reader;
    - V15: zero `pg_shdepend` ACL entries for the reader other than this database's relations and
      schemas and database CONNECT (a catch-all for function/type/large-object/default-ACL grants and
-     for grants in any other database).
+     for grants in any other database);
+   - V16: no relation the reader can read, in any schema, has a withheld `charts`/`chart_grants`
+     column in its view-dependency closure (`pg_depend.refobjsubid`).
 
    INFO lines are allowed. **V6b TEMPORARY** is normally allowed through PUBLIC (session-local temp
    tables only). **V14** lists anything readable beyond the plan through PUBLIC grants; read it.
@@ -180,18 +193,34 @@ npx --no-install tsx scripts/suvarna-reader-bootstrap.ts --data-plane-gate-amend
    snapshot now includes each role's `rolvaliduntil`, `rolconfig` and per-database settings, so a
    changed expiry or role default on any other role is caught. Every role, membership and ACL other
    than the reader's own is exactly as found.
-7. **The RLS and PII sections.** Read them (§5). `PII columns` must PASS: every readable relation
-   with a column matching the PII/credential name pattern (for `public.charts`, only its granted
-   columns count) fails the run unless accepted with `--accept-pii=<schema.rel>` (repeatable). The
-   whole list is printed.
-8. **The last line:** `RESULT: PASS (dry run) — … nothing persisted. PLAN SHA256: …`.
+7. **The audit of everything readable.** After the grants, the script lists every relation in
+   `public` and `nirmana_evidence` the reader can read — the planned targets plus anything readable
+   through PUBLIC or other grants — and runs the checks below over all of it, not only over the plan.
+   It does not cover other schemas (V14 lists those for reading).
+   - **A1**: none of those is a definer view/matview over RLS or column-granted data (the plan
+     excluded its own; this catches ones readable by other means, which must be revoked at source).
+   - **RLS** lists (§5).
+   - **`PII columns`** must PASS: each of those relations with a column the reader can actually
+     SELECT whose name matches the PII/identifier pattern, or whose type is `json`/`jsonb`, fails the
+     run unless accepted with `--accept-pii=<schema.rel>` (repeatable). The whole list is printed.
+     Expect `public.chart_grants` (`principal_id`) and many `…name…` / `json` columns: each needs a
+     decision.
+8. **The plan hash.** `PLAN SHA256: <64 hex>`, printed after the grants and checks. It is the
+   sha256 of JSON-encoded, code-unit-sorted lines covering: the targets; the column-level grant spec
+   (granted and withheld columns); every exclusion and its reason; every PII entry (relation, sorted
+   columns, accepted or not); the accepted SECURITY DEFINER signatures; the stale grants revoked from
+   a pre-existing reader; this script file's own sha256; the role defaults, connection limit and read
+   schemas. Write it down: `--apply` needs it, and any change to the database state, the flags or the
+   script makes `--apply` fail.
+9. **The last line:** `RESULT: PASS (dry run) — … nothing persisted. PLAN SHA256: …`.
 
 **If V10 lists a SECURITY DEFINER function** that PUBLIC can execute, it is a real write path: it runs
 as its owner. The native can either revoke PUBLIC EXECUTE on it, as the owner, in a reviewed change,
 or accept it by name. Accepting uses the exact text the dry run prints:
 `--accept-secdef='public.fn(integer)'`, which can be repeated. The Monitor must accept the same list
 through `SUVARNA_READER_SECDEF_ALLOW` (`;`-separated). Both sides print signatures under
-`search_path = pg_catalog`, so they are always schema-qualified and match.
+`search_path = pg_catalog`, so they are always schema-qualified and match. Both leave out trigger
+and event-trigger functions.
 
 **If `CREATE ROLE … PASSWORD` is rejected:** the script sends a SCRAM verifier it computed itself.
 If the instance enforces Cloud SQL password validation, the server may refuse a pre-hashed
@@ -202,12 +231,16 @@ password in the statement could reach server logs.
 PASSWORD '<verifier>'` statement text can reach `pg_stat_statements` (utility statements are tracked
 by default) and the server log (if `log_statement` is `ddl` or `all`). A verifier cannot be used to
 log in directly, but it allows an offline guessing attack on the password (48 random alphanumerics
-make that impractical) and, with the server key, impersonating the server to a client. After
-`--apply` commits, the script resets the matching `pg_stat_statements` entries if the extension
-exists and `pg_stat_statements_reset(oid, oid, bigint)` is callable by `postgres`; it reports
-whether it could. It cannot remove server-log lines: check the Cloud SQL `log_statement` flag, and
-if it logs DDL, note the log window. Dry runs also send a verifier, but of a password that is
-discarded and a role that is rolled back.
+make that impractical) and, with the server key, impersonating the server to a client. In `--apply`,
+just before COMMIT and inside the transaction (under a savepoint, so a failure cannot abort it), the
+script resets the matching `pg_stat_statements` entries if the extension exists and `postgres` has
+USAGE on its schema and EXECUTE on `pg_stat_statements_reset(oid, oid, bigint)`; it reports whether
+it could. **On Cloud SQL expect "not reset"**: that function is normally not granted to `postgres`.
+The dry run reports only whether a reset would be possible. Other copies the script cannot remove:
+server-log lines (check the `log_statement` flag), **pgaudit** entries if the `cloudsql.enable_pgaudit`
+flag and an audit class covering ROLE/DDL are on, and **Query Insights**, which stores sampled query
+text if enabled. Check those three before apply and note any log window. Dry runs also send a
+verifier, but of a password that is discarded and a role that is rolled back.
 
 ## 3 · Apply
 
@@ -224,15 +257,18 @@ The steps, in order:
 1. The gcloud and secret checks run before the database is touched. The secret
    `suvarna-reader-password` is created if it is missing.
 2. The whole dry-run sequence runs in one transaction. The plan hash is recomputed and **must equal
-   `--expect-plan`**; any change to the targets, the `charts` column split or an exclusion since the
-   reviewed dry run fails the run and rolls back.
-3. Only if every check passes, the password is added as a new secret version, fed through stdin. The
-   version id is recorded.
-4. COMMIT, in its own error handler. If the COMMIT fails or its outcome is unknown (for example the
-   connection drops), the new secret version is **disabled** and the run ends with
+   `--expect-plan`**; any change since the reviewed dry run fails the run and rolls back.
+3. `pg_stat_statements` entries for the reader's PASSWORD statements are reset, before COMMIT (best
+   effort, reported; expect "not reset" on Cloud SQL).
+4. Only if every check passes, the password is added as a new secret version, fed through stdin. The
+   version id is recorded. If the add fails, or succeeds without a readable version name, every
+   version created since the run started (with a 60-second clock margin) is disabled and nothing
+   commits. From here until the COMMIT outcome is known, **Ctrl-C or SIGTERM** disables that version
+   and exits; the uncommitted transaction dies with the connection.
+5. COMMIT, in its own error handler. Only a `COMMIT` answer counts (an aborted transaction answers
+   `ROLLBACK`). If the COMMIT fails or its outcome is unknown (for example the connection drops), the
+   new secret version is **disabled** and the run ends with
    `RESULT: COMMIT outcome unknown: check pg_roles for suvarna_reader; re-run --apply (it resets the password).`
-5. `pg_stat_statements` entries for the reader's PASSWORD statements are reset (best effort,
-   reported).
 6. The script connects **as `suvarna_reader`** and repeats the self-checks.
 7. Only then is `~/.config/suvarna/pgenv.sh` replaced: atomically (temp file removed if the rename
    fails), mode 600, holding PGHOST, PGPORT=5433, PGDATABASE, PGUSER=suvarna_reader, PGPASSWORD and
@@ -264,8 +300,11 @@ Possible final results:
     npx --no-install tsx scripts/data-plane-ownership-status.ts )
 ```
 
-It reads only catalogs and `public._migrations_applied`, both readable by the reader (node-pg takes
-the password from `PGPASSWORD`). Any drift error here means the next deploy would fail: roll back
+It reads catalogs, `public._migrations_applied`, the `l1_/l2_data_plane_*_attestations` tables and
+`public.l2_data_plane_asset_outputs`; the bootstrap puts all of those in the reader's read set
+(source `gate`) whenever they exist, so this works as the reader (node-pg takes the password from
+`PGPASSWORD`). If it fails with a permission error instead of a drift error, run it with the
+deploy's own `DATABASE_URL`. Any drift error here means the next deploy would fail: roll back
 (§6) or fix before the next deploy. Then leave the subshell (or `unset
 SUVARNA_READER_ADMIN_DATABASE_URL`).
 
@@ -289,11 +328,16 @@ SUVARNA_READER_ADMIN_DATABASE_URL`).
    - executable SECURITY DEFINER functions in any schema;
    - access to `auth`;
    - `session_user`, `current_user`, the session's read-only value and its source, and the role's
-     own defaults from `pg_db_role_setting`.
+     own defaults from `pg_db_role_setting`;
+   - table-level SELECT on `public.charts` / `public.chart_grants`, any readable withheld column of
+     either, and any readable deny-listed or `auth` relation.
 
-   It reports BLOCK on any write path (including owned large objects); WARN if `session_user` and
-   `current_user` are not both `suvarna_reader`, if the session is not read-only, or if the role
-   defaults differ from §5's set; and OK only when every check passes.
+   It reports BLOCK on any write path or exposure (including owned large objects, the `charts` /
+   `chart_grants` exposures and readable deny-listed relations) and when the role's own
+   `default_transaction_read_only = on` default is missing; WARN if `session_user` and
+   `current_user` are not both `suvarna_reader`, if the session is not read-only, or if any other
+   role default differs from §5's set; and OK only when every check passes. The `credential` check
+   also WARNs on stray `pgenv*.bak*`, `pgenv.previous*` or `.pgenv.*.tmp` files beside the credential.
 2. **The tracker.** Run `curl -s http://127.0.0.1:8765/api/health`. Both `detector_errors` and
    `metrics_errors` must be `[]`. The database detectors read `asset_registry` and
    `information_schema.columns`. The second only shows columns of tables the reader can access, so
@@ -316,11 +360,15 @@ and are an early warning only.
 | `statement_timeout` | `120s` |
 | `idle_in_transaction_session_timeout` | `60s` |
 | `lock_timeout` | `5s` |
-| `temp_file_limit` | `1GB` |
 | connection limit | 10 |
 
-These are defaults. The reader can lower or raise the first four in its own session; it cannot
-change `temp_file_limit`. The Monitor checks the role's stored defaults, not each session.
+These are defaults. The reader can lower or raise them in its own session (and, after switching its
+session to read-write, even change its own stored defaults — see the top of this runbook). The
+Monitor checks the role's stored defaults, not each session.
+
+**`temp_file_limit` is not a role default** (decision, review of 4b979ce52, M6): it is superuser-only, so
+`postgres` on Cloud SQL may not be able to set it per role. The reader relies on the instance-level
+Cloud SQL `temp_file_limit` flag, which bounds every role. Check that flag is set to a finite value.
 
 **`public.charts` — column-level SELECT only.**
 
@@ -332,6 +380,21 @@ change `temp_file_limit`. The Monitor checks the role's stored defaults, not eac
   person or account (names, the Firebase-UID `client_id`, the principal `owner_id`, the `native_id`
   slug). Any column in production that is not on the granted list is withheld too, and printed.
 - Suvarṇa gets chart ids and non-personal configuration, which is what it joins on.
+
+**`public.chart_grants` — column-level SELECT only.**
+
+| granted (2) | withheld (4) |
+|---|---|
+| `chart_id`, `principal_id` | `id`, `permission`, `granted_by`, `granted_at` |
+
+- Exactly the two columns `chart_grant_policy`'s subquery on `charts` reads as the querying role.
+  `principal_id` is an account identifier, so the dry run's PII check flags this relation: accepting
+  it (`--accept-pii=public.chart_grants`) is required and is the native's call.
+
+**Views over `charts` / `chart_grants`.** Any definer view or materialized view reaching either is
+excluded (it would return withheld columns with its owner's rights), and so is any view reading a
+withheld column. V16 and the Monitor's `charts_withheld_readable` / `chart_grants_withheld_readable`
+facts keep checking it.
 
 **Row-level security.** No policy is added: that is the native's decision.
 
@@ -359,11 +422,15 @@ change `temp_file_limit`. The Monitor checks the role's stored defaults, not eac
 
 **PII and sensitive content.**
 
-- Any readable relation with a PII/credential-looking column name (email, phone, mobile, birth, dob,
-  first/last/full/display/subject/preferred `_name`, address, ip, uid, password, token, secret,
-  api_key, latitude/longitude) fails the dry run unless accepted with
-  `--accept-pii=<schema.rel>`. The full list is printed. Ephemeris-style `latitude`/`longitude`
-  columns will appear here and need an explicit decision.
+- After the grants, every relation the reader can read in `public` / `nirmana_evidence` (planned or
+  not) with a column it can SELECT whose name matches the PII/identifier pattern — email, phone,
+  mobile, birth, dob, name (and first/last/full/display/subject/preferred `_name`), lat, lng, lon,
+  latitude, longitude, place, city, location, tz, timezone, address, ip, uid, principal_id,
+  client_id, owner_id, user_id, granted_by, triggered_by, native_id, password, token, secret,
+  api_key, each as a whole `_`-separated word — or whose type is `json`/`jsonb`, fails the dry run
+  unless accepted with `--accept-pii=<schema.rel>`. The full list is printed and bound into the plan
+  hash. Expect many hits (ephemeris `latitude`/`longitude`, `…_name` columns, json payloads): each
+  is an explicit decision.
 
 **The deny-list** (never granted; widening it means editing `DENY_PATTERNS` in the script):
 
@@ -391,7 +458,8 @@ The rollback uses the same admin route. In one transaction (also starting with
 `SET LOCAL search_path = pg_catalog, pg_temp`), it:
 
 - revokes every grant `suvarna_reader` holds, **each as its grantor** (a plain `REVOKE` by
-  `postgres` cannot remove a grant an owner made), including the column grants on `charts`;
+  `postgres` cannot remove a grant an owner made), including the column grants on `charts` and
+  `chart_grants`;
 - runs `DROP ROLE suvarna_reader` (its role defaults go with it);
 - proves the same handoff invariants and snapshots;
 - on `--apply`, restores `~/.config/suvarna/pgenv.sh` from `~/.config/madhav-admin/pgenv.app-login.bak`
@@ -410,7 +478,7 @@ The manual equivalent, shown only so the mechanism is clear:
 BEGIN;
 SET LOCAL search_path = pg_catalog, pg_temp;
 GRANT <each grantor postgres is not already a member of> TO postgres;
-SET LOCAL ROLE <grantor>; REVOKE ALL ON TABLE <its tables, including public.charts> FROM suvarna_reader; RESET ROLE;   -- per grantor
+SET LOCAL ROLE <grantor>; REVOKE ALL ON TABLE <its tables, including public.charts and public.chart_grants> FROM suvarna_reader; RESET ROLE;   -- per grantor
 SET LOCAL ROLE data_plane_schema_owner; REVOKE ALL ON SCHEMA public FROM suvarna_reader; RESET ROLE;
 SET LOCAL ROLE nirmana_evidence_owner;  REVOKE ALL ON SCHEMA nirmana_evidence FROM suvarna_reader; RESET ROLE;
 REVOKE ALL ON DATABASE amjis FROM suvarna_reader;

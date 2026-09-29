@@ -193,7 +193,7 @@ def check_db_proxy(cfg: Config) -> CheckResult:
 
 # Backups of the write-capable app-login credential belong in ~/.config/madhav-admin/, never beside
 # the reader credential (security review 2, finding 1). Matched by NAME only; never opened.
-STRAY_BACKUP_PATTERNS = ("pgenv*.bak*", "pgenv.previous*")
+STRAY_BACKUP_PATTERNS = ("pgenv*.bak*", "pgenv.previous*", ".pgenv.*.tmp")
 
 
 def _stray_backups(pgenv: str) -> list[str]:
@@ -247,11 +247,43 @@ READER_LOGIN = "suvarna_reader"
 SECDEF_ALLOW_ENV = "SUVARNA_READER_SECDEF_ALLOW"
 
 # The reader's role defaults, exactly as suvarna-reader-bootstrap.ts READER_ROLE_CONFIG sets them
-# (pg_db_role_setting rows, `<setdatabase>:<name>=<value>`; 0 = all databases).
+# (pg_db_role_setting rows, `<setdatabase>:<name>=<value>`; 0 = all databases). temp_file_limit is
+# not a role default: the instance-level Cloud SQL flag bounds it (review of 4b979ce52, M6).
+ROLE_READ_ONLY_DEFAULT = "0:default_transaction_read_only=on"
 EXPECTED_ROLE_CONFIG = frozenset({
-    "0:default_transaction_read_only=on", "0:statement_timeout=120s",
-    "0:idle_in_transaction_session_timeout=60s", "0:lock_timeout=5s", "0:temp_file_limit=1GB",
+    ROLE_READ_ONLY_DEFAULT, "0:statement_timeout=120s",
+    "0:idle_in_transaction_session_timeout=60s", "0:lock_timeout=5s",
 })
+
+# Mirrors of suvarna-reader-bootstrap.ts (test_monitor pins them to the script's own lists).
+DENY_PATTERNS = (
+    "profiles", "access_requests", "conversation_%", "mcp_oauth_%", "ai_provider_connections",
+    "mv_session_summary", "query_baseline_stats", "mcp_api_keys",
+    "message_parts", "mcp_sessions", "planner_managed_prashna_jobs", "admin_audit_log", "audit_log",
+    "audit_events", "ai_custom_configurations", "ai_user_defaults", "ai_cli_grants", "chart_subject_consent%",
+    "messages", "documents", "reports", "chat_attachments", "message_feedback",
+)
+CHARTS_GRANTED_COLUMNS = ("id", "chart_id", "role", "ayanamsa", "house_system", "created_at", "created_at_iso")
+CHART_GRANTS_GRANTED_COLUMNS = ("chart_id", "principal_id")
+
+
+def _sql_list(items) -> str:
+    """A SQL text-array literal of plain identifiers/patterns (no quotes inside, asserted)."""
+    for it in items:
+        assert re.fullmatch(r"[a-z0-9_%]+", it), it
+    return "array[" + ",".join(f"'{it}'" for it in items) + "]"
+
+
+def _withheld_readable_sql(relname: str, granted) -> str:
+    return (f"(select count(*) from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n "
+            f"on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = '{relname}' and a.attnum > 0 "
+            f"and not a.attisdropped and a.attname <> all ({_sql_list(granted)}::name[]) "
+            f"and has_column_privilege(current_user, c.oid, a.attnum, 'SELECT'))::text")
+
+
+def _table_select_sql(relname: str) -> str:
+    return (f"coalesce((select has_table_privilege(current_user, c.oid, 'SELECT') from pg_class c join pg_namespace n "
+            f"on n.oid = c.relnamespace where n.nspname = 'public' and c.relname = '{relname}'), false)::text")
 
 # One psql round trip; one `key|value` row per fact, terminated by `end|ok` so a truncated result can
 # never pass. Every privilege function is evaluated for `current_user` — the login itself. The SQL is
@@ -286,6 +318,14 @@ facts(k, v) as (
   union all select 'owned_objects', ((select count(*) from pg_shdepend d join me on d.refobjid = me.oid
                                        where d.refclassid = 'pg_authid'::regclass and d.deptype = 'o')
                                     + (select count(*) from pg_database d join me on d.datdba = me.oid))::text
+  union all select 'charts_table_select', {_table_select_sql('charts')}
+  union all select 'chart_grants_table_select', {_table_select_sql('chart_grants')}
+  union all select 'charts_withheld_readable', {_withheld_readable_sql('charts', CHARTS_GRANTED_COLUMNS)}
+  union all select 'chart_grants_withheld_readable', {_withheld_readable_sql('chart_grants', CHART_GRANTS_GRANTED_COLUMNS)}
+  union all select 'denied_readable', (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where c.relkind in ('r','p','v','m','f')
+        and (n.nspname = 'auth' or (n.nspname in ('public','nirmana_evidence') and c.relname like any ({_sql_list(DENY_PATTERNS)})))
+        and has_schema_privilege(current_user, n.oid, 'USAGE') and has_any_column_privilege(current_user, c.oid, 'SELECT'))::text
   union all select 'large_objects', (select count(*) from pg_largeobject_metadata l join me on l.lomowner = me.oid)::text
   union all select 'acl_outside_scope', (select count(*) from pg_shdepend d join me on d.refobjid = me.oid
       where d.refclassid = 'pg_authid'::regclass and d.deptype = 'a'
@@ -309,6 +349,7 @@ facts(k, v) as (
        and has_schema_privilege(current_user, vn.oid, 'USAGE') and has_any_column_privilege(current_user, v.oid, 'SELECT'))
   union all (select 'secdef', p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where p.prosecdef and n.nspname <> 'pg_catalog'
+                and p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)
                 and has_function_privilege(current_user, p.oid, 'EXECUTE'))
   union all select 'end', 'ok'
 )
@@ -316,8 +357,10 @@ select k || '|' || v from facts;
 """.split())
 
 _COUNT_KEYS = ("table_write", "column_write", "sequence_write", "schema_create", "member_of", "members_of_me",
-               "owned_objects", "large_objects", "acl_outside_scope", "auth_dependent_views")
-_BOOL_KEYS = ("elevated", "database_create", "database_temp", "auth_schema_usage")
+               "owned_objects", "large_objects", "acl_outside_scope", "auth_dependent_views",
+               "charts_withheld_readable", "chart_grants_withheld_readable", "denied_readable")
+_BOOL_KEYS = ("elevated", "database_create", "database_temp", "auth_schema_usage",
+              "charts_table_select", "chart_grants_table_select")
 _REQUIRED_KEYS = ("current_user", "session_user", "read_only", "read_only_source", "role_config") + _COUNT_KEYS + _BOOL_KEYS
 
 
@@ -366,7 +409,11 @@ def check_credential_readonly(cfg: Config) -> CheckResult:
     objects and owned large objects, ACL dependencies outside this database's relations/schemas and
     CONNECT (pg_shdepend catch-all), elevated role attributes, executable SECURITY DEFINER functions
     outside pg_catalog in ANY schema (operators, casts and aggregates can reach them without schema
-    USAGE), and whether schema ``auth`` (or any readable view over it) is reachable.
+    USAGE; trigger/event-trigger functions excluded), whether schema ``auth`` (or any readable view
+    over it) is reachable, table-level SELECT on public.charts / public.chart_grants, readable
+    withheld columns of either, and readable deny-listed relations — every one of those is ``block``.
+    A missing role default default_transaction_read_only=on is also ``block``; other role-default
+    drift is ``warn``.
 
     ``block`` on any write path; ``ok`` only if every check passes AND session_user = current_user =
     ``suvarna_reader`` AND the session's default_transaction_read_only is on AND the role's own
@@ -404,6 +451,9 @@ def check_credential_readonly(cfg: Config) -> CheckResult:
                        ("owned_objects", "owned objects"),
                        ("large_objects", "owned large objects"),
                        ("acl_outside_scope", "ACL grants outside this database's relations/schemas/CONNECT"),
+                       ("charts_withheld_readable", "withheld public.charts columns readable"),
+                       ("chart_grants_withheld_readable", "withheld public.chart_grants columns readable"),
+                       ("denied_readable", "deny-listed or auth relations readable"),
                        ("auth_dependent_views", "readable views over schema auth")):
         if facts[key]:
             write_paths.append(f"{label}={facts[key]}")
@@ -411,17 +461,27 @@ def check_credential_readonly(cfg: Config) -> CheckResult:
         write_paths.append("database CREATE")
     if facts["auth_schema_usage"]:
         write_paths.append("USAGE on schema auth")
+    if facts["charts_table_select"]:
+        write_paths.append("table-level SELECT on public.charts (withheld birth data readable)")
+    if facts["chart_grants_table_select"]:
+        write_paths.append("table-level SELECT on public.chart_grants")
     if secdef:
         shown = _sanitize_query_output(", ".join(secdef[:3]))
         write_paths.append(f"reachable SECURITY DEFINER functions={len(secdef)} ({shown}{', …' if len(secdef) > 3 else ''})")
     if write_paths:
-        return CheckResult(name, "block", f"login {login} has a write path: " + "; ".join(write_paths))
+        return CheckResult(name, "block", f"login {login} has a write path or exposure: " + "; ".join(write_paths))
+
+    # L6: the role's own read-only default is the one setting whose absence is a BLOCK — a session
+    # that forgets PGOPTIONS would otherwise start read-write (other role-default drift stays WARN).
+    role_config = frozenset(e for e in str(facts["role_config"]).split(",") if e)
+    if ROLE_READ_ONLY_DEFAULT not in role_config:
+        return CheckResult(name, "block", f"login {login}: role default default_transaction_read_only is not on "
+                                          f"(ALTER ROLE {READER_LOGIN} SET default_transaction_read_only = on)")
 
     session = _sanitize_query_output(str(facts["session_user"])) or "?"
     ro_flag = _sanitize_query_output(str(facts["read_only"])).lower() or "?"
     ro_source = _sanitize_query_output(str(facts["read_only_source"])) or "?"
-    role_config = frozenset(e for e in str(facts["role_config"]).split(",") if e)
-    role_ro = "on" if "0:default_transaction_read_only=on" in role_config else "off/unset"
+    role_ro = "on"
     temp = "temp tables allowed (session-local)" if facts["database_temp"] else "no temp"
     accepted = f", {len(facts['secdef'])} accepted security-definer exception(s)" if facts["secdef"] else ""
     concerns = []

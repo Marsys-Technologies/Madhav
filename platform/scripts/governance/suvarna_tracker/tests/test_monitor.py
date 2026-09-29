@@ -87,7 +87,8 @@ def test_credential_ok_when_restricted(tmp_path):
 
 
 @pytest.mark.parametrize("name", ["pgenv.app-login.bak", "pgenv.sh.bak", "pgenv.bak.1",
-                                  "pgenv.previous.2026-09-29T10-00-00-000Z.bak", "pgenv.previous"])
+                                  "pgenv.previous.2026-09-29T10-00-00-000Z.bak", "pgenv.previous",
+                                  ".pgenv.12345.a1b2c3d4e5f6.tmp"])
 def test_credential_warns_on_backup_beside_the_credential(tmp_path, name):
     d = tmp_path / "suvarna"
     d.mkdir()
@@ -101,7 +102,7 @@ def test_credential_warns_on_backup_beside_the_credential(tmp_path, name):
     assert r.status == "warn" and name in r.detail and "madhav-admin" in r.detail
 
 
-@pytest.mark.parametrize("name", ["notes.bak", "pgenv.sh", "other.previous", ".pgenv.123.abc.tmp"])
+@pytest.mark.parametrize("name", ["notes.bak", "pgenv.sh", "other.previous", ".other.123.tmp"])
 def test_credential_ignores_unrelated_sibling_names(tmp_path, name):
     d = tmp_path / "suvarna"
     d.mkdir()
@@ -184,6 +185,8 @@ _CLEAN = {
     "database_create": "false", "database_temp": "true", "schema_create": "0",
     "member_of": "0", "members_of_me": "0", "owned_objects": "0", "large_objects": "0",
     "acl_outside_scope": "0", "auth_schema_usage": "false", "auth_dependent_views": "0",
+    "charts_table_select": "false", "chart_grants_table_select": "false",
+    "charts_withheld_readable": "0", "chart_grants_withheld_readable": "0", "denied_readable": "0",
 }
 
 
@@ -299,6 +302,11 @@ def test_credential_readonly_is_part_of_run_checks(tmp_path):
     ({"auth_dependent_views": 1}, "views over schema auth"),
     ({"large_objects": 2}, "large objects"),
     ({"acl_outside_scope": 1}, "ACL grants outside"),
+    ({"charts_table_select": "true"}, "table-level SELECT on public.charts"),
+    ({"chart_grants_table_select": "true"}, "table-level SELECT on public.chart_grants"),
+    ({"charts_withheld_readable": 3}, "withheld public.charts columns readable=3"),
+    ({"chart_grants_withheld_readable": 1}, "withheld public.chart_grants columns readable=1"),
+    ({"denied_readable": 2}, "deny-listed or auth relations readable=2"),
 ])
 def test_credential_readonly_blocks_on_every_write_path(tmp_path, over, needle):
     r, _, _ = _ro(tmp_path, _facts(**over))
@@ -343,21 +351,29 @@ def test_credential_readonly_ok_reports_session_and_role_read_only_separately(tm
 
 
 @pytest.mark.parametrize("role_config,needle", [
-    (",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:temp_file_limit=1GB"})), "missing 0:temp_file_limit=1GB"),
+    (",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:statement_timeout=120s"})), "missing 0:statement_timeout=120s"),
     (_ROLE_CONFIG + ",0:search_path=public", "unexpected 0:search_path=public"),
-    (",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:default_transaction_read_only=on"})), "missing 0:default_transaction_read_only=on"),
-    ("", "missing"),
+    (_ROLE_CONFIG + ",0:temp_file_limit=1GB", "unexpected 0:temp_file_limit=1GB"),
 ])
 def test_credential_readonly_warns_when_role_defaults_differ(tmp_path, role_config, needle):
     r, _, _ = _ro(tmp_path, _facts(role_config=role_config))
     assert r.status == "warn" and "role defaults differ" in r.detail and needle in r.detail
 
 
-def test_credential_readonly_role_default_off_but_pgoptions_on_is_warn(tmp_path):
-    """PGOPTIONS keeps the session read-only, but the role's own default is missing: reported, warn."""
-    cfg_no_ro = ",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:default_transaction_read_only=on"}))
-    r, _, _ = _ro(tmp_path, _facts(read_only="on", read_only_source="client", role_config=cfg_no_ro))
-    assert r.status == "warn"
+def test_expected_role_config_has_no_temp_file_limit():
+    assert not any("temp_file_limit" in e for e in M.EXPECTED_ROLE_CONFIG)
+
+
+@pytest.mark.parametrize("role_config", [
+    ",".join(sorted(M.EXPECTED_ROLE_CONFIG - {"0:default_transaction_read_only=on"})),
+    _ROLE_CONFIG.replace("default_transaction_read_only=on", "default_transaction_read_only=off"),
+    "",
+])
+def test_credential_readonly_blocks_when_role_read_only_default_missing(tmp_path, role_config):
+    """PGOPTIONS may keep the session read-only, but without the role's own default a session that
+    forgets PGOPTIONS starts read-write: BLOCK (L6)."""
+    r, _, _ = _ro(tmp_path, _facts(read_only="on", read_only_source="client", role_config=role_config))
+    assert r.status == "block" and "role default default_transaction_read_only is not on" in r.detail
 
 
 def test_credential_readonly_tolerates_a_set_command_tag(tmp_path):
@@ -405,6 +421,43 @@ def test_self_privilege_sql_evaluates_the_login_itself():
     for fragment in ("session_user::text", "pg_db_role_setting", "pg_largeobject_metadata", "d.deptype = 'a'",
                      "pg_settings where name = 'default_transaction_read_only'"):
         assert fragment in sql, fragment
+
+
+def test_self_privilege_sql_has_exposure_facts():
+    sql = M._SELF_PRIVILEGE_SQL
+    for key in ("charts_table_select", "chart_grants_table_select", "charts_withheld_readable",
+                "chart_grants_withheld_readable", "denied_readable"):
+        assert f"'{key}'" in sql, key
+    assert "has_table_privilege(current_user, c.oid, 'SELECT')" in sql
+    assert "has_column_privilege(current_user, c.oid, a.attnum, 'SELECT')" in sql
+    assert "a.attname <> all (array['id','chart_id','role','ayanamsa','house_system','created_at','created_at_iso']::name[])" in sql
+    assert "a.attname <> all (array['chart_id','principal_id']::name[])" in sql
+    assert "c.relname like any (array['profiles'," in sql and "'message_feedback']" in sql
+
+
+def test_self_privilege_secdef_excludes_trigger_functions():
+    sql = M._SELF_PRIVILEGE_SQL
+    clause = sql[sql.index("'secdef'"):sql.index("'end', 'ok'")]
+    assert "p.prorettype not in ('trigger'::regtype, 'event_trigger'::regtype)" in clause
+
+
+def _ts_array(name):
+    """String literals of `export const <name> = [ … ]` in suvarna-reader-bootstrap.ts."""
+    import re
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = open(os.path.join(here, "..", "..", "..", "suvarna-reader-bootstrap.ts"), encoding="utf-8").read()
+    m = re.search(r"export const " + name + r"\b[^=]*= \[(.*?)\] as const", src, re.S)
+    assert m, name
+    body = re.sub(r"//[^\n]*", "", m.group(1))
+    return re.findall(r"'([^']*)'", body)
+
+
+def test_monitor_mirrors_match_the_bootstrap_script():
+    assert tuple(_ts_array("DENY_PATTERNS")) == M.DENY_PATTERNS
+    assert tuple(_ts_array("CHARTS_GRANTED_COLUMNS")) == M.CHARTS_GRANTED_COLUMNS
+    assert tuple(_ts_array("CHART_GRANTS_GRANTED_COLUMNS")) == M.CHART_GRANTS_GRANTED_COLUMNS
+    pairs = _ts_array("READER_ROLE_CONFIG")
+    assert frozenset(f"0:{k}={v}" for k, v in zip(pairs[::2], pairs[1::2])) == M.EXPECTED_ROLE_CONFIG
 
 
 def test_self_privilege_secdef_has_no_schema_usage_condition():
