@@ -90,7 +90,7 @@
       "Edit(platform/migrations/10[0-6][0-9]_*)",
       "Edit(platform/migrations/1070_*)",
       "Edit(platform/migrations/11[2-9][0-9]_*)",
-      "Edit(platform/migrations/1[2-9][0-9][0-9]_*)",
+      "Edit(platform/migrations/1[3-9][0-9][0-9]_*)",
       "Edit(platform/migrations/ws2_*)",
 
       "Edit(00_ARCHITECTURE/briefs/pariprashna_swarm/**)",
