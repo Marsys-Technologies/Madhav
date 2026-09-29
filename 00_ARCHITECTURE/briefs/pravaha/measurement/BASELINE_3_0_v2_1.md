@@ -24,9 +24,15 @@ quoted it is labelled *(history)*.
 
 Held-out **47** (30 timing-usable + 17 year-grain); exact-date cohort 5; interval 2
 (grandfather 61 d; 2026.01 interval 59 d); month-grain 23. Horizon H = 1998-01-01 →
-2026-04-17 = 10,334 days. Dedup unchanged: every '3.0' era class merges to **1 candidate
-spanning 1984–2084**; the five zero-width instant classes (separation, business_launch,
-career_change, education_milestone, foreign_settlement) remain 1-day instants.
+2026-04-17 = 10,334 days. Dedup (corrected per Kimi NK-5 — the v2.0 narrative's "1 merged
+candidate per class spanning 1984–2084" was wrong): the era classes are **10 non-abutting
+decade candidates per class** over 1984–2084 (they do not merge — gaps between decades exceed
+the 1-day abutment rule); the denser classes carry more (career_setback 70 rows → 30,
+financial_deception 70 → 29, major_gain 70 → 29, major_loss 70 → 29, psychological_arc 64 →
+27, chronic_onset/parental_event/relocation/spiritual_turn 70 → 30); the instant classes are
+education_milestone 40, business_launch 30, career_change 30, separation 30, and
+**foreign_settlement 30 rows → 20 merged candidates**. In-year N is what T-rank consumes; the
+class-merged totals are printed here from the pinned extract, not asserted.
 
 ## 2. Endpoint results ('3.0', v2.1 rules)
 
