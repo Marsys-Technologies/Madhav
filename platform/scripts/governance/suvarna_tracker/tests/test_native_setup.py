@@ -368,7 +368,7 @@ def test_apply_never_logs_a_password(tmp_path):
 
 
 def test_github_token_helper_never_logs_the_token(tmp_path):
-    secret = "ghp_ThisIsATotallyFakeTestOnlyTokenXYZ123"  # pragma: allowlist secret
+    secret = "FAKE-" + "-".join(["github", "fixture", "not", "real"])  # built at run time: no token-shaped literal in the source
     result, sim_log, _, _ = run_script(
         tmp_path, ["--github-token"], as_root=True, stdin=secret + "\n"
     )
@@ -380,7 +380,7 @@ def test_github_token_helper_never_logs_the_token(tmp_path):
 
 
 def test_claude_token_helper_never_logs_the_token(tmp_path):
-    secret = "sk-ant-oat01-ThisIsAlsoFakeTestOnlyXYZ987"  # pragma: allowlist secret
+    secret = "FAKE-" + "-".join(["claude", "fixture", "not", "real"])  # built at run time: no token-shaped literal in the source
     result, sim_log, _, _ = run_script(
         tmp_path, ["--claude-token"], as_root=True, stdin=secret + "\n"
     )
