@@ -15,6 +15,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -48,8 +49,9 @@ class Config:
     db_port: int = 5433
 
 
-def _run(cmd: list[str] | str, cwd: str | None = None, timeout: int = 60, shell: bool = False) -> tuple[int, str]:
-    p = subprocess.run(cmd, cwd=cwd, timeout=timeout, shell=shell, capture_output=True, text=True)
+def _run(cmd: list[str] | str, cwd: str | None = None, timeout: int = 60, shell: bool = False,
+         env: dict | None = None) -> tuple[int, str]:
+    p = subprocess.run(cmd, cwd=cwd, timeout=timeout, shell=shell, capture_output=True, text=True, env=env)
     return p.returncode, (p.stdout if p.returncode == 0 else (p.stderr or p.stdout))
 
 
@@ -64,6 +66,17 @@ def _run(cmd: list[str] | str, cwd: str | None = None, timeout: int = 60, shell:
 REGISTER_REL_PATH = "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md"
 GAPS_REL_PATH = "00_ARCHITECTURE/control/asset_gaps.jsonl"
 CERTS_REL_PATH = "00_ARCHITECTURE/control/asset_certs.jsonl"
+
+# v1.3 additions (arch §11.7, built by L.13). Two of the new detector types read committed inputs
+# that other L.13-dependent work (E6.3, E6.1/E6.5) has not landed yet: FAMILY_ASSETS.json (on
+# `origin/main`, alongside the rest of the tracker's own config) and the inspector's registry
+# self-check report (in the Nikaṣa root, alongside the register and ledgers it is measured
+# against). Until each lands, its detector(s) correctly read `pending` — "an expected input that
+# does not exist yet reads pending" (arch §11.7 rule).
+FAMILY_ASSETS_REL_PATH = "00_ARCHITECTURE/control/suvarna/FAMILY_ASSETS.json"
+REGISTRY_COVERAGE_REL_PATH = "00_ARCHITECTURE/control/registry_coverage_report.json"
+
+PARAMS_NOT_SET = "detector parameters not set yet"
 
 
 def _nikasha_ref() -> str:
@@ -151,7 +164,12 @@ def register_counts(reg: dict) -> dict:
 class Detectors:
     TTL = {"pr_merged": 120, "register_tally_consistent": 20, "register_wellformed": 20,
            "main_file_contains": 300, "main_has_file": 300, "branch_merged": 300,
-           "register_rows_closed": 20, "db_columns_exist": 60, "levels_elevated": 60}
+           "register_rows_closed": 20, "db_columns_exist": 60, "levels_elevated": 60,
+           # v1.3 additions (arch §11.7)
+           "prs_merged": 120, "main_has_files": 300, "scorecard_pass": 300,
+           "migrations_applied": 60, "register_rows_state": 20, "register_freeze_clean": 20,
+           "monitor_check_ok": 60, "deployed_contains": 600, "wave_deployed": 600,
+           "assets_elevated": 60, "registry_coverage": 300, "ledger_no_open_gap_on": 20}
 
     def __init__(self, cfg: Config, on_change=None):
         self.cfg = cfg
@@ -223,6 +241,33 @@ class Detectors:
         if rc != 0:
             raise RuntimeError(out.strip()[:200])
         return [l.split("\t") for l in out.splitlines() if l.strip()]
+
+    def _family_assets(self) -> dict | None:
+        """`FAMILY_ASSETS.json` (arch §6.4/§11.7, frozen at J1/E6.3) — read from the committed
+        `origin/main` ref, same discipline as the register (Fix 5): never the working tree. Returns
+        None (never raises) when the file is not on main yet — that is the expected pre-E6.3 state,
+        and callers turn it into `pending`, not `error`."""
+        self._fetch_main()
+        rc, out = _run(["git", "show", f"origin/main:{FAMILY_ASSETS_REL_PATH}"], cwd=self.cfg.repo, timeout=30)
+        if rc != 0:
+            return None
+        return json.loads(out)
+
+    @staticmethod
+    def _family_set_union(fam: dict, set_name: str | None = None) -> set[str]:
+        """The named set's assets, or — for `set_name in (None, 'family_set')` — the union of every
+        `family_*` list in the file (families and their readers alike), matching how `exclude:
+        family_set` is used on the wave items."""
+        if set_name and set_name != "family_set":
+            v = fam.get(set_name) or []
+            return set(v) if isinstance(v, list) else set()
+        if isinstance(fam.get("family_set"), list):
+            return set(fam["family_set"])
+        out: set[str] = set()
+        for k, v in fam.items():
+            if k.startswith("family_") and isinstance(v, list):
+                out.update(v)
+        return out
 
     # -- detectors ----------------------------------------------------------------------------
     def d_pr_merged(self, spec):
@@ -315,17 +360,276 @@ class Detectors:
                               now_iso(), "detector:db_columns_exist", n / len(found))
 
     def d_levels_elevated(self, spec):
+        """Family-aware since v1.3 (arch §6.4/§11.7): `exclude: "family_set"` drops every asset in
+        every `family_*` list of `FAMILY_ASSETS.json` from the wave's completion count, so a family
+        asset (or its reader) waiting on its own family session never blocks an otherwise-complete
+        wave. Until FAMILY_ASSETS.json is frozen at J1 (E6.3) this reads `pending`, never `done` —
+        a wave that claims `exclude: family_set` cannot honestly complete before the exclusion list
+        it depends on exists."""
         lo, hi = spec["levels"]
         levels = dag_levels(self)
-        assets = [a for a, lv in levels.items() if lo <= lv <= hi]
+        exclude: set[str] = set()
+        if spec.get("exclude") == "family_set":
+            fam = self._family_assets()
+            if fam is None:
+                return DetectorResult("pending", "FAMILY_ASSETS.json not yet on main (frozen at J1/E6.3); "
+                                                 "cannot honestly exclude the family set yet",
+                                      now_iso(), "detector:levels_elevated")
+            exclude = self._family_set_union(fam, "family_set")
+        assets = [a for a, lv in levels.items() if lo <= lv <= hi and a not in exclude]
         if not assets:
-            return DetectorResult("error", f"no assets at levels {lo}–{hi}", now_iso(), "detector:levels_elevated")
+            return DetectorResult("error", f"no assets at levels {lo}–{hi} after excluding the family set",
+                                  now_iso(), "detector:levels_elevated")
         elevated = elevated_assets(self.cfg)
         n = sum(1 for a in assets if a in elevated)
-        detail = f"{n}/{len(assets)} assets elevated (proxy: ≥1 certification and no open gap rows)"
+        excl_note = f"; {len(exclude)} family/reader asset(s) excluded" if exclude else ""
+        detail = f"{n}/{len(assets)} assets elevated (proxy: ≥1 certification and no open gap rows){excl_note}"
         if n == len(assets):
             return DetectorResult("done", detail, now_iso(), "detector:levels_elevated", 1.0)
         return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:levels_elevated", n / len(assets))
+
+    # -- v1.3 additions (arch §11.7, built by L.13) --------------------------------------------
+
+    def d_prs_merged(self, spec):
+        prs = spec.get("prs") or []
+        if not prs:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:prs_merged")
+        merged, open_, closed = [], [], []
+        for pr in prs:
+            rc, out = _run(["gh", "pr", "view", str(pr), "--json", "state,mergedAt"], cwd=self.cfg.repo, timeout=60)
+            if rc != 0:
+                return DetectorResult("error", f"gh: {out.strip()[:160]}", now_iso(), "detector:prs_merged")
+            d = json.loads(out)
+            (merged if d["state"] == "MERGED" else open_ if d["state"] == "OPEN" else closed).append(pr)
+        frac = len(merged) / len(prs)
+        if len(merged) == len(prs):
+            return DetectorResult("done", f"all {len(prs)} PRs merged", now_iso(), "detector:prs_merged", 1.0)
+        detail = f"{len(merged)}/{len(prs)} merged"
+        if open_:
+            detail += f"; open: {open_}"
+        if closed:
+            detail += f"; closed without merging: {closed}"
+            return DetectorResult("blocked", detail, now_iso(), "detector:prs_merged", frac)
+        return DetectorResult("running" if merged or open_ else "pending", detail, now_iso(), "detector:prs_merged", frac)
+
+    def d_main_has_files(self, spec):
+        paths = spec.get("paths") or []
+        if not paths:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:main_has_files")
+        self._fetch_main()
+        missing = [p for p in paths if _run(["git", "cat-file", "-e", f"origin/main:{p}"],
+                                            cwd=self.cfg.repo, timeout=30)[0] != 0]
+        n = len(paths) - len(missing)
+        if not missing:
+            return DetectorResult("done", f"all {len(paths)} paths on main", now_iso(), "detector:main_has_files", 1.0)
+        shown = ", ".join(missing[:5]) + ("…" if len(missing) > 5 else "")
+        detail = f"{n}/{len(paths)} paths on main; missing: {shown}"
+        return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:main_has_files", n / len(paths))
+
+    def d_scorecard_pass(self, spec):
+        ref, path, tests = spec.get("ref"), spec.get("path"), spec.get("tests") or []
+        if not ref or not path or not tests:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:scorecard_pass")
+        if ref == "origin/main" or ref.startswith("origin/"):
+            self._fetch_main()
+        rc, out = _run(["git", "show", f"{ref}:{path}"], cwd=self.cfg.repo, timeout=60)
+        if rc != 0:
+            return DetectorResult("pending", f"scorecard not yet at {path} on {ref}", now_iso(), "detector:scorecard_pass")
+        data = json.loads(out)
+        results = data.get("tests") or data.get("results") or {}
+        commit = data.get("inspector_commit") or data.get("commit")
+        missing = [t for t in tests if str(results.get(t, "")).upper() != "PASS"]
+        n = len(tests) - len(missing)
+        if not commit:
+            return DetectorResult("pending", "scorecard names no inspector commit", now_iso(), "detector:scorecard_pass", n / len(tests) if n else None)
+        if missing:
+            detail = f"{n}/{len(tests)} PASS on {ref}; missing/failing: {', '.join(missing)}"
+            return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:scorecard_pass", n / len(tests))
+        return DetectorResult("done", f"all {len(tests)} tests PASS on {ref}; inspector commit {commit}",
+                              now_iso(), "detector:scorecard_pass", 1.0)
+
+    def d_migrations_applied(self, spec):
+        numbers = spec.get("numbers") or []
+        if not numbers:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:migrations_applied")
+        nums = [int(n) for n in numbers]
+        pattern = "|".join(f"^{n}_" for n in nums)
+        rows = self._psql(f"select filename from _migrations_applied where filename ~ '{pattern}'")
+        applied = set()
+        for r in rows:
+            if r and r[0]:
+                m = re.match(r"^(\d+)_", r[0])
+                if m:
+                    applied.add(int(m.group(1)))
+        missing = [n for n in nums if n not in applied]
+        n_applied = len(nums) - len(missing)
+        if not missing:
+            return DetectorResult("done", f"all {len(nums)} migrations applied", now_iso(), "detector:migrations_applied", 1.0)
+        detail = f"{n_applied}/{len(nums)} applied; missing: {missing}"
+        return DetectorResult("running" if n_applied else "pending", detail, now_iso(), "detector:migrations_applied", n_applied / len(nums))
+
+    def d_register_rows_state(self, spec):
+        rows, states = spec.get("rows") or [], spec.get("states") or []
+        if not rows or not states:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:register_rows_state")
+        reg = parse_register(self._register_text())
+        missing = [r for r in rows if r not in reg["rows"]]
+        if missing:
+            return DetectorResult("error", "rows not in register: " + ", ".join(missing), now_iso(), "detector:register_rows_state")
+        ok = [r for r in rows if reg["rows"][r]["state_class"] in states]
+        n = len(ok)
+        if n == len(rows):
+            return DetectorResult("done", f"all {len(rows)} rows in {states}", now_iso(), "detector:register_rows_state", 1.0)
+        bad = [f"{r}={reg['rows'][r]['state_class']}" for r in rows if r not in ok]
+        detail = f"{n}/{len(rows)} in {states}; not yet: {', '.join(bad)}"
+        return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:register_rows_state", n / len(rows))
+
+    def d_register_freeze_clean(self, spec):
+        allow_deferred = set(spec.get("allow_deferred") or [])
+        reg = parse_register(self._register_text())
+        blockers = {rid: r for rid, r in reg["rows"].items() if r["severity"].strip().upper().startswith("BLOCKS_FREEZE")}
+        if not blockers:
+            return DetectorResult("done", "no BLOCKS_FREEZE rows in the register", now_iso(), "detector:register_freeze_clean", 1.0)
+        bad = []
+        for rid, r in blockers.items():
+            sc = r["state_class"]
+            if sc in ("CLOSED", "DONE"):
+                continue
+            if sc == "DEFERRED" and rid in allow_deferred:
+                continue
+            bad.append(f"{rid}={sc}")
+        n_ok = len(blockers) - len(bad)
+        if not bad:
+            return DetectorResult("done", f"all {len(blockers)} BLOCKS_FREEZE rows closed", now_iso(), "detector:register_freeze_clean", 1.0)
+        detail = f"{n_ok}/{len(blockers)} BLOCKS_FREEZE rows clean; open: {', '.join(bad)}"
+        return DetectorResult("running" if n_ok else "pending", detail, now_iso(), "detector:register_freeze_clean", n_ok / len(blockers))
+
+    def d_monitor_check_ok(self, spec):
+        check = spec.get("check")
+        if not check:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:monitor_check_ok")
+        gov_dir = os.path.join(self.cfg.repo, "platform", "scripts", "governance")
+        env = {**os.environ, "SUVARNA_HOME": self.cfg.home, "SUVARNA_DB_PORT": str(self.cfg.db_port)}
+        if self.cfg.pgenv:
+            env["SUVARNA_PGENV"] = self.cfg.pgenv
+        rc, out = _run([sys.executable, "-m", "suvarna_tracker.monitor", "--once", "--json"],
+                       cwd=gov_dir, timeout=60, env=env)
+        report = json.loads(out)
+        by_name = {c["name"]: c for c in report.get("checks", [])}
+        c = by_name.get(check)
+        if c is None:
+            return DetectorResult("error", f"no such monitor check: {check}", now_iso(), "detector:monitor_check_ok")
+        if c["status"] == "ok":
+            return DetectorResult("done", f"{check}: {c['detail']}", now_iso(), "detector:monitor_check_ok", 1.0)
+        status = "blocked" if c["status"] == "block" else "pending"
+        return DetectorResult(status, f"{check}: {c['detail']}", now_iso(), "detector:monitor_check_ok")
+
+    def d_deployed_contains(self, spec):
+        component, prs = spec.get("component") or "job", spec.get("prs") or []
+        if not prs:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:deployed_contains")
+        merge_shas = []
+        for pr in prs:
+            rc, out = _run(["gh", "pr", "view", str(pr), "--json", "state,mergeCommit"], cwd=self.cfg.repo, timeout=60)
+            if rc != 0:
+                return DetectorResult("error", f"gh: {out.strip()[:160]}", now_iso(), "detector:deployed_contains")
+            d = json.loads(out)
+            if d["state"] != "MERGED":
+                return DetectorResult("pending", f"PR #{pr} not merged yet", now_iso(), "detector:deployed_contains")
+            sha = (d.get("mergeCommit") or {}).get("oid")
+            if not sha:
+                return DetectorResult("error", f"PR #{pr}: no merge commit recorded", now_iso(), "detector:deployed_contains")
+            merge_shas.append(sha)
+        rc, out = _run(["suvarna-build", "--preflight", "--json"], timeout=60)
+        if rc != 0:
+            return DetectorResult("error", f"suvarna-build --preflight: {out.strip()[:200]}", now_iso(), "detector:deployed_contains")
+        pre = json.loads(out)
+        tag = pre.get("job_image_tag") if component == "job" else pre.get("web_sha")
+        if not tag:
+            return DetectorResult("error", f"preflight reported no {component} tag/sha", now_iso(), "detector:deployed_contains")
+        missing = [s for s in merge_shas if s[:12] not in tag]
+        n_ok = len(merge_shas) - len(missing)
+        if not missing:
+            return DetectorResult("done", f"{component} deploy ({tag[:12]}) contains all {len(prs)} merges", now_iso(), "detector:deployed_contains", 1.0)
+        detail = f"{n_ok}/{len(prs)} merges present in the {component} deploy ({tag[:12]})"
+        return DetectorResult("running" if n_ok else "pending", detail, now_iso(), "detector:deployed_contains", n_ok / len(prs))
+
+    def d_wave_deployed(self, spec):
+        wave = spec.get("wave")
+        if not wave:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:wave_deployed")
+        landing_path = os.path.join(self.cfg.home, "evidence", wave, "LANDING.json")
+        if not os.path.exists(landing_path):
+            return DetectorResult("pending", f"no landing record yet at evidence/{wave}/LANDING.json", now_iso(), "detector:wave_deployed")
+        with open(landing_path, encoding="utf-8") as f:
+            landing = json.load(f)
+        pr = landing.get("pr")
+        if not pr:
+            return DetectorResult("error", f"LANDING.json for {wave} names no PR", now_iso(), "detector:wave_deployed")
+        rc, out = _run(["gh", "pr", "view", str(pr), "--json", "state,mergeCommit"], cwd=self.cfg.repo, timeout=60)
+        if rc != 0:
+            return DetectorResult("error", f"gh: {out.strip()[:160]}", now_iso(), "detector:wave_deployed")
+        d = json.loads(out)
+        if d["state"] != "MERGED":
+            return DetectorResult("running", f"{wave} landing PR #{pr} open, not yet merged", now_iso(), "detector:wave_deployed", 0.5)
+        sha = (d.get("mergeCommit") or {}).get("oid")
+        if not sha:
+            return DetectorResult("error", f"PR #{pr}: no merge commit recorded", now_iso(), "detector:wave_deployed")
+        rc2, out2 = _run(["suvarna-build", "--preflight", "--json"], timeout=60)
+        if rc2 != 0:
+            return DetectorResult("error", f"suvarna-build --preflight: {out2.strip()[:200]}", now_iso(), "detector:wave_deployed")
+        pre = json.loads(out2)
+        tag = pre.get("job_image_tag") or ""
+        if sha[:12] in tag:
+            return DetectorResult("done", f"{wave} landing PR #{pr} merged and deployed ({tag[:12]})", now_iso(), "detector:wave_deployed", 1.0)
+        return DetectorResult("running", f"{wave} landing PR #{pr} merged ({sha[:12]}) but not yet in the deployed tag ({tag[:12]})",
+                              now_iso(), "detector:wave_deployed", 0.75)
+
+    def d_assets_elevated(self, spec):
+        set_name = spec.get("set")
+        if not set_name:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:assets_elevated")
+        fam = self._family_assets()
+        if fam is None:
+            return DetectorResult("pending", "FAMILY_ASSETS.json not yet on main (frozen at J1/E6.3)", now_iso(), "detector:assets_elevated")
+        assets = self._family_set_union(fam, set_name)
+        if not assets:
+            return DetectorResult("error", f"no asset set '{set_name}' in FAMILY_ASSETS.json", now_iso(), "detector:assets_elevated")
+        elevated = elevated_assets(self.cfg)
+        n = sum(1 for a in assets if a in elevated)
+        detail = f"{n}/{len(assets)} '{set_name}' assets elevated (proxy: ≥1 certification and no open gap row)"
+        if n == len(assets):
+            return DetectorResult("done", detail, now_iso(), "detector:assets_elevated", 1.0)
+        return DetectorResult("running" if n else "pending", detail, now_iso(), "detector:assets_elevated", n / len(assets))
+
+    def d_registry_coverage(self, spec):
+        try:
+            text = _git_show_text(self.cfg.nikasha_root, REGISTRY_COVERAGE_REL_PATH)
+        except RuntimeError:
+            return DetectorResult("pending", "registry coverage report not yet on the ref (built by E6.1/E6.5)",
+                                  now_iso(), "detector:registry_coverage")
+        data = json.loads(text)
+        uncovered = data.get("uncovered_required_criteria") or data.get("uncovered") or []
+        if uncovered:
+            shown = ", ".join(str(u) for u in uncovered[:5]) + ("…" if len(uncovered) > 5 else "")
+            return DetectorResult("running" if data.get("covered_cells") else "pending",
+                                  f"{len(uncovered)} required criteria still at detector: NONE: {shown}",
+                                  now_iso(), "detector:registry_coverage")
+        return DetectorResult("done", "every core gate × layer cell is covered by a detector or a declared N/A rule",
+                              now_iso(), "detector:registry_coverage", 1.0)
+
+    def d_ledger_no_open_gap_on(self, spec):
+        prefixes = spec.get("criteria_prefixes") or []
+        if not prefixes:
+            return DetectorResult("pending", PARAMS_NOT_SET, now_iso(), "detector:ledger_no_open_gap_on")
+        ls = ledger_state(self.cfg)
+        matching = [g for g in ls["open_gaps"] if str(g.get("criterion", "")).startswith(tuple(prefixes))]
+        if not matching:
+            return DetectorResult("done", f"no open gap rows on criteria {prefixes}", now_iso(), "detector:ledger_no_open_gap_on", 1.0)
+        ids = [str(g.get("gap_id") or g.get("asset")) for g in matching]
+        shown = ", ".join(ids[:5]) + ("…" if len(ids) > 5 else "")
+        return DetectorResult("pending", f"{len(matching)} open gap row(s) on {prefixes}: {shown}",
+                              now_iso(), "detector:ledger_no_open_gap_on")
 
 
 # --------------------------------------------------------------------------------------------
