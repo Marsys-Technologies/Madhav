@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REVIEW_PACKAGE
 canonical_id: SUVARNA_REVIEW_PACKAGE
-version: "2.1"
+version: "2.2"
 status: "PRE-FINAL v1.5 — for the parallel independent reviews (GPT-6 Astra, Kimi K3; N-30); then reconciled by Strategic Suvarṇa into the final set; then N-1"
 produced_on: 2026-09-28
 revised_on: 2026-09-30
@@ -9,6 +9,7 @@ produced_in: session "Strategic Suvarṇa"
 reviewers: "GPT-6 Astra (extra-high reasoning, Codex CLI, read-only sandbox) and Kimi K3, in parallel, independently, on the same bundle (N-30)"
 bundle_builder: "python -m suvarna_tracker.review_bundle --out <dir> [--zip]  (platform/scripts/governance/suvarna_tracker/review_bundle.py)"
 changelog:
+  - "2.2 (2026-09-30): Q25 added (proportionality of the control apparatus under N-28/N-29; simplest safe design)."
   - "2.1 (2026-09-30, plan set v1.5): two reviewers on one bundle (N-30); the account rewritten for N-28 (the native out of the loop; Strategic Suvarṇa decides) and N-29 (data regenerable; serving guard); the decision being asked is still N-1, now on the final set after both reviews; reading order adds NATIVE_SETUP, the Astra disposition and the v1.5 rulings; questions revised to test the N-28/N-29 design explicitly (Q1–Q24); a disagreement rule between reviewers; report file names per reviewer."
   - "2.0 (2026-09-30, L.12r): rebuilt for the v1.4.1 set; 22 questions; used by GPT-6 Astra's first review (DO NOT APPROVE)."
   - "1.0 (2026-09-28): first package."
@@ -185,6 +186,11 @@ Answer every question; cite file and section (or function) for each claim; where
   Is that a sound interface, and what happens if that tracker is wrong or down?
 - **Q24 · SS's v1.5 decisions** (§2): agree or disagree with each, with the cost of each being wrong. Which one, wrong,
   costs the most?
+- **Q25 · Proportionality.** The owner cannot operate or debug this machinery (N-28), and the data is regenerable
+  (N-29). Is the control apparatus — separate OS users, the build broker, the merge gate, the hold ledger, launchd
+  runtimes, SS's own decision runtime, about thirty code specs, Track E now roughly 250–450 h — proportionate to the four
+  priorities? Name every control that could be removed or simplified without weakening a priority; describe the simplest
+  design that would still be safe; and name any control whose own complexity is a larger risk than the one it removes.
 
 ---
 
