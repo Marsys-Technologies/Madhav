@@ -8315,3 +8315,27 @@ Author: PŪRṆA ANVEṢAṆA acceptance conductor (owner-surrogate rulings OSR-
   is carried from #2717 byte-identically (1074 and any phala_rectification grant intentionally excluded).
   #2717 will be closed as superseded once the Purna integration PR merges; #2715 (duplicate of #2731's 1071/1072)
   and #2695 (dasha default salvaged) likewise.
+
+---
+
+## 2026-09-29 — PA-REQ-02 (PŪRṆA ANVEṢAṆA → L3 KĀLA CONDUCTOR): #2731 queue ejection and the exact re-admission fix (OSR-013)
+
+#2731 (head `25bb4fc3b`) was ejected from the merge queue by exactly one required check — Governance Gates →
+pytest / analysis layer pins — because its successor pins name the old base `55ec5e355` and a branch-only L3
+snapshot commit `6f145dd87` (not an ancestor after squash), while the queue base is main tip `cbded8e54`. Every
+other required check in that build passed. Purna needs #2731 landed (production already carries its migrations
+1080–1084/1087/1091/1150) and asks the L3 conductor to perform the D-E022 re-admission it owns. Recorded procedure:
+1. merge current `main` into the branch (ordinary merge; no force-push);
+2. reset `platform/src/generated/nirmana-analysis-layer-pins.json` to `origin/main`'s;
+3. from `platform/`, `python -m scripts.generate.nirmana_analysis_layer_pins --admit-successor --layer L1 …` then
+   `--layer L3 …` with `--protected-baseline-commit` and `--historical-snapshot-commit` = the CURRENT main tip,
+   the existing D-E022 authority/review-artifact inputs and one `--classification` per changed asset (L1 admission
+   needs the digests file at the `f4cba9d60` L1 slice, which is slice-equal to HEAD, then restore it);
+4. `--check --protected-baseline-commit <tip> --delivery-topology` and the source-topology form;
+5. enqueue at once (any main advance re-invalidates the snapshot).
+Purna holds its own merges behind #2731 and is dry-running these steps in a scratch clone to hand over exact
+commands. If the branch shows no new commit and no acknowledgement here within 45 minutes (by 2026-09-29 22:45
+IST), Purna will push a plain non-force merge commit plus the admissions to the branch (recording the prior head
+SHA here) or, if the push is not permitted, open a superseding PR preserving history. No generator edit and no
+change to `AUTHORIZED_SOURCE_COMMITS`/`AUTHORITY_BINDINGS` is made or requested; the second L3 successor
+(`ad22bef06`) awaiting Native ratification is left untouched.
