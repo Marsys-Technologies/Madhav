@@ -66,7 +66,7 @@ class _FakeStat:
         self.st_mode = mode
 
 
-def _declined_cfg(tmp_path, detail="No — the native accepts the risk of running as the native "
+def _declined_cfg(tmp_path, detail="outcome=no — the native accepts the risk of running as the native "
                                     "account for now", **overrides):
     kwargs = dict(getuser_fn=lambda: "abhisek",
                  isolation_stat_fn=lambda path: _FakeStat(0o100600),  # every path: mode 600
@@ -88,7 +88,7 @@ def test_isolation_decided_no_with_hardened_fallback_is_ok(tmp_path):
 
 def test_isolation_decided_accepted_risk_phrasing_with_hardened_fallback_is_ok(tmp_path):
     """'accepted-risk' alone (no literal 'no') is still an unambiguous decline."""
-    c = _declined_cfg(tmp_path, detail="accepted-risk: keep single-user for now, revisit after J1")
+    c = _declined_cfg(tmp_path, detail="outcome=no (accepted-risk): keep single-user for now, revisit after J1")
     r = M.check_isolation(c)
     assert r.status == "ok" and "fallback hardening verified" in r.detail
 
@@ -150,7 +150,7 @@ def _accepted_cfg(tmp_path, **overrides):
                  isolation_hash_fn=lambda path: "deadbeef")
     kwargs.update(overrides)
     c = cfg(tmp_path, **kwargs)
-    _decide_n25(c, "Yes to all three")
+    _decide_n25(c, "outcome=yes — yes to all three")
     return c
 
 
@@ -175,7 +175,7 @@ def test_isolation_decided_yes_blocks_when_current_user_is_the_native(tmp_path):
     c = cfg(tmp_path, getuser_fn=lambda: "abhisek", isolation_expected_user="abhisek",
            isolation_native_user_fn=lambda: "abhisek",
            isolation_access_fn=lambda path, mode: False)
-    _decide_n25(c, "Yes to all three")
+    _decide_n25(c, "outcome=yes — yes to all three")
     r = M.check_isolation(c)
     assert r.status == "block" and "native's own account" in r.detail
 
@@ -385,3 +385,12 @@ def test_run_tracker_sh_defaults_nikasha_ref_to_campaign_nikasha_test():
     with open(script_path, encoding="utf-8") as f:
         content = f.read()
     assert 'export NIKASHA_REF="${NIKASHA_REF:-origin/campaign/nikasha-test}"' in content
+
+
+def test_n25_outcome_needs_an_explicit_marker():
+    """Free words never decide the outcome: 'yes; no bypass' is not a decline, and no marker is unclear."""
+    assert M._classify_n25_outcome("yes; no bypass") == "unclear"
+    assert M._classify_n25_outcome("outcome=yes; no bypass") == "accepted"
+    assert M._classify_n25_outcome("OUTCOME = no, accepted risk") == "declined"
+    assert M._classify_n25_outcome("outcome=yes then outcome=no") == "unclear"
+    assert M._classify_n25_outcome("") == "unclear"

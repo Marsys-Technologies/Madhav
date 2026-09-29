@@ -99,16 +99,18 @@ DBENV_PATHS = ("/Users/Dev/madhav-l3/dbenv.sh", "/Users/Dev/madhav-l3/dbenv_buil
 # account — checked first, since "accepted-risk" is the stronger, unambiguous signal), "accepted"
 # (native ordered the separate-user isolation actually stood up), or "unclear" (a decided line whose
 # detail names neither — never guessed at; the check stays `warn`, same as "not yet decided").
-_N25_DECLINE_RE = re.compile(r"accepted[- ]risk|\bno\b", re.IGNORECASE)
-_N25_ACCEPT_RE = re.compile(r"\byes\b", re.IGNORECASE)
+# The N-25 outcome is read from an explicit marker only, never from free words ("yes; no bypass" must
+# not read as a decline). Strategic Suvarṇa records the native's ruling with `outcome=yes` or `outcome=no`.
+_N25_OUTCOME_RE = re.compile(r"\boutcome\s*=\s*(yes|no)\b", re.IGNORECASE)
 
 
 def _classify_n25_outcome(detail: str) -> str:
-    if _N25_DECLINE_RE.search(detail or ""):
+    found = {m.lower() for m in _N25_OUTCOME_RE.findall(detail or "")}
+    if found == {"no"}:
         return "declined"
-    if _N25_ACCEPT_RE.search(detail or ""):
+    if found == {"yes"}:
         return "accepted"
-    return "unclear"
+    return "unclear"  # no marker, or both markers: never guess
 
 # L.15: default staleness threshold for the conductor_heartbeat check (arch §5.1's heartbeat-per-pass
 # contract; three missed loop intervals is the watchdog's own relaunch threshold, arch §5.5 — a wider
