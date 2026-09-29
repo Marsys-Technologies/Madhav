@@ -95,8 +95,39 @@
 -- later query would queue behind a blocked DDL. `SET LOCAL lock_timeout` aborts cleanly
 -- instead — the same hardening migrations 540/566 applied.
 
-BEGIN;
+-- ── REPAIR NOTE (Purna acceptance, owner-surrogate OSR-017; this migration was UNAPPLIED) ──────────
+-- The protected pipeline failed on this file with `permission denied for schema public`: the migration
+-- login has no CREATE on schema public, so `CREATE OR REPLACE FUNCTION` cannot run there. Production
+-- ALREADY carries a stricter guard for the same table (triggers trg_kgw_generation_guard_row /
+-- trg_kgw_generation_guard_truncate calling kala_gochara_generation_guard(), protecting v1 AND 3.0, same
+-- app.allow_protected_sweep_rewrite override), installed by the cutover script rather than a migration.
+-- The DDL below is therefore performed ONLY when that stricter guard is absent (fresh / CI / rebuilt
+-- databases, where this file is the sole guard-creating migration). When it is present and ENABLED the
+-- migration verifies it and skips, so nothing here needs CREATE on public. The original DDL text is
+-- carried unchanged inside the guarded EXECUTE (minus BEGIN/COMMIT, which the runner supplies).
 
+DO $mig1071$
+BEGIN
+  IF to_regprocedure('public.kala_gochara_generation_guard()') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+        WHERE c.relname = 'kala_gochara_windows' AND t.tgname = 'trg_kgw_generation_guard_row'
+          AND t.tgenabled = 'O' AND NOT t.tgisinternal)
+     AND EXISTS (
+       SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+        WHERE c.relname = 'kala_gochara_windows' AND t.tgname = 'trg_kgw_generation_guard_truncate'
+          AND t.tgenabled = 'O' AND NOT t.tgisinternal)
+  THEN
+    RAISE NOTICE 'migration 1071: stricter production guard (kala_gochara_generation_guard, row + truncate triggers, enabled) already installed; verified, nothing to create';
+    RETURN;
+  END IF;
+
+  IF to_regclass('public.kala_gochara_windows') IS NULL THEN
+    RAISE NOTICE 'migration 1071: kala_gochara_windows does not exist yet; nothing to guard (no-op)';
+    RETURN;
+  END IF;
+
+  EXECUTE $ddl1071$
 SET LOCAL lock_timeout = '2s';
 
 -- ── Row-level guard: generation='v1' is untouchable ──────────────────────────
@@ -241,7 +272,7 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN
     -- Only OUR refusal counts. Any other raise_exception (a constraint, a
     -- different trigger) must not be mistaken for the guard working.
-    IF SQLERRM LIKE '%BUILD-PROTECTED%' THEN
+    IF SQLERRM LIKE '%BUILD-PROTECTED%' OR SQLERRM LIKE '%GOCHARA GENERATION GUARD%' THEN
       refused := true;
     ELSE
       RAISE;
@@ -254,8 +285,10 @@ BEGIN
       'the guard is installed but inert';
   END IF;
 END $$;
+  $ddl1071$;
+END
+$mig1071$;
 
-COMMIT;
 
 -- =============================================================================
 -- DOWN (manual rollback):
