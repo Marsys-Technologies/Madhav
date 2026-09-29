@@ -8279,3 +8279,17 @@ referencing it via `source_rule_id` (76 rules, 1,595 map rows, 0 orphans). Purna
 rebuild plan does not run a delete-then-insert over that rule before any rebuild dispatch, and will otherwise
 land an FK-safe repair through the protected path first. The original owner may reclaim the repair with a new
 row; Purna does not take it over silently.
+
+
+---
+
+## 2026-09-29 — lease open: OBSERVATORY-METERING-20260929
+
+- Lease ID: L-OBSERVATORY-METERING-20260929
+- Holder: Codex; dedicated worktree `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`; branch `codex/observatory-metering`.
+- Started: 2026-09-29T15:43:39.920878+00:00; expiry: 2026-09-30T03:43:39.920878+00:00.
+- Status: ACTIVE — LOCAL IMPLEMENTATION ONLY.
+- Scope: Observatory/usage metering, AI Console execution instrumentation, additive unapplied metering migration, usage APIs/UI, isolated tests and session artifacts.
+- Authority: native explicitly requested implementation in a separate worktree on 2026-09-29.
+- No deploy, production database access/write, corpus/orchestrator change, protected branch merge, provider charge or other campaign state mutation. No exclusive production lease requested.
+- Application changes remain uncommitted for review per GIP P.4.
