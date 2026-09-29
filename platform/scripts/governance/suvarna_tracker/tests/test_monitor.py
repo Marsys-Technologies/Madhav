@@ -102,7 +102,7 @@ def test_credential_never_opens_the_file(tmp_path, monkeypatch):
     assert r.status == "ok"
 
 
-# ---- credential_readonly (Fix 3, review #16) ------------------------------------------------------
+# ---- credential_readonly (Fix 3, review #16; D6 self-privilege checks) ------------------------------
 
 def _cred_file(tmp_path):
     p = tmp_path / "pg.env"
@@ -111,40 +111,54 @@ def _cred_file(tmp_path):
     return str(p)
 
 
-def test_credential_readonly_ok_when_readonly_and_no_write_grants(tmp_path):
-    p = _cred_file(tmp_path)
+_CLEAN = {
+    "current_user": "suvarna_reader", "read_only": "on", "elevated": "false",
+    "table_write": "0", "column_write": "0", "sequence_write": "0",
+    "database_create": "false", "database_temp": "true", "schema_create": "0",
+    "member_of": "0", "members_of_me": "0", "owned_objects": "0",
+    "auth_schema_usage": "false", "auth_dependent_views": "0",
+}
+
+
+def _facts(secdef=(), drop=(), end=True, **over):
+    """psql -tAX output of the self-privilege query: one key|value row per fact, end|ok last."""
+    facts = {**_CLEAN, **{k: str(v) for k, v in over.items()}}
+    rows = [f"{k}|{v}" for k, v in facts.items() if k not in drop] + [f"secdef|{s}" for s in secdef]
+    if end:
+        rows.append("end|ok")
+    return "\n".join(rows) + "\n"
+
+
+def _fake(output, rc=0, err=""):
+    calls = []
 
     def q(pgenv, sql, timeout=10):
-        assert pgenv == p
-        if "default_transaction_read_only" in sql:
-            return 0, "on\n", ""
-        return 0, "0\n", ""
+        calls.append((pgenv, sql))
+        return rc, output, err
+    q.calls = calls
+    return q
 
-    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+
+def _ro(tmp_path, output, **kw):
+    p = _cred_file(tmp_path)
+    q = _fake(output)
+    return M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q, **kw)), q, p
+
+
+def test_credential_readonly_ok_when_readonly_and_no_write_grants(tmp_path):
+    r, q, p = _ro(tmp_path, _facts())
     assert r.status == "ok"
+    assert "suvarna_reader" in r.detail and "no write path" in r.detail
+    assert [pgenv for pgenv, _ in q.calls] == [p]  # one round trip, with the configured file
 
 
 def test_credential_readonly_blocks_when_writes_are_possible(tmp_path):
-    p = _cred_file(tmp_path)
-
-    def q(pgenv, sql, timeout=10):
-        if "default_transaction_read_only" in sql:
-            return 0, "off\n", ""
-        return 0, "3\n", ""
-
-    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    r, _, _ = _ro(tmp_path, _facts(current_user="amjis_app", read_only="off", table_write=3))
     assert r.status == "block" and "3" in r.detail
 
 
 def test_credential_readonly_blocks_when_flag_on_but_grants_exist(tmp_path):
-    p = _cred_file(tmp_path)
-
-    def q(pgenv, sql, timeout=10):
-        if "default_transaction_read_only" in sql:
-            return 0, "on\n", ""
-        return 0, "1\n", ""
-
-    r = M.check_credential_readonly(cfg(tmp_path, pgenv=p, credential_query_fn=q))
+    r, _, _ = _ro(tmp_path, _facts(table_write=1))
     assert r.status == "block"
 
 
@@ -197,13 +211,116 @@ def test_credential_readonly_never_opens_the_file(tmp_path, monkeypatch):
 
     monkeypatch.setattr("builtins.open", _guarded_open)
     r = M.check_credential_readonly(cfg(tmp_path, pgenv=p,
-                                        credential_query_fn=lambda pgenv, sql, timeout=10: (0, "on\n" if "read_only" in sql else "0\n", "")))
+                                        credential_query_fn=lambda pgenv, sql, timeout=10: (0, _facts(), "")))
     assert r.status == "ok"
 
 
 def test_credential_readonly_is_part_of_run_checks(tmp_path):
     results = M.run_checks(cfg(tmp_path))
     assert "credential_readonly" in {r.name for r in results}
+
+
+@pytest.mark.parametrize("over,needle", [
+    ({"column_write": 2}, "column"),
+    ({"sequence_write": 1}, "sequences"),
+    ({"schema_create": 1}, "schemas with CREATE"),
+    ({"database_create": "true"}, "database CREATE"),
+    ({"member_of": 1}, "memberships"),
+    ({"owned_objects": 4}, "owned objects"),
+    ({"elevated": "true"}, "elevated"),
+    ({"auth_schema_usage": "true"}, "schema auth"),
+    ({"auth_dependent_views": 1}, "views over schema auth"),
+])
+def test_credential_readonly_blocks_on_every_write_path(tmp_path, over, needle):
+    r, _, _ = _ro(tmp_path, _facts(**over))
+    assert r.status == "block" and needle in r.detail
+
+
+def test_credential_readonly_blocks_on_reachable_security_definer(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(secdef=["public.grant_everything(text)"]), secdef_allowlist=frozenset())
+    assert r.status == "block" and "SECURITY DEFINER" in r.detail and "public.grant_everything(text)" in r.detail
+
+
+def test_credential_readonly_accepts_allowlisted_security_definer(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(secdef=["public.safe_lookup(integer, text)"]),
+                  secdef_allowlist=frozenset({"public.safe_lookup(integer, text)"}))
+    assert r.status == "ok" and "1 accepted" in r.detail
+
+
+def test_credential_readonly_reads_secdef_allowlist_from_env(tmp_path, monkeypatch):
+    monkeypatch.setenv(M.SECDEF_ALLOW_ENV, "public.a(integer, text); public.b()")
+    r, _, _ = _ro(tmp_path, _facts(secdef=["public.a(integer, text)", "public.b()"]))
+    assert r.status == "ok"
+    monkeypatch.setenv(M.SECDEF_ALLOW_ENV, "public.b()")
+    r2, _, _ = _ro(tmp_path, _facts(secdef=["public.a(integer, text)", "public.b()"]))
+    assert r2.status == "block"
+
+
+def test_credential_readonly_warns_when_login_is_not_the_reader(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(current_user="retrieval_census_ro"))
+    assert r.status == "warn" and "retrieval_census_ro" in r.detail and "suvarna_reader" in r.detail
+
+
+def test_credential_readonly_warns_when_another_role_can_assume_the_login(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(members_of_me=1))
+    assert r.status == "warn" and "assume" in r.detail
+
+
+def test_credential_readonly_warns_when_session_flag_off_without_write_path(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(read_only="off"))
+    assert r.status == "warn" and "default_transaction_read_only=off" in r.detail
+
+
+@pytest.mark.parametrize("output", [
+    _facts(end=False),                         # truncated: no terminator
+    _facts(drop=("sequence_write",)),          # a fact missing
+    _facts(table_write="lots"),                # count not numeric
+    _facts(database_create="yes"),             # flag not boolean
+    "garbage-without-separator\nend|ok\n",     # unparseable row
+    "",                                        # nothing at all
+])
+def test_credential_readonly_never_passes_untrustworthy_output(tmp_path, output):
+    r, _, _ = _ro(tmp_path, output)
+    assert r.status == "warn"
+
+
+def test_credential_readonly_sanitizes_login_in_detail(tmp_path):
+    r, _, _ = _ro(tmp_path, _facts(current_user="someone@host"))
+    assert r.status == "warn" and "@" not in r.detail
+
+
+def test_self_privilege_sql_evaluates_the_login_itself():
+    sql = M._SELF_PRIVILEGE_SQL
+    for fragment in ("has_table_privilege(current_user", "has_any_column_privilege(current_user",
+                     "has_sequence_privilege(current_user", "has_database_privilege(current_user",
+                     "has_schema_privilege(current_user", "has_function_privilege(current_user",
+                     "pg_auth_members", "pg_shdepend", "prosecdef", "nspname = 'auth'", "'end', 'ok'"):
+        assert fragment in sql, fragment
+    for priv in ("INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"):
+        assert priv in sql
+
+
+def test_self_privilege_sql_is_shell_safe():
+    sql = M._SELF_PRIVILEGE_SQL
+    for ch in ("$", "!", "`", "\\", '"', "\n"):
+        assert ch not in sql, repr(ch)
+
+
+def test_default_query_fn_passes_the_sql_through_bash_intact(tmp_path):
+    """The real helper sources the file in bash and runs psql -c "<sql>"; a stand-in psql on PATH
+    records its -c argument so the quoting is proven without any database."""
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    record = tmp_path / "psql_arg.txt"
+    fake_psql = bindir / "psql"
+    fake_psql.write_text(f'#!/bin/bash\nprintf %s "$3" > {record}\necho "end|ok"\n')
+    os.chmod(fake_psql, 0o755)
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text(f'export PATH="{bindir}:$PATH"\n')
+    os.chmod(pgenv, 0o600)
+    rc, out, _ = M._default_credential_query_fn(str(pgenv), M._SELF_PRIVILEGE_SQL, 10)
+    assert rc == 0 and out.strip() == "end|ok"
+    assert record.read_text() == M._SELF_PRIVILEGE_SQL
 
 
 # ---- power ---------------------------------------------------------------------------------------
