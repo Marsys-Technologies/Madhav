@@ -294,7 +294,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
-      "line": 227,
+      "line": 249,
       "pattern": null,
       "justification": "PRE-EXISTING, not in this wave's scope. Reviewed: fact_category='dosha_label' compound-filtered by fact_subject==='kala_sarpa' (not fact_key) — dosha_label rows are one-per-dosha-name-per-chart by the writer's own emission convention, so this is a narrower risk than P0-1 (which had NO second filter at all). Still lacks the lint's required fact_key/.sort() signal; recommend a follow-up hygiene pass to add an explicit fact_key check for defense-in-depth, not urgent. Line shifted 225→227 by PB-1/S-2's additive 2-line reader_label comment inserted earlier in the file (commit range on pb/1/integrate) — same violation, no logic change."
     },
@@ -329,7 +329,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
-      "line": 65,
+      "line": 70,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits."
     },
     {
@@ -349,7 +349,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
-      "line": 69,
+      "line": 74,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits."
     },
     {
@@ -364,7 +364,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
-      "line": 184,
+      "line": 190,
       "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [line 157->184, cycle 184: F-B32 added a docstring paragraph + sun_derived_upagraha/sandhi_flag categories earlier in the file — same query, verified via diff.]"
     },
     {

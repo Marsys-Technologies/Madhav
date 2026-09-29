@@ -1,6 +1,7 @@
 /**
- * User-facing refusal copy for derived capabilities (Paripraśna, consult) when
- * the shared chart readiness is not Ready. Pure — no server-only imports — so
+ * User-facing refusal copy for readiness-gated derived capabilities when the
+ * shared chart readiness is not Ready. Paripraśna is adaptive and uses a
+ * non-blocking completeness notice instead. Pure — no server-only imports — so
  * callers and their tests share one wording per state.
  */
 export function readinessRefusalMessage(state: string | undefined): string {

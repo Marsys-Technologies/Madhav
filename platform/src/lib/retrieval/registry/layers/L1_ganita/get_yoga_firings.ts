@@ -32,7 +32,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { YOGA_SCUS } from '../../knowledge/editorial'
-import { classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
 
 const MAX_LIMIT = 50
 
@@ -123,7 +123,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
   ].join(' '),
 
   input_schema: {
-    build_id: { type: 'string', description: "Served-generation build fence: one build UUID or an array of them. Inquiry-dispatched calls carry the chart's served build set (from the capability overlay); a standalone call that omits it reads the chart's current rows unfenced." },
+    build_id: BUILD_FENCE_INPUT,
     chart_id:          { type: 'string',  description: 'Chart UUID. Required.', required: true },
     fired:             { type: 'boolean', description: 'Filter by fired status (default: true — only fired yogas). Pass false for non-firings, omit-as-null via all=true.' },
     all:               { type: 'boolean', description: 'If true, ignore the fired filter and return fired + non-fired rows.' },

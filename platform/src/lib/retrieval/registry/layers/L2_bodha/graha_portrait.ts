@@ -52,7 +52,15 @@
 import type { CapabilityDescriptor } from '../../types'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
-import { resolveChartServedGeneration, servedGenerationIdentity } from '../../generation/served_generation'
+import {
+  compositeGenerationFence,
+  resolveCompositeFence,
+  splitByGenerationClass,
+  unavailableComponents,
+  type ComponentClassification,
+  componentFailures,
+  isChartUuid,
+} from '../../generation/composite_fence'
 import { getPositionsCapability } from '../L1_ganita/get_positions'
 import { getDignityCapability } from '../L1_ganita/get_dignity'
 import { getStrengthCapability } from '../L1_ganita/get_strength'
@@ -64,6 +72,24 @@ import { traverseChartGraphCapability } from './traverse_chart_graph'
 
 const OPERATIVE_VARGAS = ['D1', 'D9', 'D10', 'D60'] as const
 
+/**
+ * Generation audit (Packet A) — EVERY section this portrait can assemble (the `include` enum),
+ * classified. `sensitive` sections read build-generation-scoped rows: they are served only through a
+ * served-generation fence and are withheld (named, never read) without one. `dashas` is the one
+ * `self_fenced` section: get_dashas resolves and applies the served generation itself and has no
+ * unfenced fallback, so it is served with or without this tool's own resolution.
+ */
+export const GRAHA_PORTRAIT_COMPONENTS: Readonly<Record<string, ComponentClassification>> = {
+  position: { class: 'sensitive', reason: 'get_positions reads chart_facts graha_position rows, which are build-generation scoped' },
+  dignity: { class: 'sensitive', reason: 'get_dignity reads build-scoped chart_facts dignity rows across the vargas' },
+  functional_nature: { class: 'sensitive', reason: 'derived from the same build-scoped dignity rows (graha_functional_class_per_ascendant)' },
+  strength: { class: 'sensitive', reason: 'get_strength reads build-scoped chart_facts shadbala rows' },
+  avasthas: { class: 'sensitive', reason: 'get_avasthas reads build-scoped chart_facts avastha rows' },
+  yogas: { class: 'sensitive', reason: 'get_yoga_dosha reads build-scoped chart_facts and query_signals reads build-scoped bodha_msr_signals' },
+  dashas: { class: 'self_fenced', reason: 'get_dashas serves only the rows the served run wrote and has no unfenced fallback' },
+  cgm_neighborhood: { class: 'sensitive', reason: 'traverse_chart_graph reads build-scoped bodha_cgm_nodes and bodha_cgm_edges' },
+}
+
 type FactRow = Record<string, unknown>
 
 /** Unwrap a capability handler's { content, is_error } return, tolerating both the
@@ -71,7 +97,11 @@ type FactRow = Record<string, unknown>
 function unwrap(raw: unknown): { content: FactRow; is_error: boolean } {
   const r = raw as { content?: unknown; is_error?: boolean }
   const content = (r?.content ?? {}) as FactRow
-  return { content, is_error: Boolean(r?.is_error) }
+  // Leaf handlers never throw: they catch internally and return `{ is_error: true, content }`. An
+  // error result is a FAILED section, not an empty one, so it is surfaced as a throw the section's
+  // own catch turns into a fixed-code failure (the raw content is logged server-side only).
+  if (r?.is_error) throw new Error(typeof r.content === 'string' ? r.content : JSON.stringify(r.content))
+  return { content, is_error: false }
 }
 
 /**
@@ -182,6 +212,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     const chart_id = args['chart_id'] as string
     const grahaInput = args['graha'] as string
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
+    if (!isChartUuid(chart_id)) return { content: { error: 'chart_id must be a UUID', code: 'invalid_chart_id' }, is_error: true }
     if (!grahaInput) return { content: { error: 'graha is required' }, is_error: true }
 
     let grahaCode: string
@@ -192,25 +223,11 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     }
     const grahaName = GRAHA_CODE_TO_NAME[grahaCode] ?? grahaInput
 
-    // RC-7 follow-up: best-effort served-generation fence for the one leg that supports it
-    // (get_strength). A resolution failure does not fail the whole portrait — graha_portrait
-    // is a display-oriented synthesis, not an evidentiary verdict tool — it falls back to
-    // get_strength's own unfenced "current rows" read, and discloses which mode actually ran
-    // via `generation_fence` in the response (never silently claims fencing that didn't happen).
-    let buildIds: readonly string[] | null = null
-    let generationFenceNote = 'served-generation resolution not attempted'
-    try {
-      const generation = await resolveChartServedGeneration(chart_id, null)
-      if (servedGenerationIdentity(generation)) {
-        buildIds = generation.served_build_ids
-        generationFenceNote = 'strength (shadbala) reads fenced to the chart\'s served build set'
-      } else {
-        generationFenceNote = 'no served generation resolved for this chart — strength reads fell back to unfenced current rows'
-      }
-    } catch (error) {
-      console.error('[graha_portrait] served-generation resolution failed', error)
-      generationFenceNote = 'served-generation resolution failed — strength reads fell back to unfenced current rows'
-    }
+    // Packet A: resolve the served generation once. Without one, no generation-sensitive section is
+    // read — there is no fallback to the chart's current rows — and each requested one is named in
+    // `components_unavailable`. The self-fenced section (dashas) is unaffected.
+    const fence = await resolveCompositeFence(chart_id, 'graha_portrait')
+    const fenceArgs: FactRow = fence.fenced ? { build_id: fence.build_ids } : {}
 
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const operativeVargas = (args['operative_vargas'] as string[] | undefined) ?? [...OPERATIVE_VARGAS]
@@ -222,25 +239,35 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     // accept it as a synonym for 'avasthas' rather than erroring as an invalid option.
     const include = includeRaw.map(s => (s === 'special_states' ? 'avasthas' : s))
     const want = (section: string) => include.includes(section)
+    const requestedSections = Object.keys(GRAHA_PORTRAIT_COMPONENTS).filter(want)
+    const { withhold } = splitByGenerationClass(GRAHA_PORTRAIT_COMPONENTS, requestedSections, fence.fenced)
+    const withheld = new Set(withhold)
+    /** Requested AND permitted by the generation audit — the only sections a leg may be read for. */
+    const serve = (section: string) => want(section) && !withheld.has(section)
     // functional_nature is computed alongside dignity (same underlying getDignityCapability
-    // call) but is now independently requestable/excludable via `include`.
-    const wantDignitySection = want('dignity')
-    const wantFunctionalNature = want('functional_nature')
+    // call) but is independently requestable/excludable via `include`.
+    const wantDignitySection = serve('dignity')
+    const wantFunctionalNature = serve('functional_nature')
 
     const sections: Record<string, unknown> = {}
     const notes: string[] = []
     const errors: Record<string, string> = {}
+    /** A section failure is reported by fixed code; the raw error stays in the server log. */
+    const sectionFailed = (section: string, error: unknown) => {
+      console.error('[graha_portrait] section read failed', section, error)
+      errors[section] = 'component_read_failed'
+    }
 
     // ── position ─────────────────────────────────────────────────────────────
-    if (want('position')) {
+    if (serve('position')) {
       try {
         const { content } = unwrap(await getPositionsCapability.handler(
-          { chart_id, ayanamsha_id, categories: ['graha_position'] }, ctx,
+          { chart_id, ayanamsha_id, categories: ['graha_position'], ...fenceArgs }, ctx,
         ))
         const rows = ((content['rows'] as FactRow[]) ?? [])
           .filter(r => subjectMatchesGraha(r['fact_subject'] as string, grahaCode, grahaName))
         sections['position'] = { rows, count: rows.length }
-      } catch (e) { errors['position'] = String(e) }
+      } catch (e) { sectionFailed('position', e) }
     }
 
     // ── dignity (across all vargas; operative_vargas highlighted) + functional nature ──
@@ -251,7 +278,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     // not also serve the dignity section, and vice versa).
     if (wantDignitySection || wantFunctionalNature) {
       try {
-        const { content } = unwrap(await getDignityCapability.handler({ chart_id, ayanamsha_id }, ctx))
+        const { content } = unwrap(await getDignityCapability.handler({ chart_id, ayanamsha_id, ...fenceArgs }, ctx))
         const rows = ((content['rows'] as FactRow[]) ?? [])
           .filter(r => subjectMatchesGraha(r['fact_subject'] as string, grahaCode, grahaName))
         const dignityRows = rows.filter(r => r['fact_category'] === 'graha_dignity_per_varga')
@@ -275,39 +302,39 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
           sections['functional_nature'] = { rows: functionalRows, count: functionalRows.length }
         }
       } catch (e) {
-        if (wantDignitySection) errors['dignity'] = String(e)
-        if (wantFunctionalNature) errors['functional_nature'] = String(e)
+        if (wantDignitySection) sectionFailed('dignity', e)
+        if (wantFunctionalNature) sectionFailed('functional_nature', e)
       }
     }
 
     // ── strength (shadbala decomposition) ───────────────────────────────────
-    if (want('strength')) {
+    if (serve('strength')) {
       try {
         const { content } = unwrap(await getStrengthCapability.handler(
-          { chart_id, ayanamsha_id, graha_key: grahaCode, ...(buildIds ? { build_id: buildIds } : {}) }, ctx,
+          { chart_id, ayanamsha_id, graha_key: grahaCode, ...fenceArgs }, ctx,
         ))
         const rows = (content['rows'] as FactRow[]) ?? []
         sections['strength'] = { rows, count: rows.length }
-      } catch (e) { errors['strength'] = String(e) }
+      } catch (e) { sectionFailed('strength', e) }
     }
 
     // ── avasthas ─────────────────────────────────────────────────────────────
-    if (want('avasthas')) {
+    if (serve('avasthas')) {
       try {
-        const { content } = unwrap(await getAvasthsCapability.handler({ chart_id, ayanamsha_id }, ctx))
+        const { content } = unwrap(await getAvasthsCapability.handler({ chart_id, ayanamsha_id, ...fenceArgs }, ctx))
         const rows = ((content['rows'] as FactRow[]) ?? [])
           .filter(r => subjectMatchesGraha(r['fact_subject'] as string, grahaCode, grahaName))
         sections['avasthas'] = { rows, count: rows.length }
-      } catch (e) { errors['avasthas'] = String(e) }
+      } catch (e) { sectionFailed('avasthas', e) }
     }
 
     // ── yogas / configurations it participates in ───────────────────────────
-    if (want('yogas')) {
+    if (serve('yogas')) {
       try {
         // L1 honest empty-with-reason check (JL-004: yoga_fires/dosha_fires are a
         // requires_pass catalog, 0 confirmed firings for both canonical charts).
         const { content: l1Content } = unwrap(await getYogaDoshaCapability.handler(
-          { chart_id, ayanamsha_id, type: 'yoga', categories: ['yoga_fires'] }, ctx,
+          { chart_id, ayanamsha_id, type: 'yoga', categories: ['yoga_fires'], ...fenceArgs }, ctx,
         ))
         const firesRows = (l1Content['rows'] as FactRow[]) ?? []
 
@@ -315,9 +342,9 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
         // chart-specific and graha-attributed (verified live) — the yoga/dosha
         // signal_type_class rows are NOT (same requires_pass catalog shape as L1).
         const [parivartanaRes, yogaClassRes, doshaClassRes] = await Promise.all([
-          querySignalsCapability.handler({ chart_id, ayanamsha_id, signal_type_class: 'parivartana', top_k: 500 }, ctx),
-          querySignalsCapability.handler({ chart_id, ayanamsha_id, signal_type_class: 'yoga', top_k: 500 }, ctx),
-          querySignalsCapability.handler({ chart_id, ayanamsha_id, signal_type_class: 'dosha', top_k: 500 }, ctx),
+          querySignalsCapability.handler({ chart_id, ayanamsha_id, signal_type_class: 'parivartana', top_k: 500, ...fenceArgs }, ctx),
+          querySignalsCapability.handler({ chart_id, ayanamsha_id, signal_type_class: 'yoga', top_k: 500, ...fenceArgs }, ctx),
+          querySignalsCapability.handler({ chart_id, ayanamsha_id, signal_type_class: 'dosha', top_k: 500, ...fenceArgs }, ctx),
         ])
         const parivartanaSignals = ((unwrap(parivartanaRes).content['signals'] as FactRow[]) ?? [])
           .filter(s => signalMatchesGraha(s, grahaCode, grahaName))
@@ -346,12 +373,12 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
             'classifications to verify, not findings.',
           ].join(' '),
         }
-      } catch (e) { errors['yogas'] = String(e) }
+      } catch (e) { sectionFailed('yogas', e) }
     }
 
     // ── dasha periods (past/next Mahadashas by default; wide window so lifetime
     // MD occurrences of this graha aren't clipped by the ±5y default window) ──
-    if (want('dashas')) {
+    if (serve('dashas')) {
       try {
         // chart_dashas.lord_graha stores the FULL classical name ("Saturn"), not the
         // chart_facts fact_subject code ("SAT") — verified live against both canonical
@@ -370,16 +397,17 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
             'both surface. Pass include without "dashas" + call get_dashas directly with a ' +
             'narrower window/level for Antardasha-level detail.',
         }
-      } catch (e) { errors['dashas'] = String(e) }
+      } catch (e) { sectionFailed('dashas', e) }
     }
 
     // ── CGM neighborhood ─────────────────────────────────────────────────────
-    if (want('cgm_neighborhood')) {
+    if (serve('cgm_neighborhood')) {
       try {
         const raw = await traverseChartGraphCapability.handler(
           {
             chart_id, ayanamsha_id, mode: 'neighbors', depth: 1, direction: 'both',
             about: [{ type: 'graha', graha: grahaName }],
+            ...fenceArgs,
           }, ctx,
         )
         const { content } = unwrap(raw)
@@ -390,7 +418,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
           edge_count: content['edge_count'] ?? 0,
           about_resolution: content['about_resolution'] ?? null,
         }
-      } catch (e) { errors['cgm_neighborhood'] = String(e) }
+      } catch (e) { sectionFailed('cgm_neighborhood', e) }
     }
 
     // ── completeness receipt (design §28.6's classical-units vocabulary, applied
@@ -398,6 +426,7 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
     const completeness: Record<string, string> = {}
     for (const key of ['position', 'dignity', 'functional_nature', 'strength', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood']) {
       if (!want(key)) { completeness[key] = 'not_requested'; continue }
+      if (withheld.has(key)) { completeness[key] = 'unavailable'; continue }
       if (errors[key]) { completeness[key] = 'error'; continue }
       const section = sections[key]
       const count = (section as { count?: number } | undefined)?.count
@@ -419,12 +448,9 @@ export const grahaPortraitCapability: CapabilityDescriptor = {
         completeness,
         notes,
         errors: Object.keys(errors).length > 0 ? errors : undefined,
-        generation_fence: {
-          fenced: buildIds !== null,
-          build_ids: buildIds,
-          note: generationFenceNote,
-          unfenced_sections: ['position', 'dignity', 'functional_nature', 'avasthas', 'yogas', 'dashas', 'cgm_neighborhood'],
-        },
+        components_unavailable: fence.fenced ? [] : unavailableComponents(withhold, fence.code),
+        component_failures: componentFailures(Object.keys(errors)),
+        generation_fence: compositeGenerationFence(fence, fence.fenced ? undefined : withhold.length),
         provenance: {
           synthesis_of: [
             'marsys://tool/L1/get_positions', 'marsys://tool/L1/get_dignity',

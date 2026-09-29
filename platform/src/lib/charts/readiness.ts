@@ -7,8 +7,9 @@ import { runBlocksReadings } from '@/lib/charts/servingImpact'
 /**
  * Shared chart-readiness authority (Jātaka chart workspace, Task 1).
  *
- * The dashboard directory, the chart workspace and the Paripraśna availability
- * gate all read readiness from here so their labels and gates cannot drift.
+ * The dashboard directory, chart workspace, readiness-gated reading doors and
+ * Paripraśna's non-blocking completeness notice all read readiness from here so
+ * their labels and percentages cannot drift.
  * Source of truth is active-registry `asset_throughput` plus the latest
  * `build_runs` row — never the legacy `pyramid_layers` table.
  */

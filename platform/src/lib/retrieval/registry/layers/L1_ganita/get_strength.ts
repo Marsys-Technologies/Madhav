@@ -25,7 +25,7 @@ import {
   type ReferenceFrame, type ZodiacSign,
 } from '../../../address_resolver'
 import { DEFAULT_AYANAMSHA } from '../../constants'
-import { classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal, type BuildFence } from '../../generation/served_generation'
 
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
@@ -80,16 +80,7 @@ export const getStrengthCapability: CapabilityDescriptor = {
     },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 500 },
-    build_id: {
-      type: 'string',
-      description: 'RC-7: served-generation build fence (generation/served_generation.ts). ' +
-        'Composing callers (query_planet, graha_portrait) best-effort resolve the chart\'s ' +
-        'served build set and pass it here so the strength read resolves to one generation ' +
-        '(each caller discloses whether resolution actually succeeded via its own ' +
-        '`generation_fence` response field — a resolution failure there falls back to this ' +
-        'same unfenced path, it is never a silent, unstated fence). Standalone calls omit it ' +
-        'and read the chart\'s current rows unfenced, as before.',
-    },
+    build_id: BUILD_FENCE_INPUT,
     all: {
       type: 'boolean',
       description: 'ŚODHANA T3 (MC-014): default false — `graha_in_house_composite_strength` ' +

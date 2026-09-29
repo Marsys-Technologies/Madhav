@@ -45,6 +45,8 @@ import {
 } from '@/lib/vidhi/inquiry/lifecycle_store'
 import { deterministicCompilerProvenance } from '@/lib/vidhi/inquiry/planning_policy'
 import { deriveEvidenceFrontier } from '@/lib/vidhi/inquiry/evidence_frontier'
+import { appendSuccessorCharge, evaluateSuccessorItemForDispatch, refineSuccessorAdmission, terminalizeRefusedSuccessorItem } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { readBoundedRequestBody } from './bounded_body'
 import {
   buildStructuredResponseAccountability,
@@ -115,9 +117,9 @@ const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_ACTIVE_LIMIT_REACHED', 'INQUIRY_CREATION_RATE_LIMITED',
 ])
 
-async function entitled(uid: string, chartId: string): Promise<boolean> {
+async function chartPermissionOf(uid: string, chartId: string): Promise<'all' | 'view' | 'deny'> {
   const role = await resolveMcpPrincipalRole(uid)
-  return (await authorizeChartAccess({ principal: { uid, role }, chartId, db: { query } })) !== 'deny'
+  return authorizeChartAccess({ principal: { uid, role }, chartId, db: { query } })
 }
 
 function nextReady(contract: InquiryContract): string[] {
@@ -229,7 +231,8 @@ export async function POST(request: Request) {
   try {
     const key = loadInquiryLifecycleSigningKeyRing()
     if (body.action === 'start') {
-      if (!(await entitled(principalUid, body.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
+      const startPermission = await chartPermissionOf(principalUid, body.chart_id)
+      if (startPermission === 'deny') return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
       // Accept both classifier and canonical compiler scope vocabularies. The
       // compiler owns their deterministic normalization and semantic hash.
       const scope = InquiryScopeInputSchema.parse(body.scope_tuple)
@@ -238,6 +241,9 @@ export async function POST(request: Request) {
       const contract = compileInquiryContract({
         snapshot, overlay, chart_id: body.chart_id, question: body.question,
         scope_tuple: scope, ai_proposal: body.ai_proposal, execution_channel: 'mcp_full',
+        // The successor envelope's effective entitlement comes from THIS authorization result; the
+        // caller-supplied scope tuple above can only narrow it.
+        server_authorization: { chart_permission: startPermission },
         temporal_anchor_date: body.temporal_anchor_date,
         // The raw door makes no model call: any AI decomposition is the caller's (RC-5.3).
         planning_provenance: deterministicCompilerProvenance(body.ai_proposal !== undefined),
@@ -260,7 +266,10 @@ export async function POST(request: Request) {
       // KID is public JWT-header metadata. Never log the token, signature or key material.
       console.info('[mcp:inquiry] lifecycle token verified', { kid })
     })
-    if (!(await entitled(principalUid, claims.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
+    // The chart permission this request's own authorization returned; the shared successor envelope
+    // reads the result itself (see buildSuccessorAdmissionLive).
+    const chartPermission = await chartPermissionOf(principalUid, claims.chart_id)
+    if (chartPermission === 'deny') return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
     const row = await getInquiryLifecycle(claims.inquiry_id, principalUid, claims.chart_id)
     const authorization = row?.authorization_jsonb
     const authorizationHashes = authorization ? inquiryAuthorizationHashes(authorization) : null
@@ -297,6 +306,7 @@ export async function POST(request: Request) {
       const currentItem = contract.plan_items.find((candidate) => candidate.item_id === body.action_id && candidate.state === 'ready')
       const item = authorization.plan_items.find((candidate) => candidate.item_id === body.action_id)
       if (!currentItem || !item?.binding_id || currentItem.scu_id !== item.scu_id
+        || currentItem.binding_id !== item.binding_id
         || stableFingerprint(currentItem.obligation_ids) !== stableFingerprint(item.obligation_ids)) {
         return response({ ok: false, error: 'INQUIRY_ACTION_NOT_EXECUTABLE' }, 409)
       }
@@ -305,12 +315,41 @@ export async function POST(request: Request) {
       const binding = scu?.bindings.find((candidate) => candidate.binding_id === item.binding_id)
       const tool = getToolByName(uri)
       const descriptor = getCapability(uri)
-      if (!binding || !isInquiryServerDispatchEligible(binding, 'raw_mcp')
-        || !isInquirySafeRegistryDescriptor(binding, descriptor) || !tool) {
-        return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
+      // A successor item is authorized by the shared envelope, recomputed HERE from the server-held
+      // contract (`row`, never a client value) plus this request's own live state. A refusal is
+      // recorded as a terminal named gap below; it never dispatches.
+      let admission = contract.successor || (row.parent_inquiry_id ?? null) !== null
+        ? evaluateSuccessorItemForDispatch({
+          contract, item_id: item.item_id, snapshot,
+          live: buildSuccessorAdmissionLive({
+            transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
+            principal_subject: principalUid, owner_principal_subject: row.principal_uid,
+            chart_permission: row.chart_id === claims.chart_id ? chartPermission : null,
+            // No door-level cost cap exists on raw; the shared successor budget (the contract's own
+            // ledger) is enforced by the evaluator, so nothing is asserted here.
+          }),
+          expect_successor: (row.parent_inquiry_id ?? null) !== null,
+        })
+        : null
+      const gatesPass = Boolean(binding && isInquiryServerDispatchEligible(binding, 'raw_mcp')
+        && isInquirySafeRegistryDescriptor(binding, descriptor) && tool)
+      if (admission === null) {
+        // An ordinary (non-successor) item that cannot run is a request error, exactly as before.
+        if (!gatesPass || !binding) return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
       }
-      const invocationArgs = authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)
-      if (!invocationArgs) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
+      const authorizedInvocationArgs = binding
+        ? authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)
+        : null
+      if (!authorizedInvocationArgs && admission === null) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
+      // The shared post-evaluation gate: a vanished tool/binding or tampered arguments on an ADMITTED
+      // successor item become the same definitive, receipted refusal every door records.
+      admission = refineSuccessorAdmission(admission, {
+        tool_present: gatesPass, binding_present: Boolean(binding), args_authorized: Boolean(authorizedInvocationArgs),
+      })
+      // Only a refused successor item ever proceeds without authorized args; it never dispatches, so the
+      // server-held contract's own arguments (never the mismatching authorization copy) are used solely to
+      // hash the terminal receipt, exactly as the managed door does.
+      const invocationArgs = authorizedInvocationArgs ?? currentItem.args
 
       const reservationHash = `reserved:${hashJti(randomUUID())}`
       const reservation = await reserveInquiryAction({
@@ -343,9 +382,17 @@ export async function POST(request: Request) {
       let gapReason: string | undefined
       const traceId = randomUUID()
       try {
-        raw = await tool.retrieve({ chart_id: claims.chart_id, domains: contract.scope_tuple.domains }, invocationArgs)
-        disposition = classifyInquiryResult(binding, raw)
-        if (disposition === 'failed') gapReason = 'TOOL_FAILURE_ENVELOPE'
+        if (admission?.decision === 'refuse') {
+          // Never dispatched: the receipt records the decision's own stable code.
+          disposition = 'failed'
+          gapReason = admission.code
+          // Deterministic body (no per-request trace id) so the receipt's result hash is reproducible.
+          raw = { ok: false, error: admission.code, not_dispatched: true }
+        } else {
+          raw = await tool!.retrieve({ chart_id: claims.chart_id, domains: contract.scope_tuple.domains }, invocationArgs)
+          disposition = classifyInquiryResult(binding, raw)
+          if (disposition === 'failed') gapReason = 'TOOL_FAILURE_ENVELOPE'
+        }
       } catch (error) {
         disposition = 'failed'
         gapReason = 'TOOL_DISPATCH_FAILED'
@@ -355,7 +402,15 @@ export async function POST(request: Request) {
       const postDispatchOverlay = await loadChartCapabilityOverlay(snapshot, claims.chart_id)
       if (postDispatchOverlay.overlay_version !== claims.overlay_version || postDispatchOverlay.build_id !== claims.chart_build_id) {
         console.error('[mcp:inquiry] chart overlay changed during dispatch', { traceId, inquiryId: row.inquiry_id, itemId: item.item_id })
-        const blocked = failInquiryForOverlayDrift(contract)
+        // The tool DID run: a drift that lands after an admitted successor dispatch still pays for it.
+        const blocked = failInquiryForOverlayDrift(admission?.decision === 'admit'
+          ? {
+            ...contract,
+            successor_cost_ledger: appendSuccessorCharge(contract.successor_cost_ledger, {
+              item_id: item.item_id, scu_id: item.scu_id, units: admission.limit_state.candidate_units, decision_hash: admission.decision_hash,
+            }),
+          }
+          : contract)
         await commitInquiryFinalization({
           row,
           expected_jti_hash: reservation.reservation_hash,
@@ -376,16 +431,22 @@ export async function POST(request: Request) {
       // the client later presents for certification hashes to the ref committed here
       // (in-memory values such as undefined fields or Dates do not survive the wire).
       raw = JSON.parse(serialized)
-      const pagination = deriveInquiryPaginationReceipt(binding, raw, invocationArgs)
-      const observed = recordInquiryExecution(contract, {
-        item_id: item.item_id, disposition, evidence_refs: [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
-        pagination, request_position_path: binding.pagination_contract?.request_position_path,
+      const pagination = admission?.decision === 'refuse'
+        ? { semantics: binding?.pagination ?? 'none', exhausted: true, next: null }
+        : deriveInquiryPaginationReceipt(binding!, raw, invocationArgs)
+      let observed = recordInquiryExecution(contract, {
+        item_id: item.item_id, disposition,
+        // A refused (never-dispatched) item produced no evidence: no ref, exactly as on Portal and managed.
+        evidence_refs: admission?.decision === 'refuse' ? [] : [`raw:${stableFingerprint(raw)}`], gap_reason: gapReason,
+        pagination, request_position_path: binding?.pagination_contract?.request_position_path,
         // A served result may warrant a different capability (RC-5.4); it is pursued only
         // through the governed `continue` successor, never dispatched ad hoc.
         evidence_frontier: disposition === 'served'
           ? deriveEvidenceFrontier({ contract, item_id: item.item_id, evidence_payload: raw, snapshot })
           : [],
+        ...(admission ? { successor_dispatch: admission } : {}),
       })
+      if (admission?.decision === 'refuse') observed = terminalizeRefusedSuccessorItem(observed, item.item_id)
       const remaining = observed.iteration >= observed.max_iterations ? [] : nextReady(observed)
       const issued = issueInquiryLifecycleToken({
         sub: principalSubject, inquiry_id: row.inquiry_id, chart_id: row.chart_id,
@@ -399,7 +460,7 @@ export async function POST(request: Request) {
         row, expected_jti_hash: reservation.reservation_hash, next_jti_hash: hashJti(issued.claims.jti), contract: observed,
         evidence: { plan_item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id,
           canonical_args_hash: stableFingerprint(invocationArgs), raw_result_hash: stableFingerprint(raw), disposition,
-          pagination, payload: { trace_id: traceId, result_bytes: Buffer.byteLength(serialized) } },
+          pagination, payload: { trace_id: traceId, result_bytes: Buffer.byteLength(serialized), ...(admission ? { admission } : {}) } },
       })
       return response({ ok: true, inquiry_id: row.inquiry_id, evidence_receipt_id: receiptId, raw_result: raw, disposition, pagination, contract: observed, lifecycle_token: issued.token, next_action_ids: issued.claims.next_action_ids })
     }
@@ -412,6 +473,11 @@ export async function POST(request: Request) {
         parentFinal = closeInquiryForEvidenceSuccessor(row.contract_jsonb)
         successor = compileInquirySuccessorContract({
           snapshot, overlay: currentOverlay, parent_inquiry_id: row.inquiry_id, parent: parentFinal,
+          admission: buildSuccessorAdmissionLive({
+            transport: 'raw_mcp', chart_id: claims.chart_id, overlay: currentOverlay,
+            principal_subject: principalUid, owner_principal_subject: row.principal_uid,
+            chart_permission: row.chart_id === claims.chart_id ? chartPermission : null,
+          }),
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)

@@ -258,6 +258,7 @@ export async function POST(request: Request): Promise<Response> {
         // ── Plan: query text → planner → budgets → floors → NO-LEAKAGE. ──────
         const planned = await runPlanStage({
           em, request, messages, identity, params, safetyDecision, runtime, abortSignal: turnSignal,
+          chartPermission: authorized.value.chartPermission,
         })
         if (planned.halted) return finish(planned.status)
         if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
@@ -309,6 +310,11 @@ export async function POST(request: Request): Promise<Response> {
           orientationPromise,
           inquiryContract,
           abortSignal: turnSignal,
+          // `authorizeTurn` above authorized this caller on this chart (fail-closed); the shared
+          // successor envelope takes its actual result, plus the safety pass's exclusions, so a
+          // successor is held to everything the plan-time capabilities were.
+          chartPermission: authorized.value.chartPermission,
+          excludedCapabilities: postPlanSafety.excluded_capabilities,
         })
         if (runtime.kind === 'byok' && turnSignal.aborted) return finish('aborted')
         if (runtime.kind === 'byok') {

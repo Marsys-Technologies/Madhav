@@ -81,6 +81,8 @@ import {
   ensureDashaContextFloor,
 } from '@/lib/pipeline/compiled_floor_adapter'
 import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
+import { evaluateSuccessorItemForDispatch, refineSuccessorAdmission } from '@/lib/vidhi/inquiry/authorization_envelope'
+import { buildSuccessorAdmissionLive } from '@/lib/vidhi/inquiry/successor_admission_live'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
 import { enforceTurnLimits } from '@/lib/limits'
@@ -335,6 +337,9 @@ export async function POST(request: Request) {
   }
 
   let role: 'guest' | 'super_admin'
+  // What this door's own chart authorization returned; the shared successor envelope reads the
+  // result itself (BYOK included: its level is read from authorizeChartAccess, never assumed).
+  let chartPermission: 'all' | 'view' | 'deny' | null = null
   if (byokEnabled) {
     if (!authorizedByokRole) {
       try {
@@ -354,10 +359,21 @@ export async function POST(request: Request) {
       }
     }
     role = authorizedByokRole
+    // The BYOK preflight proves access (it throws otherwise) but reports no level. Read the level from
+    // the same chart-access brain the non-BYOK branch uses, instead of assuming one; a denial here
+    // fails closed exactly as it does there.
+    chartPermission = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    if (chartPermission === 'deny') {
+      return NextResponse.json(
+        buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
+        { status: 401 },
+      )
+    }
   } else {
     // ── Per-call chart-access authorization (same brain as the primitives route) ─
     role = await resolveMcpPrincipalRole(userUid)
     const perm = await authorizeChartAccess({ principal: { uid: userUid, role }, chartId, db: { query } })
+    chartPermission = perm
     if (perm === 'deny') {
       return NextResponse.json(
         buildEntitlementDenialEnvelope({ chart_id: chartId, permission_required: 'view' }),
@@ -777,6 +793,7 @@ export async function POST(request: Request) {
           scope_tuple: plan.scope_tuple!,
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
+          server_authorization: { chart_permission: chartPermission },
           temporal_anchor_date: nowContextDate,
           temporal_anchor_source: 'request_context_clock',
           planning_provenance: serverPlannerProvenance(plan.scope_tuple!.depth, plannerOutcome.metrics),
@@ -1121,6 +1138,10 @@ export async function POST(request: Request) {
         if (request.signal.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
         if (await terminalizeManagedIterationCap()) break
         const toolName = dispatchableTools[i]
+        // A recovered successor generation's items never take this plan-tool-set path: they are
+        // dispatched only by the drain below, through the shared authorization envelope, so a
+        // request tool set adopted from a stored contract can never stand in for the envelope.
+        if (managedInquirySession?.currentContract.successor || (managedInquirySession?.parentInquiryId ?? null) !== null) continue
 
         // Resolve BEFORE checking the cap — an unresolved tool name is not a real
         // dispatch attempt and must not consume a call-count slot from the budget.
@@ -1237,6 +1258,19 @@ export async function POST(request: Request) {
        * successor item receives its first observation, its own continuation pages satisfy
        * `observation !== null` on their own, so `firstTime` need not stay true across pages.
        */
+      const successorLive = (overlay: { overlay_version: string | null; build_id: string | null }) =>
+        buildSuccessorAdmissionLive({
+          transport: 'managed_mcp',
+          chart_id: chartId ?? '',
+          overlay,
+          principal_subject: userUid ?? '',
+          // The lifecycle owner is read from the durable row the session holds, so the principal
+          // check compares the acting request against what the row is actually scoped to.
+          owner_principal_subject: managedInquirySession?.principalUid ?? '',
+          chart_permission: userUid && chartId ? chartPermission : null,
+          excluded_capabilities: postPlanSafety.excluded_capabilities,
+          cost_exhausted: costCapTripped !== null,
+        })
       const drainManagedReadyActions = async (firstTime = false): Promise<void> => {
         if (!managedInquirySession || !inquirySnapshot) return
         while (managedInquirySession.readyActionIds.length > 0
@@ -1246,17 +1280,38 @@ export async function POST(request: Request) {
             && (firstTime || candidate.observation !== null) && candidate.binding_id?.startsWith('registry:'))
           if (!item?.binding_id) break
           const capabilityUri = item.binding_id.slice('registry:'.length)
-          const toolName = dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
-          const tool = toolName ? getToolByName(toolName) : undefined
           const binding = bindingForInquiryItem(inquirySnapshot, managedInquirySession.currentContract, item.item_id)
-          if (!toolName || !tool || !binding) {
-            if (!firstTime || item.observation !== null) {
+          // In a successor generation the request's tool set is NOT the authority — the plan-time
+          // envelope is, and its decision is recomputed here from the durable contract plus this
+          // request's server-held state (never trusted from the compile, so a recovered worker
+          // re-derives it identically).
+          let admission = managedInquirySession.currentContract.successor || (managedInquirySession.parentInquiryId ?? null) !== null
+            ? evaluateSuccessorItemForDispatch({
+              contract: managedInquirySession.currentContract, item_id: item.item_id, snapshot: inquirySnapshot,
+              live: successorLive(await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id).catch(() => ({ overlay_version: null, build_id: null }))),
+              // The durable row's parent link is an independent lineage marker: a contract that says
+              // it is a successor but carries no successor receipt is refused, never run as ordinary.
+              expect_successor: (managedInquirySession.parentInquiryId ?? null) !== null,
+            })
+            : null
+          const toolName = admission && admission.decision === 'admit'
+            ? capabilityUri
+            : dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
+          const tool = toolName ? getToolByName(toolName) : undefined
+          // The envelope admitted but the live tool or binding is gone: a definitive, receipted refusal
+          // (same code and shape as the raw and Portal doors), never an admit stamped on a non-dispatch.
+          admission = refineSuccessorAdmission(admission, { tool_present: Boolean(tool), binding_present: Boolean(binding), args_authorized: true })
+          if ((admission && admission.decision === 'refuse') || !toolName || !tool || !binding) {
+            if (!admission && (!firstTime || item.observation !== null)) {
               judgmentFlags.push('managed_inquiry_continuation_unavailable')
               break
             }
-            // A successor's own item names a capability this request never authorized. Never
-            // dispatch it; record the same named gap the Portal door records so the lifecycle
-            // terminalizes instead of stranding a ready item.
+            // A successor item the envelope refuses (or a capability this request never authorized)
+            // is never dispatched; record the named gap with the decision's own stable code so the
+            // lifecycle terminalizes instead of stranding a ready item.
+            const gapCode = admission && admission.decision === 'refuse'
+              ? admission.code
+              : 'successor_capability_not_authorized_for_request'
             const begin = await managedInquirySession.beginAction(item.item_id)
             if (begin !== 'acquired') {
               judgmentFlags.push(begin === 'ambiguous' ? 'managed_inquiry_dispatch_ambiguous' : 'managed_inquiry_action_in_progress')
@@ -1271,12 +1326,15 @@ export async function POST(request: Request) {
               tool_name: capabilityUri,
               bundle: undefined,
               disposition: 'failed',
-              gap_reason: 'successor_capability_not_authorized_for_request',
+              gap_reason: gapCode,
               pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
               invocation_args: item.args,
               request_position_path: binding?.pagination_contract?.request_position_path,
+              ...(admission ? { successor_dispatch: admission } : {}),
             })
-            judgmentFlags.push('managed_inquiry_successor_capability_not_authorized')
+            judgmentFlags.push(gapCode === 'successor_capability_not_authorized_for_request'
+              ? 'managed_inquiry_successor_capability_not_authorized'
+              : 'managed_inquiry_successor_refused')
             continue
           }
           const check = tracker.checkAndRecordCall(tool.dispatch_units)
@@ -1314,6 +1372,7 @@ export async function POST(request: Request) {
                 evidence_frontier: continuationDisposition === 'served' && inquirySnapshot
                   ? deriveEvidenceFrontier({ contract: managedInquirySession.currentContract, item_id: item.item_id, evidence_payload: bundle, snapshot: inquirySnapshot })
                   : [],
+                ...(admission ? { successor_dispatch: admission } : {}),
               })
             }
             toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
@@ -1335,6 +1394,7 @@ export async function POST(request: Request) {
               pagination: { semantics: binding.pagination, exhausted: true, next: null },
               gap_reason: 'dispatch_error',
               invocation_args: item.args,
+              ...(admission ? { successor_dispatch: admission } : {}),
             })
             toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
           }
@@ -1343,7 +1403,12 @@ export async function POST(request: Request) {
       }
 
       if (managedInquirySession && inquirySnapshot) {
-        await drainManagedReadyActions()
+        // A worker that recovered INTO a successor generation (the parent already handed off) owns
+        // that successor's first-time items: they have no observation yet, so a plain drain would
+        // never pick them up and they would strand. Their authorization is re-derived exactly as
+        // it is for a live successor — nothing is replayed (beginAction refuses an already
+        // dispatched item) and nothing bypasses the envelope.
+        await drainManagedReadyActions(managedInquirySession.currentContract.successor !== undefined || (managedInquirySession.parentInquiryId ?? null) !== null)
         // R2B.4b: served evidence may call for a capability the plan never authorized. Continue
         // through ONE durable successor generation, using only tools this request authorized —
         // an admitted capability outside that set fails closed, named, on the successor's own
@@ -1354,7 +1419,7 @@ export async function POST(request: Request) {
           const currentOverlayForSuccessor = await loadChartCapabilityOverlay(inquirySnapshot, managedInquirySession.currentContract.chart_id)
           const becameSuccessor = currentOverlayForSuccessor.overlay_version === managedInquirySession.currentContract.chart_availability_version
             && currentOverlayForSuccessor.build_id === managedInquirySession.currentContract.chart_build_id
-            && await managedInquirySession.continueWithEvidenceSuccessor({ snapshot: inquirySnapshot, overlay: currentOverlayForSuccessor })
+            && await managedInquirySession.continueWithEvidenceSuccessor({ snapshot: inquirySnapshot, overlay: currentOverlayForSuccessor, admission: successorLive(currentOverlayForSuccessor) })
           if (becameSuccessor) {
             judgmentFlags.push('managed_inquiry_evidence_successor')
             await drainManagedReadyActions(true)

@@ -1,0 +1,968 @@
+{
+  "drift_report": {
+    "session_id": "adhoc",
+    "run_at": "2026-09-29T01:33:53.302556+00:00",
+    "findings": [
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CGP_AUDIT_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CGP_AUDIT_v1_0.md'",
+        "suggested_remediation": "Register CGP_AUDIT_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'EXTERNAL_COMPUTATION_SPEC_v2_0.md'",
+        "suggested_remediation": "Register EXTERNAL_COMPUTATION_SPEC_v2_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'JH_EXPORT_SCHEDULE_v1_0.md'",
+        "suggested_remediation": "Register JH_EXPORT_SCHEDULE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LEL_HELD_OUT_PARTITION",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LEL_HELD_OUT_PARTITION_v1_0.md'",
+        "suggested_remediation": "Register LEL_HELD_OUT_PARTITION_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LEL_FACTS_ONLY",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md'",
+        "suggested_remediation": "Register LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PPL_RETROACTIVE_PROTOCOL_v1_0.md'",
+        "suggested_remediation": "Register PPL_RETROACTIVE_PROTOCOL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "SADE_SATI_CYCLES_ALL",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'SADE_SATI_CYCLES_ALL.md'",
+        "suggested_remediation": "Register SADE_SATI_CYCLES_ALL.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "EVENT_CHART_STATES_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'EVENT_CHART_STATES_v1_0.md'",
+        "suggested_remediation": "Register EVENT_CHART_STATES_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'JHORA_TRANSCRIPTION_v8_0_SOURCE.md'",
+        "suggested_remediation": "Register JHORA_TRANSCRIPTION_v8_0_SOURCE.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CROSS_REPORT_COHERENCE_AUDIT_v1_0.md'",
+        "suggested_remediation": "Register CROSS_REPORT_COHERENCE_AUDIT_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "RED_TEAM_L3_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RED_TEAM_L3_v1_0.md'",
+        "suggested_remediation": "Register RED_TEAM_L3_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_CAREER_DHARMA_v1_1.md'",
+        "suggested_remediation": "Register REPORT_CAREER_DHARMA_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_CHILDREN_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_CHILDREN_v1_1.md'",
+        "suggested_remediation": "Register REPORT_CHILDREN_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_FINANCIAL_v2_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_FINANCIAL_v2_1.md'",
+        "suggested_remediation": "Register REPORT_FINANCIAL_v2_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_HEALTH_LONGEVITY_v1_1.md'",
+        "suggested_remediation": "Register REPORT_HEALTH_LONGEVITY_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_PARENTS_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_PARENTS_v1_1.md'",
+        "suggested_remediation": "Register REPORT_PARENTS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_PSYCHOLOGY_MIND_v1_1.md'",
+        "suggested_remediation": "Register REPORT_PSYCHOLOGY_MIND_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_RELATIONSHIPS_v1_0.md'",
+        "suggested_remediation": "Register REPORT_RELATIONSHIPS_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_RELATIONSHIPS_v1_1.md'",
+        "suggested_remediation": "Register REPORT_RELATIONSHIPS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_SPIRITUAL_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_SPIRITUAL_v1_0.md'",
+        "suggested_remediation": "Register REPORT_SPIRITUAL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_SPIRITUAL_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_SPIRITUAL_v1_1.md'",
+        "suggested_remediation": "Register REPORT_SPIRITUAL_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REPORT_TRAVEL_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_TRAVEL_v1_1.md'",
+        "suggested_remediation": "Register REPORT_TRAVEL_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'DECISION_SUPPORT_PLAYBOOK_v1_0.md'",
+        "suggested_remediation": "Register DECISION_SUPPORT_PLAYBOOK_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'QUERY_PROMPT_LIBRARY_v1_0.md'",
+        "suggested_remediation": "Register QUERY_PROMPT_LIBRARY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md'",
+        "suggested_remediation": "Register SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "plans_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'plans_v1_0.md'",
+        "suggested_remediation": "Register plans_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CLUSTER_ATLAS_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CLUSTER_ATLAS_v1_1.md'",
+        "suggested_remediation": "Register CLUSTER_ATLAS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CONTRADICTION_REGISTER_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CONTRADICTION_REGISTER_v1_1.md'",
+        "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PATTERN_REGISTER_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PATTERN_REGISTER_v1_1.md'",
+        "suggested_remediation": "Register PATTERN_REGISTER_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "RESONANCE_REGISTER_v1_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RESONANCE_REGISTER_v1_1.md'",
+        "suggested_remediation": "Register RESONANCE_REGISTER_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "SCHEMAS/chunker_spec_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'chunker_spec_v1_0.md'",
+        "suggested_remediation": "Register chunker_spec_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'L1_TRUTH_INDEX_REPORT_v1_0.md'",
+        "suggested_remediation": "Register L1_TRUTH_INDEX_REPORT_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "M4_CLOSE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M4_CLOSE_v1_0.md'",
+        "suggested_remediation": "Register M4_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "M5_CLOSE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M5_CLOSE_v1_0.md'",
+        "suggested_remediation": "Register M5_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CI_REPORTING_POLICY",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'NAP_M5_3_CI_REPORTING_POLICY_v1_0.md'",
+        "suggested_remediation": "Register NAP_M5_3_CI_REPORTING_POLICY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'SHADOW_MODE_PROTOCOL_v1_0.md'",
+        "suggested_remediation": "Register SHADOW_MODE_PROTOCOL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL1_TWO_PASS_APPROVAL_v1_0.md'",
+        "suggested_remediation": "Register LL1_TWO_PASS_APPROVAL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL2_EDGE_WEIGHT_DESIGN_v1_0.md'",
+        "suggested_remediation": "Register LL2_EDGE_WEIGHT_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL2_STABILITY_GATE_v1_0.md'",
+        "suggested_remediation": "Register LL2_STABILITY_GATE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL3_DOMAIN_COHERENCE_v1_0.md'",
+        "suggested_remediation": "Register LL3_DOMAIN_COHERENCE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL4_PREDICTION_PRIOR_v1_0.md'",
+        "suggested_remediation": "Register LL4_PREDICTION_PRIOR_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL5_DASHA_TRANSIT_DESIGN_v1_0.md'",
+        "suggested_remediation": "Register LL5_DASHA_TRANSIT_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md'",
+        "suggested_remediation": "Register LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md'",
+        "suggested_remediation": "Register LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "M4_B_CLOSE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M4_B_CLOSE_v1_0.md'",
+        "suggested_remediation": "Register M4_B_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "M4_C_CLOSE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M4_C_CLOSE_v1_0.md'",
+        "suggested_remediation": "Register M4_C_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "DBN_TOPOLOGY",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'DBN_TOPOLOGY_v1_0.md'",
+        "suggested_remediation": "Register DBN_TOPOLOGY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "M5_C_CLOSE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M5_C_CLOSE_v1_0.md'",
+        "suggested_remediation": "Register M5_C_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "M5_D_CLOSE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M5_D_CLOSE_v1_0.md'",
+        "suggested_remediation": "Register M5_D_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PRIOR_SPEC",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PRIOR_SPEC_v1_0.md'",
+        "suggested_remediation": "Register PRIOR_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL8_EMBEDDING_REFIT_SPEC_v1_0.md'",
+        "suggested_remediation": "Register LL8_EMBEDDING_REFIT_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "REFIT_GATE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REFIT_GATE_v1_0.md'",
+        "suggested_remediation": "Register REFIT_GATE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "refit_procedure",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'refit_procedure.md'",
+        "suggested_remediation": "Register refit_procedure.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "stability_report",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'stability_report.md'",
+        "suggested_remediation": "Register stability_report.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "ll2_promotion_campaign_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'll2_promotion_campaign_v1_0.md'",
+        "suggested_remediation": "Register ll2_promotion_campaign_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LL8_SPEC",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL8_SPEC_v1_0.md'",
+        "suggested_remediation": "Register LL8_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "LL9_SPEC",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL9_SPEC_v1_0.md'",
+        "suggested_remediation": "Register LL9_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PATTERN_SCHEMA_v0_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'pattern_schema_v0_1.json'",
+        "suggested_remediation": "Register pattern_schema_v0_1.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PREDICTION_SCHEMA_v0_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'prediction_schema_v0_1.json'",
+        "suggested_remediation": "Register prediction_schema_v0_1.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'two_pass_events_schema_v0_1.json'",
+        "suggested_remediation": "Register two_pass_events_schema_v0_1.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PROMPT_REGISTRY_INDEX",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'INDEX.json'",
+        "suggested_remediation": "Register INDEX.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PREDICTION_LEDGER_JSONL",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'prediction_ledger.jsonl'",
+        "suggested_remediation": "Register prediction_ledger.jsonl in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PATTERN_REGISTER_JSON",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PATTERN_REGISTER_v1_0.json'",
+        "suggested_remediation": "Register PATTERN_REGISTER_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "RESONANCE_REGISTER_JSON",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RESONANCE_REGISTER_v1_0.json'",
+        "suggested_remediation": "Register RESONANCE_REGISTER_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CONTRADICTION_REGISTER_JSON",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CONTRADICTION_REGISTER_v1_0.json'",
+        "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CLUSTER_ATLAS_JSON",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CLUSTER_ATLAS_v1_0.json'",
+        "suggested_remediation": "Register CLUSTER_ATLAS_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "DISCOVERY_REGISTERS_INDEX",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'INDEX.json'",
+        "suggested_remediation": "Register INDEX.json in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CROSS_CUTTING_DECISION_REGISTER_v1_0.md'",
+        "suggested_remediation": "Register CROSS_CUTTING_DECISION_REGISTER_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_ARCHITECTURE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_ARCHITECTURE_v1_0.md'",
+        "suggested_remediation": "Register PARIPRASHNA_ARCHITECTURE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_ASBUILT_BASELINE_v1_0.md'",
+        "suggested_remediation": "Register PARIPRASHNA_ASBUILT_BASELINE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_DECISION_REGISTER_v1_0.md'",
+        "suggested_remediation": "Register PARIPRASHNA_DECISION_REGISTER_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_VERIFICATION_MATRIX",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md'",
+        "suggested_remediation": "Register PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_PARISESA_COLLISION_INCIDENT",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md'",
+        "suggested_remediation": "Register CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_SWARM_KICKOFF",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md'",
+        "suggested_remediation": "Register KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md'",
+        "suggested_remediation": "Register PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "RESUME_BRIEFS_BOTH_CAMPAIGNS",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RESUME_BRIEFS_BOTH_CAMPAIGNS.md'",
+        "suggested_remediation": "Register RESUME_BRIEFS_BOTH_CAMPAIGNS.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "registry_disagreement",
+        "severity": "MEDIUM",
+        "canonical_id": "PARISESA_V4_CLOSURE_FACTORY_PLAN",
+        "surfaces_involved": [
+          "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+          "CAPABILITY_MANIFEST"
+        ],
+        "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md'",
+        "suggested_remediation": "Register PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md \u00a71 (or correct its CAPABILITY_MANIFEST entry)",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "schema_db_unreachable",
+        "severity": "LOW",
+        "canonical_id": null,
+        "surfaces_involved": [
+          "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+        ],
+        "evidence": "psql exit 2: psql: error: connection to server at \"127.0.0.1\", port 5433 failed: fe_sendauth: no password supplied",
+        "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT for live schema checks",
+        "whitelist_ticket": null
+      },
+      {
+        "class": "a3_schema_db_unreachable",
+        "severity": "LOW",
+        "canonical_id": null,
+        "surfaces_involved": [
+          "chart_facts"
+        ],
+        "evidence": "DB query failed: psql: error: connection to server at \"127.0.0.1\", port 5433 failed: fe_sendauth: no password supplied",
+        "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT",
+        "whitelist_ticket": null
+      }
+    ],
+    "summary": {
+      "total": 79,
+      "by_class": {
+        "registry_disagreement": 77,
+        "schema_db_unreachable": 1,
+        "a3_schema_db_unreachable": 1
+      },
+      "by_severity": {
+        "MEDIUM": 77,
+        "LOW": 2
+      },
+      "whitelisted": 0
+    },
+    "exit_code": 3
+  }
+}

@@ -49,7 +49,6 @@ import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import { getConversation, insertConversationWithId } from '@/lib/conversations'
 import { isCorrectionArchived } from '@/lib/conversations/readOnly'
-import { checkReadingReadiness } from '@/lib/charts/readingGate'
 import { configService } from '@/lib/config/index'
 import { enforceTurnLimits } from '@/lib/limits'
 import {
@@ -247,6 +246,8 @@ export interface AuthorizedTurn {
    * fails toward the stricter path; it is never read as "probably the native".
    */
   subjectKind: 'native_self' | 'cohort' | 'test' | null
+  /** What `authorizeChartAccess` returned for this caller on this chart (never `deny` here). */
+  chartPermission: 'all' | 'view'
 }
 
 /**
@@ -301,16 +302,6 @@ export async function authorizeTurn(args: {
     return halt('error')
   }
 
-  // ── Shared readiness gate (Jātaka chart workspace). ─────────────────────────
-  // Readings run only on a fully computed chart, so results computed for earlier
-  // birth details are never presented as this chart's. Same authority the
-  // workspace and directory use. Fails closed if readiness cannot be read.
-  const readingGate = await checkReadingReadiness(chartId)
-  if (!readingGate.ok) {
-    em.error({ code: readingGate.code, message: readingGate.message, retryable: readingGate.retryable, phase: 'plan' })
-    return halt('error')
-  }
-
   // ── SUBJECT CONSENT (P1 G1-B · NCD-9 · PPR-14 · abuse case A9). ────────────
   // `authorizeChartAccess` above answered "may this CALLER touch this chart?".
   // This answers the question nothing used to ask: "may this SUBJECT's L2+
@@ -362,7 +353,7 @@ export async function authorizeTurn(args: {
     }
   }
 
-  return proceed({ isSuperAdmin, subjectKind: consentDecision.subject_kind })
+  return proceed({ isSuperAdmin, subjectKind: consentDecision.subject_kind, chartPermission: permission })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

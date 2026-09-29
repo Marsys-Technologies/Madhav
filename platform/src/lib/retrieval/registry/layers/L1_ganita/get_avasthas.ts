@@ -13,6 +13,8 @@ const AVASTHA_CATEGORIES = [
   'graha_avastha_lajjitadi', 'graha_avastha_lifetime_exposure_summary', 'graha_avastha_sayanadi',
 ]
 
+import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
+
 export const getAvasthsCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_avasthas',
   type: 'tool',
@@ -29,6 +31,7 @@ export const getAvasthsCapability: CapabilityDescriptor = {
     'and Sayanadi Avastha (12-fold sleeping/waking/drunk/angry etc. classification). ' +
     'Covers 6 avastha fact_categories.',
   input_schema: {
+    build_id: BUILD_FENCE_INPUT,
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
     categories:   { type: 'array', description: 'Subset of avastha categories.', items: { type: 'string' } },
@@ -62,8 +65,14 @@ export const getAvasthsCapability: CapabilityDescriptor = {
       const offset     = (args.offset as number) ?? 0
       const categories = (args.categories as string[]) ?? AVASTHA_CATEGORIES
 
+      const buildFence = classifyBuildFence(args.build_id)
+      if (buildFence.kind === 'explicit_empty') return explicitEmptyBuildFenceRefusal('get_avasthas', chartId)
       const filterParams: unknown[] = [chartId, categories]
       let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
+      if (buildFence.kind === 'resolved') {
+        where += ` AND build_id = ANY($${filterParams.length + 1}::uuid[])`
+        filterParams.push(buildFence.build_ids)
+      }
       if (args.ayanamsha_id) {
         where += ` AND ayanamsha_id = $${filterParams.length + 1}`
         filterParams.push(args.ayanamsha_id as string)

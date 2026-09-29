@@ -1,0 +1,53 @@
+session_open:
+  session_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+  cowork_thread_name: "Madhav — AI CLI VM Bridge"
+  agent_name: gpt-5
+  agent_version: gpt-5
+  tool: "Codex"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/ai-cli-vm-bridge/Madhav
+  step_number_or_layer: "AI Console — private VM CLI bridge production repair"
+  predecessor_session: JATAKA-CONTROLLED-PROD-ROLLOUT-20260927
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-AI-CLI-VM-BRIDGE-20260929
+    lease_status_verified: true
+    lease_verified_at: 2026-09-29T05:16:00+05:30
+    coordination_commit: b52912b8545becaf680a5928e38e5a67feb1c128
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    ccd_consumed: []
+    ccd_appended: []
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md]
+  mandatory_reading_confirmation: []
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - .github/workflows/deploy.yml
+      - platform/scripts/ai-cli-bridge/**
+      - platform/tests/unit/governance/cli_bridge_contract.test.ts
+      - platform/tests/unit/governance/deployment_contract.test.ts
+      - platform/src/lib/ai-console/cli/**
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_OPEN.yaml
+      - 00_ARCHITECTURE/schema_reports/AI_CLI_VM_BRIDGE_20260929_CLOSE.yaml
+      - 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.md
+      - 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260929T013353Z.json
+      - 00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.md
+      - 00_ARCHITECTURE/schema_reports/SCHEMA_REPORT_AI_CLI_VM_BRIDGE_BASELINE_20260929.json
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    must_not_touch:
+      - platform/supabase/migrations/**
+      - platform/python-sidecar/**
+      - platform-mcp/**
+      - existing production charts, conversations, and customer grants
+      - unrelated IAM, database, migration, chart, build, and shared-asset state
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No Macro Plan or health-crisis serving change."
+      acknowledged: true
+  red_team_due: false
+  notes: "Native authorized a minimal-essential-security production repair: keep the four authenticated personal CLIs on the companion VM, connect only the hosted product through a private allowlisted bridge, preserve existing per-user grants, and verify direct CLI health before product validation."
