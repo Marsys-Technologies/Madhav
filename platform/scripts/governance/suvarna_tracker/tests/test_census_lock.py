@@ -2,9 +2,12 @@
 import fcntl
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
+
+import pytest
 
 from suvarna_tracker import census_lock as CL
 from suvarna_tracker.events import EventLog
@@ -142,6 +145,79 @@ def test_cli_main_requires_a_command(tmp_path, capsys):
 def test_cli_main_runs_command_and_returns_its_exit_code(tmp_path):
     rc = CL.main(["--home", str(tmp_path), "--", sys.executable, "-c", "import sys; sys.exit(7)"])
     assert rc == 7
+
+
+# ---- --census-only (B6, review pass 3) --------------------------------------------------------
+
+GOOD_CENSUS_COMMAND = ["bash", "-c",
+                      "source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && "
+                      "python3 platform/scripts/governance/asset_census.py --layer ka_gochara "
+                      "--out /Users/Dev/suvarna/evidence/census.json"]
+
+
+def test_is_census_only_command_accepts_the_exact_inspector_form():
+    assert CL.is_census_only_command(GOOD_CENSUS_COMMAND)
+
+
+def test_is_census_only_command_accepts_with_no_flags():
+    assert CL.is_census_only_command(
+        ["bash", "-c", "source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && "
+                       "python3 platform/scripts/governance/asset_census.py"])
+
+
+def test_is_census_only_command_accepts_the_trunk_worktree_root():
+    """CODE-35 (review pass 3 disposition): the second, post-E4.1 checkout is validated too."""
+    assert CL.is_census_only_command(
+        ["bash", "-c", "source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/suvarna/trunk && "
+                       "python3 platform/scripts/governance/asset_census.py --layer ka_gochara"])
+
+
+def test_is_census_only_command_rejects_a_third_checkout_root():
+    assert not CL.is_census_only_command(
+        ["bash", "-c", "source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/some-other-checkout && "
+                       "python3 platform/scripts/governance/asset_census.py"])
+
+
+@pytest.mark.parametrize("bad_inner", [
+    "source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && "
+    "python3 platform/scripts/governance/asset_census.py && rm -rf /",
+    "source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && "
+    "python3 some_other_script.py",
+    "source ~/.config/suvarna/pgenv.sh && cd /tmp && "
+    "python3 platform/scripts/governance/asset_census.py",
+    "echo hello",
+])
+def test_is_census_only_command_rejects_anything_else(bad_inner):
+    assert not CL.is_census_only_command(["bash", "-c", bad_inner])
+
+
+def test_is_census_only_command_rejects_wrong_argv_shape():
+    assert not CL.is_census_only_command(["python3", "-c", "print(1)"])
+    assert not CL.is_census_only_command(["bash", "-c", "x", "extra"])
+
+
+def test_run_locked_census_only_refuses_a_non_matching_command_without_the_lock(tmp_path):
+    home = str(tmp_path)
+    rc = CL.run_locked(home, ["bash", "-c", "echo not the census"], census_only=True)
+    assert rc == CL.EX_NOT_CENSUS_ONLY
+    # the lock must never have been touched: a second, ordinary call acquires it immediately
+    rc2 = CL.run_locked(home, [sys.executable, "-c", "pass"])
+    assert rc2 == 0
+
+
+def test_run_locked_census_only_allows_the_exact_form(tmp_path, monkeypatch):
+    home = str(tmp_path)
+    # Substitute a harmless real command for the fixed asset_census.py invocation so this test
+    # does not depend on a real /Users/Dev/madhav-nikasha checkout.
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0))
+    rc = CL.run_locked(home, GOOD_CENSUS_COMMAND, census_only=True)
+    assert rc == 0
+
+
+def test_cli_main_census_only_flag_refuses_arbitrary_command(tmp_path, capsys):
+    rc = CL.main(["--home", str(tmp_path), "--census-only", "--", sys.executable, "-c", "pass"])
+    assert rc == CL.EX_NOT_CENSUS_ONLY
+    assert "census-only" in capsys.readouterr().err
 
 
 def test_two_concurrent_processes_only_one_gets_in(tmp_path):

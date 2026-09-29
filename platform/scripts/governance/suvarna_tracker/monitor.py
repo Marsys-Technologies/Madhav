@@ -34,6 +34,7 @@ import argparse
 import datetime as dt
 import fnmatch
 import getpass
+import hashlib
 import json
 import os
 import shlex
@@ -83,6 +84,31 @@ BUILDER_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 # configurable so the check's shape is ready the day it lands, without ever fabricating a pass in
 # the meantime — see `check_isolation`.
 ISOLATION_EXPECTED_USER_ENV = "SUVARNA_ISOLATION_EXPECTED_USER"
+
+# CODE-12 (B1, review pass 3): the N-25 decision id, and the two credential/admin paths (plus the
+# two dbenv files below) the isolation gate expects to be unreadable to the swarm user once N-25 is
+# actually in force. Named individually — never re-derived — so a test can inject exactly what it
+# means to check.
+N25_DECISION_ID = "N-25"
+CODEX_PATH = os.path.expanduser("~/.codex")
+MADHAV_ADMIN_PATH = os.path.expanduser("~/.config/madhav-admin")
+DBENV_PATHS = ("/Users/Dev/madhav-l3/dbenv.sh", "/Users/Dev/madhav-l3/dbenv_builder.sh")
+
+# A `decided` N-25 line's own `detail` text is classified into one of three outcomes (never a fourth
+# state fabricated as ok/block): "declined" (native accepted the risk of running as their own
+# account — checked first, since "accepted-risk" is the stronger, unambiguous signal), "accepted"
+# (native ordered the separate-user isolation actually stood up), or "unclear" (a decided line whose
+# detail names neither — never guessed at; the check stays `warn`, same as "not yet decided").
+_N25_DECLINE_RE = re.compile(r"accepted[- ]risk|\bno\b", re.IGNORECASE)
+_N25_ACCEPT_RE = re.compile(r"\byes\b", re.IGNORECASE)
+
+
+def _classify_n25_outcome(detail: str) -> str:
+    if _N25_DECLINE_RE.search(detail or ""):
+        return "declined"
+    if _N25_ACCEPT_RE.search(detail or ""):
+        return "accepted"
+    return "unclear"
 
 # L.15: default staleness threshold for the conductor_heartbeat check (arch §5.1's heartbeat-per-pass
 # contract; three missed loop intervals is the watchdog's own relaunch threshold, arch §5.5 — a wider
@@ -164,6 +190,17 @@ def _default_disk_free_bytes(path: str) -> float:
     return float(st.f_frsize) * st.f_bavail
 
 
+def _default_sha256_file(path: str) -> str | None:
+    """sha256 of a settings file's bytes, or ``None`` if it cannot be read — never raises. These are
+    plain permission JSON (never a credential), so reading them is not the "never open a credential"
+    rule this module otherwise holds to."""
+    try:
+        with open(path, "rb") as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
+
+
 # --------------------------------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------------------------------
@@ -202,6 +239,24 @@ class Config:
     # `suvarna-build` (default mirrors detectors._suvarna_build_cmd()'s own env/default rule).
     builder_identity_path: str = ""
     suvarna_build_cmd: str = ""
+    # CODE-12 (B1): the "yes" (N-25 in force) measured path — every field injectable so a test never
+    # depends on a real second OS user, a real unreadable file, or a real settings baseline.
+    # `isolation_access_fn` mirrors `os.access`'s own signature (path, mode) -> bool and is the only
+    # thing ever asked whether a path is readable/writable here — never `open()` (CLAUDE.md §N.8: a
+    # credential file's contents are never read by this check, only whether access to it succeeds).
+    isolation_access_fn: Callable[[str, int], bool] | None = None
+    # The native's own OS account, so "the swarm user differs from the native's" is a real
+    # comparison, not an assumption. Real default: $SUDO_USER (set by `sudo -iu suvarna`, the
+    # runbook's own launch command for the swarm session — see SUVARNA_RUNBOOK_v1_0.md step 11).
+    isolation_native_user_fn: Callable[[], str | None] | None = None
+    isolation_unreadable_paths: tuple[str, ...] = ()
+    isolation_settings_paths: tuple[str, ...] = ()
+    isolation_settings_baseline_path: str = ""
+    isolation_hash_fn: Callable[[str], str | None] | None = None
+    # CODE-22 (review pass 3 disposition): the "declined" (N-25 decided no / accepted-risk) fallback
+    # hardening measurement — mode bits only, injectable so no real dbenv file or decisions log needs
+    # to exist for a test. Real default: os.stat.
+    isolation_stat_fn: Callable[[str], object] | None = None
 
     def __post_init__(self) -> None:
         self.run_dir = self.run_dir or os.path.join(self.home, "run")
@@ -222,6 +277,19 @@ class Config:
         self.now_fn = self.now_fn or (lambda: dt.datetime.now(dt.timezone.utc))
         self.notify_fn = self.notify_fn or _default_notify
         self.getuser_fn = self.getuser_fn or getpass.getuser
+        self.isolation_access_fn = self.isolation_access_fn or os.access
+        self.isolation_native_user_fn = self.isolation_native_user_fn or (lambda: os.environ.get("SUDO_USER"))
+        self.isolation_unreadable_paths = self.isolation_unreadable_paths or tuple(
+            p for p in ((self.pgenv,) + DBENV_PATHS + (CODEX_PATH, MADHAV_ADMIN_PATH)) if p)
+        self.isolation_settings_paths = self.isolation_settings_paths or (
+            os.path.join(self.home, "config", "claude-settings.json"),
+            os.path.expanduser("~/.claude/settings.json"),
+            os.path.join(self.home, "hq", ".claude", "settings.json"),
+        )
+        self.isolation_settings_baseline_path = self.isolation_settings_baseline_path or \
+            os.path.join(self.home, "config", "settings_baseline.json")
+        self.isolation_hash_fn = self.isolation_hash_fn or _default_sha256_file
+        self.isolation_stat_fn = self.isolation_stat_fn or os.stat
 
     @property
     def tracker_stop_path(self) -> str:
@@ -691,22 +759,151 @@ def check_conductor_heartbeat(cfg: Config) -> CheckResult:
     return CheckResult(name, "ok", f"latest conductor heartbeat is {age_min:.0f} min old")
 
 
+def _isolation_settings_hash_problems(cfg: Config) -> list[str]:
+    """The settings-hash-vs-baseline measurement, shared by both the "declined" fallback-hardening
+    path and the "accepted" (N-25 in force) path (CODE-22 disposition: "the fallback hardening the
+    plan requires either way" is measured — never a second, divergent copy of this check)."""
+    problems: list[str] = []
+    hash_fn = cfg.isolation_hash_fn or _default_sha256_file
+    baseline_hash = hash_fn(cfg.isolation_settings_baseline_path)
+    if baseline_hash is None:
+        problems.append(f"no settings baseline readable at {cfg.isolation_settings_baseline_path}")
+        return problems
+    try:
+        with open(cfg.isolation_settings_baseline_path, encoding="utf-8") as f:
+            baseline = json.load(f)
+    except (OSError, ValueError):
+        problems.append(f"settings baseline at {cfg.isolation_settings_baseline_path} is not readable JSON")
+        return problems
+    if not isinstance(baseline, dict):
+        problems.append(f"settings baseline at {cfg.isolation_settings_baseline_path} is not a JSON object")
+        return problems
+    for p in cfg.isolation_settings_paths:
+        expected = baseline.get(p)
+        if not expected:
+            problems.append(f"no baseline hash recorded for {p}")
+            continue
+        actual = hash_fn(p)
+        if actual is None:
+            problems.append(f"{p} could not be hashed (missing or unreadable)")
+        elif actual != expected:
+            problems.append(f"{p} does not match its baseline hash")
+    return problems
+
+
+def _isolation_measure(cfg: Config, current_user: str) -> list[str]:
+    """CODE-12's "yes" (N-25 in force) measurements: stat/access only, never a credential's
+    contents. Returns the list of problems found (empty = every measurement passed)."""
+    problems: list[str] = []
+    access = cfg.isolation_access_fn or os.access
+    swarm_user = cfg.isolation_expected_user or os.environ.get(ISOLATION_EXPECTED_USER_ENV) or "suvarna"
+    native_user = (cfg.isolation_native_user_fn or (lambda: os.environ.get("SUDO_USER")))()
+
+    if current_user != swarm_user:
+        problems.append(f"current user {current_user!r} is not the configured swarm user {swarm_user!r}")
+    if native_user and current_user == native_user:
+        problems.append(f"current user {current_user!r} is the native's own account")
+
+    for p in cfg.isolation_unreadable_paths:
+        try:
+            readable = access(p, os.R_OK)
+        except OSError:
+            readable = False
+        if readable:
+            problems.append(f"{p} is readable by {current_user!r}")
+
+    try:
+        writable = access(cfg.decisions_path, os.W_OK)
+    except OSError:
+        writable = False
+    if writable:
+        problems.append(f"decisions log {cfg.decisions_path} is writable by {current_user!r}")
+
+    problems += _isolation_settings_hash_problems(cfg)
+    return problems
+
+
+def _isolation_measure_declined(cfg: Config) -> list[str]:
+    """CODE-22 (review pass 3 disposition): a declined N-25 ("no" / "accepted-risk") is not `ok` on
+    its own say-so — the fallback hardening the plan requires either way is still measured: the two
+    dbenv files are mode 600 (never group/world-readable — mode bits only, the file's contents are
+    never opened), the decisions log is not group/world-writable, and the settings hashes match the
+    baseline (the same measurement the "accepted" path uses)."""
+    problems: list[str] = []
+    stat_fn = cfg.isolation_stat_fn or os.stat
+    for p in DBENV_PATHS:
+        try:
+            mode = stat_fn(p).st_mode
+        except OSError:
+            problems.append(f"{p} does not exist or could not be stat-ed")
+            continue
+        if mode & 0o077:
+            problems.append(f"{p} is group- or world-readable (mode {oct(mode & 0o777)})")
+
+    try:
+        dmode = stat_fn(cfg.decisions_path).st_mode
+    except OSError:
+        problems.append(f"{cfg.decisions_path} does not exist or could not be stat-ed")
+    else:
+        if dmode & 0o022:
+            problems.append(f"decisions log {cfg.decisions_path} is group- or world-writable "
+                            f"(mode {oct(dmode & 0o777)})")
+
+    problems += _isolation_settings_hash_problems(cfg)
+    return problems
+
+
 def check_isolation(cfg: Config) -> CheckResult:
-    """CODE-12 (S1, L.16a, arch §2.4): the isolation gate — a separate macOS user (N-25), unreadable
-    credential/admin paths, a decisions log the swarm cannot write, and settings-file hashes matched
-    against a native-recorded baseline. **N-25 is not yet implemented**: there is no separate user,
-    no recorded baseline, nothing to compare. Until it lands this check can only ever ``warn`` — it
-    must never fabricate ``ok`` (nothing exists yet to verify) and must never ``block`` (that would
-    make today's single-user environment permanently undispatchable for a gate it cannot yet satisfy;
-    CLAUDE.md §N.8 — a signal without the check it claims is null, not green, but here it is also not
-    a reason to stop). The expected user is configurable (`Config.isolation_expected_user`, else
-    ``SUVARNA_ISOLATION_EXPECTED_USER``, else the current user) so the check's shape — and its
-    detail — is ready the day N-25 actually stands up the separate account."""
+    """CODE-12 (S1, L.16a, arch §2.4, B1 review pass 3): the isolation gate, driven by the
+    authoritative decisions log's own `N-25` line — never a second, independent guess at what was
+    decided.
+
+    - **Not yet decided** (no `N-25` `decided` line): nothing exists yet to verify, so this can only
+      ever ``warn`` — never fabricate ``ok``, never ``block`` a gate it cannot yet satisfy
+      (CLAUDE.md §N.8).
+    - **Decided declined** (`detail` reads "no" / "accepted-risk"): the native explicitly accepted
+      the risk of the swarm running as their own account, but that acceptance is not `ok` on its own
+      say-so (CODE-22) — the fallback hardening the plan requires either way is still measured (the
+      two dbenv files mode 600, the decisions log not group/world-writable, settings hashes against
+      the baseline). ``ok`` only if every one of those holds; otherwise ``block``.
+    - **Decided accepted** (`detail` reads "yes"): N-25 is meant to be in force, so this actually
+      measures it — the swarm user, the native's own account, every unreadable-path expectation, the
+      decisions log's own writability, and the settings hashes against the native-recorded baseline
+      (`Config.isolation_settings_baseline_path`). ``ok`` only if every measurement holds; otherwise
+      ``block`` — a decision that isolation should be in force but is not holding is not a warning,
+      it is the exact gap N-25 exists to close.
+    - **Decided, but the detail names neither** ("unclear"): never guessed at — ``warn``, same as not
+      yet decided, naming the record so a human can correct it (a new decided line, never editing
+      the old one).
+    """
     current_user = cfg.getuser_fn() if cfg.getuser_fn else getpass.getuser()
-    expected_user = cfg.isolation_expected_user or os.environ.get(ISOLATION_EXPECTED_USER_ENV) or current_user
-    return CheckResult("isolation", "warn",
-                       f"N-25 not implemented: swarm runs as the native's user ({current_user!r}); "
-                       f"expected user under N-25: {expected_user!r}")
+    log = load_decisions(cfg.decisions_path)
+    rec = log["latest"].get(N25_DECISION_ID)
+    if rec is None or rec.get("state") != "decided":
+        expected_user = cfg.isolation_expected_user or os.environ.get(ISOLATION_EXPECTED_USER_ENV) or current_user
+        return CheckResult("isolation", "warn",
+                           f"N-25 not implemented: swarm runs as the native's user ({current_user!r}); "
+                           f"expected user under N-25: {expected_user!r}")
+
+    detail = str(rec.get("detail") or "")
+    outcome = _classify_n25_outcome(detail)
+    if outcome == "declined":
+        problems = _isolation_measure_declined(cfg)
+        if not problems:
+            return CheckResult("isolation", "ok", "N-25 declined: fallback hardening verified")
+        return CheckResult("isolation", "block",
+                           "N-25 declined but fallback hardening not holding: " + "; ".join(problems))
+    if outcome == "unclear":
+        return CheckResult("isolation", "warn",
+                           f"N-25 is decided but its outcome could not be read from the detail "
+                           f"(neither an accept nor a decline): {detail[:160]!r}")
+
+    problems = _isolation_measure(cfg, current_user)
+    if not problems:
+        return CheckResult("isolation", "ok",
+                           f"N-25 in force: {current_user!r} isolated from the native's account and "
+                           f"credentials; decisions log read-only; settings hashes match the baseline")
+    return CheckResult("isolation", "block", "N-25 decided yes but not holding: " + "; ".join(problems))
 
 
 def check_decision_writers(cfg: Config) -> CheckResult:
@@ -736,17 +933,18 @@ def _normalize_builder_grants(grants) -> list[tuple[str | None, str | None]]:
 
 
 def check_builder_scope(cfg: Config) -> CheckResult:
-    """CODE-15 (C3, Track E brief §8 E7.3): the builder's own scope, measured through the
-    authenticated `suvarna-build --preflight` (the reader cannot read `chart_grants.permission` or
-    `profiles`, D6 — never a live database read). Absent before provisioning (E7.2) reads `ok`, "no
-    builder identity recorded yet" — a fact about campaign phase, the same convention
-    `conductor_heartbeat` uses before the swarm has ever run. Once `run/builder_identity.json`
-    exists, anything short of an exact match — role `guest`, status `active`, grants exactly
-    `[(BUILDER_CHART_ID, 'build')]`, and equal to the recorded identity — blocks; so does a missing
-    script or a failed preflight."""
+    """CODE-15 (C3, Track E brief §8 E7.3; B2, review pass 3): the builder's own scope, measured
+    through the authenticated `suvarna-build --preflight` (the reader cannot read
+    `chart_grants.permission` or `profiles`, D6 — never a live database read). `ok` is earned, never
+    given by default: absent before provisioning (E7.2) reads `warn`, "builder identity not
+    provisioned (E7.2)" — a real, open gap, not a pass on E7.2's own say-so (B2: this check used to
+    read `ok` here, which made E7.3 read done while E7.2 was still open). Once
+    `run/builder_identity.json` exists, anything short of an exact match — role `guest`, status
+    `active`, grants exactly `[(BUILDER_CHART_ID, 'build')]`, and equal to the recorded identity —
+    blocks; so does a missing script or a failed preflight."""
     name = "builder_scope"
     if not os.path.exists(cfg.builder_identity_path):
-        return CheckResult(name, "ok", "no builder identity recorded yet (E7.2 not done)")
+        return CheckResult(name, "warn", "builder identity not provisioned (E7.2)")
     try:
         with open(cfg.builder_identity_path, encoding="utf-8") as f:
             identity = json.load(f)

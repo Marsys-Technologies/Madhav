@@ -15,12 +15,19 @@ def cfg(tmp_path, **kw):
     return M.Config(home=home, **kw)
 
 
-# ---- isolation ------------------------------------------------------------------------------
+# ---- isolation (CODE-12, B1: the three N-25 outcomes) ----------------------------------------
 
-def test_isolation_always_warns_never_ok_never_block(tmp_path):
-    """CODE-12: until N-25 lands there is nothing to verify, so this check must never fabricate
-    `ok` and must never `block` (that would make today's single-user environment permanently
-    undispatchable for a gate it cannot yet satisfy)."""
+def _decide_n25(c, detail, writer="strategic-suvarna"):
+    append_decision(c.decisions_path, {"id": "N-25", "state": "decided", "writer": writer,
+                                       "source": "Native, session 'X', 2026-09-29: 'ruled'", "detail": detail})
+
+
+# -- not yet decided: unchanged "always warn" behaviour --------------------------------------
+
+def test_isolation_not_decided_warns(tmp_path):
+    """CODE-12: until N-25 is decided there is nothing to verify, so this check must never
+    fabricate `ok` and must never `block` (that would make today's single-user environment
+    permanently undispatchable for a gate it cannot yet satisfy)."""
     r = M.check_isolation(cfg(tmp_path))
     assert r.status == "warn"
     assert "N-25 not implemented" in r.detail
@@ -49,6 +56,166 @@ def test_isolation_is_in_check_names_and_run_checks(tmp_path):
     assert "isolation" in M.CHECK_NAMES
     results = M.run_checks(cfg(tmp_path))
     assert any(r.name == "isolation" and r.status == "warn" for r in results)
+
+
+# -- decided declined / accepted-risk: measured fallback hardening (CODE-22, review pass 3
+# disposition) — ok is earned, never given on the decision's own say-so -----------------------
+
+class _FakeStat:
+    def __init__(self, mode):
+        self.st_mode = mode
+
+
+def _declined_cfg(tmp_path, detail="No — the native accepts the risk of running as the native "
+                                    "account for now", **overrides):
+    kwargs = dict(getuser_fn=lambda: "abhisek",
+                 isolation_stat_fn=lambda path: _FakeStat(0o100600),  # every path: mode 600
+                 isolation_hash_fn=lambda path: "deadbeef")
+    kwargs.update(overrides)
+    c = cfg(tmp_path, **kwargs)
+    os.makedirs(os.path.dirname(c.isolation_settings_baseline_path), exist_ok=True)
+    with open(c.isolation_settings_baseline_path, "w", encoding="utf-8") as f:
+        json.dump({p: "deadbeef" for p in c.isolation_settings_paths}, f)
+    _decide_n25(c, detail)
+    return c
+
+
+def test_isolation_decided_no_with_hardened_fallback_is_ok(tmp_path):
+    c = _declined_cfg(tmp_path)
+    r = M.check_isolation(c)
+    assert r.status == "ok" and "N-25 declined: fallback hardening verified" in r.detail
+
+
+def test_isolation_decided_accepted_risk_phrasing_with_hardened_fallback_is_ok(tmp_path):
+    """'accepted-risk' alone (no literal 'no') is still an unambiguous decline."""
+    c = _declined_cfg(tmp_path, detail="accepted-risk: keep single-user for now, revisit after J1")
+    r = M.check_isolation(c)
+    assert r.status == "ok" and "fallback hardening verified" in r.detail
+
+
+def test_isolation_decided_no_blocks_on_readable_dbenv_file(tmp_path):
+    c = _declined_cfg(tmp_path, isolation_stat_fn=lambda path: _FakeStat(0o100644 if "dbenv" in path else 0o100600))
+    r = M.check_isolation(c)
+    assert r.status == "block" and "group- or world-readable" in r.detail and "dbenv" in r.detail
+
+
+def test_isolation_decided_no_blocks_on_missing_dbenv_file(tmp_path):
+    def stat_fn(path):
+        if "dbenv" in path:
+            raise OSError("no such file")
+        return _FakeStat(0o100600)
+
+    c = _declined_cfg(tmp_path, isolation_stat_fn=stat_fn)
+    r = M.check_isolation(c)
+    assert r.status == "block" and "could not be stat-ed" in r.detail
+
+
+def test_isolation_decided_no_blocks_on_group_writable_decisions_log(tmp_path):
+    c = _declined_cfg(tmp_path)
+    c.isolation_stat_fn = lambda path: _FakeStat(0o100660 if path == c.decisions_path else 0o100600)
+    r = M.check_isolation(c)
+    assert r.status == "block" and "group- or world-writable" in r.detail
+
+
+def test_isolation_decided_no_blocks_on_settings_hash_mismatch(tmp_path):
+    c = _declined_cfg(tmp_path)
+    c.isolation_hash_fn = lambda path: ("deadbeef" if path == c.isolation_settings_baseline_path
+                                        else "mismatched-hash")
+    r = M.check_isolation(c)
+    assert r.status == "block" and "does not match its baseline hash" in r.detail
+
+
+def test_isolation_decided_no_blocks_on_missing_baseline(tmp_path):
+    c = _declined_cfg(tmp_path)
+    c.isolation_hash_fn = lambda path: None
+    r = M.check_isolation(c)
+    assert r.status == "block" and "no settings baseline readable" in r.detail
+
+
+def test_isolation_decided_unclear_detail_warns(tmp_path):
+    """A decided line whose detail names neither an accept nor a decline must never be guessed at —
+    same `warn` as not-yet-decided, but naming the record so a human can correct it."""
+    c = cfg(tmp_path, getuser_fn=lambda: "abhisek")
+    _decide_n25(c, "Discussed at length, revisit next session")
+    r = M.check_isolation(c)
+    assert r.status == "warn" and "outcome could not be read" in r.detail
+
+
+# -- decided yes: measured (CODE-12's stat/access/hash checks, all injectable) ----------------
+
+def _accepted_cfg(tmp_path, **overrides):
+    kwargs = dict(getuser_fn=lambda: "suvarna",
+                 isolation_native_user_fn=lambda: "abhisek",
+                 isolation_access_fn=lambda path, mode: False,  # nothing readable/writable by default
+                 isolation_hash_fn=lambda path: "deadbeef")
+    kwargs.update(overrides)
+    c = cfg(tmp_path, **kwargs)
+    _decide_n25(c, "Yes to all three")
+    return c
+
+
+def test_isolation_decided_yes_all_measurements_pass_is_ok(tmp_path):
+    c = _accepted_cfg(tmp_path, isolation_hash_fn=lambda path: "deadbeef")
+    # the baseline file itself must be readable JSON for the "no baseline" branch not to fire
+    os.makedirs(os.path.dirname(c.isolation_settings_baseline_path), exist_ok=True)
+    with open(c.isolation_settings_baseline_path, "w", encoding="utf-8") as f:
+        json.dump({p: "deadbeef" for p in c.isolation_settings_paths}, f)
+    r = M.check_isolation(c)
+    assert r.status == "ok" and "N-25 in force" in r.detail
+
+
+def test_isolation_decided_yes_blocks_on_wrong_current_user(tmp_path):
+    c = _accepted_cfg(tmp_path)
+    c.getuser_fn = lambda: "someone-else"
+    r = M.check_isolation(c)
+    assert r.status == "block" and "not the configured swarm user" in r.detail
+
+
+def test_isolation_decided_yes_blocks_when_current_user_is_the_native(tmp_path):
+    c = cfg(tmp_path, getuser_fn=lambda: "abhisek", isolation_expected_user="abhisek",
+           isolation_native_user_fn=lambda: "abhisek",
+           isolation_access_fn=lambda path, mode: False)
+    _decide_n25(c, "Yes to all three")
+    r = M.check_isolation(c)
+    assert r.status == "block" and "native's own account" in r.detail
+
+
+def test_isolation_decided_yes_blocks_on_readable_credential_path(tmp_path):
+    c = _accepted_cfg(tmp_path, isolation_access_fn=lambda path, mode: mode == os.R_OK and "dbenv" in path)
+    r = M.check_isolation(c)
+    assert r.status == "block" and "readable by" in r.detail and "dbenv" in r.detail
+
+
+def test_isolation_decided_yes_blocks_on_writable_decisions_log(tmp_path):
+    c = _accepted_cfg(tmp_path)
+    c.isolation_access_fn = lambda path, mode: mode == os.W_OK and path == c.decisions_path
+    r = M.check_isolation(c)
+    assert r.status == "block" and "is writable by" in r.detail
+
+
+def test_isolation_decided_yes_blocks_on_missing_baseline(tmp_path):
+    c = _accepted_cfg(tmp_path)  # isolation_hash_fn returns "deadbeef" for everything, including
+    c.isolation_hash_fn = lambda path: None  # ...but here the baseline itself is unreadable
+    r = M.check_isolation(c)
+    assert r.status == "block" and "no settings baseline readable" in r.detail
+
+
+def test_isolation_decided_yes_blocks_on_settings_hash_mismatch(tmp_path):
+    c = _accepted_cfg(tmp_path)
+    calls = {"n": 0}
+
+    def hash_fn(path):
+        calls["n"] += 1
+        if path == c.isolation_settings_baseline_path:
+            return "baseline-file-hash"  # the baseline file itself is readable
+        return "actual-hash-does-not-match"
+
+    c.isolation_hash_fn = hash_fn
+    os.makedirs(os.path.dirname(c.isolation_settings_baseline_path), exist_ok=True)
+    with open(c.isolation_settings_baseline_path, "w", encoding="utf-8") as f:
+        json.dump({p: "expected-hash" for p in c.isolation_settings_paths}, f)
+    r = M.check_isolation(c)
+    assert r.status == "block" and "does not match its baseline hash" in r.detail
 
 
 # ---- decision_writers -------------------------------------------------------------------------
@@ -121,10 +288,13 @@ def _write_identity(path, **overrides):
         json.dump(identity, f)
 
 
-def test_builder_scope_ok_before_provisioning(tmp_path):
+def test_builder_scope_warns_before_provisioning(tmp_path):
+    """B2 (review pass 3): absent `builder_identity.json` must never read `ok` — that made E7.3 read
+    done while E7.2 (provisioning) was still open. It is an honest, open gap: `warn`."""
     c = cfg(tmp_path)
     r = M.check_builder_scope(c)
-    assert r.status == "ok" and "no builder identity" in r.detail
+    assert r.status == "warn"
+    assert "not provisioned" in r.detail and "E7.2" in r.detail
 
 
 def test_builder_scope_ok_when_preflight_matches_identity(tmp_path):
@@ -204,7 +374,8 @@ def test_builder_scope_blocks_on_non_json_preflight(tmp_path):
 def test_builder_scope_is_in_check_names_and_run_checks(tmp_path):
     assert "builder_scope" in M.CHECK_NAMES
     results = M.run_checks(cfg(tmp_path))
-    assert any(r.name == "builder_scope" and r.status == "ok" for r in results)
+    # No builder_identity.json in this fresh tmp_path home: warn (B2), never ok.
+    assert any(r.name == "builder_scope" and r.status == "warn" for r in results)
 
 
 # ---- run_tracker.sh (CODE-17) -------------------------------------------------------------------

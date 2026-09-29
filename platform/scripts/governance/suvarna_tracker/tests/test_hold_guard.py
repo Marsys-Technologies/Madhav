@@ -4,11 +4,16 @@ malformed input, and event emission — no real Claude Code hook invocation."""
 import io
 import json
 import os
+import subprocess
+import sys
 
 import pytest
 
 from suvarna_tracker import hold_guard as HG
 from suvarna_tracker.events import EventLog
+
+GOVERNANCE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+WRAPPER_PATH = os.path.join(GOVERNANCE_DIR, "suvarna_tracker", "hold_guard.sh")
 
 
 def _events(events_path):
@@ -222,3 +227,72 @@ def test_matched_dispatch_marker_returns_none_when_absent():
 
 def test_matched_dispatch_marker_returns_the_marker():
     assert HG.matched_dispatch_marker("run suvarna-build now") == "suvarna-build"
+
+
+# ---- hold_guard.sh: the S14 fail-closed wrapper (review pass 3) ---------------------------------
+#
+# Every subprocess below runs with cwd=/tmp (never the governance dir), so a "broken PYTHONPATH"
+# genuinely cannot resolve `suvarna_tracker` via `python3 -m`'s own cwd-on-sys.path behaviour — the
+# same trap a first version of this test tripped over.
+
+_BROKEN_PYTHONPATH = "/nonexistent/suvarna-broken-pythonpath"
+
+
+def _run_wrapper(payload: dict, home: str, pythonpath: str) -> subprocess.CompletedProcess:
+    env = {**os.environ, "PYTHONPATH": pythonpath, "SUVARNA_HOME": home}
+    return subprocess.run(["bash", WRAPPER_PATH], input=json.dumps(payload), text=True,
+                          capture_output=True, cwd="/tmp", env=env, timeout=15)
+
+
+def test_wrapper_exists_and_is_executable():
+    assert os.path.exists(WRAPPER_PATH)
+    assert os.access(WRAPPER_PATH, os.X_OK)
+
+
+def test_wrapper_passes_through_allow_with_working_pythonpath(tmp_path):
+    p = _run_wrapper({"tool_name": "Bash", "tool_input": {"command": "git status"}},
+                     str(tmp_path), GOVERNANCE_DIR)
+    assert p.returncode == 0
+
+
+def test_wrapper_passes_through_block_with_working_pythonpath(tmp_path):
+    os.makedirs(tmp_path / "run", exist_ok=True)
+    open(tmp_path / "run" / "SUVARNA_HOLD", "w").close()
+    p = _run_wrapper({"tool_name": "Agent", "tool_input": {}}, str(tmp_path), GOVERNANCE_DIR)
+    assert p.returncode == 2
+    assert "charter §8" in p.stderr
+
+
+def test_wrapper_fails_closed_for_agent_when_guard_cannot_load(tmp_path):
+    p = _run_wrapper({"tool_name": "Agent", "tool_input": {}}, str(tmp_path), _BROKEN_PYTHONPATH)
+    assert p.returncode == 2
+    assert "failing closed" in p.stderr
+
+
+@pytest.mark.parametrize("marker", ["suvarna-build", "suvarna_level_wave", "nikasha_certify",
+                                    "gh pr merge", "orchestrator", "--apply"])
+def test_wrapper_fails_closed_for_dispatch_like_bash_when_guard_cannot_load(tmp_path, marker):
+    p = _run_wrapper({"tool_name": "Bash", "tool_input": {"command": f"some command with {marker} in it"}},
+                     str(tmp_path), _BROKEN_PYTHONPATH)
+    assert p.returncode == 2
+    assert "failing closed" in p.stderr
+
+
+def test_wrapper_allows_non_dispatch_bash_when_guard_cannot_load(tmp_path):
+    p = _run_wrapper({"tool_name": "Bash", "tool_input": {"command": "git status"}},
+                     str(tmp_path), _BROKEN_PYTHONPATH)
+    assert p.returncode == 0
+    assert "allowing" in p.stderr
+
+
+def test_wrapper_allows_unknown_tool_when_guard_cannot_load(tmp_path):
+    p = _run_wrapper({"tool_name": "Read", "tool_input": {}}, str(tmp_path), _BROKEN_PYTHONPATH)
+    assert p.returncode == 0
+
+
+def test_wrapper_allows_malformed_stdin_when_guard_cannot_load(tmp_path):
+    """The independent fallback classifier must never itself crash or hang on bad stdin."""
+    env = {**os.environ, "PYTHONPATH": _BROKEN_PYTHONPATH, "SUVARNA_HOME": str(tmp_path)}
+    p = subprocess.run(["bash", WRAPPER_PATH], input="not json { at all", text=True,
+                       capture_output=True, cwd="/tmp", env=env, timeout=15)
+    assert p.returncode == 0

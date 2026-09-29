@@ -113,6 +113,86 @@ def test_template_allows_lane_launch_and_lane_branch_push():
     assert "Bash(git push origin suvarna/lane/*)" in allow
 
 
+# ---- B5 (review pass 3): no broad push allow remains; every push-deny spelling is present --------
+
+def test_template_no_broad_push_allow_remains():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(git push *)" not in allow
+    assert "Bash(git push)" not in allow
+    push_allows = [a for a in allow if a.startswith("Bash(git push")]
+    assert set(push_allows) == {"Bash(git push -u origin suvarna/lane/*)",
+                                "Bash(git push origin suvarna/lane/*)"}
+
+
+@pytest.mark.parametrize("deny_entry", [
+    "Bash(git push * +*)",
+    "Bash(git push +*)",
+    "Bash(git push *:main*)",
+    "Bash(git push * main)",
+    "Bash(git push * main *)",
+    "Bash(git push *HEAD:main*)",
+    "Bash(git push --force*)",
+    "Bash(git push * --force*)",
+    "Bash(git push -f*)",
+    "Bash(git push * -f*)",
+    "Bash(git push --mirror*)",
+    "Bash(git push --delete*)",
+    "Bash(git push * --delete*)",
+    "Bash(git push * :*)",
+])
+def test_template_denies_every_push_spelling(deny_entry):
+    deny = RS.load_template()["permissions"]["deny"]
+    assert deny_entry in deny
+
+
+# ---- B6 (review pass 3): no suvarna_tracker.* wildcard; only named safe modules ------------------
+
+def test_template_no_suvarna_tracker_wildcard_allow_remains():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(python3 -m suvarna_tracker.* *)" not in allow
+
+
+@pytest.mark.parametrize("safe_module", ["emit", "monitor", "hq_commit", "lane_launch", "events", "census_run"])
+def test_template_allows_each_named_safe_module(safe_module):
+    allow = RS.load_template()["permissions"]["allow"]
+    assert f"Bash(python3 -m suvarna_tracker.{safe_module} *)" in allow
+
+
+def test_template_never_allows_census_lock_directly():
+    """census_lock's own permission shape needs more than one trailing wildcard (`--wait * --emit
+    --actor * -- bash -c '...'`), which is not an expressible Claude Code Bash rule — so it is never
+    allowed at all; census_run is the one validated wrapper."""
+    allow = RS.load_template()["permissions"]["allow"]
+    assert not any("suvarna_tracker.census_lock" in a for a in allow)
+
+
+@pytest.mark.parametrize("denied_module", ["decide", "decisions", "runtime_settings"])
+def test_template_denies_decide_decisions_and_runtime_settings(denied_module):
+    deny = RS.load_template()["permissions"]["deny"]
+    assert f"Bash(python3 -m suvarna_tracker.{denied_module}*)" in deny
+
+
+# ---- B10 (review pass 3): the day-one analyst/builder commands are actually allowed --------------
+
+def test_template_allows_pg_dump_schema_only_and_custom_format_to_evidence():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(pg_dump --schema-only *)" in allow
+    assert "Bash(pg_dump -Fc * -f /Users/Dev/suvarna/evidence/*)" in allow
+
+
+def test_template_allows_governance_scripts_and_pytest():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(python3 platform/scripts/governance/*)" in allow
+    assert "Bash(python3 -m pytest *)" in allow
+
+
+def test_template_allows_suvarna_build_preflight_only():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(~/.config/suvarna/bin/suvarna-build --preflight*)" in allow
+    assert not any(a.startswith("Bash(~/.config/suvarna/bin/suvarna-build *)") for a in allow)
+    assert "Bash(~/.config/suvarna/bin/suvarna-build *)" not in allow
+
+
 def test_template_deny_entries_are_only_read_edit_bash_or_mcp_tool_forms():
     """Per the v2.1.239 finding, a Write(...)/Glob(...)/Grep(...)/MultiEdit(...) path rule is dead
     (matches nothing) — every deny entry is either a Read(...)/Edit(...) file rule, a Bash(...) rule,
@@ -130,9 +210,27 @@ def test_template_deny_entries_are_only_read_edit_bash_or_mcp_tool_forms():
 
 
 def test_template_hooks_pretooluse_runs_hold_guard():
+    """S14 (review pass 3): the hook now runs the hold_guard.sh wrapper (never the module
+    directly), from the hq worktree — never Strategic's own worktree, which the swarm user cannot
+    be relied on to read under N-25."""
     hooks = RS.load_template()["hooks"]["PreToolUse"]
     commands = [h["command"] for entry in hooks for h in entry["hooks"]]
-    assert any("suvarna_tracker.hold_guard" in c for c in commands)
+    assert any("hold_guard.sh" in c for c in commands)
+    assert any("/Users/Dev/suvarna/hq/" in c for c in commands)
+    assert not any("/Users/Dev/madhav-suvarna-plan/" in c for c in commands)
+
+
+def test_template_hooks_pretooluse_pythonpath_and_wrapper_are_both_hq(tmp_path):
+    """The PYTHONPATH the hook sets and the wrapper script it runs must agree on hq, or a session
+    started under this template could still resolve the module from Strategic's own worktree."""
+    hooks = RS.load_template()["hooks"]["PreToolUse"]
+    for entry in hooks:
+        for h in entry["hooks"]:
+            command = h["command"]
+            if "hold_guard" not in command:
+                continue
+            assert "PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance" in command
+            assert "/Users/Dev/suvarna/hq/platform/scripts/governance/suvarna_tracker/hold_guard.sh" in command
 
 
 # ---- write_settings / validate_target_path -------------------------------------------------------

@@ -6,7 +6,8 @@
       "permissions.allow/deny path rules for file tools only match on the canonical form Read(<glob>) or Edit(<glob>); Read(<glob>) governs Read/Glob/Grep/NotebookRead together, and Edit(<glob>) governs Edit/Write/MultiEdit/NotebookEdit together (confirmed via `claude --debug`: Write(<glob>), Glob(<glob>), MultiEdit(<glob>) and NotebookEdit(<glob>) are all logged as dead rules, 'not matched by file permission checks'). This template therefore never writes a Write(...) or Glob(...) path rule -- it would silently grant nothing.",
       "Bash(<prefix> *) matches a Bash command by prefix, with the space before '*' significant (Bash(git status*) is a different, looser match than Bash(git status *)); a chained command (a && b) appears to require each segment to independently match an allow rule.",
       "permissions.disableBypassPermissionsMode is included per the L.15 brief but its effect could NOT be confirmed in this install: no lint/validation message appeared for it, but the settings loader also does not warn on entirely invented keys (checked with a nonsense key), so absence of a warning is not confirmation. The real enforcement in this template is structural: defaultMode is 'dontAsk' (never 'bypassPermissions'), and the deny list separately refuses any Bash invocation that itself tries to pass --dangerously-skip-permissions or a bypassPermissions mode. See INTERIM_RUNTIME_v1_0.md for the full account.",
-      "CODE-21 (review pass 2, arch §2.4): this template also backs $SUVARNA_HOME/config/claude-settings.json (the N-25 settings file, runtime_settings.claude_settings_target_path) -- the deny rules below cover both targets. The psql allow rule is narrowed to the exact reader-credential invocation form (bash -c \"source ~/.config/suvarna/pgenv.sh && psql ...\", the shape detectors._psql and monitor._default_credential_query_fn both use) rather than a bare Bash(psql *), which would also allow psql against any other connection string. Only Read(<glob>)/Edit(<glob>) file-rule forms are ever used, per the v2.1.239 finding above; mcp__<server>__<tool> deny entries are tool-name rules, not file-glob rules, so that finding does not apply to them."
+      "CODE-21 (review pass 2, arch §2.4): this template also backs $SUVARNA_HOME/config/claude-settings.json (the N-25 settings file, runtime_settings.claude_settings_target_path) -- the deny rules below cover both targets. The psql allow rule is narrowed to the exact reader-credential invocation form (bash -c \"source ~/.config/suvarna/pgenv.sh && psql ...\", the shape detectors._psql and monitor._default_credential_query_fn both use) rather than a bare Bash(psql *), which would also allow psql against any other connection string. Only Read(<glob>)/Edit(<glob>) file-rule forms are ever used, per the v2.1.239 finding above; mcp__<server>__<tool> deny entries are tool-name rules, not file-glob rules, so that finding does not apply to them.",
+      "Review pass 3 (B1/B2/B5/B6/B7/B10/S14, CODE-22/23/25/26/27/28): the psql allow rule switches from double to single quotes to match every role document (ROLE_COMMON:85, ROLE_ANALYST:50, ROLE_BUILD_OPERATOR:95) -- the two forms are different Bash rules under v2.1.239's prefix-match semantics, so the double-quoted form the swarm actually runs under never matched the documents' single-quoted form. The broad Bash(git push *) allow is dropped for two exact lane-push forms; Bash(python3 -m suvarna_tracker.* *) is dropped for five named safe modules (emit, monitor, hq_commit, lane_launch, events) plus census_run -- decide/decisions/runtime_settings are explicitly denied instead of merely omitted, since an omission does not shadow a still-present wildcard the way an explicit deny does. census_lock is not allowed at all: its own permission spec (`--wait * --emit --actor * -- bash -c '... asset_census.py *)`) has more than one trailing wildcard, which is not an expressible Claude Code Bash rule (rules are one fixed prefix plus a single trailing '*', never a multi-wildcard glob) -- census_run.py builds the one validated invocation itself instead. Bash(pg_dump ...), Bash(python3 platform/scripts/governance/*) and Bash(~/.config/suvarna/bin/suvarna-build --preflight*) are added so the documented analyst/builder commands are not refused on day one (B10); suvarna-build is allowed for --preflight only, never a bare invocation -- dispatch stays gated by the hold-guard hook. The PreToolUse hook now runs a wrapper script (hold_guard.sh) from the hq worktree via PYTHONPATH, so a broken import fails closed for Agent and dispatch-like Bash calls instead of exiting a non-2 code the harness reads as 'no objection' (S14)."
     ]
   },
   "permissions": {
@@ -40,17 +41,25 @@
       "Bash(git commit -- *)",
       "Bash(git fetch *)",
       "Bash(git merge --no-edit *)",
-      "Bash(git push *)",
+      "Bash(git push -u origin suvarna/lane/*)",
+      "Bash(git push origin suvarna/lane/*)",
       "Bash(gh pr create *)",
       "Bash(gh pr view *)",
       "Bash(gh pr list *)",
       "Bash(gh pr checks *)",
-      "Bash(python3 -m suvarna_tracker.* *)",
+      "Bash(python3 -m suvarna_tracker.emit *)",
+      "Bash(python3 -m suvarna_tracker.monitor *)",
+      "Bash(python3 -m suvarna_tracker.hq_commit *)",
       "Bash(python3 -m suvarna_tracker.lane_launch *)",
+      "Bash(python3 -m suvarna_tracker.events *)",
+      "Bash(python3 -m suvarna_tracker.census_run *)",
       "Bash(python3 -m pytest *)",
+      "Bash(python3 platform/scripts/governance/*)",
       "Bash(source ~/.config/suvarna/pgenv.sh)",
-      "Bash(bash -c \"source ~/.config/suvarna/pgenv.sh && psql *)",
-      "Bash(git push origin suvarna/lane/*)",
+      "Bash(bash -c 'source ~/.config/suvarna/pgenv.sh && psql *)",
+      "Bash(pg_dump --schema-only *)",
+      "Bash(pg_dump -Fc * -f /Users/Dev/suvarna/evidence/*)",
+      "Bash(~/.config/suvarna/bin/suvarna-build --preflight*)",
       "Bash(npx --no-install tsx *)"
     ],
     "deny": [
@@ -70,9 +79,20 @@
       "Bash(printenv*)",
       "Bash(env)",
       "Bash(set -x*)",
-      "Bash(git push * main*)",
+      "Bash(git push * +*)",
+      "Bash(git push +*)",
+      "Bash(git push *:main*)",
+      "Bash(git push * main)",
+      "Bash(git push * main *)",
+      "Bash(git push *HEAD:main*)",
       "Bash(git push --force*)",
+      "Bash(git push * --force*)",
       "Bash(git push -f*)",
+      "Bash(git push * -f*)",
+      "Bash(git push --mirror*)",
+      "Bash(git push --delete*)",
+      "Bash(git push * --delete*)",
+      "Bash(git push * :*)",
       "Bash(git rebase*)",
       "Bash(git commit --amend*)",
       "Bash(git add -A*)",
@@ -85,6 +105,9 @@
       "Bash(claude *)",
       "Bash(* --dangerously-skip-permissions*)",
       "Bash(claude * bypassPermissions*)",
+      "Bash(python3 -m suvarna_tracker.decide*)",
+      "Bash(python3 -m suvarna_tracker.decisions*)",
+      "Bash(python3 -m suvarna_tracker.runtime_settings*)",
       "mcp__github__merge_pull_request",
       "mcp__postgres__*"
     ],
@@ -97,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna python3 -m suvarna_tracker.hold_guard",
+            "command": "PYTHONPATH=/Users/Dev/suvarna/hq/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna bash /Users/Dev/suvarna/hq/platform/scripts/governance/suvarna_tracker/hold_guard.sh",
             "timeout": 5
           }
         ]

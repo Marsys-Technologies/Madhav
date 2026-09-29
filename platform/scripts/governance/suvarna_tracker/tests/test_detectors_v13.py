@@ -152,6 +152,7 @@ def make_scorecard_repo(tmp_path, name, tests_obj, generator_content="generator 
     root = tmp_path / name
     root.mkdir()
     _git(root, "init", "-q")
+    (root / generator_path).parent.mkdir(parents=True, exist_ok=True)
     (root / generator_path).write_text(generator_content)
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "generator")
@@ -425,6 +426,46 @@ def test_scorecard_pass_inspector_commit_not_ancestor_is_pending_not_done(tmp_pa
     r = wait_result(d, spec)
     assert r.status != "done"
     assert "not an ancestor" in r.detail
+
+
+def test_scorecard_pass_pinned_generator_mismatch_is_pending_not_done(tmp_path):
+    """B7 (review pass 3): the scorecard names generator.py and hashes it correctly, but the plan
+    item's spec pins a *different* generator path — the hash check alone cannot catch this (a
+    scorecard trivially satisfies it by naming any committed file with that file's own real hash),
+    so the pin comparison must independently catch the mismatch."""
+    repo = make_scorecard_repo(tmp_path, "repo_sc_pin_mismatch", {"T1": {"verdict": "PASS"}})
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"],
+            "generator": "platform/scripts/governance/nikasha_scorecard.py"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done"
+    assert "pinned generator" in r.detail
+
+
+def test_scorecard_pass_pinned_generator_match_is_done(tmp_path):
+    """The mirror case: the scorecard's own `generator` matches the plan's pin exactly, and every
+    other check passes — still `done`."""
+    repo = make_scorecard_repo(tmp_path, "repo_sc_pin_match", {"T1": {"verdict": "PASS"}},
+                               generator_path="platform/scripts/governance/nikasha_scorecard.py")
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"],
+            "generator": "platform/scripts/governance/nikasha_scorecard.py"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_scorecard_pass_no_pin_in_spec_keeps_old_unpinned_behaviour(tmp_path):
+    """A spec with no `generator` key is unaffected by B7 — whichever generator the scorecard names
+    itself is still hash-checked, exactly as before."""
+    repo = make_scorecard_repo(tmp_path, "repo_sc_no_pin", {"T1": {"verdict": "PASS"}},
+                               generator_path="some/other/generator.py")
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
 
 
 def test_scorecard_pass_failing_test_is_running_not_done(tmp_path):
@@ -725,6 +766,21 @@ def test_monitor_check_ok_reads_the_named_check(nik, tmp_path, monkeypatch):
     assert r_block.status == "blocked"
 
 
+def test_monitor_check_ok_warn_status_is_pending_never_done(nik, tmp_path, monkeypatch):
+    """B2 (review pass 3): only `ok` ever reads `done` here. A `warn` (e.g. `builder_scope` before
+    E7.2 provisioning, monitor.py's own new behaviour) must read `pending`, never `done` on the
+    strength of merely not being `block`."""
+    report = json.dumps({"overall": "warn", "checks": [
+        {"name": "builder_scope", "status": "warn", "detail": "builder identity not provisioned (E7.2)"},
+    ]})
+    monkeypatch.setattr(D, "_run", lambda *a, **k: (0, report))
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "monitor_check_ok", "check": "builder_scope"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and r.status != "done"
+
+
 def test_monitor_check_ok_unknown_check_name_is_error(nik, tmp_path, monkeypatch):
     report = json.dumps({"overall": "ok", "checks": [{"name": "db_proxy", "status": "ok", "detail": "up"}]})
     monkeypatch.setattr(D, "_run", lambda *a, **k: (0, report))
@@ -910,7 +966,8 @@ def test_deployed_contains_missing_preflight_script_is_pending_not_error(nik, tm
 
     def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
         if cmd[:3] == ["gh", "pr", "view"]:
-            return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40}})
+            return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40},
+                                  "headRefName": "suvarna/land/B.W0-fold-1"})
         raise FileNotFoundError(f"[Errno 2] No such file or directory: {cmd[0]!r}")
 
     monkeypatch.setattr(D, "_run", fake)
@@ -931,7 +988,8 @@ def test_wave_deployed_missing_preflight_script_is_pending_not_error(tmp_path, m
 
     def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
         if cmd[:3] == ["gh", "pr", "view"]:
-            return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40}})
+            return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40},
+                                  "headRefName": "suvarna/land/B.W0-fold-1"})
         raise FileNotFoundError(f"[Errno 2] No such file or directory: {cmd[0]!r}")
 
     monkeypatch.setattr(D, "_run", fake)
@@ -1004,7 +1062,8 @@ def test_wave_deployed_done_when_landing_pr_merged_and_deployed(tmp_path, monkey
     merge_sha, deployed_sha = shas[0], shas[1]
     build_cmd = D._suvarna_build_cmd()
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha}})),
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha},
+                                                                       "headRefName": "suvarna/land/B.W0-fold-1"})),
         (lambda cmd: cmd[:2] == [build_cmd, "--preflight"], 0,
          json.dumps({"job_image_tag": f"gcr.io/proj/engine:build-{deployed_sha}"})),
     ])
@@ -1025,7 +1084,8 @@ def test_wave_deployed_running_when_merged_but_not_yet_a_descendant(tmp_path, mo
     merge_sha, older_sha = shas[1], shas[0]  # merge_sha (c1) is not an ancestor of c0
     build_cmd = D._suvarna_build_cmd()
     wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha}})),
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha},
+                                                                       "headRefName": "suvarna/land/B.W1-fold-1"})),
         (lambda cmd: cmd[:2] == [build_cmd, "--preflight"], 0,
          json.dumps({"job_image_tag": f"gcr.io/proj/engine:build-{older_sha}"})),
     ])
@@ -1034,6 +1094,65 @@ def test_wave_deployed_running_when_merged_but_not_yet_a_descendant(tmp_path, mo
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "running" and r.progress == 0.75
+
+
+# ---- wave_deployed: the head ref must be a Suvarṇa landing branch for this wave (review pass 3,
+# below-blocker) --------------------------------------------------------------------------------
+
+def test_wave_deployed_blocks_on_head_ref_from_a_different_wave(tmp_path, monkeypatch):
+    nik = make_nik(tmp_path, name="nik_wd_wrong_wave")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 90}))
+    repo, shas = make_commit_chain(tmp_path, "repo_wd_wrong_wave", n=1)
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "headRefName": "suvarna/land/B.W1-fold-1"})),
+    ])
+    d = dets(nik, repo, home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked"
+    assert "not a Suvarṇa landing branch" in r.detail and "B.W1-fold-1" in r.detail
+
+
+def test_wave_deployed_blocks_on_head_ref_from_a_non_landing_branch(tmp_path, monkeypatch):
+    nik = make_nik(tmp_path, name="nik_wd_not_landing")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 91}))
+    repo, shas = make_commit_chain(tmp_path, "repo_wd_not_landing", n=1)
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}, "headRefName": "some-random-branch"})),
+    ])
+    d = dets(nik, repo, home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "not a Suvarṇa landing branch" in r.detail
+
+
+def test_wave_deployed_blocks_on_missing_head_ref(tmp_path, monkeypatch):
+    """A merged PR with no `headRefName` at all in the response must never be silently trusted."""
+    nik = make_nik(tmp_path, name="nik_wd_missing_head_ref")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 92}))
+    repo, shas = make_commit_chain(tmp_path, "repo_wd_missing_head_ref", n=1)
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0,
+         json.dumps({"state": "MERGED", "mergeCommit": {"oid": shas[0]}})),
+    ])
+    d = dets(nik, repo, home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "not a Suvarṇa landing branch" in r.detail
 
 
 # ============================================================================================
@@ -1513,9 +1632,12 @@ def test_fk_no_cascade_no_rows_is_done(nik, tmp_path, monkeypatch):
 
 
 def test_fk_no_cascade_rows_found_is_pending_listing_them(nik, tmp_path, monkeypatch):
+    """B7/F3.FK (review pass 3): the query now also selects `confdeltype`, so a real cascade row
+    carries a third field naming it."""
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
-    rows = "kala_convergence\tkala_convergence_signal_id_fkey\nkala_darshana\tkala_darshana_signal_id_fkey\n"
+    rows = ("kala_convergence\tkala_convergence_signal_id_fkey\tc\n"
+           "kala_darshana\tkala_darshana_signal_id_fkey\tc\n")
     wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
     spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
@@ -1530,6 +1652,60 @@ def test_fk_no_cascade_without_credential_file_is_error(nik, tmp_path):
     spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
     d.poll([spec])
     assert wait_result(d, spec).status == "error"
+
+
+# ---- fk_no_cascade: restricting (NO ACTION/RESTRICT) foreign keys (review pass 3, below-blocker) --
+
+def test_fk_no_cascade_restricting_fk_is_blocked(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_convergence\tkala_convergence_signal_id_fkey\tr\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked"
+    assert "restrict would refuse the MSR rebuild" in r.detail and "kala_convergence" in r.detail
+
+
+def test_fk_no_cascade_no_action_fk_is_blocked(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_darshana\tkala_darshana_signal_id_fkey\ta\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "restrict would refuse the MSR rebuild" in r.detail
+
+
+@pytest.mark.parametrize("allow", ["set_null", "no_fk"])
+def test_fk_no_cascade_restricting_fk_allowed_by_params_is_done(nik, tmp_path, monkeypatch, allow):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_convergence\tkala_convergence_signal_id_fkey\tr\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "allow": allow}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+    assert "allowed by the item's own params" in r.detail
+
+
+def test_fk_no_cascade_restricting_fk_not_allowed_by_unrelated_param_value_is_blocked(nik, tmp_path, monkeypatch):
+    """`allow` must be exactly `set_null` or `no_fk` — any other value is not the escape."""
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_convergence\tkala_convergence_signal_id_fkey\tr\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals", "allow": "restrict"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked"
 
 
 # ============================================================================================
@@ -1680,6 +1856,111 @@ def test_main_protected_ruleset_rule_with_zero_required_reviews_is_pending(nik, 
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "pending"
+
+
+# ---- main_protected: bypass actors, checked via the ruleset detail endpoint (item 8) -----------
+
+def test_main_protected_ruleset_with_no_ruleset_id_is_done_unbypass_unchecked(nik, tmp_path, monkeypatch):
+    """No `ruleset_id` on the rule (the shape every prior test used): bypass cannot be checked this
+    way, so this stays `done`, unchanged — the only regression guard here is that adding the bypass
+    check must not turn an already-passing case into a failure."""
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_main_protected_ruleset_id_with_no_bypass_actors_is_done(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0, json.dumps({"bypass_actors": []})),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_main_protected_ruleset_id_with_only_the_native_as_bypass_is_done(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
+         json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 7}]})),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/native", 0, json.dumps({"id": 7})),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_main_protected_ruleset_id_with_an_extra_user_bypass_is_blocked(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
+         json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 7},
+                                       {"actor_type": "User", "actor_id": 99}]})),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/native", 0, json.dumps({"id": 7})),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "bypass actor(s) beyond native" in r.detail and "99" in r.detail
+
+
+def test_main_protected_ruleset_id_with_a_non_user_bypass_is_blocked(nik, tmp_path, monkeypatch):
+    """A Team/Integration/OrganizationAdmin/RepositoryRole bypass actor is never the native's own
+    login, whatever its id — it is always outside `bypass_only`."""
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
+         json.dumps({"bypass_actors": [{"actor_type": "OrganizationAdmin", "actor_id": 1}]})),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked" and "bypass actor(s) beyond native" in r.detail
+
+
+def test_main_protected_ruleset_detail_403_is_error(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 1, "gh: HTTP 403: Resource not accessible"),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
+
+
+def test_main_protected_users_lookup_failure_is_error(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}, "ruleset_id": 42}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rulesets/42" in cmd[2], 0,
+         json.dumps({"bypass_actors": [{"actor_type": "User", "actor_id": 7}]})),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and cmd[2] == "users/native", 1, "gh: HTTP 404: Not Found"),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
 
 
 # ============================================================================================
