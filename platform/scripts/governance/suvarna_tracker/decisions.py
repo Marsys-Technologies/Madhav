@@ -17,10 +17,28 @@ Design rules:
   file (`<path>.lock`) so concurrent writers never interleave or race a "read-then-write" gap.
 - **Every field required**: `id`, `state` (decided|delegated|superseded|revoked), `source` (who said
   it, where, when — at least 12 characters, never a bare "native"), `detail` (what was decided),
-  `writer` (strategic-suvarna|steward only — the two roles authorized to write this log).
+  `writer` (strategic-suvarna|steward only, per `validate()` — see CODE-14 below for the narrower
+  rule this CLI enforces on top of that).
 - **Reader tolerates malformed lines** (counts them, never raises) and resolves "latest wins per
   id" — a later line for the same id supersedes an earlier one, so a correction is a new line, not
   an edit of the old one (never rewrite a written line).
+
+CODE-14 (S2, review pass 2): this CLI's own append path (`--id/--state/--source/--detail/--writer`,
+the live "record a decision" flow — never `--seed-from`, a one-off historical migration, or
+`--mirror-to`, a read-only copy) accepts only `--writer strategic-suvarna`; `--writer steward` is
+refused here even though `validate()` still recognises it as a structurally valid historical value
+(a line seeded from the old log, or read back from disk, may legitimately carry it). Only Strategic
+Suvarṇa — the session the native is present in — may record a decision going forward (S2; charter
+§2, §7.5, P14; the Steward carries answers, never records a ruling). This CLI deliberately does
+**not** add a TTY confirmation prompt: the Strategic Suvarṇa session that calls it runs non-
+interactively while recording the native's decisions in real time, so a TTY check would simply
+refuse a legitimate call. Forgery is prevented at the OS level instead — file ownership under the
+separate `suvarna` user (N-25) makes the decisions log unwritable to the swarm's own account — and
+the Monitor's `isolation` check (CODE-12) is what continuously verifies that boundary holds; until
+N-25 lands, `isolation` reports that gap explicitly (`warn`, "N-25 not implemented") rather than
+fabricating a pass, and the Monitor's separate `decision_writers` check (CODE-13) is the independent
+backstop that blocks if a `decided` line ever appears in the log with a writer other than
+`strategic-suvarna` regardless of how it got there.
 """
 from __future__ import annotations
 
@@ -38,6 +56,11 @@ from suvarna_tracker.events import now_iso  # noqa: E402
 STATES = {"decided", "delegated", "superseded", "revoked"}
 WRITERS = {"strategic-suvarna", "steward"}
 MIN_SOURCE_LEN = 12
+
+# CODE-14 (S2): the only writer this CLI's live append path accepts, going forward. `WRITERS`
+# (above) stays the broader set `validate()` still recognises as structurally well-formed — a
+# record seeded from the old log, or any record already on disk, may legitimately carry "steward".
+CLI_ALLOWED_WRITER = "strategic-suvarna"
 
 SCHEMA_LINE = {
     "_schema": "suvarna.decisions.v1",
@@ -221,6 +244,14 @@ def main(argv=None) -> int:
     missing = [name for name, v in required.items() if not v]
     if missing:
         print(f"rejected: missing required arguments: {', '.join(missing)}", file=sys.stderr)
+        return 2
+
+    # CODE-14 (S2): the live append path accepts only strategic-suvarna. No TTY confirmation — see
+    # the module docstring for why (this session runs non-interactively; forgery is prevented by
+    # OS-level file ownership under N-25, verified continuously by the Monitor's `isolation` check).
+    if a.writer != CLI_ALLOWED_WRITER:
+        print(f"rejected: this CLI only accepts --writer {CLI_ALLOWED_WRITER!r} (CODE-14); "
+              f"see the module docstring", file=sys.stderr)
         return 2
 
     rec = {"id": a.id, "state": a.state, "source": a.source, "detail": a.detail, "writer": a.writer}

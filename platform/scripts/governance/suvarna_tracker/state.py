@@ -74,13 +74,18 @@ def decision_log_status(dec_id: str, decisions: dict | None) -> tuple[str, dict 
     return rec.get("state", "none"), rec
 
 
-ALLOWED_DECISION_WRITERS = {"steward", "strategic-suvarna"}
+# CODE-14 (S2, review pass 2): narrowed to the one role authorized to write the decisions log going
+# forward — only Strategic Suvarṇa, native present (charter §2, §7.5, P14); the Steward carries
+# answers, never records a ruling. A `decided`/`delegated` decision *event* from "steward" now
+# surfaces the same warning as any other unexpected actor.
+ALLOWED_DECISION_WRITERS = {"strategic-suvarna"}
 
 
 def decision_event_warnings(events: list[dict]) -> list[str]:
-    """Decision events from actors other than the two roles authorized to write the decisions log
-    (Fix 2) — these events never drive a gate, but are worth surfacing as a health warning since an
-    unexpected actor emitting one usually means a misconfigured writer somewhere."""
+    """Decision events from an actor other than the one role authorized to write the decisions log
+    (Fix 2; narrowed by CODE-14) — these events never drive a gate, but are worth surfacing as a
+    health warning since an unexpected actor emitting one usually means a misconfigured writer
+    somewhere."""
     out = []
     for e in events:
         if (e.get("kind") == "decision" and e.get("state") in ("decided", "delegated")

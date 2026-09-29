@@ -5,7 +5,8 @@
     "findings_v2_1_239": [
       "permissions.allow/deny path rules for file tools only match on the canonical form Read(<glob>) or Edit(<glob>); Read(<glob>) governs Read/Glob/Grep/NotebookRead together, and Edit(<glob>) governs Edit/Write/MultiEdit/NotebookEdit together (confirmed via `claude --debug`: Write(<glob>), Glob(<glob>), MultiEdit(<glob>) and NotebookEdit(<glob>) are all logged as dead rules, 'not matched by file permission checks'). This template therefore never writes a Write(...) or Glob(...) path rule -- it would silently grant nothing.",
       "Bash(<prefix> *) matches a Bash command by prefix, with the space before '*' significant (Bash(git status*) is a different, looser match than Bash(git status *)); a chained command (a && b) appears to require each segment to independently match an allow rule.",
-      "permissions.disableBypassPermissionsMode is included per the L.15 brief but its effect could NOT be confirmed in this install: no lint/validation message appeared for it, but the settings loader also does not warn on entirely invented keys (checked with a nonsense key), so absence of a warning is not confirmation. The real enforcement in this template is structural: defaultMode is 'dontAsk' (never 'bypassPermissions'), and the deny list separately refuses any Bash invocation that itself tries to pass --dangerously-skip-permissions or a bypassPermissions mode. See INTERIM_RUNTIME_v1_0.md for the full account."
+      "permissions.disableBypassPermissionsMode is included per the L.15 brief but its effect could NOT be confirmed in this install: no lint/validation message appeared for it, but the settings loader also does not warn on entirely invented keys (checked with a nonsense key), so absence of a warning is not confirmation. The real enforcement in this template is structural: defaultMode is 'dontAsk' (never 'bypassPermissions'), and the deny list separately refuses any Bash invocation that itself tries to pass --dangerously-skip-permissions or a bypassPermissions mode. See INTERIM_RUNTIME_v1_0.md for the full account.",
+      "CODE-21 (review pass 2, arch §2.4): this template also backs $SUVARNA_HOME/config/claude-settings.json (the N-25 settings file, runtime_settings.claude_settings_target_path) -- the deny rules below cover both targets. The psql allow rule is narrowed to the exact reader-credential invocation form (bash -c \"source ~/.config/suvarna/pgenv.sh && psql ...\", the shape detectors._psql and monitor._default_credential_query_fn both use) rather than a bare Bash(psql *), which would also allow psql against any other connection string. Only Read(<glob>)/Edit(<glob>) file-rule forms are ever used, per the v2.1.239 finding above; mcp__<server>__<tool> deny entries are tool-name rules, not file-glob rules, so that finding does not apply to them."
     ]
   },
   "permissions": {
@@ -45,9 +46,11 @@
       "Bash(gh pr list *)",
       "Bash(gh pr checks *)",
       "Bash(python3 -m suvarna_tracker.* *)",
+      "Bash(python3 -m suvarna_tracker.lane_launch *)",
       "Bash(python3 -m pytest *)",
       "Bash(source ~/.config/suvarna/pgenv.sh)",
-      "Bash(psql *)",
+      "Bash(bash -c \"source ~/.config/suvarna/pgenv.sh && psql *)",
+      "Bash(git push origin suvarna/lane/*)",
       "Bash(npx --no-install tsx *)"
     ],
     "deny": [
@@ -55,7 +58,15 @@
       "Edit(/Users/Dev/.config/**)",
       "Read(/Users/Dev/.codex/**)",
       "Edit(/Users/Dev/.codex/**)",
+      "Read(/Users/Dev/madhav-l3/dbenv*)",
+      "Read(**/.env*)",
+      "Edit(/Users/Dev/suvarna/config/**)",
+      "Edit(/Users/Dev/suvarna/run/DECISIONS.jsonl)",
       "Bash(cat ~/.config/*)",
+      "Bash(cat /Users/Dev/madhav-l3/dbenv*)",
+      "Bash(source /Users/Dev/madhav-l3/dbenv*)",
+      "Bash(cat **/.env*)",
+      "Bash(source **/.env*)",
       "Bash(printenv*)",
       "Bash(env)",
       "Bash(set -x*)",
@@ -68,10 +79,14 @@
       "Bash(git add .*)",
       "Bash(git stash*)",
       "Bash(gh pr merge*)",
+      "Bash(gh api*)",
       "Bash(gcloud *)",
       "Bash(rm -rf *)",
+      "Bash(claude *)",
       "Bash(* --dangerously-skip-permissions*)",
-      "Bash(claude * bypassPermissions*)"
+      "Bash(claude * bypassPermissions*)",
+      "mcp__github__merge_pull_request",
+      "mcp__postgres__*"
     ],
     "ask": []
   },

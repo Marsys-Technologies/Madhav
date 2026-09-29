@@ -2,13 +2,16 @@
 
     python -m suvarna_tracker.monitor [--once | --watch SECONDS] [--emit] [--repair] [--notify] [--json]
 
-Nine checks decide whether the environment the campaign runs in is sound: the DB proxy port, the
+Twelve checks decide whether the environment the campaign runs in is sound: the DB proxy port, the
 read-only credential file's permissions, whether the credential can actually write (review #16 —
 permissions alone don't prove the DB role itself is read-only), the laptop's power state, whether
-sleep is prevented, the hold switch, free disk space, the tracker's own health endpoint, and (L.15)
-whether either interim runtime session's Conductor is still heartbeating. Each returns ``ok`` /
-``warn`` / ``block``; the overall status is the worst of the nine, and the process exit code mirrors
-it (0 / 1 / 2) so this doubles as a CI-style gate.
+sleep is prevented, the hold switch, free disk space, the tracker's own health endpoint, whether
+either interim runtime session's Conductor is still heartbeating (L.15), whether the swarm is
+running isolated from the native's own account (``isolation``, CODE-12), whether the decisions log
+carries a line written by anyone other than Strategic Suvarṇa (``decision_writers``, CODE-13), and
+whether the builder's own authenticated scope matches its provisioning record (``builder_scope``,
+CODE-15). Each returns ``ok`` / ``warn`` / ``block``; the overall status is the worst of the twelve,
+and the process exit code mirrors it (0 / 1 / 2) so this doubles as a CI-style gate.
 
 Design rules:
 - **Never fabricate a pass.** A check that cannot measure reports ``warn`` with the reason, never
@@ -30,6 +33,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import fnmatch
+import getpass
 import json
 import os
 import shlex
@@ -52,7 +56,10 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     __package__ = "suvarna_tracker"
 
+from suvarna_tracker.decisions import default_path as _decisions_default_path  # noqa: E402
+from suvarna_tracker.decisions import load_decisions  # noqa: E402
 from suvarna_tracker.detectors import _run as _det_run  # noqa: E402
+from suvarna_tracker.detectors import _suvarna_build_cmd as _det_suvarna_build_cmd  # noqa: E402
 from suvarna_tracker.detectors import port_open as _det_port_open  # noqa: E402
 from suvarna_tracker.detectors import power_source as _det_power_source  # noqa: E402
 from suvarna_tracker.events import append, now_iso  # noqa: E402
@@ -60,8 +67,22 @@ from suvarna_tracker.events import append, now_iso  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 CHECK_NAMES = ("db_proxy", "credential", "credential_readonly", "power", "sleep_prevented", "hold", "disk",
-               "tracker", "conductor_heartbeat")
+               "tracker", "conductor_heartbeat", "isolation", "decision_writers", "builder_scope")
 STATUS_RANK = {"ok": 0, "warn": 1, "block": 2}
+
+# CODE-13: the only writer a `decided` decisions-log line may carry (S2 — the Strategic Suvarṇa
+# session, native present; a steward or any other actor's `decided` line is a conflict, not a
+# second source of truth).
+DECISIONS_ALLOWED_WRITER = "strategic-suvarna"
+
+# CODE-15: the chart this builder identity is ever provisioned against (CLAUDE.md §B — canonical
+# chart_id).
+BUILDER_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+# CODE-12: until N-25 (arch §2.4) actually stands up the separate macOS user, the expected user is
+# configurable so the check's shape is ready the day it lands, without ever fabricating a pass in
+# the meantime — see `check_isolation`.
+ISOLATION_EXPECTED_USER_ENV = "SUVARNA_ISOLATION_EXPECTED_USER"
 
 # L.15: default staleness threshold for the conductor_heartbeat check (arch §5.1's heartbeat-per-pass
 # contract; three missed loop intervals is the watchdog's own relaunch threshold, arch §5.5 — a wider
@@ -171,12 +192,26 @@ class Config:
     conductor_stale_min: int = DEFAULT_CONDUCTOR_STALE_MIN
     now_fn: Callable[[], "dt.datetime"] | None = None
     notify_fn: Callable[[str], None] | None = None
+    # CODE-13: decisions log path (default mirrors decisions.default_path()'s own env/home rule).
+    decisions_path: str = ""
+    # CODE-12: expected user under N-25, and the injectable "who am I" function (real default:
+    # getpass.getuser). None = read ISOLATION_EXPECTED_USER_ENV at check time.
+    isolation_expected_user: str | None = None
+    getuser_fn: Callable[[], str] | None = None
+    # CODE-15: where the native's E7.2 provisioning record lives, and the full path to
+    # `suvarna-build` (default mirrors detectors._suvarna_build_cmd()'s own env/default rule).
+    builder_identity_path: str = ""
+    suvarna_build_cmd: str = ""
 
     def __post_init__(self) -> None:
         self.run_dir = self.run_dir or os.path.join(self.home, "run")
         self.hold_path = self.hold_path or os.path.join(self.run_dir, "SUVARNA_HOLD")
         self.state_path = self.state_path or os.path.join(self.run_dir, "monitor_state.json")
         self.events_path = self.events_path or os.path.join(self.run_dir, "EVENTS.jsonl")
+        self.decisions_path = self.decisions_path or os.environ.get("SUVARNA_DECISIONS") \
+            or os.path.join(self.run_dir, "DECISIONS.jsonl")
+        self.builder_identity_path = self.builder_identity_path or os.path.join(self.run_dir, "builder_identity.json")
+        self.suvarna_build_cmd = self.suvarna_build_cmd or _det_suvarna_build_cmd()
         self.port_open_fn = self.port_open_fn or _det_port_open
         self.power_source_fn = self.power_source_fn or _det_power_source
         self.run_fn = self.run_fn or _default_run_fn
@@ -186,6 +221,7 @@ class Config:
         self.credential_query_fn = self.credential_query_fn or _default_credential_query_fn
         self.now_fn = self.now_fn or (lambda: dt.datetime.now(dt.timezone.utc))
         self.notify_fn = self.notify_fn or _default_notify
+        self.getuser_fn = self.getuser_fn or getpass.getuser
 
     @property
     def tracker_stop_path(self) -> str:
@@ -655,6 +691,103 @@ def check_conductor_heartbeat(cfg: Config) -> CheckResult:
     return CheckResult(name, "ok", f"latest conductor heartbeat is {age_min:.0f} min old")
 
 
+def check_isolation(cfg: Config) -> CheckResult:
+    """CODE-12 (S1, L.16a, arch §2.4): the isolation gate — a separate macOS user (N-25), unreadable
+    credential/admin paths, a decisions log the swarm cannot write, and settings-file hashes matched
+    against a native-recorded baseline. **N-25 is not yet implemented**: there is no separate user,
+    no recorded baseline, nothing to compare. Until it lands this check can only ever ``warn`` — it
+    must never fabricate ``ok`` (nothing exists yet to verify) and must never ``block`` (that would
+    make today's single-user environment permanently undispatchable for a gate it cannot yet satisfy;
+    CLAUDE.md §N.8 — a signal without the check it claims is null, not green, but here it is also not
+    a reason to stop). The expected user is configurable (`Config.isolation_expected_user`, else
+    ``SUVARNA_ISOLATION_EXPECTED_USER``, else the current user) so the check's shape — and its
+    detail — is ready the day N-25 actually stands up the separate account."""
+    current_user = cfg.getuser_fn() if cfg.getuser_fn else getpass.getuser()
+    expected_user = cfg.isolation_expected_user or os.environ.get(ISOLATION_EXPECTED_USER_ENV) or current_user
+    return CheckResult("isolation", "warn",
+                       f"N-25 not implemented: swarm runs as the native's user ({current_user!r}); "
+                       f"expected user under N-25: {expected_user!r}")
+
+
+def check_decision_writers(cfg: Config) -> CheckResult:
+    """CODE-13 (S2): any `decided` line in the decisions log whose `writer` is not
+    `strategic-suvarna` blocks — the log is the one place a native ruling is recorded, and a line
+    written by anyone else is exactly the forgery N-25/P14 exist to prevent."""
+    log = load_decisions(cfg.decisions_path)
+    bad = sorted(rec_id for rec_id, rec in log["latest"].items()
+                if rec.get("state") == "decided" and rec.get("writer") != DECISIONS_ALLOWED_WRITER)
+    if bad:
+        return CheckResult("decision_writers", "block",
+                           f"decided line(s) not written by {DECISIONS_ALLOWED_WRITER}: {', '.join(bad)}")
+    n = len(log["latest"])
+    return CheckResult("decision_writers", "ok",
+                       f"all {n} decision(s) in the log written by {DECISIONS_ALLOWED_WRITER}" if n
+                       else "no decisions recorded yet")
+
+
+def _normalize_builder_grants(grants) -> list[tuple[str | None, str | None]]:
+    out: list[tuple[str | None, str | None]] = []
+    for g in grants or []:
+        if isinstance(g, dict):
+            out.append((g.get("chart_id"), g.get("permission")))
+        elif isinstance(g, (list, tuple)) and len(g) == 2:
+            out.append((g[0], g[1]))
+    return sorted(out)
+
+
+def check_builder_scope(cfg: Config) -> CheckResult:
+    """CODE-15 (C3, Track E brief §8 E7.3): the builder's own scope, measured through the
+    authenticated `suvarna-build --preflight` (the reader cannot read `chart_grants.permission` or
+    `profiles`, D6 — never a live database read). Absent before provisioning (E7.2) reads `ok`, "no
+    builder identity recorded yet" — a fact about campaign phase, the same convention
+    `conductor_heartbeat` uses before the swarm has ever run. Once `run/builder_identity.json`
+    exists, anything short of an exact match — role `guest`, status `active`, grants exactly
+    `[(BUILDER_CHART_ID, 'build')]`, and equal to the recorded identity — blocks; so does a missing
+    script or a failed preflight."""
+    name = "builder_scope"
+    if not os.path.exists(cfg.builder_identity_path):
+        return CheckResult(name, "ok", "no builder identity recorded yet (E7.2 not done)")
+    try:
+        with open(cfg.builder_identity_path, encoding="utf-8") as f:
+            identity = json.load(f)
+    except (OSError, ValueError) as exc:
+        return CheckResult(name, "block", f"builder_identity.json unreadable: {type(exc).__name__}: {exc}"[:200])
+    if not isinstance(identity, dict):
+        return CheckResult(name, "block", "builder_identity.json does not contain a JSON object")
+    try:
+        rc, out = cfg.run_fn([cfg.suvarna_build_cmd, "--preflight"], timeout=15)
+    except OSError as exc:  # the script itself is missing — CODE-15: blocks once identity exists
+        return CheckResult(name, "block", f"suvarna-build not found ({cfg.suvarna_build_cmd}): {exc}"[:200])
+    if rc != 0:
+        return CheckResult(name, "block", f"suvarna-build --preflight failed: {out.strip()[:200]}")
+    try:
+        pre = json.loads(out)
+    except ValueError:
+        return CheckResult(name, "block", f"suvarna-build --preflight: non-JSON output: {out.strip()[:160]}")
+    builder = pre.get("builder")
+    if not isinstance(builder, dict):
+        return CheckResult(name, "block", "preflight reported no builder scope")
+    id_builder = identity.get("builder", identity)
+    problems = []
+    if builder.get("role") != "guest":
+        problems.append(f"role={builder.get('role')!r} (expected 'guest')")
+    if builder.get("status") != "active":
+        problems.append(f"status={builder.get('status')!r} (expected 'active')")
+    grants = _normalize_builder_grants(builder.get("grants"))
+    expected_grants = [(BUILDER_CHART_ID, "build")]
+    if grants != expected_grants:
+        problems.append(f"grants={grants} (expected {expected_grants})")
+    if (builder.get("principal_id") != id_builder.get("principal_id")
+            or builder.get("role") != id_builder.get("role")
+            or builder.get("status") != id_builder.get("status")
+            or grants != _normalize_builder_grants(id_builder.get("grants"))):
+        problems.append("preflight builder scope does not match run/builder_identity.json")
+    if problems:
+        return CheckResult(name, "block", "; ".join(problems))
+    return CheckResult(name, "ok", f"builder {builder.get('principal_id')}: role=guest status=active "
+                                   f"grants={grants}, matches builder_identity.json")
+
+
 _CHECK_FNS: dict[str, Callable[[Config], CheckResult]] = {
     "db_proxy": check_db_proxy,
     "credential": check_credential,
@@ -665,6 +798,9 @@ _CHECK_FNS: dict[str, Callable[[Config], CheckResult]] = {
     "disk": check_disk,
     "tracker": check_tracker,
     "conductor_heartbeat": check_conductor_heartbeat,
+    "isolation": check_isolation,
+    "decision_writers": check_decision_writers,
+    "builder_scope": check_builder_scope,
 }
 
 

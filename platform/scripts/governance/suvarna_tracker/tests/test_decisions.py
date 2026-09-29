@@ -146,12 +146,24 @@ def test_mirror_to_missing_source_writes_empty_file(tmp_path):
 
 def test_cli_append_writes_and_prints(tmp_path, capsys):
     p = str(tmp_path / "DECISIONS.jsonl")
-    rc = DEC.main(["--path", p, "--id", "N-5", "--state", "decided", "--writer", "steward",
+    rc = DEC.main(["--path", p, "--id", "N-5", "--state", "decided", "--writer", "strategic-suvarna",
                   "--source", "Native, session 'X', 2026-09-29: 'ok'", "--detail", "approved"])
     assert rc == 0
     out = json.loads(capsys.readouterr().out)
     assert out["id"] == "N-5"
     assert DEC.load_decisions(p)["latest"]["N-5"]["state"] == "decided"
+
+
+def test_cli_rejects_a_steward_writer_even_though_validate_still_accepts_it(tmp_path, capsys):
+    """CODE-14 (S2): the live append CLI accepts only --writer strategic-suvarna, even though
+    `validate()` itself still recognises "steward" as structurally well-formed (for historical
+    records seeded from the old log)."""
+    p = str(tmp_path / "DECISIONS.jsonl")
+    rc = DEC.main(["--path", p, "--id", "N-5", "--state", "decided", "--writer", "steward",
+                  "--source", "Native, session 'X', 2026-09-29: 'ok'", "--detail", "approved"])
+    assert rc == 2
+    assert "rejected" in capsys.readouterr().err
+    assert DEC.load_decisions(p)["latest"] == {}
 
 
 def test_cli_rejects_missing_required_args(tmp_path, capsys):

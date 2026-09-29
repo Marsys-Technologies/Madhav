@@ -6,7 +6,8 @@ import threading
 
 import pytest
 
-from suvarna_tracker.events import EventError, EventLog, append, validate
+from suvarna_tracker import events as EV
+from suvarna_tracker.events import EventError, EventLog, append, read_since_offset, validate
 from suvarna_tracker.state import build_snapshot
 
 NOW = dt.datetime(2026, 9, 29, 12, 0, tzinfo=dt.timezone.utc)
@@ -105,6 +106,84 @@ def test_concurrent_appends_never_interleave(tmp_path):
     log = EventLog(p)
     log.refresh()
     assert len(log.events) == 400 and log.malformed == 0
+
+
+# ---- read_since_offset / CLI (CODE-19): a stateless Conductor pass's own reader -----------------
+
+def test_read_since_offset_missing_file_is_empty_not_error(tmp_path):
+    r = read_since_offset(str(tmp_path / "nope.jsonl"), 0)
+    assert r == {"events": [], "offset": 0, "malformed": 0}
+
+
+def test_read_since_offset_from_zero_reads_everything(tmp_path):
+    p = str(tmp_path / "EVENTS.jsonl")
+    append(p, {"kind": "note", "actor": "a", "detail": "one"})
+    append(p, {"kind": "note", "actor": "a", "detail": "two"})
+    r = read_since_offset(p, 0)
+    assert len(r["events"]) == 2 and r["malformed"] == 0
+    assert r["offset"] == os.path.getsize(p)
+
+
+def test_read_since_offset_returns_only_new_lines(tmp_path):
+    p = str(tmp_path / "EVENTS.jsonl")
+    append(p, {"kind": "note", "actor": "a", "detail": "one"})
+    mid = os.path.getsize(p)
+    append(p, {"kind": "note", "actor": "a", "detail": "two"})
+    r = read_since_offset(p, mid)
+    assert len(r["events"]) == 1 and r["events"][0]["detail"] == "two"
+    assert r["offset"] == os.path.getsize(p)
+
+
+def test_read_since_offset_skips_and_counts_malformed_lines(tmp_path):
+    p = str(tmp_path / "EVENTS.jsonl")
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("not json at all\n")
+        f.write(json.dumps({"kind": "note", "actor": "a", "detail": "ok", "ts": "2026-09-29T00:00:00+00:00"}) + "\n")
+    r = read_since_offset(p, 0)
+    assert len(r["events"]) == 1 and r["malformed"] == 1
+
+
+def test_read_since_offset_never_counts_an_incomplete_trailing_line(tmp_path):
+    p = str(tmp_path / "EVENTS.jsonl")
+    append(p, {"kind": "note", "actor": "a", "detail": "one"})
+    complete_size = os.path.getsize(p)
+    with open(p, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"kind": "note", "actor": "a", "detail": "partial"}))  # no trailing newline
+    r = read_since_offset(p, 0)
+    assert len(r["events"]) == 1  # the incomplete line is not returned
+    assert r["offset"] == complete_size  # and not counted into the new offset
+    # once the line completes, a call at the same offset picks it up
+    with open(p, "a", encoding="utf-8") as f:
+        f.write("\n")
+    r2 = read_since_offset(p, r["offset"])
+    assert len(r2["events"]) == 1 and r2["events"][0]["detail"] == "partial"
+
+
+def test_read_since_offset_rereads_from_start_if_file_shrank(tmp_path):
+    p = str(tmp_path / "EVENTS.jsonl")
+    append(p, {"kind": "note", "actor": "a", "detail": "one"})
+    append(p, {"kind": "note", "actor": "a", "detail": "two"})
+    big_offset = os.path.getsize(p)
+    with open(p, "w", encoding="utf-8") as f:  # truncate + rewrite (rotation)
+        pass
+    append(p, {"kind": "note", "actor": "a", "detail": "fresh"})
+    r = read_since_offset(p, big_offset)
+    assert len(r["events"]) == 1 and r["events"][0]["detail"] == "fresh"
+
+
+def test_read_since_offset_cli_prints_events_and_offset(tmp_path, capsys):
+    p = str(tmp_path / "EVENTS.jsonl")
+    append(p, {"kind": "note", "actor": "a", "detail": "one"})
+    rc = EV.main(["--since-offset", "0", "--path", p])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert len(out["events"]) == 1 and out["offset"] == os.path.getsize(p)
+
+
+def test_default_path_reads_suvarna_events_env(tmp_path, monkeypatch):
+    override = str(tmp_path / "custom.jsonl")
+    monkeypatch.setenv("SUVARNA_EVENTS", override)
+    assert EV.default_path() == override
 
 
 # ---- snapshot rules ----------------------------------------------------------------------------
@@ -248,11 +327,16 @@ def test_decision_event_disagreeing_with_log_is_a_conflict_row():
 
 
 def test_decision_event_warnings_flag_unauthorized_actors():
+    """CODE-14 (S2): only strategic-suvarna is authorized to write the decisions log going forward
+    — a decided/delegated decision *event* from "steward" is now flagged too, same as any other
+    unexpected actor."""
     evs = [ev(kind="decision", decision="N-1", state="decided", detail="x", actor="random-builder"),
            ev(kind="decision", decision="N-1", state="decided", detail="x", actor="steward")]
     s = build_snapshot(MODEL, evs, {}, {}, {}, now=NOW, decisions=decisions_log({}))
     warnings = s["health"]["decision_event_warnings"]
-    assert len(warnings) == 1 and "random-builder" in warnings[0]
+    assert len(warnings) == 2
+    assert any("random-builder" in w for w in warnings)
+    assert any("steward" in w for w in warnings)
 
 
 def test_detector_activity_does_not_bypass_open_dependencies():

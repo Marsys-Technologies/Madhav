@@ -69,6 +69,66 @@ def test_template_bash_git_status_rule_has_the_significant_space():
     assert "Bash(git status *)" in allow
 
 
+# ---- CODE-21: the arch §2.4 denies this template was missing, and the narrowed psql rule --------
+
+def test_template_denies_gh_api():
+    deny = RS.load_template()["permissions"]["deny"]
+    assert "Bash(gh api*)" in deny
+
+
+def test_template_denies_github_merge_and_postgres_mcp_tools():
+    deny = RS.load_template()["permissions"]["deny"]
+    assert "mcp__github__merge_pull_request" in deny
+    assert "mcp__postgres__*" in deny
+
+
+def test_template_denies_dbenv_and_env_files():
+    deny = RS.load_template()["permissions"]["deny"]
+    assert any("madhav-l3/dbenv" in d for d in deny)
+    assert any(".env" in d for d in deny)
+
+
+def test_template_denies_edit_on_suvarna_config_and_decisions_log():
+    deny = RS.load_template()["permissions"]["deny"]
+    assert "Edit(/Users/Dev/suvarna/config/**)" in deny
+    assert "Edit(/Users/Dev/suvarna/run/DECISIONS.jsonl)" in deny
+
+
+def test_template_denies_bare_claude_invocations():
+    """The lane launcher (python3 -m suvarna_tracker.lane_launch) is what is allowed to spawn
+    `claude` itself; this session's own Bash tool calling `claude` directly is denied."""
+    deny = RS.load_template()["permissions"]["deny"]
+    assert "Bash(claude *)" in deny
+
+
+def test_template_psql_allow_rule_is_narrowed_to_the_reader_form():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(psql *)" not in allow  # the old, overly broad rule is gone
+    assert any("pgenv.sh && psql" in a for a in allow)
+
+
+def test_template_allows_lane_launch_and_lane_branch_push():
+    allow = RS.load_template()["permissions"]["allow"]
+    assert "Bash(python3 -m suvarna_tracker.lane_launch *)" in allow
+    assert "Bash(git push origin suvarna/lane/*)" in allow
+
+
+def test_template_deny_entries_are_only_read_edit_bash_or_mcp_tool_forms():
+    """Per the v2.1.239 finding, a Write(...)/Glob(...)/Grep(...)/MultiEdit(...) path rule is dead
+    (matches nothing) — every deny entry is either a Read(...)/Edit(...) file rule, a Bash(...) rule,
+    or a literal mcp__<server>__<tool> tool-name rule (not a file-glob rule, so the v2.1.239 finding
+    does not apply to it)."""
+    deny = RS.load_template()["permissions"]["deny"]
+    for rule in deny:
+        assert (rule.startswith("Read(") or rule.startswith("Edit(") or rule.startswith("Bash(")
+                or rule.startswith("mcp__")), f"unexpected deny rule shape: {rule}"
+        assert not rule.startswith("Write("), f"dead rule shape: {rule}"
+        assert not rule.startswith("Glob("), f"dead rule shape: {rule}"
+        assert not rule.startswith("Grep("), f"dead rule shape: {rule}"
+        assert not rule.startswith("MultiEdit("), f"dead rule shape: {rule}"
+        assert not rule.startswith("NotebookEdit("), f"dead rule shape: {rule}"
+
+
 def test_template_hooks_pretooluse_runs_hold_guard():
     hooks = RS.load_template()["hooks"]["PreToolUse"]
     commands = [h["command"] for entry in hooks for h in entry["hooks"]]
@@ -90,6 +150,74 @@ def test_validate_target_path_accepts_settings_local_json():
 def test_validate_target_path_refuses_anything_else(bad_path):
     with pytest.raises(RS.RuntimeSettingsError):
         RS.validate_target_path(bad_path)
+
+
+# ---- CODE-20: also accept $SUVARNA_HOME/config/claude-settings.json ------------------------------
+
+def test_claude_settings_target_path_default(monkeypatch):
+    monkeypatch.delenv("SUVARNA_HOME", raising=False)
+    assert RS.claude_settings_target_path() == "/Users/Dev/suvarna/config/claude-settings.json"
+
+
+def test_claude_settings_target_path_reads_suvarna_home_env(monkeypatch):
+    monkeypatch.setenv("SUVARNA_HOME", "/tmp/suvarna-test")
+    assert RS.claude_settings_target_path() == "/tmp/suvarna-test/config/claude-settings.json"
+
+
+def test_claude_settings_target_path_explicit_home_overrides_env(monkeypatch):
+    monkeypatch.setenv("SUVARNA_HOME", "/tmp/suvarna-env")
+    assert RS.claude_settings_target_path(home="/tmp/suvarna-explicit") == "/tmp/suvarna-explicit/config/claude-settings.json"
+
+
+def test_validate_target_path_accepts_the_exact_claude_settings_path(tmp_path):
+    home = str(tmp_path / "suvarna_home")
+    target = os.path.join(home, "config", "claude-settings.json")
+    RS.validate_target_path(target, home=home)  # must not raise
+
+
+@pytest.mark.parametrize("bad_path_suffix", [
+    "config/claude-settings.json.bak",
+    "other/claude-settings.json",
+    "config/claude_settings.json",
+])
+def test_validate_target_path_refuses_near_misses_of_claude_settings_path(tmp_path, bad_path_suffix):
+    home = str(tmp_path / "suvarna_home")
+    with pytest.raises(RS.RuntimeSettingsError):
+        RS.validate_target_path(os.path.join(home, bad_path_suffix), home=home)
+
+
+def test_write_settings_accepts_claude_settings_json_target(tmp_path):
+    home = str(tmp_path / "suvarna_home")
+    target = os.path.join(home, "config", "claude-settings.json")
+    RS.write_settings(target, home=home)
+    assert os.path.exists(target)
+    with open(target, encoding="utf-8") as f:
+        data = json.load(f)
+    assert data["permissions"]["defaultMode"] == "dontAsk"
+
+
+def test_check_settings_no_drift_against_claude_settings_json_target(tmp_path):
+    home = str(tmp_path / "suvarna_home")
+    target = os.path.join(home, "config", "claude-settings.json")
+    RS.write_settings(target, home=home)
+    assert RS.check_settings(target) == []
+
+
+def test_main_write_accepts_claude_settings_json_target(tmp_path, capsys):
+    home = str(tmp_path / "suvarna_home")
+    target = os.path.join(home, "config", "claude-settings.json")
+    rc = RS.main(["--write", target, "--home", home])
+    assert rc == 0
+    assert os.path.exists(target)
+
+
+def test_main_check_against_claude_settings_json_target(tmp_path, capsys):
+    home = str(tmp_path / "suvarna_home")
+    target = os.path.join(home, "config", "claude-settings.json")
+    RS.main(["--write", target, "--home", home])
+    rc = RS.main(["--write", target, "--home", home, "--check"])
+    assert rc == 0
+    assert "ok:" in capsys.readouterr().out
 
 
 def test_write_settings_creates_valid_parseable_json(tmp_path):

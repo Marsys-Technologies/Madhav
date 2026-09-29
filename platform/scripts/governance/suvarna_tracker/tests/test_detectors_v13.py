@@ -5,6 +5,7 @@ the family-aware `levels_elevated` (`exclude: family_set`). No network, no real 
 psql/monitor/suvarna-build call is either a fake (via a wrapped `D._run`) or a real, local,
 offline git repo (the same pattern `test_detectors_server.py` already uses for the register).
 """
+import hashlib
 import json
 import os
 import subprocess
@@ -102,6 +103,70 @@ def make_commit_chain(tmp_path, name, n=2):
     return str(root), shas
 
 
+FULL_FAMILY_ASSETS_KEYS = D.FAMILY_ASSETS_REQUIRED_KEYS
+
+
+def fam_json(**overrides) -> str:
+    """A `FAMILY_ASSETS.json` object carrying every one of CODE-4's required keys (each defaulted
+    to an empty list), so a test that only cares about one family's contents does not accidentally
+    trip the "missing required key" error on the others. `family_set` auto-computes as the union of
+    the other six lists (Track E brief §8's own definition) unless the caller overrides it
+    explicitly — so a caller naming only `family_gochara` still gets a `family_set` that contains
+    it, matching real `FAMILY_ASSETS.json` content."""
+    data = {k: [] for k in FULL_FAMILY_ASSETS_KEYS}
+    data.update(overrides)
+    if "family_set" not in overrides:
+        seen: list[str] = []
+        for k in FULL_FAMILY_ASSETS_KEYS:
+            if k == "family_set":
+                continue
+            for a in data.get(k) or []:
+                if a not in seen:
+                    seen.append(a)
+        data["family_set"] = seen
+    return json.dumps(data)
+
+
+def elevation_module_source(elevated_ids) -> str:
+    """A minimal, real `asset_elevation_tracker.py` stand-in: `elevated_assets(cfg)` returns exactly
+    `elevated_ids`, regardless of `cfg` — enough to exercise the CODE-8 "call the E6.3 function"
+    path without needing the real module (which does not exist yet)."""
+    ids = ", ".join(repr(a) for a in elevated_ids)
+    return f"def elevated_assets(cfg):\n    return {{{ids}}}\n"
+
+
+def _git(root, *args, env=None):
+    base_env = {**os.environ, "GIT_AUTHOR_NAME": "test", "GIT_AUTHOR_EMAIL": "test@example.com",
+               "GIT_COMMITTER_NAME": "test", "GIT_COMMITTER_EMAIL": "test@example.com", **(env or {})}
+    return subprocess.run(["git", *args], cwd=str(root), env=base_env, check=True,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def make_scorecard_repo(tmp_path, name, tests_obj, generator_content="generator v1\n",
+                        generator_path="generator.py", scorecard_path="scorecard.json",
+                        corrupt_generator_hash=False, inspector_commit_override=None):
+    """A real, local, offline two-commit git repo: commit 1 adds the generator (its sha becomes
+    `inspector_commit`), commit 2 adds the scorecard referencing that generator's real sha256 and
+    that commit — everything CODE-6 checks (generator hash, inspector_commit ancestry) is exercised
+    against real git objects, no faking. Returns the repo path; `ref="HEAD"` is commit 2."""
+    root = tmp_path / name
+    root.mkdir()
+    _git(root, "init", "-q")
+    (root / generator_path).write_text(generator_content)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "generator")
+    inspector_commit = _git(root, "rev-parse", "HEAD")
+    generator_sha256 = hashlib.sha256(generator_content.encode("utf-8")).hexdigest()
+    scorecard = {"generator": generator_path,
+                "generator_sha256": "0" * 64 if corrupt_generator_hash else generator_sha256,
+                "inspector_commit": inspector_commit_override or inspector_commit,
+                "tests": tests_obj}
+    (root / scorecard_path).write_text(json.dumps(scorecard))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "scorecard")
+    return str(root)
+
+
 def wrap_run(monkeypatch, table):
     """Intercept specific `D._run` calls (matched by a predicate over argv), falling back to the
     real `_run` for anything unmatched — so a test can fake gh/suvarna-build/a fictitious remote
@@ -121,12 +186,24 @@ def wrap_run(monkeypatch, table):
 # prs_merged
 # ============================================================================================
 
-def test_prs_merged_empty_params_is_pending_not_error(nik, tmp_path):
+def test_prs_merged_empty_params_with_no_pinned_by_is_pending(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "prs_merged", "prs": []}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+
+
+def test_prs_merged_empty_params_with_pinned_by_is_error_not_pending(nik, tmp_path):
+    """CODE-3/C31 (arch §11.7): a spec deliberately left empty for a later item to pin (`pinned_by`)
+    reads `unknown` (`error`), never `pending` — `pending` is reserved for an expected input that
+    genuinely does not exist yet, not for a spec nobody has filled in."""
     d = dets(nik, str(tmp_path))
     spec = {"type": "prs_merged", "prs": [], "pinned_by": "L.11"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+    assert r.status == "error"
+    assert "unknown" in r.detail and "L.11" in r.detail
 
 
 def test_prs_merged_all_merged_is_done(nik, tmp_path, monkeypatch):
@@ -287,40 +364,74 @@ def test_scorecard_pass_not_yet_on_ref_is_pending(nik, tmp_path, monkeypatch):
     assert r.status == "pending" and "not yet at" in r.detail
 
 
-def test_scorecard_pass_all_pass_with_inspector_commit_is_done(nik, tmp_path, monkeypatch):
-    scorecard = json.dumps({"tests": {"T1": "PASS", "T2": "PASS"}, "inspector_commit": "abc123"})
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"], 0, scorecard),
-    ])
-    d = dets(nik, str(tmp_path))
-    spec = {"type": "scorecard_pass", "ref": "origin/main", "path": "x.json", "tests": ["T1", "T2"]}
+def test_scorecard_pass_all_pass_verified_generator_and_ancestor_commit_is_done(tmp_path):
+    """CODE-6: `tests[T]` is an object with `verdict`; the generator hash and inspector_commit
+    ancestry are checked against real git objects, not merely present."""
+    repo = make_scorecard_repo(tmp_path, "repo_sc_done", {"T1": {"verdict": "PASS"}, "T2": {"verdict": "PASS"}})
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1", "T2"]}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "done" and "abc123" in r.detail
+    assert r.status == "done" and r.progress == 1.0
+    assert "generator hash verified" in r.detail and "ancestor" in r.detail
 
 
-def test_scorecard_pass_missing_inspector_commit_never_shows_done(nik, tmp_path, monkeypatch):
-    scorecard = json.dumps({"tests": {"T1": "PASS"}})
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"], 0, scorecard),
-    ])
-    d = dets(nik, str(tmp_path))
-    spec = {"type": "scorecard_pass", "ref": "origin/main", "path": "x.json", "tests": ["T1"]}
+def test_scorecard_pass_missing_generator_fields_is_pending_not_done(tmp_path):
+    root = tmp_path / "repo_sc_missing"
+    root.mkdir()
+    (root / "scorecard.json").write_text(json.dumps({"tests": {"T1": {"verdict": "PASS"}}}))
+    _git_init_commit(root)
+    d = dets(str(root), str(root))
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status != "done" and "no inspector commit" in r.detail
+    assert r.status != "done"
+    assert "generator" in r.detail and "inspector_commit" in r.detail
 
 
-def test_scorecard_pass_failing_test_is_running_not_done(nik, tmp_path, monkeypatch):
-    scorecard = json.dumps({"tests": {"T1": "PASS", "T2": "FAIL"}, "inspector_commit": "abc123"})
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"], 0, scorecard),
-    ])
-    d = dets(nik, str(tmp_path))
-    spec = {"type": "scorecard_pass", "ref": "origin/main", "path": "x.json", "tests": ["T1", "T2"]}
+def test_scorecard_pass_generator_hash_mismatch_is_pending_not_done(tmp_path):
+    repo = make_scorecard_repo(tmp_path, "repo_sc_hash_mismatch", {"T1": {"verdict": "PASS"}},
+                               corrupt_generator_hash=True)
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done"
+    assert "generator_sha256" in r.detail
+
+
+def test_scorecard_pass_inspector_commit_not_ancestor_is_pending_not_done(tmp_path):
+    root = tmp_path / "repo_sc_not_ancestor"
+    root.mkdir()
+    _git(root, "init", "-q")
+    (root / "generator.py").write_text("v1\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "c0")
+    default_branch = _git(root, "branch", "--show-current")
+    _git(root, "checkout", "-q", "-b", "other")
+    (root / "other.txt").write_text("other\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "other-branch-commit")
+    other_sha = _git(root, "rev-parse", "HEAD")
+    _git(root, "checkout", "-q", default_branch)
+    scorecard = {"generator": "generator.py", "generator_sha256": hashlib.sha256(b"v1\n").hexdigest(),
+                "inspector_commit": other_sha, "tests": {"T1": {"verdict": "PASS"}}}
+    (root / "scorecard.json").write_text(json.dumps(scorecard))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "scorecard")
+    d = dets(str(root), str(root))
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done"
+    assert "not an ancestor" in r.detail
+
+
+def test_scorecard_pass_failing_test_is_running_not_done(tmp_path):
+    repo = make_scorecard_repo(tmp_path, "repo_sc_failing",
+                               {"T1": {"verdict": "PASS"}, "T2": {"verdict": "FAIL"}})
+    d = dets(repo, repo)
+    spec = {"type": "scorecard_pass", "ref": "HEAD", "path": "scorecard.json", "tests": ["T1", "T2"]}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "running" and "T2" in r.detail
@@ -535,7 +646,9 @@ def test_register_freeze_clean_names_the_resolved_ref_and_commit(nik, tmp_path):
     assert sha[:12] in r.detail
 
 
-def test_register_freeze_clean_no_blockers_at_all_is_done(tmp_path):
+def test_register_freeze_clean_no_blockers_at_all_is_error_not_done(tmp_path):
+    """CODE-7: zero BLOCKS_FREEZE rows found among the parsed rows is itself an error, never
+    `done` — indistinguishable from a severity-label or parse miss."""
     root = tmp_path / "nik_no_blockers"
     (root / "00_ARCHITECTURE/briefs/nirmana").mkdir(parents=True)
     (root / "00_ARCHITECTURE/control").mkdir(parents=True)
@@ -553,7 +666,30 @@ def test_register_freeze_clean_no_blockers_at_all_is_done(tmp_path):
     spec = {"type": "register_freeze_clean", "allow_deferred": []}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "done"
+    assert r.status == "error"
+    assert "no BLOCKS_FREEZE rows" in r.detail
+
+
+def test_register_freeze_clean_expect_rows_present_is_unaffected(nik, tmp_path):
+    """`expect_rows` naming rows that really are in the register changes nothing about the result —
+    it is purely an extra "did the register actually carry these" assertion."""
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "register_freeze_clean", "allow_deferred": ["R3"], "expect_rows": ["R1", "R2", "R3"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status != "done"  # R1 is still OPEN in the shared `nik` fixture
+    assert "R1=OPEN" in r.detail
+
+
+def test_register_freeze_clean_expect_rows_missing_row_is_error(nik, tmp_path):
+    """CODE-7: a row named in `expect_rows` that the register does not actually carry is an error —
+    the same "cannot tell a real result from a parse/format miss" hazard as zero blockers found."""
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "register_freeze_clean", "allow_deferred": [], "expect_rows": ["R1", "R99"]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
+    assert "R99" in r.detail
 
 
 # ============================================================================================
@@ -602,12 +738,22 @@ def test_monitor_check_ok_unknown_check_name_is_error(nik, tmp_path, monkeypatch
 # deployed_contains
 # ============================================================================================
 
-def test_deployed_contains_empty_params_is_pending(nik, tmp_path):
+def test_deployed_contains_empty_params_with_no_pinned_by_is_pending(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "deployed_contains", "component": "job", "prs": []}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+
+
+def test_deployed_contains_empty_params_with_pinned_by_is_error(nik, tmp_path):
+    """CODE-3/C31: same rule as prs_merged — a spec left empty with `pinned_by` reads `error`."""
     d = dets(nik, str(tmp_path))
     spec = {"type": "deployed_contains", "component": "job", "prs": [], "pinned_by": "L.11"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+    assert r.status == "error"
+    assert "unknown" in r.detail and "L.11" in r.detail
 
 
 def test_deployed_contains_done_when_the_merge_sha_is_an_ancestor_of_the_deployed_tag(tmp_path, monkeypatch):
@@ -638,6 +784,17 @@ def test_deployed_contains_pending_when_pr_not_merged(nik, tmp_path, monkeypatch
     spec = {"type": "deployed_contains", "component": "job", "prs": [42]}
     d.poll([spec])
     assert wait_result(d, spec).status == "pending"
+
+
+def test_deployed_contains_blocked_when_pr_closed_without_merging(nik, tmp_path, monkeypatch):
+    """CODE-2: a PR closed without merging is `blocked`, distinct from an `OPEN` PR's `pending`."""
+    monkeypatch.setattr(D, "_run", lambda cmd, **k: (0, json.dumps({"state": "CLOSED"})) if cmd[:3] == ["gh", "pr", "view"] else (1, ""))
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "deployed_contains", "component": "job", "prs": [42]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "blocked"
+    assert "closed without merging" in r.detail
 
 
 def test_deployed_contains_pending_when_merged_but_the_deploy_is_not_a_descendant(tmp_path, monkeypatch):
@@ -701,6 +858,29 @@ def test_deployed_contains_serving_component_reads_deployed_sha_not_web_sha(tmp_
     assert r.status == "done" and r.progress == 1.0
 
 
+def test_deployed_contains_prefers_job_sha_over_job_image_tag(tmp_path, monkeypatch):
+    """CODE-1: the running job commit is `job_sha` when the preflight names it — the trailing-SHA
+    extraction from `job_image_tag` is only ever the fallback for an older preflight build."""
+    nik = make_nik(tmp_path, name="nik_dc_job_sha")
+    repo, shas = make_commit_chain(tmp_path, "repo_dc_job_sha", n=2)
+    merge_sha, deployed_sha = shas[0], shas[1]
+    build_cmd = D._suvarna_build_cmd()
+    bogus_sha = "0" * 40  # not a real object in this repo — proves job_sha is read, not the tag
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:3] == ["gh", "pr", "view"], 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": merge_sha}})),
+        (lambda cmd: cmd[:2] == [build_cmd, "--preflight"], 0,
+         json.dumps({"job_sha": deployed_sha, "job_image_tag": f"gcr.io/proj/engine:build-{bogus_sha}"})),
+        # a fetch attempt for the bogus SHA must fail quietly (no such remote object) rather than
+        # actually contacting a network — if the code wrongly used the tag this surfaces as `error`.
+        (lambda cmd: cmd[:4] == ["git", "fetch", "-q", "origin"] and bogus_sha in cmd, 1, "fatal: no such remote ref"),
+    ])
+    d = dets(nik, repo)
+    spec = {"type": "deployed_contains", "component": "job", "prs": [42]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
 def test_deployed_contains_uses_suvarna_build_cmd_setting_not_a_bare_name(tmp_path, monkeypatch):
     nik = make_nik(tmp_path, name="nik_dc_cmd")
     repo, shas = make_commit_chain(tmp_path, "repo_dc_cmd", n=1)
@@ -722,6 +902,45 @@ def test_deployed_contains_uses_suvarna_build_cmd_setting_not_a_bare_name(tmp_pa
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "done" and r.progress == 1.0
+
+
+def test_deployed_contains_missing_preflight_script_is_pending_not_error(nik, tmp_path, monkeypatch):
+    """CODE-1: a missing suvarna-build script (not provisioned yet, before E7.2) reads `pending`,
+    never `error` — an unprovisioned precondition is an expected pre-J1 state."""
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:3] == ["gh", "pr", "view"]:
+            return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40}})
+        raise FileNotFoundError(f"[Errno 2] No such file or directory: {cmd[0]!r}")
+
+    monkeypatch.setattr(D, "_run", fake)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "deployed_contains", "component": "job", "prs": [42]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending"
+    assert "not provisioned" in r.detail
+
+
+def test_wave_deployed_missing_preflight_script_is_pending_not_error(tmp_path, monkeypatch):
+    nik = make_nik(tmp_path, name="nik_wd_missing_script")
+    home = tmp_path / "home"
+    landing_dir = home / "evidence" / "B.W0"
+    landing_dir.mkdir(parents=True)
+    (landing_dir / "LANDING.json").write_text(json.dumps({"pr": 77}))
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:3] == ["gh", "pr", "view"]:
+            return 0, json.dumps({"state": "MERGED", "mergeCommit": {"oid": "a" * 40}})
+        raise FileNotFoundError(f"[Errno 2] No such file or directory: {cmd[0]!r}")
+
+    monkeypatch.setattr(D, "_run", fake)
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "wave_deployed", "wave": "B.W0"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending"
+    assert "not provisioned" in r.detail
 
 
 # ---- git ancestry unit tests (review #5/#7): "Tests with a temp git repo" -------------------
@@ -829,11 +1048,40 @@ def test_assets_elevated_empty_params_is_pending(nik, tmp_path):
     assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
 
 
+def _wrap_elevation_and_family(monkeypatch, elevation_source=None, family_json=None):
+    """CODE-8: `assets_elevated`/`levels_elevated` first load the E6.3 exact function from
+    `origin/main:{ASSET_ELEVATION_TRACKER_REL_PATH}`; only once that's wired do they go on to read
+    `FAMILY_ASSETS.json` from the same ref. `elevation_source=None` fakes "not on main yet" (the
+    ELEVATION_NOT_WIRED_DETAIL path); `family_json=None` fakes "not on main yet" for the family
+    file (only reachable once the elevation module IS wired)."""
+    table = [(lambda cmd: cmd[:2] == ["git", "fetch"], 0, "")]
+    if elevation_source is not None:
+        table.append((lambda cmd: cmd[:2] == ["git", "show"] and D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2],
+                      0, elevation_source))
+    else:
+        table.append((lambda cmd: cmd[:2] == ["git", "show"] and D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2],
+                      1, "fatal: not on main"))
+    if family_json is not None:
+        table.append((lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2], 0, family_json))
+    else:
+        table.append((lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2],
+                      1, "fatal: not on main"))
+    wrap_run(monkeypatch, table)
+
+
+def test_assets_elevated_error_before_e63_function_wired(nik, tmp_path, monkeypatch):
+    """CODE-8: until `asset_elevation_tracker.py` is on main and loadable, this reads `error`
+    (`ELEVATION_NOT_WIRED_DETAIL`), never the retired certification/gap-ledger proxy."""
+    _wrap_elevation_and_family(monkeypatch, elevation_source=None, family_json=fam_json(family_gochara=["clean_a"]))
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "assets_elevated", "set": "family_gochara"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and r.detail == D.ELEVATION_NOT_WIRED_DETAIL
+
+
 def test_assets_elevated_before_family_assets_json_lands_is_pending(nik, tmp_path, monkeypatch):
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2], 1, "fatal: not on main"),
-    ])
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=None)
     d = dets(nik, str(tmp_path))
     spec = {"type": "assets_elevated", "set": "family_gochara"}
     d.poll([spec])
@@ -841,25 +1089,32 @@ def test_assets_elevated_before_family_assets_json_lands_is_pending(nik, tmp_pat
     assert r.status == "pending" and "FAMILY_ASSETS.json" in r.detail
 
 
-def test_assets_elevated_done_when_every_asset_in_the_set_is_elevated(nik, tmp_path, monkeypatch):
-    fam = json.dumps({"family_gochara": ["clean_a"]})
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2], 0, fam),
-    ])
+def test_assets_elevated_missing_required_family_key_is_error(nik, tmp_path, monkeypatch):
+    """CODE-4: a FAMILY_ASSETS.json missing one of Track E brief §8's required keys is malformed,
+    never silently read as if that family's list were empty."""
+    fam = json.dumps({"family_gochara": ["clean_a"]})  # missing the other six required keys
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=fam)
     d = dets(nik, str(tmp_path))
     spec = {"type": "assets_elevated", "set": "family_gochara"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "done" and r.progress == 1.0  # clean_a: PASS cert, no open gap (real nik fixture)
+    assert r.status == "error"
+    assert "missing required key" in r.detail
+
+
+def test_assets_elevated_done_when_every_asset_in_the_set_is_elevated(nik, tmp_path, monkeypatch):
+    fam = fam_json(family_gochara=["clean_a"])
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=fam)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "assets_elevated", "set": "family_gochara"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
 
 
 def test_assets_elevated_pending_when_the_set_asset_is_not_elevated(nik, tmp_path, monkeypatch):
-    fam = json.dumps({"family_sangam": ["with_gap"]})
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2], 0, fam),
-    ])
+    fam = fam_json(family_sangam=["with_gap"])
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=fam)
     d = dets(nik, str(tmp_path))
     spec = {"type": "assets_elevated", "set": "family_sangam"}
     d.poll([spec])
@@ -879,34 +1134,47 @@ def test_registry_coverage_report_not_yet_on_ref_is_pending(nik, tmp_path):
     assert r.status == "pending" and "not yet" in r.detail
 
 
-def test_registry_coverage_report_missing_the_uncovered_key_is_pending_not_done(tmp_path):
-    """Substance review #10a: a report that names neither `uncovered_required_criteria` nor
-    `uncovered` must not read `done` on the absence — that previously let a malformed/partial
-    report read as fully covered by omission alone."""
+def _wrap_registry_coverage_report(monkeypatch, report_text):
+    """CODE-5: the report is read from `origin/main` (arch §11.7's table), the same discipline
+    `_family_assets()` uses — not the Nikaṣa register/ledger ref."""
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
+        (lambda cmd: cmd[:2] == ["git", "show"] and D.REGISTRY_COVERAGE_REL_PATH in cmd[2], 0, report_text),
+    ])
+
+
+def test_registry_coverage_report_missing_a_required_key_is_error_not_pending(nik, tmp_path, monkeypatch):
+    """CODE-5: an absent required key (`registry_revision`, `inspector_commit`, `covered_cells`,
+    `uncovered_required_criteria`) is an error, never `pending` — an absent key is not evidence of
+    coverage, and a `pending` reading would let a malformed/partial report look like "just not
+    measured yet" instead of "broken"."""
     report = json.dumps({"covered_cells": 900})
-    nik2 = make_nik(tmp_path, name="nik_cov_no_key", extra_files={D.REGISTRY_COVERAGE_REL_PATH: report})
-    d = dets(nik2, str(tmp_path))
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
     spec = {"type": "registry_coverage"}
     d.poll([spec])
     r = wait_result(d, spec)
-    assert r.status == "pending"
-    assert "no uncovered" in r.detail or "uncovered" in r.detail
+    assert r.status == "error"
+    assert "missing required key" in r.detail
+    assert "registry_revision" in r.detail and "inspector_commit" in r.detail
 
 
-def test_registry_coverage_uncovered_criteria_is_not_done(tmp_path):
-    report = json.dumps({"uncovered_required_criteria": ["Gate.L2.foo"], "covered_cells": 900})
-    nik2 = make_nik(tmp_path, name="nik_cov_partial", extra_files={D.REGISTRY_COVERAGE_REL_PATH: report})
-    d = dets(nik2, str(tmp_path))
+def test_registry_coverage_uncovered_criteria_is_not_done(nik, tmp_path, monkeypatch):
+    report = json.dumps({"registry_revision": 7, "inspector_commit": "abc123",
+                         "uncovered_required_criteria": ["Gate.L2.foo"], "covered_cells": 900})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
     spec = {"type": "registry_coverage"}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status != "done" and "Gate.L2.foo" in r.detail
 
 
-def test_registry_coverage_fully_covered_is_done(tmp_path):
-    report = json.dumps({"uncovered_required_criteria": [], "covered_cells": 1143})
-    nik2 = make_nik(tmp_path, name="nik_cov_full", extra_files={D.REGISTRY_COVERAGE_REL_PATH: report})
-    d = dets(nik2, str(tmp_path))
+def test_registry_coverage_fully_covered_is_done(nik, tmp_path, monkeypatch):
+    report = json.dumps({"registry_revision": 7, "inspector_commit": "abc123",
+                         "uncovered_required_criteria": [], "covered_cells": 1143})
+    _wrap_registry_coverage_report(monkeypatch, report)
+    d = dets(nik, str(tmp_path))
     spec = {"type": "registry_coverage"}
     d.poll([spec])
     r = wait_result(d, spec)
@@ -957,10 +1225,23 @@ def _fake_registry_rows(rows):
     return "\n".join(f"{a}\t{l}\t{deps}" for a, l, deps in rows) + "\n"
 
 
+def test_levels_elevated_error_before_e63_function_wired(nik, tmp_path, monkeypatch):
+    """CODE-8: `levels_elevated` reads `error` (`ELEVATION_NOT_WIRED_DETAIL`) until the E6.3 exact
+    function is on main and loadable — never the retired certification/gap-ledger proxy, and never
+    even reaching the DAG-levels/database step."""
+    _wrap_elevation_and_family(monkeypatch, elevation_source=None, family_json=None)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "levels_elevated", "levels": [0, 0]}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error" and r.detail == D.ELEVATION_NOT_WIRED_DETAIL
+
+
 def test_levels_elevated_without_exclude_is_unchanged(nik, tmp_path, monkeypatch):
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
     rows = _fake_registry_rows([("clean_a", "L1", "")])
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]))
     wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
     spec = {"type": "levels_elevated", "levels": [0, 0]}
@@ -969,20 +1250,28 @@ def test_levels_elevated_without_exclude_is_unchanged(nik, tmp_path, monkeypatch
     assert r.status == "done" and "excluded" not in r.detail
 
 
-def test_levels_elevated_exclude_family_set_pending_before_e63(nik, tmp_path, monkeypatch):
+def test_levels_elevated_exclude_family_set_pending_before_family_assets_json_lands(nik, tmp_path, monkeypatch):
     pgenv = tmp_path / "pgenv.sh"
     pgenv.write_text("# fake\n")
     rows = _fake_registry_rows([("clean_a", "L1", "")])
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows),
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2], 1, "fatal: not on main"),
-    ])
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=None)
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
     spec = {"type": "levels_elevated", "levels": [0, 0], "exclude": "family_set"}
     d.poll([spec])
     r = wait_result(d, spec)
     assert r.status == "pending" and "FAMILY_ASSETS.json" in r.detail
+
+
+def test_levels_elevated_exclude_family_set_missing_required_key_is_error(nik, tmp_path, monkeypatch):
+    fam = json.dumps({"family_gochara": ["with_gap"]})  # missing the other six required keys
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=fam)
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "levels_elevated", "levels": [0, 0], "exclude": "family_set"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
+    assert "missing required key" in r.detail
 
 
 def test_levels_elevated_exclude_family_set_drops_family_and_reader_assets(nik, tmp_path, monkeypatch):
@@ -991,12 +1280,9 @@ def test_levels_elevated_exclude_family_set_drops_family_and_reader_assets(nik, 
     # clean_a: elevated, non-family. with_gap: has an open gap, but is excluded as a family asset —
     # so its non-elevation must never keep the wave from reading done.
     rows = _fake_registry_rows([("clean_a", "L1", ""), ("with_gap", "L3", "")])
-    fam = json.dumps({"family_gochara": ["with_gap"]})
-    wrap_run(monkeypatch, [
-        (lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows),
-        (lambda cmd: cmd[:2] == ["git", "fetch"], 0, ""),
-        (lambda cmd: cmd[:2] == ["git", "show"] and "FAMILY_ASSETS.json" in cmd[2], 0, fam),
-    ])
+    fam = fam_json(family_gochara=["with_gap"])
+    _wrap_elevation_and_family(monkeypatch, elevation_source=elevation_module_source(["clean_a"]), family_json=fam)
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
     d = dets(nik, str(tmp_path), pgenv=str(pgenv))
     spec = {"type": "levels_elevated", "levels": [0, 0], "exclude": "family_set"}
     d.poll([spec])
@@ -1011,13 +1297,16 @@ def test_levels_elevated_exclude_family_set_drops_family_and_reader_assets(nik, 
 
 def test_family_assets_default_path_matches_the_plan_model_and_track_e_brief(tmp_path, monkeypatch):
     nik = make_nik(tmp_path, name="nik_fa_default")
-    fam = json.dumps({"family_gochara": ["clean_a"]})
+    fam = fam_json(family_gochara=["clean_a"])
+    elevation_src = elevation_module_source(["clean_a"])
     seen = {}
 
     def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
         if cmd[:2] == ["git", "fetch"]:
             return 0, ""
         if cmd[:2] == ["git", "show"]:
+            if D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2]:
+                return 0, elevation_src
             seen["path"] = cmd[2]
             return 0, fam
         raise AssertionError(cmd)
@@ -1033,13 +1322,16 @@ def test_family_assets_default_path_matches_the_plan_model_and_track_e_brief(tmp
 def test_family_assets_path_overridden_by_env_setting(tmp_path, monkeypatch):
     monkeypatch.setenv("SUVARNA_FAMILY_ASSETS_PATH", "00_ARCHITECTURE/control/custom/FAMILY_ASSETS.json")
     nik = make_nik(tmp_path, name="nik_fa_custom")
-    fam = json.dumps({"family_gochara": ["clean_a"]})
+    fam = fam_json(family_gochara=["clean_a"])
+    elevation_src = elevation_module_source(["clean_a"])
     seen = {}
 
     def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
         if cmd[:2] == ["git", "fetch"]:
             return 0, ""
         if cmd[:2] == ["git", "show"]:
+            if D.ASSET_ELEVATION_TRACKER_REL_PATH in cmd[2]:
+                return 0, elevation_src
             seen["path"] = cmd[2]
             return 0, fam
         raise AssertionError(cmd)
@@ -1134,6 +1426,263 @@ def test_evidence_recent_malformed_json_is_error(tmp_path):
 
 
 # ============================================================================================
+# NIKASHA_REF fetch (CODE-17): a remote-tracking ref (origin/<branch>) is fetched before each read
+# ============================================================================================
+
+@pytest.fixture(autouse=True)
+def _reset_nikasha_fetch_cache():
+    D._nikasha_fetch_cache.update(at=0.0)
+    yield
+    D._nikasha_fetch_cache.update(at=0.0)
+
+
+def test_register_text_fetches_the_named_branch_when_ref_is_remote_tracking(nik, tmp_path, monkeypatch):
+    monkeypatch.setenv("NIKASHA_REF", "origin/campaign/nikasha-test")
+    fetched = []
+    orig = D._run
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["git", "fetch"]:
+            fetched.append(tuple(cmd))
+            return 0, ""
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+    with pytest.raises(RuntimeError):
+        D.register_text(nik)  # the branch doesn't exist in the throwaway fixture repo -> git show fails
+    assert fetched and fetched[0] == ("git", "fetch", "-q", "origin", "campaign/nikasha-test")
+
+
+def test_register_text_never_fetches_for_a_local_ref(nik, tmp_path, monkeypatch):
+    monkeypatch.delenv("NIKASHA_REF", raising=False)  # defaults to HEAD
+    fetched = []
+    orig = D._run
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["git", "fetch"]:
+            fetched.append(tuple(cmd))
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+    D.register_text(nik)
+    assert fetched == []
+
+
+def test_nikasha_fetch_is_ttl_cached_across_reads(nik, tmp_path, monkeypatch):
+    monkeypatch.setenv("NIKASHA_REF", "origin/campaign/nikasha-test")
+    fetched = []
+    orig = D._run
+
+    def fake(cmd, cwd=None, timeout=60, shell=False, env=None):
+        if cmd[:2] == ["git", "fetch"]:
+            fetched.append(tuple(cmd))
+            return 0, ""
+        return orig(cmd, cwd=cwd, timeout=timeout, shell=shell, env=env)
+
+    monkeypatch.setattr(D, "_run", fake)
+    for _ in range(3):
+        try:
+            D.register_text(nik)
+        except RuntimeError:
+            pass
+    assert len(fetched) == 1  # only the first call actually fetched; the rest were within the TTL
+
+
+# ============================================================================================
+# fk_no_cascade (CODE-9)
+# ============================================================================================
+
+def test_fk_no_cascade_empty_params_is_pending(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "fk_no_cascade", "referenced": ""}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+
+
+def test_fk_no_cascade_no_rows_is_done(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, "")])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+    assert "bodha_msr_signals" in r.detail
+
+
+def test_fk_no_cascade_rows_found_is_pending_listing_them(nik, tmp_path, monkeypatch):
+    pgenv = tmp_path / "pgenv.sh"
+    pgenv.write_text("# fake\n")
+    rows = "kala_convergence\tkala_convergence_signal_id_fkey\nkala_darshana\tkala_darshana_signal_id_fkey\n"
+    wrap_run(monkeypatch, [(lambda cmd: cmd[:2] == ["bash", "-c"], 0, rows)])
+    d = dets(nik, str(tmp_path), pgenv=str(pgenv))
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending"
+    assert "kala_convergence" in r.detail and "2" in r.detail
+
+
+def test_fk_no_cascade_without_credential_file_is_error(nik, tmp_path):
+    d = dets(nik, str(tmp_path))  # pgenv=None
+    spec = {"type": "fk_no_cascade", "referenced": "public.bodha_msr_signals"}
+    d.poll([spec])
+    assert wait_result(d, spec).status == "error"
+
+
+# ============================================================================================
+# acks_from (CODE-10)
+# ============================================================================================
+
+def test_acks_from_empty_params_is_pending(nik, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "acks_from", "actors": [], "marker": ""}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+
+
+def test_acks_from_no_event_log_yet_is_pending_listing_everyone_missing(nik, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "acks_from", "actors": ["l3-gochara", "l3-sangam"], "marker": "ACK FI-8"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending"
+    assert "l3-gochara" in r.detail and "l3-sangam" in r.detail
+
+
+def test_acks_from_partial_acknowledgement_is_running(nik, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir(parents=True)
+    events_path = home / "run" / "EVENTS.jsonl"
+    events_path.parent.mkdir(parents=True)
+    from suvarna_tracker.events import append
+    append(str(events_path), {"kind": "note", "actor": "l3-gochara", "detail": "ACK FI-8: received"})
+    append(str(events_path), {"kind": "note", "actor": "l3-sangam", "detail": "not an ack at all"})
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "acks_from", "actors": ["l3-gochara", "l3-sangam", "l3-kshetra"], "marker": "ACK FI-8"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "running"
+    assert abs(r.progress - 1 / 3) < 1e-9
+    assert "l3-sangam" in r.detail and "l3-kshetra" in r.detail
+    assert "l3-gochara" not in r.detail.split(";")[-1]  # not listed among the missing
+
+
+def test_acks_from_all_acknowledged_is_done(nik, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir(parents=True)
+    events_path = home / "run" / "EVENTS.jsonl"
+    events_path.parent.mkdir(parents=True)
+    from suvarna_tracker.events import append
+    for actor in ("l3-gochara", "l3-sangam", "l3-kshetra"):
+        append(str(events_path), {"kind": "note", "actor": actor, "detail": "ACK FI-8: received and understood"})
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "acks_from", "actors": ["l3-gochara", "l3-sangam", "l3-kshetra"], "marker": "ACK FI-8"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_acks_from_ignores_notes_from_other_actors_and_wrong_marker(nik, tmp_path):
+    home = tmp_path / "home"
+    home.mkdir(parents=True)
+    events_path = home / "run" / "EVENTS.jsonl"
+    events_path.parent.mkdir(parents=True)
+    from suvarna_tracker.events import append
+    append(str(events_path), {"kind": "note", "actor": "l3-gochara", "detail": "ACK FI-9: wrong marker"})
+    append(str(events_path), {"kind": "note", "actor": "someone-else", "detail": "ACK FI-8: not a named actor"})
+    d = dets(nik, str(tmp_path), home=str(home))
+    spec = {"type": "acks_from", "actors": ["l3-gochara"], "marker": "ACK FI-8"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and "l3-gochara" in r.detail
+
+
+# ============================================================================================
+# main_protected (CODE-11)
+# ============================================================================================
+
+def test_main_protected_empty_params_is_pending(nik, tmp_path):
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "", "bypass_only": ""}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending" and r.detail == D.PARAMS_NOT_SET
+
+
+def test_main_protected_ruleset_pull_request_rule_is_done(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 1}}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+    assert "native" in r.detail
+
+
+def test_main_protected_no_rulesets_falls_back_to_classic_protection(nik, tmp_path, monkeypatch):
+    protection = {"required_pull_request_reviews": {"required_approving_review_count": 2}}
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, "[]"),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "branches/main/protection" in cmd[2], 0, json.dumps(protection)),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "done" and r.progress == 1.0
+
+
+def test_main_protected_no_protection_at_all_is_error(nik, tmp_path, monkeypatch):
+    """CODE-11: 403/404 (or any other failure) on either `gh api` call is `error`, never a silent
+    'not protected yet'."""
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, "[]"),
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "branches/main/protection" in cmd[2], 1,
+         "gh: Branch not protected (HTTP 404)"),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
+
+
+def test_main_protected_rulesets_call_403_is_error(nik, tmp_path, monkeypatch):
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 1,
+         "gh: HTTP 403: Resource not accessible"),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "error"
+
+
+def test_main_protected_ruleset_rule_with_zero_required_reviews_is_pending(nik, tmp_path, monkeypatch):
+    rules = [{"type": "pull_request", "parameters": {"required_approving_review_count": 0}}]
+    wrap_run(monkeypatch, [
+        (lambda cmd: cmd[:2] == ["gh", "api"] and "rules/branches/main" in cmd[2], 0, json.dumps(rules)),
+    ])
+    d = dets(nik, str(tmp_path))
+    spec = {"type": "main_protected", "branch": "main", "bypass_only": "native"}
+    d.poll([spec])
+    r = wait_result(d, spec)
+    assert r.status == "pending"
+
+
+# ============================================================================================
 # Coverage: every detector type the real plan_model.json references is registered
 # ============================================================================================
 
@@ -1159,3 +1708,12 @@ def test_new_v13_detector_types_are_all_present_on_the_real_plan_model():
                 "deployed_contains", "wave_deployed", "assets_elevated", "registry_coverage",
                 "ledger_no_open_gap_on"}
     assert expected <= types
+
+
+def test_new_v14_detector_types_are_all_present_on_the_real_plan_model():
+    """Same sanity check as above, for the three v1.4 additions (review pass 2, §11.7)."""
+    model_path = os.path.join(REPO_ROOT, "00_ARCHITECTURE", "control", "suvarna", "plan_model.json")
+    with open(model_path, encoding="utf-8") as f:
+        model = json.load(f)
+    types = {i["detector"]["type"] for i in model["items"] if i.get("detector")}
+    assert {"fk_no_cascade", "acks_from", "main_protected"} <= types

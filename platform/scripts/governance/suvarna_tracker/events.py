@@ -12,12 +12,25 @@ Design rules:
   the dashboard so corruption is visible, not silent.
 - **Rotation-safe tail.** The reader tracks (inode, offset). If the file shrinks or is replaced, it
   re-reads from the start.
+
+CODE-19: a stateless CLI, for a Conductor pass that starts fresh every time (arch §5.1, D5 — "every
+pass is stateless") and cannot keep an in-process ``EventLog`` between passes:
+
+    python -m suvarna_tracker.events --since-offset <n> [--path PATH]
+
+Prints one JSON object: ``{"events": [...], "offset": <n>, "malformed": <n>}`` — every complete
+event line after byte ``n``, tolerant of malformed lines (skipped, counted, never fatal), and the
+new offset to pass next time. An incomplete trailing line (no newline yet) is never counted into the
+returned offset, so the next call re-reads it once it is complete. A missing file reads as empty
+(``events: []``, the offset unchanged), never an error — the log simply does not exist yet.
 """
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import json
 import os
+import sys
 import threading
 from dataclasses import dataclass, field
 
@@ -125,3 +138,67 @@ class EventLog:
                 except (ValueError, UnicodeDecodeError, EventError):
                     self.malformed += 1
             return (len(self.events), self.malformed) != before
+
+
+# --------------------------------------------------------------------------------------------
+# CODE-19: stateless "read since offset" — a Conductor pass keeps no EventLog object between
+# passes (every pass is stateless, arch §5.1/D5), so it needs a byte offset it can persist itself
+# and hand back next time, not an in-process reader.
+# --------------------------------------------------------------------------------------------
+
+def default_path() -> str:
+    home = os.environ.get("SUVARNA_HOME", "/Users/Dev/suvarna")
+    return os.environ.get("SUVARNA_EVENTS", os.path.join(home, "run", "EVENTS.jsonl"))
+
+
+def read_since_offset(path: str, offset: int) -> dict:
+    """Every complete event line strictly after byte `offset` in the log at `path`. Returns
+    `{'events': [...], 'offset': <new offset>, 'malformed': N}`. Tolerant of malformed lines
+    (skipped, counted, never fatal) and of a missing file (`events: []`, offset unchanged, `malformed:
+    0` — the log simply does not exist yet, not an error). If the file is now smaller than `offset`
+    (rotated or truncated since the offset was recorded), reads from the start instead — the same
+    "start over" rule `EventLog.refresh` uses. An incomplete trailing line (no newline yet) is never
+    counted into the returned offset, so the next call re-reads it once it is complete."""
+    offset = max(0, offset)
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return {"events": [], "offset": offset, "malformed": 0}
+    if size < offset:
+        offset = 0
+    with open(path, "rb") as f:
+        f.seek(offset)
+        chunk = f.read()
+    lines = chunk.split(b"\n")
+    partial = lines.pop()  # incomplete trailing line (no newline yet): excluded from the new offset
+    new_offset = offset + (len(chunk) - len(partial))
+    events, malformed = [], 0
+    for raw in lines:
+        if not raw.strip():
+            continue
+        try:
+            events.append(validate(json.loads(raw.decode("utf-8"))))
+        except (ValueError, UnicodeDecodeError, EventError):
+            malformed += 1
+    return {"events": events, "offset": new_offset, "malformed": malformed}
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description="Read Suvarṇa events since a byte offset (for stateless Conductor passes)")
+    ap.add_argument("--since-offset", type=int, required=True, metavar="N",
+                    help="byte offset to read from (0 for the whole log)")
+    ap.add_argument("--path", default=None,
+                    help="override the event log path (default: $SUVARNA_EVENTS or $SUVARNA_HOME/run/EVENTS.jsonl)")
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    a = build_arg_parser().parse_args(argv)
+    path = a.path or default_path()
+    result = read_since_offset(path, a.since_offset)
+    print(json.dumps(result, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

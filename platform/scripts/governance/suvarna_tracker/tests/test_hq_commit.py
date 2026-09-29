@@ -76,6 +76,72 @@ def test_never_runs_git_add_an_untracked_path_is_gits_own_refusal(hq, home):
     assert not _git("log", "--all", "--oneline", "-1", "--grep=msg", cwd=str(hq)).stdout
 
 
+# ---- --add-new (CODE-16) -----------------------------------------------------------------------
+
+def test_add_new_stages_an_untracked_path_before_committing(hq, home):
+    (hq / "brand_new.txt").write_text("new\n")
+    rc = HQ.commit(str(hq), ["brand_new.txt"], "add brand_new.txt", str(home), add_new=True)
+    assert rc == 0
+    log = _git("log", "--oneline", "-1", cwd=str(hq)).stdout
+    assert "add brand_new.txt" in log
+    assert _git("status", "--short", cwd=str(hq)).stdout.strip() == ""
+    tracked = _git("ls-files", "brand_new.txt", cwd=str(hq)).stdout.strip()
+    assert tracked == "brand_new.txt"
+
+
+def test_add_new_does_not_touch_an_already_tracked_path(hq, home):
+    """`--add-new` runs `git add` only for a path git does not already track — an already-tracked
+    path's modification is still staged and committed by `git commit -- <paths>` itself."""
+    (hq / "tracked.txt").write_text("two\n")
+    rc = HQ.commit(str(hq), ["tracked.txt"], "advance tracked.txt", str(home), add_new=True)
+    assert rc == 0
+    log = _git("log", "--oneline", "-1", cwd=str(hq)).stdout
+    assert "advance tracked.txt" in log
+
+
+def test_add_new_mixes_a_new_and_an_existing_path_in_one_commit(hq, home):
+    (hq / "tracked.txt").write_text("two\n")
+    (hq / "brand_new.txt").write_text("new\n")
+    rc = HQ.commit(str(hq), ["tracked.txt", "brand_new.txt"], "advance both", str(home), add_new=True)
+    assert rc == 0
+    log = _git("show", "--stat", "-1", cwd=str(hq)).stdout
+    assert "tracked.txt" in log and "brand_new.txt" in log
+
+
+@pytest.mark.parametrize("bad_path", ["-A", "--all", "-a", "."])
+def test_add_new_still_refuses_dash_a_and_whole_tree_paths(hq, home, bad_path):
+    rc = HQ.commit(str(hq), ["tracked.txt", bad_path], "msg", str(home), add_new=True)
+    assert rc == HQ.EX_USAGE
+    assert not os.path.exists(HQ.lock_path(str(home)))
+
+
+# ---- glob-like paths are always refused, add_new or not -------------------------------------
+
+@pytest.mark.parametrize("bad_path", ["*.py", "dir/*", "file?.txt", "[abc].txt"])
+def test_refuses_glob_like_paths(hq, home, bad_path, capsys):
+    rc = HQ.commit(str(hq), [bad_path], "msg", str(home))
+    assert rc == HQ.EX_USAGE
+    assert bad_path in capsys.readouterr().err
+    assert not os.path.exists(HQ.lock_path(str(home)))
+
+
+@pytest.mark.parametrize("bad_path", ["*.py", "dir/*", "file?.txt", "[abc].txt"])
+def test_refuses_glob_like_paths_even_with_add_new(hq, home, bad_path):
+    rc = HQ.commit(str(hq), [bad_path], "msg", str(home), add_new=True)
+    assert rc == HQ.EX_USAGE
+    assert not os.path.exists(HQ.lock_path(str(home)))
+
+
+def test_add_new_cli_flag_is_wired(hq, home, monkeypatch):
+    (hq / "brand_new.txt").write_text("new\n")
+    monkeypatch.setattr("sys.argv", ["hq_commit"])
+    rc = HQ.main(["--paths", "brand_new.txt", "--message", "cli add-new", "--home", str(home),
+                 "--hq", str(hq), "--add-new"])
+    assert rc == 0
+    tracked = _git("ls-files", "brand_new.txt", cwd=str(hq)).stdout.strip()
+    assert tracked == "brand_new.txt"
+
+
 def test_lock_is_released_after_a_successful_commit(hq, home):
     (hq / "tracked.txt").write_text("two\n")
     HQ.commit(str(hq), ["tracked.txt"], "msg", str(home))
