@@ -1,7 +1,7 @@
 ---
 artifact: PURNA_ACCEPTANCE_REBUILD_PREFLIGHT_AND_L3_COORDINATION
 version: 1.0
-status: PREFLIGHT_PREPARED_REBUILD_NOT_AUTHORIZED_TO_START
+status: PREFLIGHT_PREPARED_OWNER_SURROGATE_RULINGS_ACTIVE
 date: 2026-09-29
 campaign_id: madhav-purna-anvesana
 phase: ACCEPTANCE_AND_LIVE_CLOSURE
@@ -78,7 +78,8 @@ Unresolved (resolver verdict): `ga_positions` (not proven), `ga_strength` (spec 
 3. **Near-miss producer must precede the rebuild.** `bo_laksana` is where the ratified near-miss
    absence signal is produced (Addendum §6). Without it merged and deployed first, the single
    authorized rebuild would still leave the wealth contract unmet and force a second rebuild.
-   This needs the Native/domain decision (candidate set, eligibility rule, qualification language).
+   Owner-Surrogate Ruling OSR-001 owns the candidate set, eligibility rule, and qualification
+   language; no Native response is required.
 4. **`data_plane_builder` grants:** #2717 (1073/1074, builder read grants/timeouts) is unmerged and
    unapplied; L3 assets that read `bg_synthetic_cohort*`, `bg_transit_moorti` cannot run as the
    builder until it lands.
@@ -135,6 +136,11 @@ Text intended for `CAMPAIGN_COORDINATION.md` §6 LOG on `origin/campaign-coordin
 
 ## 7. Decision status
 
-- Decision 1 (probe credential): pending; see `ACCEPTANCE_PROBE_PLANNER_VERIFICATION_PROCEDURE_2026-09-29_v1_0.md`.
-- Decision 2 (rebuild): authorized in principle; **start blocked** on 3.1, on the near-miss
-  ratification/source (3.2 item 3) and on the super-admin trigger (3.3).
+- Decision 1 (provider lane): transferred to Owner-Surrogate Ruling OSR-003. No human credential
+  operation is authorized; the campaign must use or build on an existing protected system-owned
+  identity and record a terminal external dependency only if that is proven impossible.
+- Decision 2 (rebuild): Owner-Surrogate Rulings OSR-002, OSR-004, and OSR-005 govern. The single
+  protected full rebuild is conditionally authorized once the enumerated technical prerequisites
+  pass. The conductor must post the L3 request, resolve integration through repository evidence,
+  and use protected auditable automation rather than wait for a manual super-admin click.
+- Near-miss ratification: transferred to OSR-001; no Native response is required.

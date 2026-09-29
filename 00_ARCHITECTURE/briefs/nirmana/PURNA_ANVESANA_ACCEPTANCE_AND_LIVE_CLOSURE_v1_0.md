@@ -1,10 +1,13 @@
 ---
 artifact: PURNA_ANVESANA_ACCEPTANCE_AND_LIVE_CLOSURE
-version: 1.0
+version: 1.1
 status: ACTIVE_ACCEPTANCE_AND_LIVE_CLOSURE
 date: 2026-09-29
 owner: Native
 executor: Claude Code
+owner_surrogate: purna-owner-surrogate
+owner_surrogate_charter: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PURNA_OWNER_SURROGATE_CHARTER_v1_0.md
+human_relay_required: false
 campaign_id: madhav-purna-anvesana
 phase: ACCEPTANCE_AND_LIVE_CLOSURE
 base_main_sha_at_preparation: 55ec5e3555a8bf2b4a3ed4f42397f03a56396b2d
@@ -57,7 +60,8 @@ After completing the root mandatory-reading sequence, read:
 6. canonical `BEYOND_ACARYA_ACCEPTANCE_v10.json` and its lineage manifest
 7. `platform/scripts/purna/` and all of its tests
 8. PR #2742 and #2749 descriptions, review records and merged diffs
-9. this brief as the current execution contract
+9. `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PURNA_OWNER_SURROGATE_CHARTER_v1_0.md`
+10. this brief as the current execution contract
 
 ## 4. Fixed acceptance denominator
 
@@ -92,6 +96,12 @@ Similar failures occurred on earlier revisions. Establish causality; do not assu
 
 The Native authorizes autonomous execution of this phase, subject to the boundaries below.
 
+The Native additionally delegates campaign decisions to the `purna-owner-surrogate` under the
+bounded charter named in frontmatter. The conductor must consult that surrogate instead of asking
+the Native, Codex, another campaign owner, or an operator to choose among in-scope alternatives.
+Its recorded ruling is sufficient authority to continue. This delegation resolves decision latency;
+it does not weaken any acceptance, privacy, security, generation, or evidence gate.
+
 Allowed:
 
 - read-only source, PR, CI, deployment and privacy-preserving production diagnosis;
@@ -108,16 +118,18 @@ Not allowed:
 - direct production SQL writes or manual data repair;
 - new or manually applied repair migrations;
 - IAM, secret or chart-permission changes;
-- producer rebuilds;
+- producer rebuilds, except the single conditional protected full rebuild authorized by Owner-
+  Surrogate Ruling OSR-004 after every recorded prerequisite passes;
 - ad hoc Cloud Run mutation or bypass of protected deployment controls;
 - auto-merge, rebase or force-push;
 - raw private answer/credential exposure;
 - changes to unrelated campaigns;
 - human-expert empirical research or a scientific-validity claim.
 
-If a prohibited mutation is required, isolate that lane and provide an exact bounded request with
-the failed invariant, evidence, proposed change, rollback and verification. Continue independent
-runnable work rather than idling the campaign.
+If a prohibited mutation appears required, invoke the owner surrogate to select an in-authority
+alternative, isolate the lane, and continue independent runnable work. A physically absent
+cryptographic secret or third-party entitlement may be recorded once as a terminal external
+dependency with an automatic resume condition; it must not produce repeated requests to the Native.
 
 ## 7. Execution packets
 
@@ -248,9 +260,17 @@ report/content changes; never hand-write hashes. Preserve every predecessor.
 - Use focused tests while iterating and full gates at material boundaries.
 - Preserve unrelated work and integrate current main semantically.
 - Do not stop for routine choices resolvable from code, governed documents or tests.
+- Invoke `purna-owner-surrogate` for every owner/domain/architecture/cross-campaign/operational
+  choice before considering escalation; record its material ruling and execute it immediately.
+- Do not ask the Native or Codex to relay decisions between sessions. Exhaust existing system-owned
+  identities and protected automation instead of requesting a human credential or UI click.
 
 Report only a material milestone, a genuine prohibited-mutation/credential gate, a HIGH/MED design
 decision, candidate completion, live completion or terminal closeout.
+
+The owner surrogate decides HIGH/MED campaign questions after the charter's required independent
+reviews. A credential gate is reportable only once as a terminal external dependency after all
+system-owned alternatives are disproven; it is not a pause instruction for the remaining queue.
 
 ## 9. Definition of done
 

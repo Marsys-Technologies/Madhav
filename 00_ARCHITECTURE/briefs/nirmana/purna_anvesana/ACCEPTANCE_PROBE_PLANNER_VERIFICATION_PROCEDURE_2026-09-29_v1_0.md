@@ -1,7 +1,7 @@
 ---
 artifact: PURNA_ACCEPTANCE_PROBE_PLANNER_VERIFICATION_PROCEDURE
-version: 1.0
-status: PREPARED_AWAITING_OPERATOR_CREDENTIAL_REPAIR
+version: 1.1
+status: PREPARED_OWNER_SURROGATE_SYSTEM_IDENTITY_PATH
 date: 2026-09-29
 campaign_id: madhav-purna-anvesana
 authority: Native decision 2026-09-29 (Decision 1)
@@ -10,9 +10,12 @@ principal: probe-service-account
 
 # Minimal proof that one probe-account planner call succeeds
 
-Precondition owned by the Native/operator (not by this campaign): the probe account's default
-AI Console connection is re-keyed/revalidated, or the account is assigned another explicitly
-approved system-owned connection. Never copy or reuse another user's credential.
+Owner-Surrogate Ruling OSR-003 replaces the former human-operator wait. The campaign must first use
+an already-approved system-owned connection or workload-identity provider path. If none exists, it
+may implement a protected service-owned acceptance principal through the existing provider
+abstraction without creating IAM or embedding a secret. Never copy or reuse another user's
+credential. A genuinely absent third-party entitlement is recorded once as a terminal external
+dependency and does not pause the remaining runnable queue.
 
 ## What "fixed" means
 

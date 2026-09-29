@@ -1,6 +1,6 @@
 ---
 artifact: CLAUDECODE_BRIEF_PURNA_ANVESANA_ACCEPTANCE_AND_LIVE_CLOSURE
-version: 1.0
+version: 1.1
 status: ACTIVE_ACCEPTANCE_AND_LIVE_CLOSURE
 date: 2026-09-29
 native_authority: Native requested preparation of this checkout and autonomous continuation of the Purna Anvesana campaign into acceptance and live closure.
@@ -23,8 +23,13 @@ non_destructive_live_collection_authorized: true
 direct_database_mutation_authorized: false
 migration_authorized: false
 iam_or_secret_change_authorized: false
-producer_rebuild_authorized: false
+producer_rebuild_authorized: true
 human_expert_empirical_research_authorized: false
+owner_surrogate_authorized: true
+owner_surrogate_agent: .claude/agents/purna-owner-surrogate.md
+owner_surrogate_charter: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PURNA_OWNER_SURROGATE_CHARTER_v1_0.md
+protected_full_rebuild_conditionally_authorized: true
+human_relay_required: false
 ---
 
 # ACTIVE CHECKOUT — Purna Anvesana Acceptance & Live Closure
@@ -33,6 +38,14 @@ Read the governing brief above in full, then follow `CLAUDE.md` and its mandator
 sequence. This checkout is already on the correct isolated branch. Do not switch to local `main`;
 that branch legitimately belongs to another worktree. Fetch `origin/main` and integrate movement
 with an ordinary merge only. Never rebase or force-push.
+
+The Native has delegated all campaign owner decisions to the `purna-owner-surrogate`. Read its
+charter after the governing brief. Before asking the Native, Codex, another campaign owner, or an
+operator any domain, architecture, sequencing, integration, publication, rebuild, deployment, or
+acceptance question, invoke `.claude/agents/purna-owner-surrogate.md`, record its material ruling,
+and continue. No human relay is required. The charter includes binding initial rulings for the
+near-miss product, L3 coordination, provider lane, canonical rebuild, migrations/grants, and the
+remaining execution sequence.
 
 The source campaign is complete and merged through PRs #2742 and #2749. This phase does not restart
 source architecture. Its job is to earn the product claim through one golden three-door inquiry,
@@ -48,6 +61,11 @@ Hard boundaries: no direct production SQL writes, repair migration, IAM/secret c
 permission mutation, producer rebuild, auto-merge, denominator weakening, private-answer leakage,
 or human-expert empirical claim. Ordinary product records created by governed candidate/live
 acceptance calls are permitted. Use only protected publication, merge-queue and deployment paths.
+
+The producer-rebuild prohibition above is superseded only by Charter OSR-004: exactly one full
+canonical-chart rebuild is conditionally authorized through the existing protected frozen
+orchestrator after every recorded prerequisite passes. No single-asset repair, manual SQL, secret,
+IAM, permission, or frozen-orchestrator change is authorized.
 
 Completion means recorded 35-case x 3-door candidate and live acceptance with all deterministic
 gates green, independent automated assessment complete, deployed recovery/pagination/parity proven,

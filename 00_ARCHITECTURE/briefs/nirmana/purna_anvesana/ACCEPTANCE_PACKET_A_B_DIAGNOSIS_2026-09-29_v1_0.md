@@ -1,7 +1,7 @@
 ---
 artifact: PURNA_ACCEPTANCE_PACKET_A_B_DIAGNOSIS
-version: 1.0
-status: FINDINGS_RECORDED_TWO_AUTHORITY_GATES_OPEN
+version: 1.1
+status: FINDINGS_RECORDED_OWNER_SURROGATE_RULINGS_ACTIVE
 date: 2026-09-29
 campaign_id: madhav-purna-anvesana
 phase: ACCEPTANCE_AND_LIVE_CLOSURE
@@ -74,11 +74,11 @@ migration change was made. No private answer content is recorded here.
 
 `vitest run scripts/purna` — 8 files, 68 tests, all pass on this branch.
 
-## 5. Open authority gates (independent work otherwise continues)
+## 5. Former authority gates — transferred to owner surrogate
 
-1. **Probe provider credential** — Portal door cannot complete a turn. Credential operation.
-2. **Canonical-chart readiness** — managed door refuses; producer rebuild/repair is not
-   authorized, and the parallel L3 Kāla campaign owns `ka_*` on this chart. Alternatively a
-   source-policy decision to align managed MCP with #2752 partial-chart semantics (HIGH/MED).
+1. **Provider lane** — governed by Owner-Surrogate Ruling OSR-003. Human credential mutation remains
+   forbidden; use an approved system-owned path or record one terminal external dependency.
+2. **Canonical-chart readiness** — governed by OSR-002, OSR-004, and OSR-005. One protected full
+   rebuild is conditionally authorized after its technical prerequisites; no human relay is needed.
 
 No candidate or live evidence exists. `campaign_completion` remains `NOT_EARNED`.
