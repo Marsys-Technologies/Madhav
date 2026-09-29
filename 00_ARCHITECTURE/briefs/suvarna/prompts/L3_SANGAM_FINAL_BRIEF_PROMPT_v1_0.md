@@ -1,10 +1,11 @@
 ---
 artifact: L3_SANGAM_FINAL_BRIEF_PROMPT
-version: "1.0"
+version: "1.1"
 status: READY — paste into a new conversation
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.1 (2026-09-29, review pass 1 / FI-8): census command corrected (--out is a file; the read-only credential is sourced; runs through the census lock so only one census runs at a time); certification condition (D2); native rulings are recorded as decided only by Strategic Suvarṇa; record the tier-4 template revision the brief follows."
   - "1.0 (2026-09-29): first issue, on the native's instruction that each L3 focus family gets its own session to seal a final brief and implement it."
 ---
 
@@ -21,7 +22,7 @@ changelog:
 - **0 rows on the canonical chart** `482012f1…`.
   - `kala_convergence.signal_id` cascades on delete from `bodha_msr_signals`, so the `bo_laksana` rebuild of 2026-09-08 almost certainly wiped it. Four sibling `kala_*` tables with the same link are also empty.
   - The only rows left are pre-September: 17,957 on `1c826d5a…` and 2,540 on `cb73cd3d…` (Mode D only).
-- **Stage 3** (branch `sangam/stage3`) is unmerged. The consolidation PR #2735 conflicts and fails four CI checks, and migrations 1088–1093 are not applied. The independent review said "conforms with amendments", with one high-severity item: the aṣṭakavarga check depends on data no writer produces.
+- **Stage 3** (branch `sangam/stage3`) is unmerged. The consolidation PR #2735 conflicts and fails four CI checks, and its migrations (1088, 1089, 1090, 1092, 1093) are not applied (1091 belongs to the Gochara lane and is applied). The independent review said "conforms with amendments", with one high-severity item: the aṣṭakavarga check depends on data no writer produces.
 - **Stage 4** was written but never run.
 - **Known defects:**
   - Modes A and B measure every contact against 0° Aries (no target longitude; dosha predicates get none even in stage 3);
@@ -54,7 +55,10 @@ Write `00_ARCHITECTURE/briefs/l3_families/SANGAM_FINAL_BRIEF_v1_0.md`.
 1. **Follow the asset elevation template:** `/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md` (identity, measured state, nine gates, delta, change packets, certification, opportunity register). The five L0 pilot briefs in `…/nirmana/l0_assets/` show the shape. Record anything the template does not fit in a "template findings" section.
 2. **Measure before you write.** Run the Nikaṣa inspector for L3 only, read-only:
    ```
-   cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out <your evidence folder>
+   mkdir -p <your evidence folder>
+   export PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+   python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor l3-sangam -- \
+     bash -c 'source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out <your evidence folder>/census_L3.json'
    ```
    Never pass `--emit-gaps`. Never run it while another full census is running. The ledgers belong to Suvarṇa.
 3. **Cover, per the F-2 outcome:**
@@ -118,5 +122,12 @@ python3 -m suvarna_tracker.emit item --actor l3-sangam --item F1.S --state done 
 - Use `blocked` with a reason whenever you are waiting on the native.
 - When the native rules on F-2, F-6 or F-3, emit it as `decided` with what was decided.
 - A `done` without evidence is refused.
+
+## Corrections (v1.1, 2026-09-29)
+
+- **Certification (native decision D2).** A family asset is certified by Suvarṇa's independent re-measure, and only when it was built by an **orchestrator run**, never by a hand-run cutover script. (For Gochara this means no certification until the registered writer produces the new generation.)
+- **Rulings.** When the native seals one of this family's rulings, **Strategic Suvarṇa records it** as `decided` in the authoritative decisions log. This session emits `requested` only, never `decided`.
+- **One census at a time.** Always run the census through the lock command above; exit code 75 means another census is running: wait and retry.
+- **Template revision.** State in the brief's frontmatter which revision of the tier-4 template it follows (it is re-sealed at the engine freeze; Suvarṇa maps briefs to the new revision afterwards).
 
 **Start by:** verifying §1 against the live sources, then telling the native in plain language what differs from this prompt. Then bring the F-2 recommendation.

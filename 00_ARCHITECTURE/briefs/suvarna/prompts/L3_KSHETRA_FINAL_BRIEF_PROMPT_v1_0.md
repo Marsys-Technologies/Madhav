@@ -1,10 +1,11 @@
 ---
 artifact: L3_KSHETRA_FINAL_BRIEF_PROMPT
-version: "1.0"
+version: "1.1"
 status: READY — paste into a new conversation
 produced_on: 2026-09-29
 produced_in: session "Strategic Suvarṇa"
 changelog:
+  - "1.1 (2026-09-29, review pass 1 / FI-8): census command corrected (--out is a file; the read-only credential is sourced; runs through the census lock so only one census runs at a time); certification condition (D2); native rulings are recorded as decided only by Strategic Suvarṇa; record the tier-4 template revision the brief follows."
   - "1.0 (2026-09-29): first issue, on the native's instruction that each L3 focus family gets its own session to seal a final brief and implement it."
 ---
 
@@ -59,7 +60,10 @@ Write `00_ARCHITECTURE/briefs/l3_families/KSHETRA_FINAL_BRIEF_v1_0.md`.
 1. **Follow the asset elevation template:** `/Users/Dev/madhav-nikasha/00_ARCHITECTURE/briefs/nirmana/ASSET_ELEVATION_TEMPLATE_v2_0.md` (identity, measured state, nine gates, delta, change packets, certification, opportunity register). The five L0 pilot briefs in `…/nirmana/l0_assets/` show the shape. Record anything the template does not fit in a "template findings" section.
 2. **Measure before you write.** Run the Nikaṣa inspector for L3 only, read-only:
    ```
-   cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out <your evidence folder>
+   mkdir -p <your evidence folder>
+   export PYTHONPATH=/Users/Dev/madhav-suvarna-plan/platform/scripts/governance SUVARNA_HOME=/Users/Dev/suvarna
+   python3 -m suvarna_tracker.census_lock --wait 900 --emit --actor l3-kshetra -- \
+     bash -c 'source ~/.config/suvarna/pgenv.sh && cd /Users/Dev/madhav-nikasha && python3 platform/scripts/governance/asset_census.py --layer L3 --out <your evidence folder>/census_L3.json'
    ```
    Never pass `--emit-gaps`. Never run it while another full census is running. The ledgers belong to Suvarṇa.
 3. **Cover:**
@@ -121,5 +125,12 @@ python3 -m suvarna_tracker.emit item --actor l3-kshetra --item F1.K --state done
 - Use `blocked` with a reason whenever you are waiting on the native.
 - When the native rules on F-1 or F-4, emit it as `decided` with what was decided.
 - A `done` without evidence is refused.
+
+## Corrections (v1.1, 2026-09-29)
+
+- **Certification (native decision D2).** A family asset is certified by Suvarṇa's independent re-measure, and only when it was built by an **orchestrator run**, never by a hand-run cutover script. (For Gochara this means no certification until the registered writer produces the new generation.)
+- **Rulings.** When the native seals one of this family's rulings, **Strategic Suvarṇa records it** as `decided` in the authoritative decisions log. This session emits `requested` only, never `decided`.
+- **One census at a time.** Always run the census through the lock command above; exit code 75 means another census is running: wait and retry.
+- **Template revision.** State in the brief's frontmatter which revision of the tier-4 template it follows (it is re-sealed at the engine freeze; Suvarṇa maps briefs to the new revision afterwards).
 
 **Start by:** verifying §1 against the live sources, then telling the native in plain language what differs from this prompt. Then bring the F-1 recommendation.
