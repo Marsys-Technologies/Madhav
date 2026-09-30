@@ -12,7 +12,8 @@ cells into an UNEARNED PASS (CLAUDE.md §N.8). The repaired rule, structural and
   FAIL     served (a served select of its table is found), no referencing capability declares the contract
   NO_DET   referenced but the scan cannot tell: comment-only, only through a table other assets share, no served
            select found, a missing root, or a served select outside the scanned roots
-  N/A      no code reference anywhere (measured; `NA_RULE_DECISIONS` stays empty, so the rollup reads NO_DETECTOR)
+  N/A      no code reference anywhere, cause `no-served-surface` (measured; `NA_RULE_DECISIONS` stays empty, so the rollup
+           reads NO_DETECTOR: an undeclared N/A is not N/A)
 
 Every test drives the real `capability_scan` / `measure()` over a small synthetic source tree.
 
@@ -339,6 +340,8 @@ def test_na_rule_decisions_stays_empty_so_a_measured_dens_na_reads_no_detector_i
     assert _dens(c, "bg_x")["v"] == ac.NA
     cell = ac.rollup_asset("L0", next(a for a in c["assets"] if a["asset_id"] == "bg_x")["measurements"])["Dens"]
     assert cell["v"] == ac.NO_DET, cell
+    chk = next(k for k in cell["checks"] if k["criterion"] == "Dens.served")
+    assert chk["cause"] == "no-served-surface" and chk["rule_id"] == "Dens.served#measured:no-served-surface", chk
 
 
 def test_the_legacy_call_shape_still_lists_modules_by_code(tmp_path):
@@ -358,6 +361,9 @@ _FALSE_TIER_SHAPES = [
     ("case-aliased-as-tier", "CASE WHEN score > 1 THEN 'hi' ELSE 'lo' END AS tier, id"),
     ("function-of-tier", "lower(signature_tier) AS s, id"),
     ("coalesce-of-tier", "coalesce(tier, 'x') AS tier"),
+    ("tier-led-expression", "tier IS NOT NULL AS has_tier, id"),
+    ("tier-concatenation", "signature_tier || '-x' AS label"),
+    ("tier-comparison", "tier = 'gold' AS is_gold"),
 ]
 
 
@@ -521,3 +527,19 @@ def test_a_clean_ts_reference_that_is_neither_select_nor_comment_still_reads_na(
     """Unchanged: a names-map in a cleanly parsed `.ts` file holds no served select and no comment."""
     tree.write(tree.outside, "names.ts", "export const NAMES = { bg_x: 't_x' }\n")
     assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")["v"] == ac.NA
+
+
+def test_a_known_catalog_that_lacks_the_named_column_does_not_credit_it():
+    """With the table's columns known, a tier NAME that is not one of them (an alias, another table's column) counts
+    for nothing."""
+    assert ac._select_tier("signature_tier", None, "t_x", ["id", "v"]) == (ac.TIER_NO, [])
+    assert ac._select_tier("signature_tier", None, "t_x", ["id", "signature_tier"]) == (ac.TIER_YES, ["signature_tier"])
+
+
+def test_the_desync_detector_reads_quotes_newlines_and_comments():
+    assert ac._ts_desynced("const a = 'x\n';\n")                       # a ' string across a raw newline
+    assert ac._ts_desynced("const a = \"x\n\";\n")
+    assert ac._ts_desynced("const a = `never closed\n")                # unterminated to EOF
+    assert ac._ts_desynced("const re = /'/;\nquery('SELECT 1');\n")    # a stray quote
+    assert not ac._ts_desynced("const a = 'it\\'s';\nconst b = `x\ny`;\n// it's a comment\n/* don't */\n")
+    assert not ac._ts_desynced("")
