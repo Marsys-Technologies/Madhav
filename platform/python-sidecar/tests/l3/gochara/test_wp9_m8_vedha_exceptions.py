@@ -5,12 +5,12 @@ v2_1 M-8 (F-26): (a) mutual exclusions Sun↔Saturn and Moon↔Mercury — occup
 of the vedha house by the excluded partner is never an obstruction; when it is
 the ONLY occupancy, no house_vedha row is emitted and coverage records
 `searched, exception_applied`; (b) vipareeta vedha — a companion joining the
-transiting graha cancels the obstruction for the companionship interval
-(cancelled=true, cancelled_by, cancelled_from/until, suppression_factor=1.0,
-vipareeta.source_qualification='translator_commentary'); (c)
-intensity_qualifier='retrograde_malefic' when the obstructing malefic is
-retrograde within the obstruction window. Evaluation order: exceptions first,
-then vipareeta.
+transiting graha CARVES a cancelled_vipareeta sub-interval out of the
+obstruction interval (T0-8 / GOCHARA_DESIGN_SPECS_v1_4 §5: segments, not
+flag-flip; the remainder stays active); (c)
+intensity_qualifier='retrograde_malefic' on the interval whose obstructing
+malefic is retrograde within the obstruction window. Evaluation order:
+exceptions first, then vipareeta.
 
 Runs ONLY against the disposable WP6 Postgres; skips NOT_RUN when unreachable.
 Schema + shared seed DDL are reused from test_wp9_stamp_columns (5.1); each
@@ -237,7 +237,9 @@ class TestM8MutualExclusion:
         assert len(house_rows) == 1
         detail = house_rows[0]["detail"]
         assert detail["obstruction_active"] is True
-        assert detail["obstructing_graha"] == "Mars"
+        # T0-8: per-obstructor interval relations, not a first-only singular
+        assert detail["obstructing_grahas"] == ["Mars"]
+        assert [iv["obstructor_body"] for iv in detail["vedha_intervals"]] == ["Mars"]
         assert detail["malefic_obstructing_grahas"] == ["Mars"]
         assert detail["vedha_exception"] == {
             "pair_with": ["Saturn"], "searched": True, "exception_applied": True}
@@ -245,8 +247,9 @@ class TestM8MutualExclusion:
 
 
 class TestM8Vipareeta:
-    """(b) A companion joining the transiting graha cancels the obstruction
-    for the companionship interval; the row is kept, suppression_factor=1.0."""
+    """(b) A companion joining the transiting graha carves a
+    cancelled_vipareeta SUB-INTERVAL out of the obstruction (T0-8 / O-VI-4);
+    the remainder stays active and the row is kept."""
 
     def test_companion_cancels_obstruction(self, wp9_m8_schema):
         chart_id = "a1111111-0000-0000-0000-000000000003"
@@ -264,15 +267,26 @@ class TestM8Vipareeta:
         assert len(house_rows) == 1
         detail = house_rows[0]["detail"]
         assert detail["obstruction_active"] is True
-        assert detail["obstructing_graha"] == "Mars"
-        assert detail["cancelled"] is True
-        assert detail["cancelled_by"] == "Jupiter"
-        # cancelled interval = companionship ∩ obstruction = offsets 110..115
+        assert detail["obstructing_grahas"] == ["Mars"]
+        # Partial carve: the row is NOT wholly cancelled (flag-flip was the
+        # pre-repair defect); suppression_factor stays None.
+        assert detail["cancelled"] is False
+        assert detail["suppression_factor"] is None
         horizon_start = date.today() - timedelta(days=HORIZON_BACK_DAYS)
-        assert detail["cancelled_from"] == (horizon_start + timedelta(days=110)).isoformat()
-        assert detail["cancelled_until"] == (horizon_start + timedelta(days=115)).isoformat()
-        assert detail["suppression_factor"] == 1.0
-        assert detail["vipareeta"]["source_qualification"] == "translator_commentary"
+        iv = detail["vedha_intervals"][0]
+        # interval = obstruction ∩ residence, half-open: [105, 126)
+        assert iv["t_in"] == (horizon_start + timedelta(days=105)).isoformat()
+        assert iv["t_out"] == (horizon_start + timedelta(days=126)).isoformat()
+        # carved sub-interval = companionship ∩ obstruction, half-open [110, 116)
+        assert iv["vipareeta"]["applied"] is True
+        assert iv["vipareeta"]["companions"] == ["Jupiter"]
+        assert iv["vipareeta"]["carved"] == [{
+            "start": (horizon_start + timedelta(days=110)).isoformat(),
+            "end": (horizon_start + timedelta(days=116)).isoformat(),
+        }]
+        assert iv["vipareeta"]["source_qualification"] == "translator_commentary"
+        assert [s["state"] for s in iv["segments"]] == [
+            "active", "cancelled_vipareeta", "active"]
         # Row-level stamp stays verse_cited — the house_vedha RULE is verse-cited;
         # only the vipareeta application is translator commentary.
         assert house_rows[0]["source_qualification"] == "verse_cited"
@@ -291,12 +305,13 @@ class TestM8Vipareeta:
         detail = [r for r in rows if r["vedha_kind"] == "house_vedha"][0]["detail"]
         assert detail["cancelled"] is False
         assert detail["suppression_factor"] is None
-        assert detail["vipareeta"] is None
+        assert detail["vedha_intervals"][0]["vipareeta"] is None
 
 
 class TestM8RetrogradeQualifier:
     """(c) An obstructing malefic retrograde within the obstruction window
-    carries intensity_qualifier='retrograde_malefic'."""
+    carries intensity_qualifier='retrograde_malefic' on ITS interval (T0-8:
+    per-interval, not first-obstructor-only)."""
 
     def test_retrograde_malefic_obstructor(self, wp9_m8_schema):
         chart_id = "a1111111-0000-0000-0000-000000000005"
@@ -311,7 +326,9 @@ class TestM8RetrogradeQualifier:
             rules=[("favourable", "sun", 3, 9, "Courage, travel, gain from siblings", BPHS_CH29)],
         )
         detail = [r for r in rows if r["vedha_kind"] == "house_vedha"][0]["detail"]
-        assert detail["intensity_qualifier"] == "retrograde_malefic"
+        iv = detail["vedha_intervals"][0]
+        assert iv["obstructor_body"] == "Mars"
+        assert iv["intensity_qualifier"] == "retrograde_malefic"
 
     def test_direct_malefic_obstructor_no_qualifier(self, wp9_m8_schema):
         chart_id = "a1111111-0000-0000-0000-000000000006"
@@ -326,7 +343,7 @@ class TestM8RetrogradeQualifier:
             rules=[("favourable", "sun", 3, 9, "Courage, travel, gain from siblings", BPHS_CH29)],
         )
         detail = [r for r in rows if r["vedha_kind"] == "house_vedha"][0]["detail"]
-        assert detail["intensity_qualifier"] is None
+        assert detail["vedha_intervals"][0]["intensity_qualifier"] is None
 
     def test_every_row_date_grain_on_this_path(self, wp9_m8_schema):
         """The DATE-grain overlap path never stamps an instant claim."""

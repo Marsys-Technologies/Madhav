@@ -46,6 +46,48 @@ Contract adherence (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOSE
     · bg_phaladeepika_latta (migration 528, Phaladeepika PG338-339, REAL
     cited, Ketu deliberately absent). See logic.py's own ADJUDICATION-11
     section for the full disclosure.
+
+── T0-8 VEDHA_INTERVAL_RELATION (Pravāha A5.4, 2026-09-30;
+GOCHARA_DESIGN_SPECS_v1_4 §5; FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 N4,
+#16/#17/#25, D-PG353) ────────────────────────────────────────────────────────
+The pre-repair house_vedha loop collapsed temporal structure: every obstructor
+overlapping ANY part of a primary residence was counted as simultaneous, the
+FIRST obstruction and FIRST cancellation only were recorded, and the PG353
+battle scale was applied as a general grade (disclosed but ruled out).
+Post-repair:
+  - Each (primary residence, obstructor) overlap is its own INTERVAL RELATION
+    in detail.vedha_intervals — t_in/t_out on the half-open convention
+    [t_in, t_out) (O-VI-2: the boundary day is clean), state ∈ {active,
+    cancelled_vipareeta, inactive}, exception ∈ {none, sun_saturn,
+    moon_mercury}, per-interval independence_group (one root attenuates once).
+  - Vipareeta CARVES a cancelled_vipareeta sub-interval out of each
+    obstruction interval, from ALL companions (not first-only); the remainder
+    stays active (O-VI-4). M-8 evaluation order preserved: mutual-exclusion
+    exceptions FIRST (excepted occupants produce NO interval — O-VI-3), then
+    vipareeta; the retrograde-malefic intensity qualifier is per-interval.
+  - Attenuation requires state='active' at t (#17): rows with no active
+    obstruction segment carry detail.attenuation.state='clear' /
+    'cancelled_vipareeta' with factor=None — no suppression is stamped.
+  - D-PG353 (native, 2026-09-29): the malefic_count_grade APPLICATION is
+    REMOVED; detail.d_pg353 records the removal (disclosure trail in reverse).
+    The scale table remains in the §12.9 upstream fingerprint so a future
+    cited re-activation is detectable.
+  - Absent overlay coverage reads as 'unavailable' with a coverage object,
+    never 1.0 (#25) — logic.attenuation_at is the serving read; every row
+    carries detail.coverage.
+  - Moon-primary vedha rows are stamped operator_role='testimony'
+    (annotation-only, S-04; P6 day-window gating and the P6 coverage record
+    are enforced on the evaluation path, which is a separate campaign item).
+
+DEFERRED SCHEMA NEED (dated note, 2026-09-30): §5.1 specifies a dedicated
+`vedha_interval` TABLE (one row per interval relation). The served table
+shape is fixed by migrations owned by a separate campaign item, and this
+writer must not write migrations: the interval relations are therefore
+served in the house_vedha row's jsonb `detail.vedha_intervals` (row
+compatibility preserved — one outer row per (graha, primary residence) as
+before). When the schema item lands, each interval relation should become a
+first-class row; the jsonb payload is the interim representation, disclosed
+here and under detail.interval_representation.
 """
 from __future__ import annotations
 
@@ -59,22 +101,26 @@ import psycopg.rows
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_graha_sancara.engine import ALL_GRAHAS, NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.ka_vedha_gochara.logic import (
+    D_PG353_REMOVAL,
     HOUSE_VEDHA,
     LATTA,
     NATURAL_MALEFICS,
     SARVATOBHADRA,
+    STATE_ACTIVE,
+    STATE_CANCELLED_VIPAREETA,
+    build_obstruction_intervals,
+    carve_vipareeta,
     corpus_verifiable_for,
     detect_sign_runs,
+    exception_for_pair,
     house_from_moon,
     house_vedha_uncited_extension,
     is_mutual_exclusion,
     latta_nakshatra_idx,
-    malefic_count_grade,
     overlap_window,
     sign_from_house,
     source_qualification_for,
     upstream_fingerprint,
-    vipareeta_cancellation,
 )
 from services.gochara_grammar.sarvatobhadra import _vedha_pairs_from_db, opposite_nakshatra_id
 from services.gochara_grammar import citations as C
@@ -83,7 +129,7 @@ from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 
 logger = logging.getLogger(__name__)
 
-FORMULA_VERSION = "ka_vedha_gochara_v1.0"
+FORMULA_VERSION = "ka_vedha_gochara_v1.1"
 CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
 SIGN_SIZE_DEG = 30.0
@@ -322,6 +368,203 @@ def _fetch_retrograde_dates(
     return retro
 
 
+def _build_house_vedha_intervals(
+    *,
+    graha: str,
+    run: dict,
+    vedha_sign_idx: int,
+    effective: list[tuple[str, dict]],
+    sign_runs_by_graha: dict[str, list[dict]],
+    retro_dates: dict[str, set[date]],
+) -> list[dict]:
+    """T0-8: the per-(primary residence, obstructor) obstruction-interval
+    relations for one primary sign-run. Pure (no DB) — unit-mirrored against
+    oracles O-VI-2/3/4.
+
+    `effective` is [(obstructor_body, inclusive-overlap {"start","end"})] with
+    the M-8 mutual-exclusion pairs ALREADY removed (exceptions first). Dates
+    are converted to the §5 half-open convention: an inclusive day-range
+    [s, e] becomes [s, e+1d), so the day after an obstruction's last day is
+    clean (O-VI-2's boundary day). Vipareeta is then carved from EVERY
+    companion joining the primary's sign during the obstruction (not
+    first-only — N4), and the retrograde-malefic intensity qualifier and the
+    independence group are stamped per interval.
+    """
+    day = timedelta(days=1)
+    residence = (run["start_date"], run["end_date"] + day)
+    intervals = build_obstruction_intervals(
+        residence[0], residence[1],
+        [(body, ov["start"], ov["end"] + day) for body, ov in effective],
+    )
+    if not intervals:
+        return intervals
+
+    companion_windows: list[tuple[str, date, date]] = []
+    for comp_graha, comp_runs in sign_runs_by_graha.items():
+        if comp_graha == graha:
+            continue
+        for r in comp_runs:
+            if r["sign_idx"] == run["sign_idx"]:
+                companion_windows.append(
+                    (comp_graha, r["start_date"], r["end_date"] + day))
+
+    for iv in intervals:
+        companions = carve_vipareeta(iv, companion_windows)
+        iv["vipareeta_companions"] = companions
+        iv["intensity_qualifier"] = (
+            "retrograde_malefic"
+            if iv["obstructor_body"] in NATURAL_MALEFICS
+            and any(
+                iv["t_in"] <= d < iv["t_out"]
+                for d in retro_dates.get(iv["obstructor_body"], ())
+            )
+            else None
+        )
+        iv["independence_group"] = _vedha_independence_group(
+            body=iv["obstructor_body"],
+            relation="vedha_obstruction",
+            target_deg=vedha_sign_idx * SIGN_SIZE_DEG,
+            window_start=iv["t_in"],
+        )
+    return intervals
+
+
+def _house_vedha_detail(
+    *,
+    upstream_fp: dict,
+    graha: str,
+    run: dict,
+    house: int,
+    vedha_house: int,
+    vedha_sign_idx: int,
+    rule: dict,
+    uncited: bool,
+    intervals: list[dict],
+    excepted: list[str],
+    horizon_start: date,
+    horizon_end: date,
+) -> dict:
+    """The full jsonb detail payload for one house_vedha row (T0-8 shape).
+    Pure and JSON-safe — unit-mirrored without a DB."""
+    provenance = "uncited_extension" if uncited else "verse_cited"
+    ruling_ref = "N-14/F-29" if uncited else None
+    # S-04: Moon-channel (P6) operators are testimony — Moon-primary vedha
+    # annotates; it never weights, gates, or admits.
+    operator_role = "scored"
+    if graha == "Moon":
+        operator_role = "testimony"
+        ruling_ref = "S-04"
+
+    interval_details = []
+    for iv in intervals:
+        companions = iv.get("vipareeta_companions") or []
+        carved = [
+            {"start": s["start"].isoformat(), "end": s["end"].isoformat()}
+            for s in iv["segments"] if s["state"] == STATE_CANCELLED_VIPAREETA
+        ]
+        interval_details.append({
+            "obstructor_body": iv["obstructor_body"],
+            "t_in": iv["t_in"].isoformat(),
+            "t_out": iv["t_out"].isoformat(),
+            "half_open": True,
+            "state": iv["state"],
+            "segments": [
+                {"start": s["start"].isoformat(), "end": s["end"].isoformat(),
+                 "state": s["state"]}
+                for s in iv["segments"]
+            ],
+            "exception": iv["exception"],
+            "independence_group": iv["independence_group"],
+            "intensity_qualifier": iv.get("intensity_qualifier"),
+            "vipareeta": (
+                {"applied": True,
+                 "source_qualification": "translator_commentary",
+                 "companions": companions,
+                 "carved": carved}
+                if companions else None
+            ),
+            "provenance": provenance,
+            "operator_role": operator_role,
+        })
+
+    obstruction_active = any(iv["state"] == STATE_ACTIVE for iv in intervals)
+    fully_cancelled = bool(intervals) and all(
+        iv["state"] == STATE_CANCELLED_VIPAREETA for iv in intervals)
+    obstructing_grahas: list[str] = []
+    for iv in intervals:
+        if iv["obstructor_body"] not in obstructing_grahas:
+            obstructing_grahas.append(iv["obstructor_body"])
+    malefic_occupants = [g for g in obstructing_grahas if g in NATURAL_MALEFICS]
+    # Row-level independence group is an aggregate projection for the overlays
+    # kernel: present exactly when ONE physical root obstructs (the per-interval
+    # groups are authoritative when several roots obstruct at once).
+    row_group = (
+        intervals[0]["independence_group"] if len(intervals) == 1 else None)
+
+    return {
+        "upstream_fingerprint": upstream_fp,
+        "primary_house": house,
+        "primary_sign_idx": run["sign_idx"],
+        "primary_sign_name": SIGNS[run["sign_idx"]],
+        "vedha_house": vedha_house,
+        "vedha_sign_idx": vedha_sign_idx,
+        "vedha_sign_name": SIGNS[vedha_sign_idx],
+        "phala": rule.get("phala"),
+        "provenance": provenance,
+        "operator_role": operator_role,
+        "ruling_ref": ruling_ref,
+        "obstruction_active": obstruction_active,
+        "obstructing_grahas": obstructing_grahas,
+        "vedha_intervals": interval_details,
+        "independence_group": row_group,
+        # Aggregate cancellation projection (the per-interval segments are
+        # authoritative): True only when EVERY interval was fully carved by
+        # vipareeta. suppression_factor=1.0 on a fully-cancelled row preserves
+        # the disclosed "searched and classically cancelled — not no data"
+        # semantics; no numeric suppression is served otherwise (D-PG353).
+        "cancelled": fully_cancelled,
+        "suppression_factor": 1.0 if fully_cancelled else None,
+        "malefic_obstructing_grahas": malefic_occupants,
+        "malefic_count": len(malefic_occupants),
+        # D-PG353 (native, 2026-09-29): the PG353 battle scale is NOT a general
+        # grade source — the grade application is removed; the keys are served
+        # as explicit nulls and the removal is recorded as data.
+        "malefic_effect_grade": None,
+        "malefic_effect_description": None,
+        "malefic_scale_citation": None,
+        "d_pg353": dict(D_PG353_REMOVAL),
+        "attenuation": {
+            "requires_state": STATE_ACTIVE,
+            "state_at_build": (
+                "obstructed" if obstruction_active
+                else ("cancelled_vipareeta" if intervals else "clear")
+            ),
+            "factor": None,
+            "note": "no attenuation without an active obstruction (#17); "
+                    "no cited numeric suppression scale is served (D-PG353)",
+        },
+        "coverage": {
+            "state": "computed",
+            "grain": "date",
+            "horizon_start": horizon_start.isoformat(),
+            "horizon_end": horizon_end.isoformat(),
+        },
+        "interval_representation": (
+            "interval relations served in jsonb detail pending the §5.1 "
+            "vedha_interval table (separate schema-owning item); see writer.py "
+            "docstring dated 2026-09-30"
+        ),
+        # M-8: recorded when an excluded-partner occupancy coexisted with an
+        # effective obstruction (the all-excluded case emits no row — it is in
+        # the writer's coverage notes instead).
+        "vedha_exception": (
+            {"pair_with": sorted(set(excepted)),
+             "searched": True, "exception_applied": True}
+            if excepted else None
+        ),
+    }
+
+
 @register("ka_vedha_gochara")
 class KaVedhaGocharaWriter(WriterBase):
     """ka_vedha_gochara — Vedha application + Sarvatobhadra (L3 Kāla, item 5,
@@ -464,9 +707,9 @@ class KaVedhaGocharaWriter(WriterBase):
                 vedha_house = int(rule["vedha_house"])
                 vedha_sign_idx = sign_from_house(janma_moon_sign_idx, vedha_house)
 
-                # Collect EVERY overlapping occupant (not just the first) so the
-                # ADJUDICATION-11 malefic-count grading below has a real count to
-                # grade, not just a boolean.
+                # Collect EVERY overlapping occupant; each becomes its own
+                # interval relation below (N4: no first-only, no simultaneity
+                # collapse).
                 occupants: list[tuple[str, dict]] = []
                 for other_graha, other_runs in sign_runs_by_graha.items():
                     if other_graha == graha:
@@ -485,8 +728,8 @@ class KaVedhaGocharaWriter(WriterBase):
                 # M-8 evaluation order — exceptions FIRST, then vipareeta.
                 # (a) Mutual exclusions (Sun↔Saturn, Moon↔Mercury; Phaladīpikā
                 # PG322:C1 / PG323:C1): occupancy of the vedha house by the
-                # excluded partner is never an obstruction, and never counts
-                # toward the malefic grading either.
+                # excluded partner produces NO interval, and never counts
+                # toward the malefic census either.
                 effective = [(g, ov) for g, ov in occupants if not is_mutual_exclusion(graha, g)]
                 excepted = [g for g, _ov in occupants if is_mutual_exclusion(graha, g)]
                 if occupants and not effective:
@@ -495,6 +738,8 @@ class KaVedhaGocharaWriter(WriterBase):
                         "primary_house": house,
                         "vedha_house": vedha_house,
                         "excluded_obstructors": sorted(set(excepted)),
+                        "exception": sorted({
+                            exception_for_pair(graha, g) for g in excepted}),
                         "window_start": run["start_date"].isoformat(),
                         "window_end": run["end_date"].isoformat(),
                         "searched": True,
@@ -502,62 +747,18 @@ class KaVedhaGocharaWriter(WriterBase):
                     })
                     continue  # no vedha row — the exception nullifies this vedha
 
-                obstruction_active = bool(effective)
-                obstructing_graha = effective[0][0] if effective else None
-                obstruction_start = effective[0][1]["start"] if effective else None
-                obstruction_end = effective[0][1]["end"] if effective else None
-                malefic_occupants: list[str] = []
-                for other_graha, _ov in effective:
-                    if other_graha in NATURAL_MALEFICS and other_graha not in malefic_occupants:
-                        malefic_occupants.append(other_graha)
+                # T0-8: per-obstructor interval relations; vipareeta carved as
+                # sub-intervals; per-interval intensity qualifier + group.
+                intervals = _build_house_vedha_intervals(
+                    graha=graha,
+                    run=run,
+                    vedha_sign_idx=vedha_sign_idx,
+                    effective=effective,
+                    sign_runs_by_graha=sign_runs_by_graha,
+                    retro_dates=retro_dates,
+                )
 
-                # M-8 (b) vipareeta vedha: a second graha JOINING THE TRANSITING
-                # graha (sharing the primary sign) during the obstruction cancels
-                # it for the companionship interval. Row kept, cancelled=true,
-                # suppression_factor=1.0. The vipareeta doctrine is translator
-                # commentary, not verse — recorded under detail.vipareeta.
-                cancelled = False
-                cancelled_by = None
-                cancelled_from = None
-                cancelled_until = None
-                if obstruction_active:
-                    for comp_graha, comp_runs in sign_runs_by_graha.items():
-                        if comp_graha == graha or comp_graha == obstructing_graha:
-                            continue
-                        comp_in_sign = [r for r in comp_runs if r["sign_idx"] == run["sign_idx"]]
-                        cov = vipareeta_cancellation(
-                            obstruction_start, obstruction_end, comp_in_sign,
-                        )
-                        if cov is not None:
-                            cancelled = True
-                            cancelled_by = comp_graha
-                            cancelled_from = cov["start"]
-                            cancelled_until = cov["end"]
-                            break
-
-                # M-8 (c) retrograde malefic in vedha position → intensity
-                # qualifier (Phaladīpikā PG347-349 retrograde rule).
-                intensity_qualifier = None
-                if (
-                    obstruction_active
-                    and obstructing_graha in NATURAL_MALEFICS
-                    and any(
-                        obstruction_start <= d <= obstruction_end
-                        for d in retro_dates.get(obstructing_graha, ())
-                    )
-                ):
-                    intensity_qualifier = "retrograde_malefic"
-
-                # ADJUDICATION-11 Part 4: PG353 malefic-count -> effect-grade
-                # scale. The REFERENCE TABLE (bg_vedha_malefic_scale) is REAL
-                # and cited; APPLYING it here — to an ordinary transit vedha,
-                # not the verse's literal "at the time of a battle" context —
-                # is this writer's own extension of scope, disclosed via
-                # `malefic_grade_uncited_extension` (nested, distinct from the
-                # row-level `uncited_extension=False`, which covers the
-                # house_vedha rule itself, unaffected by this addition).
-                malefic_count = len(malefic_occupants)
-                grade_row = malefic_count_grade(malefic_count, malefic_scale) if malefic_count > 0 else None
+                uncited = house_vedha_uncited_extension(rule.get("classical_citation"))
 
                 all_rows.append({
                     "chart_id": chart_id,
@@ -576,7 +777,7 @@ class KaVedhaGocharaWriter(WriterBase):
                     # them as cited. A missing citation also counts as uncited —
                     # the column fallback above satisfies the schema, it does not
                     # make the row cited.
-                    "uncited_extension": house_vedha_uncited_extension(rule.get("classical_citation")),
+                    "uncited_extension": uncited,
                     # Constraint kala_vedha_gochara_grid_fields_scope: grid_basis/
                     # grid_school_tag must be NULL for non-sarvatobhadra rows.
                     "grid_basis": None,
@@ -597,62 +798,20 @@ class KaVedhaGocharaWriter(WriterBase):
                         primary_house=rule.get("primary_house"),
                         vedha_house=rule.get("vedha_house"),
                     ),
-                    "detail": {
-                        "upstream_fingerprint": upstream_fp,
-                        "primary_house": house,
-                        "primary_sign_idx": run["sign_idx"],
-                        "primary_sign_name": SIGNS[run["sign_idx"]],
-                        "vedha_house": vedha_house,
-                        "vedha_sign_idx": vedha_sign_idx,
-                        "vedha_sign_name": SIGNS[vedha_sign_idx],
-                        "phala": rule.get("phala"),
-                        "obstruction_active": obstruction_active,
-                        "obstructing_graha": obstructing_graha,
-                        "obstruction_window_start": obstruction_start.isoformat() if obstruction_start else None,
-                        "obstruction_window_end": obstruction_end.isoformat() if obstruction_end else None,
-                        # A08: one physical obstruction root attenuates once.
-                        # Present exactly when an obstruction is active; rows
-                        # with no active obstruction have no group (they
-                        # attenuate nothing).
-                        "independence_group": (
-                            _vedha_independence_group(
-                                body=obstructing_graha,
-                                relation="vedha_obstruction",
-                                target_deg=vedha_sign_idx * SIGN_SIZE_DEG,
-                                window_start=obstruction_start,
-                            )
-                            if obstruction_active else None
-                        ),
-                        "malefic_obstructing_grahas": malefic_occupants,
-                        "malefic_count": malefic_count,
-                        "malefic_effect_grade": grade_row["effect_grade"] if grade_row else None,
-                        "malefic_effect_description": grade_row["effect_description"] if grade_row else None,
-                        "malefic_scale_citation": grade_row["source_citation"] if grade_row else None,
-                        "malefic_grade_uncited_extension": grade_row is not None,
-                        # M-8 fields. vedha_exception is recorded when an
-                        # excluded-partner occupancy coexisted with an effective
-                        # obstruction (the all-excluded case emits no row — it is
-                        # in the writer's coverage notes instead).
-                        "vedha_exception": (
-                            {"pair_with": sorted(set(excepted)),
-                             "searched": True, "exception_applied": True}
-                            if excepted else None
-                        ),
-                        "cancelled": cancelled,
-                        "cancelled_by": cancelled_by,
-                        "cancelled_from": cancelled_from.isoformat() if cancelled_from else None,
-                        "cancelled_until": cancelled_until.isoformat() if cancelled_until else None,
-                        "suppression_factor": 1.0 if cancelled else None,
-                        "intensity_qualifier": intensity_qualifier,
-                        "vipareeta": (
-                            {"applied": True,
-                             "source_qualification": "translator_commentary",
-                             "companion_graha": cancelled_by,
-                             "window_start": cancelled_from.isoformat(),
-                             "window_end": cancelled_until.isoformat()}
-                            if cancelled else None
-                        ),
-                    },
+                    "detail": _house_vedha_detail(
+                        upstream_fp=upstream_fp,
+                        graha=graha,
+                        run=run,
+                        house=house,
+                        vedha_house=vedha_house,
+                        vedha_sign_idx=vedha_sign_idx,
+                        rule=rule,
+                        uncited=uncited,
+                        intervals=intervals,
+                        excepted=excepted,
+                        horizon_start=horizon_start,
+                        horizon_end=horizon_end,
+                    ),
                     "formula_version": FORMULA_VERSION,
                 })
 
