@@ -93,6 +93,49 @@ def test_committed_file_declares_no_empty_prose_list():
     assert all(e["prose_fields"] != [] for e in ac.load_asset_declarations().values())
 
 
+NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
+    bg_reference bo_grounding mi_seva mi_vistara bg_cohort bg_concordance ka_kshetra mi_jivanaghatana
+    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta""".split())
+
+
+def test_committed_file_declares_no_negative_served_surface_and_nulls_the_contested_ones():
+    # a negative scan is not proof (CLAUDE.md N.8 / N.7.6): no asset is declared `served_surface: false`, and the 16
+    # assets whose only evidence was a negative scan / a comment / a provenance label / an unavailable stub are null
+    decl = ac.load_asset_declarations()
+    vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
+    assert [a for a, v in vals.items() if v is False] == []
+    assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
+    assert sum(v is True for v in vals.values()) == 111 and sum(v is None for v in vals.values()) == 16
+
+
+def test_committed_file_declares_no_dag_dependents_anywhere():
+    # dag_dependents is MEASURED (blocking_radius), never declared: a declared copy of a measurement is circular and
+    # was wrong for bg_gochara_arcs (ka_gochara reads it with no registry depends_on edge)
+    assert "dag_dependents" not in ac.CARRIAGE_FIELDS
+    raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
+    assert raw["carriage_fields"] == ["served_surface"]
+    for aid, e in raw["assets"].items():
+        assert "dag_dependents" not in (e["carriage"] or {}), aid
+
+
+def test_committed_file_cross_asset_writes_only_where_evidenced():
+    decl = ac.load_asset_declarations()
+    assert decl["mi_abhilekha"]["cross_asset_writes"] == ["mimamsa_predictions.lifecycle_status"]
+    assert decl["mi_seva"]["cross_asset_writes"] == []
+    assert sorted(a for a, e in decl.items() if e["cross_asset_writes"] is not None) == ["mi_abhilekha", "mi_seva"]
+    for a in ("mi_abhilekha", "mi_seva"):
+        assert decl[a]["kind"] == "service" and decl[a]["evidence"]["cross_asset_writes"]
+
+
+def test_committed_file_declares_no_terminal_by_construction_yet():
+    assert all(e["terminal_by_construction"] is None for e in ac.load_asset_declarations().values())
+
+
+def test_committed_file_does_not_declare_the_two_census_excluded_t0_assets():
+    decl = ac.load_asset_declarations()
+    assert "ka_gochara_sweep" not in decl and "ka_gochara_v3_century_materialize" not in decl
+
+
 # ───────────────────────── (2) schema / validator ─────────────────────────
 
 BAD_DOCS = [
@@ -108,8 +151,8 @@ BAD_DOCS = [
     ("kind-artifact", _doc(a=dict(kind="artifact"))),
     ("kind-wrong-type", _doc(a=dict(kind=3))),
     ("carriage-not-object", _doc(a=dict(carriage=True))),
-    ("carriage-unknown-field", _doc(a=dict(carriage=dict(dag_dependents=True, served=True)))),
-    ("carriage-int-not-bool", _doc(a=dict(carriage=dict(dag_dependents=1)))),
+    ("carriage-unknown-field", _doc(a=dict(carriage=dict(served_surface=True, served=True)))),
+    ("carriage-int-not-bool", _doc(a=dict(carriage=dict(served_surface=1)))),
     ("carriage-string", _doc(a=dict(carriage=dict(served_surface="yes")))),
     ("prose-not-list", _doc(a=dict(prose_fields="narrative"))),
     ("prose-blank", _doc(a=dict(prose_fields=["narrative", " "]))),
@@ -119,6 +162,20 @@ BAD_DOCS = [
     ("evidence-unknown-key", _doc(a=dict(evidence=dict(other="x")))),
     ("evidence-non-str", _doc(a=dict(evidence=dict(kind=1)))),
     ("blank-asset-id", _doc(**{" ": dict(kind="data")})),
+    ("dag-dependents-is-measured-not-declared", _doc(a=dict(carriage=dict(dag_dependents=True)))),
+    ("prose-case-variant-duplicate", _doc(a=dict(prose_fields=["Narrative", "narrative"]))),
+    ("terminal-blank", _doc(a=dict(terminal_by_construction=" "))),
+    ("terminal-non-str", _doc(a=dict(terminal_by_construction=True))),
+    ("terminal-contradicts-served-true", _doc(a=dict(terminal_by_construction="no reader by design",
+                                                     carriage=dict(served_surface=True)))),
+    ("cross-writes-not-list", _doc(a=dict(cross_asset_writes="t.c", evidence=dict(cross_asset_writes="p")))),
+    ("cross-writes-non-str", _doc(a=dict(cross_asset_writes=[1], evidence=dict(cross_asset_writes="p")))),
+    ("cross-writes-not-table-dot-column", _doc(a=dict(cross_asset_writes=["justatable"], evidence=dict(cross_asset_writes="p")))),
+    ("cross-writes-three-parts", _doc(a=dict(cross_asset_writes=["s.t.c"], evidence=dict(cross_asset_writes="p")))),
+    ("cross-writes-duplicate", _doc(a=dict(cross_asset_writes=["t.c", "t.c"], evidence=dict(cross_asset_writes="p")))),
+    ("cross-writes-case-variant-duplicate", _doc(a=dict(cross_asset_writes=["t.c", "T.C"], evidence=dict(cross_asset_writes="p")))),
+    ("cross-writes-declared-without-evidence", _doc(a=dict(cross_asset_writes=["t.c"]))),
+    ("cross-writes-empty-declared-without-evidence", _doc(a=dict(cross_asset_writes=[]))),
 ]
 
 
@@ -131,8 +188,12 @@ def test_validator_rejects_malformed_documents(name, doc):
 def test_validator_accepts_null_fields_and_every_enum_kind():
     doc = _doc(**{f"x{i}": dict(kind=k, carriage=None, prose_fields=None, evidence=None)
                   for i, k in enumerate(list(ac.DECLARED_KINDS) + [None])},
-               y=dict(kind=None, carriage=dict(dag_dependents=None, served_surface=False), prose_fields=["a"]))
-    assert len(ac.validate_declarations(doc)) == len(ac.DECLARED_KINDS) + 2
+               y=dict(kind=None, carriage=dict(served_surface=None), prose_fields=["a"], terminal_by_construction=None,
+                      cross_asset_writes=None),
+               z=dict(carriage=dict(served_surface=False), terminal_by_construction="written only by X; no reader by design",
+                      cross_asset_writes=["t.c"], evidence=dict(cross_asset_writes="effect contract writes: [t.c]")),
+               w=dict(cross_asset_writes=[], evidence=dict(cross_asset_writes="effect contract writes: []")))
+    assert len(ac.validate_declarations(doc)) == len(ac.DECLARED_KINDS) + 4
 
 
 def test_validator_checks_asset_ids_against_the_registry_set_only_when_supplied():
@@ -182,11 +243,45 @@ def test_reader_validates_ids_against_the_supplied_registry_set(tmp_path):
         ac.load_asset_declarations(p, registry_ids=["b"])
 
 
+def test_reader_wraps_undecodable_bytes(tmp_path):
+    p = tmp_path / "decl.json"
+    p.write_bytes(b'{"version": "\xff\xfe"}')
+    with pytest.raises(ac.DeclarationsError, match="cannot read"):
+        ac.load_asset_declarations(p)
+
+
+def test_reader_wraps_a_recursion_error_from_deep_nesting(tmp_path):
+    p = tmp_path / "decl.json"
+    p.write_text("[" * 200000 + "]" * 200000, encoding="utf-8")
+    with pytest.raises(ac.DeclarationsError, match="nested|recursion|deep"):
+        ac.load_asset_declarations(p)
+
+
+@pytest.mark.parametrize("bad", ["abc", {"a": 1}, 3, b"a", object()], ids=["str", "dict", "int", "bytes", "object"])
+def test_reader_rejects_a_non_list_registry_ids(tmp_path, bad):
+    p = _write(tmp_path, _doc(a=dict(kind="data")))
+    with pytest.raises(ac.DeclarationsError, match="registry_ids"):
+        ac.load_asset_declarations(p, registry_ids=bad)
+    with pytest.raises(ac.DeclarationsError, match="registry_ids"):
+        ac.validate_declarations(_doc(a=dict(kind="data")), registry_ids=bad)
+
+
+def test_reader_rejects_non_string_registry_id_members(tmp_path):
+    with pytest.raises(ac.DeclarationsError, match="registry_ids"):
+        ac.validate_declarations(_doc(a=dict(kind="data")), registry_ids=["a", 3])
+
+
+def test_reader_accepts_a_list_tuple_set_or_frozenset_of_registry_ids():
+    doc = _doc(a=dict(kind="data"))
+    for ids in (["a"], ("a",), {"a"}, frozenset({"a"})):
+        assert set(ac.validate_declarations(doc, registry_ids=ids)) == {"a"}
+
+
 # ───────────────────────── (4) facts merge ─────────────────────────
 
 DECL = {
-    "svc": dict(kind="service", carriage=dict(dag_dependents=False, served_surface=False), prose_fields=None),
-    "dat": dict(kind="data", carriage=dict(dag_dependents=True, served_surface=None), prose_fields=["narrative"]),
+    "svc": dict(kind="service", carriage=dict(served_surface=False), prose_fields=None),
+    "dat": dict(kind="data", carriage=dict(served_surface=None), prose_fields=["narrative"]),
     "unk": dict(kind=None, carriage=None, prose_fields=None),
     "empty": dict(kind="data", carriage=None, prose_fields=[]),
 }
@@ -213,21 +308,46 @@ def test_absent_asset_and_null_fields_are_unknown_never_values():
     assert ac.facts_for_asset("not a record", DECL) == {}
 
 
-def test_carriage_components_and_the_derived_carries_downstream_fact():
-    cases = [
-        (dict(dag_dependents=True, served_surface=True), True),
-        (dict(dag_dependents=True, served_surface=False), True),
-        (dict(dag_dependents=False, served_surface=True), True),
-        (dict(dag_dependents=False, served_surface=False), False),
-        (dict(dag_dependents=False, served_surface=None), None),    # one unknown component: not derivable
-        (dict(dag_dependents=None, served_surface=None), None),
-        (dict(dag_dependents=True, served_surface=None), True),
-    ]
-    for car, want in cases:
-        f = ac.declared_facts({"a": dict(carriage=car)}, "a")
-        assert f.get("declared_carries_downstream") is want or (want is None and "declared_carries_downstream" not in f), car
-    f = ac.declared_facts({"a": dict(carriage=dict(dag_dependents=False, served_surface=None))}, "a")
-    assert f["declared_carriage"] == dict(dag_dependents=False)   # the unknown component is left out
+def test_carries_downstream_is_true_only_from_a_positive_served_surface():
+    f = ac.declared_facts({"a": dict(carriage=dict(served_surface=True))}, "a")
+    assert f["declared_carries_downstream"] is True and f["declared_carriage"] == dict(served_surface=True)
+
+
+def test_carries_downstream_is_never_derived_from_negatives():
+    # two negatives (a false served_surface, a zero measured dependent count) are a negative scan, not proof
+    for car in (None, dict(served_surface=None), dict(served_surface=False)):
+        f = ac.declared_facts({"a": dict(carriage=car)}, "a", measured_dependents=0, measured_served="N/A")
+        assert "declared_carries_downstream" not in f, car
+    f = ac.declared_facts({"a": dict(carriage=dict(served_surface=False))}, "a")
+    assert f["declared_carriage"] == dict(served_surface=False) and "declared_carries_downstream" not in f
+
+
+def test_carries_downstream_is_false_only_with_a_terminal_by_construction_pointer():
+    ptr = "writes kala_x only; reader exists by design nowhere (effect contract writes: [])"
+    f = ac.declared_facts({"a": dict(carriage=None, terminal_by_construction=ptr)}, "a")
+    assert f["declared_carries_downstream"] is False and f["declared_terminal_by_construction"] == ptr
+    g = ac.declared_facts({"a": dict(terminal_by_construction=ptr, carriage=dict(served_surface=False))}, "a")
+    assert g["declared_carries_downstream"] is False
+    for bad in (None, "", "   ", True, 1):
+        assert "declared_carries_downstream" not in ac.declared_facts({"a": dict(terminal_by_construction=bad)}, "a"), bad
+    # an (unvalidated) doc that also says served_surface true: the positive component wins, never False
+    h = ac.declared_facts({"a": dict(terminal_by_construction=ptr, carriage=dict(served_surface=True))}, "a")
+    assert h["declared_carries_downstream"] is True
+
+
+def test_dag_dependents_is_not_a_declared_carriage_component():
+    f = ac.declared_facts({"a": dict(carriage=dict(dag_dependents=True, served_surface=True))}, "a")
+    assert f["declared_carriage"] == dict(served_surface=True)        # a stale/unvalidated key is ignored, never merged
+
+
+def test_cross_asset_writes_is_exposed_as_declared_and_an_empty_list_is_declared():
+    d = {"a": dict(cross_asset_writes=["t.c"]), "b": dict(cross_asset_writes=[]), "c": dict(cross_asset_writes=None)}
+    assert ac.declared_facts(d, "a")["declared_cross_asset_writes"] == ["t.c"]
+    assert ac.declared_facts(d, "b")["declared_cross_asset_writes"] == []
+    assert "declared_cross_asset_writes" not in ac.declared_facts(d, "c")
+    assert "declared_cross_asset_writes" not in ac.declared_facts({"x": dict(kind="service")}, "x")
+    f = ac.declared_facts(d, "a"); f["declared_cross_asset_writes"].append("z.z")
+    assert d["a"]["cross_asset_writes"] == ["t.c"]                      # a copy
 
 
 def test_prose_fields_null_is_undeclared_but_an_explicit_empty_list_is_declared():
@@ -270,27 +390,66 @@ def test_refinements_of_data_are_reported_too():
         dict(field="kind", declared="view", registry="data")]
 
 
-def test_declared_dependents_contradicting_the_measured_blocking_radius_is_reported():
-    decl = {"a": dict(carriage=dict(dag_dependents=False))}
-    f = ac.facts_for_asset(dict(asset_id="a", blocking_radius=dict(direct=3)), decl)
-    assert f["declaration_disagreements"] == [dict(field="carriage.dag_dependents", declared=False, measured=3)]
-    assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", blocking_radius=dict(direct=0)), decl)
-    assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", blocking_radius=dict(direct=None)), decl)
+def _rec(aid, served=None, direct=None, kind=None):
+    r = dict(asset_id=aid)
+    if served is not None:
+        r["measurements"] = {"Dens.served": dict(v=served, measured="")}
+    if direct is not None:
+        r["blocking_radius"] = dict(direct=direct)
+    if kind is not None:
+        r["asset_kind"] = kind
+    return r
+
+
+def test_declared_served_false_against_a_measured_dens_pass_or_fail_is_reported():
+    decl = {"a": dict(carriage=dict(served_surface=False))}
+    for v in ("PASS", "FAIL"):
+        f = ac.facts_for_asset(_rec("a", served=v), decl)
+        assert f["declaration_disagreements"] == [dict(field="carriage.served_surface", declared=False, measured=v)], v
+    for v in ("N/A", "NO_DETECTOR"):
+        assert "declaration_disagreements" not in ac.facts_for_asset(_rec("a", served=v), decl), v
+
+
+def test_declared_served_true_against_a_measured_dens_na_is_reported():
+    decl = {"a": dict(carriage=dict(served_surface=True))}
+    f = ac.facts_for_asset(_rec("a", served="N/A"), decl)
+    assert f["declaration_disagreements"] == [dict(field="carriage.served_surface", declared=True, measured="N/A")]
+    for v in ("PASS", "FAIL", "NO_DETECTOR"):
+        assert "declaration_disagreements" not in ac.facts_for_asset(_rec("a", served=v), decl), v
+
+
+def test_served_surface_disagreement_needs_the_measurement_and_a_declared_value():
+    t, f_, n = ({"a": dict(carriage=dict(served_surface=x))} for x in (True, False, None))
+    for decl in (t, f_):
+        assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a"), decl)             # no measurements
+        assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", measurements={}), decl)
+        assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", measurements="x"), decl)
+        assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", measurements={"Dens.served": "PASS"}), decl)
+        assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", measurements={"Dens.served": dict(v=None)}), decl)
+    for v in ("PASS", "FAIL", "N/A"):
+        assert "declaration_disagreements" not in ac.facts_for_asset(_rec("a", served=v), n)               # unknown declared
+
+
+def test_declared_dag_dependents_is_gone_so_no_dependents_disagreement_can_exist():
+    decl = {"a": dict(carriage=dict(served_surface=True))}
+    f = ac.facts_for_asset(_rec("a", direct=0, served="PASS"), decl)
+    assert "declaration_disagreements" not in f
+
+
+def test_terminal_by_construction_against_a_measured_dependent_is_reported():
+    decl = {"a": dict(terminal_by_construction="no reader by design")}
+    f = ac.facts_for_asset(_rec("a", direct=2), decl)
+    assert f["declaration_disagreements"] == [dict(field="terminal_by_construction", declared="no reader by design", measured_dependents=2)]
+    assert "declaration_disagreements" not in ac.facts_for_asset(_rec("a", direct=0), decl)
     assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a"), decl)
     assert "declaration_disagreements" not in ac.facts_for_asset(dict(asset_id="a", blocking_radius=dict(direct=True)), decl)
-
-
-def test_a_true_dependents_declaration_against_zero_measured_is_reported():
-    decl = {"a": dict(carriage=dict(dag_dependents=True))}
-    f = ac.facts_for_asset(dict(asset_id="a", blocking_radius=dict(direct=0)), decl)
-    assert f["declaration_disagreements"][0]["declared"] is True
 
 
 # ───────────────────────── (6) declarations are facts only: no verdict moves ─────────────────────────
 
 def test_no_na_rule_is_declared_and_no_criterion_reads_a_declared_key():
     assert ac.NA_RULE_DECISIONS == {}
-    facts = dict(asset_kind="service", declared_kind="static", declared_carriage=dict(dag_dependents=False, served_surface=False),
+    facts = dict(asset_kind="service", declared_kind="static", declared_carriage=dict(served_surface=False),
                  declared_carries_downstream=False, declared_prose_fields=[])
     base = dict(asset_kind="service")
     for crit in ac.CRITERION_REGISTRY:

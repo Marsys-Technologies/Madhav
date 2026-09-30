@@ -406,13 +406,27 @@ def _target_columns_fact(tbl: str | None, cat: dict):
 
 DECLARATIONS_PATH = Path(__file__).resolve().parent / "asset_declarations.json"
 DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_data")   # `multi-table` is a measured fact, not a kind
-CARRIAGE_FIELDS = ("dag_dependents", "served_surface")
-_DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "evidence")
-_DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields")
+# `dag_dependents` is deliberately NOT a declared carriage field: who depends on an asset is MEASURED (the census
+# blocking_radius), and a declared copy of a measurement is circular (every value was derived from it) and can only
+# ever be wrong-or-redundant; it already was wrong for bg_gochara_arcs, whose real reader ka_gochara has no registry
+# depends_on edge (a registry defect, recorded in the evidence file, not a declaration). Nothing overrides the radius.
+CARRIAGE_FIELDS = ("served_surface",)
+_DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes", "evidence")
+_DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
+_CROSS_WRITE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")   # table.column, nothing else
 
 
 class DeclarationsError(ValueError):
     """The declarations file (or a document handed to validate_declarations) is malformed."""
+
+
+def _registry_id_set(registry_ids):
+    if registry_ids is None:
+        return None
+    if not isinstance(registry_ids, (list, tuple, set, frozenset)) or not all(isinstance(i, str) for i in registry_ids):
+        raise DeclarationsError("registry_ids must be a list/tuple/set of asset-id strings (a bare string or other "
+                                "iterable would silently change what `in` means)")
+    return set(registry_ids)
 
 
 def _decl_pairs(pairs):
@@ -427,7 +441,8 @@ def _decl_pairs(pairs):
 def validate_declarations(doc, registry_ids=None) -> dict:
     """Validate a declarations document and return its `assets` mapping (asset_id -> entry). Raises
     DeclarationsError naming the offending asset/field. `registry_ids` (an iterable of asset ids), when given, is the
-    census registry set: a declared asset id outside it is an error (a typo must not become a silent UNKNOWN)."""
+    census registry set: a declared asset id outside it is an error (a typo must not become a silent UNKNOWN); it
+    must be a list/tuple/set of strings, anything else is a DeclarationsError."""
     if not isinstance(doc, dict):
         raise DeclarationsError("declarations document must be a JSON object")
     if not isinstance(doc.get("version"), str) or not doc["version"].strip():
@@ -437,7 +452,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     assets = doc.get("assets")
     if not isinstance(assets, dict):
         raise DeclarationsError("`assets` must be an object mapping asset_id to a declaration")
-    known = None if registry_ids is None else set(registry_ids)
+    known = _registry_id_set(registry_ids)
     for aid, e in assets.items():
         where = f"assets[{aid!r}]"
         if not isinstance(aid, str) or not aid.strip():
@@ -465,8 +480,26 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         pf = e.get("prose_fields")
         if pf is not None:
             if (not isinstance(pf, list) or not all(isinstance(c, str) and c.strip() and c == c.strip() for c in pf)
-                    or len(set(pf)) != len(pf)):
-                raise DeclarationsError(f"{where}.prose_fields must be null or a list of distinct non-blank column names")
+                    or len({c.lower() for c in pf}) != len(pf)):
+                raise DeclarationsError(f"{where}.prose_fields must be null or a list of distinct (case-insensitively) "
+                                        f"non-blank column names")
+        tbc = e.get("terminal_by_construction")
+        if tbc is not None:
+            if not isinstance(tbc, str) or not tbc.strip() or tbc != tbc.strip():
+                raise DeclarationsError(f"{where}.terminal_by_construction must be null or a non-blank pointer string "
+                                        f"(why the asset has no downstream consumer BY CONSTRUCTION)")
+            if isinstance(car, dict) and car.get("served_surface") is True:
+                raise DeclarationsError(f"{where}: terminal_by_construction contradicts carriage.served_surface true")
+        cw = e.get("cross_asset_writes")
+        if cw is not None:
+            if (not isinstance(cw, list) or not all(isinstance(c, str) and _CROSS_WRITE_RE.match(c) for c in cw)
+                    or len({c.lower() for c in cw}) != len(cw)):
+                raise DeclarationsError(f"{where}.cross_asset_writes must be null or a list of distinct (case-insensitively) "
+                                        f"'table.column' strings ([] = declared: writes nothing outside its own table)")
+            ev0 = e.get("evidence")
+            if not (isinstance(ev0, dict) and isinstance(ev0.get("cross_asset_writes"), str) and ev0["cross_asset_writes"].strip()):
+                raise DeclarationsError(f"{where}.cross_asset_writes is declared (even []), so evidence.cross_asset_writes "
+                                        f"must carry a non-blank pointer")
         ev = e.get("evidence")
         if ev is not None:
             if (not isinstance(ev, dict) or set(ev) - set(_DECL_EVIDENCE_KEYS)
@@ -478,28 +511,40 @@ def validate_declarations(doc, registry_ids=None) -> dict:
 
 def load_asset_declarations(path=None, registry_ids=None) -> dict:
     """Pure reader: asset_id -> entry (`kind`, `carriage`, `prose_fields`, `evidence`). Reads only `path`
-    (default DECLARATIONS_PATH). Raises DeclarationsError on a missing, unreadable, non-JSON, duplicate-keyed or
-    malformed file. An asset absent from the result is UNKNOWN; so is any null field of an entry."""
+    (default DECLARATIONS_PATH). Raises DeclarationsError on a missing, unreadable, undecodable, non-JSON,
+    pathologically nested, duplicate-keyed or malformed file. An asset absent from the result is UNKNOWN; so is any null field of an entry."""
     p = Path(path) if path is not None else DECLARATIONS_PATH
     try:
         text = p.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise DeclarationsError(f"cannot read the declarations file {p}: {exc}") from exc
     try:
         doc = json.loads(text, object_pairs_hook=_decl_pairs)
     except json.JSONDecodeError as exc:
         raise DeclarationsError(f"declarations file {p} is not valid JSON: {exc}") from exc
+    except RecursionError as exc:
+        raise DeclarationsError(f"declarations file {p} is nested too deeply to parse (recursion limit)") from exc
     return validate_declarations(doc, registry_ids)
 
 
-def declared_facts(declarations, asset_id, registry_kind=None, measured_dependents=None) -> dict:
+def declared_facts(declarations, asset_id, registry_kind=None, measured_dependents=None, measured_served=None) -> dict:
     """The DECLARED facts for one asset, as separate keys that never replace a measured one:
-    `declared_kind`, `declared_carriage` (only the known booleans), `declared_carries_downstream` (True if any
-    component is True; False only when BOTH components are declared False; otherwise omitted = unknown),
-    `declared_prose_fields`, and `declaration_disagreements`: every place a declaration contradicts a measured or
-    registry fact, reported and never resolved. `registry_kind` is the registry's asset_kind (only 'service' and
-    'data' are compared: `artifact` maps to the declaration file per asset); `measured_dependents` is the census
-    blocking_radius.direct. Absent asset / null field -> key left out (UNKNOWN)."""
+    `declared_kind`; `declared_carriage` (only the known `served_surface` boolean); `declared_carries_downstream`;
+    `declared_prose_fields`; `declared_terminal_by_construction` (the pointer string); `declared_cross_asset_writes`
+    (a list of 'table.column'; [] = declared writes-nothing-outside-its-own-table, null = unknown, key omitted); and
+    `declaration_disagreements`: every place a declaration contradicts a measured or registry fact, reported and
+    never resolved. Absent asset / null field -> key left out (UNKNOWN).
+
+    `declared_carries_downstream` is NEVER derived from negatives (a negative scan or a zero measured count is not
+    proof, CLAUDE.md N.8 / N.7.6): True only from a positive `served_surface: true`; False ONLY when the file carries
+    the separate positive `terminal_by_construction` pointer; otherwise omitted (unknown). A future `write-nothing`
+    cause must key on `declared_cross_asset_writes == []`, never on kind `service` alone (mi_abhilekha is a service
+    that UPDATEs mimamsa_predictions.lifecycle_status).
+
+    Measured inputs (each optional; a disagreement is reported only where the measurement is available):
+    `registry_kind` (only 'service' and 'data' are compared: `artifact` maps to the declaration file per asset),
+    `measured_dependents` (the census blocking_radius.direct; the only word on DAG dependents), `measured_served`
+    (the Dens.served verdict: a declared served_surface False against PASS/FAIL, or True against N/A, is reported)."""
     facts: dict = {}
     e = (declarations or {}).get(asset_id)
     if not isinstance(e, dict):
@@ -511,21 +556,32 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         if registry_kind in ("service", "data") and kind != registry_kind:
             disagree.append(dict(field="kind", declared=kind, registry=registry_kind))
     car = e.get("carriage")
+    served = None
     if isinstance(car, dict):
         known = {f: car[f] for f in CARRIAGE_FIELDS if isinstance(car.get(f), bool)}
         if known:
             facts["declared_carriage"] = known
-            if known.get("dag_dependents") is True or known.get("served_surface") is True:
-                facts["declared_carries_downstream"] = True
-            elif len(known) == len(CARRIAGE_FIELDS):
-                facts["declared_carries_downstream"] = False
-        dd = known.get("dag_dependents")
-        if (dd is not None and isinstance(measured_dependents, int) and not isinstance(measured_dependents, bool)
-                and dd != (measured_dependents > 0)):
-            disagree.append(dict(field="carriage.dag_dependents", declared=dd, measured=measured_dependents))
+            served = known.get("served_surface")
+    if served is True:
+        facts["declared_carries_downstream"] = True
+    if isinstance(measured_served, str):
+        if served is False and measured_served in (PASS, FAIL):
+            disagree.append(dict(field="carriage.served_surface", declared=False, measured=measured_served))
+        elif served is True and measured_served == NA:
+            disagree.append(dict(field="carriage.served_surface", declared=True, measured=measured_served))
+    tbc = e.get("terminal_by_construction")
+    if isinstance(tbc, str) and tbc.strip():
+        facts["declared_terminal_by_construction"] = tbc
+        if served is not True:
+            facts["declared_carries_downstream"] = False
+        if isinstance(measured_dependents, int) and not isinstance(measured_dependents, bool) and measured_dependents > 0:
+            disagree.append(dict(field="terminal_by_construction", declared=tbc, measured_dependents=measured_dependents))
     pf = e.get("prose_fields")
     if isinstance(pf, list):
         facts["declared_prose_fields"] = list(pf)
+    cw = e.get("cross_asset_writes")
+    if isinstance(cw, list):
+        facts["declared_cross_asset_writes"] = list(cw)
     if disagree:
         facts["declaration_disagreements"] = disagree
     return facts
@@ -557,9 +613,12 @@ def facts_for_asset(asset_record, declarations=None) -> dict:
     if declarations:
         br = asset_record.get("blocking_radius")
         direct = br.get("direct") if isinstance(br, dict) else None
+        ms = asset_record.get("measurements")
+        ds = ms.get("Dens.served") if isinstance(ms, dict) else None
+        served = ds.get("v") if isinstance(ds, dict) else None
         aid = asset_record.get("asset_id")
         if isinstance(aid, str):
-            facts.update(declared_facts(declarations, aid, facts.get("asset_kind"), direct))
+            facts.update(declared_facts(declarations, aid, facts.get("asset_kind"), direct, served))
     return facts
 
 
