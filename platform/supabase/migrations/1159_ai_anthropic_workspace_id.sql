@@ -5,6 +5,12 @@
 ALTER TABLE ai_provider_connections
   ADD COLUMN IF NOT EXISTS anthropic_workspace_id text;
 
+-- Existing saved choices predate individual probes; do not infer their state
+-- from credential_version. Edits made after this migration explicitly require
+-- a current-version model probe before routing.
+ALTER TABLE ai_provider_connections
+  ADD COLUMN IF NOT EXISTS model_retest_required boolean NOT NULL DEFAULT false;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'ai_provider_connections'::regclass

@@ -217,7 +217,8 @@ function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readon
 async function loadRoutingTarget(client: Client, userId: string, target: RoleTarget, roles: readonly AiRole[]): Promise<RoutingTarget> {
   if (target.kind === 'provider_model') {
     if (!uuidSchema.safeParse(target.connectionId).success) throw notFound()
-    const connection = (await client.query(`SELECT c.id,c.provider_id,c.credential_version,c.credential_validity,c.validation_state,c.last_error_code
+    const connection = (await client.query(`SELECT c.id,c.provider_id,c.credential_version,c.credential_validity,c.validation_state,
+      c.last_error_code,c.model_retest_required
       FROM ai_provider_connections c WHERE c.user_id=$1 AND c.id=$2 AND c.deleted_at IS NULL FOR SHARE`,
     [userId, target.connectionId])).rows[0]
     if (!connection) throw new AiConsoleError('AI_CHOICE_BROKEN')
@@ -242,9 +243,9 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
       FROM ai_connection_models m WHERE m.connection_id=$1 AND m.model_id=$2 FOR SHARE`,
     [target.connectionId, target.modelId])).rows[0]
     if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
-    // Version-one saved choices predate individual model probes. Once a key or
-    // workspace changes, an exact-version model probe is required to run it.
-    if (Number(connection.credential_version) > 1 && (model.plain_tested_at == null
+    // Pre-probe saved choices are grandfathered. Any key or workspace edit
+    // explicitly turns on exact-version model proof for this connection.
+    if (connection.model_retest_required === true && (model.plain_tested_at == null
       || Number(model.tested_credential_version) !== Number(connection.credential_version))) {
       throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
     }
@@ -382,7 +383,8 @@ export async function updateConnectionWorkspace(userId: string, connectionId: st
   const parsed = workspaceIdSchema.parse(workspaceId)
   return withUserTransaction(userId, async client => {
     const row = required((await client.query(`UPDATE ai_provider_connections SET anthropic_workspace_id=$3,
-      credential_version=credential_version+1,credential_validity='unknown',validation_state='untested',
+      credential_version=credential_version+1,model_retest_required=true,
+      credential_validity='unknown',validation_state='untested',
       last_validated_at=NULL,last_checked_at=NULL,last_error_code=NULL,updated_at=now()
       WHERE user_id=$1 AND id=$2 AND provider_id='anthropic' AND deleted_at IS NULL
       RETURNING ${safeColumns},credential_version`, [userId, connectionId, parsed])).rows)
@@ -406,6 +408,7 @@ export async function replaceConnectionCredential(userId: string, connectionId: 
     const row = required((await client.query(`UPDATE ai_provider_connections SET
       credential_ciphertext=$3,credential_nonce=$4,credential_tag=$5,wrapped_dek=$6,wrap_nonce=$7,wrap_tag=$8,
       kek_version=$9,masked_suffix=$10,keyed_fingerprint=$11,credential_version=credential_version+1,
+      model_retest_required=true,
       credential_validity='unknown',validation_state='untested',last_validated_at=NULL,last_checked_at=NULL,last_error_code=NULL,updated_at=now()
       WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING ${safeColumns},credential_version`,
     [userId, connectionId, ...credentialParams(encrypted)])).rows)

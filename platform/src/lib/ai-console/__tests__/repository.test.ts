@@ -608,11 +608,24 @@ describe('owned AI configuration repository', () => {
 })
 
 describe('atomic routing resolution read', () => {
+  it('preserves an older saved choice without probe evidence even when its key version exceeds one', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, credential_version: 3,
+        model_retest_required: false }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
+        compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true,
+        plain_tested_at: null, tested_credential_version: null }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .resolves.toMatchObject({ roles: { worker: { credentialVersion: 3 } } })
+  })
   it('requires a fresh individual model probe after an Anthropic workspace or key change', async () => {
     let testedVersion: number | null = null
     respond(sql => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
-      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, provider_id: 'anthropic', credential_version: 2 }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, provider_id: 'anthropic',
+        credential_version: 2, model_retest_required: true }]
       if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
         compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true,
         plain_tested_at: testedVersion === null ? null : new Date(), tested_credential_version: testedVersion }]

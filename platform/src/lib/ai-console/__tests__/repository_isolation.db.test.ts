@@ -300,6 +300,20 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await repo.storeProviderModelProbe(user, connectionId, 'model-a', 2,
       { ok: true, inputTokens: 1, outputTokens: 1 })
   })
+  it('keeps a pre-probe saved model routable despite an older key replacement', async () => {
+    const id = (await repo.createConnection(user, { providerId: 'openai', name: 'Legacy saved choice' }, encrypted())).id
+    await repo.storeConnectionValidation(user, id, { credentialVersion: 1, state: 'validated',
+      models: [{ modelId: 'legacy-model', displayName: 'Legacy Model', compatibleRoles: [...AI_ROLES],
+        supportsTools: true, supportsStructuredOutput: true }] })
+    // Reproduce a connection migrated with a pre-shortlist saved choice: its
+    // credential version had advanced, but no individual probe was recorded.
+    await pool.query('UPDATE ai_provider_connections SET credential_version=3 WHERE id=$1', [id])
+    const state = (await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows[0]
+    expect(state.model_retest_required).toBe(false)
+    await expect(repo.loadRoutingResolution(user, { kind: 'explicit', choice: {
+      kind: 'provider_model', connectionId: id, modelId: 'legacy-model',
+    } })).resolves.toMatchObject({ roles: { worker: { credentialVersion: 3 } } })
+  })
   it('requires a new model probe after changing an Anthropic workspace', async () => {
     const id = (await repo.createConnection(user, { providerId: 'anthropic', name: 'Workspace test' }, encrypted())).id
     const model = { modelId: 'claude-test', displayName: 'Claude Test', compatibleRoles: [...AI_ROLES],
@@ -310,6 +324,8 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await repo.storeProviderModelProbe(user, id, model.modelId, 1, { ok: true, inputTokens: 1, outputTokens: 1 })
     await expect(repo.loadRoutingResolution(user, selected)).resolves.toMatchObject({ roles: { worker: { credentialVersion: 1 } } })
     await repo.updateConnectionWorkspace(user, id, 'wrkspc_01JEueaSaKJ72sh4drDASzH2')
+    expect((await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows)
+      .toEqual([{ model_retest_required: true }])
     expect((await pool.query(`SELECT available,plain_tested_at,tested_credential_version,last_probe_at
       FROM ai_connection_models WHERE connection_id=$1`, [id])).rows).toEqual([{
       available: false, plain_tested_at: null, tested_credential_version: null, last_probe_at: null,
