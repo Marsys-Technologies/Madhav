@@ -12,6 +12,7 @@ import copy
 import hashlib
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -95,17 +96,33 @@ def test_committed_file_declares_no_empty_prose_list():
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
     bg_reference bo_grounding mi_seva mi_vistara bg_cohort bg_concordance ka_kshetra mi_jivanaghatana
-    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta""".split())
+    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa""".split())
 
 
 def test_committed_file_declares_no_negative_served_surface_and_nulls_the_contested_ones():
-    # a negative scan is not proof (CLAUDE.md N.8 / N.7.6): no asset is declared `served_surface: false`, and the 16
+    # a negative scan is not proof (CLAUDE.md N.8 / N.7.6): no asset is declared `served_surface: false`, and the 17
     # assets whose only evidence was a negative scan / a comment / a provenance label / an unavailable stub are null
     decl = ac.load_asset_declarations()
     vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
     assert [a for a, v in vals.items() if v is False] == []
     assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
-    assert sum(v is True for v in vals.values()) == 111 and sum(v is None for v in vals.values()) == 16
+    assert sum(v is True for v in vals.values()) == 110 and sum(v is None for v in vals.values()) == 17
+
+
+RECHECKED_TRUE = """bg_ghatana bg_gochara_citation_resolution bg_nakshatra bg_prashna_rules bg_rules ga_prashna
+    ka_gochara_resonance lel_events mi_bhara""".split()
+
+
+def test_the_nine_rechecked_true_values_cite_a_real_file_line_read_and_mi_sankalpa_is_null():
+    # follow-up: declared true against Dens N/A (a scanner gap) must carry a cited real non-test read
+    decl = ac.load_asset_declarations()
+    for a in RECHECKED_TRUE:
+        assert decl[a]["carriage"]["served_surface"] is True, a
+        ev = decl[a]["evidence"]["carriage"]
+        assert re.search(r"[\w/]+\.ts:\d+", ev) and "scanner gap" in ev, a
+        assert "allow-list" not in ev.split("(real")[0], a
+    assert decl["mi_sankalpa"]["carriage"]["served_surface"] is None
+    assert "no real served read" in decl["mi_sankalpa"]["evidence"]["carriage"]
 
 
 def test_committed_file_declares_no_dag_dependents_anywhere():

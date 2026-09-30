@@ -1,5 +1,5 @@
 {
- "version": "1.1.0",
+ "version": "1.1.1",
  "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'. carriage.served_surface: true only where a real read was found, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown).",
  "kind_enum": [
   "data",
@@ -13,7 +13,7 @@
  "carriage_fields": [
   "served_surface"
  ],
- "derived_on": "2026-09-30 from the saved census (inspector 2a78ec64d, chart 482012f1) and main 4081d5295; registry facts from seed/migrations/T0 witness, not the live DB; 1.1.0 fixes 2026-09-30 after independent review (carriage values unsafe as no-carriage facts)",
+ "derived_on": "2026-09-30 from the saved census (inspector 2a78ec64d, chart 482012f1) and main 4081d5295; registry facts from seed/migrations/T0 witness, not the live DB; 1.1.0 fixes 2026-09-30 after independent review (carriage values unsafe as no-carriage facts); 1.1.1: ten true values re-checked for a real read (nine kept with file:line, mi_sankalpa nulled)",
  "assets": {
   "bg_class_lifetime_counts": {
    "kind": "data",
@@ -179,7 +179,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_event_ontology; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::brahma_event_ontology",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1136 `LEFT JOIN brahma_event_ontology eo` and :1143 `SELECT DISTINCT domain FROM brahma_event_ontology` (served gochara-windows tool); also platform-mcp/src/lib/intervention_filing.ts:83 `SELECT event_class_id FROM brahma_event_ontology`.",
     "prose_fields": null
    }
   },
@@ -207,7 +207,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "migration supabase/565 creates and seeds it as a static resolution table; has_writer=false and no @register (census writer_files empty); T0 execution_obligation static_acceptance/empty_acceptance; registry asset_kind reads data",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::bg_gochara_citation_resolution",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/retrieval/register_gochara_windows.ts:800 `FROM bg_gochara_citation_resolution` in fetchVerseRefs(), called by the served handlers at :1843 and :2169.",
     "prose_fields": null
    }
   },
@@ -277,7 +277,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) reference_nakshatra; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::reference_nakshatra_pada",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/register_p1_reference.ts:549 `FROM reference_nakshatra n` (served nakshatra reference tool; its rows are returned).",
     "prose_fields": null
    }
   },
@@ -361,7 +361,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,bg_prashna_fructification_rules,bg_prashna_special_techniques; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts::bg_prashna_fructification_rules",
+    "carriage": "served_surface true (real reads; Dens scan N/A is a scanner gap): platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59 `FROM bg_prashna_tajik_yogas`, query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57 (registered capabilities serving the rows).",
     "prose_fields": null
    }
   },
@@ -403,7 +403,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) sutravali_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/lib/retrieval/registry/layers/register_d7_channel.ts::sutravali_rules",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536 `FROM sutravali_rules r` in the read_sutravali_rule handler (returns the row); sibling served capabilities query_sutravali_rules / _for_planet in the same file and platform/src/lib/retrieve/sutravali_tools.ts.",
     "prose_fields": null
    }
   },
@@ -1027,7 +1027,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_prashna_judgment; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::ga_prashna_judgment",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/register_p1_synthesis.ts:1011 `FROM ga_prashna_judgment gj` (prashna_undertaking_get; selects verdict, significators, tajik_yoga, fructification).",
     "prose_fields": null
    }
   },
@@ -1251,7 +1251,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::gochara_resonance_map",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1135 and :1197 `FROM gochara_resonance_map rm` (served gochara-windows tool; event-class coverage served from the map).",
     "prose_fields": null
    }
   },
@@ -1489,7 +1489,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "N-22 ruling principle 6 (people-entered, N-46); registry asset_kind reads data (seed, T0, census Build.target text 'asset_kind=data'); has_writer=false, no @register, no target_table, count_sql over life_events (census)",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts::life_events",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts:204 `FROM life_events WHERE ...` (capability lel_query) which platform-mcp/src/tools/register_p1_aliases.ts:2076-2086 mimamsa_lel_query calls via callPlatformPrim('lel_query'); its rows are served directly.",
     "prose_fields": null
    }
   },
@@ -1534,7 +1534,7 @@
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_field_skill; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::kala_field_skill",
+    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/lib/kala_envelope.ts:553-556 `FROM kala_field_skill agg` in fetchCalibrationMaturity(), called by the served kala views priority.ts:450, ritual.ts:806, upaya.ts:474, elect.ts:1043. (The registry target_table kala_field_weight_versions has no read; the real read is of kala_field_skill, the table the census found the writer replacing.)",
     "prose_fields": null
    }
   },
@@ -1657,14 +1657,14 @@
   "mi_sankalpa": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_intervention_ledger; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=N/A (0 module(s): none; declaring density_contract: 0); surface reference e.g. platform-mcp/src/lib/kala_upaya_diagnosis.ts::mimamsa_intervention_ledger",
+    "carriage": "served_surface null (unknown): no real served read found. Its table mimamsa_intervention_ledger is written by platform/src/lib/mcp/intervention_ledger_writer.ts:65 (filing), SELECTed only for dedupe (intervention_ledger_writer.ts:110) and by its own build service (python-sidecar/services/mi_sankalpa/db.py, used only by pipeline/orchestrator/writers/mi_sankalpa.py), and wiped by cockpit assetClearSpec.ts:176; platform-mcp/src/lib/kala_upaya_diagnosis.ts:1063-1098 buildEfficacyReport states it has no MCP-exposed read path and always returns honest_empty. A kala_upaya_diagnosis.ts comment, the api/mcp/db/query allow-list and a filing-write do not count. Dens.served N/A is correct here.",
     "prose_fields": null
    }
   },
