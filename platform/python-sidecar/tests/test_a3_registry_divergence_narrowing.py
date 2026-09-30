@@ -528,3 +528,148 @@ def test_hard_fault_with_no_divergence_pending_writes_nothing_and_still_raises(m
     assert throughput == {}, "no divergence was pending — the except-block must write nothing"
     assert all(v == "queued" for v in state.values())
     assert ran == []
+
+
+# ── Review-fix 8 (Suvarna E3.2): pin what the fault path and global scope rely on ───
+
+class _FailedTxCursor(FakeCursor):
+    """FakeCursor that models Postgres's aborted-transaction semantics: once the
+    owning connection is in a failed transaction, EVERY statement raises
+    InFailedSqlTransaction until `rollback()` is called. The plain FakeConn never
+    models this, so a fault-path terminalize that forgot to roll back first still
+    "worked" in every test above."""
+
+    def __init__(self, conn, *a, **k):
+        super().__init__(*a, **k)
+        self._conn = conn
+
+    def execute(self, sql, params=None):
+        if self._conn.in_failed_tx:
+            from psycopg.errors import InFailedSqlTransaction
+            raise InFailedSqlTransaction(
+                "current transaction is aborted, commands ignored until end of transaction block"
+            )
+        return super().execute(sql, params)
+
+
+class _FailedTxConn(FakeConn):
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.in_failed_tx = False
+        self.rollbacks = 0
+
+    def cursor(self):
+        return _FailedTxCursor(self, self._state, self._throughput, self._registry_live)
+
+    def rollback(self):
+        self.rollbacks += 1
+        self.in_failed_tx = False
+
+
+def test_fault_path_terminalize_rolls_back_the_failed_transaction_first(monkeypatch):
+    """The F-1 fault path terminalizes a detected divergence AFTER an exception has
+    (in a real DB) left the transaction aborted. The terminalize is only able to
+    write if `conn.rollback()` ran first. Mutation-pinned: deleting that rollback
+    makes the terminalize raise InFailedSqlTransaction (swallowed + logged by the
+    secondary guard), so the divergence record is silently lost — this test then
+    fails on the state/throughput assertions."""
+    state: dict[str, str] = {a: "queued" for a in PLAN}
+    registry_live = dict(REGISTRY_FROZEN)
+    registry_live["bg_diverge_target"] = {**REGISTRY_FROZEN["bg_diverge_target"], "scope": "global"}
+    ran, throughput, mark_calls, emitted = _install(monkeypatch, state, registry_live)
+
+    conns: list[_FailedTxConn] = []
+
+    def _connect():
+        c = _FailedTxConn(state, throughput, registry_live)
+        conns.append(c)
+        return c
+
+    monkeypatch.setattr(runner, "connect", _connect)
+
+    class _TransientFault(RuntimeError):
+        pass
+
+    def _fault(conn, cur, run_id):
+        conn.in_failed_tx = True  # the DB error that aborted the transaction
+        raise _TransientFault("simulated DB fault that aborts the transaction")
+
+    monkeypatch.setattr(runner, "claim_runnable_run", _fault)
+
+    with pytest.raises(_TransientFault):
+        runner.execute_run("run-1")
+
+    assert conns[0].rollbacks >= 1, "the fault path must roll the aborted transaction back"
+    assert state["bg_diverge_target"] == "error", (
+        "the divergence terminalize ran into an aborted transaction — the record was lost"
+    )
+    assert throughput.get("bg_diverge_target") == "error"
+
+
+def test_global_scope_diverged_asset_is_written_with_null_chart_id_per_chart_keeps_it(monkeypatch):
+    """`_terminalize_diverged_assets` writes a global-scope asset's asset_throughput
+    row with chart_id NULL (the `WHERE chart_id IS NULL` conflict arm) and a
+    per-chart asset's with the run's chart_id. Mutation-pinned: computing
+    eff_chart_id as `chart_id` unconditionally would stamp the global asset's error
+    onto a per-chart row instead."""
+    recorded: list[tuple[str, tuple]] = []
+
+    class _Cursor:
+        def execute(self, sql, params=None):
+            recorded.append((" ".join(sql.split()), tuple(params or ())))
+
+    class _Conn:
+        def commit(self):
+            pass
+
+    monkeypatch.setattr(runner, "emit_event", lambda evt: None)
+
+    runner._terminalize_diverged_assets(
+        _Conn(), _Cursor(), "run-1", CHART_ID,
+        {"global_asset": "global", "chart_asset": "per_chart"},
+        {"global_asset": "registry changed", "chart_asset": "registry changed"},
+    )
+
+    upserts = {p[0]: (s, p) for s, p in recorded if "INSERT INTO asset_throughput" in s}
+    g_sql, g_params = upserts["global_asset"]
+    assert "VALUES (%s, NULL" in g_sql and "WHERE chart_id IS NULL" in g_sql, (
+        "a global-scope diverged asset must be written on the chart_id IS NULL arm"
+    )
+    assert CHART_ID not in g_params
+    c_sql, c_params = upserts["chart_asset"]
+    assert "WHERE chart_id IS NOT NULL" in c_sql
+    assert c_params[:2] == ("chart_asset", CHART_ID)
+
+
+def test_global_scope_divergence_end_to_end_writes_null_chart_asset_throughput(monkeypatch):
+    """Same property through execute_run: a GLOBAL-scope asset (frozen scope global)
+    whose registry row diverges (natural_key_partition changed) is terminalized on
+    the chart_id IS NULL arm; the run's chart_id never appears in its upsert."""
+    global_frozen = {
+        **REGISTRY_FROZEN,
+        "bg_a": {**REGISTRY_FROZEN["bg_a"], "scope": "global"},
+    }
+    monkeypatch.setitem(REGISTRY_FROZEN, "bg_a", global_frozen["bg_a"])
+    state: dict[str, str] = {}
+    registry_live = dict(REGISTRY_FROZEN)
+    registry_live["bg_a"] = {**global_frozen["bg_a"], "natural_key_partition": "changed"}
+    _install(monkeypatch, state, registry_live)
+
+    upserts: list[tuple[str, tuple]] = []
+    orig_execute = FakeCursor.execute
+
+    def recording_execute(self, sql, params=None):
+        s = " ".join(sql.split())
+        if "INSERT INTO asset_throughput" in s and params and params[0] == "bg_a":
+            upserts.append((s, tuple(params)))
+        return orig_execute(self, sql, params)
+
+    monkeypatch.setattr(FakeCursor, "execute", recording_execute)
+
+    runner.execute_run("run-1")
+
+    assert state["bg_a"] == "error"
+    assert upserts, "the diverged global asset was never terminalized"
+    sql, params = upserts[0]
+    assert "WHERE chart_id IS NULL" in sql
+    assert CHART_ID not in params
