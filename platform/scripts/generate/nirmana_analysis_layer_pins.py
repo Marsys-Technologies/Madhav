@@ -319,7 +319,19 @@ AUTHORIZED_SOURCE_COMMITS = {
     # L5 verify clean in delivery topology on this branch and are deliberately
     # absent.
     "D-PINS-A5.4": {
-        "L3": frozenset({"454dab04134d81ae420676210c9700e2d4496c6b"}),
+        "L3": frozenset({
+            "454dab04134d81ae420676210c9700e2d4496c6b",
+            # A5.4 rework (ASTRA_REVIEW_A5_4 closure, 2026-09-30): the
+            # reviewer's eight P1 amendments moved three of the same five
+            # writers' import closures again (ka_gochara,
+            # ka_gochara_v3_century_materialize, ka_vedha_gochara — all via
+            # gochara_grammar/primitives.py and gochara_v3/*; no own-module
+            # edit). Same decision, same authority identity, same five-writer
+            # scope; a SECOND append-only successor over the branch's own
+            # A5.4 successor, never a rewrite of it or of the baseline. Source
+            # = the rework's writer-digest regeneration commit.
+            "92c07a9051abad73815933e3a5b98ffde37fa848",
+        }),
     },
 }
 
