@@ -453,6 +453,88 @@ describe.skipIf(!TEST_DB_URL)('watchdog — A2 failure-attribution fixes (live D
     expect(bra.rows[0]).toMatchObject({ state: 'building', error: null })
   })
 
+  it('site 2 negative (stuck-asset reaper join): a NON-running run\'s build_run_assets row for the same (chart, asset) is NEVER flipped to error', async () => {
+    // Kills the mutant that drops `br.state = 'running'` from the bra_terminalized
+    // CTE. The chart has an OLD completed run whose build_run_assets row for the
+    // stuck asset is (stranded) 'building', alongside the chart's one active
+    // 'running' run. Only the active run's row may be terminalized; the old run's
+    // row belongs to a run that is already over and must be left exactly as-is.
+    const oldRun = await pool.query<{ id: string }>(
+      `INSERT INTO build_runs (chart_id, state, started_at, ended_at, created_at)
+       VALUES ($1, 'completed', NOW() - INTERVAL '3 hours', NOW() - INTERVAL '2 hours', NOW() - INTERVAL '3 hours')
+       RETURNING id`,
+      [CHART_B]
+    )
+    const oldRunId = oldRun.rows[0]!.id
+    const liveRun = await pool.query<{ id: string }>(
+      `INSERT INTO build_runs (chart_id, state, started_at, created_at)
+       VALUES ($1, 'running', NOW() - INTERVAL '5 minutes', NOW() - INTERVAL '5 minutes')
+       RETURNING id`,
+      [CHART_B]
+    )
+    const liveRunId = liveRun.rows[0]!.id
+    await pool.query(
+      `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ($1, '_t_asset', 0, 'building')`,
+      [oldRunId]
+    )
+    await pool.query(
+      `INSERT INTO build_run_assets (run_id, asset_id, position, state) VALUES ($1, '_t_asset', 0, 'building')`,
+      [liveRunId]
+    )
+    await pool.query(
+      `INSERT INTO asset_throughput (chart_id, asset_id, state, last_built_at, rows_written)
+       VALUES ($1, '_t_asset', 'building', NOW() - INTERVAL '20 minutes', 0)`,
+      [CHART_B]
+    )
+
+    const body = await runWatchdog()
+    expect(body.stuck_assets_failed).toBe(1)
+
+    const live = await pool.query<{ state: string; error: string | null }>(
+      'SELECT state, error FROM build_run_assets WHERE run_id = $1', [liveRunId]
+    )
+    expect(live.rows[0]).toMatchObject({ state: 'error', error: STUCK_ASSET_MESSAGE })
+
+    const old = await pool.query<{ state: string; error: string | null; ended_at: string | null }>(
+      'SELECT state, error, ended_at FROM build_run_assets WHERE run_id = $1', [oldRunId]
+    )
+    expect(old.rows[0]).toMatchObject({ state: 'building', error: null, ended_at: null })
+  })
+
+  it('site 2 negative (stuck-asset reaper join): a build_run_assets row that is NOT \'building\' (already complete) under the active run is NEVER flipped to error', async () => {
+    // Kills the mutant that drops `bra.state = 'building'` from the bra_terminalized
+    // CTE. The active run's row for this asset already finished ('complete') — a
+    // stale asset_throughput 'building' row for the same (chart, asset) must not
+    // rewrite a completed run-asset record into an error. A queued sibling row
+    // in the same run is likewise untouched.
+    const liveRun = await pool.query<{ id: string }>(
+      `INSERT INTO build_runs (chart_id, state, started_at, created_at)
+       VALUES ($1, 'running', NOW() - INTERVAL '5 minutes', NOW() - INTERVAL '5 minutes')
+       RETURNING id`,
+      [CHART_B]
+    )
+    const runId = liveRun.rows[0]!.id
+    await pool.query(
+      `INSERT INTO build_run_assets (run_id, asset_id, position, state, ended_at)
+       VALUES ($1, '_t_asset', 0, 'complete', NOW() - INTERVAL '1 minute')`,
+      [runId]
+    )
+    await pool.query(
+      `INSERT INTO asset_throughput (chart_id, asset_id, state, last_built_at, rows_written)
+       VALUES ($1, '_t_asset', 'building', NOW() - INTERVAL '20 minutes', 0)`,
+      [CHART_B]
+    )
+
+    const body = await runWatchdog()
+    // asset_throughput itself IS legitimately reaped (site 2's own gate)...
+    expect(body.stuck_assets_failed).toBe(1)
+    // ...but the completed build_run_assets record is left alone.
+    const bra = await pool.query<{ state: string; error: string | null }>(
+      'SELECT state, error FROM build_run_assets WHERE run_id = $1', [runId]
+    )
+    expect(bra.rows[0]).toMatchObject({ state: 'complete', error: null })
+  })
+
   it('is idempotent — a second tick after a fix does not re-touch already-terminal rows or duplicate side effects', async () => {
     const run = await pool.query<{ id: string }>(
       `INSERT INTO build_runs (chart_id, state, started_at, created_at)
