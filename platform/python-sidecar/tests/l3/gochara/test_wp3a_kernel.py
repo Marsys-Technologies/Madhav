@@ -11,6 +11,49 @@ E1 retained: the legacy F-07 tropical-arcs defect reproducer stays where it
 is — 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_gochara/
 E1_w2g_frame_defect.py — and is NOT moved into this suite. The kernel fixes
 F-07 by construction (sidereal knots before arc-building, knots.py).
+
+Tier 0-G regression index (Pravāha A2.1; GOCHARA_DESIGN_SPECS_v1_4 §6.2,
+GOCHARA_TEST_ORACLES_v1_4) — the mutation guards live in THIS file unless
+noted:
+  aspect_direction        (T0-1/#13): test_oad_aspect_direction[*],
+                          test_oad_levels_computed_as_target_minus_angle
+  zero_degree_seam        (T0-2/#14): test_oss2_case1_*, test_oss2_case2_*,
+                          test_oss1_boundary_counts_one_revolution,
+                          test_oss_grids_include_zero_exactly_once
+  no_fabricated_ingress   (N2/N3):    test_n2_retrograde_upper_boundary_entry_found,
+                          test_n3_clipped_span_never_fabricates_ingress
+  truncated_contacts_kept (T0-3/O-SS-3): test_contact_id_no_exact_t_in_fallback
+                          (identity) + test_step06_enumeration.py::
+                          test_truncated_contacts_kept_and_counted (producer)
+  residence_spans_persisted (T0-3 #6/#7): test_step06_enumeration.py::
+                          test_interval_target_residence_and_agent_restriction
+  global_boundary_table   (O-SS-1):   test_step06_enumeration.py::
+                          test_boundary_events_solved_and_stored_once_per_body
+
+A2.2 rework index (Codex R2–R6 / Kimi #1–#3 + steward scope ruling; the
+reviewers' own counterexamples):
+  R6 seam endpoint ownership: test_r6_direct_path_beginning_at_seam_keeps_endpoint_root,
+                          test_r6_retrograde_path_ending_at_seam_keeps_endpoint_root,
+                          test_r6_interior_seam_crossing_emitted_exactly_once
+  R3 every revolution:    test_r3_every_intersected_revolution_enumerated
+  R2 coherent refined boundary events: test_r2_residence_entry_exit_are_coherent_refined_events,
+                          test_r2_sun_2025_twelve_spans_eleven_exact_ingresses (swieph)
+  Kimi #1 upper-boundary longitude: test_kimi1_retrograde_upper_edge_entry_names_the_upper_boundary
+  R4 in-orb w/o exact root: test_step06_enumeration.py::test_r4_in_orb_support_without_exact_root_is_kept_truncated
+  Kimi #2 'both' both rows: test_step06_enumeration.py::test_truncated_both_preserved_and_jd_round_trip
+  Kimi #3 count once:     test_step06_enumeration.py::test_kimi3_physical_truncation_counted_once
+  R5 sky-once + reuse:    test_step06_enumeration.py::test_boundary_events_solved_and_stored_once_per_body,
+                          test_r5_residence_ingress_reuses_the_sky_event
+  identity golden (i):    test_exact_contact_ids_byte_identical_to_origin_main
+                          (fixture golden_contact_ids_origin_main.json, computed
+                          by executing origin/main ids.py — never self-comparison)
+  candidate gate (iii):   test_step06_enumeration.py::test_candidate_gate_null_exact_and_residence_rows_only_for_41_plus,
+                          test_s1_find_episodes.py::TestFindEpisodesLedger::
+                          test_null_exact_and_residence_rows_never_served
+  migration 1152 (7):     test_wp6_ledger.py::test_1152_valid_and_invalid_null_combinations
+                          (DB); header states single-run + irreversible-in-practice;
+                          preflight query scripts/kala_gochara_cutover/
+                          preflight_1152_existing_rows_satisfy_check.sql
 """
 from __future__ import annotations
 
@@ -348,6 +391,190 @@ def test_case_06_special_drishti_table():
     assert len(eps_rah_conj) > 0  # nodes remain full conjunction agents/targets
 
 
+# ── O-AD-1…4 — aspect direction, computed never mirrored (spec §6.2 inv 6) ──
+#
+# GOCHARA_TEST_ORACLES_v1_4.json O-AD-1..O-AD-4 (literal fixtures, tolerance
+# ±1 arcmin), plus the two brief cases (Saturn at Libra 24°15′ → Sagittarius
+# 24°15′ by the 3rd aspect; Mars at Aries 10° → Cancer 10° by the 4th).
+# Forward count: the aspect from body b falls at (λ_b + angle) mod 360, so the
+# contact occurs with the body at (target − angle) mod 360. The mirrored
+# implementation (target + angle) is the mutation that must fail.
+
+OAD_SWEEP_RATE = 0.5  # °/day synthetic sweep
+OAD_TIME_TOL_DAYS = (1.0 / 60.0) / OAD_SWEEP_RATE  # ±1 arcmin of longitude
+
+# (oracle, body, target_deg, aspect_deg, body_longitude_at_contact)
+OAD_CASES = [
+    ("O-AD-1", "Mars", 0.0, 90.0, 270.0),     # Mars 4th  → body at 0−90
+    ("O-AD-2", "Mars", 0.0, 210.0, 150.0),    # Mars 8th  → body at 0−210
+    ("O-AD-3", "Saturn", 0.0, 60.0, 300.0),   # Saturn 3rd → body at 0−60
+    ("O-AD-4", "Saturn", 0.0, 270.0, 90.0),   # Saturn 10th → body at 0−270
+    ("brief-1", "Saturn", 264.25, 60.0, 204.25),   # Libra 24°15′ → Sag 24°15′
+    ("brief-2", "Mars", 100.0, 90.0, 10.0),        # Aries 10° → Cancer 10°
+]
+
+
+def _oad_index(body: str) -> tuple[arcs.ArcIndex, float]:
+    """A 0.5°/day sweep starting at 0° — over three years it crosses every
+    level in [0,360) several times, so both the true level (target−angle) and
+    the mirrored level (target+angle) are traversed; only the true one may
+    produce a root at this aspect."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+    jds, lons = daily_knots(
+        date(2026, 1, 1), date(2029, 1, 1),
+        lambda jd: OAD_SWEEP_RATE * (jd - t0),
+    )
+    return arcs.build_arc_index(
+        body, jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC
+    ), t0
+
+
+@pytest.mark.parametrize(
+    "oracle,body,target,aspect,body_lon", OAD_CASES,
+    ids=[c[0] for c in OAD_CASES],
+)
+def test_oad_aspect_direction(oracle, body, target, aspect, body_lon):
+    idx, t0 = _oad_index(body)
+    roots = contacts.find_roots(
+        idx, body, "drishti_contact", target, refine=False
+    )
+    hits = [r for r in roots if r.aspect_deg == aspect]
+    assert hits, f"{oracle}: no {aspect}°-aspect root found for {body}"
+
+    # then-clause: the level is (target − angle) mod 360 and the root occurs
+    # with the body there (first crossing at t0 + body_lon / rate).
+    assert all(
+        r.level_deg == pytest.approx((target - aspect) % 360.0, abs=1e-9)
+        for r in hits
+    )
+    t_true = t0 + (body_lon % 360.0) / OAD_SWEEP_RATE
+    assert any(
+        abs(r.spline_exact_jd - t_true) < OAD_TIME_TOL_DAYS for r in hits
+    ), f"{oracle}: no root with the body at {body_lon}° (target − {aspect}°)"
+
+    # mutation detector: an implementation computing target + angle roots the
+    # aspect with the body at (target + angle) mod 360 — that instant must
+    # carry NO root at this aspect.
+    t_mirror = t0 + ((target + aspect) % 360.0) / OAD_SWEEP_RATE
+    assert not any(
+        abs(r.spline_exact_jd - t_mirror) < OAD_TIME_TOL_DAYS for r in hits
+    ), f"{oracle}: mirrored direction produced a root at target + {aspect}°"
+
+
+def test_oad_levels_computed_as_target_minus_angle():
+    """Direct statement of the rule the mutation flips: for the 0° target the
+    solved levels are 300/150/270/90 for Saturn-3rd/Mars-8th/Saturn-10th/
+    Mars-4th — never 60/210/90→270."""
+    levels = dict(contacts._levels_for_relation("Saturn", "drishti_contact", 0.0))
+    assert levels[60.0] == pytest.approx(300.0)
+    assert levels[270.0] == pytest.approx(90.0)
+    assert levels[180.0] == pytest.approx(180.0)  # 7th: self-mirror invariant
+    levels = dict(contacts._levels_for_relation("Mars", "drishti_contact", 0.0))
+    assert levels[90.0] == pytest.approx(270.0)
+    assert levels[210.0] == pytest.approx(150.0)
+
+
+# ── O-SS-1/O-SS-2 — the 0°/360° seam is a boundary root (spec §6.2, #14) ────
+#
+# GOCHARA_TEST_ORACLES_v1_4.json O-SS-2: case 1 direct 359.9°→0.1° over
+# [2025-03-01T00:00Z, 2025-03-02T00:00Z] (Aries ingress at the seam); case 2
+# retrograde 0.1°→359.9° over [2025-09-01T00:00Z, 2025-09-02T00:00Z] (Pisces
+# re-entry through the UPPER boundary). Tolerance δt < 60 s; synthetic linear
+# curves are reproduced exactly by the spline (refine=False). O-SS-1 count
+# contract per revolution: sign 12 / nakṣatra 27 / kakṣyā 96 (the
+# "each event stored once" producer half is step 6's global_boundary_table).
+
+OSS2_HORIZON = ("2025-01-01T00:00:00Z", "2026-01-01T00:00:00Z")
+
+
+def _oss2_solve(curve, knot_start, knot_end, relation):
+    jds, lons = daily_knots(knot_start, knot_end, curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = tuple(jd_from_iso(s) for s in OSS2_HORIZON)
+    return episodes.solve_boundary_episodes(idx, "Sun", relation, horizon, refine=False)
+
+
+def test_oss2_case1_direct_crossing_aries_ingress():
+    h = jd_from_iso("2025-03-01T00:00:00Z")
+
+    def curve(jd):
+        return 359.9 + 0.2 * (jd - h)  # 359.9° at 03-01T00 → 0.1° at 03-02T00
+
+    eps = _oss2_solve(curve, date(2025, 2, 25), date(2025, 3, 5), "sign_ingress")
+    assert len(eps) == 1  # the curve crosses ONLY the seam — one root, not two
+    ep = eps[0]
+    assert ep.level_deg == 0.0 and ep.target_deg == 0.0
+    assert ep.exact_crossing is True
+    # δt < 60 s: seam at λ=360 exactly midway, 2025-03-01T12:00:00Z
+    assert iso_from_jd(ep.t_exact) == "2025-03-01T12:00:00Z"
+    # never a fabricated t_exact at the horizon edge
+    assert ep.t_in == ep.t_exact == ep.t_out
+    assert abs(ep.t_exact - jd_from_iso(OSS2_HORIZON[0])) > 1.0
+    assert abs(ep.t_exact - jd_from_iso(OSS2_HORIZON[1])) > 1.0
+    # 0° is a nakṣatra boundary too (360/27·27 ≡ 0): same seam, one root
+    naks = _oss2_solve(curve, date(2025, 2, 25), date(2025, 3, 5), "nakshatra_ingress")
+    assert len(naks) == 1 and naks[0].level_deg == 0.0
+    assert iso_from_jd(naks[0].t_exact) == "2025-03-01T12:00:00Z"
+
+
+def test_oss2_case2_retrograde_pisces_reentry_upper_boundary():
+    h = jd_from_iso("2025-09-01T00:00:00Z")
+
+    def curve(jd):
+        return 0.1 - 0.2 * (jd - h)  # 0.1° at 09-01T00 → 359.9° at 09-02T00
+
+    eps = _oss2_solve(curve, date(2025, 8, 26), date(2025, 9, 5), "sign_ingress")
+    assert len(eps) == 1  # the retrograde seam crossing, through the UPPER edge
+    ep = eps[0]
+    assert ep.level_deg == 0.0
+    assert ep.exact_crossing is True
+    assert iso_from_jd(ep.t_exact) == "2025-09-01T12:00:00Z"
+
+
+def test_oss1_boundary_counts_one_revolution():
+    """O-SS-1 count contract (per-body grid half): a Sun-like direct sweep
+    (~0.986°/day) across exactly one revolution yields exactly 12 sign, 27
+    nakṣatra and 96 kakṣyā roots — including exactly ONE 0°-seam root in each
+    grid. Removing 0° from any grid (the pre-fix mutation) drops the count to
+    11/26/95 and fails; so does double-emitting the seam."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+    rate = 360.0 / 365.25  # Sun-like: one revolution per year
+
+    def curve(jd):
+        return 350.0 + rate * (jd - t0)  # knot window spans 352° → ~711° unwrapped
+
+    jds, lons = daily_knots(date(2026, 1, 3), date(2027, 1, 3), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (jds[0], jds[-1])
+    expected = {"sign_ingress": 12, "nakshatra_ingress": 27,
+                "kakshya_cell_crossing": 96}
+    for relation, count in expected.items():
+        eps = episodes.solve_boundary_episodes(
+            idx, "Sun", relation, horizon, refine=False
+        )
+        assert len(eps) == count, (
+            f"{relation}: {len(eps)} roots over one revolution, expected {count}"
+        )
+        assert all(e.exact_crossing for e in eps)
+        seam = [e for e in eps if e.level_deg == 0.0]
+        assert len(seam) == 1, (
+            f"{relation}: {len(seam)} seam roots — the 0° crossing must be "
+            "present exactly once (attributed to the arc reaching the seam)"
+        )
+        # δt < 60 s: the seam root is at λ=360, t0 + 10°/rate
+        assert abs(seam[0].t_exact - (t0 + 10.0 / rate)) < 60.0 / 86400.0
+
+
+def test_oss_grids_include_zero_exactly_once():
+    """Grid-level pin: 0° is a member of all three boundary grids, listed once."""
+    for relation, n in (("sign_ingress", 12), ("nakshatra_ingress", 27),
+                        ("kakshya_cell_crossing", 96)):
+        grid = contacts.boundary_degrees(relation)
+        assert len(grid) == n and len(set(grid)) == n
+        assert grid.count(0.0) == 1
+        assert all(0.0 <= d < 360.0 for d in grid)
+
+
 # ── Case 12 — plateau ties in peak detection ────────────────────────────────
 
 def test_case_12_plateau_ties():
@@ -669,3 +896,449 @@ def test_pisces_whole_sign_span_not_refused():
     assert span.t_exit == pytest.approx(h0 + 60.0 / 0.5, abs=1e-4)  # egress at λ=360, t=120 d
     assert span.truncated_at_horizon is None
     assert span.ingress_episode.relation == "sign_ingress"
+
+
+# ── N2/N3 — no fabricated ingress at a clipped horizon start ────────────────
+
+def test_n2_retrograde_upper_boundary_entry_found():
+    """N2: the ingress search covers BOTH span boundaries. A retrograde body
+    enters a span through its UPPER edge (here the 0°/360° seam of the Pisces
+    whole-sign span); pre-fix only lo_w was searched, so the root was missed
+    and t_exact was fabricated at the clip instant."""
+    h = jd_from_iso("2026-01-01T00:00:00Z")
+
+    def curve(jd):
+        return 361.0 - 0.2 * (jd - h)  # 1° Aries → crosses 360 (Pisces top) at t=5 d
+
+    jds, lons = daily_knots(date(2025, 12, 28), date(2026, 1, 20), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (jds[0], jds[-1])
+    spans = episodes.residence_spans(
+        idx, "Sun", (330.0, 360.0), horizon, "bhava", refine=False
+    )
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.t_enter == pytest.approx(h + 5.0, abs=1e-4)  # λ=360 crossing
+    ep = span.ingress_episode
+    assert ep.exact_crossing is True
+    assert ep.t_exact == pytest.approx(h + 5.0, abs=1e-4)
+    # the root came from the UPPER boundary (0° seam): root-derived fields are
+    # populated — pre-fix (lo_w-only search) found no root and left
+    # spline_exact_jd None while stamping exact_crossing=True (the lie N2 kills)
+    assert ep.spline_exact_jd == pytest.approx(h + 5.0, abs=1e-4)
+    assert ep.t_exact != pytest.approx(horizon[0], abs=1.0)
+
+
+def test_n3_clipped_span_never_fabricates_ingress():
+    """N3/O-SS-3: the true ingress lies BEFORE the horizon start (span clipped
+    at the start edge). The span is KEPT as truncated; the ingress episode
+    carries t_exact=None / exact_crossing=False — never a fabricated instant
+    at the horizon edge stamped as an observed crossing."""
+    h0 = jd_from_iso("2026-01-01T00:00:00Z")
+
+    def curve(jd):
+        return 300.0 + 0.5 * (jd - h0)  # λ=330 at t=60 d, λ=360 at t=120 d
+
+    jds, lons = daily_knots(date(2025, 12, 15), date(2026, 6, 1), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (h0 + 70.0, jds[-1])  # starts 10 d AFTER the true ingress (λ=335)
+    spans = episodes.residence_spans(
+        idx, "Saturn", (330.0, 360.0), horizon, "bhava", refine=False
+    )
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.truncated_at_horizon == "start"
+    assert span.t_enter == pytest.approx(horizon[0], abs=1e-9)  # the clip instant
+    ep = span.ingress_episode
+    assert ep.exact_crossing is False
+    assert ep.t_exact is None
+    assert ep.truncated_at_horizon == "start"
+    # mutation guard: no fabricated exact instant at (or near) the clip edge
+    assert ep.t_in == pytest.approx(horizon[0], abs=1e-9)
+    assert not (ep.exact_crossing and ep.t_exact == ep.t_in)
+
+
+def test_contact_id_no_exact_t_in_fallback():
+    """N3 truncated contacts (t_exact=None) get a stable identity from the
+    floored t_in, marked as a substitution in the payload — so a truncated
+    contact can never collide with an exact one at the same minute, and the
+    exact-contact id shape is byte-identical to before the fallback existed."""
+    jd_exact = swe.julday(2026, 3, 6, 0.0) + 37 / 86400.0
+    kw = dict(
+        chart_id="wp2-synth-00000000-0000-4000-8000-00000000000b",
+        convention_id="sha256:abc", body="Saturn", target_type="karaka",
+        relation="conjunction", aspect_deg=0.0, target_ref="Sun",
+        method_version="1.0.0",
+    )
+    exact = contact_id(t_exact_jd=jd_exact, **kw)
+    # exact shape unchanged: no t_fallback needed, same value as pre-change
+    assert exact == contact_id(t_exact_jd=jd_exact, t_fallback_jd=None, **kw)
+    # no-exact: requires the fallback instant
+    with pytest.raises(ValueError):
+        contact_id(t_exact_jd=None, **kw)
+    trunc = contact_id(t_exact_jd=None, t_fallback_jd=jd_exact, **kw)
+    # same minute, same everything — but NOT the same id (substitution marked)
+    assert trunc != exact
+    # stable under sub-minute jitter of t_in
+    assert trunc == contact_id(
+        t_exact_jd=None, t_fallback_jd=jd_exact + 20 / 86400.0, **kw)
+
+
+# ── Pravāha A2.2 rework regressions — the reviewers' own counterexamples ─────
+# (Codex gpt-6-astra R2/R3/R6, Kimi K3 #1; ASTRA_REVIEW/KIMI_K3_REVIEW
+# A2_KERNEL_GEOMETRY_v1_0). Each test names the mutation it catches.
+
+def test_r6_direct_path_beginning_at_seam_keeps_endpoint_root():
+    """Codex R6 (baseline comparison): a direct path BEGINNING exactly at 0°
+    owns a root at the domain start. The pre-rework 0→360 mapping discarded
+    it (the arc's lon_hi < 360)."""
+    t0 = swe.julday(2026, 1, 1, 12.0)  # daily_knots samples at noon UT
+
+    def curve(jd):
+        return 0.5 * (jd - t0)  # exactly 0.0° at the FIRST knot
+
+    jds, lons = daily_knots(date(2026, 1, 1), date(2026, 1, 25), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    assert lons[0] == 0.0  # the window opens exactly on the seam
+    roots = contacts.find_roots(idx, "Saturn", "conjunction", 0.0, refine=False)
+    # the body departs 0 at the window start — exactly one root at the first
+    # knot, never none (pre-fix) and never two
+    assert len(roots) == 1
+    assert roots[0].spline_exact_jd == pytest.approx(jds[0], abs=1e-9)
+
+
+def test_r6_retrograde_path_ending_at_seam_keeps_endpoint_root():
+    """Codex R6 (baseline): a retrograde path ENDING exactly at 0° owns a
+    root at the domain end."""
+    t0 = swe.julday(2026, 1, 1, 12.0)  # daily_knots samples at noon UT
+
+    def curve(jd):
+        return 5.0 - 0.5 * (jd - t0)  # reaches exactly 0° at day 10
+
+    jds, lons = daily_knots(date(2026, 1, 1), date(2026, 1, 25), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    assert lons[10] == pytest.approx(0.0, abs=1e-9)  # day 10 of the window
+    roots = contacts.find_roots(idx, "Saturn", "conjunction", 0.0, refine=False)
+    assert len(roots) == 1
+    assert roots[0].spline_exact_jd == pytest.approx(jds[10], abs=1e-9)
+    boundary = contacts.find_boundary_roots(idx, "Saturn", "sign_ingress", refine=False)
+    seam = [r for r in boundary if r.level_deg == 0.0]
+    assert len(seam) == 1
+    assert seam[0].spline_exact_jd == pytest.approx(jds[10], abs=1e-9)
+
+
+def test_r6_interior_seam_crossing_emitted_exactly_once():
+    """R6 ownership: an interior wrap crossing is covered by BOTH the arc
+    reaching 360 and the next band's arc starting at 0 — the stored root is
+    ONE physical event (the duplicate candidate at the shared cut is dropped),
+    while the arc that reaches the boundary keeps the attribution."""
+    t0 = swe.julday(2026, 3, 1, 0.0)
+
+    def curve(jd):
+        return 350.0 + 0.5 * (jd - t0)  # crosses 360→0 at t0+20, mid-window
+
+    jds, lons = daily_knots(date(2026, 2, 20), date(2026, 3, 25), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    boundary = contacts.find_boundary_roots(idx, "Saturn", "sign_ingress", refine=False)
+    seam = [r for r in boundary if r.level_deg == 0.0]
+    assert len(seam) == 1, f"seam crossing duplicated: {len(seam)} roots"
+    assert seam[0].spline_exact_jd == pytest.approx(t0 + 20.0, abs=1e-6)
+    conj = contacts.find_roots(idx, "Saturn", "conjunction", 0.0, refine=False)
+    assert len(conj) == 1
+    assert conj[0].spline_exact_jd == pytest.approx(t0 + 20.0, abs=1e-6)
+
+
+def test_r3_every_intersected_revolution_enumerated():
+    """Codex R3 (verbatim counterexample): λ(t)=t° over [0,1000] days,
+    residence [30°,60°] must yield [30,60], [390,420], [750,780] — the
+    pre-rework midpoint-band choice returned only [390,420]."""
+    t0 = swe.julday(2026, 1, 1, 0.0)
+
+    def curve(jd):
+        return jd - t0  # 1°/day, many revolutions inside one knot window
+
+    jds, lons = daily_knots(date(2025, 12, 20), date(2028, 12, 20), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (t0, t0 + 1000.0)
+    spans = episodes.residence_spans(
+        idx, "Sun", (30.0, 60.0), horizon, "bhava", refine=False)
+    entries = [s.t_enter - t0 for s in spans]
+    exits = [s.t_exit - t0 for s in spans]
+    assert entries == pytest.approx([30.0, 390.0, 750.0], abs=1e-6)
+    assert exits == pytest.approx([60.0, 420.0, 780.0], abs=1e-6)
+    # every ingress is an observed exact crossing at the LOWER edge (direct)
+    for s in spans:
+        assert s.ingress_episode.exact_crossing is True
+        assert s.ingress_episode.t_exact == pytest.approx(s.t_enter, abs=1e-9)
+        assert s.ingress_episode.level_deg == 30.0
+        assert s.truncated_at_horizon is None
+
+
+def test_r2_residence_entry_exit_are_coherent_refined_events():
+    """Codex R2 (verbatim counterexample geometry): λ = 200 + 0.137°·day,
+    span [210°, 240°]. Entry and exit instants are THE refined boundary
+    events of the actual edges — the ingress episode's t_exact IS the span's
+    t_enter (no 1e-6-day join between differently refined roots, which turned
+    every real ingress into a false null)."""
+    t0 = swe.julday(2026, 1, 1, 0.0)
+
+    def curve(jd):
+        return 200.0 + 0.137 * (jd - t0)
+
+    jds, lons = daily_knots(date(2025, 12, 20), date(2027, 1, 20), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (jds[0], jds[-1])
+    spans = episodes.residence_spans(
+        idx, "Sun", (210.0, 240.0), horizon, "bhava", refine=False)
+    assert len(spans) == 1
+    span = spans[0]
+    entry_analytic = 10.0 / 0.137
+    exit_analytic = 40.0 / 0.137
+    assert span.t_enter - t0 == pytest.approx(entry_analytic, abs=1e-6)
+    assert span.t_exit - t0 == pytest.approx(exit_analytic, abs=1e-6)
+    ing = span.ingress_episode
+    assert ing.t_exact is not None and ing.exact_crossing is True
+    assert ing.t_exact == span.t_enter  # ONE coherent event, not a join
+    assert ing.level_deg == 210.0 and ing.target_deg == 210.0
+    assert ing.completeness_state == "applied"
+    assert span.truncated_at_horizon is None
+
+
+def test_kimi1_retrograde_upper_edge_entry_names_the_upper_boundary():
+    """Kimi #1: a retrograde body entering [30°,60°] through its UPPER edge
+    is stamped 60° — never the lower boundary 30° (the pre-rework code
+    stamped lo_w unconditionally; Kṣetra reads level/target degrees, so the
+    mislabel was consumer-visible wrong data)."""
+    t0 = swe.julday(2026, 1, 1, 0.0)
+
+    def curve(jd):
+        return 70.0 - 0.2 * (jd - t0)  # enters [30,60] through 60 at t=50
+
+    jds, lons = daily_knots(date(2025, 12, 20), date(2026, 8, 1), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    spans = episodes.residence_spans(
+        idx, "Saturn", (30.0, 60.0), (jds[0], jds[-1]), "bhava", refine=False)
+    assert len(spans) == 1
+    ing = spans[0].ingress_episode
+    assert ing.level_deg == 60.0 and ing.target_deg == 60.0
+    assert ing.t_exact - t0 == pytest.approx(50.0, abs=1e-6)
+    assert spans[0].t_exit - t0 == pytest.approx(200.0, abs=1e-6)  # 30° at t=200
+    # Pisces-span variant through the seam: entering [330,360] through 360
+    # stamps the seam degree (360 ≡ 0), never the lower edge 330.
+    def curve2(jd):
+        return 5.0 - 0.2 * (jd - t0)  # enters [330,360] through 360 at t=25
+
+    jds2, lons2 = daily_knots(date(2025, 12, 20), date(2026, 6, 1), curve2)
+    idx2 = arcs.build_arc_index("Saturn", jds2, lons2, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    spans2 = episodes.residence_spans(
+        idx2, "Saturn", (330.0, 360.0), (jds2[0], jds2[-1]), "bhava", refine=False)
+    assert len(spans2) == 1
+    ing2 = spans2[0].ingress_episode
+    assert ing2.level_deg == 0.0 and ing2.target_deg == 0.0  # the 360 seam
+    assert ing2.t_exact - t0 == pytest.approx(25.0, abs=1e-6)
+
+
+@requires_swieph
+def test_r2_sun_2025_twelve_spans_eleven_exact_ingresses():
+    """Codex R2's real-ephemeris reproduction, inverted: pre-rework ALL 12
+    Sun 2025 residence spans carried null ingress. Now every ingress inside
+    the horizon is exact (each within 2 s of an independent Swiss bisection);
+    only the tail of the Dec 2024 Sagittarius ingress is truncated-start with
+    t_exact=None. (Sagittarius appears twice inside 2025 — the January tail
+    and the December re-entry — so 13 spans, 12 exact ingresses.)"""
+    start = date(2024, 12, 15)
+    end = date(2026, 1, 15)
+    jds, lons = [], []
+    d = start
+    while d <= end:
+        jd = swe.julday(d.year, d.month, d.day, 12.0)
+        lon, retflag = calc_sidereal_lon("Sun", jd, EPHE_PATH)
+        if not (retflag & 2) or (retflag & 4):
+            pytest.skip(f"NOT_RUN: Sun retflag {retflag} (F-14)")
+        jds.append(jd)
+        lons.append(lon)
+        d += timedelta(days=1)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=1.0)
+    horizon = (jd_from_iso("2025-01-01T00:00:00Z"), jd_from_iso("2026-01-01T00:00:00Z"))
+    total, exact, truncated = 0, 0, 0
+    for k in range(12):
+        lo = 30.0 * k
+        spans = episodes.residence_spans(
+            idx, "Sun", (lo, lo + 30.0), horizon, "bhava", ephe_path=EPHE_PATH)
+        # The knot window covers Dec 2024 – Jan 2026, so Sagittarius (the
+        # sign the Sun is in on Jan 1) appears TWICE inside 2025: the
+        # truncated-start tail of the Dec 2024 ingress and the next ingress
+        # in Dec 2025. Every other sign appears once.
+        assert len(spans) == (2 if lo == 240.0 else 1), (
+            f"sign {k}: {len(spans)} spans in 2025")
+        for span in spans:
+            total += 1
+            if lo == 240.0 and span.ingress_episode.t_exact is None:
+                # Sun is at ~265° on 2025-01-01: this span's ingress was in
+                # Dec 2024 — truncated start, never a fabricated instant (N3).
+                assert span.truncated_at_horizon == "start"
+                truncated += 1
+                continue
+            ing = span.ingress_episode
+            assert ing.t_exact is not None and ing.exact_crossing is True
+            assert ing.t_exact == pytest.approx(span.t_enter, abs=1e-9)
+            # independent re-derivation: direct Swiss bisection around the
+            # found instant (NOT the residence path's own refinement)
+            jd_ind, _ = contacts.swiss_bisect(
+                "Sun", ing.t_exact - 1.0, ing.t_exact + 1.0, lo, EPHE_PATH)
+            assert abs(jd_ind - ing.t_exact) < 2.0 / 86400.0
+            exact += 1
+    assert (total, exact, truncated) == (13, 12, 1)
+
+
+def test_exact_contact_ids_byte_identical_to_origin_main():
+    """Steward scope ruling (A2 rework, item i): exact-contact ids for
+    unchanged inputs are byte-identical to origin/main. The goldens were
+    computed by EXECUTING origin/main's ids.py (extracted via git show) on
+    the 27 fixed cases — not by comparing the function against itself (the
+    defect in the earlier identity assertion). Any drift in the exact-contact
+    payload (fields, rounding, canonicalization) fails here."""
+    golden = json.loads(
+        (Path(__file__).parent / "fixtures"
+         / "golden_contact_ids_origin_main.json").read_text())
+    assert len(golden["cases"]) == 27
+    for case in golden["cases"]:
+        got = contact_id(**case["inputs"])
+        assert got == case["contact_id"], (
+            f"exact-contact id drifted from origin/main for "
+            f"{case['inputs']['body']}/{case['inputs']['relation']}: "
+            f"{got} != {case['contact_id']}")
+
+
+# ── Pravāha A2.2 closure-check (v1.1) round-2 regressions ────────────────────
+# Each test is the Codex v1.1 reviewer's own counterexample.
+
+def test_r2q1_domain_start_on_entry_boundary_is_observed_ingress():
+    """Codex v1.1 amendment 2: λ=30+t over [0,40], residence [30,60] — the
+    body sits exactly ON the entry boundary at the domain start. Baseline
+    (95e765c3c) found t_exact = day 0; the strict-comparison rework made it
+    null. Endpoint-on-edge is an observed crossing."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+
+    def curve(jd):
+        return 30.0 + (jd - t0)
+
+    jds, lons = daily_knots(date(2026, 1, 1), date(2026, 2, 20), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    spans = episodes.residence_spans(
+        idx, "Sun", (30.0, 60.0), (t0, t0 + 40.0), "bhava", refine=False)
+    assert len(spans) == 1
+    ing = spans[0].ingress_episode
+    assert ing.t_exact == pytest.approx(t0, abs=1e-9)  # day 0, observed
+    assert ing.exact_crossing is True
+    assert spans[0].truncated_at_horizon is None
+
+
+def test_r2q1_station_spanning_exit_refined_on_its_own_segment():
+    """Codex v1.1 amendment 1 (analytic probe): λ=20−(t−10)², span [0,30] —
+    a station at t=10 INSIDE the span, entry on the rising leg, exit on the
+    falling leg. The exit must be refined against the FALLING segment (its
+    own), and with the shared roots supplied the construction must not raise
+    (pre-fix it refined the exit against the entry segment → ValueError /
+    wrong instant). λ=20−(t−10)² enters [0,30] at 20−(t−10)²=0 → t=10−√20
+    and exits at t=10+√20."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+
+    def curve(jd):
+        return 20.0 - (jd - t0 - 10.0) ** 2
+
+    jds, lons = daily_knots(date(2025, 12, 25), date(2026, 1, 20), curve)
+    idx = arcs.build_arc_index("Mars", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    roots = contacts.find_boundary_roots(idx, "Mars", "sign_ingress", refine=False)
+    horizon = (jds[0], jds[-1])
+    spans = episodes.residence_spans(
+        idx, "Mars", (0.0, 30.0), horizon, "bhava", refine=False,
+        boundary_roots=roots)  # must NOT raise
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.t_enter - t0 == pytest.approx(10.0 - math.sqrt(20.0), abs=1e-6)
+    assert span.t_exit - t0 == pytest.approx(10.0 + math.sqrt(20.0), abs=1e-6)
+
+
+@requires_swieph
+def test_r2q1_swiss_mars_jupiter_station_spanning_exits():
+    """Codex v1.1 amendment 1, real ephemeris: Mars 2025 residence [60°,90°]
+    (retrograde station inside the span) exits 2025-04-02 at 90° — never
+    2025-03-14 at 84.72° (the wrong-segment refinement); Jupiter [30°,60°]
+    exits 2025-05-14 at 60°. Each exit within 2 min of an independent Swiss
+    bisection."""
+    for body, span_deg, want_exit_date in (
+            ("Mars", (60.0, 90.0), "2025-04-02"),
+            ("Jupiter", (30.0, 60.0), "2025-05-14")):
+        jds, lons = [], []
+        d = date(2024, 12, 15)
+        while d <= date(2026, 1, 15):
+            jd = swe.julday(d.year, d.month, d.day, 12.0)
+            lon, retflag = calc_sidereal_lon(body, jd, EPHE_PATH)
+            if not (retflag & 2) or (retflag & 4):
+                pytest.skip(f"NOT_RUN: {body} retflag {retflag} (F-14)")
+            jds.append(jd)
+            lons.append(lon)
+            d += timedelta(days=1)
+        idx = arcs.build_arc_index(body, jds, lons, tolerance_arcsec=1.0)
+        horizon = (jd_from_iso("2025-01-01T00:00:00Z"),
+                   jd_from_iso("2026-01-01T00:00:00Z"))
+        spans = episodes.residence_spans(
+            idx, body, span_deg, horizon, "bhava", ephe_path=EPHE_PATH)
+        assert len(spans) == 1
+        span = spans[0]
+        assert iso_from_jd(span.t_exit)[:10] == want_exit_date
+        # independent re-derivation of the exit instant (exit edge = span hi)
+        jd_ind, _ = contacts.swiss_bisect(
+            body, span.t_exit - 1.0, span.t_exit + 1.0, span_deg[1], EPHE_PATH)
+        assert abs(jd_ind - span.t_exit) < 120.0 / 86400.0
+
+
+def test_r2q3_multi_revolution_seam_ownership():
+    """Codex v1.1 amendment 3 (verbatim): an arc whose BOTH endpoints are
+    seams owns a distinct crossing at each end. λ=10+t over [0,1500] → seam
+    crossings at 350, 710, 1070, 1430 (the start-anchored dedupe dropped 710
+    and duplicated 1430); λ=t over [0,1000] → 0, 360, 720 (the domain start
+    at 0 is a real crossing)."""
+    for c0, days, want in ((10.0, 1500, [350, 710, 1070, 1430]),
+                           (0.0, 1000, [0, 360, 720])):
+        t0 = swe.julday(2026, 1, 1, 12.0)
+
+        def curve(jd, c0=c0):
+            return c0 + (jd - t0)
+
+        jds, lons = daily_knots(date(2025, 12, 25),
+                                date(2025, 12, 25) + timedelta(days=days + 20),
+                                curve)
+        idx = arcs.build_arc_index("Sun", jds, lons,
+                                   tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+        eps = episodes.solve_boundary_episodes(
+            idx, "Sun", "sign_ingress", (t0, t0 + days), refine=False)
+        got = sorted(round(e.t_exact - t0) for e in eps if e.level_deg == 0.0)
+        assert got == want, f"c0={c0}: {got} != {want}"
+
+
+@requires_swieph
+def test_r2q3_swiss_sun_seam_crossings_once_per_year_2025_2035():
+    """Codex v1.1 amendment 3, real ephemeris: Sun seam (0° Aries) crossings
+    2025–2035 — exactly one per year (2026 present, 2034 once). The
+    start-anchored dedupe made 2026 disappear and 2034 appear twice."""
+    jds, lons = [], []
+    d = date(2024, 12, 20)
+    while d <= date(2035, 12, 31):
+        jd = swe.julday(d.year, d.month, d.day, 12.0)
+        lon, retflag = calc_sidereal_lon("Sun", jd, EPHE_PATH)
+        if not (retflag & 2) or (retflag & 4):
+            pytest.skip(f"NOT_RUN: Sun retflag {retflag} (F-14)")
+        jds.append(jd)
+        lons.append(lon)
+        d += timedelta(days=7)  # weekly knots suffice for the year count
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=1.0)
+    horizon = (jd_from_iso("2025-01-01T00:00:00Z"),
+               jd_from_iso("2035-12-31T00:00:00Z"))
+    eps = episodes.solve_boundary_episodes(
+        idx, "Sun", "sign_ingress", horizon, ephe_path=EPHE_PATH)
+    seam_years = sorted(int(iso_from_jd(e.t_exact)[:4])
+                        for e in eps if e.level_deg == 0.0)
+    # horizon covers the March equinoxes of 2025 through 2035 inclusive
+    assert seam_years == list(range(2025, 2036)), seam_years

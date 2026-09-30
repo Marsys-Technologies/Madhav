@@ -56,19 +56,45 @@ nakshatra_ingress, kakshya_cell_crossing, return. Point targets (karaka,
 dasha_lord_portfolio, lord, yoga_constituent, sensitive_degree-positive) get
 conjunction + drishti_contact + return (return only for the target's owning
 graha — a return is body X returning to body X's natal longitude; for any
-other body the root set is identical to the conjunction's) plus the three
-boundary relations attached to the target (the _moon_on_demand precedent).
-Interval targets (bhava, arudha, bhava_arudha, mechanism_node, M-6 derived)
-get residence spans and sign_ingress via kernel residence_spans — NEVER point
-contacts (M-5). mechanism_node intervals are enumerated for the graha the ref
+other body the root set is identical to the conjunction's). Interval targets
+(bhava, arudha, bhava_arudha, mechanism_node, M-6 derived) get residence
+spans via kernel residence_spans — NEVER point contacts (M-5). Boundary
+events (the three ingress relations) are sky geometry: stored ONCE per
+(body, relation, instant) as target_type='sky_event' rows (R5, A2.2
+amendment 4); a residence span's row carries its observed ingress instant —
+the target attachment — so no per-target boundary rows exist anywhere in the
+payload. mechanism_node intervals are enumerated for the graha the ref
 names; M-6 derived intervals for the formula's ruled agent (target_qualifier
 'agent:X') only — the verse names the transiting graha.
 
-t_exact is NOT NULL in migration 1081, so kernel episodes WITHOUT an exact
-crossing inside the horizon (E8-2 tangencies, knot-edge clips) are NOT
-persistable: they are counted in the build report (episodes_without_exact)
-and excluded from the payload rather than fabricating an instant. Kernel
-'truncated_at_horizon=both' maps to NULL (WP1 §3.1 CHECK).
+Migration 1152 makes t_exact nullable, so kernel episodes WITHOUT an exact
+crossing inside the horizon (N3 truncated spans: exact centre off-horizon)
+are KEPT with t_exact=NULL, exact_crossing=false and their
+truncated_at_horizon mark — never dropped as absence, never a fabricated
+instant (N3 retention, oracle O-SS-3). They are counted in the build report
+(episodes_truncated_no_exact_kept, one count per PHYSICAL truncation). The
+kernel's 'truncated_at_horizon=both' is stored verbatim (1152 widened the
+WP1 §3.1 CHECK to admit it — one span, one truncation mark, on both rows).
+
+Candidate-only gate (steward scope ruling, 2026-09-30): null-exact rows and
+relation='residence' rows are emitted ONLY for candidate generations
+>= '4.1' — never into published '4.0' and never reachable by the '4.0'
+serving path (ka_gochara's ledger query selects on a t_exact range and its
+relation whitelist predates 'residence'). Rows withheld by the gate are
+counted (episodes_truncated_no_exact_withheld_pre_41). The full §6.1
+physical-identity contract (occurrence ordinals, truncated→exact enrichment
+lineage) is deliberately NOT implemented here — that is A5.3/A5.1
+registered-writer scope.
+
+R5 (global boundary substrate): boundary events are sky geometry — solved
+once per body and stored once per (body, relation, instant) as
+target_type='sky_event' rows (target_ref 'sky:<relation>'); they are NOT
+duplicated per resonance-map target. Residence spans reuse the same refined
+sign-ingress roots for their entry/exit instants (explicit crossing
+association: level + direction + structural bracket containment, never a
+timestamp-tolerance join), so a whole-sign ingress instant IS the stored sky
+event, and the residence row is the target attachment.
+assert_boundary_events_stored_once runs after dedupe over the WHOLE payload.
 
 Usage:
     python3 step06_enumerate_episodes.py --dsn postgresql://... \
@@ -542,10 +568,12 @@ def jd_to_dt(jd: float) -> datetime:
 def _episode_to_dict(ep: gk_episodes.Episode, target: ResolvedTarget,
                      backend: dict) -> dict:
     """kernel Episode -> the ledger `_normalize_episode` dict shape
-    (precedent: ka_gochara/service.py::_moon_on_demand; step06's synthetic)."""
+    (precedent: ka_gochara/service.py::_moon_on_demand; step06's synthetic).
+    truncated_at_horizon is carried verbatim incl. 'both' (migration 1152
+    widened the WP1 §3.1 CHECK to admit it — one span, one truncation mark)."""
     truncated = ep.truncated_at_horizon
-    if truncated not in ("start", "end"):
-        truncated = None  # kernel 'both' -> NULL (WP1 §3.1 CHECK)
+    if truncated not in ("start", "end", "both"):
+        truncated = None
     return {
         "independence_group": gk_ids.independence_group(
             body=ep.body, relation=ep.relation, aspect_deg=ep.aspect_deg,
@@ -589,6 +617,96 @@ def _episode_to_dict(ep: gk_episodes.Episode, target: ResolvedTarget,
     }
 
 
+def _residence_span_dict(span: gk_episodes.ResidenceSpan, target: ResolvedTarget,
+                         backend: dict) -> dict:
+    """kernel ResidenceSpan -> the ledger dict for the interval itself
+    (relation='residence'). The ingress episode stays the boundary-exact
+    point row; THIS row is the interval object (M-5/T0-3): t_in=t_enter,
+    t_out=t_exit, t_exact = the observed ingress instant when one exists
+    (else NULL under migration 1152, never fabricated), dwell = span length.
+    """
+    ing = span.ingress_episode
+    truncated = span.truncated_at_horizon
+    if truncated not in ("start", "end", "both"):
+        truncated = None
+    return {
+        "independence_group": gk_ids.independence_group(
+            body=span.body, relation="residence", aspect_deg=0.0,
+            target_deg=span.span_lo_deg,
+            t_exact_jd=ing.t_exact, t_fallback_jd=span.t_enter,
+        ),
+        "body": span.body,
+        "relation": "residence",
+        "aspect_deg": 0,
+        "target_type": target.target_type,
+        "target_ref": target.target_ref,
+        "target_fact_id": target.target_fact_id,
+        "target_resolution_state": "resolved",
+        "target_longitude_deg": None,  # interval target: no point longitude
+        "t_in": jd_to_dt(span.t_enter),
+        "t_exact": jd_to_dt(ing.t_exact) if ing.t_exact is not None else None,
+        "t_out": jd_to_dt(span.t_exit),
+        "bracket_seconds": ing.bracket_seconds,
+        "tolerance_arcsec": ing.tolerance_arcsec,
+        "truncated_at_horizon": truncated,
+        "branch": ing.branch,
+        "station_flag": ing.station_flag,
+        "exact_crossing": ing.t_exact is not None,
+        "orb_max_deg": ing.orb_max_deg,  # orb_ingress row: 0.0
+        "orb_source": "orb_ingress",     # convention orb table names residence
+        "dwell_days": span.t_exit - span.t_enter,
+        "epistemic_class": "observed_event",
+        "completeness_state": ing.completeness_state,
+        "operator_role": "kernel",
+        "precision_regime": "instant_grain",
+        "time_basis": "event_time_utc",
+        "comparable_with": "same_convention_same_inputs",
+        "ephemeris_backend": dict(backend),
+        "evidence_fact_ids": [],
+        "classical_citation": target.classical_citation,
+        "uncited_extension": target.uncited_extension,
+        "corpus_verifiable": None,
+        # ADK-0020 dedupe bookkeeping; stripped from the payload before write.
+        "_map_weight": target.weight,
+    }
+
+
+def _generation_tuple(generation: str) -> tuple[int, int] | None:
+    """'4.1' -> (4, 1); None for non-numeric labels ('v1', '3.0')."""
+    parts = str(generation).split(".")
+    if len(parts) == 2 and all(p.isdigit() for p in parts):
+        return int(parts[0]), int(parts[1])
+    return None
+
+
+def candidate_keeps_candidate_only_rows(generation: str) -> bool:
+    """Mechanical gate (steward scope ruling 2026-09-30, A2 rework): rows that
+    did not exist in published '4.0' semantics — null-exact (N3 truncated)
+    contacts and relation='residence' interval rows — are emitted ONLY for
+    candidate generations >= '4.1', never into '4.0' (whose published rows
+    stay byte-stable) and never readable by the '4.0' serving path (which
+    selects on t_exact ranges and whitelists pre-residence relations).
+    """
+    gt = _generation_tuple(generation)
+    return gt is not None and gt >= (4, 1)
+
+
+def _sky_target(relation: str) -> ResolvedTarget:
+    """The pseudo-target for a per-body sky event (R5): a boundary event is
+    sky geometry — chart- and target-independent — so it is stored ONCE per
+    (body, relation, instant) under target_type='sky_event', never duplicated
+    per resonance-map target. Target roles (which targets a boundary event
+    matters to) are a consumer-side join on the event's degree/minute, not
+    duplicated rows."""
+    return ResolvedTarget(
+        event_class="sky", target_type="sky_event",
+        target_ref=f"sky:{relation}", qualifier=None,
+        classical_citation=None, uncited_extension=False,
+        state="resolved", kind="point", longitude_deg=None,
+        owner_graha=None,
+    )
+
+
 def enumerate_body(
     index: gk_arcs.ArcIndex,
     body: str,
@@ -598,25 +716,63 @@ def enumerate_body(
     backend: dict,
     ephe_path: str | None = None,
     refine: bool = True,
+    generation: str = "4.1",
 ) -> tuple[list[dict], dict]:
     """Enumerate one body's episodes over the resolved target set.
 
     Returns (episode_dicts, stats). stats carries episodes_without_exact
-    (kernel episodes with t_exact=None are NOT persistable — 1081 t_exact
-    NOT NULL — so they are counted and excluded, never fabricated) and the
-    searched-relation sets per target_type for coverage."""
+    (physical truncations KEPT with t_exact NULL since migration 1152 — each
+    counted ONCE, Kimi review #3: the ingress row and the residence row of
+    one clipped span are the same physical truncation) and
+    episodes_without_exact_withheld (null-exact rows withheld because
+    `generation` is pre-'4.1'), plus the searched-relation sets per
+    target_type for coverage."""
+    keep_new = candidate_keeps_candidate_only_rows(generation)
     out: list[dict] = []
-    stats = {"episodes_without_exact": 0, "searched": {}}
+    stats = {
+        "episodes_without_exact": 0,
+        "episodes_without_exact_withheld": 0,
+        "searched": {},
+    }
 
     def _note(target_type: str, relations) -> None:
         stats["searched"].setdefault(target_type, set()).update(relations)
 
     def _emit(eps, target) -> None:
         for e in eps:
+            if e.t_exact is None and not keep_new:
+                # Pre-'4.1' gate: the null-exact (N3 truncated) row is
+                # withheld — counted for disclosure, never silently absent
+                # from the report.
+                stats["episodes_without_exact_withheld"] += 1
+                continue
             if e.t_exact is None:
                 stats["episodes_without_exact"] += 1
-                continue
             out.append(_episode_to_dict(e, target, backend))
+
+    # T0-3 global boundary table (spec §6.2 inv 5, O-SS-1), reworked per R5:
+    # boundary degrees are chart- and TARGET-independent by construction, so
+    # the sky events are SOLVED once per body and STORED once per body —
+    # emitted as target_type='sky_event' rows (one row per physical event),
+    # never duplicated per target (the pre-rework loop emitted the same
+    # physical event once per point target with role-qualified ids that
+    # ADK-0020 dedupe could not collapse: 84 rows for 28 physical events).
+    # Residence construction REUSES these same refined roots (below), so the
+    # ingress instant of a whole-sign residence IS the stored sky event.
+    boundary_roots = {
+        rel: gk_contacts.find_boundary_roots(
+            index, body, rel, ephe_path=ephe_path, refine=refine)
+        for rel in BOUNDARY_RELATIONS
+    }
+    for rel in BOUNDARY_RELATIONS:
+        sky_eps = gk_episodes.solve_boundary_episodes(
+            index, body, rel, horizon_jd, ephe_path=ephe_path, refine=refine,
+            roots=boundary_roots[rel])
+        sky_target = _sky_target(rel)
+        for e in sky_eps:
+            d = _episode_to_dict(e, sky_target, backend)
+            d["target_longitude_deg"] = float(e.target_deg)
+            out.append(d)
 
     for t in targets:
         if t.state != "resolved":
@@ -637,13 +793,10 @@ def enumerate_body(
                 _emit(gk_episodes.solve_episodes(
                     index, body, "return", lon, horizon_jd, "orb_return_slow",
                     ephe_path=ephe_path, refine=refine), t)
-            boundary_searched = []
-            for rel in BOUNDARY_RELATIONS:
-                boundary_searched.append(rel)
-                _emit(gk_episodes.solve_boundary_episodes(
-                    index, body, rel, horizon_jd, ephe_path=ephe_path,
-                    refine=refine), t)
-            relations = ["conjunction", "drishti_contact", *boundary_searched]
+            # Boundary events are sky geometry: searched once per body
+            # (above) and recorded as searched for this target's coverage,
+            # but NOT re-emitted per target (R5).
+            relations = ["conjunction", "drishti_contact", *BOUNDARY_RELATIONS]
             if t.owner_graha == body:
                 relations.append("return")
             _note(t.target_type, relations)
@@ -652,13 +805,61 @@ def enumerate_body(
                 continue  # mechanism_node / M-6: the named transit agent only
             spans = gk_episodes.residence_spans(
                 index, body, t.span_deg, horizon_jd, t.target_type,
-                ephe_path=ephe_path, refine=refine)
+                ephe_path=ephe_path, refine=refine,
+                boundary_roots=boundary_roots["sign_ingress"])
             for span in spans:
-                _emit([span.ingress_episode], t)
-            _note(t.target_type, ["sign_ingress"])
+                # T0-3 (#6/#7): the span ITSELF is persisted as a
+                # relation='residence' row carrying the observed ingress
+                # instant in t_exact. The ingress is NOT also emitted as a
+                # separate sign_ingress row for this target (A2.2 amendment
+                # 4 / R5 whole-payload: the boundary event is stored ONCE as
+                # the per-body sky_event row; the residence row is the
+                # target attachment — a per-target ingress copy would be a
+                # second stored row for the same physical event).
+                # Gated to candidate generations >= '4.1' (scope ruling).
+                # Kimi review #3: the span's truncation is the SAME physical
+                # truncation as its ingress's — counted once here.
+                if keep_new:
+                    if span.ingress_episode.t_exact is None:
+                        stats["episodes_without_exact"] += 1
+                    out.append(_residence_span_dict(span, t, backend))
+                elif span.ingress_episode.t_exact is None:
+                    stats["episodes_without_exact_withheld"] += 1
+            _note(t.target_type, ["residence", "sign_ingress"])
     out.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
     stats["searched"] = {k: sorted(v) for k, v in stats["searched"].items()}
     return out, stats
+
+
+def assert_boundary_events_stored_once(episodes: list[dict]) -> int:
+    """R5 closure assertion over the WHOLE payload, run AFTER dedupe
+    (A2.2 amendment 4): every boundary-relation row is a sky_event row
+    (target attachments live on the residence rows, never as extra boundary
+    rows), and each physical boundary event (body × relation × instant) is
+    stored exactly once. Returns the number of sky-event rows."""
+    n = 0
+    seen: set[tuple] = set()
+    for e in episodes:
+        if e["relation"] not in BOUNDARY_RELATIONS:
+            continue
+        if e["target_type"] != "sky_event":
+            raise AssertionError(
+                "R5 violated: a boundary event is stored as a target-attached "
+                f"row ({e['relation']} for {e['target_type']}:{e['target_ref']})"
+                " — boundary events are sky_event rows only; target"
+                " attachments live on the residence rows")
+        key = (e["body"], e["relation"], str(e["t_exact"]))
+        if key in seen:
+            raise AssertionError(
+                f"R5 violated: boundary event stored twice: {key}")
+        seen.add(key)
+        n += 1
+    return n
+
+
+# Backwards-compatible alias (the A2 round-1 name).
+def assert_sky_events_unique(episodes: list[dict]) -> int:
+    return assert_boundary_events_stored_once(episodes)
 
 
 # ── ADK-0020 dedupe: one ledger row per physical contact (WP1 §3.3 H-6) ──────
@@ -682,9 +883,14 @@ _SURVIVAL_FIELDS = frozenset({"target_ref", "classical_citation", "_map_weight"}
 
 def _contact_id_of(ep: dict, chart_id: str, convention_id: str,
                    method_version: str) -> str:
-    """The pinned WP1 §3.2 id, exactly as the ledger will compute it."""
+    """The pinned WP1 §3.2 id, exactly as the ledger will compute it. A
+    no-exact (truncated) row is identified by its floored t_in (ids.contact_id
+    t_fallback rule) — marked as a substitution inside the payload."""
     t_exact = ep["t_exact"]
-    t_exact_jd = t_exact.timestamp() / 86400.0 + 2440587.5
+    t_exact_jd = (
+        t_exact.timestamp() / 86400.0 + 2440587.5 if t_exact is not None else None
+    )
+    t_in_jd = ep["t_in"].timestamp() / 86400.0 + 2440587.5
     return gk_ids.contact_id(
         chart_id=chart_id, convention_id=convention_id,
         body=ep["body"], target_type=ep["target_type"],
@@ -694,6 +900,7 @@ def _contact_id_of(ep: dict, chart_id: str, convention_id: str,
         target_fact_id=ep.get("target_fact_id"),
         target_ref=ep.get("target_ref"),
         method_version=method_version,
+        t_fallback_jd=t_in_jd,
     )
 
 
@@ -1057,14 +1264,17 @@ def main(argv: list[str] | None = None) -> int:
     searched: dict[str, dict[str, list[str]]] = {}
     backends: dict[str, dict] = {}
     no_exact_total = 0
+    no_exact_gated_total = 0
     for body in bodies:
         index, backend = build_body_index(body, start_pad, end_pad, args.ephe_path)
         backends[body] = backend
         eps, stats = enumerate_body(
             index, body, targets, horizon_jd, args.orb_deg, backend,
-            ephe_path=args.ephe_path, refine=not args.no_refine)
+            ephe_path=args.ephe_path, refine=not args.no_refine,
+            generation=args.generation)
         episodes.extend(eps)
         no_exact_total += stats["episodes_without_exact"]
+        no_exact_gated_total += stats["episodes_without_exact_withheld"]
         searched[body] = stats["searched"]
 
     coverage = build_coverage_rows(
@@ -1087,6 +1297,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"REFUSED (ADK-0020): {exc}", file=sys.stderr)
         return 5
 
+    # R5 closure: after dedupe, each physical boundary event is stored exactly
+    # once (as a sky_event row), over the WHOLE payload — a target-attached
+    # boundary row or a duplicated event refuses the run, never ships.
+    n_sky_events = assert_boundary_events_stored_once(episodes)
+
     Path(args.episodes_out).write_text(
         json.dumps(episodes, indent=2, default=str) + "\n")
     Path(args.coverage_out).write_text(
@@ -1105,7 +1320,9 @@ def main(argv: list[str] | None = None) -> int:
         "targets": len(targets),
         "target_resolution_state_counts": state_counts,
         "episodes_emitted": len(episodes),
-        "episodes_without_exact_excluded": no_exact_total,
+        "sky_boundary_events": n_sky_events,
+        "episodes_truncated_no_exact_kept": no_exact_total,
+        "episodes_truncated_no_exact_withheld_pre_41": no_exact_gated_total,
         "dedupe": dedupe_report,
         "coverage_partitions": len(coverage),
         "upstream_fingerprints": fingerprints,

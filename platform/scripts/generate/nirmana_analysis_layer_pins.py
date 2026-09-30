@@ -148,6 +148,21 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`442f1ed955a701008b2a975c7df80d543fbbc67a`",
     },
+    "D-PINS-A2": {
+        # Pins re-admission for the pravaha/a2-kernel-geometry merge (Pravaha
+        # A2.3). The steward's decision (on the native's 2026-09-30 standing
+        # authority, EVENTS.jsonl 2026-09-30T03:22:56Z) is recorded verbatim in
+        # the evidence document; the authority identity is the commit that first
+        # introduced that document. Scope: exactly one L3 successor admission
+        # over the A2.1 kernel-geometry changeset (A2.2-accepted, Codex closure
+        # round 3 ACCEPT on ee0dd335f). No other layer; no membership change.
+        "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
+        "evidence_commit": "1e5ce331fbb2833d2a2f3bd20448293b36def276",
+        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "78814bbfa4fcf076cf70aebe8cc05855287151318d81e86018d4ceaf0868ca6c",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`fa0b0a9a003624b8f39e30600e98460a60170bb2`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -267,6 +282,16 @@ AUTHORIZED_SOURCE_COMMITS = {
     "D-E022": {
         "L1": frozenset({"333eb7abcac33deefa4f89dc417e73d4f28d74bd"}),
         "L3": frozenset({"333eb7abcac33deefa4f89dc417e73d4f28d74bd"}),
+    },
+    # D-PINS-A2 (Pravaha A2.3): exactly one source commit, for exactly the one
+    # layer (L3) whose writer digests moved on pravaha/a2-kernel-geometry after
+    # the origin/main merge (469009b6a8, merge commit eccd32d14). The source
+    # commit is the branch's writer-digest regeneration commit: its committed
+    # writer inventory is byte-identical to the merged tree's derived inventory
+    # (provenance_inventory --check green). L0, L1, L2, L4, L5 verify clean in
+    # delivery topology on this branch and are deliberately absent.
+    "D-PINS-A2": {
+        "L3": frozenset({"f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24"}),
     },
 }
 

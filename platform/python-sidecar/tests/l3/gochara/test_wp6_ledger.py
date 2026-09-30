@@ -741,3 +741,51 @@ def test_window_ref_resolves_by_primary_key(conn):
         (chart, ids[1]),
     ).fetchone()
     assert missing is None
+
+
+# ── Migration 1152 — the t_exact/exact_crossing consistency CHECK ────────────
+# (Pravāha A2.2 rework item 7: the disposable WP6 fixture applies 1152 via
+# conftest.wp6_schema; these are the valid/invalid null-combination proofs.)
+
+def test_1152_valid_and_invalid_null_combinations(conn):
+    """kgc_t_exact_iff_exact_crossing: exact_crossing must AGREE with
+    t_exact's nullability. Valid: (exact row, t_exact set),
+    (N3 truncated row, t_exact NULL + exact_crossing=False). Invalid —
+    rejected by the CHECK: (exact_crossing=True, t_exact NULL) and
+    (exact_crossing=False, t_exact set). 'both' is a storable truncation
+    mark (widened CHECK)."""
+    chart = synth(91)
+    cid, _, _ = setup_candidate(conn, chart, "4.1")
+
+    t0 = datetime(2021, 6, 15, 12, 0, 0, tzinfo=UTC)
+    exact_row = make_episode(t_exact=t0)
+    trunc_row = make_episode(t_exact=t0 + timedelta(days=1))
+    trunc_row["t_exact"] = None
+    trunc_row["exact_crossing"] = False
+    trunc_row["truncated_at_horizon"] = "both"  # widened domain (Kimi #2)
+    with conn.transaction():
+        ids = write_contacts(conn, chart, "4.1", cid, [exact_row, trunc_row],
+                             "wp6-build-1152")
+    assert len(ids) == 2
+    stored = conn.execute(
+        "SELECT exact_crossing, t_exact IS NOT NULL, truncated_at_horizon"
+        " FROM kala_gochara_contacts"
+        " WHERE chart_id = %s AND generation = '4.1' ORDER BY t_in",
+        (chart,),
+    ).fetchall()
+    assert [(r[0], r[1]) for r in stored] == [(True, True), (False, False)]
+    assert stored[1][2] == "both"
+
+    # invalid: claims an exact crossing but carries no instant
+    bad1 = make_episode(t_exact=t0 + timedelta(days=2))
+    bad1["t_exact"] = None
+    bad1["exact_crossing"] = True
+    # invalid: claims truncation but carries an instant (the fabrication 1152
+    # exists to make impossible)
+    bad2 = make_episode(t_exact=t0 + timedelta(days=3))
+    bad2["exact_crossing"] = False
+    for i, bad in enumerate((bad1, bad2)):
+        with pytest.raises(psycopg.errors.CheckViolation):
+            with conn.transaction():
+                write_contacts(conn, chart, "4.1", cid, [bad],
+                               f"wp6-build-1152-bad{i}")

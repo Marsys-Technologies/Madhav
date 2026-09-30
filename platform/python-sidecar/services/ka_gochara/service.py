@@ -306,6 +306,13 @@ class GocharaTransitService:
             (R7: not persisted); they carry `contact_id=None` and a
             `moon_on_demand` coverage partition whose searched horizon equals
             the requested interval.
+          * Candidate-only gate (steward scope ruling, A2 rework): under the
+            '4.0' authority the served relation vocabulary is EPISODE_RELATIONS
+            — an explicit request for a relation outside it (e.g.
+            'residence', which exists only in candidate generations >= '4.1')
+            returns nothing, and Moon on-demand output never carries
+            null-exact/truncated rows (t_exact IS NOT NULL under the '4.0'
+            contract — that was 1081's NOT NULL).
         """
         wanted_relations = list(relations) if relations else list(EPISODE_RELATIONS)
         horizon_text = self._horizon_text(horizon)
@@ -328,6 +335,17 @@ class GocharaTransitService:
                     unsearched_reason='unpublished: absent kala_gochara_authority row (N-10)',
                 )],
             )
+
+        if generation == '4.0':
+            # Candidate-only gate, serving half (steward scope ruling, A2
+            # rework): '4.0' is the pre-candidate published generation — its
+            # contract knows EPISODE_RELATIONS only (no 'residence', which is
+            # emitted solely into candidates >= '4.1') and every served row
+            # has an exact instant (1081's NOT NULL). An explicit request for
+            # a post-'4.0' relation returns nothing under this authority,
+            # never the candidate vocabulary.
+            wanted_relations = [r for r in wanted_relations
+                                if r in EPISODE_RELATIONS]
 
         episodes, n14_excluded = self._ledger_episodes(
             conn, chart_id, generation, targets, horizon, bodies, wanted_relations,
@@ -357,6 +375,12 @@ class GocharaTransitService:
 
         if moon and (bodies is None or 'Moon' in bodies):
             moon_eps, moon_cov = self._moon_on_demand(targets, horizon, wanted_relations)
+            if generation == '4.0':
+                # Candidate-only gate (same ruling): under the '4.0' contract
+                # every served row carries an exact instant — null-exact
+                # (truncated) on-demand rows are a >= '4.1' candidate shape
+                # and are never served under '4.0'.
+                moon_eps = [e for e in moon_eps if e.t_exact is not None]
             episodes = sorted([*episodes, *moon_eps], key=lambda e: (e.t_in, e.relation))
             coverage = [*coverage, moon_cov]
 

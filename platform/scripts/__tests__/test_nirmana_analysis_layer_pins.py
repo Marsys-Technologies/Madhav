@@ -42,19 +42,22 @@ def replace_layer_writers(
     return result
 
 
-# LIVE_* is the committed document. It carries two successor generations on top
+# LIVE_* is the committed document. It carries three successor generations on top
 # of the chain that was delivered to protected main:
 #   1. the L0-repair successors (PR #2727, decision NATIVE-2026-09-24-L0-REPAIR-REPIN)
 #      on layers L0, L2, L3;
 #   2. the D-E022 merge pins re-admission successors (PR #2731, Pravaha A0.3) on
-#      layers L1, L3.
+#      layers L1, L3;
+#   3. the D-PINS-A2 merge pins re-admission successor (pravaha/a2-kernel-geometry,
+#      Pravaha A2.3) on layer L3 only.
 # Most tests below assert facts about THAT delivered chain, so CURRENT_* is the
-# delivered chain: the live document with both successor generations rewound, and
-# the inventory replaced by the archived predecessor slices. POST_REPAIR_* is the
-# intermediate generation (D-E022 rewound, L0-repair still live). The tests at the
-# end of the file assert the repair and readmission successors themselves against
-# POST_REPAIR_* and LIVE_* respectively. This follows the file's own convention
-# (see PRE_KSHETRA_PINS): rewind, do not weaken.
+# delivered chain: the live document with all successor generations rewound, and
+# the inventory replaced by the archived predecessor slices. POST_READMISSION_* is
+# the intermediate generation (D-PINS-A2 rewound, D-E022 still live), POST_REPAIR_*
+# the next (D-E022 rewound, L0-repair still live). The tests at the end of the
+# file assert the repair, readmission and A2-merge successors themselves against
+# POST_REPAIR_*, POST_READMISSION_* and LIVE_* respectively. This follows the
+# file's own convention (see PRE_KSHETRA_PINS): rewind, do not weaken.
 #
 # CAUTION - a rewound document is only a valid `check()` input against a protected
 # baseline that PREDATES the repair. Once the repair is on main, every baseline
@@ -72,8 +75,17 @@ REPAIR_LAYERS = ("L0", "L2", "L3")
 # re-admitted once per layer in A0.6, because the merge queue's squash delivery
 # can never resolve a lane-only historical snapshot commit.
 READMISSION_REWINDS = ("L1", "L3")
-POST_REPAIR_PINS = LIVE_PINS
-POST_REPAIR_INVENTORY = LIVE_INVENTORY
+# L3 carries ONE D-PINS-A2 successor (the pravaha/a2-kernel-geometry merge).
+A2_MERGE_REWINDS = ("L3",)
+POST_READMISSION_PINS = LIVE_PINS
+POST_READMISSION_INVENTORY = LIVE_INVENTORY
+for _layer in A2_MERGE_REWINDS:
+    POST_READMISSION_INVENTORY = replace_layer_writers(
+        POST_READMISSION_INVENTORY, _layer, POST_READMISSION_PINS["history"][_layer][-1]["writer_digests"]
+    )
+    POST_READMISSION_PINS = rewind_layer(POST_READMISSION_PINS, _layer)
+POST_REPAIR_PINS = POST_READMISSION_PINS
+POST_REPAIR_INVENTORY = POST_READMISSION_INVENTORY
 for _layer in READMISSION_REWINDS:
     POST_REPAIR_INVENTORY = replace_layer_writers(
         POST_REPAIR_INVENTORY, _layer, POST_REPAIR_PINS["history"][_layer][-1]["writer_digests"]
@@ -1458,6 +1470,19 @@ def _predecessor_document(layer: str) -> dict:
     return rewind_layer(LIVE_PINS, layer)
 
 
+def _readmission_doc(layer: str) -> dict:
+    """The document on which this layer's D-E022 admission is the LIVE pin —
+    LIVE_* for L1; POST_READMISSION_* for L3 (its D-E022 successor was
+    archived by the D-PINS-A2 successor, Pravaha A2.3)."""
+    return POST_READMISSION_PINS if layer in A2_MERGE_REWINDS else LIVE_PINS
+
+
+def _readmission_inventory(layer: str) -> dict:
+    return (
+        POST_READMISSION_INVENTORY if layer in A2_MERGE_REWINDS else LIVE_INVENTORY
+    )
+
+
 @pytest.mark.parametrize("layer", READMISSION_LAYERS)
 def test_readmission_successor_is_append_only_and_names_its_exact_predecessor(layer: str) -> None:
     predecessor_document = _predecessor_document(layer)
@@ -1489,20 +1514,21 @@ def test_readmission_successor_is_append_only_and_names_its_exact_predecessor(la
 @pytest.mark.parametrize("layer", READMISSION_LAYERS)
 def test_readmission_successor_records_the_approved_decision_and_source(layer: str) -> None:
     expected = READMISSION[layer]
-    admission = LIVE_PINS["layers"][layer]["admission"]
+    document = _readmission_doc(layer)
+    admission = document["layers"][layer]["admission"]
     assert admission["authority_decision"] == READMISSION_DECISION
     assert admission["authority_commit"] == READMISSION_AUTHORITY
     assert admission["source_commit"] == expected["source"]
     assert READMISSION_AUTHORITY != expected["source"]
-    assert LIVE_PINS["layers"][layer]["convergence_commit"] == expected["source"]
-    assert LIVE_PINS["layers"][layer]["supersedes_generation_id"] == expected["supersedes"]
+    assert document["layers"][layer]["convergence_commit"] == expected["source"]
+    assert document["layers"][layer]["supersedes_generation_id"] == expected["supersedes"]
     assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS[layer]
     assert "source_acceptance" not in admission
     assert expected["source"] in pins_module.AUTHORIZED_SOURCE_COMMITS[READMISSION_DECISION][layer]
     # exactly the recorded number of D-E022 successors exists on this layer
     decision_admissions = [
         entry["pin"].get("admission", {})
-        for entry in LIVE_PINS["history"][layer]
+        for entry in document["history"][layer]
     ] + [admission]
     assert sum(
         1 for item in decision_admissions
@@ -1513,11 +1539,12 @@ def test_readmission_successor_records_the_approved_decision_and_source(layer: s
 @pytest.mark.parametrize("layer", READMISSION_LAYERS)
 def test_readmission_classifications_equal_the_actual_digest_delta(layer: str) -> None:
     expected = READMISSION[layer]
+    document = _readmission_doc(layer)
     prefix = pins_module.LAYER_PREFIX[layer]
-    before = LIVE_PINS["history"][layer][-1]["writer_digests"]
-    after = pins_module.layer_writer_slice(LIVE_INVENTORY, prefix)
+    before = document["history"][layer][-1]["writer_digests"]
+    after = pins_module.layer_writer_slice(_readmission_inventory(layer), prefix)
     exact_delta = sorted(a for a in set(before) | set(after) if before.get(a) != after.get(a))
-    admission = LIVE_PINS["layers"][layer]["admission"]
+    admission = document["layers"][layer]["admission"]
     assert admission["changed_assets"] == exact_delta
     assert exact_delta, "a successor with no delta must not have been admitted"
     for asset_id, classification in admission["delta_classifications"].items():
@@ -1542,16 +1569,17 @@ def test_readmission_archived_predecessors_name_the_protected_baseline() -> None
     baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
     assert baseline, "CI must provide the protected pin baseline"
     for layer in READMISSION_LAYERS:
-        archived = LIVE_PINS["history"][layer][-1]
+        document = _readmission_doc(layer)
+        archived = document["history"][layer][-1]
         assert archived["generation_id"] == READMISSION[layer]["supersedes"]
         snapshot = archived["historical_snapshot_commit"]
         assert snapshot == baseline or pins_module._commit_is_ancestor_of_commit(
             snapshot, baseline
         ), f"{layer} snapshot {snapshot} is not reachable from baseline {baseline}"
         assert archived["superseded_by_generation_id"] == (
-            LIVE_PINS["layers"][layer]["generation_id"]
+            document["layers"][layer]["generation_id"]
         )
-        admission = LIVE_PINS["layers"][layer]["admission"]
+        admission = document["layers"][layer]["admission"]
         assert len(admission["changed_assets"]) == (6 if layer == "L1" else 7)
 
 
@@ -1585,3 +1613,113 @@ def test_readmission_authority_chain_binds_the_recorded_decision_document() -> N
     pins_module.validate_authority_binding(READMISSION_DECISION, READMISSION_AUTHORITY)
     with pytest.raises(SystemExit, match="is not bound to"):
         pins_module.validate_authority_binding(READMISSION_DECISION, "0" * 40)
+
+
+# --- D-PINS-A2 merge pins re-admission (pravaha/a2-kernel-geometry, Pravaha A2.3)
+# The origin/main merge into pravaha/a2-kernel-geometry (merge commit
+# eccd32d14) moved L3 writer digests (membership unchanged): the A2.2-accepted
+# Tier 0-G kernel geometry rework touched gochara_kernel/* and
+# ka_gochara/service.py, drifting four writers' import closures. The steward
+# authorised re-admission on the native's 2026-09-30 standing authority
+# (D-PINS-A2, EVENTS.jsonl 2026-09-30T03:22:56Z); the authority evidence
+# document is 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/
+# D_PINS_A2_PINS_READMISSION_AUTHORITY_v1_0.md.
+A2_MERGE_DECISION = "D-PINS-A2"
+# The authority identity (first commit of the evidence document) and the pinned
+# source commit are DIFFERENT commits, on purpose (same pattern as the L0
+# repair and D-E022): the source is the branch's writer-digest regeneration
+# commit, whose committed writer inventory is byte-identical to the merged
+# tree its successor pins.
+A2_MERGE_AUTHORITY = "fa0b0a9a003624b8f39e30600e98460a60170bb2"
+A2_MERGE = {
+    "L3": {
+        "source": "f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24",
+        "supersedes": "l3:333eb7abcac3:d1bf773c4d94",
+        "changed": [
+            "ka_gochara_v3_century_materialize", "ka_moorti_nirnaya",
+            "ka_sangam", "ka_vedha_gochara",
+        ],
+    },
+}
+
+
+def test_a2_merge_successor_records_the_approved_decision_and_source() -> None:
+    expected = A2_MERGE["L3"]
+    admission = LIVE_PINS["layers"]["L3"]["admission"]
+    assert admission["authority_decision"] == A2_MERGE_DECISION
+    assert admission["authority_commit"] == A2_MERGE_AUTHORITY
+    assert admission["source_commit"] == expected["source"]
+    assert A2_MERGE_AUTHORITY != expected["source"]
+    assert LIVE_PINS["layers"]["L3"]["convergence_commit"] == expected["source"]
+    assert LIVE_PINS["layers"]["L3"]["supersedes_generation_id"] == expected["supersedes"]
+    assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS["L3"]
+    assert "source_acceptance" not in admission
+    assert expected["source"] in pins_module.AUTHORIZED_SOURCE_COMMITS[A2_MERGE_DECISION]["L3"]
+
+
+def test_a2_merge_classifications_equal_the_actual_digest_delta() -> None:
+    prefix = pins_module.LAYER_PREFIX["L3"]
+    before = LIVE_PINS["history"]["L3"][-1]["writer_digests"]
+    after = pins_module.layer_writer_slice(LIVE_INVENTORY, prefix)
+    exact_delta = sorted(a for a in set(before) | set(after) if before.get(a) != after.get(a))
+    admission = LIVE_PINS["layers"]["L3"]["admission"]
+    assert admission["changed_assets"] == exact_delta == A2_MERGE["L3"]["changed"]
+    assert exact_delta, "a successor with no delta must not have been admitted"
+    # every changed asset moved only through its import closure (no own-module
+    # edit on the branch — git diff origin/main...HEAD touches gochara_kernel/*
+    # and ka_gochara/service.py only)
+    assert set(admission["delta_classifications"].values()) == {"derived_import_change"}
+    assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
+
+
+def test_a2_merge_successor_is_append_only_and_names_its_exact_predecessor() -> None:
+    predecessor_document = rewind_layer(LIVE_PINS, "L3")
+    delivered_active = predecessor_document["layers"]["L3"]
+    live_active = LIVE_PINS["layers"]["L3"]
+    live_history = LIVE_PINS["history"]["L3"]
+    delivered_history = predecessor_document["history"]["L3"]
+    assert live_history[: len(delivered_history)] == delivered_history
+    assert len(live_history) == len(delivered_history) + 1
+    archived = live_history[-1]
+    assert archived["pin"] == delivered_active
+    assert archived["generation_id"] == delivered_active["generation_id"]
+    assert live_active["supersedes_generation_id"] == archived["generation_id"]
+    assert archived["superseded_by_generation_id"] == live_active["generation_id"]
+    # the archived predecessor (the D-E022 successor) names the #2731-era
+    # baseline, an ancestor of every later baseline
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    if baseline:
+        assert pins_module._commit_is_ancestor_of_commit(
+            archived["historical_snapshot_commit"], baseline
+        ) or archived["historical_snapshot_commit"] == baseline
+
+
+def test_a2_merge_leaves_every_other_layer_and_the_definitions_untouched() -> None:
+    for layer in pins_module.LAYER_PREFIX:
+        if layer in A2_MERGE_REWINDS:
+            continue
+        assert LIVE_PINS["layers"][layer] == POST_READMISSION_PINS["layers"][layer]
+        assert LIVE_PINS["history"][layer] == POST_READMISSION_PINS["history"][layer]
+    assert LIVE_PINS["definition_bindings"] == POST_READMISSION_PINS["definition_bindings"]
+    assert LIVE_PINS["version"] == POST_READMISSION_PINS["version"]
+
+
+def test_a2_merge_only_l3_is_authorised_for_the_decision() -> None:
+    authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[A2_MERGE_DECISION]
+    assert set(authorised) == {"L3"}
+    assert authorised["L3"] == frozenset({A2_MERGE["L3"]["source"]})
+    for layer in ("L0", "L1", "L2", "L4", "L5"):
+        with pytest.raises(SystemExit, match="is not authorized by"):
+            pins_module.validate_authorized_source(
+                A2_MERGE_DECISION, layer, A2_MERGE["L3"]["source"]
+            )
+
+
+def test_a2_merge_authority_chain_binds_the_recorded_decision_document() -> None:
+    binding = pins_module.AUTHORITY_BINDINGS[A2_MERGE_DECISION]
+    assert binding["authority_commit"] == A2_MERGE_AUTHORITY
+    assert binding["authority_identity_binding"] == f"`{A2_MERGE_AUTHORITY}`"
+    assert binding["decision_binding"] == "status: PINS_READMISSION_AUTHORIZED"
+    pins_module.validate_authority_binding(A2_MERGE_DECISION, A2_MERGE_AUTHORITY)
+    with pytest.raises(SystemExit, match="is not bound to"):
+        pins_module.validate_authority_binding(A2_MERGE_DECISION, "0" * 40)
