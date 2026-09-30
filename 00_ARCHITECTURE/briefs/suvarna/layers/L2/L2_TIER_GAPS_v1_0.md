@@ -24,7 +24,8 @@ tiers_read:
   earlier_inputs: "nikasha_test/derivations/L2_INSTANCE_SKELETON.md and L2_INVENTIONS.md (inputs, not authority)"
   all_at: "checkout 2a78ec64d; line numbers below are that checkout's"
 changelog:
-  - "1.0 (2026-09-30): first issue. 22 tier gaps (TG-L2-001..022) each checked against the tier files before being claimed; 12 clauses checked and found supplied; 12 measurement findings (MF-L2-001..012) kept apart because they are instrument or permission facts, not tier clauses."
+  - "1.0a (2026-09-30, same day, addendum before the instance): MF-L2-013 added (Dens.served and Reach.fields disagree on two assets), found while the instance was assembled; no tier-gap row changed."
+  - "1.0 (2026-09-30): first issue. 22 tier gaps (TG-L2-001..022) each checked against the tier files before being claimed; 12 clauses checked and found supplied; 12 measurement findings (MF-L2-001..012; MF-L2-013 added in 1.0a) kept apart because they are instrument or permission facts, not tier clauses."
 ---
 
 # L2 Bodha — tier gaps (Track A step 2)
@@ -111,6 +112,7 @@ apart so the tier-gap count is not inflated. "Unmeasured" always means unmeasure
 | **MF-L2-010** | The **arch §12.9 list of "L2 MSR" assets** (seven, including `bo_laksana_rerank` as a writer whose rebuild replaces rows) **disagrees with the writers**: six replace rows; `bo_laksana_rerank` is UPDATE-only and owns no row (`producer_asset_id` on the canonical chart names six producers, Q3). A comment in `bo_sudarshana.py` (line 244) cites "the 8 bodha_msr_signals writers"; the scan finds six inserting writers. Reported, not resolved. | instance §6.1; `bo_laksana.py` 3821–3826; `bo_sudarshana.py` 244; Q3. |
 | **MF-L2-011** | **R243's chart list disagrees with W2-3_REVIEW**: R243 names charts 1c826d5a and cb73cd3d for all of `bo_arudha`, `bo_special_lagna`, `bo_nakshatra_semantic`, `bo_sudarshana`, `bo_vargottama_dhana` and 1c826d5a for `bo_laksana`; W2-3_REVIEW's per-asset table (rows 36–41) gives one chart each for `bo_arudha`, `bo_laksana`, `bo_nakshatra_semantic`, `bo_vargottama_dhana`, both for `bo_sudarshana`, and "no dependents on any chart today" for `bo_special_lagna`. Other charts were not re-measured (chart 482012f1 only). | R243 (register line 465); `nikasha_test/wave2/W2-3_REVIEW.md` 311–316. |
 | **MF-L2-012** | Earlier-document figures that no longer reproduce (the skeleton was derived from the 2026-09-26 census): `Idem.pattern` PASS 10 / PARTIAL 13 then, PASS 21 / PARTIAL 2 now (R20 closed); `Earn` and `Cost` FAIL 23/23 then, NO_DETECTOR 23/23 now; `Build.completion` N/A 22 then, 16 PASS / 3 FAIL / 3 ERRORED / 1 NO_DETECTOR now; per-producer MSR row counts were each 150,724 then. R56's example "bo_laksana 7 409 < 60 000" now reads 50,529 < 60,000. | `L2_INSTANCE_SKELETON.md` §1.1 aggregates; census now. |
+| **MF-L2-013** | **`Dens.served` and `Reach.fields` disagree on two assets.** `bo_cdlm_summary` reads `Dens.served` PASS (module `query_cdlm_summary.ts`, 1 declaring a density contract) while `Reach.fields` finds no capability module reading its table (width 0/19, depth 0.0%, "no capability module reads this table"); the same for `bo_samskara` (`query_signals.ts` versus width 0/10, depth 0.0%). The two census criteria give different answers to "is this asset served", so the `served` evidence state (T3 §1.4) is not settled for those two. | census `Dens.served` and `Reach.fields` on `bo_cdlm_summary`, `bo_samskara`; `assets[*].reach.modules` = [] on both. |
 
 ## Part D · Sources and reads
 
