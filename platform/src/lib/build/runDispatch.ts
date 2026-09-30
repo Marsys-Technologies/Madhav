@@ -1,6 +1,6 @@
 import 'server-only'
-import { query } from '@/lib/db/client'
 import { invokeRunJob } from '@/lib/build/jobInvoker'
+import { terminalizeFailedRun } from '@/lib/build/terminalizeFailedRun'
 
 /**
  * Post-commit dispatch of a prepared run (Jātaka chart workspace, Task 5).
@@ -26,8 +26,9 @@ export async function dispatchPreparedRun(
     const message = (error as Error)?.message ?? String(error)
     const lastError = options.failurePrefix ? `${options.failurePrefix}: ${message}` : message
     try {
-      await query(`UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`, [lastError, runId])
-      await query(`UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`, [runId])
+      // A2: one statement, the same attributable text on both build_runs.last_error and the
+      // aborted build_run_assets.error (previously the assets were aborted with no error text).
+      await terminalizeFailedRun(runId, lastError)
     } catch (recordError) {
       // The watchdog's undispatched-run reaper still fails an orphaned 'planned' run;
       // the caller is told the truth about the dispatch either way.

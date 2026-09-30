@@ -125,4 +125,30 @@ describe('enqueueLelRecalibration', () => {
     expect(res.enqueued).toBe(false)
     if (!res.enqueued) expect(res.reason).toBe('run_active')
   })
+
+  // Packet A2 ("Always record why it failed"): when invokeRunJob throws after the
+  // run+assets rows were already inserted, this path used to write the caught
+  // message to build_runs.last_error and then abort build_run_assets with NO
+  // error clause at all — one of the four confirmed copy-paste sites of the
+  // empty-error defect. It now delegates to terminalizeFailedRun, which writes
+  // the SAME message to both tables in one statement. This test fails against
+  // the pre-fix two-separate-UPDATEs shape (no `error=` write would appear).
+  it('propagates the dispatch failure message to BOTH build_runs and build_run_assets, and still throws', async () => {
+    seedHappyPath()
+    mockInvokeRunJob.mockRejectedValueOnce(new Error('invokeRunJob failed: missing GCP_PROJECT env var'))
+    q.mockResolvedValueOnce({ rows: [], rowCount: 0 }) // terminalizeFailedRun's combined UPDATE
+
+    await expect(enqueueLelRecalibration({ chartId: CHART, triggeredBy: 'uid-1' }))
+      .rejects.toThrow('invokeRunJob failed: missing GCP_PROJECT env var')
+
+    const terminalizeCall = q.mock.calls.find(
+      c => typeof c[0] === 'string' && c[0].includes('UPDATE build_runs') && c[0].includes('UPDATE build_run_assets')
+    )
+    expect(terminalizeCall, 'expected one combined statement touching both tables').toBeDefined()
+    const [sql, params] = terminalizeCall!
+    expect(sql).toMatch(/last_error\s*=\s*\$1/)
+    expect(sql).toMatch(/error\s*=\s*\$1/)
+    expect(params[0]).toBe('invokeRunJob failed: missing GCP_PROJECT env var')
+    expect(params[1]).toBe('run-recal-1')
+  })
 })

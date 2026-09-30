@@ -290,10 +290,21 @@ export function freezeRunManifest(args: {
   registry: RegistryEntryWithScope[]
 }): { manifest: FrozenRunManifest; digest: string } {
   const registryByAssetId = new Map(args.registry.map((entry) => [entry.asset_id, entry]))
-  const writerCountByTarget = new Map<string, number>()
+  // A3 (predicate-asymmetry fix): has_cowriters exists to detect a real shared-write hazard --
+  // another asset that could ALSO write this row's target_table. A row with has_writer=false is a
+  // placeholder (migration 342) with no WriterBase behind it, so it can never write anything and is
+  // not a co-writer hazard. This map therefore only holds asset_ids with has_writer=true -- the SAME
+  // predicate runner.py's check-time query applies (peer.is_active=true AND peer.has_writer=true;
+  // the registry supplied here is already is_active-filtered). Before this fix, an active-but-no-writer
+  // row sharing a target_table still counted here, so freeze-time could compute has_cowriters=true while
+  // check-time correctly computed false for the same asset, producing a false "asset_registry changed
+  // after dispatch" abort with nothing about the asset's own contract having changed.
+  const activeWriterAssetIdsByTarget = new Map<string, string[]>()
   for (const entry of args.registry) {
-    if (entry.target_table) {
-      writerCountByTarget.set(entry.target_table, (writerCountByTarget.get(entry.target_table) ?? 0) + 1)
+    if (entry.target_table && entry.has_writer) {
+      const ids = activeWriterAssetIdsByTarget.get(entry.target_table) ?? []
+      ids.push(entry.asset_id)
+      activeWriterAssetIdsByTarget.set(entry.target_table, ids)
     }
   }
   const assets: FrozenManifestAsset[] = []
@@ -309,12 +320,18 @@ export function freezeRunManifest(args: {
         `No sidecar-owned writer digest is available for planned asset: ${assetId}`,
       )
     }
+    // Mirrors runner.py's EXISTS predicate exactly: true iff some OTHER active, has_writer=true row
+    // shares this asset's target_table (self excluded).
+    const hasCowriters = Boolean(
+      entry.target_table
+      && (activeWriterAssetIdsByTarget.get(entry.target_table) ?? []).some((id) => id !== entry.asset_id),
+    )
     assets.push({
       asset_id: entry.asset_id,
       scope: entry.scope,
       depends_on: [...(entry.depends_on ?? [])],
       natural_key_partition: entry.natural_key_partition ?? null,
-      has_cowriters: Boolean(entry.target_table && (writerCountByTarget.get(entry.target_table) ?? 0) > 1),
+      has_cowriters: hasCowriters,
       expected_code_digest: expectedDigest,
     })
   }

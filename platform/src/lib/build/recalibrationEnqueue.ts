@@ -37,6 +37,7 @@ import {
   type AssetId,
 } from './plan'
 import { invokeRunJob } from './jobInvoker'
+import { terminalizeFailedRun } from './terminalizeFailedRun'
 
 /**
  * The assets that consume a chart's LEL corpus / calibration state. A new life
@@ -185,8 +186,7 @@ export async function enqueueLelRecalibration(
   } catch (err) {
     const errMsg = (err as Error).message
     console.error('[recalibrationEnqueue] invokeRunJob failed — marking run failed:', errMsg)
-    await query(`UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`, [errMsg, runId])
-    await query(`UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`, [runId])
+    await terminalizeFailedRun(runId, errMsg)
     throw err
   }
 

@@ -63,6 +63,16 @@ import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
 
+// Packet A2 ("Always record why it failed") — named, attributable messages shared
+// between the build_runs.last_error write and the companion build_run_assets.error
+// write, so both tables record the SAME text instead of one of them staying blank.
+// Exported for tests that assert the propagated text without duplicating the literal.
+export const ORPHAN_RUN_MESSAGE =
+  'orphan-watchdog: run orphaned — no asset_throughput heartbeat or build_substep_progress ' +
+  'commit in the last 15 minutes on a run running 30+ minutes'
+export const STUCK_ASSET_MESSAGE = 'orphan-watchdog: writer never reported back'
+export const UNDISPATCHED_RUN_MESSAGE = 'orphan-watchdog: run never dispatched'
+
 const WATCHDOG_OIDC_AUDIENCE = process.env.WATCHDOG_SCHEDULER_OIDC_AUDIENCE
   ?? 'https://amjis-web-938361928218.asia-south1.run.app'
 const WATCHDOG_SCHEDULER_SERVICE_ACCOUNT = process.env.WATCHDOG_SCHEDULER_SERVICE_ACCOUNT
@@ -119,22 +129,50 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //    killed a genuinely progressing heavy writer. Window widened 10min -> 15min to
   //    comfortably clear the slowest known substep cadence (ka_gochara_sweep, ~7 min
   //    worst case) with margin.
+  // Packet A2: this reaper used to write build_runs.last_error = NULL (no clause
+  // at all) and never touched build_run_assets, leaving that run's still-'queued'
+  // or still-'building' asset rows silently stranded with no error text forever.
+  // Now writes the SAME attributable message to build_runs.last_error AND
+  // terminalizes the run's non-terminal build_run_assets rows in the one
+  // statement — 'building' rows (a writer was mid-flight when the run itself was
+  // judged dead) -> 'error'; 'queued' rows (never got a chance) -> 'aborted'.
+  // Mirrors the reference CTE shape (_terminalize_preflight_failure,
+  // platform/python-sidecar/pipeline/orchestrator/runner.py:325-337), extended to
+  // two target states since this reaper can find a run in either shape.
   const orphanRuns = await query<{ id: string; chart_id: string }>(
-    `UPDATE build_runs
-     SET state = 'failed', ended_at = NOW()
-     WHERE state = 'running'
-       AND started_at < NOW() - INTERVAL '30 minutes'
-       AND NOT EXISTS (
-         SELECT 1 FROM asset_throughput
-         WHERE chart_id = build_runs.chart_id
-           AND last_built_at > NOW() - INTERVAL '15 minutes'
-       )
-       AND NOT EXISTS (
-         SELECT 1 FROM build_substep_progress
-         WHERE chart_id = build_runs.chart_id
-           AND completed_at > NOW() - INTERVAL '15 minutes'
-       )
-     RETURNING id, chart_id`
+    `WITH failed_run AS (
+       UPDATE build_runs
+       SET state = 'failed', ended_at = NOW(), last_error = $1
+       WHERE state = 'running'
+         AND started_at < NOW() - INTERVAL '30 minutes'
+         AND NOT EXISTS (
+           SELECT 1 FROM asset_throughput
+           WHERE chart_id = build_runs.chart_id
+             AND last_built_at > NOW() - INTERVAL '15 minutes'
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM build_substep_progress
+           WHERE chart_id = build_runs.chart_id
+             AND completed_at > NOW() - INTERVAL '15 minutes'
+         )
+       RETURNING id, chart_id
+     ),
+     aborted_queued AS (
+       UPDATE build_run_assets
+       SET state = 'aborted', ended_at = NOW(), error = $1
+       WHERE run_id IN (SELECT id FROM failed_run)
+         AND state = 'queued'
+       RETURNING 1
+     ),
+     errored_building AS (
+       UPDATE build_run_assets
+       SET state = 'error', ended_at = NOW(), error = $1
+       WHERE run_id IN (SELECT id FROM failed_run)
+         AND state = 'building'
+       RETURNING 1
+     )
+     SELECT id, chart_id FROM failed_run`,
+    [ORPHAN_RUN_MESSAGE]
   )
 
   // 2. asset_throughput stuck building > 15 min — RR-fix (D-3) Part B: before
@@ -324,52 +362,98 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   }
 
+  // Packet A2: this reaper used to write asset_throughput.last_error but never
+  // touched build_run_assets for the same (chart_id, asset_id) — the row the
+  // cockpit's run view actually reads stayed 'building' with error=NULL forever.
+  // Now both tables get the SAME text in one
+  // statement: the `stuck` CTE does the asset_throughput write exactly as before
+  // (unchanged shape/params, still returns chart_id/asset_id for the caller), and
+  // a second CTE joins through build_runs (chart_id -> its one active run, per
+  // the build_runs_one_active_per_chart_idx UNIQUE constraint) to terminalize the
+  // matching build_run_assets row from 'building' to 'error' with the same text.
   const stuckAssets =
     trulyStuck.length > 0
       ? await query<{ chart_id: string; asset_id: string }>(
-          `UPDATE asset_throughput
-           SET state = 'error',
-               last_error = 'orphan-watchdog: writer never reported back'
-           WHERE state = 'building'
-             AND last_built_at < NOW() - INTERVAL '15 minutes'
-             AND (${trulyStuck.map((_, i) => `(chart_id IS NOT DISTINCT FROM $${i * 2 + 1} AND asset_id = $${i * 2 + 2})`).join(' OR ')})
-           RETURNING chart_id, asset_id`,
-          trulyStuck.flatMap((c) => [c.chart_id, c.asset_id])
+          `WITH stuck AS (
+             UPDATE asset_throughput
+             SET state = 'error',
+                 last_error = $1
+             WHERE state = 'building'
+               AND last_built_at < NOW() - INTERVAL '15 minutes'
+               AND (${trulyStuck.map((_, i) => `(chart_id IS NOT DISTINCT FROM $${i * 2 + 2} AND asset_id = $${i * 2 + 3})`).join(' OR ')})
+             RETURNING chart_id, asset_id
+           ),
+           bra_terminalized AS (
+             UPDATE build_run_assets bra
+             SET state = 'error', ended_at = NOW(), error = $1
+             FROM build_runs br
+             WHERE bra.run_id = br.id
+               AND br.state = 'running'
+               AND bra.state = 'building'
+               AND EXISTS (
+                 SELECT 1 FROM stuck s
+                 WHERE br.chart_id IS NOT DISTINCT FROM s.chart_id
+                   AND bra.asset_id = s.asset_id
+               )
+             RETURNING 1
+           )
+           SELECT chart_id, asset_id FROM stuck`,
+          [STUCK_ASSET_MESSAGE, ...trulyStuck.flatMap((c) => [c.chart_id, c.asset_id])]
         )
       : { rows: [] as { chart_id: string; asset_id: string }[], rowCount: 0 }
 
-  // M-5: Also surface the orphan error in build_run_assets so the UI can show it instead
-  // of a blank "Failed" state when bra.error was never written by the writer.
-  await query(
-    `UPDATE build_run_assets bra
-     SET error = 'orphan-watchdog: writer never reported back'
-     FROM build_runs br
-     WHERE bra.run_id = br.id
-       AND bra.state = 'running'
-       AND br.state = 'running'
-       AND br.started_at < NOW() - INTERVAL '30 minutes'
-       AND bra.error IS NULL`
-  )
+  // M-5 REMOVED (packet A2 correction pass, post independent gate review,
+  // 00_ARCHITECTURE/briefs/nirmana/engine/reviews/A2_review_20260926T123936Z.md
+  // §C1). The block that lived here corrected M-5's illegal `bra.state =
+  // 'running'` predicate to the legal `'building'`, but that repair resurrected
+  // logic whose ONLY time predicate was the age of the *run* (`br.started_at <
+  // NOW() - INTERVAL '30 minutes'`) — it never checked staleness on the *asset*.
+  // Any build running longer than 30 minutes would have its currently-building
+  // asset stamped "writer never reported back" while that writer's heartbeat
+  // was completely healthy, and neither `mark_asset_complete` nor the
+  // 'building' transition clears `error` afterward, so the false stamp would
+  // have survived into a 'complete' row and been served by
+  // /api/cockpit/runs/[id]/assets next to a live, progressing asset. Site 2
+  // (the `stuckAssets` block immediately above) already covers M-5's genuine
+  // cohort directly, with a real staleness gate on the asset itself
+  // (`asset_throughput.last_built_at < NOW() - INTERVAL '15 minutes'`, via
+  // classifyStuckCandidate) and a real state transition — M-5 never had either.
+  // Deleting it removes nothing the engine ever actually had: its predicate was
+  // an illegal enum value for its entire life, so it never fired. A *correct*
+  // version needs a real asset-level heartbeat-age detector rather than a
+  // run-age proxy; that is new behaviour, carried to packet C2 ("stuck
+  // states") for its own before/after measurement rather than smuggled in here.
 
   // 3. Orphan build_runs: planned > 10 min with started_at IS NULL (dispatch never happened)
+  //
+  // Packet A2 — THE dominant defect: 295 of 301 (98%) of all empty-error
+  // build_run_assets records traced to this exact code path. The text
+  // ('orphan-watchdog: run never dispatched') was already computed and written
+  // to build_runs.last_error one statement above; the separate abort UPDATE
+  // simply never had an `error` clause in its SET list. Combined into one CTE
+  // (mirrors _terminalize_preflight_failure,
+  // platform/python-sidecar/pipeline/orchestrator/runner.py:325-337) so the same
+  // parameter reaches both tables atomically and the old two-statement,
+  // conditional-on-rows.length dance is no longer needed.
   const undispatchedRuns = await query<{ id: string; chart_id: string }>(
-    `UPDATE build_runs
-     SET state = 'failed', ended_at = NOW(),
-         last_error = 'orphan-watchdog: run never dispatched'
-     WHERE state = 'planned'
-       AND started_at IS NULL
-       AND created_at < NOW() - INTERVAL '10 minutes'
-     RETURNING id, chart_id`
+    `WITH failed_run AS (
+       UPDATE build_runs
+       SET state = 'failed', ended_at = NOW(), last_error = $1
+       WHERE state = 'planned'
+         AND started_at IS NULL
+         AND created_at < NOW() - INTERVAL '10 minutes'
+       RETURNING id, chart_id
+     ),
+     aborted_queued AS (
+       UPDATE build_run_assets
+       SET state = 'aborted', ended_at = NOW(), error = $1
+       WHERE run_id IN (SELECT id FROM failed_run)
+         AND state = 'queued'
+       RETURNING 1
+     )
+     SELECT id, chart_id FROM failed_run`,
+    [UNDISPATCHED_RUN_MESSAGE]
   )
-  // Also abort the queued assets so they don't sit in limbo
-  if (undispatchedRuns.rows.length > 0) {
-    const runIds = undispatchedRuns.rows.map(r => r.id)
-    await query(
-      `UPDATE build_run_assets SET state = 'aborted'
-       WHERE run_id = ANY($1) AND state = 'queued'`,
-      [runIds]
-    )
-  }
 
   // 4. Emit events
   await Promise.allSettled([
