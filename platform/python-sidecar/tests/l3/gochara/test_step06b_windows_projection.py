@@ -38,6 +38,7 @@ from .conftest import (  # noqa: E402
     WP6_DROP_SQL,
     WP6_MIGRATION_1072,
     WP6_MIGRATION_1087,
+    WP6_MIGRATION_1152,
 )
 from .test_wp9_stamp_columns import BASE_DDL as _WP9_BASE_DDL  # noqa: E402
 
@@ -458,6 +459,7 @@ def s6b_schema():
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())
+    conn.execute(WP6_MIGRATION_1152.read_text())
     conn.close()
     return True
 

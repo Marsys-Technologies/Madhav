@@ -1,0 +1,412 @@
+{
+  "artifact": "GOLDEN_CONTACT_IDS_ORIGIN_MAIN",
+  "version": "1.0",
+  "provenance": "Computed by executing origin/main's services/gochara_kernel/ids.py (extracted via `git show origin/main:.../ids.py`) on the 27 fixed exact-contact cases below \u2014 NOT by the function under test comparing itself (the A2.2 Codex defect in the earlier assertion). The current implementation must reproduce these byte-identically for unchanged exact-contact inputs (steward scope ruling, A2 rework item (i)).",
+  "cases": [
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000001",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+        "body": "Sun",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 60.0,
+        "t_exact_jd": 2460713.75,
+        "target_fact_id": null,
+        "target_ref": "ref:1",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:e1540b34f15c7f9352241f0438f4e5381eff7e97e5de33ad7cf86e7a83fee4b7"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000002",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+        "body": "Sun",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 90.0,
+        "t_exact_jd": 2460751.0,
+        "target_fact_id": "fact.2",
+        "target_ref": null,
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:ae736772bf534f88a4282013bf345eede081b3fa898dbba821a487b14585aca1"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000003",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+        "body": "Sun",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 120.0,
+        "t_exact_jd": 2460788.25,
+        "target_fact_id": null,
+        "target_ref": "ref:3",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:0f4dfd7448d453f4987830552f604ae32ba0bce812638f9c57745c0a9cf3aa47"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000004",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000004",
+        "body": "Moon",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 180.0,
+        "t_exact_jd": 2460825.50001,
+        "target_fact_id": "fact.4",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:88ea9c4e47138c7b4ef02a9779c617ac0a85f48ae29e36d27f100df847f202c0"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000005",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000005",
+        "body": "Moon",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 210.0,
+        "t_exact_jd": 2460862.7506944328,
+        "target_fact_id": null,
+        "target_ref": "ref:5",
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:7740986a4904718b4a14a0c896239667e60ce9a13794fe64aa217de8bb3694af"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000006",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000006",
+        "body": "Moon",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 240.0,
+        "t_exact_jd": 2460900.0,
+        "target_fact_id": "fact.6",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:9acf769cf115181c9f379cd8dfbd91ae752b9e5f7be253581c694d5526d41416"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000007",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000007",
+        "body": "Mars",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 270.0,
+        "t_exact_jd": 2460937.25,
+        "target_fact_id": null,
+        "target_ref": "ref:7",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:d0139305f468e46c8c5100071539d20c30d81814340d8cc23437c16a0d043722"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000008",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000008",
+        "body": "Mars",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 359.99999,
+        "t_exact_jd": 2460974.50001,
+        "target_fact_id": "fact.8",
+        "target_ref": null,
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:d8d766dab581f3b3a971803e814c3574c2055c4b3677b03708e762673116ba98"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000009",
+        "convention_id": "sha256:0000000000000000000000000000000000000000000000000000000000000009",
+        "body": "Mars",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 0.0,
+        "t_exact_jd": 2461011.75,
+        "target_fact_id": null,
+        "target_ref": "ref:9",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:b85fa4568a4103e59b999f5b0f14cf301142cad9bdbdd72c93f6de04597b8071"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000010",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000010",
+        "body": "Mercury",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 60.0,
+        "t_exact_jd": 2461049.0006944328,
+        "target_fact_id": "fact.10",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:63c3b66a90b359ebc13c946eff3a97f72c8675cb4bfdee2f6ae3c86891ade135"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000011",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000011",
+        "body": "Mercury",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 90.0,
+        "t_exact_jd": 2461086.25,
+        "target_fact_id": null,
+        "target_ref": "ref:11",
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:26a58f47f9e1e41ad53d6322e6105b175ece602e33b932d31e9d0b0e58b33bf3"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000012",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000012",
+        "body": "Mercury",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 120.0,
+        "t_exact_jd": 2461123.50001,
+        "target_fact_id": "fact.12",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:1e22fe1df3fc04e83833217b269b1d7b8b084ad86b080de8588998da86ef1344"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000013",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000013",
+        "body": "Jupiter",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 180.0,
+        "t_exact_jd": 2461160.75,
+        "target_fact_id": null,
+        "target_ref": "ref:13",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:644b7cae1a511f35d2a990c3d742cf53af1f9a8909a51986b55eed1abb778341"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000014",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000014",
+        "body": "Jupiter",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 210.0,
+        "t_exact_jd": 2461198.0,
+        "target_fact_id": "fact.14",
+        "target_ref": null,
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:e78cc7ea4d9e3c40c723bdd9dac724ded3d26101279cbb3432758da6c50a2002"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000015",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000015",
+        "body": "Jupiter",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 240.0,
+        "t_exact_jd": 2461235.2506944328,
+        "target_fact_id": null,
+        "target_ref": "ref:15",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:e1cc6904a57975edf491879d0e4f8d215d663fde50417b3cfc5b50b42f8cb846"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000016",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000016",
+        "body": "Venus",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 270.0,
+        "t_exact_jd": 2461272.50001,
+        "target_fact_id": "fact.16",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:bfecddc4169b1586e249c1df910188e0b06c306b8e6e2a6b95f0dff08e3e9498"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000017",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000017",
+        "body": "Venus",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 359.99999,
+        "t_exact_jd": 2461309.75,
+        "target_fact_id": null,
+        "target_ref": "ref:17",
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:1c34e62598fff1b357d14c179c2ce2f50d157bf389e44835bab5ea0f75c9f807"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000018",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000018",
+        "body": "Venus",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 0.0,
+        "t_exact_jd": 2461347.0,
+        "target_fact_id": "fact.18",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:635f516e43645a15a0f1d623d6aa502dd6eb6f465b780a5f4405139aff5713aa"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000019",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000019",
+        "body": "Saturn",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 60.0,
+        "t_exact_jd": 2461384.25,
+        "target_fact_id": null,
+        "target_ref": "ref:19",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:f4ee56ff8c99e216533bf152994dc5173a5e9b1b1b9a5299530af93eb940b5e9"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000020",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000020",
+        "body": "Saturn",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 90.0,
+        "t_exact_jd": 2461421.500704433,
+        "target_fact_id": "fact.20",
+        "target_ref": null,
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:b5e2830aa14517c464648b23ab279f754af835f163fc69d64a00033c45370760"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000021",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000021",
+        "body": "Saturn",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 120.0,
+        "t_exact_jd": 2461458.75,
+        "target_fact_id": null,
+        "target_ref": "ref:21",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:3b4a903df622e47728efec7eace678b581ecf44fd28a8bf68d734e8970892256"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000022",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000022",
+        "body": "Rahu",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 180.0,
+        "t_exact_jd": 2461496.0,
+        "target_fact_id": "fact.22",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:d6cf1fa737a3b18bddf601dab79ec34f29bb2de6edaf76a20c1bb48672ff9c74"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000023",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000023",
+        "body": "Rahu",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 210.0,
+        "t_exact_jd": 2461533.25,
+        "target_fact_id": null,
+        "target_ref": "ref:23",
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:807d370eeeafd9fd3e221495a2ffc9f2ceef2d3713afee7c1296579546c65a42"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000024",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000024",
+        "body": "Rahu",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 240.0,
+        "t_exact_jd": 2461570.50001,
+        "target_fact_id": "fact.24",
+        "target_ref": null,
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:f0ca3c6dec5f0b4ce7d1ab6979af9ab7736cf059e42124dc243fbe1a28e9cfbc"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000025",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000025",
+        "body": "Ketu",
+        "target_type": "lord",
+        "relation": "conjunction",
+        "aspect_deg": 270.0,
+        "t_exact_jd": 2461607.7506944328,
+        "target_fact_id": null,
+        "target_ref": "ref:25",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:d1b54aaf95c679a4f37dfaf3279a8621b20989b3cc599a818b266f40a43f0a4e"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000026",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000026",
+        "body": "Ketu",
+        "target_type": "sensitive_degree",
+        "relation": "return",
+        "aspect_deg": 359.99999,
+        "t_exact_jd": 2461645.0,
+        "target_fact_id": "fact.26",
+        "target_ref": null,
+        "method_version": "2.0.0"
+      },
+      "contact_id": "sha256:0ce39dd53cbefe3291c4d2261027d2dccfe465f3ef1bd30cf1634444521e9f11"
+    },
+    {
+      "inputs": {
+        "chart_id": "482012f1-0000-4000-8000-000000000027",
+        "convention_id": "sha256:00000000000000000000000000000000000000000000000000000000000000027",
+        "body": "Ketu",
+        "target_type": "karaka",
+        "relation": "drishti_contact",
+        "aspect_deg": 0.0,
+        "t_exact_jd": 2461682.25,
+        "target_fact_id": null,
+        "target_ref": "ref:27",
+        "method_version": "1.0.0"
+      },
+      "contact_id": "sha256:0e3e7df48a2209e2fe8f121dab4f59d3a74470a687490a8de2e281fb54c8bbbf"
+    }
+  ]
+}

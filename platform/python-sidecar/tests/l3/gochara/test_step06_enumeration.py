@@ -64,6 +64,7 @@ from .conftest import (  # noqa: E402
     WP6_DROP_SQL,
     WP6_MIGRATION_1072,
     WP6_MIGRATION_1087,
+    WP6_MIGRATION_1152,
     requires_swieph,
 )
 
@@ -291,8 +292,9 @@ H0 = None  # set per test via _jd
 def test_orb_regime_return_gating_and_boundary_attachment():
     """M-1 orb regime: conjunction/drishti at --orb-deg (5.0) with the §7
     orb_source row id; return pinned at the table's 0.5° and only for the
-    target's owning graha; the three boundary relations attach per point
-    target (the _moon_on_demand precedent)."""
+    target's owning graha. Boundary relations are sky events (R5): stored
+    ONCE per body under target_type='sky_event' — never duplicated per point
+    target — with the event's own degree as target_longitude_deg."""
     h0 = _jd(2026, 1, 1)
 
     def curve(jd):
@@ -339,12 +341,24 @@ def test_orb_regime_return_gating_and_boundary_attachment():
     assert by_rel[("chk", "conjunction")][0]["orb_max_deg"] == 5.0
     assert ret[0]["t_in"] > by_rel[("chk", "conjunction")][0]["t_in"]
 
-    # boundary relations attach per point target, boundary-exact
-    for ref in ("Mars", "chk"):
-        for rel in ("sign_ingress", "nakshatra_ingress", "kakshya_cell_crossing"):
-            assert by_rel.get((ref, rel)), f"{ref}: no {rel} episodes attached"
-            assert all(e["orb_max_deg"] == 0.0 and e["orb_source"] == "orb_ingress"
-                       for e in by_rel[(ref, rel)])
+    # boundary events are sky geometry (R5): exactly one row per physical
+    # event per body, target_type='sky_event', NOT attached per point target
+    sky = [e for e in eps if e["target_type"] == "sky_event"]
+    assert sky, "boundary events must be emitted as sky_event rows"
+    assert {e["relation"] for e in sky} == set(drv.BOUNDARY_RELATIONS)
+    assert all(e["orb_max_deg"] == 0.0 and e["orb_source"] == "orb_ingress"
+               for e in sky)
+    assert all(e["target_ref"] == f"sky:{e['relation']}" for e in sky)
+    assert all(e["target_longitude_deg"] is not None for e in sky)
+    # stored once: no two sky rows share (relation, instant)
+    keys = [(e["relation"], e["t_exact"]) for e in sky]
+    assert len(keys) == len(set(keys))
+    # ...and never duplicated onto the resonance-map targets
+    assert not [e for e in eps if e["relation"] in drv.BOUNDARY_RELATIONS
+                and e["target_type"] != "sky_event"]
+    # one solar year at 0.25°/day (~100→191°): the crossed cusps only
+    n_sign = len({e["t_exact"] for e in sky if e["relation"] == "sign_ingress"})
+    assert n_sign == 3  # 120, 150, 180 (the 0°/360° seam is never crossed)
 
     # every emitted dict carries tz-aware UTC instants and the ledger shape
     for e in eps:
@@ -469,10 +483,12 @@ def test_truncated_contacts_kept_and_counted():
     assert not [e for e in eps if e["relation"] == "return"]
 
 
-def test_truncated_both_maps_to_null_and_jd_round_trip():
-    """WP1 §3.1 CHECK: kernel 'both' (episode spans the whole horizon) is not
-    a storable value; the dict carries NULL. jd_to_dt must round-trip the
-    kernel's float JDs to exact tz-aware UTC datetimes."""
+def test_truncated_both_preserved_and_jd_round_trip():
+    """Kimi review #2 + migration 1152 (CHECK widened): kernel 'both' (the
+    episode/span covers the WHOLE horizon) is preserved verbatim, never
+    erased to NULL — and both rows of one span carry the same mark.
+    jd_to_dt must round-trip the kernel's float JDs to exact tz-aware UTC
+    datetimes."""
     assert drv.jd_to_dt(_jd(2026, 3, 6)) == datetime(2026, 3, 6, tzinfo=UTC)
     h0 = _jd(2026, 1, 1)
 
@@ -486,9 +502,29 @@ def test_truncated_both_maps_to_null_and_jd_round_trip():
         ephe_path=None, refine=False, orb_override_deg=5.0)
     assert len(eps) == 1 and eps[0].truncated_at_horizon == "both"
     d = drv._episode_to_dict(eps[0], _point_target(200.0, "Saturn"), BACKEND)
-    assert d["truncated_at_horizon"] is None
+    assert d["truncated_at_horizon"] == "both"  # preserved (1152 CHECK)
     assert d["t_in"] == datetime(2026, 1, 1, tzinfo=UTC)  # clipped, exact
     assert d["t_out"] == datetime(2026, 1, 31, tzinfo=UTC)
+
+    # both rows of one span clipped at both edges carry 'both' (Kimi #2)
+    def slow(jd):
+        return 15.0 + 0.001 * (jd - h0)  # inside [0,30] the whole horizon
+
+    index2 = _index("Saturn", date(2025, 12, 1), date(2026, 4, 1), slow)
+    spans = gk_episodes.residence_spans(
+        index2, "Saturn", (0.0, 30.0), horizon, "bhava",
+        ephe_path=None, refine=False)
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.truncated_at_horizon == "both"
+    assert span.ingress_episode.truncated_at_horizon == "both"
+    assert span.ingress_episode.t_exact is None  # ingress off-horizon (N3)
+    rows = drv.enumerate_body(
+        index2, "Saturn", [_interval_target((0.0, 30.0))], horizon, 5.0,
+        BACKEND, ephe_path=None, refine=False, generation="4.1")[0]
+    by_rel = {r["relation"]: r for r in rows}
+    assert by_rel["sign_ingress"]["truncated_at_horizon"] == "both"
+    assert by_rel["residence"]["truncated_at_horizon"] == "both"
 
 
 def test_coverage_rows_shape_and_invariants():
@@ -603,6 +639,7 @@ def wp6_enum_schema():
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())
+    conn.execute(WP6_MIGRATION_1152.read_text())
     _seed_e2e(conn)
     conn.close()
     return True
@@ -855,7 +892,10 @@ def test_dedupe_two_map_rows_one_physical_target(wp6_enum_schema, tmp_path):
 
     def _cid(e):
         return drv._contact_id_of(
-            {**e, "t_exact": datetime.fromisoformat(e["t_exact"])},
+            {**e,
+             "t_in": datetime.fromisoformat(e["t_in"]),
+             "t_exact": (datetime.fromisoformat(e["t_exact"])
+                         if e["t_exact"] is not None else None)},
             E2E_CHART, conv_id, CONVENTION_VECTOR["method_version"])
 
     counts = Counter(_cid(e) for e in episodes)
@@ -1162,12 +1202,14 @@ def test_bodies_subset_validation(wp6_enum_schema, tmp_path):
     assert r.returncode == 3 and "duplicates" in r.stderr
 
 
-def test_boundary_events_solved_once_per_body(monkeypatch):
-    """T0-3 global boundary table (spec §6.2 inv 5, O-SS-1): boundary events
-    are enumerated per BODY, joined to targets afterwards. With N point
-    targets the solver runs len(BOUNDARY_RELATIONS) times — not N×. The
-    per-target rows still attach (dedupe collapses them to one stored row,
-    H-6); only the redundant re-solving is gone."""
+def test_boundary_events_solved_and_stored_once_per_body(monkeypatch):
+    """T0-3/R5 global boundary table (spec §6.2 inv 5, O-SS-1): boundary
+    events are solved AND stored once per body. With N point targets the
+    solver runs len(BOUNDARY_RELATIONS) times — not N× — and the stored
+    payload holds each physical event exactly once (sky_event rows), even
+    after dedupe: the reviewer's fixture (3 targets over ~5 months at
+    0.5°/day) must yield exactly the distinct physical crossings (Codex:
+    84 duplicated rows -> 28 physical events)."""
     h0 = _jd(2026, 1, 1)
 
     def curve(jd):
@@ -1180,19 +1222,171 @@ def test_boundary_events_solved_once_per_body(monkeypatch):
                _point_target(180.0, "Jupiter", "sensitive_degree", "c")]
 
     calls = {"n": 0}
-    real_solve = drv.gk_episodes.solve_boundary_episodes
+    real_solve = drv.gk_contacts.find_boundary_roots
 
     def counting_solve(*a, **kw):
         calls["n"] += 1
         return real_solve(*a, **kw)
 
-    monkeypatch.setattr(drv.gk_episodes, "solve_boundary_episodes",
+    monkeypatch.setattr(drv.gk_contacts, "find_boundary_roots",
                         counting_solve)
     eps, stats = drv.enumerate_body(
         index, "Saturn", targets, horizon, 5.0, BACKEND,
         ephe_path=None, refine=False)
     assert calls["n"] == len(drv.BOUNDARY_RELATIONS)  # per body, not per target
-    # every point target still carries its boundary attachment rows
-    for ref in ("a", "b", "c"):
-        attached = {e["relation"] for e in eps if e["target_ref"] == ref}
-        assert set(drv.BOUNDARY_RELATIONS) <= attached
+
+    # stored once per physical event. The invariant is asserted, then the
+    # per-grid counts against an independent derivation: the curve runs
+    # 100° → 175° inside the horizon (Jan 1 – May 31 at 0.5°/day), so the
+    # crossings are sign cusps 120/150 (2), nakshatra edges 106.67/120/
+    # 133.33/146.67/160/173.33 (6), kakshya edges 101.25 + 3.75k ≤ 175 (20).
+    sky = [e for e in eps if e["target_type"] == "sky_event"]
+    assert sky
+    survivors, report = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV)
+    sky_after = [e for e in survivors
+                 if e["relation"] in drv.BOUNDARY_RELATIONS
+                 and e["target_type"] == "sky_event"]
+    assert len(sky_after) == len(sky)  # dedupe collapsed nothing here
+    assert drv.assert_sky_events_unique(survivors) == len(sky_after)
+    # exactly one stored row per physical (relation, instant)
+    physical = {(e["relation"], e["t_exact"]) for e in sky_after}
+    assert len(physical) == len(sky_after)
+    # and no per-target duplication survives anywhere in the payload
+    assert not [e for e in survivors
+                if e["relation"] in drv.BOUNDARY_RELATIONS
+                and e["target_type"] != "sky_event"]
+    for rel, n in (("sign_ingress", 2), ("nakshatra_ingress", 6),
+                   ("kakshya_cell_crossing", 20)):
+        assert len([e for e in sky_after if e["relation"] == rel]) == n
+
+
+# ── Pravāha A2.2 rework — driver-level reviewer counterexamples ─────────────
+
+def test_r4_in_orb_support_without_exact_root_is_kept_truncated():
+    """Codex R4 (verbatim counterexample): λ = 196 + 0.01°·day, target 200°,
+    orb 5°, 30-day horizon — the body is inside the orb THROUGHOUT with no
+    exact root anywhere in the fitted knots. Pre-rework the driver returned
+    zero conjunctions (N3 became absence). Now: one truncated conjunction,
+    t_exact NULL, 'both' edges, counted once — and the two honesty channels
+    stay distinct: observed truncation (truncated_at_horizon='both') vs
+    unresolved root-count certification (completeness unqualified, E8-2)."""
+    h0 = _jd(2026, 1, 1)
+
+    def curve(jd):
+        return 196.0 + 0.01 * (jd - h0)  # 4.0°–4.3° from the target: always in orb
+
+    index = _index("Saturn", date(2025, 12, 15), date(2026, 3, 1), curve)
+    horizon = (_jd(2026, 1, 1), _jd(2026, 1, 31))
+    eps, stats = drv.enumerate_body(
+        index, "Saturn", [_point_target(200.0, "Saturn")], horizon, 5.0, BACKEND,
+        ephe_path=None, refine=False)
+    rows = [e for e in eps if e["relation"] == "conjunction"]
+    assert len(rows) == 1, "the in-orb-without-root support must be kept"
+    e = rows[0]
+    assert e["t_exact"] is None and e["exact_crossing"] is False
+    assert e["truncated_at_horizon"] == "both"  # observed truncation
+    assert e["completeness_state"] == "unqualified"  # unresolved root count
+    assert stats["episodes_without_exact"] == 1  # counted once
+    # kernel-level: same distinction on the Episode object
+    k_eps = gk_episodes.solve_episodes(
+        index, "Saturn", "conjunction", 200.0, horizon, "orb_conj_slow",
+        ephe_path=None, refine=False, orb_override_deg=5.0)
+    assert len(k_eps) == 1
+    assert k_eps[0].near_station_unresolved is True
+    assert k_eps[0].truncated_at_horizon == "both"
+
+
+def test_candidate_gate_null_exact_and_residence_rows_only_for_41_plus():
+    """Steward scope ruling (iii): null-exact and residence rows are emitted
+    ONLY for candidate generations >= '4.1' — never into '4.0' (or the legacy
+    labels). Withheld rows are counted for disclosure, never silently absent
+    from the report."""
+    h0 = _jd(2026, 1, 1)
+
+    def slow(jd):
+        return 15.0 + 0.001 * (jd - h0)  # inside [0,30] the whole horizon
+
+    index = _index("Saturn", date(2025, 12, 1), date(2026, 4, 1), slow)
+    horizon = (_jd(2026, 1, 1), _jd(2026, 1, 31))
+    targets = [_interval_target((0.0, 30.0))]
+
+    def run(gen):
+        return drv.enumerate_body(
+            index, "Saturn", targets, horizon, 5.0, BACKEND,
+            ephe_path=None, refine=False, generation=gen)
+
+    for gen in ("4.0", "v1", "3.0"):
+        eps, stats = run(gen)
+        assert not [e for e in eps if e["relation"] == "residence"], gen
+        assert all(e["t_exact"] is not None for e in eps), gen
+        assert stats["episodes_without_exact"] == 0, gen
+        assert stats["episodes_without_exact_dropped_by_gate"] == 1, gen
+    for gen in ("4.1", "4.2", "5.0"):
+        eps, stats = run(gen)
+        assert [e for e in eps if e["relation"] == "residence"], gen
+        assert stats["episodes_without_exact"] == 1, gen  # counted ONCE (K3 #3)
+        assert stats["episodes_without_exact_dropped_by_gate"] == 0, gen
+
+    # same gate on the point-contact path (a null-exact conjunction)
+    def curve(jd):
+        return 196.0 + 0.01 * (jd - h0)
+
+    index2 = _index("Saturn", date(2025, 12, 15), date(2026, 3, 1), curve)
+    pt = [_point_target(200.0, "Saturn")]
+    eps40, stats40 = drv.enumerate_body(
+        index2, "Saturn", pt, horizon, 5.0, BACKEND,
+        ephe_path=None, refine=False, generation="4.0")
+    assert not [e for e in eps40 if e["relation"] == "conjunction"]
+    assert stats40["episodes_without_exact_dropped_by_gate"] == 1
+    eps41, _ = drv.enumerate_body(
+        index2, "Saturn", pt, horizon, 5.0, BACKEND,
+        ephe_path=None, refine=False, generation="4.1")
+    assert [e for e in eps41 if e["relation"] == "conjunction"
+            and e["t_exact"] is None]
+
+
+def test_kimi3_physical_truncation_counted_once():
+    """Kimi #3: a clipped residence span produces TWO null-exact rows (the
+    ingress episode and the residence row) for ONE physical truncation —
+    episodes_truncated_no_exact_kept counts it once."""
+    h0 = _jd(2026, 1, 1)
+
+    def slow(jd):
+        return 15.0 + 0.001 * (jd - h0)
+
+    index = _index("Saturn", date(2025, 12, 1), date(2026, 4, 1), slow)
+    horizon = (_jd(2026, 1, 1), _jd(2026, 1, 31))
+    eps, stats = drv.enumerate_body(
+        index, "Saturn", [_interval_target((0.0, 30.0))], horizon, 5.0,
+        BACKEND, ephe_path=None, refine=False, generation="4.1")
+    null_exact_rows = [e for e in eps if e["t_exact"] is None]
+    assert len(null_exact_rows) == 2  # ingress row + residence row
+    assert stats["episodes_without_exact"] == 1  # one physical truncation
+
+
+def test_r5_residence_ingress_reuses_the_sky_event():
+    """R5 second half: a whole-sign residence's entry instant IS the stored
+    per-body sky sign_ingress event (residence reuses the same refined roots
+    — never an independently re-solved instant)."""
+    h0 = _jd(2026, 1, 1)
+
+    def curve(jd):
+        return 205.0 + 0.1 * (jd - h0)  # crosses the 210 cusp at t=50
+
+    index = _index("Saturn", date(2025, 12, 1), date(2027, 1, 1), curve)
+    horizon = (_jd(2026, 1, 1), _jd(2027, 1, 1))
+    eps, _ = drv.enumerate_body(
+        index, "Saturn", [_interval_target((210.0, 240.0))], horizon, 5.0,
+        BACKEND, ephe_path=None, refine=False, generation="4.1")
+    sky = [e for e in eps if e["target_type"] == "sky_event"
+           and e["relation"] == "sign_ingress" and e["target_longitude_deg"] == 210.0]
+    ing = [e for e in eps if e["relation"] == "sign_ingress"
+           and e["target_type"] == "bhava"]
+    res = [e for e in eps if e["relation"] == "residence"]
+    assert len(sky) == len(ing) == len(res) == 1
+    assert sky[0]["t_exact"] == ing[0]["t_exact"] == res[0]["t_exact"]
+    # one physical contribution: the sky event and the role-attached ingress
+    # share the independence_group (H-6)
+    assert sky[0]["independence_group"] == ing[0]["independence_group"]

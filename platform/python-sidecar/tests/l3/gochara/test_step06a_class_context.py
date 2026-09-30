@@ -38,6 +38,7 @@ from .conftest import (  # noqa: E402
     WP6_DROP_SQL,
     WP6_MIGRATION_1072,
     WP6_MIGRATION_1087,
+    WP6_MIGRATION_1152,
 )
 from .test_step06b_windows_projection import EXTRA_DDL, _episode  # noqa: E402
 from .test_wp9_stamp_columns import BASE_DDL as _WP9_BASE_DDL  # noqa: E402
@@ -164,6 +165,7 @@ def s6a_schema():
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())
+    conn.execute(WP6_MIGRATION_1152.read_text())
     conn.close()
     return True
 
@@ -182,6 +184,9 @@ EPISODES = [
 # and counted, so the class never enters the producer output) cannot go
 # through the candidate build: t_exact feeds the contact_id hash, so the
 # ledger writer rejects NULL. It is inserted by direct SQL after the build.
+# Migration 1152: the null-exact row must carry exact_crossing=false (the
+# anti-fabrication CHECK kgc_t_exact_iff_exact_crossing rejects the
+# copied row's true).
 _NULL_TEXACT_CONTACT_SQL = """
 INSERT INTO kala_gochara_contacts (
   chart_id, generation, contact_id, independence_group, body, relation,
@@ -200,7 +205,7 @@ SELECT chart_id, generation, 's6a-litigation-null-texact',
   '2026-04-01T00:00:00+00:00'::timestamptz, NULL,
   '2026-04-20T00:00:00+00:00'::timestamptz, bracket_seconds,
   tolerance_arcsec, truncated_at_horizon, branch, station_flag,
-  exact_crossing, orb_max_deg, orb_source, dwell_days, epistemic_class,
+  false, orb_max_deg, orb_source, dwell_days, epistemic_class,
   completeness_state, operator_role, precision_regime, time_basis,
   comparable_with, inclusivity, tier_basis, convention_id,
   ephemeris_backend, evidence_fact_ids, classical_citation,

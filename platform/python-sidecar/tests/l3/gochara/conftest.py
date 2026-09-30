@@ -120,6 +120,14 @@ WP6_MIGRATION_1087 = (
     / "migrations/1087_nirmana_l3_gochara_contacts_inclusivity_completeness_tier_basis.sql"
 )
 
+# Pravāha A2.1: t_exact nullable + exact_crossing/t_exact consistency CHECK +
+# truncated_at_horizon 'both' (N3 truncated contacts persistable). Applied
+# after 1081/1087 on the same disposable DB.
+WP6_MIGRATION_1152 = (
+    Path(__file__).resolve().parents[4]
+    / "migrations/1152_kala_gochara_contacts_t_exact_nullable_truncated.sql"
+)
+
 WP6_DROP_SQL = """
 DROP TABLE IF EXISTS kala_gochara_contacts;
 DROP TABLE IF EXISTS kala_gochara_coverage;
@@ -151,6 +159,7 @@ def wp6_schema():
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())
+    conn.execute(WP6_MIGRATION_1152.read_text())
     conn.close()
     return True
 

@@ -81,6 +81,10 @@ class FakeConn:
                 if str(r['chart_id']) == str(chart_id)
                 and r['generation'] == generation
                 and r['relation'] in relations
+                # SQL semantics: `t_exact >= %s AND t_exact < %s` is NULL for
+                # a NULL t_exact, and NULL is not true — a null-exact (N3
+                # truncated) row is NEVER returned by the serving query.
+                and r['t_exact'] is not None
                 and t0 <= r['t_exact'] < t1
                 and (bodies is None or r['body'] in bodies)
             ]
@@ -163,6 +167,33 @@ class TestFindEpisodesLedger:
         assert sat.aspect_deg == 60.0
         assert sat.contact_id == f'sha256:{"ab" * 32}'
         assert sat.target_longitude_deg == 12.75
+
+    def test_null_exact_and_residence_rows_never_served(self, svc):
+        """Candidate-only gate, serving half (steward scope ruling iii): even
+        if a null-exact (N3 truncated) or relation='residence' row were
+        present in the table, the '4.0' serving path never returns them —
+        the ledger query ranges on t_exact (NULL is not >= anything in SQL)
+        and EPISODE_RELATIONS predates 'residence'."""
+        assert 'residence' not in EPISODE_RELATIONS
+        null_exact = _contact(body='Saturn', relation='conjunction', aspect=None)
+        null_exact['contact_id'] = f'sha256:{"cd" * 32}'
+        null_exact['t_exact'] = None  # migration 1152 shape (N3 truncated)
+        residence = _contact(body='Saturn', relation='residence', aspect=None)
+        residence['contact_id'] = f'sha256:{"ef" * 32}'
+        residence['target_type'] = 'bhava'
+        residence['target_ref'] = '4'
+        conn = FakeConn(
+            authority=[{'chart_id': CHART_ID, 'authoritative_generation': '4.0'}],
+            contacts=[
+                _contact(body='Jupiter', relation='conjunction', aspect=None),
+                null_exact,
+                residence,
+            ],
+        )
+        batch = svc.find_episodes(conn, CHART_ID, [], Horizon(H0, H1))
+        assert [(e.body, e.relation) for e in batch.episodes] == [
+            ('Jupiter', 'conjunction')]
+        assert all(e.t_exact is not None for e in batch.episodes)
 
     def test_empty_interval_carries_full_coverage(self, svc):
         conn = FakeConn(
