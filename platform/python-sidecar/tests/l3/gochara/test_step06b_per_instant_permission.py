@@ -598,3 +598,177 @@ def test_step06a_read_contract_pins_the_frozen_build_or_refuses():
     with pytest.raises(DD.DashaReadConflict):
         mod.select_dasha_read_contract("some-other-chart", rows)
     assert mod.select_dasha_read_contract("x", [])["build_id"] is None
+
+
+# ── ASTRA v1.1 P1-2: the frozen daśā read contract and C5 identity ───────────
+
+MD_ID = "58afa482-4bce-42df-9c0d-0b5a2e02305e"
+
+
+def _l1row(rid, level, parent, lord, start, end, *, build=BUILD, tier=TIER,
+           system="vimshottari"):
+    return {"dasha_row_id": rid, "system_id": system, "level_n": level,
+            "parent_row_id": parent, "lord_graha": lord, "start_iso": start,
+            "end_iso": end, "build_id": build, "verification_pass_status": tier}
+
+
+def test_canonical_chart_refuses_a_wrong_sole_build_and_null_builds():
+    mod = _load_step06a()
+    with pytest.raises(DD.DashaReadConflict, match="pins build"):
+        mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="wrong-build"))
+    with pytest.raises(DD.DashaReadConflict, match="pins build"):
+        mod.select_dasha_read_contract(CHART["chart_id"], [])
+    # a non-canonical chart with a single build is accepted; NULL builds refused
+    assert mod.select_dasha_read_contract("other", _l1_rows(build="b1"))["build_id"] == "b1"
+    with pytest.raises(DD.DashaReadConflict, match="NULL build_id"):
+        mod.select_dasha_read_contract("other", _l1_rows(build=None))
+
+
+def test_null_build_or_tier_rows_are_rejected_under_explicit_pins():
+    """A row escaping the pin with a NULL build_id / tier is excluded (never
+    accepted as 'unpinned'); the reviewer's probe accepted NULLs."""
+    null_build_md = _l1row("md-null", 1, None, "Venus", "2000-01-01T00:00:00Z",
+                         "2030-01-01T00:00:00Z", build=None)
+    sel = w.select_period_rows([null_build_md] + _l1_rows(), w.jd_of(T1),
+                               pinned_build_id=BUILD, tier=TIER)
+    assert sel["md"]["lord_graha"] == "Mercury"
+    assert sel["rows_excluded"]["missing_build_id"] == 1
+    null_tier_md = _l1row("md-nt", 1, None, "Venus", "2000-01-01T00:00:00Z",
+                        "2030-01-01T00:00:00Z", tier=None)
+    sel = w.select_period_rows([null_tier_md] + _l1_rows(), w.jd_of(T1),
+                               pinned_build_id=BUILD, tier=TIER)
+    assert sel["md"]["lord_graha"] == "Mercury"
+    assert sel["rows_excluded"]["missing_tier"] == 1
+    # without an explicit pin the NULL-build row is a genuine competitor —
+    # and two MD rows overlapping at t is a (level, parent, index) conflict
+    with pytest.raises(DD.DashaReadConflict):
+        w.select_period_rows([null_build_md] + _l1_rows(), w.jd_of(T1),
+                             pinned_build_id=None, tier=None)
+
+
+def test_conflicting_level_parent_index_rows_raise_even_when_t_is_elsewhere():
+    """Two surviving siblings under one parent whose intervals overlap
+    compete for one (level, parent, index): rejected over the WHOLE pinned
+    set, not only at rows covering t. The reviewer's probe retained them."""
+    bogus = _l1row("ad-bogus", 2, MD_ID, "Jupiter", "2019-06-01T00:00:00Z",
+                 "2019-09-01T00:00:00Z")  # overlaps the Mars AD
+    with pytest.raises(DD.DashaReadConflict, match="index"):
+        _c5(_l1_rows(extra=[bogus]), T2)  # t₂ is inside the Rahu AD, not the overlap
+    # non-overlapping extra siblings are fine and get their own index
+    fine = _l1row("ad-fine", 2, MD_ID, "Jupiter", "2022-09-02T21:05:23Z",
+                "2024-01-01T00:00:00Z")
+    ctx = _c5(_l1_rows(extra=[fine]), T2)["period_context"]
+    assert ctx["ad"]["lord"] == "Rahu" and ctx["ad"]["index"] == 3
+
+
+def test_duplicate_parent_collapse_canonicalizes_children_never_orphans():
+    """Two identical MD rows (different ids) collapse; an AD parented to the
+    dropped duplicate is re-pointed to the keeper and still selected."""
+    rows = _l1_rows()
+    dup_md = _l1row("md-dup", 1, None, "Mercury", "2010-08-18T15:50:23Z",
+                  "2027-08-18T21:50:23Z")
+    for r in rows:
+        if r["dasha_row_id"] == "b1e4d515-6a94-4054-89ff-1ed2487f66ae":  # Mars AD
+            r["parent_row_id"] = "md-dup"
+    ctx = _c5(rows + [dup_md], T1)["period_context"]
+    assert ctx["md"]["lord"] == "Mercury"
+    assert set(ctx["md"]["merged_row_ids"]) == {MD_ID, "md-dup"}
+    assert ctx["ad"]["lord"] == "Mars" and ctx["ad"]["licence"] == "scored"
+    assert ctx["orphans_ignored"] == []
+    # the alias is disclosed
+    assert ctx["ad"]["parent_row_id"] == MD_ID
+
+
+def test_exact_instants_are_never_advanced_by_rounding():
+    rows = _l1_rows()
+    one_ms_before = BOUNDARY - timedelta(milliseconds=1)
+    assert w.utc_iso_of_jd(w.jd_of(one_ms_before)) < "2020-02-14T11:47:23"
+    assert _c5(rows, one_ms_before)["period_context"]["ad"]["lord"] == "Mars"
+    # the exact boundary via the exact instant (half-open ⇒ Rahu)
+    at = w.frozen_c5_permission_context(
+        rows, w.jd_of(BOUNDARY), "marriage", CHART, pinned_build_id=BUILD,
+        tier=TIER, t_iso="2020-02-14T11:47:23+00:00")
+    assert at["period_context"]["ad"]["lord"] == "Rahu"
+    assert at["period_context"]["t_utc"] == "2020-02-14T11:47:23+00:00"
+    before = w.frozen_c5_permission_context(
+        rows, w.jd_of(BOUNDARY), "marriage", CHART, pinned_build_id=BUILD,
+        tier=TIER, t_iso="2020-02-14T11:47:22.999999+00:00")
+    assert before["period_context"]["ad"]["lord"] == "Mars"
+
+
+def test_relation_identity_and_sibling_index_on_every_level():
+    rows = _l1_rows()
+    p1 = _c5(rows, T1)["period_context"]
+    p2 = _c5(rows, T2)["period_context"]
+    for lvl in ("md", "ad", "pd"):
+        assert isinstance(p1[lvl]["index"], int)
+        assert p1[lvl]["relation_record_id"].startswith("sha256:")
+    # AD siblings under the MD sorted by start: Ketu, Moon, Mars, Rahu
+    assert (p1["ad"]["index"], p2["ad"]["index"]) == (2, 3)
+    # distinct relations ⇒ distinct record ids; same relation ⇒ same id
+    assert p1["ad"]["relation_record_id"] != p1["pd"]["relation_record_id"]
+    assert p1["pd"]["relation_record_id"] == p2["pd"]["relation_record_id"]
+    assert p1["md"]["relation_record_id"] == p2["md"]["relation_record_id"]
+    # the record id is the B5.1 deterministic natural-key hash
+    from services.gochara_rules.records import RelationshipRecord
+    from services.gochara_rules.registry import RULE_VERSION
+    rec = RelationshipRecord(
+        chart_id=CHART["chart_id"], generation="4.0", event_class="marriage",
+        affected_person="native", frame="lagna", agent="Mars",
+        relation="occupancy", object_id="obj:sign:Libra", object_kind="sign_span",
+        object_role="occupant", contact_id=None, path_id="P1",
+        rule_version=RULE_VERSION, prerequisites=[], provenance="verse_cited",
+        operator_role="scored", source_text="Phaladīpikā",
+        source_page="PG249-250 (XX.34-38)")
+    assert p1["ad"]["relation_record_id"] == rec.record_id
+    # a level with no relation carries no identity
+    assert w.c5_relation_record_id("Mars", "none", "marriage", CHART, "none") is None
+
+
+# ── dasha_data.canonicalize_multilevel_rows (the shared pass) ───────────────
+
+
+def test_canonicalize_collapses_identical_rows_and_aliases_parents():
+    rows = [_l1row("md-a", 1, None, "Mercury", "2010-01-01T00:00:00Z", "2027-01-01T00:00:00Z"),
+            _l1row("md-b", 1, None, "Mercury", "2010-01-01T00:00:00Z", "2027-01-01T00:00:00Z"),
+            _l1row("ad-1", 2, "md-b", "Ketu", "2013-01-14T00:00:00Z", "2014-01-11T00:00:00Z"),
+            _l1row("ad-2", 2, "md-a", "Venus", "2014-01-11T00:00:00Z", "2017-01-01T00:00:00Z")]
+    out = DD.canonicalize_multilevel_rows(rows)
+    by_id = {r["dasha_row_id"]: r for r in out}
+    assert set(by_id) == {"md-a", "ad-1", "ad-2"}
+    assert by_id["md-a"]["merged_row_ids"] == ["md-a", "md-b"]
+    assert by_id["ad-1"]["parent_row_id"] == "md-a"
+    assert by_id["ad-1"]["parent_row_id_original"] == "md-b"
+    assert (by_id["ad-1"]["index"], by_id["ad-2"]["index"]) == (0, 1)
+
+
+def test_canonicalize_rejects_overlapping_siblings_and_is_order_independent():
+    a = _l1row("ad-1", 2, "md", "Ketu", "2013-01-14T00:00:00Z", "2014-01-11T00:00:00Z")
+    b = _l1row("ad-2", 2, "md", "Venus", "2013-06-01T00:00:00Z", "2015-01-01T00:00:00Z")
+    with pytest.raises(DD.DashaReadConflict, match="index"):
+        DD.canonicalize_multilevel_rows([a, b])
+    with pytest.raises(DD.DashaReadConflict, match="index"):
+        DD.canonicalize_multilevel_rows([b, a])
+    # touching intervals (half-open) are NOT a conflict
+    c = _l1row("ad-3", 2, "md", "Venus", "2014-01-11T00:00:00Z", "2015-01-01T00:00:00Z")
+    out = {r["dasha_row_id"]: r["index"] for r in DD.canonicalize_multilevel_rows([c, a])}
+    assert out == {"ad-1": 0, "ad-3": 1}
+
+
+def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
+    seen = {}
+
+    class _C:
+        def execute(self, sql, params):
+            seen["sql"], seen["params"] = sql, params
+            rows = [["r1", "vimshottari", 1, None, "Jupiter", "2020-01-01", "2030-01-01", "b1", "two_pass_verified"],
+                    ["r2", "vimshottari", 2, "r1", "Saturn", "2020-01-01", "2021-01-01", "b1", None]]
+
+            class _X:
+                def fetchall(self_inner):
+                    return rows
+            return _X()
+    out = DD.fetch_dasha_periods_multilevel(_C(), "chart-x", build_id="b1")
+    assert "AND build_id = %s" in seen["sql"] and seen["params"][-1] == "b1"
+    assert seen["params"][4] == DD.READ_CONTRACT_TIER  # tier pinned before duplicates
+    assert [r["dasha_row_id"] for r in out] == ["r1"]  # NULL-tier row rejected

@@ -228,13 +228,24 @@ def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict
     tier-filtered rows carry; several builds ⇒ a conflict — refuse (raise),
     never row-order pick; no Vimśottarī rows ⇒ build None (disclosed)."""
     from services.gochara_rules.permission import DASHA_READ_CONTRACT
-    builds = sorted({str(p.get("build_id")) for p in dasha_periods
-                     if p.get("system_id") == "vimshottari"
-                     and p.get("build_id") is not None})
+    vim = [p for p in dasha_periods if p.get("system_id") == "vimshottari"]
+    null_build = sum(1 for p in vim if p.get("build_id") is None)
+    builds = sorted({str(p.get("build_id")) for p in vim if p.get("build_id") is not None})
     pinned = DASHA_READ_CONTRACT["build_id"]
-    if str(chart_id) == DASHA_READ_CONTRACT["chart_id"] and pinned in builds:
+    if str(chart_id) == DASHA_READ_CONTRACT["chart_id"]:
+        # the canonical chart is PINNED by the frozen contract: any other
+        # sole build is a wrong build, never accepted (ASTRA v1.1 P1-2)
+        if pinned not in builds:
+            raise DD.DashaReadConflict(
+                f"chart_dashas §4.0: the frozen read contract pins build {pinned} "
+                f"for chart {chart_id}, but the two_pass_verified vimshottari rows "
+                f"carry {builds or 'no build'} — refusing an unpinned read")
         build = pinned
         basis = "GOCHARA_DESIGN_SPECS_v1_4 §4.0 pinned build"
+    elif null_build:
+        raise DD.DashaReadConflict(
+            f"chart_dashas §4.0: {null_build} two_pass_verified vimshottari rows "
+            f"for chart {chart_id} carry a NULL build_id — unpinnable, refusing")
     elif len(builds) == 1:
         build = builds[0]
         basis = "single two_pass_verified build present"
@@ -399,6 +410,15 @@ def main(argv: list[str] | None = None) -> int:
         # §4.0 read pin; both are read once and emitted at the top level.
         chart_operands = fetch_chart_operands(conn, args.chart_id)
         dasha_contract = select_dasha_read_contract(args.chart_id, dasha_periods)
+        # the emitted Vimśottarī rows are PINNED to the contract's build (rows
+        # of other builds are excluded and counted; other systems untouched)
+        before = len(dasha_periods)
+        dasha_periods = [
+            p for p in dasha_periods
+            if p.get("system_id") != "vimshottari"
+            or (dasha_contract["build_id"] is not None
+                and str(p.get("build_id")) == str(dasha_contract["build_id"]))]
+        dasha_contract["rows_excluded_by_build_pin"] = before - len(dasha_periods)
 
         contexts: dict[str, dict] = {}
         omitted: list[dict] = []

@@ -398,17 +398,16 @@ VIMSHOTTARI = "vimshottari"
 PERMISSION_CONTRACT = "frozen_c5:GOCHARA_DESIGN_SPECS_v1_4 §4.1 (D-SPECS C5)"
 # N-15: testimony systems annotate, never weight — out of the fraction.
 TESTIMONY_SYSTEMS = frozenset({"sade_sati"})
-# JD floats carry ~40 µs of slack at J2000+; a boundary instant must resolve
-# to its half-open side deterministically, so the instant is read at 10 ms.
-_INSTANT_ROUND_SECONDS = 0.01
-
-
 def utc_iso_of_jd(t_jd: float) -> str:
     """The UTC instant the licence is evaluated at (§4.0 instant rule: the
-    read prints the UTC instant it evaluated), rounded to 10 ms."""
+    read prints the UTC instant it evaluated) — the JD converted EXACTLY
+    (microsecond precision, never rounded: a 10 ms rounding advanced
+    2020-02-14T11:47:22.999Z into the Rahu AD — ASTRA v1.1). A JD float
+    carries ~40 µs of slack; a caller holding the exact instant passes it
+    as `t_iso` to select_period_rows / frozen_c5_permission_context and it
+    is used verbatim."""
     secs = (float(t_jd) - JD_UNIX_EPOCH) * 86400.0
-    secs = round(secs / _INSTANT_ROUND_SECONDS) * _INSTANT_ROUND_SECONDS
-    return datetime.fromtimestamp(secs, tz=UTC).isoformat()
+    return datetime.fromtimestamp(secs, tz=UTC).isoformat(timespec="microseconds")
 
 
 def _rowv(row: dict, key: str):
@@ -419,24 +418,42 @@ def _rowv(row: dict, key: str):
 def select_period_rows(dasha_rows: list[dict], t_jd: float, *,
                        system: str = VIMSHOTTARI,
                        pinned_build_id: str | None = None,
-                       tier: str | None = None) -> dict:
-    """§4.0 row selection at t: half-open [start_iso, end_iso), parent-linked
-    per level, pinned build/tier, duplicate rules enforced."""
+                       tier: str | None = None,
+                       t_iso: str | None = None) -> dict:
+    """§4.0 row selection at t: PIN first (build / tier — under an explicit
+    pin a row with a NULL pin field is REJECTED, never accepted), then the
+    duplicate rules (dasha_data.canonicalize_multilevel_rows: identical
+    collapse with parent-alias canonicalization, sibling `index`, and the
+    `(level, parent, index)` overlap conflict over the WHOLE pinned set —
+    not only the rows covering t), then half-open [start_iso, end_iso)
+    parent-linked selection per level at the EXACT instant."""
     from services.gochara_grammar import dasha_data as DD
-    t_iso = utc_iso_of_jd(t_jd)
-    excluded = {"other_system": 0, "other_build": 0, "other_tier": 0}
+    t_iso = t_iso or utc_iso_of_jd(t_jd)
+    excluded = {"other_system": 0, "other_build": 0, "other_tier": 0,
+                "missing_build_id": 0, "missing_tier": 0}
     rows = []
     for r in dasha_rows:
         if _rowv(r, "system_id") != system:
             excluded["other_system"] += 1
             continue
-        if pinned_build_id and _rowv(r, "build_id") not in (None, str(pinned_build_id)):
-            excluded["other_build"] += 1
-            continue
-        if tier and _rowv(r, "verification_pass_status") not in (None, tier):
-            excluded["other_tier"] += 1
-            continue
-        rows.append(r)
+        if pinned_build_id:
+            b = _rowv(r, "build_id")
+            if b is None:
+                excluded["missing_build_id"] += 1
+                continue
+            if b != str(pinned_build_id):
+                excluded["other_build"] += 1
+                continue
+        if tier:
+            tr = _rowv(r, "verification_pass_status")
+            if tr is None:
+                excluded["missing_tier"] += 1
+                continue
+            if tr != tier:
+                excluded["other_tier"] += 1
+                continue
+        rows.append(dict(r))
+    rows = DD.canonicalize_multilevel_rows(rows)
 
     orphans: list[dict] = []
 
@@ -458,20 +475,13 @@ def select_period_rows(dasha_rows: list[dict], t_jd: float, *,
             hits.append(r)
         if not hits:
             return None
-        # §4.0 identical-duplicate rule: equal on every contract field ⇒
-        # collapse (record the ids); any difference ⇒ conflict, fail loudly.
-        ident = {(_rowv(r, "lord_graha"), _rowv(r, "start_iso"),
-                  _rowv(r, "end_iso")) for r in hits}
-        if len(ident) > 1:
+        if len(hits) > 1:
+            # cannot happen after canonicalize_multilevel_rows (identical
+            # duplicates collapsed; overlapping siblings raised) — defensive
             raise DD.DashaReadConflict(
-                f"chart_dashas §4.0 conflict at {t_iso} level {level} under "
-                f"parent {parent_id}: rows "
-                f"{[_rowv(r, 'dasha_row_id') for r in hits]} disagree on "
-                f"{sorted(ident)} — both rejected, never silently picked")
-        keep = dict(hits[0])
-        keep["merged_row_ids"] = sorted({_rowv(r, "dasha_row_id") for r in hits}
-                                        | set(map(str, hits[0].get("merged_row_ids") or [])))
-        return keep
+                f"chart_dashas §4.0: {len(hits)} rows cover {t_iso} at level "
+                f"{level} under parent {parent_id} — both rejected")
+        return dict(hits[0])
 
     md = covering(1, None)
     ad = covering(2, _rowv(md, "dasha_row_id")) if md else None
@@ -481,19 +491,64 @@ def select_period_rows(dasha_rows: list[dict], t_jd: float, *,
             "rows_considered": len(rows)}
 
 
+def c5_relation_record_id(lord: str, relation: str, event_class: str,
+                          chart: dict, licence: str) -> str | None:
+    """The C5 relation IDENTITY (§4.1: `relation` names the natal relation
+    kind AND its record id): the §1 relationship_record for the period
+    lord's natal relation to the class, built with the B5.1 record type
+    (deterministic record_id over the natural key). None when the relation
+    is `none`/`unknown`."""
+    from services.gochara_rules.frames import SIGN_LORDS, sign_of
+    from services.gochara_rules.records import RelationshipRecord
+    from services.gochara_rules.registry import RULE_VERSION, signature_houses
+    if relation in ("none", "unknown"):
+        return None
+    natal = chart["natal"]
+    houses = signature_houses(event_class, chart) or frozenset()
+    if relation == "occupancy":
+        obj_sign = sign_of(natal[lord])
+        agent, role = lord, "occupant"
+    elif relation == "ownership":
+        owned = sorted(s for s in houses if SIGN_LORDS[s] == lord)
+        obj_sign, agent, role = owned[0], lord, "lord"
+    elif relation == "dispositorship":
+        disp = SIGN_LORDS[sign_of(natal[lord])]
+        if disp in natal and sign_of(natal[disp]) in houses:
+            obj_sign = sign_of(natal[disp])
+        else:
+            owned = sorted(s for s in houses if SIGN_LORDS[s] == disp)
+            obj_sign = owned[0] if owned else sign_of(natal[lord])
+        agent, role = disp, "dispositor"
+    else:
+        return None
+    rec = RelationshipRecord(
+        chart_id=str(chart.get("chart_id", "")), generation="4.0",
+        event_class=event_class, affected_person="native", frame="lagna",
+        agent=agent, relation=relation, object_id=f"obj:sign:{obj_sign}",
+        object_kind="sign_span", object_role=role, contact_id=None,
+        path_id="P1", rule_version=RULE_VERSION, prerequisites=[],
+        provenance="verse_cited" if licence == "scored" else "uncited_extension",
+        operator_role=licence if licence in ("scored", "testimony") else "testimony",
+        ruling_ref=None if licence == "scored" else "D-PADMIT",
+        source_text="Phaladīpikā", source_page="PG249-250 (XX.34-38)")
+    return rec.record_id
+
+
 def frozen_c5_permission_context(dasha_rows: list[dict], t_jd: float,
                                  event_class: str, chart: dict, *,
                                  pinned_build_id: str | None = None,
-                                 tier: str | None = None) -> dict:
+                                 tier: str | None = None,
+                                 t_iso: str | None = None) -> dict:
     """§4.1: permission(chart_id, t, event_class) → {admitted_paths,
-    period_context{system, build_id, md/ad/pd{lord,row_id,licence,relation},
-    applicability}, class_licence}. Per-level licences via the B5.1
-    relation-kind evaluator; levels never collapsed into one boolean."""
+    period_context{system, build_id, md/ad/pd{lord, row_id, index, licence,
+    relation, relation_record_id}, applicability}, class_licence}.
+    Per-level licences via the B5.1 relation-kind evaluator; levels never
+    collapsed into one boolean; the relation identity is the §1 record id."""
     from brahmagyan.graha_vocabulary import to_title
     from services.gochara_rules.permission import (
         applicability, period_lord_relation)
     sel = select_period_rows(dasha_rows, t_jd, pinned_build_id=pinned_build_id,
-                             tier=tier)
+                             tier=tier, t_iso=t_iso)
     period_context: dict = {"system": VIMSHOTTARI, "build_id": pinned_build_id,
                             "tier": tier, "t_utc": sel["t_utc"]}
     licences = []
@@ -508,9 +563,13 @@ def frozen_c5_permission_context(dasha_rows: list[dict], t_jd: float,
         rel = period_lord_relation(lord, event_class, chart)
         period_context[level] = {
             "lord": lord, "row_id": _rowv(row, "dasha_row_id"),
+            "index": row.get("index"),
             "merged_row_ids": row.get("merged_row_ids"),
+            "parent_row_id": _rowv(row, "parent_row_id"),
             "start_iso": _rowv(row, "start_iso"), "end_iso": _rowv(row, "end_iso"),
             "licence": rel["licence"], "relation": rel["relation"],
+            "relation_record_id": c5_relation_record_id(
+                lord, rel["relation"], event_class, chart, rel["licence"]),
             "detail": rel["detail"]}
         licences.append(rel["licence"])
     class_licence = ("scored" if "scored" in licences
