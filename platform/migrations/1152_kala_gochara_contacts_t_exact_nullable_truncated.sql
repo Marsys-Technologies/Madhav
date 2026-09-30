@@ -34,33 +34,44 @@
 -- truncated row must not carry one (a non-NULL t_exact on a no-exact row
 -- would BE the fabrication this migration exists to prevent).
 --
--- Scope (corrected per the A2.2 review): kala_gochara_contacts holds the
+-- Scope (corrected per the A2.2 reviews): kala_gochara_contacts holds the
 -- PUBLISHED '4.0' rows as well as candidates — the new CHECK therefore
--- applies to existing rows. Every existing row is exact (1081's NOT NULL
--- made no-exact rows unpersistable), so validation passes; the read-only
--- preflight proving it ships beside this file
--- (scripts/kala_gochara_cutover/preflight_1152_existing_rows_satisfy_check.sql)
--- and MUST run clean against production before application. The protected
--- 'v1'/'3.0' corpus lives in kala_gochara_windows and is untouched. Null-exact
--- and residence rows are produced only for candidate generations >= '4.1'
+-- applies to existing rows. Whether existing rows satisfy it is NOT inferred
+-- from 1081's NOT NULL (t_exact NOT NULL does not prove exact_crossing=true);
+-- it is PROVEN by the read-only preflight beside this file
+-- (scripts/kala_gochara_cutover/preflight_1152_existing_rows_satisfy_check.sql),
+-- which is a REQUIRED pre-application check: it must return zero rows on
+-- production before this migration is applied. The protected 'v1'/'3.0'
+-- corpus lives in kala_gochara_windows and is untouched. Null-exact and
+-- residence rows are produced only for candidate generations >= '4.1'
 -- (producer gate in step06_enumerate_episodes.candidate_keeps_candidate_only_rows).
 --
--- Operational properties (stated per the A2.2 review):
+-- Operational properties (corrected per the A2.2 closure check):
 --   * SINGLE-RUN: the tracked runner (migrate.ts) skips applied migrations;
 --     the SQL itself is NOT replay-idempotent — a second run fails at ADD
 --     CONSTRAINT (the name already exists). Never apply it by hand twice.
+--   * ONE TRANSACTION, BLOCKING WHILE HELD: migrate.ts executes the whole
+--     file in a single transaction, so the ACCESS EXCLUSIVE lock taken by the
+--     ALTER TABLEs is held through VALIDATE CONSTRAINT until commit — this
+--     migration blocks writes (and, on ACCESS EXCLUSIVE, reads of the table)
+--     for its full duration. No "brief lock then nonblocking validation"
+--     split exists here; duration depends on the table's row volume at
+--     application time, which is measured by ops, not asserted here.
+--   * Bounded application: the SET LOCAL statements below bound lock waiting
+--     and statement time inside the runner's transaction; on lock_timeout
+--     the transaction aborts cleanly (nothing applied — rerun after the
+--     table is quiet).
 --   * IRREVERSIBLE IN PRACTICE: once truncated (t_exact NULL) rows exist,
 --     restoring NOT NULL would require deleting exactly the rows this
 --     migration exists to keep — i.e. recreating the N3 absence-fabrication.
 --     There is no rollback that preserves the new data; the only honest
 --     reversal is a scoped Clear of the candidate generation that owns them
 --     (plan §6.4), never a row delete under a published label.
---   * Lock/validation: DROP NOT NULL and ADD CONSTRAINT ... NOT VALID take
---     only brief locks; VALIDATE CONSTRAINT scans the table without blocking
---     writes (ShareUpdateExclusive). On the current row volume this is
---     trivially cheap; the preflight above doubles as the volume check.
 --
 -- Applied through migrate.ts (transactional runner — no BEGIN/COMMIT here).
+
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '120s';
 
 ALTER TABLE kala_gochara_contacts
   ALTER COLUMN t_exact DROP NOT NULL;

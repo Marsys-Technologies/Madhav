@@ -56,11 +56,14 @@ nakshatra_ingress, kakshya_cell_crossing, return. Point targets (karaka,
 dasha_lord_portfolio, lord, yoga_constituent, sensitive_degree-positive) get
 conjunction + drishti_contact + return (return only for the target's owning
 graha — a return is body X returning to body X's natal longitude; for any
-other body the root set is identical to the conjunction's) plus the three
-boundary relations attached to the target (the _moon_on_demand precedent).
-Interval targets (bhava, arudha, bhava_arudha, mechanism_node, M-6 derived)
-get residence spans and sign_ingress via kernel residence_spans — NEVER point
-contacts (M-5). mechanism_node intervals are enumerated for the graha the ref
+other body the root set is identical to the conjunction's). Interval targets
+(bhava, arudha, bhava_arudha, mechanism_node, M-6 derived) get residence
+spans via kernel residence_spans — NEVER point contacts (M-5). Boundary
+events (the three ingress relations) are sky geometry: stored ONCE per
+(body, relation, instant) as target_type='sky_event' rows (R5, A2.2
+amendment 4); a residence span's row carries its observed ingress instant —
+the target attachment — so no per-target boundary rows exist anywhere in the
+payload. mechanism_node intervals are enumerated for the graha the ref
 names; M-6 derived intervals for the formula's ruled agent (target_qualifier
 'agent:X') only — the verse names the transiting graha.
 
@@ -87,8 +90,11 @@ R5 (global boundary substrate): boundary events are sky geometry — solved
 once per body and stored once per (body, relation, instant) as
 target_type='sky_event' rows (target_ref 'sky:<relation>'); they are NOT
 duplicated per resonance-map target. Residence spans reuse the same refined
-sign-ingress roots for their entry/exit instants, so a whole-sign ingress
-instant IS the stored sky event. assert_sky_events_unique runs after dedupe.
+sign-ingress roots for their entry/exit instants (explicit crossing
+association: level + direction + structural bracket containment, never a
+timestamp-tolerance join), so a whole-sign ingress instant IS the stored sky
+event, and the residence row is the target attachment.
+assert_boundary_events_stored_once runs after dedupe over the WHOLE payload.
 
 Usage:
     python3 step06_enumerate_episodes.py --dsn postgresql://... \
@@ -802,39 +808,58 @@ def enumerate_body(
                 ephe_path=ephe_path, refine=refine,
                 boundary_roots=boundary_roots["sign_ingress"])
             for span in spans:
-                _emit([span.ingress_episode], t)
-                # T0-3 (#6/#7, spec §6.2 inv: "residence spans are intervals
-                # with coverage"): the span ITSELF is persisted as a
-                # relation='residence' row — the ingress episode alone is
-                # zero-width and loses the interval (pre-fix the span was
-                # computed and discarded; FABLE: 98.6% of the ledger inert).
+                # T0-3 (#6/#7): the span ITSELF is persisted as a
+                # relation='residence' row carrying the observed ingress
+                # instant in t_exact. The ingress is NOT also emitted as a
+                # separate sign_ingress row for this target (A2.2 amendment
+                # 4 / R5 whole-payload: the boundary event is stored ONCE as
+                # the per-body sky_event row; the residence row is the
+                # target attachment — a per-target ingress copy would be a
+                # second stored row for the same physical event).
                 # Gated to candidate generations >= '4.1' (scope ruling).
                 # Kimi review #3: the span's truncation is the SAME physical
-                # truncation as its ingress episode's — counted there, never
-                # twice.
+                # truncation as its ingress's — counted once here.
                 if keep_new:
+                    if span.ingress_episode.t_exact is None:
+                        stats["episodes_without_exact"] += 1
                     out.append(_residence_span_dict(span, t, backend))
+                elif span.ingress_episode.t_exact is None:
+                    stats["episodes_without_exact_dropped_by_gate"] += 1
             _note(t.target_type, ["residence", "sign_ingress"])
     out.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
     stats["searched"] = {k: sorted(v) for k, v in stats["searched"].items()}
     return out, stats
 
 
-def assert_sky_events_unique(episodes: list[dict]) -> int:
-    """R5 closure assertion, run AFTER dedupe/persistence shaping: each
-    physical boundary event (body × relation × instant) is stored exactly
-    ONCE as a sky_event row. Returns the number of sky-event rows."""
-    seen: set[tuple] = set()
+def assert_boundary_events_stored_once(episodes: list[dict]) -> int:
+    """R5 closure assertion over the WHOLE payload, run AFTER dedupe
+    (A2.2 amendment 4): every boundary-relation row is a sky_event row
+    (target attachments live on the residence rows, never as extra boundary
+    rows), and each physical boundary event (body × relation × instant) is
+    stored exactly once. Returns the number of sky-event rows."""
     n = 0
+    seen: set[tuple] = set()
     for e in episodes:
-        if e["relation"] in BOUNDARY_RELATIONS and e["target_type"] == "sky_event":
-            key = (e["body"], e["relation"], str(e["t_exact"]))
-            if key in seen:
-                raise AssertionError(
-                    f"R5 violated: boundary event stored twice: {key}")
-            seen.add(key)
-            n += 1
+        if e["relation"] not in BOUNDARY_RELATIONS:
+            continue
+        if e["target_type"] != "sky_event":
+            raise AssertionError(
+                "R5 violated: a boundary event is stored as a target-attached "
+                f"row ({e['relation']} for {e['target_type']}:{e['target_ref']})"
+                " — boundary events are sky_event rows only; target"
+                " attachments live on the residence rows")
+        key = (e["body"], e["relation"], str(e["t_exact"]))
+        if key in seen:
+            raise AssertionError(
+                f"R5 violated: boundary event stored twice: {key}")
+        seen.add(key)
+        n += 1
     return n
+
+
+# Backwards-compatible alias (the A2 round-1 name).
+def assert_sky_events_unique(episodes: list[dict]) -> int:
+    return assert_boundary_events_stored_once(episodes)
 
 
 # ── ADK-0020 dedupe: one ledger row per physical contact (WP1 §3.3 H-6) ──────
@@ -1273,9 +1298,9 @@ def main(argv: list[str] | None = None) -> int:
         return 5
 
     # R5 closure: after dedupe, each physical boundary event is stored exactly
-    # once (as a sky_event row). A violation here is a defect — refuse, never
-    # ship a duplicated physical substrate.
-    n_sky_events = assert_sky_events_unique(episodes)
+    # once (as a sky_event row), over the WHOLE payload — a target-attached
+    # boundary row or a duplicated event refuses the run, never ships.
+    n_sky_events = assert_boundary_events_stored_once(episodes)
 
     Path(args.episodes_out).write_text(
         json.dumps(episodes, indent=2, default=str) + "\n")
