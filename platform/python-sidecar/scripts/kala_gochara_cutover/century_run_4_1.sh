@@ -44,9 +44,56 @@ fi
 
 echo "[century-4.1] chart=$CHART_ID generation=$GENERATION horizon=[$HORIZON_START,$HORIZON_END) ephe=$EPHE_PATH"
 
+echo "[century-4.1] step 0/3: ephemeris verification (fail closed)"
+EPHE_PATH_ENV="$EPHE_PATH" python - <<'PYEOF'
+import hashlib
+import os
+import sys
+
+EPHE = os.environ["EPHE_PATH_ENV"]
+
+# sha256 pins from Dockerfile.pipeline (the image build verifies the same pins;
+# re-verified here so a tampered or fallback layer fails closed before any solve).
+PINS = {
+    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
+}
+# Size-verified only at image build (no upstream pin); presence + floor here.
+SIZE_FLOORS = {"sefstars.txt": 1024, "seleapsec.txt": 1024}
+
+for name, want in PINS.items():
+    path = os.path.join(EPHE, name)
+    if not os.path.exists(path):
+        print(f"[ephe] REFUSED: missing {path}", file=sys.stderr)
+        sys.exit(1)
+    got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    if got != want:
+        print(f"[ephe] REFUSED: {name} sha256 {got} != pinned {want}", file=sys.stderr)
+        sys.exit(1)
+for name, floor in SIZE_FLOORS.items():
+    path = os.path.join(EPHE, name)
+    if not os.path.exists(path) or os.path.getsize(path) < floor:
+        print(f"[ephe] REFUSED: {name} missing or below size floor", file=sys.stderr)
+        sys.exit(1)
+
+import swisseph as swe
+
+swe.set_ephe_path(EPHE)
+# Fixed instant (J2000) — the backend bit in the returned retflag is what is
+# asserted (F-14 convention: never trust the requested flag).
+_jd = swe.julday(2000, 1, 1, 12.0)
+for body, label in ((swe.SUN, "Sun"), (swe.MOON, "Moon"), (swe.SATURN, "Saturn")):
+    _xx, retflag = swe.calc_ut(_jd, body, swe.FLG_SWIEPH | swe.FLG_SPEED)
+    if not (retflag & swe.FLG_SWIEPH) or (retflag & swe.FLG_MOSEPH):
+        print(f"[ephe] REFUSED: {label} computed via fallback backend "
+              f"(retflag={retflag}) — not the pinned .se1 set", file=sys.stderr)
+        sys.exit(1)
+print("[ephe] OK: 3 .se1 sha256 pins match, aux files present, SWIEPH backend confirmed")
+PYEOF
+
 echo "[century-4.1] step 1/3: enumerate episodes (all PERSISTED_BODIES)"
 python scripts/kala_gochara_cutover/step06_enumerate_episodes.py \
-  --dsn "$DATABASE_URL" \
   --chart-id "$CHART_ID" \
   --generation "$GENERATION" \
   --horizon-start "$HORIZON_START" \
@@ -57,7 +104,6 @@ python scripts/kala_gochara_cutover/step06_enumerate_episodes.py \
 
 echo "[century-4.1] step 2/3: candidate build (single transaction, publish_candidate)"
 python scripts/kala_gochara_cutover/step06_candidate_build.py \
-  --dsn "$DATABASE_URL" \
   --chart-id "$CHART_ID" \
   --generation "$GENERATION" \
   --horizon-start "$HORIZON_START" \
@@ -68,7 +114,6 @@ python scripts/kala_gochara_cutover/step06_candidate_build.py \
 
 echo "[century-4.1] step 3/3: windows projection for the candidate generation"
 python scripts/kala_gochara_cutover/step06b_windows_projection.py \
-  --dsn "$DATABASE_URL" \
   --chart-id "$CHART_ID" \
   --generation "$GENERATION" \
   --baseline-generation "$BASELINE_GENERATION" \

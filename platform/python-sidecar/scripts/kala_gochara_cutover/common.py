@@ -2,8 +2,9 @@
 
 Every step script in this directory:
 
-  * takes the target database as an EXPLICIT `--dsn` argument (never a default
-    pointing at a shared database);
+  * takes the target database as `--dsn` or the `DATABASE_URL` environment
+    variable (the env form is preferred — it keeps the credential off argv);
+    never a default pointing at a shared database;
   * REFUSES the production instance unless the matching authorization flag is
     set: steps 0-5 (tranche 1) require env `PRODUCTION_TRANCHE_1_AUTHORIZED=true`,
     steps 6-10 (tranche 2) require `PRODUCTION_TRANCHE_2_AUTHORIZED=true`.
@@ -72,11 +73,22 @@ def refuse_production(dsn: str, step: int) -> None:
 
 def step_parser(step: int, description: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--dsn", required=True,
-                        help="explicit target connection string (no default)")
+    parser.add_argument("--dsn", default=None,
+                        help="explicit target connection string; when omitted, "
+                             "read from the DATABASE_URL environment variable "
+                             "(preferred — keeps the credential off argv)")
     parser.add_argument("--evidence", action="store_true",
                         help="append this run's outcome to evidence/step%02d_evidence.md" % step)
     return parser
+
+
+def resolve_dsn(args) -> str:
+    """The DSN from --dsn or DATABASE_URL; exit 3 naming neither value."""
+    dsn = getattr(args, "dsn", None) or os.environ.get("DATABASE_URL")
+    if not dsn:
+        print("ERROR: no DSN — pass --dsn or set DATABASE_URL", file=sys.stderr)
+        sys.exit(3)
+    return dsn
 
 
 def write_evidence(step: int, outcome: str, details: str = "") -> Path:

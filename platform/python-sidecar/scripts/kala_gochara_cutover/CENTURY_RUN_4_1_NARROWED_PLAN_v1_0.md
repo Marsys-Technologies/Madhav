@@ -55,16 +55,27 @@ written. The governed vehicle is a dedicated deploy-managed job:
 
 ## 3. Execution chain (what the script runs)
 
-1. `step06_enumerate_episodes.py` — all `PERSISTED_BODIES` (8 non-Moon grahas; Moon
+1. Step 0 (fail closed): sha256-verify `/app/ephe` `sepl_18/semo_18/seas_18.se1`
+   against the Dockerfile.pipeline pins, presence/size-floor the aux files, and
+   assert Sun/Moon/Saturn compute with the SWIEPH backend bit (never Moshier —
+   F-14: the returned retflag, not the requested flag). Any failure exits 1
+   before any solve or DB touch.
+2. `step06_enumerate_episodes.py` — all `PERSISTED_BODIES` (8 non-Moon grahas; Moon
    stays on-demand per M-3/R7), orb 5.0 (M-1), refine on, `--ephe-path /app/ephe`
    (image carries the sha256-pinned .se1 set, `Dockerfile.pipeline`), episodes +
    coverage JSON to `/tmp/century_4_1/`.
-2. `step06_candidate_build.py` — one transaction: `register_convention` →
+3. `step06_candidate_build.py` — one transaction: `register_convention` →
    `publish_candidate` → `write_contacts` → `write_coverage` (delete-then-insert
    scoped to (chart, '4.1'), legal only while candidate).
-3. `step06b_windows_projection.py` — generation '4.1', baseline '3.0' (the rollback
+4. `step06b_windows_projection.py` — generation '4.1', baseline '3.0' (the rollback
    surface is untouched).
-4. In-script post-run completeness check (§5).
+5. In-script post-run completeness check (§5).
+
+DSN handling (steward amendment 1): the scripts read `DATABASE_URL` from the
+environment (`common.resolve_dsn` — `--dsn` is now optional and deprecated for
+this path), so the credential never appears on argv or in argparse/usage/error
+echo. Error paths print host/port at most (`refuse_production`); the no-DSN error
+names neither value.
 
 ## 4. The exact command (after the deploy PR merges and the job exists)
 
@@ -94,8 +105,9 @@ execution time only — the job's standing environment stays clean.
 - [ ] §12.9 overlay freshness: the enumerator checks `ka_vedha_gochara`/`ka_moorti_nirnaya`
       fingerprints BEFORE enumerating and exits 7 on stale — if that fires, STOP and
       report; do not force.
-- [ ] Ephemeris: image's `/app/ephe` sha256 pins verified at image build
-      (Dockerfile.pipeline); script passes `--ephe-path /app/ephe` explicitly.
+- [ ] Ephemeris: step 0 of the runner sha256-verifies the image's `/app/ephe`
+      `.se1` set against the Dockerfile.pipeline pins and asserts the SWIEPH
+      backend before enumeration; any mismatch fails the execution closed.
 - [ ] Memory: see §6 estimate. If the task OOMs, STOP, report the measurement —
       the per-body fallback (`--bodies` loop + concatenation; the dedupe contact
       ids include the body, so payloads concatenate exactly) is the documented
