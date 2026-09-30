@@ -10,8 +10,9 @@ generation '4.0'. What this file proves:
     lambda evaluator equals the pinned legacy_semantics algebra term-for-term;
     find_components on single / disjoint / sub-day-bump series (breakpoint
     augmentation makes a sub-day span visible); H-5 — every admitted peak is
-    stored (the pre-H-5 cap of 3 is removed, the pinned 90-day separation
-    retained); the relation→primitive map vocabulary; the delta report's
+    stored (the pre-H-5 cap of 3 is removed; N5 — the 90-day separation is a
+    serve-time trim in resolution_hierarchy.py, NOT applied at write time, so
+    closely-spaced admitted peaks are all persisted); the relation→primitive map vocabulary; the delta report's
     honest '—' nulls for absent baseline factors.
   * disposable-DB integration (WP6 DSN only, NOT_RUN when unreachable): the
     flip gate windows_present goes RED→GREEN across the writer; era/month/day
@@ -259,6 +260,41 @@ def test_h5_all_admitted_peaks_retained():
     day_peaks = sorted(r["peak_date"] for r in rows if r["resolution"] == "day")
     assert day_peaks == sorted(
         (base + timedelta(days=120 * i)).date() for i in range(5))
+
+
+# ── unit: N5 — the 90-day separation is a serve-time trim ───────────────────
+
+
+def test_n5_close_admitted_peaks_both_persisted():
+    """Two admitted peaks 30 days apart inside ONE era component must BOTH be
+    projected. The pre-repair writer applied the 90-day separation trim at
+    write time (retain_candidates(min_separation_days=90)), dropping the
+    second peak before persistence; per N5 that trim belongs to the serving
+    layer (resolution_hierarchy.py:117-127). This test fails on the old code
+    (peaks_retained would be 1, with one month/day family)."""
+    ctx = _ctx()
+    base = _dt("2026-01-15T12:00:00+00:00")
+    base_jd = w.jd_of(base)
+    speed = 0.25  # °/day — 5.0° orb lobes are ±20 days wide, so contacts 30
+    # days apart overlap into ONE component with two distinct local maxima
+    contacts = [
+        _contact("n5a", base, half_days=20.0, target_lon_deg=300.0),
+        _contact("n5b", base + timedelta(days=30), half_days=20.0,
+                 target_lon_deg=(300.0 + speed * 30.0) % 360.0),
+    ]
+    horizon = (w.jd_of(_dt("2025-12-01T00:00:00+00:00")),
+               w.jd_of(_dt("2026-05-01T00:00:00+00:00")))
+    rows, report = w.project_class_windows(
+        ctx, contacts, horizon, _open_gates,
+        planet_pos_fn=_linear_pos_fn(base_jd, speed=speed))
+    assert report["components"] == 1          # one era, two peaks inside it
+    assert report["peaks_admitted"] == 2
+    assert report["peaks_retained"] == 2      # old code: 1 (90-day trim)
+    assert report["month_windows"] == 2
+    assert report["day_windows"] == 2
+    day_peaks = sorted(r["peak_date"] for r in rows if r["resolution"] == "day")
+    assert day_peaks == sorted(
+        (base + timedelta(days=30 * i)).date() for i in range(2))
 
 
 # ── unit: E-020 rehearsal finding — refined peak outside its era ─────────────

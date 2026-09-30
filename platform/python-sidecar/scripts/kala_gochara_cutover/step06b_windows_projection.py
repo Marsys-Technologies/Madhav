@@ -64,9 +64,12 @@ Semantics (every choice disclosed, none improvised):
     genuinely positive.
   * Peaks — pinned find_local_maxima + admit_candidates (era's own P90) +
     refine_peak_to_day, with retain_candidates called at max_peaks =
-    len(admitted): the pre-H-5 cap of 3 (MAX_PEAKS_PER_ERA_WINDOW) is REMOVED
-    per H-5 — every admitted peak is stored; the pinned 90-day minimum
-    separation is retained. This choice is recorded in the run report.
+    len(admitted) and min_separation_days = 0: the pre-H-5 cap of 3
+    (MAX_PEAKS_PER_ERA_WINDOW) is REMOVED per H-5, and the 90-day minimum
+    separation is NOT applied at write time — per N5 that trim is a
+    SERVE-time concern (resolution_hierarchy.py:117-127), so every admitted
+    peak is stored, however closely spaced. This choice is recorded in the
+    run report.
   * Era -> month -> day rows mirror build_resolution_hierarchy (calendar
     month of the refined peak clipped to the era; day row at the refined
     peak), parent_window_id wired to the containing row's id at INSERT time
@@ -138,7 +141,16 @@ GENERATION_DEFAULT = "4.0"
 BASELINE_DEFAULT = "3.0"
 MIN_LAMBDA_DEFAULT = 1e-9   # positive-activity floor; NOT the threshold.py 0.0 fallback (F-08)
 COARSE_STEP_DAYS_DEFAULT = 1.0
-MIN_PEAK_SEPARATION_DAYS = 90.0  # pinned (resolution_hierarchy.py); H-5 removes only the count cap
+# N5 (FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0): the 90-day minimum peak
+# separation is a SERVE-TIME trim, owned by the serving layer
+# (services/gochara_v3/resolution_hierarchy.py:117-127,
+# MIN_PEAK_SEPARATION_DAYS, applied per-query). This writer is
+# enumeration/write-time: it must retain EVERY admitted peak so that
+# closer-than-90-day peaks exist in the data and can be served (or trimmed)
+# per query. The write-time separation is therefore 0 — only the H-5 count
+# cap removal and retain_candidates' deterministic ranking (λ DESC, jd ASC;
+# jd-sorted emission) are load-bearing here.
+WRITE_TIME_MIN_PEAK_SEPARATION_DAYS = 0.0
 PEAK_BASIS = "gochara_lambda_v3:m1_linear_no_box:step06b"
 SOURCE_LIVE = "live"
 SOURCE_REHEARSAL = "fixture"  # migration 460 CHECK: 'live' | 'fixture'
@@ -472,13 +484,15 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
             gate_details_seen[era_key] = gd
 
         # Peaks: pinned find_local_maxima + P90 admission over the era's own
-        # series; H-5 — the count cap is removed (max_peaks=len(admitted)),
-        # the pinned 90-day minimum separation is retained.
+        # series; H-5 — the count cap is removed (max_peaks=len(admitted));
+        # N5 — the 90-day separation trim is NOT applied here: it is a
+        # serve-time trim (resolution_hierarchy.py:117-127), so every
+        # admitted peak is persisted regardless of spacing.
         era_cands = leg.find_local_maxima(era_series, era_values)
         admitted = leg.admit_candidates(era_cands, era_values)
         retained = leg.retain_candidates(
             admitted, max_peaks=len(admitted) if admitted else 0,
-            min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+            min_separation_days=WRITE_TIME_MIN_PEAK_SEPARATION_DAYS)
         admitted_total += len(admitted)
         retained_total += len(retained)
 
@@ -851,8 +865,9 @@ def build_delta_report(*, chart_id: str, generation: str, baseline: str,
         "- tārā reports the pinned honest skip (M-3 separate Moon channel not wired here);",
         "  w30 is N-14-removed (1.0). quality_gates reproduces the F-11 no-rows path where the",
         "  overlay is absent — disclosed on every row's suppression_state.",
-        "- Peak storage is H-5-uncapped (the pre-H-5 cap of 3/era is removed; the pinned 90-day",
-        "  separation is retained).",
+        "- Peak storage is H-5-uncapped and N5-untrimmed (the pre-H-5 cap of 3/era is removed;",
+        "  the 90-day minimum separation is a SERVE-time trim in resolution_hierarchy.py,",
+        "  not applied at write time — every admitted peak is stored).",
         "- '—' is an honest null: no baseline counterpart exists.",
         "",
     ]
@@ -1128,7 +1143,8 @@ def main(argv: list[str] | None = None) -> int:
         "baseline_windows_read": len(baseline_rows),
         "delta_report_out": args.delta_report_out,
         "peak_retention": "H-5: count cap removed (all admitted peaks "
-                          "stored); pinned 90-day separation retained",
+                          "stored); N5: 90-day separation trim is serve-time "
+                          "(resolution_hierarchy.py), not applied at write",
     }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
