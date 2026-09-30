@@ -1,7 +1,7 @@
 ---
 artifact: NIRMANA_ENGINE_DECISIONS_FOR_THE_NATIVE
 canonical_id: NIRMANA_ENGINE_DECISIONS_FOR_THE_NATIVE
-version: "1.1"
+version: "1.2"
 status: OPEN — one entry, raised 2026-09-26, campaign continued around it
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md §8
@@ -13,6 +13,13 @@ changelog: >
   coverage was a lottery, not a guarantee, and the decision below was framed on a false premise.
   Corrected with the measured per-layer figures. The legacy-caller count is also corrected from 7 to
   8. v1.0 was never committed; this is the first recorded version.
+  v1.2 (2026-09-26) — SECOND executor correction, same defect class as the first, caught by the same
+  gate. v1.1's closing "Note on scale" asserted that the legacy path was "the ONLY remaining source of
+  NULL rates". That was also false: five other paths leave the columns NULL, two of which are the
+  common steady-state case on a rebuild. v1.1 fixed a large coverage overstatement and introduced a
+  smaller one of identical kind, in the same sentence that steers the native toward option (a). The
+  absolute is now removed rather than re-scoped, and the residual paths are enumerated and measured.
+  Neither v1.0 nor v1.1 was ever committed; this is still the first recorded version.
 ---
 
 # Decisions for the native — campaign `nirmana-engine`
@@ -101,9 +108,36 @@ campaign may not cross alone:
 describe the real state until it lands.** (c) is correct in principle but should not be attempted while
 the asset contract is still moving — the same reasoning the native already applied to D1's timing.
 
-**Note on scale:** with the orchestrator now timing writers itself, this legacy path is the *only*
-remaining source of NULL rates, so (a) is a materially smaller concession than it would have been under
-the mistaken framing above.
+### The residual NULL paths — enumerated, because two earlier drafts of this entry guessed instead
+
+**A caution the native should read before weighing the options.** Twice now this document has asserted
+a coverage claim the executor had not verified, and twice the independent gate caught it. The figures
+below are the reviewer's, re-derived by grepping every write site in `asset_runner.py`; they are not
+an estimate.
+
+With the orchestrator now timing both writer shapes, the legacy `_telemetry` path is **not** the only
+remaining source of NULL rates. Exactly one site in `asset_runner.py` writes these columns. Every other
+completion path leaves them NULL:
+
+| # | path | why it yields NULL | how common |
+|---|---|---|---|
+| 1 | `_run_service_health_probe` | legacy health-probe service assets (`bg_*`, `health_probe` spec, no registered writer): sets `state='lit', rows_written=0`, no duration | 8 `storage_type='service'` assets |
+| 2 | `_mark_probe_green` | the writer never runs, so there is nothing to time | **common steady state** |
+| 3 | `_skip_no_delta` | same — a healthy skip, not a failure | **common steady state** |
+| 4 | the C2 degraded branch | every asset, in any environment where migration 1094 has not applied | environment-wide when it bites |
+| 5 | a fully-resumed writer | every sub-step already complete via `completed_keys`, so duration sums to `0.0` → NULL | occasional |
+| 6 | the legacy `_telemetry` path | **the subject of this decision** | 8 writer call sites |
+
+Paths 2 and 3 matter most for reading the table honestly: **on a rebuild of an already-built chart,
+most assets skip and legitimately receive no fresh duration.** That is correct behaviour — a healthy
+skip is not a measurement failure, and `skip_no_delta` is explicitly healthy under this campaign's own
+standard. But it means "NULL rate" will remain a normal, frequent reading after this campaign closes,
+and a future reader must not mistake that for the instrumentation having failed.
+
+**What this does to option (a):** it is a smaller concession than v1.0 implied and a *larger* one than
+v1.1 implied. The legacy path is one of six NULL sources, but it is the only one that is a **defect**
+rather than either correct behaviour (1, 2, 3, 5) or an environment fault already made observable
+(4). So (a) leaves a genuine, permanent gap — just not the sole one.
 
 ### What this does NOT block
 
