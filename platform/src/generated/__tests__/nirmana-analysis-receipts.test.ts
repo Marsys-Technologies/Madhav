@@ -513,9 +513,12 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // Evidence: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A5_4_PINS_READMISSION_AUTHORITY_v1_0.md
     const decision = 'D-PINS-A5.4'
     const authority = 'e47d0b274ebf234ada8be7cfe82a34d5446384eb'
-    const source = 'aa6a67fb715248fa2b2eccffaf5327692319194a'
+    // r3 (ASTRA v1.2 closure): the same three writers moved again; ONE
+    // successor re-admitted over the then-current baseline d4feada9b from the
+    // r3 digest regeneration commit.
+    const source = 'de07494333a770192dd8d8a47cc2aae91f31be79'
     const pin = layerPinRecord.layers.L3
-    expect(pin.generation_id).toBe('l3:aa6a67fb7152:889e2c1fdcfe')
+    expect(pin.generation_id).toBe('l3:de07494333a7:395a24c4ec7c')
     expect(pin.supersedes_generation_id).toBe('l3:f4c69a6d0cd4:829354703812')
     expect(pin.convergence_commit).toBe(source)
     expect(pin.admission?.authority_decision).toBe(decision)
