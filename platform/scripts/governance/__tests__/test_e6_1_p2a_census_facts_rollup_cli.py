@@ -1,6 +1,6 @@
 """test_e6_1_p2a_census_facts_rollup_cli.py — E6.1 packet 2a.
 
-measure() emits the facts the rollup needs (`target_columns`, `asset_kind`, `has_count_sql`) without changing
+measure() emits the facts the rollup needs (`target_columns`, `asset_kind`, `count_sql_declared`) without changing
 any measurement; `facts_for_asset()` turns them into the `facts` mapping `rollup_asset` expects, with an
 unsupplied / unknown / empty / wrong-typed fact staying UNKNOWN (never N/A: N/A is only by a declared rule,
 and NA_RULE_DECISIONS is still empty, the N-22 decision being pending); `--rollup` writes the nine-gate cells
@@ -74,28 +74,68 @@ REG = {
 
 # ───────────────────────── (1) measure() emits the three facts ─────────────────────────
 
-def test_measure_emits_target_columns_asset_kind_and_has_count_sql(monkeypatch, tmp_path):
+def test_measure_emits_target_columns_asset_kind_and_count_sql_declared(monkeypatch, tmp_path):
     _stub_layer(monkeypatch, tmp_path, REG, TABLES)
     c = ac.measure("L0")
     a = _asset(c, "bg_known")
     assert a["target_columns"] == ["alpha", "classical_citation", "id", "zeta"]      # sorted list
     assert a["asset_kind"] == "data"
-    assert a["has_count_sql"] is True
+    assert a["count_sql_declared"] is True
     n = _asset(c, "bg_notable")
-    assert n["asset_kind"] == "service" and n["has_count_sql"] is False
-    assert _asset(c, "bg_blank")["has_count_sql"] is False                            # whitespace-only is no count_sql
+    assert n["asset_kind"] == "service" and n["count_sql_declared"] is False
+    assert _asset(c, "bg_blank")["count_sql_declared"] is False                            # whitespace-only is no count_sql
 
 
-def test_unknown_columns_and_kind_are_an_explicit_marker_never_an_empty_list(monkeypatch, tmp_path):
+def test_measure_strips_the_registry_asset_kind_on_emit(monkeypatch, tmp_path):
+    """A registry row whose asset_kind carries stray whitespace is emitted stripped, so the rollup sees 'service'."""
+    reg = {"bg_padded": _reg_row("bg_padded", None, asset_kind=" service "),
+           "bg_tab": _reg_row("bg_tab", None, asset_kind="\tdata\n")}
+    _stub_layer(monkeypatch, tmp_path, reg, {})
+    c = ac.measure("L0")
+    assert _asset(c, "bg_padded")["asset_kind"] == "service"
+    assert _asset(c, "bg_tab")["asset_kind"] == "data"
+    assert ac.criterion_applicability("Earn.service_state", "L0", ac.facts_for_asset(_asset(c, "bg_padded")))["state"] == "APPLIES"
+
+
+def test_count_sql_declared_means_declared_not_meaningful(monkeypatch, tmp_path):
+    """R46's trap: `SELECT 0` is a declared count_sql that counts nothing. The fact says only "a non-blank
+    count_sql is registered"; it is no evidence for Count.floor / Build.completion."""
+    reg = {"bg_zero": _reg_row("bg_zero", None, count_sql="SELECT 0")}
+    _stub_layer(monkeypatch, tmp_path, reg, {})
+    a = _asset(ac.measure("L0"), "bg_zero")
+    assert a["count_sql_declared"] is True and "has_count_sql" not in a
+    assert ac.facts_for_asset(a) == dict(count_sql_declared=True)
+
+
+def test_unknown_columns_and_kind_are_json_null_never_a_string_or_an_empty_list(monkeypatch, tmp_path):
+    """Unknown is None (JSON null): no string marker exists that could be mistaken for a value."""
     _stub_layer(monkeypatch, tmp_path, REG, TABLES)
     c = ac.measure("L0")
-    assert _asset(c, "bg_notable")["target_columns"] == ac.UNKNOWN_FACT       # no target table
-    assert _asset(c, "bg_absent")["target_columns"] == ac.UNKNOWN_FACT        # table not in production
-    assert _asset(c, "bg_blank")["asset_kind"] == ac.UNKNOWN_FACT             # '' in the registry row
-    assert ac.UNKNOWN_FACT == "unknown"
+    assert _asset(c, "bg_notable")["target_columns"] is None       # no target table
+    assert _asset(c, "bg_absent")["target_columns"] is None        # table not in production
+    assert _asset(c, "bg_blank")["asset_kind"] is None             # '' in the registry row
+    assert not hasattr(ac, "UNKNOWN_FACT")
     for a in c["assets"]:
         tc = a["target_columns"]
-        assert tc == ac.UNKNOWN_FACT or (isinstance(tc, list) and tc and all(isinstance(x, str) for x in tc)), a["asset_id"]
+        assert tc is None or (isinstance(tc, list) and tc and all(isinstance(x, str) for x in tc)), a["asset_id"]
+    wire = json.loads(json.dumps(c, default=str))
+    assert next(a for a in wire["assets"] if a["asset_id"] == "bg_blank")["asset_kind"] is None
+    assert next(a for a in wire["assets"] if a["asset_id"] == "bg_notable")["target_columns"] is None
+
+
+def test_a_registry_kind_that_is_literally_the_string_unknown_is_a_known_kind_value(monkeypatch, tmp_path):
+    """Policy: the registry's live CHECK allows only data/service/artifact, so 'unknown' never occurs in
+    production. If a hand-built registry row does carry it, it is a known kind string like any other: it flows
+    through as a value (no marker special case) and, being a known non-service kind, disproves the service-only
+    rule. A blank kind (not this) is the unknown, and stays None."""
+    reg = {"bg_weird": _reg_row("bg_weird", None, asset_kind="unknown")}
+    _stub_layer(monkeypatch, tmp_path, reg, {})
+    a = _asset(ac.measure("L0"), "bg_weird")
+    assert a["asset_kind"] == "unknown"
+    f = ac.facts_for_asset(a)
+    assert f["asset_kind"] == "unknown"
+    assert ac.criterion_applicability("Earn.service_state", "L0", f)["state"] == "NOT_APPLICABLE"
+    assert ac.facts_for_asset(dict(asset_kind=" unknown "))["asset_kind"] == "unknown"
 
 
 def test_an_existing_relation_with_no_column_rows_is_unknown_not_zero_columns(monkeypatch, tmp_path):
@@ -103,7 +143,7 @@ def test_an_existing_relation_with_no_column_rows_is_unknown_not_zero_columns(mo
     introspection is incomplete there, which is UNKNOWN, not 'the table has zero columns'."""
     reg = {"bg_mv": _reg_row("bg_mv", "mv_x")}
     _stub_layer(monkeypatch, tmp_path, reg, {}, exists={"mv_x"}, views={"mv_x"})
-    assert _asset(ac.measure("L0"), "bg_mv")["target_columns"] == ac.UNKNOWN_FACT
+    assert _asset(ac.measure("L0"), "bg_mv")["target_columns"] is None
 
 
 def test_zero_column_rows_and_columns_for_a_table_not_in_exists_are_both_unknown(monkeypatch, tmp_path):
@@ -113,8 +153,8 @@ def test_zero_column_rows_and_columns_for_a_table_not_in_exists_are_both_unknown
     _stub_layer(monkeypatch, tmp_path, reg, {"t_empty": ([], []), "t_ghost": (["id", "classical_citation"], [])},
                 exists={"t_empty"})
     c = ac.measure("L0")
-    assert _asset(c, "bg_empty")["target_columns"] == ac.UNKNOWN_FACT
-    assert _asset(c, "bg_ghost")["target_columns"] == ac.UNKNOWN_FACT
+    assert _asset(c, "bg_empty")["target_columns"] is None
+    assert _asset(c, "bg_ghost")["target_columns"] is None
     assert "columns" not in ac.facts_for_asset(_asset(c, "bg_empty"))
 
 
@@ -124,40 +164,68 @@ def test_new_facts_leave_every_measurement_untouched(monkeypatch, tmp_path):
     a = _asset(c, "bg_known")
     assert a["measurements"]["Ldgr.source_presence"] == dict(v=ac.PASS, measured="classical_citation populated on 48/48 rows")
     for x in c["assets"]:
-        assert not any(k.startswith(("target_columns", "asset_kind", "has_count_sql")) for k in x["measurements"])
+        assert not any(k.startswith(("target_columns", "asset_kind", "count_sql_declared")) for k in x["measurements"])
 
 
 # ───────────────────────── (2) facts_for_asset ─────────────────────────
 
 def test_facts_for_asset_maps_emitted_facts_to_the_rollup_facts_mapping():
-    f = ac.facts_for_asset(dict(target_columns=["a", "b"], asset_kind="data", has_count_sql=True))
-    assert f == dict(columns=["a", "b"], asset_kind="data", has_count_sql=True)
+    f = ac.facts_for_asset(dict(target_columns=["a", "b"], asset_kind="data", count_sql_declared=True))
+    assert f == dict(columns=["a", "b"], asset_kind="data", count_sql_declared=True)
     assert "columns_known" not in f            # never asserted from an emitted list
 
 
 @pytest.mark.parametrize("rec", [
     {},                                                            # a record from before packet 2a
     None,
-    dict(target_columns="unknown", asset_kind="unknown"),          # the explicit unknown markers
+    dict(target_columns=None, asset_kind=None),                    # the unknowns (JSON null)
     dict(target_columns=[], asset_kind=""),                        # empty never stands for known
     dict(target_columns="id", asset_kind=None),                    # wrong type: a bare string is not a column list
     dict(target_columns=["a", 3], asset_kind=7),
     dict(target_columns=["a", ""], asset_kind="  "),
     dict(target_columns=("a",), asset_kind=["data"]),
-    dict(target_columns=None, has_count_sql="yes"),
-    dict(target_columns={"a"}, has_count_sql=1),
+    dict(target_columns=None, count_sql_declared="yes"),
+    dict(target_columns={"a"}, count_sql_declared=1),
 ])
 def test_facts_for_asset_leaves_unusable_or_unknown_facts_out(rec):
     assert ac.facts_for_asset(rec) == {}
 
 
-def test_facts_for_asset_carries_a_false_has_count_sql():
-    assert ac.facts_for_asset(dict(has_count_sql=False)) == dict(has_count_sql=False)
+@pytest.mark.parametrize("rec", [
+    dict(asset_kind="service "),
+    dict(asset_kind=" service"),
+    dict(asset_kind="\tservice\n"),
+])
+def test_facts_for_asset_strips_the_kind_like_measure_does(rec):
+    """measure() strips the registry's asset_kind; a hand-built record with stray whitespace must give the same
+    fact, not a value that reads NOT_APPLICABLE against ('service',)."""
+    f = ac.facts_for_asset(rec)
+    assert f == dict(asset_kind="service")
+    assert ac.criterion_applicability("Earn.service_state", "L0", f)["state"] == "APPLIES"
+
+
+def test_facts_for_asset_strips_column_names_and_returns_the_stripped_values():
+    f = ac.facts_for_asset(dict(target_columns=[" classical_citation ", "id\t"]))
+    assert f == dict(columns=["classical_citation", "id"])
+    assert ac.criterion_applicability("Ldgr.source_presence", "L0", f)["state"] == "APPLIES"
+
+
+@pytest.mark.parametrize("cols", [["  "], ["id", "  "], ["\t", "id"]])
+def test_facts_for_asset_treats_a_blank_column_name_as_unknown(cols):
+    """A whitespace-only column name is not a name: the whole list is unusable, so `columns` stays unknown
+    (never a list that reads NOT_APPLICABLE against the citation columns)."""
+    f = ac.facts_for_asset(dict(target_columns=cols))
+    assert f == {}
+    assert ac.criterion_applicability("Ldgr.source_presence", "L0", f)["state"] == "UNKNOWN"
+
+
+def test_facts_for_asset_carries_a_false_count_sql_declared():
+    assert ac.facts_for_asset(dict(count_sql_declared=False)) == dict(count_sql_declared=False)
 
 
 def test_unknown_facts_keep_applicability_unknown_never_not_applicable(monkeypatch, tmp_path):
     """The whole point: an unknown fact must not turn into a disproving one. The marker string 'unknown'
-    would, if passed through, match none of ('service',) and read NOT_APPLICABLE."""
+    would, if passed through, match none of ('service',) and read NOT_APPLICABLE; None is dropped instead."""
     _stub_layer(monkeypatch, tmp_path, REG, TABLES)
     c = ac.measure("L0")
     for aid, crit, want in (("bg_notable", "Ldgr.source_presence", "UNKNOWN"),      # no table -> columns unknown
@@ -248,15 +316,57 @@ def test_without_rollup_flag_the_output_has_no_rollup_keys_and_is_otherwise_iden
     assert _strip(rolled_wo) == _strip(plain)
 
 
-def test_a_rollup_failure_still_writes_the_census_and_exits_5(monkeypatch, tmp_path, capsys):
+@pytest.mark.parametrize("exc", [ValueError("ungradable"), KeyError("Bogus.crit"), TypeError("bare string")])
+def test_a_rollup_failure_still_writes_the_census_and_exits_5(monkeypatch, tmp_path, capsys, exc):
+    """main() must survive ANY exception from the rollup (the code catches Exception): rollup_verdicts raises
+    ValueError/TypeError, rollup_asset raises KeyError. A narrowed catch would lose the measurements."""
     _stub_layer(monkeypatch, tmp_path, REG, TABLES)
 
     def boom(*a, **k):
-        raise ValueError("ungradable")
+        raise exc
     monkeypatch.setattr(ac, "build_rollup_output", boom)
     rc, out = _run_main(monkeypatch, tmp_path, ["--rollup"])
     assert rc == 5 and "rollup" not in out and "L0" in out
     assert "rollup failed" in capsys.readouterr().err
+
+
+def test_a_rollup_failure_raised_by_rollup_asset_itself_still_writes_the_census(monkeypatch, tmp_path, capsys):
+    """The real path: a measured criterion missing from CRITERION_REGISTRY makes the real rollup_asset raise
+    KeyError inside build_rollup_output; the census is still written (without a rollup) and the run exits 5."""
+    _stub_layer(monkeypatch, tmp_path, REG, TABLES)
+    real_measure = ac.measure
+
+    def measure_with_unregistered(layer):
+        c = real_measure(layer)
+        c["assets"][0]["measurements"]["Bogus.unregistered"] = dict(v=ac.PASS, measured="x")
+        return c
+    monkeypatch.setattr(ac, "measure", measure_with_unregistered)
+    rc, out = _run_main(monkeypatch, tmp_path, ["--rollup"])
+    assert rc == 5 and "rollup" not in out and "L0" in out
+    err = capsys.readouterr().err
+    assert "rollup failed" in err and "KeyError" in err
+
+
+def test_a_rollup_failure_message_reports_the_measured_exit_it_overrides(monkeypatch, tmp_path, capsys):
+    """`return 5` replaces worst=2/3; the operator must still see what the measurement itself said."""
+    _stub_layer(monkeypatch, tmp_path, REG, TABLES)
+    rc_plain, _ = _run_main(monkeypatch, tmp_path, [])
+    capsys.readouterr()
+    assert rc_plain in (2, 3), "the stub layer must measure a non-clean worst for this test to mean anything"
+
+    def boom(*a, **k):
+        raise ValueError("ungradable")
+    monkeypatch.setattr(ac, "build_rollup_output", boom)
+    rc, _out = _run_main(monkeypatch, tmp_path, ["--rollup"])
+    err = capsys.readouterr().err
+    assert rc == 5
+    assert f"measured exit {rc_plain}" in err and "overridden" in err and "ungradable" in err
+
+
+def test_the_exit_doc_line_says_5_also_means_the_rollup_failed():
+    doc = ac.__doc__
+    para = " ".join(doc[doc.index("Exit:"):].split())
+    assert "5 script error" in para and "--rollup failed" in para and "without it" in para
 
 
 # ───────────────────────── (4) --emit-gaps unchanged, and never fed the rollup ─────────────────────────
@@ -300,7 +410,7 @@ def test_emit_gaps_is_unchanged_by_rollup_and_never_receives_it(monkeypatch, tmp
 
 def test_emit_gaps_ignores_new_asset_keys():
     census = dict(layer="L0", assets=[dict(asset_id="bg_x", measurements={"Build.dag": dict(v=ac.PASS, measured="ok")},
-                                           target_columns="unknown", asset_kind="unknown", has_count_sql=False)])
+                                           target_columns=None, asset_kind=None, count_sql_declared=False)])
     # a PASS with no prior row is a no-op; the new keys must not be read as measurements or break the walk
     import os
     import tempfile

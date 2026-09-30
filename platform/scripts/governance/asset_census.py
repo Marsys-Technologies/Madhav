@@ -50,7 +50,8 @@ Usage:
   asset_census.py --layer all                every layer
   asset_census.py --layer L0 --rollup        also write the nine-gate cells per asset (key `rollup`) and the
                                              non-nine gates as information (`rollup_excluded`) into the census JSON
-Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4 unknown · 5 script error.
+Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4 unknown · 5 script error, or
+      --rollup failed (census still written, without it; the measured exit is named on stderr, never lost).
 """
 
 from __future__ import annotations
@@ -381,41 +382,40 @@ def rollup_census(census_layer: dict, facts_by_asset: dict | None = None) -> dic
 
 
 # E6.1 packet 2a: the per-asset FACTS the rollup's applicability rules read, emitted by measure() and turned into
-# the `facts` mapping by facts_for_asset(). UNKNOWN_FACT is the one explicit marker for "could not be established"
-# (no target table, table absent from the catalog, no column rows for an existing relation, empty asset_kind): an
-# empty list never stands for unknown, and the marker never reaches a rule (it would read as a disproving value).
-UNKNOWN_FACT = "unknown"
+# the `facts` mapping by facts_for_asset(). "Could not be established" (no target table, table absent from the
+# catalog, no column rows for an existing relation, blank asset_kind) is None, i.e. JSON null: an empty list never
+# stands for unknown, and no string marker exists that could be read as a value (and a disproving one at that).
 
 
 def _target_columns_fact(tbl: str | None, cat: dict):
-    """The target table's column names as a sorted list, or UNKNOWN_FACT. Known only when the table is in the
+    """The target table's column names as a sorted list, or None (unknown). Known only when the table is in the
     catalog's `exists` AND the catalog returned column rows for it (a materialized view is in `exists` but
     information_schema lists none: incomplete introspection is unknown, not 'zero columns')."""
     if not tbl or tbl not in cat.get("exists", ()):
-        return UNKNOWN_FACT
+        return None
     cols = cat.get("cols", {}).get(tbl)
     if not isinstance(cols, list) or not cols or not all(isinstance(c, str) and c for c in cols):
-        return UNKNOWN_FACT
+        return None
     return sorted(cols)
 
 
 def facts_for_asset(asset_record) -> dict:
-    """The `facts` mapping `rollup_asset` expects (`columns`, `asset_kind`; plus `has_count_sql` for the
+    """The `facts` mapping `rollup_asset` expects (`columns`, `asset_kind`; plus `count_sql_declared` for the
     conditions that will read it), from one measured asset record. A fact that is absent (a record from before
-    packet 2a), the UNKNOWN_FACT marker, empty, or of the wrong type is LEFT OUT, so its applicability stays
+    packet 2a), None (unknown), empty, or of the wrong type is LEFT OUT, so its applicability stays
     UNKNOWN. `columns_known` is never set: an emitted list cannot assert 'the table is known and has zero columns'."""
     facts: dict = {}
     if not isinstance(asset_record, dict):
         return facts
     cols = asset_record.get("target_columns")
-    if isinstance(cols, list) and cols and all(isinstance(c, str) and c for c in cols):
-        facts["columns"] = list(cols)
+    if isinstance(cols, list) and cols and all(isinstance(c, str) and c.strip() for c in cols):
+        facts["columns"] = [c.strip() for c in cols]   # stripped like measure() strips: a blank name is unknown
     kind = asset_record.get("asset_kind")
-    if isinstance(kind, str) and kind.strip() and kind != UNKNOWN_FACT:
-        facts["asset_kind"] = kind
-    has_csql = asset_record.get("has_count_sql")
-    if isinstance(has_csql, bool):
-        facts["has_count_sql"] = has_csql
+    if isinstance(kind, str) and kind.strip():
+        facts["asset_kind"] = kind.strip()
+    declared = asset_record.get("count_sql_declared")
+    if isinstance(declared, bool):
+        facts["count_sql_declared"] = declared
     return facts
 
 
@@ -2947,8 +2947,10 @@ def measure(layer_key: str) -> dict:
                            # E6.1 packet 2a: applicability FACTS for the rollup (additive; no measurement reads them)
                            target_columns=_target_columns_fact(tbl, cat),
                            asset_kind=(r["asset_kind"].strip() if isinstance(r["asset_kind"], str) and r["asset_kind"].strip()
-                                       else UNKNOWN_FACT),
-                           has_count_sql=bool((r["count_sql"] or "").strip()),
+                                       else None),
+                           # DECLARED, not runnable/meaningful: a true value (even `SELECT 0`, the R46 trap) is no
+                           # evidence for Count.floor or Build.completion; it says only that count_sql is non-blank.
+                           count_sql_declared=bool((r["count_sql"] or "").strip()),
                            measurements=m))
 
     extra = sorted(set(regd) - known)
@@ -3170,12 +3172,14 @@ def main() -> int:
     rollup_error = None
     if a.rollup:
         # computed AFTER measuring and emit_gaps, from the finished census; never fed to emit_gaps. A rollup
-        # failure must not lose the measurements: they are written without a `rollup` key and the run exits 5.
+        # failure must not lose the measurements: they are written without a `rollup` key and the run exits 5
+        # (overriding any measured worst of 2/3; the stderr message names the measured exit).
         try:
             out = {**out, **build_rollup_output(out)}
         except Exception as exc:  # noqa: BLE001
             rollup_error = f"{type(exc).__name__}: {exc}"
-            print(f"asset_census: rollup failed — {rollup_error} (census written without a rollup)", file=sys.stderr)
+            print(f"asset_census: rollup failed — {rollup_error} (census written without a rollup; measured exit "
+                  f"{worst} overridden by 5)", file=sys.stderr)
     Path(a.out).write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
     print(f"census written: {os.path.relpath(a.out, ROOT)}")
     if rollup_error:
