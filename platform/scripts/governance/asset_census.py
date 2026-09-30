@@ -1558,31 +1558,88 @@ def _served_selects(table: str, lits: list[str]):
             yield i, m, alias, sel
 
 
+_SEL_CAST = re.compile(r"::\s*[A-Za-z_][\w.]*(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?(?:\[\])*")
+_SEL_ALIAS = re.compile(r"\s+AS\s+(?:\"[^\"]*\"|\w+)\s*$", re.I)
+_SEL_PLAIN_ITEM = re.compile(r"(?:DISTINCT\s+)?(?:\"?([A-Za-z_]\w*)\"?\s*\.\s*)?\"?([A-Za-z_]\w*)\"?", re.I)
+
+
+def _plain_item(item: str) -> tuple[str | None, str] | None:
+    """`(qualifier, name)` when a select item IS a column reference — `col`, `q.col`, `"col"`, with an optional `::cast`
+    and `AS alias` — else None (a function call, CASE, arithmetic, a sub-select, `*`: never a column by itself)."""
+    it = _SEL_ALIAS.sub("", _SEL_CAST.sub("", item.strip())).strip()
+    m = _SEL_PLAIN_ITEM.fullmatch(it)
+    return (m.group(1), m.group(2)) if m else None
+
+
+def _flatten_select(clean: str) -> str:
+    """The select text as a list of top-level items: a top-level `FROM` (the scanner's text can carry one — a
+    sub-select's truncated list, a driving table) and an unmatched `)` (the cut-off `(SELECT …` opener) become item
+    separators, so each clause is read as its own item and an item is never glued to its FROM clause."""
+    out, depth, i = [], 0, 0
+    while i < len(clean):
+        ch = clean[i]
+        m = re.match(r"FROM\b", clean[i:], re.I) if (ch in "Ff" and (i == 0 or not re.match(r"\w", clean[i - 1]))) else None
+        if m and depth == 0:
+            out.append(" , ")
+            i += 4
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            if depth == 0:
+                out.append(" , ")
+                i += 1
+                continue
+            depth -= 1
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None) -> tuple[str, list[str]]:
     """Does this served select list carry a tier column? `(TIER_YES|TIER_NO|TIER_UNKNOWN, tier columns)`.
-    With the table's columns known (catalog), the list is resolved against them (`SELECT *` -> every column;
-    `b.signature_tier` of another table does not count). With them unknown, only an explicit tier NAME counts
-    (unqualified or qualified by this table/alias); `*` and a `${...}` run-time list stay UNKNOWN — never read as a
-    tier column and never as proof of its absence."""
+    A tier column is carried only when a select ITEM is the column itself (`_plain_item`): `count(DISTINCT tier)`,
+    `count(*) FILTER (WHERE tier = …)`, `lower(tier)`, `CASE … END AS tier` carry none. With the table's columns known
+    (catalog) the item's name must also be one of them and `*` / `<alias>.*` expands to every column; with them
+    unknown only a tier NAME counts (unqualified, or qualified by this table/alias) and `*` / a `${...}` run-time list
+    stay UNKNOWN — never read as a tier column and never as proof of its absence.
+    ATTRIBUTION LIMIT, disclosed: the scanner hands over the text after the LAST `SELECT` before the asset's `FROM` /
+    `JOIN`. A `(SELECT …)` in the list, or any `FROM` in it (a sub-select's truncated list, or a driving table the
+    asset is only JOINed to), means an UNQUALIFIED name cannot be attributed to the asset's table: UNKNOWN, never YES.
+    A name qualified by the asset's own table/alias still counts."""
     dynamic = "${" in sel
-    if cols:
-        got = sorted(c for c in _selected_columns(sel, cols, alias, table) if DENS_TIER_COLUMN.match(c))
-        if got:
-            return TIER_YES, got
-        return (TIER_UNKNOWN if dynamic else TIER_NO), []
-    mine = {x.lower() for x in (alias, table) if x}
     clean = re.sub(r"'[^']*'", "''", sel)
-    got, star = set(), False
-    for item in _split_top(clean):
+    if re.search(r"\(\s*SELECT\b", clean, re.I):
+        return TIER_UNKNOWN, []
+    has_from = bool(re.search(r"\bFROM\b", clean, re.I))
+    mine = {x.lower() for x in (alias, table) if x}
+    lower = {c.lower() for c in cols} if cols else set()
+    got: set[str] = set()
+    star = unattributed = False
+    for item in _split_top(_flatten_select(clean)):
         it = item.strip()
-        if it == "*" or re.fullmatch(r"(?:DISTINCT\s+)?(?:\w+\.)?\*", it, re.I):
+        if re.fullmatch(r"(?:DISTINCT\s+)?\*", it, re.I) or any(re.fullmatch(rf"{re.escape(m)}\.\*", it, re.I) for m in mine):
             star = True
-        for q, name in re.findall(r"(?:\b([A-Za-z_][A-Za-z_0-9]*)\s*\.\s*)?\b([A-Za-z_][A-Za-z_0-9]*)\b", it):
-            if DENS_TIER_COLUMN.match(name) and (not q or q.lower() in mine):
+            got.update(c for c in lower if DENS_TIER_COLUMN.match(c))
+            continue
+        pi = _plain_item(it)
+        if not pi:
+            continue
+        q, name = pi
+        if not DENS_TIER_COLUMN.match(name) or (cols and name.lower() not in lower):
+            continue
+        if q:
+            if q.lower() in mine:
                 got.add(name.lower())
+        elif has_from:
+            unattributed = True
+        else:
+            got.add(name.lower())
     if got:
         return TIER_YES, sorted(got)
-    return (TIER_UNKNOWN if (star or dynamic) else TIER_NO), []
+    if unattributed:
+        return TIER_UNKNOWN, []
+    return (TIER_UNKNOWN if ((star and not cols) or dynamic) else TIER_NO), []
 
 
 def _name(rel: Path, root: str, first: bool) -> str:

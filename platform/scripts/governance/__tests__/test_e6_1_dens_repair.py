@@ -346,3 +346,65 @@ def test_the_legacy_call_shape_still_lists_modules_by_code(tmp_path):
     (tmp_path / "query_comment.ts").write_text("// t_x\nexport {}\n", encoding="utf-8")
     cap = _REAL_SCAN(str(tmp_path), ["t_x", "bg_x"])
     assert cap["modules"] == ["query_real.ts"] and cap["comment_only"] == ["query_comment.ts"], cap
+
+
+# ───────────────────────── review finding 1: a tier NAME inside an expression is not a tier COLUMN ─────────────────────────
+# `_select_tier` used to credit any tier-named token anywhere in the select list. A column is carried only when a select
+# ITEM is the column itself — `(qualifier.)?name`, optionally `::cast` and `AS alias`.
+
+_FALSE_TIER_SHAPES = [
+    ("count-distinct", "count(DISTINCT tier) AS n, id"),
+    ("count-filter", "count(*) FILTER (WHERE tier = 'gold') AS n"),
+    ("case-aliased-as-tier", "CASE WHEN score > 1 THEN 'hi' ELSE 'lo' END AS tier, id"),
+    ("function-of-tier", "lower(signature_tier) AS s, id"),
+    ("coalesce-of-tier", "coalesce(tier, 'x') AS tier"),
+]
+
+
+@pytest.mark.parametrize("sid, sel", _FALSE_TIER_SHAPES, ids=[s[0] for s in _FALSE_TIER_SHAPES])
+@pytest.mark.parametrize("cols", [None, ["id", "score", "tier", "signature_tier"]], ids=["cols-unknown", "cols-known"])
+def test_a_tier_name_inside_an_expression_is_never_a_tier_column(sid, sel, cols):
+    st, got = ac._select_tier(sel, None, "t_x", cols)
+    assert st != ac.TIER_YES and got == [], (sid, st, got)
+
+
+def test_a_subselect_tier_is_never_credited_to_the_asset_table():
+    """The scanner hands over the text after the LAST `SELECT`, so a sub-select's own list arrives truncated —
+    `SELECT (SELECT tier FROM other) AS z, id FROM t_x` gives ` tier FROM other) AS z, id `. A FROM inside the list,
+    with an unqualified name, cannot be attributed to the asset table: UNKNOWN, never YES."""
+    for cols in (None, ["id", "tier"]):
+        assert ac._select_tier(" tier FROM other) AS z, id ", None, "t_x", cols)[0] == ac.TIER_UNKNOWN
+        assert ac._select_tier(" (SELECT tier FROM other) AS z, id ", None, "t_x", cols)[0] == ac.TIER_UNKNOWN
+
+
+def test_an_unqualified_tier_when_the_asset_table_is_the_join_target_is_unknown_not_yes():
+    """`SELECT tier FROM drv JOIN t_x`: the scanner's select list is ` tier FROM drv ` — the driving table has the
+    column, the asset table is only joined."""
+    for cols in (None, ["id", "tier"]):
+        assert ac._select_tier(" tier FROM drv d ", "x", "t_x", cols)[0] == ac.TIER_UNKNOWN
+    # qualified by the asset's own alias/table is still a real carry even with a FROM in the list
+    assert ac._select_tier(" x.tier FROM drv d ", "x", "t_x", None) == (ac.TIER_YES, ["tier"])
+    # qualified by the driving table is not the asset's
+    assert ac._select_tier(" d.tier FROM drv d ", "x", "t_x", None)[0] == ac.TIER_NO
+
+
+def test_the_false_tier_shapes_do_not_mint_pass_through_the_scan(tree, monkeypatch):
+    """End to end (the scanner's own truncation and attribution, not a hand-fed list)."""
+    reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
+    for sql in ("SELECT count(DISTINCT tier) AS n FROM t_x",
+                "SELECT count(*) FILTER (WHERE tier = 'a') AS n FROM t_x",
+                "SELECT CASE WHEN a THEN 1 END AS tier, id FROM t_x",
+                "SELECT (SELECT tier FROM other) AS z, id FROM t_x",
+                "SELECT tier FROM drv d JOIN t_x x ON x.id = d.xid"):
+        tree.write(tree.layers / "L0_x", "q.ts", _cap(sql))
+        d = _dens(_measure(monkeypatch, tree, reg), "bg_x")
+        assert d["v"] != ac.PASS, (sql, d)
+
+
+@pytest.mark.parametrize("sel", ["tier", "t_x.tier", "x.tier AS t", "signature_tier::text", "DISTINCT tier",
+                                 "id, \"tier\"", "verification_pass_status", "a.id, x.indication_tier AS it"])
+@pytest.mark.parametrize("cols", [None, ["id", "tier", "signature_tier", "verification_pass_status", "indication_tier"]],
+                         ids=["cols-unknown", "cols-known"])
+def test_a_plain_tier_column_item_still_counts(sel, cols):
+    st, got = ac._select_tier(sel, "x", "t_x", cols)
+    assert st == ac.TIER_YES and got, (sel, st, got)
