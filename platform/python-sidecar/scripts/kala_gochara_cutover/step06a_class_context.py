@@ -20,7 +20,13 @@ rather than a rehearsal-synthetic constant:
     drift from the production read path.
   * VALENCE — `gochara_intensity.valence.is_adverse` (live
     `brahma_event_ontology` read with its own documented fallback), feeding
-    `class_valence` / `class_is_adverse`.
+    `class_valence` / `class_is_adverse`. T0-7 (FABLE #11/#12, §3): each
+    class entry additionally carries the explicit `class_polarity`
+    declaration block (same single declaration, named as such) and
+    `valence_unresolved_operands` — the O-TV-3 probe: when the chart has no
+    ashtakavarga_bindu_contributor rows the AV donor-matrix operand is
+    declared unresolved, so step06b's three-field valence evaluates those
+    rows 'unqualified' with the operand named, never a favourable default.
   * DASHA PERIODS — `dasha_data.fetch_dasha_periods_multilevel` (MD/AD/PD,
     levels 1-3, tier `two_pass_verified`, GOCHARA_DESIGN_SPECS_v1_4 §4.0
     duplicate rules enforced), emitted once as the document's top-level
@@ -60,9 +66,12 @@ nothing is written to the database.
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import connect, step_parser, write_evidence  # noqa: E402
@@ -75,12 +84,47 @@ from services.gochara_grammar import dasha_data as DD  # noqa: E402
 from services.gochara_grammar.resonance_map import fetch_resonance_targets  # noqa: E402
 from services.gochara_intensity import enrichment, valence  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
+from services.gochara_intensity._dbutil import savepoint_scope  # noqa: E402
 from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
 
 CONTEXT_SOURCE = ("l1_permission_wiring:v2 (per-instant compute_permission "
                   "over MD/AD/PD periods; union over t_exact instants kept as "
                   "static-fallback provenance)")
 PERMISSION_MODE = "per_instant_md_ad_pd"
+
+# T0-7 (FABLE #11/#12, GOCHARA_DESIGN_SPECS_v1_4 §3): the context document
+# declares each class's polarity explicitly (the SAME declaration
+# gochara_intensity.valence already reads — brahma_event_ontology
+# evidence_requirements->>'valence' — reused, never a second source) plus
+# the valence operands left unresolved at context-build time. O-TV-3's
+# operand is the AV donor matrix: when the chart has no
+# ashtakavarga_bindu_contributor rows (the current chart state pending the
+# native-authorised ga_strength rebuild — gochara_v3/context.py:145-156
+# documents that key scheme), the donor-matrix operand is UNRESOLVED and
+# every window row's outcome must be 'unqualified' with the operand named,
+# never a favourable default.
+AV_DONOR_OPERAND = "av_donor_matrix"
+
+
+def fetch_unresolved_valence_operands(conn, chart_id: str) -> list[str]:
+    """Valence operands unresolved at context-build time. Currently the P5c
+    AV donor matrix only: present (≥1 contributor row) → []; absent or any
+    DB-shape surprise → [av_donor_operand] — an unreadable matrix is
+    unresolved, never silently treated as present (same defensive-read
+    discipline as valence.fetch_valence)."""
+    try:
+        with savepoint_scope(conn, "valence_operands"):
+            row = conn.execute(
+                "SELECT 1 FROM chart_facts"
+                " WHERE chart_id = %s"
+                "   AND fact_category = 'ashtakavarga_bindu_contributor'"
+                " LIMIT 1",
+                [chart_id]).fetchone()
+        return [] if row is not None else [AV_DONOR_OPERAND]
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[step06a] AV donor-matrix probe failed for chart %s — "
+                    "operand declared unresolved: %s", chart_id, exc)
+        return [AV_DONOR_OPERAND]
 
 
 def _jsonable_period(p: dict) -> dict:
@@ -132,7 +176,8 @@ def fetch_class_contact_instants(conn, chart_id: str, generation: str):
 
 
 def build_class_context(swe, conn, chart_id: str, event_class: str,
-                        sample_jds: list[float], dasha_periods) -> dict | None:
+                        sample_jds: list[float], dasha_periods,
+                        unresolved_valence_operands=()) -> dict | None:
     """One class's context entry, or None (honest omission) when the class's
     targets do not resolve. Never fabricates a permission set. The unioned
     `permission_systems` map is the STATIC FALLBACK / provenance record
@@ -162,6 +207,26 @@ def build_class_context(swe, conn, chart_id: str, event_class: str,
         "permission_systems": permission_systems,
         "class_valence": cls_valence,
         "class_is_adverse": adverse,
+        # T0-7 (FABLE #11/#12, §3): the class-polarity declaration made
+        # EXPLICIT on the document — the single declaration
+        # (brahma_event_ontology evidence_requirements->>'valence', read via
+        # gochara_intensity.valence.is_adverse with its documented VALENCE_MAP
+        # fallback) that step06b's three_field_valence interprets the signed
+        # channels relative to. Not a second polarity source.
+        "class_polarity": {
+            "class_valence": cls_valence,
+            "class_is_adverse": adverse,
+            "declaration_source": "brahma_event_ontology."
+                                  "evidence_requirements->>'valence' via "
+                                  "gochara_intensity.valence "
+                                  "(VALENCE_MAP fixture fallback)",
+            "contract": "three_field_valence:v1 "
+                        "(GOCHARA_DESIGN_SPECS_v1_4 §3)",
+        },
+        # O-TV-3: operands unresolved at context-build time (the AV donor
+        # matrix pending the ga_strength rebuild). step06b makes every such
+        # operand's valence contribution 'unqualified' and names it.
+        "valence_unresolved_operands": list(unresolved_valence_operands),
         "context_source": CONTEXT_SOURCE,
         # provenance (the writer consumes only the four keys above; these are
         # carried for the review trail)
@@ -201,12 +266,17 @@ def main(argv: list[str] | None = None) -> int:
         dasha_periods = DD.fetch_dasha_periods_multilevel(
             conn, args.chart_id, systems=list(perm.DASHA_SYSTEM_IDS))
 
+        # T0-7 / O-TV-3: chart-level probe, once — the AV donor matrix is a
+        # chart-level operand, shared by every class's valence evaluation.
+        unresolved_valence = fetch_unresolved_valence_operands(
+            conn, args.chart_id)
+
         contexts: dict[str, dict] = {}
         omitted: list[dict] = []
         for cls in sorted(by_class):
             entry = build_class_context(
                 swe, conn, args.chart_id, cls, sorted(by_class[cls]),
-                dasha_periods)
+                dasha_periods, unresolved_valence)
             if entry is None:
                 omitted.append({
                     "event_class": cls,
@@ -239,6 +309,10 @@ def main(argv: list[str] | None = None) -> int:
         "dasha_periods_emitted": len(contexts.get("_dasha_periods", [])),
         "dasha_levels": list(DD.DEFAULT_LEVELS),
         "dasha_read_tier": DD.READ_CONTRACT_TIER,
+        "valence_unresolved_operands": unresolved_valence,
+        "valence_contract": "three_field_valence:v1 "
+                            "(GOCHARA_DESIGN_SPECS_v1_4 §3; T0-7, FABLE "
+                            "#11/#12)",
         "union_semantics": "RETAINED AS STATIC FALLBACK / provenance only: "
                            "a system is active for a class iff it fired at "
                            ">=1 of the class's candidate contact t_exact "

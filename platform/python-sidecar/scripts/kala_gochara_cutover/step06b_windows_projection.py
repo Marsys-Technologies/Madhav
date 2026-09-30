@@ -80,7 +80,28 @@ Semantics (every choice disclosed, none improvised):
     (migration 567's documentary linkage, parents inserted first).
   * valence/is_adverse — pinned resolve_valence_v3 over the signed channels
     at each row's own peak instant; the class fallback valence comes from
-    the class context (default 'mixed', disclosed).
+    the class context (default 'mixed', disclosed). LEGACY single-axis
+    columns, RETAINED unchanged for the serving layer and the delta report.
+  * THREE-FIELD VALENCE — T0-7 (FABLE #11/#12, GOCHARA_DESIGN_SPECS_v1_4 §3):
+    every evaluated window row additionally carries
+    evidence_for_occurrence / evidence_against_occurrence /
+    outcome_valence_for_native / severity, computed AT THE ROW'S PEAK
+    INSTANT from the class polarity (the class context's class_valence /
+    class_is_adverse — the brahma_event_ontology declaration, reused, never
+    redeclared) plus the signed channels. The three fields are INDEPENDENT:
+    evidence_for is never netted against evidence_against; a contested
+    occurrence (both > 0) stands as both fields positive and does NOT
+    relabel the outcome 'mixed' — 'mixed' is a valence verdict from class
+    polarity only. An unresolved operand (class polarity absent from the
+    context document, an active contact with no map weight, or a
+    context-declared valence_unresolved_operands entry such as
+    'av_donor_matrix' — the O-TV-3 P5c donor-matrix-absent case) yields
+    outcome 'unqualified' with the operand NAMED in the breakdown — never
+    a silent 1.0 / 'favourable' default (finding #12's E5 regression is
+    what this prevents). The new fields ride inside suppression_state (the
+    served table has no columns for them and migrations are out of scope
+    here); derivation is disclosed in suppression_state.three_field_valence
+    on every row and in the class factors record.
   * active_sentences — the contributing contacts' contact_ids at the row's
     peak instant (plan §4.6). contributing_systems — the active permission
     systems plus per-factor provenance strings. suppression_state — the
@@ -361,6 +382,119 @@ def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
     return at
 
 
+# ── T0-7 three-field valence (FABLE #11/#12; GOCHARA_DESIGN_SPECS_v1_4 §3) ───
+
+# The §3.1 enum, verbatim. 'unqualified' is a first-class verdict — the
+# honest state when an operand is unresolved (ADK-0026), never a
+# favourable-sounding default.
+OUTCOME_VALENCE_ENUM = ("favourable", "adverse", "mixed", "unqualified")
+VALENCE_CONTRACT = "three_field_valence:v1 (GOCHARA_DESIGN_SPECS_v1_4 §3)"
+
+# The class-polarity declaration vocabulary, exactly as declared by
+# brahma_event_ontology.evidence_requirements->>'valence' (the live field
+# gochara_intensity.valence reads; VALENCE_MAP is its documented fixture).
+# A context document carrying anything outside this set (or nothing) leaves
+# the polarity operand UNRESOLVED — the channels cannot be oriented
+# class-relatively without it.
+_CLASS_VALENCE_KNOWN = frozenset({"gain", "loss", "neutral", "mixed"})
+
+
+def three_field_valence(supportive_channel: float, afflicting_channel: float,
+                        *, class_valence: str | None, class_is_adverse: bool,
+                        unresolved_operands=()) -> dict:
+    """GOCHARA_DESIGN_SPECS_v1_4 §3 on the '4.0' projection path (T0-7;
+    sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 findings
+    #11/#12). Computed at evaluation time from class polarity + the signed
+    channels — never copied class-blind from a rule row (§3.2 inv 4).
+
+    Semantic choices (each disclosed, none improvised):
+
+      * EVIDENCE ORIENTATION IS CLASS-RELATIVE (§3.1): for an ADVERSE class
+        (class_is_adverse — the loss classes plus the documented
+        psychological_arc override in gochara_intensity.valence) the
+        afflicting channel is evidence FOR occurrence and the supportive
+        channel evidence AGAINST (the spec's own example: a 7th-house
+        affliction is evidence for the separation class, against the
+        marriage class). For every other class the direct reading holds:
+        supportive → for, afflicting → against. Magnitudes are the pinned
+        noisy-OR channel values in [0, 1] — rank-only, never gates.
+      * NO NETTING (§3.2 inv 1, O-TV-2): the two evidence fields are
+        reported as they stand. Nothing anywhere computes
+        evidence_for − evidence_against; a contested occurrence (both > 0)
+        is reported as contested, never cancelled to neutral.
+      * OUTCOME IS A POLARITY VERDICT, not an evidence verdict (S-03):
+        unresolved operand → 'unqualified'; else class_is_adverse →
+        'adverse'; else class_valence == 'mixed' → 'mixed'; else
+        'favourable'. The gain|neutral → 'favourable' reading is pinned by
+        O-TV-2 (marriage is 'neutral' in the ontology, and its occurrence —
+        even when contested — is favourable for the native): 'neutral' tags
+        the class as not-inherently-loss, it is NOT a third outcome. The
+        signed-channel balance NEVER enters the verdict, so contested
+        occurrence cannot relabel the outcome 'mixed' (the O-TV-2 mutation)
+        and the all-favourable era table (#12, E5) cannot reappear — a
+        loss-class window is 'adverse' by polarity alone.
+      * UNRESOLVED OPERANDS (§3.2 inv 3, O-TV-3, ADK-0026): any entry in
+        unresolved_operands — or an out-of-vocabulary/absent class_valence
+        (operand 'class_polarity') — makes the outcome 'unqualified' and
+        names every unresolved operand in the breakdown. No silent 1.0, no
+        'favourable' default. When the polarity itself is unresolved the
+        channels cannot be oriented, so both evidence fields are honest
+        nulls (None), not 0.0 stand-ins; otherwise the evidence fields are
+        still reported (the occurrence evidence is computable; only the
+        verdict is withheld).
+      * SEVERITY (§1.1: interpretive, rank-only, never a gate) is the
+        occurrence-strength reading evidence_for_occurrence — how strongly
+        the event itself is evidenced, independent of whether that
+        occurrence is good for the native (signed_intensity already carries
+        the sign). None when the evidence fields are null.
+    """
+    unresolved = list(unresolved_operands)
+    polarity_known = class_valence in _CLASS_VALENCE_KNOWN
+    if not polarity_known:
+        unresolved.append("class_polarity")
+    if polarity_known:
+        # class-relative orientation (see docstring)
+        if class_is_adverse:
+            ev_for, ev_against = afflicting_channel, supportive_channel
+            orientation = "adverse_class:afflicting=for,supportive=against"
+        else:
+            ev_for, ev_against = supportive_channel, afflicting_channel
+            orientation = "non_adverse_class:supportive=for,afflicting=against"
+    else:
+        ev_for = ev_against = None
+        orientation = "unoriented:class_polarity unresolved"
+    if unresolved:
+        outcome = "unqualified"
+    elif class_is_adverse:
+        outcome = "adverse"
+    elif class_valence == "mixed":
+        outcome = "mixed"
+    else:
+        outcome = "favourable"
+    return {
+        "evidence_for_occurrence": ev_for,
+        "evidence_against_occurrence": ev_against,
+        "outcome_valence_for_native": outcome,
+        "severity": ev_for,
+        "breakdown": {
+            "contract": VALENCE_CONTRACT,
+            "class_valence": class_valence,
+            "class_is_adverse": class_is_adverse,
+            "supportive_channel": supportive_channel,
+            "afflicting_channel": afflicting_channel,
+            "orientation": orientation,
+            "unresolved_operands": unresolved,
+            "derivation": (
+                "evidence fields = signed channels oriented by class "
+                "polarity (never netted); outcome = polarity verdict "
+                "(unqualified if any operand unresolved; adverse if "
+                "class_is_adverse; mixed iff class_valence=='mixed'; else "
+                "favourable); severity = evidence_for_occurrence "
+                "(rank-only, never a gate)"),
+        },
+    }
+
+
 # ── per-class lambda evaluator ───────────────────────────────────────────────
 
 
@@ -372,7 +506,7 @@ class ClassContext:
                  *, weight_by_target_ref: dict[str, float],
                  class_valence: str = "mixed", class_is_adverse: bool = False,
                  context_source: str = "class_context_json",
-                 permission_fn=None):
+                 permission_fn=None, unresolved_valence_operands=()):
         self.event_class = event_class
         self.weight_by_target_ref = dict(weight_by_target_ref)
         self.promise, self.promise_detail = leg.compute_promise(weights)
@@ -390,6 +524,12 @@ class ClassContext:
         self.permission_systems = dict(permission_systems)
         self.class_valence = class_valence
         self.class_is_adverse = class_is_adverse
+        # T0-7: class-level unresolved valence operands declared by the
+        # context document (e.g. 'av_donor_matrix' when the P5c contributor
+        # matrix is absent — O-TV-3's exact fixture condition). Every window
+        # row of the class then evaluates with these operands unresolved:
+        # outcome 'unqualified', operands named in the breakdown.
+        self.unresolved_valence_operands = tuple(unresolved_valence_operands)
         self.context_source = context_source
         # tārā: the transit-Moon channel is not wired into this projection
         # (M-3 separate channel) — the pinned honest skip (modifier 1.0).
@@ -429,6 +569,23 @@ class ClassContext:
             "w30_skip_reason": self.w30["skip_reason"],
             "class_valence": self.class_valence,
             "class_is_adverse": self.class_is_adverse,
+            # T0-7 (FABLE #11/#12, §3): the class factors record carries the
+            # three-field contract id and the CLASS-LEVEL polarity verdict
+            # (polarity alone — the per-window evaluation-time verdict and
+            # evidence fields live on each window row's suppression_state.
+            # The evidence/severity quantities are per-instant, so the
+            # class-level cells are honest nulls, never stand-ins).
+            "valence_contract": VALENCE_CONTRACT,
+            "evidence_for_occurrence": None,
+            "evidence_against_occurrence": None,
+            "outcome_valence_for_native": three_field_valence(
+                0.0, 0.0, class_valence=self.class_valence,
+                class_is_adverse=self.class_is_adverse,
+                unresolved_operands=self.unresolved_valence_operands
+            )["outcome_valence_for_native"],
+            "severity": None,
+            "valence_unresolved_operands": sorted(
+                self.unresolved_valence_operands),
             "context_source": self.context_source,
         }
 
@@ -472,6 +629,24 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         supportive, afflicting, _ch = leg.compute_signed_channels_v3(
             sentences, class_ctx.weight_by_target_ref)
         gates, gates_detail = quality_gate_for_date(iso_date_of_jd(t_jd))
+        # T0-7 (FABLE #11/#12): the three-field valence at THIS instant.
+        # Per-operand resolution: a contributing contact whose target_ref has
+        # NO weight in the class's map-weight dict would be silently scored
+        # 0.0 by compute_signed_channels_v3 (weight_by_target_ref.get(...,
+        # 0.0)) — the same silent-default shape as finding #12. Such a
+        # contact's channel contribution is genuinely UNKNOWN, so its operand
+        # is named unresolved instead of defaulted. Class-level unresolved
+        # operands (context-declared, e.g. 'av_donor_matrix' — O-TV-3) always
+        # apply.
+        unresolved = list(class_ctx.unresolved_valence_operands)
+        for c in contacts:
+            if (c["contact_id"] in active_ids
+                    and c["target_ref"] not in class_ctx.weight_by_target_ref):
+                unresolved.append(f"map_weight:{c['target_ref']}")
+        tv = three_field_valence(
+            supportive, afflicting, class_valence=class_ctx.class_valence,
+            class_is_adverse=class_ctx.class_is_adverse,
+            unresolved_operands=unresolved)
         # T0-6: PERMISSION at THIS instant (per-instant MD/AD/PD plurality),
         # never a per-class constant, when the class context carries one.
         permission, permission_detail = class_ctx.permission_at(t_jd)
@@ -491,6 +666,7 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "quality_gates": gates,
             "quality_gates_detail": gates_detail,
             "active_contact_ids": active_ids,
+            "three_field_valence": tv,
         }
 
     return evaluate
@@ -676,10 +852,16 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
                 parent_key: str | None, tier: str, enter_jd: float,
                 exit_jd: float, peak_jd: float) -> dict:
     peak = evaluate(peak_jd)
+    # LEGACY single-axis valence columns (retained unchanged — consumed by
+    # the serving layer and the delta report). NOTE: resolve_valence_v3 nets
+    # the channels (imbalance_ratio → 'mixed'); that is exactly the #11/#12
+    # shape the three-field contract replaces, so the new fields below are
+    # authoritative for §3 and these two are legacy compatibility only.
     valence, is_adverse, tension = leg.resolve_valence_v3(
         peak["supportive"], peak["afflicting"],
         class_valence=class_ctx.class_valence,
         class_is_adverse=class_ctx.class_is_adverse)
+    tv = peak["three_field_valence"]
     raw = peak["lambda_raw"]
     return {
         "window_key": window_key,
@@ -695,6 +877,15 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
         "raw_intensity": raw,
         "valence": valence,
         "is_adverse": is_adverse,
+        # T0-7 (FABLE #11/#12, §3): the three-field valence contract,
+        # computed at this row's own peak instant. The served table has no
+        # columns for these (migrations out of scope) — they ride inside
+        # suppression_state.three_field_valence (written as jsonb) and are
+        # top-level here for the class report / tests.
+        "evidence_for_occurrence": tv["evidence_for_occurrence"],
+        "evidence_against_occurrence": tv["evidence_against_occurrence"],
+        "outcome_valence_for_native": tv["outcome_valence_for_native"],
+        "severity": tv["severity"],
         "active_sentences": sorted(peak["active_contact_ids"]),
         "contributing_systems": [
             # T0-6: the licence at THIS row's own peak instant (per-instant
@@ -707,6 +898,7 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             ("quality_gates:kala_vedha_gochara"
              if peak["quality_gates_detail"].get("vedha_rows_total")
              else "quality_gates:no_overlay_rows(F-11)"),
+            f"valence:{VALENCE_CONTRACT}",
         ],
         "suppression_state": {
             "quality_gates": peak["quality_gates"],
@@ -716,6 +908,9 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             "tara": class_ctx.tara,
             "w30": class_ctx.w30,
             "valence_tension": tension,
+            # T0-7: full derivation disclosure (fields + breakdown, incl.
+            # every named unresolved operand).
+            "three_field_valence": tv,
         },
         "peak_basis": PEAK_BASIS,
         "calibration_state": "structural_prior",
@@ -990,6 +1185,11 @@ def build_delta_report(*, chart_id: str, generation: str, baseline: str,
         "- tārā reports the pinned honest skip (M-3 separate Moon channel not wired here);",
         "  w30 is N-14-removed (1.0). quality_gates reproduces the F-11 no-rows path where the",
         "  overlay is absent — disclosed on every row's suppression_state.",
+        "- T0-7 (FABLE #11/#12, §3): every row's suppression_state.three_field_valence carries",
+        "  evidence_for_occurrence / evidence_against_occurrence (independent, never netted),",
+        "  outcome_valence_for_native (polarity verdict; 'unqualified' with named operands when",
+        "  any operand is unresolved) and severity. The valence/is_adverse columns are the",
+        "  legacy single-axis fields, retained for serving compatibility.",
         "- Peak storage is H-5-uncapped and N5-untrimmed (the pre-H-5 cap of 3/era is removed;",
         "  the 90-day minimum separation is a SERVE-time trim in resolution_hierarchy.py,",
         "  not applied at write time — every admitted peak is stored).",
@@ -1010,6 +1210,10 @@ def _rehearsal_class_context(event_class: str) -> dict:
         "permission_systems": {"vimshottari": True, "sade_sati": True},
         "class_valence": "mixed",
         "class_is_adverse": False,
+        # T0-7: rehearsal declares no unresolved valence operands (a known
+        # polarity, no AV-donor absence) so rehearsal rows behave exactly as
+        # pre-repair apart from carrying the new fields.
+        "valence_unresolved_operands": [],
         "context_source": "REHEARSAL-SYNTHETIC (not chart data)",
     }
 
@@ -1183,7 +1387,14 @@ def main(argv: list[str] | None = None) -> int:
                 weight_by_target_ref=weight_by_class[cls],
                 class_valence=ctx_dict.get("class_valence", "mixed"),
                 class_is_adverse=ctx_dict.get("class_is_adverse", False),
-                context_source=ctx_dict.get("context_source", context_source))
+                context_source=ctx_dict.get("context_source", context_source),
+                # T0-7: old context documents carry no such key -> [] ->
+                # behaviour identical to pre-repair apart from the new
+                # fields; documents from the repaired step06a declare the
+                # O-TV-3 operand ('av_donor_matrix') when the P5c donor
+                # matrix is absent.
+                unresolved_valence_operands=ctx_dict.get(
+                    "valence_unresolved_operands", ()))
             rows, rep = project_class_windows(
                 class_ctx, cls_contacts, horizon_jd, gate_for_date,
                 min_lambda=args.min_lambda,
