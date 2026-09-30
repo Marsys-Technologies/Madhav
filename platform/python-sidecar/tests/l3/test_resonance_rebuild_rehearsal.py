@@ -88,6 +88,8 @@ def _passing_ver() -> dict:
         "map_unchanged_after_detector_controls": True,
         "rollback": {"refused_on_stale_snapshot": True,
                      "partition_untouched_after_refusal": True,
+                     "pre_refusal_full_certificate": [481, "b" * 32],
+                     "post_refusal_full_certificate": [481, "b" * 32],
                      "restored_full_row_digest_equal": True,
                      "other_chart_untouched": True,
                      "rebuild_after_rollback_digest_equal": True},
@@ -120,6 +122,11 @@ def test_passing_verification_is_accepted():
     (lambda v: v.__setitem__("rerun_digest_equal", False), "idempotency"),
     (lambda v: v["rollback"].__setitem__("refused_on_stale_snapshot", False), "refuse"),
     (lambda v: v["rollback"].__setitem__("partition_untouched_after_refusal", False), "refuse"),
+    # ASTRA v1.2 P2-b: recorded pre- AND post-refusal certificates, never a digest compared to itself
+    (lambda v: v["rollback"].__setitem__("post_refusal_full_certificate", [481, "c" * 32]), "changed across the refusal probe"),
+    (lambda v: v["rollback"].__setitem__("post_refusal_full_certificate", [480, "b" * 32]), "changed across the refusal probe"),
+    (lambda v: v["rollback"].pop("pre_refusal_full_certificate"), "not recorded"),
+    (lambda v: v["rollback"].__setitem__("pre_refusal_full_certificate", [0, "empty"]) or v["rollback"].__setitem__("post_refusal_full_certificate", [0, "empty"]), "refuse"),
     (lambda v: v["rollback"].__setitem__("restored_full_row_digest_equal", False), "exact preimage"),
     (lambda v: v["snapshot"].__setitem__("full_row_matches_live_preimage", False), "snapshot"),
     (lambda v: v["snapshot"].__setitem__("recorded_count", 0), "snapshot"),
@@ -280,6 +287,23 @@ def test_value_invariants_check_each_retained_value_against_its_source():
     for t, w in B.EXPECTED_WEIGHTS.items():
         assert f"WHEN '{t}' THEN {w}" in sql
     assert sql.rstrip().endswith("ORDER BY m.event_class, m.target_type, m.target_ref;")
+
+
+def test_refusal_probe_is_certified_by_two_recorded_certificates_not_a_tautology():
+    """ASTRA v1.2 P2-b: the rehearsal source records the FULL certificate
+    before the refusal probe and again after it, and the foreign partition
+    is certified by its full-row certificate too; the old self-comparison
+    (one digest compared to a fresh copy of itself) is gone."""
+    src = (HERE / "resonance_rebuild_disposable_rehearsal.py").read_text()
+    assert 'pre_refusal_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)' in src
+    assert 'post_refusal_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)' in src
+    assert src.index("pre_refusal_full = _full_digest") < src.index('B.rollback_sql(snap, CHART_ID, snap_full[0], "0" * 32)') < src.index("post_refusal_full = _full_digest")
+    assert 'rb["pre_refusal_full_certificate"] = pre_refusal_full' in src
+    assert 'rb["post_refusal_full_certificate"] = post_refusal_full' in src
+    assert "pre_refusal_full == post_refusal_full" in src
+    assert '_full_digest(cur, "gochara_resonance_map", CHART_ID)[1] == _full_digest(cur, "gochara_resonance_map", CHART_ID)[1]' not in src
+    assert 'other_before_full = _full_digest(cur, "gochara_resonance_map", OTHER_CHART_ID)' in src
+    assert '== other_before_full' in src
 
 
 def test_a_transferred_qualifier_with_the_same_count_is_rejected():

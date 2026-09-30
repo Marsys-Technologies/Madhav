@@ -216,3 +216,62 @@ foreign partition untouched True; rebuild after rollback reproduces the
 post-rebuild content digest True.
 R-1: 0 negative / 105 kept; total 481;
 rerun content digest equal True.
+
+## 8. Rework r3 run (ASTRA_REVIEW_A5_4 v1.2 P1-3 / P2-b) — 2026-09-30
+
+Destination cluster asserted before any DDL (`--expect-cluster-id 7690735150699565094`
+= `pg_control_system().system_identifier`). Database `rehearsal_a54_20260930180328_b456a4`
+created by the run and dropped afterwards (True).
+
+Acceptance: **passed = True**, failures = [].
+
+Preimage certificate: snapshot `gochara_resonance_map_snap_482012f1_20260930180328` count 177,
+full-row digest `019f69e1f85cf90b102db1ae2d6fcdd1`, equal to the live preimage
+before the destructive phase: True.
+
+Class-associated identities (`class:ref`) and the full retained-value tuples
+(event_class, type, ref, weight, state, qualifier, uncited, citation) for the
+exactly-determined types — expected from the writer's own eligibility rules per
+class, never a global DISTINCT set:
+
+| Identity | expected | actual | equal |
+|---|---|---|---|
+| afflicted_rows | 6 | 6 | True |
+| arudha_rows | 67 | 67 | True |
+| exact_row_tuples | 419 | 419 | True |
+| lord_rows | 51 | 51 | True |
+| sensitive_rows | 105 | 105 | True |
+| yoga_rows | 19 | 19 | True |
+
+Runbook identity pairs, both EXCEPT directions (actual − eligible, eligible − actual):
+R-1 {'actual_not_expected': 0, 'expected_not_actual': 0}, R-2 {'actual_not_expected': 0, 'expected_not_actual': 0}, R-3 {'actual_not_expected': 0, 'expected_not_actual': 0},
+R-5 {'ontology_not_qualified': 0, 'qualified_not_in_ontology': 0}. Retained-value invariant violations (weight / provenance /
+resolution state / qualifier, each against its own source): 0.
+Negative-result fact ids referenced: 0.
+
+Detector positive controls (each mutation applied inside a savepoint and rolled
+back; every per-class count and every global target_ref set preserved, so a
+totals-only or global-DISTINCT acceptance would still pass):
+
+| Control | counts preserved | global id sets preserved | measured (rows flagged) | detected |
+|---|---|---|---|---|
+| arudha_class_swap | True | True | r1=(0, 0) r2=(2, 2) r3=(0, 0) r5=(0, 0) values=0 | True |
+| provenance_flipped | True | True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r5=(0, 0) values=2 | True |
+| qualifier_transferred | True | True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r5=(1, 1) values=2 | True |
+| resolution_state_flipped | True | True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r5=(0, 0) values=2 | True |
+| sensitive_class_swap | True | True | r1=(2, 2) r2=(0, 0) r3=(0, 0) r5=(0, 0) values=0 | True |
+| weight_changed | True | True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r5=(0, 0) values=1 | True |
+| yoga_class_swap | True | True | r1=(0, 0) r2=(0, 0) r3=(2, 2) r5=(0, 0) values=2 | True |
+
+Map restored after the controls: True; post-control content digest
+equals the rerun digest: True.
+
+Rollback (P2-b): full certificate recorded BEFORE the refusal probe
+`429049b70ebe485cf0f6f80ab7cc12ec` (count 481) and AFTER it
+`429049b70ebe485cf0f6f80ab7cc12ec` (count 481) — equal:
+True; wrong certificate refused before any DELETE:
+True; recorded certificate restored the exact preimage — full-row digest
+equal True, content digest equal True;
+foreign partition untouched (full-row certificate AND content digest): True;
+rebuild after rollback reproduces the post-rebuild content digest: True.
+After counts by type: {'arudha': 67, 'bhava': 67, 'bhava_arudha': 67, 'dasha_lord_portfolio': 43, 'gulika_mandi_distance': 2, 'karaka': 43, 'lord': 51, 'mechanism_node': 9, 'sensitive_degree': 105, 'yamakantaka_difference': 8, 'yoga_constituent': 19}; rerun content digest equal True.

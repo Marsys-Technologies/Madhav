@@ -349,6 +349,12 @@ def verify_acceptance(ver: dict) -> list[str]:
         f.append("snapshot: the full-row certificate of the snapshot does not equal the live "
                  "preimage (or the snapshot is empty) — the destructive phase must not run")
     rb = ver.get("rollback") or {}
+    pre, post = rb.get("pre_refusal_full_certificate"), rb.get("post_refusal_full_certificate")
+    if pre is None or post is None:
+        f.append("refuse: pre-/post-refusal full certificates not recorded (the untouched claim "
+                 "must rest on two recorded certificates, never on one digest compared to itself)")
+    elif list(pre) != list(post) or not pre[0] or pre[1] in ("empty", "", None):
+        f.append(f"refuse: partition changed across the refusal probe (pre {pre}, post {post})")
     if rb.get("refused_on_stale_snapshot") is not True or rb.get("partition_untouched_after_refusal") is not True:
         f.append("rollback: the refuse-unless-verified block did not refuse a stale snapshot before deleting")
     if rb.get("restored_full_row_digest_equal") is not True:
@@ -770,6 +776,7 @@ def main(argv=None) -> int:
 
         before = _counts(cur, "before_rebuild")
         other_before = _digest(cur, "gochara_resonance_map", OTHER_CHART_ID)
+        other_before_full = _full_digest(cur, "gochara_resonance_map", OTHER_CHART_ID)
 
         # 3. snapshot (the runbook's §1 statements, verbatim from the module):
         #    the FULL-ROW certificate of the snapshot must equal the live
@@ -919,18 +926,28 @@ def main(argv=None) -> int:
         # 6. rollback rehearsal
         conn.commit()
         rb: dict = {"snapshot_table": snap}
-        # (a) a WRONG full-row certificate must be refused before any DELETE
+        # (a) a WRONG full-row certificate must be refused before any DELETE:
+        #     the FULL certificate recorded BEFORE the probe must equal the one
+        #     recorded AFTER it (ids and computed_at included — a delete+
+        #     reinsert with the same content would change it)
+        pre_refusal_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)
         refusal = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_full[0], "0" * 32))
+        post_refusal_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)
         rb["refused_on_stale_snapshot"] = refusal is not None and "ROLLBACK REFUSED" in refusal
         rb["refusal_message"] = refusal
-        rb["partition_untouched_after_refusal"] = _full_digest(cur, "gochara_resonance_map", CHART_ID)[1] == _full_digest(cur, "gochara_resonance_map", CHART_ID)[1] and _digest(cur, "gochara_resonance_map", CHART_ID) == rerun
+        rb["pre_refusal_full_certificate"] = pre_refusal_full
+        rb["post_refusal_full_certificate"] = post_refusal_full
+        rb["partition_untouched_after_refusal"] = (pre_refusal_full == post_refusal_full
+                                                  and _digest(cur, "gochara_resonance_map", CHART_ID) == rerun)
         # (b) the recorded full-row certificate restores the EXACT preimage
         err = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_full[0], snap_full[1]))
         rb["rollback_error"] = err
         restored_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)
         rb["restored_full_row_digest_equal"] = err is None and restored_full == live_pre_full
         rb["restored_content_digest_equal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == live_pre
-        rb["other_chart_untouched"] = _digest(cur, "gochara_resonance_map", OTHER_CHART_ID) == other_before
+        rb["other_chart_untouched"] = (
+            _full_digest(cur, "gochara_resonance_map", OTHER_CHART_ID) == other_before_full
+            and _digest(cur, "gochara_resonance_map", OTHER_CHART_ID) == other_before)
         _run_writer(conn)
         rb["rebuild_after_rollback_digest_equal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == post
         ver["rollback"] = rb
