@@ -454,20 +454,32 @@ def _match_boundary_root(
 ) -> ContactRoot | None:
     """The shared per-body boundary event for this span-edge crossing, when the
     caller supplied the body's solved boundary roots (R5: residence REUSES the
-    same refined events, never re-solves them). Matched on level, direction
-    and the spline-stage instant (both sides derive from the same spline
-    bracket, so the spline instants agree to far below the tolerance)."""
+    same refined events, never re-solves them). EXPLICIT crossing association
+    (A2.2 amendment 4): level (mod 360), direction, and STRUCTURAL containment
+    — the crossing's spline instant lies inside the root's own bracket arc —
+    never a timestamp-tolerance join (the 1e-3-day join missed real matches
+    when the two spline brackets disagreed by >86 s at ordinary tolerance)."""
     if not boundary_roots:
         return None
+    matches = []
     for r in boundary_roots:
         if r.arc.direction != direction:
             continue
         if ((r.level_deg - level_w) % 360.0) > 1e-6 and \
                 ((level_w - r.level_deg) % 360.0) > 1e-6:
             continue
-        if abs(r.spline_exact_jd - spline_jd) < 1e-3:
-            return r
-    return None
+        lo, hi = r.bracket
+        if lo - 1e-9 <= spline_jd <= hi + 1e-9:
+            matches.append(r)
+    if not matches:
+        return None
+    if len(matches) > 1:
+        # A crossing exactly at a wrap cut is contained by both adjacent arcs;
+        # the roots list holds one deduped root per physical crossing, so this
+        # can only be a defect — take the nearest spline instant and never
+        # invent a merge.
+        matches.sort(key=lambda r: abs(r.spline_exact_jd - spline_jd))
+    return matches[0]
 
 
 def residence_spans(
@@ -521,9 +533,16 @@ def residence_spans(
     tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
 
     # Per segment × revolution band: the in-span interval with its edge
-    # crossings. entry/exit carry (wrapped boundary level, spline jd) or None
-    # when the body was already inside / never left within this segment.
-    intervals: list[tuple[float, float, MonotoneArc, tuple | None, tuple | None]] = []
+    # crossings. entry/exit carry (wrapped boundary level, spline jd, SEGMENT)
+    # — each edge keeps the segment that OWNS it, so a span spanning a station
+    # still refines its exit against the exit's own segment (A2.2 amendment 1:
+    # the pre-fix merge retained the entry segment and refined the exit
+    # against it — Mars 2025 [60,90] came out at 84.72° instead of 2 April
+    # 90°). None when the body was already inside / never left within the
+    # segment. An endpoint sitting exactly ON the edge is an observed crossing
+    # at that endpoint (A2.2 amendment 2: a domain start on the boundary is an
+    # ingress at day 0, not a null-exact span).
+    intervals: list[tuple[float, float, tuple | None, tuple | None]] = []
     for seg in index.segments:
         span_lo = min(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
         span_hi = max(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
@@ -541,39 +560,47 @@ def residence_spans(
             entry_crossing: tuple | None = None
             exit_crossing: tuple | None = None
             if rising:
-                if span_lo < lo_u - 1e-12:
+                if span_lo < lo_u + 1e-9:
                     a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo_u, tol_deg)
-                    entry_crossing = (lo_w, a)
-                if span_hi > hi_u + 1e-12:
+                    entry_crossing = (lo_w, a, seg)
+                if span_hi > hi_u - 1e-9:
                     b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi_u, tol_deg)
-                    exit_crossing = (hi_w % 360.0, b)
+                    exit_crossing = (hi_w % 360.0, b, seg)
             else:
                 # Falling: the body enters the span at its TOP edge and
                 # leaves at its BOTTOM edge.
-                if span_hi > hi_u + 1e-12:
+                if span_hi > hi_u - 1e-9:
                     a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi_u, tol_deg)
-                    entry_crossing = (hi_w % 360.0, a)
-                if span_lo < lo_u - 1e-12:
+                    entry_crossing = (hi_w % 360.0, a, seg)
+                if span_lo < lo_u + 1e-9:
                     b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo_u, tol_deg)
-                    exit_crossing = (lo_w, b)
-            intervals.append((a, b, seg, entry_crossing, exit_crossing))
+                    exit_crossing = (lo_w, b, seg)
+            intervals.append((a, b, entry_crossing, exit_crossing))
     intervals.sort(key=lambda iv: iv[0])
     merged: list[list] = []
     for iv in intervals:
         if merged and iv[0] <= merged[-1][1] + 1e-9:
             # Contiguous across a station INSIDE the span: the entry stays
-            # with the first piece, the exit with the last.
+            # with the first piece, the exit with the last — WITH ITS OWN
+            # segment (amendment 1).
             merged[-1][1] = max(merged[-1][1], iv[1])
-            merged[-1][4] = iv[4]
+            merged[-1][3] = iv[3]
         else:
-            merged.append([iv[0], iv[1], iv[2], iv[3], iv[4]])
+            merged.append([iv[0], iv[1], iv[2], iv[3]])
 
-    def _refined_edge(seg: MonotoneArc, crossing: tuple) -> float:
+    def _refined_edge(crossing: tuple) -> float:
         """One coherent refined boundary event (R2): reuse the shared
         boundary root when supplied (R5), else Swiss-refine the spline
-        crossing directly. No timestamp join between differently refined
-        instants."""
-        level_w, spline_jd = crossing
+        crossing directly against the crossing's OWN segment. No timestamp
+        join between differently refined instants; a bracket that does not
+        contain the crossing is a defect and raises, never silently
+        mis-refines."""
+        level_w, spline_jd, seg = crossing
+        if not (seg.start_jd - 1e-9 <= spline_jd <= seg.end_jd + 1e-9):
+            raise ValueError(
+                f"residence edge crossing at jd {spline_jd} is outside its "
+                f"segment [{seg.start_jd}, {seg.end_jd}] — edge provenance "
+                "defect, refusing to refine against the wrong bracket")
         root = _match_boundary_root(boundary_roots, level_w, spline_jd, seg.direction)
         if root is not None:
             return root.exact_jd
@@ -584,9 +611,9 @@ def residence_spans(
 
     spans: list[ResidenceSpan] = []
     h0, h1 = horizon
-    for a, b, seg, entry_crossing, exit_crossing in merged:
-        entry_exact = _refined_edge(seg, entry_crossing) if entry_crossing else None
-        exit_exact = _refined_edge(seg, exit_crossing) if exit_crossing else None
+    for a, b, entry_crossing, exit_crossing in merged:
+        entry_exact = _refined_edge(entry_crossing) if entry_crossing else None
+        exit_exact = _refined_edge(exit_crossing) if exit_crossing else None
         raw_a = entry_exact if entry_exact is not None else a
         raw_b = exit_exact if exit_exact is not None else b
         ca, cb, flag, overlaps = _clip_to_horizon(raw_a, raw_b, horizon)
@@ -600,9 +627,10 @@ def residence_spans(
         )
         stamps = _episode_stamps(body, "sign_ingress", "orb_ingress")
         if ingress_observed:
-            entry_seg = seg
+            entry_seg = entry_crossing[2]
             entry_root = _match_boundary_root(
-                boundary_roots, entry_crossing[0], entry_crossing[1], seg.direction)
+                boundary_roots, entry_crossing[0], entry_crossing[1],
+                entry_seg.direction)
             if entry_root is not None:
                 branch, station_flag, unresolved = classify_branch(index, entry_root)
             else:
