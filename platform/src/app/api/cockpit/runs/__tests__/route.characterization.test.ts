@@ -204,9 +204,11 @@ describe('cockpit runs characterization — dispatch failure', () => {
     const res = await POST(req(LAYER_BUILD))
     expect(res.status).toBe(503)
     expect(await res.json()).toMatchObject({ run_id: 'run-1', detail: 'cloud run down' })
-    const failCall = mockQuery.mock.calls.find(([s]) => /UPDATE build_runs SET state='failed'/.test(s))
+    // A2: one shared statement (terminalizeFailedRun) fails the run and aborts its queued assets,
+    // binding the same raw error text to both build_runs.last_error and build_run_assets.error.
+    const failCall = mockQuery.mock.calls.find(([s]) => /UPDATE build_runs\s+SET state = 'failed'/.test(s))
     expect(failCall?.[1]).toEqual(['cloud run down', 'run-1'])
-    expect(mockQuery.mock.calls.some(([s, p]) => /SET state='aborted'/.test(s) && /state='queued'/.test(s) && p?.[0] === 'run-1')).toBe(true)
+    expect(/SET state = 'aborted'[^]*error = \$1/.test(String(failCall?.[0])) && /state = 'queued'/.test(String(failCall?.[0]))).toBe(true)
   })
 
   it('clearing path: 503 JOB_DISPATCH_FAILED carries the run id and records the raw error', async () => {
@@ -215,7 +217,7 @@ describe('cockpit runs characterization — dispatch failure', () => {
     const res = await POST(req(LAYER_REBUILD_CLEAR))
     expect(res.status).toBe(503)
     expect(await res.json()).toMatchObject({ code: 'JOB_DISPATCH_FAILED', run_id: 'run-1' })
-    const failCall = mockQuery.mock.calls.find(([s]) => /UPDATE build_runs SET state='failed'/.test(s))
+    const failCall = mockQuery.mock.calls.find(([s]) => /UPDATE build_runs\s+SET state = 'failed'/.test(s))
     expect(failCall?.[1]).toEqual(['spawn failed', 'run-1'])
   })
 })
