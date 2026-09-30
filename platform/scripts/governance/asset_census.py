@@ -226,21 +226,47 @@ ROLLUP_ORDER = ("FAIL", "ERRORED", "NO_DETECTOR", "PARTIAL", "PASS")
 
 # Declared N/A rules: rule id -> decision id (plan §2.1: "every rule cites its decision id"; N/A is computed,
 # never typed). Rule ids are "<criterion>#columns_any", "<criterion>#asset_kinds" (a supplied fact disproves the
-# pattern) and "<criterion>#measured" (the census itself measured N/A). EMPTY on purpose: per-gate applicability
-# rules are N-22 (Strategic Suvarna), not yet decided. Until a rule id is declared here, an N/A reads NO_DETECTOR.
+# pattern) and "<criterion>#measured:<cause>" (the census itself measured N/A, and the inspector named the CAUSE:
+# N-22 ruling principle 2). The uncaused "<criterion>#measured" form is RETIRED: one id per criterion released
+# every measured N/A of that criterion, whatever condition produced it. EMPTY on purpose: per-gate applicability
+# rules are N-22 (Strategic Suvarna), not yet approved. Until a rule id is declared here, an N/A reads NO_DETECTOR.
 NA_RULE_DECISIONS: dict[str, str] = {}
+
+# The causes the inspector may emit on a measured N/A, per criterion. A slug names the CODE CONDITION that produced
+# the N/A (what `measure()` or a helper actually tested), never a semantic the code does not establish; the table
+# with each condition and reason text is E6.1/cause_table.md. `cause` is emitted only on N/A records.
+NA_CAUSES: dict[str, tuple[str, ...]] = {
+    "Build.registered": ("no-writer-registry-agrees",),
+    "Build.contract": ("no-writer-registry-agrees",),
+    "Idem.pattern": ("no-writer-registry-agrees",),
+    "Build.target": ("service-no-target-table", "no-writer-no-target-table"),
+    "Build.count_integrity": ("no-writer-no-count-sql",),
+    "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
+    "Count.floor": ("target-floor-zero",),
+    "Dens.served": ("no-module-references-target",),
+    "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
+    "Build.history": ("never-run",),
+    "Build.dep_liveness": ("no-declared-dependencies",),
+    "Earn.build_record": ("never-attempted", "healthy-non-execution", "before-completion-write"),
+}
+_CAUSE_SLUG = re.compile(r"[a-z0-9][a-z0-9_-]*")
+
+
+def _na(measured: str, cause: str) -> dict:
+    """A measured N/A record: the ONLY record shape that carries a `cause` (the rollup reads it)."""
+    return dict(v=NA, measured=measured, cause=cause)
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 1
+REGISTRY_REVISION = 2     # 2: measured-N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
     """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
-    rules, and the cell-gate list."""
+    rules, the N/A causes the inspector may emit, and the cell-gate list."""
     import hashlib
-    blob = json.dumps(dict(registry=CRITERION_REGISTRY, na_rules=NA_RULE_DECISIONS, cell_gates=list(CELL_GATES),
-                           rollup_order=list(ROLLUP_ORDER)),
+    blob = json.dumps(dict(registry=CRITERION_REGISTRY, na_rules=NA_RULE_DECISIONS, na_causes=NA_CAUSES,
+                           cell_gates=list(CELL_GATES), rollup_order=list(ROLLUP_ORDER)),
                       sort_keys=True, default=list, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
@@ -317,11 +343,22 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         if v not in ROLLUP_ORDER and v != NA:
             raise ValueError(f"{crit}: measured verdict {v!r} is outside the rollup vocabulary")
         if v == NA:
-            rid = f"{crit}#measured"
+            cause = meas.get("cause")
+            if not (isinstance(cause, str) and _CAUSE_SLUG.fullmatch(cause)):
+                # N-22 principle 2: an N/A whose inspector named no usable cause cannot be keyed to any rule.
+                # Reported (reason + the cause as found), never honoured — not even by an `every id declared` set.
+                return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                            reason=f"N/A without a declared cause (cause={cause!r}): the inspector named no usable "
+                                   "cause, so no rule can release it")
+            rid = f"{crit}#measured:{cause}"
+            if cause not in NA_CAUSES.get(crit, ()):
+                return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause,
+                            reason=f"measured N/A with cause {cause!r}, which is not a registered cause of {crit}: "
+                                   "never honoured")
             if rid in NA_RULE_DECISIONS:
-                return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, decision=NA_RULE_DECISIONS[rid],
-                            reason="measured N/A under a declared rule")
-            return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid,
+                return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, cause=cause,
+                            decision=NA_RULE_DECISIONS[rid], reason="measured N/A under a declared rule")
+            return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause,
                         reason="measured N/A but N/A rule undecided (N-22): an undeclared N/A is not N/A")
         if v == PASS and e["detector"] == "NONE":
             return dict(criterion=crit, v=NO_DET, state="MEASURED",
@@ -2120,12 +2157,12 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
         nd = dict(v=NO_DET, measured="NO_DETECTOR — attempt linkage not wired")
         return dict(nd), dict(nd)
     if attempt is None:
-        earn = dict(v=NA, measured="never attempted — see Build.exercised")
+        earn = _na("never attempted — see Build.exercised", "never-attempted")
     elif attempt.get("disposition") in ("skip_no_delta", "probe_green") or not attempt.get("has_writer", True):
         why = (attempt.get("disposition") or "no registered writer (legacy health-probe service)")
-        earn = dict(v=NA, measured=f"healthy non-execution ({why}) — no build was due")
+        earn = _na(f"healthy non-execution ({why}) — no build was due", "healthy-non-execution")
     elif not attempt.get("reached_completion_write", False):
-        earn = dict(v=NA, measured=f"attempt {attempt.get('state','?')} before completion; see Build.history")
+        earn = _na(f"attempt {attempt.get('state','?')} before completion; see Build.history", "before-completion-write")
     elif attempt.get("duration_seconds") is not None:
         dur = attempt["duration_seconds"]
         rw = attempt.get("rows_written") or 0
@@ -2286,7 +2323,7 @@ def _no_writer_scanned(aid: str, has_writer: bool, check: str) -> dict:
     NO_DETECTOR, never the closable N/A (one live ledger-copy run closed bg_reference-Idem.pattern
     on exactly this; live today on L3/L4/L5, where 13 writer-backed assets are unrecognised)."""
     if not has_writer:
-        return dict(v=NA, measured="no writer, and the registry agrees (has_writer=false) — nothing to scan")
+        return _na("no writer, and the registry agrees (has_writer=false) — nothing to scan", "no-writer-registry-agrees")
     return dict(v=NO_DET, measured=f"NO_DETECTOR — registry says has_writer=true but no @register('{aid}') "
                                    f"was recognised in writers/; {check} was never scanned (see Build.registered)")
 
@@ -2458,8 +2495,8 @@ def _grade_count_floor(r: dict, live: int | None, error: str | None, ctables: li
     if floor == "0":
         # A floor of zero cannot be breached — `live >= 0` is true of every count, so PASS would be
         # a detector that cannot read false (§N.8). The registry's declaration is what applies.
-        return dict(v=NA, measured="target_floor=0: the registry declares zero rows complete — "
-                                   f"there is no floor to breach (live={'unmeasured' if live is None else live})")
+        return _na("target_floor=0: the registry declares zero rows complete — "
+                   f"there is no floor to breach (live={'unmeasured' if live is None else live})", "target-floor-zero")
     if not floor.isdigit():
         return dict(v=NO_DET, measured=f"NO_DETECTOR — target_floor {floor!r} is not a whole number of rows")
     if not r["count_sql"].strip():
@@ -2600,7 +2637,7 @@ def measure(layer_key: str) -> dict:
         elif r["has_writer"]:
             m["Build.registered"] = dict(v=FAIL, measured="registry says has_writer=true and no @register found")
         else:
-            m["Build.registered"] = dict(v=NA, measured="no writer, and the registry agrees (service or static)")
+            m["Build.registered"] = _na("no writer, and the registry agrees (service or static)", "no-writer-registry-agrees")
 
         # R41: a per-check exception must degrade THAT check to ERRORED, never abort the layer.
         m["Build.contract"] = _measure_contract(aid, files, r["has_writer"])
@@ -2611,7 +2648,8 @@ def measure(layer_key: str) -> dict:
         if r["target_table"]:
             m["Build.target"] = dict(v=PASS, measured=f"target_table={r['target_table']}")
         elif r["asset_kind"] == "service" or not r["has_writer"]:
-            m["Build.target"] = dict(v=NA, measured=f"no target_table; asset_kind='{r['asset_kind']}', has_writer={r['has_writer']}")
+            m["Build.target"] = _na(f"no target_table; asset_kind='{r['asset_kind']}', has_writer={r['has_writer']}",
+                                    "service-no-target-table" if r["asset_kind"] == "service" else "no-writer-no-target-table")
         else:
             try:
                 # R242 (W2-2 OS-B): `owners.setdefault("map", target_owners())` evaluated its argument —
@@ -2628,9 +2666,13 @@ def measure(layer_key: str) -> dict:
                                         if unknown_deps else f"{len(r['depends_on'])} edge(s), all resolvable"))
 
         ok_ci = bool(r["count_sql"]) and r["has_integrity"]
-        m["Build.count_integrity"] = dict(
-            v=(PASS if ok_ci else (NA if not r["has_writer"] and not r["count_sql"] else PARTIAL)),
-            measured=f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}")
+        ci_text = f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}"
+        if ok_ci:
+            m["Build.count_integrity"] = dict(v=PASS, measured=ci_text)
+        elif not r["has_writer"] and not r["count_sql"]:
+            m["Build.count_integrity"] = _na(ci_text, "no-writer-no-count-sql")
+        else:
+            m["Build.count_integrity"] = dict(v=PARTIAL, measured=ci_text)
 
         live = counts.get(aid)
         is_view = aid in view_counts                                       # R46
@@ -2661,9 +2703,10 @@ def measure(layer_key: str) -> dict:
             m["Build.completion"] = dict(v=ERRORED, measured="check errored: count_sql produced no value")
         elif live is None:
             if not r["has_writer"] or (r["asset_kind"] == "service" and not r["target_table"]):
-                m["Build.completion"] = dict(
-                    v=NA, measured=f"no count_sql and nothing to count: has_writer={r['has_writer']}, "
-                                   f"asset_kind='{r['asset_kind']}', no target_table; build state='{t.get('state','-')}'")
+                m["Build.completion"] = _na(
+                    f"no count_sql and nothing to count: has_writer={r['has_writer']}, "
+                    f"asset_kind='{r['asset_kind']}', no target_table; build state='{t.get('state','-')}'",
+                    "no-writer-no-count-sql" if not r["has_writer"] else "service-no-target-table-no-count-sql")
             else:
                 m["Build.completion"] = dict(
                     v=NO_DET, measured="NO_DETECTOR — no count_sql registered for a writer-backed asset with "
@@ -2895,27 +2938,32 @@ def measure(layer_key: str) -> dict:
                                                        f"{', '.join(cap['comment_only'])} — the served surface "
                                                        "cannot be attributed by code (never the closable N/A)")
         else:
-            m["Dens.served"] = dict(v=(NA if not cap["modules"] else (PASS if cap["density"] else FAIL)),
-                                    measured=(f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "
-                                              f"declaring density_contract: {cap['density']}"))
+            dens_text = (f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "
+                         f"declaring density_contract: {cap['density']}")
+            m["Dens.served"] = (_na(dens_text, "no-module-references-target") if not cap["modules"]
+                                else dict(v=(PASS if cap["density"] else FAIL), measured=dens_text))
 
         h = hist["per"].get(aid)
         if not h:
-            m["Build.exercised"] = dict(
-                v=(FAIL if r["has_writer"] else NA),
-                measured=("registered with a writer and the orchestrator has NEVER run it (no build_run_assets row)"
-                          if r["has_writer"] else "never run, and it has no writer — consistent"))
-            m["Build.history"] = dict(v=NA, measured="never run; check 7 owns this")
+            if r["has_writer"]:
+                m["Build.exercised"] = dict(
+                    v=FAIL, measured="registered with a writer and the orchestrator has NEVER run it "
+                                     "(no build_run_assets row)")
+            else:
+                m["Build.exercised"] = _na("never run, and it has no writer — consistent", "never-run-no-writer")
+            m["Build.history"] = _na("never run; check 7 owns this", "never-run")
         elif not h.get("executed", 0):
             # C1 (W2-1_REVIEW §2 A8): rows exist but none was ever STARTED (queued leftovers, aborted or
             # BLOCKED before start) — the orchestrator never executed this asset. Not a PASS; the
             # history is still graded (its own zero-completion guard keeps it non-closable).
-            m["Build.exercised"] = dict(
-                v=(FAIL if r["has_writer"] else NA),
-                measured=(f"registered with a writer and the orchestrator has NEVER executed it: {h['runs']} "
-                          f"build_run_assets row(s), none ever started (states: {h.get('states') or 'n/a'})"
-                          if r["has_writer"] else f"never executed ({h['runs']} unstarted row(s)), and it has no "
-                                                  "writer — consistent"))
+            if r["has_writer"]:
+                m["Build.exercised"] = dict(
+                    v=FAIL, measured=f"registered with a writer and the orchestrator has NEVER executed it: "
+                                     f"{h['runs']} build_run_assets row(s), none ever started "
+                                     f"(states: {h.get('states') or 'n/a'})")
+            else:
+                m["Build.exercised"] = _na(f"never executed ({h['runs']} unstarted row(s)), and it has no "
+                                           "writer — consistent", "never-executed-no-writer")
             m["Build.history"] = _grade_build_history(h)
         else:
             m["Build.exercised"] = dict(
@@ -2925,7 +2973,7 @@ def measure(layer_key: str) -> dict:
             m["Build.history"] = _grade_build_history(h)
 
         m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
-                                   else dict(v=NA, measured="no declared dependencies"))
+                                   else _na("no declared dependencies", "no-declared-dependencies"))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         m["Carr.detector"] = _run_carriage_detector(aid)
