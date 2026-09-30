@@ -2,13 +2,20 @@
 resonance-map rebuild (FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 T0-12, finding #9),
 reworked per ASTRA_REVIEW_A5_4 P1-7 / P1-8 into a FAILING acceptance check.
 
-NEVER production. Disposable identity is established BY CONSTRUCTION, not by
-a port exclusion: the rehearsal connects to a loopback maintenance database,
-CREATES a fresh database named `<prefix>_<utc-stamp>_<hex>`, verifies it is
-the connected database and empty of user tables before any DDL/DML, runs
-everything inside it, and DROPS it at the end (--keep-database retains it
-for inspection). A forwarded production port cannot satisfy this: the
-rehearsal never writes to a database it did not create seconds earlier.
+NEVER production. Disposable identity is established in two steps, BEFORE
+any cluster DDL (ASTRA_REVIEW_A5_4 v1.1 P1-7):
+  * the DESTINATION CLUSTER is named by the operator: `--expect-cluster-id`
+    (mandatory) must equal `SELECT system_identifier FROM
+    pg_control_system()` on the maintenance connection — read before
+    CREATE DATABASE; a mismatch or an unreadable identifier refuses. A
+    forwarded production endpoint carries production's identifier and is
+    therefore refused even over loopback with permissive credentials (the
+    loopback check alone never established that — it only excluded remote
+    hosts);
+  * the DATABASE is created by this run (`<prefix>_<utc-stamp>_<hex>`),
+    verified as the connected database and empty of user tables before any
+    DDL/DML, used for everything, and DROPPED at the end (--keep-database
+    retains it for inspection).
 
 What it does, and what makes it FAIL (exit 1, failures listed):
   1. Applies the REAL migrations 459 + 1080 verbatim (plus minimal faithful
@@ -23,7 +30,12 @@ What it does, and what makes it FAIL (exit 1, failures listed):
   4. Runs the REAL writer (KaGocharaResonanceWriter.run(ctx); the harness
      owns commit) and evaluates the R-1..R-6 postconditions as ASSERTIONS
      with positive controls (an empty output cannot pass); dangling / NULL /
-     out-of-vocabulary references are detected with NOT EXISTS.
+     out-of-vocabulary references are detected with NOT EXISTS; and the
+     IDENTITIES are compared as exact sets against the fixture — the lord
+     rows (class, token), the afflicted qualifiers (class, token), the
+     positive sensitive fact ids, the arudha fact ids per cited house, the
+     live yoga ids — so a transferred qualifier or a substituted input with
+     the same totals fails; the runbook's R-5 EXCEPT pair is executed too.
   5. Re-runs the writer: the partition content digest must be identical
      (idempotent rebuild).
   6. Rehearses the rollback: (a) the runbook's rollback block with a WRONG
@@ -35,6 +47,7 @@ What it does, and what makes it FAIL (exit 1, failures listed):
 Usage:
   python3 resonance_rebuild_disposable_rehearsal.py \
       --maintenance-dsn postgresql://wp6:local@127.0.0.1:55435/postgres \
+      --expect-cluster-id <system_identifier of the DISPOSABLE cluster> \
       [--database-prefix rehearsal_a54] [--keep-database] [--json-out PATH]
 """
 from __future__ import annotations
@@ -167,6 +180,21 @@ SIGN_LORDS = [
 ]
 
 
+def expected_lord_identities(signature_models: dict = SIGNATURE_MODELS):
+    """(lord_set, afflicted_set) of (event_class, '<n>L') pairs exactly as
+    the writer tokenises them (_LORD_TOKEN_RE r'\\d+L' per entry; the
+    'afflicted' qualifier rides the entry; tokens deduplicated per class)."""
+    lords: set = set()
+    afflicted: set = set()
+    for cls, (_houses, entries, _karakas) in signature_models.items():
+        for entry in entries:
+            for token in re.findall(r"\d+L", entry):
+                lords.add((cls, token))
+                if "afflicted" in entry:
+                    afflicted.add((cls, token))
+    return lords, afflicted
+
+
 def expected_afflicted_lord_rows(signature_models: dict = SIGNATURE_MODELS) -> int:
     """R-5 positive control: every '<n>L afflicted' lord reference in the
     seeded signature models must survive as a lord row with
@@ -218,6 +246,26 @@ def verify_acceptance(ver: dict) -> list[str]:
     if ver["expected_afflicted_rows"] <= 0 or ver["afflicted_qualifier_rows"] != ver["expected_afflicted_rows"]:
         f.append(f"R-5: afflicted qualifier rows {ver['afflicted_qualifier_rows']} != expected "
                  f"{ver['expected_afflicted_rows']}")
+    ids = ver.get("identities") or {}
+    for name in ("lord_rows", "afflicted_rows", "sensitive_fact_ids", "arudha_fact_ids",
+                 "yoga_ids"):
+        exp = ids.get(name, {}).get("expected")
+        act = ids.get(name, {}).get("actual")
+        if exp is None or act is None:
+            f.append(f"identity: {name} not measured")
+            continue
+        exp_l, act_l = sorted(map(str, exp)), sorted(map(str, act))
+        if not exp_l:
+            f.append(f"identity control: expected {name} set is empty")
+        if exp_l != act_l:
+            missing = sorted(set(exp_l) - set(act_l))[:5]
+            extra = sorted(set(act_l) - set(exp_l))[:5]
+            f.append(f"identity: {name} differs (missing {missing}, extra {extra})")
+    if ver.get("negative_fact_ids_referenced", 1) != 0:
+        f.append("identity: a negative-result sensitive fact id is referenced")
+    r5 = ver.get("r5_identity_sql") or {}
+    if r5.get("qualified_not_in_ontology") != 0 or r5.get("ontology_not_qualified") != 0:
+        f.append(f"R-5 SQL identity: EXCEPT rows {r5} (both must be 0)")
     sd = ver["writer_notes"].get("sensitive_degree", {})
     if not isinstance(sd.get("negative_dropped_zero_rows"), int) or sd["negative_dropped_zero_rows"] <= 0:
         f.append("notes: sensitive_degree.negative_dropped_zero_rows absent or zero (per-class exclusion counter)")
@@ -247,15 +295,37 @@ def _require_loopback(dsn: str) -> None:
         raise SystemExit(f"REFUSED: maintenance DSN {dsn!r} is not loopback.")
 
 
-def establish_disposable_database(maintenance_dsn: str, prefix: str):
-    """Create a fresh database this run owns; return (dsn, name)."""
+def assert_cluster_identity(conn, expect_cluster_id: str) -> dict:
+    """BEFORE any cluster DDL: the destination cluster's system_identifier
+    (pg_control_system) must equal the operator-stated disposable id."""
+    try:
+        actual = str(conn.execute(
+            "SELECT system_identifier FROM pg_control_system()").fetchone()[0])
+    except Exception as exc:  # noqa: BLE001
+        raise SystemExit(f"REFUSED: cannot read the cluster identifier "
+                         f"(pg_control_system): {exc}")
+    if str(expect_cluster_id).strip() != actual:
+        raise SystemExit(f"REFUSED: cluster system_identifier {actual} is not the "
+                         f"expected disposable cluster {expect_cluster_id}")
+    return {"system_identifier": actual}
+
+
+def establish_disposable_database(maintenance_dsn: str, prefix: str,
+                                  expect_cluster_id: str | None = None):
+    """Create a fresh database this run owns; return (dsn, name). The
+    cluster identity is asserted on the maintenance connection BEFORE the
+    CREATE DATABASE."""
     import psycopg
     _require_loopback(maintenance_dsn)
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,40}", prefix):
         raise SystemExit(f"REFUSED: bad database prefix {prefix!r}")
+    if not expect_cluster_id:
+        raise SystemExit("REFUSED: --expect-cluster-id is required (the disposable "
+                         "cluster's pg_control_system() system_identifier)")
     name = f"{prefix}_{B.new_stamp_utc()}_{secrets.token_hex(3)}"
     assert _DB_NAME_RE.match(name)
     with psycopg.connect(maintenance_dsn, autocommit=True) as m:
+        assert_cluster_identity(m, expect_cluster_id)
         m.execute(f'CREATE DATABASE "{name}"')
     parsed = urlparse(maintenance_dsn)
     dsn = urlunparse(parsed._replace(path=f"/{name}"))
@@ -311,7 +381,12 @@ def _full_digest(cur, table: str, chart_id: str):
     return int(n), str(d)
 
 
-def _seed(cur):
+def _seed(cur) -> dict:
+    """Seed the fixture; return its identities (fact ids by role) for the
+    exact-set acceptance checks."""
+    identities: dict = {"positive_fact_ids": [], "negative_fact_ids": [],
+                        "arudha_fact_ids_by_house": {},
+                        "live_yoga_ids": ["yoga_demo_gajakesari", "yoga_demo_bhanga"]}
     for event_class, (houses, lords, karakas) in SIGNATURE_MODELS.items():
         cur.execute(
             "INSERT INTO brahma_event_ontology (event_class_id, signature_model, citations)"
@@ -355,12 +430,15 @@ def _seed(cur):
         value = neg if i < FIXTURE_SENSITIVE_NEGATIVE else pos
         fid = add_fact("sensitive_degree_check", subject, key, text=value)
         sensitive_fact_ids.append((str(fid), value))
+        (identities["negative_fact_ids"] if i < FIXTURE_SENSITIVE_NEGATIVE
+         else identities["positive_fact_ids"]).append(str(fid))
 
     for h in range(1, 13):
         sign_name = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
                      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius",
                      "not_a_sign"][h - 1]  # A12 deliberately invalid (R-2 honesty)
-        add_fact("arudha_pada", f"ARUDHA_A{h}", "sign", text=sign_name)
+        identities["arudha_fact_ids_by_house"][h] = str(
+            add_fact("arudha_pada", f"ARUDHA_A{h}", "sign", text=sign_name))
 
     add_fact("sensitive_point_gulika_mandi", "MANDI", "sign", text="Aries")
     add_fact("sensitive_point_gulika_mandi", "GULIKA", "sign", text="Taurus")
@@ -413,6 +491,7 @@ def _seed(cur):
          (OTHER_CHART_ID, "career_entry", "bhava", "10", 0.6, None),
          (OTHER_CHART_ID, "childbirth", "lord", "5L", 0.7, None)],
     )
+    return identities
 
 
 def _counts(cur, label):
@@ -466,6 +545,10 @@ def main(argv=None) -> int:
     parser.add_argument("--maintenance-dsn", required=True,
                         help="loopback DSN of a maintenance database (e.g. .../postgres); "
                              "the rehearsal CREATES its own database from here")
+    parser.add_argument("--expect-cluster-id", required=True,
+                        help="pg_control_system() system_identifier of the DISPOSABLE "
+                             "cluster; asserted on the maintenance connection before "
+                             "CREATE DATABASE")
     parser.add_argument("--database-prefix", default="rehearsal_a54")
     parser.add_argument("--keep-database", action="store_true")
     parser.add_argument("--json-out")
@@ -473,8 +556,10 @@ def main(argv=None) -> int:
 
     import psycopg
 
-    dsn, name = establish_disposable_database(args.maintenance_dsn, args.database_prefix)
-    report: dict = {"database": name, "acceptance": None}
+    dsn, name = establish_disposable_database(
+        args.maintenance_dsn, args.database_prefix, args.expect_cluster_id)
+    report: dict = {"database": name, "expect_cluster_id": args.expect_cluster_id,
+                    "acceptance": None}
     try:
         conn = psycopg.connect(dsn, autocommit=False)
         cur = conn.cursor()
@@ -485,7 +570,7 @@ def main(argv=None) -> int:
         _apply_migration_file(cur, "459_gochara_resonance_map.sql")
         _apply_migration_file(cur, "1080_nirmana_l3_gochara_resonance_target_resolution_state.sql")
         # 2. seed
-        _seed(cur)
+        fixture = _seed(cur)
         conn.commit()
 
         before = _counts(cur, "before_rebuild")
@@ -567,6 +652,44 @@ def main(argv=None) -> int:
             " AND target_type='lord' AND target_qualifier='afflicted'",
             (CHART_ID,)).fetchone()[0]
         ver["expected_afflicted_rows"] = expected_afflicted_lord_rows()
+        # exact IDENTITY sets (ASTRA v1.1 P1-7): totals can be preserved by a
+        # transferred qualifier or a substituted input — the sets cannot.
+        exp_lords, exp_afflicted = expected_lord_identities()
+        act_lords = {(c, r) for c, r in cur.execute(
+            "SELECT event_class, target_ref FROM gochara_resonance_map"
+            " WHERE chart_id=%s AND target_type='lord'", (CHART_ID,)).fetchall()}
+        act_afflicted = {(c, r) for c, r in cur.execute(
+            "SELECT event_class, target_ref FROM gochara_resonance_map"
+            " WHERE chart_id=%s AND target_type='lord' AND target_qualifier='afflicted'",
+            (CHART_ID,)).fetchall()}
+        act_sensitive = {r for (r,) in cur.execute(
+            "SELECT DISTINCT target_ref FROM gochara_resonance_map"
+            " WHERE chart_id=%s AND target_type='sensitive_degree'", (CHART_ID,)).fetchall()}
+        act_arudha = {r for (r,) in cur.execute(
+            "SELECT DISTINCT target_ref FROM gochara_resonance_map"
+            " WHERE chart_id=%s AND target_type='arudha'", (CHART_ID,)).fetchall()}
+        act_yoga = {r for (r,) in cur.execute(
+            "SELECT DISTINCT target_ref FROM gochara_resonance_map"
+            " WHERE chart_id=%s AND target_type='yoga_constituent'", (CHART_ID,)).fetchall()}
+        exp_arudha = {fixture["arudha_fact_ids_by_house"][h]
+                      for _cls, (houses, _l, _k) in SIGNATURE_MODELS.items() for h in houses
+                      if h in fixture["arudha_fact_ids_by_house"]}
+        ver["identities"] = {
+            "lord_rows": {"expected": sorted(f"{c}:{r}" for c, r in exp_lords),
+                          "actual": sorted(f"{c}:{r}" for c, r in act_lords)},
+            "afflicted_rows": {"expected": sorted(f"{c}:{r}" for c, r in exp_afflicted),
+                               "actual": sorted(f"{c}:{r}" for c, r in act_afflicted)},
+            "sensitive_fact_ids": {"expected": sorted(fixture["positive_fact_ids"]),
+                                   "actual": sorted(act_sensitive)},
+            "arudha_fact_ids": {"expected": sorted(exp_arudha), "actual": sorted(act_arudha)},
+            "yoga_ids": {"expected": sorted(fixture["live_yoga_ids"]), "actual": sorted(act_yoga)},
+        }
+        ver["negative_fact_ids_referenced"] = len(act_sensitive & set(fixture["negative_fact_ids"]))
+        fwd, rev = B.r5_qualifier_identity_sql(CHART_ID)
+        ver["r5_identity_sql"] = {
+            "qualified_not_in_ontology": len(cur.execute(fwd).fetchall()),
+            "ontology_not_qualified": len(cur.execute(rev).fetchall()),
+        }
         ver["writer_rows_inserted"] = result.rows_inserted
         ver["writer_notes"] = json.loads(result.notes)
         ver["post_rebuild_digest"] = {"count": post[0], "digest": post[1]}

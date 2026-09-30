@@ -56,6 +56,16 @@ def _passing_ver() -> dict:
             "yoga_constituent": {"dropped_since_prior_build": ["yoga_demo_stopped"]}},
         "rerun_digest_equal": True,
         "snapshot": {"recorded_count": 177, "full_row_matches_live_preimage": True},
+        "identities": {
+            "lord_rows": {"expected": ["career_setback:10L", "marriage:7L"],
+                          "actual": ["career_setback:10L", "marriage:7L"]},
+            "afflicted_rows": {"expected": ["career_setback:10L"], "actual": ["career_setback:10L"]},
+            "sensitive_fact_ids": {"expected": ["f-pos-1", "f-pos-2"], "actual": ["f-pos-1", "f-pos-2"]},
+            "arudha_fact_ids": {"expected": ["a-1", "a-2"], "actual": ["a-1", "a-2"]},
+            "yoga_ids": {"expected": ["yoga_demo_bhanga", "yoga_demo_gajakesari"],
+                         "actual": ["yoga_demo_bhanga", "yoga_demo_gajakesari"]}},
+        "negative_fact_ids_referenced": 0,
+        "r5_identity_sql": {"qualified_not_in_ontology": 0, "ontology_not_qualified": 0},
         "rollback": {"refused_on_stale_snapshot": True,
                      "partition_untouched_after_refusal": True,
                      "restored_full_row_digest_equal": True,
@@ -93,6 +103,16 @@ def test_passing_verification_is_accepted():
     (lambda v: v["rollback"].__setitem__("restored_full_row_digest_equal", False), "exact preimage"),
     (lambda v: v["snapshot"].__setitem__("full_row_matches_live_preimage", False), "snapshot"),
     (lambda v: v["snapshot"].__setitem__("recorded_count", 0), "snapshot"),
+    # ASTRA v1.1 P1-7 — totals preserved, identities moved:
+    (lambda v: v["identities"]["afflicted_rows"].__setitem__("actual", ["marriage:7L"]), "identity: afflicted_rows"),
+    (lambda v: v["identities"]["sensitive_fact_ids"].__setitem__("actual", ["f-pos-1", "f-neg-9"]), "identity: sensitive_fact_ids"),
+    (lambda v: v.__setitem__("negative_fact_ids_referenced", 1), "negative-result sensitive fact id"),
+    (lambda v: v["identities"]["yoga_ids"].__setitem__("actual", ["yoga_demo_bhanga", "yoga_demo_stopped"]), "identity: yoga_ids"),
+    (lambda v: v["identities"]["lord_rows"].__setitem__("actual", ["career_setback:10L", "marriage:2L"]), "identity: lord_rows"),
+    (lambda v: v["identities"]["arudha_fact_ids"].__setitem__("actual", ["a-1", "a-3"]), "identity: arudha_fact_ids"),
+    (lambda v: v["identities"]["lord_rows"].__setitem__("expected", []), "identity control"),
+    (lambda v: v.pop("identities"), "not measured"),
+    (lambda v: v["r5_identity_sql"].__setitem__("qualified_not_in_ontology", 1), "R-5 SQL identity"),
     (lambda v: v["rollback"].__setitem__("other_chart_untouched", False), "foreign chart"),
     (lambda v: v["rollback"].__setitem__("rebuild_after_rollback_digest_equal", False), "rebuild after rollback"),
 ])
@@ -116,12 +136,79 @@ def test_expected_afflicted_rows_from_signature_models():
     assert R.expected_afflicted_lord_rows() == 6  # 10L, 7L, 2L/11L ×2
 
 
+def test_expected_identities_follow_the_writers_tokenisation():
+    lords, afflicted = R.expected_lord_identities()
+    assert afflicted == {("career_setback", "10L"), ("separation", "7L"),
+                         ("major_loss", "2L"), ("major_loss", "11L"),
+                         ("financial_deception", "2L"), ("financial_deception", "11L")}
+    assert ("bereavement", "2L") in lords and ("bereavement", "7L") in lords  # 'maraka lords (2L/7L)'
+    assert ("bereavement", "2L") not in afflicted
+    assert len(lords) == sum(1 for _ in lords) and afflicted <= lords
+
+
+def test_a_transferred_qualifier_with_the_same_count_is_rejected():
+    """The reviewer's mutation: move 'afflicted' from career_setback/10L to
+    marriage/7L — count six preserved — must fail."""
+    v = copy.deepcopy(_passing_ver())
+    v["identities"]["afflicted_rows"]["actual"] = ["marriage:7L"]
+    assert v["afflicted_qualifier_rows"] == v["expected_afflicted_rows"]  # totals equal
+    failures = R.verify_acceptance(v)
+    assert any("afflicted_rows" in f for f in failures)
+
+
+def test_cluster_identity_is_asserted_before_any_create_database():
+    executed = []
+
+    class _M:
+        def __init__(self, ident):
+            self._ident = ident
+
+        def execute(self, sql, *a):
+            executed.append(sql)
+            ident = self._ident
+
+            class _X:
+                def fetchone(self_inner):
+                    if ident is None:
+                        raise RuntimeError("permission denied for function pg_control_system")
+                    return (ident,)
+            return _X()
+    assert R.assert_cluster_identity(_M("123"), "123") == {"system_identifier": "123"}
+    with pytest.raises(SystemExit, match="not the expected disposable cluster"):
+        R.assert_cluster_identity(_M("999"), "123")
+    with pytest.raises(SystemExit, match="cannot read the cluster identifier"):
+        R.assert_cluster_identity(_M(None), "123")
+    # establish_disposable_database asserts BEFORE CREATE DATABASE
+    import types
+
+    class _Ctx:
+        def __init__(self, conn):
+            self._c = conn
+
+        def __enter__(self):
+            return self._c
+
+        def __exit__(self, *a):
+            return False
+    fake = types.SimpleNamespace(connect=lambda *a, **k: _Ctx(_M("999")))
+    import sys as _sys
+    _sys.modules["psycopg"] = fake
+    try:
+        with pytest.raises(SystemExit, match="not the expected"):
+            R.establish_disposable_database("postgresql://u:p@127.0.0.1:1/postgres", "x", "123")
+        assert not any("CREATE DATABASE" in q for q in executed)
+        with pytest.raises(SystemExit, match="--expect-cluster-id is required"):
+            R.establish_disposable_database("postgresql://u:p@127.0.0.1:1/postgres", "x", None)
+    finally:
+        _sys.modules.pop("psycopg", None)
+
+
 def test_main_returns_failure_when_acceptance_fails(monkeypatch, capsys):
     """The run must EXIT NON-ZERO on a violated invariant (the pre-rework
     script printed the block and returned 0)."""
     import types
     fake_report = {"acceptance": {"passed": False, "failures": ["R-1: 3 remain"]}}
-    monkeypatch.setattr(R, "establish_disposable_database", lambda dsn, p: ("dsn", "rehearsal_a54_20260930000000_abcdef"))
+    monkeypatch.setattr(R, "establish_disposable_database", lambda dsn, p, c=None: ("dsn", "rehearsal_a54_20260930000000_abcdef"))
     monkeypatch.setattr(R, "drop_disposable_database", lambda dsn, n: None)
 
     class _Conn:
@@ -130,7 +217,8 @@ def test_main_returns_failure_when_acceptance_fails(monkeypatch, capsys):
     monkeypatch.setitem(sys.modules, "psycopg", types.SimpleNamespace(
         connect=lambda *a, **k: _Conn(), Error=Exception))
     with pytest.raises(RuntimeError, match="stop before any DDL"):
-        R.main(["--maintenance-dsn", "postgresql://u:p@127.0.0.1:1/postgres"])
+        R.main(["--maintenance-dsn", "postgresql://u:p@127.0.0.1:1/postgres",
+                "--expect-cluster-id", "1"])
     # and the verify path itself
     assert R.verify_acceptance(copy.deepcopy(_passing_ver())) == []
 

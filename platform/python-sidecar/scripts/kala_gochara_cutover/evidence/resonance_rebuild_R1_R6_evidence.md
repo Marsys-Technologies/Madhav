@@ -175,3 +175,44 @@ reference checks, and the 154-versus-counter confusion corrected.
 module's statements byte for byte and fails the acceptance function on every
 violated property. The §2 result table above (154 → 0) is superseded by this
 run's numbers, which are identical for the invariants it measured.
+
+
+## 7. Rework r2 run (ASTRA_REVIEW_A5_4 v1.1 P1-6 / P1-7) — 2026-09-30
+
+Destination cluster established BEFORE any DDL: `--expect-cluster-id
+7690735150699565094` equal to `pg_control_system().system_identifier` on the
+maintenance connection (a probe with `--expect-cluster-id 1` was REFUSED before
+`CREATE DATABASE`; no `rehearsal_a54_*` database was left behind). Database
+`rehearsal_a54_20260930170120_7ede95` created by the run and dropped afterwards
+(`True`).
+
+Acceptance: **passed = True**, failures = [].
+
+Preimage certificate (typed full-row digest, ids and computed_at included):
+snapshot `gochara_resonance_map_snap_482012f1_20260930170120` count 177, full-row digest
+`befde32704af7097c8346a2fa9a2124d`, equal to the live preimage before the
+destructive phase: True (content digest
+`9a32a9f0c26152bf008482dcf2f9b6c8` recorded separately for the rerun comparison).
+
+Exact identity sets (totals alone can be preserved by a transferred qualifier or
+a substituted input — the sets cannot):
+
+| Identity | expected | actual | equal |
+|---|---|---|---|
+| afflicted_rows | 6 | 6 | True |
+| arudha_fact_ids | 12 | 12 | True |
+| lord_rows | 51 | 51 | True |
+| sensitive_fact_ids | 22 | 22 | True |
+| yoga_ids | 2 | 2 | True |
+
+Negative-result fact ids referenced: 0. Runbook R-5
+EXCEPT pair executed: {'ontology_not_qualified': 0, 'qualified_not_in_ontology': 0} (both 0).
+
+Rollback: wrong full-row certificate refused before any DELETE
+(True; partition untouched True);
+recorded certificate restored the exact preimage — full-row digest equal
+True, content digest equal True;
+foreign partition untouched True; rebuild after rollback reproduces the
+post-rebuild content digest True.
+R-1: 0 negative / 105 kept; total 481;
+rerun content digest equal True.
