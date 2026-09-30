@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { deleteConnection, renameConnection, replaceConnectionCredential } from '@/lib/ai-console/repository'
+import { deleteConnection, renameConnection, replaceConnectionCredential, updateConnectionWorkspace } from '@/lib/ai-console/repository'
 import { encryptCredential } from '@/lib/ai-console/crypto'
 import { validateConnection } from '@/lib/ai-console/validation'
 import { CredentialSchema, DeleteSchema, NameSchema, VALIDATION_DISCLOSURE, dependencyPreview, json, ownedConnection,
@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic'
 const PatchSchema = z.union([
   z.object({ name: NameSchema }).strict(),
   z.object({ apiKey: CredentialSchema, acknowledgeCharge: z.literal(true) }).strict(),
+  z.object({ workspaceId: z.string().regex(/^wrkspc_[A-Za-z0-9]{20,64}$/).nullable(), acknowledgeCharge: z.literal(true) }).strict(),
 ])
 
 export async function GET(_request: Request, context: IdContext) {
@@ -25,13 +26,15 @@ export async function PATCH(request: Request, context: IdContext) {
   return withAiConsoleMutation(async userId => {
     const id = await readId(context)
     const input = await readBody(request, PatchSchema)
-    if (!('apiKey' in input)) {
+    if ('name' in input) {
       await ownedConnection(userId, id)
       return json({ connection: projectConnection(await renameConnection(userId, id, input.name)) })
     }
     return withValidationAdmission(userId, id, async () => {
       await ownedConnection(userId, id)
-      const replaced = await replaceConnectionCredential(userId, id, encryptCredential(input.apiKey))
+      const replaced = 'apiKey' in input
+        ? await replaceConnectionCredential(userId, id, encryptCredential(input.apiKey))
+        : await updateConnectionWorkspace(userId, id, input.workspaceId)
       const validation = projectValidation(await validateConnection(userId, id, { credentialVersion: replaced.credentialVersion, signal: request.signal }))
       const connection = (await ownedConnection(userId, id)).connection
       return json({ connection: { ...connection, validationState: validation.state }, validation, validationDisclosure: VALIDATION_DISCLOSURE })

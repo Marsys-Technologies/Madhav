@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { AlertCircle, CheckCircle2, CircleDashed, Clock3, ShieldX, TerminalSquare } from 'lucide-react'
 import { AiChoiceRadio } from './AiChoiceRadio'
-import { choicesEqual, formatCheckedAt, supportsEveryRole, type AiChoice, type AiConsoleStateDto, type CliCardDto, type ConsoleMutation } from './types'
+import { AI_ROLES, ROLE_LABELS, choicesEqual, formatCheckedAt, type AiChoice, type AiConsoleStateDto, type CliCardDto, type ConsoleMutation } from './types'
 
 const STATE_LABELS: Record<CliCardDto['state'], string> = {
   not_granted: 'Not granted', untested: 'Not tested', validating: 'Testing', reachable: 'Reachable',
@@ -54,18 +54,27 @@ export function LocalClisSection({ state, clis, loading, error, aggregateStatus,
   return (
     <section className="aic-section" aria-labelledby="aic-cli-heading">
       <div className="aic-section-head"><div><h2 id="aic-cli-heading">Local CLIs</h2><p className="aic-section-copy">Use administrator-granted subscriptions available to this local server. Authentication material is never copied into Madhav.</p></div></div>
-      {!error && defaultMissing && cliDefault && <div className="aic-broken"><strong>Broken default.</strong> {cliDefault.cliId} / {cliDefault.modelId ?? 'Built-in default'} is not currently reachable or authorized. Choose another default.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable local CLI choice</span><AiChoiceRadio choice={cliDefault} checked disabled unavailable label={`${cliDefault.cliId} ${cliDefault.modelId ?? 'Built-in default'}`} onSelect={onSelectDefault} /></div></div>}
+      {!error && aggregateStatus === 'ready' && !loading && cliDefault && <div className="aic-broken"><strong>{defaultMissing ? 'Broken default.' : 'Earlier direct-model default.'}</strong> {defaultMissing ? `${cliDefault.cliId} / ${cliDefault.modelId ?? 'Built-in default'} is not currently reachable or authorized. Choose another default.` : 'This saved choice remains active until you replace it with a four-role setup.'}<div className="aic-model-row" data-default="true"><span className="aic-model-id">{cliDefault.modelId ?? 'Built-in default'}</span><AiChoiceRadio choice={cliDefault} checked disabled unavailable={defaultMissing} label={`${cliDefault.cliId} ${cliDefault.modelId ?? 'Built-in default'}`} onSelect={onSelectDefault} /></div></div>}
       {error ? <div className="aic-error" role="alert">Local CLI access could not be loaded. Refresh the page to try again.</div> : loading ? <div className="aic-empty">Checking local CLI access…</div> : clis.length === 0 ? <div className="aic-empty">No local CLI products are registered on this server.</div> : (
         <div className="aic-grid">{clis.map(cli => {
           const isPrivate = cli.state === 'not_granted'
           const models = isPrivate ? [] : cli.models
+          const preset = state?.configurations.find(item => !item.deletedAt && item.configurationKind === 'cli_preset'
+            && item.ownerCliId === cli.cliId)
+          const presetChoice = preset ? { kind: 'custom_configuration' as const, configurationId: preset.id } : null
+          const presetChecked = presetChoice ? choicesEqual(state?.defaultChoice ?? null, presetChoice) : false
+          const presetReady = Boolean(preset && cli.state === 'reachable' && AI_ROLES.every(role => {
+            const target = preset.roles[role]
+            return target.kind === 'local_cli' && target.cliId === cli.cliId
+              && cli.models.some(model => model.modelId === target.modelId && model.compatibleRoles.includes(role))
+          }))
           return <article className="aic-card" key={cli.cliId}>
             <div className="aic-card-head">
               <div className="aic-card-title-row"><div><span className="aic-provider-name">Local subscription</span><h3><TerminalSquare aria-hidden="true" className="mr-2 inline size-4" />{cli.productName}</h3></div><CliStatus state={cli.state} /></div>
               {isPrivate ? <p className="aic-section-copy">An administrator must grant access before host availability can be shown.</p> : <>
                 <p className="aic-meta">{cli.detectedProduct ?? 'Product not detected'}{cli.detectedVersion ? ` · ${cli.detectedVersion}` : ''}</p>
                 <p className="aic-meta">Last check · {formatCheckedAt(cli.lastCheckedAt)}</p>
-                <div className="aic-actions"><button className="aic-button" type="button" disabled={mutationPending} onClick={() => testCli(cli)}>Test local CLI</button>{cli.state === 'reachable' && <button className="aic-button" data-primary="true" type="button" onClick={() => onConfigureRoles?.(cli.cliId)}>Configure four roles</button>}</div>
+                <div className="aic-actions"><button className="aic-button" type="button" disabled={mutationPending} onClick={() => testCli(cli)}>Test local CLI</button>{cli.state === 'reachable' && <button className="aic-button" data-primary="true" type="button" onClick={() => onConfigureRoles?.(cli.cliId)}>{preset ? 'Edit four roles' : 'Set up four roles'}</button>}</div>
                 {cli.state === 'reachable' && (cli.cliId === 'codex' || cli.cliId === 'claude_code') && <div className="aic-cli-manual">
                   <p className="aic-section-copy">This CLI does not publish a model catalog here. Enter an exact model ID to test it through the local subscription, then assign it to roles in a configuration.</p>
                   <div className="aic-field"><label htmlFor={`aic-cli-model-${cli.cliId}`}>Exact model ID for {cli.productName}</label><input id={`aic-cli-model-${cli.cliId}`} value={candidateIds[cli.cliId] ?? ''} onChange={event => setCandidateIds(current => ({ ...current, [cli.cliId]: event.target.value }))} placeholder="Model ID from this CLI" autoComplete="off" /></div>
@@ -73,13 +82,11 @@ export function LocalClisSection({ state, clis, loading, error, aggregateStatus,
                 </div>}
               </>}
             </div>
+            {preset && !isPrivate && <div className="aic-role-grid aic-card-roles">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{preset.roles[role].modelId ?? 'Built-in default'}</span></div>)}</div>}
+            {!isPrivate && <div className="aic-model-row" data-default={presetChecked}><div><span className="aic-model-name">{preset ? 'CLI role setup' : 'Role setup needed'}</span><span className="aic-model-id">{presetReady ? 'All four roles use this local subscription' : 'Set up four compatible roles before selecting as default'}</span></div>{presetChoice && <AiChoiceRadio choice={presetChoice} checked={presetChecked} disabled={!presetReady || aggregateStatus !== 'ready' || mutationPending} unavailable={presetChecked && !presetReady} label={cli.productName} onSelect={onSelectDefault} />}</div>}
             {!isPrivate && <div className="aic-model-list" aria-label={`${cli.productName} models`}>
               {models.length === 0 ? <div className="aic-model-row"><span className="aic-model-id">{cli.state === 'reachable' ? 'No compatible models available' : 'This CLI is not available for execution'}</span></div> : models.map(model => {
-                const choice = { kind: 'local_cli' as const, cliId: cli.cliId, modelId: model.modelId }
-                const checked = choicesEqual(state?.defaultChoice ?? null, choice)
-                const usable = cli.state === 'reachable' && supportsEveryRole(model.compatibleRoles)
-                const aggregateUnverified = aggregateStatus !== 'ready'
-                return <div className="aic-model-row" data-default={checked} key={model.modelId ?? '__builtin__'}><div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId ?? 'Built-in default'}{!usable ? ' · unavailable for all four roles' : ''}</span></div><AiChoiceRadio choice={choice} checked={checked} disabled={!usable || aggregateUnverified || mutationPending} unavailable={checked && !aggregateUnverified && !usable} unverified={aggregateUnverified} label={`${cli.productName} ${model.displayName}`} onSelect={onSelectDefault} /></div>
+                return <div className="aic-model-row" key={model.modelId ?? '__builtin__'}><div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId ?? 'Built-in default'} · {model.isBuiltinDefault ? 'Validated with this CLI' : cli.cliId === 'codex' || cli.cliId === 'claude_code' ? 'Individually tested with this CLI' : 'Discovered by CLI · not individually tested'}</span></div></div>
               })}
             </div>}
           </article>

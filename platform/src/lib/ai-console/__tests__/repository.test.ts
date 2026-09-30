@@ -50,6 +50,29 @@ function validTransport() {
 const calls = () => execute.mock.calls.map(([sql, params]) => ({ sql: String(sql).replace(/\s+/g, ' ').trim(), params: params as unknown[] }))
 
 describe('owned AI configuration repository', () => {
+  it('persists a provider preset only for its owning connection', async () => {
+    validTransport()
+    await repository.saveConfiguration('alice', {
+      name: 'Personal OpenAI roles', configurationKind: 'provider_preset', ownerConnectionId: connectionId,
+      roles: assignments,
+    })
+    const insert = calls().find(call => call.sql.startsWith('INSERT INTO ai_custom_configurations'))!
+    expect(insert.sql).toContain('configuration_kind')
+    expect(insert.params).toEqual(['alice', 'Personal OpenAI roles', 'provider_preset', connectionId, null])
+    await expect(repository.saveConfiguration('alice', {
+      name: 'Wrong preset', configurationKind: 'provider_preset', ownerConnectionId: configurationId,
+      roles: assignments,
+    })).rejects.toBeDefined()
+  })
+
+  it('refuses a new configuration that mixes API and CLI targets', async () => {
+    const mixed = { ...assignments, worker: { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null } }
+    await expect(repository.saveConfiguration('alice', {
+      name: 'Mixed', configurationKind: 'custom_api', roles: mixed,
+    })).rejects.toBeDefined()
+    expect(calls().some(call => call.sql.startsWith('INSERT INTO ai_custom_configurations'))).toBe(false)
+  })
+
   it('authorizes a managed principal without reading Default or routing state', async () => {
     respond(sql => {
       if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
@@ -222,7 +245,9 @@ describe('owned AI configuration repository', () => {
     const result = await repository.createConnection('alice', { providerId: 'openai', name: 'Personal' }, encrypted)
     expect(result).toEqual({ id: connectionId, providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated', confirmedValid: true })
     const insert = calls().find(c => c.sql.startsWith('INSERT INTO ai_provider_connections'))!
-    expect(insert.params).toEqual(['alice', 'openai', 'Personal', encrypted.ciphertext, encrypted.nonce, encrypted.authTag, encrypted.wrappedDataKey, encrypted.wrapNonce, encrypted.wrapAuthTag, 'test', '••••1234', encrypted.fingerprint])
+    expect(insert.sql).toContain('anthropic_workspace_id,model_retest_required')
+    expect(insert.sql).toContain('$13,true')
+    expect(insert.params).toEqual(['alice', 'openai', 'Personal', encrypted.ciphertext, encrypted.nonce, encrypted.authTag, encrypted.wrappedDataKey, encrypted.wrapNonce, encrypted.wrapAuthTag, 'test', '••••1234', encrypted.fingerprint, null])
   })
   it('selects credential validity only to derive the safe confirmation boolean', async () => {
     respond(sql => sql.includes('FROM ai_provider_connections') ? [safeConnection] : undefined)
@@ -242,8 +267,25 @@ describe('owned AI configuration repository', () => {
     expect(replace.sql).toContain('user_id=$1')
     expect(replace.params.slice(0, 2)).toEqual(['alice', connectionId])
     expect(statements.some(c => c.sql.includes('UPDATE ai_connection_models') && c.sql.includes('available=false') && c.sql.includes('user_id'))).toBe(true)
+    expect(statements.some(c => c.sql.includes('UPDATE ai_connection_models SET plain_tested_at=NULL')
+      && c.sql.includes('tested_credential_version=NULL') && c.sql.includes('last_probe_at=NULL'))).toBe(true)
     expect(statements.at(-1)?.sql).toBe('COMMIT')
     expect(statements.find(c => c.sql.startsWith('INSERT INTO ai_configuration_audit_log'))?.params).toContain('connection_credential_replaced')
+  })
+  it('changes only an owned Anthropic workspace, versions the connection, and invalidates its models', async () => {
+    validTransport()
+    const workspaceId = 'wrkspc_01JEueaSaKJ72sh4drDASzH2'
+    await repository.updateConnectionWorkspace('alice', connectionId, workspaceId)
+    const update = calls().find(c => c.sql.includes('SET anthropic_workspace_id=$3'))!
+    expect(update.params).toEqual(['alice', connectionId, workspaceId])
+    expect(update.sql).toContain("provider_id='anthropic'")
+    expect(update.sql).toContain('credential_version=credential_version+1')
+    expect(calls().some(c => c.sql.includes('UPDATE ai_connection_models') && c.sql.includes('available=false'))).toBe(true)
+    const clear = calls().find(c => c.sql.includes('UPDATE ai_connection_models SET plain_tested_at=NULL'))!
+    expect(clear.params).toEqual(['alice', connectionId])
+    expect(clear.sql).toContain('tested_credential_version=NULL')
+    expect(clear.sql).toContain('last_probe_at=NULL')
+    expect(calls().findIndex(c => c.sql.includes('available=false'))).toBeLessThan(calls().findIndex(c => c.sql.includes('plain_tested_at=NULL')))
   })
   it('rejects stale validation before replacing the catalog after a credential race', async () => {
     expect(repository).toHaveProperty('storeConnectionValidation')
@@ -283,7 +325,7 @@ describe('owned AI configuration repository', () => {
     const update = calls().find(c => c.sql.startsWith('UPDATE ai_custom_configurations'))!
     expect(update.sql).toContain('version=version+1')
     expect(update.sql).toContain('version=$4')
-    expect(update.params).toEqual(['alice', configurationId, 'Team', 1])
+    expect(update.params).toEqual(['alice', configurationId, 'Team', 1, 'custom_api', null, null])
     const roles = calls().filter(c => c.sql.startsWith('INSERT INTO ai_custom_configuration_roles'))
     expect(roles).toHaveLength(4)
     expect(roles.map(c => c.params[2])).toEqual(['synthesizer', 'planner', 'deep_planner', 'worker'])
@@ -568,6 +610,37 @@ describe('owned AI configuration repository', () => {
 })
 
 describe('atomic routing resolution read', () => {
+  it('preserves an older saved choice without probe evidence even when its key version exceeds one', async () => {
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, credential_version: 3,
+        model_retest_required: false }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
+        compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true,
+        plain_tested_at: null, tested_credential_version: null }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .resolves.toMatchObject({ roles: { worker: { credentialVersion: 3 } } })
+  })
+  it('requires a fresh individual model probe after an Anthropic workspace or key change', async () => {
+    let testedVersion: number | null = null
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, provider_id: 'anthropic',
+        credential_version: 2, model_retest_required: true }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
+        compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true,
+        plain_tested_at: testedVersion === null ? null : new Date(), tested_credential_version: testedVersion }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    testedVersion = 1
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    testedVersion = 2
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .resolves.toMatchObject({ roles: { worker: { providerId: 'anthropic', credentialVersion: 2 } } })
+  })
   it('locks an active owner and resolves only the current exact default target', async () => {
     respond((sql, params) => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]

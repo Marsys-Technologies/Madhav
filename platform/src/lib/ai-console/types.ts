@@ -61,6 +61,7 @@ export type ConnectionValidationState = z.infer<typeof ConnectionValidationState
 export const SafeProviderConnectionSchema = z.object({
   id: IdentifierSchema,
   providerId: ProviderIdSchema,
+  workspaceId: z.string().regex(/^wrkspc_[A-Za-z0-9]{20,64}$/).optional(),
   name: IdentifierSchema,
   maskedSuffix: IdentifierSchema,
   validationState: ConnectionValidationStateSchema,

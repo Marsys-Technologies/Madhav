@@ -14,6 +14,7 @@ const key = 'test-user-owned-secret-1234'
 let active = true
 let deleted = false
 let provider: ProviderId = 'openai'
+let workspaceId: string | null = null
 let version = 1
 let state = 'untested'
 let validity = 'unknown'
@@ -26,7 +27,7 @@ beforeEach(() => {
   vi.stubEnv('MARSYS_AI_KEK_test', Buffer.alloc(32, 1).toString('base64'))
   vi.stubEnv('MARSYS_AI_FINGERPRINT_SECRET', Buffer.alloc(32, 2).toString('base64'))
   const e = encryptCredential(key)
-  active = true; deleted = false; provider = 'openai'; version = 1; state = 'untested'; validity = 'unknown';
+  active = true; deleted = false; provider = 'openai'; workspaceId = null; version = 1; state = 'untested'; validity = 'unknown';
   availableModels = new Set(['gpt-4.1', 'gpt-4.1-mini']); claimed = []; concurrent = 0; maxConcurrent = 0
   execute.mockReset().mockImplementation(async (sql: string, params: unknown[] = []) => {
     let rows: Record<string, unknown>[] = []
@@ -43,7 +44,7 @@ beforeEach(() => {
       const credentialAllowed = requiresConfirmedValidity ? validity === 'valid' : validity !== 'invalid'
       const exactAllowed = !runtime || (params[2] === provider && credentialAllowed && availableModels.has(String(params[4])))
       const requestedVersion = runtime ? params[3] : params[2]
-      if (active && !deleted && exactAllowed && params[0] === 'alice' && params[1] === id && requestedVersion === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint }]
+      if (active && !deleted && exactAllowed && params[0] === 'alice' && params[1] === id && requestedVersion === version) rows = [{ credential_ciphertext: e.ciphertext, credential_nonce: e.nonce, credential_tag: e.authTag, wrapped_dek: e.wrappedDataKey, wrap_nonce: e.wrapNonce, wrap_tag: e.wrapAuthTag, kek_version: e.keyVersion, masked_suffix: e.mask, keyed_fingerprint: e.fingerprint, anthropic_workspace_id: workspaceId }]
     } else if (sql.includes('FROM ai_provider_connections') && sql.trim().startsWith('SELECT') && params[0] === 'alice') {
       rows = [{ id, provider_id: provider, credential_version: version, validation_state: state, credential_validity: validity, deleted_at: deleted ? '2026-09-27' : null }]
     } else if (sql.startsWith('UPDATE ai_provider_connections SET validation_state')) {
@@ -62,6 +63,14 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); vi.restoreAllMocks() })
 const writes = () => execute.mock.calls.filter(([sql]) => String(sql).startsWith('UPDATE ai_provider_connections SET validation_state')).map(([, params]) => params)
 describe('owned validation state flow', () => {
+  it('passes the saved Anthropic workspace through owned model discovery', async () => {
+    provider = 'anthropic'; workspaceId = 'wrkspc_01JEueaSaKJ72sh4drDASzH2'
+    http.mockResolvedValue(Response.json({ data: [{ id: 'claude-haiku-4-5' }], has_more: false }))
+    const models = await discoverConnectionModels({ userId: 'alice', connectionId: id,
+      providerId: 'anthropic', credentialVersion: 1 }, new AbortController().signal)
+    expect(models).toHaveLength(1)
+    expect(new Headers(http.mock.calls[0][1].headers).get('anthropic-workspace-id')).toBe(workspaceId)
+  })
   it.each(['disabled', 'deleted', 'replaced'] as const)('blocks every paginated request after the connection is %s', async change => {
     for (const source of ['anthropic', 'google', 'openrouter'] as const) {
       active = true; deleted = false; version = 1; provider = source

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronDown, KeyRound, TerminalSquare } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import '@/components/pariprashna/pariprashna.css'
 import './ai-console.css'
@@ -11,6 +12,19 @@ import type { AiChoice, AiConsoleStateDto, CliStateDto, ConsoleMutation } from '
 
 const CONSOLE_QUERY_KEY = ['ai-console', 'state'] as const
 const CLI_QUERY_KEY = ['ai-console', 'clis'] as const
+
+function describeDefault(state: AiConsoleStateDto | undefined, clis: CliStateDto['clis']): string {
+  if (!state) return 'Checking your selection…'
+  const choice = state.defaultChoice
+  if (!choice) return 'No default selected'
+  if (choice.kind === 'custom_configuration') {
+    return state.configurations.find(item => item.id === choice.configurationId)?.name ?? 'Saved configuration unavailable'
+  }
+  if (choice.kind === 'provider_model') {
+    return `${state.connections.find(item => item.id === choice.connectionId)?.name ?? 'Provider'} · ${choice.modelId}`
+  }
+  return `${clis.find(item => item.cliId === choice.cliId)?.productName ?? 'Local CLI'} · ${choice.modelId ?? 'Built-in default'}`
+}
 
 const SAFE_MESSAGES: Record<string, string> = {
   unauthorized: 'Please sign in again to manage AI connections.',
@@ -53,7 +67,8 @@ export function AIConsole() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState('')
   const [announcedStatus, setAnnouncedStatus] = useState('')
-  const [cliSeed, setCliSeed] = useState<{ cliId: string; nonce: number } | null>(null)
+  const [cliSeed, setCliSeed] = useState<{ sourceId: string; nonce: number } | null>(null)
+  const [apiSeed, setApiSeed] = useState<{ sourceId: string; nonce: number } | null>(null)
 
   const stateQuery = useQuery({
     queryKey: CONSOLE_QUERY_KEY,
@@ -83,7 +98,7 @@ export function AIConsole() {
     setStatus('Working…')
     try {
       const result = await mutation.mutateAsync({ url, init })
-      setStatus(successMessage)
+      setStatus(typeof successMessage === 'function' ? successMessage(result) : successMessage)
       return result
     } catch (error) {
       const message = error instanceof SafeRequestError ? error.message : 'The request could not be completed safely.'
@@ -101,6 +116,7 @@ export function AIConsole() {
   const state = stateQuery.isSuccess ? stateQuery.data : undefined
   const clis = cliQuery.isSuccess ? cliQuery.data.clis : []
   const loading = stateStatus === 'loading' || cliStatus === 'loading'
+  const defaultName = describeDefault(state, clis)
 
   return (
     <div className="pp-root min-h-full">
@@ -111,9 +127,13 @@ export function AIConsole() {
           <p className="aic-intro">
             Connect your own providers, compose named four-role configurations, and choose one exact default for Madhav’s AI work.
           </p>
+          <div className="aic-default-summary"><span>Current default</span><strong>{defaultName}</strong><small>{state && !state.defaultChoice ? 'Create a role setup below, then choose it as the default before using Paripraśna.' : 'Paripraśna uses this when its picker is set to Default.'}</small></div>
         </header>
 
         <div className="aic-sections" aria-busy={loading}>
+          <details className="aic-group" open>
+            <summary className="aic-group-summary"><span className="aic-group-icon"><KeyRound aria-hidden="true" /></span><span><strong>API providers</strong><small>Keys, tested models, role setups, and custom API configurations</small></span><ChevronDown className="aic-chevron" aria-hidden="true" /></summary>
+            <div className="aic-group-body">
           <ProviderConnectionsSection
             state={state}
             loading={stateStatus === 'loading'}
@@ -121,9 +141,11 @@ export function AIConsole() {
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
+            onConfigureRoles={sourceId => setApiSeed(current => ({ sourceId, nonce: (current?.nonce ?? 0) + 1 }))}
           />
           <CustomConfigurationsSection
-            key={cliSeed?.nonce ?? 0}
+            key={`api-${apiSeed?.nonce ?? 0}`}
+            mode="api"
             state={state}
             clis={clis}
             loading={stateStatus === 'loading'}
@@ -132,8 +154,14 @@ export function AIConsole() {
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
-            cliSeed={cliSeed}
+            seed={apiSeed}
+            onSeedDismiss={() => setApiSeed(null)}
           />
+            </div>
+          </details>
+          <details className="aic-group" open>
+            <summary className="aic-group-summary"><span className="aic-group-icon"><TerminalSquare aria-hidden="true" /></span><span><strong>Local CLIs</strong><small>Subscription access, role setups, and custom CLI configurations</small></span><ChevronDown className="aic-chevron" aria-hidden="true" /></summary>
+            <div className="aic-group-body">
           <LocalClisSection
             state={state}
             clis={clis}
@@ -143,8 +171,24 @@ export function AIConsole() {
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
-            onConfigureRoles={cliId => setCliSeed(current => ({ cliId, nonce: (current?.nonce ?? 0) + 1 }))}
+            onConfigureRoles={sourceId => setCliSeed(current => ({ sourceId, nonce: (current?.nonce ?? 0) + 1 }))}
           />
+          <CustomConfigurationsSection
+            key={`cli-${cliSeed?.nonce ?? 0}`}
+            mode="cli"
+            state={state}
+            clis={clis}
+            loading={stateStatus === 'loading'}
+            error={stateStatus === 'error'}
+            cliStatus={cliStatus}
+            mutationPending={mutation.isPending}
+            mutate={mutate}
+            onSelectDefault={selectDefault}
+            seed={cliSeed}
+            onSeedDismiss={() => setCliSeed(null)}
+          />
+            </div>
+          </details>
         </div>
         <div className="aic-live" role="status" aria-live="polite" aria-atomic="true">{announcedStatus}</div>
       </div>
