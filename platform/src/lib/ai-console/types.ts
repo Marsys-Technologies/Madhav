@@ -76,6 +76,12 @@ export const ProviderModelSchema = z.object({
   supportsTools: z.boolean(),
   supportsStructuredOutput: z.boolean(),
   available: z.boolean(),
+  userSelected: z.boolean().optional(),
+  plainTestedAt: z.string().nullable().optional(),
+  lastProbeAt: z.string().nullable().optional(),
+  lastProbeErrorCode: z.string().nullable().optional(),
+  lastProbeInputTokens: z.number().int().nonnegative().nullable().optional(),
+  lastProbeOutputTokens: z.number().int().nonnegative().nullable().optional(),
 }).strict()
 export type ProviderModel = z.infer<typeof ProviderModelSchema>
 

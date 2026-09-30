@@ -325,7 +325,7 @@ export const callDashaEligibilityCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id  = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri'
+    const ayanamsha_id  = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const date_from     = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
     const date_to       = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 3 * 365 * 86400000).toISOString().split('T')[0]
     const target_lords  = (args['target_lords'] as string[] | undefined) ?? []

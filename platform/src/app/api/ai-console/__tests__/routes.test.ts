@@ -5,21 +5,22 @@ import { AI_ROLES } from '@/lib/ai-console/types'
 import { checkRpm, __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 
 const mocks = vi.hoisted(() => ({
-  auth: vi.fn(), flag: vi.fn(), encrypt: vi.fn(), validate: vi.fn(),
+  auth: vi.fn(), flag: vi.fn(), encrypt: vi.fn(), validate: vi.fn(), testModel: vi.fn(),
   listAiConsoleState: vi.fn(), createConnection: vi.fn(), renameConnection: vi.fn(),
   replaceConnectionCredential: vi.fn(), saveConfiguration: vi.fn(), duplicateConfiguration: vi.fn(),
-  previewChoiceDependencies: vi.fn(), deleteConnection: vi.fn(), deleteConfiguration: vi.fn(), setUserDefault: vi.fn(),
+  previewChoiceDependencies: vi.fn(), deleteConnection: vi.fn(), deleteConfiguration: vi.fn(), setUserDefault: vi.fn(), deselectProviderModel: vi.fn(),
 }))
 vi.mock('@/lib/auth/access-control', () => ({ getServerUserWithProfile: mocks.auth }))
 vi.mock('@/lib/config', () => ({ getFlag: mocks.flag }))
 vi.mock('@/lib/ai-console/crypto', () => ({ encryptCredential: mocks.encrypt }))
-vi.mock('@/lib/ai-console/validation', () => ({ validateConnection: mocks.validate }))
+vi.mock('@/lib/ai-console/validation', () => ({ validateConnection: mocks.validate, testAndSelectProviderModel: mocks.testModel }))
 vi.mock('@/lib/ai-console/repository', () => mocks)
 
 import * as root from '../route'
 import * as connections from '../connections/route'
 import * as connection from '../connections/[id]/route'
 import * as validation from '../connections/[id]/validate/route'
+import * as models from '../connections/[id]/models/route'
 import * as configurations from '../configurations/route'
 import * as configuration from '../configurations/[id]/route'
 import * as defaults from '../default/route'
@@ -59,6 +60,32 @@ beforeEach(() => {
   mocks.duplicateConfiguration.mockResolvedValue({ id: configId, name: 'Copy', version: 1, roles })
   mocks.previewChoiceDependencies.mockResolvedValue({ configurations: [{ id: configId, name: 'Four roles' }],
     defaultAffected: true, conversations: [{ conversation_id: '33333333-3333-4333-8333-333333333333' }] })
+})
+
+describe('single provider-model admission', () => {
+  it('retires direct Kimi onboarding while preserving existing connection routes', async () => {
+    const response = await connections.POST(request('POST', {
+      name: 'Direct Kimi', providerId: 'kimi', apiKey: 'test-only', acknowledgeCharge: true,
+    }))
+    expect(response.status).toBe(400)
+    expect(mocks.createConnection).not.toHaveBeenCalled()
+  })
+
+  it('requires an explicit charge acknowledgement before testing one exact model', async () => {
+    const denied = await models.POST(request('POST', { modelId: 'test-model' }), context())
+    expect(denied.status).toBe(400)
+    expect(mocks.testModel).not.toHaveBeenCalled()
+    const allowed = await models.POST(request('POST', { modelId: 'test-model', acknowledgeCharge: true }), context())
+    expect(allowed.status).toBe(200)
+    expect(mocks.testModel).toHaveBeenCalledWith('owner', id, 'test-model', expect.any(AbortSignal))
+  })
+
+  it('only deselects a model; it does not rewrite saved default or configuration choices', async () => {
+    const response = await models.DELETE(request('DELETE', { modelId: 'test-model' }), context())
+    expect(response.status).toBe(200)
+    expect(mocks.deselectProviderModel).toHaveBeenCalledWith('owner', id, 'test-model')
+    expect(mocks.setUserDefault).not.toHaveBeenCalled()
+  })
 })
 
 describe('bounded request bodies', () => {

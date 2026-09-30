@@ -8,7 +8,7 @@ const AuditSchema = z.object({
     'connection_credential_replaced', 'connection_validated', 'connection_validation_succeeded',
     'connection_validation_rejected', 'connection_deleted',
     'configuration_created', 'configuration_updated', 'configuration_duplicated',
-    'configuration_deleted', 'default_selected', 'conversation_selected']),
+    'configuration_deleted', 'default_selected', 'conversation_selected', 'cli_model_added']),
   connectionId: z.string().uuid().optional(),
   configurationId: z.string().uuid().optional(),
   cliId: CliIdSchema.optional(),

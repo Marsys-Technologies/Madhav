@@ -172,7 +172,20 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(unitByName.has('gochara_sweep')).toBe(true)
       expect(unitByName.has('bearing_yogas')).toBe(true)
       expect(unitByName.has('bearing_afflictions')).toBe(true)
-      expect(unitByName.get('notably_absent_yogas')!['state']).toBe('not_computed')
+      // NMB-CAND-v1 (OSR-012, narrowed by OSR-015): wealth reads the serve-time formation band
+      // (present / absent / indeterminate; NO near_miss). Until the OSR-004 rebuild refreshes
+      // ga_yoga/ga_positions the honest live state is `source_unproven`; once proven and fully
+      // determinate it is `empty_for_this_chart`. An indeterminate candidate is also
+      // `source_unproven`. It is NEVER the retired `not_computed`, never `served` (no near_miss rows
+      // exist), and the array is always empty.
+      const notablyAbsentYogas = checklist['notably_absent_yogas'] as Array<Record<string, unknown>>
+      expect(Array.isArray(notablyAbsentYogas)).toBe(true)
+      const naState = unitByName.get('notably_absent_yogas')!['state']
+      expect(['empty_for_this_chart', 'source_unproven']).toContain(naState)
+      expect(unitByName.get('notably_absent_yogas')!['count']).toBe(0)
+      expect(notablyAbsentYogas).toEqual([])
+      const naFlags = (content['judgment_flags'] as Array<Record<string, unknown>>).map(f => f['code'])
+      expect(naFlags.includes('notably_absent_not_checked')).toBe(naState === 'source_unproven')
       // yogi/avayogi honestly not_joined (T6/MC-029 computed it; this instrument doesn't fold it in yet)
       expect(unitByName.get('yogi_avayogi')!['state']).toBe('not_joined')
 

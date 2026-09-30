@@ -53,6 +53,7 @@ export function AIConsole() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState('')
   const [announcedStatus, setAnnouncedStatus] = useState('')
+  const [cliSeed, setCliSeed] = useState<{ cliId: string; nonce: number } | null>(null)
 
   const stateQuery = useQuery({
     queryKey: CONSOLE_QUERY_KEY,
@@ -122,6 +123,7 @@ export function AIConsole() {
             onSelectDefault={selectDefault}
           />
           <CustomConfigurationsSection
+            key={cliSeed?.nonce ?? 0}
             state={state}
             clis={clis}
             loading={stateStatus === 'loading'}
@@ -130,6 +132,7 @@ export function AIConsole() {
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
+            cliSeed={cliSeed}
           />
           <LocalClisSection
             state={state}
@@ -140,6 +143,7 @@ export function AIConsole() {
             mutationPending={mutation.isPending}
             mutate={mutate}
             onSelectDefault={selectDefault}
+            onConfigureRoles={cliId => setCliSeed(current => ({ cliId, nonce: (current?.nonce ?? 0) + 1 }))}
           />
         </div>
         <div className="aic-live" role="status" aria-live="polite" aria-atomic="true">{announcedStatus}</div>

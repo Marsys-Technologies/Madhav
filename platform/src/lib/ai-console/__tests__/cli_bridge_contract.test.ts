@@ -12,7 +12,7 @@ const service = readFileSync(
 
 describe('private AI CLI bridge contract', () => {
   it('allows only fixed operations and executable paths', () => {
-    expect(bridge).toContain("['inspect', 'confirm', 'version', 'auth', 'catalog', 'probe', 'execute']")
+    expect(bridge).toContain("['inspect', 'confirm', 'version', 'auth', 'catalog', 'probe', 'probe_model', 'execute']")
     expect(bridge).toContain("path: join(HOME, '.local/bin/codex')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/claude')")
     expect(bridge).toContain("path: join(HOME, '.local/bin/agy')")

@@ -242,7 +242,16 @@ export function projectState(state: ConsoleState) {
     models: state.models.map(row => ProviderModelSchema.parse({ connectionId: row.connection_id,
       modelId: row.model_id, displayName: row.display_name, compatibleRoles: row.compatible_roles,
       supportsTools: row.supports_tools, supportsStructuredOutput: row.supports_structured_output,
-      available: row.available })),
+      available: row.available, userSelected: row.user_selected === true,
+      plainTestedAt: row.tested_credential_version != null
+        && Number(row.tested_credential_version) === Number(row.current_credential_version)
+        ? date(row.plain_tested_at) : null,
+      lastProbeAt: date(row.last_probe_at), lastProbeErrorCode: row.last_probe_error_code == null
+        ? null : AiErrorCodeSchema.parse(row.last_probe_error_code),
+      lastProbeInputTokens: row.last_probe_input_tokens == null ? null
+        : z.coerce.number().int().nonnegative().parse(row.last_probe_input_tokens),
+      lastProbeOutputTokens: row.last_probe_output_tokens == null ? null
+        : z.coerce.number().int().nonnegative().parse(row.last_probe_output_tokens) })),
     configurations: state.configurations.map(row => ({ ...projectConfiguration({ id: row.id, name: row.name, version: row.version,
       roles: Object.fromEntries(state.roles.filter(role => role.configuration_id === row.id).map(role => [AiRoleSchema.parse(role.role), projectRole(role)])) }),
     deletedAt: date(row.deleted_at) })),

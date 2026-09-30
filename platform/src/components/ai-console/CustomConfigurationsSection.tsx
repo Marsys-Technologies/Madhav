@@ -20,6 +20,7 @@ interface Props {
   mutationPending: boolean
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
+  cliSeed?: { cliId: string; nonce: number } | null
 }
 
 interface RoleDraft { source: string; model: string }
@@ -57,11 +58,19 @@ function configurationAvailability(
 
 interface ConfigurationFieldError { message: string; target: 'name' | 'roles' | 'form' }
 
-export function CustomConfigurationsSection({ state, clis, loading, error, cliStatus, mutationPending, mutate, onSelectDefault }: Props) {
-  const [editorOpen, setEditorOpen] = useState(false)
+export function CustomConfigurationsSection({ state, clis, loading, error, cliStatus, mutationPending, mutate, onSelectDefault, cliSeed }: Props) {
+  const seedCli = cliSeed && cliStatus === 'ready' ? clis.find(item => item.cliId === cliSeed.cliId && item.state === 'reachable') : null
+  const [editorOpen, setEditorOpen] = useState(Boolean(seedCli))
   const [editing, setEditing] = useState<ConfigurationDto | null>(null)
-  const [name, setName] = useState('')
-  const [drafts, setDrafts] = useState<Drafts>(EMPTY_DRAFTS)
+  const [name, setName] = useState(seedCli ? `${seedCli.productName} roles` : '')
+  const [drafts, setDrafts] = useState<Drafts>(() => {
+    const next = EMPTY_DRAFTS()
+    if (seedCli?.state === 'reachable') for (const role of AI_ROLES) {
+      const model = seedCli.models.find(item => item.compatibleRoles.includes(role))
+      if (model) next[role] = { source: `cli:${seedCli.cliId}`, model: encodeModel(model.modelId) }
+    }
+    return next
+  })
   const [fieldError, setFieldError] = useState<ConfigurationFieldError | null>(null)
   const [duplicateTarget, setDuplicateTarget] = useState<ConfigurationDto | null>(null)
   const [duplicateName, setDuplicateName] = useState('')
@@ -86,7 +95,8 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
   function modelOptions(source: string, role: AiRole) {
     if (!selectableSourceValues.has(source)) return []
     const [kind, id] = source.split(':', 2)
-    if (kind === 'provider') return (state?.models ?? []).filter(model => model.connectionId === id && model.available && model.compatibleRoles.includes(role))
+    if (kind === 'provider') return (state?.models ?? []).filter(model => model.connectionId === id && model.available
+      && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role))
       .map(model => ({ value: encodeModel(model.modelId), label: model.displayName, target: { kind: 'provider_model' as const, connectionId: id, modelId: model.modelId } }))
     if (kind === 'cli') {
       const cli = clis.find(item => item.cliId === id)
@@ -195,7 +205,7 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
 
   return (
     <section className="aic-section" aria-labelledby="aic-config-heading">
-      <div className="aic-section-head"><div><h2 id="aic-config-heading">Custom configurations</h2><p className="aic-section-copy">Name a complete routing configuration and choose an exact validated model for each of Madhav’s four roles.</p></div>{!error && state && <button className="aic-button" data-primary="true" type="button" onClick={openNew}><Plus aria-hidden="true" className="inline size-4" /> New configuration</button>}</div>
+      <div className="aic-section-head"><div><h2 id="aic-config-heading">Custom configurations</h2><p className="aic-section-copy">Name a complete routing configuration and choose an exact available model for each of Madhav’s four roles. Provider models require an individual generation test; discovered CLI models may still fail at execution.</p></div>{!error && state && <button className="aic-button" data-primary="true" type="button" onClick={openNew}><Plus aria-hidden="true" className="inline size-4" /> New configuration</button>}</div>
       {!error && defaultMissing && configurationDefault && <div className="aic-broken"><strong>Broken default.</strong> Configuration {configurationDefault.configurationId} is no longer available. Choose another default.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable configuration</span><AiChoiceRadio choice={configurationDefault} checked disabled unavailable label={configurationDefault.configurationId} onSelect={onSelectDefault} /></div></div>}
       {error ? <div className="aic-error" role="alert">Custom configurations could not be loaded. Refresh the page to try again.</div> : loading ? <div className="aic-empty">Loading custom configurations…</div> : configurations.length === 0 ? <div className="aic-empty">No custom configurations yet. Create one when you want different models to handle different roles.</div> : (
         <div className="aic-grid">{configurations.map(configuration => {
@@ -215,7 +225,7 @@ export function CustomConfigurationsSection({ state, clis, loading, error, cliSt
         })}</div>
       )}
 
-      <Dialog open={editorOpen} onOpenChange={setEditorOpen}><DialogContent className="pp-root aic-dialog">
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}><DialogContent className="pp-root aic-dialog aic-role-dialog">
         <DialogHeader><DialogTitle>{editing ? 'Edit custom configuration' : 'New custom configuration'}</DialogTitle><DialogDescription>Choose a source first, then one compatible model for each role. Configurations save only when all four roles are complete.</DialogDescription></DialogHeader>
         <div className="aic-form">
           <div className="aic-field"><label htmlFor="aic-config-name">Configuration name</label><input id="aic-config-name" value={name} onChange={event => { setName(event.target.value); if (fieldError?.target === 'name') setFieldError(null) }} aria-invalid={fieldError?.target === 'name' || undefined} aria-describedby={fieldError?.target === 'name' ? 'aic-config-error' : undefined} /></div>

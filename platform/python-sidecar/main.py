@@ -133,6 +133,12 @@ import importlib as _importlib
 _bodha_bundle = _importlib.import_module("brahmagyan.bodha.bo_2-8")
 app.include_router(_bodha_bundle.router, prefix="/api/compute/brahma", dependencies=[Depends(verify_api_key)])
 
+# NMB-CAND-v1 near-miss / formation band (OSR-012): serve-time, read-only derivation over the
+# served generation's L1 facts + ga_yoga_firings. Not imported by any registered writer.
+# Route: POST /api/compute/yoga_formation_band
+from routers import yoga_formation_band as yoga_formation_band_router
+app.include_router(yoga_formation_band_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
 # Nirmana lifecycle evidence — deployed, authenticated typed service-probe runner.
 # This router owns a stricter fail-closed key check than the legacy sidecar routes:
 # an absent server credential is unavailable, never anonymous access.

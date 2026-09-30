@@ -30,6 +30,12 @@ export interface ProviderModelDto {
   supportsTools: boolean
   supportsStructuredOutput: boolean
   available: boolean
+  userSelected?: boolean
+  plainTestedAt?: string | null
+  lastProbeAt?: string | null
+  lastProbeErrorCode?: string | null
+  lastProbeInputTokens?: number | null
+  lastProbeOutputTokens?: number | null
 }
 
 export interface ConfigurationDto {

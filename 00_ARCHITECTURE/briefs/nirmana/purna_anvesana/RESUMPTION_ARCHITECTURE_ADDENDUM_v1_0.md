@@ -1,7 +1,7 @@
 ---
 artifact: PURNA_ANVESANA_RESUMPTION_ARCHITECTURE_ADDENDUM
-version: 1.0
-status: REVIEWED_PREPARATION_BASELINE
+version: 1.1
+status: REVIEWED_BASELINE_DECISIONS_DELEGATED_TO_OWNER_SURROGATE
 date: 2026-09-27
 execution_authorized: false
 base: 6b26f3ff05ee0aba3cdd964bce62292496ae6b62
@@ -194,7 +194,7 @@ missing mandatory facets prevent complete composite status.
 | R1A | Shared per-asset generation resolver and consumer migration | unit/integration tests prove mixed asset builds serve correctly and unresolved assets fail closed | no for source; yes for any DB population |
 | R1B | Correct replacement fence | active/terminal/later-unreceipted/proven matrix green | no for source; yes for orphan cleanup |
 | R1C | Verify/rebuild `ga_strength` under current digest spec | fresh proven receipt and served strength evidence | yes for rebuild/live proof |
-| R2A | Ratify and implement near-miss product | approved domain packet; deterministic producer/consumer tests | decision required before code; live build later |
+| R2A | Ratify and implement near-miss product | approved domain packet; deterministic producer/consumer tests | delegated to Owner-Surrogate Ruling OSR-001; live build later |
 | R2B | Prove and close planner/continuation delta | deep-provider and evidence-widening/multi-page tests | no, unless live provider probe |
 | R2C | Enforce complete delivery | synthesis/register parity and three-door omission negative controls | no for source |
 | R3 | Repair remaining availability families by proof kind | every dark binding proven, deliberately dark with a valid reason, or removed | possible live read proof |
@@ -205,7 +205,11 @@ Packets R1A/R1B and read-only R1C verification may proceed in parallel after R0.
 domain decision but must not stall R2B/R2C. R3 is grouped by proof family, not by arbitrary catalogue
 count. R4 starts only when required source outcomes are green. R5 is a different authority phase.
 
-## 11. Decisions still required before their packets
+## 11. Decisions delegated to the owner surrogate
+
+These decisions no longer wait for a Native response. The
+`PURNA_OWNER_SURROGATE_CHARTER_v1_0.md` decision hierarchy, review requirements, and boundaries
+govern them. The surrogate records each material ruling and the conductor proceeds.
 
 1. Evidence-store retention and access policy for accepted real collections.
 2. Near-miss candidate set and eligibility rule.

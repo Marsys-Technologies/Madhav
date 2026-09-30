@@ -98,17 +98,46 @@ async function invoke(payload) {
   }
   if (payload.operation === 'catalog') {
     if (!definition.catalogArgs) throw bridgeError('AI_CLI_AUTH_UNAVAILABLE')
-    await runCommand(payload.cliId, definition.path, definition.catalogArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
-    return { models: [] }
+    const result = await runCommand(payload.cliId, definition.path, definition.catalogArgs, '', undefined, 'AI_CLI_AUTH_UNAVAILABLE')
+    return { models: safeCatalogModels(payload.cliId, result.stdout) }
   }
-  if (payload.operation === 'probe' || payload.operation === 'execute') {
+  if (payload.operation === 'probe' || payload.operation === 'probe_model' || payload.operation === 'execute') {
     return runGeneration(payload, definition)
   }
   throw bridgeError('AI_EXECUTION_FAILED')
 }
 
+/** Return model labels only. Never forward provider/account metadata from a CLI catalog. */
+function safeCatalogModels(cliId, stdout) {
+  let models
+  if (cliId === 'gemini_antigravity') {
+    models = stdout.split(/\r?\n/).filter(Boolean).map(line => {
+      const fields = line.split('\t')
+      if (fields.length !== 2) throw bridgeError('AI_EXECUTION_FAILED')
+      return { modelId: fields[0], displayName: fields[1] }
+    })
+  } else if (cliId === 'kimi_code') {
+    let catalog
+    try { catalog = JSON.parse(stdout) } catch { throw bridgeError('AI_EXECUTION_FAILED') }
+    if (!catalog || typeof catalog !== 'object' || Array.isArray(catalog)
+      || !catalog.providers || !Object.hasOwn(catalog.providers, 'managed:kimi-code')
+      || !catalog.models || typeof catalog.models !== 'object' || Array.isArray(catalog.models)) {
+      throw bridgeError('AI_EXECUTION_FAILED')
+    }
+    models = Object.entries(catalog.models).filter(([, value]) => value?.provider === 'managed:kimi-code')
+      .map(([modelId, value]) => ({ modelId, displayName: value.displayName }))
+  } else throw bridgeError('AI_CLI_AUTH_UNAVAILABLE')
+  if (models.length === 0 || models.length > 100 || new Set(models.map(model => model.modelId)).size !== models.length
+    || models.some(model => typeof model.modelId !== 'string' || !SAFE_MODEL.test(model.modelId)
+      || typeof model.displayName !== 'string' || model.displayName.trim().length === 0
+      || model.displayName.length > 120 || /[\u0000-\u001f\u007f]/.test(model.displayName))) {
+    throw bridgeError('AI_EXECUTION_FAILED')
+  }
+  return models.map(model => ({ modelId: model.modelId, displayName: model.displayName.trim() }))
+}
+
 async function runGeneration(payload, definition) {
-  const modelId = payload.operation === 'execute' ? payload.modelId : null
+  const modelId = payload.operation === 'execute' || payload.operation === 'probe_model' ? payload.modelId : null
   if (modelId !== null && !SAFE_MODEL.test(modelId)) throw bridgeError('AI_MODEL_UNAVAILABLE')
   const cwd = await mkdtemp(join(tmpdir(), 'marsys-ai-cli-'))
   try {
@@ -346,17 +375,20 @@ function validatePayload(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw bridgeError('AI_EXECUTION_FAILED')
   const operation = raw.operation
   const cliId = raw.cliId
-  if (!['inspect', 'confirm', 'version', 'auth', 'catalog', 'probe', 'execute'].includes(operation)
+  if (!['inspect', 'confirm', 'version', 'auth', 'catalog', 'probe', 'probe_model', 'execute'].includes(operation)
     || !Object.hasOwn(definitions, cliId)) throw bridgeError('AI_EXECUTION_FAILED')
   const allowed = operation === 'confirm' ? ['operation', 'cliId', 'identity', 'version', 'modelIds']
     : operation === 'probe' ? ['operation', 'cliId', 'stdin']
+      : operation === 'probe_model' ? ['operation', 'cliId', 'modelId', 'stdin']
       : operation === 'execute' ? ['operation', 'cliId', 'modelId', 'stdin', 'responseSchema', 'maxOutputTokens']
         : ['operation', 'cliId']
   if (Object.keys(raw).some(key => !allowed.includes(key))) throw bridgeError('AI_EXECUTION_FAILED')
-  if ((operation === 'probe' || operation === 'execute') && (typeof raw.stdin !== 'string'
+  if ((operation === 'probe' || operation === 'probe_model' || operation === 'execute') && (typeof raw.stdin !== 'string'
     || Buffer.byteLength(raw.stdin) > 256 * 1024)) throw bridgeError('AI_CLI_OUTPUT_LIMIT')
-  if (operation === 'execute' && raw.modelId !== null
+  if ((operation === 'execute' || operation === 'probe_model') && raw.modelId !== null
     && (typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
+  if (operation === 'probe_model' && (!['codex', 'claude_code'].includes(cliId)
+    || typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
   if (operation === 'confirm' && (typeof raw.version !== 'string' || !Array.isArray(raw.modelIds)
     || raw.modelIds.length > 257 || !raw.identity || typeof raw.identity !== 'object')) {
     throw bridgeError('AI_EXECUTION_FAILED')

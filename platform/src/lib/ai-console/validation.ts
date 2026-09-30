@@ -1,6 +1,6 @@
 import 'server-only'
 import { AiConsoleError, normalizeAiError, type PublicAiError } from './errors'
-import { listAiConsoleState, loadConnectionCredential, storeConnectionValidation } from './repository'
+import { listAiConsoleState, loadConnectionCredential, storeConnectionValidation, storeProviderModelProbe } from './repository'
 import { ProviderIdSchema } from './types'
 import { discoverConnectionModels, probeConnectionModel } from './providers'
 import { chooseProbeModel } from './providers/catalog-policy'
@@ -10,6 +10,39 @@ export interface ValidationResult {
   state: 'validated' | 'needs_attention' | 'invalid' | 'unreachable'
   modelCount: number
   error?: PublicAiError
+}
+
+/** One small generation against the exact discovered model; no bulk probes or role-success claim. */
+export async function testAndSelectProviderModel(userId: string, connectionId: string, modelId: string,
+  signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  const state = await listAiConsoleState(userId)
+  const row = state.connections.find(item => item.id === connectionId && !item.deleted_at)
+  const model = state.models.find(item => item.connection_id === connectionId && item.model_id === modelId && item.available === true)
+  if (!row || !model) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+  if (row.credential_validity !== 'valid' || !['validated', 'validating'].includes(String(row.validation_state))) {
+    throw new AiConsoleError('AI_CONNECTION_INVALID')
+  }
+  const credentialVersion = Number(row.credential_version)
+  const connection = { userId, connectionId, providerId: ProviderIdSchema.parse(row.provider_id), credentialVersion }
+  const discovered: DiscoveredModel = { modelId: String(model.model_id), displayName: String(model.display_name),
+    compatibleRoles: model.compatible_roles as DiscoveredModel['compatibleRoles'],
+    supportsTools: model.supports_tools === true, supportsStructuredOutput: model.supports_structured_output === true }
+  await loadConnectionCredential(userId, connectionId, credentialVersion)
+  const deadline = AbortSignal.timeout(30_000)
+  let usage: Awaited<ReturnType<typeof probeConnectionModel>>
+  try {
+    usage = await probeConnectionModel(connection, discovered, AbortSignal.any([deadline, ...(signal ? [signal] : [])]))
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+  } catch (cause) {
+    if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
+    const safe = normalizeAiError(deadline.aborted ? new AiConsoleError('AI_PROVIDER_UNREACHABLE') : cause, { source: 'provider' })
+    if (safe.code === 'AI_CHOICE_BROKEN') throw new AiConsoleError('AI_CHOICE_BROKEN')
+    await storeProviderModelProbe(userId, connectionId, modelId, credentialVersion, { ok: false, errorCode: safe.code })
+    throw new AiConsoleError(safe.code)
+  }
+  await storeProviderModelProbe(userId, connectionId, modelId, credentialVersion, { ok: true,
+    inputTokens: usage.inputTokens, outputTokens: usage.outputTokens })
 }
 /** No provider request, plaintext, or upstream body enters a transaction or result. */
 export async function validateConnection(userId: string, connectionId: string,

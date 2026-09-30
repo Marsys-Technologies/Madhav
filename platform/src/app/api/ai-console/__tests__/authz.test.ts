@@ -2,19 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiConsoleError } from '@/lib/ai-console/errors'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), flag: vi.fn(), listAiConsoleState: vi.fn(), encrypt: vi.fn(), validate: vi.fn(),
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), flag: vi.fn(), listAiConsoleState: vi.fn(), encrypt: vi.fn(), validate: vi.fn(), testModel: vi.fn(),
   createConnection: vi.fn(), renameConnection: vi.fn(), replaceConnectionCredential: vi.fn(), saveConfiguration: vi.fn(),
-  duplicateConfiguration: vi.fn(), previewChoiceDependencies: vi.fn(), deleteConnection: vi.fn(), deleteConfiguration: vi.fn(), setUserDefault: vi.fn() }))
+  duplicateConfiguration: vi.fn(), previewChoiceDependencies: vi.fn(), deleteConnection: vi.fn(), deleteConfiguration: vi.fn(), setUserDefault: vi.fn(), deselectProviderModel: vi.fn() }))
 vi.mock('@/lib/auth/access-control', () => ({ getServerUserWithProfile: mocks.auth }))
 vi.mock('@/lib/config', () => ({ getFlag: mocks.flag }))
 vi.mock('@/lib/ai-console/repository', () => mocks)
 vi.mock('@/lib/ai-console/crypto', () => ({ encryptCredential: mocks.encrypt }))
-vi.mock('@/lib/ai-console/validation', () => ({ validateConnection: mocks.validate }))
+vi.mock('@/lib/ai-console/validation', () => ({ validateConnection: mocks.validate, testAndSelectProviderModel: mocks.testModel }))
 
 import * as root from '../route'
 import * as connections from '../connections/route'
 import * as connection from '../connections/[id]/route'
 import * as validation from '../connections/[id]/validate/route'
+import * as models from '../connections/[id]/models/route'
 import * as configurations from '../configurations/route'
 import * as configuration from '../configurations/[id]/route'
 import * as defaults from '../default/route'
@@ -29,6 +30,7 @@ const routes = [
   ['create', () => connections.POST(request('POST'))], ['connection detail', () => connection.GET(request('GET'), context())],
   ['patch', () => connection.PATCH(request('PATCH'), context())], ['delete', () => connection.DELETE(request('DELETE'), context())],
   ['validation disclosure', () => validation.GET(request('GET'), context())], ['validate', () => validation.POST(request('POST'), context())],
+  ['test model', () => models.POST(request('POST'), context())], ['remove model', () => models.DELETE(request('DELETE'), context())],
   ['configurations', () => configurations.GET()], ['save', () => configurations.POST(request('POST'))],
   ['configuration detail', () => configuration.GET(request('GET'), context())],
   ['edit', () => configuration.PATCH(request('PATCH'), context())], ['remove', () => configuration.DELETE(request('DELETE'), context())],

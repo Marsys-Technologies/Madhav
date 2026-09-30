@@ -76,6 +76,7 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
       CREATE TABLE _migrations_applied(filename text PRIMARY KEY);`)
     const sql = readFileSync(resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql'), 'utf8')
     const repairSql = readFileSync(resolve(__dirname, '../../../../migrations/1125_ai_snapshot_shape_operator_precedence.sql'), 'utf8')
+    const shortlistSql = readFileSync(resolve(__dirname, '../../../../migrations/1151_ai_console_model_shortlist.sql'), 'utf8')
     // Model the canonical runner: DDL and tracking must roll back as one transaction.
     await expect(transaction(async client => {
       await client.query(sql)
@@ -92,8 +93,13 @@ describe.skipIf(!enabled).sequential('AI Console migration database behavior', (
       await client.query(repairSql)
       await client.query("INSERT INTO _migrations_applied VALUES ('1125')")
     })
+    await transaction(async client => {
+      await client.query(shortlistSql)
+      await client.query("INSERT INTO _migrations_applied VALUES ('1151')")
+    })
     await transaction(client => client.query(sql))
     await transaction(client => client.query(repairSql))
+    await transaction(client => client.query(shortlistSql))
     await pool.query('INSERT INTO profiles(id) VALUES($1),($2)', [user, otherUser])
     await pool.query('INSERT INTO conversations(id,user_id) VALUES($1,$2)', [conversation, user])
     await pool.query(`INSERT INTO ai_provider_connections

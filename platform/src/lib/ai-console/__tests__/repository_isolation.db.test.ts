@@ -30,6 +30,8 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
   let configurationId: string
   const choice = () => ({ kind: 'provider_model' as const, connectionId, modelId: 'model-a' })
   const roles = () => Object.fromEntries(AI_ROLES.map(role => [role, choice()])) as RoleAssignments
+  const confirmModel = (id: string) => repo.storeProviderModelProbe(user, id, 'model-a', 1,
+    { ok: true, inputTokens: 1, outputTokens: 1 })
   const snapshot = (correlationId: string) => ({ userId: user, correlationId, source: 'pariprashna', conversationId: conversation,
     selection: { kind: 'default' }, resolvedChoice: choice(), configurationVersion: null,
     roles: Object.fromEntries(AI_ROLES.map(role => [role, { ...choice(), providerId: 'openai' }])) })
@@ -102,11 +104,13 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
       CREATE TABLE admin_audit_log(actor_id text,action text,target_user_id text,detail jsonb);`)
     const migration = readFileSync(resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql'), 'utf8')
     const repairMigration = readFileSync(resolve(__dirname, '../../../../migrations/1125_ai_snapshot_shape_operator_precedence.sql'), 'utf8')
+    const shortlistMigration = readFileSync(resolve(__dirname, '../../../../migrations/1151_ai_console_model_shortlist.sql'), 'utf8')
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
       await client.query(migration)
       await client.query(repairMigration)
+      await client.query(shortlistMigration)
       await client.query('COMMIT')
     }
     catch (error) { await client.query('ROLLBACK'); throw error }
@@ -119,6 +123,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     connectionId = (await repo.createConnection(user, { providerId: 'openai', name: 'Personal' }, encrypted())).id
     await repo.storeConnectionValidation(user, connectionId, { credentialVersion: 1, state: 'validated',
       models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
+    await confirmModel(connectionId)
     configurationId = (await repo.saveConfiguration(user, { name: 'Complete', roles: roles() })).id
   })
   afterAll(async () => {
@@ -146,6 +151,21 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
       () => repo.getConversationSelection(other, conversation),
     ]) await expect(action()).rejects.toBeDefined()
     expect((await repo.previewChoiceDependencies(other, choice())).configurations).toEqual([])
+  })
+  it('stores a manually tested CLI model only for a granted user and the inspected version', async () => {
+    const sha = 'a'.repeat(64)
+    await pool.query(`INSERT INTO ai_cli_installations(cli_id,detected_product,detected_version,validation_state)
+      VALUES('codex','Codex CLI','1.2.3','reachable')`)
+    await pool.query(`INSERT INTO ai_cli_grants(user_id,cli_id,granted_by)
+      VALUES($1,'codex',$2)`, [user, admin])
+    await expect(repo.storeManualCliModel(other, 'codex', 'test-model', '1.2.3', sha))
+      .rejects.toMatchObject({ code: 'AI_CLI_NOT_GRANTED' })
+    await repo.storeManualCliModel(user, 'codex', 'test-model', '1.2.3', sha)
+    expect(await repo.listConfirmedManualCliModels('codex', '1.2.3', sha)).toContain('test-model')
+    expect(await repo.listConfirmedManualCliModels('codex', '1.2.4', sha)).not.toContain('test-model')
+    const row = (await pool.query(`SELECT is_manual,tested_entrypoint_sha256,tested_version
+      FROM ai_cli_models WHERE cli_id='codex' AND model_id='test-model'`)).rows[0]
+    expect(row).toMatchObject({ is_manual: true, tested_entrypoint_sha256: sha, tested_version: '1.2.3' })
   })
   it('serializes defaults and optimistic configuration edits without mixing roles', async () => {
     await Promise.all([repo.setUserDefault(user, choice()), repo.setUserDefault(user, { kind: 'custom_configuration', configurationId })])
@@ -185,6 +205,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     const secondId = (await repo.createConnection(user, { providerId: 'openai', name: 'Second for locks' }, encrypted())).id
     await repo.storeConnectionValidation(user, secondId, { credentialVersion: 1, state: 'validated',
       models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
+    await confirmModel(secondId)
     const second = { ...choice(), connectionId: secondId }
     const ab = { synthesizer: choice(), planner: second, deep_planner: choice(), worker: second }
     const ba = { synthesizer: second, planner: choice(), deep_planner: second, worker: choice() }
@@ -204,6 +225,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     const otherConnection = (await repo.createConnection(user, { providerId: 'openai', name: 'Independent override' }, encrypted())).id
     await repo.storeConnectionValidation(user, otherConnection, { credentialVersion: 1, state: 'validated',
       models: [{ modelId: 'model-a', displayName: 'Model A', compatibleRoles: [...AI_ROLES], supportsTools: true, supportsStructuredOutput: true }] })
+    await confirmModel(otherConnection)
     const override = { ...choice(), connectionId: otherConnection }
     await repo.setConversationSelection(user, explicit, { kind: 'explicit', choice: override })
     await repo.setUserDefault(user, choice())
@@ -271,6 +293,8 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await pool.query("UPDATE profiles SET status='disabled' WHERE id=$1", [user])
     await expect(repo.loadConnectionCredential(user, connectionId, 2)).rejects.toBeDefined()
     await pool.query("UPDATE profiles SET status='active' WHERE id=$1", [user])
+    await repo.storeProviderModelProbe(user, connectionId, 'model-a', 2,
+      { ok: true, inputTokens: 1, outputTokens: 1 })
   })
   it('blocks revoke-before-start and serializes concurrent revoke against immediate spawn', async () => {
     await pool.query("INSERT INTO ai_cli_installations(cli_id,validation_state) VALUES('claude_code','reachable')")

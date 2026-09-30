@@ -18,7 +18,8 @@ const state: AiConsoleStateDto = {
     confirmedValid: true, lastErrorCode: null, deletedAt: null,
   }],
   models: [{ connectionId: CONNECTION_ID, modelId: 'gpt-safe', displayName: 'GPT Safe',
-    compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false, supportsStructuredOutput: true, available: true }],
+    compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false, supportsStructuredOutput: true, available: true,
+    userSelected: true, plainTestedAt: '2026-09-27T10:00:00.000Z' }],
   configurations: [{ id: CONFIG_ID, name: 'Research quartet', version: 1, deletedAt: null, roles: {
     synthesizer: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
     planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
@@ -75,6 +76,61 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
 afterEach(() => { cleanup(); onlineManager.setOnline(true); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('AI Console', () => {
+  it('keeps a large provider catalog out of the page and tests one exact model on request', async () => {
+    const models = [...state.models, ...Array.from({ length: 150 }, (_, index) => ({
+      ...state.models[0], modelId: `catalog-${index}`, displayName: `Catalog ${index}`,
+      userSelected: false, plainTestedAt: null,
+    }))]
+    const { calls } = setup({ models })
+    await screen.findByText('Personal OpenAI')
+    expect(screen.queryByText('Catalog 149')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: /manage models/i }))
+    expect(screen.getByText(/showing 30 of 151 matching models/i)).toBeTruthy()
+    const search = screen.getByRole('searchbox', { name: 'Find a model' })
+    await userEvent.type(search, 'Catalog 149')
+    expect(screen.getByText('Catalog 149')).toBeTruthy()
+    const test = screen.getByRole('button', { name: 'Test and add Catalog 149' })
+    expect(test).toBeDisabled()
+    await userEvent.click(screen.getByRole('checkbox', { name: /each model test makes a tiny provider request/i }))
+    await userEvent.click(test)
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === `/api/ai-console/connections/${CONNECTION_ID}/models`
+      && init?.method === 'POST')).toBe(true))
+    const call = calls.find(([url, init]) => String(url) === `/api/ai-console/connections/${CONNECTION_ID}/models` && init?.method === 'POST')!
+    expect(JSON.parse(String(call[1]?.body))).toEqual({ modelId: 'catalog-149', acknowledgeCharge: true })
+  })
+
+  it('can retest a shortlisted model after its key or availability changes', async () => {
+    const { calls } = setup({ models: [{ ...state.models[0], plainTestedAt: null }] })
+    await screen.findByText('Personal OpenAI')
+    await userEvent.click(screen.getByRole('button', { name: /manage models/i }))
+    const test = screen.getByRole('button', { name: 'Test GPT Safe' })
+    expect(test).toBeDisabled()
+    await userEvent.click(screen.getByRole('checkbox', { name: /each model test makes a tiny provider request/i }))
+    await userEvent.click(test)
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === `/api/ai-console/connections/${CONNECTION_ID}/models`
+      && init?.method === 'POST' && JSON.parse(String(init.body)).modelId === 'gpt-safe')).toBe(true))
+  })
+
+  it('opens a named four-role configuration from a reachable CLI card', async () => {
+    setup()
+    await screen.findByText('Claude Code')
+    await userEvent.click(screen.getByRole('button', { name: 'Configure four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'New custom configuration' })
+    expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Claude Code roles')
+    expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('__builtin__')
+  })
+
+  it('submits one exact CLI model ID for a local subscription test', async () => {
+    const { calls } = setup()
+    await screen.findByText('Claude Code')
+    await userEvent.type(screen.getByRole('textbox', { name: 'Exact model ID for Claude Code' }), 'claude-test')
+    await userEvent.click(screen.getByRole('button', { name: 'Test and add CLI model' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/clis/claude_code/models'
+      && init?.method === 'POST')).toBe(true))
+    const call = calls.find(([url, init]) => String(url) === '/api/ai-console/clis/claude_code/models' && init?.method === 'POST')!
+    expect(JSON.parse(String(call[1]?.body))).toEqual({ modelId: 'claude-test' })
+  })
+
   it('renders exactly the three approved sections and one unchecked shared default group', async () => {
     setup()
     await screen.findByText('Personal OpenAI')
