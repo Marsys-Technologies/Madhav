@@ -1,6 +1,6 @@
 -- Migration 1152: kala_gochara_contacts.t_exact nullable — N3 truncated
 --                 contacts are kept, never dropped (Pravāha A2.1, step
---                 truncated_contacts_kept).
+--                 truncated_contacts_kept; reworked after the A2.2 review).
 -- Created: 2026-09-30. Author: pravaha/a2-kernel-geometry (Stream A, A2.1).
 --
 -- Numbering: 1152 sits inside this lane's granted block (1150–1159 per
@@ -13,22 +13,54 @@
 -- t_exact NOT NULL. That made a contact whose exact centre lies outside the
 -- requested horizon (N3 — a truncated span whose presence inside the horizon
 -- is real and observed) unpersistable, and step06 dropped such episodes as
--- if absent. GOCHARA_DESIGN_SPECS_v1_4 §6.1/§6.2 invariant 2 and oracle
--- O-SS-3 require the opposite: the contact keeps its identity with
--- coverage.truncated=true and NO fabricated t_exact. Identity for a no-exact
--- row is the floored t_in (ids.contact_id t_fallback rule, marked as a
+-- if absent. Oracle O-SS-3 requires the opposite: the contact is kept with
+-- NO fabricated t_exact and its truncation mark. Identity for a no-exact row
+-- is the floored t_in (ids.contact_id t_fallback rule, marked as a
 -- substitution inside the payload so it can never collide with an exact
--- contact at the same minute).
+-- contact at the same minute). NOTE (A2.2 scope ruling): the full §6.1
+-- physical-identity contract (physical tuple, occurrence ordinals,
+-- truncated→exact enrichment lineage) is A5.3/A5.1 registered-writer scope
+-- and is deliberately NOT claimed here.
+--
+-- Also widened: truncated_at_horizon's CHECK now admits 'both' (a span
+-- clipped at BOTH horizon edges). This is a value-domain EXTENSION for a
+-- state the kernel has always produced and previously had to erase to NULL
+-- (Kimi review #2: one physical span must carry one truncation mark on both
+-- of its rows); no protective invariant is weakened — the anti-fabrication
+-- CHECK below is added in the same migration.
 --
 -- Guard added, none weakened: exact_crossing must agree with t_exact's
 -- nullability — a row claiming an exact crossing must carry the instant; a
 -- truncated row must not carry one (a non-NULL t_exact on a no-exact row
 -- would BE the fabrication this migration exists to prevent).
 --
--- Scope: kala_gochara_contacts holds candidate '4.x' generations only; the
--- protected 'v1'/'3.0' corpus lives in kala_gochara_windows and is untouched.
--- Existing rows (all exact) satisfy the new CHECK trivially. Applied through
--- migrate.ts (transactional runner — no BEGIN/COMMIT here).
+-- Scope (corrected per the A2.2 review): kala_gochara_contacts holds the
+-- PUBLISHED '4.0' rows as well as candidates — the new CHECK therefore
+-- applies to existing rows. Every existing row is exact (1081's NOT NULL
+-- made no-exact rows unpersistable), so validation passes; the read-only
+-- preflight proving it ships beside this file
+-- (scripts/kala_gochara_cutover/preflight_1152_existing_rows_satisfy_check.sql)
+-- and MUST run clean against production before application. The protected
+-- 'v1'/'3.0' corpus lives in kala_gochara_windows and is untouched. Null-exact
+-- and residence rows are produced only for candidate generations >= '4.1'
+-- (producer gate in step06_enumerate_episodes.candidate_keeps_candidate_only_rows).
+--
+-- Operational properties (stated per the A2.2 review):
+--   * SINGLE-RUN: the tracked runner (migrate.ts) skips applied migrations;
+--     the SQL itself is NOT replay-idempotent — a second run fails at ADD
+--     CONSTRAINT (the name already exists). Never apply it by hand twice.
+--   * IRREVERSIBLE IN PRACTICE: once truncated (t_exact NULL) rows exist,
+--     restoring NOT NULL would require deleting exactly the rows this
+--     migration exists to keep — i.e. recreating the N3 absence-fabrication.
+--     There is no rollback that preserves the new data; the only honest
+--     reversal is a scoped Clear of the candidate generation that owns them
+--     (plan §6.4), never a row delete under a published label.
+--   * Lock/validation: DROP NOT NULL and ADD CONSTRAINT ... NOT VALID take
+--     only brief locks; VALIDATE CONSTRAINT scans the table without blocking
+--     writes (ShareUpdateExclusive). On the current row volume this is
+--     trivially cheap; the preflight above doubles as the volume check.
+--
+-- Applied through migrate.ts (transactional runner — no BEGIN/COMMIT here).
 
 ALTER TABLE kala_gochara_contacts
   ALTER COLUMN t_exact DROP NOT NULL;
@@ -39,3 +71,13 @@ ALTER TABLE kala_gochara_contacts
 
 ALTER TABLE kala_gochara_contacts
   VALIDATE CONSTRAINT kgc_t_exact_iff_exact_crossing;
+
+ALTER TABLE kala_gochara_contacts
+  DROP CONSTRAINT kala_gochara_contacts_truncated_at_horizon_check;
+
+ALTER TABLE kala_gochara_contacts
+  ADD CONSTRAINT kala_gochara_contacts_truncated_at_horizon_check
+  CHECK (truncated_at_horizon IN ('start','end','both') OR truncated_at_horizon IS NULL) NOT VALID;
+
+ALTER TABLE kala_gochara_contacts
+  VALIDATE CONSTRAINT kala_gochara_contacts_truncated_at_horizon_check;
