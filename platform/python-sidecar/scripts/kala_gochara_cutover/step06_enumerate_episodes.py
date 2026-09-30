@@ -68,9 +68,27 @@ Migration 1152 makes t_exact nullable, so kernel episodes WITHOUT an exact
 crossing inside the horizon (N3 truncated spans: exact centre off-horizon)
 are KEPT with t_exact=NULL, exact_crossing=false and their
 truncated_at_horizon mark — never dropped as absence, never a fabricated
-instant (GOCHARA_DESIGN_SPECS §6.1/§6.2 inv 2, O-SS-3). They are counted in
-the build report (episodes_truncated_no_exact_kept). Kernel
-'truncated_at_horizon=both' maps to NULL (WP1 §3.1 CHECK).
+instant (N3 retention, oracle O-SS-3). They are counted in the build report
+(episodes_truncated_no_exact_kept, one count per PHYSICAL truncation). The
+kernel's 'truncated_at_horizon=both' is stored verbatim (1152 widened the
+WP1 §3.1 CHECK to admit it — one span, one truncation mark, on both rows).
+
+Candidate-only gate (steward scope ruling, 2026-09-30): null-exact rows and
+relation='residence' rows are emitted ONLY for candidate generations
+>= '4.1' — never into published '4.0' and never reachable by the '4.0'
+serving path (ka_gochara's ledger query selects on a t_exact range and its
+relation whitelist predates 'residence'). Rows withheld by the gate are
+counted (episodes_truncated_no_exact_withheld_pre_41_gate). The full §6.1
+physical-identity contract (occurrence ordinals, truncated→exact enrichment
+lineage) is deliberately NOT implemented here — that is A5.3/A5.1
+registered-writer scope.
+
+R5 (global boundary substrate): boundary events are sky geometry — solved
+once per body and stored once per (body, relation, instant) as
+target_type='sky_event' rows (target_ref 'sky:<relation>'); they are NOT
+duplicated per resonance-map target. Residence spans reuse the same refined
+sign-ingress roots for their entry/exit instants, so a whole-sign ingress
+instant IS the stored sky event. assert_sky_events_unique runs after dedupe.
 
 Usage:
     python3 step06_enumerate_episodes.py --dsn postgresql://... \
@@ -544,10 +562,12 @@ def jd_to_dt(jd: float) -> datetime:
 def _episode_to_dict(ep: gk_episodes.Episode, target: ResolvedTarget,
                      backend: dict) -> dict:
     """kernel Episode -> the ledger `_normalize_episode` dict shape
-    (precedent: ka_gochara/service.py::_moon_on_demand; step06's synthetic)."""
+    (precedent: ka_gochara/service.py::_moon_on_demand; step06's synthetic).
+    truncated_at_horizon is carried verbatim incl. 'both' (migration 1152
+    widened the WP1 §3.1 CHECK to admit it — one span, one truncation mark)."""
     truncated = ep.truncated_at_horizon
-    if truncated not in ("start", "end"):
-        truncated = None  # kernel 'both' -> NULL (WP1 §3.1 CHECK)
+    if truncated not in ("start", "end", "both"):
+        truncated = None
     return {
         "independence_group": gk_ids.independence_group(
             body=ep.body, relation=ep.relation, aspect_deg=ep.aspect_deg,
@@ -601,8 +621,8 @@ def _residence_span_dict(span: gk_episodes.ResidenceSpan, target: ResolvedTarget
     """
     ing = span.ingress_episode
     truncated = span.truncated_at_horizon
-    if truncated not in ("start", "end"):
-        truncated = None  # kernel 'both' -> NULL (WP1 §3.1 CHECK)
+    if truncated not in ("start", "end", "both"):
+        truncated = None
     return {
         "independence_group": gk_ids.independence_group(
             body=span.body, relation="residence", aspect_deg=0.0,
@@ -645,6 +665,42 @@ def _residence_span_dict(span: gk_episodes.ResidenceSpan, target: ResolvedTarget
     }
 
 
+def _generation_tuple(generation: str) -> tuple[int, int] | None:
+    """'4.1' -> (4, 1); None for non-numeric labels ('v1', '3.0')."""
+    parts = str(generation).split(".")
+    if len(parts) == 2 and all(p.isdigit() for p in parts):
+        return int(parts[0]), int(parts[1])
+    return None
+
+
+def candidate_keeps_candidate_only_rows(generation: str) -> bool:
+    """Mechanical gate (steward scope ruling 2026-09-30, A2 rework): rows that
+    did not exist in published '4.0' semantics — null-exact (N3 truncated)
+    contacts and relation='residence' interval rows — are emitted ONLY for
+    candidate generations >= '4.1', never into '4.0' (whose published rows
+    stay byte-stable) and never readable by the '4.0' serving path (which
+    selects on t_exact ranges and whitelists pre-residence relations).
+    """
+    gt = _generation_tuple(generation)
+    return gt is not None and gt >= (4, 1)
+
+
+def _sky_target(relation: str) -> ResolvedTarget:
+    """The pseudo-target for a per-body sky event (R5): a boundary event is
+    sky geometry — chart- and target-independent — so it is stored ONCE per
+    (body, relation, instant) under target_type='sky_event', never duplicated
+    per resonance-map target. Target roles (which targets a boundary event
+    matters to) are a consumer-side join on the event's degree/minute, not
+    duplicated rows."""
+    return ResolvedTarget(
+        event_class="sky", target_type="sky_event",
+        target_ref=f"sky:{relation}", qualifier=None,
+        classical_citation=None, uncited_extension=False,
+        state="resolved", kind="point", longitude_deg=None,
+        owner_graha=None,
+    )
+
+
 def enumerate_body(
     index: gk_arcs.ArcIndex,
     body: str,
@@ -654,38 +710,63 @@ def enumerate_body(
     backend: dict,
     ephe_path: str | None = None,
     refine: bool = True,
+    generation: str = "4.1",
 ) -> tuple[list[dict], dict]:
     """Enumerate one body's episodes over the resolved target set.
 
     Returns (episode_dicts, stats). stats carries episodes_without_exact
-    (kernel episodes with t_exact=None — N3 truncated spans — are KEPT with
-    t_exact NULL since migration 1152; the count is retained as a build-report
-    metric) and the searched-relation sets per target_type for coverage."""
+    (physical truncations KEPT with t_exact NULL since migration 1152 — each
+    counted ONCE, Kimi review #3: the ingress row and the residence row of
+    one clipped span are the same physical truncation) and
+    episodes_without_exact_dropped_by_gate (null-exact rows withheld because
+    `generation` is pre-'4.1'), plus the searched-relation sets per
+    target_type for coverage."""
+    keep_new = candidate_keeps_candidate_only_rows(generation)
     out: list[dict] = []
-    stats = {"episodes_without_exact": 0, "searched": {}}
+    stats = {
+        "episodes_without_exact": 0,
+        "episodes_without_exact_dropped_by_gate": 0,
+        "searched": {},
+    }
 
     def _note(target_type: str, relations) -> None:
         stats["searched"].setdefault(target_type, set()).update(relations)
 
     def _emit(eps, target) -> None:
         for e in eps:
+            if e.t_exact is None and not keep_new:
+                # Pre-'4.1' gate: the null-exact (N3 truncated) row is
+                # withheld — counted for disclosure, never silently absent
+                # from the report.
+                stats["episodes_without_exact_dropped_by_gate"] += 1
+                continue
             if e.t_exact is None:
-                # N3: keep the truncated span; count it, never drop, never
-                # fabricate an instant (O-SS-3).
                 stats["episodes_without_exact"] += 1
             out.append(_episode_to_dict(e, target, backend))
 
-    # T0-3 global boundary table (spec §6.2 inv 5, O-SS-1): boundary degrees
-    # are chart- and TARGET-independent by construction (boundary_degrees
-    # takes no chart/target argument), so the sky events are solved ONCE per
-    # body and joined to targets afterwards — never re-solved per target
-    # (the pre-fix loop re-derived the identical root set for every point
-    # target and left ADK-0020 dedupe to undo the duplication).
-    boundary_cache = {
-        rel: gk_episodes.solve_boundary_episodes(
-            index, body, rel, horizon_jd, ephe_path=ephe_path, refine=refine)
+    # T0-3 global boundary table (spec §6.2 inv 5, O-SS-1), reworked per R5:
+    # boundary degrees are chart- and TARGET-independent by construction, so
+    # the sky events are SOLVED once per body and STORED once per body —
+    # emitted as target_type='sky_event' rows (one row per physical event),
+    # never duplicated per target (the pre-rework loop emitted the same
+    # physical event once per point target with role-qualified ids that
+    # ADK-0020 dedupe could not collapse: 84 rows for 28 physical events).
+    # Residence construction REUSES these same refined roots (below), so the
+    # ingress instant of a whole-sign residence IS the stored sky event.
+    boundary_roots = {
+        rel: gk_contacts.find_boundary_roots(
+            index, body, rel, ephe_path=ephe_path, refine=refine)
         for rel in BOUNDARY_RELATIONS
     }
+    for rel in BOUNDARY_RELATIONS:
+        sky_eps = gk_episodes.solve_boundary_episodes(
+            index, body, rel, horizon_jd, ephe_path=ephe_path, refine=refine,
+            roots=boundary_roots[rel])
+        sky_target = _sky_target(rel)
+        for e in sky_eps:
+            d = _episode_to_dict(e, sky_target, backend)
+            d["target_longitude_deg"] = float(e.target_deg)
+            out.append(d)
 
     for t in targets:
         if t.state != "resolved":
@@ -706,11 +787,10 @@ def enumerate_body(
                 _emit(gk_episodes.solve_episodes(
                     index, body, "return", lon, horizon_jd, "orb_return_slow",
                     ephe_path=ephe_path, refine=refine), t)
-            boundary_searched = []
-            for rel in BOUNDARY_RELATIONS:
-                boundary_searched.append(rel)
-                _emit(boundary_cache[rel], t)
-            relations = ["conjunction", "drishti_contact", *boundary_searched]
+            # Boundary events are sky geometry: searched once per body
+            # (above) and recorded as searched for this target's coverage,
+            # but NOT re-emitted per target (R5).
+            relations = ["conjunction", "drishti_contact", *BOUNDARY_RELATIONS]
             if t.owner_graha == body:
                 relations.append("return")
             _note(t.target_type, relations)
@@ -719,7 +799,8 @@ def enumerate_body(
                 continue  # mechanism_node / M-6: the named transit agent only
             spans = gk_episodes.residence_spans(
                 index, body, t.span_deg, horizon_jd, t.target_type,
-                ephe_path=ephe_path, refine=refine)
+                ephe_path=ephe_path, refine=refine,
+                boundary_roots=boundary_roots["sign_ingress"])
             for span in spans:
                 _emit([span.ingress_episode], t)
                 # T0-3 (#6/#7, spec §6.2 inv: "residence spans are intervals
@@ -727,13 +808,33 @@ def enumerate_body(
                 # relation='residence' row — the ingress episode alone is
                 # zero-width and loses the interval (pre-fix the span was
                 # computed and discarded; FABLE: 98.6% of the ledger inert).
-                out.append(_residence_span_dict(span, t, backend))
-                if span.ingress_episode.t_exact is None:
-                    stats["episodes_without_exact"] += 1
+                # Gated to candidate generations >= '4.1' (scope ruling).
+                # Kimi review #3: the span's truncation is the SAME physical
+                # truncation as its ingress episode's — counted there, never
+                # twice.
+                if keep_new:
+                    out.append(_residence_span_dict(span, t, backend))
             _note(t.target_type, ["residence", "sign_ingress"])
     out.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
     stats["searched"] = {k: sorted(v) for k, v in stats["searched"].items()}
     return out, stats
+
+
+def assert_sky_events_unique(episodes: list[dict]) -> int:
+    """R5 closure assertion, run AFTER dedupe/persistence shaping: each
+    physical boundary event (body × relation × instant) is stored exactly
+    ONCE as a sky_event row. Returns the number of sky-event rows."""
+    seen: set[tuple] = set()
+    n = 0
+    for e in episodes:
+        if e["relation"] in BOUNDARY_RELATIONS and e["target_type"] == "sky_event":
+            key = (e["body"], e["relation"], str(e["t_exact"]))
+            if key in seen:
+                raise AssertionError(
+                    f"R5 violated: boundary event stored twice: {key}")
+            seen.add(key)
+            n += 1
+    return n
 
 
 # ── ADK-0020 dedupe: one ledger row per physical contact (WP1 §3.3 H-6) ──────
@@ -1138,14 +1239,17 @@ def main(argv: list[str] | None = None) -> int:
     searched: dict[str, dict[str, list[str]]] = {}
     backends: dict[str, dict] = {}
     no_exact_total = 0
+    no_exact_gated_total = 0
     for body in bodies:
         index, backend = build_body_index(body, start_pad, end_pad, args.ephe_path)
         backends[body] = backend
         eps, stats = enumerate_body(
             index, body, targets, horizon_jd, args.orb_deg, backend,
-            ephe_path=args.ephe_path, refine=not args.no_refine)
+            ephe_path=args.ephe_path, refine=not args.no_refine,
+            generation=args.generation)
         episodes.extend(eps)
         no_exact_total += stats["episodes_without_exact"]
+        no_exact_gated_total += stats["episodes_without_exact_dropped_by_gate"]
         searched[body] = stats["searched"]
 
     coverage = build_coverage_rows(
@@ -1168,6 +1272,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"REFUSED (ADK-0020): {exc}", file=sys.stderr)
         return 5
 
+    # R5 closure: after dedupe, each physical boundary event is stored exactly
+    # once (as a sky_event row). A violation here is a defect — refuse, never
+    # ship a duplicated physical substrate.
+    n_sky_events = assert_sky_events_unique(episodes)
+
     Path(args.episodes_out).write_text(
         json.dumps(episodes, indent=2, default=str) + "\n")
     Path(args.coverage_out).write_text(
@@ -1186,7 +1295,9 @@ def main(argv: list[str] | None = None) -> int:
         "targets": len(targets),
         "target_resolution_state_counts": state_counts,
         "episodes_emitted": len(episodes),
+        "sky_boundary_events": n_sky_events,
         "episodes_truncated_no_exact_kept": no_exact_total,
+        "episodes_truncated_no_exact_withheld_pre_41_gate": no_exact_gated_total,
         "dedupe": dedupe_report,
         "coverage_partitions": len(coverage),
         "upstream_fingerprints": fingerprints,
