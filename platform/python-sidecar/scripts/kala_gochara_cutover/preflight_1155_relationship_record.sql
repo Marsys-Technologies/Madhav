@@ -161,6 +161,7 @@ BEGIN
                  ('ka_gochara_finite_ok(double precision)'),
                  ('ka_gochara_finite_nonneg_ok(double precision)'),
                  ('ka_gochara_generation_governed(text)'),
+                 ('ka_gochara_horizon_finite_ok(tstzrange)'),
                  ('ka_gochara_generation_is_sealed(uuid,text)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
        OR (SELECT format_type(p.prorettype, NULL) FROM pg_proc p

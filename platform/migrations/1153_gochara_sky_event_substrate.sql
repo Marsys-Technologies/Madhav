@@ -3,8 +3,10 @@
 --                 its per-(chart × generation) ledger, the explicit publication
 --                 seal, and the legacy-convention bridge
 --                 (GOCHARA_DESIGN_SPECS_v1_4 §6.1/§7/§10, FROZEN 2026-09-30).
---                 Round-5 rewrite per ASTRA_REVIEW_A5_1_MIGRATIONS v1_3
---                 (N12–N15, residual N2/N7/N10, P2) under the steward's
+--                 Round-6 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_4 (residual
+--                 N13/N2 mixed substrate order, N16/N10 seal-boundary
+--                 membership invariant, N17/N14 finite horizons) on top of
+--                 the round-5 rewrite (v1_3: N12–N15, P2) under the steward's
 --                 CORRECTED lock ruling of 2026-09-30. 1153–1157 were never
 --                 applied anywhere, so this is an in-place rewrite.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
@@ -61,12 +63,46 @@
 --    UPDATE OR DELETE **statement-level** trigger
 --    (ka_gochara_chart_statement_lock) that takes the chart family key for
 --    every chart present in the table (ascending) before any tuple is
---    touched; refusals (insert-only tables, sealed seals) RAISE before any
---    lock is taken, so a refused statement never waits.
---    Chart-independent, constraint-guarded tables (substrate convention,
---    physical object, sky event, contact identity, bridge, AV declaration)
---    take NO family key: their invariants are UNIQUE/FK constraints and
---    insert-only guards, which need no serialisation.
+--    touched; refusals (insert-only tables, sealed seals, legacy
+--    generations) RAISE before acquiring any FAMILY advisory lock (a
+--    row-level refusal may still have waited for its tuple — that tuple
+--    lock dies with the refused statement's abort/savepoint rollback and
+--    can never be held INTO a family-key wait).
+--    SUBSTRATE ORDER (residual N13, v1_4) [steward ruling]: the tables that
+--    carry no family key of their own (sky convention, physical object, sky
+--    event, contact identity, bridge — and, for a total invariant, the AV
+--    declaration) are written by chart-serving transactions beside chart
+--    rows, and a unique-index or tuple wait on them could otherwise be held
+--    while waiting for a chart key (A holds C → waits on B's uncommitted
+--    identity; B waits for C). The mixed order is therefore STRUCTURALLY
+--    PROHIBITED: a BEFORE INSERT (and, on the enrichable sky-event table,
+--    UPDATE) statement-level trigger (ka_gochara_substrate_chart_lock) first
+--    takes the chart family key of the chart the transaction serves — the
+--    key already held (gochara5.chart_locked), else the declared context
+--    (set_config('gochara5.chart', <chart_id>, true)) — and REFUSES the
+--    statement when the transaction has no chart context. The chart key
+--    thus always precedes any substrate tuple or unique lock; the
+--    registry/chart markers stay as they are (a registry transaction cannot
+--    write substrate rows either — it would need a chart key).
+-- 3b. [steward ruling] THE SEAL BOUNDARY CARRIES THE COMPLETE MEMBERSHIP
+--    INVARIANT (N16/N10): candidate records, windows and their coverage
+--    partitions stay updateable before publication, and no trigger sits on
+--    the legacy coverage table, so an existing window membership can become
+--    inapplicable after it was validated. ka_gochara_seal_generation
+--    therefore re-checks EVERY window membership of the generation
+--    (contributor relation ∈ window relations_searched, same convention,
+--    support intervals ⊆ window horizon — ka_gochara_membership_violations,
+--    1156) and refuses the seal on any violation, exactly as it refuses
+--    incompatible coverage drift.
+-- 3c. [steward ruling] FINITE HORIZONS ONLY (N17/N14): the Gochara-5
+--    contract admits finite, bounded, non-empty horizons — never an omitted
+--    bound, never a ±infinity timestamp bound, never an empty range.
+--    ka_gochara_horizon_finite_ok is CHECKed on window intervals and record
+--    support intervals, the coverage guards refuse a partition whose
+--    completed_horizon is not finite, ka_gochara_coverage_facts RAISES on
+--    any other input, and the drift classifier reports a partition that
+--    later became non-finite as `incompatible`. The facts encoding therefore
+--    never meets infinity, and is unambiguous over its whole accepted domain.
 -- 4. NO CUSTOM DEFINITION VERIFIER, NO REPLAY GUC (N4, kept): migrate.ts
 --    tracks applied files by hash; a re-run is an untracked collision and
 --    the gate BLOCKS it; post-apply checks are presence checks.
@@ -146,12 +182,14 @@
 --   DROP FUNCTION IF EXISTS ka_gochara_seal_generation(uuid, text);
 --   DROP FUNCTION IF EXISTS ka_gochara_generation_is_sealed(uuid, text);
 --   DROP FUNCTION IF EXISTS ka_gochara_chart_statement_lock();
+--   DROP FUNCTION IF EXISTS ka_gochara_substrate_chart_lock();
 --   DROP FUNCTION IF EXISTS ka_gochara_global_write_guard();
 --   DROP FUNCTION IF EXISTS ka_gochara_insert_only();
 --   DROP FUNCTION IF EXISTS ka_gochara_lock_global_shared();
 --   DROP FUNCTION IF EXISTS ka_gochara_lock_global();
 --   DROP FUNCTION IF EXISTS ka_gochara_lock_chart(uuid);
 --   DROP FUNCTION IF EXISTS ka_gochara_generation_governed(text);
+--   DROP FUNCTION IF EXISTS ka_gochara_horizon_finite_ok(tstzrange);
 --   DROP FUNCTION IF EXISTS ka_gochara_refuse_truncate();
 --   DROP FUNCTION IF EXISTS ka_gochara_finite_nonneg_ok(double precision);
 --   DROP FUNCTION IF EXISTS ka_gochara_finite_ok(double precision);
@@ -211,24 +249,29 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_sky_convention'
-               AND t.tgname IN ('ka_gochara_sky_convention_immutable',
+               AND t.tgname IN ('ka_gochara_sky_convention_0_chart_context',
+                                'ka_gochara_sky_convention_immutable',
                                 'ka_gochara_sky_convention_no_truncate'))
          OR (c.relname = 'ka_gochara_physical_object'
-               AND t.tgname IN ('ka_gochara_physical_object_immutable',
+               AND t.tgname IN ('ka_gochara_physical_object_0_chart_context',
+                                'ka_gochara_physical_object_immutable',
                                 'ka_gochara_physical_object_no_truncate'))
          OR (c.relname = 'ka_gochara_sky_event'
-               AND t.tgname IN ('ka_gochara_sky_event_supersede_check',
+               AND t.tgname IN ('ka_gochara_sky_event_0_chart_context',
+                                'ka_gochara_sky_event_supersede_check',
                                 'ka_gochara_sky_event_mutation_guard',
                                 'ka_gochara_sky_event_no_truncate'))
          OR (c.relname = 'ka_gochara_contact_identity'
-               AND t.tgname IN ('ka_gochara_contact_identity_supersede_check',
+               AND t.tgname IN ('ka_gochara_contact_identity_0_chart_context',
+                                'ka_gochara_contact_identity_supersede_check',
                                 'ka_gochara_contact_identity_immutable',
                                 'ka_gochara_contact_identity_no_truncate'))
          OR (c.relname = 'ka_gochara_generation_seal'
                AND t.tgname IN ('ka_gochara_generation_seal_write_guard',
                                 'ka_gochara_generation_seal_no_truncate'))
          OR (c.relname = 'ka_gochara_convention_bridge'
-               AND t.tgname IN ('ka_gochara_convention_bridge_immutable',
+               AND t.tgname IN ('ka_gochara_convention_bridge_0_chart_context',
+                                'ka_gochara_convention_bridge_immutable',
                                 'ka_gochara_convention_bridge_no_truncate'))
          OR (c.relname = 'ka_gochara_contact'
                AND t.tgname IN ('ka_gochara_contact_0_statement_lock',
@@ -244,12 +287,14 @@ BEGIN
             ('ka_gochara_finite_ok',                        ARRAY['double precision']),
             ('ka_gochara_finite_nonneg_ok',                 ARRAY['double precision']),
             ('ka_gochara_generation_governed',              ARRAY['text']),
+            ('ka_gochara_horizon_finite_ok',                ARRAY['tstzrange']),
             ('ka_gochara_lock_chart',                       ARRAY['uuid']),
             ('ka_gochara_lock_global',                      ARRAY[]::text[]),
             ('ka_gochara_lock_global_shared',               ARRAY[]::text[]),
             ('ka_gochara_insert_only',                      ARRAY[]::text[]),
             ('ka_gochara_global_write_guard',               ARRAY[]::text[]),
             ('ka_gochara_chart_statement_lock',             ARRAY[]::text[]),
+            ('ka_gochara_substrate_chart_lock',             ARRAY[]::text[]),
             ('ka_gochara_generation_is_sealed',             ARRAY['uuid','text']),
             ('ka_gochara_seal_generation',                  ARRAY['uuid','text']),
             ('ka_gochara_generation_seal_guard',            ARRAY[]::text[]),
@@ -350,6 +395,17 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT g IS NOT NULL AND g ~ '^([5-9]|[1-9][0-9]+)\.[0-9]+$';
 $$;
 
+-- The accepted horizon domain (ruling 3c / N17): finite, bounded, non-empty.
+-- Refuses NULL, 'empty', an omitted bound and a ±infinity timestamp bound.
+CREATE OR REPLACE FUNCTION public.ka_gochara_horizon_finite_ok(h tstzrange)
+RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
+  SELECT h IS NOT NULL
+     AND NOT isempty(h)
+     AND NOT lower_inf(h) AND NOT upper_inf(h)
+     AND lower(h) > '-infinity'::timestamptz AND lower(h) < 'infinity'::timestamptz
+     AND upper(h) > '-infinity'::timestamptz AND upper(h) < 'infinity'::timestamptz;
+$$;
+
 -- ── 0b. The Gochara-5 family keys and the ENFORCED order (rulings 2–3) ────
 -- Transaction-local markers (set_config(..., true)) record which class of
 -- key this transaction holds so the fixed order is enforced, not assumed.
@@ -369,6 +425,7 @@ BEGIN
   END IF;
   PERFORM pg_advisory_xact_lock(hashtext('gochara5:chart:' || p_chart_id::text)::bigint);
   PERFORM set_config('gochara5.chart_locked', 'on', true);
+  PERFORM set_config('gochara5.chart', p_chart_id::text, true);   -- the chart this transaction serves
 END;
 $$;
 
@@ -426,8 +483,8 @@ END;
 $$;
 
 -- Registry-class guard (rule-path registry, seal, membership UPDATE/DELETE):
--- a refusal RAISES before any lock (a refused statement never waits — N13);
--- an INSERT takes the global family key EXCLUSIVE.
+-- a refusal RAISES before any FAMILY advisory lock is acquired (N13); an
+-- INSERT takes the global family key EXCLUSIVE.
 CREATE OR REPLACE FUNCTION public.ka_gochara_global_write_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
@@ -464,6 +521,30 @@ BEGIN
 END;
 $$;
 
+-- BEFORE INSERT (and UPDATE where enrichment is permitted), FOR EACH
+-- STATEMENT, on every table that carries no family key of its own (ruling
+-- 3, SUBSTRATE ORDER): the chart family key of the chart this transaction
+-- serves is taken BEFORE any substrate unique-index or tuple lock. The chart
+-- is the one already locked (gochara5.chart_locked → nothing to do), else
+-- the declared context gochara5.chart; a transaction with neither is
+-- refused — the mixed order cannot occur.
+CREATE OR REPLACE FUNCTION public.ka_gochara_substrate_chart_lock()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE ctx text;
+BEGIN
+  IF COALESCE(current_setting('gochara5.chart_locked', true), '') = 'on' THEN
+    RETURN NULL;   -- the chart key already precedes this statement
+  END IF;
+  ctx := current_setting('gochara5.chart', true);
+  IF ctx IS NULL OR ctx = '' THEN
+    RAISE EXCEPTION '% write refused (steward ruling B / N13 substrate order): no chart context — a transaction that writes substrate, identity, bridge or declaration rows must first take the chart family key of the chart it serves (SELECT ka_gochara_lock_chart(chart_id)) or declare it (set_config(''gochara5.chart'', chart_id, true)), so the chart key always precedes any substrate tuple or unique-index lock',
+      TG_TABLE_NAME;
+  END IF;
+  PERFORM public.ka_gochara_lock_chart(ctx::uuid);
+  RETURN NULL;
+END;
+$$;
+
 -- ── 1. Convention (§6.1) — constraint-guarded, insert-only, no family key ─
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_convention (
@@ -486,6 +567,10 @@ COMMENT ON TABLE public.ka_gochara_sky_convention IS
   'plus the ordinal domain (domain_start/domain_end). A backward partition is a new '
   'convention_id. Insert-only; TRUNCATE refused.';
 
+DROP TRIGGER IF EXISTS ka_gochara_sky_convention_0_chart_context ON public.ka_gochara_sky_convention;
+CREATE TRIGGER ka_gochara_sky_convention_0_chart_context
+  BEFORE INSERT ON public.ka_gochara_sky_convention
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_substrate_chart_lock();
 DROP TRIGGER IF EXISTS ka_gochara_sky_convention_immutable ON public.ka_gochara_sky_convention;
 CREATE TRIGGER ka_gochara_sky_convention_immutable
   BEFORE UPDATE OR DELETE ON public.ka_gochara_sky_convention
@@ -525,6 +610,10 @@ COMMENT ON TABLE public.ka_gochara_physical_object IS
   'identity; one object per (body, relation_kind, canonical_target, convention_id). '
   'Insert-only; TRUNCATE refused.';
 
+DROP TRIGGER IF EXISTS ka_gochara_physical_object_0_chart_context ON public.ka_gochara_physical_object;
+CREATE TRIGGER ka_gochara_physical_object_0_chart_context
+  BEFORE INSERT ON public.ka_gochara_physical_object
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_substrate_chart_lock();
 DROP TRIGGER IF EXISTS ka_gochara_physical_object_immutable ON public.ka_gochara_physical_object;
 CREATE TRIGGER ka_gochara_physical_object_immutable
   BEFORE UPDATE OR DELETE ON public.ka_gochara_physical_object
@@ -594,8 +683,9 @@ COMMENT ON TABLE public.ka_gochara_sky_event IS
   'kinds ONLY. event_id = hash(physical_object_id, occurrence_ordinal). Correction: a NEW '
   'event of the same (body, kind) under a corrected target or a new convention, linked by '
   'supersedes_event_id (chain; never self). DELETE forbidden; UPDATE may only fill NULL '
-  'fields (truncated→exact flip); TRUNCATE refused. Constraint-guarded (UNIQUE/FK), no '
-  'family key.';
+  'fields (truncated→exact flip); TRUNCATE refused. Constraint-guarded (UNIQUE/FK); a '
+  'write first takes the chart family key of the chart the transaction serves (substrate '
+  'order).';
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_sky_event_supersede_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
@@ -667,6 +757,10 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS ka_gochara_sky_event_0_chart_context ON public.ka_gochara_sky_event;
+CREATE TRIGGER ka_gochara_sky_event_0_chart_context
+  BEFORE INSERT OR UPDATE ON public.ka_gochara_sky_event
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_substrate_chart_lock();
 DROP TRIGGER IF EXISTS ka_gochara_sky_event_supersede_check ON public.ka_gochara_sky_event;
 CREATE TRIGGER ka_gochara_sky_event_supersede_check
   BEFORE INSERT ON public.ka_gochara_sky_event
@@ -705,7 +799,8 @@ COMMENT ON TABLE public.ka_gochara_contact_identity IS
   'renumbered, reused or deleted (insert-only; TRUNCATE refused). Correction: a new '
   'identity of the same (body, relation_kind) under a corrected target or a new '
   'convention, linked by supersedes_contact_id (chain — kgci_supersedes_uq; never self). '
-  'Constraint-guarded, no family key: a chart writer inserts it beside its ledger row.';
+  'Constraint-guarded; a chart writer inserts it beside its ledger row, and the write '
+  'first takes the chart family key of the chart the transaction serves (substrate order).';
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_contact_identity_supersede_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
@@ -741,6 +836,10 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS ka_gochara_contact_identity_0_chart_context ON public.ka_gochara_contact_identity;
+CREATE TRIGGER ka_gochara_contact_identity_0_chart_context
+  BEFORE INSERT ON public.ka_gochara_contact_identity
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_substrate_chart_lock();
 DROP TRIGGER IF EXISTS ka_gochara_contact_identity_supersede_check ON public.ka_gochara_contact_identity;
 CREATE TRIGGER ka_gochara_contact_identity_supersede_check
   BEFORE INSERT ON public.ka_gochara_contact_identity
@@ -775,7 +874,8 @@ COMMENT ON TABLE public.ka_gochara_generation_seal IS
   'transaction as the status flip (ruling 1 — no trigger on the legacy manifest table). '
   'Never updated, deleted or truncated. Sealing refuses a generation whose records/windows '
   'carry coverage facts incompatible with the current coverage partitions '
-  '(ka_gochara_coverage_drift, 1156). Read under the chart family key.';
+  '(ka_gochara_coverage_drift, 1156) or whose window memberships are no longer applicable '
+  '(ka_gochara_membership_violations, 1156). Read under the chart family key.';
 
 -- INSERT: refuse legacy, take the chart family key, require a published
 -- manifest, refuse incompatible coverage drift (1156's detector, once it
@@ -807,6 +907,15 @@ BEGIN
       INTO n_bad USING NEW.chart_id, NEW.generation;
     IF n_bad > 0 THEN
       RAISE EXCEPTION 'ka_gochara_generation_seal refused (N10 consumer contract): % record/window row(s) of (chart %, generation %) carry coverage facts that are INCOMPATIBLE with their partition''s current facts (or the partition is missing) — re-validate the candidate before publishing; see ka_gochara_coverage_drift(chart_id, generation)',
+        n_bad, NEW.chart_id, NEW.generation;
+    END IF;
+  END IF;
+  -- the complete membership invariant at the seal boundary (ruling 3b / N16)
+  IF to_regprocedure('public.ka_gochara_membership_violations(uuid,text)') IS NOT NULL THEN
+    EXECUTE 'SELECT count(*) FROM public.ka_gochara_membership_violations($1, $2)'
+      INTO n_bad USING NEW.chart_id, NEW.generation;
+    IF n_bad > 0 THEN
+      RAISE EXCEPTION 'ka_gochara_generation_seal refused (N16 membership invariant): % window membership row(s) of (chart %, generation %) are NO LONGER APPLICABLE to their window''s coverage (contributor relation not searched, convention mismatch, or support outside the window horizon) — re-evaluate the candidate before publishing; see ka_gochara_membership_violations(chart_id, generation)',
         n_bad, NEW.chart_id, NEW.generation;
     END IF;
   END IF;
@@ -855,7 +964,8 @@ COMMENT ON FUNCTION public.ka_gochara_seal_generation(uuid, text) IS
   'Governed publication path entry point (ruling 1): call in the SAME transaction that '
   'sets kala_gochara_publication.status = ''published'' for a generation of major >= 5, '
   'AFTER ka_gochara_lock_chart(chart) was taken first (one lock order, N13). Refuses '
-  'legacy generations and incompatible coverage drift; idempotent; returns the manifest id.';
+  'legacy generations, incompatible coverage drift and inapplicable window memberships; '
+  'idempotent; returns the manifest id.';
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_generation_is_sealed(p_chart_id uuid, p_generation text)
 RETURNS boolean LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
@@ -880,6 +990,10 @@ COMMENT ON TABLE public.ka_gochara_convention_bridge IS
   'kala_gochara_coverage.convention_id to the §6.1 sky convention carried by contacts. '
   'Insert-only; TRUNCATE refused.';
 
+DROP TRIGGER IF EXISTS ka_gochara_convention_bridge_0_chart_context ON public.ka_gochara_convention_bridge;
+CREATE TRIGGER ka_gochara_convention_bridge_0_chart_context
+  BEFORE INSERT ON public.ka_gochara_convention_bridge
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_substrate_chart_lock();
 DROP TRIGGER IF EXISTS ka_gochara_convention_bridge_immutable ON public.ka_gochara_convention_bridge;
 CREATE TRIGGER ka_gochara_convention_bridge_immutable
   BEFORE UPDATE OR DELETE ON public.ka_gochara_convention_bridge
@@ -1078,7 +1192,16 @@ BEGIN
           AND public.ka_gochara_generation_governed('v1') IS FALSE
           AND public.ka_gochara_generation_governed('5') IS FALSE
           AND public.ka_gochara_generation_governed('05.0') IS FALSE
-          AND public.ka_gochara_generation_governed(NULL) IS FALSE) THEN
+          AND public.ka_gochara_generation_governed(NULL) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)')) IS TRUE
+          AND public.ka_gochara_horizon_finite_ok(NULL) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok('empty'::tstzrange) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok('(,)'::tstzrange) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-01-01T00:00Z', NULL, '[)')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('-infinity', 'infinity', '[]')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('infinity', 'infinity', '[]')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-01-01T00:00Z', 'infinity', '[)')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('-infinity', '2026-01-01T00:00Z', '(]')) IS FALSE) THEN
     RAISE EXCEPTION 'migration 1153 post-apply check failed: helper self-test failed';
   END IF;
 END;
@@ -1158,18 +1281,23 @@ BEGIN
   END IF;
 
   WITH expected(tgrelid, tgname) AS (VALUES
+      ('ka_gochara_sky_convention','ka_gochara_sky_convention_0_chart_context'),
       ('ka_gochara_sky_convention','ka_gochara_sky_convention_immutable'),
       ('ka_gochara_sky_convention','ka_gochara_sky_convention_no_truncate'),
+      ('ka_gochara_physical_object','ka_gochara_physical_object_0_chart_context'),
       ('ka_gochara_physical_object','ka_gochara_physical_object_immutable'),
       ('ka_gochara_physical_object','ka_gochara_physical_object_no_truncate'),
+      ('ka_gochara_sky_event','ka_gochara_sky_event_0_chart_context'),
       ('ka_gochara_sky_event','ka_gochara_sky_event_supersede_check'),
       ('ka_gochara_sky_event','ka_gochara_sky_event_mutation_guard'),
       ('ka_gochara_sky_event','ka_gochara_sky_event_no_truncate'),
+      ('ka_gochara_contact_identity','ka_gochara_contact_identity_0_chart_context'),
       ('ka_gochara_contact_identity','ka_gochara_contact_identity_supersede_check'),
       ('ka_gochara_contact_identity','ka_gochara_contact_identity_immutable'),
       ('ka_gochara_contact_identity','ka_gochara_contact_identity_no_truncate'),
       ('ka_gochara_generation_seal','ka_gochara_generation_seal_write_guard'),
       ('ka_gochara_generation_seal','ka_gochara_generation_seal_no_truncate'),
+      ('ka_gochara_convention_bridge','ka_gochara_convention_bridge_0_chart_context'),
       ('ka_gochara_convention_bridge','ka_gochara_convention_bridge_immutable'),
       ('ka_gochara_convention_bridge','ka_gochara_convention_bridge_no_truncate'),
       ('ka_gochara_contact','ka_gochara_contact_0_statement_lock'),

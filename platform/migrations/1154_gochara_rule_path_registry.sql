@@ -26,7 +26,7 @@
 -- memberships and the seal FIRST takes the Gochara-5 GLOBAL family key
 -- EXCLUSIVE (hashtext('gochara5:global'), transaction-scoped — never the
 -- orchestrator's session key, N12) and only then reads seal state; UPDATE /
--- DELETE are refused BEFORE any lock (a refused statement never waits, N13).
+-- DELETE are refused BEFORE any family advisory lock is acquired (N13).
 -- Registry mutations never take a chart key (enforced by the lock helpers:
 -- a transaction that already holds a chart key cannot take this key
 -- EXCLUSIVE, and vice versa), so:

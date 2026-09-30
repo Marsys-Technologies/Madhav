@@ -1,12 +1,17 @@
 -- Migration 1157: ka_gochara_av_polarity_declaration — the §8.1 bindu
 --                 polarity declaration, gated before any citation-bearing AV
---                 weight (GOCHARA_DESIGN_SPECS_v1_4 §8, T0-11). Round-5 per
---                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_3 under the steward's
+--                 weight (GOCHARA_DESIGN_SPECS_v1_4 §8, T0-11). Round-6 per
+--                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_4 under the steward's
 --                 corrected lock ruling: this table is chart-independent and
---                 constraint-guarded (PK + CHECKs), so it takes NO family key
---                 — insert-only guard without a lock; presence checks instead
---                 of a verifier. Depends on 1153 (shared helpers). Never
---                 applied anywhere — in-place rewrite of the same number.
+--                 constraint-guarded (PK + CHECKs) — insert-only row guard
+--                 without a lock of its own; like every table without a family
+--                 key of its own, an INSERT first takes the chart family key
+--                 of the chart the transaction serves (substrate order,
+--                 ka_gochara_substrate_chart_lock — 1153 ruling 3), so no
+--                 unique-index wait on this table can ever be held into a
+--                 chart-key wait; presence checks instead of a verifier.
+--                 Depends on 1153 (shared helpers). Never applied anywhere —
+--                 in-place rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
 -- Numbering: 1157 sits inside this lane's granted block (1150–1159 per
@@ -28,10 +33,11 @@
 --     malefic_mark_name / source_ref NOT NULL non-blank, and the two mark
 --     names distinct; applies_to_fact_categories text[] NOT NULL with ≥ 1
 --     element and no NULL/blank element (F11).
---   * TRIGGER: insert-only (ka_gochara_insert_only — no family key: the PK
---     serialises what needs serialising, and a refusal never waits) +
---     TRUNCATE refused — the declaration is data that evaluations join and
---     record in lineage (§8.2 inv 2, O-BP-3); a change is a new convention row.
+--   * TRIGGER: chart context first on INSERT (ka_gochara_substrate_chart_lock,
+--     statement-level); insert-only row guard (ka_gochara_insert_only — a
+--     refusal raises before any family lock) + TRUNCATE refused — the
+--     declaration is data that evaluations join and record in lineage (§8.2
+--     inv 2, O-BP-3); a change is a new convention row.
 --   * COMMENT ONLY: §8.2 inv 1 and O-BP-3's write-time citation rejection are
 --     writer/evaluator gates that land with the P5 evaluation tables; the
 --     empty table alone does not establish the gate (explicitly deferred).
@@ -77,7 +83,8 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND c.relname = 'ka_gochara_av_polarity_declaration'
-      AND t.tgname IN ('ka_gochara_av_polarity_write_guard', 'ka_gochara_av_polarity_no_truncate')
+      AND t.tgname IN ('ka_gochara_av_polarity_0_chart_context',
+                       'ka_gochara_av_polarity_write_guard', 'ka_gochara_av_polarity_no_truncate')
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_text_array_ok(text[],integer)')) AS e(sig)
@@ -87,7 +94,8 @@ BEGIN
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
-                 ('ka_gochara_insert_only()')) AS e(sig)
+                 ('ka_gochara_insert_only()'),
+                 ('ka_gochara_substrate_chart_lock()')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     SELECT 'prerequisite_migration_not_applied', p.prefix
@@ -131,9 +139,14 @@ COMMENT ON TABLE public.ka_gochara_av_polarity_declaration IS
   'AV bindu polarity declaration (GOCHARA_DESIGN_SPECS_v1_4 §8.1): declared before any '
   'citation-bearing AV weight exists (§8.2 inv 1 — T0-11 gates P5; writer-side gate). The '
   'declaration is data: evaluations join it and record it in lineage (§8.2 inv 2, O-BP-3). '
-  'Insert-only (no family key — constraint-guarded): a change is a new convention row; '
-  'TRUNCATE refused.';
+  'Insert-only (constraint-guarded; an INSERT first takes the chart family key of the chart '
+  'the transaction serves — substrate order): a change is a new convention row; TRUNCATE '
+  'refused.';
 
+DROP TRIGGER IF EXISTS ka_gochara_av_polarity_0_chart_context ON public.ka_gochara_av_polarity_declaration;
+CREATE TRIGGER ka_gochara_av_polarity_0_chart_context
+  BEFORE INSERT ON public.ka_gochara_av_polarity_declaration
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_substrate_chart_lock();
 DROP TRIGGER IF EXISTS ka_gochara_av_polarity_write_guard ON public.ka_gochara_av_polarity_declaration;
 CREATE TRIGGER ka_gochara_av_polarity_write_guard
   BEFORE UPDATE OR DELETE ON public.ka_gochara_av_polarity_declaration
@@ -166,6 +179,7 @@ BEGIN
     RAISE EXCEPTION 'migration 1157 post-apply check failed: missing or unvalidated constraint: %', missing;
   END IF;
   WITH expected(tgname) AS (VALUES
+      ('ka_gochara_av_polarity_0_chart_context'),
       ('ka_gochara_av_polarity_write_guard'), ('ka_gochara_av_polarity_no_truncate'))
   SELECT string_agg(e.tgname, ', ' ORDER BY 1) INTO missing
   FROM expected e

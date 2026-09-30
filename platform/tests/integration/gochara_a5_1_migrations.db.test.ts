@@ -1,13 +1,14 @@
 // @vitest-environment node
 /**
- * Pravāha A5.1 round 5 — LIVE-DB contract suite for migrations 1153–1157 and
+ * Pravāha A5.1 round 6 — LIVE-DB contract suite for migrations 1153–1157 and
  * their preflights, executed against a REAL throwaway Postgres (CLAUDE.md
  * §N.8: the test runs the on-disk SQL itself, never a hand-copied
  * re-implementation). Sibling of kala_gochara_windows_generation_guard.db.test.ts.
  *
- * Closes ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 (N1–N11) and v1_3 (N12–N15, P2)
- * under the steward's rulings — including the CORRECTED lock ruling (family
- * keys, never the orchestrator's) — at runtime:
+ * Closes ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 (N1–N11), v1_3 (N12–N15, P2) and
+ * v1_4 (residual N13 substrate order, N16, N17) under the steward's rulings —
+ * including the CORRECTED lock ruling (family keys, never the orchestrator's)
+ * — at runtime:
  *   - N3   the deploy route: the routine runner REFUSES 1153–1157; a role with
  *          USAGE but not CREATE is blocked by each gate; with the temporary
  *          CREATE grant (the window) the same role applies all five through
@@ -32,6 +33,23 @@
  *          family key precedes tuple locks — the concurrent UPDATE/DELETE
  *          inversion (A locks X, B wants Y then X, A wants Y) cannot deadlock
  *          and B is observed waiting on the ADVISORY lock, not a tuple;
+ *          SUBSTRATE ORDER (v1_4): a substrate/identity/bridge/declaration
+ *          write without a chart context is refused; with one it takes the
+ *          chart key FIRST, so the reviewer's unique-entry and sky-event
+ *          tuple schedules are serialised (B waits on the advisory key
+ *          before touching any substrate lock), never deadlocked — with the
+ *          main connection holding its session locks throughout;
+ *   - N16  the seal boundary carries the complete membership invariant: a
+ *          VALID membership, then a parent update (relations dropped,
+ *          convention changed, window horizon narrowed, contributor support
+ *          moved) → the seal is REFUSED; ka_gochara_membership_violations
+ *          names the row and reason; after restoration the seal succeeds;
+ *   - N17  finite horizons only: a partition with ±infinity / omitted bounds
+ *          is refused by the record and window coverage guards; infinite
+ *          window intervals and support intervals fail their CHECKs; the
+ *          encoder RAISES on any non-finite horizon; a partition that later
+ *          became infinite (full-horizon or the positive-infinity singleton)
+ *          is `incompatible` and the seal is refused;
  *   - N2/N5 rebuild ⇄ publication serialise in BOTH orders; the reviewer's
  *          lock-inversion schedule cannot deadlock (the publication path locks
  *          the chart first); membership ⇄ seal serialise in BOTH orders and
@@ -116,8 +134,10 @@ const OWNED: Record<string, { tables: string[]; functions: string[] }> = {
       'ka_gochara_contact'],
     functions: ['ka_gochara_refuse_truncate()', 'ka_gochara_text_array_ok(text[],integer)',
       'ka_gochara_finite_ok(double precision)', 'ka_gochara_finite_nonneg_ok(double precision)',
-      'ka_gochara_generation_governed(text)', 'ka_gochara_lock_chart(uuid)', 'ka_gochara_lock_global()',
+      'ka_gochara_generation_governed(text)', 'ka_gochara_horizon_finite_ok(tstzrange)',
+      'ka_gochara_lock_chart(uuid)', 'ka_gochara_lock_global()',
       'ka_gochara_lock_global_shared()', 'ka_gochara_insert_only()', 'ka_gochara_chart_statement_lock()',
+      'ka_gochara_substrate_chart_lock()',
       'ka_gochara_global_write_guard()', 'ka_gochara_generation_is_sealed(uuid,text)',
       'ka_gochara_seal_generation(uuid,text)', 'ka_gochara_generation_seal_guard()',
       'ka_gochara_sky_event_supersede_guard()', 'ka_gochara_sky_event_guard()',
@@ -141,7 +161,8 @@ const OWNED: Record<string, { tables: string[]; functions: string[] }> = {
   },
   '1156_gochara_eval_window.sql': {
     tables: ['ka_gochara_eval_window', 'ka_gochara_eval_window_record'],
-    functions: ['ka_gochara_window_coverage_guard()', 'ka_gochara_window_membership_guard()', 'ka_gochara_coverage_drift(uuid,text)'],
+    functions: ['ka_gochara_window_coverage_guard()', 'ka_gochara_membership_violation(jsonb,uuid,text,jsonb,tstzrange[])',
+      'ka_gochara_window_membership_guard()', 'ka_gochara_membership_violations(uuid,text)', 'ka_gochara_coverage_drift(uuid,text)'],
   },
   '1157_gochara_av_polarity_declaration.sql': {
     tables: ['ka_gochara_av_polarity_declaration'],
@@ -173,6 +194,7 @@ const EXPECTED_CONSTRAINTS: Array<[string, string]> = [
   ['ka_gochara_relationship_record', 'kgrr_membership_uq'],
   ['ka_gochara_record_prerequisite', 'kgrpr_record_fk'],
   ['ka_gochara_eval_window', 'kgew_coverage_kind_ck'],
+  ['ka_gochara_eval_window', 'kgew_interval_finite_ck'],
   ['ka_gochara_eval_window', 'kgew_coverage_facts_shape_ck'],
   ['ka_gochara_eval_window', 'kgew_membership_uq'],
   ['ka_gochara_eval_window_record', 'kgewr_window_fk'],
@@ -181,8 +203,13 @@ const EXPECTED_CONSTRAINTS: Array<[string, string]> = [
   ['ka_gochara_av_polarity_declaration', 'kgav_categories_nonempty_ck'],
 ]
 const EXPECTED_TRIGGERS: Array<[string, string]> = [
+  ['ka_gochara_sky_convention', 'ka_gochara_sky_convention_0_chart_context'],
   ['ka_gochara_sky_convention', 'ka_gochara_sky_convention_immutable'],
+  ['ka_gochara_sky_event', 'ka_gochara_sky_event_0_chart_context'],
+  ['ka_gochara_contact_identity', 'ka_gochara_contact_identity_0_chart_context'],
   ['ka_gochara_contact_identity', 'ka_gochara_contact_identity_immutable'],
+  ['ka_gochara_convention_bridge', 'ka_gochara_convention_bridge_0_chart_context'],
+  ['ka_gochara_av_polarity_declaration', 'ka_gochara_av_polarity_0_chart_context'],
   ['ka_gochara_sky_event', 'ka_gochara_sky_event_mutation_guard'],
   ['ka_gochara_contact_identity', 'ka_gochara_contact_identity_supersede_check'],
   ['ka_gochara_generation_seal', 'ka_gochara_generation_seal_write_guard'],
@@ -224,6 +251,8 @@ const GEN_S = '5.6'    // §N.3 cascade + isolation + lock-behind-orchestrator
 const GEN_X = '5.7'    // N6 variations
 const GEN_D = '5.8'    // N10 consumer contract: drift classification + seal refusal
 const GEN_L = '5.9'    // N12/N13: real runner topology + lock interleavings (two ledger rows)
+const GEN_M = '6.0'    // N16: valid membership → parent update → seal refused
+const GEN_I = '6.1'    // N17: partition drifts to an infinite horizon → seal refused
 const LEGACY_GEN = '4.0'
 const OBJ_MARS = '10000000-0000-4000-8000-000000000001'
 const OBJ_MOON = '10000000-0000-4000-8000-000000000002'
@@ -417,7 +446,12 @@ async function seedObject(c: Q, id: string, body: string, relation: string, targ
      VALUES ($1, $2, $3, $4, $5)`, [id, body, relation, target, conv],
   )
 }
+/** The chart context every substrate/identity/bridge/declaration write needs FIRST (ruling B, substrate order). */
+async function chartCtx(c: Q, chart = CHART): Promise<void> {
+  await c.query(`SELECT ka_gochara_lock_chart($1)`, [chart])
+}
 async function seedIdentity(c: Q, id: string, objectId: string, ordinal: number, supersedes: string | null = null): Promise<void> {
+  await chartCtx(c)
   await c.query(
     `INSERT INTO ka_gochara_contact_identity
        (contact_id, physical_object_id, occurrence_ordinal, supersedes_contact_id)
@@ -641,12 +675,13 @@ async function publishAndSeal(c: Q, generation: string): Promise<void> {
  */
 async function seedFixtures(): Promise<void> {
   await tx(async c => {
+    await chartCtx(c)   // substrate order: the chart key precedes every substrate write
     await seedLegacyConvention(c, LEGACY_CONV)
     await seedLegacyConvention(c, LEGACY_CONV_UNBRIDGED)
     await seedSkyConvention(c, CONV)
     await seedSkyConvention(c, CONV2, 'm2')
     await c.query(`INSERT INTO ka_gochara_convention_bridge (kala_convention_id, sky_convention_id) VALUES ($1, $2)`, [LEGACY_CONV, CONV])
-    for (const g of [GEN, GEN_C, GEN_R, GEN_P, GEN_F, GEN_N, GEN_S, GEN_X, GEN_D, GEN_L]) {
+    for (const g of [GEN, GEN_C, GEN_R, GEN_P, GEN_F, GEN_N, GEN_S, GEN_X, GEN_D, GEN_L, GEN_M, GEN_I]) {
       await seedPublication(c, g)
       await seedCoverage(c, { generation: g, kind: 'body_target', key: COV_KEY })
       await seedCoverage(c, { generation: g, kind: 'event_class', key: 'marriage' })
@@ -662,6 +697,10 @@ async function seedFixtures(): Promise<void> {
     await seedCoverage(c, { generation: GEN_F, kind: 'event_class', key: 'separation', conv: LEGACY_CONV_UNBRIDGED })
     await seedCoverage(c, { generation: GEN_F, kind: 'event_class', key: 'career_entry', completed: "tstzrange('2025-06-01T00:00Z','2026-01-01T00:00Z','[)')" })
     await seedCoverage(c, { generation: GEN_F, kind: 'event_class', key: 'surgery', relationsSql: `ARRAY['conjunction', NULL]::text[]` })
+    // N17: partitions the contract does not admit (full horizon; positive-infinity singleton; omitted bound)
+    await seedCoverage(c, { generation: GEN_F, kind: 'event_class', key: 'travel_event', completed: "tstzrange('-infinity','infinity','[]')" })
+    await seedCoverage(c, { generation: GEN_F, kind: 'event_class', key: 'relocation', completed: "tstzrange('infinity','infinity','[]')" })
+    await seedCoverage(c, { generation: GEN_F, kind: 'event_class', key: 'major_gain', completed: "tstzrange('2025-01-01T00:00Z', NULL, '[)')" })
     await seedObject(c, OBJ_MARS, 'mars', 'conjunction', 'point:198.52')
     await seedObject(c, OBJ_MOON, 'moon', 'conjunction', 'point:327.06')
     await seedObject(c, OBJ_MARS_ASPECT, 'mars', 'aspect', 'point:198.52')
@@ -670,6 +709,8 @@ async function seedFixtures(): Promise<void> {
     await seedObject(c, OBJ_SAT_CONJ, 'saturn', 'conjunction', 'point:202.43')
     await seedObject(c, OBJ_SAT_SPAN, 'saturn', 'sign_ingress', 'span:libra')
     await seedObject(c, OBJ_MARS_SPAN, 'mars', 'sign_ingress', 'span:libra')
+  })
+  await tx(async c => {
     await seedRegistries(c)   // global EXCLUSIVE — registry construction, its own transaction
   })
   await tx(async c => {
@@ -925,6 +966,8 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
     async function pidOf(c: Q): Promise<number> {
       return (await c.query<{ pid: number }>(`SELECT pg_backend_pid() AS pid`)).rows[0]!.pid
     }
+    const base_sky_event = () => `INSERT INTO ka_gochara_sky_event (event_id, physical_object_id, convention_id, body, event_kind, occurrence_ordinal,
+         t_exact, longitude, solver_method, delta_lambda, delta_t, precision_regime, coverage)`
 
     it('N12: the REAL runner topology — the main connection holds the orchestrator\'s session locks while a WORKER connection writes and COMPLETES; an unrelated writer and the seal are excluded until the worker commits', async () => {
       const main = await pool.connect()     // runner.py: the scheduler's MAIN connection
@@ -1114,6 +1157,85 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       }
     })
 
+    it('N13 substrate order: substrate/identity/bridge/declaration writes need the chart key FIRST — no context is refused; the reviewer\'s unique-entry and sky-event tuple schedules are serialised, never deadlocked (main connection holding its session locks)', async () => {
+      const EVENT_L = '10000000-0000-4000-8000-000000000022'
+      const CID_Y = '10000000-0000-4000-8000-00000000001a'   // (OBJ_SAT_CONJ, 1) — a new identity under a committed object
+      const identityInsert = `INSERT INTO ka_gochara_contact_identity (contact_id, physical_object_id, occurrence_ordinal) VALUES ($1, $2, 1) ON CONFLICT DO NOTHING`
+      const main = await pool.connect()
+      const a = await pool.connect()
+      const b = await pool.connect()
+      try {
+        await main.query(ORCH_CHART_KEY, [CHART])
+        await main.query(ORCH_GLOBAL_KEY)
+
+        // no chart context → refused before any lock, on every substrate table
+        await expect(pool.query(identityInsert, [CID_Y, OBJ_SAT_CONJ])).rejects.toThrow(/ka_gochara_contact_identity write refused .* no chart context/)
+        await expect(pool.query(`INSERT INTO ka_gochara_sky_convention (convention_id, ephemeris_generation, ayanamsha, node_convention, grid, method_version, domain_start, domain_end) VALUES ('c-noctx','de441','lahiri','mean','1s','m1','2025-01-01T00:00Z','2026-01-01T00:00Z')`)).rejects.toThrow(/no chart context/)
+        await expect(pool.query(`INSERT INTO ka_gochara_convention_bridge (kala_convention_id, sky_convention_id) VALUES ($1, $2)`, [LEGACY_CONV_UNBRIDGED, CONV])).rejects.toThrow(/no chart context/)
+        await expect(pool.query(`INSERT INTO ka_gochara_av_polarity_declaration (convention, benefic_mark_name, malefic_mark_name, source_ref, applies_to_fact_categories) VALUES ('c-noctx','a','b','x', ARRAY['y'])`)).rejects.toThrow(/no chart context/)
+        // a registry transaction cannot write substrate either: without a context it is refused, with a declared
+        // context it would need the chart key, which the registry marker forbids (lock-order violation)
+        await expect(tx(async c => {
+          await c.query(predicateInsert('q_substrate'))
+          await c.query(identityInsert, [CID_Y, OBJ_SAT_CONJ])
+        })).rejects.toThrow(/no chart context/)
+        await expect(tx(async c => {
+          await c.query(`SELECT set_config('gochara5.chart', $1, true)`, [CHART])
+          await c.query(predicateInsert('q_substrate'))
+          await c.query(identityInsert, [CID_Y, OBJ_SAT_CONJ])
+        })).rejects.toThrow(/lock-order violation/)
+        // with a declared context the write takes the chart family key first
+        await tx(async c => {
+          await c.query(`SELECT set_config('gochara5.chart', $1, true)`, [CHART])
+          await c.query(`${base_sky_event()} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 2, '2025-04-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [EVENT_L, OBJ_SAT_SPAN, CONV])
+          const held = await c.query<{ n: number; locked: string }>(
+            `SELECT COUNT(*)::int AS n, current_setting('gochara5.chart_locked', true) AS locked FROM pg_locks
+             WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted AND mode = 'ExclusiveLock'`)
+          expect(held.rows[0]).toEqual({ n: 1, locked: 'on' })   // exactly the chart family key, taken by the statement trigger
+        })
+
+        // schedule 1 (unique entry): A holds C; B inserts identity Y — B must take C first, so it waits on the ADVISORY key
+        await a.query('BEGIN')
+        await a.query(`UPDATE ka_gochara_contact SET created_at = created_at WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_1])
+        await b.query('BEGIN')
+        const bPid = await pidOf(b)
+        await b.query(`SELECT set_config('gochara5.chart', $1, true)`, [CHART])
+        const bIns = b.query(identityInsert, [CID_Y, OBJ_SAT_CONJ])
+        expect(await settledWithin(bIns)).toBe('pending')
+        expect(await waitState(bPid)).toEqual({ wait_event_type: 'Lock', wait_event: 'advisory' })   // before any unique-index entry
+        const aIns = a.query(identityInsert, [CID_Y, OBJ_SAT_CONJ])   // A inserts the same Y: no wait on B (B holds nothing)
+        expect(await settledWithin(aIns)).toBe('settled')
+        expect((await aIns).rowCount).toBe(1)
+        await a.query('COMMIT')
+        expect((await bIns).rowCount).toBe(0)   // B proceeds after A: Y already exists (ON CONFLICT DO NOTHING)
+        await seedLedger(b, { id: CID_Y, objectId: OBJ_SAT_CONJ, ordinal: 1, generation: GEN_L, body: 'saturn' })   // B's ledger row: C already held
+        await b.query('COMMIT')
+
+        // schedule 2 (tuple): A holds C; B updates a sky event (allowed no-op) — B must take C first; A's update of the same row does not wait
+        await a.query('BEGIN')
+        await a.query(`UPDATE ka_gochara_contact SET created_at = created_at WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_1])
+        await b.query('BEGIN')
+        await b.query(`SELECT set_config('gochara5.chart', $1, true)`, [CHART])
+        const bUpd = b.query(`UPDATE ka_gochara_sky_event SET longitude = longitude WHERE event_id = $1`, [EVENT_L])
+        expect(await settledWithin(bUpd)).toBe('pending')
+        expect(await waitState(bPid)).toEqual({ wait_event_type: 'Lock', wait_event: 'advisory' })   // before any tuple lock
+        const aUpd = a.query(`UPDATE ka_gochara_sky_event SET longitude = longitude WHERE event_id = $1`, [EVENT_L])
+        expect(await settledWithin(aUpd)).toBe('settled')
+        await a.query('COMMIT')
+        expect((await bUpd).rowCount).toBe(1)
+        await b.query(`UPDATE ka_gochara_contact SET created_at = created_at WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_1])   // B's chart write: C already held
+        await b.query('COMMIT')
+        const stillHeld = await main.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted`)
+        expect(stillHeld.rows[0]!.n).toBe(2)
+      } finally {
+        await main.query(ORCH_UNLOCK_ALL).catch(() => undefined)
+        await a.query('ROLLBACK').catch(() => undefined)
+        await b.query('ROLLBACK').catch(() => undefined)
+        main.release(); a.release(); b.release()
+      }
+      await pool.query(`DELETE FROM ka_gochara_contact WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_Y])   // candidate cleanup
+    })
+
     it('REPEATABLE READ (and SERIALIZABLE) writes are refused explicitly', async () => {
       for (const level of ['REPEATABLE READ', 'SERIALIZABLE']) {
         const c = await pool.connect()
@@ -1227,7 +1349,7 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       expect(ordinals.rows.map(r => r.occurrence_ordinal)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
       const owners = await pool.query(`SELECT generation FROM ka_gochara_contact WHERE contact_id = $1 ORDER BY 1`, [CID_1])
       expect(owners.rows.map(r => r.generation)).toEqual([GEN, GEN_F, GEN_S, GEN_L])
-      await expect(seedIdentity(pool, uuid(), OBJ_MARS, 1)).rejects.toThrow(/ka_gochara_contact_identity_ordinal_uq/)
+      await expect(tx(c => seedIdentity(c, uuid(), OBJ_MARS, 1))).rejects.toThrow(/ka_gochara_contact_identity_ordinal_uq/)
       await expect(seedLedger(pool, { id: CID_1, objectId: OBJ_MARS, ordinal: 2, generation: GEN_X })).rejects.toThrow(/ka_gochara_contact_identity_fk/)
       await expect(tx(c => insertRecord(c, { contactId: CID_OLD_ONLY }))).rejects.toThrow(/is not owned by \(chart 482012f1-710e-4a25-994a-93821f5871aa, generation 5\.4\) \(F1\)/)
       await pool.query(`ALTER TABLE ka_gochara_relationship_record DISABLE TRIGGER ka_gochara_rr_2_coverage_guard`)
@@ -1255,11 +1377,14 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       await expect(tx(c => insertRecord(c, { relation: 'aspect' }))).rejects.toThrow(/kgrr_contact_fk/)
       await expect(tx(c => insertRecord(c, { objectId: OBJ_MARS_ASPECT }))).rejects.toThrow(/kgrr_contact_fk/)
       await expect(tx(c => seedContact(c, { id: uuid(), objectId: OBJ_MARS, ordinal: 9, generation: GEN_F, relation: 'aspect' }))).rejects.toThrow(/ka_gochara_contact_object_fk/)
-      await expect(pool.query(
-        `INSERT INTO ka_gochara_sky_event (event_id, physical_object_id, convention_id, body, event_kind, occurrence_ordinal,
-            t_exact, longitude, solver_method, delta_lambda, delta_t, precision_regime, coverage)
-         VALUES ($1, $2, $3, 'saturn', 'station', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`,
-        [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/ka_gochara_sky_event_object_fk/)
+      await expect(tx(async c => {
+        await chartCtx(c)
+        await c.query(
+          `INSERT INTO ka_gochara_sky_event (event_id, physical_object_id, convention_id, body, event_kind, occurrence_ordinal,
+              t_exact, longitude, solver_method, delta_lambda, delta_t, precision_regime, coverage)
+           VALUES ($1, $2, $3, 'saturn', 'station', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`,
+          [uuid(), OBJ_SAT_SPAN, CONV])
+      })).rejects.toThrow(/ka_gochara_sky_event_object_fk/)
     })
 
     it('F2/N9: sealing freezes the record set; contacts may still append; the seal outlives superseded/rolled_back', async () => {
@@ -1284,7 +1409,7 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       const other = await tx(c => insertRecord(c, { generation: GEN_F }))
       await expect(addMembership(pool, WINDOW_1, other, { generation: GEN })).rejects.toThrow(/SEALED[\s\S]*INSERT refused|kgewr_record_fk/)
       // contacts keep their spec-explicit append (partition extension, O-RX-1 ordinal 4)
-      await expect(seedContact(pool, { id: uuid(), objectId: OBJ_MARS, ordinal: 9, generation: GEN })).resolves.toBeUndefined()
+      await expect(tx(c => seedContact(c, { id: uuid(), objectId: OBJ_MARS, ordinal: 9, generation: GEN }))).resolves.toBeUndefined()
       // the seal itself is permanent and honest
       await expect(pool.query(`DELETE FROM ka_gochara_generation_seal WHERE chart_id = $1`, [CHART])).rejects.toThrow(/permanent/)
       await expect(pool.query(`UPDATE ka_gochara_generation_seal SET sealed_at = now()`)).rejects.toThrow(/permanent/)
@@ -1324,10 +1449,10 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       expect(enriched.rows[0]!.t_exact).toBeTruthy()
       expect(enriched.rows[0]!.occurrence_ordinal).toBe(3)
       const CID_C1 = uuid(); const CID_T2X = uuid()
-      await expect(seedIdentity(pool, CID_C1, OBJ_MARS_C1, 1, CID_1)).resolves.toBeUndefined()      // convention-changing correction
-      await expect(seedIdentity(pool, CID_T2X, OBJ_MARS_T2, 1, CID_2)).resolves.toBeUndefined()     // target-changing correction
-      await expect(seedIdentity(pool, uuid(), OBJ_SAT_CONJ, 1, CID_TRUNC)).rejects.toThrow(/SAME body and relation/)
-      await expect(seedIdentity(pool, uuid(), OBJ_MARS_T2, 2, CID_1)).rejects.toThrow(/already superseded/)
+      await expect(tx(c => seedIdentity(c, CID_C1, OBJ_MARS_C1, 1, CID_1))).resolves.toBeUndefined()      // convention-changing correction
+      await expect(tx(c => seedIdentity(c, CID_T2X, OBJ_MARS_T2, 1, CID_2))).resolves.toBeUndefined()     // target-changing correction
+      await expect(tx(c => seedIdentity(c, uuid(), OBJ_SAT_CONJ, 1, CID_TRUNC))).rejects.toThrow(/SAME body and relation/)
+      await expect(tx(c => seedIdentity(c, uuid(), OBJ_MARS_T2, 2, CID_1))).rejects.toThrow(/already superseded/)
       await expect(pool.query(`UPDATE ka_gochara_contact_identity SET occurrence_ordinal = 9 WHERE contact_id = $1`, [CID_1])).rejects.toThrow(/insert-only/)
       await expect(pool.query(`DELETE FROM ka_gochara_contact_identity WHERE contact_id = $1`, [CID_1])).rejects.toThrow(/insert-only/)
     })
@@ -1356,32 +1481,140 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       await expect(pool.query(`UPDATE ka_gochara_relationship_record SET severity = 1 WHERE record_id = $1`, [rec])).rejects.toThrow(/SEALED/)
     })
 
-    it('N14: the coverage-facts encoding distinguishes empty from unbounded, NULL elements, and element boundaries (the reviewer\'s three collisions)', async () => {
+    it('N14/N17: the coverage-facts encoding is unambiguous over the accepted domain — NULL elements and element boundaries distinguished; empty, unbounded and ±infinity horizons REFUSED', async () => {
+      const H = `tstzrange('2025-01-01T00:00Z','2026-01-01T00:00:00.5Z','[)')`
       const facts = async (h: string, rel: string) =>
         (await pool.query<{ f: Record<string, unknown> }>(`SELECT ka_gochara_coverage_facts('c', ${h}, ${rel}) AS f`)).rows[0]!.f
-      const empty = await facts(`'empty'::tstzrange`, `ARRAY['conjunction']::text[]`)
-      const unbounded = await facts(`'(,)'::tstzrange`, `ARRAY['conjunction']::text[]`)
-      expect(empty.horizon).toEqual({ empty: true })
-      expect(unbounded.horizon).toEqual({ empty: false, lower: null, lower_inf: true, lower_inc: false, upper: null, upper_inf: true, upper_inc: false })
-      expect(empty).not.toEqual(unbounded)
-      const one = await facts(`'(,)'::tstzrange`, `ARRAY['conjunction']::text[]`)
-      const oneAndNull = await facts(`'(,)'::tstzrange`, `ARRAY['conjunction', NULL]::text[]`)
+      // the reviewer's collisions on the array side
+      const one = await facts(H, `ARRAY['conjunction']::text[]`)
+      const oneAndNull = await facts(H, `ARRAY['conjunction', NULL]::text[]`)
       expect(one.relations_searched).toEqual(['conjunction'])
       expect(oneAndNull.relations_searched).toEqual([null, 'conjunction'])
-      const two = await facts(`'(,)'::tstzrange`, `ARRAY['aspect','conjunction']::text[]`)
-      const joined = await facts(`'(,)'::tstzrange`, `ARRAY['aspect,conjunction']::text[]`)
+      const two = await facts(H, `ARRAY['aspect','conjunction']::text[]`)
+      const joined = await facts(H, `ARRAY['aspect,conjunction']::text[]`)
       expect(two.relations_searched).toEqual(['aspect', 'conjunction'])
       expect(joined.relations_searched).toEqual(['aspect,conjunction'])
-      const bounded = await facts(`tstzrange('2025-01-01T00:00Z','2026-01-01T00:00:00.5Z','[)')`, `ARRAY['b','a']::text[]`)
+      const bounded = await facts(H, `ARRAY['b','a']::text[]`)
       expect(bounded).toEqual({
         convention_id: 'c',
-        horizon: { empty: false, lower: '2025-01-01T00:00:00.000000Z', lower_inf: false, lower_inc: true, upper: '2026-01-01T00:00:00.500000Z', upper_inf: false, upper_inc: false },
+        horizon: { lower: '2025-01-01T00:00:00.000000Z', lower_inc: true, upper: '2026-01-01T00:00:00.500000Z', upper_inc: false },
         relations_searched: ['a', 'b'],
       })
       const rt = await pool.query<{ ok: boolean }>(
-        `SELECT ka_gochara_facts_horizon(ka_gochara_coverage_facts('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00:00.5Z','[)'), ARRAY['a']))
-              = tstzrange('2025-01-01T00:00Z','2026-01-01T00:00:00.5Z','[)') AS ok`)
+        `SELECT ka_gochara_facts_horizon(ka_gochara_coverage_facts('c', ${H}, ARRAY['a'])) = ${H} AS ok`)
       expect(rt.rows[0]!.ok).toBe(true)
+      // N17: the reviewer's infinity collision and every other non-finite horizon are REFUSED, not encoded —
+      // the encoding never meets infinity (the previous round encoded both of these identically)
+      for (const h of [`tstzrange('-infinity','infinity','[]')`, `tstzrange('infinity','infinity','[]')`,
+        `'empty'::tstzrange`, `'(,)'::tstzrange`, `tstzrange('2025-01-01T00:00Z', NULL, '[)')`,
+        `tstzrange('2025-01-01T00:00Z', 'infinity', '[)')`, `NULL::tstzrange`]) {
+        await expect(facts(h, `ARRAY['a']::text[]`), h).rejects.toThrow(/unsupported horizon .*\(N17\)/)
+      }
+    })
+
+    it('N17: non-finite horizons are refused at every consumer boundary — partition, window interval, support interval — and a partition that later becomes infinite is `incompatible` and unsealable', async () => {
+      // a partition whose completed_horizon is the full horizon / the positive-infinity singleton / an omitted bound:
+      // the writer cannot even compute its facts (the encoder refuses), and a consumer that brings its own facts is
+      // refused by the guard BEFORE any comparison
+      const anyFacts = '{"convention_id":"legacy:c0","horizon":{"lower":"2025-01-01T00:00:00.000000Z","lower_inc":true,"upper":"2026-01-01T00:00:00.000000Z","upper_inc":false},"relations_searched":["aspect","conjunction","residence"]}'
+      for (const cls of ['travel_event', 'relocation', 'major_gain']) {
+        await expect(factsFor(pool, GEN_F, 'event_class', cls), cls).rejects.toThrow(/unsupported horizon .*\(N17\)/)
+        await expect(tx(c => insertRecord(c, { eventClass: cls, covKind: 'event_class', covKey: cls, factsOverride: anyFacts })), cls).rejects.toThrow(/\(N17\): partition \(event_class, .*\) completed_horizon .* is not a finite, bounded, non-empty range/)
+        await expect(tx(c => insertWindow(c, { eventClass: cls, intervalSql: `tstzrange('2025-03-01T00:00Z','2025-04-01T00:00Z')`, factsOverride: anyFacts })), cls).rejects.toThrow(/\(N17\): partition \(event_class, .*\) completed_horizon .* is not a finite, bounded, non-empty range/)
+      }
+      // window interval and record support intervals CHECK the same predicate (the guards defer to the CHECK)
+      await expect(tx(c => insertWindow(c, { intervalSql: `tstzrange('2025-03-01T00:00Z','infinity','[)')`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_finite_ck/)
+      await expect(tx(c => insertWindow(c, { intervalSql: `'(,)'::tstzrange`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_finite_ck/)
+      await expect(tx(c => insertRecord(c, { intervalsSql: `ARRAY[tstzrange('-infinity','2025-03-11T00:00Z','(]')]::tstzrange[]` }))).rejects.toThrow(/kgrr_support_intervals_ck/)
+      await expect(tx(c => insertRecord(c, { intervalsSql: `ARRAY[tstzrange('2025-03-09T00:00Z', NULL, '[)')]::tstzrange[]` }))).rejects.toThrow(/kgrr_support_intervals_ck/)
+      // the reviewer's drift: a finite consumer validated, then its partition set to the full horizon / the positive-infinity singleton
+      const { r, w } = await tx(async c => {
+        await seedLedger(c, { id: CID_2, objectId: OBJ_MARS, ordinal: 2, generation: GEN_I })
+        const r = await insertRecord(c, { generation: GEN_I, contactId: CID_2 })
+        const w = await insertWindow(c, { generation: GEN_I })
+        return { r, w }
+      })
+      const drift = async () => (await pool.query<{ consumer: string; consumer_id: string; drift: string; current_facts: unknown }>(
+        `SELECT consumer, consumer_id, drift, current_facts FROM ka_gochara_coverage_drift($1, $2) ORDER BY consumer`, [CHART, GEN_I])).rows
+      expect((await drift()).map(x => x.drift)).toEqual(['identical', 'identical'])
+      for (const h of [`tstzrange('-infinity','infinity','[]')`, `tstzrange('infinity','infinity','[]')`, `'(,)'::tstzrange`]) {
+        await pool.query(`UPDATE kala_gochara_coverage SET completed_horizon = ${h} WHERE chart_id = $1 AND generation = $2 AND partition_kind = 'event_class' AND partition_key = 'marriage'`, [CHART, GEN_I])
+        const rows = await drift()
+        expect(rows.find(x => x.consumer === 'eval_window')!, h).toMatchObject({ consumer_id: w, drift: 'incompatible', current_facts: null })
+        expect(rows.find(x => x.consumer === 'relationship_record')!, h).toMatchObject({ consumer_id: r, drift: 'identical' })
+        await expect(tx(c => publishAndSeal(c, GEN_I)), h).rejects.toThrow(/INCOMPATIBLE/)
+        expect(await sealCount(GEN_I)).toBe(0)
+      }
+      await pool.query(`UPDATE kala_gochara_coverage SET completed_horizon = ${HORIZON} WHERE chart_id = $1 AND generation = $2 AND partition_kind = 'event_class' AND partition_key = 'marriage'`, [CHART, GEN_I])
+      expect((await drift()).map(x => x.drift)).toEqual(['identical', 'identical'])
+      await tx(c => publishAndSeal(c, GEN_I))
+      expect(await sealCount(GEN_I)).toBe(1)
+    })
+
+    it('N16: the seal boundary carries the complete membership invariant — a VALID membership, then a parent update (relations / convention / window horizon / contributor support), then the seal is REFUSED', async () => {
+      const { r, w } = await tx(async c => {
+        await seedLedger(c, { id: CID_2, objectId: OBJ_MARS, ordinal: 2, generation: GEN_M })
+        const r = await insertRecord(c, { generation: GEN_M, contactId: CID_2 })
+        const w = await insertWindow(c, { generation: GEN_M })
+        await addMembership(c, w, r, { generation: GEN_M })   // valid at insert
+        return { r, w }
+      })
+      const classCov = (set: string) => pool.query(
+        `UPDATE kala_gochara_coverage SET ${set} WHERE chart_id = $1 AND generation = $2 AND partition_kind = 'event_class' AND partition_key = 'marriage'`, [CHART, GEN_M])
+      // the candidate window is re-bound to the partition's fresh facts (the reviewer's step 4) — a legal candidate update
+      const rebind = (extra = '') => pool.query(
+        `UPDATE ka_gochara_eval_window SET coverage_facts = (
+           SELECT ka_gochara_coverage_facts(convention_id, completed_horizon, relations_searched) FROM kala_gochara_coverage
+           WHERE chart_id = $2 AND generation = $3 AND partition_kind = 'event_class' AND partition_key = 'marriage')${extra}
+         WHERE window_id = $1`, [w, CHART, GEN_M])
+      const violations = async () => (await pool.query<{ window_id: string; record_id: string; violation: string }>(
+        `SELECT window_id, record_id, violation FROM ka_gochara_membership_violations($1, $2)`, [CHART, GEN_M])).rows
+      const driftKinds = async () => (await pool.query<{ drift: string }>(`SELECT drift FROM ka_gochara_coverage_drift($1, $2)`, [CHART, GEN_M])).rows.map(x => x.drift)
+      expect(await violations()).toEqual([])
+
+      // 1. relations dropped: the class was re-searched for aspect only; the conjunction contributor no longer applies
+      await classCov(`relations_searched = ARRAY['aspect']`)
+      await expect(rebind()).resolves.toBeDefined()
+      expect(await driftKinds()).toEqual(['identical', 'identical'])   // the drift classifier alone would let this through
+      expect(await violations()).toEqual([{ window_id: w, record_id: r, violation: expect.stringMatching(/relation 'conjunction' was not searched by the window/) }])
+      await expect(tx(c => publishAndSeal(c, GEN_M))).rejects.toThrow(/\(N16 membership invariant\): 1 window membership row/)
+      expect(await sealCount(GEN_M)).toBe(0)
+      await classCov(`relations_searched = ARRAY['conjunction','aspect','residence']`)
+      await rebind()
+      expect(await violations()).toEqual([])
+
+      // 2. convention changed on the class partition
+      await classCov(`convention_id = '${LEGACY_CONV_UNBRIDGED}'`)
+      await rebind()
+      expect(await violations()).toEqual([{ window_id: w, record_id: r, violation: expect.stringMatching(/validated under convention 'legacy:c0' but the window was searched under convention 'legacy:c9'/) }])
+      await expect(tx(c => publishAndSeal(c, GEN_M))).rejects.toThrow(/N16 membership invariant/)
+      await classCov(`convention_id = '${LEGACY_CONV}'`)
+      await rebind()
+      expect(await violations()).toEqual([])
+
+      // 3. window horizon narrowed past the contributor's support (window interval moved inside the new horizon)
+      await classCov(`completed_horizon = tstzrange('2025-03-15T00:00Z','2026-01-01T00:00Z','[)')`)
+      await rebind(`, interval = tstzrange('2025-03-15T00:00Z','2025-04-01T00:00Z'), peak_instant = '2025-03-20T00:00Z'`)
+      expect(await violations()).toEqual([{ window_id: w, record_id: r, violation: expect.stringMatching(/support interval .* lies outside the window's coverage horizon/) }])
+      await expect(tx(c => publishAndSeal(c, GEN_M))).rejects.toThrow(/N16 membership invariant/)
+      await classCov(`completed_horizon = ${HORIZON}`)
+      await rebind(`, interval = tstzrange('2025-03-01T00:00Z','2025-04-01T00:00Z'), peak_instant = '2025-03-10T00:00Z'`)
+      expect(await violations()).toEqual([])
+
+      // 4. the CONTRIBUTOR moves: its support is updated (still covered by its own body_target partition) outside a narrowed window horizon
+      await classCov(`completed_horizon = tstzrange('2025-01-01T00:00Z','2025-06-01T00:00Z','[)')`)
+      await rebind()
+      expect(await violations()).toEqual([])
+      await expect(pool.query(`UPDATE ka_gochara_relationship_record SET temporal_support_intervals = ARRAY[tstzrange('2025-08-09T00:00Z','2025-08-11T00:00Z')]::tstzrange[] WHERE record_id = $1`, [r])).resolves.toBeDefined()
+      expect(await violations()).toEqual([{ window_id: w, record_id: r, violation: expect.stringMatching(/support interval .* lies outside the window's coverage horizon/) }])
+      await expect(tx(c => publishAndSeal(c, GEN_M))).rejects.toThrow(/N16 membership invariant/)
+      expect(await sealCount(GEN_M)).toBe(0)
+      await pool.query(`UPDATE ka_gochara_relationship_record SET temporal_support_intervals = ${SUPPORT} WHERE record_id = $1`, [r])
+      expect(await violations()).toEqual([])
+
+      // restored: the invariant holds and the seal succeeds
+      await tx(c => publishAndSeal(c, GEN_M))
+      expect(await sealCount(GEN_M)).toBe(1)
     })
 
     it('N10 consumer contract: drift is classified identical / extended / incompatible; the seal REFUSES incompatible drift and the manifest flip rolls back with it', async () => {
@@ -1440,15 +1673,15 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       // relations: the class search for romantic_start covered 'aspect' only; a conjunction record cannot contribute
       const wr = await tx(c => insertWindow(c, { eventClass: 'romantic_start' }))
       const rr = await tx(c => insertRecord(c, { eventClass: 'romantic_start' }))   // validated on the mars:karaka body_target partition
-      await expect(addMembership(pool, wr, rr, { eventClass: 'romantic_start' })).rejects.toThrow(/relation 'conjunction' which window .* did not search/)
+      await expect(addMembership(pool, wr, rr, { eventClass: 'romantic_start' })).rejects.toThrow(/relation 'conjunction' was not searched by the window/)
       // convention: the separation class was searched under the unbridged legacy convention; the record under legacy:c0
       const ws = await tx(c => insertWindow(c, { eventClass: 'separation' }))
       const rs = await tx(c => insertRecord(c, { eventClass: 'separation' }))
-      await expect(addMembership(pool, ws, rs, { eventClass: 'separation' })).rejects.toThrow(/validated under convention 'legacy:c0' but window .* was searched under convention 'legacy:c9'/)
+      await expect(addMembership(pool, ws, rs, { eventClass: 'separation' })).rejects.toThrow(/validated under convention 'legacy:c0' but the window was searched under convention 'legacy:c9'/)
       // horizon: the career_entry class search starts 2025-06-01; a March support interval lies outside it
       const wc = await tx(c => insertWindow(c, { eventClass: 'career_entry', intervalSql: `tstzrange('2025-07-01T00:00Z','2025-08-01T00:00Z')`, peakSql: `'2025-07-10T00:00Z'` }))
       const rc = await tx(c => insertRecord(c, { eventClass: 'career_entry' }))
-      await expect(addMembership(pool, wc, rc, { eventClass: 'career_entry' })).rejects.toThrow(/support interval .* lies outside window .*'s coverage horizon/)
+      await expect(addMembership(pool, wc, rc, { eventClass: 'career_entry' })).rejects.toThrow(/support interval .* lies outside the window's coverage horizon/)
       const rc2 = await tx(c => insertRecord(c, { eventClass: 'career_entry', intervalsSql: `ARRAY[tstzrange('2025-07-09T00:00Z','2025-07-11T00:00Z')]::tstzrange[]` }))
       await expect(addMembership(pool, wc, rc2, { eventClass: 'career_entry' })).resolves.toBeUndefined()
     })
@@ -1456,14 +1689,15 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
     it('F4/amendment 5: sky events — precision required, station Swiss-refined, no Moon rows, DELETE forbidden, supersession rules', async () => {
       const base = `INSERT INTO ka_gochara_sky_event (event_id, physical_object_id, convention_id, body, event_kind, occurrence_ordinal,
          t_exact, longitude, solver_method, delta_lambda, delta_t, precision_regime, coverage)`
-      await expect(pool.query(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', NULL, NULL, NULL, '{"truncated":false}')`, [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/kgse_exact_precision_ck/)
-      await expect(pool.query(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 360.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/kgse_longitude_range_ck/)
-      await expect(pool.query(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', -0.001, 60, 'standard', '{"truncated":false}')`, [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/kgse_uncertainty_finite_ck/)
-      await expect(pool.query(`${base} VALUES ($1, $2, $3, 'moon', 'sign_ingress', 1, '2025-03-10T00:00Z', 100.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [uuid(), OBJ_MOON, CONV])).rejects.toThrow(/kgse_body_domain_ck/)
-      await pool.query(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [EVENT_1, OBJ_SAT_SPAN, CONV])
+      const ev = (sql: string, params: unknown[]) => tx(async c => { await chartCtx(c); return c.query(sql, params) })
+      await expect(ev(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', NULL, NULL, NULL, '{"truncated":false}')`, [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/kgse_exact_precision_ck/)
+      await expect(ev(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 360.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/kgse_longitude_range_ck/)
+      await expect(ev(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', -0.001, 60, 'standard', '{"truncated":false}')`, [uuid(), OBJ_SAT_SPAN, CONV])).rejects.toThrow(/kgse_uncertainty_finite_ck/)
+      await expect(ev(`${base} VALUES ($1, $2, $3, 'moon', 'sign_ingress', 1, '2025-03-10T00:00Z', 100.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [uuid(), OBJ_MOON, CONV])).rejects.toThrow(/kgse_body_domain_ck/)
+      await ev(`${base} VALUES ($1, $2, $3, 'saturn', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}')`, [EVENT_1, OBJ_SAT_SPAN, CONV])
       await expect(pool.query(`DELETE FROM ka_gochara_sky_event WHERE event_id = $1`, [EVENT_1])).rejects.toThrow(/publication-immutable/)
-      await expect(pool.query(`UPDATE ka_gochara_sky_event SET longitude = 181 WHERE event_id = $1`, [EVENT_1])).rejects.toThrow(/published non-NULL values are immutable/)
-      await expect(pool.query(`${base.replace('coverage)', 'coverage, supersedes_event_id)')} VALUES ($1, $2, $3, 'mars', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}', $4)`, [uuid(), OBJ_MARS_SPAN, CONV, EVENT_1]))
+      await expect(ev(`UPDATE ka_gochara_sky_event SET longitude = 181 WHERE event_id = $1`, [EVENT_1])).rejects.toThrow(/published non-NULL values are immutable/)
+      await expect(ev(`${base.replace('coverage)', 'coverage, supersedes_event_id)')} VALUES ($1, $2, $3, 'mars', 'sign_ingress', 1, '2025-03-10T00:00Z', 180.0, 'swiss_refined', 0.001, 60, 'standard', '{"truncated":false}', $4)`, [uuid(), OBJ_MARS_SPAN, CONV, EVENT_1]))
         .rejects.toThrow(/SAME body and kind/)
     })
 
@@ -1538,7 +1772,8 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
     it('amendment 7 / F11 (kept): score, evidence, intervals, peaks, selectors, fact ids, AV categories', async () => {
       await expect(tx(c => insertWindow(c, { scoreSql: '1.5' }))).rejects.toThrow(/kgew_score_unit_interval_ck/)
       await expect(tx(c => insertWindow(c, { evidenceForSql: `'NaN'::real` }))).rejects.toThrow(/kgew_evidence_finite_ck/)
-      await expect(tx(c => insertWindow(c, { intervalSql: `'empty'::tstzrange`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_nonempty_ck/)
+      // an empty interval fails both the non-empty and the finite CHECK; PostgreSQL reports them in name order
+      await expect(tx(c => insertWindow(c, { intervalSql: `'empty'::tstzrange`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_(finite|nonempty)_ck/)
       await expect(tx(c => insertWindow(c, { peakSql: `'2025-05-01T00:00Z'` }))).rejects.toThrow(/kgew_peak_in_interval_ck/)
       await expect(tx(c => insertWindow(c, { scoreSql: 'NULL', valence: 'unqualified', nullStatesSql: `'{unqualified}'` }))).resolves.toBeDefined()
       const pred = `INSERT INTO ka_gochara_predicate (predicate_id, rule_version, operator, operands)`
@@ -1547,8 +1782,8 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       await expect(tx(c => insertRecord(c, { factIdsSql: `'["fact 1"]'` }))).rejects.toThrow(/kgrr_source_fact_ids_ck/)
       await expect(tx(c => insertRecord(c, { factIdsSql: `'[]'`, fixture: true }))).resolves.toBeDefined()
       const av = `INSERT INTO ka_gochara_av_polarity_declaration (convention, benefic_mark_name, malefic_mark_name, source_ref, applies_to_fact_categories)`
-      await expect(pool.query(`${av} VALUES ('c-av','rekhā','bindu','BPHS2:35666-35684', ARRAY[NULL]::text[])`)).rejects.toThrow(/kgav_categories_nonempty_ck/)
-      await expect(pool.query(`${av} VALUES ('c-av','rekhā','bindu','BPHS2:35666-35684', ARRAY['ashtakavarga_bindu'])`)).resolves.toBeDefined()
+      await expect(tx(async c => { await chartCtx(c); await c.query(`${av} VALUES ('c-av','rekhā','bindu','BPHS2:35666-35684', ARRAY[NULL]::text[])`) })).rejects.toThrow(/kgav_categories_nonempty_ck/)
+      await expect(tx(async c => { await chartCtx(c); await c.query(`${av} VALUES ('c-av','rekhā','bindu','BPHS2:35666-35684', ARRAY['ashtakavarga_bindu'])`) })).resolves.toBeUndefined()
       await expect(pool.query(`UPDATE ka_gochara_av_polarity_declaration SET source_ref = 'x'`)).rejects.toThrow(/insert-only/)
       await expect(tx(c => insertRecord(c, { eventClass: 'bereavement', affected: 'father', frameKind: 'moon', valence: 'adverse' }))).rejects.toThrow(/kgrr_relative_frame_ck/)
       await expect(seedLedger(pool, { id: CID_1, objectId: OBJ_MARS, ordinal: 1, generation: GEN_X, chart: OTHER_CHART })).rejects.toThrow(/kgc_canonical_chart_ck/)

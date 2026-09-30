@@ -75,7 +75,9 @@ BEGIN
     SELECT 'function_already_exists',
            'public.' || p.proname || '(' || array_to_string(e.argtypes, ',') || ')'
     FROM (VALUES ('ka_gochara_window_coverage_guard',   ARRAY[]::text[]),
+                 ('ka_gochara_membership_violation',    ARRAY['jsonb','uuid','text','jsonb','tstzrange[]']),
                  ('ka_gochara_window_membership_guard', ARRAY[]::text[]),
+                 ('ka_gochara_membership_violations',   ARRAY['uuid','text']),
                  ('ka_gochara_coverage_drift',          ARRAY['uuid','text'])) AS e(fname, argtypes)
     JOIN pg_proc p ON p.proname = e.fname
     JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
@@ -135,6 +137,7 @@ BEGIN
                  ('ka_gochara_finite_nonneg_ok(double precision)'),
                  ('ka_gochara_text_array_ok(text[],integer)'),
                  ('ka_gochara_generation_governed(text)'),
+                 ('ka_gochara_horizon_finite_ok(tstzrange)'),
                  ('ka_gochara_generation_is_sealed(uuid,text)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
        OR (SELECT format_type(p.prorettype, NULL) FROM pg_proc p

@@ -8,11 +8,12 @@
 --                 references (F3/N5) and coherent enrichment of dependent
 --                 precision that survives a later coverage extension (N7/N15)
 --                 — every write under the Gochara-5 chart family key, then the
---                 global family key SHARED (steward ruling B). Depends on
---                 1153, 1154 and 1081/1087 (kala_gochara_coverage). Round-5
---                 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_3 under the steward's
---                 corrected lock ruling. Never applied anywhere — in-place
---                 rewrite of the same number.
+--                 global family key SHARED (steward ruling B); finite
+--                 horizons only (N17). Depends on 1153, 1154 and 1081/1087
+--                 (kala_gochara_coverage). Round-6 per
+--                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_4 on the round-5 rewrite
+--                 under the steward's corrected lock ruling. Never applied
+--                 anywhere — in-place rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
 -- Numbering: 1155 sits inside this lane's granted block (1150–1159 per
@@ -75,14 +76,19 @@
 -- requires, at INSERT and at every non-precision-only UPDATE:
 --   * `coverage_facts` = ka_gochara_coverage_facts(convention_id,
 --     completed_horizon, relations_searched) of the partition as it stands —
---     an UNAMBIGUOUS JSON encoding (N14): the horizon is an object that
---     distinguishes `empty` from unbounded (`lower`/`upper` ISO-8601 UTC
---     microsecond text or null with explicit `lower_inf`/`upper_inf` and
---     inclusivity flags); relations_searched is a sorted JSON array whose
---     elements are JSON strings or null, so ['conjunction'] ≠
---     ['conjunction', NULL] and ['aspect','conjunction'] ≠
---     ['aspect,conjunction']. Nothing is hashed; the stored facts are
---     readable and comparable with jsonb equality.
+--     an UNAMBIGUOUS JSON encoding over the ACCEPTED DOMAIN (N14/N17): the
+--     Gochara-5 contract admits finite, bounded, non-empty horizons only
+--     (ka_gochara_horizon_finite_ok, 1153); the encoder RAISES on an empty
+--     range, an omitted bound or a ±infinity timestamp bound, so it never
+--     meets infinity and no two accepted horizons share an encoding
+--     (`lower`/`upper` ISO-8601 UTC microsecond text + inclusivity flags);
+--     relations_searched is a sorted JSON array whose elements are JSON
+--     strings or null, so ['conjunction'] ≠ ['conjunction', NULL] and
+--     ['aspect','conjunction'] ≠ ['aspect,conjunction']. Nothing is hashed;
+--     the stored facts are readable and comparable with jsonb equality.
+--     The coverage guard refuses a partition whose completed_horizon is not
+--     finite (N17) before encoding it; window intervals and record support
+--     intervals CHECK the same predicate.
 --   * THE CONSUMER CONTRACT for parent facts changed AFTER validation (N10):
 --     steward ruling 1 forbids any trigger on the legacy coverage table, so a
 --     later change to the partition cannot be blocked there. Instead:
@@ -268,6 +274,7 @@ BEGIN
                  ('ka_gochara_finite_ok(double precision)'),
                  ('ka_gochara_finite_nonneg_ok(double precision)'),
                  ('ka_gochara_generation_governed(text)'),
+                 ('ka_gochara_horizon_finite_ok(tstzrange)'),
                  ('ka_gochara_generation_is_sealed(uuid,text)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
        OR (SELECT format_type(p.prorettype, NULL) FROM pg_proc p
@@ -322,74 +329,71 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
          END;
 $$;
 
+-- Support intervals: every element a finite, bounded, non-empty range (N17).
 CREATE OR REPLACE FUNCTION public.ka_gochara_intervals_ok(iv tstzrange[])
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT iv IS NOT NULL
      AND NOT EXISTS (
        SELECT 1 FROM unnest(iv) r
-       WHERE r IS NULL OR isempty(r)
+       WHERE public.ka_gochara_horizon_finite_ok(r) IS NOT TRUE
      );
 $$;
 
--- The UNAMBIGUOUS coverage-facts snapshot a consumer binds to (N10/N14).
+-- The UNAMBIGUOUS coverage-facts snapshot a consumer binds to (N10/N14),
+-- defined over the ACCEPTED DOMAIN only (N17): the horizon must be finite,
+-- bounded and non-empty (ka_gochara_horizon_finite_ok) — anything else
+-- RAISES, so the encoding never meets an omitted bound, an empty range or a
+-- ±infinity timestamp, and no two accepted inputs share an encoding.
 -- The writer computes it with this same function from the partition row it
 -- consumed; the guard recomputes it and compares with jsonb equality.
 --   {"convention_id": text|null,
---    "horizon": null
---             | {"empty": true}
---             | {"empty": false,
---                "lower": "YYYY-MM-DDTHH:MI:SS.USZ"|null, "lower_inf": bool, "lower_inc": bool,
---                "upper": "YYYY-MM-DDTHH:MI:SS.USZ"|null, "upper_inf": bool, "upper_inc": bool},
+--    "horizon": {"lower": "YYYY-MM-DDTHH:MI:SS.USZ", "lower_inc": bool,
+--                "upper": "YYYY-MM-DDTHH:MI:SS.USZ", "upper_inc": bool},
 --    "relations_searched": null | [ sorted JSON strings / nulls, duplicates kept ]}
 -- STABLE, not IMMUTABLE: it calls to_char/AT TIME ZONE, which PostgreSQL marks
 -- STABLE; the output itself is deterministic (explicit UTC, numeric-only
 -- format tokens, ISO-8601 input) and independent of DateStyle/TimeZone/lc_time.
 CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_facts(p_convention_id text, p_completed_horizon tstzrange, p_relations_searched text[])
-RETURNS jsonb LANGUAGE sql STABLE AS $$
-  SELECT jsonb_build_object(
+RETURNS jsonb LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF public.ka_gochara_horizon_finite_ok(p_completed_horizon) IS NOT TRUE THEN
+    RAISE EXCEPTION 'ka_gochara_coverage_facts: unsupported horizon % (N17): the Gochara-5 coverage contract admits finite, bounded, non-empty horizons only — no omitted bound, no empty range, no ±infinity timestamp bound',
+      p_completed_horizon;
+  END IF;
+  RETURN jsonb_build_object(
     'convention_id', p_convention_id,
-    'horizon',
-      CASE
-        WHEN p_completed_horizon IS NULL THEN NULL::jsonb
-        WHEN isempty(p_completed_horizon) THEN jsonb_build_object('empty', true)
-        ELSE jsonb_build_object(
-          'empty', false,
-          'lower', CASE WHEN lower_inf(p_completed_horizon) THEN NULL
-                        ELSE to_char(lower(p_completed_horizon) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') END,
-          'lower_inf', lower_inf(p_completed_horizon),
-          'lower_inc', lower_inc(p_completed_horizon),
-          'upper', CASE WHEN upper_inf(p_completed_horizon) THEN NULL
-                        ELSE to_char(upper(p_completed_horizon) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') END,
-          'upper_inf', upper_inf(p_completed_horizon),
-          'upper_inc', upper_inc(p_completed_horizon))
-      END,
+    'horizon', jsonb_build_object(
+      'lower', to_char(lower(p_completed_horizon) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+      'lower_inc', lower_inc(p_completed_horizon),
+      'upper', to_char(upper(p_completed_horizon) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+      'upper_inc', upper_inc(p_completed_horizon)),
     'relations_searched',
       CASE
         WHEN p_relations_searched IS NULL THEN NULL::jsonb
         ELSE (SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x NULLS FIRST), '[]'::jsonb)
               FROM unnest(p_relations_searched) x)
       END);
+END;
 $$;
 
 COMMENT ON FUNCTION public.ka_gochara_coverage_facts(text, tstzrange, text[]) IS
   'Unambiguous JSON snapshot of (convention_id, completed_horizon, relations_searched) '
-  '(N10/N14): empty ≠ unbounded horizons (explicit empty/lower_inf/upper_inf/inclusivity '
-  'flags, bounds as ISO-8601 UTC microsecond text), relations as a sorted JSON array of '
-  'strings/nulls (element boundaries and NULLs preserved). A record/window stores the '
-  'snapshot it was validated against; the guard recomputes it from the partition and '
-  'compares with jsonb equality; ka_gochara_coverage_drift classifies later parent changes.';
+  '(N10/N14/N17) over the accepted domain: finite, bounded, non-empty horizons only '
+  '(RAISES otherwise — the encoding never meets infinity); bounds as ISO-8601 UTC '
+  'microsecond text + inclusivity flags; relations as a sorted JSON array of strings/nulls '
+  '(element boundaries and NULLs preserved). A record/window stores the snapshot it was '
+  'validated against; the guard recomputes it from the partition and compares with jsonb '
+  'equality; ka_gochara_coverage_drift classifies later parent changes.';
 
--- Inverse of the horizon encoding — used by the drift classifier (1156).
+-- Inverse of the horizon encoding — used by the drift classifier and the
+-- window membership guard (1156). Exact to the microsecond.
 CREATE OR REPLACE FUNCTION public.ka_gochara_facts_horizon(f jsonb)
 RETURNS tstzrange LANGUAGE sql STABLE AS $$
   SELECT CASE
     WHEN f IS NULL OR jsonb_typeof(f -> 'horizon') IS DISTINCT FROM 'object' THEN NULL::tstzrange
-    WHEN (f -> 'horizon' ->> 'empty')::boolean THEN 'empty'::tstzrange
     ELSE tstzrange(
-      CASE WHEN (f -> 'horizon' ->> 'lower_inf')::boolean THEN NULL
-           ELSE (f -> 'horizon' ->> 'lower')::timestamptz END,
-      CASE WHEN (f -> 'horizon' ->> 'upper_inf')::boolean THEN NULL
-           ELSE (f -> 'horizon' ->> 'upper')::timestamptz END,
+      (f -> 'horizon' ->> 'lower')::timestamptz,
+      (f -> 'horizon' ->> 'upper')::timestamptz,
       (CASE WHEN (f -> 'horizon' ->> 'lower_inc')::boolean THEN '[' ELSE '(' END)
       || (CASE WHEN (f -> 'horizon' ->> 'upper_inc')::boolean THEN ']' ELSE ')' END))
   END;
@@ -683,6 +687,10 @@ BEGIN
       RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (N10): partition (%, %) carries a NULL relations_searched element — an uncertain search covers nothing',
         cov.partition_kind, cov.partition_key;
     END IF;
+    IF public.ka_gochara_horizon_finite_ok(cov.completed_horizon) IS NOT TRUE THEN
+      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (N17): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range — the Gochara-5 contract admits finite horizons only',
+        cov.partition_kind, cov.partition_key, cov.completed_horizon;
+    END IF;
     facts := public.ka_gochara_coverage_facts(cov.convention_id, cov.completed_horizon, cov.relations_searched);
     IF NEW.coverage_facts IS DISTINCT FROM facts THEN
       RAISE EXCEPTION 'ka_gochara_relationship_record.coverage_facts % does not equal the partition''s current facts % (N10/N14): a consumer binds to the coverage facts it was validated against — compute them with ka_gochara_coverage_facts(convention_id, completed_horizon, relations_searched)',
@@ -749,7 +757,8 @@ BEGIN
     END IF;
   END IF;
 
-  IF NOT precision_only THEN
+  -- a non-finite support interval is the CHECK constraint's finding (kgrr_support_intervals_ck)
+  IF NOT precision_only AND public.ka_gochara_intervals_ok(NEW.temporal_support_intervals) IS TRUE THEN
     FOREACH iv IN ARRAY NEW.temporal_support_intervals LOOP
       IF NOT (cov.completed_horizon @> iv) THEN
         RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): support interval % lies outside the partition''s completed_horizon %',
@@ -898,8 +907,24 @@ CREATE TRIGGER ka_gochara_rpr_no_truncate
 DO $$
 DECLARE
   h  tstzrange := tstzrange('2025-01-01T00:00:00Z', '2026-01-01T00:00:00.123456Z', '[)');
-  hu tstzrange := tstzrange(NULL, NULL, '()');
+  n_raised integer := 0;
+  bad tstzrange;
 BEGIN
+  -- N17: the encoder refuses every horizon outside the accepted domain
+  FOREACH bad IN ARRAY ARRAY[NULL::tstzrange, 'empty'::tstzrange, '(,)'::tstzrange,
+                             tstzrange('2025-01-01T00:00Z', NULL, '[)'),
+                             tstzrange('-infinity', 'infinity', '[]'),
+                             tstzrange('infinity', 'infinity', '[]'),
+                             tstzrange('2025-01-01T00:00Z', 'infinity', '[)')] LOOP
+    BEGIN
+      PERFORM public.ka_gochara_coverage_facts('c', bad, ARRAY['a']);
+    EXCEPTION WHEN raise_exception THEN
+      IF SQLERRM LIKE '%unsupported horizon%' THEN n_raised := n_raised + 1; END IF;
+    END;
+  END LOOP;
+  IF n_raised <> 7 THEN
+    RAISE EXCEPTION 'migration 1155 post-apply check failed: the coverage-facts encoder accepted a non-finite horizon (N17)';
+  END IF;
   IF NOT (public.ka_gochara_precision_ok(NULL) IS FALSE
           AND public.ka_gochara_precision_ok('{"solver_method":null,"delta_lambda":0.001,"delta_t":60}'::jsonb) IS FALSE
           AND public.ka_gochara_precision_ok('{"solver_method":"swiss_refined","delta_lambda":-0.001,"delta_t":60}'::jsonb) IS FALSE
@@ -911,6 +936,9 @@ BEGIN
           AND public.ka_gochara_intervals_ok(NULL) IS FALSE
           AND public.ka_gochara_intervals_ok(ARRAY['empty'::tstzrange]) IS FALSE
           AND public.ka_gochara_intervals_ok(ARRAY[NULL::tstzrange]) IS FALSE
+          AND public.ka_gochara_intervals_ok(ARRAY[tstzrange('2025-01-01T00:00Z', 'infinity', '[)')]) IS FALSE
+          AND public.ka_gochara_intervals_ok(ARRAY['(,)'::tstzrange]) IS FALSE
+          AND public.ka_gochara_intervals_ok(ARRAY[h]) IS TRUE
           AND public.ka_gochara_intervals_ok('{}'::tstzrange[]) IS TRUE
           -- N14: order-insensitive, element-boundary-preserving, NULL-preserving
           AND public.ka_gochara_coverage_facts('c', h, ARRAY['b','a'])
@@ -923,27 +951,21 @@ BEGIN
               <> public.ka_gochara_coverage_facts('c', h, ARRAY['a','a'])
           AND public.ka_gochara_coverage_facts('c', h, '{}'::text[])
               <> public.ka_gochara_coverage_facts('c', h, NULL)
-          -- N14: empty ≠ unbounded ≠ NULL horizon; bounds/inclusivity encoded
-          AND public.ka_gochara_coverage_facts('c', 'empty'::tstzrange, ARRAY['a'])
-              <> public.ka_gochara_coverage_facts('c', hu, ARRAY['a'])
-          AND public.ka_gochara_coverage_facts('c', 'empty'::tstzrange, ARRAY['a'])
-              <> public.ka_gochara_coverage_facts('c', NULL, ARRAY['a'])
+          -- N14/N17: over the accepted domain, bounds and inclusivity are encoded exactly
           AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
               <> public.ka_gochara_coverage_facts('c', tstzrange(lower(h), upper(h), '[]'), ARRAY['a'])
           AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
-              <> public.ka_gochara_coverage_facts('c', tstzrange(lower(h), NULL, '[)'), ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('c', tstzrange(lower(h), upper(h) + interval '1 microsecond', '[)'), ARRAY['a'])
           AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
               <> public.ka_gochara_coverage_facts('d', h, ARRAY['a'])
           AND (public.ka_gochara_coverage_facts('c', h, ARRAY['a']) -> 'horizon' ->> 'lower') = '2025-01-01T00:00:00.000000Z'
           AND (public.ka_gochara_coverage_facts('c', h, ARRAY['a']) -> 'horizon' ->> 'upper') = '2026-01-01T00:00:00.123456Z'
           AND (public.ka_gochara_coverage_facts('c', h, ARRAY['x', NULL]) -> 'relations_searched') = '[null, "x"]'::jsonb
-          -- round trip of the horizon encoding (drift classifier input)
+          -- round trip of the horizon encoding (drift classifier + membership guard input)
           AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', h, ARRAY['a'])) = h
-          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', hu, ARRAY['a'])) = hu
-          AND isempty(public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', 'empty'::tstzrange, ARRAY['a'])))
-          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', NULL, ARRAY['a'])) IS NULL
-          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', tstzrange(NULL, upper(h), '(]'), ARRAY['a']))
-              = tstzrange(NULL, upper(h), '(]')) THEN
+          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', tstzrange(lower(h), upper(h), '(]'), ARRAY['a']))
+              = tstzrange(lower(h), upper(h), '(]')
+          AND public.ka_gochara_facts_horizon(NULL) IS NULL) THEN
     RAISE EXCEPTION 'migration 1155 post-apply check failed: helper self-test failed';
   END IF;
 END;

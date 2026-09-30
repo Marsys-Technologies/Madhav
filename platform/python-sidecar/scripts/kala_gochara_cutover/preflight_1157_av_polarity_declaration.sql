@@ -57,7 +57,8 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND c.relname = 'ka_gochara_av_polarity_declaration'
-      AND t.tgname IN ('ka_gochara_av_polarity_write_guard', 'ka_gochara_av_polarity_no_truncate')
+      AND t.tgname IN ('ka_gochara_av_polarity_0_chart_context',
+                       'ka_gochara_av_polarity_write_guard', 'ka_gochara_av_polarity_no_truncate')
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_text_array_ok(text[],integer)')) AS e(sig)
@@ -67,7 +68,8 @@ BEGIN
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
-                 ('ka_gochara_insert_only()')) AS e(sig)
+                 ('ka_gochara_insert_only()'),
+                 ('ka_gochara_substrate_chart_lock()')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     SELECT 'prerequisite_migration_not_applied', p.prefix
