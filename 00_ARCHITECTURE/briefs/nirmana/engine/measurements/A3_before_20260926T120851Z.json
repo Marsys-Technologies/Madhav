@@ -1,0 +1,154 @@
+{
+  "artifact": "A3_BEFORE_MEASUREMENT",
+  "packet": "A3 — Stop one registry change killing a whole run",
+  "measured_at": "2026-09-26T12:08:51Z",
+  "measured_against": "amjis production DB (read-only proxy, 127.0.0.1:5433, amjis_app), repo /Users/Dev/madhav-engine @ campaign/nirmana-engine",
+
+  "db_posture": {
+    "value": "default_transaction_read_only = on; current_database = amjis; current_user = amjis_app",
+    "population": "n/a — connection-level check",
+    "query": "source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433; SHOW default_transaction_read_only; SELECT current_database(), current_user, now();"
+  },
+
+  "claim_under_test": {
+    "text": "frozen manifest validation failed: asset_registry changed after the manifest was frozen — aborted 18 assets across 8 runs, including a 10-asset L0 run aborted in full on 2026-09-04.",
+    "source_of_original_figure": "00_ARCHITECTURE/briefs/nirmana/BUILD_FAILURE_TRIAGE_2026-09-26_v1_0.md, table row 'causal: frozen manifest invalidated mid-run | 18 | 18', echoed in NIKASHA_CHANGE_REGISTER_v1_0.md R36 and NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md.",
+    "verdict": "CONFIRMED EXACTLY for the population defined as build_run_assets.error LIKE 'frozen manifest validation failed:%' — 18 records, 18 distinct assets, 8 distinct runs. But this population is NOT one causal family: it silently blends two unrelated defects (see population_breakdown). Only one of the two (11 records / 2 runs) is actually 'a registry change killed a run'; the other (7 records / 6 runs) is 'a run was dispatched with no manifest at all', a different bug that A3's framing does not fix."
+  },
+
+  "manifest_invalidation_population": {
+    "value": {
+      "records": 18,
+      "distinct_assets": 18,
+      "distinct_runs": 8,
+      "date_range": "2026-09-04T22:05:01Z to 2026-09-10T21:42:35Z (created_at)"
+    },
+    "population": "build_run_assets rows whose error matches the literal prefix 'frozen manifest validation failed:' — reproduces the 18/8 figure exactly. A broader ILIKE '%manifest%' OR '%frozen%' sweep was run first and turned up 4 more false leads that must NOT be folded into this family: (1) two 'stalled >4min ... killed+redispatched with copied frozen manifest' / 'confirmed stall: log frozen at ...' records — these are liveness-watchdog kills, the word 'frozen' there refers to a stalled log or a copied manifest artifact, not a validation failure; (2) one 2026-08-25 record with the generic pre-standardization message 'aborted after preflight manifest validation failure' (run 090d9656, bg_formula_constants) — same mechanism, older message wording, predates the 09-04→09-10 window the 18/8 figure covers, correctly excluded by the literal-prefix match; (3) one 2026-09-07 run (0e9ed3ec) whose build_runs.last_error is 'sidecar code digest does not match dispatch manifest for asset bg_vidhi_primitives' — a genuinely different validator (_verify_sidecar_code_matches_manifest, code-image skew, not asset_registry drift) that produced ZERO build_run_assets rows (the run failed before any row was created), so it does not enter the 18/8 count by construction, not by exclusion choice.",
+    "query": "SELECT count(*) AS records, count(DISTINCT asset_id) AS distinct_assets, count(DISTINCT run_id) AS distinct_runs FROM build_run_assets WHERE error LIKE 'frozen manifest validation failed:%';  -- and: SELECT min(br.created_at), max(br.created_at) FROM build_run_assets bra JOIN build_runs br ON br.id=bra.run_id WHERE bra.error LIKE 'frozen manifest validation failed:%';"
+  },
+
+  "population_breakdown": {
+    "value": {
+      "family_A_registry_changed": {
+        "distinct_error_strings": [
+          "frozen manifest validation failed: asset_registry changed after dispatch for frozen asset bg_yogas (10 records, 1 run)",
+          "frozen manifest validation failed: asset_registry changed after dispatch for frozen asset mi_kula (1 record, 1 run)"
+        ],
+        "records": 11,
+        "distinct_assets": 11,
+        "distinct_runs": 2,
+        "what_it_is": "the literal 'a registry row this run depends on drifted between freeze and execute' defect A3 targets."
+      },
+      "family_B_missing_manifest": {
+        "distinct_error_strings": [
+          "frozen manifest validation failed: missing frozen run manifest or digest (7 records, 6 runs)"
+        ],
+        "records": 7,
+        "distinct_assets": 7,
+        "distinct_runs": 6,
+        "what_it_is": "NOT a registry-drift case. run.plan_manifest / plan_manifest_digest were NULL from the moment build_runs was inserted — validate_frozen_run_manifest's very first check ('missing frozen run manifest or digest', runner.py line ~244) fires immediately. Root cause (confirmed by reading the dispatch scripts, see code_paths.root_cause_family_B): a large family of one-off `platform/scripts/dispatch_*.py` scripts (e.g. dispatch_sampurti_a3_chart1_kshetra.py, dispatch_sampurti_p_g1_ka_kshetra_rebuild.py, dispatch_sampurti_a2prime_chart1_full.py) INSERT INTO build_runs directly with columns (chart_id, scope, scope_target, action, plan, state, triggered_by) and never populate plan_manifest/plan_manifest_digest at all — they predate or bypass the freeze mechanism that platform/src/app/api/cockpit/runs/route.ts computes. There is nothing to 're-freeze' for this family; the fix is making every build_runs-inserting code path go through the shared freeze helper (or reject manifest-less rows at claim time with a distinct, non-'frozen manifest' error name), which is a different, smaller fix than A3's stated scope."
+      }
+    },
+    "population": "11 + 7 = 18, matches the literal-prefix population exactly; no double counting.",
+    "query": "SELECT error, count(*) FROM build_run_assets WHERE error LIKE 'frozen manifest validation failed:%' GROUP BY error ORDER BY count(*) DESC;"
+  },
+
+  "blast_radius_per_run": {
+    "value": [
+      {"run_id": "d4a6dae2-684c-4d64-8016-edeb0d2adfd7", "scope": "asset_set", "action": "rebuild", "created_at": "2026-09-04T22:05:01.362320Z", "total_assets_in_plan": 10, "assets_aborted": 10, "blast_radius_pct": 100, "family": "A (asset_registry changed — bg_yogas)"},
+      {"run_id": "c1751e8f-0bb8-46df-a071-7b46c16ba3d9", "scope": "asset_set", "action": "build", "created_at": "2026-09-06T14:52:53.968310Z", "total_assets_in_plan": 2, "assets_aborted": 2, "blast_radius_pct": 100, "family": "B (missing manifest)"},
+      {"run_id": "ce114909-a63d-4a74-b74c-533bbc99e03e", "scope": "asset_set", "action": "rebuild", "created_at": "2026-09-06T17:23:59.497519Z", "total_assets_in_plan": 1, "assets_aborted": 1, "blast_radius_pct": 100, "family": "A (asset_registry changed — mi_kula)"},
+      {"run_id": "a105a76f-1a9e-42a4-9149-c12358635e91", "scope": "asset_set", "action": "rebuild", "created_at": "2026-09-07T20:12:30.150630Z", "total_assets_in_plan": 1, "assets_aborted": 1, "blast_radius_pct": 100, "family": "B (missing manifest)"},
+      {"run_id": "6da13043-75a7-43ad-9f88-6c64e3bc5c0f", "scope": "asset_set", "action": "rebuild", "created_at": "2026-09-08T08:03:20.237109Z", "total_assets_in_plan": 1, "assets_aborted": 1, "blast_radius_pct": 100, "family": "B (missing manifest)"},
+      {"run_id": "84530775-6ca8-4b13-9f57-83a021694c2c", "scope": "asset_set", "action": "rebuild", "created_at": "2026-09-10T01:43:31.406529Z", "total_assets_in_plan": 1, "assets_aborted": 1, "blast_radius_pct": 100, "family": "B (missing manifest)"},
+      {"run_id": "53fdb7e7-9b6e-4025-b61e-db02e13110f9", "scope": "asset", "action": "rebuild", "created_at": "2026-09-10T18:12:38.502325Z", "total_assets_in_plan": 1, "assets_aborted": 1, "blast_radius_pct": 100, "family": "B (missing manifest)"},
+      {"run_id": "442e08b1-cf58-48f9-bf27-4c6d1f9b8670", "scope": "asset", "action": "rebuild", "created_at": "2026-09-10T21:42:35.341424Z", "total_assets_in_plan": 1, "assets_aborted": 1, "blast_radius_pct": 100, "family": "B (missing manifest)"}
+    ],
+    "population": "the 8 distinct runs behind the 18-record population; for each, total build_run_assets rows in that run vs. rows whose error matches the frozen-manifest family.",
+    "query": "SELECT br.id, br.scope, br.action, br.created_at, (SELECT count(*) FROM build_run_assets x WHERE x.run_id=br.id) AS total_assets_in_plan, (SELECT count(*) FROM build_run_assets x WHERE x.run_id=br.id AND x.error LIKE 'frozen manifest validation failed:%') AS assets_aborted FROM build_runs br WHERE br.id IN (SELECT DISTINCT run_id FROM build_run_assets WHERE error LIKE 'frozen manifest validation failed:%') ORDER BY br.created_at;",
+    "named_metric": "assets_aborted_per_manifest_invalidation_event (blast radius) = 100% in every one of the 8 observed runs, including the single-asset runs. Every run that hit this validator lost its ENTIRE plan, whether the plan held 1 asset or 10 — confirms the abort is wholesale by design (_terminalize_preflight_failure marks every 'queued' build_run_assets row for the run, unconditionally, once any ValueError is raised), not merely correlated with plan size."
+  },
+
+  "run_20260904_reconstruction": {
+    "value": {
+      "run_id": "d4a6dae2-684c-4d64-8016-edeb0d2adfd7",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa (canonical chart)",
+      "scope": "asset_set",
+      "scope_target": "bg_reference,bg_remedies,bg_yogas,bg_dasha_systems,bg_doshas,bg_cohort,bg_class_lifetime_counts,bg_vidhi_floors,bg_kp_sublord_division,bg_gochara_arcs",
+      "action": "rebuild",
+      "state": "failed",
+      "triggered_by": "nirmana-elevation:t0-2026-09-01-0e5b06fb:L0:wave-1:assets-bg_class_lifetime_counts,bg_cohort,bg_dasha_systems,bg_doshas,bg_gochara_arcs,bg_kp_sublord_division,bg_reference,bg_remedies,bg_vidhi_floors,bg_yogas",
+      "created_at": "2026-09-04T22:05:01.362320Z",
+      "started_at": null,
+      "ended_at": "2026-09-04T22:05:25.064519Z (24s after creation)",
+      "last_error": "frozen manifest validation failed: asset_registry changed after dispatch for frozen asset bg_yogas",
+      "plan_manifest_digest": "de885a0b090e35c013537cd5fbaa63b89a5b3c884a40864bab25cbb49bb8394d",
+      "campaign_control": {"layer": "L0", "wave_index": 1, "campaign_id": "nirmana-elevation", "definition_revision": "t0-2026-09-01-0e5b06fb", "snapshot_ref": "cloudsql:amjis-postgres:backup:1788558543203"},
+      "asset_rows": [
+        {"asset_id": "bg_reference", "position": 0, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "frozen manifest validation failed: asset_registry changed after dispatch for frozen asset bg_yogas"},
+        {"asset_id": "bg_remedies", "position": 1, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_yogas", "position": 2, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same — this is the asset the check actually flagged"},
+        {"asset_id": "bg_dasha_systems", "position": 3, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_doshas", "position": 4, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_cohort", "position": 5, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_class_lifetime_counts", "position": 6, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_vidhi_floors", "position": 7, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_kp_sublord_division", "position": 8, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"},
+        {"asset_id": "bg_gochara_arcs", "position": 9, "state": "aborted", "started_at": null, "ended_at": "2026-09-04T22:05:25.064519Z", "error": "same"}
+      ],
+      "event_sequence": "build_events has ZERO rows for build_id='d4a6dae2-...' — confirms the abort happened at the preflight stage, before the runner ever entered the dispatch loop that emits build_events. All 10 asset rows share the identical ended_at timestamp (22:05:25.064519Z) and NULL started_at — a single UPDATE...WHERE state='queued' statement (_terminalize_preflight_failure, runner.py ~326-341) stamped all 10 in one transaction, not 10 individual asset failures.",
+      "confirmation": "Every one of the 10 planned bg_* (L0/Brahmagyan) assets really was aborted — none completed, none partially ran. The claim's '10-asset L0 run aborted in full' is CONFIRMED VERBATIM, not merely 'mostly'."
+    },
+    "population": "the single build_runs row d4a6dae2-684c-4d64-8016-edeb0d2adfd7 and its 10 build_run_assets children, plus its 0 build_events rows.",
+    "query": "SELECT * FROM build_runs WHERE id='d4a6dae2-684c-4d64-8016-edeb0d2adfd7'; SELECT * FROM build_run_assets WHERE run_id='d4a6dae2-684c-4d64-8016-edeb0d2adfd7' ORDER BY position; SELECT * FROM build_events WHERE build_id='d4a6dae2-684c-4d64-8016-edeb0d2adfd7' ORDER BY stage_seq;"
+  },
+
+  "registry_change_attribution": {
+    "value": "NOT ATTRIBUTABLE at the row-value level — asset_registry carries no history/audit table (checked: audit_log, audit_events, admin_audit_log all track unrelated things — LLM query audits and admin-on-profile actions, never asset_registry row changes; there is no asset_registry_history table and no trigger that logs old/new values on UPDATE, only `nirmana_registry_receipt_invalidation`, which invalidates a downstream receipt cache but discards the diff). What WOULD make this answerable: an append-only asset_registry_history table (or a `nirmana_invalidate_registry_receipts`-style trigger extended to also INSERT old/new row images) populated on every UPDATE of asset_registry, keyed by asset_id + changed_at, so a validation failure at time T could be joined back to 'which row(s) changed between freeze_time and T'.",
+    "circumstantial_findings": [
+      "For BOTH real incidents (bg_yogas 2026-09-04, mi_kula 2026-09-06), the CURRENT (2026-09-26) live asset_registry row for the flagged asset matches the frozen manifest's captured values exactly on all 4 compared fields (scope, depends_on as a set, natural_key_partition, has_cowriters). Whatever value differed in the 24-second freeze-to-check window has since reverted/converged back to the original. This is strong evidence the divergence was TRANSIENT — concurrent write activity from another lane, not a deliberate, sticky change to that asset's own contract.",
+      "Neither bg_yogas (target_table=brahma_yoga_catalog) nor mi_kula (target_table=mimamsa_signal_families) has any peer sharing its target_table today — so has_cowriters is unambiguously false for both today, matching their frozen manifests. If has_cowriters was the field that flipped at validation time, the flip must have come from a THIRD asset (not bg_yogas/mi_kula itself, and not necessarily even in the run's plan) transiently gaining/losing is_active+has_writer on that same target_table.",
+      "git history around both incident windows shows an actively-running multi-lane autonomous swarm (L0-L5 'heartbeat' agents in 00_ARCHITECTURE/briefs/nirmana/sessions/) landing dozens of migrations per hour that touch asset_registry rows (depends_on fixes, e.g. 17102b048 'ka_muhurta_seva.depends_on corrects a fictional edge'; is_active/catalog_status changes as part of the 'asset_frozen' campaign lifecycle; integrity_check_sql rewrites, e.g. 0c3390ef3 'bg_yogas integrity_check_sql join-scope fix' merged 2026-09-06 00:58 UTC — after the 09-04 incident, so not itself the cause, but proof bg_yogas's registry row was under live, active editing in exactly this period). The mi_kula abort (09-06 17:23:59 UTC) falls inside a dense burst of same-minute registry-touching commits from the L0/L2/L4/L5 lanes.",
+      "A genuine, code-provable (not merely circumstantial) mechanism was found independent of these two incidents: freeze-time has_cowriters (route.ts) and check-time has_cowriters (runner.py) use ASYMMETRIC predicates over the same asset_registry table — see code_paths.sensitivity_finding. This alone can produce a false 'asset_registry changed' verdict with NO actual change to the flagged asset's own row, purely from a peer row's has_writer flag differing from what the (unfiltered-by-has_writer) freeze-time count assumed."
+    ],
+    "conclusion_for_the_design_question": "Both witnessed instances point AWAY from 'the change was related to the asset that failed.' bg_yogas's own row is, and (per the manifest snapshot) apparently was, unremarkable — the failure was triggered by registry-wide state (either a peer's is_active/has_writer flag, or the very fact that the freeze-time and check-time definitions of has_cowriters disagree) that has nothing to do with what bg_yogas or mi_kula themselves needed to build correctly. The premise behind A3 — 'an unrelated registry change is killing unrelated runs' — holds for family A. It does NOT explain family B, which is a wholly different bug (no manifest was ever attached)."
+  },
+
+  "code_paths": {
+    "freeze_point": {
+      "file": "platform/src/app/api/cockpit/runs/route.ts",
+      "function": "POST handler, lines 368-412 (manifest assembly), manifestDigest() at line 97, canonicalManifestJson() at lines 83-94",
+      "what_it_captures_per_asset": "asset_id, scope, depends_on (array, authored order), natural_key_partition, has_cowriters (boolean, DERIVED — see below), expected_code_digest (from a static writer-digest inventory JSON, not the DB) — plus run-level version/chart_id/scope/scope_target/action/waves.",
+      "has_cowriters_computation_at_freeze": "lines 371-376: `writerCountByTarget` counts, over ALL rows returned by a query filtered only `WHERE is_active = true` (line 243), every row that HAS a target_table — has_writer is fetched (line 242) but NOT applied as a filter here. Then line 399: `has_cowriters: Boolean(entry.target_table && (writerCountByTarget.get(entry.target_table) ?? 0) > 1)`.",
+      "persisted_as": "build_runs.plan_manifest (jsonb) + build_runs.plan_manifest_digest (sha256 hex), written by the INSERT at lines 571-576. A DB trigger (trg_build_runs_manifest_immutable, executing reject_build_run_manifest_mutation()) blocks any subsequent UPDATE of plan/plan_manifest/plan_manifest_digest — the manifest is immutable from the moment it lands, by DB constraint, not just by convention."
+    },
+    "validation_point": {
+      "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+      "entry": "execute_run(), lines 1037-1040: `frozen = validate_frozen_run_manifest(run); _verify_registry_still_matches_manifest(cur, frozen); _verify_sidecar_code_matches_manifest(frozen)` — all three run BEFORE the wave-parallel scheduler starts, and before a single build_events row is emitted.",
+      "validate_frozen_run_manifest": "lines 234-325 — structural/self-consistency checks only (digest matches manifest, chart_id matches, waves flatten to plan, per-asset fields well-typed). Raises 'missing frozen run manifest or digest' at line ~244 if plan_manifest/plan_manifest_digest is NULL — this is family B's exact trigger.",
+      "verify_registry_still_matches_manifest": "lines 343-374 — THE decisive comparison. Quoted in full:\n```python\ncur.execute(\n    \"\"\"SELECT ar.asset_id, ar.scope, COALESCE(ar.depends_on, '{}') AS depends_on,\n              ar.natural_key_partition,\n              EXISTS (\n                SELECT 1 FROM asset_registry peer\n                 WHERE peer.target_table = ar.target_table\n                   AND ar.target_table IS NOT NULL\n                   AND peer.asset_id <> ar.asset_id\n                   AND peer.is_active = true AND peer.has_writer = true\n              ) AS has_cowriters\n       FROM asset_registry ar WHERE ar.asset_id = ANY(%s)\"\"\",\n    (frozen.plan,),\n)\nrows = {row[\"asset_id\"]: row for row in cur.fetchall()}\nfor asset_id in frozen.plan:\n    row = rows.get(asset_id)\n    if row is None:\n        raise ValueError(f\"frozen run manifest asset {asset_id} is no longer registered\")\n    if (\n        row[\"scope\"] != frozen.asset_scopes[asset_id]\n        or sorted(row[\"depends_on\"] or []) != sorted(frozen.asset_deps[asset_id])\n        or row.get(\"natural_key_partition\") != frozen.asset_partitions[asset_id]\n        or bool(row.get(\"has_cowriters\")) != frozen.asset_has_cowriters[asset_id]\n    ):\n        raise ValueError(f\"asset_registry changed after dispatch for frozen asset {asset_id}\")\n```\nThe loop iterates `frozen.plan` IN ORDER and raises on the FIRST mismatching asset_id — it does not check, and therefore cannot report, whether any OTHER asset in the plan also diverged; the exception carries only the one name.",
+      "abort_propagation": "the ValueError from ANY of the three validators is caught once, at the top of execute_run (lines 1041-1048), and handled identically regardless of which asset (if any) was named: `_terminalize_preflight_failure(cur, run_id=run_id, message=message[:2000])` (defined lines 326-341) runs one SQL statement that (a) sets build_runs.state='failed' and (b) sets EVERY build_run_assets row for that run_id with state='queued' to state='aborted', stamping the SAME message text onto all of them. There is no per-asset granularity anywhere in this path: the run-level exception is translated directly into an all-rows UPDATE. This is why every one of the 8 observed runs shows 100% blast radius regardless of plan size (1 asset or 10)."
+    },
+    "root_cause_family_B": {
+      "file_pattern": "platform/scripts/dispatch_sampurti_*.py, dispatch_d*.py, dispatch_utkarsha_*.py, rebuild_*.py (dozens of one-off campaign scripts)",
+      "example_grep": "platform/scripts/dispatch_sampurti_a3_chart1_kshetra.py:82-89, dispatch_sampurti_p_g1_ka_kshetra_rebuild.py:78-86, dispatch_sampurti_a2prime_chart1_full.py:131-139",
+      "finding": "these scripts INSERT INTO build_runs (chart_id, scope, scope_target, action, plan, state, triggered_by) VALUES (...) — plan_manifest and plan_manifest_digest are simply absent from the column list, defaulting to NULL (the table's own CHECK constraint `build_runs_plan_manifest_pair_check` only requires the pair be NULL-or-non-NULL together, so this is a legal insert). These scripts predate/bypass the freeze mechanism that only platform/src/app/api/cockpit/runs/route.ts implements. Every one of family B's 6 runs is this pattern."
+    },
+    "sensitivity_finding": {
+      "claim": "the manifest is NOT sensitive to timestamps, updated_at, row counts, or display fields — the 4 compared fields (scope, depends_on, natural_key_partition, has_cowriters) are all structurally load-bearing for build correctness (DAG scope/ordering/idempotency-key scoping). That part of the design is sound and should NOT be loosened.",
+      "but": "has_cowriters is not a column on the asset's own row — it is DERIVED via an EXISTS-peer-lookup across the ENTIRE asset_registry table, evaluated once at freeze time (route.ts) and re-evaluated fresh at validation time (runner.py) with a DIFFERENT filter predicate:",
+      "asymmetry": {
+        "freeze_time (route.ts:371-376, 399)": "counts peers among rows already filtered `WHERE is_active = true` (route.ts:243) with a `target_table` set — has_writer is fetched but NEVER applied as a filter in this count.",
+        "check_time (runner.py:348-354)": "requires the peer to satisfy `peer.is_active = true AND peer.has_writer = true`."
+      },
+      "consequence": "has_cowriters can be computed as true at freeze time (an is_active, has_writer=false reference/placeholder row shares the target_table) and false at check time (that same row still has has_writer=false, correctly excluded by the check-time predicate) — or vice-versa if a row's has_writer flips between freeze and check — producing a false 'asset_registry changed' verdict for an asset whose OWN scope/depends_on/natural_key_partition never moved, and whose actual co-writer situation never meaningfully changed either. This is sensitivity the check does not need: has_cowriters should be computed with the IDENTICAL predicate in both places (pick one: always require has_writer=true, since that is what actually matters for a shared-table write hazard)."
+    }
+  },
+
+  "recommendation": {
+    "value": "SPLIT the fix; do not treat the 18/8 figure as one problem.",
+    "for_family_A_asset_registry_changed_11_records_2_runs": "FAIL ONLY GENUINELY-AFFECTED ASSETS, not 're-freeze and continue'. Evidence: (1) the check already computes a full per-asset row (scope/depends_on/natural_key_partition/has_cowriters) for every asset in frozen.plan in ONE query (runner.py:345-357) — the data to identify exactly which asset(s) diverged already exists in `rows`; the code just throws it away and stops at the first mismatch instead of collecting all mismatches. Re-scoping the abort to only the diverging asset(s) plus their downstream dependents (mirroring the existing _mark_asset_blocked cascade machinery already used elsewhere in this file for dependency-not-lit blocking) is a mechanical, low-risk change against code that's already shaped for it. (2) 'Re-freeze and continue' means silently accepting a live registry mutation mid-run and treating it as the new ground truth — that defeats the actual safety purpose of freezing (a genuine, sticky scope/depends_on change to an asset SHOULD block that asset, because the wave/DAG ordering computed at freeze time may no longer be valid for it). Re-freezing cannot distinguish a benign transient (what both witnessed incidents actually were) from a real incompatibility without re-running the planner, which is a much larger, riskier change than narrowing the blast radius of an abort that's already correct in WHICH asset it names. (3) Independently of the blast-radius question, fix the has_cowriters freeze/check predicate asymmetry (code_paths.sensitivity_finding) — this is a provable false-positive source and costs nothing to align (make route.ts's writerCountByTarget honor has_writer the same way runner.py's EXISTS clause does).",
+    "for_family_B_missing_manifest_7_records_6_runs": "Different bug, different fix, out of A3's stated scope as written: make every build_runs-inserting path (the dozens of one-off platform/scripts/dispatch_*.py scripts) go through the same freeze helper route.ts uses, or centralize freeze-computation into a shared library both the route and the scripts call. There is no 'registry changed' to react to here — the manifest was simply never created. Recommend flagging this to whoever owns A3's scope before implementation starts, since 6 of the 8 'runs' in the headline figure are this unrelated defect.",
+    "what_not_to_change": "the SET of compared fields (scope, depends_on, natural_key_partition, has_cowriters) is well-chosen and structurally load-bearing — do not loosen it to fix a blast-radius/asymmetry problem that has a narrower, more targeted fix available."
+  }
+}
