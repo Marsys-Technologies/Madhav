@@ -1400,7 +1400,7 @@ jobs:
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
-            DB_PASSWORD=amjis-db-password:3
+            DB_PASSWORD=amjis-db-password:latest
             DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:2
             NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
             NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD=nirmana-evidence-ingress-db-password:latest
