@@ -4,8 +4,10 @@
 candidate contact ledger into the SERVED table kala_gochara_windows under
 generation '4.0'. What this file proves:
 
-  * unit (no DB): the M-1 linear_no_box decay shape; the per-class lambda
-    evaluator equals the pinned legacy_semantics algebra term-for-term;
+  * unit (no DB): the M-1 angular orb kernel (1 − min(|Δλ|/orb, 1); the
+    pre-A5.4 time-triangle test pinned the defective shape and is replaced —
+    the full proof battery is test_step06b_angular_m1.py); the per-class
+    lambda evaluator equals the pinned legacy_semantics algebra term-for-term;
     find_components on single / disjoint / sub-day-bump series (breakpoint
     augmentation makes a sub-day span visible); H-5 — every admitted peak is
     stored (the pre-H-5 cap of 3 is removed, the pinned 90-day separation
@@ -75,17 +77,38 @@ def _dt(s: str) -> datetime:
 
 def _contact(cid: str, t_exact: datetime, *, half_days: float = 10.0,
              body: str = "Saturn", relation: str = "conjunction",
-             target_type: str = "karaka", target_ref: str = "Venus") -> dict:
+             target_type: str = "karaka", target_ref: str = "Venus",
+             target_lon_deg: float = 300.0, orb_deg: float = 5.0) -> dict:
     span = timedelta(days=half_days)
     return {
         "contact_id": cid, "body": body, "relation": relation,
         "target_type": target_type, "target_ref": target_ref,
-        "orb_max_deg": 5.0, "completeness_state": "applied",
+        "target_longitude_deg": target_lon_deg,
+        "orb_max_deg": orb_deg, "completeness_state": "applied",
         "_primitive": w.RELATION_TO_PRIMITIVE[relation],
+        "_target_lon_deg": target_lon_deg,
+        "_orb_deg": orb_deg,
         "_t_in_jd": w.jd_of(t_exact - span),
         "_t_exact_jd": w.jd_of(t_exact),
         "_t_out_jd": w.jd_of(t_exact + span),
     }
+
+
+# Synthetic ephemeris for the unit tests (A5.4 angular_m1): the angular
+# kernel reads the transiting body's longitude AT the evaluation instant, so
+# the tests inject (body, jd) -> longitude. Linear motion at a speed that
+# makes the 5.0° orb crossings land exactly on the ±10-day span edges —
+# under constant angular speed the angular kernel and the retired time
+# triangle coincide, which keeps these pinned-algebra/component-machinery
+# tests comparable to their pre-repair expectations where those were not
+# pinning the defect itself.
+SYNTH_SPEED_DEG_PER_DAY = 0.5  # 5.0° orb / 10-day half-span
+
+
+def _linear_pos_fn(t_exact_jd: float, *, speed: float = SYNTH_SPEED_DEG_PER_DAY):
+    def pos(body: str, jd: float) -> float:
+        return (300.0 + speed * (jd - t_exact_jd)) % 360.0
+    return pos
 
 
 def _ctx(weights=None, perms=None, weights_by_ref=None) -> w.ClassContext:
@@ -100,23 +123,28 @@ def _open_gates(date_iso: str):
     return leg.compute_quality_gates([], date_iso, date_iso, {})
 
 
-# ── unit: M-1 decay shape ────────────────────────────────────────────────────
+# ── unit: M-1 angular kernel shape ───────────────────────────────────────────
+#
+# A5.4 angular_m1 (sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0,
+# finding N1): the previous test here pinned the DEFECTIVE time-triangle
+# `linear_no_box_decay(t, t_in, t_exact, t_out)`. That function is removed;
+# the ruled kernel is angular, `angular_orb_decay(λ(t), target, orb) =
+# 1 − min(|Δλ|/orb, 1)`. The full angular proof battery (non-constant speed,
+# station-like dwell, 0° seam, mutation check vs the time triangle) lives in
+# test_step06b_angular_m1.py; the constants below keep this file's pinned
+# algebra/component tests on a constant-speed synthetic where the two forms
+# coincide by construction.
 
 
-def test_linear_no_box_decay_shape():
-    t_in, t_exact, t_out = 100.0, 110.0, 130.0
-    assert w.linear_no_box_decay(100.0, t_in, t_exact, t_out) == 0.0
-    assert w.linear_no_box_decay(130.0, t_in, t_exact, t_out) == 0.0
-    assert w.linear_no_box_decay(99.0, t_in, t_exact, t_out) == 0.0
-    assert w.linear_no_box_decay(131.0, t_in, t_exact, t_out) == 0.0
-    assert w.linear_no_box_decay(110.0, t_in, t_exact, t_out) == 1.0
-    assert w.linear_no_box_decay(105.0, t_in, t_exact, t_out) == pytest.approx(0.5)
-    assert w.linear_no_box_decay(120.0, t_in, t_exact, t_out) == pytest.approx(0.5)
-    # no ±5-day box: at event ± 6 days the contribution is NOT flat
-    assert w.linear_no_box_decay(116.0, t_in, t_exact, t_out) == pytest.approx(0.7)
-    # degenerate spans stay honest (never a division error, never a flat 1.0)
-    assert w.linear_no_box_decay(110.0, t_in, None, t_out) == 0.0
-    assert w.linear_no_box_decay(110.0, 110.0, 110.0, 110.0) == 0.0
+def test_time_triangle_removed_angular_kernel_present():
+    assert not hasattr(w, "linear_no_box_decay")
+    assert w.angular_orb_decay(300.0, 300.0, 5.0) == 1.0
+    assert w.angular_orb_decay(305.0, 300.0, 5.0) == 0.0
+    assert w.angular_orb_decay(302.5, 300.0, 5.0) == pytest.approx(0.5)
+    # shortest-arc across the 0° seam
+    assert w.angular_orb_decay(359.0, 1.0, 5.0) == pytest.approx(0.6)
+    # clamped to [0, 1]
+    assert w.angular_orb_decay(120.0, 300.0, 5.0) == 0.0
 
 
 # ── unit: the evaluator is the pinned algebra ────────────────────────────────
@@ -125,9 +153,10 @@ def test_linear_no_box_decay_shape():
 def test_eval_matches_pinned_algebra():
     ctx = _ctx()
     contact = _contact("c1", _dt("2026-02-15T00:00:00+00:00"))
-    evaluate = w.make_eval_fn(ctx, [contact], _open_gates)
+    evaluate = w.make_eval_fn(ctx, [contact], _open_gates,
+                              planet_pos_fn=_linear_pos_fn(contact["_t_exact_jd"]))
     at_exact = evaluate(contact["_t_exact_jd"])
-    # hand-computed pinned terms at t_exact (decay = 1.0)
+    # hand-computed pinned terms at t_exact (λ = target exactly -> decay 1.0)
     sentences = [leg.Sentence(
         primitive="degree_contact", target_ref="Venus", transit_planet="Saturn",
         event_jd=contact["_t_exact_jd"], detail={"orb_strength": 1.0})]
@@ -176,8 +205,12 @@ def test_find_components_subday_bump_visible():
     augmentation (t_in/t_exact/t_out on the series) is load-bearing."""
     t_in, t_exact, t_out = 100.4166667, 100.5, 100.5833333  # 4h around noon
 
+    orb_deg = 2.0 / 24.0  # 2h at 1°/day reaches the orb edge exactly
+
     def f(t):
-        return w.linear_no_box_decay(t, t_in, t_exact, t_out)
+        # angular kernel over constant-speed motion λ(t) = (t − t_exact)°,
+        # target 0°: decay hits 0 exactly at t_in/t_out (the orb crossings)
+        return w.angular_orb_decay((t - t_exact) * 1.0, 0.0, orb_deg)
 
     grid = [float(i) for i in range(95, 106)]  # daily grid: every value is 0.0
     assert all(f(t) == 0.0 for t in grid)
@@ -195,12 +228,20 @@ def test_find_components_subday_bump_visible():
 def test_h5_all_admitted_peaks_retained():
     ctx = _ctx()
     base = _dt("2026-01-15T12:00:00+00:00")
+    base_jd = w.jd_of(base)
+    # One shared synthetic trajectory (one body => one λ(t)); each contact's
+    # target is the longitude its own t_exact lands on, so the angular
+    # kernel peaks at 1.0 exactly at every t_exact.
     contacts = [
-        _contact(f"c{i}", base + timedelta(days=120 * i)) for i in range(5)
+        _contact(f"c{i}", base + timedelta(days=120 * i),
+                 target_lon_deg=(300.0 + SYNTH_SPEED_DEG_PER_DAY * 120 * i) % 360.0)
+        for i in range(5)
     ]
     horizon = (w.jd_of(_dt("2026-01-01T00:00:00+00:00")),
                w.jd_of(_dt("2027-08-01T00:00:00+00:00")))
-    rows, report = w.project_class_windows(ctx, contacts, horizon, _open_gates)
+    rows, report = w.project_class_windows(
+        ctx, contacts, horizon, _open_gates,
+        planet_pos_fn=_linear_pos_fn(base_jd))
     assert report["components"] == 5
     assert report["peaks_admitted"] == 5
     # H-5: the pre-H-5 cap of 3/era is removed; each era keeps its peak
@@ -239,7 +280,9 @@ def test_refined_peak_outside_era_skips_month_day_family(monkeypatch):
     escape_jd = w.jd_of(base + timedelta(days=60))  # far outside the era
     monkeypatch.setattr(
         w.leg, "refine_peak_to_day", lambda eval_fn, cand_jd: (escape_jd, 1.0))
-    rows, report = w.project_class_windows(ctx, contacts, horizon, _open_gates)
+    rows, report = w.project_class_windows(
+        ctx, contacts, horizon, _open_gates,
+        planet_pos_fn=_linear_pos_fn(w.jd_of(base)))
     assert report["components"] == 1
     assert report["peaks_retained"] == 1
     assert report["peaks_refined_outside_era"] == 1
@@ -464,12 +507,14 @@ def s6b_schema():
     return True
 
 
-def _episode(t_in, t_exact, t_out, *, body, target_ref) -> dict:
+def _episode(t_in, t_exact, t_out, *, body, target_ref,
+             target_longitude_deg) -> dict:
     return {
         "independence_group": f"ig-s6b-{body.lower()}-{target_ref.lower()}",
         "body": body, "relation": "conjunction", "aspect_deg": 0,
         "target_type": "karaka", "target_ref": target_ref, "target_fact_id": None,
-        "target_resolution_state": "resolved", "target_longitude_deg": 300.0,
+        "target_resolution_state": "resolved",
+        "target_longitude_deg": target_longitude_deg,
         "t_in": t_in, "t_exact": t_exact, "t_out": t_out,
         "bracket_seconds": 300, "tolerance_arcsec": 2.0,
         "truncated_at_horizon": None, "branch": "direct",
@@ -485,16 +530,24 @@ def _episode(t_in, t_exact, t_out, *, body, target_ref) -> dict:
 
 
 EPISODES = [
-    # Venus karaka contact -> joins (marriage, karaka, Venus, 0.9)
+    # Venus karaka contact -> joins (marriage, karaka, Venus, 0.9).
+    # A5.4 angular_m1: target_longitude_deg is the body's REAL Swiss sidereal
+    # longitude at t_exact (pipeline.transit_search._get_planet_pos) — the
+    # angular kernel scores 1 − |Δλ(t)|/orb against it at every instant, so a
+    # fabricated target (the old 300.0) would put the body ~36° away and
+    # honestly yield zero windows.
     _episode("2026-02-05T12:00:00+00:00", "2026-02-15T12:00:00+00:00",
-             "2026-02-25T12:00:00+00:00", body="Saturn", target_ref="Venus"),
+             "2026-02-25T12:00:00+00:00", body="Saturn", target_ref="Venus",
+             target_longitude_deg=335.9409455670717),
     # Mars karaka contact -> joins (career, karaka, Mars, 0.5); the class
     # context below names only 'marriage' -> career is an honest skip
     _episode("2026-03-01T00:00:00+00:00", "2026-03-10T00:00:00+00:00",
-             "2026-03-20T00:00:00+00:00", body="Jupiter", target_ref="Mars"),
+             "2026-03-20T00:00:00+00:00", body="Jupiter", target_ref="Mars",
+             target_longitude_deg=80.86478454953374),
     # Jupiter-target contact with NO map row -> counted unmapped, no window
     _episode("2026-04-01T00:00:00+00:00", "2026-04-10T00:00:00+00:00",
-             "2026-04-20T00:00:00+00:00", body="Saturn", target_ref="Jupiter"),
+             "2026-04-20T00:00:00+00:00", body="Saturn", target_ref="Jupiter",
+             target_longitude_deg=342.4348643612956),
 ]
 
 COVERAGE = [{

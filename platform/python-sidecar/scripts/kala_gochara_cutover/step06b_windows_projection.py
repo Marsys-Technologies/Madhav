@@ -26,11 +26,22 @@ Semantics (every choice disclosed, none improvised):
     is skipped and recorded (skipped_classes) — never a 0.0 stand-in
     (plan §4.6).
   * ACTIVITY — the pinned noisy-OR of legacy_semantics.compute_activity_v3,
-    with per-contact orb_strength = the M-1 `linear_no_box` decay across the
-    contact's own in-orb span [t_in, t_out] (orb = orb_max_deg at the span
-    edges, 0 at t_exact, linear between; NO ±5-day box — that is the F-08
-    step the flag retires). The span edges are exactly the enumeration orb
-    (--orb-deg), so decay hits 0 at t_in/t_out by construction.
+    with per-contact orb_strength = the M-1 `linear_no_box` ANGULAR kernel
+    (D-RQ2, sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 finding
+    N1): activity(t) = 1 − min(|Δλ(t)| / orb, 1), where Δλ(t) is the
+    shortest-arc separation between the transiting body's longitude AT t
+    (Swiss ephemeris, engine.py's _get_planet_pos accessor pattern) and the
+    contact's target_longitude_deg, and orb is the contact's orb_max_deg
+    (fallback 5.0°, the --orb-deg / ACTIVITY_MAX_ORB_DEG default, when the
+    column is NULL). This is exactly the algebra engine.py's
+    _compute_activity_v3 applies under activity_shape='linear_no_box'
+    (engine.py:1147-1155) — the flag label stays truthful; the previous
+    TIME-triangle over [t_in, t_exact, t_out] was the N1 defect (it
+    coincides with the angular kernel only under constant angular speed and
+    is badly wrong around stations). NO ±5-day box — that is the F-08 step
+    the flag retires. The span edges are the enumeration's orb crossings,
+    so for monotone motion the kernel reaches 0 at t_in/t_out physically,
+    not by time construction.
   * tārā — pinned honest skip (modifier 1.0, skipped=True): the M-3 separate
     Moon channel is not wired into this projection, so the transit-Moon
     input is genuinely unavailable; the skip is recorded on every row.
@@ -203,29 +214,59 @@ def iso_date_of_jd(jd: float) -> str:
     return date_of_jd(jd).isoformat()
 
 
-# ── M-1 linear_no_box decay ─────────────────────────────────────────────────
+# ── M-1 angular orb kernel (D-RQ2; activity_shape='linear_no_box') ──────────
+
+# M-1 fallback orb when the ledger's orb_max_deg is NULL — the same default
+# the legacy semantics (legacy_semantics.ACTIVITY_MAX_ORB_DEG) and this
+# file's --orb-deg flag use.
+ORB_MAX_DEG_FALLBACK = 5.0
 
 
-def linear_no_box_decay(t_jd: float, t_in_jd: float, t_exact_jd: float,
-                        t_out_jd: float) -> float:
-    """M-1 `linear_no_box`: orb = orb_max at the in-orb span edges, 0 at
-    t_exact, linear in between; the contribution is 0 outside [t_in, t_out]
-    and at the edges themselves. This replaces the legacy ±5-day box (the
-    F-08 step) — the span IS the enumeration's in-orb region, so the decay
-    reaches exactly 0 where the contact ceases to exist."""
-    if t_exact_jd is None:
-        return 0.0
-    if t_jd <= t_in_jd or t_jd >= t_out_jd:
-        return 0.0
-    if t_jd <= t_exact_jd:
-        span = t_exact_jd - t_in_jd
-        if span <= 0:
-            return 1.0 if t_jd == t_exact_jd else 0.0
-        return (t_jd - t_in_jd) / span
-    span = t_out_jd - t_exact_jd
-    if span <= 0:
-        return 0.0
-    return (t_out_jd - t_jd) / span
+def angular_orb_decay(body_lon_deg: float, target_lon_deg: float,
+                      orb_deg: float) -> float:
+    """The ruled angular kernel (D-RQ2): activity = 1 − min(|Δλ|/orb, 1.0).
+
+    Δλ is the shortest-arc separation between the transiting body's
+    longitude at the evaluation instant and the contact's target longitude
+    (the engine.py:1119 idiom, abs(((lon − target + 180) % 360) − 180));
+    identical to the algebra engine.py's _compute_activity_v3 applies for
+    activity_shape='linear_no_box' (orb_decay_i = 1 − min(|Δ|_i /
+    orb_max_deg, 1.0), engine.py:1147-1155). Pure arithmetic in longitude —
+    no time interpolation anywhere; the result is in [0, 1] by the min().
+    """
+    orb = float(orb_deg)
+    if orb <= 0.0:
+        raise ValueError(f"orb_deg must be positive, got {orb_deg!r}")
+    delta = abs(((float(body_lon_deg) - float(target_lon_deg) + 180.0)
+                 % 360.0) - 180.0)
+    return 1.0 - min(delta / orb, 1.0)
+
+
+_PLANET_POS_FN = None
+
+
+def _default_planet_pos_fn():
+    """(body, jd) -> sidereal longitude deg, via the same Swiss-ephemeris
+    accessor the engine uses (pipeline.transit_search._get_planet_pos,
+    engine.py:1116). Lazily imported so the projection's pure-arithmetic
+    tests need no ephemeris; memoized per (body, jd) on this projection
+    object (no century-long precomputation)."""
+    global _PLANET_POS_FN
+    if _PLANET_POS_FN is None:
+        if str(SIDECAR) not in sys.path:
+            sys.path.insert(0, str(SIDECAR))
+        import swisseph as swe
+        from pipeline.transit_search import _get_planet_pos
+        cache: dict[tuple[str, float], float] = {}
+
+        def pos(body: str, jd: float) -> float:
+            key = (body, float(jd))
+            if key not in cache:
+                cache[key] = float(_get_planet_pos(swe, body, float(jd))[0])
+            return cache[key]
+
+        _PLANET_POS_FN = pos
+    return _PLANET_POS_FN
 
 
 # ── per-class lambda evaluator ───────────────────────────────────────────────
@@ -272,18 +313,31 @@ class ClassContext:
 
 
 def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
-                 quality_gate_for_date):
+                 quality_gate_for_date, *, planet_pos_fn=None):
     """eval_fn(t_jd) -> (lambda_raw, active_contact_ids, signed_channels).
 
-    The pinned assemble_lambda_v3 algebra over the M-1 in-orb activity; the
-    F-08 exception-swallow is NOT reproduced — errors propagate."""
+    The pinned assemble_lambda_v3 algebra over the M-1 ANGULAR in-orb
+    activity (D-RQ2): each contact's orb_strength is 1 − min(|Δλ(t)|/orb, 1)
+    with Δλ from the body's ephemeris longitude at t — never a time
+    triangle. A contact without a target longitude aborts the run (the F-08
+    exception-swallow is NOT reproduced — errors propagate; a silent 0.0 or
+    fallback stand-in would fabricate activity). `planet_pos_fn` is
+    (body, jd) -> longitude deg; default: the Swiss accessor (lazy)."""
+    if planet_pos_fn is None:
+        planet_pos_fn = _default_planet_pos_fn()
 
     def evaluate(t_jd: float):
         sentences = []
         active_ids = []
         for c in contacts:
-            decay = linear_no_box_decay(t_jd, c["_t_in_jd"], c["_t_exact_jd"],
-                                        c["_t_out_jd"])
+            target_lon = c.get("_target_lon_deg")
+            if target_lon is None:
+                raise ValueError(
+                    f"contact {c.get('contact_id')} has no target_longitude_deg "
+                    "— the angular kernel cannot score it honestly")
+            orb_deg = c.get("_orb_deg") or ORB_MAX_DEG_FALLBACK
+            decay = angular_orb_decay(
+                planet_pos_fn(c["body"], t_jd), target_lon, orb_deg)
             if decay <= 0.0:
                 continue
             sentences.append(leg.Sentence(
@@ -373,12 +427,15 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                           quality_gate_for_date, *,
                           min_lambda: float = MIN_LAMBDA_DEFAULT,
                           coarse_step_days: float = COARSE_STEP_DAYS_DEFAULT,
-                          day_stride_days: float = 1.0) -> tuple[list[dict], dict]:
+                          day_stride_days: float = 1.0,
+                          planet_pos_fn=None) -> tuple[list[dict], dict]:
     """Era -> month -> day window rows for one event class. Returns
     (window_row_dicts, class_report). Window rows carry logical
     window_key/parent_key; the writer resolves them to parent_window_id at
-    INSERT time."""
-    evaluate = make_eval_fn(class_ctx, contacts, quality_gate_for_date)
+    INSERT time. `planet_pos_fn` is forwarded to make_eval_fn (the angular
+    kernel's ephemeris accessor; default: Swiss, lazy)."""
+    evaluate = make_eval_fn(class_ctx, contacts, quality_gate_for_date,
+                            planet_pos_fn=planet_pos_fn)
     eval_lambda = lambda t: evaluate(t)["lambda_raw"]  # noqa: E731
 
     breakpoints = sorted({b for c in contacts
@@ -545,18 +602,23 @@ def _table_columns(conn, table: str) -> set[str]:
 def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
     rows = conn.execute(
         "SELECT contact_id, body, relation, target_type, target_ref,"
-        " t_in, t_exact, t_out, orb_max_deg, completeness_state"
+        " target_longitude_deg, t_in, t_exact, t_out, orb_max_deg,"
+        " completeness_state"
         " FROM kala_gochara_contacts"
         " WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchall()
     out = []
-    for (cid, body, relation, ttype, tref, t_in, t_exact, t_out,
+    for (cid, body, relation, ttype, tref, tlon, t_in, t_exact, t_out,
          orb_max, completeness) in rows:
         out.append({
             "contact_id": cid, "body": body, "relation": relation,
             "target_type": ttype, "target_ref": tref,
+            "target_longitude_deg": float(tlon) if tlon is not None else None,
             "orb_max_deg": float(orb_max) if orb_max is not None else None,
             "completeness_state": completeness,
+            "_target_lon_deg": float(tlon) if tlon is not None else None,
+            "_orb_deg": (float(orb_max) if orb_max is not None
+                         else ORB_MAX_DEG_FALLBACK),
             "_t_in_jd": jd_of(t_in),
             "_t_exact_jd": jd_of(t_exact) if t_exact is not None else None,
             "_t_out_jd": jd_of(t_out),
