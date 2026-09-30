@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Pravāha A5.1 round 6 — STATIC contract checks on migrations 1153–1157, their
+ * Pravāha A5.1 round 7 — STATIC contract checks on migrations 1153–1157, their
  * preflights, the runner's protected-file refusal and the deploy window,
  * asserted against the on-disk sources (CLAUDE.md §N.8: the detector reads
  * what ships).
@@ -25,12 +25,17 @@
  *      triggers; SUBSTRATE ORDER (v1_4): every table without a family key of
  *      its own takes the chart key of the chart the transaction serves FIRST
  *      (or refuses without a chart context), so no substrate unique/tuple
- *      wait can be held into a chart-key wait.
+ *      wait can be held into a chart-key wait; ONE CHART PER TRANSACTION
+ *      (v1_5, N18): the transaction is bound at the lock boundary, a
+ *      different chart is refused before another key, and the canonical-only
+ *      scope is enforced there.
  *   3. NO custom verifier and NO replay GUC; presence checks only.
  *   4. 1153–1157 apply through the protected public-schema window; the routine
  *      runner refuses them.
- *   D. N14/N17 unambiguous coverage facts over the ACCEPTED domain (finite,
- *      bounded, non-empty horizons only — everything else refused); N10/N16
+ *   D. N14/N17/N19 unambiguous coverage facts over the ACCEPTED domain
+ *      (finite, bounded, non-empty horizons with every bound within
+ *      1000-01-01 ≤ t < 3000-01-01 UTC, AD only — everything else refused, so
+ *      the four-digit ISO encoding is a lossless bijection); N10/N16
  *      consumer contract (ka_gochara_coverage_drift + seal refusal +
  *      window-contributor applicability re-checked over EVERY membership at
  *      the seal boundary); N7/N15 precision-only re-sync skips coverage
@@ -125,7 +130,7 @@ const EVENT_CLASS_LIST = [
   'travel_event',
 ]
 
-describe('A5.1 migrations 1153–1157 — static contract (round 5, corrected lock ruling)', () => {
+describe('A5.1 migrations 1153–1157 — static contract (round 7, corrected lock ruling)', () => {
   it.each(ALL)('amendment 2: migration %i owns NO transaction (no BEGIN/COMMIT; runner owns it)', n => {
     const sql = readMigration(n)
     expect(sql).not.toMatch(/^\s*BEGIN\s*;/im)
@@ -296,6 +301,22 @@ describe('A5.1 migrations 1153–1157 — static contract (round 5, corrected lo
     // the check precedes the lock call in both refusing helpers
     expect(chart.indexOf('lock-order violation')).toBeLessThan(chart.indexOf('pg_advisory_xact_lock('))
     expect(global.indexOf('lock-order violation')).toBeLessThan(global.indexOf('pg_advisory_xact_lock('))
+    // N18: ONE chart per transaction — bound at the lock boundary; a different chart and a non-canonical chart are
+    // refused BEFORE any key is requested; the binding marker is written only here
+    expect(chart).toContain("current_setting('gochara5.bound_chart', true), '') NOT IN ('', p_chart_id::text)")
+    expect(chart).toContain('a transaction serves ONE chart')
+    expect(chart).toContain("IF p_chart_id <> '482012f1-710e-4a25-994a-93821f5871aa'::uuid THEN")
+    expect(chart).toContain('is not governed by the Gochara-5 contract (D-SCOPE')
+    expect(chart.indexOf('a transaction serves ONE chart')).toBeLessThan(chart.indexOf('pg_advisory_xact_lock('))
+    expect(chart.indexOf('is not governed by the Gochara-5 contract')).toBeLessThan(chart.indexOf('pg_advisory_xact_lock('))
+    expect(chart).toContain("set_config('gochara5.bound_chart', p_chart_id::text, true)")
+    for (const n of ALL) {
+      const others = functionBodies(readMigration(n)).filter(f => f.name !== 'ka_gochara_lock_chart').map(f => f.body).join('\n')
+      expect(others, `${n}: only ka_gochara_lock_chart may write the binding`).not.toContain("set_config('gochara5.bound_chart'")
+    }
+    const substrate = functionBodies(sub).find(f => f.name === 'ka_gochara_substrate_chart_lock')!.body
+    expect(substrate).toContain("bound := current_setting('gochara5.bound_chart', true);")
+    expect(substrate).toContain('but declares context')
   })
 
   it('ruling B (N13): every mutating trigger function is classified — chart-first, global-EXCLUSIVE-only, global-SHARED-after-chart, no-lock constraint-guarded, or locked by a predecessor', () => {
@@ -430,16 +451,24 @@ describe('A5.1 migrations 1153–1157 — static contract (round 5, corrected lo
     const rec = readMigration(1155)
     const win = readMigration(1156)
     expect(sub).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_horizon_finite_ok(h tstzrange)')
-    expect(sub).toContain("AND lower(h) > '-infinity'::timestamptz AND lower(h) < 'infinity'::timestamptz")
-    expect(sub).toContain("AND upper(h) > '-infinity'::timestamptz AND upper(h) < 'infinity'::timestamptz")
+    // N19: the accepted era — every bound within 1000-01-01 ≤ t < 3000-01-01 UTC (AD); infinity is excluded by the same bounds
+    expect(sub).toContain("AND lower(h) >= '1000-01-01 00:00:00+00'::timestamptz")
+    expect(sub).toContain("AND upper(h) <  '3000-01-01 00:00:00+00'::timestamptz")
     expect(sub).toContain('AND NOT lower_inf(h) AND NOT upper_inf(h)')
     expect(sub).toContain("ka_gochara_horizon_finite_ok(tstzrange('infinity', 'infinity', '[]')) IS FALSE")
     expect(sub).toContain("ka_gochara_horizon_finite_ok(tstzrange('-infinity', 'infinity', '[]')) IS FALSE")
+    expect(sub).toContain("ka_gochara_horizon_finite_ok(tstzrange('2025-03-01 00:00:00+00 BC', '2025-04-01 00:00:00+00 BC', '[)')) IS FALSE")
+    expect(sub).toContain("ka_gochara_horizon_finite_ok(tstzrange('1000-01-01 00:00:00+00', '2999-12-31 23:59:59.999999+00', '[]')) IS TRUE")
+    expect(sub).toContain('AD only')
     expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_facts(p_convention_id text, p_completed_horizon tstzrange, p_relations_searched text[])')
     expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_facts_horizon(f jsonb)')
     // the encoder REFUSES anything outside the accepted domain — it never meets infinity
     expect(rec).toContain('IF public.ka_gochara_horizon_finite_ok(p_completed_horizon) IS NOT TRUE THEN')
-    expect(rec).toContain("RAISE EXCEPTION 'ka_gochara_coverage_facts: unsupported horizon % (N17)")
+    expect(rec).toContain("RAISE EXCEPTION 'ka_gochara_coverage_facts: unsupported horizon % (N17/N19)")
+    expect(rec).toContain("tstzrange('2025-03-01 00:00:00+00 BC', '2025-04-01 00:00:00+00 BC', '[)'),   -- N19: the reviewer's H_BC")
+    expect(rec).toContain('IF n_raised <> 10 THEN')
+    expect(rec).toContain("= '1000-01-01T00:00:00.000000Z'")
+    expect(rec).toContain("= '2999-12-31T23:59:59.999999Z'")
     expect(rec).not.toContain("'lower_inf'")
     expect(rec).not.toContain("'empty', true")
     expect(rec).toContain('jsonb_agg(to_jsonb(x) ORDER BY x NULLS FIRST)')
@@ -447,10 +476,9 @@ describe('A5.1 migrations 1153–1157 — static contract (round 5, corrected lo
     expect(rec).toContain("ARRAY['conjunction', NULL]")
     expect(rec).toContain("ARRAY['aspect,conjunction']")
     expect(rec).toContain("tstzrange('-infinity', 'infinity', '[]'),\n                             tstzrange('infinity', 'infinity', '[]'),")
-    expect(rec).toContain('IF n_raised <> 7 THEN')
     // consumer boundaries: partition horizon refused by both guards, window interval and support intervals CHECKed
-    expect(rec).toContain("coverage not applicable (N17): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range")
-    expect(win).toContain("coverage not applicable (N17): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range")
+    expect(rec).toContain("coverage not applicable (N17/N19): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range within 1000-01-01 <= t < 3000-01-01 UTC (AD)")
+    expect(win).toContain("coverage not applicable (N17/N19): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range within 1000-01-01 <= t < 3000-01-01 UTC (AD)")
     expect(win).toContain('CONSTRAINT kgew_interval_finite_ck')
     expect(win).toContain('CHECK (public.ka_gochara_horizon_finite_ok(interval) IS TRUE)')
     expect(rec).toContain('WHERE public.ka_gochara_horizon_finite_ok(r) IS NOT TRUE')   // ka_gochara_intervals_ok

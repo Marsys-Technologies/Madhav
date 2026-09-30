@@ -10,9 +10,9 @@
 --                 — every write under the Gochara-5 chart family key, then
 --                 the global family key SHARED (steward ruling B); the
 --                 complete membership invariant re-checked at the SEAL
---                 boundary (N16); finite horizons only (N17). Depends on
---                 1154, 1155 and 1081 (kala_gochara_coverage). Round-6 per
---                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_4 on the round-5 rewrite
+--                 boundary (N16); finite AD-era horizons only (N17/N19).
+--                 Depends on 1154, 1155 and 1081 (kala_gochara_coverage).
+--                 Round-7 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_5 on rounds 5–6
 --                 under the steward's corrected lock ruling. Never applied
 --                 anywhere — in-place rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
@@ -76,9 +76,11 @@
 -- incompatible/partition_missing; serve-time consumers read this function
 -- and treat `incompatible` as "re-validate before use". The stored snapshot
 -- is never silently refreshed — it is the evidence of what was validated.
--- A partition that later became NON-FINITE (N17: empty, unbounded or a
--- ±infinity bound) is `incompatible` outright — the encoder is never asked
--- to encode it, so no accepted snapshot can ever equal one.
+-- A partition that later LEFT THE ACCEPTED DOMAIN (N17/N19: empty, unbounded,
+-- a ±infinity bound, a BC bound or a year outside [1000, 3000)) is
+-- `incompatible` outright — the encoder is never asked to encode it, so no
+-- accepted snapshot can ever equal one (the reviewer's H_AD → H_BC
+-- replacement is unsealable).
 --
 -- asset_registry: deliberately NOT registered (same disposition as 1081).
 --
@@ -389,7 +391,7 @@ BEGIN
       cov.partition_kind, cov.partition_key;
   END IF;
   IF public.ka_gochara_horizon_finite_ok(cov.completed_horizon) IS NOT TRUE THEN
-    RAISE EXCEPTION 'ka_gochara_eval_window coverage not applicable (N17): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range — the Gochara-5 contract admits finite horizons only',
+    RAISE EXCEPTION 'ka_gochara_eval_window coverage not applicable (N17/N19): partition (%, %) completed_horizon % is not a finite, bounded, non-empty range within 1000-01-01 <= t < 3000-01-01 UTC (AD) — the Gochara-5 contract admits such horizons only',
       cov.partition_kind, cov.partition_key, cov.completed_horizon;
   END IF;
   facts := public.ka_gochara_coverage_facts(cov.convention_id, cov.completed_horizon, cov.relations_searched);
@@ -518,7 +520,7 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   SELECT c.consumer, c.consumer_id, c.coverage_partition_kind, c.coverage_partition_key,
          CASE
            WHEN cov.chart_id IS NULL THEN 'partition_missing'
-           WHEN public.ka_gochara_horizon_finite_ok(cov.completed_horizon) IS NOT TRUE THEN 'incompatible'   -- N17
+           WHEN public.ka_gochara_horizon_finite_ok(cov.completed_horizon) IS NOT TRUE THEN 'incompatible'   -- N17/N19: left the accepted domain
            WHEN cur.facts = c.coverage_facts THEN 'identical'
            WHEN cov.convention_id IS NOT DISTINCT FROM (c.coverage_facts ->> 'convention_id')
                 AND cov.relations_searched IS NOT NULL

@@ -1,12 +1,13 @@
 // @vitest-environment node
 /**
- * Pravāha A5.1 round 6 — LIVE-DB contract suite for migrations 1153–1157 and
+ * Pravāha A5.1 round 7 — LIVE-DB contract suite for migrations 1153–1157 and
  * their preflights, executed against a REAL throwaway Postgres (CLAUDE.md
  * §N.8: the test runs the on-disk SQL itself, never a hand-copied
  * re-implementation). Sibling of kala_gochara_windows_generation_guard.db.test.ts.
  *
- * Closes ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 (N1–N11), v1_3 (N12–N15, P2) and
- * v1_4 (residual N13 substrate order, N16, N17) under the steward's rulings —
+ * Closes ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 (N1–N11), v1_3 (N12–N15, P2),
+ * v1_4 (residual N13 substrate order, N16, N17) and v1_5 (N18 one chart per
+ * transaction, N19 timestamp era) under the steward's rulings —
  * including the CORRECTED lock ruling (family keys, never the orchestrator's)
  * — at runtime:
  *   - N3   the deploy route: the routine runner REFUSES 1153–1157; a role with
@@ -39,17 +40,27 @@
  *          tuple schedules are serialised (B waits on the advisory key
  *          before touching any substrate lock), never deadlocked — with the
  *          main connection holding its session locks throughout;
+ *          ONE CHART PER TRANSACTION (v1_5, N18): the transaction is bound to
+ *          the first chart it locks; a different chart is refused BEFORE any
+ *          other family key is requested; a non-canonical chart is refused at
+ *          the lock boundary (D-SCOPE); a substrate write whose declared
+ *          context disagrees with the binding is refused — the reviewer's
+ *          mixed-context unique-entry and sky-event tuple schedules are
+ *          refused outright, never waited on, never deadlocked;
  *   - N16  the seal boundary carries the complete membership invariant: a
  *          VALID membership, then a parent update (relations dropped,
  *          convention changed, window horizon narrowed, contributor support
  *          moved) → the seal is REFUSED; ka_gochara_membership_violations
  *          names the row and reason; after restoration the seal succeeds;
- *   - N17  finite horizons only: a partition with ±infinity / omitted bounds
- *          is refused by the record and window coverage guards; infinite
- *          window intervals and support intervals fail their CHECKs; the
- *          encoder RAISES on any non-finite horizon; a partition that later
- *          became infinite (full-horizon or the positive-infinity singleton)
- *          is `incompatible` and the seal is refused;
+ *   - N17/N19 finite AD-era horizons only (every bound within 1000-01-01 ≤ t
+ *          < 3000-01-01 UTC): a partition with ±infinity / omitted / BC /
+ *          out-of-range bounds is refused by the record and window coverage
+ *          guards; such window intervals and support intervals fail their
+ *          CHECKs; the encoder RAISES on any of them (the reviewer's H_BC
+ *          included) and round-trips AD horizons exactly at the era edges; a
+ *          validated AD consumer whose partition is replaced by H_BC (or an
+ *          infinite / out-of-range horizon) is `incompatible` and the seal is
+ *          refused;
  *   - N2/N5 rebuild ⇄ publication serialise in BOTH orders; the reviewer's
  *          lock-inversion schedule cannot deadlock (the publication path locks
  *          the chart first); membership ⇄ seal serialise in BOTH orders and
@@ -762,7 +773,7 @@ async function sealCount(generation: string): Promise<number> {
   return r.rows[0]!.n
 }
 
-describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, round 4)', () => {
+describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, round 7)', () => {
   beforeAll(async () => {
     // N11: validate the DRIVER's view of the target and connect with the resolved config only
     const config = resolveDisposableA51Config(TEST_DB_URL)
@@ -1236,6 +1247,80 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       await pool.query(`DELETE FROM ka_gochara_contact WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_Y])   // candidate cleanup
     })
 
+    it('N18 one chart per transaction: bound at the lock boundary before any substrate acquisition; a different chart is refused before another key; non-canonical charts are refused (D-SCOPE); the reviewer\'s mixed-context schedules are refused outright (main connection holding its session locks)', async () => {
+      const D = OTHER_CHART
+      const CID_Z = '10000000-0000-4000-8000-00000000001b'   // (OBJ_SAT_CONJ, 2)
+      const identityInsert = `INSERT INTO ka_gochara_contact_identity (contact_id, physical_object_id, occurrence_ordinal) VALUES ($1, $2, 2) ON CONFLICT DO NOTHING`
+      const EVENT_L = '10000000-0000-4000-8000-000000000022'   // inserted by the substrate-order case above
+      const advisoryHeld = async (c: Q) => (await c.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted`)).rows[0]!.n
+      const main = await pool.connect()
+      const a = await pool.connect()
+      const b = await pool.connect()
+      try {
+        await main.query(ORCH_CHART_KEY, [CHART])
+        await main.query(ORCH_GLOBAL_KEY)
+
+        // the seal function and the lock helper refuse a non-canonical chart before any key
+        await expect(pool.query(`SELECT ka_gochara_seal_generation($1, $2)`, [D, GEN])).rejects.toThrow(/not governed by the Gochara-5 contract \(D-SCOPE/)
+        await b.query('BEGIN')
+        await b.query('SAVEPOINT s')
+        await expect(b.query(`SELECT ka_gochara_lock_chart($1)`, [D])).rejects.toThrow(/not governed by the Gochara-5 contract/)
+        await b.query('ROLLBACK TO SAVEPOINT s')
+        expect(await advisoryHeld(b)).toBe(0)
+        // a declared non-canonical context is refused at the substrate write, before any key
+        await b.query(`SELECT set_config('gochara5.chart', $1, true)`, [D])
+        await b.query('SAVEPOINT s2')
+        await expect(b.query(identityInsert, [CID_Z, OBJ_SAT_CONJ])).rejects.toThrow(/not governed by the Gochara-5 contract/)
+        await b.query('ROLLBACK TO SAVEPOINT s2')
+        expect(await advisoryHeld(b)).toBe(0)
+        await b.query('ROLLBACK')
+        // bound to C: a different chart is refused BEFORE another family key is requested (binding precedes scope)
+        await b.query('BEGIN')
+        await b.query(`SELECT ka_gochara_lock_chart($1)`, [CHART])
+        expect(await advisoryHeld(b)).toBe(1)
+        await b.query('SAVEPOINT s3')
+        await expect(b.query(`SELECT ka_gochara_lock_chart($1)`, [D])).rejects.toThrow(/bound to chart 482012f1-710e-4a25-994a-93821f5871aa and may not take the family key of chart 00000000-0000-4000-8000-0000000000aa/)
+        await b.query('ROLLBACK TO SAVEPOINT s3')
+        expect(await advisoryHeld(b)).toBe(1)   // still exactly C
+        // bound to C but declaring context D: the substrate write is refused (it would run under C's key while claiming D)
+        await b.query(`SELECT set_config('gochara5.chart', $1, true)`, [D])
+        await b.query('SAVEPOINT s4')
+        await expect(b.query(identityInsert, [CID_Z, OBJ_SAT_CONJ])).rejects.toThrow(/bound to chart 482012f1-710e-4a25-994a-93821f5871aa but declares context 00000000-0000-4000-8000-0000000000aa/)
+        await b.query('ROLLBACK TO SAVEPOINT s4')
+        await b.query('ROLLBACK')
+
+        // the reviewer's mixed-context schedule 1: A holds C; B declares D and inserts Y — refused at once, so A's
+        // insert of the same identity never waits and B never comes to wait for C while holding a unique entry
+        await a.query('BEGIN')
+        await a.query(`UPDATE ka_gochara_contact SET created_at = created_at WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_1])
+        await b.query('BEGIN')
+        await b.query(`SELECT set_config('gochara5.chart', $1, true)`, [D])
+        await expect(b.query(identityInsert, [CID_Z, OBJ_SAT_CONJ])).rejects.toThrow(/not governed by the Gochara-5 contract/)
+        const aIns = a.query(identityInsert, [CID_Z, OBJ_SAT_CONJ])
+        expect(await settledWithin(aIns)).toBe('settled')
+        expect((await aIns).rowCount).toBe(1)
+        await b.query('ROLLBACK')
+        await a.query('COMMIT')
+        // the sky-event tuple variant: B declares D and updates the event — refused before any tuple lock; A's update settles
+        await a.query('BEGIN')
+        await a.query(`UPDATE ka_gochara_contact SET created_at = created_at WHERE chart_id = $1 AND generation = $2 AND contact_id = $3`, [CHART, GEN_L, CID_1])
+        await b.query('BEGIN')
+        await b.query(`SELECT set_config('gochara5.chart', $1, true)`, [D])
+        await expect(b.query(`UPDATE ka_gochara_sky_event SET longitude = longitude WHERE event_id = $1`, [EVENT_L])).rejects.toThrow(/not governed by the Gochara-5 contract/)
+        const aUpd = a.query(`UPDATE ka_gochara_sky_event SET longitude = longitude WHERE event_id = $1`, [EVENT_L])
+        expect(await settledWithin(aUpd)).toBe('settled')
+        await b.query('ROLLBACK')
+        await a.query('COMMIT')
+        const stillHeld = await main.query<{ n: number }>(`SELECT COUNT(*)::int AS n FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid() AND granted`)
+        expect(stillHeld.rows[0]!.n).toBe(2)
+      } finally {
+        await main.query(ORCH_UNLOCK_ALL).catch(() => undefined)
+        await a.query('ROLLBACK').catch(() => undefined)
+        await b.query('ROLLBACK').catch(() => undefined)
+        main.release(); a.release(); b.release()
+      }
+    })
+
     it('REPEATABLE READ (and SERIALIZABLE) writes are refused explicitly', async () => {
       for (const level of ['REPEATABLE READ', 'SERIALIZABLE']) {
         const c = await pool.connect()
@@ -1481,7 +1566,7 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       await expect(pool.query(`UPDATE ka_gochara_relationship_record SET severity = 1 WHERE record_id = $1`, [rec])).rejects.toThrow(/SEALED/)
     })
 
-    it('N14/N17: the coverage-facts encoding is unambiguous over the accepted domain — NULL elements and element boundaries distinguished; empty, unbounded and ±infinity horizons REFUSED', async () => {
+    it('N14/N17/N19: the coverage-facts encoding is a lossless bijection over the accepted domain (AD, years 1000–2999) — NULL elements and element boundaries distinguished; empty, unbounded, ±infinity, BC and out-of-range horizons REFUSED', async () => {
       const H = `tstzrange('2025-01-01T00:00Z','2026-01-01T00:00:00.5Z','[)')`
       const facts = async (h: string, rel: string) =>
         (await pool.query<{ f: Record<string, unknown> }>(`SELECT ka_gochara_coverage_facts('c', ${h}, ${rel}) AS f`)).rows[0]!.f
@@ -1503,49 +1588,87 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       const rt = await pool.query<{ ok: boolean }>(
         `SELECT ka_gochara_facts_horizon(ka_gochara_coverage_facts('c', ${H}, ARRAY['a'])) = ${H} AS ok`)
       expect(rt.rows[0]!.ok).toBe(true)
-      // N17: the reviewer's infinity collision and every other non-finite horizon are REFUSED, not encoded —
-      // the encoding never meets infinity (the previous round encoded both of these identically)
+      // N17/N19: the reviewer's infinity collision, the reviewer's H_BC, and every other horizon outside the accepted
+      // domain are REFUSED, not encoded — the encoding never meets infinity or a BC/out-of-range year
       for (const h of [`tstzrange('-infinity','infinity','[]')`, `tstzrange('infinity','infinity','[]')`,
         `'empty'::tstzrange`, `'(,)'::tstzrange`, `tstzrange('2025-01-01T00:00Z', NULL, '[)')`,
-        `tstzrange('2025-01-01T00:00Z', 'infinity', '[)')`, `NULL::tstzrange`]) {
-        await expect(facts(h, `ARRAY['a']::text[]`), h).rejects.toThrow(/unsupported horizon .*\(N17\)/)
+        `tstzrange('2025-01-01T00:00Z', 'infinity', '[)')`, `NULL::tstzrange`,
+        `tstzrange('2025-03-01 00:00:00+00 BC','2025-04-01 00:00:00+00 BC','[)')`,
+        `tstzrange('0999-12-31 23:59:59+00','2025-04-01 00:00:00+00','[)')`,
+        `tstzrange('2025-03-01 00:00:00+00','3000-01-01 00:00:00+00','[)')`]) {
+        await expect(facts(h, `ARRAY['a']::text[]`), h).rejects.toThrow(/unsupported horizon .*\(N17\/N19\)/)
       }
+      // N19: within the domain the encoding is a lossless bijection — exact at the era edges, and H_AD ≠ anything else
+      const edges = `tstzrange('1000-01-01 00:00:00+00','2999-12-31 23:59:59.999999+00','[]')`
+      const edgeFacts = await facts(edges, `ARRAY['a']::text[]`)
+      expect(edgeFacts.horizon).toEqual({ lower: '1000-01-01T00:00:00.000000Z', lower_inc: true, upper: '2999-12-31T23:59:59.999999Z', upper_inc: true })
+      const rtEdges = await pool.query<{ ok: boolean }>(`SELECT ka_gochara_facts_horizon(ka_gochara_coverage_facts('c', ${edges}, ARRAY['a'])) = ${edges} AS ok`)
+      expect(rtEdges.rows[0]!.ok).toBe(true)
+      const fin = await pool.query<{ h: string; ok: boolean }>(
+        `SELECT h::text AS h, ka_gochara_horizon_finite_ok(h) AS ok FROM unnest(ARRAY[
+           tstzrange('2025-03-01 00:00:00+00','2025-04-01 00:00:00+00','[)'),
+           tstzrange('2025-03-01 00:00:00+00 BC','2025-04-01 00:00:00+00 BC','[)'),
+           tstzrange('1000-01-01 00:00:00+00','1000-01-02 00:00:00+00','[)'),
+           tstzrange('0999-12-31 00:00:00+00','1000-01-02 00:00:00+00','[)'),
+           tstzrange('2999-12-31 00:00:00+00','2999-12-31 23:59:59.999999+00','[]'),
+           tstzrange('2999-12-31 00:00:00+00','3000-01-01 00:00:00+00','[]')]) h`)
+      expect(fin.rows.map(r => r.ok)).toEqual([true, false, true, false, true, false])
     })
 
-    it('N17: non-finite horizons are refused at every consumer boundary — partition, window interval, support interval — and a partition that later becomes infinite is `incompatible` and unsealable', async () => {
+    it('N17/N19: horizons outside the accepted domain are refused at every consumer boundary — partition, window interval, support interval — and a validated AD consumer whose partition is replaced by an infinite / BC / out-of-range horizon is `incompatible` and unsealable', async () => {
       // a partition whose completed_horizon is the full horizon / the positive-infinity singleton / an omitted bound:
       // the writer cannot even compute its facts (the encoder refuses), and a consumer that brings its own facts is
       // refused by the guard BEFORE any comparison
       const anyFacts = '{"convention_id":"legacy:c0","horizon":{"lower":"2025-01-01T00:00:00.000000Z","lower_inc":true,"upper":"2026-01-01T00:00:00.000000Z","upper_inc":false},"relations_searched":["aspect","conjunction","residence"]}'
       for (const cls of ['travel_event', 'relocation', 'major_gain']) {
-        await expect(factsFor(pool, GEN_F, 'event_class', cls), cls).rejects.toThrow(/unsupported horizon .*\(N17\)/)
-        await expect(tx(c => insertRecord(c, { eventClass: cls, covKind: 'event_class', covKey: cls, factsOverride: anyFacts })), cls).rejects.toThrow(/\(N17\): partition \(event_class, .*\) completed_horizon .* is not a finite, bounded, non-empty range/)
-        await expect(tx(c => insertWindow(c, { eventClass: cls, intervalSql: `tstzrange('2025-03-01T00:00Z','2025-04-01T00:00Z')`, factsOverride: anyFacts })), cls).rejects.toThrow(/\(N17\): partition \(event_class, .*\) completed_horizon .* is not a finite, bounded, non-empty range/)
+        await expect(factsFor(pool, GEN_F, 'event_class', cls), cls).rejects.toThrow(/unsupported horizon .*\(N17\/N19\)/)
+        await expect(tx(c => insertRecord(c, { eventClass: cls, covKind: 'event_class', covKey: cls, factsOverride: anyFacts })), cls).rejects.toThrow(/\(N17\/N19\): partition \(event_class, .*\) completed_horizon .* is not a finite, bounded, non-empty range within 1000-01-01 <= t < 3000-01-01 UTC \(AD\)/)
+        await expect(tx(c => insertWindow(c, { eventClass: cls, intervalSql: `tstzrange('2025-03-01T00:00Z','2025-04-01T00:00Z')`, factsOverride: anyFacts })), cls).rejects.toThrow(/\(N17\/N19\): partition \(event_class, .*\) completed_horizon .* is not a finite, bounded, non-empty range within 1000-01-01 <= t < 3000-01-01 UTC \(AD\)/)
       }
       // window interval and record support intervals CHECK the same predicate (the guards defer to the CHECK)
       await expect(tx(c => insertWindow(c, { intervalSql: `tstzrange('2025-03-01T00:00Z','infinity','[)')`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_finite_ck/)
       await expect(tx(c => insertWindow(c, { intervalSql: `'(,)'::tstzrange`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_finite_ck/)
+      await expect(tx(c => insertWindow(c, { intervalSql: `tstzrange('2025-03-01 00:00:00+00 BC','2025-04-01 00:00:00+00 BC','[)')`, peakSql: 'NULL' }))).rejects.toThrow(/kgew_interval_finite_ck/)
       await expect(tx(c => insertRecord(c, { intervalsSql: `ARRAY[tstzrange('-infinity','2025-03-11T00:00Z','(]')]::tstzrange[]` }))).rejects.toThrow(/kgrr_support_intervals_ck/)
       await expect(tx(c => insertRecord(c, { intervalsSql: `ARRAY[tstzrange('2025-03-09T00:00Z', NULL, '[)')]::tstzrange[]` }))).rejects.toThrow(/kgrr_support_intervals_ck/)
-      // the reviewer's drift: a finite consumer validated, then its partition set to the full horizon / the positive-infinity singleton
+      await expect(tx(c => insertRecord(c, { intervalsSql: `ARRAY[tstzrange('2025-03-09 00:00:00+00 BC','2025-03-11 00:00:00+00 BC')]::tstzrange[]` }))).rejects.toThrow(/kgrr_support_intervals_ck/)
+      // the reviewer's drift (N17 and N19's complete sealing counterexample): a valid AD record, AD window and membership;
+      // then ONLY the class partition's completed_horizon is replaced by an infinite horizon / the reviewer's H_BC / an out-of-range year
       const { r, w } = await tx(async c => {
         await seedLedger(c, { id: CID_2, objectId: OBJ_MARS, ordinal: 2, generation: GEN_I })
         const r = await insertRecord(c, { generation: GEN_I, contactId: CID_2 })
         const w = await insertWindow(c, { generation: GEN_I })
+        await addMembership(c, w, r, { generation: GEN_I })
         return { r, w }
       })
       const drift = async () => (await pool.query<{ consumer: string; consumer_id: string; drift: string; current_facts: unknown }>(
         `SELECT consumer, consumer_id, drift, current_facts FROM ka_gochara_coverage_drift($1, $2) ORDER BY consumer`, [CHART, GEN_I])).rows
       expect((await drift()).map(x => x.drift)).toEqual(['identical', 'identical'])
-      for (const h of [`tstzrange('-infinity','infinity','[]')`, `tstzrange('infinity','infinity','[]')`, `'(,)'::tstzrange`]) {
-        await pool.query(`UPDATE kala_gochara_coverage SET completed_horizon = ${h} WHERE chart_id = $1 AND generation = $2 AND partition_kind = 'event_class' AND partition_key = 'marriage'`, [CHART, GEN_I])
+      // pin the class partition to the reviewer's H_AD and re-bind the candidate window to it, so the H_BC replacement
+      // below carries EXACTLY the same digits as the stored AD facts (the era is the only difference)
+      const H_AD = `tstzrange('2025-03-01 00:00:00+00','2025-04-01 00:00:00+00','[)')`
+      const H_BC = `tstzrange('2025-03-01 00:00:00+00 BC','2025-04-01 00:00:00+00 BC','[)')`
+      const setClass = (h: string) => pool.query(`UPDATE kala_gochara_coverage SET completed_horizon = ${h} WHERE chart_id = $1 AND generation = $2 AND partition_kind = 'event_class' AND partition_key = 'marriage'`, [CHART, GEN_I])
+      await setClass(H_AD)
+      await pool.query(
+        `UPDATE ka_gochara_eval_window SET coverage_facts = (
+           SELECT ka_gochara_coverage_facts(convention_id, completed_horizon, relations_searched) FROM kala_gochara_coverage
+           WHERE chart_id = $2 AND generation = $3 AND partition_kind = 'event_class' AND partition_key = 'marriage')
+         WHERE window_id = $1`, [w, CHART, GEN_I])
+      expect((await drift()).map(x => x.drift)).toEqual(['identical', 'identical'])
+      expect((await pool.query(`SELECT 1 FROM ka_gochara_membership_violations($1, $2)`, [CHART, GEN_I])).rowCount).toBe(0)
+      for (const h of [`tstzrange('-infinity','infinity','[]')`, `tstzrange('infinity','infinity','[]')`, `'(,)'::tstzrange`,
+        H_BC,   // the reviewer's N19 counterexample: identical digits, BC era — previously encoded identically to H_AD
+        `tstzrange('0999-03-01 00:00:00+00','2025-04-01 00:00:00+00','[)')`,
+        `tstzrange('2025-03-01 00:00:00+00','3000-01-01 00:00:00+00','[)')`]) {
+        await setClass(h)
         const rows = await drift()
         expect(rows.find(x => x.consumer === 'eval_window')!, h).toMatchObject({ consumer_id: w, drift: 'incompatible', current_facts: null })
         expect(rows.find(x => x.consumer === 'relationship_record')!, h).toMatchObject({ consumer_id: r, drift: 'identical' })
         await expect(tx(c => publishAndSeal(c, GEN_I)), h).rejects.toThrow(/INCOMPATIBLE/)
         expect(await sealCount(GEN_I)).toBe(0)
       }
-      await pool.query(`UPDATE kala_gochara_coverage SET completed_horizon = ${HORIZON} WHERE chart_id = $1 AND generation = $2 AND partition_kind = 'event_class' AND partition_key = 'marriage'`, [CHART, GEN_I])
+      await setClass(H_AD)
       expect((await drift()).map(x => x.drift)).toEqual(['identical', 'identical'])
       await tx(c => publishAndSeal(c, GEN_I))
       expect(await sealCount(GEN_I)).toBe(1)
@@ -1786,7 +1909,14 @@ describe.skipIf(!TEST_DB_URL)('A5.1 migrations 1153–1157 (live disposable DB, 
       await expect(tx(async c => { await chartCtx(c); await c.query(`${av} VALUES ('c-av','rekhā','bindu','BPHS2:35666-35684', ARRAY['ashtakavarga_bindu'])`) })).resolves.toBeUndefined()
       await expect(pool.query(`UPDATE ka_gochara_av_polarity_declaration SET source_ref = 'x'`)).rejects.toThrow(/insert-only/)
       await expect(tx(c => insertRecord(c, { eventClass: 'bereavement', affected: 'father', frameKind: 'moon', valence: 'adverse' }))).rejects.toThrow(/kgrr_relative_frame_ck/)
-      await expect(seedLedger(pool, { id: CID_1, objectId: OBJ_MARS, ordinal: 1, generation: GEN_X, chart: OTHER_CHART })).rejects.toThrow(/kgc_canonical_chart_ck/)
+      // D-SCOPE: a non-canonical chart is refused at the lock boundary (N18) — kgc_canonical_chart_ck is the structural backstop behind it
+      await expect(seedLedger(pool, { id: CID_1, objectId: OBJ_MARS, ordinal: 1, generation: GEN_X, chart: OTHER_CHART })).rejects.toThrow(/chart 00000000-0000-4000-8000-0000000000aa is not governed by the Gochara-5 contract \(D-SCOPE/)
+      await pool.query(`ALTER TABLE ka_gochara_contact DISABLE TRIGGER ka_gochara_contact_1_write_guard`)
+      try {
+        await expect(seedLedger(pool, { id: CID_1, objectId: OBJ_MARS, ordinal: 1, generation: GEN_X, chart: OTHER_CHART })).rejects.toThrow(/kgc_canonical_chart_ck/)
+      } finally {
+        await pool.query(`ALTER TABLE ka_gochara_contact ENABLE TRIGGER ka_gochara_contact_1_write_guard`)
+      }
     })
 
     it('§N.3 rebuild ordering on a CANDIDATE generation: deletes cascade membership, never block', async () => {

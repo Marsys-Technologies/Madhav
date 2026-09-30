@@ -3,12 +3,12 @@
 --                 its per-(chart × generation) ledger, the explicit publication
 --                 seal, and the legacy-convention bridge
 --                 (GOCHARA_DESIGN_SPECS_v1_4 §6.1/§7/§10, FROZEN 2026-09-30).
---                 Round-6 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_4 (residual
---                 N13/N2 mixed substrate order, N16/N10 seal-boundary
---                 membership invariant, N17/N14 finite horizons) on top of
---                 the round-5 rewrite (v1_3: N12–N15, P2) under the steward's
---                 CORRECTED lock ruling of 2026-09-30. 1153–1157 were never
---                 applied anywhere, so this is an in-place rewrite.
+--                 Round-7 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_5 (N18 one chart
+--                 per transaction, N19 timestamp era) on round 6 (v1_4:
+--                 substrate order, seal-boundary membership invariant, finite
+--                 horizons) and round 5 (v1_3: N12–N15, P2) under the
+--                 steward's CORRECTED lock ruling of 2026-09-30. 1153–1157
+--                 were never applied anywhere, so this is an in-place rewrite.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
 -- Numbering: 1153 sits inside this lane's granted block (1150–1159 per
@@ -84,6 +84,17 @@
 --    thus always precedes any substrate tuple or unique lock; the
 --    registry/chart markers stay as they are (a registry transaction cannot
 --    write substrate rows either — it would need a chart key).
+--    ONE CHART PER TRANSACTION (N18, v1_5) [steward ruling]: a transaction
+--    is BOUND to the first chart it locks (gochara5.bound_chart, written
+--    only by ka_gochara_lock_chart) at the context/lock boundary, before any
+--    substrate acquisition; a request for a DIFFERENT chart in the same
+--    transaction is refused BEFORE another family key is requested, and a
+--    substrate write whose declared context disagrees with the binding is
+--    refused too. The existing canonical-only scope (D-SCOPE: every
+--    chart-scoped table CHECKs chart_id = 482012f1-…) is enforced at that
+--    same boundary: a non-canonical chart_id is refused before any key. So
+--    no transaction can hold substrate unique/tuple locks under one chart
+--    and then wait for another chart's key.
 -- 3b. [steward ruling] THE SEAL BOUNDARY CARRIES THE COMPLETE MEMBERSHIP
 --    INVARIANT (N16/N10): candidate records, windows and their coverage
 --    partitions stay updateable before publication, and no trigger sits on
@@ -94,15 +105,19 @@
 --    support intervals ⊆ window horizon — ka_gochara_membership_violations,
 --    1156) and refuses the seal on any violation, exactly as it refuses
 --    incompatible coverage drift.
--- 3c. [steward ruling] FINITE HORIZONS ONLY (N17/N14): the Gochara-5
---    contract admits finite, bounded, non-empty horizons — never an omitted
---    bound, never a ±infinity timestamp bound, never an empty range.
+-- 3c. [steward ruling] FINITE, AD-ERA HORIZONS ONLY (N17/N19/N14): the
+--    Gochara-5 contract admits finite, bounded, non-empty horizons whose
+--    every bound lies within 1000-01-01 ≤ t < 3000-01-01 UTC (AD only; our
+--    horizons are 1998–2084) — never an omitted bound, never a ±infinity
+--    bound, never an empty range, never a BC or out-of-range year.
 --    ka_gochara_horizon_finite_ok is CHECKed on window intervals and record
 --    support intervals, the coverage guards refuse a partition whose
---    completed_horizon is not finite, ka_gochara_coverage_facts RAISES on
---    any other input, and the drift classifier reports a partition that
---    later became non-finite as `incompatible`. The facts encoding therefore
---    never meets infinity, and is unambiguous over its whole accepted domain.
+--    completed_horizon is outside that domain, ka_gochara_coverage_facts
+--    RAISES on any other input, and the drift classifier reports a partition
+--    that later left the domain as `incompatible`. Within the domain the
+--    ISO-8601 'YYYY-MM-DDTHH:MI:SS.USZ' encoding is a lossless bijection
+--    (four-digit AD years, microsecond exact), so serialisation is exact and
+--    unambiguous over the whole accepted domain.
 -- 4. NO CUSTOM DEFINITION VERIFIER, NO REPLAY GUC (N4, kept): migrate.ts
 --    tracks applied files by hash; a re-run is an untracked collision and
 --    the gate BLOCKS it; post-apply checks are presence checks.
@@ -395,15 +410,17 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT g IS NOT NULL AND g ~ '^([5-9]|[1-9][0-9]+)\.[0-9]+$';
 $$;
 
--- The accepted horizon domain (ruling 3c / N17): finite, bounded, non-empty.
--- Refuses NULL, 'empty', an omitted bound and a ±infinity timestamp bound.
+-- The accepted horizon domain (ruling 3c / N17 / N19): finite, bounded,
+-- non-empty, every bound within 1000-01-01 ≤ t < 3000-01-01 UTC (AD only).
+-- Refuses NULL, 'empty', an omitted bound, a ±infinity bound (implied by the
+-- era bounds), a BC bound and any year outside [1000, 3000).
 CREATE OR REPLACE FUNCTION public.ka_gochara_horizon_finite_ok(h tstzrange)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT h IS NOT NULL
      AND NOT isempty(h)
      AND NOT lower_inf(h) AND NOT upper_inf(h)
-     AND lower(h) > '-infinity'::timestamptz AND lower(h) < 'infinity'::timestamptz
-     AND upper(h) > '-infinity'::timestamptz AND upper(h) < 'infinity'::timestamptz;
+     AND lower(h) >= '1000-01-01 00:00:00+00'::timestamptz
+     AND upper(h) <  '3000-01-01 00:00:00+00'::timestamptz;
 $$;
 
 -- ── 0b. The Gochara-5 family keys and the ENFORCED order (rulings 2–3) ────
@@ -420,12 +437,23 @@ BEGIN
   IF p_chart_id IS NULL THEN
     RAISE EXCEPTION 'ka_gochara_lock_chart: chart_id is NULL';
   END IF;
+  -- ONE CHART PER TRANSACTION (N18): refuse a different chart BEFORE requesting another key
+  IF COALESCE(current_setting('gochara5.bound_chart', true), '') NOT IN ('', p_chart_id::text) THEN
+    RAISE EXCEPTION 'ka_gochara lock-order violation (steward ruling B / N18): this transaction is bound to chart % and may not take the family key of chart % — a transaction serves ONE chart (substrate unique/tuple locks taken under one chart can never be held into another chart''s key wait)',
+      current_setting('gochara5.bound_chart', true), p_chart_id;
+  END IF;
+  -- canonical-only scope (D-SCOPE), enforced at the lock boundary before any key
+  IF p_chart_id <> '482012f1-710e-4a25-994a-93821f5871aa'::uuid THEN
+    RAISE EXCEPTION 'ka_gochara_lock_chart refused: chart % is not governed by the Gochara-5 contract (D-SCOPE: the canonical chart 482012f1-710e-4a25-994a-93821f5871aa only — every chart-scoped table CHECKs it, and no family key is issued for any other chart)',
+      p_chart_id;
+  END IF;
   IF COALESCE(current_setting('gochara5.global_exclusive', true), '') = 'on' THEN
     RAISE EXCEPTION 'ka_gochara lock-order violation (steward ruling B / N13): this transaction already holds the gochara5 GLOBAL family key EXCLUSIVE (a rule-path registry/seal/membership mutation) and may not take a chart family key — registry mutations and chart-scoped mutations never share a transaction';
   END IF;
   PERFORM pg_advisory_xact_lock(hashtext('gochara5:chart:' || p_chart_id::text)::bigint);
   PERFORM set_config('gochara5.chart_locked', 'on', true);
-  PERFORM set_config('gochara5.chart', p_chart_id::text, true);   -- the chart this transaction serves
+  PERFORM set_config('gochara5.chart', p_chart_id::text, true);         -- the declared context
+  PERFORM set_config('gochara5.bound_chart', p_chart_id::text, true);   -- the binding (N18): written here only
 END;
 $$;
 
@@ -460,9 +488,10 @@ $$;
 COMMENT ON FUNCTION public.ka_gochara_lock_chart(uuid) IS
   'Takes the Gochara-5 per-chart FAMILY key (hashtext(''gochara5:chart:''||chart_id), '
   'transaction-scoped, EXCLUSIVE) — never the orchestrator''s session key, which lives on '
-  'the scheduler''s main connection while writers run on worker connections (N12). Refuses '
-  'a transaction that already holds the global family key EXCLUSIVE (enforced order, N13). '
-  'READ COMMITTED only.';
+  'the scheduler''s main connection while writers run on worker connections (N12). Binds the '
+  'transaction to ONE chart (N18): a different chart is refused before any other key is '
+  'requested; only the canonical chart is governed (D-SCOPE). Refuses a transaction that '
+  'already holds the global family key EXCLUSIVE (enforced order, N13). READ COMMITTED only.';
 COMMENT ON FUNCTION public.ka_gochara_lock_global() IS
   'Takes the Gochara-5 GLOBAL family key (hashtext(''gochara5:global''), transaction-scoped) '
   'EXCLUSIVE — rule-path registry, seal and membership mutations only. Refuses a '
@@ -530,12 +559,17 @@ $$;
 -- refused — the mixed order cannot occur.
 CREATE OR REPLACE FUNCTION public.ka_gochara_substrate_chart_lock()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
-DECLARE ctx text;
+DECLARE ctx text; bound text;
 BEGIN
-  IF COALESCE(current_setting('gochara5.chart_locked', true), '') = 'on' THEN
-    RETURN NULL;   -- the chart key already precedes this statement
-  END IF;
   ctx := current_setting('gochara5.chart', true);
+  IF COALESCE(current_setting('gochara5.chart_locked', true), '') = 'on' THEN
+    bound := current_setting('gochara5.bound_chart', true);
+    IF ctx IS NOT NULL AND ctx <> '' AND ctx IS DISTINCT FROM bound THEN
+      RAISE EXCEPTION '% write refused (steward ruling B / N18): this transaction is bound to chart % but declares context % — a transaction serves ONE chart; the substrate write would otherwise run under another chart''s key',
+        TG_TABLE_NAME, bound, ctx;
+    END IF;
+    RETURN NULL;   -- the bound chart's key already precedes this statement
+  END IF;
   IF ctx IS NULL OR ctx = '' THEN
     RAISE EXCEPTION '% write refused (steward ruling B / N13 substrate order): no chart context — a transaction that writes substrate, identity, bridge or declaration rows must first take the chart family key of the chart it serves (SELECT ka_gochara_lock_chart(chart_id)) or declare it (set_config(''gochara5.chart'', chart_id, true)), so the chart key always precedes any substrate tuple or unique-index lock',
       TG_TABLE_NAME;
@@ -1201,7 +1235,14 @@ BEGIN
           AND public.ka_gochara_horizon_finite_ok(tstzrange('-infinity', 'infinity', '[]')) IS FALSE
           AND public.ka_gochara_horizon_finite_ok(tstzrange('infinity', 'infinity', '[]')) IS FALSE
           AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-01-01T00:00Z', 'infinity', '[)')) IS FALSE
-          AND public.ka_gochara_horizon_finite_ok(tstzrange('-infinity', '2026-01-01T00:00Z', '(]')) IS FALSE) THEN
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('-infinity', '2026-01-01T00:00Z', '(]')) IS FALSE
+          -- N19: AD era, years [1000, 3000) only
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-03-01 00:00:00+00 BC', '2025-04-01 00:00:00+00 BC', '[)')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('0999-12-31 23:59:59.999999+00', '2025-04-01 00:00:00+00', '[)')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-03-01 00:00:00+00', '3000-01-01 00:00:00+00', '[)')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('2025-03-01 00:00:00+00', '3000-01-01 00:00:00+00', '[]')) IS FALSE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('1000-01-01 00:00:00+00', '2999-12-31 23:59:59.999999+00', '[]')) IS TRUE
+          AND public.ka_gochara_horizon_finite_ok(tstzrange('1998-01-01 00:00:00+00', '2085-01-01 00:00:00+00', '[)')) IS TRUE) THEN
     RAISE EXCEPTION 'migration 1153 post-apply check failed: helper self-test failed';
   END IF;
 END;
