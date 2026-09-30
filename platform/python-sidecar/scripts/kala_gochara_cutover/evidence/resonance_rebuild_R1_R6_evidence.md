@@ -275,3 +275,73 @@ equal True, content digest equal True;
 foreign partition untouched (full-row certificate AND content digest): True;
 rebuild after rollback reproduces the post-rebuild content digest: True.
 After counts by type: {'arudha': 67, 'bhava': 67, 'bhava_arudha': 67, 'dasha_lord_portfolio': 43, 'gulika_mandi_distance': 2, 'karaka': 43, 'lord': 51, 'mechanism_node': 9, 'sensitive_degree': 105, 'yamakantaka_difference': 8, 'yoga_constituent': 19}; rerun content digest equal True.
+
+## 9. Rework r5 run (ASTRA_REVIEW_A5_4 v1.3 amendments 1 / 3 / P2) — 2026-10-01
+
+Destination cluster asserted before any DDL (`--expect-cluster-id 7690735150699565094`).
+Database `rehearsal_a54_20260930200746_0be947` created by the run and dropped afterwards (True).
+
+Acceptance: **passed = True**, failures = [].
+
+**Schema derived from the checked-in migrations** (both runner roots, migrate.ts:834-835) —
+verbatim: 388_brahma_ghatana_ontology.sql, 456_brahma_event_ontology_dr13_shapes.sql, 459_gochara_resonance_map.sql, 550_gochara_resonance_map_event_class_fk.sql, 1080_nirmana_l3_gochara_resonance_target_resolution_state.sql; extracted DDL (CREATE TABLE / ALTER TABLE / CREATE
+INDEX ON / DO-blocks that ALTER, seeds and bookkeeping excluded): `bg_transit_rules` ← 266_bg_transit_tables.sql (3), 397_bg_transit_av_gates.sql (2); `chart_dashas` ← 206_ga3_supporting_tables.sql (4), 211_ga7_dashas_kp_sublevel.sql (26), 414_chart_dashas_kp_sublevel_unique_key.sql (2), 415_chart_dashas_condition_lookup_idx.sql (1), 428_chart_dashas_v11_dead_column_drop.sql (2), 652_nirmana_l1_ga_dashas_scope_cap_sentinel_vocab.sql (2), 882_nirmana_l1_ga_dashas_integrity_check_perf.sql (2); `chart_facts` ← 204_chart_facts.sql (6), 206_ga3_supporting_tables.sql (5), 209_ga5_sensitive_points_mv.sql (6), 215_chart_facts_formula_id.sql (3), 216_chart_facts_partial_indexes.sql (2), 359_fix_build_runs_active_index.sql (1), 429_ga_sade_sati_cycle_uniqueness_gate.sql (2), 539_chart_facts_verification_pass_status_check.sql (1); `ga_yoga_firings` ← 240_ga_yoga.sql (3), 411_ga_yoga_constituent_bala_strength.sql (1), 434_lane3_detector_registry_yogas.sql (1); `reference_signs` ← ws2_l0_reference.sql (2); stub: asset_registry
+only. Column types observed: `brahma_event_ontology.citations` = `ARRAY` (TEXT[]),
+`chart_facts.fact_id` = `text`.
+
+**Class universe** = the writer's `TARGET_EVENT_CLASSES` (26 classes).
+Retained non-eligible ontology rows present: ['birth_anchor'];
+`birth_anchor` present in the ontology: True; `birth_anchor`
+rows in the map: 0; map classes == eligible set:
+True; SIGNATURE_MODELS mirror == migration seed:
+True (diff []).
+
+Preimage certificate: snapshot `gochara_resonance_map_snap_482012f1_20260930200748` count 177, full-row digest
+`d236b0935d05fea8270ece77ccef9697`, equal to the live preimage: True.
+
+Class-associated identities and full retained-value tuples (expected from the migration-seeded
+ontology's own signature models and citations, scoped to the eligible classes):
+
+| Identity | expected | actual | equal |
+|---|---|---|---|
+| afflicted_rows | 6 | 6 | True |
+| arudha_rows | 67 | 67 | True |
+| exact_row_tuples | 419 | 419 | True |
+| lord_rows | 51 | 51 | True |
+| sensitive_rows | 105 | 105 | True |
+| yoga_rows | 19 | 19 | True |
+
+Runbook identity pairs, both EXCEPT directions: R-1 {'actual_not_expected': 0, 'expected_not_actual': 0}, R-2 {'actual_not_expected': 0, 'expected_not_actual': 0},
+R-3 {'actual_not_expected': 0, 'expected_not_actual': 0}, **R-4 (all lords) {'actual_not_expected': 0, 'expected_not_actual': 0}**, R-5 {'ontology_not_qualified': 0, 'qualified_not_in_ontology': 0}.
+Retained-value invariant violations: 0. Negative-result fact ids
+referenced: 0.
+
+Detector positive controls (inside a savepoint, rolled back; the ten named records are REQUIRED
+by `verify_acceptance` — P2):
+
+| Control | counts | preserved counts / global id sets / applied | measured (rows flagged) | detected |
+|---|---|---|---|---|
+| arudha_class_swap | preserved (required) | True / True / True | r1=(0, 0) r2=(2, 2) r3=(0, 0) r4=(0, 0) r5=(0, 0) values=0 | True |
+| birth_anchor_row_injected | changes by design | False / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) values=1 | True |
+| lord_token_missing | changes by design | False / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 1) r5=(0, 0) values=0 | True |
+| lord_token_wrong | preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(1, 1) r5=(0, 0) values=0 | True |
+| provenance_flipped | preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) values=2 | True |
+| qualifier_transferred | preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(1, 1) values=2 | True |
+| resolution_state_flipped | preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) values=2 | True |
+| sensitive_class_swap | preserved (required) | True / True / True | r1=(2, 2) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) values=0 | True |
+| weight_changed | preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) values=1 | True |
+| yoga_class_swap | preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(2, 2) r4=(0, 0) r5=(0, 0) values=2 | True |
+
+`lord_token_wrong` is the reviewer's replay (marriage:7L → marriage:2L, weight / state / citation /
+qualifier preserved, counts and global id sets unchanged): caught in BOTH R-4 directions;
+`lord_token_missing` in the second; `birth_anchor_row_injected` as a `class:not_eligible` value
+violation. Map restored after the controls: True; post-control digest equals
+the rerun digest: True.
+
+Rollback: pre-refusal certificate `c04bfc33fc08aae9fc5e407fa97203c5` == post-refusal
+`c04bfc33fc08aae9fc5e407fa97203c5`: True; wrong certificate
+refused before any DELETE: True; exact preimage restored — full-row digest equal
+True, content digest equal True; foreign
+partition untouched: True; rebuild after rollback reproduces the digest:
+True. After counts by type: {'arudha': 67, 'bhava': 67, 'bhava_arudha': 67, 'dasha_lord_portfolio': 43, 'gulika_mandi_distance': 2, 'karaka': 43, 'lord': 51, 'mechanism_node': 9, 'sensitive_degree': 105, 'yamakantaka_difference': 8, 'yoga_constituent': 19}; rerun content
+digest equal True.
