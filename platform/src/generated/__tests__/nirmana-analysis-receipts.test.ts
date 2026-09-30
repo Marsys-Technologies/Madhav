@@ -516,9 +516,12 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // r3 (ASTRA v1.2 closure): the same three writers moved again; ONE
     // successor re-admitted over the then-current baseline d4feada9b from the
     // r3 digest regeneration commit.
-    const source = 'de07494333a770192dd8d8a47cc2aae91f31be79'
+    // r5 (ASTRA v1.3 closure): ka_gochara_v3_century_materialize moved again
+    // (gate.py identity/testimony); ONE successor re-admitted over the
+    // then-current baseline 678ca1776 from the r5 digest regeneration commit.
+    const source = 'a7fa8c25e1db78f01c2d33036b1a020501555704'
     const pin = layerPinRecord.layers.L3
-    expect(pin.generation_id).toBe('l3:de07494333a7:395a24c4ec7c')
+    expect(pin.generation_id).toBe('l3:a7fa8c25e1db:5d43541d2fa6')
     expect(pin.supersedes_generation_id).toBe('l3:f4c69a6d0cd4:829354703812')
     expect(pin.convergence_commit).toBe(source)
     expect(pin.admission?.authority_decision).toBe(decision)
