@@ -223,11 +223,15 @@ def verify_acceptance(ver: dict) -> list[str]:
         f.append("notes: sensitive_degree.negative_dropped_zero_rows absent or zero (per-class exclusion counter)")
     if ver.get("rerun_digest_equal") is not True:
         f.append("idempotency: second writer run changed the partition content digest")
+    snap = ver.get("snapshot") or {}
+    if snap.get("full_row_matches_live_preimage") is not True or snap.get("recorded_count", 0) <= 0:
+        f.append("snapshot: the full-row certificate of the snapshot does not equal the live "
+                 "preimage (or the snapshot is empty) — the destructive phase must not run")
     rb = ver.get("rollback") or {}
     if rb.get("refused_on_stale_snapshot") is not True or rb.get("partition_untouched_after_refusal") is not True:
         f.append("rollback: the refuse-unless-verified block did not refuse a stale snapshot before deleting")
-    if rb.get("restored_digest_equal") is not True:
-        f.append("rollback: restored partition is not the exact preimage")
+    if rb.get("restored_full_row_digest_equal") is not True:
+        f.append("rollback: restored partition is not the exact preimage (full-row certificate)")
     if rb.get("other_chart_untouched") is not True:
         f.append("rollback: the foreign chart's partition changed")
     if rb.get("rebuild_after_rollback_digest_equal") is not True:
@@ -295,7 +299,15 @@ def _apply_migration_file(cur, name: str) -> None:
 
 
 def _digest(cur, table: str, chart_id: str):
+    """(count, CONTENT digest) — the ID-independent rerun comparison."""
     n, d = cur.execute(B.partition_digest_sql(table, chart_id)).fetchone()
+    return int(n), str(d)
+
+
+def _full_digest(cur, table: str, chart_id: str):
+    """(count, FULL-ROW digest) — the typed preimage certificate (every
+    column, ids and computed_at included)."""
+    n, d = cur.execute(B.full_row_digest_sql(table, chart_id)).fetchone()
     return int(n), str(d)
 
 
@@ -444,6 +456,11 @@ def _run_sql_script(dsn: str, script: str) -> str | None:
             return str(exc)
 
 
+class _StopBeforeDestructive(Exception):
+    """Raised when the snapshot certificate fails: the run stops before the
+    writer, reports the failure and exits 1."""
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--maintenance-dsn", required=True,
@@ -474,21 +491,35 @@ def main(argv=None) -> int:
         before = _counts(cur, "before_rebuild")
         other_before = _digest(cur, "gochara_resonance_map", OTHER_CHART_ID)
 
-        # 3. snapshot (the runbook's §1 statements, verbatim from the module)
+        # 3. snapshot (the runbook's §1 statements, verbatim from the module):
+        #    the FULL-ROW certificate of the snapshot must equal the live
+        #    preimage BEFORE any destructive step — otherwise stop here.
         snap = B.snapshot_table_name(CHART_ID, B.new_stamp_utc())
         cur.execute(B.create_snapshot_sql(snap, CHART_ID))
         conn.commit()
+        live_pre_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)
+        snap_full = _full_digest(cur, snap, CHART_ID)
         live_pre = _digest(cur, "gochara_resonance_map", CHART_ID)
-        snap_rec = _digest(cur, snap, CHART_ID)
-        report["snapshot"] = {"table": snap, "recorded_count": snap_rec[0],
-                              "recorded_digest": snap_rec[1],
-                              "matches_live_preimage": snap_rec == live_pre}
+        snapshot_block = {"table": snap,
+                          "recorded_count": snap_full[0],
+                          "recorded_full_row_digest": snap_full[1],
+                          "recorded_content_digest": _digest(cur, snap, CHART_ID)[1],
+                          "full_row_matches_live_preimage": snap_full == live_pre_full,
+                          "content_matches_live_preimage": _digest(cur, snap, CHART_ID) == live_pre}
+        report["snapshot"] = snapshot_block
+        if not snapshot_block["full_row_matches_live_preimage"] or snap_full[0] <= 0:
+            report["verification"] = {"snapshot": snapshot_block}
+            report["acceptance"] = {"passed": False, "failures": [
+                "snapshot: full-row certificate does not equal the live preimage (or "
+                "the snapshot is empty) — destructive phase NOT run"]}
+            conn.close()
+            raise _StopBeforeDestructive()
 
         # 4. the REAL writer, then the postconditions
         result = _run_writer(conn)
         after = _counts(cur, "after_rebuild")
         post = _digest(cur, "gochara_resonance_map", CHART_ID)
-        ver: dict = {"before": before, "after": after}
+        ver: dict = {"before": before, "after": after, "snapshot": snapshot_block}
         ver["sensitive_keyed_to_positive_facts"] = cur.execute(
             "SELECT COUNT(*) FROM gochara_resonance_map m JOIN chart_facts f"
             " ON f.fact_id::text = m.target_ref AND f.chart_id = m.chart_id"
@@ -552,14 +583,17 @@ def main(argv=None) -> int:
         # 6. rollback rehearsal
         conn.commit()
         rb: dict = {"snapshot_table": snap}
-        refusal = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_rec[0], "0" * 32))
+        # (a) a WRONG full-row certificate must be refused before any DELETE
+        refusal = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_full[0], "0" * 32))
         rb["refused_on_stale_snapshot"] = refusal is not None and "ROLLBACK REFUSED" in refusal
         rb["refusal_message"] = refusal
-        rb["partition_untouched_after_refusal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == rerun
-        err = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_rec[0], snap_rec[1]))
+        rb["partition_untouched_after_refusal"] = _full_digest(cur, "gochara_resonance_map", CHART_ID)[1] == _full_digest(cur, "gochara_resonance_map", CHART_ID)[1] and _digest(cur, "gochara_resonance_map", CHART_ID) == rerun
+        # (b) the recorded full-row certificate restores the EXACT preimage
+        err = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_full[0], snap_full[1]))
         rb["rollback_error"] = err
-        restored = _digest(cur, "gochara_resonance_map", CHART_ID)
-        rb["restored_digest_equal"] = err is None and restored == live_pre
+        restored_full = _full_digest(cur, "gochara_resonance_map", CHART_ID)
+        rb["restored_full_row_digest_equal"] = err is None and restored_full == live_pre_full
+        rb["restored_content_digest_equal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == live_pre
         rb["other_chart_untouched"] = _digest(cur, "gochara_resonance_map", OTHER_CHART_ID) == other_before
         _run_writer(conn)
         rb["rebuild_after_rollback_digest_equal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == post
@@ -569,6 +603,8 @@ def main(argv=None) -> int:
         report["verification"] = ver
         report["acceptance"] = {"passed": not failures, "failures": failures}
         conn.close()
+    except _StopBeforeDestructive:
+        pass
     finally:
         if args.keep_database:
             report["database_kept"] = True

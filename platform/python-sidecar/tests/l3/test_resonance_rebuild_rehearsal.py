@@ -55,9 +55,10 @@ def _passing_ver() -> dict:
             "sensitive_degree": {"negative_dropped_zero_rows": 735},
             "yoga_constituent": {"dropped_since_prior_build": ["yoga_demo_stopped"]}},
         "rerun_digest_equal": True,
+        "snapshot": {"recorded_count": 177, "full_row_matches_live_preimage": True},
         "rollback": {"refused_on_stale_snapshot": True,
                      "partition_untouched_after_refusal": True,
-                     "restored_digest_equal": True,
+                     "restored_full_row_digest_equal": True,
                      "other_chart_untouched": True,
                      "rebuild_after_rollback_digest_equal": True},
     }
@@ -89,7 +90,9 @@ def test_passing_verification_is_accepted():
     (lambda v: v.__setitem__("rerun_digest_equal", False), "idempotency"),
     (lambda v: v["rollback"].__setitem__("refused_on_stale_snapshot", False), "refuse"),
     (lambda v: v["rollback"].__setitem__("partition_untouched_after_refusal", False), "refuse"),
-    (lambda v: v["rollback"].__setitem__("restored_digest_equal", False), "exact preimage"),
+    (lambda v: v["rollback"].__setitem__("restored_full_row_digest_equal", False), "exact preimage"),
+    (lambda v: v["snapshot"].__setitem__("full_row_matches_live_preimage", False), "snapshot"),
+    (lambda v: v["snapshot"].__setitem__("recorded_count", 0), "snapshot"),
     (lambda v: v["rollback"].__setitem__("other_chart_untouched", False), "foreign chart"),
     (lambda v: v["rollback"].__setitem__("rebuild_after_rollback_digest_equal", False), "rebuild after rollback"),
 ])
@@ -159,6 +162,33 @@ def test_disposable_identity_refuses_wrong_or_non_empty_database():
 
 # ── the SQL module ──────────────────────────────────────────────────────────
 
+def test_full_row_certificate_and_content_digest_are_typed_and_separate():
+    """ASTRA v1.1 P1-6: the preimage certificate covers every column (ids,
+    computed_at) as typed JSON ordered by id; the content digest is a
+    separate, ID-independent typed serialisation; neither maps SQL NULL to
+    a string."""
+    full = B.full_row_digest_sql("gochara_resonance_map", CH)
+    assert "row_to_json(t)::text" in full and "ORDER BY t.id" in full
+    content = B.partition_digest_sql("gochara_resonance_map", CH)
+    assert "json_build_object(" in content and "'<null>'" not in content
+    assert "coalesce(" not in content.lower().replace("coalesce(md5", "")
+    assert full != content
+
+
+def test_rollback_refuses_empty_snapshots_in_the_generator_and_in_sql():
+    t = B.snapshot_table_name(CH, "20260930120000")
+    with pytest.raises(ValueError, match="positive"):
+        B.rollback_sql(t, CH, 0, "a" * 32)
+    with pytest.raises(ValueError, match="md5 hex"):
+        B.rollback_sql(t, CH, 5, "empty")
+    sql = B.rollback_sql(t, CH, 177, "a" * 32)
+    before_delete = sql.split("DELETE FROM gochara_resonance_map")[0]
+    assert "is EMPTY" in before_delete
+    assert "row_to_json(t)::text" in before_delete       # full-row certificate
+    assert "ORDER BY t.id" in before_delete
+    assert "json_build_object" not in sql                # never the content digest
+
+
 def test_snapshot_is_uniquely_named_and_never_if_not_exists():
     t = B.snapshot_table_name(CH, "20260930120000")
     assert t == "gochara_resonance_map_snap_482012f1_20260930120000"
@@ -199,12 +229,15 @@ def test_runbook_carries_the_module_statements_verbatim():
     text = (HERE / "resonance_rebuild_R1_R6_runbook.md").read_text()
     t = B.snapshot_table_name(CH, "20260930000000")
     for block in (B.create_snapshot_sql(t, CH),
+                  B.full_row_digest_sql("gochara_resonance_map", CH),
+                  B.full_row_digest_sql(t, CH),
                   B.partition_digest_sql("gochara_resonance_map", CH),
-                  B.partition_digest_sql(t, CH),
                   B.negative_sensitive_targets_sql(CH),
                   B.dangling_fact_refs_sql(CH),
-                  B.rollback_sql(t, CH, 177, "0" * 32)):
+                  B.rollback_sql(t, CH, 177, "0" * 32),
+                  *B.r5_qualifier_identity_sql(CH)):
         assert block in text, block[:80]
+    assert "STOP: the rebuild" in text  # the pre-destructive gate is in the runbook
     assert "IF NOT EXISTS gochara_resonance_map_pre_r1r6_backup" not in text
     assert "negative_dropped_zero_rows = 154" not in text
     assert "NOT IN (SELECT" not in text
