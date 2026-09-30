@@ -11,6 +11,8 @@
     "google_env_prefix|platform/scripts/cutover/stage1_smoke.ts|GCP_PROJECT",
     "google_env_prefix|platform/scripts/pipeline_smoke_audit.py|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/build/__tests__/jobInvoker.test.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/build/__tests__/recalibrationEnqueue.test.ts|GCP_PROJECT",
+    "google_env_prefix|platform/src/lib/build/__tests__/terminalizeFailedRun.test.ts|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/build/jobInvoker.ts|GCP_PROJECT",
     "google_env_prefix|platform/src/lib/build/jobInvoker.ts|GCP_REGION",
     "google_env_prefix|platform/src/lib/cloud_run/jobs.ts|GCP_PROJECT",
@@ -56,7 +58,7 @@
   ],
   "generated_by": "naming_lint.py --first-run",
   "schema_version": "1.0",
-  "violation_count": 53,
+  "violation_count": 55,
   "violations": [
     {
       "file": ".github/workflows/deploy.yml",
@@ -141,6 +143,22 @@
     {
       "file": "platform/src/lib/build/__tests__/jobInvoker.test.ts",
       "line": 23,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/build/__tests__/recalibrationEnqueue.test.ts",
+      "line": 138,
+      "match": "GCP_PROJECT",
+      "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
+      "rule_id": "google_env_prefix",
+      "severity": "error"
+    },
+    {
+      "file": "platform/src/lib/build/__tests__/terminalizeFailedRun.test.ts",
+      "line": 27,
       "match": "GCP_PROJECT",
       "message": "forbidden Google env prefix 'GCP_PROJECT' \u2014 rename to 'GOOGLE_CLOUD_*' (or add to allowed_exceptions if it is an SDK var)",
       "rule_id": "google_env_prefix",

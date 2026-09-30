@@ -62,16 +62,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
-
-// Packet A2 ("Always record why it failed") — named, attributable messages shared
-// between the build_runs.last_error write and the companion build_run_assets.error
-// write, so both tables record the SAME text instead of one of them staying blank.
-// Exported for tests that assert the propagated text without duplicating the literal.
-export const ORPHAN_RUN_MESSAGE =
-  'orphan-watchdog: run orphaned — no asset_throughput heartbeat or build_substep_progress ' +
-  'commit in the last 15 minutes on a run running 30+ minutes'
-export const STUCK_ASSET_MESSAGE = 'orphan-watchdog: writer never reported back'
-export const UNDISPATCHED_RUN_MESSAGE = 'orphan-watchdog: run never dispatched'
+import { ORPHAN_RUN_MESSAGE, STUCK_ASSET_MESSAGE, UNDISPATCHED_RUN_MESSAGE } from './watchdogMessages'
 
 const WATCHDOG_OIDC_AUDIENCE = process.env.WATCHDOG_SCHEDULER_OIDC_AUDIENCE
   ?? 'https://amjis-web-938361928218.asia-south1.run.app'

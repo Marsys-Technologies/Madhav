@@ -64,7 +64,7 @@ import {
   ORPHAN_RUN_MESSAGE,
   STUCK_ASSET_MESSAGE,
   UNDISPATCHED_RUN_MESSAGE,
-} from '@/app/api/cockpit/watchdog/route'
+} from '@/app/api/cockpit/watchdog/watchdogMessages'
 
 vi.mock('@/lib/auth/oidc', () => ({
   verifyOidcToken: vi.fn().mockResolvedValue({
