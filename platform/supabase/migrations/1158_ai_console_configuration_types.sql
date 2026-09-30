@@ -22,6 +22,11 @@ WHERE c.configuration_kind = 'legacy_mixed'
   AND NOT EXISTS (SELECT 1 FROM ai_custom_configuration_roles r
     WHERE r.configuration_id = c.id AND r.kind <> 'local_cli');
 
+-- The UPDATEs above queue events for the DEFERRABLE INITIALLY DEFERRED
+-- constraint trigger ai_configuration_four_roles; PostgreSQL refuses ALTER TABLE
+-- on a table with pending trigger events. Fire them now (same checks, earlier).
+SET CONSTRAINTS ALL IMMEDIATE;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_configuration_kind_shape'
