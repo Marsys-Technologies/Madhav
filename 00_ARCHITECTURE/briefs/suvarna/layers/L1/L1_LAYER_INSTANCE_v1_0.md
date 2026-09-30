@@ -3,7 +3,7 @@ artifact: SUVARNA_L1_LAYER_INSTANCE
 canonical_id: SUVARNA_L1_LAYER_INSTANCE
 tier: 3
 kind: instance
-version: "1.0"
+version: "1.0-rev1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 verdict: "NONE. First draft by the analyst of lane A.L1i; no independent review has happened (template §5.4 test 6), so nothing may inherit from it as accepted."
 produced_on: 2026-09-30
@@ -21,20 +21,26 @@ census_run:
   generated: "2026-09-30T20:22:28+05:30"
   chart_scope: 482012f1-710e-4a25-994a-93821f5871aa
   runtime_seconds: 66     # SUMMARY.md
-tier_gaps: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_TIER_GAPS_v1_0.md (TG-L1-001 … 023; LG-L1-001/002; MF-L1-001 … 012)"
+census_rerun:             # gate-review corrections (rev1): the ga_prashna cells are read from this second run
+  output: /Users/Dev/suvarna-evidence/census2/census_L1.json   # + census_L1.log beside it
+  exit_code: "not recorded beside the file; the log reports FAIL 7 (FAIL cells present = MEASURED)"
+  generated: "2026-09-30T20:30:02+05:30"
+  differences_from_census1: "field-by-field script comparison: every difference is on ga_prashna (Build.completion ERRORED -> PARTIAL, its text, live_rows null -> 0, live_rows_basis) plus the generated stamp"
+tier_gaps: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_TIER_GAPS_v1_0.md (TG-L1-001 … 024; LG-L1-001/002; MF-L1-001 … 012)"
 code_read_at: "origin/main e2352f881751deced2dc089451ef676db0aac5d5, platform/python-sidecar and platform/supabase/migrations"
 db_reads: "suvarna_reader via proxy 127.0.0.1:5433, read-only, chart 482012f1 only, 2026-09-30 (cited by table and predicate where used)"
 inputs_checked_not_trusted: ["nikasha_test/derivations/L1_INSTANCE_SKELETON.md", "nikasha_test/derivations/L1_INVENTIONS.md"]
 changelog:
+  - "1.0-rev1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 6 defects. ga_prashna cells re-read from census2 (Build.completion PARTIAL, live_rows 0; ERRORED cleared; layer tally PARTIAL 28, ERRORED 0; sections 1.1, 3.1, 3.2, 4.2 P6, 5.2, Part 6); ga_prashna is no longer described as having no capability module (census reach lists one MCP reader; 1.2, 1.5); T3 §2.3 citation for 'a citation with no declared use is not a contract' corrected (was attributed to T2 §7.1); V12 serves P07 and P23; units gap recorded as TG-L1-024; Ldgr.source_presence forms corrected (citation_ref, classical_citation, source_citation)."
   - "1.0 (2026-09-30): first draft of the L1 instance from tiers 1–2, the template, the census run above, the live registry and code read at the stated head. Every clause the tiers do not supply is marked 'TIER GAP: TG-L1-nnn' and left unfilled. No figure is typed from memory: each is read from census_L1.json, a named query, or a named file:line."
 ---
 
-# L1 Gaṇita — Layer Definition and Strategy (draft 1.0)
+# L1 Gaṇita — Layer Definition and Strategy (draft 1.0-rev1)
 
 **Reading conventions.** Every section carries the template's three lines. A section or cell marked **TIER GAP:
 TG-L1-nnn** is one the tiers do not supply; the reason and evidence are in `L1_TIER_GAPS_v1_0.md`, and nothing is
 invented in its place. A figure marked "not measured" carries its reason. "Census" means `census_L1.json`, field path
-`L1.assets[*].measurements["<criterion>"]`; "registry" means `asset_registry` read on 2026-09-30; "the chart" means
+`L1.assets[*].measurements["<criterion>"]`, except the `ga_prashna` cells, which are read from the rerun `census2/census_L1.json` (differences: frontmatter `census_rerun`); "registry" means `asset_registry` read on 2026-09-30; "the chart" means
 `482012f1-710e-4a25-994a-93821f5871aa`. The verdict vocabulary is the closed set `PASS · FAIL · PARTIAL · NO_DETECTOR ·
 N/A` plus `ERRORED` (plan §2.1). Nothing here certifies anything.
 
@@ -56,7 +62,7 @@ L1 is listed below, and only that:
 
 | P / V | the tier text that names L1 for it | the distinction that disappears without L1 (as the tier states it) |
 |---|---|---|
-| V12 / P23 (lifespan and constitution) | T2 §2 V12 (line 128) and §5 "Ayurdaya and constitution" (line 338): "L0 method/source -> L1 ayurdaya computed under each applicable school -> L2 …" | āyurdāya computed under each applicable school, with its inputs, cancellations, inter-authority disagreement and uncertainty, not a bare figure |
+| V12 / P07, P23 (lifespan and constitution) | T2 §2 V12 (line 128, which serves P07 and P23) and §5 "Ayurdaya and constitution" (line 338): "L0 method/source -> L1 ayurdaya computed under each applicable school -> L2 …" | āyurdāya computed under each applicable school, with its inputs, cancellations, inter-authority disagreement and uncertainty, not a bare figure |
 | no P/V id stated | T2 §5 "Graha contextual roles" (line 327): "L0 meaning → L1 computed roles/placements → L2 mechanism …" | natural/functional role, lordship, kāraka, placement, condition and relations kept separate |
 | no P/V id stated | T2 §12.1 (line 582), the financial-promise story: "L1 supplies actual positions, conditions, divisions, formation and clocks" | the computed positions, conditions, divisions, formation and clocks that the later layers construct on |
 | no P/V id stated (switch ON only) | T2 §9.2 (line 500): "L1 separate event-time context"; T1 §8.1 (line 423) "Event-time astronomical calculation from supplied dates" | event-time calculation kept apart from natal truth |
@@ -144,7 +150,7 @@ All 19 assets are `asset_kind = data`, `scope = per_chart`, `catalog_status = CU
 | `ga_nakshatra` | chart_facts | 2,847 | 1,813 | lit / 2,847 | 3 | 4 / 56 | L2 2 |
 | `ga_panchanga` | chart_facts | 437 | 437 | lit / 437 | 2 | 5 / 56 | L2 1, L3 1, L4 1 |
 | `ga_positions` | chart_facts | 1,205 | 1,205 | lit / 1,205 | 0 | 31 / 79 | L2 6, L3 8, L4 1, L5 1 |
-| `ga_prashna` | ga_prashna_judgment | not measured (null in census) | 0 | lit / 0 | 2 | 0 / 0 | none |
+| `ga_prashna` | ga_prashna_judgment | 0 (census2; null in census1, see MF-L1-001) | 0 | lit / 0 | 2 | 0 / 0 | none |
 | `ga_sade_sati` | chart_facts | 6,287 | 6,120 | lit / 6,287 | 7 | 1 / 49 | L2 1 |
 | `ga_sensitive` | chart_facts | 8,775 | 8,775 | lit / 8,775 | 2 | 4 / 58 | L2 2 |
 | `ga_sensitive_degree` | chart_facts | 335 | 335 | lit / 335 | 1 | 0 / 0 | none |
@@ -157,7 +163,7 @@ All 19 assets are `asset_kind = data`, `scope = per_chart`, `catalog_status = CU
 | `ga_vichara` | chart_vichara | 8,524 | 8,249 | lit / 8,524 | 4 | 1 / 49 | L2 1 |
 | `ga_yoga` | ga_yoga_firings | 53 | 63 | lit / 53 | 2 | 3 / 51 | L2 1, L3 1 |
 
-`ga_condition`'s census figure is a `count_sql` total over two tables (45 composite rows + 2,925 `chart_facts` rows); `ga_strength` and `ga_structural` declare no single target and are counted by predicate over `chart_facts` (`ga_structural` also over `fact_category_ownership`). For the chart, `chart_facts` holds 143,299 rows (query `count(*) … WHERE chart_id`), `chart_dashas` 483,870, `chart_divisionals` 0. `ga_prashna_lagna` and `ga_prashna_judgment` each hold 0 rows for the chart by this run's own query (MF-L1-001). `asset_throughput.rows_per_second` is NULL on 19 of 19 rows.
+`ga_condition`'s census figure is a `count_sql` total over two tables (45 composite rows + 2,925 `chart_facts` rows); `ga_strength` and `ga_structural` declare no single target and are counted by predicate over `chart_facts` (`ga_structural` also over `fact_category_ownership`). For the chart, `chart_facts` holds 143,299 rows (query `count(*) … WHERE chart_id`), `chart_dashas` 483,870, `chart_divisionals` 0. `ga_prashna`'s census2 `live_rows` is 0 (a `count_sql` total over `ga_prashna_lagna` and `ga_prashna_judgment` for the chart; census1 had null because of a permission error, MF-L1-001). `asset_throughput.rows_per_second` is NULL on 19 of 19 rows.
 
 **Build record per asset** (census `Build.exercised`, `Build.history`; population: `build_run_assets` ⋈ `build_runs` for all charts, as the inspector reads them):
 
@@ -217,7 +223,7 @@ are reach and not contribution:
 | `ga_nakshatra` | PASS | 34 | 19 | 54.2% | 100.0% |
 | `ga_panchanga` | PASS | 34 | 19 | 54.2% | 100.0% |
 | `ga_positions` | PASS | 34 | 19 | 54.2% | 100.0% |
-| `ga_prashna` | N/A | 0 | 0 | 5.9% | 100.0% |
+| `ga_prashna` | N/A (0 registry modules; census `reach.modules` lists one MCP reader, `register_p1_synthesis.ts`) | 0 | 0 | 5.9% (1 of 17 columns) | 100.0% |
 | `ga_sade_sati` | PASS | 34 | 19 | 54.2% | 100.0% |
 | `ga_sensitive` | PASS | 34 | 19 | 54.2% | 100.0% |
 | `ga_sensitive_degree` | PASS | 34 | 19 | 54.2% | 100.0% |
@@ -231,8 +237,7 @@ are reach and not contribution:
 | `ga_yoga` | PASS | 2 | 2 | 0.0% (a lower bound; the module selects a run-time column set) | 100.0% |
 
 The seven `chart_facts` producers show one identical figure because the census attributes by table (MF-L1-002, MF-L1-009). A reader must not
-take "34 modules" as a per-asset contribution. Assets with no consumer in either the build graph or the census's served surface: `ga_prashna` only
-(0 modules, 0/0 radius, 0 chart rows); the other five zero-radius assets each show at least one module in `Dens.served` (two of them, `ga_ayurdaya` and `ga_sensitive_degree`, only through the table-level attribution).
+take "34 modules" as a per-asset contribution. `ga_prashna` is the only zero-radius asset for which `Dens.served` counts 0 registry modules (with 0/0 radius and 0 chart rows), but it is not consumer-less: the census's `reach.modules` lists one MCP reader (`platform-mcp/src/tools/register_p1_synthesis.ts`) selecting 1 of its 17 columns (5.9%, `chart_id`). The other five zero-radius assets each show at least one module in `Dens.served` (two of them, `ga_ayurdaya` and `ga_sensitive_degree`, only through the table-level attribution).
 
 ### 1.3 · Synergistic contribution — ablate the group
 
@@ -271,7 +276,7 @@ evaluated. States 3, 4 and 6 are "verified at the consumer" and no consumer-side
 | DP04 condition decomposition | `ga_condition` (composite + `chart_facts`), `ga_strength` | 2,970 · 14,141 | L2 1 + L4 1 · L2 1 + L3 1 | 1 module · not attributable | (2), (4), (6) not measured |
 | DP05 share (clause results) | `ga_yoga` (`ga_yoga_firings`) | 53 (floor 63) | L2 1, L3 1 (+ `ga_vichara` in L1) | 2 modules | `partial_formation_pct` and `activation_dasha_periods` never populated (census, whole-table 202 rows); (2), (4), (6) not measured |
 | DP07 primitives (clocks) | `ga_dashas`, `ga_tajaka`, `ga_transit_anchors`, `ga_sade_sati` | 483,870 · 240 · 45 · 6,287 | L2 1 + L3 7 · L3 1 · none · L2 1 | 3 · 2 · 1 · 34 (table-level) | (2), (4), (6) not measured |
-| no contract named in T2 §7.1 | `ga_vichara` (judged structure, T2 §3.3), `ga_ayurdaya`, `ga_medical`, `ga_vastu`, `ga_prashna` | 8,524 · 130 · 45 · 40 · 0 | L2 1 · none · none · none · none | 2 · 34 (table-level) · 1 · 1 · 0 | not measured |
+| no contract named in T2 §7.1 | `ga_vichara` (judged structure, T2 §3.3), `ga_ayurdaya`, `ga_medical`, `ga_vastu`, `ga_prashna` | 8,524 · 130 · 45 · 40 · 0 | L2 1 · none · none · none · none | 2 · 34 (table-level) · 1 · 1 · 0 (`Dens.served`; census `reach.modules` lists one MCP reader) | not measured |
 
 An asset can contribute nothing to L1's served value and be essential because a downstream layer reads it; the six zero-radius assets have no declared consumer, so for them the cross-layer term rests on the served surface alone.
 
@@ -286,7 +291,7 @@ traces_to:   0.2
 layer value = Σ individual + Σ synergistic + Σ cross-layer handoff. **None of the three terms has an instrument that produces a number, so no sum and
 no fraction is recorded, and the shortfall against 0.2 is itemised in Part 3 from measured gate results and open tier gaps, not from a value figure.**
 Candidates under T3's rule ("a candidate, not a verdict; lack of a caller in a bounded search is not redundancy"): the only asset with no rows for the chart, no
-capability module, and no dependents is `ga_prashna` (registry `data_disposition = RETAINED_AS_CAPITAL`). An asset with a large individual reach and no synergistic
+dependents and no registry-counted capability module (`Dens.served` 0) is `ga_prashna` (registry `data_disposition = RETAINED_AS_CAPITAL`), though census `reach.modules` lists one MCP reader for it, so it is not without a consumer. An asset with a large individual reach and no synergistic
 seam of its own is not identifiable without the harness. This is a candidate list of one, not a disposition.
 
 ---
@@ -350,7 +355,7 @@ traces_to:   0.3
 
 **Produced** (T2 §7.1; asset mapping by name, TG-L1-009): DP03 chart facts, DP04 condition decomposition, DP05 (the L1 share), DP07 (the L1 primitives); §1.4 gives fields, grain and state per contract group. The grain per table, as the writers' code keys it: `chart_facts` (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key) with `build_id` in the unique key (`ga_writers/_idempotency.py` lines 3–6); `chart_dashas` (chart_id, ayanamsha_id, system_id, level_n, start_iso); `chart_divisionals` scoped (chart_id, ayanamsha_id, varga). The other tables' keys: not stated in any tier and not read here.
 
-**Consumed:** DP01 (canonical entities, aliases, units, released definitions) and DP02 (rule clauses, prerequisites and exceptions to test). The declared receipts are the five L0 edges (§0.3), and the code carries `L0_SEMANTIC_RELEASE_ID = "l0.semantic.2026-09-13.1"` and a digest (`ga_writers/data_plane_contracts.py`) recorded per generation. **Declared use** per consumed input (calculation, applicability, counter-evidence, uncertainty, interpretation, exclusion, navigation, evaluation) is not on record as data anywhere (TIER GAP: TG-L1-009, R109); "a citation with no declared use is not a contract" (T2 §7.1), so the five edges are declared dependencies, not yet contracts in the template's sense. The load-bearing rule (T1 §11) is restated in 2.1.
+**Consumed:** DP01 (canonical entities, aliases, units, released definitions) and DP02 (rule clauses, prerequisites and exceptions to test). The declared receipts are the five L0 edges (§0.3), and the code carries `L0_SEMANTIC_RELEASE_ID = "l0.semantic.2026-09-13.1"` and a digest (`ga_writers/data_plane_contracts.py`) recorded per generation. **Declared use** per consumed input (calculation, applicability, counter-evidence, uncertainty, interpretation, exclusion, navigation, evaluation) is not on record as data anywhere (TIER GAP: TG-L1-009, R109); "A citation with no declared use is not a contract" (T3 §2.3, line 299; T2 §7.1, line 416, words it "does not prove utilization"), so the five edges are declared dependencies, not yet contracts in the template's sense. The load-bearing rule (T1 §11) is restated in 2.1.
 
 ### 2.4 · Jyotish coverage owned
 
@@ -464,8 +469,8 @@ L1 is scored on **one** of the product's ten proof obligations: **Computational 
 | part of the obligation (T1 §14) | measured state at the chart | what closes the gap |
 |---|---|---|
 | authoritative inputs | `Build.contract` PASS 19/19 (birth params and chart id taken from `ctx.config`, per T4 §4.2 check 2); the L0 references read are declared for 4 assets and found undeclared for 5 (MF-L1-006) | edges reconciled (TG-L1-003, TG-L1-016) |
-| reproducible calculations | `Idem.pattern` PASS 19/19 (static); `Build.completion` PASS 14, FAIL 4, ERRORED 1; rebuild-twice reproduction (semantic fingerprint) not measured; `ga_vargas` 0 rows | packets in 4.2 (P1–P4); fingerprint proof is a brief item (Track A brief §5) |
-| units and conventions | `chart_facts.unit` non-empty on 82,611 of 143,299 rows (57.6%); `ayanamsha_id`, `engine_version` present | which rows owe a unit is not stated by any tier |
+| reproducible calculations | `Idem.pattern` PASS 19/19 (static); `Build.completion` PASS 14, FAIL 4, PARTIAL 1 (census2); rebuild-twice reproduction (semantic fingerprint) not measured; `ga_vargas` 0 rows | packets in 4.2 (P1–P4); fingerprint proof is a brief item (Track A brief §5) |
+| units and conventions | `chart_facts.unit` non-empty on 82,611 of 143,299 rows (57.6%); `ayanamsha_id`, `engine_version` present | which rows owe a unit is not stated by any tier (TIER GAP: TG-L1-024; the 57.6% is not gradable without it) |
 | sensitivity | boundary flags and divergence columns present (2.7), dark in serving (2.2); no rule for what sensitivity is owed | TG-L1-022 |
 | independent verification where required | 6.5% (`chart_facts`) and 9.5% (`chart_dashas`) `two_pass_verified`; `Carr.detector` NO_DETECTOR 19/19 | TG-L1-022, TG-L1-015 |
 
@@ -482,7 +487,7 @@ The disposition letter for each asset is the output of the A.L1 dispositions fil
 | `ga_medical` | none beyond gate-level PARTIALs; 0/0 radius; 1 module |
 | `ga_nakshatra` | `Build.history` PARTIAL; shares table-level cells |
 | `ga_panchanga` | as `ga_nakshatra` |
-| `ga_prashna` | `Build.completion` ERRORED (permission, MF-L1-001); 0 chart rows; 0 modules; 0/0 radius; `data_disposition = RETAINED_AS_CAPITAL`; `Count.floor` N/A (`target_floor` 0) |
+| `ga_prashna` | `Build.completion` PARTIAL (census2: rows_written 0 = live 0, writer-backed, emptiness not declared by design; ERRORED in census1, MF-L1-001); 0 chart rows; 0 registry modules (one MCP reader in census `reach.modules`); 0/0 radius; `data_disposition = RETAINED_AS_CAPITAL`; `Count.floor` N/A (`target_floor` 0) |
 | `ga_sade_sati` | `Build.history` PARTIAL (21 error / 9 abort); depends on 7 assets |
 | `ga_sensitive` | table-level cells; `tolerance_arcsec` populated (8,775 rows) |
 | `ga_sensitive_degree` | 0/0 radius; table-level cells |
@@ -540,7 +545,7 @@ Candidate packets that close a measured delta item. They are proposals for the A
 | P3 `ga_positions` run history | `Build.history` FAIL; latest error "Object of type UUID is not JSON serializable" (2026-09-05) | latest run complete and the error class absent from a new run | no |
 | P4 the eight `_telemetry` call sites | LG-L1-001 (R34 residual) | grep finds no call to `update_asset_throughput(` from a `ga_writers` module, or each is declared CLI-only; `asset_throughput.rows_per_second` non-NULL after an orchestrated run (needs the engine timing landed, Track E) | design open: remove or keep as CLI |
 | P5 `ga_yoga` floor | `Count.floor` FAIL 53 < 63 | chart count ≥ floor, or the floor re-declared with reason (floors are information under D3) | no |
-| P6 grants for unmeasured cells | MF-L1-001, MF-L1-012 | the `ga_prashna` `Build.completion` cell reads a verdict, not ERRORED; the generation tables readable | outside L1 (access, Track E) |
+| P6 grants for unmeasured cells | MF-L1-012 (MF-L1-001 first half already closed: census2 reads `ga_prashna` `Build.completion` PARTIAL, not ERRORED) | the generation tables readable by the reader login | outside L1 (access, Track E) |
 | P7 declare universes, carriage pairs, classes, roles | TG-L1-013, -014, -015, -018 | `Complete.width` no longer NOT_GENERIC; `Carr.detector` no longer NO_DETECTOR | **yes — waits on the tier rows named** |
 | P8 per-asset Idem behavioural check | MF-L1-004 | a rebuild-twice test on the chart leaves the semantic fingerprint unchanged (E5.5) | no |
 
@@ -605,7 +610,7 @@ measured_by: census_L1.json, 20 criteria per asset (370 cells over 19 assets); c
 traces_to:   4.4 — the gates are what an asset brief is certified against
 ```
 
-This draft certifies nothing (status PROVISIONAL; "may register gaps, may not certify"). **Census cells for the layer** (count of assets per verdict per criterion; source: `census_L1.json`, tallied by this run and matching `SUMMARY.md`: L1 FAIL 7 · PARTIAL 27 · NO_DETECTOR 62 · ERRORED 1 · PASS 232 · N/A 3 · NOT_GENERIC 38):
+This draft certifies nothing (status PROVISIONAL; "may register gaps, may not certify"). **Census cells for the layer** (count of assets per verdict per criterion; source: `census_L1.json` tallied by this run, with the one changed cell (`ga_prashna` `Build.completion`) taken from `census2/census_L1.json`; census2's log reads "FAIL 7 · PARTIAL/NO_DETECTOR 90 · ERRORED 0" (= PARTIAL 28 + NO_DETECTOR 62), whereas census1's `SUMMARY.md` read PARTIAL 27 · ERRORED 1: L1 FAIL 7 · PARTIAL 28 · NO_DETECTOR 62 · ERRORED 0 · PASS 232 · N/A 3 · NOT_GENERIC 38):
 
 | criterion | cells | PASS | FAIL | PARTIAL | NO_DETECTOR | ERRORED | N/A | NOT_GENERIC |
 |---|---|---|---|---|---|---|---|---|
@@ -615,7 +620,7 @@ This draft certifies nothing (status PROVISIONAL; "may register gaps, may not ce
 | Build.target | 19 | 19 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Build.dag | 19 | 19 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Build.count_integrity | 19 | 19 | 0 | 0 | 0 | 0 | 0 | 0 |
-| Build.completion | 19 | 14 | 4 | 0 | 0 | 1 | 0 | 0 |
+| Build.completion | 19 | 14 | 4 | 1 | 0 | 0 | 0 | 0 |
 | Build.exercised | 19 | 19 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Build.history | 19 | 0 | 1 | 18 | 0 | 0 | 0 | 0 |
 | Build.dep_liveness | 19 | 18 | 0 | 0 | 0 | 0 | 1 | 0 |
@@ -641,7 +646,7 @@ The four criteria families the plan calls information and never blocks (Cost, Co
 | `ga_nakshatra` | PASS | PARTIAL | PASS | PARTIAL | PASS | PASS | NO_DETECTOR | NOT_GENERIC |
 | `ga_panchanga` | PASS | PARTIAL | PASS | PARTIAL | PASS | PASS | NO_DETECTOR | NOT_GENERIC |
 | `ga_positions` | PASS | FAIL | PASS | PARTIAL | PASS | PASS | NO_DETECTOR | NOT_GENERIC |
-| `ga_prashna` | ERRORED | PARTIAL | N/A | NO_DETECTOR | N/A | PASS | NO_DETECTOR | NOT_GENERIC |
+| `ga_prashna` | PARTIAL | PARTIAL | N/A | NO_DETECTOR | N/A | PASS | NO_DETECTOR | NOT_GENERIC |
 | `ga_sade_sati` | PASS | PARTIAL | PASS | PARTIAL | PASS | PASS | NO_DETECTOR | NOT_GENERIC |
 | `ga_sensitive` | PASS | PARTIAL | PASS | PARTIAL | PASS | PASS | NO_DETECTOR | NOT_GENERIC |
 | `ga_sensitive_degree` | PASS | PARTIAL | PASS | PARTIAL | PASS | PASS | NO_DETECTOR | NOT_GENERIC |
@@ -658,7 +663,7 @@ The four criteria families the plan calls information and never blocks (Cost, Co
 
 | gate | section a brief author reads | what this instance supplies |
 |---|---|---|
-| **Ldgr** | §2.3 | the upstream `fact_id` sources per asset: **not supplied** — no `chart_facts` column holds upstream fact identifiers, `ga_positions` has no upstream fact edge, and the census's only Ldgr cell (`Ldgr.source_presence`, `citation_ref`/`source_citation` populated) is the reference-layer form: PASS 13, absent for 6 (**TIER GAP: TG-L1-021**, MF-L1-003) |
+| **Ldgr** | §2.3 | the upstream `fact_id` sources per asset: **not supplied** — no `chart_facts` column holds upstream fact identifiers, `ga_positions` has no upstream fact edge, and the census's only Ldgr cell (`Ldgr.source_presence`, a provenance column populated: `citation_ref`, or `classical_citation` for `ga_medical` and `ga_vastu`, or `source_citation` for `ga_vichara`) is the reference-layer form: PASS 13, absent for 6 (**TIER GAP: TG-L1-021**, MF-L1-003) |
 | **Idem** | §2.5, §4.1 | natural keys: `chart_facts`, `chart_dashas`, `chart_divisionals` as in 2.3 (from `_idempotency.py`), the seven `natural_key_partition` scopes in the registry for the `chart_facts` producers; the other assets' keys and each writer's delete scope on the shared table: **TIER GAP: TG-L1-006**. Census: PASS 19/19, a static pattern reading (MF-L1-004) |
 | **Earn** | §2.4, §1.4 | emitted statuses that are claims: `verification_pass_status` (`chart_facts`, `chart_dashas`, `chart_divisionals`) with the vocabulary's own falsifiability rule (only `two_pass_verified` is grounding), and `asset_throughput.state` (`lit`); what would falsify `lit`: a live count that disagrees (`ga_vargas` is the observed case, LG-L1-002). Census `Earn.build_record` NO_DETECTOR 19/19 measures rate instrumentation, a different claim (MF-L1-007) |
 | **Null** | §2.4 (state vocabulary); §1.4 | the tier rule (T1 §3.3, T2 DP04) and the code's `MissingnessState` and `floored` status; the per-asset convention for an underivable value is **not stated** (no `Null.*` criterion exists) |
@@ -666,7 +671,7 @@ The four criteria families the plan calls information and never blocks (Cost, Co
 | **Carr** | §2.7; §4.4 row 13 | the (concept, check) pair per asset: **TIER GAP: TG-L1-015**; layer hint D3; NO_DETECTOR 19/19 |
 | **Narr** | §2.2 | whether the asset emits prose: **not measured**; L1's design intent is prose-free (`gates.py` no-narration linter with forbidden patterns, wired only through `build_runner`, MF-L1-008); no `Narr.*` census criterion |
 | **Dens** | §2.2; §3.4 served boundary | which served surface: per asset by census `Dens.served` (1.2), PASS 17, N/A 1, NO_DETECTOR 1; the seven `chart_facts` producers share one table-level attribution (MF-L1-002) |
-| **Build** | §2.5; §1.1; §4.3 | writer file and registered id (build table in 1.1; `Build.registered` PASS 19/19), target (`Build.target` PASS 19/19, two by rule not by declaration), edges (2.5), build record (1.1); `Build.contract` PASS 19/19; `Build.completion` PASS 14 / FAIL 4 / ERRORED 1; the runtime `dry_run` proof is not among the 20 census criteria |
+| **Build** | §2.5; §1.1; §4.3 | writer file and registered id (build table in 1.1; `Build.registered` PASS 19/19), target (`Build.target` PASS 19/19, two by rule not by declaration), edges (2.5), build record (1.1); `Build.contract` PASS 19/19; `Build.completion` PASS 14 / FAIL 4 / PARTIAL 1; the runtime `dry_run` proof is not among the 20 census criteria |
 
 ### 5.3 · Certification is per criterion, not per definition revision
 
@@ -715,7 +720,8 @@ T3 §5.2 says "report unfillable rows in §7 as corrections with gates"; T3 has 
 | TG-L1-016 | frozen definition revision, egate | the next instance revalidation (A.L1r) |
 | TG-L1-017 | disposition rule, preserved kernel | A.L1 dispositions file; first asset brief rows 8 and 12 |
 | TG-L1-019, -021, -023 | gate-map granularity, the L1 form of `Ldgr`, template references | the `Ldgr` gate; the instance's own acceptance test 5 |
+| TG-L1-024 | which rows owe a unit | the units part of the correctness obligation (3.1); first asset brief §0.1 row 3 |
 | LG-L1-001, -002 | `_telemetry` sites; `ga_vargas` empty with `lit` | the first build (`Build` and `Idem` gates) for `ga_vargas`; the layer's certification for the telemetry residual |
-| MF-L1-001, -012 | unmeasured cells (permission) | layer certification (an unmeasured cell is not PASS) |
+| MF-L1-012 (MF-L1-001 resolved by census2; its residual is TG-L1-008) | unmeasured generation tables (permission) | layer certification (an unmeasured cell is not PASS) |
 
 No packet in 4.2 closes a delta item this draft cannot name, and no packet was struck; P7 is tier-dependent and waits on the tier rows it names.

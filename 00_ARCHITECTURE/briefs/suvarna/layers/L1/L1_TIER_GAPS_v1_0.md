@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_L1_TIER_GAPS
 canonical_id: SUVARNA_L1_TIER_GAPS
-version: "1.0"
+version: "1.0-rev1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -14,12 +14,19 @@ census_run:
   generated: "2026-09-30T20:22:28+05:30"
   chart_scope: 482012f1-710e-4a25-994a-93821f5871aa
   login: "suvarna_reader via proxy 127.0.0.1:5433; no --emit-gaps"
+census_rerun:            # added by gate-review corrections (rev1): a second L1 run after the reader grant
+  output: /Users/Dev/suvarna-evidence/census2/census_L1.json   # + census_L1.log beside it
+  exit_code: "not recorded beside the file; the log reports FAIL 7 (FAIL cells present = MEASURED, arch §12.14)"
+  inspector_commit: "not recorded in the rerun's output files"
+  generated: "2026-09-30T20:30:02+05:30"
+  differences_from_census1: "field-by-field script comparison of the two L1 files: every difference is on ga_prashna (Build.completion ERRORED -> PARTIAL, its measured text, Count.floor measured text, live_rows null -> 0, live_rows_basis) plus the generated stamp; nothing else differs. Layer tally: PASS 232 · NO_DETECTOR 62 · NOT_GENERIC 38 · PARTIAL 28 · FAIL 7 · N/A 3 · ERRORED 0 (census1 read PARTIAL 27, ERRORED 1)."
 tiers_read_at: "/Users/Dev/suvarna-census, detached at 2a78ec64d (origin/campaign/nikasha-test)"
 code_read_at: "origin/main e2352f881751deced2dc089451ef676db0aac5d5 (this worktree), platform/python-sidecar"
 inputs_checked_not_trusted:
   - 00_ARCHITECTURE/briefs/nirmana/nikasha_test/derivations/L1_INSTANCE_SKELETON.md
   - 00_ARCHITECTURE/briefs/nirmana/nikasha_test/derivations/L1_INVENTIONS.md
 changelog:
+  - "1.0-rev1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 4 defects. ga_prashna re-read from census2 (Build.completion PARTIAL, live_rows 0, ERRORED cleared; TG-L1-008, MF-L1-001, MF-L1-011, Part C rewritten); TG-L1-024 added (which rows owe a unit; T2 count 5 to 6, total 23 to 24); TG-L1-021 gains the classical_citation and source_citation forms of Ldgr.source_presence; line references corrected (T3 127, 278, 521)."
   - "1.0 (2026-09-30): first issue. 23 tier gaps (Part A), 2 L1 layer gaps and 12 measurement findings that are not tier clauses (Part B), and the disposition of every earlier L1 invention row against the tiers (Part C). Written by the Sonnet analyst of lane A.L1i; may register gaps, may not certify."
 ---
 
@@ -66,8 +73,9 @@ Abbreviations: T1 `MADHAV_PRODUCT_DEFINITION_FINAL.md`; T2 `MADHAV_DATA_PLANE_VA
 | TG-L1-021 | T3 §5.2 / T4 §4 — the Ldgr claim for a layer that reads no upstream `fact_id` | T3 | none — new |
 | TG-L1-022 | T1 §14 — computational correctness "where required", sensitivity, "declared tolerance" | T1 | none — new |
 | TG-L1-023 | T3 internal references met while filling (§7, order, "six", "eight-row") | T3 | R08, R65, R67 |
+| TG-L1-024 | T1 §14 / T2 §7.1 DP03 — which rows owe a unit | T2 | none — new |
 
-**Count by tier (primary): T1 1 · T2 5 · T3 14 · T4 3 = 23.** New (no register row) 4; duplicates of a register row 19.
+**Count by tier (primary): T1 1 · T2 6 · T3 14 · T4 3 = 24.** New (no register row) 5 (TG-L1-019, -020, -021, -022, -024); duplicates of a register row 19. (v1.0 read 23; TG-L1-024 added in rev1.)
 
 ---
 
@@ -80,7 +88,7 @@ Abbreviations: T1 `MADHAV_PRODUCT_DEFINITION_FINAL.md`; T2 `MADHAV_DATA_PLANE_VA
 - **Tier:** T3 (the clause). **Register:** R221 (T3 §0.1 re-scoped to catalog units and the necessity closure, OPEN on the T3 agenda; the sealed text this run read is unchanged), R85 (the closure tool, CLOSED); the same clause for other layers is R100, R130.
 
 ### TG-L1-002 — "what it computes that existing software does not"
-- **Clause:** T3 §0.2 (line 126): "Name what it computes that existing software does not."
+- **Clause:** T3 §0.2 (line 127): "Name what it computes that existing software does not."
 - **Needed:** an L1-specific statement. T1 §1 (lines 51–56) and T2 §1 (lines 62–67) state the contrast at product/plane level ("a varga when asked for it, a daśā table when asked for it … Madhav computes the whole estate and … the relationships between its parts"); T2 §3.1 (line 140) gives L1's contribution and its "must not claim". The instance quotes these. What no tier supplies is any way to establish that a given L1 computation is one "existing software does not" produce: there is no baseline, no software named, and T1 §13 forbids an invented claim.
 - **Evidence:** searched T1–T4 for a competitor baseline or an instrument for it; none. Census has no field for it.
 - **Tier:** T3. **Register:** R101 (L2) and R131 (L3) are the same clause; there is no L1 row, so this cites them.
@@ -118,7 +126,7 @@ Abbreviations: T1 `MADHAV_PRODUCT_DEFINITION_FINAL.md`; T2 `MADHAV_DATA_PLANE_VA
 ### TG-L1-008 — a writer-backed asset that is empty
 - **Clause:** T4 §4.2 check 6 (line 277) — covers "a populated table" and "a service"; the empty writer-backed data table is a third case no clause covers, and no tier provides "empty by design" as a declarable state.
 - **Needed:** a verdict rule for `ga_prashna` (state `lit`, `rows_written` 0, 0 chart rows) and for `ga_vargas` (state `lit`, `rows_written` 24,400, **0 chart rows now**).
-- **Evidence:** census `ga_prashna`: `Build.completion` ERRORED (see MF-L1-001), `Count.floor` N/A (`target_floor=0`), `Complete.depth` and `Vocab.identity` NO_DETECTOR (table empty), `Dens.served` N/A (0 modules); registry `data_disposition = RETAINED_AS_CAPITAL`. `ga_vargas`: `Build.completion` FAIL and `Count.floor` FAIL (live 0, floor 22,092); `asset_throughput` for the chart says `lit` / 24,400 (LG-L1-002).
+- **Evidence:** census2 (`census2/census_L1.json`, after the reader grant) `ga_prashna`: `live_rows` 0 (basis: `count_sql` total over `ga_prashna_lagna` and `ga_prashna_judgment`, chart 482012f1); `Build.completion` **PARTIAL** ("rows_written=0 = live=0 … target_floor=0 declares zero rows complete, but this is a writer-backed data asset (has_writer=true) with no layer-plan claim that the emptiness is by design — indistinguishable from a writer that has never produced a row"); `Count.floor` N/A (`target_floor=0`, live=0); `Complete.depth` and `Vocab.identity` NO_DETECTOR (table empty); `Dens.served` N/A (0 registry modules; but `reach.modules` lists one reader, `platform-mcp/src/tools/register_p1_synthesis.ts`, width 1 of 17 columns = 5.9%). census1 read the same cell ERRORED (permission), see MF-L1-001. Registry `data_disposition = RETAINED_AS_CAPITAL`. `ga_vargas`: `Build.completion` FAIL and `Count.floor` FAIL (live 0, floor 22,092); `asset_throughput` for the chart says `lit` / 24,400 (LG-L1-002).
 - **Tier:** T4. **Register:** R99 (PARTIAL: the by-design detector and ga_prashna's case carried), R126 (L2's same case).
 
 ### TG-L1-009 — consumer-side verification of produced contracts, and declared use as data
@@ -134,7 +142,7 @@ Abbreviations: T1 `MADHAV_PRODUCT_DEFINITION_FINAL.md`; T2 `MADHAV_DATA_PLANE_VA
 - **Tier:** T2 (also T3 §2.1). **Register:** R88 (its "T2 §9.2 gains a per-layer table" text is partly already satisfied), R117 (a detector registry per layer rule).
 
 ### TG-L1-011 — presentation parity: own work or [TRANSFERS]
-- **Clause:** T3 §2.2 `measured_by` (line 279) and §5.4 test 4 (line 628) against T2 §1 (lines 83–85) and §12.2 (line 614).
+- **Clause:** T3 §2.2 `measured_by` (line 278) and §5.4 test 4 (line 628) against T2 §1 (lines 83–85) and §12.2 (line 614).
 - **Needed:** whether L1's instance owns the parity test. T3 demands it before acceptance; T2 says a layer plan does not inherit a [TRANSFERS] obligation as its own work.
 - **Evidence:** both texts unchanged in the sealed files this run read.
 - **Tier:** T3 (also T2's tag). **Register:** R71 (remedy fixed by ruling D3, not yet applied), R94.
@@ -195,7 +203,7 @@ Abbreviations: T1 `MADHAV_PRODUCT_DEFINITION_FINAL.md`; T2 `MADHAV_DATA_PLANE_VA
 ### TG-L1-021 — the Ldgr claim for a layer whose inputs are birth parameters and L0, not `fact_id`s
 - **Clause:** T3 §5.2 Ldgr row (line 531): "every derived value names the upstream `fact_id` it reads, and those ids resolve"; T4 §4 Ldgr row (line 224): the same, "for a reference layer, every row names its *source*".
 - **Needed:** what an L1 root asset names. `ga_positions` has `depends_on = {}` (registry); its inputs are birth parameters and L0 constants, not fact rows. Neither T3 nor T4 gives a third form of the claim for a computed layer whose root has no upstream `fact_id`.
-- **Evidence:** `chart_facts` has no column that holds upstream fact identifiers (25 columns read from `information_schema.columns`: `citation_ref`, `citation_human`, `source_calculation`, `formula_id`, `formula_provenance_text` are the provenance columns); the only Ldgr cell in the census is `Ldgr.source_presence` (`citation_ref`/`source_citation` populated), which is the **reference-layer form**, PASS for 13 of 19 and **absent (no cell at all)** for `ga_condition`, `ga_prashna`, `ga_strength`, `ga_structural`, `ga_transit_anchors`, `ga_vargas`. `ga_writers/data_plane_runtime.py` shows a generation-and-partition ledger exists in code (migration 1035, tables `l1_data_plane_*`), but the reader login cannot read it (MF-L1-012).
+- **Evidence:** `chart_facts` has no column that holds upstream fact identifiers (25 columns read from `information_schema.columns`: `citation_ref`, `citation_human`, `source_calculation`, `formula_id`, `formula_provenance_text` are the provenance columns); the only Ldgr cell in the census is `Ldgr.source_presence` (a provenance column populated: `citation_ref` for 10 assets, `classical_citation` for `ga_medical` and `ga_vastu`, `source_citation` for `ga_vichara`), which is the **reference-layer form**, PASS for 13 of 19 and **absent (no cell at all)** for `ga_condition`, `ga_prashna`, `ga_strength`, `ga_structural`, `ga_transit_anchors`, `ga_vargas`. `ga_writers/data_plane_runtime.py` shows a generation-and-partition ledger exists in code (migration 1035, tables `l1_data_plane_*`), but the reader login cannot read it (MF-L1-012).
 - **Tier:** T3 (also T4 §4). **Register:** none for the claim; R128 records only that L2 verdict cells are silently missing.
 
 ### TG-L1-022 — computational correctness: "independent verification where required", sensitivity and "declared tolerance"
@@ -205,9 +213,15 @@ Abbreviations: T1 `MADHAV_PRODUCT_DEFINITION_FINAL.md`; T2 `MADHAV_DATA_PLANE_VA
 - **Tier:** T1 (T1 §14 says "where required"; T2 §12.2 and T3 §2.7 depend on it). **Register:** none — searched for "where required", "sensitivity", "second derivation", "independent verification": no match (R55 concerns a different "sensitivity direction").
 
 ### TG-L1-023 — internal references in T3 that a filler trips over
-- **Clause:** T3 line 585 ("Report unfillable rows in §7", a section T3 does not have); §2.6 and §2.7 are ordered before §2.5; line 539 ("six static checks") vs T4 §4.2 (nine); line 629 ("eight-row map") vs the nine-row table at lines 572–582; line 522 ("9 × 129 assets") vs 127 active assets measured (SUMMARY.md: L0 40 · L1 19 · L2 23 · L3 21 · L4 9 · L5 15).
+- **Clause:** T3 line 585 ("Report unfillable rows in §7", a section T3 does not have); §2.6 and §2.7 are ordered before §2.5; line 539 ("six static checks") vs T4 §4.2 (nine); line 629 ("eight-row map") vs the nine-row table at lines 572–582; line 521 ("9 × 129 assets") vs 127 active assets measured (SUMMARY.md: L0 40 · L1 19 · L2 23 · L3 21 · L4 9 · L5 15).
 - **Effect on this draft:** the instance carries its unfillable rows in a closing "Corrections with gates" section (as the L0 v3.0 draft did, its own addition) and writes a nine-row gate map. For L1 the asset count (19) agrees with the registry; only the cross-layer figure differs.
 - **Tier:** T3. **Register:** R08 (§7 and the order), R65 ("six" checks), R67 ("eight-row"); the 129-vs-127 figure is R220's (active population 127).
+
+### TG-L1-024 — which rows owe a unit
+- **Clause:** T1 §14 (line 588) and §11 (line 501): Computational correctness names "units and conventions" / "values, units, precision"; T2 §7.1 DP03 (line 422): the field list carries "grain/value/unit"; T2 §5 (lines 295, 329) lists units inside the calculation-convention and bala/dignity rows.
+- **Needed:** a rule for which L1 rows owe a unit (and which are unit-free by nature, such as a sign or nakshatra name). Searched T1–T4 for the word "unit(s)" (grep, this run): every hit demands units as a field or a convention and none says which rows owe one; T2 §7 leaves unnamed fields "to bind in layer/asset briefs".
+- **Evidence (chart 482012f1, 2026-09-30, read-only query):** `chart_facts.unit` is non-empty on 82,611 of 143,299 rows (57.6%). Which of the remaining 60,688 rows are correctly unit-free is not stated by any tier, so the 57.6% cannot be graded either way. Register (R-rows) searched for "unit": no row.
+- **Tier:** T2 (the DP03 field-list clause; also T1 §14 "units and conventions"). **Register:** none — new.
 
 ---
 
@@ -232,8 +246,8 @@ What this run found that the register row does not say: (a) **every one of the e
 ### LG-L1-002 — `ga_vargas`: build record says `lit` with 24,400 rows, the chart holds 0
 Census `ga_vargas`: `Build.completion` FAIL ("empty: live=0 … target_floor=22092; build record rows_written=24400"), `Count.floor` FAIL (live 0, floor 22,092, delta -22,092), `Complete.depth` and `Vocab.identity` NO_DETECTOR. Query 2026-09-30: `chart_divisionals` has 0 rows for chart 482012f1; `asset_throughput` for the chart reads `state = lit`, `rows_written = 24400`, last built 2026-09-07. Build history for the chart (`build_run_assets` ⋈ `build_runs`, by `build_runs.created_at`): the newest run that touched `ga_vargas` is 2026-09-07 11:02 (asset_set, rebuild, `complete`); the run before it, 10:57, errored ("post-write integrity check failed: integrity_check_sql → False"); earlier runs (August) include `aborted` global rebuilds and one `queued` asset_set build. No run after 2026-09-07 touched it. Why the rows are absent now was **not determined here**. It matters because `ga_vargas` has blocking radius 6 direct / 61 transitive (census) and four registered L1 dependents (`ga_condition`, `ga_strength`, `ga_sade_sati`, `ga_structural`) plus two L2 assets. This is the §N.8 defect class (a `lit` status without a detector for the claim it makes) observed on one asset, not a tier clause.
 
-### MF-L1-001 — the ERRORED census cell: `ga_prashna` `Build.completion`
-Census cell: `L1.assets[ga_prashna].measurements["Build.completion"] = {v: ERRORED, measured: "check errored: ERROR: permission denied for table ga_prashna_lagna"}`; SUMMARY.md lists it among 7 permission errors for `suvarna_reader` (a grant gap, not an inspector fault). It is **unmeasured, not PASS**: the layer's log counts it as 1 errored check (`census_L1.log`: "1 check(s) errored (R41: degraded, not layer-aborting)"). Consequences in the same asset: `live_rows` is null in the census, and `Count.floor` reads N/A because `target_floor` is 0. Follow-up read by this run, ten minutes after the census (2026-09-30 15:02 UTC vs census 14:52 UTC): `has_table_privilege(current_user, 'public.ga_prashna_lagna', 'SELECT')` is true, and `count(*)` over `ga_prashna_lagna` and over `ga_prashna_judgment` for the chart is 0 for each. That is this run's own query, **not the inspector's verdict**: the census cell stays ERRORED, and the instance neither substitutes a verdict for it nor infers one (the completion-honesty rule for an empty asset is TG-L1-008). Whether a grant was added after the census or the census ran under different state is not determined.
+### MF-L1-001 — the ERRORED census cell: `ga_prashna` `Build.completion` (resolved by the grant; residual is the PARTIAL)
+census1 (`census/census_L1.json`): `L1.assets[ga_prashna].measurements["Build.completion"] = {v: ERRORED, measured: "check errored: ERROR: permission denied for table ga_prashna_lagna"}`; SUMMARY.md lists it among 7 permission errors for `suvarna_reader` (a grant gap, not an inspector fault); `live_rows` was null and `Count.floor` N/A (`target_floor` 0). A same-day follow-up query by this run found the privilege present (`has_table_privilege(current_user, 'public.ga_prashna_lagna', 'SELECT')` true; `count(*)` over `ga_prashna_lagna` and `ga_prashna_judgment` for the chart 0 for each). census2 (`census2/census_L1.json`, generated 2026-09-30T20:30:02+05:30, after the grant) re-measured the layer: the cell now reads **PARTIAL** ("rows_written=0 = live=0 … writer-backed … no layer-plan claim that the emptiness is by design"), `live_rows` 0, `Count.floor` N/A (live=0), and the layer's log reads "ERRORED 0". A field-by-field script comparison of the two L1 files finds every difference on `ga_prashna` (the cell, its text, `Count.floor` text, `live_rows`, `live_rows_basis`) and none elsewhere. The ERRORED half of the finding is therefore closed; what remains is the completion-honesty rule for an empty writer-backed asset (TG-L1-008) and one part of packet P6, the generation tables (MF-L1-012).
 
 ### MF-L1-002 — the census measures shared tables at two different populations
 For the seven `chart_facts` producers, `Count.floor` and `Build.completion` use chart-scoped, partition-scoped `count_sql` (e.g. `ga_positions` live 1,205), while `Complete.depth` ("421096 rows, 25 cols; fully populated 17"), `Ldgr.source_presence` ("citation_ref populated on 421096/421096 rows"), `Vocab.identity`, `Reach.fields` (13 of 24 columns) and `Dens.served` (34 modules, "declaring density_contract: 19") are computed over the whole `chart_facts` table (all charts) and attributed identically to each producer. Same for `chart_dashas` (`Complete.depth` over 1,460,985 rows; chart-scoped live 483,870), `ga_condition_composite` (135 rows whole-table; 45 for the chart) and `l1_tajik_varsha_year_lords` (780 whole-table; 240 chart). The template's own warning (T3 lines 76–86: a count must say what it counted over) is what this trips; the census output does not state the population per cell. Related register rows: R95, R128.
@@ -263,7 +277,7 @@ Seven producers show the identical "34 module(s) … density_contract: 19"; `ga_
 live 53, floor 63, delta -10 (census); `asset_throughput` also reads 53. `ga_yoga` `Complete.depth` PARTIAL ("NEVER populated ['partial_formation_pct', 'activation_dasha_periods']", over the 202-row whole table). Floors are information under D3 (plan §1.1), so this is recorded, not a blocker.
 
 ### MF-L1-011 — census figures that differ from the earlier skeleton (both cited)
-`L1_INSTANCE_SKELETON.md` (census `L1_prod_20260926.json`, whole-table counts) vs this run (`census_L1.json`, chart-scoped): `chart_facts` 421,096 under each of seven assets → per-partition live 130 / 2,847 / 437 / 1,205 / 6,287 / 8,775 / 335; `ga_condition` 135 → 2,970 (basis change, MF-L1-005); `ga_dashas` 1,460,985 → 483,870; `ga_tajaka` 780 → 240; `ga_vichara` 25,011 → 8,524; `ga_yoga` 202 → 53; `ga_strength`/`ga_structural` "not countable" → 14,141 / 102,037; `ga_nakshatra` Idem PARTIAL → PASS; `Earn.build_record`/`Cost.baseline` FAIL → NO_DETECTOR; `ga_prashna` "table empty … 51 runs" → 37 executed runs of 48 `build_run_assets` rows and `Build.completion` ERRORED. The register's own R95 wording ("identical 421,096-row figure under each") is superseded for the count cells and still true for the depth and provenance cells.
+`L1_INSTANCE_SKELETON.md` (census `L1_prod_20260926.json`, whole-table counts) vs this run (`census_L1.json`, chart-scoped): `chart_facts` 421,096 under each of seven assets → per-partition live 130 / 2,847 / 437 / 1,205 / 6,287 / 8,775 / 335; `ga_condition` 135 → 2,970 (basis change, MF-L1-005); `ga_dashas` 1,460,985 → 483,870; `ga_tajaka` 780 → 240; `ga_vichara` 25,011 → 8,524; `ga_yoga` 202 → 53; `ga_strength`/`ga_structural` "not countable" → 14,141 / 102,037; `ga_nakshatra` Idem PARTIAL → PASS; `Earn.build_record`/`Cost.baseline` FAIL → NO_DETECTOR; `ga_prashna` "table empty … 51 runs" → 37 executed runs of 48 `build_run_assets` rows and `Build.completion` PARTIAL (census2; ERRORED in census1 before the grant). The register's own R95 wording ("identical 421,096-row figure under each") is superseded for the count cells and still true for the depth and provenance cells.
 
 ### MF-L1-012 — generation-history tables exist and are unreadable to the reader login
 All 19 L1 writers carry `@l1_producer_contract` (grep: 19 of 19 files under `pipeline/orchestrator/writers/ga_*.py`; `CONTRACTED_L1_ASSETS` in `ga_writers/data_plane_runtime.py` lists the same 19), which opens a generation partition in `l1_data_plane_generations` (migration 1035). `pg_class` shows the tables exist in production; `SELECT` on `l1_data_plane_generations` and `l1_data_plane_generation_heads` returns "permission denied" for `suvarna_reader` (2026-09-30). The generation pins each consumer records (T3 §4.3; T2 §11) are therefore **not measured**, and the census has no cell for them.
@@ -290,6 +304,6 @@ All 19 L1 writers carry `@l1_producer_contract` (grep: 19 of 19 files under `pip
 | INV-L1-13 shared natural key | tier gap stands; the census reading it rested on (`ga_nakshatra` PARTIAL) **no longer holds** at 2a78ec64d | TG-L1-006 (R96) |
 | INV-L1-14 kind with no target | tier gap stands; the census N/A it rested on is now a PASS with explanation | TG-L1-007 (R97) |
 | INV-L1-16 varṣaphala universe | confirmed (falls under the universe clause) | TG-L1-013 (R98) |
-| INV-L1-17 empty data asset | confirmed; ga_prashna's cells changed (ERRORED, N/A, NO_DETECTOR) | TG-L1-008 (R99) |
+| INV-L1-17 empty data asset | confirmed; ga_prashna's cells changed (Build.completion PARTIAL per census2, ERRORED in census1; Count.floor N/A; NO_DETECTOR) | TG-L1-008 (R99) |
 
-Four gaps the earlier pass did not record are new here: TG-L1-019, -020, -021, -022.
+Five gaps the earlier pass did not record are new here: TG-L1-019, -020, -021, -022, -024.
