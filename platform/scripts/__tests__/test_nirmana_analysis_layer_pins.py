@@ -1765,9 +1765,15 @@ A54_MERGE_AUTHORITY = "e47d0b274ebf234ada8be7cfe82a34d5446384eb"
 # own writer-digest regeneration commit. Both sources stay authorised
 # (append-only registry); only the later one is the live pin's source.
 A54_LANE_LOCAL_SOURCE = "454dab04134d81ae420676210c9700e2d4496c6b"
+# The round-1 rework's source (92c07a90) admitted the successor over
+# origin/main 1010659db; the round-2 rework (ASTRA v1.1 closure) moved the
+# same three writers again and re-admitted ONE successor over the then-current
+# baseline 297c09c79 from its own digest regeneration commit. All three
+# sources stay authorised (append-only); only the latest is the live source.
+A54_R1_SOURCE = "92c07a9051abad73815933e3a5b98ffde37fa848"
 A54_MERGE = {
     "L3": {
-        "source": "92c07a9051abad73815933e3a5b98ffde37fa848",
+        "source": "aa6a67fb715248fa2b2eccffaf5327692319194a",
         "supersedes": "l3:f4c69a6d0cd4:829354703812",
         "changed": [
             "ka_gochara", "ka_gochara_resonance",
@@ -1853,8 +1859,9 @@ def test_a54_merge_leaves_every_other_layer_and_the_definitions_untouched() -> N
 def test_a54_merge_only_l3_is_authorised_for_the_decision() -> None:
     authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[A54_MERGE_DECISION]
     assert set(authorised) == {"L3"}
-    assert authorised["L3"] == frozenset({A54_MERGE["L3"]["source"], A54_LANE_LOCAL_SOURCE})
-    assert A54_LANE_LOCAL_SOURCE != A54_MERGE["L3"]["source"]
+    assert authorised["L3"] == frozenset({A54_MERGE["L3"]["source"], A54_LANE_LOCAL_SOURCE,
+                                          A54_R1_SOURCE})
+    assert len({A54_LANE_LOCAL_SOURCE, A54_R1_SOURCE, A54_MERGE["L3"]["source"]}) == 3
     for layer in ("L0", "L1", "L2", "L4", "L5"):
         with pytest.raises(SystemExit, match="is not authorized by"):
             pins_module.validate_authorized_source(

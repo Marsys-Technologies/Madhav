@@ -511,9 +511,9 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // Evidence: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A5_4_PINS_READMISSION_AUTHORITY_v1_0.md
     const decision = 'D-PINS-A5.4'
     const authority = 'e47d0b274ebf234ada8be7cfe82a34d5446384eb'
-    const source = '92c07a9051abad73815933e3a5b98ffde37fa848'
+    const source = 'aa6a67fb715248fa2b2eccffaf5327692319194a'
     const pin = layerPinRecord.layers.L3
-    expect(pin.generation_id).toBe('l3:92c07a9051ab:5a9de6f7002d')
+    expect(pin.generation_id).toBe('l3:aa6a67fb7152:889e2c1fdcfe')
     expect(pin.supersedes_generation_id).toBe('l3:f4c69a6d0cd4:829354703812')
     expect(pin.convergence_commit).toBe(source)
     expect(pin.admission?.authority_decision).toBe(decision)
