@@ -122,7 +122,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import connect, step_parser, write_evidence  # noqa: E402
+from common import connect, resolve_dsn, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
 if str(SIDECAR) not in sys.path:
@@ -1210,7 +1210,7 @@ def main(argv: list[str] | None = None) -> int:
     horizon_jd = (_jd(h_start), _jd(h_end))
     horizon_text = f"[{args.horizon_start},{args.horizon_end})"
 
-    conn = connect(args.dsn, step=6, autocommit=False)
+    conn = connect(resolve_dsn(args), step=6, autocommit=False)
     try:
         # §12.9 gate — BEFORE any enumeration (the same refusal step06 applies
         # at consume time; a candidate must not be built on stale overlay rows).
