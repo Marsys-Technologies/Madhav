@@ -129,42 +129,123 @@ def test_the_nine_rechecked_true_values_cite_a_real_file_line_read_and_mi_sankal
 REPO_ROOT = HERE.parents[3]
 
 
-def _is_sql_read(lines, lineno, token):
-    """The cited line carries `token` as a SQL FROM/JOIN target (same line; or the previous non-blank line ends in
-    FROM/JOIN and this line starts with the token), or (dynamic table map) quotes the token while the same file
-    selects `FROM ${...}`. A comment, a provenance label or an allow-list entry is none of these."""
+def _is_code_comment(line):
+    return bool(re.match(r"\s*(//|\*|/\*|#|--)", line))
+
+
+def _sql_context(lines, lineno):
+    """A non-comment SELECT/EXISTS within the 40 lines up to and including the cited one: a prose mention of
+    `from <table>` in a description string has none."""
+    return any(re.search(r"\b(SELECT|EXISTS)\b", x, re.I) and not _is_code_comment(x) for x in lines[max(0, lineno - 40):lineno])
+
+
+def _is_sql_read(lines, lineno, token, kind=None):
+    """The cited line reads `token` (case-insensitive FROM/JOIN, same line; or the previous NON-comment line ends in
+    FROM/JOIN and this line starts with the token) inside a SQL context. A comment, `--` SQL comment, DELETE FROM,
+    provenance label, allow-list entry or prose/string-only mention is none of these. kind == "table_map" (a
+    dynamic `FROM ${table}` select): the cited line must be a `key: 'token',` entry of a map in a file that selects
+    `FROM ${...}`; the quoted token elsewhere is not enough."""
     line = lines[lineno - 1]
-    if re.match(r"\s*(//|\*|/\*|#)", line):
+    if _is_code_comment(line) or re.search(r"\bDELETE\s+FROM\b", line, re.I):
         return False
-    if re.search(rf"\b(FROM|JOIN)\s+(public\.)?{re.escape(token)}\b", line):
+    tok = re.escape(token)
+    if kind == "table_map":
+        return bool(re.fullmatch(rf"\s*[A-Za-z_][A-Za-z0-9_]*\s*:\s*['\"]{tok}['\"]\s*,?\s*(//.*)?", line)) and any(
+            re.search(r"\bFROM\s+\$\{", x) and not _is_code_comment(x) for x in lines)
+    if not _sql_context(lines, lineno):
+        return False
+    if re.search(rf"\b(FROM|JOIN)\s+(public\.)?{tok}\b", line, re.I):
         return True
     prev = next((x for x in reversed(lines[:lineno - 1]) if x.strip()), "")
-    if re.search(r"\b(FROM|JOIN)\s*$", prev) and re.match(rf"\s*(public\.)?{re.escape(token)}\b", line):
-        return True
-    return bool(re.search(rf"['\"]{re.escape(token)}['\"]", line)) and any("FROM ${" in x for x in lines)
+    return (not _is_code_comment(prev) and bool(re.search(r"\b(FROM|JOIN)\s*$", prev, re.I))
+            and not re.search(r"\bDELETE\s+FROM\s*$", prev, re.I)
+            and bool(re.match(rf"\s*(public\.)?{tok}\b", line, re.I)))
 
 
-def test_every_served_true_cites_a_real_non_test_read_of_its_table():
-    decl = ac.load_asset_declarations()
-    trues = [a for a, e in decl.items() if (e["carriage"] or {}).get("served_surface") is True]
-    assert trues, "no served_surface true declared"
-    for a in trues:
-        e = decl[a]
-        path, line = e["read_evidence"].rsplit(":", 1)
-        f = REPO_ROOT / path
-        assert f.is_file(), (a, path)
-        assert not re.search(r"(\.test\.|/__tests__/|/tests?/|/generated/|/fixtures/|source_query_availability|mcp/db/query)", path), (a, path)
-        lines = f.read_text(encoding="utf-8").splitlines()
-        assert 1 <= int(line) <= len(lines), (a, path, line)
-        assert _is_sql_read(lines, int(line), e["read_table"]), (a, path, line, e["read_table"], lines[int(line) - 1].strip())
+_TRUES = sorted(a for a, e in ac.load_asset_declarations().items() if (e["carriage"] or {}).get("served_surface") is True)
 
 
-def test_the_read_check_rejects_comments_labels_and_allowlists():
+def test_there_are_served_true_declarations_and_each_is_checked_below():
+    assert len(_TRUES) == 103
+
+
+@pytest.mark.parametrize("asset", _TRUES)
+def test_every_served_true_cites_a_real_non_test_read_of_its_table(asset):
+    e = ac.load_asset_declarations()[asset]
+    path, line = e["read_evidence"].rsplit(":", 1)
+    assert re.fullmatch(r"(platform|platform-mcp)/src/.+\.tsx?", path), path          # served TypeScript only
+    assert not ac._READ_EVIDENCE_EXCLUDED_RE.search(path), path
+    f = REPO_ROOT / path
+    assert f.is_file(), path
+    lines = f.read_text(encoding="utf-8").splitlines()
+    assert 1 <= int(line) <= len(lines), (path, line)
+    assert _is_sql_read(lines, int(line), e["read_table"], e["read_kind"]), (path, line, e["read_table"], lines[int(line) - 1].strip())
+
+
+def test_the_read_check_rejects_comments_labels_allowlists_deletes_and_prose():
     src = ["// FROM t_x", "  * FROM t_x", "  provenance: { tables: ['t_x'] },", "  't_x',", "const q = `SELECT 1 FROM t_x w`", "  FROM", "    t_x a", "JOIN t_y"]
     assert [_is_sql_read(src, i, "t_x") for i in range(1, 8)] == [False, False, False, False, True, False, True]
-    assert _is_sql_read(["const M = { a: 't_x' }", "sql = `SELECT * FROM ${table}`"], 1, "t_x") is True      # dynamic table map
-    assert _is_sql_read(["const M = { a: 't_x' }"], 1, "t_x") is False                                          # no FROM ${} in the file
-    assert _is_sql_read(["FROM t_xy"], 1, "t_x") is False                                                      # token boundary
+    sel = "const q = `SELECT a FROM t_y`"
+    assert _is_sql_read([sel, "DELETE FROM t_x WHERE a"], 2, "t_x") is False
+    assert _is_sql_read([sel, "delete  from t_x"], 2, "t_x") is False
+    assert _is_sql_read([sel, "-- SELECT * FROM t_x"], 2, "t_x") is False
+    assert _is_sql_read([sel, "  -- FROM t_x"], 2, "t_x") is False
+    assert _is_sql_read([sel, "// FROM", "t_x a"], 3, "t_x") is False                      # FROM is on a preceding comment line
+    assert _is_sql_read([sel, "DELETE FROM", "  t_x"], 3, "t_x") is False
+    assert _is_sql_read(["'Retrieve the rows from t_x for a chart.'"], 1, "t_x") is False   # prose-only, no SQL context
+    assert _is_sql_read(["description: 'rows from t_x (16 rows)',", "x: 1"], 1, "t_x") is False
+    assert _is_sql_read([sel, "select * from T_X c"], 2, "t_x") is True                      # case-insensitive
+    assert _is_sql_read(["x = `SELECT *", "  FROM t_x`"], 2, "t_x") is True
+    assert _is_sql_read(["FROM t_xy", sel], 1, "t_x") is False                               # token boundary
+
+
+def test_the_dynamic_table_map_branch_needs_a_map_entry_and_the_table_map_kind():
+    m = ["const M = {", "  chart_summary: 't_x',", "}", "sql = `SELECT * FROM ${table}`"]
+    assert _is_sql_read(m, 2, "t_x", "table_map") is True
+    assert _is_sql_read(m, 2, "t_x") is False                                               # not declared a table_map
+    assert _is_sql_read(["  chart_summary: 't_x',"], 1, "t_x", "table_map") is False        # no FROM ${} in the file
+    assert _is_sql_read(["x = f('t_x')", "sql = `SELECT * FROM ${table}`"], 1, "t_x", "table_map") is False   # not a map entry
+    assert _is_sql_read(["  // a: 't_x',", "sql = `SELECT * FROM ${table}`"], 1, "t_x", "table_map") is False
+    assert _is_sql_read(["  a: 'other',", "sql = `SELECT * FROM ${table}`"], 1, "t_x", "table_map") is False
+
+
+@pytest.mark.parametrize("path", [
+    "platform/src/a/__tests__/x.ts", "platform/src/a.spec.ts", "platform/src/a.test.tsx", "platform/src/__mocks__/a.ts",
+    "platform/src/lib/e2e/a.ts", "platform/src/tests/a.ts", "platform/src/test/a.ts", "platform/src/generated/a.ts",
+    "platform/src/fixtures/a.ts", "platform/src/lib/source_query_availability.ts", "platform/src/app/api/mcp/db/query/route.ts",
+    "platform-mcp/src/tests/a.ts", "platform-mcp/src/a.spec.tsx"])
+def test_the_path_exclusion_catches_test_mock_generated_and_allowlist_paths(path):
+    assert ac._READ_EVIDENCE_EXCLUDED_RE.search(path)
+    with pytest.raises(ac.DeclarationsError):
+        ac.validate_declarations(_doc(a=dict(carriage=dict(served_surface=True), read_evidence=path + ":12", read_table="t")))
+
+
+def test_the_path_exclusion_does_not_catch_served_capability_paths():
+    for ok in ("platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts", "platform-mcp/src/tools/register_p1_reference.ts",
+               "platform/src/lib/contest/a.ts", "platform/src/lib/latest/a.ts", "platform/src/lib/testing_not/a.ts"):
+        assert not ac._READ_EVIDENCE_EXCLUDED_RE.search(ok), ok
+
+
+def test_committed_read_evidence_repoints_and_kinds():
+    decl = ac.load_asset_declarations()
+    L = "platform/src/lib/retrieval/registry/layers/"
+    want = {
+        "bo_sangati": L + "L2_bodha/query_domain_reading.ts:821",
+        "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1809",
+        "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
+        "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",
+        "mi_darshana": L + "L5_mimamsa/query_insights.ts:225",
+        "mi_bhara": "platform-mcp/src/lib/kala_envelope.ts:556",
+        "bg_dignity_reference": "platform-mcp/src/tools/register_p1_reference.ts:373",
+        "bg_ghatana": L + "L5_mimamsa/lel_intake_checklist.ts:248",
+    }
+    for a, ev in want.items():
+        assert decl[a]["read_evidence"] == ev, a
+    assert decl["bg_dignity_reference"]["read_table"] == "bg_dignity_reference"
+    assert decl["bg_ghatana"]["read_table"] == "brahma_event_ontology"
+    kinds = {a: e["read_kind"] for a, e in decl.items() if e["read_kind"] is not None}
+    assert kinds == {"ka_gochara_resonance": "coverage", "bo_laksana_rerank": "projection", "bo_cdlm_summary": "table_map"}
+    assert not any(e["read_evidence"].endswith(".py") or ".py:" in e["read_evidence"] for e in decl.values() if e["read_evidence"])
 
 
 def test_committed_file_declares_no_dag_dependents_anywhere():
@@ -246,7 +327,15 @@ BAD_DOCS = [
     ("read-evidence-trailing-newline", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12\n", read_table="t"))),
     ("read-evidence-absolute-path", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="/etc/a.ts:12", read_table="t"))),
     ("read-evidence-parent-path", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="../a.ts:12", read_table="t"))),
-    ("read-evidence-dotdot-middle", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/../../etc/a.ts:12", read_table="t"))),
+    ("read-evidence-dotdot-middle", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/../../etc/a.ts:12", read_table="t"))),
+    ("read-evidence-python-path", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/python-sidecar/a.py:12", read_table="t"))),
+    ("read-evidence-outside-served-src", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/scripts/a.ts:12", read_table="t"))),
+    ("read-evidence-python-under-src", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.py:12", read_table="t"))),
+    ("read-evidence-only-with-null-served", _doc(a=dict(carriage=dict(served_surface=None), read_evidence="platform/src/a.ts:12"))),
+    ("read-evidence-md-path", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.md:12", read_table="t"))),
+    ("read-kind-unknown", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t", read_kind="row-ish"))),
+    ("read-kind-without-served-true", _doc(a=dict(carriage=dict(served_surface=None), read_kind="coverage"))),
+    ("read-kind-non-str", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t", read_kind=1))),
     ("read-evidence-non-str", _doc(a=dict(carriage=dict(served_surface=True), read_evidence=12, read_table="t"))),
     ("read-table-not-identifier", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="a b"))),
     ("read-table-trailing-newline", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t\n"))),
@@ -272,8 +361,10 @@ def test_validator_accepts_null_fields_and_every_enum_kind():
                       cross_asset_writes=["t.c"], evidence=dict(cross_asset_writes="effect contract writes: [t.c]")),
                w=dict(cross_asset_writes=[], evidence=dict(cross_asset_writes="effect contract writes: []")),
                v=dict(carriage=dict(served_surface=True), read_evidence="platform/src/lib/x/[id]/route-a_b.ts:12", read_table="t_1"),
+               v2=dict(carriage=dict(served_surface=True), read_evidence="platform-mcp/src/lib/x.tsx:1", read_table="t_1",
+                       read_kind="coverage"),
                u=dict(carriage=dict(served_surface=None), read_evidence=None, read_table=None))
-    assert len(ac.validate_declarations(doc)) == len(ac.DECLARED_KINDS) + 6
+    assert len(ac.validate_declarations(doc)) == len(ac.DECLARED_KINDS) + 7
 
 
 def test_validator_checks_asset_ids_against_the_registry_set_only_when_supplied():
@@ -516,6 +607,12 @@ def test_declared_read_evidence_is_exposed_as_a_fact_when_declared():
     assert f["declared_read_evidence"] == "platform/src/a.ts:12" and f["declared_read_table"] == "t"
     g = ac.declared_facts(d, "b")
     assert "declared_read_evidence" not in g and "declared_read_table" not in g
+    k = ac.declared_facts({"a": dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t",
+                                     read_kind="coverage")}, "a")
+    assert k["declared_read_kind"] == "coverage" and "declared_read_kind" not in f
+    bogus = ac.declared_facts({"a": dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t",
+                                         read_kind="bogus")}, "a")
+    assert "declared_read_kind" not in bogus and bogus["declared_read_evidence"] == "platform/src/a.ts:12"
     h = ac.declared_facts({"c": dict(read_evidence="platform/src/a.ts:12", read_table=None)}, "c")      # an unpaired (unvalidated) pointer
     assert "declared_read_evidence" not in h and "declared_read_table" not in h
 

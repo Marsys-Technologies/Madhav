@@ -412,13 +412,20 @@ DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_d
 # depends_on edge (a registry defect, recorded in the evidence file, not a declaration). Nothing overrides the radius.
 CARRIAGE_FIELDS = ("served_surface",)
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
-                    "read_evidence", "read_table", "evidence")
+                    "read_evidence", "read_table", "read_kind", "evidence")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 _CROSS_WRITE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*")   # table.column; used with fullmatch
 # `served_surface: true` needs a real read: `read_evidence` is a repo-relative `path:line` (1-based) and `read_table` the
 # identifier that line reads FROM/JOINs (a test opens the file and checks the line); neither may exist otherwise.
-# Components are non-empty (so no absolute path) and never '.'/'..' (checked in validate_declarations).
-_READ_EVIDENCE_RE = re.compile(r"[A-Za-z0-9_.\[\]@-]+(?:/[A-Za-z0-9_.\[\]@-]+)*\.(?:ts|tsx|py):[1-9][0-9]*")
+# Served TypeScript only (platform/src or platform-mcp/src, .ts/.tsx; no Python, no scripts); components are never
+# '.'/'..' (checked in validate_declarations) and never match _READ_EVIDENCE_EXCLUDED_RE.
+_READ_EVIDENCE_RE = re.compile(r"(?:platform|platform-mcp)/src/[A-Za-z0-9_.\[\]@-]+(?:/[A-Za-z0-9_.\[\]@-]+)*\.tsx?:[1-9][0-9]*")
+# paths that can never be a served read: tests/specs/mocks/e2e/fixtures/generated, the availability probe, the
+# api/mcp/db/query table allow-list (a component match anywhere, with or without a leading directory)
+_READ_EVIDENCE_EXCLUDED_RE = re.compile(
+    r"(?:(?:^|/)(?:__tests__|__mocks__|tests?|e2e|fixtures|generated)/|\.(?:test|spec)\.[A-Za-z]+:?|"
+    r"source_query_availability|(?:^|/)mcp/db/query/)")
+READ_KINDS = ("coverage", "projection", "table_map")   # None = a row-level SQL read (the default); see declared_facts
 _READ_TABLE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -501,14 +508,20 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         served_true = isinstance(car, dict) and car.get("served_surface") is True
         if re_ is not None and not (isinstance(re_, str) and _READ_EVIDENCE_RE.fullmatch(re_)
                                     and not {".", ".."} & set(re_.rsplit(":", 1)[0].split("/"))):
-            raise DeclarationsError(f"{where}.read_evidence must be null or a repo-relative 'path/to/file.ts:LINE' string")
+            raise DeclarationsError(f"{where}.read_evidence must be null or 'platform/src/...ts:LINE' / "
+                                    f"'platform-mcp/src/...ts:LINE' (served TypeScript, no test/mock/generated/allow-list path)")
+        if isinstance(re_, str) and _READ_EVIDENCE_EXCLUDED_RE.search(re_):
+            raise DeclarationsError(f"{where}.read_evidence {re_!r} is a test/mock/generated/allow-list path, not a served read")
+        rk = e.get("read_kind")
+        if rk is not None and (not isinstance(rk, str) or rk not in READ_KINDS):
+            raise DeclarationsError(f"{where}.read_kind must be null (row-level read) or one of {list(READ_KINDS)}")
         if rt is not None and not (isinstance(rt, str) and _READ_TABLE_RE.fullmatch(rt)):
             raise DeclarationsError(f"{where}.read_table must be null or a table identifier")
         if served_true and (re_ is None or rt is None):
             raise DeclarationsError(f"{where}: carriage.served_surface true requires read_evidence ('path:line' of a real "
                                     f"non-test read of the asset's table) and read_table; without a real read it is null")
-        if not served_true and (re_ is not None or rt is not None):
-            raise DeclarationsError(f"{where}: read_evidence/read_table are only for carriage.served_surface true")
+        if not served_true and (re_ is not None or rt is not None or rk is not None):
+            raise DeclarationsError(f"{where}: read_evidence/read_table/read_kind are only for carriage.served_surface true")
         cw = e.get("cross_asset_writes")
         if cw is not None:
             if (not isinstance(cw, list) or not all(isinstance(c, str) and _CROSS_WRITE_RE.fullmatch(c) for c in cw)
@@ -552,7 +565,9 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     """The DECLARED facts for one asset, as separate keys that never replace a measured one:
     `declared_kind`; `declared_carriage` (only the known `served_surface` boolean); `declared_carries_downstream`;
     `declared_prose_fields`; `declared_read_evidence` / `declared_read_table` (the `path:line` of the real read that
-    backs a declared served_surface true); `declared_terminal_by_construction` (the pointer string); `declared_cross_asset_writes`
+    backs a declared served_surface true) and `declared_read_kind` (only when that read is not row-level:
+    `coverage` = a facet/DISTINCT coverage lookup, `projection` = a column served on request, `table_map` = a
+    dynamic `FROM ${table}` fed by a map); `declared_terminal_by_construction` (the pointer string); `declared_cross_asset_writes`
     (a list of 'table.column'; [] = declared writes-nothing-outside-its-own-table, null = unknown, key omitted); and
     `declaration_disagreements`: every place a declaration contradicts a measured or registry fact, reported and
     never resolved. Absent asset / null field -> key left out (UNKNOWN).
@@ -608,6 +623,8 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     if isinstance(rev, str) and rev.strip() and isinstance(rtab, str) and rtab.strip():
         facts["declared_read_evidence"] = rev
         facts["declared_read_table"] = rtab
+        if isinstance(e.get("read_kind"), str) and e["read_kind"] in READ_KINDS:
+            facts["declared_read_kind"] = e["read_kind"]
     if disagree:
         facts["declaration_disagreements"] = disagree
     return facts
