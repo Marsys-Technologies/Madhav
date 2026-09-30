@@ -157,7 +157,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None, thru=None, writers=None):
     monkeypatch.setattr(ac, "dependency_graph", lambda: {a: [] for a in reg}, raising=False)  # W2-3 R21: the DAG read
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
-    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="", scanned=True))
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: dict(modules=[], density=0, note="", scanned=True))
     monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=3, full=list(c), never=[], note=""))
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
     monkeypatch.setattr(ac, "_run_carriage_detector", lambda aid: dict(v=ac.NO_DET, measured="stub"))
@@ -349,7 +349,7 @@ def test_r222_n3_a_missing_capability_directory_is_no_detector_and_closes_nothin
     reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
     _stub_layer(monkeypatch, tmp_path, reg)
     monkeypatch.setattr(ac, "capability_scan", _REAL["capability_scan"])
-    monkeypatch.setitem(ac.LAYERS["L0"], "caps", str(tmp_path / "no_such_caps_dir"))
+    monkeypatch.setattr(ac, "CAPS_ROOTS", (str(tmp_path / "no_such_caps_dir"),))   # E6.1(d): the scan reads CAPS_ROOTS
     _open_gap(tmp_path, "bg_x", "Dens.served")
     c = ac.measure("L0")
     res = _m(c, "bg_x", "Dens.served")
@@ -364,7 +364,8 @@ def test_r222_n3_a_scanned_directory_with_no_referencing_module_is_a_genuine_na(
     reg = {"bg_x": _reg_row("bg_x", "bg_t", has_writer=False)}
     _stub_layer(monkeypatch, tmp_path, reg)
     monkeypatch.setattr(ac, "capability_scan", _REAL["capability_scan"])
-    monkeypatch.setitem(ac.LAYERS["L0"], "caps", str(caps))
+    monkeypatch.setattr(ac, "CAPS_ROOTS", (str(caps),))                           # E6.1(d): the scan reads CAPS_ROOTS
+    monkeypatch.setattr(ac, "DENS_OUTSIDE_ROOTS", ())
     assert _m(ac.measure("L0"), "bg_x", "Dens.served")["v"] == ac.NA
 
 

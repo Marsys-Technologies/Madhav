@@ -184,7 +184,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None):
     monkeypatch.setattr(ac, "dependency_graph", lambda: {a: [] for a in reg}, raising=False)  # W2-3 R21: the DAG read
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
-    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: dict(modules=[], density=0, note="stub"))
     monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=3, full=list(c), never=[], note=""))
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
 
