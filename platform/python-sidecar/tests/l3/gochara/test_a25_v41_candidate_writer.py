@@ -34,6 +34,7 @@ No live DB, no ephemeris: every DB touch runs against a recording fake conn.
 from __future__ import annotations
 
 import inspect
+import os
 import sys
 import uuid
 from datetime import date, datetime, timezone
@@ -529,23 +530,117 @@ def test_dispatch_script_registry_insert_is_idempotent_and_dependency_free():
 
 
 def test_dispatch_script_inserts_the_row_inert_and_restores_inertness():
-    """(a) the dispatch registry row is born is_active = false; the transient
-    flip to true (required by _load_candidate's active+has_writer predicate)
-    is restored to false in a try/finally covering success, exception and
-    keyboard interrupt, and --help documents the flip/restore."""
+    """(a) the dispatch registry row is born is_active = false; the flip to
+    true (required by _load_candidate's active+has_writer predicate) and the
+    restore to false happen inside ONE database transaction with a single
+    COMMIT (steward refinement M20260930T203925-f792: no other session ever
+    observes is_active=true under READ COMMITTED), try/except-rollback is the
+    belt for any pre-commit failure, and --help documents the discipline."""
     src = DISPATCH.read_text()
     # the INSERT itself carries is_active = false (inert to all planners)
     values = src.split(") VALUES (", 1)[1]
     assert "0, 'per_chart', false, true, true," in values
-    # transient flip + try/finally restore
-    assert ("UPDATE asset_registry SET is_active = true WHERE asset_id = %s"
-            in src)
-    assert ("UPDATE asset_registry SET is_active = false WHERE asset_id = %s"
-            in src)
-    assert "try:" in src and "finally:" in src
-    # --help documents the flip/restore and the manual recovery UPDATE
+    flip_true = src.index(
+        "UPDATE asset_registry SET is_active = true WHERE asset_id = %s")
+    flip_false = src.index(
+        "UPDATE asset_registry SET is_active = false WHERE asset_id = %s")
+    commit = src.index("conn.commit()")
+    # flip true precedes flip false, and the ONLY commit lands after both —
+    # a single transaction for the whole staging window
+    assert flip_true < flip_false < commit
+    assert src.count("conn.commit()") == 1
+    # belt: a pre-commit failure rolls back (nothing staged, nothing flipped)
+    assert "except Exception:" in src and "conn.rollback()" in src
+    # --help documents the single-transaction flip/restore and the manual
+    # recovery UPDATE
+    assert "ONE database transaction" in src
     assert "UPDATE asset_registry SET is_active = false" in src
-    assert "restored to FALSE in a try/finally" in src
+
+
+def test_dispatch_single_transaction_committed_end_state_is_inert():
+    """The committed end state of a staging run: is_active=false AND the
+    build_run staged — asserted against a recording fake psycopg module so
+    the real statement order is exercised through main() itself."""
+    import types
+
+    statements: list[str] = []
+    commits: list[int] = []
+
+    class FakeCur:
+        def execute(self, sql, params=None):
+            statements.append(sql)
+            self._last = sql
+
+        def fetchall(self):
+            if "ANY(depends_on)" in self._last:
+                return []  # no dependents
+            return []
+
+        def fetchone(self):
+            if "SELECT depends_on FROM asset_registry" in self._last:
+                return {"depends_on": []}
+            if "_load_candidate" in self._last or "has_cowriters" in self._last:
+                return {
+                    "asset_id": "ka_gochara_v4_41_candidate",
+                    "layer": "kala", "scope": "per_chart",
+                    "asset_kind": "data", "depends_on": [],
+                    "natural_key_partition": None, "has_cowriters": True,
+                }
+            return None
+
+    class FakeConn:
+        autocommit = False
+
+        def cursor(self):
+            return FakeCur()
+
+        def commit(self):
+            commits.append(len(statements))
+
+        def rollback(self):
+            statements.append("ROLLBACK")
+
+        def close(self):
+            pass
+
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_rows = types.ModuleType("psycopg.rows")
+    fake_rows.dict_row = object()
+    fake_psycopg.rows = fake_rows
+    fake_psycopg.connect = lambda *a, **k: FakeConn()
+
+    sys.path.insert(0, str(DISPATCH.parent))
+    saved = dict(sys.modules)
+    try:
+        sys.modules["psycopg"] = fake_psycopg
+        sys.modules["psycopg.rows"] = fake_rows
+        os.environ.setdefault("DATABASE_URL", "postgresql://fake/fake")
+        import importlib
+        import dispatch_a25_v41_candidate_job as dispatch
+        importlib.reload(dispatch)
+        dispatch.main()
+    finally:
+        sys.modules.pop("psycopg", None)
+        sys.modules.pop("psycopg.rows", None)
+        for name in ("dispatch_a25_v41_candidate_job",):
+            sys.modules.pop(name, None)
+        sys.path.remove(str(DISPATCH.parent))
+        for name, mod in saved.items():
+            if name.startswith("psycopg"):
+                sys.modules[name] = mod
+
+    # exactly one commit, and at that commit the LAST is_active write was the
+    # restore to false — the committed end state is inert
+    assert len(commits) == 1
+    staged = statements[: commits[0]]
+    flips = [s for s in staged if "SET is_active" in s]
+    assert flips[0].count("is_active = true") == 1
+    assert flips[-1].count("is_active = false") == 1
+    # staging happened inside the same transaction: build_runs + manifest
+    assert any("INSERT INTO build_runs" in s and "plan_manifest" in s
+               for s in staged)
+    assert any("INSERT INTO build_run_assets" in s for s in staged)
+    assert not any(s == "ROLLBACK" for s in statements)
 
 
 def test_dispatch_script_stages_a_frozen_manifest_run():

@@ -13,12 +13,19 @@ SHIPS IN THE PR BUT RUNS ONLY ON STEWARD GO. This script only STAGES:
      (src/lib/build/recalibrationEnqueue.ts:141). depends_on = '{}' and a
      live check that NO existing asset lists it in depends_on, so no existing
      DAG build ever schedules it;
-  2. a TRANSIENT flip of asset_registry.is_active to TRUE — required because
-     _load_candidate (dispatch_frozen_rebuild.py:80) refuses any row that is
-     not active+has_writer — immediately restored to FALSE in a try/finally
-     that covers success, exception, AND keyboard interrupt. The row is
-     active only for the staging window inside this process; if this script
-     is killed hard, re-run it or restore manually:
+  2. the asset_registry row's is_active flipped TRUE and back to FALSE inside
+     the ONE database transaction that also stages the run (UPDATE true; …
+     staging …; UPDATE false; COMMIT) — no other session ever observes
+     is_active=true (READ COMMITTED), so no concurrent full build can pick
+     the asset up in the staging window. _load_candidate
+     (dispatch_frozen_rebuild.py:80) requires an active+has_writer row, which
+     the same transaction sees. The runner never re-checks is_active at
+     execution: runner.py restores all scheduling inputs from the frozen
+     manifest and _verify_registry_still_matches_manifest compares only
+     scope/depends_on/natural_key_partition/has_cowriters. A try/finally
+     rollback is the belt for any failure before the commit. If this script
+     is killed hard mid-transaction the transaction simply never commits;
+     restore manually only if some other tooling changed the row:
        UPDATE asset_registry SET is_active = false
          WHERE asset_id = 'ka_gochara_v4_41_candidate';
   3. asset_throughput forced 'dormant' for the native's chart (per_chart
@@ -162,19 +169,19 @@ def main() -> None:
             "a pre-existing row with dependencies would let DAG builds "
             "schedule it; investigate before dispatching")
 
-    # Transient activation: _load_candidate requires is_active = true AND
-    # has_writer = true (dispatch_frozen_rebuild.py:80). The flip is restored
-    # to FALSE in the finally below — covering success, exception, and
-    # keyboard interrupt — so the asset is active only for the staging
-    # window inside this process.
-    cur.execute(
-        "UPDATE asset_registry SET is_active = true WHERE asset_id = %s",
-        (ASSET_ID,),
-    )
-    conn.commit()
-
     run_id = None
     try:
+        # ONE transaction for the whole staging (steward refinement
+        # M20260930T203925-f792): the is_active flip TRUE → staging → flip
+        # FALSE → single COMMIT, so no other session ever observes
+        # is_active=true (READ COMMITTED) and no concurrent full build can
+        # pick the asset up in the staging window. _load_candidate requires
+        # is_active = true AND has_writer = true
+        # (dispatch_frozen_rebuild.py:80) — the same transaction sees it.
+        cur.execute(
+            "UPDATE asset_registry SET is_active = true WHERE asset_id = %s",
+            (ASSET_ID,),
+        )
         candidate = _load_candidate(cur, ASSET_ID)
         manifest, manifest_digest = build_manifest(
             chart_id=CHART_ID,
@@ -208,18 +215,19 @@ def main() -> None:
                VALUES (%s, %s, 0, 'queued')""",
             (run_id, ASSET_ID),
         )
-        conn.commit()
-    finally:
-        # Restore inertness no matter how staging ended (success, exception,
-        # keyboard interrupt): the asset must never be left planner-visible.
-        # Roll back first so an aborted transaction cannot block the restore.
-        conn.rollback()
+        # Restore inertness in the SAME transaction, then the one commit.
         cur.execute(
             "UPDATE asset_registry SET is_active = false WHERE asset_id = %s",
             (ASSET_ID,),
         )
         conn.commit()
+    except Exception:
+        # Belt for any failure before the commit: nothing staged, nothing
+        # flipped — the transaction never lands.
+        conn.rollback()
         conn.close()
+        raise
+    conn.close()
 
     print(f"[dispatch] staged A2.5 '4.1' candidate build_run {run_id} for "
           f"asset {ASSET_ID} on chart {CHART_ID} (manifest digest "
