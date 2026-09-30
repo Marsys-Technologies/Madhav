@@ -72,6 +72,8 @@ provenance comments) rather than a newly authored one:
 """
 from __future__ import annotations
 
+import re
+
 import logging
 from typing import Optional
 
@@ -656,11 +658,58 @@ def kakshya_lord_for_index(kakshya_index: int) -> Optional[str]:
     return None
 
 
+_KAKSHYA_L1_SUBJECT_RE = re.compile(r"^KAKSHYA_([1-8])$")
+
+
+def parse_kakshya_boundary_subject(subject: str, planet: Optional[str] = None):
+    """The L1 boundary seam (FABLE #19 / T0-10; ASTRA_REVIEW_A5_4 P1-5).
+
+    ga_strength_writer.py writes `fact_subject = 'KAKSHYA_{n}'` (n = 1..8,
+    chart-independent, stored per chart × ayanāṃśa) with `start_deg` /
+    `end_deg` as WITHIN-SIGN offsets (0, 3.75, …, 26.25 → 30). The readers
+    expected `'{planet}.{index}'` with absolute degrees and therefore fetched
+    nothing from correct L1 input. Returns (kakshya_index 0-based,
+    sign_relative, planet_scope) — planet_scope '*' for the L1 shape (valid
+    for every planet), the named planet for the legacy per-planet shape, or
+    None when the subject is neither."""
+    m = _KAKSHYA_L1_SUBJECT_RE.match(subject or "")
+    if m:
+        return int(m.group(1)) - 1, True, "*"
+    parts = (subject or "").split(".")
+    if len(parts) == 2 and (planet is None or parts[0] == planet):
+        try:
+            return int(parts[1]), False, parts[0]
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def kakshya_cell_entered(speed_dps, boundary_index: int, sign_number: int):
+    """Correct cell selection for a boundary crossing (ASTRA P1-5): a DIRECT
+    crossing of boundary i enters cell i of the sign; a RETROGRADE crossing
+    enters cell i−1 — and boundary 0 crossed retrograde enters cell 7 of the
+    PREVIOUS sign. A non-numeric speed (unknown direction) is reported as
+    such and takes the direct convention (disclosed, never guessed silently).
+    Returns (direction, entered_cell_index, entered_sign_number 1..12)."""
+    if isinstance(speed_dps, bool) or not isinstance(speed_dps, (int, float)):
+        return "unknown", int(boundary_index), int(sign_number)
+    if float(speed_dps) < 0.0:
+        if int(boundary_index) == 0:
+            return "retrograde", 7, ((int(sign_number) - 2) % 12) + 1
+        return "retrograde", int(boundary_index) - 1, int(sign_number)
+    return "direct", int(boundary_index), int(sign_number)
+
+
 def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
     """Real path: read `ashtakavarga_kakshya_boundary` rows written by
-    ga_strength_writer.py (fact_category='ashtakavarga_kakshya_boundary',
-    fact_subject=f'{planet}.<kakshya_index>', fact_key in
-    {'lord','start_deg','end_deg'}). Defensive -- [] on any failure."""
+    ga_strength_writer.py — the ACTUAL producer shape
+    (fact_subject='KAKSHYA_{n}', fact_key in {'lord','start_deg','end_deg'},
+    within-sign offsets; ASTRA P1-5) — plus the legacy per-planet shape
+    '{planet}.{index}' (absolute degrees) for fixtures. Each dict carries
+    `kakshya_index`, `sign_relative` (True ⇒ the consumer adds the target
+    sign's base) and the three facts. Identical duplicates (the rows are
+    stored per ayanāṃśa) collapse; a subject whose facts disagree is dropped
+    (logged), never row-order picked. Defensive -- [] on any failure."""
     cache_key = (chart_id, planet)
     if cache_key in _KAKSHYA_BOUNDARIES_CACHE:
         return _KAKSHYA_BOUNDARIES_CACHE[cache_key]
@@ -671,7 +720,7 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
                 SELECT fact_subject, fact_key, fact_value_text, fact_value_num
                   FROM chart_facts
                  WHERE chart_id = %s AND fact_category = 'ashtakavarga_kakshya_boundary'
-                   AND fact_subject LIKE %s
+                   AND (fact_subject LIKE %s OR fact_subject ~ '^KAKSHYA_[1-8]$')
                 """,
                 [chart_id, f"{planet}.%"],
             )
@@ -683,17 +732,33 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
         logger.info("[kakshya_cell_crossing] chart_facts kakshya boundary read failed: %s", exc)
         return []
     by_subject: dict[str, dict] = {}
+    conflicts: set[str] = set()
     for row in rows:
         d = row if isinstance(row, dict) else dict(zip(
             ["fact_subject", "fact_key", "fact_value_text", "fact_value_num"], row))
-        by_subject.setdefault(d["fact_subject"], {})[d["fact_key"]] = d.get("fact_value_text") or d.get("fact_value_num")
-    result = list(by_subject.values())
+        parsed = parse_kakshya_boundary_subject(d["fact_subject"], planet)
+        if parsed is None:
+            continue
+        idx, sign_relative, scope = parsed
+        entry = by_subject.setdefault(d["fact_subject"], {
+            "kakshya_index": idx, "sign_relative": sign_relative,
+            "planet_scope": scope})
+        val = d.get("fact_value_text") if d.get("fact_value_text") is not None else d.get("fact_value_num")
+        if d["fact_key"] in entry and entry[d["fact_key"]] != val:
+            conflicts.add(d["fact_subject"])
+        entry[d["fact_key"]] = val
+    if conflicts:
+        logger.info("[kakshya_cell_crossing] conflicting boundary facts dropped for %s",
+                    sorted(conflicts))
+    result = [v for k, v in by_subject.items() if k not in conflicts]
+    result.sort(key=lambda e: e["kakshya_index"])
     _KAKSHYA_BOUNDARIES_CACHE[cache_key] = result
     return result
 
 
 def _fetch_kakshya_donor_bindu(
-    conn, chart_id: str, planet: str, donor_lord: str, sign_number: int
+    conn, chart_id: str, planet: str, donor_lord: str, sign_number: int,
+    ayanamsha_id: str = "lahiri_chitrapaksha",
 ) -> Optional[float]:
     """Read the mark-donor's BAV contribution for one kakṣyā cell.
 
@@ -706,7 +771,10 @@ def _fetch_kakshya_donor_bindu(
     absolute rāśi number 1-12. Returns the donor's 0/1 mark, or None when the
     row/value is absent or the read fails — None is the honest 'unavailable',
     never a fabricated 0 or 1 (P5c: donor rows are pending the
-    native-authorised ga_strength rebuild on production).
+    native-authorised ga_strength rebuild on production). The read is pinned
+    to `ayanamsha_id` (ASTRA P1-5: duplicate identities from different input
+    sets must not be selected by row order); rows that still disagree on the
+    value are a conflict → None, never the first row.
     """
     if conn is None:
         return None
@@ -720,31 +788,37 @@ def _fetch_kakshya_donor_bindu(
                 """
                 SELECT fact_value_num
                   FROM chart_facts
-                 WHERE chart_id = %s
+                 WHERE chart_id = %s AND ayanamsha_id = %s
                    AND fact_category = 'ashtakavarga_bindu_contributor'
                    AND fact_subject = %s
                    AND fact_key = 'bindus'
                 """,
-                [chart_id, subject],
+                [chart_id, ayanamsha_id, subject],
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         logger.info("[kakshya_donor_bindu] contributor read failed: %s", exc)
         return None
-    if not rows:
+    values: set[float] = set()
+    for row in rows:
+        val = row["fact_value_num"] if isinstance(row, dict) else row[0]
+        if val is None:
+            continue
+        try:
+            values.add(float(val))
+        except (TypeError, ValueError):
+            continue
+    if len(values) != 1:
+        if len(values) > 1:
+            logger.info("[kakshya_donor_bindu] conflicting contributor rows for %s "
+                        "(%s) — unresolved, never row-order picked", subject, sorted(values))
         return None
-    row = rows[0]
-    val = row["fact_value_num"] if isinstance(row, dict) else row[0]
-    if val is None:
-        return None
-    try:
-        return float(val)
-    except (TypeError, ValueError):
-        return None
+    return values.pop()
 
 
 def kakshya_donor_bindu_detail(
-    conn, chart_id: str, planet: str, sign_number: int, kakshya_index: int
+    conn, chart_id: str, planet: str, sign_number: int, kakshya_index: int,
+    ayanamsha_id: str = "lahiri_chitrapaksha",
 ) -> dict:
     """P5c donor-key detail for one crossed kakṣyā cell.
 
@@ -771,7 +845,8 @@ def kakshya_donor_bindu_detail(
     detail["donor_row_key"] = (
         f"{norm_graha(planet)}-CONTRIBUTOR_{norm_graha(lord)}-SIGN_{int(sign_number)}"
     )
-    mark = _fetch_kakshya_donor_bindu(conn, chart_id, planet, lord, sign_number)
+    mark = _fetch_kakshya_donor_bindu(conn, chart_id, planet, lord, sign_number,
+                                      ayanamsha_id=ayanamsha_id)
     if mark is not None:
         detail["donor_bindu"] = int(mark)
         detail["donor_bindu_state"] = "resolved"
@@ -797,12 +872,18 @@ def kakshya_cell_crossing(
         logger.debug("[kakshya_cell_crossing] target_ref=%s has no target_sign; skipping.", target.target_ref)
         return []
     sign_start = _sign_index(target.target_sign) * 30.0
+    sign_number_abs = _sign_index(target.target_sign) + 1
     sentences: list[ConfigurationSentence] = []
 
     for planet in (planets or ALL_GRAHAS):
         db_boundaries = _fetch_kakshya_boundaries(conn, chart_id, planet) if conn is not None else []
         if db_boundaries:
-            boundary_degs = sorted({float(b["start_deg"]) for b in db_boundaries if b.get("start_deg") is not None})
+            # L1 rows carry WITHIN-SIGN offsets (sign_relative): add the
+            # target sign's base; legacy per-planet rows are absolute.
+            boundary_degs = sorted({
+                ((sign_start + float(b["start_deg"])) % 360.0
+                 if b.get("sign_relative") else float(b["start_deg"]))
+                for b in db_boundaries if b.get("start_deg") is not None})
             citation = C.KAKSHYA_BPHS_66
             uncited = False
             source = "chart_facts.ashtakavarga_kakshya_boundary"
@@ -818,6 +899,8 @@ def kakshya_cell_crossing(
         for i, b in enumerate(boundary_degs):
             events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
             for ev in events:
+                direction, entered_idx, entered_sign = kakshya_cell_entered(
+                    getattr(ev, "speed_at_event_dps", None), i, sign_number_abs)
                 sentences.append(ConfigurationSentence(
                     primitive="kakshya_cell_crossing",
                     chart_id=chart_id,
@@ -835,7 +918,10 @@ def kakshya_cell_crossing(
                     detail={
                         "boundary_deg": b,
                         "kakshya_index": i,
-                        "kakshya_lord": kakshya_lord_for_index(i),
+                        "direction": direction,
+                        "kakshya_index_entered": entered_idx,
+                        "entered_sign_number": entered_sign,
+                        "kakshya_lord": kakshya_lord_for_index(entered_idx),
                         "source": source,
                     },
                 ))

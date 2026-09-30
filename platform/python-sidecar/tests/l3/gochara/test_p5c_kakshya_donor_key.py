@@ -115,7 +115,10 @@ class TestDonorJoin:
         # The read hit the writer's category/subject/key scheme verbatim.
         sql, params = conn.execute.call_args[0][0], conn.execute.call_args[0][1]
         assert "ashtakavarga_bindu_contributor" in sql
-        assert params == ["chart-1", "JUP-CONTRIBUTOR_SAT-SIGN_1"]
+        # ASTRA P1-5: the contributor read is pinned to an ayanāṃśa (default
+        # lahiri_chitrapaksha) — duplicate identities from different input
+        # sets are never selected by row order.
+        assert params == ["chart-1", "lahiri_chitrapaksha", "JUP-CONTRIBUTOR_SAT-SIGN_1"]
 
     def test_lagna_donor_key(self):
         conn = self._conn([(0.0,)])
@@ -359,4 +362,8 @@ class TestFlagOffUnchanged:
         )
         sentences = _crossings(ctx)
         for s in sentences:
-            assert set(s.detail) == {"boundary_deg", "kakshya_index", "source"}
+            assert set(s.detail) == {
+                "boundary_deg", "kakshya_index", "source",
+                # ASTRA P1-5: cell-selection geometry, always present
+                "direction", "kakshya_index_entered", "entered_sign_number",
+                "kakshya_lord"}

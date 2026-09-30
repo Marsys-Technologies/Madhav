@@ -1615,6 +1615,7 @@ def _kakshya_cell_crossing_from_context(
         return []
 
     sign_start = P._sign_index(target.target_sign) * 30.0
+    sign_number_abs = P._sign_index(target.target_sign) + 1
     sentences: list[ConfigurationSentence] = []
 
     # N-22/N-13 interim (flag kakshya_bindu_interim, default off): pre-resolve
@@ -1644,11 +1645,15 @@ def _kakshya_cell_crossing_from_context(
         by_planet.setdefault(row.planet, []).append(row)
 
     for planet in (planets or P.ALL_GRAHAS):
-        l1_rows = by_planet.get(planet, [])
+        # L1 producer rows are planet-independent (planet='*', sign-relative
+        # offsets; ASTRA P1-5); legacy per-planet fixture rows are absolute.
+        l1_rows = by_planet.get(planet) or by_planet.get("*", [])
         if l1_rows:
-            boundary_degs = sorted(
-                {float(r.start_deg) for r in l1_rows if r.start_deg is not None}
-            )
+            boundary_degs = sorted({
+                ((sign_start + float(r.start_deg)) % 360.0
+                 if getattr(r, "sign_relative", False) else float(r.start_deg))
+                for r in l1_rows if r.start_deg is not None
+            })
             citation = P.C.KAKSHYA_BPHS_66 if hasattr(P, "C") else None
             uncited = False
             source = "chart_facts.ashtakavarga_kakshya_boundary"
@@ -1661,29 +1666,40 @@ def _kakshya_cell_crossing_from_context(
         for i, b in enumerate(boundary_degs):
             events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
             for ev in events:
-                detail = {"boundary_deg": b, "kakshya_index": i, "source": source}
+                # Correct cell selection (ASTRA P1-5): direct crossing enters
+                # cell i; retrograde enters cell i−1 (boundary 0 ⇒ cell 7 of
+                # the previous sign); unknown direction ⇒ direct, disclosed.
+                direction, entered_idx, entered_sign = P.kakshya_cell_entered(
+                    getattr(ev, "speed_at_event_dps", None), i, sign_number_abs)
+                detail = {"boundary_deg": b, "kakshya_index": i, "source": source,
+                          "direction": direction,
+                          "kakshya_index_entered": entered_idx,
+                          "entered_sign_number": entered_sign,
+                          "kakshya_lord": P.kakshya_lord_for_index(entered_idx)}
                 if _KAKSHYA_BINDU_INTERIM_ENABLED:
                     # P5c donor key takes precedence when the contributor
                     # matrix resolves; otherwise the N-22/N-13 sign-grain
                     # interim applies, labelled as the coarser P5a
                     # qualification, with the donor operand honestly
-                    # 'unavailable' (never a fabricated 0/1).
+                    # 'unavailable' (never a fabricated 0/1). The donor cell
+                    # and sign are the ENTERED ones.
+                    donor_sign = entered_sign if sign_number else sign_number
                     donor_detail = _bindu_donor_detail(
-                        context, contributor_lookup, planet, sign_number, i
+                        context, contributor_lookup, planet, donor_sign, entered_idx
                     )
                     if donor_detail is not None:
                         detail.update(donor_detail)
                     else:
                         detail.update(
-                            _bindu_interim_detail(context, bindu_lookup, planet, sign_number)
+                            _bindu_interim_detail(context, bindu_lookup, planet, donor_sign)
                         )
-                        lord = P.kakshya_lord_for_index(i)
+                        lord = P.kakshya_lord_for_index(entered_idx)
                         detail["kakshya_lord"] = lord
                         detail["donor_bindu"] = None
                         detail["donor_bindu_state"] = "unavailable"
                         detail["donor_row_key"] = (
                             f"{norm_graha(planet)}-CONTRIBUTOR_{norm_graha(lord)}"
-                            f"-SIGN_{sign_number}"
+                            f"-SIGN_{donor_sign}"
                             if lord is not None else None
                         )
                 sentences.append(ConfigurationSentence(

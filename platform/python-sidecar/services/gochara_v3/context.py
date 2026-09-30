@@ -114,8 +114,12 @@ class MaleficScaleRow:
 class KakshyaBoundaryRow:
     """One L1 kakṣyā boundary row from chart_facts.
 
-    fact_category='ashtakavarga_kakshya_boundary',
-    fact_subject='{planet}.{kakshya_index}',
+    fact_category='ashtakavarga_kakshya_boundary'. The ACTUAL producer shape
+    (ga_strength_writer.py; ASTRA P1-5) is fact_subject='KAKSHYA_{n}' (n =
+    1..8, chart-independent → planet='*', valid for every planet) with
+    start_deg/end_deg as WITHIN-SIGN offsets (sign_relative=True: the
+    consumer adds the target sign's base). The legacy per-planet shape
+    '{planet}.{kakshya_index}' carries absolute degrees (sign_relative=False).
     fact_key in {'lord','start_deg','end_deg'}.
     """
     planet: str
@@ -123,6 +127,7 @@ class KakshyaBoundaryRow:
     lord: Optional[str] = None
     start_deg: Optional[float] = None
     end_deg: Optional[float] = None
+    sign_relative: bool = False
 
 
 @dataclass(frozen=True)
@@ -333,7 +338,7 @@ class ClassContext:
 
         # 16. P5c (FABLE #19 / T0-10): per-contributor BAV donor matrix
         # (time-invariant; read only when the kakshya_bindu_interim flag is on)
-        bindu_contributor_rows = _fetch_bindu_contributor_rows(conn, chart_id)
+        bindu_contributor_rows = _fetch_bindu_contributor_rows(conn, chart_id, ayanamsha_id)
 
         return cls(
             chart_id=chart_id,
@@ -690,26 +695,37 @@ def _fetch_kakshya_boundaries(conn, chart_id: str) -> list[KakshyaBoundaryRow]:
         logger.info("[v3.context] kakshya_boundaries fetch failed: %s", exc)
         return []
 
+    from services.gochara_grammar.primitives import parse_kakshya_boundary_subject
+
     by_subject: dict[str, dict] = {}
+    conflicts: set[str] = set()
     for row in rows:
         d = row if isinstance(row, dict) else dict(
             zip(["fact_subject", "fact_key", "fact_value_text", "fact_value_num"], row)
         )
-        by_subject.setdefault(d["fact_subject"], {})[d["fact_key"]] = (
-            d.get("fact_value_text") if d.get("fact_value_text") is not None else d.get("fact_value_num")
-        )
+        val = (d.get("fact_value_text") if d.get("fact_value_text") is not None
+               else d.get("fact_value_num"))
+        facts = by_subject.setdefault(d["fact_subject"], {})
+        # identical duplicates (rows stored per ayanāṃśa) collapse; a
+        # disagreeing value is a conflict → the subject is dropped, never
+        # row-order picked (ASTRA P1-5)
+        if d["fact_key"] in facts and facts[d["fact_key"]] != val:
+            conflicts.add(d["fact_subject"])
+        facts[d["fact_key"]] = val
+    if conflicts:
+        logger.info("[v3.context] conflicting kakshya boundary facts dropped: %s",
+                    sorted(conflicts))
 
     result = []
     for subject, facts in by_subject.items():
-        # fact_subject format: "{planet}.{kakshya_index}"
-        parts = subject.split(".")
-        if len(parts) != 2:
+        if subject in conflicts:
             continue
-        planet = parts[0]
-        try:
-            kakshya_index = int(parts[1])
-        except (TypeError, ValueError):
+        # fact_subject: the L1 producer's 'KAKSHYA_{n}' (planet-independent,
+        # sign-relative) or the legacy '{planet}.{kakshya_index}'
+        parsed = parse_kakshya_boundary_subject(subject)
+        if parsed is None:
             continue
+        kakshya_index, sign_relative, planet = parsed
         try:
             start_deg = float(facts["start_deg"]) if facts.get("start_deg") is not None else None
         except (TypeError, ValueError):
@@ -724,7 +740,9 @@ def _fetch_kakshya_boundaries(conn, chart_id: str) -> list[KakshyaBoundaryRow]:
             lord=facts.get("lord"),
             start_deg=start_deg,
             end_deg=end_deg,
+            sign_relative=sign_relative,
         ))
+    result.sort(key=lambda r: (r.planet, r.kakshya_index))
     return result
 
 
@@ -783,7 +801,9 @@ def _fetch_bindu_sign_rows(conn, chart_id: str) -> list[BinduSignRow]:
     return result
 
 
-def _fetch_bindu_contributor_rows(conn, chart_id: str) -> list[BinduContributorRow]:
+def _fetch_bindu_contributor_rows(
+    conn, chart_id: str, ayanamsha_id: str = "lahiri_chitrapaksha",
+) -> list[BinduContributorRow]:
     """Pre-fetch L1 per-contributor BAV matrix rows from chart_facts.
 
     Reads fact_category='ashtakavarga_bindu_contributor', fact_key='bindus'
@@ -794,7 +814,10 @@ def _fetch_bindu_contributor_rows(conn, chart_id: str) -> list[BinduContributorR
     production contributor data, and the read side must join the scheme the
     data actually exists under. Empty list when the rows are absent (the
     production state pending the native-authorised rebuild) — consumers treat
-    that as 'unavailable', never as 0/1.
+    that as 'unavailable', never as 0/1. The read is pinned to
+    `ayanamsha_id` (ASTRA P1-5); identical duplicates collapse and a key
+    whose rows disagree on the value is EXCLUDED (logged) — never selected
+    by row order.
     """
     if conn is None:
         return []
@@ -804,10 +827,11 @@ def _fetch_bindu_contributor_rows(conn, chart_id: str) -> list[BinduContributorR
                 """
                 SELECT fact_subject, fact_value_num
                   FROM chart_facts
-                 WHERE chart_id = %s AND fact_category = 'ashtakavarga_bindu_contributor'
+                 WHERE chart_id = %s AND ayanamsha_id = %s
+                   AND fact_category = 'ashtakavarga_bindu_contributor'
                    AND fact_key = 'bindus'
                 """,
-                [chart_id],
+                [chart_id, ayanamsha_id],
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
@@ -843,7 +867,23 @@ def _fetch_bindu_contributor_rows(conn, chart_id: str) -> list[BinduContributorR
             sign_number=sign_number,
             bindus=bindus,
         ))
-    return result
+    # duplicate policy: identical rows collapse; disagreeing values conflict
+    by_key: dict[tuple, set] = {}
+    for r in result:
+        by_key.setdefault((r.graha, r.contributor, r.sign_number), set()).add(r.bindus)
+    conflicts = {k for k, v in by_key.items() if len(v) > 1}
+    if conflicts:
+        logger.info("[v3.context] conflicting bindu_contributor rows excluded: %s",
+                    sorted(conflicts))
+    seen: set[tuple] = set()
+    deduped = []
+    for r in result:
+        k = (r.graha, r.contributor, r.sign_number)
+        if k in conflicts or k in seen:
+            continue
+        seen.add(k)
+        deduped.append(r)
+    return deduped
 
 
 __all__ = [
