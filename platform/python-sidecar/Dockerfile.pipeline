@@ -52,6 +52,12 @@ COPY platform/python-sidecar/panchang_engine/ ./platform/python-sidecar/panchang
 # Without this COPY, Cloud Run job → ModuleNotFoundError('muhurat') → ka_muhurta_seva
 # self-test failures → cascading block of 7 ka_* + 9 ph_* + 5 mi_* assets.
 COPY platform/python-sidecar/muhurat/ ./platform/python-sidecar/muhurat/
+# Kāla-gochara cutover scripts (Pravāha A2.5). brahma-gochara-century-job's
+# container command is /bin/sh /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh,
+# and the step scripts import `services.gochara_kernel` (COPYed above) plus
+# sibling module `common` (same dir). Without this COPY the job command path
+# does not exist in the image and the job fails at container start.
+COPY platform/python-sidecar/scripts/kala_gochara_cutover/ ./platform/python-sidecar/scripts/kala_gochara_cutover/
 # CGM edge manifests (read by brahmagyan.bodha.bo22 at runtime)
 COPY 035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
 COPY 035_DISCOVERY_LAYER/cgm_supports_edges_manifest_v1_0.json 035_DISCOVERY_LAYER/
