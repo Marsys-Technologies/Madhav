@@ -80,6 +80,13 @@ from ga_writers.ga_positions_writer import _fact_id as _positions_fact_id  # noq
 from ga_writers.ga_sensitive_writer import _fact_id as _sensitive_point_fact_id  # noqa: E402
 from ga_writers.ga_panchanga_writer import _fact_id as _panchanga_fact_id  # noqa: E402
 
+# TAP-6 M-22: the fixture's verification_pass_status values come from the
+# sanctioned vocabulary module as the exported constant, never a bare literal
+# at the emit site (check_tap6 two_pass_verified_literal). The rehearsal rows
+# are synthetic fixtures in a disposable database; the constant is the honest
+# spelling of the status the rehearsal deliberately seeds.
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED  # noqa: E402
+
 # fact_category → (producer writer, its id function called as the producer calls it)
 PRODUCER_FACT_ID = {
     "sensitive_degree_check": ("ga_writers/ga_sensitive_degree_writer.py",
@@ -795,7 +802,7 @@ def _seed(cur) -> dict:
         " citation_ref, citation_human, source_calculation, verification_pass_status,"
         " engine_version, computed_at)"
         " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'rehearsal', 'synthetic rehearsal fact',"
-        " 'fixture', 'two_pass_verified', 'rehearsal-0', NOW())",
+        " 'fixture', '" + TWO_PASS_VERIFIED + "', 'rehearsal-0', NOW())",
         fact_rows,
     )
     cur.executemany(
@@ -813,7 +820,7 @@ def _seed(cur) -> dict:
         "INSERT INTO chart_dashas (chart_id, ayanamsha_id, build_id, system_id, level_n, lord_graha,"
         " start_date, end_date, start_iso, end_iso, duration_days, verification_pass_status,"
         " verification_method, citation_ref, citation_human, engine_version)"
-        " VALUES (%s, %s, %s, 'vimshottari', 1, %s, %s, %s, %s, %s, %s, 'two_pass_verified',"
+        " VALUES (%s, %s, %s, 'vimshottari', 1, %s, %s, %s, %s, %s, %s, '" + TWO_PASS_VERIFIED + "',"
         " 'fixture', 'rehearsal', 'synthetic rehearsal dasha', 'rehearsal-0')",
         [(CHART_ID, AYANAMSHA, build_id, lord, f"{1984 + 10 * i}-01-01", f"{1994 + 10 * i}-01-01",
           f"{1984 + 10 * i}-01-01T00:00:00Z", f"{1994 + 10 * i}-01-01T00:00:00Z", 3652)
@@ -1000,7 +1007,7 @@ def _detector_controls(cur, fixture: dict) -> dict:
             " fact_subject, fact_key, fact_value_text, citation_ref, citation_human, source_calculation,"
             " verification_pass_status, engine_version, computed_at)"
             " VALUES (%s, %s, %s, %s, 'sensitive_degree_check', 'VEN', 'pushkara', 'pushkara',"
-            " 'rehearsal', 'foreign-chart control fact', 'fixture', 'two_pass_verified', 'rehearsal-0', NOW())",
+            " 'rehearsal', 'foreign-chart control fact', 'fixture', '" + TWO_PASS_VERIFIED + "', 'rehearsal-0', NOW())",
             (foreign_id, OTHER_CHART_ID, AYANAMSHA, fixture["build_id"])),
                  cur.execute(upd.format("target_ref=%s"),
                              (foreign_id, CHART_ID, "marriage", "sensitive_degree",
