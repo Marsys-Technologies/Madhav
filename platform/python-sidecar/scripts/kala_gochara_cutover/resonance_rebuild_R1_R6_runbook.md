@@ -1,11 +1,11 @@
-# Resonance-map production rebuild runbook — R-1..R-6 (A5.4 resonance_rebuild_R1_R6, rework 5)
+# Resonance-map production rebuild runbook — R-1..R-6 (A5.4 resonance_rebuild_R1_R6, rework 6)
 
 Sealed doctrine: FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 T0-12, finding #9
 ("Production resonance map is pre-WP3c: 154 of 176 sensitive-degree targets
 are negative-result checks (E3)"). Corrections: GOCHARA_PLAN_V3_AMENDMENT_v1_0
 §121 (G-R resonance corrections R-1..R-6 survive as T0-12/A5.4);
 GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §WP3c; WP1_CONTRACTS.md §2. Reworked per
-ASTRA_REVIEW_A5_4 P1-7/P1-8, v1.1 P1-6/P1-7, v1.2 P1-3 and v1.3 amendments 1/3: uniquely identified snapshot,
+ASTRA_REVIEW_A5_4 P1-7/P1-8, v1.1 P1-6/P1-7, v1.2 P1-3, v1.3 amendments 1/3 and v1.4 amendments 1/2: uniquely identified snapshot,
 a TYPED FULL-ROW preimage certificate (every column, ids and computed_at
 included, JSON-serialised so NULL never collides with a string) recorded at
 snapshot time and re-verified at restore, separate from the ID-independent
@@ -226,15 +226,17 @@ EXCEPT
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'sensitive_degree';
 
--- references: NULL / dangling / non-uuid fact refs — MUST BE 0 (NOT EXISTS; NULL-safe):
+-- references: NULL / blank refs and fact-backed refs (sensitive_degree, arudha) that resolve to no
+-- chart_facts row of THIS chart — MUST BE 0. chart_facts.fact_id is TEXT (migration 204) and the
+-- producers mint 16-hex semantic ids (ga_writers/*._fact_id), never UUIDs: resolution is a chart-
+-- scoped NOT EXISTS on the text identity itself (NULL-safe) — an existing id of this chart passes; a
+-- missing id, or the same id minted for another chart, fails:
 SELECT COUNT(*) FROM gochara_resonance_map m
  WHERE m.chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
-   AND (m.target_ref IS NULL
+   AND (m.target_ref IS NULL OR btrim(m.target_ref) = ''
         OR (m.target_type IN ('sensitive_degree', 'arudha')
-            AND m.target_ref !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
-        OR (m.target_ref ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
             AND NOT EXISTS (SELECT 1 FROM chart_facts f
-                             WHERE f.fact_id::text = m.target_ref
+                             WHERE f.fact_id = m.target_ref
                                AND f.chart_id = m.chart_id)));
 
 -- R-6: every row carries a valid stored state — MUST BE 0, AND the partition MUST be non-empty:

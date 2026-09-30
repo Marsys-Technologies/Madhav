@@ -70,11 +70,50 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import resonance_rebuild_backup_sql as B  # noqa: E402
 
+# ASTRA v1.4 amendment 1: fixture fact ids are minted by the PRODUCERS' own id
+# functions (16-hex semantic ids, sha256 of category|subject|key|chart|ayanāṃśa
+# — chart_facts.fact_id is TEXT, migration 204), never uuid4(): the runbook's
+# reference check must pass the ids production actually carries.
+from ga_writers.ga_sensitive_degree_writer import _fact_id as _sensitive_degree_fact_id  # noqa: E402
+from ga_writers.ga_structural_writer import _fact_id as _structural_fact_id  # noqa: E402
+from ga_writers.ga_positions_writer import _fact_id as _positions_fact_id  # noqa: E402
+from ga_writers.ga_sensitive_writer import _fact_id as _sensitive_point_fact_id  # noqa: E402
+from ga_writers.ga_panchanga_writer import _fact_id as _panchanga_fact_id  # noqa: E402
+
+# fact_category → (producer writer, its id function called as the producer calls it)
+PRODUCER_FACT_ID = {
+    "sensitive_degree_check": ("ga_writers/ga_sensitive_degree_writer.py",
+                               lambda cat, subj, key, chart, aya, build:
+                               _sensitive_degree_fact_id(subj, key, chart, aya, build, cat)),
+    "arudha_pada": ("ga_writers/ga_structural_writer.py",
+                    lambda cat, subj, key, chart, aya, build:
+                    _structural_fact_id(cat, subj, key, chart, aya, build)),
+    "graha_position": ("ga_writers/ga_positions_writer.py",
+                       lambda cat, subj, key, chart, aya, build:
+                       _positions_fact_id(cat, subj, key, chart, aya)),
+    "graha_sign_attributes": ("ga_writers/ga_positions_writer.py",
+                              lambda cat, subj, key, chart, aya, build:
+                              _positions_fact_id(cat, subj, key, chart, aya)),
+    "sensitive_point_gulika_mandi": ("ga_writers/ga_sensitive_writer.py",
+                                     lambda cat, subj, key, chart, aya, build:
+                                     _sensitive_point_fact_id(cat, subj, key, chart, aya, build)),
+    "panchanga_nakshatra_moon": ("ga_writers/ga_panchanga_writer.py",
+                                 lambda cat, subj, key, chart, aya, build:
+                                 _panchanga_fact_id(cat, subj, key, chart, aya, build)),
+}
+FACT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
 LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 OTHER_CHART_ID = "11111111-1111-4111-8111-111111111111"  # foreign partition control
 AYANAMSHA = "lahiri_chitrapaksha"
+# The canonical ayanāṃśa plus four fixture ayanāṃśas: production chart_facts
+# carries every category per ayanāṃśa, and a producer id differs per ayanāṃśa
+# — the 176 pre-WP3c sensitive targets are 36 (subject, key) pairs across
+# five ayanāṃśas (the pinned R-1/R-2 reads must ignore the four others).
+FIXTURE_AYANAMSHAS = ("fixture_ayanamsha_a", "fixture_ayanamsha_b", "fixture_ayanamsha_c",
+                      "fixture_ayanamsha_d", AYANAMSHA)
 
 NEGATIVE_VALUES = list(B.NEGATIVE_VALUES)
 POSITIVE_VALUES = list(B.POSITIVE_VALUES)
@@ -395,6 +434,7 @@ REQUIRED_DETECTOR_CONTROLS: tuple[str, ...] = (
     "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
     "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
     "lord_token_wrong", "lord_token_missing", "birth_anchor_row_injected",
+    "fact_ref_missing", "fact_ref_foreign_chart",
 )
 _DETECTOR_META_KEYS = ("clean", "restored_after_controls")
 
@@ -419,7 +459,12 @@ def verify_acceptance(ver: dict) -> list[str]:
     if a["sensitive_total"] != ver["sensitive_keyed_to_positive_facts"]:
         f.append("R-1: kept sensitive rows are not all keyed to positive-result facts")
     if ver["dangling_or_null_refs"] != 0:
-        f.append(f"refs: {ver['dangling_or_null_refs']} NULL / dangling / non-uuid target refs")
+        f.append(f"refs: {ver['dangling_or_null_refs']} NULL / blank / dangling fact-backed target refs")
+    if ver.get("fact_backed_refs", 0) <= 0 or ver.get("fact_backed_refs_not_producer_shaped", 1) != 0:
+        f.append("refs control: fact-backed refs absent or not producer-shaped 16-hex ids "
+                 f"({ver.get('fact_backed_refs_not_producer_shaped')} of {ver.get('fact_backed_refs')})")
+    if ver.get("non_canonical_fact_ids_referenced", 1) != 0:
+        f.append(f"ayanāṃśa pin: {ver.get('non_canonical_fact_ids_referenced')} non-canonical fact ids referenced")
     if ver["rows_missing_or_bad_resolution_state"] != 0:
         f.append(f"R-6: {ver['rows_missing_or_bad_resolution_state']} rows with NULL/invalid state")
     if ver["arudha_rows"] <= 0 or not ver["arudha_all_keyed_to_sign_facts"]:
@@ -473,11 +518,11 @@ def verify_acceptance(ver: dict) -> list[str]:
         for name, c in dc.items():
             if name in _DETECTOR_META_KEYS or not isinstance(c, dict):
                 continue
-            if c.get("count_preservation_expected", True):
-                if not (c.get("counts_preserved") and c.get("global_id_sets_preserved")):
-                    f.append(f"detector control {name}: mutation did not preserve per-class counts "
-                             "and global id sets (control invalid)")
-            elif not c.get("mutation_applied"):
+            if c.get("count_preservation_expected", True) and not c.get("counts_preserved"):
+                f.append(f"detector control {name}: mutation did not preserve per-class counts (control invalid)")
+            if c.get("id_set_preservation_expected", True) and not c.get("global_id_sets_preserved"):
+                f.append(f"detector control {name}: mutation did not preserve global id sets (control invalid)")
+            if not c.get("mutation_applied"):
                 f.append(f"detector control {name}: mutation was not applied (control invalid)")
             if not c.get("detected"):
                 f.append(f"detector control {name}: NOT detected by the identity/value checks")
@@ -650,10 +695,11 @@ def _seed(cur) -> dict:
     fact_rows = []
     build_id = str(uuid.uuid4())
 
-    def add_fact(category, subject, key, text=None, num=None, formula_id=None):
-        fid = uuid.uuid4()
-        fact_rows.append((str(fid), CHART_ID, AYANAMSHA, build_id, category, subject, key, text,
-                          num, formula_id))
+    def add_fact(category, subject, key, text=None, num=None, ayanamsha=AYANAMSHA, chart=CHART_ID):
+        """One chart_facts row with the id the category's PRODUCER mints."""
+        fid = PRODUCER_FACT_ID[category][1](category, subject, key, chart, ayanamsha, build_id)
+        assert FACT_ID_RE.match(fid), fid
+        fact_rows.append((fid, chart, ayanamsha, build_id, category, subject, key, text, num, None))
         return fid
 
     for subject, sign_num in SIGN_NUMS.items():
@@ -668,28 +714,45 @@ def _seed(cur) -> dict:
              "gandanta": ("gandanta", "not_gandanta"),
              "kartari": ("papa_kartari", "none"),
              "pushkara": ("pushkara", "not_pushkara")}
+    # 176 = 36 (subject, key) pairs × 5 ayanāṃśas, minus 4; the producer id is
+    # distinct per ayanāṃśa. 154 negative-result rows. Three POSITIVE rows sit
+    # in non-canonical ayanāṃśas (i < 3) and three canonical rows are negative
+    # in exchange (154..156): an unpinned read would cite the former — the
+    # pinned R-1 identity must never see them.
+    pairs = len(subjects) * len(SENSITIVE_KEYS)
+    non_canonical_positive = {0, 1, 2}
+    canonical_negative = {154, 155, 156}
+    identities["non_canonical_positive_fact_ids"] = []
     for i in range(FIXTURE_SENSITIVE_TOTAL):
-        subject = subjects[i % len(subjects)]
-        key = SENSITIVE_KEYS[i % len(SENSITIVE_KEYS)]
+        pair = i % pairs
+        subject = subjects[pair % len(subjects)]
+        key = SENSITIVE_KEYS[pair // len(subjects)]
+        ayanamsha = FIXTURE_AYANAMSHAS[i // pairs]
         pos, neg = vocab[key]
-        value = neg if i < FIXTURE_SENSITIVE_NEGATIVE else pos
-        # migration 215's dedup index admits one (subject, key, build) per
-        # formula variant: 176 rows = 5 variant families × 36 (subject, key) pairs
-        fid = add_fact("sensitive_degree_check", subject, key, text=value,
-                       formula_id=f"rehearsal_variant_{i // (len(subjects) * len(SENSITIVE_KEYS))}")
-        sensitive_fact_ids.append((str(fid), value))
-        (identities["negative_fact_ids"] if i < FIXTURE_SENSITIVE_NEGATIVE
-         else identities["positive_fact_ids"]).append(str(fid))
-        if i >= FIXTURE_SENSITIVE_NEGATIVE:
-            identities["positive_facts"].append((str(fid), subject))
+        positive = (i >= FIXTURE_SENSITIVE_NEGATIVE and i not in canonical_negative) \
+            or i in non_canonical_positive
+        value = pos if positive else neg
+        fid = add_fact("sensitive_degree_check", subject, key, text=value, ayanamsha=ayanamsha)
+        sensitive_fact_ids.append((fid, value))
+        if not positive:
+            identities["negative_fact_ids"].append(fid)
+        elif ayanamsha == AYANAMSHA:
+            identities["positive_fact_ids"].append(fid)
+            identities["positive_facts"].append((fid, subject))
+        else:
+            identities["non_canonical_positive_fact_ids"].append(fid)
+    assert len(identities["negative_fact_ids"]) == FIXTURE_SENSITIVE_NEGATIVE
 
     for h in range(1, 13):
         sign_name = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
                      "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius",
                      "not_a_sign"][h - 1]  # A12 deliberately invalid (R-2 honesty)
-        identities["arudha_fact_ids_by_house"][h] = str(
-            add_fact("arudha_pada", f"ARUDHA_A{h}", "sign", text=sign_name))
+        identities["arudha_fact_ids_by_house"][h] = add_fact(
+            "arudha_pada", f"ARUDHA_A{h}", "sign", text=sign_name)
         identities["arudha_sign_by_house"][h] = sign_name
+    # a VALID A7 sign fact in a non-canonical ayanāṃśa: the pinned R-2 read must not cite it
+    identities["non_canonical_arudha_fact_id"] = add_fact(
+        "arudha_pada", "ARUDHA_A7", "sign", text="Libra", ayanamsha=FIXTURE_AYANAMSHAS[0])
 
     add_fact("sensitive_point_gulika_mandi", "MANDI", "sign", text="Aries")
     add_fact("sensitive_point_gulika_mandi", "GULIKA", "sign", text="Taurus")
@@ -727,6 +790,7 @@ def _seed(cur) -> dict:
          for i, lord in enumerate(("venus", "jupiter", "saturn", "sun", "moon", "mars", "mercury",
                                    "rahu", "ketu"))],
     )
+    identities["build_id"] = build_id
     # the BEFORE partition (pre-WP3c legacy map, finding #9 verbatim shape)
     for fid, _value in sensitive_fact_ids:
         cur.execute(
@@ -793,7 +857,7 @@ def _swap_refs(cur, target_type: str, a: tuple[str, str], b: tuple[str, str]) ->
                 (rb_, CHART_ID, ca, target_type, "__swap__"))
 
 
-def _detector_controls(cur) -> dict:
+def _detector_controls(cur, fixture: dict) -> dict:
     """ASTRA v1.2 P1-3 positive controls, run INSIDE a savepoint and rolled
     back: each mutation preserves every per-class count and every global
     target_ref set (so a totals-only or global-DISTINCT acceptance would
@@ -807,7 +871,8 @@ def _detector_controls(cur) -> dict:
         return row[0] if row else None
 
     def measure():
-        out = {"value_violations": len(cur.execute(B.value_invariants_sql(CHART_ID)).fetchall())}
+        out = {"value_violations": len(cur.execute(B.value_invariants_sql(CHART_ID)).fetchall()),
+               "dangling": cur.execute(B.dangling_fact_refs_sql(CHART_ID)).fetchone()[0]}
         for nm, fn in (("r1", B.r1_identity_sql), ("r2", B.r2_identity_sql), ("r3", B.r3_identity_sql),
                        ("r4", B.r4_lord_identity_sql)):
             fwd, rev = fn(CHART_ID)
@@ -880,9 +945,35 @@ def _detector_controls(cur) -> dict:
                 (CHART_ID,)),
             lambda m: m["value_violations"] >= 1),
     }
-    # controls whose mutation necessarily changes a count (a deletion / an insertion): the
-    # validity criterion is that the mutation was APPLIED (shape changed), not preserved
+    # ASTRA v1.4 amendment 1: a producer-shaped id that no fact of this chart carries, and
+    # the SAME id minted for ANOTHER chart (present in chart_facts, foreign chart_id) —
+    # both MUST be dangling under the chart-scoped text-identity resolution
+    missing_id = PRODUCER_FACT_ID["sensitive_degree_check"][1](
+        "sensitive_degree_check", "NO_SUCH_SUBJECT", "pushkara", CHART_ID, AYANAMSHA, fixture["build_id"])
+    foreign_id = PRODUCER_FACT_ID["sensitive_degree_check"][1](
+        "sensitive_degree_check", "VEN", "pushkara", OTHER_CHART_ID, AYANAMSHA, fixture["build_id"])
+    controls["fact_ref_missing"] = (
+        lambda: cur.execute(upd.format("target_ref=%s"),
+                            (missing_id, CHART_ID, "marriage", "sensitive_degree",
+                             first_ref("marriage", "sensitive_degree"))),
+        lambda m: m["dangling"] >= 1)
+    controls["fact_ref_foreign_chart"] = (
+        lambda: (cur.execute(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, build_id, fact_category,"
+            " fact_subject, fact_key, fact_value_text, citation_ref, citation_human, source_calculation,"
+            " verification_pass_status, engine_version, computed_at)"
+            " VALUES (%s, %s, %s, %s, 'sensitive_degree_check', 'VEN', 'pushkara', 'pushkara',"
+            " 'rehearsal', 'foreign-chart control fact', 'fixture', 'two_pass_verified', 'rehearsal-0', NOW())",
+            (foreign_id, OTHER_CHART_ID, AYANAMSHA, fixture["build_id"])),
+                 cur.execute(upd.format("target_ref=%s"),
+                             (foreign_id, CHART_ID, "marriage", "sensitive_degree",
+                              first_ref("marriage", "sensitive_degree")))),
+        lambda m: m["dangling"] >= 1)
+    # controls whose mutation necessarily changes a count (a deletion / an insertion) or
+    # the global id set (a re-pointed reference): the validity criterion is that the
+    # mutation was APPLIED, and that the quantity it must not touch stays preserved
     count_changing = {"lord_token_missing", "birth_anchor_row_injected"}
+    id_set_changing = {"fact_ref_missing", "fact_ref_foreign_chart"}
     assert tuple(controls) == REQUIRED_DETECTOR_CONTROLS, (tuple(controls), REQUIRED_DETECTOR_CONTROLS)
     clean = measure()
     shape0 = _map_shape(cur)
@@ -898,6 +989,7 @@ def _detector_controls(cur) -> dict:
             cur.execute("RELEASE SAVEPOINT detector_control")
         results[name] = {
             "count_preservation_expected": name not in count_changing,
+            "id_set_preservation_expected": name not in id_set_changing,
             "counts_preserved": shape1[0] == shape0[0],
             "global_id_sets_preserved": shape1[1] == shape0[1],
             "mutation_applied": shape1 != shape0 or m != clean,
@@ -1013,6 +1105,18 @@ def main(argv=None) -> int:
             " AND f.fact_category='sensitive_degree_check'"
             " AND f.fact_value_text = ANY(%s)", (CHART_ID, POSITIVE_VALUES)).fetchone()[0]
         ver["dangling_or_null_refs"] = cur.execute(B.dangling_fact_refs_sql(CHART_ID)).fetchone()[0]
+        # fixture control: the fact-backed refs ARE producer-shaped 16-hex ids (so a
+        # 0 above is the runbook passing the ids production carries, not UUIDs)
+        ver["fact_backed_refs"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s AND target_type = ANY(%s)",
+            (CHART_ID, list(B.FACT_BACKED_TARGET_TYPES))).fetchone()[0]
+        ver["fact_backed_refs_not_producer_shaped"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s AND target_type = ANY(%s)"
+            " AND target_ref !~ '^[0-9a-f]{16}$'", (CHART_ID, list(B.FACT_BACKED_TARGET_TYPES))).fetchone()[0]
+        ver["non_canonical_fact_ids_referenced"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s AND target_ref = ANY(%s)",
+            (CHART_ID, fixture["non_canonical_positive_fact_ids"] + [fixture["non_canonical_arudha_fact_id"]])
+        ).fetchone()[0]
         ver["rows_missing_or_bad_resolution_state"] = cur.execute(
             "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
             " AND (target_resolution_state IS NULL"
@@ -1140,7 +1244,7 @@ def main(argv=None) -> int:
         ver["rerun_digest_equal"] = rerun == post
 
         # 5b. detector positive controls (rolled back; the map is unchanged after)
-        ver["detector_controls"] = _detector_controls(cur)
+        ver["detector_controls"] = _detector_controls(cur, fixture)
         ver["map_unchanged_after_detector_controls"] = (
             _digest(cur, "gochara_resonance_map", CHART_ID) == rerun)
 

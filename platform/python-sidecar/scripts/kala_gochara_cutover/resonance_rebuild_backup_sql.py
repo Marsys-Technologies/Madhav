@@ -199,19 +199,31 @@ def negative_sensitive_targets_sql(chart_id: str) -> str:
             f"        OR f.fact_value_text NOT IN ({pos}));")
 
 
+# Target types whose target_ref IS a chart_facts.fact_id (of the same chart).
+FACT_BACKED_TARGET_TYPES: tuple[str, ...] = ("sensitive_degree", "arudha")
+
+
 def dangling_fact_refs_sql(chart_id: str) -> str:
-    """Rows whose target_ref is (or must be) a chart_facts fact_id of THIS
-    chart but resolves to none — MUST be 0. Uses NOT EXISTS (a NULL-safe
-    form; SQL NOT IN never rejects nulls)."""
+    """NULL / blank refs, plus fact-backed refs (sensitive_degree, arudha)
+    that resolve to no chart_facts row of THIS chart — MUST be 0.
+
+    chart_facts.fact_id is TEXT (migration 204) and the producers mint
+    16-hex SEMANTIC ids (ga_writers/*._fact_id — sha256 of
+    category|subject|key|chart|ayanāṃśa, never a UUID). The previous
+    predicate counted every non-UUID fact-backed ref as dangling, i.e. it
+    rejected every id a producer actually mints (ASTRA v1.4 amendment 1).
+    Resolution is a chart-scoped NOT EXISTS on the text identity itself
+    (NULL-safe; SQL NOT IN never rejects nulls) — an existing id of this
+    chart passes, a missing id or the SAME id minted for another chart
+    fails."""
     cid = _check_uuid(chart_id)
+    types = ", ".join(f"'{t}'" for t in FACT_BACKED_TARGET_TYPES)
     return (f"SELECT COUNT(*) FROM gochara_resonance_map m\n"
             f" WHERE m.chart_id = '{cid}'\n"
-            f"   AND (m.target_ref IS NULL\n"
-            f"        OR (m.target_type IN ('sensitive_degree', 'arudha')\n"
-            f"            AND m.target_ref !~ '^[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}$')\n"
-            f"        OR (m.target_ref ~ '^[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}$'\n"
+            f"   AND (m.target_ref IS NULL OR btrim(m.target_ref) = ''\n"
+            f"        OR (m.target_type IN ({types})\n"
             f"            AND NOT EXISTS (SELECT 1 FROM chart_facts f\n"
-            f"                             WHERE f.fact_id::text = m.target_ref\n"
+            f"                             WHERE f.fact_id = m.target_ref\n"
             f"                               AND f.chart_id = m.chart_id)));")
 
 
@@ -486,7 +498,7 @@ def value_invariants_sql(chart_id: str) -> str:
 
 __all__ = [
     "CONTENT_COLUMNS", "NEGATIVE_VALUES", "POSITIVE_VALUES", "EXPECTED_WEIGHTS",
-    "ELIGIBLE_EVENT_CLASSES", "eligible_classes_array",
+    "ELIGIBLE_EVENT_CLASSES", "eligible_classes_array", "FACT_BACKED_TARGET_TYPES",
     "r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "r4_lord_identity_sql",
     "value_invariants_sql",
     "snapshot_table_name", "create_snapshot_sql", "partition_digest_sql",

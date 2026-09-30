@@ -45,6 +45,9 @@ def _passing_ver() -> dict:
                   "by_type": {}},
         "sensitive_keyed_to_positive_facts": 105,
         "dangling_or_null_refs": 0,
+        # ASTRA v1.4 amendment 1: the fact-backed refs are producer-shaped 16-hex ids
+        "fact_backed_refs": 158, "fact_backed_refs_not_producer_shaped": 0,
+        "non_canonical_fact_ids_referenced": 0,
         "rows_missing_or_bad_resolution_state": 0,
         "arudha_rows": 67, "arudha_all_keyed_to_sign_facts": True,
         "arudha_invalid_sign_unavailable": 10,
@@ -82,14 +85,21 @@ def _passing_ver() -> dict:
         "detector_controls": {
             "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0], "r5": [0, 0],
                       "value_violations": 0},
-            **{name: {"count_preservation_expected": True, "counts_preserved": True,
-                      "global_id_sets_preserved": True, "mutation_applied": True, "detected": True}
+            **{name: {"count_preservation_expected": True, "id_set_preservation_expected": True,
+                      "counts_preserved": True, "global_id_sets_preserved": True,
+                      "mutation_applied": True, "detected": True}
                for name in ("sensitive_class_swap", "arudha_class_swap", "yoga_class_swap",
                             "weight_changed", "qualifier_transferred",
                             "resolution_state_flipped", "provenance_flipped", "lord_token_wrong")},
-            **{name: {"count_preservation_expected": False, "counts_preserved": False,
-                      "global_id_sets_preserved": True, "mutation_applied": True, "detected": True}
+            **{name: {"count_preservation_expected": False, "id_set_preservation_expected": True,
+                      "counts_preserved": False, "global_id_sets_preserved": True,
+                      "mutation_applied": True, "detected": True}
                for name in ("lord_token_missing", "birth_anchor_row_injected")},
+            # a re-pointed reference changes the global id set by design (v1.4 amendment 1)
+            **{name: {"count_preservation_expected": True, "id_set_preservation_expected": False,
+                      "counts_preserved": True, "global_id_sets_preserved": False,
+                      "mutation_applied": True, "detected": True}
+               for name in ("fact_ref_missing", "fact_ref_foreign_chart")},
             "restored_after_controls": True},
         "map_unchanged_after_detector_controls": True,
         # ASTRA v1.3 amendment 1: the class universe and the schema are the migrations'
@@ -118,6 +128,15 @@ def test_passing_verification_is_accepted():
     (lambda v: v["before"].__setitem__("sensitive_negative", 0), "fixture control"),
     (lambda v: v["after"].__setitem__("total", 0), "R-6 control"),
     (lambda v: v.__setitem__("dangling_or_null_refs", 2), "dangling"),
+    # ASTRA v1.4 amendment 1: producer-shaped ids, chart-scoped resolution, the ayanāṃśa pin
+    (lambda v: v.__setitem__("fact_backed_refs_not_producer_shaped", 1), "producer-shaped"),
+    (lambda v: v.__setitem__("fact_backed_refs", 0), "refs control"),
+    (lambda v: v.pop("fact_backed_refs"), "refs control"),
+    (lambda v: v.__setitem__("non_canonical_fact_ids_referenced", 1), "ayanāṃśa pin"),
+    (lambda v: v["detector_controls"]["fact_ref_missing"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["fact_ref_foreign_chart"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["fact_ref_missing"].__setitem__("mutation_applied", False), "not applied"),
+    (lambda v: v["detector_controls"]["fact_ref_missing"].__setitem__("counts_preserved", False), "per-class counts"),
     (lambda v: v.__setitem__("rows_missing_or_bad_resolution_state", 1), "R-6"),
     (lambda v: v.__setitem__("arudha_rows", 0), "R-2"),
     (lambda v: v.__setitem__("arudha_all_keyed_to_sign_facts", False), "R-2"),
@@ -315,7 +334,7 @@ def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
     v["detector_controls"] = {"clean": v["detector_controls"]["clean"], "restored_after_controls": True}
     failures = R.verify_acceptance(v)
     missing = [f for f in failures if "missing detector control record" in f]
-    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 10, failures
+    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 12, failures
     assert set(R.REQUIRED_DETECTOR_CONTROLS) >= {
         "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
         "qualifier_transferred", "resolution_state_flipped", "provenance_flipped"}
@@ -630,10 +649,59 @@ def test_rollback_block_refuses_before_deleting_and_verifies_after():
 
 
 def test_reference_checks_use_not_exists_not_not_in():
-    assert "NOT EXISTS" in B.dangling_fact_refs_sql(CH)
-    assert "NOT IN (" not in B.dangling_fact_refs_sql(CH).replace(
-        "IS NULL", "").split("target_ref !~")[0]
+    sql = B.dangling_fact_refs_sql(CH)
+    assert "NOT EXISTS" in sql and "NOT IN (" not in sql
     assert "f.fact_value_text IS NULL" in B.negative_sensitive_targets_sql(CH)
+
+
+def test_fact_refs_resolve_as_chart_scoped_text_identities_not_uuids():
+    """ASTRA v1.4 amendment 1: chart_facts.fact_id is TEXT and the producers
+    mint 16-hex semantic ids; the previous predicate counted every non-UUID
+    fact-backed ref as dangling (the reviewer's replay: two valid
+    producer-generated ids, 2 'violations'). Resolution is now a chart-scoped
+    NOT EXISTS on the text identity — no UUID shape test anywhere."""
+    sql = B.dangling_fact_refs_sql(CH)
+    assert "f.fact_id = m.target_ref" in sql and "f.chart_id = m.chart_id" in sql
+    assert "[0-9a-f]{8}-" not in sql and "!~" not in sql and "~ '" not in sql
+    assert "m.target_type IN ('sensitive_degree', 'arudha')" in sql
+    assert "btrim(m.target_ref) = ''" in sql
+    assert B.FACT_BACKED_TARGET_TYPES == ("sensitive_degree", "arudha")
+
+
+def test_fixture_fact_ids_are_minted_by_the_producers_own_functions():
+    """The rehearsal seeds every chart_facts row with the id its PRODUCER
+    mints (ga_writers/*._fact_id), never uuid4(): the reference check is
+    proven on the ids production carries. Existing ids pass (live run:
+    0 dangling of 158 fact-backed refs); a producer-shaped id no fact carries
+    and the same id minted for ANOTHER chart are the fact_ref_missing /
+    fact_ref_foreign_chart controls (live: dangling 1 each)."""
+    from ga_writers.ga_sensitive_degree_writer import _fact_id as sensitive_degree_id, FACT_CATEGORY
+    from ga_writers.ga_structural_writer import _fact_id as structural_id
+    assert FACT_CATEGORY == "sensitive_degree_check"  # the actual producer of these rows
+    sd = R.PRODUCER_FACT_ID["sensitive_degree_check"][1](
+        "sensitive_degree_check", "VEN", "pushkara", CH, "lahiri_chitrapaksha", "build-x")
+    assert sd == sensitive_degree_id("VEN", "pushkara", CH, "lahiri_chitrapaksha", "build-x",
+                                     "sensitive_degree_check")
+    a7 = R.PRODUCER_FACT_ID["arudha_pada"][1]("arudha_pada", "ARUDHA_A7", "sign", CH,
+                                             "lahiri_chitrapaksha", "build-x")
+    assert a7 == structural_id("arudha_pada", "ARUDHA_A7", "sign", CH, "lahiri_chitrapaksha", "build-x")
+    assert a7 == "795c47dd1b8acc07"  # the reviewer's replay id for the A7 sign fact
+    for fid in (sd, a7):
+        assert R.FACT_ID_RE.match(fid) and len(fid) == 16
+    # identity is semantic: another chart or ayanāṃśa mints a different id; the build does not
+    assert R.PRODUCER_FACT_ID["sensitive_degree_check"][1](
+        "sensitive_degree_check", "VEN", "pushkara", R.OTHER_CHART_ID, "lahiri_chitrapaksha", "build-x") != sd
+    assert R.PRODUCER_FACT_ID["sensitive_degree_check"][1](
+        "sensitive_degree_check", "VEN", "pushkara", CH, "fixture_ayanamsha_a", "build-x") != sd
+    assert R.PRODUCER_FACT_ID["sensitive_degree_check"][1](
+        "sensitive_degree_check", "VEN", "pushkara", CH, "lahiri_chitrapaksha", "build-y") == sd
+    src = (HERE / "resonance_rebuild_disposable_rehearsal.py").read_text()
+    assert "fid = uuid.uuid4()" not in src
+    assert "PRODUCER_FACT_ID[category][1](category, subject, key, chart, ayanamsha, build_id)" in src
+    assert set(R.PRODUCER_FACT_ID) == {"sensitive_degree_check", "arudha_pada", "graha_position",
+                                       "graha_sign_attributes", "sensitive_point_gulika_mandi",
+                                       "panchanga_nakshatra_moon"}
+    assert R.FIXTURE_AYANAMSHAS[-1] == R.AYANAMSHA and len(set(R.FIXTURE_AYANAMSHAS)) == 5
 
 
 def test_runbook_carries_the_module_statements_verbatim():
