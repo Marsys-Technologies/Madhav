@@ -1,7 +1,7 @@
 ---
 artifact: L2_LAYER_INSTANCE
 canonical_id: SUVARNA_L2_LAYER_INSTANCE
-version: "1.0"
+version: "1.1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -10,15 +10,17 @@ branch: "suvarna/land/A.L2i-analysis-001"
 layer: "L2 Bodha (23 active assets, bo_*)"
 template: "LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md (tier 3, SEALED), read at checkout 2a78ec64d"
 census_run:
-  output: "/Users/Dev/suvarna-evidence/census/census_L2.json (+ census_L2.log, SUMMARY.md)"
-  exit_code: 2   # FAIL rows present = measured (arch §12.14); no exit 4/5/75
+  output: "/Users/Dev/suvarna-evidence/census2/census_L2.json (+ census_L2.log): the AFTER-grant re-run, the census this instance reads (all [C] tags)"
+  exit_code: "not recorded in the log; the log shows FAIL 15, ERRORED 0, 23 assets measured (FAIL rows present = measured, arch §12.14)"
   inspector_commit: "2a78ec64d88e59438bd6527b4c99826432102c57 (checkout /Users/Dev/suvarna-census)"
-  generated: "2026-09-30T20:23:30+05:30"
+  generated: "2026-09-30T20:30:56+05:30"
+  first_run: "/Users/Dev/suvarna-evidence/census/census_L2.json (+ census_L2.log, SUMMARY.md), generated 2026-09-30T20:23:30+05:30, exit 2; read for the before-grant state only. It differs from the after-grant run in exactly six cells (bo_anveshana, bo_sangati, bo_upaya on Build.completion and Count.floor, ERRORED then)."
   chart_scope: "482012f1-710e-4a25-994a-93821f5871aa"
   login: "suvarna_reader via the proxy on 127.0.0.1:5433 (read-only)"
-companion: "L2_TIER_GAPS_v1_0.md (same directory): TG-L2-001..022 tier gaps, MF-L2-001..013 measurement findings, Q1..Q7 / G1..G2 read definitions"
+companion: "L2_TIER_GAPS_v1_0.md (same directory): TG-L2-001..024 tier gaps, MF-L2-001..013 measurement findings, Q1..Q7 / G1..G2 read definitions"
 changelog:
-  - "1.0 (2026-09-30): first draft. Filled from the four tiers and the L2 census; the earlier skeleton and inventions under nikasha_test/derivations/ were read as inputs and re-measured, not copied. Part 6 records the Track A layer specifics (MSR asset list, cascade victims, R243 annotation, bo_upaya state, the six ERRORED cells)."
+  - "1.1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 7 defects. The instance now reads the after-grant census (census2): the six ERRORED cells are measured (bo_anveshana 4,437 rows PASS; bo_sangati 475 rows, Build.completion FAIL on 535 written; bo_upaya 180 rows, Build.completion FAIL on 240 written), every tally that carried them is recomputed (270 PASS / 15 FAIL / 0 ERRORED), section 6.5 is rewritten as measured after the grant; the Q1 kind and disposition citations, one T2 section citation, the TG-L2-021 scope and the R243 inference wording are fixed; two tier gaps added (TG-L2-023, TG-L2-024)."
+  - "1.0 (2026-09-30): first draft. Filled from the four tiers and the L2 census; the earlier skeleton and inventions under nikasha_test/derivations/ were read as inputs and re-measured, not copied. Part 6 records the Track A layer specifics (MSR asset list, cascade victims, R243 annotation, bo_upaya state, the six ERRORED cells; in 1.1 the last is measured after the grant)."
 ---
 
 # L2 Bodha — layer definition and strategy, instance v1.0 (first draft)
@@ -27,7 +29,7 @@ changelog:
 > carry an open reopen agenda, and on a provisional census. It certifies nothing, writes no ledger or register
 > line, and is not cited by anything below it until the layer instance is accepted (A.L2a).
 
-**How to read the tags.** Every figure carries its source. `[C: …]` is a field of the census JSON (path
+**How to read the tags.** Every figure carries its source. `[C: …]` is a field of the after-grant census JSON, census2 (identical to the first run except the six cells of §6.5), path
 `L2.assets[*].measurements[<criterion>]`, or a header field of `L2`). `[Q1]`–`[Q7]` are the read-only queries and
 `[G1]`–`[G2]` the git/GitHub reads defined in `L2_TIER_GAPS_v1_0.md` Part D (SQL for the ones used here is in
 Appendix A). `[W: file:line]` is a writer or library file at the inspected checkout (population:
@@ -37,7 +39,7 @@ Appendix A). `[W: file:line]` is a writer or library file at the inspected check
 (canonical chart 482012f1: every `count_sql`, every Q3 count) and *table-wide* (all charts: the census
 `Complete.depth`, `Ldgr.source_presence`).
 
-The census tallies this layer as 452 cells: 266 PASS, 70 NO_DETECTOR, 46 PARTIAL, 46 NOT_GENERIC, 13 FAIL, 6 ERRORED, 5 N/A over 23 assets [C: all measurements]. Header facts: 23 registered ids and 23
+The census tallies this layer as 452 cells: 270 PASS, 70 NO_DETECTOR, 46 PARTIAL, 46 NOT_GENERIC, 15 FAIL, 0 ERRORED, 5 N/A over 23 assets [C: all measurements] (the first, before-grant run read 266 / 13 / 6 ERRORED). Header facts: 23 registered ids and 23
 `has_writer` registry rows; 0 phantom ids; 0 assets with a writer never exercised; 22 of 23 `count_sql` bound to the
 chart (the constant one is `bo_samvada`); 61 global runs, of which 565 touched this layer [C: `L2.registered_ids`,
 `registry_has_writer`, `phantom_registered`, `never_exercised_with_writer`, `chart_scoped_count_sql`, `global_runs`,
@@ -208,8 +210,8 @@ measured_by: asset_registry (live, read-only; Q1) · the census (C) · writer fi
 traces_to:   0.3
 ```
 
-Population: the 23 active L2 assets. All are registry kind `data`; 22 have a table target, one (`bo_samvada`) a view.
-Kinds the template lists — *service (no table by design)*: none; *residual*: none flagged (`data_disposition`, `dead_flag` and `superseded_by` are empty on all 23; Q1);
+Population: the 23 active L2 assets. All are registry kind `data` (`asset_kind`, Q1); 22 have a table target, one (`bo_samvada`) a view.
+Kinds the template lists — *service (no table by design)*: none; *residual*: none flagged (`data_disposition`, `dead_flag` and `superseded_by` are empty on all 23; Q1, re-read with those columns);
 *shared*: `bodha_msr_signals` (seven registered producers) and `bodha_cgm_nodes` (two writers); *historical*: the legacy
 table `bodha_rm_dasha_windowed_prescriptions`, which no current writer touches (R244; unreadable to the reader, MF-L2-002).
 **TIER GAP: TG-L2-007** for the kind vocabulary (a view target; an UPDATE-only writer; writers that write more tables
@@ -217,7 +219,7 @@ than the registry names).
 
 | asset | registry storage | registry `target_table` | live rows, chart 482012f1 (count_sql) | floor | delta | table-wide rows / cols / fully populated (`Complete.depth`, all charts) | executed runs / last executed | catalog_status |
 |---|---|---|---|---|---|---|---|---|
-| `bo_anveshana` | postgres_table | `bodha_discoveries` | not measured (permission denied) | 500 | not measured | 3,695 / 30 / 28 | 38 / 2026-09-10 | CURRENT |
+| `bo_anveshana` | postgres_table | `bodha_discoveries` | 4,437 (two tables, see notes) | 500 | +3,937 | 3,695 / 30 / 28 | 38 / 2026-09-10 | CURRENT |
 | `bo_arudha` | postgres_table | `bodha_msr_signals` | 25 | 15 | +10 | 150,724 / 85 / 40 | 16 / 2026-09-10 | CURRENT |
 | `bo_bimba` | pgvector | `bodha_cgm_nodes` | 385 | 140 | +245 | 1,101 / 45 / 20 | 46 / 2026-09-11 | CURRENT |
 | `bo_cdlm_summary` | postgres_table | `bodha_cdlm_chart_summary` | 5 | 1 | +4 | 15 / 23 / 19 | 41 / 2026-09-09 | CURRENT |
@@ -234,18 +236,20 @@ than the registry names).
 | `bo_pratijna` | postgres_table | `bodha_pratijna` | 135 | 0 | n/a | 405 / 16 / 10 | 45 / 2026-09-09 | CURRENT |
 | `bo_samskara` | pgvector | `bodha_signal_embeddings` | 50,678 | 60000 | -9322 | 150,724 / 10 / 10 | 62 / 2026-09-11 | CURRENT |
 | `bo_samvada` | postgres_view | `vw_chart_digest` | 5 | 0 | n/a | 15 / 13 / 13 | 40 / 2026-09-11 | CURRENT |
-| `bo_sangati` | postgres_table | `bodha_cdlm_cells` | not measured (permission denied) | 70 | not measured | 430 / 59 / 30 | 47 / 2026-09-11 | CURRENT |
+| `bo_sangati` | postgres_table | `bodha_cdlm_cells` | 475 (two tables) | 70 | +405 | 430 / 59 / 30 | 47 / 2026-09-11 | CURRENT |
 | `bo_special_lagna` | postgres_table | `bodha_msr_signals` | 20 | 20 | +0 | 150,724 / 85 / 40 | 17 / 2026-09-11 | CURRENT |
 | `bo_sudarshana` | postgres_table | `bodha_msr_signals` | 45 | 45 | +0 | 150,724 / 85 / 40 | 16 / 2026-09-10 | CURRENT |
-| `bo_upaya` | pgvector | `bodha_rm_resonances` | not measured (permission denied) | 180 | not measured | 135 / 24 / 18 | 47 / 2026-09-09 | CURRENT |
+| `bo_upaya` | pgvector | `bodha_rm_resonances` | 180 (two tables) | 180 | +0 | 135 / 24 / 18 | 47 / 2026-09-09 | CURRENT |
 | `bo_vargottama_dhana` | postgres_table | `bodha_msr_signals` | 14 | 10 | +4 | 150,724 / 85 / 40 | 16 / 2026-09-11 | CURRENT |
 | `bo_yantra_mechanism` | postgres_table | `bodha_mechanisms` | 615 | 1 | +614 | 1,868 / 24 / 18 | 16 / 2026-09-09 | CURRENT |
 
 *Notes.* "Live rows" are `count_sql` over the target table for chart 482012f1 [C: `Build.completion`, `Count.floor`;
 for `bo_samvada` the census counts the view itself, because its registry `count_sql` is the constant `SELECT 0 AS
 count`, MF-L2-007]. Floors are aspirational, not gates (CLAUDE.md §N.4): `bo_laksana` (50,529 vs 60,000) and
-`bo_samskara` (50,678 vs 60,000) read FAIL and are recorded as information. Three rows are **not measured**: their
-completion and floor checks raised `permission denied` for the read-only login (§6.5). "Table-wide" figures are all charts.
+`bo_samskara` (50,678 vs 60,000) read FAIL and are recorded as information. For `bo_anveshana`, `bo_sangati` and `bo_upaya` the
+`count_sql` counts two tables (write-set table below), so the figure is the two-table total (`live_rows_basis` in census2), not the target table alone;
+these three were **not measured** in the first run (`permission denied`) and are measured in the after-grant run (§6.5).
+"Table-wide" figures are all charts.
 
 **Target tables are a set, not a pointer (T3 §1.1).** The registry names one `target_table` per asset, and each
 `count_sql` counts one or two tables. The writers write more. Static scan of each writer file for `INSERT INTO`,
@@ -254,7 +258,7 @@ completion and floor checks raised `permission denied` for the read-only login (
 
 | asset | registry `target_table` | tables its `count_sql` counts (census `count_sql_tables`) | tables its writer file inserts into or deletes from (static scan) | written but not counted |
 |---|---|---|---|---|
-| `bo_anveshana` | `bodha_discoveries` | `bodha_discoveries`, `bodha_anomalies`* | `bodha_discoveries`, `bodha_anomalies`* | - |
+| `bo_anveshana` | `bodha_discoveries` | `bodha_discoveries`, `bodha_anomalies` | `bodha_discoveries`, `bodha_anomalies` | - |
 | `bo_arudha` | `bodha_msr_signals` | `bodha_msr_signals` | `bodha_msr_signals` | - |
 | `bo_bimba` | `bodha_cgm_nodes` | `bodha_cgm_nodes` | `bodha_cgm_nodes` | - |
 | `bo_cdlm_summary` | `bodha_cdlm_chart_summary` | `bodha_cdlm_chart_summary` | `bodha_cdlm_chart_summary`, `bodha_cdlm_domain_rollups`*, `bodha_cdlm_pattern_clusters`* | `bodha_cdlm_domain_rollups`, `bodha_cdlm_pattern_clusters` |
@@ -271,14 +275,14 @@ completion and floor checks raised `permission denied` for the read-only login (
 | `bo_pratijna` | `bodha_pratijna` | `bodha_pratijna` | `bodha_pratijna` | - |
 | `bo_samskara` | `bodha_signal_embeddings` | `bodha_signal_embeddings` | `bodha_signal_embeddings` | - |
 | `bo_samvada` | `vw_chart_digest` | `vw_chart_digest` | (none: view target; no INSERT/DELETE in the writer file) | - |
-| `bo_sangati` | `bodha_cdlm_cells` | `bodha_cdlm_cells`, `bodha_triangulation`* | `bodha_cdlm_cells`, `bodha_convergence`*, `bodha_triangulation`* | `bodha_convergence` |
+| `bo_sangati` | `bodha_cdlm_cells` | `bodha_cdlm_cells`, `bodha_triangulation` | `bodha_cdlm_cells`, `bodha_convergence`*, `bodha_triangulation` | `bodha_convergence` |
 | `bo_special_lagna` | `bodha_msr_signals` | `bodha_msr_signals` | `bodha_msr_signals` | - |
 | `bo_sudarshana` | `bodha_msr_signals` | `bodha_msr_signals` | `bodha_msr_signals` | - |
-| `bo_upaya` | `bodha_rm_resonances` | `bodha_rm_resonances`, `bodha_rm_remedy_prescriptions`* | `bodha_rm_resonances`, `bodha_rm_remedy_prescriptions`*, `bodha_rm_chart_summary`*, `bodha_rm_dosha_remedy_bundles`*, `bodha_rm_pattern_remedies`* | `bodha_rm_chart_summary`, `bodha_rm_dosha_remedy_bundles`, `bodha_rm_pattern_remedies` |
+| `bo_upaya` | `bodha_rm_resonances` | `bodha_rm_resonances`, `bodha_rm_remedy_prescriptions` | `bodha_rm_resonances`, `bodha_rm_remedy_prescriptions`, `bodha_rm_chart_summary`*, `bodha_rm_dosha_remedy_bundles`*, `bodha_rm_pattern_remedies`* | `bodha_rm_chart_summary`, `bodha_rm_dosha_remedy_bundles`, `bodha_rm_pattern_remedies` |
 | `bo_vargottama_dhana` | `bodha_msr_signals` | `bodha_msr_signals` | `bodha_msr_signals` | - |
 | `bo_yantra_mechanism` | `bodha_mechanisms` | `bodha_mechanisms` | `bodha_mechanisms` | - |
 
-`*` = the read-only login cannot SELECT the table (Q4).
+`*` = the read-only login cannot SELECT the table (Q4, re-run after the grant: `bodha_anomalies`, `bodha_triangulation` and `bodha_rm_remedy_prescriptions` are now readable, so their marks are gone).
 
 Two tables have more than one writer: `bodha_msr_signals` (six inserting writers; §6.1) and `bodha_cgm_nodes`
 (`bo_bimba` and `bo_karanajala`; the live 385 rows split 255 by `bo_bimba`'s build record and 130 `arudha` (95) and
@@ -328,8 +332,9 @@ each seam's census evidence can and cannot show:
 | edge ordering (§3.2) | `Build.dag`, `Build.dep_liveness`, `Build.history` | `Build.dag` PASS 23/23; `Build.dep_liveness` PASS 17, PARTIAL 6 (an upstream has moved since the asset was built); `Build.history` PARTIAL 23/23 (each with recorded errors or aborts) [C] | whether output composed correctly |
 | presentation contract (§3.4) | nothing (TG-L2-010, -011) | not measured | acharya rendering derivability |
 
-L2's own defining rule — shared roots visible (T1 §3.4; T3, 681) — cannot be measured either: no tier defines a root
-(**TIER GAP: TG-L2-021**), and the columns the schema names for it are empty (§2.1).
+L2's own defining rule — shared roots visible (T1 §3.4; T3, 681) — cannot be measured either: the tiers supply the unit
+(a placement: several assets from one placement are not independent confirmations) but neither the carrier field nor the rule for
+counting independent support (**TIER GAP: TG-L2-021**), and the columns the schema names for it are empty (§2.1).
 
 ### 1.4 · Cross-layer handoff — what it produces for downstream
 
@@ -344,7 +349,7 @@ registry records declared dependents. Position of the layer-level contracts (DP0
 
 | state (T2 §11, 572) | evidence available | reading |
 |---|---|---|
-| source-present | `Complete.depth` counts rows in the target table of all 22 table-target assets (table-wide) and the census counts 5 rows in the view on the chart [C] | reached; completion against the build record is unmeasured for three assets (§6.5) |
+| source-present | `Complete.depth` counts rows in the target table of all 22 table-target assets (table-wide) and the census counts 5 rows in the view on the chart [C] | reached; completion against the build record is measured for all 22 table-target assets in the after-grant census (17 PASS, 5 FAIL as record-versus-live mismatches, §6.5) |
 | method-qualified | no per-asset qualification field; `classical_sources_jsonb` is non-null on 189 of 50,678 chart MSR rows [Q3] | not measured; sparse where measurable |
 | consumed | registry `depends_on` edges to non-L2 assets exist for 9 of 23 assets | declared, not verified at the consumer |
 | traceably transformed | no probe | not measured |
@@ -391,7 +396,7 @@ traces_to:   0.2
 (§1.3), and the cross-layer term stops at the producer side of `served` (§1.4). No layer value and no elevation delta
 is written, and no fraction is recorded (T3 §1.5, 249–251). Facts the eventual accounting will need, and that are
 already on record: the census tally above; the six MSR-family Idem PASSes that are chart-conditional (§6.3); the
-unmeasured completion of three assets (§6.5); the shared-root carriers that are empty (§2.1); and `bo_grounding` at ≈ 0
+five `Build.completion` FAILs, two of them (`bo_sangati`, `bo_upaya`) with an unexplained 60-row gap (§6.5); the shared-root carriers that are empty (§2.1); and `bo_grounding` at ≈ 0
 on the individual term.
 
 ---
@@ -424,10 +429,10 @@ NO DETECTOR, never a pass. The census has no criterion for any L2 rule (its 20 c
 | 2 | No graph centrality as causation; summaries, salience, embeddings and centrality are navigation aids that cannot replace ledgers (T2 §3.1, 141; §6.3, 367) | none | not measured. **NO DETECTOR** |
 | 3 | No catalog match as confirmed formation (T2 §3.1, 141; T1 §3.7, 242) | none for the rule. `Dens.served` measures whether served surfaces layer by density, a different claim | not measured. **NO DETECTOR** |
 | 4 | No temporal hook as independent clock evidence (T2 §3.1, 141) | none | the L2 columns that would carry temporal hooks read NEVER populated: `active_dasha_periods_jsonb`, `activation_predicted_dates_jsonb`, `dasha_activation_proximity_score`, `predicted_outcome_class` on the 150,724-row MSR table; `predicted_activation_dasha_windows_jsonb` on `bodha_cdlm_cells` (430 rows) [C: `Complete.depth` on `bo_arudha`, `bo_sangati`, all charts]. L2 emits none in those columns. **NO DETECTOR** |
-| 5 | Shared roots visible; several assets from one placement are not independent confirmations (T1 §3.4, 222–224; §11, 502; T3, 681) | none | **TIER GAP: TG-L2-021.** The four columns the schema names for it (`shared_factor_keys_jsonb`, `cross_domain_shared_factor_count`, and on `bodha_cdlm_cells` `shared_factor_keys_jsonb`, `shared_signals_high_convergence_count`) are NEVER populated [C]; on the chart both MSR columns are null on 50,678 / 50,678 rows [Q3]. A different pair is filled: `system_convergence_count` and `cross_system_consensus_count` are non-null on 50,023 of 50,678 chart rows (655 null: signals whose constituent facts could not be resolved), computed by `bo_laksana_rerank` over signals sharing a `chart_facts.fact_subject` [W: `bo_laksana.py` 3726–3752; Q3b]. **NO DETECTOR** |
+| 5 | Shared roots visible; several assets from one placement are not independent confirmations (T1 §3.4, 222–224; §11, 502; T3, 681) | none | **TIER GAP: TG-L2-021** (unit supplied, carrier field and counting rule not). The four columns the schema names for it (`shared_factor_keys_jsonb`, `cross_domain_shared_factor_count`, and on `bodha_cdlm_cells` `shared_factor_keys_jsonb`, `shared_signals_high_convergence_count`) are NEVER populated [C]; on the chart both MSR columns are null on 50,678 / 50,678 rows [Q3]. A different pair is filled: `system_convergence_count` and `cross_system_consensus_count` are non-null on 50,023 of 50,678 chart rows (655 null: signals whose constituent facts could not be resolved), computed by `bo_laksana_rerank` over signals sharing a `chart_facts.fact_subject` [W: `bo_laksana.py` 3726–3752; Q3b]. **NO DETECTOR** |
 | 6 | Keep occurrence support separate from delivery condition; a cancelled inhibitor and a cancelled support keep their opposite polarity (T2 §6.3, 365) | none | not measured. **NO DETECTOR** |
 | 7 | No invented computation, source, detector, confidence or score (T1 §13, 566) | none at rule level; the census has no `Null` or `Narr` check (§5.2) | not measured. **NO DETECTOR** |
-| 8 | Missing computation is a named gap, never a neutral default (T1 §3.3, 211; T2 §5 Missingness control, 619; §11, 574) | none (no `Null` check) | `valence` is non-null on 50,678 / 50,678 chart MSR rows: neutral 34,960, malefic 8,633, benefic 5,448, mixed 1,637 [Q3b]; by `valence_source` 44,479 rows come from `keyword_heuristic_v1`, 6,050 from `ga_vichara_v1`, 125 from `categorical_deterministic_v1`, 24 from `valence_doctrine_v1` [Q3b]. Whether any `neutral` is a default for a missing computation is **not measured**. **NO DETECTOR** |
+| 8 | Missing computation is a named gap, never a neutral default (T1 §3.3, 211; T2 §12.2 Missingness control, 619; §11, 574) | none (no `Null` check) | `valence` is non-null on 50,678 / 50,678 chart MSR rows: neutral 34,960, malefic 8,633, benefic 5,448, mixed 1,637 [Q3b]; by `valence_source` 44,479 rows come from `keyword_heuristic_v1`, 6,050 from `ga_vichara_v1`, 125 from `categorical_deterministic_v1`, 24 from `valence_doctrine_v1` [Q3b]. Whether any `neutral` is a default for a missing computation is **not measured**. **NO DETECTOR** |
 
 ### 2.2 · Presentation obligation
 
@@ -478,6 +483,8 @@ traces_to:   0.1
 ```
 
 **TIER GAP: TG-L2-012.** T2 §5 (325–339) is the obligation table. Where it or another clause names L2:
+
+(**TIER GAP: TG-L2-024** — the tiers give three different coverage-state vocabularies: T3 §2.4, 305, five states; T1 §5.1, 317–319, six, adding "contradictory" and "still unexplored"; T2 §5, 341, "unavailable/unqualified/unresolved". This section follows the template's own `measured_by` line, T3's five, and writes no result under any of them.)
 
 | T2 §5 obligation (line) | L2 named? | five-state result |
 |---|---|---|
@@ -602,8 +609,7 @@ never populated, §2.1); `Dens.served` FAIL on 8; `Carr.detector` NO_DETECTOR on
 disposition, and dispositions belong to the A.L2 dispositions file. Facts already on record that any disposition must
 cite, without a letter attached: `bo_upaya` cannot rebuild until PR #2773 lands (R244, §6.4); six MSR-family Idem PASSes are
 chart-conditional (R243, §6.3); `bo_karanajala` writes `arudha` and `special_lagna` nodes into `bo_bimba`'s table (R247(a),
-§1.1); `bo_laksana_rerank` is UPDATE-only (R247(b), §6.1); `bo_grounding` is DRAFT and unreached (§1.2); three assets have
-unmeasured completion (§6.5); `bo_samvada` is a view over other assets' tables.
+§1.1); `bo_laksana_rerank` is UPDATE-only (R247(b), §6.1); `bo_grounding` is DRAFT and unreached (§1.2); `Build.completion` FAILs on five assets, two with an unexplained 60-row gap (`bo_sangati`, `bo_upaya`; §6.5); `bo_samvada` is a view over other assets' tables.
 
 ### 3.3 · Per asset — what it must add
 
@@ -795,7 +801,7 @@ belongs to (Cost, Count, Complete and Reach are non-gate and shown below as info
 | Carr | `Carr.detector` | 0 | 0 | 0 | 23 | 0 | 0 | 0 |
 | Narr | (no census check exists) | - | - | - | - | - | - | - |
 | Dens | `Dens.served` | 14 | 8 | 0 | 0 | 0 | 1 | 0 |
-| Build | `Build.registered`, `Build.contract`, `Build.target`, `Build.dag`, `Build.count_integrity`, `Build.completion`, `Build.exercised`, `Build.history`, `Build.dep_liveness` | 171 | 3 | 29 | 1 | 3 | 0 | 0 |
+| Build | `Build.registered`, `Build.contract`, `Build.target`, `Build.dag`, `Build.count_integrity`, `Build.completion`, `Build.exercised`, `Build.history`, `Build.dep_liveness` | 172 | 5 | 29 | 1 | 0 | 0 | 0 |
 
 Per-asset rows for the six single-criterion checks (Idem, Ldgr, Vocab, Dens, Carr, Earn). **†** = one of the six R243 chart-conditional
 PASSes (annotation in §6.3: `chart_scope: 482012f1 only; refused via assert_l2_msr_delete_safe on <charts>`); **‡** =
@@ -827,11 +833,10 @@ the R244 withheld PASS (§6.4):
 | `bo_vargottama_dhana` | PASS † | PASS | PASS | PASS | NO_DETECTOR | NO_DETECTOR |
 | `bo_yantra_mechanism` | PASS | PASS | PASS | PASS | NO_DETECTOR | NO_DETECTOR |
 
-Cells at FAIL or ERRORED (all criteria) [C]:
+Cells at FAIL or ERRORED (all criteria; 15 FAIL, 0 ERRORED) [C]:
 
 | asset | cells at FAIL or ERRORED |
 |---|---|
-| `bo_anveshana` | `Build.completion` ERRORED; `Count.floor` ERRORED |
 | `bo_bimba` | `Build.completion` FAIL; `Dens.served` FAIL |
 | `bo_cdlm_summary` | `Build.completion` FAIL |
 | `bo_cgm_motifs` | `Dens.served` FAIL |
@@ -841,22 +846,22 @@ Cells at FAIL or ERRORED (all criteria) [C]:
 | `bo_pramana_mapa` | `Dens.served` FAIL |
 | `bo_samskara` | `Count.floor` FAIL |
 | `bo_samvada` | `Dens.served` FAIL |
-| `bo_sangati` | `Build.completion` ERRORED; `Count.floor` ERRORED; `Dens.served` FAIL |
-| `bo_upaya` | `Build.completion` ERRORED; `Count.floor` ERRORED; `Dens.served` FAIL |
+| `bo_sangati` | `Build.completion` FAIL; `Dens.served` FAIL |
+| `bo_upaya` | `Build.completion` FAIL; `Dens.served` FAIL |
 
 Non-gate criteria (information; never blockers, D3):
 
 | non-gate criterion (information, D3) | verdicts over 23 assets |
 |---|---|
 | `Cost.baseline` | 23 NO_DETECTOR |
-| `Count.floor` | 3 ERRORED, 2 FAIL, 4 N/A, 14 PASS |
+| `Count.floor` | 2 FAIL, 4 N/A, 17 PASS |
 | `Complete.depth` | 15 PARTIAL, 8 PASS |
 | `Complete.width` | 23 NOT_GENERIC |
 | `Reach.fields` | 23 NOT_GENERIC |
 
 **The carriage menu (D1 / D2 / D3).** Not assigned (TG-L2-014).
 
-**The gate map** (fixed by the template, 572–582); this instance's right-hand column:
+**The gate map** (fixed by the template, 572–582); this instance's right-hand column. The template sends rows it cannot fill to a "§7" that it does not define (585; **TIER GAP: TG-L2-023**), so they are reported in the "unfillable, and why" column and in the tier-gaps file:
 
 | gate | section a brief author reads | what this instance supplies | unfillable, and why |
 |---|---|---|---|
@@ -868,7 +873,7 @@ Non-gate criteria (information; never blockers, D3):
 | **Carr** | §2.7 | NO_DETECTOR on 23 / 23 [C] | which of D1/D2/D3 each asset invites (TG-L2-014) |
 | **Narr** | §2.2 | no census check. Columns whose names carry prose exist (e.g. `signal_summary_text`, `signal_headline_text` on `bodha_msr_signals`; `hypothesis_text`, `depth_reading`, `why_an_acharya_misses_it` on `bodha_discoveries` [C: `Reach.fields`]); whether the prose restates cited facts is not measured | which assets emit prose and in which fields (TG-L2-020) |
 | **Dens** | §2.2, §3.4 | the serving modules and density declarations per asset (§1.4 table): 14 PASS, 8 FAIL, 1 N/A | — |
-| **Build** | §2.5, §1.1, §4.3 | writer and registered id (`Build.registered` PASS 23 / 23), declared target (PASS 23 / 23), edges (§2.5), build record (§4.1); `Build.completion` 16 PASS, 3 FAIL, 3 ERRORED, 1 NO_DETECTOR [C] | completion of three assets is unmeasured (§6.5); deployed versus code (TG-L2-006) |
+| **Build** | §2.5, §1.1, §4.3 | writer and registered id (`Build.registered` PASS 23 / 23), declared target (PASS 23 / 23), edges (§2.5), build record (§4.1); `Build.completion` 17 PASS, 5 FAIL, 1 NO_DETECTOR [C] | the 60-row completion gaps on `bo_sangati` and `bo_upaya` are unexplained (§6.5, MF-L2-008); deployed versus code (TG-L2-006) |
 
 Registry natural keys (`natural_key_partition`, the Idem natural key; Q1):
 
@@ -1028,8 +1033,9 @@ the annotation must be added at any emit or certification.
 R243's chart list and W2-3_REVIEW's per-asset list disagree for `bo_arudha`, `bo_special_lagna`, `bo_nakshatra_semantic` and
 `bo_vargottama_dhana` (MF-L2-011). Both readings are shown and neither is chosen; other charts were not re-measured. The
 annotation is carried with `<charts>` exactly as R243 states it, and the owner of R243 resolves the per-asset chart list.
-`bo_laksana_rerank` is not one of the six (its `Idem.pattern` reads PARTIAL). Once F-3 drops the eight keys and retires the
-refusal, this annotation ceases to apply to new emits.
+`bo_laksana_rerank` is not one of the six (its `Idem.pattern` reads PARTIAL). R243 itself says only "annotation-only". That the annotation would lapse once F-3 drops the eight keys and retires the
+refusal is an inference from arch §12.9 and F-3's stated aim, not a statement in R243; until F-3 lands, and unless the register
+says otherwise afterwards, the annotation is carried.
 
 ### 6.4 · (d) `bo_upaya` — Track E lane E4.2 (recorded, not redesigned)
 
@@ -1054,42 +1060,43 @@ Scan, Earned-Signal Gate, Coverage Gate and the others SUCCESS or SKIPPED [G2]. 
 (B.U); the R246 detector follows E4.2 (E1.6).
 
 **Census on the asset:** `Idem.pattern` PASS (the detector reads PASS while R244 says unearned; withheld from emits by procedure,
-‡ above, MF-L2-006); `Build.completion` and `Count.floor` ERRORED, unmeasured (§6.5); `Dens.served` FAIL (2 modules, 0 declaring a
+‡ above, MF-L2-006); `Build.completion` FAIL (240 written against 180 live, the 60-row gap unexplained) and `Count.floor` PASS (180 against a floor of 180, delta +0) in the after-grant run (§6.5); `Dens.served` FAIL (2 modules, 0 declaring a
 density contract); `Build.dep_liveness` PARTIAL (`bo_cgm_motifs` stale); 47 executed runs, last executed 2026-09-09; `Complete.depth`
 PARTIAL (135 rows table-wide, 24 columns, 18 fully populated) [C]. The register's "5 referencing rows on the canonical chart" was
 **not re-measured**: the referencing table is unreadable to the reader.
 
-### 6.5 · (e) The six ERRORED census cells — unmeasured, not PASS
+### 6.5 · (e) The six formerly ERRORED census cells — measured after the grant
 
 ```
 inherits:    census exit code 2; arch §12.14; SUMMARY.md anomalies
-measured_by: census assets[*].measurements[Build.completion / Count.floor]; Q4 (has_table_privilege)
+measured_by: census2 (after-grant) assets[*].measurements[Build.completion / Count.floor] and assets[*].live_rows; first-run census cells for the before state; Q4 (has_table_privilege), re-run
 traces_to:   1.1
 ```
 
-Six cells, three assets, two checks each, all `permission denied` for the read-only login (a grant gap, not an inspector fault):
+In the first run six cells (three assets, two checks each) read ERRORED, all `permission denied` for the read-only login on the second
+counted table (a grant gap, not an inspector fault). After the `SELECT` grant on `bodha_anomalies`, `bodha_triangulation` and
+`bodha_rm_remedy_prescriptions` the census was re-run (census2, 2026-09-30T20:30:56+05:30, same inspector commit); the six cells are now
+measured and the layer reads 0 ERRORED:
 
-| asset | check | census text | table | floor |
-|---|---|---|---|---|
-| `bo_anveshana` | `Build.completion` | check errored: `ERROR:  permission denied for table bodha_anomalies` | `bodha_anomalies` | — |
-| `bo_anveshana` | `Count.floor` | same, "floor=500 not measured" | `bodha_anomalies` | 500 |
-| `bo_sangati` | `Build.completion` | check errored: `ERROR:  permission denied for table bodha_triangulation` | `bodha_triangulation` | — |
-| `bo_sangati` | `Count.floor` | same, "floor=70 not measured" | `bodha_triangulation` | 70 |
-| `bo_upaya` | `Build.completion` | check errored: `ERROR:  permission denied for table bodha_rm_remedy_prescriptions` | `bodha_rm_remedy_prescriptions` | — |
-| `bo_upaya` | `Count.floor` | same, "floor=180 not measured" | `bodha_rm_remedy_prescriptions` | 180 |
+| asset | counted tables (`count_sql`) | live rows, chart 482012f1 | `Build.completion` (build record vs live) | `Count.floor` | floor delta |
+|---|---|---|---|---|---|
+| `bo_anveshana` | `bodha_discoveries`, `bodha_anomalies` | 4,437 | PASS: 4,437 written = 4,437 live | PASS | +3,937 (floor 500) |
+| `bo_sangati` | `bodha_cdlm_cells`, `bodha_triangulation` | 475 | **FAIL**: 535 written, 475 live (60 short) | PASS | +405 (floor 70) |
+| `bo_upaya` | `bodha_rm_resonances`, `bodha_rm_remedy_prescriptions` | 180 | **FAIL**: 240 written, 180 live (60 short) | PASS | +0 (floor 180) |
 
-Whether those assets built completely, and whether they meet their floors, is **unknown**. A `SELECT` grant on the three tables
-would clear the six cells. The same probe (Q4) shows ten more `bodha_*` tables and the generation table unreadable, so the
-completion of the other writes of these three assets and of three further ones (`bo_cdlm_summary`, `bo_cgm_motifs`, `bo_karanajala`)
-is also untested (MF-L2-002); `bodha_contradictions` is
-among them and is a cascade victim (§6.2).
+The census prints, for each, the target table alone as context (`bodha_discoveries` 3,695, `bodha_cdlm_cells` 430, `bodha_rm_resonances` 135
+rows, whole table, all charts), which is not the compared figure. The 60-row shortfall on each of `bo_sangati` and `bo_upaya` is **unexplained**:
+each writer also writes tables the reader still cannot select (`bodha_convergence`; `bodha_rm_chart_summary`,
+`bodha_rm_dosha_remedy_bundles`, `bodha_rm_pattern_remedies`), but nothing measured here places the gap there (MF-L2-008). Q4, re-run, still shows ten
+`bodha_*` tables and the generation table unreadable, so the other writes of `bo_cdlm_summary`, `bo_cgm_motifs`, `bo_karanajala`, `bo_sangati`
+and `bo_upaya` remain untested by any census check (MF-L2-002); `bodha_contradictions` is among them and is a cascade victim (§6.2).
 
 ### 6.6 · Figures that disagree with an earlier document
 
 Reported, not resolved (full list MF-L2-010 to -012): arch §12.9's seven-writer definition against six replacers (§6.1);
 R243's chart list against W2-3_REVIEW (§6.3); the skeleton's 2026-09-26 aggregates against today's census (Idem PASS 10 →
 21; Earn/Cost FAIL 23 → NO_DETECTOR 23; per-producer MSR rows each 150,724 → scoped 50,529 / 11,094 / 45 / 45 / 25 / 20 / 14);
-R101 and R107 (recorded as inventions) against T2 §6.3 and §9.2, which do supply the clauses.
+R101 and R107 (recorded as inventions) against T2 §6.3 and §9.2, which do supply the clauses; the first-run census (six ERRORED cells) against the after-grant census (0 ERRORED, two new Build.completion FAILs, §6.5).
 
 ---
 
@@ -1098,7 +1105,8 @@ R101 and R107 (recorded as inventions) against T2 §6.3 and §9.2, which do supp
 ```sql
 -- Q1 registry (chart-independent catalog)
 select asset_id, layer, depends_on, target_table, target_floor, storage_type, catalog_status, has_substeps,
-       natural_key_partition, count_sql, provides_apis from asset_registry where is_active;
+       natural_key_partition, count_sql, provides_apis, asset_kind, data_disposition, dead_flag, superseded_by
+  from asset_registry where is_active;
 -- Q2 the eight keys and their closure
 select c.conname, c.conrelid::regclass, a.attname, a.attnotnull, c.confdeltype, c.confupdtype, c.convalidated
   from pg_constraint c join pg_attribute a on a.attrelid=c.conrelid and a.attnum=any(c.conkey)
