@@ -301,6 +301,9 @@ def test_legacy_telemetry_no_duration_arg_writes_null_exactly_as_before(monkeypa
     packet."""
     from ga_writers import _telemetry
 
+    # The telemetry upsert probes for migration 1200's columns via the orchestrator's
+    # cached helper; reset the process cache so the probe runs against the fake.
+    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
     captured: list[tuple[str, list]] = []
 
     class _FakeConnCtx:
@@ -310,9 +313,19 @@ def test_legacy_telemetry_no_duration_arg_writes_null_exactly_as_before(monkeypa
         def __exit__(self, *exc):
             return False
 
+    class _FakeProbeCursor(_FakeConnCtx):
+        def execute(self, sql, params=None):
+            pass
+
+        def fetchone(self):
+            return {'?column?': 1}  # migration 1200 applied
+
     class _FakeTelemetryConn:
         def transaction(self):
             return _FakeConnCtx()
+
+        def cursor(self):
+            return _FakeProbeCursor()
 
         def execute(self, sql, params):
             captured.append((sql, params))
@@ -329,6 +342,9 @@ def test_legacy_telemetry_no_duration_arg_writes_null_exactly_as_before(monkeypa
 def test_legacy_telemetry_with_duration_computes_real_rate(monkeypatch):
     from ga_writers import _telemetry
 
+    # The telemetry upsert probes for migration 1200's columns via the orchestrator's
+    # cached helper; reset the process cache so the probe runs against the fake.
+    monkeypatch.setattr(ar, '_DURATION_COLUMNS_PRESENT', None)
     captured: list[tuple[str, list]] = []
 
     class _FakeConnCtx:
@@ -338,9 +354,19 @@ def test_legacy_telemetry_with_duration_computes_real_rate(monkeypatch):
         def __exit__(self, *exc):
             return False
 
+    class _FakeProbeCursor(_FakeConnCtx):
+        def execute(self, sql, params=None):
+            pass
+
+        def fetchone(self):
+            return {'?column?': 1}  # migration 1200 applied
+
     class _FakeTelemetryConn:
         def transaction(self):
             return _FakeConnCtx()
+
+        def cursor(self):
+            return _FakeProbeCursor()
 
         def execute(self, sql, params):
             captured.append((sql, params))

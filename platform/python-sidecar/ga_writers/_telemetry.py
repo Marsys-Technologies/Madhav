@@ -23,7 +23,26 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_UPSERT_SQL = """
+# Two variants of the same upsert. The base variant never names duration_seconds /
+# rows_per_second (migration 1200 may not have applied yet — see
+# `_duration_columns_present`); the duration variant adds them, and on conflict
+# COALESCEs so a call that supplies no duration (every current caller) can never
+# overwrite an already-stored measurement with NULL.
+_UPSERT_BASE_SQL = """
+INSERT INTO asset_throughput
+  (chart_id, asset_id, state, rows_written, last_measured_build_id,
+   last_built_at, last_measured_at)
+VALUES (%s, %s, %s, %s, %s::uuid, NOW(), NOW())
+ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
+DO UPDATE SET
+  state                   = EXCLUDED.state,
+  rows_written            = EXCLUDED.rows_written,
+  last_measured_build_id  = EXCLUDED.last_measured_build_id,
+  last_built_at           = NOW(),
+  last_measured_at        = NOW()
+"""
+
+_UPSERT_WITH_DURATION_SQL = """
 INSERT INTO asset_throughput
   (chart_id, asset_id, state, rows_written, last_measured_build_id,
    last_built_at, last_measured_at, duration_seconds, rows_per_second)
@@ -35,9 +54,20 @@ DO UPDATE SET
   last_measured_build_id  = EXCLUDED.last_measured_build_id,
   last_built_at           = NOW(),
   last_measured_at        = NOW(),
-  duration_seconds        = EXCLUDED.duration_seconds,
-  rows_per_second         = EXCLUDED.rows_per_second
+  duration_seconds        = COALESCE(EXCLUDED.duration_seconds, asset_throughput.duration_seconds),
+  rows_per_second         = COALESCE(EXCLUDED.rows_per_second, asset_throughput.rows_per_second)
 """
+
+
+def _duration_columns_present(conn: Any) -> bool:
+    """Whether asset_throughput.duration_seconds exists — the orchestrator's own
+    once-per-process cached probe (`asset_runner._duration_columns_present`), reused
+    rather than re-implemented so the two write paths can never disagree about the
+    schema. Imported lazily to keep this module import-light."""
+    from pipeline.orchestrator import asset_runner
+
+    with conn.cursor() as cur:
+        return asset_runner._duration_columns_present(cur)
 
 
 def _compute_duration_and_rate(
@@ -81,18 +111,27 @@ def update_asset_throughput(
     elapsed time for this call, if it has one. None of this module's current
     8 ga_writers/*.py callers pass it yet — wiring a real measurement in means
     editing those call sites, which is out of this packet's scope (see the A1
-    report's honest-limits section); passing nothing here writes NULL for both
-    `duration_seconds` and `rows_per_second`, exactly as before this change. When
+    report's honest-limits section); passing nothing here leaves both `duration_seconds`
+    and `rows_per_second` as they already were (NULL on a fresh row; an existing
+    stored measurement is preserved via COALESCE, never overwritten with NULL). When
     a future caller does pass a value, it is guarded exactly like the
     orchestrator's own completion write: a missing/zero/non-finite duration
     still yields NULL for both columns, never 0, never a fabricated rate."""
     duration_clean, rate = _compute_duration_and_rate(rows_written, duration_seconds)
     try:
         with conn.transaction():
-            conn.execute(
-                _UPSERT_SQL,
-                [chart_id, asset_id, state, rows_written, str(build_id), duration_clean, rate],
-            )
+            if _duration_columns_present(conn):
+                conn.execute(
+                    _UPSERT_WITH_DURATION_SQL,
+                    [chart_id, asset_id, state, rows_written, str(build_id), duration_clean, rate],
+                )
+            else:
+                # Sidecar deployed before migration 1200 applied: omit the two
+                # columns rather than fail every L1 telemetry upsert.
+                conn.execute(
+                    _UPSERT_BASE_SQL,
+                    [chart_id, asset_id, state, rows_written, str(build_id)],
+                )
         logger.info("[telemetry] asset_throughput %s chart=%s rows=%d state=%s",
                     asset_id, chart_id, rows_written, state)
     except Exception as exc:  # noqa: BLE001 — telemetry is non-fatal
