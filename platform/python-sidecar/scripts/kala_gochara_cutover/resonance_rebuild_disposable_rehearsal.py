@@ -387,6 +387,18 @@ def expected_afflicted_lord_rows(signature_models: dict = SIGNATURE_MODELS) -> i
 
 # ── acceptance (pure; unit-tested) ───────────────────────────────────────────
 
+# ASTRA v1.3 P2: the detector controls the report MUST carry, by name — an
+# acceptance that only iterates whatever records are present accepts a report
+# whose mutation entries were all dropped (clean + restored_after_controls alone
+# returned []). Exact presence is required; an unknown name is refused too.
+REQUIRED_DETECTOR_CONTROLS: tuple[str, ...] = (
+    "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
+    "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
+    "lord_token_wrong", "lord_token_missing", "birth_anchor_row_injected",
+)
+_DETECTOR_META_KEYS = ("clean", "restored_after_controls")
+
+
 def verify_acceptance(ver: dict) -> list[str]:
     """R-1..R-6 + rerun + rollback as FAILING assertions. Returns the list
     of violated checks (empty ⇒ accepted). Every zero-count check carries a
@@ -450,8 +462,16 @@ def verify_acceptance(ver: dict) -> list[str]:
     if not dc:
         f.append("detector controls: not run")
     else:
+        present = set(dc) - set(_DETECTOR_META_KEYS)
+        for name in REQUIRED_DETECTOR_CONTROLS:
+            if name not in present or not isinstance(dc.get(name), dict):
+                f.append(f"detector controls: missing detector control record {name!r}")
+        for name in sorted(present - set(REQUIRED_DETECTOR_CONTROLS)):
+            f.append(f"detector controls: unexpected detector control record {name!r}")
+        if "clean" not in dc:
+            f.append("detector controls: clean baseline measurement missing")
         for name, c in dc.items():
-            if name in ("clean", "restored_after_controls"):
+            if name in _DETECTOR_META_KEYS or not isinstance(c, dict):
                 continue
             if c.get("count_preservation_expected", True):
                 if not (c.get("counts_preserved") and c.get("global_id_sets_preserved")):
@@ -863,6 +883,7 @@ def _detector_controls(cur) -> dict:
     # controls whose mutation necessarily changes a count (a deletion / an insertion): the
     # validity criterion is that the mutation was APPLIED (shape changed), not preserved
     count_changing = {"lord_token_missing", "birth_anchor_row_injected"}
+    assert tuple(controls) == REQUIRED_DETECTOR_CONTROLS, (tuple(controls), REQUIRED_DETECTOR_CONTROLS)
     clean = measure()
     shape0 = _map_shape(cur)
     results: dict = {"clean": clean}

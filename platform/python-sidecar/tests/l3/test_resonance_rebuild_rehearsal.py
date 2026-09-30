@@ -181,6 +181,13 @@ def test_passing_verification_is_accepted():
     (lambda v: v["detector_controls"]["sensitive_class_swap"].__setitem__("counts_preserved", False), "control invalid"),
     (lambda v: v["detector_controls"]["sensitive_class_swap"].__setitem__("global_id_sets_preserved", False), "control invalid"),
     (lambda v: v["detector_controls"].__setitem__("restored_after_controls", False), "not restored"),
+    # ASTRA v1.3 P2: every named control record must be PRESENT (the reviewer's bypass:
+    # all mutation entries removed, clean + restored kept, verify returned [])
+    (lambda v: [v["detector_controls"].pop(n) for n in R.REQUIRED_DETECTOR_CONTROLS], "missing detector control"),
+    (lambda v: v["detector_controls"].pop("yoga_class_swap"), "missing detector control record 'yoga_class_swap'"),
+    (lambda v: v["detector_controls"].__setitem__("sensitive_class_swap", True), "missing detector control"),
+    (lambda v: v["detector_controls"].__setitem__("bogus_control", {"detected": True, "counts_preserved": True, "global_id_sets_preserved": True}), "unexpected detector control"),
+    (lambda v: v["detector_controls"].pop("clean"), "clean baseline"),
     (lambda v: v.pop("detector_controls"), "not run"),
     (lambda v: v.__setitem__("map_unchanged_after_detector_controls", False), "post-control digest"),
     # ASTRA v1.3 amendment 1: eligible class universe + migration-faithful schema
@@ -299,6 +306,22 @@ def test_identity_sql_is_class_associated_pinned_and_bidirectional():
     assert "constituent_houses" in r3 and "constituent_planets" in r3 and "y.fired" in r3
     r2, _ = B.r2_identity_sql(CH)
     assert "'ARUDHA_A' || ch.house::text" in r2 and "fact_key = 'sign'" in r2
+
+
+def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
+    """ASTRA v1.3 P2: remove every mutation entry, keep `clean` and
+    `restored_after_controls=True` — verify_acceptance returned []."""
+    v = copy.deepcopy(_passing_ver())
+    v["detector_controls"] = {"clean": v["detector_controls"]["clean"], "restored_after_controls": True}
+    failures = R.verify_acceptance(v)
+    missing = [f for f in failures if "missing detector control record" in f]
+    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 10, failures
+    assert set(R.REQUIRED_DETECTOR_CONTROLS) >= {
+        "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
+        "qualifier_transferred", "resolution_state_flipped", "provenance_flipped"}
+    # the passing report carries exactly the required names
+    names = set(_passing_ver()["detector_controls"]) - {"clean", "restored_after_controls"}
+    assert names == set(R.REQUIRED_DETECTOR_CONTROLS)
 
 
 def test_r4_all_lord_identity_is_bidirectional_scoped_and_tokenised_as_the_writer_does():
