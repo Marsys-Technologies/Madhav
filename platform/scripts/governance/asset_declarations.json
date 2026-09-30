@@ -1,6 +1,6 @@
 {
- "version": "1.3.0",
- "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown).",
+ "version": "1.5.0",
+ "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line; the 13 earlier declarations that cite DDL carry evidence_kind 'ddl'; an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown).",
  "kind_enum": [
   "data",
   "service",
@@ -13,7 +13,7 @@
  "carriage_fields": [
   "served_surface"
  ],
- "derived_on": "2026-09-30 from the saved census (inspector 2a78ec64d, chart 482012f1) and main 4081d5295; registry facts from seed/migrations/T0 witness, not the live DB; 1.1.0 fixes 2026-09-30 after independent review (carriage values unsafe as no-carriage facts); 1.1.1: ten true values re-checked for a real read (nine kept with file:line, mi_sankalpa nulled); 1.2.0: every served_surface true re-audited against the read_evidence rule (a real non-test FROM/JOIN read of the asset's own table, cited path:line); 7 nulled; 1.3.0: thin read_evidence re-pointed to row-level reads, read_kind (coverage/projection/table_map) for non-row-level reads",
+ "derived_on": "2026-09-30 from the saved census (inspector 2a78ec64d, chart 482012f1) and main 4081d5295; registry facts from seed/migrations/T0 witness, not the live DB; 1.1.0 fixes 2026-09-30 after independent review (carriage values unsafe as no-carriage facts); 1.1.1: ten true values re-checked for a real read (nine kept with file:line, mi_sankalpa nulled); 1.2.0: every served_surface true re-audited against the read_evidence rule (a real non-test FROM/JOIN read of the asset's own table, cited path:line); 7 nulled; 1.3.0: thin read_evidence re-pointed to row-level reads, read_kind (coverage/projection/table_map) for non-row-level reads; 1.5.0 (2026-10-01): Narr prose_fields per SS ruling and review: bg_doshas [] (stores source text), bg_remedies/bg_compendium_index(significance) declared, ka_kala_darshana/ka_jivana_parva/ka_bhavishya_lekha/bo_upaya/ka_vighnakara/ka_avadhi/ph_rectification JSON paths, ph_nimitta falsifier, mi_pariksha statement; bg_yogas and bg_ontology undeclared pending an SS ruling; all others stay null",
  "assets": {
   "bg_class_lifetime_counts": {
    "kind": "data",
@@ -71,7 +71,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "significance"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79",
@@ -80,7 +82,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_compendium_index; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/bg_compendium_index.py composes the `significance` TEXT column (migrations/001_baseline.sql:469) per row by f-string from the computed passage count: f\"{text_id} chapter {chapter_num}: {len(rows)} passage(s)\" (bg_compendium_index.py:97) and f\"{text_id} covers {topic_id} in {len(rows)} passage(s)\" (bg_compendium_index.py:109). summary_text is NOT declared: it is verbatim source slices (first 300 chars of up to 3 chunks) joined with ' … ' and cut at 1000 (bg_compendium_index.py:40), not composed narration. Zero LLM (bg_compendium_index.py:5)."
    }
   },
   "bg_concordance": {
@@ -139,7 +141,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75",
@@ -148,7 +150,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dosha_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "stores source text; generates none. bg_doshas writer (writers/bg_doshas.py) delegates to brahmagyan/l0_doshas.py seed_doshas, which binds the hand-authored inline DOSHAS corpus verbatim (l0_doshas.py:1972 formation_text, l0_doshas.py:1973 effects_text); no f-string, template, join or LLM composes a column. The only derived text is brahma_ontology.description = effects_text[:200] (l0_doshas.py:2003), a prefix slice of stored source text, not composition. Reference corpus per SS ruling 2026-10-01 (a)."
    }
   },
   "bg_ephemeris": {
@@ -462,7 +464,10 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "prescription_text",
+    "charity_action"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101",
@@ -471,7 +476,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_remedy_corpus; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101 reads `brahma_remedy_corpus` (`const sql = `SELECT ${selectCols} FROM brahma_remedy_corpus WHERE ${whereClause} ` +`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "brahmagyan/l0_remedy_corpus.py gen_planet_matrix composes prescription_text for 108 rows by f-string from PLANET_REMEDY_DATA (l0_remedy_corpus.py:247 mantra, :270 gemstone, :297 charity, :319 vrata, :340 puja, :362 yantra, :383 homa, :404 behavioral, :424 japa) and charity_action = f\"Donate {item} on {d['day']}.\" (l0_remedy_corpus.py:309); _gen_nakshatra_mantra_rows composes 27 more prescription_text values by f-string (l0_remedy_corpus.py:2236). The other buckets are literals (DOSHA_REMEDIES, LEGACY_REMEDIES, STOTRA/DANA/YANTRA), the sweep stores a <=400-char slice of the source chunk (sweep_classical_text_chunks), and the tantric loader binds YAML text verbatim (l0_remedy_loader.py insert_to_corpus): those are not composition. contraindications is a constant string, not declared."
    }
   },
   "bg_rules": {
@@ -714,7 +719,8 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_discoveries; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202 reads `bodha_discoveries` (`FROM bodha_discoveries`). Dens.served=PASS.",
     "prose_fields": "bodha_discoveries.surface_reading,depth_reading,hypothesis_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_arudha": {
    "kind": "data",
@@ -734,7 +740,8 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'arudha' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_bimba": {
    "kind": "data",
@@ -890,7 +897,8 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_laksana_rerank": {
    "kind": "data",
@@ -927,7 +935,8 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'nakshatra_semantic' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_pramana_mapa": {
    "kind": "data",
@@ -1032,7 +1041,8 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'special_lagna' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_sudarshana": {
    "kind": "data",
@@ -1052,14 +1062,17 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'sudarshana_agreement' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_upaya": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362",
@@ -1068,7 +1081,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_rm_resonances; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362 reads `bodha_rm_resonances` (`FROM bodha_rm_resonances`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:404 selects the column and query_remedies.ts:564 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here."
    }
   },
   "bo_vargottama_dhana": {
@@ -1089,7 +1102,8 @@
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so classes 'vargottama_amplification' / 'dhana_axis' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "bo_yantra_mechanism": {
    "kind": "data",
@@ -1436,7 +1450,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "dossier.$.sublord_modulation.note"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93",
@@ -1445,7 +1461,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_avadhi; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/ka_avadhi.py _build_row composes dossier['sublord_modulation']['note'] by f-string (ka_avadhi.py:293) for antardasha rows; the dossier is bound as json.dumps(dossier) (ka_avadhi.py:303) into kala_avadhi.dossier. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:92 selects dossier. Defect (not fixed): the note reads 'AD lord {sublord} modulates MD lord {lord}' but `sublord` is the parent (MD) lord and `lord` the AD lord, so the labels are swapped. lord_condition_fact_refs and activated_pratijna_ids are ids, not prose."
    }
   },
   "ka_bhavishya_lekha": {
@@ -1453,7 +1469,14 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "narrative.$.headline",
+    "narrative.$.probability_statement",
+    "narrative.$.domain_context",
+    "narrative.$.caveat",
+    "falsifiability.$.confirm_observable",
+    "falsifiability.$.deny_observable"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251",
@@ -1462,7 +1485,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_bhavishya; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251 reads `kala_bhavishya` (`FROM kala_bhavishya`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (ka_bhavishya_lekha.py:323, function at :562) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (ka_bhavishya_lekha.py:317; f-strings at ka_bhavishya_lekha.py:528 and ka_bhavishya_lekha.py:529); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
    }
   },
   "ka_dasha_kala": {
@@ -1538,7 +1561,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "narrative.$.summary"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158",
@@ -1547,7 +1572,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_jivana_parva; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158 reads `kala_jivana_parva` (`FROM kala_jivana_parva`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (ka_jivana_parva.py:432; called at ka_jivana_parva.py:185 MD, :245 AD, :321 PD; inserted to kala_jivana_parva.narrative at :348); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:152."
    }
   },
   "ka_kala_darshana": {
@@ -1555,7 +1580,11 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "narrative.$.headline",
+    "narrative.$.context",
+    "narrative.$.caution"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87",
@@ -1564,7 +1593,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_darshana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87 reads `kala_darshana` (`FROM kala_darshana`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/ka_kala_darshana.py _build_narrative composes the JSONB narrative by f-string from effective score, net label, peak date, confidence, orb and obstructions and returns {headline, context, caution} (ka_kala_darshana.py:234, built at ka_kala_darshana.py:107, inserted to kala_darshana.narrative at ka_kala_darshana.py:138); a served capability reads it (platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:86). obstruction_summary is a list of {type, severity, override_score} values: structured data, not declared."
    }
   },
   "ka_kalasutra": {
@@ -1759,7 +1788,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "obstruction_detail.$.reason"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81",
@@ -1768,7 +1799,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_obstruction; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81 reads `kala_obstruction` (`FROM kala_obstruction`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at ka_vighnakara.py:553 (test-only proxy), ka_vighnakara.py:589, ka_vighnakara.py:644, ka_vighnakara.py:695, ka_vighnakara.py:773, ka_vighnakara.py:829 (constant stubs at :674 and :730 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (ka_vighnakara.py:241, and json.dumps(detail) in the dasha-anchored builder, INSERT at :285). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:80 selects obstruction_detail. Defect (not fixed): ka_vighnakara.py:589-592 hard-codes 'lagna (Aries) / moon (Aquarius)' in the reason for every chart."
    }
   },
   "ka_yojaka": {
@@ -1876,7 +1907,8 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_predictions; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts:138 reads `mimamsa_predictions` (`FROM mimamsa_predictions`). Dens.served=PASS. Served predictions capability (`FROM mimamsa_predictions WHERE ${where}`): row-level serve of the prediction rows.",
     "prose_fields": "mimamsa_predictions.outcome_claim: TEXT in DDL (347_mimamsa_bhavisya.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "mi_darshana": {
    "kind": "data",
@@ -1895,7 +1927,8 @@
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_insight_units; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:225 reads `mimamsa_insight_units` (`FROM mimamsa_insight_units`). Dens.served=PASS. Served insights capability (row-level serve of mimamsa_insight_units ordered by rank_consequence).",
     "prose_fields": "mimamsa_insight_units.statement: TEXT in DDL (353_mimamsa_darshana.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "mi_gunanaka": {
    "kind": "data",
@@ -1953,7 +1986,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "statement"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:192",
@@ -1962,7 +1997,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_qa_eval; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:192 reads `mimamsa_qa_eval` (`FROM mimamsa_qa_eval`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "writers/mi_pariksha.py composes mimamsa_discoveries.statement by f-string in two substeps: the retrodiction statement (mi_pariksha.py:251) and the emergent-law statement (mi_pariksha.py:729); both bound through the same INSERT (mi_pariksha.py:273 and :773). Served: platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:86 selects statement."
    }
   },
   "mi_pramana": {
@@ -2068,14 +2103,17 @@
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_muhurta; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:99 reads `phala_muhurta` (`FROM phala_muhurta`). Dens.served=FAIL.",
     "prose_fields": "phala_muhurta.verdict_reason: TEXT in DDL (331_phala_muhurta.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "ph_nimitta": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "falsifier"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:139",
@@ -2084,7 +2122,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_anchors; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:139 reads `phala_anchors` (`FROM phala_anchors`). Dens.served=FAIL. Served predictive-anchors capability (row-level serve: falsifier, source_citation, posterior, lift_vector).",
-    "prose_fields": null
+    "prose_fields": "services/ph_nimitta/engine.py StructuredFalsifier.as_text composes the refutation/confirmation sentence by f-string (engine.py:237) and the anchor is built with falsifier=sf.as_text() (engine.py:552); the writer binds a.falsifier to phala_anchors.falsifier (ph_nimitta.py:279). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:137 selects falsifier. structured_falsifier_jsonb (not served), magnitude_basis and karmic_note are not declared."
    }
   },
   "ph_phaladesa": {
@@ -2121,7 +2159,8 @@
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_pramana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:245 reads `phala_pramana` (`FROM phala_pramana`). Dens.served=FAIL.",
     "prose_fields": "phala_pramana.falsifier_text: TEXT in DDL (338_phala_pramana.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "ph_pratikara": {
    "kind": "data",
@@ -2145,7 +2184,10 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "judgment_flags.$.load_bearing_note",
+    "leakage_firewall_note"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:613",
@@ -2154,7 +2196,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_rectification; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:613 reads `phala_rectification` (`FROM phala_rectification`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "writers/ph_rectification/__init__.py composes judgment_flags['load_bearing_note'] by f-string when load_bearing is forced false (__init__.py:74) and persists leakage_firewall_note = f\"[basis={basis}] {best.leakage_firewall_note}\" (__init__.py:392) where the engine composes the note (services/ph_rectification/engine.py:555); both bind into phala_rectification_best (INSERT __init__.py:373). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:644 selects judgment_flags and query_phala_calibration.ts:646 leakage_firewall_note."
    }
   },
   "ph_sankrama": {
@@ -2174,7 +2216,8 @@
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_sankrama; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:181 reads `phala_sankrama` (`FROM phala_sankrama`). Dens.served=FAIL.",
     "prose_fields": "phala_sankrama.mechanism_text: TEXT in DDL (337_phala_sankrama.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "ph_sodhana": {
    "kind": "data",
@@ -2193,7 +2236,8 @@
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_sodhana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:323 reads `phala_sodhana` (`FROM phala_sodhana`). Dens.served=FAIL.",
     "prose_fields": "phala_sodhana.recommendation_text: TEXT in DDL (333_phala_sodhana.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
-   }
+   },
+   "evidence_kind": "ddl"
   },
   "ph_suddha_sodhana": {
    "kind": "data",
