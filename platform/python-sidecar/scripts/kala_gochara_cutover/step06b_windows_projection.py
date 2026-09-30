@@ -84,10 +84,12 @@ Semantics (every choice disclosed, none improvised):
     month of the refined peak clipped to the era; day row at the refined
     peak), parent_window_id wired to the containing row's id at INSERT time
     (migration 567's documentary linkage, parents inserted first).
-  * valence/is_adverse — pinned resolve_valence_v3 over the signed channels
-    at each row's own peak instant; the class fallback valence comes from
-    the class context (default 'mixed', disclosed). LEGACY single-axis
-    columns, RETAINED unchanged for the serving layer and the delta report.
+  * valence/is_adverse — DERIVED from the three-field outcome at each row's
+    own peak instant (valence := outcome_valence_for_native, is_adverse :=
+    outcome == 'adverse'); the pinned netted resolve_valence_v3 verdict is
+    computed for the review trail only (suppression_state.legacy_netted_
+    valence). The class fallback valence comes from the class context
+    (default 'mixed', disclosed).
   * THREE-FIELD VALENCE — T0-7 (FABLE #11/#12, GOCHARA_DESIGN_SPECS_v1_4 §3):
     every evaluated window row additionally carries
     evidence_for_occurrence / evidence_against_occurrence /
@@ -99,15 +101,24 @@ Semantics (every choice disclosed, none improvised):
     occurrence (both > 0) stands as both fields positive and does NOT
     relabel the outcome 'mixed' — 'mixed' is a valence verdict from class
     polarity only. An unresolved operand (class polarity absent from the
-    context document, an active contact with no map weight, or a
-    context-declared valence_unresolved_operands entry such as
-    'av_donor_matrix' — the O-TV-3 P5c donor-matrix-absent case) yields
+    context document, an in-orb contact with no map weight, or — for a
+    kakṣyā-crossing contact ONLY — its P5c donor row absent from the
+    document's `_av_donor_matrix.available_keys`, resolved per
+    '{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}' key: the O-TV-3 case under
+    D-SPECS C4, where a missing contributor matrix disables P5c alone and
+    never disqualifies a window that consumes no P5c operand) yields
     outcome 'unqualified' with the operand NAMED in the breakdown — never
     a silent 1.0 / 'favourable' default (finding #12's E5 regression is
-    what this prevents). The new fields ride inside suppression_state (the
-    served table has no columns for them and migrations are out of scope
-    here); derivation is disclosed in suppression_state.three_field_valence
-    on every row and in the class factors record.
+    what this prevents). ACTIVITY is fed |weight| so negative-only
+    evidence (an adverse-class affliction) produces a window; the sign is
+    consumed by the channels alone. The served valence / is_adverse
+    columns and the sign of signed_intensity DERIVE from
+    outcome_valence_for_native (the netted legacy verdict is kept in
+    suppression_state.legacy_netted_valence for the review trail only).
+    The three fields ride inside suppression_state (the served table has no
+    columns for them and migrations are out of scope here); derivation is
+    disclosed in suppression_state.three_field_valence on every row and in
+    the class factors record.
   * active_sentences — the contributing contacts' contact_ids at the row's
     peak instant (plan §4.6). contributing_systems — the active permission
     systems plus per-factor provenance strings. suppression_state — the
@@ -404,6 +415,33 @@ VALENCE_CONTRACT = "three_field_valence:v1 (GOCHARA_DESIGN_SPECS_v1_4 §3)"
 # class-relatively without it.
 _CLASS_VALENCE_KNOWN = frozenset({"gain", "loss", "neutral", "mixed"})
 
+# T0-7 / O-TV-3 operand name for the P5c per-contributor BAV matrix. D-SPECS
+# C4 (GOCHARA_DESIGN_SPECS_v1_4 §2.2 missing-input matrix, §8.2 inv 4): a
+# missing contributor matrix disables **P5c alone** — it never disqualifies
+# a window whose evidence rests on no kakṣyā crossing, and it is resolved
+# PER KEY ('{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}', the ga_strength_writer
+# scheme), never chart-wide from one unrelated row (ASTRA P1-4).
+AV_DONOR_OPERAND = "av_donor_matrix"
+P5C_RELATION = "kakshya_cell_crossing"
+
+
+def kakshya_donor_key(body: str, target_lon_deg: float) -> tuple[str, dict]:
+    """The P5c donor row a kakṣyā crossing consumes (Phaladīpikā XXIII,
+    PG301: fruit delivered in the cell owned by the mark-donor). The crossed
+    boundary's cell is the one it opens (division order Saturn → Lagna,
+    primitives._KAKSHYA_LORD_ORDER); sign N is the absolute rāśi 1–12 of
+    the boundary degree. Returns (writer-scheme key, detail)."""
+    from brahmagyan.graha_vocabulary import norm_graha
+    from services.gochara_grammar.primitives import (
+        kakshya_index_for_degree_in_sign, kakshya_lord_for_index)
+    lon = float(target_lon_deg) % 360.0
+    sign_n = int(lon // 30.0) + 1
+    idx = kakshya_index_for_degree_in_sign(lon)
+    lord = kakshya_lord_for_index(idx)
+    key = f"{norm_graha(body)}-CONTRIBUTOR_{norm_graha(lord)}-SIGN_{sign_n}"
+    return key, {"sign_number": sign_n, "kakshya_index": idx,
+                 "kakshya_lord": lord, "donor_row_key": key}
+
 
 def three_field_valence(supportive_channel: float, afflicting_channel: float,
                         *, class_valence: str | None, class_is_adverse: bool,
@@ -512,9 +550,12 @@ class ClassContext:
                  *, weight_by_target_ref: dict[str, float],
                  class_valence: str = "mixed", class_is_adverse: bool = False,
                  context_source: str = "class_context_json",
-                 permission_fn=None, unresolved_valence_operands=()):
+                 permission_fn=None, unresolved_valence_operands=(),
+                 av_donor_keys=None):
         self.event_class = event_class
         self.weight_by_target_ref = dict(weight_by_target_ref)
+        self.abs_weight_by_target_ref = {
+            k: abs(float(v)) for k, v in self.weight_by_target_ref.items()}
         self.promise, self.promise_detail = leg.compute_promise(weights)
         # T0-6 (FABLE #2/#3): when permission_fn is given, PERMISSION is
         # evaluated AT EACH INSTANT (per-instant MD/AD/PD plurality over the
@@ -536,12 +577,45 @@ class ClassContext:
         # row of the class then evaluates with these operands unresolved:
         # outcome 'unqualified', operands named in the breakdown.
         self.unresolved_valence_operands = tuple(unresolved_valence_operands)
+        # P5c donor matrix (D-SPECS C4 scoping, ASTRA P1-4): the set of
+        # contributor-row keys the context document found for the chart
+        # (step06a `_av_donor_matrix.available_keys`); None when the document
+        # carries no such block (old documents / rehearsal). Consulted ONLY
+        # for kakṣyā-crossing contacts — the sole P5c consumer — per key.
+        self.av_donor_keys = (None if av_donor_keys is None
+                              else frozenset(av_donor_keys))
         self.context_source = context_source
         # tārā: the transit-Moon channel is not wired into this projection
         # (M-3 separate channel) — the pinned honest skip (modifier 1.0).
         self.tara = leg.tara_modifier(None, None)
         # N-14: nodal dṛṣṭi removed — the pinned disabled path (modifier 1.0).
         self.w30 = leg.w30_modifier(None, [], enabled=False)
+
+    def class_level_unresolved_operands(self) -> tuple:
+        """Operands unresolved for EVERY window of the class. The P5c donor
+        matrix is excluded here by D-SPECS C4 — it gates P5c consumers only
+        (scoped per kakṣyā contact in make_eval_fn), never the class."""
+        return tuple(op for op in self.unresolved_valence_operands
+                     if op != AV_DONOR_OPERAND)
+
+    def p5c_operand_state(self, contact: dict) -> dict | None:
+        """For a kakṣyā-crossing contact: the donor operand's resolution.
+        None for every other relation (no P5c operand is consumed). A
+        document without the matrix block (av_donor_keys None) resolves the
+        operand as unresolved only when the legacy chart-level declaration
+        named it — and still only on this P5c consumer, never chart-wide."""
+        if contact.get("relation") != P5C_RELATION:
+            return None
+        key, detail = kakshya_donor_key(contact["body"],
+                                        contact["_target_lon_deg"])
+        if self.av_donor_keys is None:
+            legacy_declared = AV_DONOR_OPERAND in self.unresolved_valence_operands
+            return {**detail, "state": ("unresolved" if legacy_declared
+                                        else "not_probed"),
+                    "operand": f"{AV_DONOR_OPERAND}:{key}"}
+        return {**detail,
+                "state": "resolved" if key in self.av_donor_keys else "unresolved",
+                "operand": f"{AV_DONOR_OPERAND}:{key}"}
 
     def permission_at(self, t_jd: float):
         """(permission, detail) at the evaluation instant. Per-instant mode
@@ -587,11 +661,15 @@ class ClassContext:
             "outcome_valence_for_native": three_field_valence(
                 0.0, 0.0, class_valence=self.class_valence,
                 class_is_adverse=self.class_is_adverse,
-                unresolved_operands=self.unresolved_valence_operands
+                unresolved_operands=self.class_level_unresolved_operands()
             )["outcome_valence_for_native"],
             "severity": None,
             "valence_unresolved_operands": sorted(
-                self.unresolved_valence_operands),
+                self.class_level_unresolved_operands()),
+            # D-SPECS C4: the P5c operand is per-window/per-key, never a
+            # class-level verdict input; its availability is reported here.
+            "av_donor_matrix_keys_available": (
+                None if self.av_donor_keys is None else len(self.av_donor_keys)),
             "context_source": self.context_source,
         }
 
@@ -736,8 +814,15 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         active_ids = [r["contact"]["contact_id"] for r in reduced["activity"]]
         sentences = [_sentence_for(r) for r in reduced["activity"]]
         channel_sentences = [_sentence_for(r) for r in reduced["channels"]]
+        # T0-7 (ASTRA P1-4): ACTIVITY is occurrence strength — the
+        # magnitude of the evidence regardless of its sign. The pinned
+        # compute_activity_v3 clamps a negative map weight to 0 (the legacy
+        # engine's #11 defect: negatives reach only the afflicting channel),
+        # so negative-only evidence (a bereavement-class Saturn on the 9L)
+        # produced activity 0, λ 0 and NO window. The activity term is
+        # therefore fed |weight|; the SIGN is consumed only by the channels.
         activity, _act_detail, _tb = leg.compute_activity_v3(
-            sentences, class_ctx.weight_by_target_ref)
+            sentences, class_ctx.abs_weight_by_target_ref)
         supportive, afflicting, _ch = leg.compute_signed_channels_v3(
             channel_sentences, class_ctx.weight_by_target_ref)
         gates, gates_detail = quality_gate_for_date(iso_date_of_jd(t_jd))
@@ -750,11 +835,20 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         # is named unresolved instead of defaulted. Class-level unresolved
         # operands (context-declared, e.g. 'av_donor_matrix' — O-TV-3) always
         # apply.
-        unresolved = list(class_ctx.unresolved_valence_operands)
+        unresolved = list(class_ctx.class_level_unresolved_operands())
+        p5c_operands = []
         for c in contacts:
-            if (c["contact_id"] in in_orb_ids
-                    and c["target_ref"] not in class_ctx.weight_by_target_ref):
+            if c["contact_id"] not in in_orb_ids:
+                continue
+            if c["target_ref"] not in class_ctx.weight_by_target_ref:
                 unresolved.append(f"map_weight:{c['target_ref']}")
+            # D-SPECS C4 / ASTRA P1-4: the P5c donor operand is consumed
+            # ONLY by kakṣyā crossings, resolved per donor-row key.
+            p5c = class_ctx.p5c_operand_state(c)
+            if p5c is not None:
+                p5c_operands.append({"contact_id": c["contact_id"], **p5c})
+                if p5c["state"] == "unresolved":
+                    unresolved.append(p5c["operand"])
         tv = three_field_valence(
             supportive, afflicting, class_valence=class_ctx.class_valence,
             class_is_adverse=class_ctx.class_is_adverse,
@@ -780,6 +874,7 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "active_contact_ids": active_ids,
             "shared_roots": {"roots": reduced["roots"],
                              "dropped_aliases": reduced["dropped"]},
+            "p5c_operands": p5c_operands,
             "three_field_valence": tv,
         }
 
@@ -966,17 +1061,22 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
                 parent_key: str | None, tier: str, enter_jd: float,
                 exit_jd: float, peak_jd: float) -> dict:
     peak = evaluate(peak_jd)
-    # LEGACY single-axis valence columns (retained unchanged — consumed by
-    # the serving layer and the delta report). NOTE: resolve_valence_v3 nets
-    # the channels (imbalance_ratio → 'mixed'); that is exactly the #11/#12
-    # shape the three-field contract replaces, so the new fields below are
-    # authoritative for §3 and these two are legacy compatibility only.
-    valence, is_adverse, tension = leg.resolve_valence_v3(
+    tv = peak["three_field_valence"]
+    raw = peak["lambda_raw"]
+    # The served single-axis columns (valence / is_adverse / the sign of
+    # signed_intensity) are DERIVED FROM THE THREE-FIELD CONTRACT (ASTRA
+    # P1-4: "ensure consumers use the three independent fields"): valence
+    # := outcome_valence_for_native, is_adverse := outcome == 'adverse'. The
+    # legacy netted verdict (resolve_valence_v3: imbalance_ratio → 'mixed',
+    # the #11/#12 shape) is computed only for the review trail and kept in
+    # suppression_state.legacy_netted_valence — it no longer reaches a served
+    # column.
+    valence = tv["outcome_valence_for_native"]
+    is_adverse = valence == "adverse"
+    legacy_valence, legacy_is_adverse, tension = leg.resolve_valence_v3(
         peak["supportive"], peak["afflicting"],
         class_valence=class_ctx.class_valence,
         class_is_adverse=class_ctx.class_is_adverse)
-    tv = peak["three_field_valence"]
-    raw = peak["lambda_raw"]
     return {
         "window_key": window_key,
         "parent_key": parent_key,
@@ -1022,6 +1122,13 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             "tara": class_ctx.tara,
             "w30": class_ctx.w30,
             "valence_tension": tension,
+            "legacy_netted_valence": {
+                "valence": legacy_valence, "is_adverse": legacy_is_adverse,
+                "note": "resolve_valence_v3 (netted) — review trail only; "
+                        "the served valence/is_adverse derive from "
+                        "three_field_valence.outcome_valence_for_native"},
+            "p5c_operands": peak["p5c_operands"],
+            "shared_roots": peak["shared_roots"],
             # T0-7: full derivation disclosure (fields + breakdown, incl.
             # every named unresolved operand).
             "three_field_valence": tv,
@@ -1516,7 +1623,14 @@ def main(argv: list[str] | None = None) -> int:
                 # O-TV-3 operand ('av_donor_matrix') when the P5c donor
                 # matrix is absent.
                 unresolved_valence_operands=ctx_dict.get(
-                    "valence_unresolved_operands", ()))
+                    "valence_unresolved_operands", ()),
+                # D-SPECS C4: the P5c donor matrix keys the document found
+                # (per-key resolution on kakṣyā contacts only); None when
+                # the document predates the block.
+                av_donor_keys=(
+                    (class_contexts.get("_av_donor_matrix") or {})
+                    .get("available_keys")
+                    if class_contexts else None))
             rows, rep = project_class_windows(
                 class_ctx, cls_contacts, horizon_jd, gate_for_date,
                 min_lambda=args.min_lambda,

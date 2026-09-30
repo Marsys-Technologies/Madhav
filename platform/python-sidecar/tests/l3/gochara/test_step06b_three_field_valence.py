@@ -194,22 +194,153 @@ def test_o_tv_3_class_polarity_unresolved():
     assert tv["evidence_for_occurrence"] != 1.0
 
 
-def test_o_tv_3_av_donor_matrix_absent_declared_by_context():
-    """O-TV-3's exact fixture condition: the P5c donor matrix is absent
-    (pending the ga_strength rebuild); the context document declares the
-    operand unresolved and the valence contribution is 'unqualified' with
-    the operand NAMED. The window still stands and the occurrence evidence
-    is still computed (orientation is known) — only the verdict is withheld."""
+def _kakshya_contact(cid, body="Saturn", boundary=213.75, weight_ref="Venus"):
+    """A kakṣyā-crossing contact at 213.75° = Scorpio (sign 8) cell 1
+    (3.75°–7.5°, Jupiter's cell) — a NON-Aries sign so a sign-relative
+    slip is detectable. Donor key: SAT-CONTRIBUTOR_JUP-SIGN_8."""
+    c = _contact(cid, T_EXACT - 10, T_EXACT, T_EXACT + 10, target=boundary,
+                 body=body)
+    c.update({"relation": "kakshya_cell_crossing",
+              "_primitive": "kakshya_cell_crossing", "target_ref": weight_ref})
+    return c
+
+
+P5C_KEY = "SAT-CONTRIBUTOR_JUP-SIGN_8"
+
+
+def _pos_on(lon):
+    return lambda b, jd: lon
+
+
+def test_kakshya_donor_key_names_the_cell_lord_and_absolute_sign():
+    key, d = w.kakshya_donor_key("Saturn", 213.75)
+    assert key == P5C_KEY
+    assert (d["sign_number"], d["kakshya_index"], d["kakshya_lord"]) == (8, 1, "Jupiter")
+    # cell 0 of Aries is Saturn's; cell 7 of Pisces is Lagna's
+    assert w.kakshya_donor_key("Mars", 0.0)[0] == "MAR-CONTRIBUTOR_SAT-SIGN_1"
+    assert w.kakshya_donor_key("Mars", 356.25)[0] == "MAR-CONTRIBUTOR_LAGNA-SIGN_12"
+
+
+def test_o_tv_3_missing_donor_matrix_disables_p5c_alone():
+    """O-TV-3 with D-SPECS C4 (§8.2 inv 4; ASTRA P1-4): the P5c donor matrix
+    absent (pending the ga_strength rebuild) makes a window whose evidence
+    rests on a kakṣyā crossing 'unqualified' with the DONOR ROW KEY named —
+    and leaves a window resting on a conjunction fully qualified. Mutation
+    caught: the chart-wide LIMIT-1 probe declared EVERY window unqualified."""
+    ctx = _class_ctx("marriage", {"Venus": 0.8},
+                     class_valence="neutral", class_is_adverse=False)
+    ctx.av_donor_keys = frozenset()  # matrix probed: nothing available
+    conj = _contact("c1", T_EXACT - 10, T_EXACT, T_EXACT + 10)
+    tv = _evaluate(ctx, [conj])["three_field_valence"]
+    assert tv["outcome_valence_for_native"] == "favourable"
+    assert tv["breakdown"]["unresolved_operands"] == []
+
+    kak = _kakshya_contact("k1")
+    ev = w.make_eval_fn(ctx, [kak], _open_gates,
+                        planet_pos_fn=_pos_on(213.75))(T_EXACT)
+    tv_k = ev["three_field_valence"]
+    assert tv_k["outcome_valence_for_native"] == "unqualified"
+    assert f"av_donor_matrix:{P5C_KEY}" in tv_k["breakdown"]["unresolved_operands"]
+    assert tv_k["evidence_for_occurrence"] == pytest.approx(0.8)  # evidence stands
+    assert ev["p5c_operands"][0]["state"] == "unresolved"
+
+
+def test_p5c_operand_resolves_per_key_never_from_one_unrelated_row():
+    """One unrelated contributor row present must NOT resolve this crossing's
+    donor operand (the LIMIT-1 mutation); the exact key must be present."""
+    ctx = _class_ctx("marriage", {"Venus": 0.8},
+                     class_valence="neutral", class_is_adverse=False)
+    kak = _kakshya_contact("k1")
+    ctx.av_donor_keys = frozenset({"VEN-CONTRIBUTOR_SUN-SIGN_1"})  # unrelated
+    ev = w.make_eval_fn(ctx, [kak], _open_gates,
+                        planet_pos_fn=_pos_on(213.75))(T_EXACT)
+    assert ev["three_field_valence"]["outcome_valence_for_native"] == "unqualified"
+    ctx.av_donor_keys = frozenset({"VEN-CONTRIBUTOR_SUN-SIGN_1", P5C_KEY})
+    ev = w.make_eval_fn(ctx, [kak], _open_gates,
+                        planet_pos_fn=_pos_on(213.75))(T_EXACT)
+    assert ev["three_field_valence"]["outcome_valence_for_native"] == "favourable"
+    assert ev["p5c_operands"][0]["state"] == "resolved"
+
+
+def test_legacy_chart_level_declaration_is_scoped_to_p5c_consumers():
+    """An old context document (no _av_donor_matrix block) that declared
+    'av_donor_matrix' chart-wide: the declaration is honoured ONLY on kakṣyā
+    contacts; a conjunction window is not disqualified by it."""
     ctx = _class_ctx("marriage", {"Venus": 0.8},
                      class_valence="neutral", class_is_adverse=False,
                      unresolved=("av_donor_matrix",))
-    contact = _contact("c1", T_EXACT - 10, T_EXACT, T_EXACT + 10)
-    tv = _evaluate(ctx, [contact])["three_field_valence"]
-    assert tv["outcome_valence_for_native"] == "unqualified"
-    assert "av_donor_matrix" in tv["breakdown"]["unresolved_operands"]
-    assert tv["evidence_for_occurrence"] == pytest.approx(0.8)
-    # mutation: no silent favourable default
-    assert tv["outcome_valence_for_native"] != "favourable"
+    assert ctx.av_donor_keys is None
+    conj = _contact("c1", T_EXACT - 10, T_EXACT, T_EXACT + 10)
+    assert _evaluate(ctx, [conj])["three_field_valence"][
+        "outcome_valence_for_native"] == "favourable"
+    kak = _kakshya_contact("k1")
+    tv_k = w.make_eval_fn(ctx, [kak], _open_gates,
+                          planet_pos_fn=_pos_on(213.75))(T_EXACT)["three_field_valence"]
+    assert tv_k["outcome_valence_for_native"] == "unqualified"
+    assert f"av_donor_matrix:{P5C_KEY}" in tv_k["breakdown"]["unresolved_operands"]
+
+
+# ── ASTRA P1-4: negative-only evidence must produce a window ─────────────────
+
+NATAL_JUPITER = 249.79   # 9L in the 9th (Sagittarius)
+TRANSIT_SATURN = 253.43  # 2018-11-28: Δ = 3.64° = 3°38′24″ (v3.0 §4)
+
+
+def test_negative_only_evidence_end_to_end_produces_adverse_window():
+    """The reviewer's bereavement probe: a single negative-weight contact
+    (Saturn conjunct natal Jupiter, the 9L, weight −0.8) must yield activity
+    0.8·(1 − 3.64/5) > 0, λ > 0, era/month/day rows, evidence_for > 0 and
+    outcome adverse. Mutation caught: the pinned clamp (negative weight → 0)
+    gave activity 0, λ 0 and ZERO windows — the v1.1 test bypassed this by
+    adding a positive contact."""
+    ctx = _class_ctx("bereavement", {"Jupiter": -0.8},
+                     class_valence="loss", class_is_adverse=True)
+    c = _contact("sat-on-9l", T_EXACT - 10, T_EXACT, T_EXACT + 10,
+                 target=NATAL_JUPITER, body="Saturn")
+    c["target_ref"] = "Jupiter"
+    expected_activity = 0.8 * (1.0 - 3.64 / 5.0)
+    ev = w.make_eval_fn(ctx, [c], _open_gates,
+                        planet_pos_fn=_pos_on(TRANSIT_SATURN))(T_EXACT)
+    assert ev["activity"] == pytest.approx(expected_activity, abs=1e-9)
+    assert ev["lambda_raw"] > 0.0
+    assert ev["supportive"] == 0.0
+    tv = ev["three_field_valence"]
+    assert tv["evidence_for_occurrence"] == pytest.approx(expected_activity, abs=1e-9)
+    assert tv["evidence_against_occurrence"] == 0.0
+    assert tv["outcome_valence_for_native"] == "adverse"
+    rows, report = w.project_class_windows(
+        ctx, [c], (T_EXACT - 30.0, T_EXACT + 30.0), _open_gates,
+        planet_pos_fn=_pos_on(TRANSIT_SATURN))
+    assert report["era_windows"] >= 1 and rows
+    for r in rows:
+        assert r["evidence_for_occurrence"] > 0.0
+        assert r["outcome_valence_for_native"] == "adverse"
+        # served compatibility fields derive from the three-field outcome
+        assert r["valence"] == "adverse" and r["is_adverse"] is True
+        assert r["signed_intensity"] < 0.0 < r["raw_intensity"]
+
+
+def test_served_fields_derive_from_three_field_outcome_not_netting():
+    """Contested marriage occurrence (both channels > 0, near-equal): the
+    legacy netted verdict says 'mixed' (imbalance below the tension
+    threshold); the served valence must read the §3 outcome 'favourable'.
+    Mutation caught: serving the netted resolve_valence_v3 verdict."""
+    ctx = _class_ctx("marriage", {"Venus": 0.8, "Mars": -0.8},
+                     class_valence="neutral", class_is_adverse=False)
+    c1 = _contact("c1", T_EXACT - 10, T_EXACT, T_EXACT + 10, target=100.0)
+    c2 = _contact("c2", T_EXACT - 10, T_EXACT, T_EXACT + 10, target=200.0,
+                  body="Mars")
+    c2["target_ref"] = "Mars"
+    pos = lambda b, jd: {"Syn": 100.0, "Mars": 200.0}[b]  # noqa: E731
+    rows, _ = w.project_class_windows(
+        ctx, [c1, c2], (T_EXACT - 30.0, T_EXACT + 30.0), _open_gates,
+        planet_pos_fn=pos)
+    assert rows
+    for r in rows:
+        assert r["valence"] == "favourable" and r["is_adverse"] is False
+        legacy = r["suppression_state"]["legacy_netted_valence"]
+        assert legacy["valence"] == "mixed"  # the netted shape, trail only
+        assert r["outcome_valence_for_native"] == "favourable"
 
 
 def test_o_tv_3_active_contact_without_map_weight_named_unresolved():
@@ -254,8 +385,9 @@ def test_window_rows_carry_three_fields_and_disclosure():
         assert disc["breakdown"]["unresolved_operands"] == []
         assert any(s.startswith("valence:three_field_valence")
                    for s in r["contributing_systems"])
-        # legacy compatibility fields retained unchanged
-        assert "valence" in r and "is_adverse" in r
+        # served compatibility fields derive from the three-field outcome
+        assert r["valence"] == r["outcome_valence_for_native"] == "adverse"
+        assert r["is_adverse"] is True
     # class factors record carries the contract + polarity verdict
     assert report["valence_contract"] == w.VALENCE_CONTRACT
     assert report["outcome_valence_for_native"] == "adverse"
@@ -268,12 +400,22 @@ def test_class_factors_record_honest_nulls_and_unqualified():
     assert rec["outcome_valence_for_native"] == "mixed"  # polarity verdict
     assert rec["evidence_for_occurrence"] is None  # per-instant quantity
     assert rec["severity"] is None
+    # D-SPECS C4: the P5c donor operand is never a class-level verdict input
     ctx_u = _class_ctx("marriage", {"Venus": 0.8}, class_valence="neutral",
                        class_is_adverse=False,
                        unresolved=("av_donor_matrix",))
     rec_u = ctx_u.factors_record()
-    assert rec_u["outcome_valence_for_native"] == "unqualified"
-    assert rec_u["valence_unresolved_operands"] == ["av_donor_matrix"]
+    assert rec_u["outcome_valence_for_native"] == "favourable"
+    assert rec_u["valence_unresolved_operands"] == []
+    assert rec_u["av_donor_matrix_keys_available"] is None
+    ctx_k = _class_ctx("marriage", {"Venus": 0.8}, class_valence="neutral",
+                       class_is_adverse=False)
+    ctx_k.av_donor_keys = frozenset({P5C_KEY})
+    assert ctx_k.factors_record()["av_donor_matrix_keys_available"] == 1
+    # a genuinely class-level unresolved operand still withholds the verdict
+    ctx_o = _class_ctx("marriage", {"Venus": 0.8}, class_valence="neutral",
+                       class_is_adverse=False, unresolved=("other_operand",))
+    assert ctx_o.factors_record()["outcome_valence_for_native"] == "unqualified"
 
 
 # ── rehearsal / old documents keep working ────────────────────────────────────
@@ -310,11 +452,11 @@ def _load_step06a():
 
 
 class _Cur:
-    def __init__(self, row):
-        self._row = row
+    def __init__(self, rows):
+        self._rows = rows
 
-    def fetchone(self):
-        return self._row
+    def fetchall(self):
+        return self._rows
 
 
 class _Conn:
@@ -322,25 +464,39 @@ class _Conn:
 
     autocommit = True
 
-    def __init__(self, row):
-        self._row = row
+    def __init__(self, rows):
+        self._rows = rows
+        self.params = None
 
-    def execute(self, _sql, _params=None):
-        return _Cur(self._row)
+    def execute(self, _sql, params=None):
+        self.params = params
+        return _Cur(self._rows)
 
 
-def test_step06a_donor_matrix_present_resolves_operand():
+def test_step06a_donor_matrix_is_a_per_key_set_pinned_to_ayanamsha():
     mod = _load_step06a()
-    assert mod.fetch_unresolved_valence_operands(_Conn((1,)), "chart-x") == []
+    conn = _Conn([(P5C_KEY, 1.0), ("VEN-CONTRIBUTOR_SUN-SIGN_1", 0.0)])
+    out = mod.fetch_av_donor_matrix(conn, "chart-x")
+    assert out["available_keys"] == sorted([P5C_KEY, "VEN-CONTRIBUTOR_SUN-SIGN_1"])
+    assert out["probe"] == "per_key" and out["conflicts"] == []
+    assert conn.params[1] == mod.AV_DONOR_AYANAMSHA  # ayanāṃśa-pinned read
 
 
-def test_step06a_donor_matrix_absent_is_unresolved_not_silent():
+def test_step06a_donor_matrix_absent_yields_no_keys_not_a_chart_flag():
     mod = _load_step06a()
-    assert mod.fetch_unresolved_valence_operands(
-        _Conn(None), "chart-x") == [mod.AV_DONOR_OPERAND]
+    out = mod.fetch_av_donor_matrix(_Conn([]), "chart-x")
+    assert out["available_keys"] == [] and out["row_count"] == 0
+    assert out["error"] is None
 
 
-def test_step06a_db_surprise_is_unresolved_not_crash():
+def test_step06a_conflicting_duplicate_key_is_excluded_never_row_order_picked():
+    mod = _load_step06a()
+    out = mod.fetch_av_donor_matrix(
+        _Conn([(P5C_KEY, 1.0), (P5C_KEY, 0.0)]), "chart-x")
+    assert out["available_keys"] == [] and out["conflicts"] == [P5C_KEY]
+
+
+def test_step06a_db_surprise_resolves_nothing_not_crash():
     class _Broken:
         autocommit = True
 
@@ -348,8 +504,8 @@ def test_step06a_db_surprise_is_unresolved_not_crash():
             raise RuntimeError("relation chart_facts does not exist")
 
     mod = _load_step06a()
-    assert mod.fetch_unresolved_valence_operands(
-        _Broken(), "chart-x") == [mod.AV_DONOR_OPERAND]
+    out = mod.fetch_av_donor_matrix(_Broken(), "chart-x")
+    assert out["available_keys"] == [] and "does not exist" in out["error"]
 
 
 def test_step06a_context_entry_declares_class_polarity_block():

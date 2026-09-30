@@ -104,27 +104,53 @@ PERMISSION_MODE = "per_instant_md_ad_pd"
 # every window row's outcome must be 'unqualified' with the operand named,
 # never a favourable default.
 AV_DONOR_OPERAND = "av_donor_matrix"
+AV_DONOR_AYANAMSHA = "lahiri_chitrapaksha"
 
 
-def fetch_unresolved_valence_operands(conn, chart_id: str) -> list[str]:
-    """Valence operands unresolved at context-build time. Currently the P5c
-    AV donor matrix only: present (≥1 contributor row) → []; absent or any
-    DB-shape surprise → [av_donor_operand] — an unreadable matrix is
-    unresolved, never silently treated as present (same defensive-read
-    discipline as valence.fetch_valence)."""
+def fetch_av_donor_matrix(conn, chart_id: str,
+                          ayanamsha_id: str = AV_DONOR_AYANAMSHA) -> dict:
+    """The P5c per-contributor BAV matrix as the context document carries it
+    (D-SPECS C4 / ASTRA P1-4): the SET of writer-scheme keys
+    '{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}' present for the chart under the
+    named ayanāṃśa, resolved PER KEY by step06b on kakṣyā-crossing contacts
+    only. This replaces the chart-wide `LIMIT 1` probe, which (a) declared
+    every window of every class 'unqualified' when the matrix was absent —
+    disqualifying paths that consume no P5c operand — and (b) would have
+    resolved every operand from one unrelated row once any row existed.
+
+    A DB-shape surprise yields available_keys [] with the error recorded
+    (an unreadable matrix resolves nothing — never silently treated as
+    present). Duplicate keys with DIFFERENT values are a conflict: such a
+    key is excluded from available_keys and listed in `conflicts` (never
+    row-order picked)."""
+    out = {"probe": "per_key", "ayanamsha_id": ayanamsha_id,
+           "fact_category": "ashtakavarga_bindu_contributor",
+           "available_keys": [], "row_count": 0, "conflicts": [],
+           "error": None}
     try:
-        with savepoint_scope(conn, "valence_operands"):
-            row = conn.execute(
-                "SELECT 1 FROM chart_facts"
-                " WHERE chart_id = %s"
+        with savepoint_scope(conn, "av_donor_matrix"):
+            rows = conn.execute(
+                "SELECT fact_subject, fact_value_num FROM chart_facts"
+                " WHERE chart_id = %s AND ayanamsha_id = %s"
                 "   AND fact_category = 'ashtakavarga_bindu_contributor'"
-                " LIMIT 1",
-                [chart_id]).fetchone()
-        return [] if row is not None else [AV_DONOR_OPERAND]
+                "   AND fact_key = 'bindus'",
+                [chart_id, ayanamsha_id]).fetchall()
     except Exception as exc:  # noqa: BLE001
-        logger.info("[step06a] AV donor-matrix probe failed for chart %s — "
-                    "operand declared unresolved: %s", chart_id, exc)
-        return [AV_DONOR_OPERAND]
+        logger.info("[step06a] AV donor-matrix read failed for chart %s — "
+                    "no key resolves: %s", chart_id, exc)
+        out["error"] = str(exc)
+        return out
+    values: dict[str, set] = {}
+    for row in rows:
+        subj, val = (row["fact_subject"], row["fact_value_num"]) \
+            if isinstance(row, dict) else (row[0], row[1])
+        if val is None:
+            continue
+        values.setdefault(str(subj), set()).add(float(val))
+    out["row_count"] = len(rows)
+    out["conflicts"] = sorted(k for k, v in values.items() if len(v) > 1)
+    out["available_keys"] = sorted(k for k, v in values.items() if len(v) == 1)
+    return out
 
 
 def _jsonable_period(p: dict) -> dict:
@@ -266,10 +292,11 @@ def main(argv: list[str] | None = None) -> int:
         dasha_periods = DD.fetch_dasha_periods_multilevel(
             conn, args.chart_id, systems=list(perm.DASHA_SYSTEM_IDS))
 
-        # T0-7 / O-TV-3: chart-level probe, once — the AV donor matrix is a
-        # chart-level operand, shared by every class's valence evaluation.
-        unresolved_valence = fetch_unresolved_valence_operands(
-            conn, args.chart_id)
+        # T0-7 / O-TV-3 / D-SPECS C4: the AV donor matrix is read once as a
+        # per-key set and emitted at the document's top level; it is NOT a
+        # class-level unresolved operand (P5c alone consumes it).
+        av_donor_matrix = fetch_av_donor_matrix(conn, args.chart_id)
+        unresolved_valence: list[str] = []
 
         contexts: dict[str, dict] = {}
         omitted: list[dict] = []
@@ -292,6 +319,7 @@ def main(argv: list[str] | None = None) -> int:
         wired_classes = sorted(contexts)
         contexts["_permission_mode"] = PERMISSION_MODE
         contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
+        contexts["_av_donor_matrix"] = av_donor_matrix
     finally:
         conn.close()
 
@@ -310,6 +338,9 @@ def main(argv: list[str] | None = None) -> int:
         "dasha_levels": list(DD.DEFAULT_LEVELS),
         "dasha_read_tier": DD.READ_CONTRACT_TIER,
         "valence_unresolved_operands": unresolved_valence,
+        "av_donor_matrix": {k: v for k, v in av_donor_matrix.items()
+                            if k != "available_keys"} | {
+            "available_key_count": len(av_donor_matrix["available_keys"])},
         "valence_contract": "three_field_valence:v1 "
                             "(GOCHARA_DESIGN_SPECS_v1_4 §3; T0-7, FABLE "
                             "#11/#12)",
