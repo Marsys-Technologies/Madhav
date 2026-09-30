@@ -40,9 +40,11 @@ def _read_ledger(dir_path: pathlib.Path) -> list[dict]:
     return [json.loads(ln) for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
 
 
-def _census(asset_id: str, crit: str, verdict: str, measured: str = "x") -> dict:
-    return dict(layer="L0", assets=[dict(asset_id=asset_id,
-                                         measurements={crit: dict(v=verdict, measured=measured)})])
+def _census(asset_id: str, crit: str, verdict: str, measured: str = "x", cause: str | None = None) -> dict:
+    rec = dict(v=verdict, measured=measured)
+    if cause is not None:
+        rec["cause"] = cause
+    return dict(layer="L0", assets=[dict(asset_id=asset_id, measurements={crit: rec})])
 
 
 @pytest.fixture()
@@ -73,6 +75,107 @@ def test_case1_not_generic_never_opens_a_gap_either(ctrl):
     added, skipped, closed, reopened = asset_census.emit_gaps(_census("bg_x", "Complete.width", "NOT_GENERIC"))
     assert (added, skipped, closed, reopened) == (0, 0, 0, 0)
     assert _read_ledger(ctrl) == []
+
+
+# ── §N.8: an N/A closes a gap only when its cause is registered AND its rule id is declared ──
+
+NA_CRIT = "Build.registered"
+NA_CAUSE = "no-writer-registry-agrees"
+NA_RID = f"{NA_CRIT}#measured:{NA_CAUSE}"
+
+
+def _open_row(asset="bg_x", crit=NA_CRIT):
+    return dict(asset=asset, gap_id=f"{asset}-{crit}", kind="gap", criterion=crit, what="w", change="",
+                detector="d", owner="asset_census", gate="this asset's certification", state="OPEN", ts="t0")
+
+
+def _na_cases():
+    return [
+        pytest.param(None, id="no-cause"),
+        pytest.param("invented-unregistered", id="unregistered-cause"),
+        pytest.param(NA_CAUSE, id="registered-but-undeclared"),
+    ]
+
+
+@pytest.mark.parametrize("cause", _na_cases())
+def test_an_unreleased_na_never_closes_an_open_gap(ctrl, monkeypatch, cause):
+    """The ledger is where closure is recorded. An N/A with no cause, an unregistered cause, or a registered cause
+    whose rule id is not in NA_RULE_DECISIONS is exactly what the rollup reads NO_DETECTOR: it must not close."""
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {})
+    _write_ledger(ctrl, [_open_row()])
+    added, skipped, closed, reopened = asset_census.emit_gaps(_census("bg_x", NA_CRIT, "N/A", cause=cause))
+    assert closed == 0, "an unreleased N/A closed a gap"
+    assert (added, skipped, reopened) == (0, 1, 0)
+    rows = _read_ledger(ctrl)
+    assert len(rows) == 1 and rows[0]["state"] == "OPEN"
+
+
+@pytest.mark.parametrize("cause", _na_cases())
+def test_an_unreleased_na_opens_a_no_detector_type_gap(ctrl, monkeypatch, cause):
+    """Like the rollup's NO_DETECTOR: with no prior row the gap OPENS (append-only, deterministic id)."""
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {})
+    added, skipped, closed, reopened = asset_census.emit_gaps(_census("bg_x", NA_CRIT, "N/A", "m", cause=cause))
+    assert (added, skipped, closed, reopened) == (1, 0, 0, 0)
+    rows = _read_ledger(ctrl)
+    assert rows[0]["state"] == "OPEN" and rows[0]["gap_id"] == f"bg_x-{NA_CRIT}"
+    assert "NO_DETECTOR" in rows[0]["what"] and "not released" in rows[0]["what"]
+
+
+def test_an_unreleased_na_reopens_a_closed_gap(ctrl, monkeypatch):
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {})
+    _write_ledger(ctrl, [_open_row(), dict(_open_row(), state="CLOSED", what="CLOSED by measurement: x", ts="t1")])
+    added, skipped, closed, reopened = asset_census.emit_gaps(_census("bg_x", NA_CRIT, "N/A", cause=NA_CAUSE))
+    assert (added, skipped, closed, reopened) == (0, 0, 0, 1)
+    assert _read_ledger(ctrl)[-1]["state"] == "OPEN"
+
+
+def test_a_registered_and_declared_na_closes_an_open_gap(ctrl, monkeypatch):
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {NA_RID: "N-22/test"})
+    _write_ledger(ctrl, [_open_row()])
+    added, skipped, closed, reopened = asset_census.emit_gaps(_census("bg_x", NA_CRIT, "N/A", "gone", cause=NA_CAUSE))
+    assert (added, skipped, closed, reopened) == (0, 0, 1, 0)
+    rows = _read_ledger(ctrl)
+    assert rows[-1]["state"] == "CLOSED" and "gone" in rows[-1]["what"]
+
+
+def test_a_declared_rule_for_one_cause_does_not_close_another_cause(ctrl, monkeypatch):
+    monkeypatch.setitem(asset_census.NA_CAUSES, NA_CRIT, (NA_CAUSE, "other-cause"))
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {NA_RID: "N-22/test"})
+    _write_ledger(ctrl, [_open_row()])
+    assert asset_census.emit_gaps(_census("bg_x", NA_CRIT, "N/A", cause="other-cause"))[2] == 0
+    assert asset_census.emit_gaps(_census("bg_x", NA_CRIT, "N/A", cause=NA_CAUSE))[2] == 1
+
+
+def test_na_released_is_true_only_for_pass_or_a_caused_declared_na(monkeypatch):
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {NA_RID: "N-22/test"})
+    r = asset_census._na_released
+    assert r(NA_CRIT, dict(v="PASS")) is True
+    assert r(NA_CRIT, dict(v="N/A", cause=NA_CAUSE)) is True
+    for rec in (dict(v="N/A"), dict(v="N/A", cause=None), dict(v="N/A", cause=""), dict(v="N/A", cause=5),
+                dict(v="N/A", cause="invented"), dict(v="FAIL"), dict(v="PARTIAL"), dict(v="NO_DETECTOR"),
+                dict(v="NOT_GENERIC"), dict(v="ERRORED"), dict(v="N/A", cause=NA_CAUSE + " ")):
+        assert r(NA_CRIT, rec) is False, rec
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {})
+    assert r(NA_CRIT, dict(v="N/A", cause=NA_CAUSE)) is False
+    assert r(NA_CRIT, dict(v="PASS")) is True
+
+
+def test_na_released_defends_each_condition_independently(monkeypatch):
+    """Each of the three conditions must hold on its own (no test may rely on another check to catch it): a rule id
+    declared for a cause the registry does not list, and a non-str/absent cause whose str() IS a registered,
+    declared cause, must both stay unreleased."""
+    r = asset_census._na_released
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {f"{NA_CRIT}#measured:invented": "d"})
+    assert r(NA_CRIT, dict(v="N/A", cause="invented")) is False, "declared id alone released an unregistered cause"
+    monkeypatch.setitem(asset_census.NA_CAUSES, NA_CRIT, ("None", "5", "True"))
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS", {f"{NA_CRIT}#measured:{k}": "d" for k in ("None", "5", "True")})
+    for bad in (None, 5, True):
+        assert r(NA_CRIT, dict(v="N/A", cause=bad)) is False, bad
+    assert r(NA_CRIT, dict(v="N/A")) is False
+
+
+def test_production_na_rule_decisions_is_empty_so_no_production_na_closes():
+    assert asset_census.NA_RULE_DECISIONS == {}
 
 
 # ── Acceptance case 2: IN_PROGRESS transitions to CLOSED on PASS, exactly like OPEN ──
@@ -111,7 +214,7 @@ def test_case3_regression_reopens_a_closed_row(ctrl):
 
 # ── Acceptance case 4: a superseded id is never resurrected ──
 
-def test_case4_superseded_id_never_resurrected(ctrl):
+def test_case4_superseded_id_never_resurrected(ctrl, monkeypatch):
     """A gap_id that has been folded into a newer criterion (`superseded_by` set, R80) must never
     receive another transition row — not OPEN, not CLOSED, not RE-OPENED — no matter what the
     census measures for that old criterion string on a later run."""
@@ -119,9 +222,14 @@ def test_case4_superseded_id_never_resurrected(ctrl):
                              criterion="Vocab.rule1.alias", what="w", change="", detector="d",
                              owner="asset_census", gate="this asset's certification",
                              state="OPEN", ts="t0", superseded_by="bg_x-Vocab.alias")])
+    # the N/A case is a CAUSED and DECLARED one (registered cause + rule id in NA_RULE_DECISIONS): the one shape
+    # that would otherwise release a closure, so the supersede guard is what stops it, not the N/A gate.
+    monkeypatch.setitem(asset_census.NA_CAUSES, "Vocab.rule1.alias", ("declared-cause",))
+    monkeypatch.setattr(asset_census, "NA_RULE_DECISIONS",
+                        {"Vocab.rule1.alias#measured:declared-cause": "N-22/test"})
     for verdict in ("FAIL", "PASS", "PARTIAL", "N/A"):
         added, skipped, closed, reopened = asset_census.emit_gaps(
-            _census("bg_x", "Vocab.rule1.alias", verdict))
+            _census("bg_x", "Vocab.rule1.alias", verdict, cause="declared-cause" if verdict == "N/A" else None))
         assert (added, skipped, closed, reopened) == (0, 0, 0, 0), (
             f"a superseded id must never transition, got a write for verdict={verdict}")
     rows = _read_ledger(ctrl)

@@ -3037,6 +3037,23 @@ FAILING = (FAIL, PARTIAL, NO_DET)
 LIVE_GAP_STATES = ("OPEN", "IN_PROGRESS")
 
 
+def _na_released(crit: str, rec: dict) -> bool:
+    """May this measured record CLOSE a gap? True only for a verdict PASS, or for an N/A whose cause is a
+    registered cause of `crit` (NA_CAUSES) AND whose rule id `<crit>#measured:<cause>` is declared in
+    NA_RULE_DECISIONS — the same release the rollup applies (`_check_contribution`). Any other N/A (no cause, a
+    malformed or unregistered cause, a registered cause no rule declares) is what the rollup reads NO_DETECTOR,
+    and closing a ledger row on it would record a closure the cell itself refuses (CLAUDE.md §N.8)."""
+    v = rec.get("v")
+    if v == PASS:
+        return True
+    if v != NA:
+        return False
+    cause = rec.get("cause")
+    if not (isinstance(cause, str) and _CAUSE_SLUG.fullmatch(cause)):
+        return False
+    return cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS
+
+
 def emit_gaps(census: dict) -> tuple[int, int, int, int]:
     """Append-only ledger with deterministic ids (`<asset>-<criterion>`), closing by measurement.
 
@@ -3045,7 +3062,9 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
 
     - CLOSED only on `PASS` or an explicitly justified `N/A` — never on `NOT_GENERIC`, `UNKNOWN`,
       an errored check, or an unmeasured criterion (i.e. anything outside CLOSABLE is a no-op,
-      not an implicit close).
+      not an implicit close). "Explicitly justified" is `_na_released`: a registered cause AND a declared
+      `<crit>#measured:<cause>` rule. Any other N/A is treated exactly like the rollup's NO_DETECTOR: it
+      does not close, it opens (or keeps open) a NO_DETECTOR-type gap whose `what` names why it was not released.
     - check failing (FAIL/PARTIAL/NO_DETECTOR), no row with this gap_id yet     -> append OPEN
     - check failing, latest row OPEN or IN_PROGRESS                            -> skip (already open)
     - check failing, latest row CLOSED                                        -> append OPEN
@@ -3103,6 +3122,11 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
                 v = res["v"]
                 if v not in FAILING and v not in CLOSABLE:
                     continue  # NOT_GENERIC / UNKNOWN / errored / anything future: never a transition
+                if v == NA and not _na_released(crit, res):
+                    # §N.8: the ledger records closure, so it may not honour an N/A the rollup refuses.
+                    res = dict(res, measured=f"NO_DETECTOR — measured N/A not released by a declared rule "
+                                             f"(cause={res.get('cause')!r}): {res['measured']}")
+                    v = NO_DET
                 gid = f"{a['asset_id']}-{crit}"
                 prior = latest.get(gid)
                 if gid in ever_superseded:
