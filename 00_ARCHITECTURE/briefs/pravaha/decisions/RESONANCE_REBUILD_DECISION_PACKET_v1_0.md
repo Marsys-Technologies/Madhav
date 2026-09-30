@@ -1,7 +1,7 @@
 ---
 artifact: RESONANCE_REBUILD_DECISION_PACKET
 version: "1.0"
-status: READY FOR NATIVE (awaiting PR #2769 merge; pre-counts measured 2026-09-30)
+status: "DRAFT — re-sync §exact commands/§3 postconditions to the MERGED runbook before native presentation (round-4 adds class-identity acceptance and pre/post refusal certificates)"
 date: 2026-09-30
 author: Stream B (Śāstra), item B6.0
 decision_needed: "Native authorises and personally executes the production resonance-map rebuild (A5.4 runbook). No agent performs any write."
@@ -15,9 +15,9 @@ The production **resonance map** — the table that says which chart factors eac
 class listens to — was built before the WP3c honesty corrections. Independent review
 (FABLE v3.0, finding #9 / T0-12) found that **154 of its 176 sensitive-degree targets point
 at checks that came back negative** ("not_fired", "not_gandanta", …): the map claims
-authority from things that are not true of this chart. The corrected writer (R-1..R-6) is
-already merged and reviewed; what remains is the **one-time data rebuild** of the production
-table so the served map becomes honest.
+authority from things that are not true of this chart. The corrected writer (R-1..R-6) is on PR #2769,
+under review; this packet is presented only after it merges and deploys. What then remains
+is the **one-time data rebuild** of the production table so the served map becomes honest.
 
 Only you can do this: it is a production write, explicitly native-only. This packet gives
 you the measured current state, what the rebuild will change, the exact commands, and the
@@ -99,7 +99,8 @@ end state.
 
 ## Recommendation
 
-**Option 1, immediately after #2769 merges and CI is green.** The pre-counts above are the
+**Option 1, after #2769 merges AND the deployed sidecar image carries
+`ka_gochara_resonance_v2.2` (merge alone is not enough).** The pre-counts above are the
 §1 baseline already measured; on merge day, re-run the two certificate queries, substitute
 the fresh stamp, and proceed. Expected wall time: minutes for the snapshot, one governed
 build for the writer, minutes for §3 verification.
