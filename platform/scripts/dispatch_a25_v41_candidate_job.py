@@ -1,16 +1,36 @@
 """
 dispatch_a25_v41_candidate_job.py — Pravāha A2.5: dispatch the '4.1' gochara
-candidate writer (ka_gochara_v4_41_candidate) as a governed build_run.
+candidate writer (ka_gochara_v4_41_candidate) as a governed build_run, on the
+frozen-manifest pattern of dispatch_frozen_rebuild.py.
 
 SHIPS IN THE PR BUT RUNS ONLY ON STEWARD GO. This script only STAGES:
   1. an idempotent asset_registry row for the new asset
-     (ON CONFLICT (asset_id) DO NOTHING) — depends_on = '{}' and a live
-     check that NO existing asset lists it in depends_on, so no existing DAG
-     build ever schedules it;
-  2. asset_throughput forced 'dormant' for the native's chart (per_chart
+     (ON CONFLICT (asset_id) DO NOTHING) with is_active = FALSE — matching
+     the seed (scripts/seed/asset_registry_seed.ts) so the asset is INERT to
+     all planners: runPreparation selects WHERE is_active = true
+     (src/lib/build/runPreparation.ts:183) and recalibrationEnqueue selects
+     is_active = true AND has_writer = true
+     (src/lib/build/recalibrationEnqueue.ts:141). depends_on = '{}' and a
+     live check that NO existing asset lists it in depends_on, so no existing
+     DAG build ever schedules it;
+  2. a TRANSIENT flip of asset_registry.is_active to TRUE — required because
+     _load_candidate (dispatch_frozen_rebuild.py:80) refuses any row that is
+     not active+has_writer — immediately restored to FALSE in a try/finally
+     that covers success, exception, AND keyboard interrupt. The row is
+     active only for the staging window inside this process; if this script
+     is killed hard, re-run it or restore manually:
+       UPDATE asset_registry SET is_active = false
+         WHERE asset_id = 'ka_gochara_v4_41_candidate';
+  3. asset_throughput forced 'dormant' for the native's chart (per_chart
      scope), so the orchestrator treats the run as a genuine build;
-  3. a build_runs row (scope='asset_set', action='rebuild') naming ONLY this
-     asset, plus its build_run_assets row.
+  4. a build_runs row (scope='asset_set', scope_target=the asset,
+     action='rebuild') naming ONLY this asset, carrying plan_manifest and
+     plan_manifest_digest built by dispatch_frozen_rebuild.build_manifest
+     ('nirmana-run-manifest/v1', sha256 of the canonical JSON — the same
+     algorithm as src/app/api/cockpit/runs/route.ts) with the writer's
+     expected_code_digest from src/generated/nirmana-writer-digests.json —
+     runner.py's validate_frozen_run_manifest requires both columns;
+  5. its build_run_assets row.
 
 Execution happens separately, after steward go:
 
@@ -42,6 +62,12 @@ import os
 import sys
 import uuid
 
+from dispatch_frozen_rebuild import (
+    _load_candidate,
+    _load_writer_digest,
+    build_manifest,
+)
+
 ASSET_ID = "ka_gochara_v4_41_candidate"
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 TRIGGERED_BY = "pravaha-a25-v41-candidate"
@@ -57,7 +83,9 @@ if os.path.exists(_env_file):
 
 # The asset_registry row (steward condition 2): chart-scoped count_sql,
 # depends_on = '{}' and nothing depends on it (verified live below), so no
-# existing DAG build ever schedules it. Idempotent: ON CONFLICT DO NOTHING.
+# existing DAG build ever schedules it. is_active = FALSE — inert to all
+# planners; the transient flip below is the only activation. Idempotent:
+# ON CONFLICT DO NOTHING.
 REGISTRY_INSERT = """
 INSERT INTO asset_registry (
     asset_id, layer, sort_order,
@@ -79,13 +107,15 @@ INSERT INTO asset_registry (
     'build pipeline, replacing the deleted bespoke Cloud Run job. '
     'Generation fixed ''4.1'' (candidate only — never serving/published, '
     'never flipped by this asset); horizon fixed '
-    '[1998-01-01, 2026-04-18). depends_on = ''{}'' and nothing depends on '
-    'it: no existing DAG build ever schedules it; it runs ONLY via a '
-    'steward-dispatched asset_set build_run.',
+    '[1998-01-01, 2026-04-18). is_active = false: inert to all planners; '
+    'activated only transiently by the steward dispatch. depends_on = '
+    '''{}'' and nothing depends on it: no existing DAG build ever '
+    'schedules it; it runs ONLY via a steward-dispatched asset_set '
+    'build_run.',
     'postgres_table', 'kala_gochara_windows',
     'SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation=''4.1''',
     'SELECT pg_total_relation_size(''kala_gochara_windows'')',
-    0, 'per_chart', true, true, true,
+    0, 'per_chart', false, true, true,
     7200,
     'Kāla', 'L3', 'CURRENT', 'data',
     '{}'::text[]
@@ -132,35 +162,71 @@ def main() -> None:
             "a pre-existing row with dependencies would let DAG builds "
             "schedule it; investigate before dispatching")
 
-    # Force dormant (per_chart scope) so the orchestrator treats this as a
-    # genuine build, not a no-op over an already-lit asset (D-1.5b/D-1.6
-    # precedent).
+    # Transient activation: _load_candidate requires is_active = true AND
+    # has_writer = true (dispatch_frozen_rebuild.py:80). The flip is restored
+    # to FALSE in the finally below — covering success, exception, and
+    # keyboard interrupt — so the asset is active only for the staging
+    # window inside this process.
     cur.execute(
-        """INSERT INTO asset_throughput (chart_id, asset_id, state)
-           VALUES (%s, %s, 'dormant')
-           ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
-           DO UPDATE SET state = 'dormant', rows_written = 0, last_error = NULL""",
-        (CHART_ID, ASSET_ID),
-    )
-
-    run_id = str(uuid.uuid4())
-    cur.execute(
-        """INSERT INTO build_runs
-             (id, chart_id, scope, scope_target, action, plan, state, triggered_by)
-           VALUES (%s, %s, 'asset_set', NULL, 'rebuild', %s, 'planned', %s)""",
-        (run_id, CHART_ID, json.dumps([ASSET_ID]), TRIGGERED_BY),
-    )
-    cur.execute(
-        """INSERT INTO build_run_assets (run_id, asset_id, position, state)
-           VALUES (%s, %s, 0, 'queued')""",
-        (run_id, ASSET_ID),
+        "UPDATE asset_registry SET is_active = true WHERE asset_id = %s",
+        (ASSET_ID,),
     )
     conn.commit()
-    conn.close()
+
+    run_id = None
+    try:
+        candidate = _load_candidate(cur, ASSET_ID)
+        manifest, manifest_digest = build_manifest(
+            chart_id=CHART_ID,
+            candidate=candidate,
+            expected_code_digest=_load_writer_digest(ASSET_ID),
+        )
+
+        # Force dormant (per_chart scope) so the orchestrator treats this as a
+        # genuine build, not a no-op over an already-lit asset (D-1.5b/D-1.6
+        # precedent).
+        cur.execute(
+            """INSERT INTO asset_throughput (chart_id, asset_id, state)
+               VALUES (%s, %s, 'dormant')
+               ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
+               DO UPDATE SET state = 'dormant', rows_written = 0, last_error = NULL""",
+            (CHART_ID, ASSET_ID),
+        )
+
+        run_id = str(uuid.uuid4())
+        cur.execute(
+            """INSERT INTO build_runs
+                 (id, chart_id, scope, scope_target, action, state, plan,
+                  plan_manifest, plan_manifest_digest, triggered_by)
+               VALUES (%s, %s, 'asset_set', %s, 'rebuild', 'planned', %s::jsonb,
+                       %s::jsonb, %s, %s)""",
+            (run_id, CHART_ID, ASSET_ID, json.dumps([ASSET_ID]),
+             json.dumps(manifest), manifest_digest, TRIGGERED_BY),
+        )
+        cur.execute(
+            """INSERT INTO build_run_assets (run_id, asset_id, position, state)
+               VALUES (%s, %s, 0, 'queued')""",
+            (run_id, ASSET_ID),
+        )
+        conn.commit()
+    finally:
+        # Restore inertness no matter how staging ended (success, exception,
+        # keyboard interrupt): the asset must never be left planner-visible.
+        # Roll back first so an aborted transaction cannot block the restore.
+        conn.rollback()
+        cur.execute(
+            "UPDATE asset_registry SET is_active = false WHERE asset_id = %s",
+            (ASSET_ID,),
+        )
+        conn.commit()
+        conn.close()
+
     print(f"[dispatch] staged A2.5 '4.1' candidate build_run {run_id} for "
-          f"asset {ASSET_ID} on chart {CHART_ID}; execute on steward go via "
-          f"`gcloud run jobs execute brahma-build-pipeline-job "
-          f"--args=--run-id,{run_id}`", file=sys.stderr)
+          f"asset {ASSET_ID} on chart {CHART_ID} (manifest digest "
+          f"{manifest_digest}); asset_registry.is_active restored to false. "
+          f"Execute on steward go via `gcloud run jobs execute "
+          f"brahma-build-pipeline-job --args=--run-id,{run_id}`",
+          file=sys.stderr)
     print(run_id, flush=True)
 
 

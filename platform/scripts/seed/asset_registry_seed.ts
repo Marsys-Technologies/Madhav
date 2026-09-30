@@ -2269,7 +2269,14 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_inputs: null,
     volume_explanation: "'4.1' candidate windows over the narrowed scored horizon [1998-01-01, 2026-04-18) — era/month/day tiers per event class. Candidate-only generation; the count stays 0 until the steward-dispatched run lands.",
     depends_on: [],
-    scope: 'per_chart', is_active: true, estimated_seconds: null,
+    // Pravāha A2.5: INERT to all planners. is_active=false keeps this row out
+    // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
+    // WHERE is_active = true) and recalibrationEnqueue's writer sweep
+    // (src/lib/build/recalibrationEnqueue.ts:141, is_active = true AND
+    // has_writer = true). The steward dispatch script flips it true only for
+    // the staging window and restores false in a try/finally. The writer
+    // itself hard-refuses any chart other than the pinned candidate chart.
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
     has_writer: true, has_substeps: true,
     asset_kind: 'data',
   },

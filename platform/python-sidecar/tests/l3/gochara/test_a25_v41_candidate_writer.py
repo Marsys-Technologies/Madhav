@@ -197,6 +197,60 @@ def test_plan_substeps_shape():
     assert len(keys) == 10
 
 
+# ── (a2) hard chart refusal — any chart ≠ the pinned A2.5 candidate chart ────
+
+OTHER_CHART_ID = "11111111-2222-4333-8444-555555555555"
+
+
+def _ctx_for_chart(conn, chart_id: str) -> ContextSpec:
+    return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="test-build",
+                       db_conn=conn, config={"chart_id": chart_id})
+
+
+def test_plan_substeps_refuses_any_other_chart():
+    w = writer_mod.GocharaV41CandidateWriter()
+    with pytest.raises(writer_mod.ChartRefusal):
+        w.plan_substeps(_ctx_for_chart(FakeConn(), OTHER_CHART_ID))
+
+
+def test_run_substep_refuses_any_other_chart_before_dispatch(fresh_gate):
+    conn = FakeConn()
+    w = writer_mod.GocharaV41CandidateWriter()
+    with pytest.raises(writer_mod.ChartRefusal):
+        w.run_substep(_ctx_for_chart(conn, OTHER_CHART_ID),
+                      SubStep(key="manifest"))
+    # refused BEFORE any DML on the conn
+    assert conn.statements == []
+
+
+def test_pinned_chart_id_matches_the_dispatch_chart():
+    assert writer_mod.PINNED_CHART_ID == CHART_ID
+    src = DISPATCH.read_text()
+    assert f'CHART_ID = "{writer_mod.PINNED_CHART_ID}"' in src
+
+
+# ── (a3) the seed row is inert to all planners (static guard) ────────────────
+
+SEED = PLATFORM / "scripts" / "seed" / "asset_registry_seed.ts"
+
+
+def test_seed_row_is_inactive_and_cites_both_planner_predicates():
+    """(c) the seeded row stays OUT of runPreparation's set
+    (src/lib/build/runPreparation.ts:183, WHERE is_active = true) and
+    recalibrationEnqueue's writer sweep (src/lib/build/recalibrationEnqueue.ts:141,
+    is_active = true AND has_writer = true). The executable version of this
+    check is platform/scripts/__tests__/a25_v41_candidate_inert.test.ts; this
+    static guard keeps the pytest suite honest without a TS runner."""
+    src = SEED.read_text()
+    block = src.split("asset_id: 'ka_gochara_v4_41_candidate'", 1)[1]
+    block = block.split("asset_id:", 1)[0]  # this asset's entry only
+    assert "is_active: false" in block
+    assert "is_active: true" not in block
+    assert "depends_on: []" in block
+    # the inertness comment cites both planner predicates
+    assert "runPreparation" in block and "recalibrationEnqueue" in block
+
+
 # ── (a) the writer's call path never commits/closes/opens ────────────────────
 
 
@@ -472,6 +526,72 @@ def test_dispatch_script_registry_insert_is_idempotent_and_dependency_free():
             "'ka_gochara_v4_41_candidate';") in src
     assert ("DELETE FROM asset_throughput WHERE asset_id = "
             "'ka_gochara_v4_41_candidate';") in src
+
+
+def test_dispatch_script_inserts_the_row_inert_and_restores_inertness():
+    """(a) the dispatch registry row is born is_active = false; the transient
+    flip to true (required by _load_candidate's active+has_writer predicate)
+    is restored to false in a try/finally covering success, exception and
+    keyboard interrupt, and --help documents the flip/restore."""
+    src = DISPATCH.read_text()
+    # the INSERT itself carries is_active = false (inert to all planners)
+    values = src.split(") VALUES (", 1)[1]
+    assert "0, 'per_chart', false, true, true," in values
+    # transient flip + try/finally restore
+    assert ("UPDATE asset_registry SET is_active = true WHERE asset_id = %s"
+            in src)
+    assert ("UPDATE asset_registry SET is_active = false WHERE asset_id = %s"
+            in src)
+    assert "try:" in src and "finally:" in src
+    # --help documents the flip/restore and the manual recovery UPDATE
+    assert "UPDATE asset_registry SET is_active = false" in src
+    assert "restored to FALSE in a try/finally" in src
+
+
+def test_dispatch_script_stages_a_frozen_manifest_run():
+    """Condition 3: build_runs carries plan_manifest/plan_manifest_digest from
+    dispatch_frozen_rebuild.build_manifest (runner.py's
+    validate_frozen_run_manifest requires both), with the writer's
+    expected_code_digest from the checked-in digest inventory."""
+    src = DISPATCH.read_text()
+    assert "from dispatch_frozen_rebuild import" in src
+    assert "build_manifest" in src and "_load_writer_digest" in src
+    assert "_load_candidate" in src
+    assert "plan_manifest, plan_manifest_digest" in src
+    assert "%s::jsonb, %s, %s" in src
+
+
+def test_dispatch_frozen_manifest_shape_for_this_asset():
+    """The frozen manifest for the A2.5 asset is the asset_set/v1 shape the
+    runner validates: scope_target = asset id, single wave, expected digest
+    from src/generated/nirmana-writer-digests.json."""
+    sys.path.insert(0, str(DISPATCH.parent))
+    try:
+        from dispatch_frozen_rebuild import build_manifest, _load_writer_digest
+    finally:
+        sys.path.remove(str(DISPATCH.parent))
+    digest = _load_writer_digest("ka_gochara_v4_41_candidate")
+    assert isinstance(digest, str) and len(digest) == 64
+    candidate = {"asset_id": "ka_gochara_v4_41_candidate", "scope": "per_chart",
+                 "depends_on": [], "natural_key_partition": None,
+                 "has_cowriters": True}
+    manifest, mdigest = build_manifest(
+        chart_id=CHART_ID, candidate=candidate, expected_code_digest=digest)
+    assert manifest["version"] == "nirmana-run-manifest/v1"
+    assert manifest["scope"] == "asset_set"
+    assert manifest["scope_target"] == "ka_gochara_v4_41_candidate"
+    assert manifest["action"] == "rebuild"
+    assert manifest["chart_id"] == CHART_ID
+    assert manifest["waves"] == [["ka_gochara_v4_41_candidate"]]
+    [asset] = manifest["assets"]
+    assert asset["asset_id"] == "ka_gochara_v4_41_candidate"
+    assert asset["depends_on"] == [] and asset["has_cowriters"] is True
+    assert asset["expected_code_digest"] == digest
+    import hashlib
+    import json as _json
+    canonical = _json.dumps(manifest, ensure_ascii=True, sort_keys=True,
+                            separators=(",", ":"))
+    assert mdigest == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def test_dispatch_script_help_prints_docstring(capsys):

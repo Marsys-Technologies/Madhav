@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "4b7a90b113dbbba216f392119601058e0b853004e4ea0f4e213702a408c2810a",
+  "content_sha256": "8f392010e1b89b3769d57c97dcf63207a74ba5447ff0c76a232004e9c762ded8",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -50,9 +50,9 @@
         "service": 8
       },
       "non_writer_identities": 6,
-      "retired": 1,
-      "total": 129,
-      "writer_identities": 123
+      "retired": 2,
+      "total": 130,
+      "writer_identities": 124
     },
     "producer_output_contracts": {
       "by_disposition": {
@@ -81,9 +81,9 @@
     "reviewed_output_digest_coverage": {
       "active_asset_denominator": 128,
       "active_assets_without_any_reviewed_spec": 11,
-      "asset_denominator": 129,
+      "asset_denominator": 130,
       "assets_with_any_reviewed_spec": 117,
-      "assets_without_any_reviewed_spec": 12,
+      "assets_without_any_reviewed_spec": 13,
       "basis": "distinct static INSERT identities plus ordered append/retire source replay across both governed migration trees; no database was queried",
       "current_source_intended_active_spec_rows": 116,
       "current_source_intended_spec_rows": 116
@@ -10813,7 +10813,8 @@
         "lel_events"
       ],
       "retired_asset_ids": [
-        "ka_gochara_sweep"
+        "ka_gochara_sweep",
+        "ka_gochara_v4_41_candidate"
       ],
       "writer_identity_ids": [
         "bg_class_lifetime_counts",
@@ -10900,6 +10901,7 @@
         "ka_gochara",
         "ka_gochara_resonance",
         "ka_gochara_v3_century_materialize",
+        "ka_gochara_v4_41_candidate",
         "ka_graha_sancara",
         "ka_jivana_parva",
         "ka_kala_darshana",
@@ -14014,6 +14016,7 @@
         "ka_dasha_kala",
         "ka_gochara_sweep",
         "ka_gochara_v3_century_materialize",
+        "ka_gochara_v4_41_candidate",
         "ka_graha_sancara",
         "ka_muhurta_seva",
         "ka_tulana",
@@ -20878,7 +20881,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-30T16:30:58.882Z",
+  "generated_at": "2026-09-30T20:35:04.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21269,7 +21272,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "6c105b31505da9ced9909b816b8ef8949c62f18b1eac8dbedb1dc482fa93897b"
+        "sha256": "47f8c820fd6f117ab0650bac76fd149d21e7d1f756fc2304bb1dd07eca90f0fa"
       },
       {
         "id": "public_registrar_source_set",
@@ -22323,10 +22326,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "8237a50c31e72667020d656b6f52446de3995750e44da70e1bfe5720d0050828"
+        "sha256": "3eaef11508689b1c5ecc43e883799ad8368ca10509ee0f0ed04e26f857d81e8a"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e9bcbabae3f484904e13d19753a6bde51e93939d"
+  "source_revision": "2eb20da2fa7071cea5a73189c3ef5ee267c74dbf"
 }

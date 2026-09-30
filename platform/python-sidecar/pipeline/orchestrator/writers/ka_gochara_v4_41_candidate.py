@@ -163,10 +163,30 @@ MANIFEST_SUBSTEP = "manifest"
 WINDOWS_SUBSTEP = "windows"
 BODY_SUBSTEP_PREFIX = "body:"
 
+# Pravāha A2.5 is a one-chart candidate exercise (steward dispatch
+# scripts/dispatch_a25_v41_candidate_job.py CHART_ID). The writer hard-refuses
+# any other chart — a candidate generation must never be writable for an
+# arbitrary chart via the planner surface.
+PINNED_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+
+class ChartRefusal(Exception):
+    """ctx.config['chart_id'] is not the pinned A2.5 candidate chart — refused
+    BEFORE any planning or DML (fail-closed; never a silent no-op)."""
+
 
 class HorizonViolation(Exception):
     """A projected window row escaped the pinned '4.1' horizon — refused
     BEFORE any DML (fail-closed backstop; never clamped, never served)."""
+
+
+def _require_pinned_chart(chart_id: str) -> None:
+    if chart_id != PINNED_CHART_ID:
+        raise ChartRefusal(
+            f"{ASSET_ID}: chart_id {chart_id!r} is not the pinned A2.5 "
+            f"candidate chart {PINNED_CHART_ID} — refusing (fail-closed; "
+            "this asset is inert to all planners and runs only via the "
+            "steward dispatch)")
 
 
 def _validate_windows_within_horizon(rows: list[dict]) -> None:
@@ -208,6 +228,7 @@ class GocharaV41CandidateWriter(WriterBase):
         horizon, and the body set is the chain's own M-3/R7 constant. A chart
         with no resonance map fails honestly inside the first body substep
         (NoResonanceMapError), never invents a plan."""
+        _require_pinned_chart(ctx.config["chart_id"])
         steps = [SubStep(key=MANIFEST_SUBSTEP,
                          label="'4.1' candidate manifest (convention + gate)")]
         steps.extend(
@@ -225,6 +246,7 @@ class GocharaV41CandidateWriter(WriterBase):
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         chart_id = ctx.config["chart_id"]
+        _require_pinned_chart(chart_id)
         ephe_path = ctx.config.get("ephe_path", DEFAULT_EPHE_PATH)
         if step.key == MANIFEST_SUBSTEP:
             return self._run_manifest(ctx, chart_id)
