@@ -10,9 +10,12 @@ Runs the eight cross-surface drift checks declared in protocol §H.3:
   H.3.2 — CANONICAL_ARTIFACTS ↔ filesystem fingerprint match
   H.3.3 — MACRO_PLAN ↔ PHASE_B_PLAN alignment
   H.3.4 — STEP_LEDGER internal consistency (rebuild era only)
-  H.3.5 — CAPABILITY_MANIFEST ↔ CANONICAL_ARTIFACTS_v1_0.md agreement (RC-1 repoint,
-          2026-08-22 — was FILE_REGISTRY ↔ CANONICAL_ARTIFACTS; FILE_REGISTRY_v1_14.md's
-          own frontmatter reads SUPERSEDED, see check_file_registry_agreement docstring)
+  H.3.5 — RETIRED 2026-09-25. Was a two-registry agreement check; the 2026-04-27
+          cutover left one registry, so it had nothing to check and produced 83
+          permanently-unclearable findings against a SUPERSEDED document. Replaced by
+          a single falsifiable assertion of the premise the retirement rests on —
+          that CANONICAL_ARTIFACTS still declares itself SUPERSEDED. Full reasoning,
+          including the successor check measured and rejected, in the function docstring.
   H.3.6 — GOVERNANCE_STACK ↔ CANONICAL_ARTIFACTS agreement
   H.3.7 — Phantom-reference scan (live pointers to files that do not exist on disk)
   H.3.8 — Unreferenced canonical-artifact scan (RC-1 repoint, 2026-08-22 — comparison
@@ -416,66 +419,99 @@ def check_step_ledger_consistency(repo_root: pathlib.Path) -> List[Finding]:
 
 
 def check_file_registry_agreement(repo_root: pathlib.Path, ca) -> List[Finding]:
-    """§H.3.5 — CAPABILITY_MANIFEST vs CANONICAL_ARTIFACTS_v1_0.md agreement on CURRENT rows.
+    """§H.3.5 — RETIRED 2026-09-25. The defect class was dissolved, not suppressed.
 
-    RC-1 (2026-08-22, PARISESA-V4): repointed from FILE_REGISTRY_v1_14.md. That
-    file's own frontmatter reads `status: "SUPERSEDED (2026-04-27 — content
-    absorbed into CAPABILITY_MANIFEST.json; retained in place for historical
-    audit)"` -- comparing the live manifest against a document that has declared
-    itself superseded produced 84 of 128 manifest entries failing for that reason
-    alone (F94_GOVERNANCE_DRIFT_RECONCILIATION_PLAN_v1_0.md §4.1/§7.1). CLAUDE.md
-    §D already names CANONICAL_ARTIFACTS_v1_0.md as the tie-breaker surface for
-    canonical-path conflicts, so that is what this check now compares against
-    instead (Option (a) "Repoint" of the four options costed in the plan's §7.1).
+    WHAT THIS CHECKED, AND WHY IT NO LONGER HAS ANYTHING TO CHECK.
 
-    F-163 (same PR, same hunk -- ruled to land together, never as a separate PR):
-    the docstring here always said "agreement on CURRENT rows" but the loop had
-    no status filter, so e.g. PREDECESSOR rows (which are SUPPOSED to be absent
-    from a CURRENT registry) were flagged as a defect. Filtered via _is_current().
+    This was a two-registry agreement check: it asserted that every CURRENT row of
+    one canonical-path registry was named by the other, catching the GA.1 failure
+    mode "the registries disagree". The 2026-04-27 Phase 1B cutover eliminated the
+    second registry. CAPABILITY_MANIFEST.json is now the sole canonical-path
+    catalog (CLAUDE.md §C item 2: "new single source of truth ... Replaces the dual
+    FILE_REGISTRY + CANONICAL_ARTIFACTS registries ... governance tooling now reads
+    from the manifest"). A check that two registries agree, in a world with one
+    registry, is not a guard -- it is an assertion about a document's contents that
+    nothing keeps true.
 
-    Retired in this same change: the prior `row.get("status") in ("LIVE",
-    "LIVING") and cid in ("SESSION_LOG",)` carve-out. It is provably dead code
-    under the default manifest-mode configuration this check runs in in
-    production -- CAPABILITY_MANIFEST.json has no "SESSION_LOG" entry at all
-    (confirmed 2026-08-22) -- and would in any case now be fully subsumed by the
-    _is_current() status filter. Removed rather than left as a second,
-    overlapping filter.
+    WHY REPOINTING IT AGAIN WOULD BE THE THIRD ROUND OF THE SAME MISTAKE.
+
+    RC-1 (2026-08-22, PARISESA-V4) repointed this check FROM FILE_REGISTRY_v1_14.md
+    -- on the stated grounds that its frontmatter read SUPERSEDED and comparing a
+    live manifest against a self-declared-superseded document produced 84 of 128
+    entries failing for that reason alone -- TO CANONICAL_ARTIFACTS_v1_0.md, whose
+    frontmatter has read `status: "SUPERSEDED (2026-04-27 ...)"` since four months
+    BEFORE that repoint. The repair moved the check from one superseded document to
+    another, and by 2026-09-25 it produced 83 findings for precisely the reason the
+    repoint was meant to cure -- growing by one per new governance document, none
+    whitelisted, permanently blocking exit 0.
+
+    Note the same PR got it right one check over: §H.3.8 was repointed to
+    CAPABILITY_MANIFEST.json, "the doctrine-named single source of truth (CLAUDE.md
+    §C item 2)". §H.3.5 and §H.3.8 were repointed in one change to two different
+    surfaces. §H.3.8 chose correctly.
+
+    The repoint cited CLAUDE.md §D ("Any disagreement between this file and
+    CANONICAL_ARTIFACTS resolves in favor of CANONICAL_ARTIFACTS"). That sentence
+    governs precedence between PROSE DECLARATIONS in two governance documents. It
+    was read as naming a comparison target for a detector, which it does not; §C
+    item 2 and §D's own table row ("SUPERSEDED by CAPABILITY_MANIFEST.json for
+    tooling") both say tooling reads the manifest. SURFACED, NOT EDITED: that §D
+    sentence is the root cause and still reads as it did; amending CLAUDE.md is
+    reserved to the native under §L.
+
+    WHAT REPLACES IT (CLAUDE.md §N.8 -- a retirement must not become a silent green).
+
+    The retirement rests on one premise: there is only one registry. That premise is
+    falsifiable, so it is now the check. If CANONICAL_ARTIFACTS_v1_0.md ever stops
+    declaring itself SUPERSEDED, the two-registry world is back, this retirement's
+    grounds are void, and the finding below says so. That is the whole successor --
+    one assertion with a real detector, in place of 83 findings that could never be
+    cleared.
+
+    NOT ADOPTED, and why (measured 2026-09-25, before choosing): the tempting
+    successor was the inverse scan -- a governance document on disk that the
+    manifest does not name, which is the "structurally invisible artifact" risk the
+    L0 review actually hit (l0_resource_config_slice_v1.json, on disk, registered
+    nowhere). Measured first: 654 unnamed files at 00_ARCHITECTURE top level, 3,532
+    across all levels, against 106 manifest paths. The manifest is a CURATED
+    catalogue of governing artifacts, not an index of every markdown file, and no
+    definition of "governing document" exists to filter on. Adopting it would have
+    traded 83 noise findings for 654. The real risk is live and remains uncovered;
+    it needs that definition first, and is recorded here rather than papered over
+    with a check that would be ignored within a week.
     """
     findings: List[Finding] = []
     ca_path = repo_root / CANONICAL_PATH
     if not ca_path.exists():
+        # Absence is fine post-cutover -- the manifest is the registry. Nothing to assert.
+        return findings
+    # Parse the document's OWN status field, not the word "SUPERSEDED" anywhere in the
+    # header -- CANONICAL_ARTIFACTS lists many artifacts whose status is SUPERSEDED, so a
+    # substring scan reports clean no matter what the file itself declares. That proxy was
+    # written here first and caught by mutation-testing it (CLAUDE.md §N.8: ask what code
+    # path would have to run, and fail, for the signal to correctly read false).
+    text = ca_path.read_text(encoding="utf-8")
+    m = re.search(r"^status:\s*(.+)$", text, re.M)
+    own_status = m.group(1).strip().strip('"').strip("'") if m else ""
+    if not own_status.upper().startswith("SUPERSEDED"):
         findings.append(Finding(
             cls="registry_disagreement",
-            severity="CRITICAL",
+            severity="HIGH",
             canonical_id="CANONICAL_ARTIFACTS",
-            surfaces_involved=[CANONICAL_PATH],
-            evidence="No CANONICAL_ARTIFACTS_v1_0.md found",
-            suggested_remediation="Restore CANONICAL_ARTIFACTS_v1_0.md per protocol §E",
+            surfaces_involved=[CANONICAL_PATH, "CAPABILITY_MANIFEST"],
+            evidence=(
+                f"CANONICAL_ARTIFACTS_v1_0.md declares status={own_status!r}, not SUPERSEDED. "
+                "§H.3.5 was retired on the premise that CAPABILITY_MANIFEST.json is the "
+                "sole canonical-path registry (CLAUDE.md §C item 2, cutover 2026-04-27); "
+                "a second CURRENT registry voids that premise and restores the GA.1 "
+                "two-registry disagreement risk."
+            ),
+            suggested_remediation=(
+                "Either restore the SUPERSEDED status, or -- if a second registry is "
+                "intended -- reinstate a two-registry agreement check against the "
+                "surface that is actually authoritative, and amend CLAUDE.md §C item 2."
+            ),
         ))
-        return findings
-    ca_text = ca_path.read_text(encoding="utf-8")
-    for cid, row in ca.artifacts.items():
-        if not _is_current(row):
-            continue
-        path_rel = row.get("path", "")
-        if not path_rel:
-            continue
-        basename = pathlib.Path(path_rel).name
-        # A minimal heuristic: if the manifest names a file as a currently-governing
-        # artifact, its basename must appear in CANONICAL_ARTIFACTS_v1_0.md. We
-        # don't try to parse its §1 table; we check basename presence.
-        if basename not in ca_text:
-            findings.append(Finding(
-                cls="registry_disagreement",
-                severity="MEDIUM",
-                canonical_id=cid,
-                surfaces_involved=[str(ca_path.relative_to(repo_root)), "CAPABILITY_MANIFEST"],
-                evidence=f"CANONICAL_ARTIFACTS_v1_0.md does not name '{basename}'",
-                suggested_remediation=(
-                    f"Register {basename} in CANONICAL_ARTIFACTS_v1_0.md §1 "
-                    "(or correct its CAPABILITY_MANIFEST entry)"
-                ),
-            ))
     return findings
 
 
@@ -839,6 +875,37 @@ def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
     return findings
 
 
+def _load_verification_vocab(repo_root: "pathlib.Path | None" = None):
+    """Read the settled `verification_pass_status` vocabulary from its single source of truth.
+
+    Returns (all_statuses, prohibited_statuses, error). On failure both sets are empty and `error`
+    is set — a caller must then report the check as unrunnable, never as clean (§N.8).
+
+    Corrected 2026-09-25, native-directed. This file used to carry its own four-value copy of a
+    thirteen-member vocabulary, in two places, plus a third hardcoded copy inline in a query.
+    `brahmagyan/verification_vocab.py`'s own docstring already named it: "a seventh copy ...
+    deliberately NOT folded in ... currently raises a HARD violation for 56,028 live rows, of which
+    only the 5,428 `PASS` rows are the real defect. Routed as a residual."
+
+    Measured against production 2026-09-25: the `PASS` rows are GONE (zero live), and every one of the
+    32,073 rows this gate was flagging is a legitimate member — computed_extension 11,385,
+    single_pass 10,937, floored 7,095, documented_approximation 2,410, pending_w3_verification 150,
+    not_defined_for_nodes 96. The gate had become permanently red and could no longer distinguish a
+    real violation from a legal value, which is the one thing a gate exists to do. Replacing the copy
+    with a reference is the rule the vocabulary itself encodes (§4.1 rule 6, one map per class; §N.7
+    item 3, no wrapper-local constant may shadow a source value).
+    """
+    root = repo_root or pathlib.Path(__file__).resolve().parents[3]
+    sidecar = root / "platform" / "python-sidecar"
+    try:
+        if str(sidecar) not in sys.path:
+            sys.path.insert(0, str(sidecar))
+        from brahmagyan import verification_vocab as _vv  # type: ignore
+        return set(_vv.ALL_STATUSES), set(_vv.PROHIBITED_STATUSES), None
+    except Exception as exc:  # noqa: BLE001
+        return set(), set(), f"{type(exc).__name__}: {exc}"
+
+
 def check_a3_schema_compliance(conn) -> dict:
     """A3 schema compliance check.
 
@@ -852,24 +919,39 @@ def check_a3_schema_compliance(conn) -> dict:
 
     Returns a summary dict with counts.
     """
-    VALID_STATUS = {'single', 'two_pass_verified', 'classical_match', 'divergent_flagged'}
+    VALID_STATUS, PROHIBITED_STATUS, _vocab_err = _load_verification_vocab()
     MV_NAMES = [
-        "mv_lagna_facts",
-        "mv_planet_dignity_facts",
-        "mv_dasha_active_facts",
-        "mv_yoga_facts",
-        "mv_ashtakavarga_facts",
-        "mv_shadbala_facts",
-        "mv_divisional_facts",
-        "mv_transit_facts",
-        "mv_kp_facts",
-        "mv_upagraha_facts",
-        "mv_tajaka_facts",
-        "mv_synthesis_facts",
+        # CORRECTED 2026-09-25, native-directed. This list used to name twelve `mv_*_facts` views
+        # ("mv_lagna_facts", "mv_yoga_facts", …) and told the reader to apply migration
+        # `138_mvs.sql`. Measured: those twelve names exist in NO database, in NO code, and not
+        # even in that migration — they came from A3_CHART_FACTS_SPEC's prose, while the
+        # implementation used `mv_chart_*_summary` names. `138_mvs.sql` is ARCHIVED
+        # (platform/migrations/_archive/) and absent from the ledger. So this gate was permanently
+        # red about twelve things that never existed under those names, which cost it the one
+        # ability a gate has: telling a real absence from a legal state.
+        #
+        # What is actually true: of the twelve views that archived migration really declares, EIGHT
+        # are live, populated and consumed — each referenced by 4-8 files — and they are the eight
+        # below. Four are absent (`mv_chart_arudhas`, `mv_chart_house_summary`, `mv_chart_sahams`,
+        # `mv_chart_yogas_active_at_birth`) and are deliberately NOT asserted: no code reads any of
+        # them, they appear only in planning documents, and `mv_chart_yogas_fired_summary` exists
+        # and does the last one's job. A stored snapshot nothing reads would add a refresh cost on
+        # every build for no earned distinction (§14.1 ablation). If a consumer appears, the view is
+        # a small migration then — and this list gains a row.
+        "mv_chart_planet_summary",
+        "mv_chart_shadbala_summary",
+        "mv_chart_vargas_summary",
+        "mv_chart_ashtakavarga_summary",
+        "mv_chart_bhava_bala_summary",
+        "mv_chart_sensitive_points_summary",
+        "mv_chart_panchanga_birth_summary",
+        "mv_cross_ayanamsha_consensus",
     ]
 
     summary: dict = {
         "bad_verification_status_count": 0,
+        "prohibited_verification_status_count": 0,
+        "vocab_error": _vocab_err,
         "missing_citation_ref_count": 0,
         "missing_mvs": [],
         "hard_violation": False,
@@ -878,18 +960,36 @@ def check_a3_schema_compliance(conn) -> dict:
     try:
         cur = conn.cursor()
 
-        # Check invalid verification_pass_status values
-        placeholders = ",".join(["'%s'" % s for s in VALID_STATUS])
+        # Check invalid verification_pass_status values, against the vocabulary rather than a copy.
+        # An unreadable vocabulary is a hard violation, not a pass: the check cannot run without it.
+        if _vocab_err:
+            summary["hard_violation"] = True
+            summary["error"] = f"verification vocabulary unreadable: {_vocab_err}"
+            cur.close()
+            return summary
+        placeholders = ",".join("'%s'" % s for s in sorted(VALID_STATUS))
         cur.execute(
             "SELECT COUNT(*) FROM chart_facts "
             "WHERE verification_pass_status IS NOT NULL "
-            "AND verification_pass_status NOT IN ('single','two_pass_verified','classical_match','divergent_flagged')"
+            f"AND verification_pass_status NOT IN ({placeholders})"
         )
         row = cur.fetchone()
         bad_count = row[0] if row else 0
         summary["bad_verification_status_count"] = bad_count
         if bad_count > 0:
             summary["hard_violation"] = True
+
+        # Prohibited spellings are the worse class: a bare "pass" asserts that some pass succeeded
+        # without naming which, so no reader can tell whether a detector ran (§N.8).
+        if PROHIBITED_STATUS:
+            prohibited_sql = ",".join("'%s'" % s for s in sorted(PROHIBITED_STATUS))
+            cur.execute(
+                f"SELECT COUNT(*) FROM chart_facts WHERE verification_pass_status IN ({prohibited_sql})"
+            )
+            row = cur.fetchone()
+            summary["prohibited_verification_status_count"] = row[0] if row else 0
+            if summary["prohibited_verification_status_count"] > 0:
+                summary["hard_violation"] = True
 
         # Check missing citation_ref
         cur.execute(
@@ -929,18 +1029,31 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
     schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
 
     MV_NAMES = [
-        "mv_lagna_facts",
-        "mv_planet_dignity_facts",
-        "mv_dasha_active_facts",
-        "mv_yoga_facts",
-        "mv_ashtakavarga_facts",
-        "mv_shadbala_facts",
-        "mv_divisional_facts",
-        "mv_transit_facts",
-        "mv_kp_facts",
-        "mv_upagraha_facts",
-        "mv_tajaka_facts",
-        "mv_synthesis_facts",
+        # CORRECTED 2026-09-25, native-directed. This list used to name twelve `mv_*_facts` views
+        # ("mv_lagna_facts", "mv_yoga_facts", …) and told the reader to apply migration
+        # `138_mvs.sql`. Measured: those twelve names exist in NO database, in NO code, and not
+        # even in that migration — they came from A3_CHART_FACTS_SPEC's prose, while the
+        # implementation used `mv_chart_*_summary` names. `138_mvs.sql` is ARCHIVED
+        # (platform/migrations/_archive/) and absent from the ledger. So this gate was permanently
+        # red about twelve things that never existed under those names, which cost it the one
+        # ability a gate has: telling a real absence from a legal state.
+        #
+        # What is actually true: of the twelve views that archived migration really declares, EIGHT
+        # are live, populated and consumed — each referenced by 4-8 files — and they are the eight
+        # below. Four are absent (`mv_chart_arudhas`, `mv_chart_house_summary`, `mv_chart_sahams`,
+        # `mv_chart_yogas_active_at_birth`) and are deliberately NOT asserted: no code reads any of
+        # them, they appear only in planning documents, and `mv_chart_yogas_fired_summary` exists
+        # and does the last one's job. A stored snapshot nothing reads would add a refresh cost on
+        # every build for no earned distinction (§14.1 ablation). If a consumer appears, the view is
+        # a small migration then — and this list gains a row.
+        "mv_chart_planet_summary",
+        "mv_chart_shadbala_summary",
+        "mv_chart_vargas_summary",
+        "mv_chart_ashtakavarga_summary",
+        "mv_chart_bhava_bala_summary",
+        "mv_chart_sensitive_points_summary",
+        "mv_chart_panchanga_birth_summary",
+        "mv_cross_ayanamsha_consensus",
     ]
 
     if not shutil.which("psql"):
@@ -974,12 +1087,27 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
         except Exception as exc:
             return None, str(exc)
 
-    # 1. Check invalid verification_pass_status
+    # 1. Check invalid verification_pass_status — against the vocabulary, not a local copy.
+    VALID_STATUS, PROHIBITED_STATUS, vocab_err = _load_verification_vocab(repo_root)
+    if vocab_err:
+        findings.append(Finding(
+            cls="a3_verification_vocab_unreadable",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["platform/python-sidecar/brahmagyan/verification_vocab.py"],
+            evidence=f"Could not import the settled verification_pass_status vocabulary: {vocab_err}",
+            suggested_remediation=(
+                "The status check cannot run without its authority and is NOT reported clean. "
+                "Restore the module or the import path."
+            ),
+        ))
+        return findings
+
+    legal_sql = ",".join(f"'{v}'" for v in sorted(VALID_STATUS))
     out, err = _run_query(
         "SELECT COUNT(*) FROM chart_facts "
         "WHERE verification_pass_status IS NOT NULL "
-        "AND verification_pass_status NOT IN "
-        "('single','two_pass_verified','classical_match','divergent_flagged');"
+        f"AND verification_pass_status NOT IN ({legal_sql});"
     )
     if err:
         findings.append(Finding(
@@ -998,9 +1126,41 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
             severity="HIGH",
             canonical_id=None,
             surfaces_involved=["chart_facts"],
-            evidence=f"{bad_count} chart_facts row(s) have verification_pass_status outside the declared enum",
-            suggested_remediation="Fix or migrate rows to use: single, two_pass_verified, classical_match, divergent_flagged",
+            evidence=(
+                f"{bad_count} chart_facts row(s) carry a verification_pass_status that is not a member "
+                f"of the settled vocabulary ({len(VALID_STATUS)} members)"
+            ),
+            suggested_remediation=(
+                "Emit only members of brahmagyan/verification_vocab.py, via its named constants and "
+                "never a bare literal; if a genuinely new state exists, add it there and to "
+                "envelope.ts, which its own test pins member-for-member."
+            ),
         ))
+
+    # 1b. Prohibited spellings — a separate and worse class (§N.8): a bare pass/PASS claims a pass
+    # succeeded without naming which, so no reader can tell whether a detector ran at all.
+    if PROHIBITED_STATUS:
+        prohibited_sql = ",".join(f"'{v}'" for v in sorted(PROHIBITED_STATUS))
+        out_p, err_p = _run_query(
+            f"SELECT COUNT(*) FROM chart_facts WHERE verification_pass_status IN ({prohibited_sql});"
+        )
+        if not err_p:
+            prohibited_count = int(out_p.strip()) if out_p and out_p.strip().isdigit() else 0
+            if prohibited_count > 0:
+                findings.append(Finding(
+                    cls="a3_prohibited_verification_status",
+                    severity="CRITICAL",
+                    canonical_id=None,
+                    surfaces_involved=["chart_facts"],
+                    evidence=(
+                        f"{prohibited_count} chart_facts row(s) carry a PROHIBITED status "
+                        f"({', '.join(sorted(PROHIBITED_STATUS))}) — banned by assert_legal()"
+                    ),
+                    suggested_remediation=(
+                        "Replace with the status naming the pass that actually ran, or with an honest "
+                        "unverified member. A bare pass/PASS is never legal."
+                    ),
+                ))
 
     # 2. Check 12 MVs exist
     out, err = _run_query(
@@ -1015,9 +1175,46 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
                 severity="HIGH",
                 canonical_id=None,
                 surfaces_involved=["pg_matviews"],
-                evidence=f"Missing A3 MVs: {', '.join(missing_mvs)}",
-                suggested_remediation="Apply migration 138_mvs.sql to create the 12 A3 materialized views",
+                evidence=(
+                    f"{len(missing_mvs)} consumed materialized view(s) absent from production: "
+                    f"{', '.join(missing_mvs)}"
+                ),
+                suggested_remediation=(
+                    "Each of these is read by live code; an absent one breaks its readers. Recreate it "
+                    "from its owning migration and refresh it. This list asserts only views that have "
+                    "real consumers — see the note at MV_NAMES before adding or removing a row."
+                ),
             ))
+
+    # 2b. Present but EMPTY is its own defect: a materialized view that exists and holds nothing
+    # while chart_facts holds rows is a snapshot nobody refreshed — an answer-shaped object with no
+    # answer in it, which is the §N.8 class one layer over. Reported MEDIUM: the reader is served a
+    # confident empty result rather than an error.
+    if out is not None:
+        present_mvs = [mv for mv in MV_NAMES if mv in existing_mvs]
+        out_f, err_f = _run_query("SELECT COUNT(*) FROM chart_facts;")
+        facts_present = bool(out_f and out_f.strip().isdigit() and int(out_f.strip()) > 0)
+        if facts_present and present_mvs:
+            empty_mvs = []
+            for mv in present_mvs:
+                out_c, err_c = _run_query(f"SELECT COUNT(*) FROM {mv};")
+                if not err_c and out_c and out_c.strip().isdigit() and int(out_c.strip()) == 0:
+                    empty_mvs.append(mv)
+            if empty_mvs:
+                findings.append(Finding(
+                    cls="a3_materialized_view_never_refreshed",
+                    severity="MEDIUM",
+                    canonical_id=None,
+                    surfaces_involved=["pg_matviews", "chart_facts"],
+                    evidence=(
+                        f"{len(empty_mvs)} materialized view(s) exist but hold zero rows while "
+                        f"chart_facts is populated: {', '.join(empty_mvs)}"
+                    ),
+                    suggested_remediation=(
+                        "REFRESH MATERIALIZED VIEW (CONCURRENTLY where a unique index allows it) after "
+                        "each build, or retire the view. An empty view serves a confident wrong answer."
+                    ),
+                ))
 
     # 3. Soft check: declared categories presence (LOW)
     if schema_path.exists():
