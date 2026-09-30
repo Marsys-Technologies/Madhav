@@ -1757,9 +1757,17 @@ A54_MERGE_DECISION = "D-PINS-A5.4"
 # regeneration commit, whose committed writer inventory is byte-identical to
 # the branch tree's derived inventory (provenance_inventory --check green).
 A54_MERGE_AUTHORITY = "e47d0b274ebf234ada8be7cfe82a34d5446384eb"
+# The branch's first, lane-local A5.4 source (454dab04) admitted a successor
+# whose archived baseline named 16e3725ce as its snapshot; main moved to
+# e2352f881 and squash delivery cannot resolve a lane-only snapshot, so the
+# ASTRA_REVIEW_A5_4 closure rework rewound that successor (the A0.6 precedent)
+# and re-admitted ONE successor over the protected baseline from the rework's
+# own writer-digest regeneration commit. Both sources stay authorised
+# (append-only registry); only the later one is the live pin's source.
+A54_LANE_LOCAL_SOURCE = "454dab04134d81ae420676210c9700e2d4496c6b"
 A54_MERGE = {
     "L3": {
-        "source": "454dab04134d81ae420676210c9700e2d4496c6b",
+        "source": "92c07a9051abad73815933e3a5b98ffde37fa848",
         "supersedes": "l3:f4c69a6d0cd4:829354703812",
         "changed": [
             "ka_gochara", "ka_gochara_resonance",
@@ -1845,7 +1853,8 @@ def test_a54_merge_leaves_every_other_layer_and_the_definitions_untouched() -> N
 def test_a54_merge_only_l3_is_authorised_for_the_decision() -> None:
     authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[A54_MERGE_DECISION]
     assert set(authorised) == {"L3"}
-    assert authorised["L3"] == frozenset({A54_MERGE["L3"]["source"]})
+    assert authorised["L3"] == frozenset({A54_MERGE["L3"]["source"], A54_LANE_LOCAL_SOURCE})
+    assert A54_LANE_LOCAL_SOURCE != A54_MERGE["L3"]["source"]
     for layer in ("L0", "L1", "L2", "L4", "L5"):
         with pytest.raises(SystemExit, match="is not authorized by"):
             pins_module.validate_authorized_source(

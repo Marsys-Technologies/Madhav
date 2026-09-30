@@ -500,13 +500,18 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // Authority identity and pinned source are different commits on purpose
     // (the D-E022 / D-PINS-A2 pattern): the source is the branch's
     // writer-digest regeneration commit, whose committed inventory equals the
-    // branch tree's derived inventory.
+    // branch tree's derived inventory. The ASTRA_REVIEW_A5_4 closure rework
+    // rewound the first lane-local successor (source 454dab04, baseline
+    // snapshot 16e3725ce) and re-admitted ONE successor over the protected
+    // baseline e2352f881 from its own digest regeneration commit (the A0.6
+    // precedent: squash delivery cannot resolve a lane-only snapshot); the
+    // delta is the repairs plus the rework, classifications unchanged.
     // Evidence: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A5_4_PINS_READMISSION_AUTHORITY_v1_0.md
     const decision = 'D-PINS-A5.4'
     const authority = 'e47d0b274ebf234ada8be7cfe82a34d5446384eb'
-    const source = '454dab04134d81ae420676210c9700e2d4496c6b'
+    const source = '92c07a9051abad73815933e3a5b98ffde37fa848'
     const pin = layerPinRecord.layers.L3
-    expect(pin.generation_id).toBe('l3:454dab04134d:be13d85ab725')
+    expect(pin.generation_id).toBe('l3:92c07a9051ab:5a9de6f7002d')
     expect(pin.supersedes_generation_id).toBe('l3:f4c69a6d0cd4:829354703812')
     expect(pin.convergence_commit).toBe(source)
     expect(pin.admission?.authority_decision).toBe(decision)
