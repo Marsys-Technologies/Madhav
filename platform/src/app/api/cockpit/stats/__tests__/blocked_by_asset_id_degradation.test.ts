@@ -41,8 +41,8 @@ function makeReq(): NextRequest {
 
 /** Builds a mockQuery implementation. `columnPresent` controls whether the
  * information_schema probe reports blocked_by_asset_id as existing. */
-function setupMocks(opts: { columnPresent: boolean; blockedAssetError?: string | null }) {
-  const { columnPresent, blockedAssetError = null } = opts
+function setupMocks(opts: { columnPresent: boolean; blockedAssetError?: string | null; throughputState?: string }) {
+  const { columnPresent, blockedAssetError = null, throughputState = 'error' } = opts
   const probeCalls: string[] = []
   const dispositionQueryCalls: string[] = []
 
@@ -74,7 +74,7 @@ function setupMocks(opts: { columnPresent: boolean; blockedAssetError?: string |
     if (/FROM asset_throughput/.test(s)) {
       return Promise.resolve({
         rows: [{
-          asset_id: 'bg_blocked_probe', state: 'error', last_built_at: '2026-09-26 18:00:00+00',
+          asset_id: 'bg_blocked_probe', state: throughputState, last_built_at: '2026-09-26 18:00:00+00',
           rows_written: null,
         }],
         rowCount: 1,
@@ -159,5 +159,23 @@ describe('cockpit stats route — blocked_by_asset_id graceful degradation (Pack
     await GET(makeReq())
     await GET(makeReq())
     expect(probeCalls.length).toBe(1)
+  })
+})
+
+describe('cockpit stats route — blocked_by_asset_id is emitted ONLY for a derived state of blocked (review F9)', () => {
+  it('a matched blocked_dependency disposition with blocked_by set, but a derived state that is NOT blocked (throughput state incomplete), omits blocked_by_asset_id', async () => {
+    // deriveState checks throughputState === 'incomplete' ahead of the disposition branch, so
+    // the asset derives 'incomplete' even though the matched disposition row says
+    // blocked_dependency and carries blocked_by_asset_id = 'bg_upstream_root'. The `derivedState
+    // === 'blocked'` guard on the field is the only thing keeping a drill-down pointer off a
+    // non-blocked badge; without this test that guard could be deleted and nothing would fail.
+    setupMocks({ columnPresent: true, throughputState: 'incomplete' })
+    const { GET } = await import('../route')
+    const res = await GET(makeReq())
+    const body = await res.json()
+    const asset = body.data.assets.find((a: { asset_id: string }) => a.asset_id === 'bg_blocked_probe')
+    expect(asset.state).toBe('incomplete')
+    expect(asset.blocked_by_asset_id).toBeUndefined()
+    expect('blocked_by_asset_id' in asset).toBe(false)
   })
 })

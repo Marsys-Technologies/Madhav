@@ -57,8 +57,8 @@
  *     npx vitest run tests/integration/downstream_dependents.db.test.ts
  *
  * Skipped unless DOWNSTREAM_DEPENDENTS_TEST_DATABASE_URL is set (CI wiring:
- * job `db-integration-tests`; see the proposed ci.yml hunk, kept OUT of this
- * branch because ci.yml is a shared workflow that needs its own review).
+ * job `db-integration-tests`; its two CI steps — create the throwaway database, run
+ * this suite — are part of this PR in .github/workflows/ci.yml).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import fs from 'node:fs'
@@ -79,6 +79,25 @@ const REAL_REGISTRY: RealRegistryRow[] = JSON.parse(
 const TEST_DB_URL = process.env.DOWNSTREAM_DEPENDENTS_TEST_DATABASE_URL
 
 let pool: Pool
+
+/**
+ * Database-name guard: this suite runs `DROP TABLE asset_registry CASCADE`, so the URL
+ * must be unmistakably a disposable local database. A bare substring regex over the whole
+ * URL (the original guard) matched anywhere — e.g. `?note=downstream_dependents_test` on a
+ * production URL — so this parses the URL and requires BOTH the exact database path and a
+ * loopback host.
+ */
+export function isSafeTestDbUrl(raw: string): boolean {
+  let u: URL
+  try {
+    u = new URL(raw)
+  } catch {
+    return false
+  }
+  // WHATWG URL keeps the brackets on an IPv6 literal hostname.
+  const loopback = u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '[::1]'
+  return loopback && u.pathname === '/downstream_dependents_test'
+}
 
 /**
  * Independent recomputation — a THIRD implementation, deliberately not a call into
@@ -163,6 +182,34 @@ const CYCLE_FIXTURE: { asset_id: string; depends_on: string[]; is_active: boolea
   { asset_id: 'd', depends_on: ['c', 'b'], is_active: true },
 ]
 
+describe('isSafeTestDbUrl — the destructive-test database guard', () => {
+  it('accepts the CI URL and the scratch-cluster URL', () => {
+    expect(isSafeTestDbUrl('postgresql://postgres:postgres@localhost:5432/downstream_dependents_test')).toBe(true)
+    expect(isSafeTestDbUrl('postgresql://postgres@127.0.0.1:55432/downstream_dependents_test')).toBe(true)
+    expect(isSafeTestDbUrl('postgresql://postgres@[::1]:5432/downstream_dependents_test')).toBe(true)
+  })
+
+  it('refuses a URL carrying the name only in the query string (production URL + ?note=...)', () => {
+    expect(isSafeTestDbUrl('postgresql://u:p@127.0.0.1:5432/postgres?application_name=downstream_dependents_test')).toBe(false)
+    expect(isSafeTestDbUrl('postgresql://u:p@prod-db.example.com:5432/postgres?options=downstream_dependents_test')).toBe(false)
+  })
+
+  it('refuses a non-loopback host even with the right database name', () => {
+    expect(isSafeTestDbUrl('postgresql://u:p@prod-db.example.com:5432/downstream_dependents_test')).toBe(false)
+    expect(isSafeTestDbUrl('postgresql://u:p@10.0.0.5:5432/downstream_dependents_test')).toBe(false)
+    // a hostname that merely CONTAINS a loopback name
+    expect(isSafeTestDbUrl('postgresql://u:p@localhost.evil.example.com:5432/downstream_dependents_test')).toBe(false)
+  })
+
+  it('refuses a different or longer database path, and unparseable input', () => {
+    expect(isSafeTestDbUrl('postgresql://u@127.0.0.1:5432/downstream_dependents_test_prod')).toBe(false)
+    expect(isSafeTestDbUrl('postgresql://u@127.0.0.1:5432/x/downstream_dependents_test')).toBe(false)
+    expect(isSafeTestDbUrl('postgresql://u@127.0.0.1:5432/downstream_dependents_test/')).toBe(false)
+    expect(isSafeTestDbUrl('not a url downstream_dependents_test')).toBe(false)
+    expect(isSafeTestDbUrl('')).toBe(false)
+  })
+})
+
 describe.skipIf(!TEST_DB_URL)('downstream-dependents query (stats route SQL) — B2 live-DB proof', () => {
   /** Runs the route's exact SQL (optionally wrapped for ordering/filtering by the test). */
   async function runRouteSql(suffix = '', sql: string = DOWNSTREAM_DEPENDENTS_SQL) {
@@ -183,15 +230,20 @@ describe.skipIf(!TEST_DB_URL)('downstream-dependents query (stats route SQL) —
   }
 
   beforeAll(async () => {
-    if (!/downstream_dependents_test/.test(TEST_DB_URL!)) {
+    if (!isSafeTestDbUrl(TEST_DB_URL!)) {
       throw new Error(
-        'DOWNSTREAM_DEPENDENTS_TEST_DATABASE_URL must point at a disposable database named ' +
-          '`downstream_dependents_test`. This suite creates and drops an asset_registry table and ' +
+        'DOWNSTREAM_DEPENDENTS_TEST_DATABASE_URL must point at a disposable LOOPBACK database named ' +
+          '`downstream_dependents_test` (host 127.0.0.1/localhost/::1, path exactly ' +
+          '/downstream_dependents_test). This suite creates and drops an asset_registry table and ' +
           'must never run against production.'
       )
     }
 
-    pool = new Pool({ connectionString: TEST_DB_URL })
+    // statement_timeout: a regression that makes the closure CTE non-terminating (UNION ALL
+    // over the a <-> b cycle) must be STOPPED BY POSTGRES and surface as a fast query error,
+    // not as a vitest timeout that abandons a runaway recursion still running in the backend
+    // (which then blocks every later TRUNCATE in this suite). Healthy queries here take ms.
+    pool = new Pool({ connectionString: TEST_DB_URL, statement_timeout: 3000 })
 
     // Only the three asset_registry columns the query reads. No view, no role, no GRANT:
     // the query is plain SELECT text sent by the route, so there is no DDL to prove.
@@ -275,16 +327,31 @@ describe.skipIf(!TEST_DB_URL)('downstream-dependents query (stats route SQL) —
 
   it('C-3: the closure has at most one row per (dependent, upstream) pair — the UNION-ALL detector', async () => {
     await load(FIXTURE)
-    const detector = async () => {
-      const { rows } = await pool.query<{ dependent: string; upstream: string; n: string }>(
+    // Each detector query runs in its own transaction under SET LOCAL statement_timeout so a
+    // non-terminating CTE is cancelled by the backend itself (2 s), never by the test timeout.
+    const runTimed = async <T extends Record<string, unknown>>(sql: string) => {
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+        await client.query("SET LOCAL statement_timeout = '2s'")
+        const res = await client.query<T>(sql)
+        await client.query('COMMIT')
+        return res.rows
+      } catch (err) {
+        await client.query('ROLLBACK').catch(() => {})
+        throw err
+      } finally {
+        client.release()
+      }
+    }
+    const detector = () =>
+      runTimed<{ dependent: string; upstream: string; n: string }>(
         `${DOWNSTREAM_CLOSURE_CTE}
          SELECT dependent, upstream, count(*) AS n
          FROM closure
          GROUP BY dependent, upstream
          HAVING count(*) > 1`
       )
-      return rows
-    }
     const rows = await detector()
     expect(rows, `duplicate (dependent, upstream) pairs found: ${JSON.stringify(rows)}`).toEqual([])
 
@@ -292,11 +359,11 @@ describe.skipIf(!TEST_DB_URL)('downstream-dependents query (stats route SQL) —
     // report duplicates (otherwise this test would be a green light with no detector
     // behind it, the exact §N.8 defect this suite exists to prevent).
     expect(DOWNSTREAM_CLOSURE_CTE).toMatch(/\bUNION\b(?!\s+ALL)/)
-    const dup = await pool.query(
+    const dup = await runTimed(
       `${DOWNSTREAM_CLOSURE_CTE.replace(/\bUNION\b/, 'UNION ALL')}
        SELECT dependent, upstream FROM closure GROUP BY dependent, upstream HAVING count(*) > 1`
     )
-    expect(dup.rows.length).toBeGreaterThan(0)
+    expect(dup.length).toBeGreaterThan(0)
   })
 
   it('C-1 + reuse: over the REAL 129-row production registry, agrees on every one of the 127 active assets with the REAL computeDownstreamClosure() from plan.ts and the independent BFS', async () => {
