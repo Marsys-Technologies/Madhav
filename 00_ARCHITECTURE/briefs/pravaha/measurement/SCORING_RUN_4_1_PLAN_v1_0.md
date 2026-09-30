@@ -17,9 +17,10 @@ itself is B4.4 (`BASELINE_4_1_v1_0.md`); this page is only the plan.
 
 ## 1. Preconditions (all must hold before step 2)
 
-1. A2.5 done: the `'4.1'` century build for chart `482012f1-710e-4a25-994a-93821f5871aa`
-   exists in `kala_gochara_windows` with `generation='4.1'` (candidate-only; `'3.0'` rows
-   untouched — migration 1071's generation guard).
+1. A2.5 done: the `'4.1'` build for chart `482012f1-710e-4a25-994a-93821f5871aa` exists in
+   `kala_gochara_windows` with `generation='4.1'` (candidate-only; `'3.0'` rows untouched —
+   migration 1071's generation guard). Per native ruling, `'4.1'` is **not** a century
+   build: it is narrowed to the scored horizon **1998-01-01 → 2026-04-18 (end-exclusive)**.
 2. A2.6 evidence pack available (Link-2, gates, PRAMĀṆIN) — context for the baseline write-up,
    not an input to the scorer.
 3. Protocol: `EVALUATION_PROTOCOL_v2_3.md` (accepted via D-PROTO, conditions verified B4.6).
@@ -49,6 +50,18 @@ Mirror of `baseline_3_0_extract_v1_0.json`, generation substituted:
   `columns`, `rows`), sha256 computed at write and recorded here as the declared pin:
   `baseline_4_1_extract_v1_0.json sha256 = <TO PIN AT DUMP TIME>`.
 - Row count is **not** required to equal '3.0''s 914; it is recorded and disclosed.
+- **Horizon assertion (native narrowing):** `'4.1'` covers only the scored horizon — assert
+  at extract time that no dumped window falls outside it, and stop on violation:
+
+```sql
+SELECT COUNT(*) AS outside_horizon
+  FROM kala_gochara_windows
+ WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+   AND generation = '4.1'
+   AND ((we at time zone 'Asia/Kolkata')::date < DATE '1998-01-01'
+        OR (ws at time zone 'Asia/Kolkata')::date >= DATE '2026-04-18');
+-- MUST BE 0 (horizon 1998-01-01 → 2026-04-18, end-exclusive); anything else ⇒ INPUT_REJECTED
+```
 
 Dump (read-only role, governed path):
 
