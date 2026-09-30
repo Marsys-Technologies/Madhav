@@ -31,7 +31,20 @@ them verbatim. Properties:
 from __future__ import annotations
 
 import re
+import sys
 import uuid
+from pathlib import Path
+
+# The writer's EXACT eligible class universe (ASTRA v1.3 amendment 1): the
+# resonance writer enumerates TARGET_EVENT_CLASSES — 26 classes, birth_anchor
+# excluded structurally (N6) although migration 456 keeps its ontology row.
+# Every identity below is scoped to this set, never to "every ontology row".
+_SIDECAR = Path(__file__).resolve().parents[2]
+if str(_SIDECAR) not in sys.path:
+    sys.path.insert(0, str(_SIDECAR))
+from services.ka_gochara_resonance.writer import TARGET_EVENT_CLASSES  # noqa: E402
+
+ELIGIBLE_EVENT_CLASSES: tuple[str, ...] = tuple(TARGET_EVENT_CLASSES)
 
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _TABLE_RE = re.compile(r"^gochara_resonance_map_snap_[0-9a-f]{8}_[0-9]{14}$")
@@ -224,7 +237,8 @@ def r5_qualifier_identity_sql(chart_id: str) -> tuple[str, str]:
                 "  FROM brahma_event_ontology o,\n"
                 "       jsonb_array_elements_text(o.signature_model->'lords') AS l(value),\n"
                 "       regexp_matches(l.value, '(\\d+L)', 'g') AS m\n"
-                " WHERE l.value ILIKE '%afflicted%'")
+                f" WHERE o.event_class_id = ANY({eligible_classes_array()})\n"
+                "   AND l.value ILIKE '%afflicted%'")
     return (f"-- rows with the qualifier that the ontology does not name (MUST be 0 rows):\n"
             f"{rows}\nEXCEPT\n{expected};",
             f"-- ontology-named afflicted lords missing the qualifier (MUST be 0 rows):\n"
@@ -241,9 +255,15 @@ def r5_qualifier_identity_sql(chart_id: str) -> tuple[str, str]:
 #     constituent_houses ∩ class houses or constituent_planets ∩ class kārakas
 #     (lower-case) is non-empty; weight 0.7; qualifier bhanga_active.
 CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
-KARAKA_SUBJECT_VALUES = ("(VALUES ('sun','SUN'),('moon','MOON'),('mars','MAR'),('mercury','MER'),"
-                         "('jupiter','JUP'),('venus','VEN'),('saturn','SAT'),('rahu','RAH_MEAN'),"
-                         "('ketu','KET_MEAN')) AS ks(karaka, subject)")
+# _KARAKA_FACT_SUBJECT in the writer: EXACT title-case kāraka names → subject
+KARAKA_SUBJECT_VALUES = ("(VALUES ('Sun','SUN'),('Moon','MOON'),('Mars','MAR'),('Mercury','MER'),"
+                         "('Jupiter','JUP'),('Venus','VEN'),('Saturn','SAT'),('Rahu','RAH_MEAN'),"
+                         "('Ketu','KET_MEAN')) AS ks(karaka, subject)")
+
+
+def eligible_classes_array() -> str:
+    """The writer's TARGET_EVENT_CLASSES as a SQL text[] literal."""
+    return "ARRAY[" + ", ".join(f"'{c}'" for c in ELIGIBLE_EVENT_CLASSES) + "]::text[]"
 POSITIVE_PAIRS = ("(VALUES ('mrityu_bhaga','fired'),('gandanta','gandanta'),('kartari','papa_kartari'),"
                   "('kartari','shubha_kartari'),('pushkara','pushkara')) AS pp(fact_key, value)")
 EXPECTED_WEIGHTS = {"bhava": 1.0, "lord": 1.0, "karaka": 1.0, "sensitive_degree": 0.5,
@@ -252,10 +272,20 @@ EXPECTED_WEIGHTS = {"bhava": 1.0, "lord": 1.0, "karaka": 1.0, "sensitive_degree"
 
 
 def _class_houses_cte(chart_id: str) -> str:
-    return ("class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house\n"
-            "  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),\n"
-            "class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka\n"
-            "  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))")
+    """The class universe and its houses / kārakas EXACTLY as the writer
+    reads them: only TARGET_EVENT_CLASSES (birth_anchor's retained ontology
+    row is never eligible); houses = plain-digit entries only
+    (_parse_house_ints drops glosses); kārakas kept verbatim (title-case, as
+    _KARAKA_FACT_SUBJECT keys them) with a lower-cased alias (as the yoga
+    fetch compares them)."""
+    return ("eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o\n"
+            f"  WHERE o.event_class_id = ANY({eligible_classes_array()})),\n"
+            "class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house\n"
+            "  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)\n"
+            "  WHERE btrim(h.value) ~ '^[0-9]+$'),\n"
+            "class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,\n"
+            "                         lower(k.value) AS karaka_lower\n"
+            "  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))")
 
 
 def r1_identity_sql(chart_id: str) -> tuple[str, str]:
@@ -290,12 +320,12 @@ def r3_identity_sql(chart_id: str) -> tuple[str, str]:
     cid = _check_uuid(chart_id)
     cte = f"WITH {_class_houses_cte(cid)}\n"
     expected = (f"SELECT DISTINCT o.event_class_id AS event_class, y.yoga_canonical_id AS target_ref\n"
-                f"  FROM brahma_event_ontology o\n"
+                f"  FROM eligible o\n"
                 f"  JOIN ga_yoga_firings y ON y.chart_id = '{cid}' AND y.ayanamsha_id = '{CANONICAL_AYANAMSHA}' AND y.fired\n"
                 f" WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(y.constituent_houses) e\n"
                 f"                 JOIN class_houses ch ON ch.event_class = o.event_class_id AND ch.house = (e::text)::int)\n"
                 f"    OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(y.constituent_planets) e\n"
-                f"                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka = e)")
+                f"                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka_lower = e)")
     actual = (f"SELECT event_class, target_ref FROM gochara_resonance_map\n"
               f" WHERE chart_id = '{cid}' AND target_type = 'yoga_constituent'")
     return (f"-- R-3 identity: yoga rows not backed by an eligible live firing (MUST be 0 rows):\n"
@@ -359,15 +389,18 @@ def value_invariants_sql(chart_id: str) -> str:
             f"lords_complete AS (SELECT COUNT(*) = 12 AS ok FROM reference_signs WHERE sign_id BETWEEN 1 AND 12),\n"
             f"graha AS (SELECT * FROM (VALUES ('Sun','SUN'),('Moon','MOON'),('Mars','MAR'),('Mercury','MER'),\n"
             f"  ('Jupiter','JUP'),('Venus','VEN'),('Saturn','SAT'),('Rahu','RAH_MEAN'),('Ketu','KET_MEAN')) AS g(name, subject)),\n"
-            f"ontology_cite AS (SELECT o.event_class_id, string_agg(c.value, '; ' ORDER BY c.ordinality) AS citation\n"
-            f"  FROM brahma_event_ontology o\n"
-            f"  LEFT JOIN LATERAL jsonb_array_elements_text(o.citations) WITH ORDINALITY AS c(value, ordinality) ON TRUE\n"
-            f"  GROUP BY o.event_class_id),\n"
+            # migration 388: citations TEXT[] — the writer joins the list with '; '
+            # and stores NULL when the list is NULL or empty
+            f"ontology_cite AS (SELECT o.event_class_id,\n"
+            f"  CASE WHEN o.citations IS NULL OR cardinality(o.citations) = 0 THEN NULL\n"
+            f"       ELSE array_to_string(o.citations, '; ') END AS citation\n"
+            f"  FROM brahma_event_ontology o),\n"
             f"signs AS (SELECT unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',\n"
             f"  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name)\n"
             f"SELECT m.event_class, m.target_type, m.target_ref, v.violation\n"
             f"  FROM gochara_resonance_map m\n"
             f"  CROSS JOIN LATERAL (SELECT CASE\n"
+            f"    WHEN m.event_class <> ALL({eligible_classes_array()}) THEN 'class:not_eligible'\n"
             f"    WHEN m.weight <> (CASE m.target_type {cases} ELSE m.weight END) THEN 'weight'\n"
             f"    WHEN m.target_type IN ('bhava','lord','karaka') AND (m.uncited_extension IS TRUE\n"
             f"         OR m.classical_citation IS DISTINCT FROM (SELECT citation FROM ontology_cite oc\n"
@@ -430,6 +463,7 @@ def value_invariants_sql(chart_id: str) -> str:
 
 __all__ = [
     "CONTENT_COLUMNS", "NEGATIVE_VALUES", "POSITIVE_VALUES", "EXPECTED_WEIGHTS",
+    "ELIGIBLE_EVENT_CLASSES", "eligible_classes_array",
     "r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "value_invariants_sql",
     "snapshot_table_name", "create_snapshot_sql", "partition_digest_sql",
     "full_row_digest_sql", "rollback_sql", "negative_sensitive_targets_sql",

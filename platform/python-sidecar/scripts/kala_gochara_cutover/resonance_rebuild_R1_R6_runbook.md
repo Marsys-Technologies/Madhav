@@ -1,11 +1,11 @@
-# Resonance-map production rebuild runbook — R-1..R-6 (A5.4 resonance_rebuild_R1_R6, rework 4)
+# Resonance-map production rebuild runbook — R-1..R-6 (A5.4 resonance_rebuild_R1_R6, rework 5)
 
 Sealed doctrine: FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 T0-12, finding #9
 ("Production resonance map is pre-WP3c: 154 of 176 sensitive-degree targets
 are negative-result checks (E3)"). Corrections: GOCHARA_PLAN_V3_AMENDMENT_v1_0
 §121 (G-R resonance corrections R-1..R-6 survive as T0-12/A5.4);
 GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §WP3c; WP1_CONTRACTS.md §2. Reworked per
-ASTRA_REVIEW_A5_4 P1-7/P1-8, v1.1 P1-6/P1-7 and v1.2 P1-3: uniquely identified snapshot,
+ASTRA_REVIEW_A5_4 P1-7/P1-8, v1.1 P1-6/P1-7, v1.2 P1-3 and v1.3 amendments 1/3: uniquely identified snapshot,
 a TYPED FULL-ROW preimage certificate (every column, ids and computed_at
 included, JSON-serialised so NULL never collides with a string) recorded at
 snapshot time and re-verified at restore, separate from the ID-independent
@@ -16,7 +16,12 @@ identity comparison (both EXCEPT directions empty); R-1/R-2/R-3 likewise as
 CLASS-ASSOCIATED identities (event_class, ref) in both directions, ayanāṃśa-
 pinned and eligibility-scoped exactly as the writer reads (never a global
 DISTINCT set, which cannot see a class swap); every retained value (weight,
-provenance, resolution state, qualifier) checked against its own source. The
+provenance, resolution state, qualifier) checked against its own source; every
+identity scoped to the writer's EXACT eligible class universe
+(`TARGET_EVENT_CLASSES`, 26 classes — the retained `birth_anchor` ontology row
+is never eligible, N6) and reading `brahma_event_ontology.citations` as the
+`TEXT[]` migration 388 declares (the rehearsal's schema is now derived from
+the checked-in migrations, so a type the stub used to mask cannot hide). The
 disposable rehearsal proves these detectors LIVE: seven rolled-back mutations
 that preserve every per-class count and every global id set (class swaps of
 sensitive/arudha/yoga rows, a weight change, a transferred qualifier, flipped
@@ -185,27 +190,35 @@ SELECT
 -- between classes, a foreign-ayanāṃśa fact, or a MISSING eligible fact each surfaces in one direction.
 -- (A global DISTINCT-target_ref comparison cannot see a class swap — it is deliberately NOT used.)
 -- R-1 identity: rows the eligibility contract does not name (MUST be 0 rows):
-WITH class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),
-class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'sensitive_degree'
 EXCEPT
 SELECT ck.event_class, f.fact_id::text AS target_ref
   FROM class_karakas ck
-  JOIN (VALUES ('sun','SUN'),('moon','MOON'),('mars','MAR'),('mercury','MER'),('jupiter','JUP'),('venus','VEN'),('saturn','SAT'),('rahu','RAH_MEAN'),('ketu','KET_MEAN')) AS ks(karaka, subject) ON ks.karaka = ck.karaka
+  JOIN (VALUES ('Sun','SUN'),('Moon','MOON'),('Mars','MAR'),('Mercury','MER'),('Jupiter','JUP'),('Venus','VEN'),('Saturn','SAT'),('Rahu','RAH_MEAN'),('Ketu','KET_MEAN')) AS ks(karaka, subject) ON ks.karaka = ck.karaka
   JOIN chart_facts f ON f.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND f.ayanamsha_id = 'lahiri_chitrapaksha'
    AND f.fact_category = 'sensitive_degree_check' AND f.fact_subject = ks.subject
   JOIN (VALUES ('mrityu_bhaga','fired'),('gandanta','gandanta'),('kartari','papa_kartari'),('kartari','shubha_kartari'),('pushkara','pushkara')) AS pp(fact_key, value) ON pp.fact_key = f.fact_key AND pp.value = f.fact_value_text;
 -- R-1 identity: eligible (class, fact) pairs MISSING from the map (MUST be 0 rows):
-WITH class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),
-class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
 SELECT ck.event_class, f.fact_id::text AS target_ref
   FROM class_karakas ck
-  JOIN (VALUES ('sun','SUN'),('moon','MOON'),('mars','MAR'),('mercury','MER'),('jupiter','JUP'),('venus','VEN'),('saturn','SAT'),('rahu','RAH_MEAN'),('ketu','KET_MEAN')) AS ks(karaka, subject) ON ks.karaka = ck.karaka
+  JOIN (VALUES ('Sun','SUN'),('Moon','MOON'),('Mars','MAR'),('Mercury','MER'),('Jupiter','JUP'),('Venus','VEN'),('Saturn','SAT'),('Rahu','RAH_MEAN'),('Ketu','KET_MEAN')) AS ks(karaka, subject) ON ks.karaka = ck.karaka
   JOIN chart_facts f ON f.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND f.ayanamsha_id = 'lahiri_chitrapaksha'
    AND f.fact_category = 'sensitive_degree_check' AND f.fact_subject = ks.subject
   JOIN (VALUES ('mrityu_bhaga','fired'),('gandanta','gandanta'),('kartari','papa_kartari'),('kartari','shubha_kartari'),('pushkara','pushkara')) AS pp(fact_key, value) ON pp.fact_key = f.fact_key AND pp.value = f.fact_value_text
@@ -244,10 +257,14 @@ SELECT
 -- R-2 identity (CLASS-ASSOCIATED): (event_class, arudha fact_id) rows MUST EQUAL the ARUDHA_A{h}
 -- sign facts (canonical ayanāṃśa) of each class's signature houses — BOTH directions 0 rows:
 -- R-2 identity: arudha rows the class's houses do not name (MUST be 0 rows):
-WITH class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),
-class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'arudha'
 EXCEPT
@@ -257,10 +274,14 @@ SELECT ch.event_class, f.fact_id::text AS target_ref
    AND f.fact_category = 'arudha_pada' AND f.fact_key = 'sign'
    AND f.fact_subject = 'ARUDHA_A' || ch.house::text;
 -- R-2 identity: class-house arudha facts MISSING from the map (MUST be 0 rows):
-WITH class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),
-class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
 SELECT ch.event_class, f.fact_id::text AS target_ref
   FROM class_houses ch
   JOIN chart_facts f ON f.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND f.ayanamsha_id = 'lahiri_chitrapaksha'
@@ -286,32 +307,40 @@ SELECT COUNT(*) FROM gochara_resonance_map m
 -- constituent_planets ∩ class kārakas). BOTH EXCEPT directions MUST return 0 rows — the second
 -- direction is the one a MISSING eligible yoga fails (the previous runbook printed only actual − live):
 -- R-3 identity: yoga rows not backed by an eligible live firing (MUST be 0 rows):
-WITH class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),
-class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'yoga_constituent'
 EXCEPT
 SELECT DISTINCT o.event_class_id AS event_class, y.yoga_canonical_id AS target_ref
-  FROM brahma_event_ontology o
+  FROM eligible o
   JOIN ga_yoga_firings y ON y.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND y.ayanamsha_id = 'lahiri_chitrapaksha' AND y.fired
  WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(y.constituent_houses) e
                  JOIN class_houses ch ON ch.event_class = o.event_class_id AND ch.house = (e::text)::int)
     OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(y.constituent_planets) e
-                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka = e);
+                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka_lower = e);
 -- R-3 identity: eligible live firings MISSING from the map (MUST be 0 rows):
-WITH class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),
-class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka
-  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
 SELECT DISTINCT o.event_class_id AS event_class, y.yoga_canonical_id AS target_ref
-  FROM brahma_event_ontology o
+  FROM eligible o
   JOIN ga_yoga_firings y ON y.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND y.ayanamsha_id = 'lahiri_chitrapaksha' AND y.fired
  WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(y.constituent_houses) e
                  JOIN class_houses ch ON ch.event_class = o.event_class_id AND ch.house = (e::text)::int)
     OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(y.constituent_planets) e
-                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka = e)
+                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka_lower = e)
 EXCEPT
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'yoga_constituent';
@@ -332,13 +361,15 @@ SELECT o.event_class_id AS event_class, m[1] AS target_ref
   FROM brahma_event_ontology o,
        jsonb_array_elements_text(o.signature_model->'lords') AS l(value),
        regexp_matches(l.value, '(\d+L)', 'g') AS m
- WHERE l.value ILIKE '%afflicted%';
+ WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])
+   AND l.value ILIKE '%afflicted%';
 -- ontology-named afflicted lords missing the qualifier (MUST be 0 rows):
 SELECT o.event_class_id AS event_class, m[1] AS target_ref
   FROM brahma_event_ontology o,
        jsonb_array_elements_text(o.signature_model->'lords') AS l(value),
        regexp_matches(l.value, '(\d+L)', 'g') AS m
- WHERE l.value ILIKE '%afflicted%'
+ WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])
+   AND l.value ILIKE '%afflicted%'
 EXCEPT
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'lord' AND target_qualifier = 'afflicted';
@@ -357,15 +388,16 @@ present AS (SELECT DISTINCT fact_subject FROM chart_facts
 lords_complete AS (SELECT COUNT(*) = 12 AS ok FROM reference_signs WHERE sign_id BETWEEN 1 AND 12),
 graha AS (SELECT * FROM (VALUES ('Sun','SUN'),('Moon','MOON'),('Mars','MAR'),('Mercury','MER'),
   ('Jupiter','JUP'),('Venus','VEN'),('Saturn','SAT'),('Rahu','RAH_MEAN'),('Ketu','KET_MEAN')) AS g(name, subject)),
-ontology_cite AS (SELECT o.event_class_id, string_agg(c.value, '; ' ORDER BY c.ordinality) AS citation
-  FROM brahma_event_ontology o
-  LEFT JOIN LATERAL jsonb_array_elements_text(o.citations) WITH ORDINALITY AS c(value, ordinality) ON TRUE
-  GROUP BY o.event_class_id),
+ontology_cite AS (SELECT o.event_class_id,
+  CASE WHEN o.citations IS NULL OR cardinality(o.citations) = 0 THEN NULL
+       ELSE array_to_string(o.citations, '; ') END AS citation
+  FROM brahma_event_ontology o),
 signs AS (SELECT unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',
   'Sagittarius','Capricorn','Aquarius','Pisces']) AS name)
 SELECT m.event_class, m.target_type, m.target_ref, v.violation
   FROM gochara_resonance_map m
   CROSS JOIN LATERAL (SELECT CASE
+    WHEN m.event_class <> ALL(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[]) THEN 'class:not_eligible'
     WHEN m.weight <> (CASE m.target_type WHEN 'bhava' THEN 1.0 WHEN 'lord' THEN 1.0 WHEN 'karaka' THEN 1.0 WHEN 'sensitive_degree' THEN 0.5 WHEN 'arudha' THEN 0.6 WHEN 'bhava_arudha' THEN 0.6 WHEN 'yoga_constituent' THEN 0.7 WHEN 'dasha_lord_portfolio' THEN 0.8 ELSE m.weight END) THEN 'weight'
     WHEN m.target_type IN ('bhava','lord','karaka') AND (m.uncited_extension IS TRUE
          OR m.classical_citation IS DISTINCT FROM (SELECT citation FROM ontology_cite oc

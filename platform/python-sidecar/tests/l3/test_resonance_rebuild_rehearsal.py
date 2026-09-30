@@ -86,6 +86,11 @@ def _passing_ver() -> dict:
                             "resolution_state_flipped", "provenance_flipped")},
             "restored_after_controls": True},
         "map_unchanged_after_detector_controls": True,
+        # ASTRA v1.3 amendment 1: the class universe and the schema are the migrations'
+        "ontology": {"birth_anchor_present_in_ontology": True, "birth_anchor_rows_in_map": 0,
+                     "map_classes_equal_eligible": True, "mirror_matches_migration_seed": True,
+                     "mirror_diff": [], "citations_type": "ARRAY",
+                     "chart_facts_fact_id_type": "text"},
         "rollback": {"refused_on_stale_snapshot": True,
                      "partition_untouched_after_refusal": True,
                      "pre_refusal_full_certificate": [481, "b" * 32],
@@ -163,6 +168,14 @@ def test_passing_verification_is_accepted():
     (lambda v: v["detector_controls"].__setitem__("restored_after_controls", False), "not restored"),
     (lambda v: v.pop("detector_controls"), "not run"),
     (lambda v: v.__setitem__("map_unchanged_after_detector_controls", False), "post-control digest"),
+    # ASTRA v1.3 amendment 1: eligible class universe + migration-faithful schema
+    (lambda v: v["ontology"].__setitem__("birth_anchor_rows_in_map", 1), "N6"),
+    (lambda v: v["ontology"].__setitem__("birth_anchor_present_in_ontology", False), "ontology control"),
+    (lambda v: v["ontology"].__setitem__("map_classes_equal_eligible", False), "class universe"),
+    (lambda v: v["ontology"].__setitem__("mirror_matches_migration_seed", False), "migration seed"),
+    (lambda v: v["ontology"].__setitem__("citations_type", "jsonb"), "schema"),
+    (lambda v: v["ontology"].__setitem__("chart_facts_fact_id_type", "uuid"), "schema"),
+    (lambda v: v.pop("ontology"), "ontology control"),
     (lambda v: v["identities"]["lord_rows"].__setitem__("expected", []), "identity control"),
     (lambda v: v.pop("identities"), "not measured"),
     (lambda v: v["r5_identity_sql"].__setitem__("qualified_not_in_ontology", 1), "R-5 SQL identity"),
@@ -227,7 +240,7 @@ def test_expected_row_tuples_are_class_associated_with_retained_values():
                "arudha_fact_ids_by_house": {7: "a7", 2: "a2", 6: "a6", 8: "a8"},
                "arudha_sign_by_house": {7: "Libra", 2: "Taurus", 6: "Virgo", 8: "not_a_sign"},
                "live_yogas": [("y1", [7], ["venus"], False), ("y2", [6], ["mars"], True)],
-               "ontology_citation": "cite"}
+               "citation_by_class": {"marriage": "cite", "surgery": "cite"}}
     got = R.expected_row_tuples(fixture, models)
     assert ("marriage", "sensitive_degree", "f-ven", 0.5, "resolved", None, True, None) in got
     assert ("surgery", "sensitive_degree", "f-mar", 0.5, "resolved", None, True, None) in got
@@ -265,7 +278,7 @@ def test_identity_sql_is_class_associated_pinned_and_bidirectional():
         assert rev.index("EXCEPT") < rev.index("SELECT event_class, target_ref FROM gochara_resonance_map")
         assert "MISSING" in rev
     r1, _ = B.r1_identity_sql(CH)
-    assert "('rahu','RAH_MEAN')" in r1 and "('kartari','shubha_kartari')" in r1
+    assert "('Rahu','RAH_MEAN')" in r1 and "('kartari','shubha_kartari')" in r1
     assert "fact_category = 'sensitive_degree_check'" in r1
     r3, _ = B.r3_identity_sql(CH)
     assert "constituent_houses" in r3 and "constituent_planets" in r3 and "y.fired" in r3
@@ -304,6 +317,98 @@ def test_refusal_probe_is_certified_by_two_recorded_certificates_not_a_tautology
     assert '_full_digest(cur, "gochara_resonance_map", CHART_ID)[1] == _full_digest(cur, "gochara_resonance_map", CHART_ID)[1]' not in src
     assert 'other_before_full = _full_digest(cur, "gochara_resonance_map", OTHER_CHART_ID)' in src
     assert '== other_before_full' in src
+
+
+# ── ASTRA v1.3 amendment 1: oracle faithful to the production schema + class universe ──
+
+def test_oracle_reads_the_migrations_citation_type_and_the_writers_class_universe():
+    """Migration 388 declares brahma_event_ontology.citations TEXT[]; the
+    previous value query called jsonb_array_elements_text on it (masked by
+    a JSONB stub). The writer enumerates TARGET_EVENT_CLASSES (26; the
+    retained birth_anchor row is never eligible — N6); the previous CTE read
+    every ontology row and expected (birth_anchor, A1) pairs."""
+    from services.ka_gochara_resonance.writer import TARGET_EVENT_CLASSES
+    assert B.ELIGIBLE_EVENT_CLASSES == tuple(TARGET_EVENT_CLASSES)
+    assert len(B.ELIGIBLE_EVENT_CLASSES) == 26 and "birth_anchor" not in B.ELIGIBLE_EVENT_CLASSES
+    values = B.value_invariants_sql(CH)
+    assert "jsonb_array_elements_text(o.citations)" not in values
+    assert "array_to_string(o.citations, '; ')" in values and "cardinality(o.citations) = 0" in values
+    assert "'class:not_eligible'" in values
+    arr = B.eligible_classes_array()
+    assert arr.startswith("ARRAY['marriage'") and arr.endswith("]::text[]") and "birth_anchor" not in arr
+    for fn in (B.r1_identity_sql, B.r2_identity_sql, B.r3_identity_sql, B.r5_qualifier_identity_sql):
+        for q in fn(CH):
+            assert arr in q, fn.__name__
+    r1, _ = B.r1_identity_sql(CH)
+    assert "btrim(h.value) ~ '^[0-9]+$'" in r1          # _parse_house_ints: digits only
+    assert "('Sun','SUN')" in r1 and "('sun','SUN')" not in r1  # _KARAKA_FACT_SUBJECT: exact title-case
+    r3, _ = B.r3_identity_sql(CH)
+    assert "ck.karaka_lower = e" in r3                    # the yoga fetch lower-cases
+
+
+def test_rehearsal_schema_is_derived_from_the_checked_in_migrations():
+    """The rehearsal no longer hand-declares any table the writer reads: the
+    ontology is migrations 388 + 456 verbatim (real 27-class seed, TEXT[]
+    citations, birth_anchor retained), the map is 459 + 550 (event_class FK)
+    + 1080 verbatim, and every other input table's DDL is extracted from
+    every migration that creates or alters it, in migration order, from
+    BOTH runner roots."""
+    assert "CREATE TABLE IF NOT EXISTS asset_registry" in R.STUB_DDL
+    for tname in ("brahma_event_ontology", "chart_facts", "chart_dashas", "ga_yoga_firings",
+                  "reference_signs", "bg_transit_rules", "gochara_resonance_map"):
+        assert tname not in R.STUB_DDL, tname
+    assert R.VERBATIM_MIGRATIONS == ("388_brahma_ghatana_ontology.sql",
+                                     "456_brahma_event_ontology_dr13_shapes.sql")
+    assert "550_gochara_resonance_map_event_class_fk.sql" in R.VERBATIM_MAP_MIGRATIONS
+    m388 = R.find_migration("388_brahma_ghatana_ontology.sql").read_text()
+    assert "citations           TEXT[]" in m388
+    m456 = R.find_migration("456_brahma_event_ontology_dr13_shapes.sql").read_text()
+    assert "('birth_anchor', " in m456
+    plan = R.rehearsal_schema_plan()
+    assert set(plan) == set(R.DERIVED_TABLES)
+    for tname, entries in plan.items():
+        assert entries and all(stmts for _, stmts in entries), tname
+        assert any(st.upper().startswith("CREATE TABLE") for _, stmts in entries for st in stmts), tname
+    create_cf = next(st for st in plan["chart_facts"][0][1] if st.upper().startswith("CREATE TABLE"))
+    assert "fact_id                  TEXT PRIMARY KEY" in create_cf
+    names = [f for f, _ in plan["chart_facts"]]
+    assert names == sorted(names, key=lambda n: int(n.split("_")[0]))
+    assert "539_chart_facts_verification_pass_status_check.sql" in names
+    do_block = next(st for f, stmts in plan["chart_facts"] if f.startswith("539_") for st in stmts)
+    assert do_block.startswith("DO $$") and "ALTER TABLE chart_facts" in do_block
+    # the splitter never cuts inside a dollar-quoted block or a string
+    assert R.split_sql_statements("DO $$ BEGIN PERFORM 1; END $$; SELECT ';';") == \
+        ["DO $$ BEGIN PERFORM 1; END $$", "SELECT ';'"]
+    # nothing but the table's own DDL is extracted (no seeds, no bookkeeping)
+    for _, stmts in plan["ga_yoga_firings"]:
+        for st in stmts:
+            assert "asset_registry" not in st and not st.upper().startswith("INSERT")
+
+
+def test_expected_tuples_carry_each_classs_own_migration_citation():
+    models = {"marriage": ([7, 2], ["7L"], ["Venus"]),
+              "surgery": ([6, 8], ["6L", "8L afflicted"], ["Mars"])}
+    fixture = {"positive_facts": [("f-ven", "VEN")], "arudha_fact_ids_by_house": {},
+               "arudha_sign_by_house": {}, "live_yogas": [],
+               "citation_by_class": {"marriage": "BPHS ch.18; Phaladeepika ch.12",
+                                     "surgery": None}}
+    got = R.expected_row_tuples(fixture, models)
+    assert ("marriage", "bhava", "7", 1.0, "resolved", None, False, "BPHS ch.18; Phaladeepika ch.12") in got
+    assert ("surgery", "lord", "8L", 1.0, "resolved", "afflicted", False, None) in got
+    # kārakas are matched by EXACT title-case name, as the writer keys them
+    fixture2 = dict(fixture, positive_facts=[("f-ven", "VEN")],
+                    citation_by_class={"m": None})
+    got2 = R.expected_row_tuples(fixture2, {"m": ([7], [], ["venus"])})
+    assert not any(tp[1] == "sensitive_degree" for tp in got2)
+    got3 = R.expected_row_tuples(fixture2, {"m": ([7], [], ["Venus"])})
+    assert ("m", "sensitive_degree", "f-ven", 0.5, "resolved", None, True, None) in got3
+
+
+def test_signature_models_mirror_carries_the_migration_seeds_exact_lord_entries():
+    assert R.SIGNATURE_MODELS["major_loss"][1] == ["2L/11L afflicted", "12L active"]
+    assert R.SIGNATURE_MODELS["financial_deception"][1] == ["2L/11L afflicted", "12L active"]
+    assert "birth_anchor" not in R.SIGNATURE_MODELS and len(R.SIGNATURE_MODELS) == 26
+    assert set(R.SIGNATURE_MODELS) == set(B.ELIGIBLE_EVENT_CLASSES)
 
 
 def test_a_transferred_qualifier_with_the_same_count_is_rejected():

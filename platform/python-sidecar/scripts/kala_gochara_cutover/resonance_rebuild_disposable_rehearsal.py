@@ -62,7 +62,9 @@ from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 SIDECAR = Path(__file__).resolve().parents[2]
-MIGRATIONS = SIDECAR.parent / "migrations"
+# The production runner's two migration roots (platform/scripts/migrate.ts:834-835).
+MIGRATION_ROOTS = (SIDECAR.parent / "migrations", SIDECAR.parent / "supabase" / "migrations")
+MIGRATIONS = MIGRATION_ROOTS[0]
 sys.path.insert(0, str(SIDECAR))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -89,8 +91,10 @@ SIGN_NUMS = {
     "VEN": 7, "SAT": 10, "RAH_MEAN": 11, "KET_MEAN": 5,
 }
 
-# Mirrors COVERAGE_QUALITY_NOTES in services/ka_gochara_resonance/writer.py —
-# synthetic rehearsal signature models, same shapes as the seeded ontology.
+# Mirror of the migration seed (388 + 456) for the writer's 26 eligible classes,
+# used by the DB-free tests; the live rehearsal loads the REAL seeded ontology and
+# FAILS if this mirror drifts from it (verify_acceptance: mirror_matches_migration_seed).
+# birth_anchor (migration 456, retained ontology row) is deliberately absent — N6.
 SIGNATURE_MODELS = {
     "marriage": ([7, 2], ["7L"], ["Venus"]),
     "major_gain": ([2, 11], ["2L", "11L"], ["Jupiter", "Mercury"]),
@@ -109,69 +113,190 @@ SIGNATURE_MODELS = {
     "childbirth": ([5, 1], ["5L"], ["Jupiter"]),
     "parental_event": ([4, 9], ["4L", "9L"], ["Moon", "Sun"]),
     "bereavement": ([8, 12, 2], ["8L", "maraka lords (2L/7L)"], ["Saturn", "Ketu"]),
-    "major_loss": ([2, 11, 12], ["2L/11L afflicted", "12L"], ["Saturn", "Rahu"]),
+    "major_loss": ([2, 11, 12], ["2L/11L afflicted", "12L active"], ["Saturn", "Rahu"]),
     "property_acquisition": ([4], ["4L"], ["Mars"]),
     "relocation": ([4, 3, 12], ["4L", "3L"], ["Moon", "Rahu"]),
     "foreign_settlement": ([12, 9, 7], ["12L", "9L"], ["Rahu"]),
     "spiritual_turn": ([9, 12, 5], ["9L", "12L"], ["Jupiter", "Ketu"]),
     "achievement_recognition": ([10, 11, 5], ["10L", "11L", "5L"], ["Sun", "Mercury"]),
-    "financial_deception": ([2, 11, 12], ["2L/11L afflicted", "12L"], ["Rahu", "Saturn"]),
+    "financial_deception": ([2, 11, 12], ["2L/11L afflicted", "12L active"], ["Rahu", "Saturn"]),
     "psychological_arc": ([1, 6, 12], ["1L", "6L"], ["Moon", "Mercury", "Saturn"]),
     "travel_event": ([3, 9, 12], ["3L", "9L"], ["Moon"]),
 }
 
+# ASTRA v1.3 amendment 1: every input table the writer reads is created from
+# the CHECKED-IN MIGRATIONS, never hand-declared (the previous stub declared
+# brahma_event_ontology.citations JSONB and chart_facts.fact_id UUID, masking
+# the production TEXT[] / TEXT types). Only asset_registry — bookkeeping the
+# ontology migrations INSERT/UPDATE into, never read by the writer — is a stub
+# wide enough for those statements.
 STUB_DDL = """
 CREATE TABLE IF NOT EXISTS asset_registry (
     asset_id TEXT PRIMARY KEY, layer TEXT, sort_order INT,
     sanskrit_name TEXT, english_name TEXT, english_description TEXT,
     storage_type TEXT, target_table TEXT, count_sql TEXT, size_sql TEXT,
     target_floor INT, scope TEXT, is_active BOOLEAN, has_writer BOOLEAN,
-    layer_name TEXT, layer_index TEXT, catalog_status TEXT, depends_on TEXT[]
-);
-CREATE TABLE IF NOT EXISTS brahma_event_ontology (
-    event_class_id TEXT PRIMARY KEY,
-    signature_model JSONB,
-    citations JSONB
-);
-CREATE TABLE IF NOT EXISTS bg_transit_rules (
-    id SERIAL PRIMARY KEY,
-    rule_type TEXT NOT NULL,
-    graha TEXT NOT NULL,
-    primary_house INT NOT NULL,
-    classical_citation TEXT
-);
-CREATE TABLE IF NOT EXISTS chart_facts (
-    fact_id UUID PRIMARY KEY,
-    chart_id UUID NOT NULL,
-    ayanamsha_id TEXT NOT NULL,
-    fact_category TEXT NOT NULL,
-    fact_subject TEXT NOT NULL,
-    fact_key TEXT NOT NULL,
-    fact_value_text TEXT,
-    fact_value_num NUMERIC
-);
-CREATE TABLE IF NOT EXISTS ga_yoga_firings (
-    chart_id UUID NOT NULL,
-    ayanamsha_id TEXT NOT NULL,
-    yoga_canonical_id TEXT NOT NULL,
-    fired BOOLEAN NOT NULL,
-    constituent_fact_ids JSONB,
-    constituent_planets JSONB,
-    constituent_houses JSONB,
-    bhanga_active BOOLEAN
-);
-CREATE TABLE IF NOT EXISTS chart_dashas (
-    chart_id UUID NOT NULL,
-    ayanamsha_id TEXT NOT NULL,
-    system_id TEXT NOT NULL,
-    level_n INT NOT NULL,
-    lord_graha TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS reference_signs (
-    sign_id INT PRIMARY KEY,
-    lord TEXT NOT NULL
+    layer_name TEXT, layer_index TEXT, catalog_status TEXT, depends_on TEXT[],
+    display_name TEXT, asset_type TEXT, has_substeps BOOLEAN
 );
 """
+
+# Tables whose DDL is EXTRACTED statement-by-statement from every migration
+# that creates or alters them (CREATE TABLE / ALTER TABLE / CREATE INDEX ON /
+# DO-blocks that ALTER them), in migration order — the seeds and
+# asset_registry bookkeeping those files also carry are not applied.
+DERIVED_TABLES = ("chart_facts", "chart_dashas", "ga_yoga_firings", "reference_signs",
+                  "bg_transit_rules")
+# Migrations applied VERBATIM: the ontology (its real 27-class seed — including
+# the retained birth_anchor row — and citations TEXT[]) and the resonance map
+# (459 table, 550 event_class FK to the ontology, 1080 resolution state).
+VERBATIM_MIGRATIONS = ("388_brahma_ghatana_ontology.sql", "456_brahma_event_ontology_dr13_shapes.sql")
+VERBATIM_MAP_MIGRATIONS = ("459_gochara_resonance_map.sql",
+                           "550_gochara_resonance_map_event_class_fk.sql",
+                           "1080_nirmana_l3_gochara_resonance_target_resolution_state.sql")
+
+
+def find_migration(name: str) -> Path:
+    for root in MIGRATION_ROOTS:
+        p = root / name
+        if p.is_file():
+            return p
+    raise FileNotFoundError(f"migration {name!r} not found under {MIGRATION_ROOTS}")
+
+
+def _migration_sort_key(p: Path):
+    m = re.match(r"^(\d+)_", p.name)
+    return (1, int(m.group(1)), p.name) if m else (0, 0, p.name)
+
+
+def split_sql_statements(text: str) -> list[str]:
+    """Top-level SQL statements: comments stripped, ';' inside quoted strings
+    and dollar-quoted (DO $$…$$) blocks never splits."""
+    stmts, buf, i, n = [], [], 0, len(text)
+    while i < n:
+        if text.startswith("--", i):
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        if text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        ch = text[i]
+        if ch == "'":
+            j = i + 1
+            while j < n:
+                if text[j] == "'" and text[j + 1:j + 2] == "'":
+                    j += 2
+                    continue
+                if text[j] == "'":
+                    break
+                j += 1
+            buf.append(text[i:j + 1])
+            i = j + 1
+            continue
+        m = re.match(r"\$[A-Za-z_]*\$", text[i:])
+        if m:
+            tag = m.group(0)
+            j = text.find(tag, i + len(tag))
+            j = n if j < 0 else j + len(tag)
+            buf.append(text[i:j])
+            i = j
+            continue
+        if ch == ";":
+            st = "".join(buf).strip()
+            if st:
+                stmts.append(st)
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    st = "".join(buf).strip()
+    if st:
+        stmts.append(st)
+    return stmts
+
+
+def table_ddl_statements(text: str, table: str) -> list[str]:
+    """The statements of one migration that define TABLE's schema: its
+    CREATE TABLE, ALTER TABLE, CREATE [UNIQUE] INDEX … ON it, and DO blocks
+    that ALTER it. Seeds, COMMENTs, other tables and bookkeeping are left."""
+    keep = []
+    T = re.escape(table)
+    for st in split_sql_statements(text):
+        head = re.sub(r"\s+", " ", st[:240])
+        if re.match(rf"(?i)CREATE TABLE (IF NOT EXISTS )?(public\.)?{T}\b", head):
+            keep.append(st)
+        elif re.match(rf"(?i)ALTER TABLE (ONLY )?(public\.)?{T}\b", head):
+            keep.append(st)
+        elif (re.match(r"(?i)CREATE (UNIQUE )?INDEX", head)
+              and re.search(rf"(?i)\bON (public\.)?{T}\b", head)):
+            keep.append(st)
+        elif (re.match(r"(?i)DO\s+\$", head)
+              and re.search(rf"(?i)ALTER TABLE (ONLY )?(public\.)?{T}\b", st)):
+            keep.append(st)
+    return keep
+
+
+def rehearsal_schema_plan() -> dict:
+    """{table: [(migration file name, [statements])]} for every DERIVED
+    table, scanned from BOTH migration roots in migration order — derived
+    from the checked-in migrations, not hand-picked."""
+    plan: dict = {}
+    for table in DERIVED_TABLES:
+        files = []
+        for root in MIGRATION_ROOTS:
+            for p in root.glob("*.sql"):
+                if re.search(rf"\b{re.escape(table)}\b", p.read_text()):
+                    files.append(p)
+        entries = []
+        for p in sorted(set(files), key=_migration_sort_key):
+            stmts = table_ddl_statements(p.read_text(), table)
+            if stmts:
+                entries.append((p.name, stmts))
+        plan[table] = entries
+    return plan
+
+
+def apply_rehearsal_schema(cur) -> dict:
+    """Stub bookkeeping → ontology migrations verbatim → derived input-table
+    DDL → resonance-map migrations verbatim. Returns what was applied."""
+    applied: dict = {"stub_tables": ["asset_registry"], "verbatim": [], "derived": {}}
+    cur.execute(STUB_DDL)
+    for name in VERBATIM_MIGRATIONS:
+        cur.execute(find_migration(name).read_text())
+        applied["verbatim"].append(name)
+    for table, entries in rehearsal_schema_plan().items():
+        applied["derived"][table] = []
+        for fname, stmts in entries:
+            for st in stmts:
+                cur.execute(st)
+            applied["derived"][table].append({"migration": fname, "statements": len(stmts)})
+    for name in VERBATIM_MAP_MIGRATIONS:
+        cur.execute(find_migration(name).read_text())
+        applied["verbatim"].append(name)
+    return applied
+
+
+def load_ontology_models(cur) -> dict:
+    """The eligible classes' signature models as the WRITER reads them from
+    the real (migration-seeded) ontology: {class: (houses[int], lords[raw],
+    karakas[raw], citation|None)}; also the retained non-eligible classes
+    present in the table."""
+    rows = cur.execute(
+        "SELECT event_class_id, signature_model, citations FROM brahma_event_ontology"
+        " ORDER BY event_class_id").fetchall()
+    models, others = {}, []
+    for cls, sm, cites in rows:
+        if cls not in B.ELIGIBLE_EVENT_CLASSES:
+            others.append(cls)
+            continue
+        houses = sorted({int(str(h).strip()) for h in (sm.get("houses") or []) if str(h).strip().isdigit()})
+        models[cls] = (houses, list(sm.get("lords") or []), list(sm.get("karakas") or []),
+                       "; ".join(cites) if cites else None)
+    return {"models": models, "non_eligible_present": others}
+
 
 SIGN_LORDS = [
     (1, "Mars"), (2, "Venus"), (3, "Mercury"), (4, "Moon"), (5, "Sun"),
@@ -198,6 +323,7 @@ def expected_lord_identities(signature_models: dict = SIGNATURE_MODELS):
 KARAKA_SUBJECT = {"sun": "SUN", "moon": "MOON", "mars": "MAR", "mercury": "MER",
                   "jupiter": "JUP", "venus": "VEN", "saturn": "SAT", "rahu": "RAH_MEAN",
                   "ketu": "KET_MEAN"}
+KARAKA_TITLE_NAMES = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
 SIGN_NAMES = ("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
               "Sagittarius", "Capricorn", "Aquarius", "Pisces")
 
@@ -214,8 +340,8 @@ def expected_row_tuples(fixture: dict, signature_models: dict = SIGNATURE_MODELS
     are part of the identity — a swap between classes or a changed weight
     with the same totals fails."""
     out = set()
-    cite = fixture["ontology_citation"]
     for cls, (houses, lords, karakas) in signature_models.items():
+        cite = fixture["citation_by_class"][cls]
         kl = {str(k).lower() for k in karakas}
         for h in houses:
             out.add((cls, "bhava", str(h), 1.0, "resolved", None, False, cite))
@@ -230,7 +356,9 @@ def expected_row_tuples(fixture: dict, signature_models: dict = SIGNATURE_MODELS
                 out.add((cls, "lord", token, 1.0, "resolved", q, False, cite))
         for k in karakas:
             out.add((cls, "karaka", str(k), 1.0, "resolved", None, False, cite))
-        subjects = {KARAKA_SUBJECT[k] for k in kl if k in KARAKA_SUBJECT}
+        # the writer keys _KARAKA_FACT_SUBJECT by the EXACT title-case name
+        subjects = {KARAKA_SUBJECT[str(k).lower()] for k in karakas
+                    if str(k) in KARAKA_TITLE_NAMES}
         for fid, subj in fixture["positive_facts"]:
             if subj in subjects:
                 out.add((cls, "sensitive_degree", fid, 0.5, "resolved", None, True, None))
@@ -336,6 +464,18 @@ def verify_acceptance(ver: dict) -> list[str]:
         f.append("detector controls: post-control digest differs from the rerun digest")
     if ver.get("negative_fact_ids_referenced", 1) != 0:
         f.append("identity: a negative-result sensitive fact id is referenced")
+    onto = ver.get("ontology") or {}
+    if onto.get("birth_anchor_present_in_ontology") is not True:
+        f.append("ontology control: the retained birth_anchor row is absent from the fixture ontology")
+    if onto.get("birth_anchor_rows_in_map", 1) != 0:
+        f.append(f"N6: {onto.get('birth_anchor_rows_in_map')} birth_anchor rows in the map")
+    if onto.get("map_classes_equal_eligible") is not True:
+        f.append("class universe: map classes differ from the writer's TARGET_EVENT_CLASSES")
+    if onto.get("mirror_matches_migration_seed") is not True:
+        f.append(f"ontology: SIGNATURE_MODELS mirror differs from the migration seed for {onto.get('mirror_diff')}")
+    if onto.get("citations_type") != "ARRAY" or onto.get("chart_facts_fact_id_type") != "text":
+        f.append(f"schema: citations {onto.get('citations_type')!r} / fact_id {onto.get('chart_facts_fact_id_type')!r}"
+                 " — not the migrations' TEXT[] / TEXT")
     r5 = ver.get("r5_identity_sql") or {}
     if r5.get("qualified_not_in_ontology") != 0 or r5.get("ontology_not_qualified") != 0:
         f.append(f"R-5 SQL identity: EXCEPT rows {r5} (both must be 0)")
@@ -443,10 +583,6 @@ def drop_disposable_database(maintenance_dsn: str, name: str) -> None:
 
 # ── the rehearsal ─────────────────────────────────────────────────────────────
 
-def _apply_migration_file(cur, name: str) -> None:
-    cur.execute((MIGRATIONS / name).read_text())
-
-
 def _digest(cur, table: str, chart_id: str):
     """(count, CONTENT digest) — the ID-independent rerun comparison."""
     n, d = cur.execute(B.partition_digest_sql(table, chart_id)).fetchone()
@@ -463,35 +599,38 @@ def _full_digest(cur, table: str, chart_id: str):
 def _seed(cur) -> dict:
     """Seed the fixture; return its identities (fact ids by role) for the
     exact-set acceptance checks."""
+    # The ontology is the REAL migration seed (388 + 456): 27 classes including
+    # the retained, never-eligible birth_anchor row; citations TEXT[].
+    onto = load_ontology_models(cur)
     identities: dict = {"positive_fact_ids": [], "negative_fact_ids": [],
                         "positive_facts": [],  # (fact_id, subject)
                         "arudha_fact_ids_by_house": {}, "arudha_sign_by_house": {},
                         "live_yoga_ids": ["yoga_demo_gajakesari", "yoga_demo_bhanga"],
                         "live_yogas": [("yoga_demo_gajakesari", [7, 11], ["venus", "jupiter"], False),
                                        ("yoga_demo_bhanga", [10], ["sun"], True)],
-                        "ontology_citation": "BPHS synthetic rehearsal citation (disposable fixture)"}
-    for event_class, (houses, lords, karakas) in SIGNATURE_MODELS.items():
-        cur.execute(
-            "INSERT INTO brahma_event_ontology (event_class_id, signature_model, citations)"
-            " VALUES (%s, %s::jsonb, %s::jsonb)",
-            (event_class,
-             json.dumps({"houses": houses, "lords": lords, "karakas": karakas}),
-             json.dumps(["BPHS synthetic rehearsal citation (disposable fixture)"])),
-        )
+                        "citation_by_class": {c: m[3] for c, m in onto["models"].items()},
+                        "db_signature_models": {c: (m[0], m[1], m[2]) for c, m in onto["models"].items()},
+                        "non_eligible_classes_present": onto["non_eligible_present"]}
     cur.executemany(
-        "INSERT INTO bg_transit_rules (rule_type, graha, primary_house, classical_citation)"
-        " VALUES (%s, %s, %s, %s)",
-        [("favourable", "venus", 7, "BPHS ch.29 (synthetic rehearsal)"),
-         ("favourable", "jupiter", 11, "BPHS ch.29 (synthetic rehearsal)"),
-         ("unfavourable", "saturn", 8, "Phaladeepika ch.26 (synthetic rehearsal)")],
+        "INSERT INTO bg_transit_rules (rule_type, graha, primary_house, phala, classical_citation)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        [("favourable", "venus", 7, "gain (synthetic rehearsal)", "BPHS ch.29 (synthetic rehearsal)"),
+         ("favourable", "jupiter", 11, "gain (synthetic rehearsal)", "BPHS ch.29 (synthetic rehearsal)"),
+         ("unfavourable", "saturn", 8, "loss (synthetic rehearsal)", "Phaladeepika ch.26 (synthetic rehearsal)")],
     )
-    cur.executemany("INSERT INTO reference_signs (sign_id, lord) VALUES (%s, %s)", SIGN_LORDS)
+    cur.executemany(
+        "INSERT INTO reference_signs (sign_id, canonical_name_en, canonical_name_sa, lord, element,"
+        " modality, natural_house, is_odd, is_biped, source_citation)"
+        " VALUES (%s, %s, %s, %s, 'fire', 'movable', %s, %s, TRUE, 'BPHS ch.1 (synthetic rehearsal)')",
+        [(n, SIGN_NAMES[n - 1], SIGN_NAMES[n - 1], lord, n, n % 2 == 1) for n, lord in SIGN_LORDS])
 
     fact_rows = []
+    build_id = str(uuid.uuid4())
 
-    def add_fact(category, subject, key, text=None, num=None):
+    def add_fact(category, subject, key, text=None, num=None, formula_id=None):
         fid = uuid.uuid4()
-        fact_rows.append((str(fid), CHART_ID, AYANAMSHA, category, subject, key, text, num))
+        fact_rows.append((str(fid), CHART_ID, AYANAMSHA, build_id, category, subject, key, text,
+                          num, formula_id))
         return fid
 
     for subject, sign_num in SIGN_NUMS.items():
@@ -511,7 +650,10 @@ def _seed(cur) -> dict:
         key = SENSITIVE_KEYS[i % len(SENSITIVE_KEYS)]
         pos, neg = vocab[key]
         value = neg if i < FIXTURE_SENSITIVE_NEGATIVE else pos
-        fid = add_fact("sensitive_degree_check", subject, key, text=value)
+        # migration 215's dedup index admits one (subject, key, build) per
+        # formula variant: 176 rows = 5 variant families × 36 (subject, key) pairs
+        fid = add_fact("sensitive_degree_check", subject, key, text=value,
+                       formula_id=f"rehearsal_variant_{i // (len(subjects) * len(SENSITIVE_KEYS))}")
         sensitive_fact_ids.append((str(fid), value))
         (identities["negative_fact_ids"] if i < FIXTURE_SENSITIVE_NEGATIVE
          else identities["positive_fact_ids"]).append(str(fid))
@@ -532,9 +674,12 @@ def _seed(cur) -> dict:
     add_fact("panchanga_nakshatra_moon", "NAKSHATRA_MOON_BIRTH", "number", num=4)
 
     cur.executemany(
-        "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, fact_category,"
-        " fact_subject, fact_key, fact_value_text, fact_value_num)"
-        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, build_id, fact_category,"
+        " fact_subject, fact_key, fact_value_text, fact_value_num, formula_id,"
+        " citation_ref, citation_human, source_calculation, verification_pass_status,"
+        " engine_version, computed_at)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'rehearsal', 'synthetic rehearsal fact',"
+        " 'fixture', 'two_pass_verified', 'rehearsal-0', NOW())",
         fact_rows,
     )
     cur.executemany(
@@ -549,10 +694,15 @@ def _seed(cur) -> dict:
           '["moon"]', "[4]", False)],
     )
     cur.executemany(
-        "INSERT INTO chart_dashas (chart_id, ayanamsha_id, system_id, level_n, lord_graha)"
-        " VALUES (%s, %s, 'vimshottari', 1, %s)",
-        [(CHART_ID, AYANAMSHA, lord) for lord in
-         ("venus", "jupiter", "saturn", "sun", "moon", "mars", "mercury", "rahu", "ketu")],
+        "INSERT INTO chart_dashas (chart_id, ayanamsha_id, build_id, system_id, level_n, lord_graha,"
+        " start_date, end_date, start_iso, end_iso, duration_days, verification_pass_status,"
+        " verification_method, citation_ref, citation_human, engine_version)"
+        " VALUES (%s, %s, %s, 'vimshottari', 1, %s, %s, %s, %s, %s, %s, 'two_pass_verified',"
+        " 'fixture', 'rehearsal', 'synthetic rehearsal dasha', 'rehearsal-0')",
+        [(CHART_ID, AYANAMSHA, build_id, lord, f"{1984 + 10 * i}-01-01", f"{1994 + 10 * i}-01-01",
+          f"{1984 + 10 * i}-01-01T00:00:00Z", f"{1994 + 10 * i}-01-01T00:00:00Z", 3652)
+         for i, lord in enumerate(("venus", "jupiter", "saturn", "sun", "moon", "mars", "mercury",
+                                   "rahu", "ketu"))],
     )
     # the BEFORE partition (pre-WP3c legacy map, finding #9 verbatim shape)
     for fid, _value in sensitive_fact_ids:
@@ -766,11 +916,9 @@ def main(argv=None) -> int:
         cur = conn.cursor()
         report["identity"] = assert_disposable_identity(conn, name)
 
-        # 1. schema: stub inputs + REAL migrations 459 + 1080
-        cur.execute(STUB_DDL)
-        _apply_migration_file(cur, "459_gochara_resonance_map.sql")
-        _apply_migration_file(cur, "1080_nirmana_l3_gochara_resonance_target_resolution_state.sql")
-        # 2. seed
+        # 1. schema from the checked-in migrations (ASTRA v1.3 amendment 1)
+        report["schema"] = apply_rehearsal_schema(cur)
+        # 2. seed (the ontology is the migrations' own seed)
         fixture = _seed(cur)
         conn.commit()
 
@@ -866,7 +1014,7 @@ def main(argv=None) -> int:
             (CHART_ID,)).fetchall()}
         # CLASS-ASSOCIATED identities and FULL retained values (ASTRA v1.2
         # P1-3): every row of the exactly-determined types as a tuple.
-        exp_tuples = expected_row_tuples(fixture)
+        exp_tuples = expected_row_tuples(fixture, fixture["db_signature_models"])
         act_tuples = {
             (c, ty, r, float(wt), st, q, bool(u), ci) for c, ty, r, wt, st, q, u, ci in cur.execute(
                 "SELECT event_class, target_type, target_ref, weight, target_resolution_state,"
@@ -892,6 +1040,27 @@ def main(argv=None) -> int:
         }
         act_sensitive = {tp[2] for tp in act_tuples if tp[1] == "sensitive_degree"}
         ver["negative_fact_ids_referenced"] = len(act_sensitive & set(fixture["negative_fact_ids"]))
+        # the class universe: the writer's TARGET_EVENT_CLASSES, never every ontology row
+        map_classes = {c for (c,) in cur.execute(
+            "SELECT DISTINCT event_class FROM gochara_resonance_map WHERE chart_id=%s",
+            (CHART_ID,)).fetchall()}
+        mirror = {c: (sorted(h), list(l), list(k)) for c, (h, l, k) in SIGNATURE_MODELS.items()}
+        db_models = {c: (sorted(h), list(l), list(k)) for c, (h, l, k) in fixture["db_signature_models"].items()}
+        ver["ontology"] = {
+            "eligible_classes": sorted(B.ELIGIBLE_EVENT_CLASSES),
+            "non_eligible_classes_present_in_ontology": sorted(fixture["non_eligible_classes_present"]),
+            "birth_anchor_present_in_ontology": "birth_anchor" in fixture["non_eligible_classes_present"],
+            "birth_anchor_rows_in_map": sum(1 for c in map_classes if c == "birth_anchor"),
+            "map_classes_equal_eligible": map_classes == set(B.ELIGIBLE_EVENT_CLASSES),
+            "mirror_matches_migration_seed": mirror == db_models,
+            "mirror_diff": sorted(c for c in set(mirror) | set(db_models) if mirror.get(c) != db_models.get(c)),
+            "citations_type": cur.execute(
+                "SELECT data_type FROM information_schema.columns WHERE table_name='brahma_event_ontology'"
+                " AND column_name='citations'").fetchone()[0],
+            "chart_facts_fact_id_type": cur.execute(
+                "SELECT data_type FROM information_schema.columns WHERE table_name='chart_facts'"
+                " AND column_name='fact_id'").fetchone()[0],
+        }
         _viol = cur.execute(B.value_invariants_sql(CHART_ID)).fetchall()
         ver["value_invariant_violations"] = len(_viol)
         ver["value_invariant_violation_rows"] = [list(map(str, r)) for r in _viol[:25]]
