@@ -76,8 +76,12 @@ class FakeCursor:
         elif s.startswith("SELECT state FROM build_run_assets"):
             self._result = [{"state": self._state.get(params[1])}]
         elif "UPDATE build_run_assets SET state='error'" in s:
-            # _mark_asset_blocked records the blocked asset as error
-            self._state[params[2]] = "error"
+            # _mark_asset_blocked records the blocked asset as error. Packet B1 added
+            # two more bound params (disposition, blocked_by_asset_id) ahead of
+            # run_id/asset_id in this UPDATE's param tuple — asset_id is the LAST
+            # positional param regardless of how many columns the SET clause grows
+            # to, so index from the end rather than a fixed absolute position.
+            self._state[params[-1]] = "error"
             self._result = []
         else:
             # INSERT asset_throughput / other writes — ignore
