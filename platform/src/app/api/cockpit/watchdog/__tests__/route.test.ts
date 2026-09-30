@@ -120,7 +120,8 @@ describe('POST /api/cockpit/watchdog — planned-orphan reaper (D2)', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 4. M-4 DELETE build_run_assets
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })          // 5. M-4 DELETE build_runs
 
-    const { POST, UNDISPATCHED_RUN_MESSAGE } = await import('../route')
+    const { POST } = await import('../route')
+    const { UNDISPATCHED_RUN_MESSAGE } = await import('../watchdogMessages')
     const res = await POST(makeReq())
     expect(res.status).toBe(200)
 
@@ -157,7 +158,8 @@ describe('POST /api/cockpit/watchdog — planned-orphan reaper (D2)', () => {
 
   it('undispatched reaper SQL targets planned + started_at IS NULL + created_at threshold, and binds the attributable message', async () => {
     noOrphans()
-    const { POST, UNDISPATCHED_RUN_MESSAGE } = await import('../route')
+    const { POST } = await import('../route')
+    const { UNDISPATCHED_RUN_MESSAGE } = await import('../watchdogMessages')
     await POST(makeReq())
 
     // M-5 deleted (A2_review_20260926T123936Z.md §C1); undispatched is slot 3 (index 2)
