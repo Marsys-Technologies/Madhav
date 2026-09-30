@@ -754,3 +754,123 @@ def test_a_literal_ending_in_from_is_dynamic_only_when_it_is_concatenated_on():
     assert not dyn("const q = 'SELECT id FROM t_x' ;\n")
     assert dyn("const q = `SELECT id FROM public.${T}`;\n") and dyn("const q = `SELECT id FROM \"${T}\"`;\n")
     assert dyn("const q = `SELECT 1 FROM o JOIN ${T}`;\n") and dyn("const q = `SELECT 1 FROM ONLY ${T}`;\n")
+
+
+# ───────────────────────── final review: SQL comments, split literals, more dynamic spellings, regex/contract edges ─────────────────────────
+
+@pytest.mark.parametrize("sql", [
+    "SELECT id FROM other WHERE k IN ( /* c */ SELECT id, signature_tier FROM t_x)",
+    "SELECT id FROM other WHERE k IN (-- c\nSELECT id, signature_tier FROM t_x)",
+    "SELECT id FROM other WHERE k IN (/* a */ /* b */\n  SELECT id, signature_tier FROM t_x)",
+    "INSERT INTO z (signature_tier) /* c */ SELECT signature_tier FROM t_x",
+    "SELECT id FROM other UNION -- c\n SELECT signature_tier FROM t_x",
+], ids=["block-comment", "line-comment", "two-comments", "insert-comment", "union-comment"])
+def test_a_sql_comment_does_not_hide_the_subselect_paren_or_write_prefix(tree, monkeypatch, sql):
+    tree.write(tree.layers / "L0_x", "q.ts", _cap(sql))
+    d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
+    assert d["v"] == ac.PARTIAL, (sql, d)
+
+
+def test_a_comment_inside_the_select_owner_search_does_not_unbalance_it():
+    """A `)` inside a SQL comment is not a paren."""
+    sel = list(ac._served_selects("t_x", ["SELECT id, /* ) */ signature_tier FROM t_x"], strict=True))
+    assert len(sel) == 1 and sel[0][3] is not None and "signature_tier" in sel[0][3], sel
+
+
+@pytest.mark.parametrize("lits, served", [
+    (["x IN (", "SELECT id, signature_tier FROM t_x)"], False),                   # sub-select split across literals
+    (["x IN (", "SELECT id, signature_tier ", "FROM t_x)"], False),               # ... and the FROM split off too
+    (["INSERT INTO z (a) ", "SELECT signature_tier FROM t_x"], False),
+    (["SELECT id FROM o UNION ", "SELECT signature_tier FROM t_x"], False),
+    (["x IN ( /* c */ ", "SELECT signature_tier FROM t_x)"], False),
+    (["SELECT id, signature_tier ", "FROM t_x"], True),                           # the plain split select
+    (["Create a chart", "SELECT id, signature_tier FROM t_x"], True),             # an unrelated prose literal before it
+    (["a", "SELECT id, signature_tier ", "FROM t_x"], True),
+], ids=["sub-split", "sub-split-from", "insert-split", "union-split", "comment-split", "plain-split", "prose-before", "plain-split-2"])
+def test_a_select_at_the_start_of_a_literal_reads_its_context_from_the_previous_literal(lits, served):
+    got = list(ac._served_selects("t_x", lits, strict=True))
+    assert len(got) == 1, got
+    assert (got[0][3] is not None) is served, got
+
+
+def test_the_split_select_and_the_split_subselect_end_to_end(tree, monkeypatch):
+    tree.write(tree.layers / "L0_x", "q.ts",
+               "export const cap = {\n  id: 'a',\n  " + CONTRACT + "\n  run: () => query('SELECT id, signature_tier ' + 'FROM t_x'),\n}\n")
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+    tree.write(tree.layers / "L0_x", "q.ts",
+               "export const cap = {\n  id: 'a',\n  " + CONTRACT + "\n  run: () => query('SELECT id FROM o WHERE k IN (' + 'SELECT id, signature_tier FROM t_x)'),\n}\n")
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
+
+
+# (2) more run-time table-name spellings
+
+@pytest.mark.parametrize("src", [
+    "export const q = () => query(`SELECT id FROM \"public\".\"${T}\"`);\n",
+    "export const q = () => query('SELECT id FROM '.concat(T));\n",
+    "export const q = () => query(['SELECT id FROM', T].join(' '));\n",
+    "export const q = () => query(format('SELECT id FROM %I', T));\n",
+    "export const q = () => query(format('SELECT id FROM public.%I WHERE k = %L', T, K));\n",
+    "export const q = () => query('SELECT id FROM ' /* table */ + T);\n",
+    "export const q = () => query('SELECT id FROM ' // table\n  + T);\n",
+    "export const q = () => query('SELECT id FROM public.' + T);\n",
+])
+def test_more_dynamic_table_name_spellings_block_na(tree, monkeypatch, src):
+    tree.write(tree.outside, "dyn.ts", "const T = 't_x';\n" + src)
+    d = _dens(_measure(monkeypatch, tree, _reg_x(), outside=True), "bg_x")
+    assert _blocked(d)[0] and "run-time" in d["measured"], (src, d)
+
+
+def test_a_complete_table_name_that_is_not_concatenated_is_not_dynamic():
+    def dyn(src):
+        return ac._dynamic_from(src, ac._ts_literal_spans(src))
+    assert not dyn("const a = ['SELECT id FROM t_x'];\n")
+    assert not dyn("const a = format('no table here %I', T);\n")
+
+
+# (4) contract regex and entry-span edges
+
+@pytest.mark.parametrize("val", ["trueValue", "nullableContract", "falsey", "undefinedContract"])
+def test_an_identifier_that_merely_starts_like_a_literal_is_a_real_contract_value(tree, monkeypatch, val):
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n" % val)
+    tree.write(tree.layers / "L0_x", "q.ts", body)
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+
+
+def test_density_contract_true_is_not_a_declaration(tree, monkeypatch):
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: true,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n")
+    tree.write(tree.layers / "L0_x", "q.ts", body)
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.FAIL
+
+
+def test_enclosing_object_skips_nested_objects_on_both_sides():
+    src = "x { a: { b: 1 }, k: 2, c: { d: { e: 3 } } } y"
+    pos = src.index("k:")
+    s, e = ac._enclosing_object(src, pos)
+    assert src[s] == "{" and src[e - 1] == "}" and src[s:e] == "{ a: { b: 1 }, k: 2, c: { d: { e: 3 } } }", (s, e)
+    assert ac._enclosing_object("no braces k: 1", 10) == (0, len("no braces k: 1"))
+
+
+def test_a_nested_object_before_the_contract_key_does_not_hide_the_entry(tree, monkeypatch):
+    body = ("export const caps = [\n"
+            "  { id: 'a', meta: { x: { y: 1 } }, density_contract: { paginated: true }, run: async () => query(`SELECT id, signature_tier FROM t_x`) },\n"
+            "  { id: 'b', run: async () => query(`SELECT id FROM t_x`) },\n]\n")
+    tree.write(tree.layers / "L0_x", "q.ts", body)
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+    # the contract sits in entry B; A (with the tier select) has none
+    body = ("export const caps = [\n"
+            "  { id: 'a', meta: { x: { y: 1 } }, run: async () => query(`SELECT id, signature_tier FROM t_x`) },\n"
+            "  { id: 'b', meta: { z: 1 }, density_contract: { paginated: true }, run: async () => query(`SELECT id FROM t_x`) },\n]\n")
+    tree.write(tree.layers / "L0_x", "q.ts", body)
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
+
+
+def test_the_unparsed_message_names_the_real_causes(tree, monkeypatch):
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id FROM t_x", contract=False))
+    m = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["measured"]
+    assert "nested template literal" in m and "regex" in m and "unbalanced quote" in m and "odd.ts" in m, m
+
+
+def test_a_word_from_inside_a_sql_comment_does_not_cancel_a_split_select():
+    got = list(ac._served_selects("t_x", ["SELECT id, signature_tier /* from elsewhere */ ", "FROM t_x"], strict=True))
+    assert len(got) == 1 and got[0][3] is not None, got
+    assert list(ac._served_selects("t_x", ["SELECT id FROM o ", "FROM t_x"], strict=True)) == []

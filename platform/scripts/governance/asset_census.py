@@ -1509,20 +1509,24 @@ def _ts_desynced(src: str) -> bool:
     return False
 
 
-_DYN_FROM = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?\"?(?:[A-Za-z_]\w*\.)?\"?\$\{", re.I)
-# a literal that ENDS in `FROM` / `JOIN` / `FROM <partial name>` and is concatenated on (`'… FROM ' + T`)
-_DYN_FROM_TAIL = re.compile(r"\b(?:FROM|JOIN)\b(?:\s+(?:ONLY\s+)?\"?[\w.]*)?\s*$", re.I)
+_DYN_FROM = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:\"?[A-Za-z_]\w*\"?\.)?\"?\$\{|\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:[\w\"]+\.)?%(?:\d+\$)?[IsL]", re.I)
+# a literal that ENDS in `FROM` / `JOIN` / `FROM <partial name>` and has its table name joined on in code
+_DYN_FROM_TAIL = re.compile(r"\b(?:FROM|JOIN)\b(?:\s+(?:ONLY\s+)?[\w.\"]*)?\s*$", re.I)
+_DYN_JOINED = re.compile(r"(?:\s|/\*.*?\*/|//[^\n]*\n)*(?:\+|,|\.concat\s*\()", re.S)
 
 
 def _dynamic_from(txt: str, spans: list[tuple[int, str]]) -> bool:
-    """Does any literal name its table at run time: `FROM ${T}` (also `"${T}"`, `public.${T}`, `JOIN`, `ONLY`), or a
-    literal ending in `FROM`/`JOIN`/`FROM t_` that is concatenated on with `+`?"""
+    """Does any literal name its table at run time: `FROM ${T}` (also `"${T}"`, `"public"."${T}"`, `public.${T}`, JOIN,
+    ONLY), a `format(… FROM %I …)` placeholder, or a literal ending in `FROM`/`JOIN`/`FROM t_` that has a name joined
+    on with `+`, `.concat(` or an array `,` (a comment between is skipped)?"""
     for pos, c in spans:
         if _DYN_FROM.search(c):
             return True
-        if _DYN_FROM_TAIL.search(c) and re.match(r"\s*\+", txt[pos + len(c) + 1:pos + len(c) + 40]):
+        if _DYN_FROM_TAIL.search(c) and _DYN_JOINED.match(txt[pos + len(c) + 1:pos + len(c) + 200]):
             return True
     return False
+
+
 _DECL_LINE = re.compile(r"^(?:import\b|export\b|(?:async\s+)?function\b|(?:const|let|var|class|interface|type|enum)\b)", re.M)
 
 
@@ -1616,10 +1620,30 @@ _WORD_SELECT = re.compile(r"\bSELECT\b", re.I)
 _NOT_A_READ_PREFIX = re.compile(r"\b(?:INSERT|CREATE|MERGE|COPY|UNION|INTERSECT|EXCEPT)\b", re.I)
 
 
+_SQL_TOKEN = re.compile(r"'(?:[^']|'')*'|/\*.*?\*/|--[^\n]*", re.S)
+
+
+def _sql_flat(sql: str, strings: bool = True) -> str:
+    """`sql` with its SQL comments (`/* … */`, `-- …`) — and, with `strings`, its `'…'` literals — blanked to spaces,
+    positions kept: a paren or a keyword inside a comment or a string is not SQL structure."""
+    def blank(m):
+        t = m.group(0)
+        return t if (t[0] == "'" and not strings) else re.sub(r"[^\n]", " ", t)
+    return _SQL_TOKEN.sub(blank, sql)
+
+
+# the read side of a write / a set operation, matched strictly (SQL syntax, not prose) when the evidence is only the
+# PREVIOUS literal of a concatenation
+_NOT_A_READ_STRICT = re.compile(
+    r"\b(?:INSERT\s+INTO|MERGE\s+INTO|CREATE\s+(?:OR\s+REPLACE\s+)?(?:TEMP\w*\s+|MATERIALIZED\s+|UNLOGGED\s+)?(?:TABLE|VIEW)"
+    r"|COPY\s+\S+|UNION(?:\s+ALL)?|INTERSECT|EXCEPT)\b", re.I)
+
+
 def _owner_select(head: str):
     """The SELECT that owns a FROM sitting at the end of `head`: the last whole-word SELECT after which the
-    parentheses balance (a SELECT inside an earlier `( … )` belongs to that sub-query, not to this FROM)."""
-    flat = re.sub(r"'[^']*'", lambda m: " " * len(m.group(0)), head)
+    parentheses balance (a SELECT inside an earlier `( … )` belongs to that sub-query, not to this FROM). Comments and
+    string literals are blanked first: a `)` in either is not a paren."""
+    flat = _sql_flat(head)
     for m in reversed(list(_WORD_SELECT.finditer(flat))):
         depth = 0
         for ch in flat[m.end():]:
@@ -1631,11 +1655,17 @@ def _owner_select(head: str):
     return None
 
 
-def _is_served_read(head: str, sel_start: int) -> bool:
+def _is_served_read(head: str, sel_start: int, before: str = "") -> bool:
     """Is the SELECT at `sel_start` of `head` a served READ — not a `( SELECT …` sub-query (WHERE .. IN, EXISTS, a CTE
     body) and not the read side of an INSERT / CREATE … AS / MERGE / COPY, nor a UNION / INTERSECT / EXCEPT branch
-    (its column names come from the first branch)?"""
-    pre = head[:sel_start].rsplit(";", 1)[-1]
+    (its column names come from the first branch)? SQL comments are blanked before the test. When the SELECT opens its
+    literal (`'… IN (' + 'SELECT …'`), its context is the end of the PREVIOUS literal (`before`): a `(`, or a write /
+    set-operation prefix, there makes it not-a-read. The context is judged on what is visible; a caller that cannot
+    see it (a SELECT reached through a helper, a variable) is not seen at all — disclosed limit."""
+    pre = _sql_flat(head[:sel_start], strings=False).rsplit(";", 1)[-1]
+    if not pre.strip() and before:
+        b = _sql_flat(before, strings=False).rsplit(";", 1)[-1]
+        return not b.rstrip().endswith("(") and not _NOT_A_READ_STRICT.search(b)
     return not pre.rstrip().endswith("(") and not _NOT_A_READ_PREFIX.search(pre)
 
 
@@ -1655,16 +1685,16 @@ def _served_selects(table: str, lits: list[str], strict: bool = False):
             k = _owner_select(head) if strict else next(iter(reversed(list(_WORD_SELECT.finditer(head)))), None)
             if k is not None:
                 sel = head[k.end():]
-                ok = _is_served_read(head, k.start())
+                ok = _is_served_read(head, k.start(), lits[i - 1] if i else "")
             elif strict and _WORD_SELECT.search(head):
                 continue                                   # a SELECT exists but none owns this FROM (EXTRACT(.. FROM t))
             else:
                 prev = lits[i - 1] if i else ""
                 k2 = _owner_select(prev) if strict else next(iter(reversed(list(_WORD_SELECT.finditer(prev)))), None)
-                if k2 is None or re.search(r"\bFROM\b", prev[k2.start():], re.I):
+                if k2 is None or re.search(r"\bFROM\b", _sql_flat(prev[k2.start():]), re.I):
                     continue
                 sel = prev[k2.end():]
-                ok = _is_served_read(prev, k2.start())
+                ok = _is_served_read(prev, k2.start(), lits[i - 2] if i > 1 else "")
             yield i, m, alias, (sel if (ok or not strict) else None)
 
 
@@ -1716,7 +1746,10 @@ def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None
     ATTRIBUTION LIMIT, disclosed: the scanner hands over the text after the LAST `SELECT` before the asset's `FROM` /
     `JOIN`. A `(SELECT …)` in the list, or any `FROM` in it (a sub-select's truncated list, or a driving table the
     asset is only JOINed to), means an UNQUALIFIED name cannot be attributed to the asset's table: UNKNOWN, never YES.
-    A name qualified by the asset's own table/alias still counts."""
+    A name qualified by the asset's own table/alias still counts.
+    DELIBERATE OVER-BLOCKING, kept: a `(SELECT …)` scalar sub-select anywhere in the list makes the whole list UNKNOWN
+    (PARTIAL at best, never PASS) even when a tier column is also qualified by the asset's alias — PASS is the closable
+    direction (§N.8), so the ambiguity is resolved against it."""
     dynamic = "${" in sel
     clean = re.sub(r"'[^']*'", "''", sel)
     if re.search(r"\(\s*SELECT\b", clean, re.I):
@@ -1898,7 +1931,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 if ext == "*.tsx" or mod["desynced"]:
                     # JSX text / a stray quote desynchronises the string scanner, so a select it missed is not evidence
                     # of none: ANY textual reference (code or comment) keeps the asset off the closable N/A
-                    outside_named.append(f"{rel} (unparsed file: the asset is named in its text)")
+                    outside_named.append(f"{rel} (unparsed file — JSX, a nested template literal or a regex desynced the scanner: the asset is named in its text)")
                 elif any(not re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"]) for t in present):
                     outside_named.append(f"{rel} (a comment names it)")                          # R51: alone or beside code
                 elif mod["dynamic_from"]:
@@ -1942,7 +1975,8 @@ def _grade_dens(cap: dict, label: str) -> dict:
         # a serving-root file that names the asset could not be read reliably: what it serves, and whether it declares the
         # contract, is unknown — so neither FAIL (no contract anywhere) nor N/A (not served) was established
         return dict(v=NO_DET, measured=(f"NO_DETECTOR — {len(cap['unparsed'])} serving-root file(s) naming {label} lose the "
-                                        f"string scanner's sync (an unbalanced quote): {_few(cap['unparsed'], 4)}; its served "
+                                        f"string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a "
+                                        f"quote desynced it): {_few(cap['unparsed'], 4)}; its served "
                                         "select and density_contract cannot be read — never FAIL, never the closable N/A"))
     if mods and cap.get("served"):
         extra = ((f"; a tier column is selected without a contract in: {_few(cap['tier_only'])}" if cap.get("tier_only") else "")
