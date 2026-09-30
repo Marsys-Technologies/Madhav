@@ -1178,6 +1178,37 @@ jobs:
         # fact-category-pin-lint for future honest exceptions, if any arise.
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
+  governance-tool-tests:
+    # Suvarṇa E4.1: runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
+    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a
+    # live DB skip on their own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on
+    # this tree skip via __tests__/conftest.py (each skip names the missing input and disarms when it lands).
+    # Measured locally (py3.13): 348 passed, 77 skipped, ~8s.
+    name: Governance Tool Tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml pytest
+
+      - name: pytest — governance tool tests
+        # Env is deliberately scrubbed of DB settings so nothing can reach a database.
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+        run: python -m pytest platform/scripts/governance/__tests__ -q --no-header -rs
+
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
