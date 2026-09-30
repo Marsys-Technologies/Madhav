@@ -185,6 +185,15 @@ jobs:
           docker run --rm --entrypoint python brahma-pipeline:pr-check \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
 
+      # A2.5: the century job's command path must exist in the image and its
+      # chain must import (catches a missing COPY before merge).
+      - name: Verify the gochara century runner exists in the pipeline image
+        run: |
+          docker run --rm --entrypoint /bin/sh brahma-pipeline:pr-check \
+            -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
+          docker run --rm --entrypoint python brahma-pipeline:pr-check \
+            -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
+
   # ── Deploy gate + path-change detection ─────────────────────────────────────
   # Runs only on workflow_run success or manual dispatch (same guard as deploy
   # jobs). pull_request events never reach this job. Fallback: if HEAD~1
@@ -315,7 +324,7 @@ jobs:
           WEB_PATTERN='^(platform/|00_ARCHITECTURE/CAPABILITY_MANIFEST\.json$|00_ARCHITECTURE/manifest_overrides\.yaml$|00_ARCHITECTURE/PLANNER_PROMPT_v.*\.md$|01_FACTS_LAYER/|025_HOLISTIC_SYNTHESIS/|035_DISCOVERY_LAYER/)'
           SIDECAR_PATTERN='^platform/python-sidecar/'
           MCP_PATTERN='^platform-mcp/'
-          PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'
+          PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|platform/python-sidecar/scripts/kala_gochara_cutover/|035_DISCOVERY_LAYER/)'
 
           deployed_sha() {
             # Prints the commit production reports for one component; empty on any failure.
@@ -2162,6 +2171,18 @@ jobs:
           docker run --rm --entrypoint python \
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
+
+      # A2.5: fail the deploy if the century job's command path is absent from
+      # the image (the exact defect that left #2772's job pointing at a path
+      # the image never COPYed). Also smoke the chain's imports.
+      - name: Verify the gochara century runner exists in the pushed image
+        run: |
+          docker run --rm --entrypoint /bin/sh \
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
+          docker run --rm --entrypoint python \
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
 
       # Pravāha A2.5 (CENTURY_RUN_4_1_NARROWED_PLAN_v1_0.md): dedicated job for
       # the narrowed-horizon '4.1' CANDIDATE build of chart 482012f1. A job
