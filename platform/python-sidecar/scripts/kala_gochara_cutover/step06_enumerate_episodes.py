@@ -81,7 +81,7 @@ relation='residence' rows are emitted ONLY for candidate generations
 >= '4.1' — never into published '4.0' and never reachable by the '4.0'
 serving path (ka_gochara's ledger query selects on a t_exact range and its
 relation whitelist predates 'residence'). Rows withheld by the gate are
-counted (episodes_truncated_no_exact_withheld_pre_41_gate). The full §6.1
+counted (episodes_truncated_no_exact_withheld_pre_41). The full §6.1
 physical-identity contract (occurrence ordinals, truncated→exact enrichment
 lineage) is deliberately NOT implemented here — that is A5.3/A5.1
 registered-writer scope.
@@ -724,14 +724,14 @@ def enumerate_body(
     (physical truncations KEPT with t_exact NULL since migration 1152 — each
     counted ONCE, Kimi review #3: the ingress row and the residence row of
     one clipped span are the same physical truncation) and
-    episodes_without_exact_dropped_by_gate (null-exact rows withheld because
+    episodes_without_exact_withheld (null-exact rows withheld because
     `generation` is pre-'4.1'), plus the searched-relation sets per
     target_type for coverage."""
     keep_new = candidate_keeps_candidate_only_rows(generation)
     out: list[dict] = []
     stats = {
         "episodes_without_exact": 0,
-        "episodes_without_exact_dropped_by_gate": 0,
+        "episodes_without_exact_withheld": 0,
         "searched": {},
     }
 
@@ -744,7 +744,7 @@ def enumerate_body(
                 # Pre-'4.1' gate: the null-exact (N3 truncated) row is
                 # withheld — counted for disclosure, never silently absent
                 # from the report.
-                stats["episodes_without_exact_dropped_by_gate"] += 1
+                stats["episodes_without_exact_withheld"] += 1
                 continue
             if e.t_exact is None:
                 stats["episodes_without_exact"] += 1
@@ -824,7 +824,7 @@ def enumerate_body(
                         stats["episodes_without_exact"] += 1
                     out.append(_residence_span_dict(span, t, backend))
                 elif span.ingress_episode.t_exact is None:
-                    stats["episodes_without_exact_dropped_by_gate"] += 1
+                    stats["episodes_without_exact_withheld"] += 1
             _note(t.target_type, ["residence", "sign_ingress"])
     out.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
     stats["searched"] = {k: sorted(v) for k, v in stats["searched"].items()}
@@ -1274,7 +1274,7 @@ def main(argv: list[str] | None = None) -> int:
             generation=args.generation)
         episodes.extend(eps)
         no_exact_total += stats["episodes_without_exact"]
-        no_exact_gated_total += stats["episodes_without_exact_dropped_by_gate"]
+        no_exact_gated_total += stats["episodes_without_exact_withheld"]
         searched[body] = stats["searched"]
 
     coverage = build_coverage_rows(
@@ -1322,7 +1322,7 @@ def main(argv: list[str] | None = None) -> int:
         "episodes_emitted": len(episodes),
         "sky_boundary_events": n_sky_events,
         "episodes_truncated_no_exact_kept": no_exact_total,
-        "episodes_truncated_no_exact_withheld_pre_41_gate": no_exact_gated_total,
+        "episodes_truncated_no_exact_withheld_pre_41": no_exact_gated_total,
         "dedupe": dedupe_report,
         "coverage_partitions": len(coverage),
         "upstream_fingerprints": fingerprints,

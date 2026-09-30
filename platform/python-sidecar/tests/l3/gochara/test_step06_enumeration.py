@@ -1327,12 +1327,12 @@ def test_candidate_gate_null_exact_and_residence_rows_only_for_41_plus():
         assert not [e for e in eps if e["relation"] == "residence"], gen
         assert all(e["t_exact"] is not None for e in eps), gen
         assert stats["episodes_without_exact"] == 0, gen
-        assert stats["episodes_without_exact_dropped_by_gate"] == 1, gen
+        assert stats["episodes_without_exact_withheld"] == 1, gen
     for gen in ("4.1", "4.2", "5.0"):
         eps, stats = run(gen)
         assert [e for e in eps if e["relation"] == "residence"], gen
         assert stats["episodes_without_exact"] == 1, gen  # counted ONCE (K3 #3)
-        assert stats["episodes_without_exact_dropped_by_gate"] == 0, gen
+        assert stats["episodes_without_exact_withheld"] == 0, gen
 
     # same gate on the point-contact path (a null-exact conjunction)
     def curve(jd):
@@ -1344,7 +1344,7 @@ def test_candidate_gate_null_exact_and_residence_rows_only_for_41_plus():
         index2, "Saturn", pt, horizon, 5.0, BACKEND,
         ephe_path=None, refine=False, generation="4.0")
     assert not [e for e in eps40 if e["relation"] == "conjunction"]
-    assert stats40["episodes_without_exact_dropped_by_gate"] == 1
+    assert stats40["episodes_without_exact_withheld"] == 1
     eps41, _ = drv.enumerate_body(
         index2, "Saturn", pt, horizon, 5.0, BACKEND,
         ephe_path=None, refine=False, generation="4.1")
