@@ -89,6 +89,12 @@ async function invalidateCatalog(client: Client, userId: string, id: string) {
   await client.query(`UPDATE ai_connection_models SET available=false
     WHERE connection_id=$2 AND EXISTS(SELECT 1 FROM ai_provider_connections WHERE user_id=$1 AND id=$2)`, [userId, id])
 }
+async function clearModelProbeEvidence(client: Client, userId: string, id: string) {
+  await client.query(`UPDATE ai_connection_models SET plain_tested_at=NULL,tested_credential_version=NULL,
+    last_probe_at=NULL,last_probe_error_code=NULL,last_probe_input_tokens=NULL,last_probe_output_tokens=NULL
+    WHERE connection_id=$2 AND EXISTS (SELECT 1 FROM ai_provider_connections WHERE user_id=$1 AND id=$2)`,
+  [userId, id])
+}
 async function ownedConversation(client: Client, userId: string, conversationId: string) {
   if (!uuidSchema.safeParse(conversationId).success) throw new AiConsoleError('AI_PERMISSION_DENIED')
   const rows = (await client.query('SELECT id FROM conversations WHERE user_id=$1 AND id=$2 FOR NO KEY UPDATE', [userId, conversationId])).rows
@@ -231,10 +237,17 @@ async function loadRoutingTarget(client: Client, userId: string, target: RoleTar
     const confirmedUsable = connection.credential_validity === 'valid'
       && (connection.validation_state === 'validated' || connection.validation_state === 'validating')
     if (!confirmedUsable) throw notFound()
-    const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,m.available
+    const model = (await client.query(`SELECT m.model_id,m.display_name,m.compatible_roles,m.supports_tools,m.supports_structured_output,
+      m.available,m.plain_tested_at,m.tested_credential_version
       FROM ai_connection_models m WHERE m.connection_id=$1 AND m.model_id=$2 FOR SHARE`,
     [target.connectionId, target.modelId])).rows[0]
     if (!model || model.available !== true) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    // Version-one saved choices predate individual model probes. Once a key or
+    // workspace changes, an exact-version model probe is required to run it.
+    if (Number(connection.credential_version) > 1 && (model.plain_tested_at == null
+      || Number(model.tested_credential_version) !== Number(connection.credential_version))) {
+      throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    }
     const compatibleRoles = z.array(AiRoleSchema).min(1).parse(model.compatible_roles)
     const incompatible = firstIncompatibleRole(compatibleRoles, roles)
     if (incompatible) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE', incompatible)
@@ -374,6 +387,7 @@ export async function updateConnectionWorkspace(userId: string, connectionId: st
       WHERE user_id=$1 AND id=$2 AND provider_id='anthropic' AND deleted_at IS NULL
       RETURNING ${safeColumns},credential_version`, [userId, connectionId, parsed])).rows)
     await invalidateCatalog(client, userId, connectionId)
+    await clearModelProbeEvidence(client, userId, connectionId)
     await writeAiAudit(client, userId, { event: 'connection_updated', connectionId })
     return { connection: safeConnection(row), credentialVersion: Number(row.credential_version) }
   })
@@ -396,10 +410,7 @@ export async function replaceConnectionCredential(userId: string, connectionId: 
       WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL RETURNING ${safeColumns},credential_version`,
     [userId, connectionId, ...credentialParams(encrypted)])).rows)
     await invalidateCatalog(client, userId, connectionId)
-    await client.query(`UPDATE ai_connection_models SET plain_tested_at=NULL,tested_credential_version=NULL,
-      last_probe_at=NULL,last_probe_error_code=NULL,last_probe_input_tokens=NULL,last_probe_output_tokens=NULL
-      WHERE connection_id=$2 AND EXISTS (SELECT 1 FROM ai_provider_connections WHERE user_id=$1 AND id=$2)`,
-    [userId, connectionId])
+    await clearModelProbeEvidence(client, userId, connectionId)
     await writeAiAudit(client, userId, { event: 'connection_credential_replaced', connectionId })
     return { connection: safeConnection(row), credentialVersion: Number(row.credential_version) }
   })

@@ -265,6 +265,8 @@ describe('owned AI configuration repository', () => {
     expect(replace.sql).toContain('user_id=$1')
     expect(replace.params.slice(0, 2)).toEqual(['alice', connectionId])
     expect(statements.some(c => c.sql.includes('UPDATE ai_connection_models') && c.sql.includes('available=false') && c.sql.includes('user_id'))).toBe(true)
+    expect(statements.some(c => c.sql.includes('UPDATE ai_connection_models SET plain_tested_at=NULL')
+      && c.sql.includes('tested_credential_version=NULL') && c.sql.includes('last_probe_at=NULL'))).toBe(true)
     expect(statements.at(-1)?.sql).toBe('COMMIT')
     expect(statements.find(c => c.sql.startsWith('INSERT INTO ai_configuration_audit_log'))?.params).toContain('connection_credential_replaced')
   })
@@ -277,6 +279,11 @@ describe('owned AI configuration repository', () => {
     expect(update.sql).toContain("provider_id='anthropic'")
     expect(update.sql).toContain('credential_version=credential_version+1')
     expect(calls().some(c => c.sql.includes('UPDATE ai_connection_models') && c.sql.includes('available=false'))).toBe(true)
+    const clear = calls().find(c => c.sql.includes('UPDATE ai_connection_models SET plain_tested_at=NULL'))!
+    expect(clear.params).toEqual(['alice', connectionId])
+    expect(clear.sql).toContain('tested_credential_version=NULL')
+    expect(clear.sql).toContain('last_probe_at=NULL')
+    expect(calls().findIndex(c => c.sql.includes('available=false'))).toBeLessThan(calls().findIndex(c => c.sql.includes('plain_tested_at=NULL')))
   })
   it('rejects stale validation before replacing the catalog after a credential race', async () => {
     expect(repository).toHaveProperty('storeConnectionValidation')
@@ -601,6 +608,24 @@ describe('owned AI configuration repository', () => {
 })
 
 describe('atomic routing resolution read', () => {
+  it('requires a fresh individual model probe after an Anthropic workspace or key change', async () => {
+    let testedVersion: number | null = null
+    respond(sql => {
+      if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
+      if (sql.includes('FROM ai_provider_connections')) return [{ ...safeConnection, provider_id: 'anthropic', credential_version: 2 }]
+      if (sql.includes('FROM ai_connection_models')) return [{ model_id: 'model-a', display_name: 'Model A',
+        compatible_roles: AI_ROLES, available: true, supports_tools: true, supports_structured_output: true,
+        plain_tested_at: testedVersion === null ? null : new Date(), tested_credential_version: testedVersion }]
+    })
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    testedVersion = 1
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    testedVersion = 2
+    await expect(repository.loadRoutingResolution('alice', { kind: 'explicit', choice }))
+      .resolves.toMatchObject({ roles: { worker: { providerId: 'anthropic', credentialVersion: 2 } } })
+  })
   it('locks an active owner and resolves only the current exact default target', async () => {
     respond((sql, params) => {
       if (sql.includes('FROM profiles')) return [{ id: 'alice' }]
