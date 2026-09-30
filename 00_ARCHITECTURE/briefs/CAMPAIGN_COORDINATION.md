@@ -8422,3 +8422,15 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Worktree: `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`; branch `codex/observatory-metering`.
 - Scope: focused enabled-mode metering test gate, synthetic fixture coverage, task-owned verification evidence and runbook. Application changes remain uncommitted under GIP P.4.
 - No production operation, provider/CLI generation, deployment, migration application outside disposable local PostgreSQL, application push, or protected merge.
+
+
+---
+
+## 2026-09-30 — lease release: OBSERVATORY-METERING-VERIFY-20260930
+
+- Lease ID: L-OBSERVATORY-METERING-VERIFY-20260930; holder: Codex.
+- Released: 2026-09-30T15:18:18.218474+00:00; status: RELEASED — LOCAL VERIFICATION FOLLOW-UP COMPLETE.
+- Worktree retained: `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`; branch `codex/observatory-metering`; application changes remain uncommitted under GIP P.4.
+- Evidence: `00_ARCHITECTURE/briefs/observatory_metering/TEST_REPORT_v1_0.md` and `verification/2026-09-30/results.json`. Focused enabled-mode, disposable PostgreSQL, full default-off suite, lint, TypeScript, synthetic build and anonymous HTTP gates passed.
+- Limits: old global flag-on fixture suite is not an enabled acceptance gate; inherited AI Console route audit has zero new findings vs base; three local CLI versions differ from registry pins. No hosted acceptance, provider invoice accuracy, live provider/CLI generation or production operation asserted.
+- No deployment, application push, protected merge, production migration or credential change performed.
