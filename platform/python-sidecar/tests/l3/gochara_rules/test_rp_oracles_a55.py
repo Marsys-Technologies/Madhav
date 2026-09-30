@@ -128,32 +128,31 @@ def test_o_rp_3_p4_admission_house_for_one_lord_for_other():
                 H=frozenset({"Leo"}), L=frozenset()) == ADMITTED
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="A5.5 FINDING (owner A5.5 trajectory/kernel): NO production "
+           "function computes the oracle's peak = argmax over the overlap of "
+           "min(activity_J, activity_S). The registry only DECLARES the rule "
+           "(registry.py:550 score_rule string); gochara_kernel.peaks "
+           "admit_peaks is episode trimming, not the min-activity argmax. "
+           "spec §7.2 inv 2/O-RP-3.")
 def test_o_rp_3_peak_is_argmax_min_activity_not_endpoint():
-    # Peak = argmax of min(activity_J, activity_S) over the overlap
-    # (§7.2 inv 2); activity kernel = 1 − |Δλ|/orb (M-1, FACTORS row).
+    # the activity-kernel factor row is declared in production…
     kernel = FACTORS[("activity_kernel", "1.0.0")]
     assert kernel["effect"].startswith("activity = 1 − |Δλ|/orb")
-    orb = 5.0
-
-    def activity(lam: float, target: float) -> float:
-        return max(0.0, 1.0 - abs(lam - target) / orb)
-
-    # A5.5 trajectory: Jupiter sweeps toward its exact 7th-aspect contact on
-    # the 5th-house cusp reference 126.87° Leo (exact at λ_J = 306.87°);
-    # Saturn sweeps toward exact conjunction with natal Sun 291.96°.
-    def min_activity(lam_j: float, lam_s: float) -> float:
-        return min(activity(lam_j, 306.87), activity(lam_s, 291.96))
-
-    steps = [i * 0.25 for i in range(0, 41)]  # 0 … 10° in 0.25° steps
+    # …but the oracle's peak requires a PRODUCTION peak finder evaluated on
+    # the A5.5 trajectory: Jupiter sweeping to its exact 7th-aspect contact
+    # (λ_J = 306.87°) while Saturn sweeps to exact conjunction with natal
+    # Sun 291.96°. No such production function exists; call the name the
+    # spec's score_rule implies and assert the interior argmax on its output.
+    from services.gochara_rules import registry as _reg  # noqa: F401
+    peak_fn = getattr(_reg, "peak_min_activity", None)
+    assert callable(peak_fn), "no production peak = argmax min-activity"
+    steps = [i * 0.25 for i in range(0, 41)]
     grid = [(306.87 - 5.0 + d, 291.96 - 5.0 + d) for d in steps]
-    peak = max(grid, key=lambda p: min_activity(*p))
-    # the argmax sits at the exact-contact interior point, not an endpoint
+    peak = peak_fn(grid, jupiter_target=306.87, saturn_target=291.96, orb=5.0)
     assert peak == (306.87, 291.96)
     assert peak not in (grid[0], grid[-1])
-    assert min_activity(*peak) == pytest.approx(1.0)
-    # endpoint-only peak detection fails: both endpoints score strictly less
-    assert min_activity(*grid[0]) < min_activity(*peak)
-    assert min_activity(*grid[-1]) < min_activity(*peak)
 
 
 # ── O-RP-5b (§2/§3; defects S-03, R2-S05, S-04) — Sade-Sati testimony ───────
@@ -250,16 +249,31 @@ def test_o_rp_7_dignity_flip_flips_qualifier_sign():
         assert 0.0 <= lo <= hi <= 1.0, f"{ref} range outside [0,1]"
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="A5.5 FINDING (owner A5.2): NO production function composes the "
+           "dignity operand into ONE P1 qualifier whose direction/valence "
+           "flips. dignity_of() returns a bare string; qualify_transit "
+           "(ashtakavarga.py:143) is the P5 AV-forms qualifier only; nothing "
+           "on the P1 path consumes dignity into a direction. spec §2.2 "
+           "P1/O-RP-7.")
+def test_o_rp_7_one_production_qualifier_flips_with_dignity():
+    # ONE production qualifier call on the SAME P1 fixture (MD Mercury
+    # transiting sign S), evaluated twice — exaltation vs debility — whose
+    # direction/valence OUTPUT flips.
+    from services.gochara_rules import ashtakavarga as _av  # noqa: F401
+    qualifier = getattr(_av, "p1_qualifier", None)
+    assert callable(qualifier), "no production P1 qualifier composing dignity"
+    exalted = qualifier("Mercury", "Virgo", deg_in_sign=10.0,
+                        period_lord_row="58afa482-4bce-42df-9c0d-0b5a2e02305e")
+    debilitated = qualifier("Mercury", "Pisces",
+                            period_lord_row="58afa482-4bce-42df-9c0d-0b5a2e02305e")
+    assert exalted["direction"] == "favourable"
+    assert debilitated["direction"] == "adverse"
+    assert exalted["direction"] != debilitated["direction"]
+
+
 # ── O-RP-8 (§2.3 inv 7; defect #21) — qualification-driven enumeration ──────
-def _enumerate(qualified: set[tuple[str, str, str]], agents, relations,
-               targets) -> list[tuple[str, str, str]]:
-    """A record is enumerated iff its (agent, relation, target) triple is
-    named by the chart's qualified restrictions (transit_triggers /
-    dasha_rules) — §2.3 inv 7."""
-    return [(a, r, t) for a in agents for r in relations for t in targets
-            if (a, r, t) in qualified]
-
-
 def test_o_rp_8_only_qualified_set_enumerated():
     # the registry declares RESTRICTED selectors (not Cartesian): P3's
     # object_selector names signature houses/lords; P4 names ONE rule over
@@ -267,24 +281,24 @@ def test_o_rp_8_only_qualified_set_enumerated():
     assert "signature_house h ∈ H" in RULE_PATHS[("P3", "1.0.0")]["object_selector"]
     assert RULE_PATHS[("P4", "1.0.0")]["agent_set"] == ["Jupiter", "Saturn"]
 
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="A5.5 FINDING (owner A5.2): NO production record enumerator is "
+           "driven by the chart's qualified restrictions (transit_triggers / "
+           "dasha_rules). grep over services/gochara_rules + gochara_kernel "
+           "finds no enumeration entry point; only the registry's selector "
+           "STRINGS exist. spec §2.3 inv 7/O-RP-8.")
+def test_o_rp_8_production_enumerator_row_count():
     # chart fixture: qualified restrictions name a specific
-    # (agent, relation, target) set
+    # (agent, relation, target) set; the production enumerator must emit
+    # exactly those rows, not the 9×3×4 = 108-row Cartesian product.
+    chart = _chart()
     qualified = {("Jupiter", "aspect", "h5"),
                  ("Saturn", "conjunction", "5L")}
-    agents = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
-              "Rahu", "Ketu"]
-    relations = ["residence", "aspect", "conjunction"]
-    targets = ["h5", "5L", "h7", "7L"]
-    rows = _enumerate(qualified, agents, relations, targets)
-
-    # only the qualified set is enumerated — the exact row set
-    assert rows == [("Jupiter", "aspect", "h5"),
-                    ("Saturn", "conjunction", "5L")]
+    from services.gochara_rules import records as _rec  # noqa: F401
+    enumerator = getattr(_rec, "enumerate_records", None)
+    assert callable(enumerator), "no production record enumerator"
+    rows = enumerator(chart, qualified=qualified)
     assert len(rows) == 2
-
-    # mutation probe: a Cartesian all-agents × all-relations × all-targets
-    # enumeration produces extra rows and fails the count
-    cartesian = [(a, r, t) for a in agents for r in relations for t in targets]
-    assert len(cartesian) == 9 * 3 * 4 == 108
-    assert len(rows) != len(cartesian)
-    assert set(rows) < set(cartesian)
+    assert {(r.agent, r.relation, r.object_id) for r in rows} == qualified

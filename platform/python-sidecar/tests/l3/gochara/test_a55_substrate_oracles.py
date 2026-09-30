@@ -127,7 +127,7 @@ class TestOSS2SeamBoundarySearch:
         reason="A5.5 FINDING (Stream A kernel): retrograde 0° seam root found "
                "but at 63.3 s from the linear-expected instant — outside the "
                "oracle's δt < 60 s (O-SS-2 case 2); reported to steward",
-        strict=False)
+        strict=True)
     def test_case2_retrograde_pisces_reentry_through_upper_boundary(self):
         jd1 = _jd(2025, 9, 1)
         index, roots = self._seam_roots(jd1, [0.3, 0.1, 359.9, 359.7])
@@ -225,7 +225,7 @@ class TestOSS3OffHorizonCentreTruncated:
                "is clipped to the horizon end but truncated_at_horizon=None — "
                "the coverage.truncated honesty O-SS-3 requires is not "
                "propagated on the 'end' path; reported to steward",
-        strict=False)
+        strict=True)
     def test_degree_contact_centre_off_horizon_kept_without_fabricated_exact(self):
         # Conjunction with target 10.0°: λ = 10 + 0.1·(jd − centre) ⇒ in-orb
         # (orb 3.1°) over exactly [2025-12-15, 2026-02-15], centre 2026-01-15
@@ -260,7 +260,7 @@ class TestOSS3OffHorizonCentreTruncated:
                "carries truncated_at_horizon=None ('start'/'both' only are "
                "propagated) — O-SS-3 requires the truncated mark; reported "
                "to steward",
-        strict=False)
+        strict=True)
     def test_residence_span_clipped_at_horizon_end_kept(self):
         # Residence in the Pisces whole-sign span (330°, 360°): entry at the
         # 330° edge on 2025-12-15, true exit (360°) on 2026-02-15 — past the
