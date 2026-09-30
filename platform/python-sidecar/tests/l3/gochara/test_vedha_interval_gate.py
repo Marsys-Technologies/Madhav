@@ -417,41 +417,121 @@ def test_engine_scoped_application_reaches_only_the_primarys_sentences():
     assert "apply_scoped_factors" in src
 
 
-# ── the two evaluators that never reach '4.x' / '5.0' scoring ────────────────
+# ── the two legacy evaluators: what the source scan does and does not prove ──
+#
+# ASTRA v1.2 P2-c: the claims below are QUALIFIED to exactly what the scan
+# measures. Positive claims — which evaluator the projection and the engine
+# actually call — are asserted directly above (make_vedha_gate in main();
+# _compute_quality_gates_from_context before _compute_activity_v3 with
+# apply_scoped_factors). The negative claims here are bounded:
+#   scope    — every non-test *.py under the python-sidecar package roots
+#              listed in _SCAN_ROOTS (all of them, not a hand-picked subset);
+#              NOT the TypeScript platform, SQL, notebooks or shell entry points;
+#   method   — an AST walk: (a) direct call sites `name(...)` / `x.name(...)`,
+#              (b) ANY reference to the identifier as a Name or Attribute
+#              (an import, a callback passed by reference, an alias
+#              assignment); NOT string/getattr dispatch, NOT runtime
+#              monkeypatching, NOT `from module import *`;
+#   control  — the same scanner must find the SHARED gate's real callers
+#              (engine.py and the projection), or the negative result is
+#              not trusted (§N.8 earned signal: a scanner that finds nothing
+#              must be shown to find something).
+
+import ast  # noqa: E402
+
+_SIDECAR = Path(__file__).resolve().parents[3]
+_SCAN_ROOTS = ("bodha_writers", "brahma", "brahmagyan", "ga_writers", "muhurat",
+               "panchang_engine", "pipeline", "pyjhora_adapter", "routers", "scripts",
+               "services")
+
 
 def _production_sources():
-    root = Path(__file__).resolve().parents[3]
-    for sub in ("services", "scripts", "pipeline", "ga_writers"):
-        for f in (root / sub).rglob("*.py"):
-            if "/tests/" in str(f) or f.name.startswith("test_"):
+    for sub in _SCAN_ROOTS:
+        base = _SIDECAR / sub
+        assert base.is_dir(), f"scan root missing: {base}"
+        for f in sorted(base.rglob("*.py")):
+            parts = set(f.parts)
+            if "tests" in parts or f.name.startswith("test_") or "__pycache__" in parts:
                 continue
             yield f
 
 
-def test_legacy_semantics_quality_gates_has_no_production_caller():
-    """legacy_semantics.compute_quality_gates is the pinned classification
-    MIRROR of the retired engine multiplier; it is legacy-only — no
-    production module calls it (the projection and the engine use the
-    shared ka_vedha_gochara.gate). Proven by source scan; it is therefore
-    not rewritten."""
-    callers = [str(f) for f in _production_sources()
-               if "compute_quality_gates(" in f.read_text()
-               and not f.name == "legacy_semantics.py"]
-    assert callers == [], callers
-
-
-def test_kernel_overlays_quality_gates_at_has_no_production_caller():
-    """gochara_kernel.overlays.quality_gates_at / OverlayInterval is the
-    WP2 kernel design projection; production imports only its date_to_jd.
-    Legacy-only by source scan — not rewritten."""
-    users = []
+def _ast_uses(names: set[str], *, exclude_files: set[str] = frozenset()) -> dict:
+    """{name: {"calls": [file:line], "references": [file:line]}} over the
+    scanned sources — direct call sites and any Name/Attribute reference."""
+    out = {n: {"calls": [], "references": []} for n in names}
     for f in _production_sources():
-        if f.name == "overlays.py":
+        if f.name in exclude_files:
             continue
-        txt = f.read_text()
-        if "quality_gates_at(" in txt or "OverlayInterval(" in txt or "coverage_gaps(" in txt:
-            users.append(str(f))
-    assert users == [], users
+        try:
+            tree = ast.parse(f.read_text(), filename=str(f))
+        except SyntaxError as exc:  # a scan that cannot parse a file must say so
+            raise AssertionError(f"unparseable production source {f}: {exc}")
+        rel = str(f.relative_to(_SIDECAR))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                fn = node.func
+                nm = fn.id if isinstance(fn, ast.Name) else (fn.attr if isinstance(fn, ast.Attribute) else None)
+                if nm in names:
+                    out[nm]["calls"].append(f"{rel}:{node.lineno}")
+            if isinstance(node, ast.Name) and node.id in names:
+                out[node.id]["references"].append(f"{rel}:{node.lineno}")
+            elif isinstance(node, ast.Attribute) and node.attr in names:
+                out[node.attr]["references"].append(f"{rel}:{node.lineno}")
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name in names:
+                        out[alias.name]["references"].append(f"{rel}:{node.lineno}")
+    return out
+
+
+def test_scanner_finds_the_shared_gates_real_callers_positive_control():
+    """The negative scans below are trusted only because the SAME scanner
+    sees the shared gate's real use: make_gate is CALLED by the engine and
+    by the projection's make_vedha_gate; apply_scoped_factors and
+    persistable_summary are imported by the engine UNDER ALIASES
+    (`as _vg_apply`, `as _vg_summary`) — the scanner attributes the import
+    as a reference and, by design, does NOT attribute the aliased call
+    (the documented limit: an aliased call site is invisible to the
+    call-site scan, visible to the reference scan)."""
+    uses = _ast_uses({"make_gate", "apply_scoped_factors", "persistable_summary"},
+                     exclude_files={"gate.py"})
+    assert any(c.startswith("services/gochara_v3/engine.py") for c in uses["make_gate"]["calls"]), uses
+    assert any(c.startswith("scripts/kala_gochara_cutover/step06b_windows_projection.py")
+               for c in uses["make_gate"]["calls"]), uses
+    for n in ("apply_scoped_factors", "persistable_summary"):
+        assert any(r.startswith("services/gochara_v3/engine.py") for r in uses[n]["references"]), (n, uses[n])
+        assert uses[n]["calls"] == [], (n, "an aliased call must NOT be attributed — the scan's stated limit")
+    assert sum(1 for _ in _production_sources()) > 400  # the roots are actually walked
+
+
+def test_legacy_semantics_compute_quality_gates_is_not_called_or_referenced_in_the_scanned_roots():
+    """legacy_semantics.compute_quality_gates is the pinned classification
+    MIRROR of the retired engine multiplier. CLAIM (bounded, see the block
+    comment): within every python-sidecar package root, no non-test module
+    other than legacy_semantics.py itself calls it by name or references the
+    identifier (import, alias, callback). NOT claimed: TypeScript callers,
+    string/getattr dispatch, runtime patching. The evaluator the projection
+    and engine DO call is asserted positively above; this test only shows
+    the legacy mirror has no static Python caller in the scanned roots, which
+    is why it is left unchanged rather than rewritten."""
+    uses = _ast_uses({"compute_quality_gates"}, exclude_files={"legacy_semantics.py"})
+    assert uses["compute_quality_gates"]["calls"] == [], uses
+    assert uses["compute_quality_gates"]["references"] == [], uses
+
+
+def test_kernel_overlays_quality_gates_at_is_not_called_or_referenced_in_the_scanned_roots():
+    """gochara_kernel.overlays.quality_gates_at / OverlayInterval /
+    coverage_gaps is the WP2 kernel design projection. CLAIM (bounded, as
+    above): no non-test module in the scanned roots other than overlays.py
+    calls or references them; production's only use of overlays.py is
+    date_to_jd — asserted positively as the reference the scanner DOES
+    find. NOT claimed: dynamic dispatch, TypeScript, runtime patching."""
+    names = {"quality_gates_at", "OverlayInterval", "coverage_gaps", "date_to_jd"}
+    uses = _ast_uses(names, exclude_files={"overlays.py"})
+    for n in ("quality_gates_at", "OverlayInterval", "coverage_gaps"):
+        assert uses[n]["calls"] == [] and uses[n]["references"] == [], (n, uses[n])
+    assert any(r.startswith("services/ka_vedha_gochara/gate.py") for r in uses["date_to_jd"]["references"]), uses
 
 
 # ── ASTRA v1.2 P1-2: state and identity through the REAL persisted output ────
