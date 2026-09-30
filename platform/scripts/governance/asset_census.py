@@ -48,6 +48,8 @@ Usage:
   asset_census.py --layer L0                 measure and print; writes the census JSON
   asset_census.py --layer L0 --emit-gaps     also append ledger rows for failures
   asset_census.py --layer all                every layer
+  asset_census.py --layer L0 --rollup        also write the nine-gate cells per asset (key `rollup`) and the
+                                             non-nine gates as information (`rollup_excluded`) into the census JSON
 Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4 unknown · 5 script error.
 """
 
@@ -376,6 +378,58 @@ def rollup_census(census_layer: dict, facts_by_asset: dict | None = None) -> dic
         layer = census_layer["assets"][0]["layer"]
     return {a["asset_id"]: rollup_asset(layer, a["measurements"], (facts_by_asset or {}).get(a["asset_id"]))
             for a in census_layer["assets"]}
+
+
+# E6.1 packet 2a: the per-asset FACTS the rollup's applicability rules read, emitted by measure() and turned into
+# the `facts` mapping by facts_for_asset(). UNKNOWN_FACT is the one explicit marker for "could not be established"
+# (no target table, table absent from the catalog, no column rows for an existing relation, empty asset_kind): an
+# empty list never stands for unknown, and the marker never reaches a rule (it would read as a disproving value).
+UNKNOWN_FACT = "unknown"
+
+
+def _target_columns_fact(tbl: str | None, cat: dict):
+    """The target table's column names as a sorted list, or UNKNOWN_FACT. Known only when the table is in the
+    catalog's `exists` AND the catalog returned column rows for it (a materialized view is in `exists` but
+    information_schema lists none: incomplete introspection is unknown, not 'zero columns')."""
+    if not tbl or tbl not in cat.get("exists", ()):
+        return UNKNOWN_FACT
+    cols = cat.get("cols", {}).get(tbl)
+    if not isinstance(cols, list) or not cols or not all(isinstance(c, str) and c for c in cols):
+        return UNKNOWN_FACT
+    return sorted(cols)
+
+
+def facts_for_asset(asset_record) -> dict:
+    """The `facts` mapping `rollup_asset` expects (`columns`, `asset_kind`; plus `has_count_sql` for the
+    conditions that will read it), from one measured asset record. A fact that is absent (a record from before
+    packet 2a), the UNKNOWN_FACT marker, empty, or of the wrong type is LEFT OUT, so its applicability stays
+    UNKNOWN. `columns_known` is never set: an emitted list cannot assert 'the table is known and has zero columns'."""
+    facts: dict = {}
+    if not isinstance(asset_record, dict):
+        return facts
+    cols = asset_record.get("target_columns")
+    if isinstance(cols, list) and cols and all(isinstance(c, str) and c for c in cols):
+        facts["columns"] = list(cols)
+    kind = asset_record.get("asset_kind")
+    if isinstance(kind, str) and kind.strip() and kind != UNKNOWN_FACT:
+        facts["asset_kind"] = kind
+    has_csql = asset_record.get("has_count_sql")
+    if isinstance(has_csql, bool):
+        facts["has_count_sql"] = has_csql
+    return facts
+
+
+def build_rollup_output(census_by_layer: dict) -> dict:
+    """The `--rollup` payload for {layer: measure() output}: the nine gate cells per asset (computed from each
+    asset's emitted facts) and, as information, the measured criteria of the non-nine gates. Read-only; the
+    census dicts are not modified (emit_gaps never sees this)."""
+    layers, excluded = {}, {}
+    for k, c in census_by_layer.items():
+        layers[k] = rollup_census(c, {a["asset_id"]: facts_for_asset(a) for a in c["assets"]})
+        excluded[k] = {a["asset_id"]: rollup_excluded(c["layer"], a["measurements"]) for a in c["assets"]}
+    return dict(rollup=dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
+                            layers=layers),
+                rollup_excluded=excluded)
 
 
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
@@ -2889,7 +2943,13 @@ def measure(layer_key: str) -> dict:
                                                                                  "dependency graph")),
                            live_rows_basis=(basis if live is not None else None), count_sql_tables=ctables,
                            target_table=tbl, has_writer=r["has_writer"], writer_files=files,
-                           catalog_status=r["catalog_status"], measurements=m))
+                           catalog_status=r["catalog_status"],
+                           # E6.1 packet 2a: applicability FACTS for the rollup (additive; no measurement reads them)
+                           target_columns=_target_columns_fact(tbl, cat),
+                           asset_kind=(r["asset_kind"].strip() if isinstance(r["asset_kind"], str) and r["asset_kind"].strip()
+                                       else UNKNOWN_FACT),
+                           has_count_sql=bool((r["count_sql"] or "").strip()),
+                           measurements=m))
 
     extra = sorted(set(regd) - known)
     never = [a["asset_id"] for a in assets if a["measurements"]["Build.exercised"]["v"] == FAIL]
@@ -3051,6 +3111,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--layer", default="L0")
     ap.add_argument("--emit-gaps", action="store_true")
+    ap.add_argument("--rollup", action="store_true",
+                    help="also write the nine-gate cells per asset (key `rollup`) and the non-nine gates as "
+                         "information (key `rollup_excluded`) into --out; --emit-gaps neither reads nor changes it")
     ap.add_argument("--out", default=str(CTRL / "asset_census.json"))
     a = ap.parse_args()
     keys = list(LAYERS) if a.layer.lower() == "all" else [k.strip().upper() for k in a.layer.split(",")]
@@ -3104,8 +3167,19 @@ def main() -> int:
             print(f"  ledger: {added} row(s) appended, {skipped} already present, "
                   f"{closed} closed by measurement, {reopened} re-opened")
 
+    rollup_error = None
+    if a.rollup:
+        # computed AFTER measuring and emit_gaps, from the finished census; never fed to emit_gaps. A rollup
+        # failure must not lose the measurements: they are written without a `rollup` key and the run exits 5.
+        try:
+            out = {**out, **build_rollup_output(out)}
+        except Exception as exc:  # noqa: BLE001
+            rollup_error = f"{type(exc).__name__}: {exc}"
+            print(f"asset_census: rollup failed — {rollup_error} (census written without a rollup)", file=sys.stderr)
     Path(a.out).write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
     print(f"census written: {os.path.relpath(a.out, ROOT)}")
+    if rollup_error:
+        return 5
     return worst
 
 
