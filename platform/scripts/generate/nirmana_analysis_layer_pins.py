@@ -331,6 +331,14 @@ AUTHORIZED_SOURCE_COMMITS = {
             # A5.4 successor, never a rewrite of it or of the baseline. Source
             # = the rework's writer-digest regeneration commit.
             "92c07a9051abad73815933e3a5b98ffde37fa848",
+            # A5.4 rework r2 (ASTRA_REVIEW_A5_4 v1.1 closure, 2026-09-30): the
+            # seven round-2 P1 amendments moved the same three writers'
+            # import closures again (gochara_grammar/{dasha_data,primitives}.py,
+            # gochara_v3/{context,engine}.py, the new ka_vedha_gochara/gate.py);
+            # no own-module writer edit. Same decision, same authority, same
+            # five-writer scope; ONE successor over the then-current protected
+            # baseline. Source = the r2 writer-digest regeneration commit.
+            "aa6a67fb715248fa2b2eccffaf5327692319194a",
         }),
     },
 }
