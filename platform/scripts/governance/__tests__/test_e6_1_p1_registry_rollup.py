@@ -32,7 +32,7 @@ PINNED_FINGERPRINTS = {
     # 3 (E6 review fix 2): Earn.build_record gains the cause no-registered-writer (healthy-non-execution narrowed)
     3: "7f30f61e123b473702eb37236b4c22628a5251ef7fd85a31cfb482ca304c6c5e",
     # 4 (E6.1 d): Dens.served revision 4 (contract AND a tier column in the served select; structural; cause no-served-surface)
-    4: "220f839255b1c592f379a9e5923f0a34f31cda4241cb7e57e7448ca67d9e3274",
+    4: "3338ce06bcbd1a0c868e6967e2cc5ef2fece964621e011853b6b03719b7b4419",
 }
 
 

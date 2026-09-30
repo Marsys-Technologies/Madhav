@@ -733,8 +733,8 @@ def test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na(mon
     assert ac.emit_gaps(c)[2] == 0
     if verdict == ac.NA:
         # ... and it closes only under a declared, caused rule (the only way an N/A ever closes an OPEN gap)
-        assert ds["cause"] == "no-module-references-target", ds
-        monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Dens.served#measured:no-module-references-target": "N-22/test"})
+        assert ds["cause"] == "no-served-surface", ds
+        monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Dens.served#measured:no-served-surface": "N-22/test"})
         assert ac.emit_gaps(c)[2] == 1
 
 

@@ -244,7 +244,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.count_integrity": ("no-writer-no-count-sql",),
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
     "Count.floor": ("target-floor-zero",),
-    "Dens.served": ("no-module-references-target",),
+    "Dens.served": ("no-served-surface",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
@@ -1755,7 +1755,7 @@ def _grade_dens(cap: dict, label: str) -> dict:
                                         "attributed by code (never the closable N/A)"))
     return _na(f"STRUCTURAL: 0 module(s) reference it by code in the {len(cap.get('roots') or [])} "
                "serving root(s) scanned, and no served select of it exists in the wider source "
-               "scanned; declaring density_contract: 0", "no-module-references-target")
+               "scanned; declaring density_contract: 0", "no-served-surface")
 
 
 # ─────────── R23 (W2-3): field-level reachability over capability modules ───────────

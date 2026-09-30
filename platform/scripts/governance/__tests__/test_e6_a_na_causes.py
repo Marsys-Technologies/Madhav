@@ -107,7 +107,7 @@ SITES = [
      {"x": _reg_row("x", asset_kind="service", has_writer=True)}, {}),
     ("count-floor-zero", "Count.floor", "target-floor-zero",
      {"x": _reg_row("x", target_floor="0")}, {}),
-    ("dens-no-module", "Dens.served", "no-module-references-target",
+    ("dens-no-module", "Dens.served", "no-served-surface",
      {"x": _reg_row("x")}, dict(cap=dict(scanned=True, modules=[], density=0, note=""))),
     ("exercised-never-run", "Build.exercised", "never-run-no-writer",
      {"x": _reg_row("x")}, {}),
