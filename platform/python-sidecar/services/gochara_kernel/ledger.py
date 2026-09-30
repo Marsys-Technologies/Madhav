@@ -382,7 +382,8 @@ def register_convention(conn, vector: dict, probe: dict,
 
 
 def write_contacts(conn, chart_id: str, generation: str, convention_id: str,
-                   episodes: list[dict], build_id: str) -> list[str]:
+                   episodes: list[dict], build_id: str,
+                   bodies: list[str] | None = None) -> list[str]:
     """Delete-then-insert of the contact ledger, scoped (chart_id, generation).
 
     Legal ONLY while the generation is a `candidate` (plan §4.7 idempotent
@@ -391,6 +392,12 @@ def write_contacts(conn, chart_id: str, generation: str, convention_id: str,
     (publish_candidate) — the manifest id is stored on every row as
     input_generation_vector_id. Returns the ordered contact_id list. Does NOT
     commit: the caller owns the transaction.
+
+    `bodies` (default None — behaviour byte-identical to the original) narrows
+    the DELETE to the named bodies, for per-body idempotent substeps of a
+    chunked candidate build (A2.5): re-running one body's substep replaces
+    exactly that body's rows and no other's. Every episode in the payload
+    must belong to one of the named bodies — a mismatch refuses honestly.
     """
     _require_not_published(conn, chart_id, generation, "write_contacts")
     manifest_id = _candidate_manifest_id(conn, chart_id, generation)
@@ -403,20 +410,41 @@ def write_contacts(conn, chart_id: str, generation: str, convention_id: str,
                            method_version, manifest_id, build_id)
         for ep in episodes
     ]
-    conn.execute(
-        "DELETE FROM kala_gochara_contacts WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation),
-    )
+    if bodies is None:
+        conn.execute(
+            "DELETE FROM kala_gochara_contacts WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation),
+        )
+    else:
+        scope = {str(b) for b in bodies}
+        foreign = sorted({str(r[4]) for r in rows} - scope)  # r[4] = body
+        if foreign:
+            raise ValueError(
+                f"write_contacts bodies-scope violation: payload carries bodies "
+                f"{foreign} outside the declared substep scope {sorted(scope)} — "
+                "a body-scoped substep may only replace its own rows")
+        conn.execute(
+            "DELETE FROM kala_gochara_contacts"
+            " WHERE chart_id = %s AND generation = %s AND body = ANY(%s)",
+            (chart_id, generation, sorted(scope)),
+        )
     _insert_contact_rows(conn, rows)
     return [r[2] for r in rows]
 
 
 def write_coverage(conn, chart_id: str, generation: str, convention_id: str,
-                   partitions: list[dict], build_id: str) -> int:
+                   partitions: list[dict], build_id: str,
+                   bodies: list[str] | None = None) -> int:
     """Delete-then-insert of the coverage manifest, scoped (chart_id,
     generation). Same lifecycle rules as write_contacts. Horizon ranges are
     accepted as psycopg Range objects or '[lo,hi)' text and stored as
-    tstzrange. Returns the row count written."""
+    tstzrange. Returns the row count written.
+
+    `bodies` (default None — behaviour byte-identical to the original) narrows
+    the DELETE to partitions whose key begins '<body>:' (the enumerator's
+    per-body partition_key convention), for per-body idempotent substeps
+    (A2.5). Every supplied partition must match the scope — a mismatch
+    refuses honestly."""
     _require_not_published(conn, chart_id, generation, "write_coverage")
     _candidate_manifest_id(conn, chart_id, generation)
     rows = []
@@ -437,10 +465,26 @@ def write_coverage(conn, chart_id: str, generation: str, convention_id: str,
             build_id,
             p.get("computed_at") or datetime.now(timezone.utc),
         ))
-    conn.execute(
-        "DELETE FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation),
-    )
+    if bodies is None:
+        conn.execute(
+            "DELETE FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation),
+        )
+    else:
+        scope = sorted({str(b).lower() for b in bodies})
+        foreign = sorted({str(r[3]) for r in rows  # r[3] = partition_key
+                          if r[3].split(":", 1)[0].lower() not in scope})
+        if foreign:
+            raise ValueError(
+                f"write_coverage bodies-scope violation: partitions {foreign} "
+                f"outside the declared substep scope {scope} — a body-scoped "
+                "substep may only replace its own partitions")
+        conn.execute(
+            "DELETE FROM kala_gochara_coverage"
+            " WHERE chart_id = %s AND generation = %s"
+            " AND lower(split_part(partition_key, ':', 1)) = ANY(%s)",
+            (chart_id, generation, scope),
+        )
     if rows:
         cols = ", ".join(_COVERAGE_COLUMNS)
         placeholders = ", ".join(["%s"] * len(_COVERAGE_COLUMNS))

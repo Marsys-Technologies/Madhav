@@ -136,6 +136,51 @@ def build_class_context(swe, conn, chart_id: str, event_class: str,
     }
 
 
+class NoContactsError(Exception):
+    """No candidate contacts joined to resolved map rows (exit 3 at the CLI)."""
+
+
+def build_all_class_contexts(swe, conn, chart_id: str, generation: str):
+    """The whole class-context pass on a CALLER-SUPPLIED connection: per event
+    class, the union-semantics permission context the windows projection
+    consumes. Returns (contexts, omitted, null_exact). READ-ONLY — never
+    commits/rolls back/closes `conn`, never opens its own. Raises
+    NoContactsError when no candidate contacts join (the CLI's exit 3)."""
+    by_class, null_exact = fetch_class_contact_instants(
+        conn, chart_id, generation)
+    if not by_class:
+        raise NoContactsError(
+            f"no candidate contacts joined to resolved map rows "
+            f"for chart {chart_id} generation {generation!r} "
+            "— run step06_candidate_build.py first")
+
+    # The caller's transaction mode governs: under the CLI's autocommit
+    # connection savepoint_scope is a no-op passthrough (the _dbutil
+    # docstring's recommended shape for this engine's many defensive-catch
+    # queries); under the governed writer the orchestrator's per-substep
+    # transaction carries them.
+    dasha_periods = DD.fetch_dasha_periods(
+        conn, chart_id, systems=list(perm.DASHA_SYSTEM_IDS))
+
+    contexts: dict[str, dict] = {}
+    omitted: list[dict] = []
+    for cls in sorted(by_class):
+        entry = build_class_context(
+            swe, conn, chart_id, cls, sorted(by_class[cls]),
+            dasha_periods)
+        if entry is None:
+            omitted.append({
+                "event_class": cls,
+                "reason": "targets did not resolve "
+                          "(fetch_resonance_targets/enrich_targets empty) "
+                          "— omitted, never fabricated",
+                "candidate_instants": len(by_class[cls]),
+            })
+            continue
+        contexts[cls] = entry
+    return contexts, omitted, null_exact
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
@@ -148,36 +193,12 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = connect(args.dsn, step=6, autocommit=True)
     try:
-        by_class, null_exact = fetch_class_contact_instants(
-            conn, args.chart_id, args.generation)
-        if not by_class:
-            print(f"ERROR: no candidate contacts joined to resolved map rows "
-                  f"for chart {args.chart_id} generation {args.generation!r} "
-                  "— run step06_candidate_build.py first", file=sys.stderr)
+        try:
+            contexts, omitted, null_exact = build_all_class_contexts(
+                swe, conn, args.chart_id, args.generation)
+        except NoContactsError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
             return 3
-
-        # autocommit: savepoint_scope is a no-op passthrough there and each
-        # defensive read is its own transaction (the _dbutil docstring's
-        # recommended shape for this engine's many defensive-catch queries).
-        dasha_periods = DD.fetch_dasha_periods(
-            conn, args.chart_id, systems=list(perm.DASHA_SYSTEM_IDS))
-
-        contexts: dict[str, dict] = {}
-        omitted: list[dict] = []
-        for cls in sorted(by_class):
-            entry = build_class_context(
-                swe, conn, args.chart_id, cls, sorted(by_class[cls]),
-                dasha_periods)
-            if entry is None:
-                omitted.append({
-                    "event_class": cls,
-                    "reason": "targets did not resolve "
-                              "(fetch_resonance_targets/enrich_targets empty) "
-                              "— omitted, never fabricated",
-                    "candidate_instants": len(by_class[cls]),
-                })
-                continue
-            contexts[cls] = entry
     finally:
         conn.close()
 

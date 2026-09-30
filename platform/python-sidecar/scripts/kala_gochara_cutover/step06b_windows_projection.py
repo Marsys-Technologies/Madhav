@@ -800,6 +800,14 @@ def build_delta_report(*, chart_id: str, generation: str, baseline: str,
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
+class StaleOverlayError(Exception):
+    """§12.9 overlay-freshness refusal (exit 7 at the CLI)."""
+
+
+class MissingInputError(Exception):
+    """Cannot proceed: no candidate manifest/contacts/map rows (exit 3)."""
+
+
 def _rehearsal_class_context(event_class: str) -> dict:
     """Disclosed synthetic class context for rehearsal ONLY: a fixed
     permission-system set (recorded as rehearsal-synthetic on every row and
@@ -810,6 +818,205 @@ def _rehearsal_class_context(event_class: str) -> dict:
         "class_is_adverse": False,
         "context_source": "REHEARSAL-SYNTHETIC (not chart data)",
     }
+
+
+def project_windows_core(conn, *, chart_id: str, generation: str,
+                         baseline_generation: str,
+                         horizon_jd: tuple[float, float],
+                         horizon_start: str, horizon_end: str,
+                         orb_deg: float, min_lambda: float,
+                         coarse_step_days: float,
+                         class_contexts: dict[str, dict],
+                         context_source: str,
+                         rehearse_synthetic: bool = False,
+                         build_id: str | None = None,
+                         row_validator=None) -> dict:
+    """The whole windows projection on a CALLER-SUPPLIED connection: §12.9 gate
+    → candidate-manifest check → contact/map/overlay reads → per-class
+    projection → write_windows (delete-then-insert scoped chart × generation)
+    → manifest windows count. NEVER commits/rolls back/closes `conn`, never
+    opens its own — the caller owns the transaction (the CLI main() commits
+    exactly as before; the governed writer's orchestrator owns its savepoint).
+
+    `class_contexts` maps event_class → the step06a context entry (empty dict
+    under rehearsal, which synthesizes one per class). `row_validator`, when
+    given, is called with the full projected row list immediately BEFORE
+    write_windows — a caller-side honesty gate (the governed writer uses it to
+    refuse any row outside its pinned horizon); raising aborts before any DML.
+
+    Raises StaleOverlayError (exit 7), MissingInputError (exit 3) and the
+    ledger's PublishedGenerationRefusal (exit 6) — the CLI maps them to the
+    same messages/codes as before. Returns {"report", "delta_report"}.
+    """
+    if build_id is None:
+        build_id = f"wp10-step6b-windows-{int(time.time())}"
+
+    # §12.9 gate — BEFORE reading anything for the build. Same refusal the
+    # enumerator and step06 apply; skipped (NOT_RUN) under rehearsal.
+    if rehearse_synthetic:
+        fingerprints = {"house_vedha": "NOT_RUN: --rehearse-synthetic",
+                        "moorti": "NOT_RUN: --rehearse-synthetic"}
+    else:
+        if str(SIDECAR) not in sys.path:
+            sys.path.insert(0, str(SIDECAR))
+        from services.ka_vedha_gochara.freshness import (
+            check_overlay_freshness, gate_allows_overlays)
+        reports = check_overlay_freshness(conn, chart_id)
+        fingerprints = {
+            "house_vedha": reports["house_vedha"].current,
+            "moorti": reports["moorti"].current,
+            "house_vedha_state": reports["house_vedha"].state,
+            "moorti_state": reports["moorti"].state,
+        }
+        if not gate_allows_overlays(reports):
+            detail = "; ".join(f"{n}: {r.summary()}" for n, r in reports.items())
+            raise StaleOverlayError(detail)
+
+    # Plan §4.7 discipline: a candidate manifest must exist; published
+    # refuses (exit 6), missing means step 6 has not run (exit 3).
+    try:
+        ledger._candidate_manifest_id(conn, chart_id, generation)
+    except ValueError as exc:
+        raise MissingInputError(
+            f"{exc} — run step06_candidate_build.py first") from exc
+
+    contacts = fetch_contacts(conn, chart_id, generation)
+    if not contacts:
+        raise MissingInputError(
+            f"no kala_gochara_contacts rows for chart "
+            f"{chart_id} generation {generation!r} — run "
+            "step06_candidate_build.py first")
+    map_rows = fetch_map_rows(conn, chart_id)
+    if not map_rows:
+        raise MissingInputError(
+            f"no resolved gochara_resonance_map rows for chart "
+            f"{chart_id} — run ka_gochara_resonance first")
+    vedha_rows = fetch_vedha_rows(conn, chart_id)
+    malefic_scale = fetch_malefic_scale(conn)
+    baseline_rows = [
+        {"event_class": r[0], "peak_date": r[1], "raw_intensity": float(r[2]),
+         "signed_intensity": float(r[3])}
+        for r in conn.execute(
+            "SELECT event_class, peak_date, raw_intensity, signed_intensity"
+            " FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
+            (chart_id, baseline_generation)).fetchall()
+    ] if _table_exists(conn, "kala_gochara_windows") else []
+    window_columns = _table_columns(conn, "kala_gochara_windows")
+
+    # contact -> classes join (map UNIQUE(chart, class, type, ref) makes
+    # the per-class weight unambiguous)
+    weight_by_class: dict[str, dict[str, float]] = {}
+    weights_all_by_class: dict[str, list[float]] = {}
+    for m in map_rows:
+        weight_by_class.setdefault(m["event_class"], {})[m["target_ref"]] = m["weight"]
+        weights_all_by_class.setdefault(m["event_class"], []).append(m["weight"])
+    contacts_by_class: dict[str, list[dict]] = {}
+    unmapped = 0
+    unmapped_relation = 0
+    for c in contacts:
+        primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
+        if primitive is None:
+            unmapped_relation += 1
+            continue
+        joined = False
+        for m in map_rows:
+            if (m["target_type"] == c["target_type"]
+                    and m["target_ref"] == c["target_ref"]):
+                c2 = dict(c, _primitive=primitive)
+                contacts_by_class.setdefault(m["event_class"], []).append(c2)
+                joined = True
+        if not joined:
+            unmapped += 1
+
+    gate_for_date = make_quality_gate_for_date(vedha_rows, malefic_scale)
+    all_rows: list[dict] = []
+    class_reports: list[dict] = []
+    skipped_classes: list[dict] = []
+    for cls in sorted(weights_all_by_class):
+        cls_contacts = contacts_by_class.get(cls, [])
+        if not cls_contacts:
+            continue  # a class with no contacts honestly yields zero windows
+        ctx_dict = (class_contexts.get(cls) if class_contexts
+                    else _rehearsal_class_context(cls))
+        if ctx_dict is None:
+            skipped_classes.append({
+                "event_class": cls,
+                "reason": "no class context (permission systems) — honest "
+                          "skip, never a 0.0 stand-in (plan §4.6)",
+                "contacts_matched": len(cls_contacts),
+            })
+            continue
+        class_ctx = ClassContext(
+            cls, weights_all_by_class[cls], ctx_dict["permission_systems"],
+            weight_by_target_ref=weight_by_class[cls],
+            class_valence=ctx_dict.get("class_valence", "mixed"),
+            class_is_adverse=ctx_dict.get("class_is_adverse", False),
+            context_source=ctx_dict.get("context_source", context_source))
+        rows, rep = project_class_windows(
+            class_ctx, cls_contacts, horizon_jd, gate_for_date,
+            min_lambda=min_lambda,
+            coarse_step_days=coarse_step_days)
+        if rows:
+            gates_mean = sum(
+                r["suppression_state"]["quality_gates"] for r in rows
+                if r["resolution"] == "era") / max(1, sum(
+                    1 for r in rows if r["resolution"] == "era"))
+            rep["mean_quality_gates"] = gates_mean
+        all_rows.extend(rows)
+        class_reports.append(rep)
+
+    # Caller-side honesty gate (the governed writer's horizon refusal) —
+    # BEFORE any DML.
+    if row_validator is not None:
+        row_validator(all_rows)
+
+    source = SOURCE_REHEARSAL if rehearse_synthetic else SOURCE_LIVE
+    n_written, skipped_dupes = write_windows(
+        conn, chart_id, generation,
+        all_rows, source=source, window_columns=window_columns)
+    update_manifest_windows_count(conn, chart_id, generation, n_written)
+
+    flags = {**CANDIDATE_FLAGS, "orb_max_deg": orb_deg,
+             "min_lambda": min_lambda,
+             "coarse_step_days": coarse_step_days}
+    run_meta = {
+        "build_id": build_id,
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "horizon": f"[{horizon_start},{horizon_end})",
+        "class_context_source": context_source,
+    }
+    delta_report = build_delta_report(
+        chart_id=chart_id, generation=generation,
+        baseline=baseline_generation, class_reports=class_reports,
+        window_rows=all_rows, baseline_rows=baseline_rows, flags=flags,
+        fingerprints=fingerprints, run_meta=run_meta)
+    report = {
+        "writer": "step06b_windows_projection",
+        "chart_id": chart_id, "generation": generation,
+        "build_id": build_id,
+        "source": source,
+        "flags": flags,
+        "upstream_fingerprints": fingerprints,
+        "contacts_read": len(contacts),
+        "contacts_unmapped_no_class": unmapped,
+        "contacts_unmapped_relation": unmapped_relation,
+        "classes_projected": len(class_reports),
+        "skipped_classes": skipped_classes,
+        "windows_written": n_written,
+        "windows_collapsed_dupes": skipped_dupes,
+        "windows_by_tier": {
+            tier: sum(1 for r in all_rows if r["resolution"] == tier)
+            for tier in ("era", "month", "day")},
+        "windows_by_tier_basis": "pre-dedupe projection counts; "
+            "windows_written is post-dedupe, so "
+            "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",
+        "class_reports": class_reports,
+        "baseline_generation": baseline_generation,
+        "baseline_windows_read": len(baseline_rows),
+        "peak_retention": "H-5: count cap removed (all admitted peaks "
+                          "stored); pinned 90-day separation retained",
+    }
+    return {"report": report, "delta_report": delta_report}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -860,148 +1067,29 @@ def main(argv: list[str] | None = None) -> int:
         context_source = "--class-context-json"
 
     conn = connect(resolve_dsn(args), step=6, autocommit=False)
-    build_id = f"wp10-step6b-windows-{int(time.time())}"
-    fingerprints = None
     try:
-        # §12.9 gate — BEFORE reading anything for the build. Same refusal the
-        # enumerator and step06 apply; skipped (NOT_RUN) under rehearsal.
-        if args.rehearse_synthetic:
-            fingerprints = {"house_vedha": "NOT_RUN: --rehearse-synthetic",
-                            "moorti": "NOT_RUN: --rehearse-synthetic"}
-        else:
-            if str(SIDECAR) not in sys.path:
-                sys.path.insert(0, str(SIDECAR))
-            from services.ka_vedha_gochara.freshness import (
-                check_overlay_freshness, gate_allows_overlays)
-            reports = check_overlay_freshness(conn, args.chart_id)
-            conn.rollback()  # the checks only read
-            fingerprints = {
-                "house_vedha": reports["house_vedha"].current,
-                "moorti": reports["moorti"].current,
-                "house_vedha_state": reports["house_vedha"].state,
-                "moorti_state": reports["moorti"].state,
-            }
-            if not gate_allows_overlays(reports):
-                detail = "; ".join(f"{n}: {r.summary()}" for n, r in reports.items())
-                print(f"REFUSED (§12.9): {detail}. A windows projection must not "
-                      "be built on stale overlay rows — rebuild ka_vedha_gochara "
-                      "and ka_moorti_nirnaya first.", file=sys.stderr)
-                conn.close()
-                return 7
-
-        # Plan §4.7 discipline: a candidate manifest must exist; published
-        # refuses (exit 6), missing means step 6 has not run (exit 3).
-        try:
-            ledger._candidate_manifest_id(conn, args.chart_id, args.generation)
-        except ledger.PublishedGenerationRefusal as exc:
-            conn.rollback()
-            print(f"REFUSED: {exc}", file=sys.stderr)
-            conn.close()
-            return 6
-        except ValueError as exc:
-            conn.rollback()
-            print(f"ERROR: {exc} — run step06_candidate_build.py first",
-                  file=sys.stderr)
-            conn.close()
-            return 3
-
-        contacts = fetch_contacts(conn, args.chart_id, args.generation)
-        if not contacts:
-            conn.rollback()
-            print(f"ERROR: no kala_gochara_contacts rows for chart "
-                  f"{args.chart_id} generation {args.generation!r} — run "
-                  "step06_candidate_build.py first", file=sys.stderr)
-            conn.close()
-            return 3
-        map_rows = fetch_map_rows(conn, args.chart_id)
-        if not map_rows:
-            conn.rollback()
-            print(f"ERROR: no resolved gochara_resonance_map rows for chart "
-                  f"{args.chart_id} — run ka_gochara_resonance first",
-                  file=sys.stderr)
-            conn.close()
-            return 3
-        vedha_rows = fetch_vedha_rows(conn, args.chart_id)
-        malefic_scale = fetch_malefic_scale(conn)
-        baseline_rows = [
-            {"event_class": r[0], "peak_date": r[1], "raw_intensity": float(r[2]),
-             "signed_intensity": float(r[3])}
-            for r in conn.execute(
-                "SELECT event_class, peak_date, raw_intensity, signed_intensity"
-                " FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
-                (args.chart_id, args.baseline_generation)).fetchall()
-        ] if _table_exists(conn, "kala_gochara_windows") else []
-        window_columns = _table_columns(conn, "kala_gochara_windows")
-
-        # contact -> classes join (map UNIQUE(chart, class, type, ref) makes
-        # the per-class weight unambiguous)
-        weight_by_class: dict[str, dict[str, float]] = {}
-        weights_all_by_class: dict[str, list[float]] = {}
-        for m in map_rows:
-            weight_by_class.setdefault(m["event_class"], {})[m["target_ref"]] = m["weight"]
-            weights_all_by_class.setdefault(m["event_class"], []).append(m["weight"])
-        contacts_by_class: dict[str, list[dict]] = {}
-        unmapped = 0
-        unmapped_relation = 0
-        for c in contacts:
-            primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
-            if primitive is None:
-                unmapped_relation += 1
-                continue
-            joined = False
-            for m in map_rows:
-                if (m["target_type"] == c["target_type"]
-                        and m["target_ref"] == c["target_ref"]):
-                    c2 = dict(c, _primitive=primitive)
-                    contacts_by_class.setdefault(m["event_class"], []).append(c2)
-                    joined = True
-            if not joined:
-                unmapped += 1
-
-        gate_for_date = make_quality_gate_for_date(vedha_rows, malefic_scale)
-        all_rows: list[dict] = []
-        class_reports: list[dict] = []
-        skipped_classes: list[dict] = []
-        for cls in sorted(weights_all_by_class):
-            cls_contacts = contacts_by_class.get(cls, [])
-            if not cls_contacts:
-                continue  # a class with no contacts honestly yields zero windows
-            ctx_dict = (class_contexts.get(cls) if class_contexts
-                        else _rehearsal_class_context(cls))
-            if ctx_dict is None:
-                skipped_classes.append({
-                    "event_class": cls,
-                    "reason": "no class context (permission systems) — honest "
-                              "skip, never a 0.0 stand-in (plan §4.6)",
-                    "contacts_matched": len(cls_contacts),
-                })
-                continue
-            class_ctx = ClassContext(
-                cls, weights_all_by_class[cls], ctx_dict["permission_systems"],
-                weight_by_target_ref=weight_by_class[cls],
-                class_valence=ctx_dict.get("class_valence", "mixed"),
-                class_is_adverse=ctx_dict.get("class_is_adverse", False),
-                context_source=ctx_dict.get("context_source", context_source))
-            rows, rep = project_class_windows(
-                class_ctx, cls_contacts, horizon_jd, gate_for_date,
-                min_lambda=args.min_lambda,
-                coarse_step_days=args.coarse_step_days)
-            if rows:
-                gates_mean = sum(
-                    r["suppression_state"]["quality_gates"] for r in rows
-                    if r["resolution"] == "era") / max(1, sum(
-                        1 for r in rows if r["resolution"] == "era"))
-                rep["mean_quality_gates"] = gates_mean
-            all_rows.extend(rows)
-            class_reports.append(rep)
-
-        source = SOURCE_REHEARSAL if args.rehearse_synthetic else SOURCE_LIVE
-        n_written, skipped_dupes = write_windows(
-            conn, args.chart_id, args.generation,
-            all_rows, source=source, window_columns=window_columns)
-        update_manifest_windows_count(conn, args.chart_id, args.generation,
-                                      n_written)
+        out = project_windows_core(
+            conn, chart_id=args.chart_id, generation=args.generation,
+            baseline_generation=args.baseline_generation,
+            horizon_jd=horizon_jd,
+            horizon_start=args.horizon_start, horizon_end=args.horizon_end,
+            orb_deg=args.orb_deg, min_lambda=args.min_lambda,
+            coarse_step_days=args.coarse_step_days,
+            class_contexts=class_contexts, context_source=context_source,
+            rehearse_synthetic=args.rehearse_synthetic)
         conn.commit()
+    except StaleOverlayError as exc:
+        conn.rollback()
+        print(f"REFUSED (§12.9): {exc}. A windows projection must not "
+              "be built on stale overlay rows — rebuild ka_vedha_gochara "
+              "and ka_moorti_nirnaya first.", file=sys.stderr)
+        conn.close()
+        return 7
+    except MissingInputError as exc:
+        conn.rollback()
+        print(f"ERROR: {exc}", file=sys.stderr)
+        conn.close()
+        return 3
     except ledger.PublishedGenerationRefusal as exc:
         conn.rollback()
         print(f"REFUSED: {exc}", file=sys.stderr)
@@ -1017,23 +1105,13 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:  # noqa: BLE001
             pass
 
-    flags = {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg,
-             "min_lambda": args.min_lambda,
-             "coarse_step_days": args.coarse_step_days}
-    run_meta = {
-        "build_id": build_id,
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "horizon": f"[{args.horizon_start},{args.horizon_end})",
-        "class_context_source": context_source,
-    }
-    delta_report = build_delta_report(
-        chart_id=args.chart_id, generation=args.generation,
-        baseline=args.baseline_generation, class_reports=class_reports,
-        window_rows=all_rows, baseline_rows=baseline_rows, flags=flags,
-        fingerprints=fingerprints, run_meta=run_meta)
+    report = out["report"]
+    report["delta_report_out"] = args.delta_report_out
     if args.delta_report_out:
-        Path(args.delta_report_out).write_text(delta_report)
+        Path(args.delta_report_out).write_text(out["delta_report"])
 
+    unmapped = report["contacts_unmapped_no_class"]
+    unmapped_relation = report["contacts_unmapped_relation"]
     if unmapped or unmapped_relation:
         print(f"WARNING: contacts excluded from the activity function — "
               f"contacts_unmapped_relation={unmapped_relation} (relation not in "
@@ -1041,33 +1119,6 @@ def main(argv: list[str] | None = None) -> int:
               f"(no resolved gochara_resonance_map row). A non-zero count is a "
               f"reviewable finding — disclose it in the step evidence, never "
               f"leave it silent.", file=sys.stderr)
-    report = {
-        "writer": "step06b_windows_projection",
-        "chart_id": args.chart_id, "generation": args.generation,
-        "build_id": build_id,
-        "source": source,
-        "flags": flags,
-        "upstream_fingerprints": fingerprints,
-        "contacts_read": len(contacts),
-        "contacts_unmapped_no_class": unmapped,
-        "contacts_unmapped_relation": unmapped_relation,
-        "classes_projected": len(class_reports),
-        "skipped_classes": skipped_classes,
-        "windows_written": n_written,
-        "windows_collapsed_dupes": skipped_dupes,
-        "windows_by_tier": {
-            tier: sum(1 for r in all_rows if r["resolution"] == tier)
-            for tier in ("era", "month", "day")},
-        "windows_by_tier_basis": "pre-dedupe projection counts; "
-            "windows_written is post-dedupe, so "
-            "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",
-        "class_reports": class_reports,
-        "baseline_generation": args.baseline_generation,
-        "baseline_windows_read": len(baseline_rows),
-        "delta_report_out": args.delta_report_out,
-        "peak_retention": "H-5: count cap removed (all admitted peaks "
-                          "stored); pinned 90-day separation retained",
-    }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
         write_evidence(6, "WINDOWS-PROJECTION",

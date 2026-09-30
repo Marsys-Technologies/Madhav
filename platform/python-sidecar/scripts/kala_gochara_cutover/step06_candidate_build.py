@@ -143,6 +143,77 @@ def _synthetic_coverage(horizon: str) -> list[dict]:
     }]
 
 
+class StaleOverlayRefusal(Exception):
+    """§12.9 gate refusal. The CLI maps this to exit 7; an in-process caller
+    (the governed writer) lets it propagate to fail its own substep."""
+
+
+def build_candidate_core(conn, *, chart_id: str, generation: str,
+                         episodes: list[dict], coverage: list[dict],
+                         horizon_text: str, orb_deg: float,
+                         delta_report: str | None = None,
+                         writer_asset_id: str = "ka_gochara",
+                         freshness_gate: bool = True,
+                         build_id: str | None = None) -> dict:
+    """The ledger lifecycle on a CALLER-SUPPLIED connection: register_convention
+    → publish_candidate → write_contacts → write_coverage. NEVER commits,
+    rolls back or closes `conn` and never opens its own — the caller owns the
+    transaction (the CLI main() commits exactly as it always did; the governed
+    pipeline writer's orchestrator owns its savepoint).
+
+    `episodes` must carry tz-aware datetimes (the enumerator's in-memory
+    payload; JSON-round-tripped payloads go through _coerce_episode_times
+    first). Raises StaleOverlayRefusal on the §12.9 gate and the ledger's
+    PublishedGenerationRefusal on a published generation — the CLI maps those
+    to exits 7/6 with the same messages as before.
+    """
+    ledger = _load_ledger()
+
+    vector = dict(GENERATION_VECTOR_FLAGS)
+    vector["orb_max_deg"] = orb_deg
+    vector["orb_ruling"] = ("M-1 fallback no-box × 5.0° (unratified)"
+                            if orb_deg == 5.0 else "per --orb-deg")
+    vector["delta_report"] = delta_report
+
+    # §12.9 gate — BEFORE any ledger write. Refuses a candidate built on vedha
+    # rows whose upstream fingerprint is missing or no longer matches.
+    if not freshness_gate:
+        vector["vedha_upstream_freshness"] = "NOT_RUN: --rehearse-synthetic"
+    else:
+        if str(SIDECAR) not in sys.path:  # this file may run as a standalone script
+            sys.path.insert(0, str(SIDECAR))
+        from services.ka_vedha_gochara.freshness import (
+            check_overlay_freshness, gate_allows_overlays)
+        reports = check_overlay_freshness(conn, chart_id)
+        vector["vedha_upstream_freshness"] = reports["house_vedha"].state
+        vector["moorti_upstream_freshness"] = reports["moorti"].state
+        vector["vedha_upstream_fingerprint"] = reports["house_vedha"].current
+        vector["moorti_upstream_fingerprint"] = reports["moorti"].current
+        if not gate_allows_overlays(reports):
+            detail = "; ".join(f"{name}: {r.summary()}" for name, r in reports.items())
+            raise StaleOverlayRefusal(detail)
+    if build_id is None:
+        build_id = f"wp10-step6-{int(time.time())}"
+    cid = ledger.register_convention(conn, CONVENTION_VECTOR,
+                                     {"ephemeris_backend": "swieph",
+                                      "retflag": 258})
+    manifest_id = ledger.publish_candidate(
+        conn, chart_id, generation, cid, vector,
+        {"backend": "swieph", "retflag": 258}, horizon_text,
+        writer_asset_id=writer_asset_id)
+    ids = ledger.write_contacts(conn, chart_id, generation, cid,
+                                episodes, build_id)
+    n_cov = ledger.write_coverage(conn, chart_id, generation, cid,
+                                  coverage, build_id)
+    return {
+        "chart_id": chart_id, "generation": generation,
+        "convention_id": cid, "manifest_id": manifest_id,
+        "build_id": build_id, "contacts_written": len(ids),
+        "coverage_rows_written": n_cov,
+        "input_generation_vector": vector,
+    }
+
+
 def main() -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
@@ -164,12 +235,6 @@ def main() -> int:
               "--rehearse-synthetic for rehearsal", file=sys.stderr)
         return 3
 
-    vector = dict(GENERATION_VECTOR_FLAGS)
-    vector["orb_max_deg"] = args.orb_deg
-    vector["orb_ruling"] = ("M-1 fallback no-box × 5.0° (unratified)"
-                            if args.orb_deg == 5.0 else "per --orb-deg")
-    vector["delta_report"] = args.delta_report
-
     if args.rehearse_synthetic:
         episodes = _synthetic_episodes()
         for ep in episodes:
@@ -181,44 +246,21 @@ def main() -> int:
         coverage = json.loads(Path(args.coverage_json).read_text())
         horizon_text = f"[{args.horizon_start},{args.horizon_end})"
 
-    ledger = _load_ledger()
     conn = connect(resolve_dsn(args), step=6, autocommit=False)
-
-    # §12.9 gate — BEFORE any ledger write. Refuses a candidate built on vedha rows
-    # whose upstream fingerprint is missing or no longer matches the reference tables.
-    if args.rehearse_synthetic:
-        vector["vedha_upstream_freshness"] = "NOT_RUN: --rehearse-synthetic"
-    else:
-        if str(SIDECAR) not in sys.path:  # this file runs as a standalone script
-            sys.path.insert(0, str(SIDECAR))
-        from services.ka_vedha_gochara.freshness import (
-            check_overlay_freshness, gate_allows_overlays)
-        reports = check_overlay_freshness(conn, args.chart_id)
-        conn.rollback()  # the checks only read; leave no open transaction
-        vector["vedha_upstream_freshness"] = reports["house_vedha"].state
-        vector["moorti_upstream_freshness"] = reports["moorti"].state
-        vector["vedha_upstream_fingerprint"] = reports["house_vedha"].current
-        vector["moorti_upstream_fingerprint"] = reports["moorti"].current
-        if not gate_allows_overlays(reports):
-            detail = "; ".join(f"{name}: {r.summary()}" for name, r in reports.items())
-            print(f"REFUSED (§12.9): {detail}. A candidate must not be built on stale overlay rows "
-                  "— rebuild ka_vedha_gochara and ka_moorti_nirnaya first.", file=sys.stderr)
-            conn.close()
-            return 7
-    build_id = f"wp10-step6-{int(time.time())}"
     try:
-        cid = ledger.register_convention(conn, CONVENTION_VECTOR,
-                                         {"ephemeris_backend": "swieph",
-                                          "retflag": 258})
-        manifest_id = ledger.publish_candidate(
-            conn, args.chart_id, args.generation, cid, vector,
-            {"backend": "swieph", "retflag": 258}, horizon_text)
-        ids = ledger.write_contacts(conn, args.chart_id, args.generation, cid,
-                                    episodes, build_id)
-        n_cov = ledger.write_coverage(conn, args.chart_id, args.generation, cid,
-                                      coverage, build_id)
+        report = build_candidate_core(
+            conn, chart_id=args.chart_id, generation=args.generation,
+            episodes=episodes, coverage=coverage, horizon_text=horizon_text,
+            orb_deg=args.orb_deg, delta_report=args.delta_report,
+            freshness_gate=not args.rehearse_synthetic)
         conn.commit()
-    except ledger.PublishedGenerationRefusal as exc:
+    except StaleOverlayRefusal as exc:
+        conn.rollback()
+        print(f"REFUSED (§12.9): {exc}. A candidate must not be built on stale overlay rows "
+              "— rebuild ka_vedha_gochara and ka_moorti_nirnaya first.", file=sys.stderr)
+        conn.close()
+        return 7
+    except _load_ledger().PublishedGenerationRefusal as exc:
         conn.rollback()
         print(f"REFUSED: {exc}", file=sys.stderr)
         conn.close()
@@ -228,14 +270,6 @@ def main() -> int:
         conn.close()
         raise
     conn.close()
-
-    report = {
-        "chart_id": args.chart_id, "generation": args.generation,
-        "convention_id": cid, "manifest_id": manifest_id,
-        "build_id": build_id, "contacts_written": len(ids),
-        "coverage_rows_written": n_cov,
-        "input_generation_vector": vector,
-    }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
         write_evidence(6, "GREEN",
