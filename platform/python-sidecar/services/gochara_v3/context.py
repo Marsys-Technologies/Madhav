@@ -93,7 +93,8 @@ class VedhaRow:
     window_start: str   # ISO date YYYY-MM-DD
     window_end: str     # ISO date YYYY-MM-DD
     classical_citation: Optional[str]
-    detail: dict        # JSONB — malefic_count, malefic_effect_grade, etc.
+    detail: dict        # JSONB — T0-8 vedha_intervals / coverage / operator_role
+    formula_version: Optional[str] = None  # rule identity (writer FORMULA_VERSION)
 
 
 @dataclass(frozen=True)
@@ -537,7 +538,8 @@ def _fetch_vedha_rows(conn, chart_id: str) -> list[VedhaRow]:
                        window_start::text AS window_start,
                        window_end::text   AS window_end,
                        classical_citation,
-                       detail
+                       detail,
+                       formula_version
                   FROM kala_vedha_gochara
                  WHERE chart_id = %s
                  ORDER BY window_start
@@ -554,7 +556,7 @@ def _fetch_vedha_rows(conn, chart_id: str) -> list[VedhaRow]:
     for row in rows:
         d = row if isinstance(row, dict) else dict(
             zip(["vedha_kind", "graha", "window_start", "window_end",
-                 "classical_citation", "detail"], row)
+                 "classical_citation", "detail", "formula_version"], row)
         )
         detail_raw = d.get("detail")
         if isinstance(detail_raw, str):
@@ -571,6 +573,7 @@ def _fetch_vedha_rows(conn, chart_id: str) -> list[VedhaRow]:
             window_end=str(d["window_end"]),
             classical_citation=d.get("classical_citation"),
             detail=detail_raw,
+            formula_version=d.get("formula_version"),
         ))
     return result
 

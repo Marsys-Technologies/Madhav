@@ -113,8 +113,10 @@ def test_active_obstruction_without_cited_scale_is_structure_not_a_number():
     assert g["null_state"] == "omit" and "none_cited" in g["scale"]
     assert g["fired"][0]["primary_graha"] == "Sun"
     assert g["fired"][0]["fired"][0]["obstructor_body"] == "Mars"
-    assert g["fired"][0]["classical_citation"].startswith("Phaladipika")
-    assert g["fired"][0]["primary_house"] == 3 and g["fired"][0]["vedha_house"] == 9
+    assert g["fired"][0]["rule"]["classical_citation"].startswith("Phaladipika")
+    assert g["fired"][0]["primary_contact"]["primary_house"] == 3
+    assert g["fired"][0]["rule"]["vedha_house"] == 9
+    assert g["fired"][0]["primary_contact"]["residence"] == ["2025-01-01", "2025-06-01"]
     c = _parked_contact("sun", "Sun")
     ev = _activity([c], gate, _jd("2025-02-01"), {"Venus": 0.8})
     assert ev["lambda_raw"] == _activity([c], _open_gates, _jd("2025-02-01"),
@@ -173,7 +175,8 @@ def test_empty_overlay_is_unavailable_not_clean():
     gate = w.make_vedha_gate([])
     g = gate(_jd("2025-02-01"))
     assert g["state"] == "unavailable" and g["factor"] is None
-    assert g["coverage"] == {"overlay": "kala_vedha_gochara", "computed": False}
+    assert g["coverage"] == {"overlay": "kala_vedha_gochara", "computed": False,
+                             "covers_instant": False}
     assert g["null_state"] == "omit"
 
 
@@ -182,7 +185,8 @@ def test_instant_outside_computed_horizon_is_unavailable():
                                                  end="2025-06-01")])
     g = gate(_jd("2025-09-01"))
     assert g["state"] == "unavailable" and g["factor"] is None
-    assert g["coverage"]["start"] == "2025-01-01" and g["coverage"]["end"] == "2025-06-01"
+    assert g["coverage_horizons"] == [["2025-01-01", "2025-06-01"]]
+    assert g["coverage"]["covers_instant"] is False and "gap" in g["reason"]
     assert gate(_jd("2025-05-31"))["state"] == "clear"
     assert gate(_jd("2025-06-01"))["state"] == "unavailable"  # half-open horizon
 
@@ -266,3 +270,185 @@ def test_projection_no_longer_calls_the_legacy_whole_row_multiplier():
     src = inspect.getsource(w)
     assert "compute_quality_gates(" not in src
     assert "make_vedha_gate(vedha_rows)" in inspect.getsource(w.main)
+
+
+
+# ── ASTRA v1.1 P1-3: the SHARED v3 engine, on ACTUAL writer payloads ─────────
+
+import dataclasses  # noqa: E402
+from datetime import date  # noqa: E402
+
+from services.gochara_v3.context import VedhaRow  # noqa: E402
+from services.gochara_v3 import engine as E  # noqa: E402
+from services.ka_vedha_gochara import writer as W, logic as L, gate as VG  # noqa: E402
+
+
+def _writer_row(graha, res_start, res_end, occupants=(), *, companions=(),
+                horizon=("2025-01-01", "2026-01-01"), as_vedha_row=True):
+    """A kala_vedha_gochara row built by the WRITER's own pure detail
+    builder (_house_vedha_detail) over logic.build_obstruction_intervals /
+    carve_vipareeta — the actual T0-8 payload shape."""
+    p_in, p_out = date.fromisoformat(res_start), date.fromisoformat(res_end)
+    ivs = L.build_obstruction_intervals(
+        p_in, p_out, [(b, date.fromisoformat(a), date.fromisoformat(z)) for b, a, z in occupants])
+    for iv in ivs:
+        iv["vipareeta_companions"] = L.carve_vipareeta(
+            iv, [(g, date.fromisoformat(a), date.fromisoformat(z)) for g, a, z in companions])
+        iv["intensity_qualifier"] = None
+        iv["independence_group"] = f"ig:{iv['obstructor_body']}:{iv['t_in'].isoformat()}"
+    detail = W._house_vedha_detail(
+        upstream_fp={"fixture": True}, graha=graha,
+        run={"sign_idx": 2, "start_date": p_in, "end_date": p_out},
+        house=3, vedha_house=9, vedha_sign_idx=8,
+        rule={"phala": "gain"}, uncited=False, intervals=ivs, excepted=[],
+        horizon_start=date.fromisoformat(horizon[0]),
+        horizon_end=date.fromisoformat(horizon[1]))
+    row = {"vedha_kind": "house_vedha", "graha": graha, "window_start": res_start,
+           "window_end": res_end, "classical_citation": "Phaladipika Adh. XXVI, Sloka 3",
+           "detail": detail, "formula_version": W.FORMULA_VERSION}
+    if as_vedha_row:
+        return VedhaRow(**row)
+    return row
+
+
+def _engine_gate(rows, iso):
+    ctx = type("Ctx", (), {"vedha_rows": tuple(rows), "malefic_scale": ()})()
+    return E._compute_quality_gates_from_context(ctx, iso, iso, instant_date_iso=iso)
+
+
+def test_engine_clean_writer_row_is_one_not_0_85():
+    q, d = _engine_gate([_writer_row("Sun", "2025-01-01", "2025-06-01")], "2025-02-01")
+    assert q == 1.0 and d["state"] == "clear" and d["factor"] == 1.0
+    assert d["vedha_fired_count"] == 0 and d["fired_vedha"] == []
+    assert d["fired_vedha"] == d["fired"]
+
+
+def test_engine_expired_obstruction_is_clear_on_april_first_not_0_70():
+    row = _writer_row("Sun", "2025-01-01", "2025-06-01",
+                      occupants=[("Mars", "2025-01-01", "2025-03-01")])
+    assert row.detail["vedha_intervals"][0]["state"] == "active"
+    assert _engine_gate([row], "2025-02-01")[1]["state"] == "obstructed"
+    assert _engine_gate([row], "2025-03-01")[1]["state"] == "clear"
+    q, d = _engine_gate([row], "2025-04-01")
+    assert q == 1.0 and d["state"] == "clear" and d["factor"] == 1.0
+    # the obstructed instant: structure with identity, factor None, product 1.0
+    q2, d2 = _engine_gate([row], "2025-02-01")
+    assert q2 == 1.0 and d2["factor"] is None and d2["null_state"] == "omit"
+    f = d2["fired_vedha"][0]
+    assert f["primary_contact"] == {"graha": "Sun", "primary_house": 3,
+                                    "primary_sign_name": "Gemini",
+                                    "residence": ["2025-01-01", "2025-06-01"]}
+    assert f["rule"]["formula_version"] == W.FORMULA_VERSION
+    assert f["rule"]["classical_citation"].startswith("Phaladipika")
+    assert f["fired"][0]["obstructor_body"] == "Mars"
+
+
+def test_engine_duplicate_roots_attenuate_once_never_0_49():
+    row = _writer_row("Sun", "2025-01-01", "2025-06-01",
+                      occupants=[("Mars", "2025-01-01", "2025-03-01"),
+                                 ("Mars", "2025-01-01", "2025-03-01")])
+    ctx = type("Ctx", (), {"vedha_rows": (row,), "malefic_scale": ()})()
+    g = VG.make_gate(list(ctx.vedha_rows), cited_scale=lambda iv: 0.7)(date(2025, 2, 1))
+    assert g["factor_by_body"]["Sun"] == pytest.approx(0.7)
+    # and without a cited scale the engine applies NO number at all
+    q, d = _engine_gate([row], "2025-02-01")
+    assert q == 1.0 and d["factor"] is None and d["factor_by_body"] == {}
+
+
+def test_engine_vipareeta_carve_and_testimony_honoured():
+    row = _writer_row("Sun", "2025-01-01", "2025-06-01",
+                      occupants=[("Mars", "2025-01-01", "2025-06-01")],
+                      companions=[("Jupiter", "2025-02-15", "2025-03-15")])
+    seg_states = [s["state"] for s in row.detail["vedha_intervals"][0]["segments"]]
+    assert seg_states == ["active", "cancelled_vipareeta", "active"]
+    assert _engine_gate([row], "2025-03-01")[1]["state"] == "clear"   # inside the carve
+    assert _engine_gate([row], "2025-04-01")[1]["state"] == "obstructed"
+    moon = _writer_row("Moon", "2025-01-01", "2025-06-01",
+                       occupants=[("Saturn", "2025-01-01", "2025-06-01")])
+    assert moon.detail["operator_role"] == "testimony"
+    q, d = _engine_gate([moon], "2025-02-01")
+    assert d["state"] == "clear" and d["fired_vedha"] == []
+    assert d["annotations"][0]["operator_role"] == "testimony"
+
+
+def test_engine_coverage_gap_between_horizons_is_unavailable():
+    a = _writer_row("Sun", "2025-01-01", "2025-02-01", horizon=("2025-01-01", "2025-02-01"))
+    b = _writer_row("Sun", "2025-04-01", "2025-05-01", horizon=("2025-04-01", "2025-05-01"))
+    q, d = _engine_gate([a, b], "2025-03-01")
+    assert d["state"] == "unavailable" and d["factor"] is None and "gap" in d["reason"]
+    assert d["coverage_horizons"] == [["2025-01-01", "2025-02-01"], ["2025-04-01", "2025-05-01"]]
+    assert _engine_gate([a, b], "2025-01-15")[1]["state"] == "clear"
+    # the projection gate shares the evaluator: same verdict on the gap
+    pg = w.make_vedha_gate([dataclasses.asdict(a), dataclasses.asdict(b)])
+    assert pg(_jd("2025-03-01"))["state"] == "unavailable"
+    assert pg(_jd("2025-04-15"))["state"] == "clear"
+
+
+def test_engine_legacy_shape_rows_and_latta_rows_never_a_number():
+    legacy = VedhaRow(vedha_kind="house_vedha", graha="Sun", window_start="2025-01-01",
+                      window_end="2025-06-01", classical_citation=None,
+                      detail={"malefic_count": 2})
+    q, d = _engine_gate([legacy], "2025-02-01")
+    assert q == 1.0 and d["state"] == "unavailable" and d["legacy_shape_rows_ignored"] == 1
+    latta = VedhaRow(vedha_kind="latta", graha="Saturn", window_start="2025-01-01",
+                     window_end="2025-06-01", classical_citation="Phaladipika PG338",
+                     detail={"latta_nakshatra_idx": 4})
+    q, d = _engine_gate([latta, _writer_row("Sun", "2025-01-01", "2025-06-01")], "2025-02-01")
+    assert q == 1.0 and d["state"] == "clear"
+    assert d["annotations"][0]["vedha_kind"] == "latta" and d["factor_by_body"] == {}
+
+
+def test_engine_scoped_application_reaches_only_the_primarys_sentences():
+    from services.gochara_grammar.models import ConfigurationSentence
+    mk = lambda planet: ConfigurationSentence(  # noqa: E731
+        primitive="degree_contact", chart_id="c", event_class="marriage",
+        target_type="karaka", target_ref="Venus", transit_planet=planet,
+        secondary_planet=None, event_jd=0.0, event_datetime_ist="x",
+        temporal_shape="point", uncited_extension=True,
+        detail={"orb_strength": 0.8})
+    out, applied = VG.apply_scoped_factors([mk("Sun"), mk("Saturn")], {"Sun": 0.5})
+    assert out[0].detail["orb_strength"] == pytest.approx(0.4)
+    assert out[1].detail["orb_strength"] == pytest.approx(0.8)
+    assert [a["transit_planet"] for a in applied] == ["Sun"]
+    # the engine wires the gate BEFORE activity and applies it to sentences
+    import inspect
+    src = inspect.getsource(E._evaluate_single_from_context)
+    assert src.index("_compute_quality_gates_from_context(") < src.index("_compute_activity_v3(")
+    assert "apply_scoped_factors" in src
+
+
+# ── the two evaluators that never reach '4.x' / '5.0' scoring ────────────────
+
+def _production_sources():
+    root = Path(__file__).resolve().parents[3]
+    for sub in ("services", "scripts", "pipeline", "ga_writers"):
+        for f in (root / sub).rglob("*.py"):
+            if "/tests/" in str(f) or f.name.startswith("test_"):
+                continue
+            yield f
+
+
+def test_legacy_semantics_quality_gates_has_no_production_caller():
+    """legacy_semantics.compute_quality_gates is the pinned classification
+    MIRROR of the retired engine multiplier; it is legacy-only — no
+    production module calls it (the projection and the engine use the
+    shared ka_vedha_gochara.gate). Proven by source scan; it is therefore
+    not rewritten."""
+    callers = [str(f) for f in _production_sources()
+               if "compute_quality_gates(" in f.read_text()
+               and not f.name == "legacy_semantics.py"]
+    assert callers == [], callers
+
+
+def test_kernel_overlays_quality_gates_at_has_no_production_caller():
+    """gochara_kernel.overlays.quality_gates_at / OverlayInterval is the
+    WP2 kernel design projection; production imports only its date_to_jd.
+    Legacy-only by source scan — not rewritten."""
+    users = []
+    for f in _production_sources():
+        if f.name == "overlays.py":
+            continue
+        txt = f.read_text()
+        if "quality_gates_at(" in txt or "OverlayInterval(" in txt or "coverage_gaps(" in txt:
+            users.append(str(f))
+    assert users == [], users

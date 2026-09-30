@@ -471,146 +471,46 @@ def _compute_quality_gates_from_context(
     context: ClassContext,
     window_start_iso: str,
     window_end_iso: str,
+    *,
+    instant_date_iso: str | None = None,
 ) -> tuple[float, dict]:
-    """W1.3: compute quality_gates suppression from pre-fetched vedha rows.
+    """The §5 vedha interval gate on the SHARED v3 path (ASTRA v1.1 P1-3).
 
-    Finds all kala_vedha_gochara rows whose [window_start, window_end] overlaps
-    [window_start_iso, window_end_iso] (the evaluation window). For each
-    overlapping vedha, reads malefic_count from the detail JSONB and looks up
-    the suppression factor from the bg_vedha_malefic_scale grading schedule.
-    Multiple concurrent vedhā are combined by multiplication (noisy-OR product
-    of suppression factors — same pattern as activity).
-
-    Returns:
-        quality_gates  float in (0, 1]  (1.0 when no vedha overlaps — AC1)
-        detail         dict carrying which vedhā fired, per-vedha suppression,
-                       combined factor, and calibration_state (AC6)
-
-    Graceful degrades:
-        - Empty context.vedha_rows (CI / no prod DB) → quality_gates = 1.0 (AC1)
-        - Empty context.malefic_scale (table absent) → uses _VEDHA_NO_SCALE_ROW_FACTOR
-        - malefic_count = 0 in detail → uses _VEDHA_ZERO_MALEFIC_FACTOR (mild)
+    Delegates to services.ka_vedha_gochara.gate — the ONE evaluator of the
+    writer's T0-8 payload, shared with the '4.0' projection — at the
+    evaluation INSTANT's date (`instant_date_iso`; the legacy DATE-grain
+    window overlap [window_start_iso, window_end_iso] is kept only as
+    disclosure). The retired legacy behaviour (a whole-row multiplier from
+    the PG353 malefic-count grade applied to every overlapping row: 0.85 for
+    a clean row, 0.70 on April 1 for an obstruction ending March 1, 0.49 for
+    duplicate roots) is gone: interval states, cancellation segments,
+    coverage (union of per-row horizons), independence groups, testimony
+    and primary-contact / rule identity are honoured, and no generalised
+    PG353 number is applied (D-PG353). The returned float is the value the
+    λ PRODUCT receives — always 1.0 here, because the qualifier's
+    null_state is `omit` and any CITED factor is applied per primary
+    sentence by the caller (apply_scoped_factors), never class-wide.
     """
-    # Build a fast-lookup dict from the pre-fetched malefic_scale rows.
-    # Keys are malefic_count integers; values are MaleficScaleRow.
-    scale_by_count: dict[int, MaleficScaleRow] = {
-        r.malefic_count: r for r in context.malefic_scale
-    }
-
-    fired_vedha: list[dict] = []
-    product = 1.0  # noisy-OR product of (1 - suppression) inverted: start at 1.0
-                   # We accumulate product of suppression factors directly
-                   # (multiplicative: f1 * f2 * … gives the combined gate).
-
-    for vrow in context.vedha_rows:
-        # Date-string overlap check: [vrow.window_start, vrow.window_end]
-        # overlaps [window_start_iso, window_end_iso] iff:
-        #   vrow.window_start <= window_end_iso AND vrow.window_end >= window_start_iso
-        # Dates are ISO YYYY-MM-DD strings; lexicographic comparison is correct.
-        if vrow.window_start > window_end_iso:
-            continue
-        if vrow.window_end < window_start_iso:
-            continue
-
-        # This vedha overlaps the evaluation window.
-        detail = vrow.detail
-
-        # --- B3: Lattā-specific grade path ---
-        # Lattā (Phaladeepika PG338-339, Slokas 42-44): a janma-nakṣatra hit.
-        # All kala_vedha_gochara rows with vedha_kind='latta' are janma-nakṣatra hits
-        # (the ka_vedha_gochara writer only stores rows when latta_nak==janma_nak).
-        # Ketu: not defined in Phaladeepika — graha='Ketu'/'Rahu' rows do not appear
-        # in kala_vedha_gochara by construction (Ketu absent, disclosed).
-        # Severity: "Ruin of every business" / "A great loss" → effective_malefic_count=3
-        # (killing grade) as structural prior; refines via L5 calibration.
-        if vrow.vedha_kind == "latta":
-            if scale_by_count:
-                scale_row = scale_by_count.get(
-                    _LATTA_EFFECTIVE_MALEFIC_COUNT,
-                    scale_by_count.get(max(scale_by_count)),
-                )
-                effect_grade = scale_row.effect_grade if scale_row else "unknown"
-                suppression_factor = _suppression_factor_for_grade(effect_grade)
-                scale_citation = scale_row.source_citation if scale_row else None
-            else:
-                suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
-                effect_grade = "unknown_no_scale_table"
-                scale_citation = None
-            product *= suppression_factor
-            fired_vedha.append({
-                "vedha_kind": vrow.vedha_kind,
-                "graha": vrow.graha,
-                "window_start": vrow.window_start,
-                "window_end": vrow.window_end,
-                "malefic_count": _LATTA_EFFECTIVE_MALEFIC_COUNT,
-                "malefic_obstructing_grahas": [],
-                "effect_grade": effect_grade,
-                "suppression_factor": round(suppression_factor, 6),
-                "classical_citation": vrow.classical_citation,
-                "scale_citation": scale_citation,
-            })
-            continue  # skip the regular malefic_count path below
-        # --- end B3 Lattā path ---
-
-        malefic_count = detail.get("malefic_count", 0)
-        try:
-            malefic_count = int(malefic_count)
-        except (TypeError, ValueError):
-            malefic_count = 0
-
-        # Determine suppression factor.
-        if malefic_count == 0:
-            # Obstruction from benefics only — mildest suppression.
-            suppression_factor = _VEDHA_ZERO_MALEFIC_FACTOR
-            effect_grade = "no_grade"
-            scale_citation = None
-        elif malefic_count > 0 and scale_by_count:
-            # Look up the PG353 scale row; fall back to the worst factor if
-            # the count exceeds the table's maximum (>5 in practice).
-            scale_row = scale_by_count.get(malefic_count)
-            if scale_row is None:
-                # Count out of table range (e.g. 6+) — use worst grade
-                scale_row = scale_by_count.get(max(scale_by_count))
-            effect_grade = scale_row.effect_grade if scale_row else "unknown"
-            suppression_factor = _suppression_factor_for_grade(effect_grade)
-            scale_citation = scale_row.source_citation if scale_row else None
-        else:
-            # malefic_count > 0 but malefic_scale table was empty (CI / absent)
-            suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
-            effect_grade = "unknown_no_scale_table"
-            scale_citation = None
-
-        product *= suppression_factor
-
-        fired_vedha.append({
-            "vedha_kind": vrow.vedha_kind,
-            "graha": vrow.graha,
-            "window_start": vrow.window_start,
-            "window_end": vrow.window_end,
-            "malefic_count": malefic_count,
-            "malefic_obstructing_grahas": detail.get("malefic_obstructing_grahas", []),
-            "effect_grade": effect_grade,
-            "suppression_factor": round(suppression_factor, 6),
-            "classical_citation": vrow.classical_citation,
-            "scale_citation": scale_citation,
-        })
-
-    quality_gates = product  # product of suppression factors; 1.0 when no vedha fired
-
+    from services.ka_vedha_gochara import gate as VG
+    from datetime import date as _date
+    d = _date.fromisoformat(str(instant_date_iso or window_start_iso)[:10])
+    g = VG.make_gate(list(context.vedha_rows))(d)
     detail_out = {
-        "quality_gates": round(quality_gates, 8),
-        "vedha_fired_count": len(fired_vedha),
-        "vedha_rows_total": len(context.vedha_rows),
-        "aggregation": "multiplicative",
-        "fired_vedha": fired_vedha,
+        **g,
+        "quality_gates": 1.0,
+        "vedha_fired_count": len(g.get("fired") or []),
+        "fired_vedha": g.get("fired") or [],
+        "aggregation": "scoped per primary graha (§5.2 inv 1); class multiplier retired",
         "calibration_state": "structural_prior",
+        "legacy_window": [window_start_iso, window_end_iso],
         "note": (
-            "W1.3 quality_gates: multiplicative product of per-vedha suppression "
-            "factors (each factor in (0,1]); 1.0 when no kala_vedha_gochara rows "
-            "overlap the evaluation window."
+            "§5 interval gate via services.ka_vedha_gochara.gate: active segments "
+            "only; coverage = union of row horizons (gap ⇒ unavailable); one root "
+            "once; no generalised PG353 attenuation (D-PG353) — obstruction is "
+            "structure with factor None (null_state omit); Moon rows testimony."
         ),
     }
-    return quality_gates, detail_out
+    return 1.0, detail_out
 
 
 def evaluate_lambda_vector(
@@ -805,6 +705,21 @@ def _evaluate_single_from_context(
     #     This saturates at 1.0 (multiple strong contacts can't exceed 1.0),
     #     is monotonically non-decreasing in sentence count, and preserves the
     #     qualitative ordering: tighter-orb contacts count for more.
+    # 4a-pre. §5 vedha interval gate at THIS instant (ASTRA v1.1 P1-3): the
+    #     shared ka_vedha_gochara.gate evaluator; a CITED per-root factor (none
+    #     exists under D-PG353) scopes to the primary graha's OWN sentences
+    #     before activity; the λ product's quality_gates term is 1.0.
+    eval_start_iso = _jd_to_date_iso(swe, start_jd)
+    eval_end_iso = _jd_to_date_iso(swe, end_jd)
+    quality_gates, quality_gates_detail = _compute_quality_gates_from_context(
+        context, eval_start_iso, eval_end_iso,
+        instant_date_iso=_jd_to_date_iso(swe, t_jd),
+    )
+    from services.ka_vedha_gochara.gate import apply_scoped_factors as _vg_apply
+    sentences, _vedha_applied = _vg_apply(
+        sentences, quality_gates_detail.get("factor_by_body") or {})
+    quality_gates_detail["scoped_application"] = _vedha_applied
+
     instantaneous_orbs: dict[int, float] | None = None
     if activity_shape == "linear_no_box":
         # M-1 (flag activity_shape): separation of each sentence's transit
@@ -871,11 +786,7 @@ def _evaluate_single_from_context(
     #     Looks up kala_vedha_gochara rows (pre-fetched in context) that
     #     overlap the evaluation window and multiplies their suppression factors.
     #     Falls back to 1.0 when no vedha rows overlap (AC1).
-    eval_start_iso = _jd_to_date_iso(swe, start_jd)
-    eval_end_iso = _jd_to_date_iso(swe, end_jd)
-    quality_gates, quality_gates_detail = _compute_quality_gates_from_context(
-        context, eval_start_iso, eval_end_iso,
-    )
+    # (computed above, before the activity term — see 4a-pre)
 
     # 4e. W3.0 nodal drishti: Rahu/Ketu 5/7/9 aspect modifier (later tradition —
     #     not in original BPHS; attested in later Parashari commentaries).

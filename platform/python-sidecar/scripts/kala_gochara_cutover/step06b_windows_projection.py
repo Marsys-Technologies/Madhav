@@ -1758,151 +1758,24 @@ def _table_exists(conn, table: str) -> bool:
 VEDHA_NULL_STATE = "omit"  # §2.1 factor null_state for an unresolved qualifier
 
 
-def _date_or_none(v):
-    if v is None:
-        return None
-    return date.fromisoformat(str(v)[:10])
-
-
 def parse_vedha_overlay_rows(vedha_rows: list[dict]) -> dict:
-    """The T0-8 overlay rows as the gate consumes them; coverage = the union
-    of the rows' computed horizons (all rows of one build share it)."""
-    rows, legacy = [], 0
-    cov_start = cov_end = None
-    for r in vedha_rows:
-        d = r.get("detail") or {}
-        intervals = d.get("vedha_intervals")
-        cov = d.get("coverage") or {}
-        if intervals is None or not cov.get("horizon_start") or not cov.get("horizon_end"):
-            legacy += 1
-            continue
-        c_start, c_end = _date_or_none(cov["horizon_start"]), _date_or_none(cov["horizon_end"])
-        cov_start = c_start if cov_start is None else min(cov_start, c_start)
-        cov_end = c_end if cov_end is None else max(cov_end, c_end)
-        parsed_ivs = []
-        for iv in intervals:
-            parsed_ivs.append({
-                "obstructor_body": iv.get("obstructor_body"),
-                "t_in": _date_or_none(iv.get("t_in")),
-                "t_out": _date_or_none(iv.get("t_out")),
-                "state": iv.get("state"),
-                "exception": iv.get("exception"),
-                "independence_group": iv.get("independence_group"),
-                "segments": [{"start": _date_or_none(sg.get("start")),
-                              "end": _date_or_none(sg.get("end")),
-                              "state": sg.get("state")}
-                             for sg in (iv.get("segments") or [])],
-                "operator_role": iv.get("operator_role"),
-                "provenance": iv.get("provenance"),
-            })
-        rows.append({
-            "graha": r.get("graha"), "vedha_kind": r.get("vedha_kind"),
-            "window_start": str(r.get("window_start")),
-            "window_end": str(r.get("window_end")),
-            "classical_citation": r.get("classical_citation"),
-            "operator_role": d.get("operator_role"),
-            "provenance": d.get("provenance"), "ruling_ref": d.get("ruling_ref"),
-            "primary_house": d.get("primary_house"),
-            "vedha_house": d.get("vedha_house"), "phala": d.get("phala"),
-            "coverage": {"start": c_start, "end": c_end, "state": cov.get("state"),
-                         "grain": cov.get("grain")},
-            "intervals": parsed_ivs,
-        })
-    coverage = ({"overlay": "kala_vedha_gochara", "computed": True,
-                 "start": cov_start, "end": cov_end}
-                if cov_start is not None else None)
-    return {"rows": rows, "coverage": coverage, "legacy_rows": legacy,
-            "rows_total": len(vedha_rows)}
+    """Delegates to the ONE evaluator of the writer's payload
+    (services.ka_vedha_gochara.gate.parse_overlay_rows); returned shape is
+    that module's, with `coverage` = the list of per-row horizons."""
+    from services.ka_vedha_gochara import gate as VG
+    parsed = VG.parse_overlay_rows(vedha_rows)
+    return {**parsed, "coverage": parsed["horizons"] or None}
 
 
 def make_vedha_gate(vedha_rows: list[dict], *, cited_scale=None):
-    """gate(t_jd) -> the §5 qualifier at t, scoped per primary graha."""
-    from services.ka_vedha_gochara import logic as VL
-    parsed = parse_vedha_overlay_rows(vedha_rows)
-    cache: dict[str, dict] = {}
+    """gate(t_jd) -> the §5 qualifier at t's UTC date — the shared
+    ka_vedha_gochara.gate evaluator (also wired into the v3 engine), keyed
+    here by JD for the projection's evaluate()."""
+    from services.ka_vedha_gochara import gate as VG
+    inner = VG.make_gate(vedha_rows, cited_scale=cited_scale)
 
     def gate(t_jd: float) -> dict:
-        d = date_of_jd(t_jd)
-        key = d.isoformat()
-        if key in cache:
-            return cache[key]
-        cov = parsed["coverage"]
-        base = {"contract": "vedha_interval_relation (GOCHARA_DESIGN_SPECS_v1_4 §5)",
-                "evaluator": "services.ka_vedha_gochara.logic.attenuation_at",
-                "date": key, "null_state": VEDHA_NULL_STATE,
-                "vedha_rows_total": parsed["rows_total"],
-                "legacy_shape_rows_ignored": parsed["legacy_rows"],
-                "scale": ("cited" if cited_scale is not None
-                          else "none_cited (D-PG353: no generalised PG353 attenuation)")}
-        if cov is None or not (cov["start"] <= d < cov["end"]):
-            out = {**base, "state": "unavailable", "factor": None,
-                   "factor_by_body": {}, "fired": [], "annotations": [],
-                   "coverage": ({**cov, "start": cov["start"].isoformat(),
-                                 "end": cov["end"].isoformat()} if cov
-                                else {"overlay": "kala_vedha_gochara",
-                                      "computed": False}),
-                   "reason": ("no T0-8 overlay rows" if cov is None
-                              else "instant outside the overlay's computed horizon")}
-            cache[key] = out
-            return out
-        fired, annotations = [], []
-        groups_by_body: dict[str, dict[str, float]] = {}
-        for row in parsed["rows"]:
-            res = VL.attenuation_at(d, row["intervals"], coverage=row["coverage"],
-                                    scale=cited_scale)
-            if res["state"] != "obstructed":
-                continue
-            entry = {
-                "primary_graha": row["graha"], "vedha_kind": row["vedha_kind"],
-                "primary_house": row["primary_house"],
-                "vedha_house": row["vedha_house"], "phala": row["phala"],
-                "primary_residence": [row["window_start"], row["window_end"]],
-                "classical_citation": row["classical_citation"],
-                "provenance": row["provenance"], "ruling_ref": row["ruling_ref"],
-                "operator_role": row["operator_role"],
-                "fired": [{**f, "t_in": f["t_in"].isoformat(),
-                           "t_out": f["t_out"].isoformat()} for f in res["fired"]],
-                "factor": res["factor"],
-            }
-            if row["operator_role"] == "testimony":
-                entry["note"] = ("P6 Moon-channel vedha — testimony (S-04): "
-                                 "annotates day rows only, never weights")
-                annotations.append(entry)
-                continue
-            fired.append(entry)
-            if cited_scale is not None:
-                # §5.1 independence_group: ONE min per physical root across
-                # every row of this primary graha (a root obstructing two
-                # residences is still one root); the body factor is the
-                # product over distinct roots. Computed from the cited
-                # scale per active interval — never from the row product
-                # (which already folds the row's own roots).
-                by_group = groups_by_body.setdefault(row["graha"], {})
-                for iv in row["intervals"]:
-                    if iv.get("state") != VL.STATE_ACTIVE:
-                        continue
-                    if not any(sg["state"] == VL.STATE_ACTIVE
-                               and sg["start"] <= d < sg["end"]
-                               for sg in iv["segments"]):
-                        continue
-                    g = iv.get("independence_group") or iv["obstructor_body"]
-                    by_group[g] = min(by_group.get(g, 1.0), float(cited_scale(iv)))
-        factor_by_body = {}
-        for body, groups in groups_by_body.items():
-            fac = 1.0
-            for v in groups.values():
-                fac *= v
-            factor_by_body[body] = fac
-        out = {**base,
-               "state": "obstructed" if fired else "clear",
-               "factor": (None if (fired and cited_scale is None)
-                          else (min(factor_by_body.values()) if factor_by_body else 1.0)),
-               "factor_by_body": factor_by_body,
-               "fired": fired, "annotations": annotations,
-               "coverage": {**cov, "start": cov["start"].isoformat(),
-                            "end": cov["end"].isoformat()}}
-        cache[key] = out
-        return out
+        return inner(date_of_jd(t_jd))
 
     return gate
 
