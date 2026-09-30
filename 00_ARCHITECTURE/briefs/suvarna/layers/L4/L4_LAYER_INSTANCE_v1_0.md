@@ -4,7 +4,7 @@ canonical_id: SUVARNA_L4_LAYER_INSTANCE
 tier: 3
 kind: instance          # of LAYER_DEFINITION_AND_STRATEGY_TEMPLATE (SEALED); first draft
 layer: "L4 Phala (asset prefix ph_, 9 assets)"
-version: "1.0"
+version: "1.1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -26,6 +26,7 @@ inherits:
 tier_gaps: 00_ARCHITECTURE/briefs/suvarna/layers/L4/L4_TIER_GAPS_v1_0.md      # TG-L4-001 … TG-L4-025
 inputs_not_authority: "nikasha_test/derivations/L4_INSTANCE_SKELETON.md and L4_INVENTIONS.md (2026-09-26) were read as inputs; every claim taken from them was re-checked against the tiers, the registry or the census (Appendix C)."
 changelog:
+  - "1.1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 7 defects. Role column set to TG-L4-024 for all nine assets (T2 l.388 names all nine the Phala asset family; l.390 is an overlap-investigation list); T2 l.155 -> l.151; ph_pratikara DRAFT moved from must-add to an observation under TG-L4-006; the floor item moved from work packets to information/opportunity; the unsourced ph_pramana P12/V06 tie dropped. Tier-gap counts unchanged (25: T1 0 · T2 9 · T3 15 · T4 1)."
   - "1.0 (2026-09-30): first draft from the tiers and the census only. Sections the tiers do not supply are marked TIER GAP with the gap id; no content was invented to fill them. Every figure names its instrument and population. No certification is written (banner)."
 ---
 
@@ -70,7 +71,7 @@ by a concept name, with no necessity claim made.
 
 **(b) Rows tied to L4 assets by concept name only (T2 §6.5 l.392: "Electional/remedial/rectification assets keep their separate method and authority gates")** — no necessity claim:
 P11 / V05 (timing context, attributed practices: T1 §3.11–§3.12) ↔ `ph_muhurta`, `ph_pratikara`; P13 / V07 (rectification as an explicit hypothesis
-process, T1 P13 and §13) ↔ `ph_rectification`; P12 / V06 (fit, misfit, falsifiers: T1 P12, T2 V06) ↔ `ph_pramana`.
+process, T1 P13 and §13) ↔ `ph_rectification`; No tie is drawn for `ph_pramana` (P12 / V06): the T2 l.392 quote covers only the electional, remedial and rectification assets, and the companion register (T2c) row for `ph_pramana` names no P or V.
 
 Measured substitute for necessity, a DAG reading and not a P/V answer: `blocking_radius.transitive` per L4 asset = 11 (`ph_muhurta`), 17 (`ph_nimitta`),
 9 (`ph_phaladesa`), 10 (`ph_pramana`), 11 (`ph_pratikara`), 0 (`ph_rectification`), 11 (`ph_sankrama`), 12 (`ph_sodhana`), 11 (`ph_suddha_sodhana`) — census › `blocking_radius`, "active assets depending on it, transitively, every layer".
@@ -101,7 +102,7 @@ measured_by: registry depends_on reconciled across seed, migration pin AND live 
 traces_to:   0.2
 ```
 
-**Live registry, layer `phala`** — 41 declared `depends_on` edges: 19 intra-L4 and 22 inbound edges from 16 distinct assets (11 `bo_`, 8 `ka_`, 3 `ga_` edges); **0 edges to `bg_*`** although T2 §3.2 l.155 describes direct qualified L0 reference use by L4 (definition edges are not recorded in `depends_on`; TG-L4-003). Census `Build.dag` PASS ×9 with the same per-asset counts. All registry edges are computational edges (T2 §3.2 l.161: they follow the governed DAG); the other four edge types have no registry expression.
+**Live registry, layer `phala`** — 41 declared `depends_on` edges: 19 intra-L4 and 22 inbound edges from 16 distinct assets (11 `bo_`, 8 `ka_`, 3 `ga_` edges); **0 edges to `bg_*`** although T2 §3.2 l.151 describes direct qualified L0 reference use by L4 (definition edges are not recorded in `depends_on`; TG-L4-003). Census `Build.dag` PASS ×9 with the same per-asset counts. All registry edges are computational edges (T2 §3.2 l.161: they follow the governed DAG); the other four edge types have no registry expression.
 
 **Receives from (inbound, registry).**
 
@@ -145,7 +146,7 @@ measured_by: asset_registry (live, read-only, layer phala) · asset_throughput a
 traces_to:   0.3
 ```
 
-Nine assets, all writer-backed, all per-chart (`scope = per_chart`, `domain = chart`), no service asset, no shared table (C-10 verified refuted; tier-gaps §2.1). Kinds: **TIER GAP: TG-L4-006** (the registry says `asset_kind = artifact` on 9/9, `asset_type = data`; neither matches T3's or T4's kind list). `ph_pratikara` is `catalog_status = DRAFT`, the other eight `CURRENT`; no tier defines DRAFT.
+Nine assets, all writer-backed, all per-chart (`scope = per_chart`, `domain = chart`), no service asset, no shared table (C-10 verified refuted; tier-gaps §2.1). Kinds: **TIER GAP: TG-L4-006** (the registry says `asset_kind = artifact` on 9/9, `asset_type = data`; neither matches T3's or T4's kind list). `ph_pratikara` is `catalog_status = DRAFT`, the other eight `CURRENT`; no tier defines DRAFT or requires that it be resolved (observation under TG-L4-006, not a must-add).
 
 | asset | writer (`@register` id, census `Build.registered` PASS ×9) | target table(s) | live rows, chart (`count_sql`) | registry `target_floor` | build record `rows_written` | `state` / last built (UTC) |
 |---|---|---|---|---|---|---|
@@ -444,7 +445,6 @@ The list an asset brief's "exact delta" inherits, restricted to what a tier, the
 | `ph_nimitta` | the T2c delta above; a stated place for `posterior` and the confidence columns against C3 (TG-L4-019); the dark bridge/counter-evidence fields (§2.2) |
 | `ph_pramana` | subject-scoped LEL lookup (T2c) — the measured code/schema disagreement (tier-gaps §3 item 2) |
 | `ph_rectification` | a `Ldgr` reading (the gate applies always, T3 l.531): no `source_citation` column exists, so census `Ldgr.source_presence` has no row for it |
-| `ph_pratikara` | resolve DRAFT status (TG-L4-006) |
 
 ### 3.4 · Intra-layer interplay
 
@@ -499,13 +499,14 @@ Candidates only, each tied to a measured delta item; none is authorised here, an
 | packet (candidate) | closes | proof (detector that fails until it lands) |
 |---|---|---|
 | Reconcile build records and live rows, classifying the cause | §3.3 (`Build.completion` FAIL ×6; TG-L4-023) | census `Build.completion` PASS, with the cause classified |
-| Declare a floor or an honest no-floor for `ph_pramana`, `ph_sodhana` | §1.1 | census `Count.floor` returns a verdict |
 | Per-asset carriage check and concept table | §2.7 (TG-L4-017) | `Carr.detector` ≠ NO_DETECTOR |
 | Type the score-bearing L4 columns against C3 | §2.1a (TG-L4-019) | a detector that can report a violation |
 | Natural-key authority and detector target | §2.6 (TG-L4-025) | `Vocab.identity` tests the declared natural key |
 | Null and Narr gates | §5.2 (TG-L4-020) | a check row for each in the census |
 | Declare width universes | §2.4 (TG-L4-014) | `Complete.width` ≠ NOT_GENERIC |
 | Dens declarations on the three serving modules | §5.2 (TG-L4-021) | `Dens.served` PASS — ownership open, [TRANSFERS] |
+
+*Information / opportunity, not a packet.* `ph_pramana` and `ph_sodhana` declare no `target_floor`, so census `Count.floor` gives no verdict for them (§1.1). Count is a non-gate criterion, information only (D3; Track A brief §5), and no tier requires a floor; whether to declare one is a choice for the asset brief, not a tier-derived delta.
 
 ### 4.3 · Generation, invalidation, rollback
 
@@ -544,19 +545,19 @@ T3 §4.4 lists twelve inherited bullets and T4 §0.1 thirteen rows (the counts d
 | 13 | Jyotish concepts and carriage check | §2.7; TG-L4-017 |
 | — | role (T3 bullet "manifestation or temporal role"; T4 header field) | below; TG-L4-024 |
 
-**Role and preserved kernel per asset.** T2 §6.5 l.388–392 groups six assets as the manifestation family (`ph_phaladesa`, `ph_nimitta`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, `ph_pramana`) and separates electional (`ph_muhurta`), remedial (`ph_pratikara`) and rectification (`ph_rectification`) as keeping "their separate method and authority gates". T4's role vocabulary is manifestation | temporal | neither; T2's grouping does not use it, so the value is **TIER GAP: TG-L4-024** for the three separate-method assets and is recorded here only as the T2 family for the six.
+**Role and preserved kernel per asset.** T4's role vocabulary is manifestation | temporal | neither (T4 §0 l.76; T3 §4.4 l.476, "its manifestation or temporal role"). No tier assigns the role value per asset: T2 §6.5 l.388 calls all nine assets "the Phala asset family"; l.390 lists six (`ph_phaladesa`, `ph_nimitta`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, `ph_pramana`) only to be investigated for overlap (and calls `ph_sodhana` / `ph_suddha_sodhana` "purification/provenance kernels"); l.392 says electional/remedial/rectification assets (`ph_muhurta`, `ph_pratikara`, `ph_rectification`) "keep their separate method and authority gates". That list and that sentence are context, not a role assignment, so the role is **TIER GAP: TG-L4-024** for all nine assets.
 
 | asset | role | preserved kernel (T2c "Preserve: contribution to the story", provisional, quoted) |
 |---|---|---|
-| `ph_nimitta` | manifestation family (T2 §6.5) | "Rich manifestation anchors with mechanisms, contradictions, precedent and falsifiers." |
-| `ph_muhurta` | separate method gate (value TG-L4-024) | "Personalized election windows using calendar, natal Moon/condition and obstruction." |
-| `ph_pratikara` | separate method gate (value TG-L4-024) | "Sequenced, conflict-aware mitigation programs." |
-| `ph_sankrama` | manifestation family | "Cross-domain spillover and competing effects via CDLM paths/windows." |
-| `ph_sodhana` | manifestation family | "Real detectors for inflated confidence, absent falsifiers/derivation and declared contamination." |
-| `ph_suddha_sodhana` | manifestation family | "Usable/caveated/revision-staged anchor disposition." |
-| `ph_rectification` | separate method gate (value TG-L4-024) | "Staged birth-time candidates and discrimination gate, no automatic chart mutation." |
-| `ph_pramana` | manifestation family | "Observable criteria/falsifiers, window states and historical evidence links." |
-| `ph_phaladesa` | manifestation family | "Per-domain overview of top anchor, contradictions, spillovers and action availability." |
+| `ph_nimitta` | TG-L4-024 | "Rich manifestation anchors with mechanisms, contradictions, precedent and falsifiers." |
+| `ph_muhurta` | TG-L4-024 | "Personalized election windows using calendar, natal Moon/condition and obstruction." |
+| `ph_pratikara` | TG-L4-024 | "Sequenced, conflict-aware mitigation programs." |
+| `ph_sankrama` | TG-L4-024 | "Cross-domain spillover and competing effects via CDLM paths/windows." |
+| `ph_sodhana` | TG-L4-024 | "Real detectors for inflated confidence, absent falsifiers/derivation and declared contamination." |
+| `ph_suddha_sodhana` | TG-L4-024 | "Usable/caveated/revision-staged anchor disposition." |
+| `ph_rectification` | TG-L4-024 | "Staged birth-time candidates and discrimination gate, no automatic chart mutation." |
+| `ph_pramana` | TG-L4-024 | "Observable criteria/falsifiers, window states and historical evidence links." |
+| `ph_phaladesa` | TG-L4-024 | "Per-domain overview of top anchor, contradictions, spillovers and action availability." |
 
 ---
 
