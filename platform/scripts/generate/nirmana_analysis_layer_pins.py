@@ -348,6 +348,14 @@ AUTHORIZED_SOURCE_COMMITS = {
             # successor over the then-current protected baseline (d4feada9b).
             # Source = the r3 writer-digest regeneration commit.
             "de07494333a770192dd8d8a47cc2aae91f31be79",
+            # A5.4 rework r5 (ASTRA_REVIEW_A5_4 v1.3 closure, 2026-10-01): the
+            # round-4 amendment 2 (truthful primary-contact identity; testimony
+            # evidence through serialisation — ka_vedha_gochara/gate.py) moved
+            # ka_gochara_v3_century_materialize's import closure; no writer
+            # outside the five. Same decision, same authority, same five-writer
+            # scope; ONE successor over the then-current protected baseline.
+            # Source = the r5 writer-digest regeneration commit.
+            "a7fa8c25e1db78f01c2d33036b1a020501555704",
         }),
     },
 }
