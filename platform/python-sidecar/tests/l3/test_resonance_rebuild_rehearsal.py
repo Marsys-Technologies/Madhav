@@ -60,12 +60,32 @@ def _passing_ver() -> dict:
             "lord_rows": {"expected": ["career_setback:10L", "marriage:7L"],
                           "actual": ["career_setback:10L", "marriage:7L"]},
             "afflicted_rows": {"expected": ["career_setback:10L"], "actual": ["career_setback:10L"]},
-            "sensitive_fact_ids": {"expected": ["f-pos-1", "f-pos-2"], "actual": ["f-pos-1", "f-pos-2"]},
-            "arudha_fact_ids": {"expected": ["a-1", "a-2"], "actual": ["a-1", "a-2"]},
-            "yoga_ids": {"expected": ["yoga_demo_bhanga", "yoga_demo_gajakesari"],
-                         "actual": ["yoga_demo_bhanga", "yoga_demo_gajakesari"]}},
+            # class-associated (ASTRA v1.2 P1-3): "class:ref", never a global DISTINCT set
+            "sensitive_rows": {"expected": ["marriage:f-pos-1", "surgery:f-pos-2"],
+                               "actual": ["marriage:f-pos-1", "surgery:f-pos-2"]},
+            "arudha_rows": {"expected": ["marriage:a-1", "surgery:a-2"],
+                            "actual": ["marriage:a-1", "surgery:a-2"]},
+            "yoga_rows": {"expected": ["career_entry:yoga_demo_bhanga", "marriage:yoga_demo_gajakesari"],
+                          "actual": ["career_entry:yoga_demo_bhanga", "marriage:yoga_demo_gajakesari"]},
+            "exact_row_tuples": {
+                "expected": ["marriage|bhava|7|1.0|resolved|None|False|cite",
+                             "marriage|sensitive_degree|f-pos-1|0.5|resolved|None|True|None"],
+                "actual": ["marriage|bhava|7|1.0|resolved|None|False|cite",
+                           "marriage|sensitive_degree|f-pos-1|0.5|resolved|None|True|None"]}},
         "negative_fact_ids_referenced": 0,
+        "value_invariant_violations": 0,
+        "r1_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
+        "r2_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
+        "r3_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r5_identity_sql": {"qualified_not_in_ontology": 0, "ontology_not_qualified": 0},
+        "detector_controls": {
+            "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r5": [0, 0], "value_violations": 0},
+            **{name: {"counts_preserved": True, "global_id_sets_preserved": True, "detected": True}
+               for name in ("sensitive_class_swap", "arudha_class_swap", "yoga_class_swap",
+                            "weight_changed", "qualifier_transferred",
+                            "resolution_state_flipped", "provenance_flipped")},
+            "restored_after_controls": True},
+        "map_unchanged_after_detector_controls": True,
         "rollback": {"refused_on_stale_snapshot": True,
                      "partition_untouched_after_refusal": True,
                      "restored_full_row_digest_equal": True,
@@ -105,11 +125,37 @@ def test_passing_verification_is_accepted():
     (lambda v: v["snapshot"].__setitem__("recorded_count", 0), "snapshot"),
     # ASTRA v1.1 P1-7 — totals preserved, identities moved:
     (lambda v: v["identities"]["afflicted_rows"].__setitem__("actual", ["marriage:7L"]), "identity: afflicted_rows"),
-    (lambda v: v["identities"]["sensitive_fact_ids"].__setitem__("actual", ["f-pos-1", "f-neg-9"]), "identity: sensitive_fact_ids"),
+    (lambda v: v["identities"]["sensitive_rows"].__setitem__("actual", ["marriage:f-pos-1", "surgery:f-neg-9"]), "identity: sensitive_rows"),
     (lambda v: v.__setitem__("negative_fact_ids_referenced", 1), "negative-result sensitive fact id"),
-    (lambda v: v["identities"]["yoga_ids"].__setitem__("actual", ["yoga_demo_bhanga", "yoga_demo_stopped"]), "identity: yoga_ids"),
+    (lambda v: v["identities"]["yoga_rows"].__setitem__("actual", ["career_entry:yoga_demo_bhanga", "marriage:yoga_demo_stopped"]), "identity: yoga_rows"),
     (lambda v: v["identities"]["lord_rows"].__setitem__("actual", ["career_setback:10L", "marriage:2L"]), "identity: lord_rows"),
-    (lambda v: v["identities"]["arudha_fact_ids"].__setitem__("actual", ["a-1", "a-3"]), "identity: arudha_fact_ids"),
+    (lambda v: v["identities"]["arudha_rows"].__setitem__("actual", ["marriage:a-1", "surgery:a-3"]), "identity: arudha_rows"),
+    # ASTRA v1.2 P1-3 — per-class counts AND global id sets preserved, only the class association moved:
+    (lambda v: v["identities"]["sensitive_rows"].__setitem__("actual", ["marriage:f-pos-2", "surgery:f-pos-1"]), "identity: sensitive_rows"),
+    (lambda v: v["identities"]["arudha_rows"].__setitem__("actual", ["marriage:a-2", "surgery:a-1"]), "identity: arudha_rows"),
+    (lambda v: v["identities"]["yoga_rows"].__setitem__("actual", ["career_entry:yoga_demo_gajakesari", "marriage:yoga_demo_bhanga"]), "identity: yoga_rows"),
+    # retained values changed, identity intact:
+    (lambda v: v["identities"]["exact_row_tuples"].__setitem__("actual", ["marriage|bhava|7|0.9|resolved|None|False|cite", "marriage|sensitive_degree|f-pos-1|0.5|resolved|None|True|None"]), "identity: exact_row_tuples"),
+    (lambda v: v["identities"]["exact_row_tuples"].__setitem__("actual", ["marriage|bhava|7|1.0|resolved|None|False|cite", "marriage|sensitive_degree|f-pos-1|0.5|unavailable|None|True|None"]), "identity: exact_row_tuples"),
+    (lambda v: v["identities"]["exact_row_tuples"].__setitem__("actual", ["marriage|bhava|7|1.0|resolved|None|True|None", "marriage|sensitive_degree|f-pos-1|0.5|resolved|None|True|None"]), "identity: exact_row_tuples"),
+    (lambda v: v["identities"]["exact_row_tuples"].__setitem__("actual", ["marriage|bhava|7|1.0|resolved|afflicted|False|cite", "marriage|sensitive_degree|f-pos-1|0.5|resolved|None|True|None"]), "identity: exact_row_tuples"),
+    (lambda v: v.__setitem__("value_invariant_violations", 1), "values:"),
+    (lambda v: v.pop("value_invariant_violations"), "values:"),
+    # BOTH EXCEPT directions: an extra row AND a missing eligible row each fail
+    (lambda v: v["r1_identity_sql"].__setitem__("actual_not_expected", 1), "r1_identity_sql"),
+    (lambda v: v["r1_identity_sql"].__setitem__("expected_not_actual", 1), "r1_identity_sql"),
+    (lambda v: v["r2_identity_sql"].__setitem__("expected_not_actual", 1), "r2_identity_sql"),
+    (lambda v: v["r3_identity_sql"].__setitem__("actual_not_expected", 1), "r3_identity_sql"),
+    (lambda v: v["r3_identity_sql"].__setitem__("expected_not_actual", 1), "r3_identity_sql"),
+    (lambda v: v.pop("r3_identity_sql"), "r3_identity_sql"),
+    # detector positive controls must have RUN, been VALID (count/id-set preserving) and DETECTED
+    (lambda v: v["detector_controls"]["yoga_class_swap"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["weight_changed"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["sensitive_class_swap"].__setitem__("counts_preserved", False), "control invalid"),
+    (lambda v: v["detector_controls"]["sensitive_class_swap"].__setitem__("global_id_sets_preserved", False), "control invalid"),
+    (lambda v: v["detector_controls"].__setitem__("restored_after_controls", False), "not restored"),
+    (lambda v: v.pop("detector_controls"), "not run"),
+    (lambda v: v.__setitem__("map_unchanged_after_detector_controls", False), "post-control digest"),
     (lambda v: v["identities"]["lord_rows"].__setitem__("expected", []), "identity control"),
     (lambda v: v.pop("identities"), "not measured"),
     (lambda v: v["r5_identity_sql"].__setitem__("qualified_not_in_ontology", 1), "R-5 SQL identity"),
@@ -144,6 +190,96 @@ def test_expected_identities_follow_the_writers_tokenisation():
     assert ("bereavement", "2L") in lords and ("bereavement", "7L") in lords  # 'maraka lords (2L/7L)'
     assert ("bereavement", "2L") not in afflicted
     assert len(lords) == sum(1 for _ in lords) and afflicted <= lords
+
+
+def test_a_class_swap_preserving_counts_and_global_id_sets_is_rejected():
+    """ASTRA v1.2 P1-3: swap the class association of two sensitive rows —
+    every per-class count and the GLOBAL DISTINCT target_ref set are
+    unchanged (a global-set identity passes), yet the class-associated
+    identity fails."""
+    v = copy.deepcopy(_passing_ver())
+    before = v["identities"]["sensitive_rows"]["expected"]
+    swapped = ["marriage:f-pos-2", "surgery:f-pos-1"]
+    v["identities"]["sensitive_rows"]["actual"] = swapped
+    assert sorted(x.split(":")[1] for x in swapped) == sorted(x.split(":")[1] for x in before)
+    assert len(swapped) == len(before)
+    failures = R.verify_acceptance(v)
+    assert any("identity: sensitive_rows" in f for f in failures), failures
+
+
+def test_expected_row_tuples_are_class_associated_with_retained_values():
+    """The expected set is built from the writer's own eligibility rules per
+    class: a fact is expected under a class only when its subject is one of
+    THAT class's kārakas; arudha/bhava_arudha only for the class's houses
+    (invalid sign → unavailable); yogas only where houses or kārakas
+    intersect, with the bhanga qualifier; lords carry the qualifier of the
+    entry that names them; bhava/lord/karaka carry the ontology citation."""
+    models = {"marriage": ([7, 2], ["7L"], ["Venus"]),
+              "surgery": ([6, 8], ["6L", "8L afflicted"], ["Mars"])}
+    fixture = {"positive_facts": [("f-ven", "VEN"), ("f-mar", "MAR"), ("f-sat", "SAT")],
+               "arudha_fact_ids_by_house": {7: "a7", 2: "a2", 6: "a6", 8: "a8"},
+               "arudha_sign_by_house": {7: "Libra", 2: "Taurus", 6: "Virgo", 8: "not_a_sign"},
+               "live_yogas": [("y1", [7], ["venus"], False), ("y2", [6], ["mars"], True)],
+               "ontology_citation": "cite"}
+    got = R.expected_row_tuples(fixture, models)
+    assert ("marriage", "sensitive_degree", "f-ven", 0.5, "resolved", None, True, None) in got
+    assert ("surgery", "sensitive_degree", "f-mar", 0.5, "resolved", None, True, None) in got
+    assert not any(tp[1] == "sensitive_degree" and tp[2] == "f-sat" for tp in got)  # no class names Saturn
+    assert not any(tp[0] == "surgery" and tp[2] == "f-ven" for tp in got)          # class association
+    assert ("surgery", "arudha", "a8", 0.6, "unavailable", None, True, None) in got
+    assert ("surgery", "bhava_arudha", "BHAVA_ARUDHA_A8", 0.6, "unavailable", None, True, None) in got
+    assert ("marriage", "arudha", "a7", 0.6, "resolved", None, True, None) in got
+    assert not any(tp[0] == "marriage" and tp[2] == "a6" for tp in got)
+    assert ("surgery", "lord", "8L", 1.0, "resolved", "afflicted", False, "cite") in got
+    assert ("surgery", "lord", "6L", 1.0, "resolved", None, False, "cite") in got
+    assert ("surgery", "yoga_constituent", "y2", 0.7, "resolved", "bhanga_active", True, None) in got
+    assert ("marriage", "yoga_constituent", "y1", 0.7, "resolved", None, True, None) in got
+    assert not any(tp[0] == "marriage" and tp[2] == "y2" for tp in got)
+    assert ("marriage", "bhava", "7", 1.0, "resolved", None, False, "cite") in got
+    assert ("marriage", "karaka", "Venus", 1.0, "resolved", None, False, "cite") in got
+
+
+def test_identity_sql_is_class_associated_pinned_and_bidirectional():
+    """R-1/R-2/R-3 as (event_class, ref) identities: ayanāṃśa-pinned,
+    eligibility-scoped exactly as the writer reads (kāraka→subject map and
+    positive pairs for R-1; class houses for R-2; constituent_houses ∩
+    houses or constituent_planets ∩ kārakas for R-3), BOTH EXCEPT
+    directions, and never a global DISTINCT target_ref set."""
+    for fn in (B.r1_identity_sql, B.r2_identity_sql, B.r3_identity_sql):
+        fwd, rev = fn(CH)
+        for q in (fwd, rev):
+            assert q.startswith("-- ") and "\nEXCEPT\n" in q
+            assert "ayanamsha_id = 'lahiri_chitrapaksha'" in q
+            assert "SELECT DISTINCT target_ref FROM gochara_resonance_map" not in q
+            assert "SELECT event_class, target_ref FROM gochara_resonance_map" in q
+            assert q.count("event_class") >= 3
+        # direction: forward = map rows not named by the contract; reverse = eligible rows missing
+        assert fwd.index("gochara_resonance_map") < fwd.index("EXCEPT") < fwd.index("chart_facts" if fn is not B.r3_identity_sql else "ga_yoga_firings")
+        assert rev.index("EXCEPT") < rev.index("SELECT event_class, target_ref FROM gochara_resonance_map")
+        assert "MISSING" in rev
+    r1, _ = B.r1_identity_sql(CH)
+    assert "('rahu','RAH_MEAN')" in r1 and "('kartari','shubha_kartari')" in r1
+    assert "fact_category = 'sensitive_degree_check'" in r1
+    r3, _ = B.r3_identity_sql(CH)
+    assert "constituent_houses" in r3 and "constituent_planets" in r3 and "y.fired" in r3
+    r2, _ = B.r2_identity_sql(CH)
+    assert "'ARUDHA_A' || ch.house::text" in r2 and "fact_key = 'sign'" in r2
+
+
+def test_value_invariants_check_each_retained_value_against_its_source():
+    sql = B.value_invariants_sql(CH)
+    for label in ("'weight'", "'provenance:ontology_citation'", "'provenance:transit_rule_citation'",
+                  "'provenance:own_synthesis'", "'state:lord_chain'", "'state:bhava_lagna'",
+                  "'state:graha_position'", "'state:sensitive_subject_position'", "'state:arudha_sign'",
+                  "'state:bhava_arudha_sign'", "'state:yoga'", "'qualifier:lord_afflicted'",
+                  "'qualifier:yoga_bhanga'"):
+        assert label in sql, label
+    for source in ("reference_signs", "fact_category = 'graha_position'", "brahma_event_ontology",
+                   "bg_transit_rules", "ga_yoga_firings", "fact_category = 'arudha_pada'"):
+        assert source in sql, source
+    for t, w in B.EXPECTED_WEIGHTS.items():
+        assert f"WHEN '{t}' THEN {w}" in sql
+    assert sql.rstrip().endswith("ORDER BY m.event_class, m.target_type, m.target_ref;")
 
 
 def test_a_transferred_qualifier_with_the_same_count_is_rejected():
@@ -322,8 +458,14 @@ def test_runbook_carries_the_module_statements_verbatim():
                   B.negative_sensitive_targets_sql(CH),
                   B.dangling_fact_refs_sql(CH),
                   B.rollback_sql(t, CH, 177, "0" * 32),
-                  *B.r5_qualifier_identity_sql(CH)):
+                  *B.r5_qualifier_identity_sql(CH),
+                  *B.r1_identity_sql(CH), *B.r2_identity_sql(CH), *B.r3_identity_sql(CH),
+                  B.value_invariants_sql(CH)):
         assert block in text, block[:80]
+    # ASTRA v1.2 P1-3: the global-DISTINCT R-1/R-3 identities are gone
+    assert "EXCEPT SELECT DISTINCT target_ref" not in text
+    assert "EXCEPT SELECT yoga_canonical_id FROM ga_yoga_firings" not in text
+    assert "EXCEPT SELECT f.fact_id::text FROM chart_facts" not in text
     assert "STOP: the rebuild" in text  # the pre-destructive gate is in the runbook
     assert "IF NOT EXISTS gochara_resonance_map_pre_r1r6_backup" not in text
     assert "negative_dropped_zero_rows = 154" not in text

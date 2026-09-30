@@ -231,8 +231,206 @@ def r5_qualifier_identity_sql(chart_id: str) -> tuple[str, str]:
             f"{expected}\nEXCEPT\n{rows};")
 
 
+# The writer's own eligibility contract (services/ka_gochara_resonance/writer.py):
+#   sensitive_degree: chart_facts sensitive_degree_check rows of the CANONICAL
+#     ayanāṃśa whose fact_subject is a class kāraka's subject code and whose
+#     (fact_key, value) is a positive pair; weight 0.5, uncited, no citation;
+#   arudha: arudha_pada fact_key='sign' rows for the class's houses (ARUDHA_A{h});
+#     weight 0.6; state resolved iff the sign value is one of the 12 signs;
+#   yoga_constituent: live fired ga_yoga_firings of the canonical ayanāṃśa whose
+#     constituent_houses ∩ class houses or constituent_planets ∩ class kārakas
+#     (lower-case) is non-empty; weight 0.7; qualifier bhanga_active.
+CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
+KARAKA_SUBJECT_VALUES = ("(VALUES ('sun','SUN'),('moon','MOON'),('mars','MAR'),('mercury','MER'),"
+                         "('jupiter','JUP'),('venus','VEN'),('saturn','SAT'),('rahu','RAH_MEAN'),"
+                         "('ketu','KET_MEAN')) AS ks(karaka, subject)")
+POSITIVE_PAIRS = ("(VALUES ('mrityu_bhaga','fired'),('gandanta','gandanta'),('kartari','papa_kartari'),"
+                  "('kartari','shubha_kartari'),('pushkara','pushkara')) AS pp(fact_key, value)")
+EXPECTED_WEIGHTS = {"bhava": 1.0, "lord": 1.0, "karaka": 1.0, "sensitive_degree": 0.5,
+                    "arudha": 0.6, "bhava_arudha": 0.6, "yoga_constituent": 0.7,
+                    "dasha_lord_portfolio": 0.8}
+
+
+def _class_houses_cte(chart_id: str) -> str:
+    return ("class_houses AS (SELECT o.event_class_id AS event_class, (h.value)::int AS house\n"
+            "  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)),\n"
+            "class_karakas AS (SELECT o.event_class_id AS event_class, lower(k.value) AS karaka\n"
+            "  FROM brahma_event_ontology o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))")
+
+
+def r1_identity_sql(chart_id: str) -> tuple[str, str]:
+    """R-1 as a CLASS-ASSOCIATED identity (ASTRA v1.2 P1-3): the set of
+    (event_class, fact_id) sensitive_degree rows must EQUAL the writer's
+    eligible set — positive-result checks of the CANONICAL ayanāṃśa whose
+    subject is one of the class's kārakas. Both EXCEPT directions must be
+    empty (a swap of fact ids between classes, or a foreign-ayanāṃśa fact,
+    surfaces in one direction)."""
+    cid = _check_uuid(chart_id)
+    cte = f"WITH {_class_houses_cte(cid)}\n"
+    expected = (f"SELECT ck.event_class, f.fact_id::text AS target_ref\n"
+                f"  FROM class_karakas ck\n"
+                f"  JOIN {KARAKA_SUBJECT_VALUES} ON ks.karaka = ck.karaka\n"
+                f"  JOIN chart_facts f ON f.chart_id = '{cid}' AND f.ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+                f"   AND f.fact_category = 'sensitive_degree_check' AND f.fact_subject = ks.subject\n"
+                f"  JOIN {POSITIVE_PAIRS} ON pp.fact_key = f.fact_key AND pp.value = f.fact_value_text")
+    actual = (f"SELECT event_class, target_ref FROM gochara_resonance_map\n"
+              f" WHERE chart_id = '{cid}' AND target_type = 'sensitive_degree'")
+    return (f"-- R-1 identity: rows the eligibility contract does not name (MUST be 0 rows):\n"
+            f"{cte}{actual}\nEXCEPT\n{expected};",
+            f"-- R-1 identity: eligible (class, fact) pairs MISSING from the map (MUST be 0 rows):\n"
+            f"{cte}{expected}\nEXCEPT\n{actual};")
+
+
+def r3_identity_sql(chart_id: str) -> tuple[str, str]:
+    """R-3 as a CLASS-ASSOCIATED identity, BOTH directions: the set of
+    (event_class, yoga id) rows must EQUAL the live fired firings of the
+    canonical ayanāṃśa eligible for the class (constituent_houses ∩ class
+    houses, or constituent_planets ∩ class kārakas). The previous runbook
+    printed only actual − live, so a MISSING eligible yoga passed."""
+    cid = _check_uuid(chart_id)
+    cte = f"WITH {_class_houses_cte(cid)}\n"
+    expected = (f"SELECT DISTINCT o.event_class_id AS event_class, y.yoga_canonical_id AS target_ref\n"
+                f"  FROM brahma_event_ontology o\n"
+                f"  JOIN ga_yoga_firings y ON y.chart_id = '{cid}' AND y.ayanamsha_id = '{CANONICAL_AYANAMSHA}' AND y.fired\n"
+                f" WHERE EXISTS (SELECT 1 FROM jsonb_array_elements(y.constituent_houses) e\n"
+                f"                 JOIN class_houses ch ON ch.event_class = o.event_class_id AND ch.house = (e::text)::int)\n"
+                f"    OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(y.constituent_planets) e\n"
+                f"                 JOIN class_karakas ck ON ck.event_class = o.event_class_id AND ck.karaka = e)")
+    actual = (f"SELECT event_class, target_ref FROM gochara_resonance_map\n"
+              f" WHERE chart_id = '{cid}' AND target_type = 'yoga_constituent'")
+    return (f"-- R-3 identity: yoga rows not backed by an eligible live firing (MUST be 0 rows):\n"
+            f"{cte}{actual}\nEXCEPT\n{expected};",
+            f"-- R-3 identity: eligible live firings MISSING from the map (MUST be 0 rows):\n"
+            f"{cte}{expected}\nEXCEPT\n{actual};")
+
+
+def r2_identity_sql(chart_id: str) -> tuple[str, str]:
+    """R-2 as a CLASS-ASSOCIATED identity: (event_class, arudha fact_id)
+    rows must EQUAL the ARUDHA_A{h} sign facts (canonical ayanāṃśa) of the
+    class's houses; both EXCEPT directions empty."""
+    cid = _check_uuid(chart_id)
+    cte = f"WITH {_class_houses_cte(cid)}\n"
+    expected = (f"SELECT ch.event_class, f.fact_id::text AS target_ref\n"
+                f"  FROM class_houses ch\n"
+                f"  JOIN chart_facts f ON f.chart_id = '{cid}' AND f.ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+                f"   AND f.fact_category = 'arudha_pada' AND f.fact_key = 'sign'\n"
+                f"   AND f.fact_subject = 'ARUDHA_A' || ch.house::text")
+    actual = (f"SELECT event_class, target_ref FROM gochara_resonance_map\n"
+              f" WHERE chart_id = '{cid}' AND target_type = 'arudha'")
+    return (f"-- R-2 identity: arudha rows the class's houses do not name (MUST be 0 rows):\n"
+            f"{cte}{actual}\nEXCEPT\n{expected};",
+            f"-- R-2 identity: class-house arudha facts MISSING from the map (MUST be 0 rows):\n"
+            f"{cte}{expected}\nEXCEPT\n{actual};")
+
+
+def value_invariants_sql(chart_id: str) -> str:
+    """Retained VALUES, each checked INDEPENDENTLY against the source it is
+    derived from (ASTRA v1.2 P1-3) — a row whose class/type/ref are right
+    but whose weight, provenance, resolution state or qualifier is wrong
+    is listed here. MUST return 0 rows. Mirrors the writer's own rules
+    (services/ka_gochara_resonance/writer.py):
+      weight        — the declared per-type weight (EXPECTED_WEIGHTS);
+      provenance    — bhava/lord/karaka: uncited_extension=false and
+                      classical_citation = the ontology's citations joined
+                      by '; ' (NULL when it has none); mechanism_node:
+                      uncited=false and citation = the cited bg_transit_rules
+                      row's; own-synthesis types: uncited=true, citation NULL;
+      state         — lord: the R-4 chain (LAGNA sign → whole-sign house →
+                      reference_signs lord → lord's graha_position row:
+                      unavailable / unqualified / resolved); bhava: LAGNA
+                      present; karaka + dasha_lord_portfolio: the ref's
+                      graha_position row present; sensitive_degree: the
+                      cited fact's subject graha_position row present;
+                      arudha: the cited fact names one of the 12 signs;
+                      bhava_arudha: the class-house ARUDHA_A{h} sign fact
+                      exists and names a sign; yoga_constituent: resolved;
+      qualifier     — lord: 'afflicted' iff an ontology lord entry naming
+                      the token says so; yoga_constituent: 'bhanga_active'
+                      iff a live fired firing of that id has bhanga_active."""
+    cid = _check_uuid(chart_id)
+    cases = " ".join(f"WHEN '{t}' THEN {w}" for t, w in EXPECTED_WEIGHTS.items())
+    return (f"WITH lagna AS (SELECT (fact_value_num)::int AS n FROM chart_facts\n"
+            f"  WHERE chart_id = '{cid}' AND ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+            f"    AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'\n"
+            f"  ORDER BY fact_value_num LIMIT 1),\n"
+            f"present AS (SELECT DISTINCT fact_subject FROM chart_facts\n"
+            f"  WHERE chart_id = '{cid}' AND ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+            f"    AND fact_category = 'graha_position' AND fact_key = 'longitude_sidereal'),\n"
+            f"lords_complete AS (SELECT COUNT(*) = 12 AS ok FROM reference_signs WHERE sign_id BETWEEN 1 AND 12),\n"
+            f"graha AS (SELECT * FROM (VALUES ('Sun','SUN'),('Moon','MOON'),('Mars','MAR'),('Mercury','MER'),\n"
+            f"  ('Jupiter','JUP'),('Venus','VEN'),('Saturn','SAT'),('Rahu','RAH_MEAN'),('Ketu','KET_MEAN')) AS g(name, subject)),\n"
+            f"ontology_cite AS (SELECT o.event_class_id, string_agg(c.value, '; ' ORDER BY c.ordinality) AS citation\n"
+            f"  FROM brahma_event_ontology o\n"
+            f"  LEFT JOIN LATERAL jsonb_array_elements_text(o.citations) WITH ORDINALITY AS c(value, ordinality) ON TRUE\n"
+            f"  GROUP BY o.event_class_id),\n"
+            f"signs AS (SELECT unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',\n"
+            f"  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name)\n"
+            f"SELECT m.event_class, m.target_type, m.target_ref, v.violation\n"
+            f"  FROM gochara_resonance_map m\n"
+            f"  CROSS JOIN LATERAL (SELECT CASE\n"
+            f"    WHEN m.weight <> (CASE m.target_type {cases} ELSE m.weight END) THEN 'weight'\n"
+            f"    WHEN m.target_type IN ('bhava','lord','karaka') AND (m.uncited_extension IS TRUE\n"
+            f"         OR m.classical_citation IS DISTINCT FROM (SELECT citation FROM ontology_cite oc\n"
+            f"                                                     WHERE oc.event_class_id = m.event_class))\n"
+            f"         THEN 'provenance:ontology_citation'\n"
+            f"    WHEN m.target_type = 'mechanism_node' AND (m.uncited_extension IS TRUE OR m.source_rule_id IS NULL\n"
+            f"         OR m.classical_citation IS DISTINCT FROM (SELECT r.classical_citation FROM bg_transit_rules r\n"
+            f"                                                     WHERE r.id = m.source_rule_id))\n"
+            f"         THEN 'provenance:transit_rule_citation'\n"
+            f"    WHEN m.target_type IN ('sensitive_degree','arudha','bhava_arudha','yoga_constituent','dasha_lord_portfolio')\n"
+            f"         AND (m.uncited_extension IS NOT TRUE OR m.classical_citation IS NOT NULL)\n"
+            f"         THEN 'provenance:own_synthesis'\n"
+            f"    WHEN m.target_type = 'lord' AND m.target_resolution_state IS DISTINCT FROM (\n"
+            f"         CASE WHEN (SELECT n FROM lagna) IS NULL THEN 'unavailable'\n"
+            f"              WHEN m.target_ref !~ '^[0-9]+L$' OR (substring(m.target_ref from '^([0-9]+)L$'))::int NOT BETWEEN 1 AND 12\n"
+            f"                   THEN 'unavailable'\n"
+            f"              WHEN NOT (SELECT ok FROM lords_complete) THEN 'unqualified'\n"
+            f"              WHEN NOT EXISTS (SELECT 1 FROM reference_signs rs JOIN graha g ON g.name = rs.lord\n"
+            f"                                 JOIN present p ON p.fact_subject = g.subject\n"
+            f"                                WHERE rs.sign_id = (((SELECT n FROM lagna) - 1)\n"
+            f"                                     + ((substring(m.target_ref from '^([0-9]+)L$'))::int - 1)) % 12 + 1)\n"
+            f"                   THEN 'unavailable'\n"
+            f"              ELSE 'resolved' END) THEN 'state:lord_chain'\n"
+            f"    WHEN m.target_type = 'bhava' AND m.target_resolution_state IS DISTINCT FROM\n"
+            f"         (CASE WHEN (SELECT n FROM lagna) IS NULL THEN 'unavailable' ELSE 'resolved' END) THEN 'state:bhava_lagna'\n"
+            f"    WHEN m.target_type IN ('karaka','dasha_lord_portfolio') AND m.target_resolution_state IS DISTINCT FROM\n"
+            f"         (CASE WHEN EXISTS (SELECT 1 FROM graha g JOIN present p ON p.fact_subject = g.subject\n"
+            f"                             WHERE g.name = m.target_ref) THEN 'resolved' ELSE 'unavailable' END)\n"
+            f"         THEN 'state:graha_position'\n"
+            f"    WHEN m.target_type = 'sensitive_degree' AND m.target_resolution_state IS DISTINCT FROM\n"
+            f"         (CASE WHEN EXISTS (SELECT 1 FROM chart_facts f JOIN present p ON p.fact_subject = f.fact_subject\n"
+            f"                             WHERE f.fact_id::text = m.target_ref AND f.chart_id = m.chart_id)\n"
+            f"               THEN 'resolved' ELSE 'unavailable' END) THEN 'state:sensitive_subject_position'\n"
+            f"    WHEN m.target_type = 'arudha' AND m.target_resolution_state IS DISTINCT FROM\n"
+            f"         (CASE WHEN EXISTS (SELECT 1 FROM chart_facts f JOIN signs s ON s.name = btrim(f.fact_value_text)\n"
+            f"                             WHERE f.fact_id::text = m.target_ref AND f.chart_id = m.chart_id)\n"
+            f"               THEN 'resolved' ELSE 'unavailable' END) THEN 'state:arudha_sign'\n"
+            f"    WHEN m.target_type = 'bhava_arudha' AND m.target_resolution_state IS DISTINCT FROM\n"
+            f"         (CASE WHEN EXISTS (SELECT 1 FROM chart_facts f JOIN signs s ON s.name = btrim(f.fact_value_text)\n"
+            f"                             WHERE f.chart_id = m.chart_id AND f.ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+            f"                               AND f.fact_category = 'arudha_pada' AND f.fact_key = 'sign'\n"
+            f"                               AND f.fact_subject = replace(m.target_ref, 'BHAVA_', ''))\n"
+            f"               THEN 'resolved' ELSE 'unavailable' END) THEN 'state:bhava_arudha_sign'\n"
+            f"    WHEN m.target_type = 'yoga_constituent' AND m.target_resolution_state <> 'resolved' THEN 'state:yoga'\n"
+            f"    WHEN m.target_type = 'lord' AND m.target_qualifier IS DISTINCT FROM\n"
+            f"         (CASE WHEN EXISTS (SELECT 1 FROM brahma_event_ontology o,\n"
+            f"                                 jsonb_array_elements_text(o.signature_model->'lords') AS l(value)\n"
+            f"                             WHERE o.event_class_id = m.event_class AND l.value ILIKE '%afflicted%'\n"
+            f"                               AND l.value ~ ('(^|[^0-9])' || m.target_ref || '([^0-9]|$)'))\n"
+            f"               THEN 'afflicted' END) THEN 'qualifier:lord_afflicted'\n"
+            f"    WHEN m.target_type = 'yoga_constituent' AND NOT EXISTS (SELECT 1 FROM ga_yoga_firings y\n"
+            f"         WHERE y.chart_id = m.chart_id AND y.ayanamsha_id = '{CANONICAL_AYANAMSHA}' AND y.fired\n"
+            f"           AND y.yoga_canonical_id = m.target_ref\n"
+            f"           AND (CASE WHEN y.bhanga_active IS TRUE THEN 'bhanga_active' END) IS NOT DISTINCT FROM m.target_qualifier)\n"
+            f"         THEN 'qualifier:yoga_bhanga'\n"
+            f"    END AS violation) v\n"
+            f" WHERE m.chart_id = '{cid}' AND v.violation IS NOT NULL\n"
+            f" ORDER BY m.event_class, m.target_type, m.target_ref;")
+
+
 __all__ = [
-    "CONTENT_COLUMNS", "NEGATIVE_VALUES", "POSITIVE_VALUES",
+    "CONTENT_COLUMNS", "NEGATIVE_VALUES", "POSITIVE_VALUES", "EXPECTED_WEIGHTS",
+    "r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "value_invariants_sql",
     "snapshot_table_name", "create_snapshot_sql", "partition_digest_sql",
     "full_row_digest_sql", "rollback_sql", "negative_sensitive_targets_sql",
     "dangling_fact_refs_sql", "r5_qualifier_identity_sql", "new_stamp_utc",

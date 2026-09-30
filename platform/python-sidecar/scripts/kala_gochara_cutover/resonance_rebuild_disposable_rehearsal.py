@@ -195,6 +195,56 @@ def expected_lord_identities(signature_models: dict = SIGNATURE_MODELS):
     return lords, afflicted
 
 
+KARAKA_SUBJECT = {"sun": "SUN", "moon": "MOON", "mars": "MAR", "mercury": "MER",
+                  "jupiter": "JUP", "venus": "VEN", "saturn": "SAT", "rahu": "RAH_MEAN",
+                  "ketu": "KET_MEAN"}
+SIGN_NAMES = ("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
+              "Sagittarius", "Capricorn", "Aquarius", "Pisces")
+
+
+def expected_row_tuples(fixture: dict, signature_models: dict = SIGNATURE_MODELS) -> set:
+    """The writer's expected output as FULL tuples (event_class, target_type,
+    target_ref, weight, resolution_state, qualifier, uncited, citation) for
+    every type the fixture determines exactly (ASTRA v1.2 P1-3): sensitive
+    facts by the class's kārakas (canonical ayanāṃśa, positive pairs),
+    arudha / bhava_arudha by the class's houses (A12 invalid ⇒ unavailable),
+    yoga ids by constituent_houses ∩ houses or constituent_planets ∩ kārakas
+    with the bhanga qualifier, lords (tokens + afflicted qualifier), kārakas,
+    bhavas with the ontology citation. Class association and retained values
+    are part of the identity — a swap between classes or a changed weight
+    with the same totals fails."""
+    out = set()
+    cite = fixture["ontology_citation"]
+    for cls, (houses, lords, karakas) in signature_models.items():
+        kl = {str(k).lower() for k in karakas}
+        for h in houses:
+            out.add((cls, "bhava", str(h), 1.0, "resolved", None, False, cite))
+            fid = fixture["arudha_fact_ids_by_house"].get(h)
+            state = "resolved" if fixture["arudha_sign_by_house"].get(h) in SIGN_NAMES else "unavailable"
+            if fid:
+                out.add((cls, "arudha", fid, 0.6, state, None, True, None))
+            out.add((cls, "bhava_arudha", f"BHAVA_ARUDHA_A{h}", 0.6, state, None, True, None))
+        for entry in lords:
+            q = "afflicted" if "afflicted" in entry else None
+            for token in re.findall(r"\d+L", entry):
+                out.add((cls, "lord", token, 1.0, "resolved", q, False, cite))
+        for k in karakas:
+            out.add((cls, "karaka", str(k), 1.0, "resolved", None, False, cite))
+        subjects = {KARAKA_SUBJECT[k] for k in kl if k in KARAKA_SUBJECT}
+        for fid, subj in fixture["positive_facts"]:
+            if subj in subjects:
+                out.add((cls, "sensitive_degree", fid, 0.5, "resolved", None, True, None))
+        for yid, y_houses, y_planets, bhanga in fixture["live_yogas"]:
+            if set(y_houses) & set(houses) or set(y_planets) & kl:
+                out.add((cls, "yoga_constituent", yid, 0.7, "resolved",
+                         "bhanga_active" if bhanga else None, True, None))
+    return out
+
+
+EXACT_TYPES = ("bhava", "lord", "karaka", "sensitive_degree", "arudha", "bhava_arudha",
+               "yoga_constituent")
+
+
 def expected_afflicted_lord_rows(signature_models: dict = SIGNATURE_MODELS) -> int:
     """R-5 positive control: every '<n>L afflicted' lord reference in the
     seeded signature models must survive as a lord row with
@@ -247,8 +297,8 @@ def verify_acceptance(ver: dict) -> list[str]:
         f.append(f"R-5: afflicted qualifier rows {ver['afflicted_qualifier_rows']} != expected "
                  f"{ver['expected_afflicted_rows']}")
     ids = ver.get("identities") or {}
-    for name in ("lord_rows", "afflicted_rows", "sensitive_fact_ids", "arudha_fact_ids",
-                 "yoga_ids"):
+    for name in ("lord_rows", "afflicted_rows", "sensitive_rows", "arudha_rows",
+                 "yoga_rows", "exact_row_tuples"):
         exp = ids.get(name, {}).get("expected")
         act = ids.get(name, {}).get("actual")
         if exp is None or act is None:
@@ -261,6 +311,29 @@ def verify_acceptance(ver: dict) -> list[str]:
             missing = sorted(set(exp_l) - set(act_l))[:5]
             extra = sorted(set(act_l) - set(exp_l))[:5]
             f.append(f"identity: {name} differs (missing {missing}, extra {extra})")
+    if ver.get("value_invariant_violations", 1) != 0:
+        f.append(f"values: {ver.get('value_invariant_violations')} rows violate the writer's "
+                 "declared weight/provenance/state/qualifier invariants")
+    for name in ("r1_identity_sql", "r2_identity_sql", "r3_identity_sql"):
+        pair = ver.get(name) or {}
+        if pair.get("actual_not_expected") != 0 or pair.get("expected_not_actual") != 0:
+            f.append(f"{name}: EXCEPT rows {pair} (both directions must be 0)")
+    dc = ver.get("detector_controls")
+    if not dc:
+        f.append("detector controls: not run")
+    else:
+        for name, c in dc.items():
+            if name in ("clean", "restored_after_controls"):
+                continue
+            if not (c.get("counts_preserved") and c.get("global_id_sets_preserved")):
+                f.append(f"detector control {name}: mutation did not preserve per-class counts "
+                         "and global id sets (control invalid)")
+            if not c.get("detected"):
+                f.append(f"detector control {name}: NOT detected by the identity/value checks")
+        if dc.get("restored_after_controls") is not True:
+            f.append("detector controls: map not restored after the rolled-back mutations")
+    if ver.get("map_unchanged_after_detector_controls") is not True:
+        f.append("detector controls: post-control digest differs from the rerun digest")
     if ver.get("negative_fact_ids_referenced", 1) != 0:
         f.append("identity: a negative-result sensitive fact id is referenced")
     r5 = ver.get("r5_identity_sql") or {}
@@ -385,8 +458,12 @@ def _seed(cur) -> dict:
     """Seed the fixture; return its identities (fact ids by role) for the
     exact-set acceptance checks."""
     identities: dict = {"positive_fact_ids": [], "negative_fact_ids": [],
-                        "arudha_fact_ids_by_house": {},
-                        "live_yoga_ids": ["yoga_demo_gajakesari", "yoga_demo_bhanga"]}
+                        "positive_facts": [],  # (fact_id, subject)
+                        "arudha_fact_ids_by_house": {}, "arudha_sign_by_house": {},
+                        "live_yoga_ids": ["yoga_demo_gajakesari", "yoga_demo_bhanga"],
+                        "live_yogas": [("yoga_demo_gajakesari", [7, 11], ["venus", "jupiter"], False),
+                                       ("yoga_demo_bhanga", [10], ["sun"], True)],
+                        "ontology_citation": "BPHS synthetic rehearsal citation (disposable fixture)"}
     for event_class, (houses, lords, karakas) in SIGNATURE_MODELS.items():
         cur.execute(
             "INSERT INTO brahma_event_ontology (event_class_id, signature_model, citations)"
@@ -432,6 +509,8 @@ def _seed(cur) -> dict:
         sensitive_fact_ids.append((str(fid), value))
         (identities["negative_fact_ids"] if i < FIXTURE_SENSITIVE_NEGATIVE
          else identities["positive_fact_ids"]).append(str(fid))
+        if i >= FIXTURE_SENSITIVE_NEGATIVE:
+            identities["positive_facts"].append((str(fid), subject))
 
     for h in range(1, 13):
         sign_name = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -439,6 +518,7 @@ def _seed(cur) -> dict:
                      "not_a_sign"][h - 1]  # A12 deliberately invalid (R-2 honesty)
         identities["arudha_fact_ids_by_house"][h] = str(
             add_fact("arudha_pada", f"ARUDHA_A{h}", "sign", text=sign_name))
+        identities["arudha_sign_by_house"][h] = sign_name
 
     add_fact("sensitive_point_gulika_mandi", "MANDI", "sign", text="Aries")
     add_fact("sensitive_point_gulika_mandi", "GULIKA", "sign", text="Taurus")
@@ -504,6 +584,121 @@ def _counts(cur, label):
     out["sensitive_negative"] = cur.execute(B.negative_sensitive_targets_sql(CHART_ID)).fetchone()[0]
     out["sensitive_total"] = out["by_type"].get("sensitive_degree", 0)
     return out
+
+
+def _map_shape(cur) -> tuple[list, dict]:
+    """(per-class-per-type counts, per-type GLOBAL DISTINCT target_ref sets)
+    — the two quantities a count-only or global-DISTINCT acceptance sees."""
+    counts = cur.execute(
+        "SELECT event_class, target_type, COUNT(*) FROM gochara_resonance_map"
+        " WHERE chart_id=%s GROUP BY 1, 2 ORDER BY 1, 2", (CHART_ID,)).fetchall()
+    ids: dict = {}
+    for ty, ref in cur.execute(
+            "SELECT DISTINCT target_type, target_ref FROM gochara_resonance_map"
+            " WHERE chart_id=%s", (CHART_ID,)).fetchall():
+        ids.setdefault(ty, set()).add(ref)
+    return [tuple(map(str, c)) for c in counts], {k: sorted(v) for k, v in ids.items()}
+
+
+def _swap_refs(cur, target_type: str, a: tuple[str, str], b: tuple[str, str]) -> None:
+    """Exchange target_ref between (class_a, ref_a) and (class_b, ref_b) of one
+    type — per-class counts and the global id set are unchanged; only the
+    CLASS ASSOCIATION moves (the mutation a global-DISTINCT identity cannot see)."""
+    (ca, ra), (cb, rb_) = a, b
+    key = "chart_id=%s AND event_class=%s AND target_type=%s AND target_ref=%s"
+    cur.execute(f"UPDATE gochara_resonance_map SET target_ref='__swap__' WHERE {key}",
+                (CHART_ID, ca, target_type, ra))
+    cur.execute(f"UPDATE gochara_resonance_map SET target_ref=%s WHERE {key}",
+                (ra, CHART_ID, cb, target_type, rb_))
+    cur.execute(f"UPDATE gochara_resonance_map SET target_ref=%s WHERE {key}",
+                (rb_, CHART_ID, ca, target_type, "__swap__"))
+
+
+def _detector_controls(cur) -> dict:
+    """ASTRA v1.2 P1-3 positive controls, run INSIDE a savepoint and rolled
+    back: each mutation preserves every per-class count and every global
+    target_ref set (so a totals-only or global-DISTINCT acceptance would
+    still pass) and MUST be caught by the identity / value checks the
+    runbook prints. A control that is not detected is an acceptance failure
+    — the detectors are proven live on this run, not assumed."""
+    def first_ref(cls, ty):
+        row = cur.execute(
+            "SELECT target_ref FROM gochara_resonance_map WHERE chart_id=%s AND event_class=%s"
+            " AND target_type=%s ORDER BY target_ref LIMIT 1", (CHART_ID, cls, ty)).fetchone()
+        return row[0] if row else None
+
+    def measure():
+        out = {"value_violations": len(cur.execute(B.value_invariants_sql(CHART_ID)).fetchall())}
+        for nm, fn in (("r1", B.r1_identity_sql), ("r2", B.r2_identity_sql), ("r3", B.r3_identity_sql)):
+            fwd, rev = fn(CHART_ID)
+            out[nm] = (len(cur.execute(fwd).fetchall()), len(cur.execute(rev).fetchall()))
+        q1, q2 = B.r5_qualifier_identity_sql(CHART_ID)
+        out["r5"] = (len(cur.execute(q1).fetchall()), len(cur.execute(q2).fetchall()))
+        return out
+
+    upd = "UPDATE gochara_resonance_map SET {} WHERE chart_id=%s AND event_class=%s AND target_type=%s AND target_ref=%s"
+    controls = {
+        # class association moved, ids and counts intact:
+        "sensitive_class_swap": (
+            lambda: _swap_refs(cur, "sensitive_degree",
+                               ("marriage", first_ref("marriage", "sensitive_degree")),
+                               ("surgery", first_ref("surgery", "sensitive_degree"))),
+            lambda m: m["r1"][0] >= 1 and m["r1"][1] >= 1),
+        "arudha_class_swap": (
+            lambda: _swap_refs(cur, "arudha",
+                               ("marriage", first_ref("marriage", "arudha")),
+                               ("surgery", first_ref("surgery", "arudha"))),
+            lambda m: m["r2"][0] >= 1 and m["r2"][1] >= 1),
+        "yoga_class_swap": (
+            lambda: _swap_refs(cur, "yoga_constituent",
+                               ("marriage", "yoga_demo_gajakesari"),
+                               ("career_entry", "yoga_demo_bhanga")),
+            lambda m: m["r3"][0] >= 1 and m["r3"][1] >= 1),
+        # retained values changed, identity intact:
+        "weight_changed": (
+            lambda: cur.execute(upd.format("weight=0.9"), (CHART_ID, "marriage", "bhava", "7")),
+            lambda m: m["value_violations"] >= 1),
+        "qualifier_transferred": (
+            lambda: (cur.execute(upd.format("target_qualifier=NULL"),
+                                 (CHART_ID, "career_setback", "lord", "10L")),
+                     cur.execute(upd.format("target_qualifier='afflicted'"),
+                                 (CHART_ID, "marriage", "lord", "7L"))),
+            lambda m: m["r5"][0] >= 1 and m["r5"][1] >= 1 and m["value_violations"] >= 2),
+        "resolution_state_flipped": (
+            lambda: (cur.execute(upd.format("target_resolution_state='unavailable'"),
+                                 (CHART_ID, "marriage", "sensitive_degree",
+                                  first_ref("marriage", "sensitive_degree"))),
+                     cur.execute(upd.format("target_resolution_state='unqualified'"),
+                                 (CHART_ID, "marriage", "lord", "7L"))),
+            lambda m: m["value_violations"] >= 2),
+        "provenance_flipped": (
+            lambda: (cur.execute(upd.format("uncited_extension=TRUE, classical_citation=NULL"),
+                                 (CHART_ID, "marriage", "karaka", "Venus")),
+                     cur.execute(upd.format("classical_citation='fabricated'"),
+                                 (CHART_ID, "marriage", "sensitive_degree",
+                                  first_ref("marriage", "sensitive_degree")))),
+            lambda m: m["value_violations"] >= 2),
+    }
+    clean = measure()
+    shape0 = _map_shape(cur)
+    results: dict = {"clean": clean}
+    for name, (mutate, detected_by) in controls.items():
+        cur.execute("SAVEPOINT detector_control")
+        try:
+            mutate()
+            shape1 = _map_shape(cur)
+            m = measure()
+        finally:
+            cur.execute("ROLLBACK TO SAVEPOINT detector_control")
+            cur.execute("RELEASE SAVEPOINT detector_control")
+        results[name] = {
+            "counts_preserved": shape1[0] == shape0[0],
+            "global_id_sets_preserved": shape1[1] == shape0[1],
+            "measured": m,
+            "detected": bool(detected_by(m)),
+        }
+    results["restored_after_controls"] = _map_shape(cur) == shape0
+    return results
 
 
 def _run_writer(conn):
@@ -662,29 +857,42 @@ def main(argv=None) -> int:
             "SELECT event_class, target_ref FROM gochara_resonance_map"
             " WHERE chart_id=%s AND target_type='lord' AND target_qualifier='afflicted'",
             (CHART_ID,)).fetchall()}
-        act_sensitive = {r for (r,) in cur.execute(
-            "SELECT DISTINCT target_ref FROM gochara_resonance_map"
-            " WHERE chart_id=%s AND target_type='sensitive_degree'", (CHART_ID,)).fetchall()}
-        act_arudha = {r for (r,) in cur.execute(
-            "SELECT DISTINCT target_ref FROM gochara_resonance_map"
-            " WHERE chart_id=%s AND target_type='arudha'", (CHART_ID,)).fetchall()}
-        act_yoga = {r for (r,) in cur.execute(
-            "SELECT DISTINCT target_ref FROM gochara_resonance_map"
-            " WHERE chart_id=%s AND target_type='yoga_constituent'", (CHART_ID,)).fetchall()}
-        exp_arudha = {fixture["arudha_fact_ids_by_house"][h]
-                      for _cls, (houses, _l, _k) in SIGNATURE_MODELS.items() for h in houses
-                      if h in fixture["arudha_fact_ids_by_house"]}
+        # CLASS-ASSOCIATED identities and FULL retained values (ASTRA v1.2
+        # P1-3): every row of the exactly-determined types as a tuple.
+        exp_tuples = expected_row_tuples(fixture)
+        act_tuples = {
+            (c, ty, r, float(wt), st, q, bool(u), ci) for c, ty, r, wt, st, q, u, ci in cur.execute(
+                "SELECT event_class, target_type, target_ref, weight, target_resolution_state,"
+                " target_qualifier, uncited_extension, classical_citation"
+                " FROM gochara_resonance_map WHERE chart_id=%s AND target_type = ANY(%s)",
+                (CHART_ID, list(EXACT_TYPES))).fetchall()}
+        def _pairs(ty):
+            return {f"{tp[0]}:{tp[2]}" for tp in exp_tuples if tp[1] == ty}, \
+                   {f"{tp[0]}:{tp[2]}" for tp in act_tuples if tp[1] == ty}
+        exp_sens, act_sens = _pairs("sensitive_degree")
+        exp_aru, act_aru = _pairs("arudha")
+        exp_yog, act_yog = _pairs("yoga_constituent")
         ver["identities"] = {
             "lord_rows": {"expected": sorted(f"{c}:{r}" for c, r in exp_lords),
                           "actual": sorted(f"{c}:{r}" for c, r in act_lords)},
             "afflicted_rows": {"expected": sorted(f"{c}:{r}" for c, r in exp_afflicted),
                                "actual": sorted(f"{c}:{r}" for c, r in act_afflicted)},
-            "sensitive_fact_ids": {"expected": sorted(fixture["positive_fact_ids"]),
-                                   "actual": sorted(act_sensitive)},
-            "arudha_fact_ids": {"expected": sorted(exp_arudha), "actual": sorted(act_arudha)},
-            "yoga_ids": {"expected": sorted(fixture["live_yoga_ids"]), "actual": sorted(act_yoga)},
+            "sensitive_rows": {"expected": sorted(exp_sens), "actual": sorted(act_sens)},
+            "arudha_rows": {"expected": sorted(exp_aru), "actual": sorted(act_aru)},
+            "yoga_rows": {"expected": sorted(exp_yog), "actual": sorted(act_yog)},
+            "exact_row_tuples": {"expected": sorted("|".join(map(str, tp)) for tp in exp_tuples),
+                                 "actual": sorted("|".join(map(str, tp)) for tp in act_tuples)},
         }
+        act_sensitive = {tp[2] for tp in act_tuples if tp[1] == "sensitive_degree"}
         ver["negative_fact_ids_referenced"] = len(act_sensitive & set(fixture["negative_fact_ids"]))
+        _viol = cur.execute(B.value_invariants_sql(CHART_ID)).fetchall()
+        ver["value_invariant_violations"] = len(_viol)
+        ver["value_invariant_violation_rows"] = [list(map(str, r)) for r in _viol[:25]]
+        for check_name, fn in (("r1_identity_sql", B.r1_identity_sql), ("r2_identity_sql", B.r2_identity_sql),
+                               ("r3_identity_sql", B.r3_identity_sql)):
+            fwd_sql, rev_sql = fn(CHART_ID)
+            ver[check_name] = {"actual_not_expected": len(cur.execute(fwd_sql).fetchall()),
+                         "expected_not_actual": len(cur.execute(rev_sql).fetchall())}
         fwd, rev = B.r5_qualifier_identity_sql(CHART_ID)
         ver["r5_identity_sql"] = {
             "qualified_not_in_ontology": len(cur.execute(fwd).fetchall()),
@@ -702,6 +910,11 @@ def main(argv=None) -> int:
         _run_writer(conn)
         rerun = _digest(cur, "gochara_resonance_map", CHART_ID)
         ver["rerun_digest_equal"] = rerun == post
+
+        # 5b. detector positive controls (rolled back; the map is unchanged after)
+        ver["detector_controls"] = _detector_controls(cur)
+        ver["map_unchanged_after_detector_controls"] = (
+            _digest(cur, "gochara_resonance_map", CHART_ID) == rerun)
 
         # 6. rollback rehearsal
         conn.commit()
