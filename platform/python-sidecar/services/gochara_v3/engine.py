@@ -715,10 +715,15 @@ def _evaluate_single_from_context(
         context, eval_start_iso, eval_end_iso,
         instant_date_iso=_jd_to_date_iso(swe, t_jd),
     )
-    from services.ka_vedha_gochara.gate import apply_scoped_factors as _vg_apply
+    from services.ka_vedha_gochara.gate import (
+        apply_scoped_factors as _vg_apply, persistable_summary as _vg_summary)
     sentences, _vedha_applied = _vg_apply(
         sentences, quality_gates_detail.get("factor_by_body") or {})
     quality_gates_detail["scoped_application"] = _vedha_applied
+    # the persisted row must keep the three evaluator states apart (ASTRA
+    # v1.2 P1-2): the summary rides in term_breakdown, which every
+    # materialised row (interval AND chain) carries verbatim
+    _vedha_gate_summary = _vg_summary(quality_gates_detail)
 
     instantaneous_orbs: dict[int, float] | None = None
     if activity_shape == "linear_no_box":
@@ -971,6 +976,10 @@ def _evaluate_single_from_context(
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
         "formula": TERM_BREAKDOWN_FORMULA,
+        # §5 vedha gate at this instant — state / nullable factor / coverage /
+        # identities / testimony (the product term above is always 1.0; the
+        # STATE is the served fact — ASTRA v1.2 P1-2)
+        "vedha_gate": _vedha_gate_summary,
     }
     # S-04: tārā is P6 testimony — the annotation carries the nine-fold
     # class and the value the mechanism would have contributed, explicitly

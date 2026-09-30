@@ -1715,15 +1715,18 @@ def fetch_vedha_rows(conn, chart_id: str) -> list[dict]:
     needed = {"window_start", "window_end", "vedha_kind", "graha", "detail"}
     if not needed <= cols:
         return []
+    has_fv = "formula_version" in cols
+    sql = ("SELECT window_start, window_end, vedha_kind, graha, detail,"
+           " classical_citation" + (", formula_version" if has_fv else ", NULL")
+           + " FROM kala_vedha_gochara WHERE chart_id = %s")
     return [
         {"window_start": str(r[0]), "window_end": str(r[1]),
          "vedha_kind": r[2], "graha": r[3],
          "detail": r[4] if isinstance(r[4], dict) else {},
-         "classical_citation": r[5]}
-        for r in conn.execute(
-            "SELECT window_start, window_end, vedha_kind, graha, detail,"
-            " classical_citation FROM kala_vedha_gochara WHERE chart_id = %s",
-            (chart_id,)).fetchall()
+         "classical_citation": r[5],
+         # rule identity (the writer's FORMULA_VERSION) — ASTRA v1.2 P1-2
+         "formula_version": r[6]}
+        for r in conn.execute(sql, (chart_id,)).fetchall()
     ]
 
 

@@ -38,6 +38,8 @@ from datetime import date
 from typing import Any
 
 from services.ka_vedha_gochara import logic as VL
+from services.gochara_kernel.ids import independence_group as _kernel_independence_group
+from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 
 GATE_CONTRACT = "vedha_interval_relation (GOCHARA_DESIGN_SPECS_v1_4 §5)"
 NULL_STATE = "omit"  # §2.1 factor null_state for an unresolved qualifier
@@ -110,6 +112,7 @@ def parse_overlay_rows(vedha_rows: list) -> dict:
         rows.append({
             **identity,
             "primary_house": d.get("primary_house"),
+            "primary_sign_idx": d.get("primary_sign_idx"),
             "primary_sign_name": d.get("primary_sign_name"),
             "vedha_house": d.get("vedha_house"), "phala": d.get("phala"),
             "coverage": {"start": c_start, "end": c_end, "state": cov.get("state"),
@@ -118,6 +121,56 @@ def parse_overlay_rows(vedha_rows: list) -> dict:
         })
     return {"rows": rows, "annotations": annotations, "horizons": horizons,
             "legacy_rows": legacy, "rows_total": len(vedha_rows)}
+
+
+def primary_contact_identity(row: dict) -> dict:
+    """The PRIMARY CONTACT's physical identity (§6.1; ASTRA v1.2 P1-2): the
+    primary residence — graha G in sign S over [window_start, window_end) —
+    keyed by the family's single identity scheme
+    (gochara_kernel.ids.independence_group: body, relation 'residence',
+    the span's lower degree, the window-start instant) — the same scheme the
+    contacts ledger uses for residence rows and the vedha writer for its
+    obstructor roots — plus the §6.1 canonical rendering
+    `body|relation_kind|canonical_target|convention_id|ordinal`. The overlay
+    carries no occurrence ordinal (it is not the contacts ledger), which is
+    stated as `occurrence_ordinal: None` rather than invented; identity
+    within one build is by the residence start."""
+    ws = _date_or_none(row.get("window_start"))
+    sign_idx = row.get("primary_sign_idx")
+    sign_name = row.get("primary_sign_name")
+    graha = row.get("graha")
+    convention = f"kala_vedha_gochara:{row.get('formula_version') or 'unversioned'}"
+    group = None
+    if ws is not None and sign_idx is not None and graha:
+        group = _kernel_independence_group(
+            body=str(graha), relation="residence", aspect_deg=0.0,
+            target_deg=float(int(sign_idx) * 30), t_exact_jd=None,
+            t_fallback_jd=_date_to_jd(ws))
+    return {
+        "body": graha, "relation_kind": "residence",
+        "canonical_target": f"span:{sign_name}" if sign_name else None,
+        "convention_id": convention, "occurrence_ordinal": None,
+        "t_in": row.get("window_start"), "t_out": row.get("window_end"),
+        "independence_group": group,
+        "canonical": (f"{graha}|residence|span:{sign_name}|{convention}|-"
+                      if sign_name else None),
+        "ordinal_note": "overlay rows carry no occurrence ordinal; identity by residence start",
+    }
+
+
+def rule_identity(row: dict) -> dict:
+    """The rule the row restates: citation, formula_version (the writer's
+    rule version), provenance/ruling, and the (primary house → vedha house)
+    pair the Phaladīpikā table keys on."""
+    return {
+        "classical_citation": row.get("classical_citation"),
+        "formula_version": row.get("formula_version"),
+        "provenance": row.get("provenance"), "ruling_ref": row.get("ruling_ref"),
+        "primary_house": row.get("primary_house"), "vedha_house": row.get("vedha_house"),
+        "phala": row.get("phala"),
+        "canonical": (f"{row.get('classical_citation')}|{row.get('formula_version')}|"
+                      f"primary_house={row.get('primary_house')}|vedha_house={row.get('vedha_house')}"),
+    }
 
 
 def _covered(horizons: list[tuple], d: date) -> bool:
@@ -174,11 +227,8 @@ def make_gate(vedha_rows: list, *, cited_scale=None):
                     "graha": row["graha"], "primary_house": row["primary_house"],
                     "primary_sign_name": row["primary_sign_name"],
                     "residence": [row["window_start"], row["window_end"]]},
-                "rule": {"classical_citation": row["classical_citation"],
-                         "formula_version": row["formula_version"],
-                         "provenance": row["provenance"],
-                         "ruling_ref": row["ruling_ref"],
-                         "vedha_house": row["vedha_house"], "phala": row["phala"]},
+                "primary_contact_identity": primary_contact_identity(row),
+                "rule": rule_identity(row),
                 "operator_role": row["operator_role"],
                 "fired": [{**f, "t_in": f["t_in"].isoformat(),
                            "t_out": f["t_out"].isoformat()} for f in res["fired"]],
@@ -250,5 +300,45 @@ def apply_scoped_factors(sentences: list, factor_by_body: dict[str, float]) -> t
     return out, applied
 
 
+def persistable_summary(gate_result: dict) -> dict:
+    """The gate result reduced to what a persisted row must carry so the
+    three evaluator states (unavailable / clear / obstructed) remain
+    distinguishable after serialisation (ASTRA v1.2 P1-2): state, nullable
+    factor, null_state, coverage, the fired entries with their primary-
+    contact and rule identities, testimony annotations, scoped application,
+    ignored legacy rows. Pure JSON-serialisable."""
+    fired = []
+    for f in gate_result.get("fired") or []:
+        fired.append({
+            "primary_graha": f.get("primary_graha"), "vedha_kind": f.get("vedha_kind"),
+            "primary_contact_identity": f.get("primary_contact_identity"),
+            "rule": f.get("rule"), "operator_role": f.get("operator_role"),
+            "intervals": f.get("fired"), "factor": f.get("factor"),
+        })
+    annotations = []
+    for a in gate_result.get("annotations") or []:
+        annotations.append({k: a.get(k) for k in (
+            "primary_graha", "graha", "vedha_kind", "operator_role",
+            "primary_contact_identity", "rule", "window_start", "window_end",
+            "classical_citation", "formula_version", "note")})
+    return {
+        "contract": gate_result.get("contract"),
+        "state": gate_result.get("state"),
+        "factor": gate_result.get("factor"),
+        "null_state": gate_result.get("null_state"),
+        "factor_by_body": gate_result.get("factor_by_body") or {},
+        "coverage": gate_result.get("coverage"),
+        "coverage_horizons": gate_result.get("coverage_horizons"),
+        "reason": gate_result.get("reason"),
+        "scale": gate_result.get("scale"),
+        "fired": fired,
+        "annotations": annotations,
+        "scoped_application": gate_result.get("scoped_application") or [],
+        "legacy_shape_rows_ignored": gate_result.get("legacy_shape_rows_ignored"),
+        "vedha_rows_total": gate_result.get("vedha_rows_total"),
+    }
+
+
 __all__ = ["GATE_CONTRACT", "NULL_STATE", "ANNOTATION_KINDS", "parse_overlay_rows",
-           "make_gate", "apply_scoped_factors"]
+           "make_gate", "apply_scoped_factors", "primary_contact_identity",
+           "rule_identity", "persistable_summary"]

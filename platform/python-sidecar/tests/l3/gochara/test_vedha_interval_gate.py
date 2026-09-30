@@ -452,3 +452,147 @@ def test_kernel_overlays_quality_gates_at_has_no_production_caller():
         if "quality_gates_at(" in txt or "OverlayInterval(" in txt or "coverage_gaps(" in txt:
             users.append(str(f))
     assert users == [], users
+
+
+# ── ASTRA v1.2 P1-2: state and identity through the REAL persisted output ────
+
+import json  # noqa: E402
+
+from services.gochara_v3.context import ClassContext, NatalFacts  # noqa: E402
+from services.gochara_v3.engine import _evaluate_single_from_context  # noqa: E402
+from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (  # noqa: E402
+    _build_suppression_state)
+
+
+class _FakeSwe:
+    """Real swisseph with the Moon pinned (the parity-test stub shape)."""
+
+    def __init__(self, moon_lon=85.0):
+        import swisseph as _swe
+        self._swe = _swe
+        self._moon = moon_lon
+
+    def calc_ut(self, jd, body, flags=0):
+        if body == self._swe.MOON:
+            return ([self._moon, 0.0, 1.0, 0.0, 0.0, 0.0], 0)
+        return self._swe.calc_ut(jd, body, flags)
+
+    def __getattr__(self, name):
+        return getattr(self._swe, name)
+
+
+def _ctx_with_vedha(rows):
+    natal = NatalFacts(graha_longitudes={"MOON": 5.0}, graha_signs={"MOON": "Aries"},
+                       lagna_sign=None, lagna_longitude=None)
+    return ClassContext(
+        chart_id="test-chart-vedha-persist", event_class="career",
+        resonance_targets=(), promise=0.5, promise_detail={}, dasha_periods=(),
+        relevant_grahas=frozenset(), relevant_signs=frozenset(),
+        temporal_shape="point", valence="neutral", is_adverse=False, beta_e=0.45,
+        weight_by_target_ref={}, natal_facts=natal, av_gate_rows=(),
+        sade_sati_phases=(), vedha_rows=tuple(rows), malefic_scale=())
+
+
+def _persisted(rows, iso="2025-02-01"):
+    """Writer-shaped rows → the shared engine → the materializer's persisted
+    suppression_state → JSON round trip (the REAL persisted output)."""
+    from datetime import datetime, timezone
+    jd = w.jd_of(datetime.fromisoformat(iso + "T12:00:00+00:00"))
+    result = _evaluate_single_from_context(_FakeSwe(), _ctx_with_vedha(rows), jd,
+                                           targets=[], v1_parity_mode=False, source="test")
+    tb = json.loads(json.dumps(result.term_breakdown))
+    state = json.loads(json.dumps(_build_suppression_state(tb, None)))
+    return result, tb, state
+
+
+def test_three_evaluator_states_persist_as_three_different_objects():
+    """The reviewer's probe: unavailable / clear / obstructed produced three
+    IDENTICAL persisted objects with value 1.0. Now the persisted
+    suppression_state carries the state, the nullable factor, null_state,
+    coverage, identities and testimony — three different objects."""
+    clean = _writer_row("Sun", "2025-01-01", "2025-06-01")
+    obstructed = _writer_row("Sun", "2025-01-01", "2025-06-01",
+                             occupants=[("Mars", "2025-01-01", "2025-03-01")])
+    _, _, s_unavail = _persisted([], "2025-02-01")
+    _, _, s_clear = _persisted([clean], "2025-02-01")
+    _, _, s_obst = _persisted([obstructed], "2025-02-01")
+    assert (s_unavail["value"], s_clear["value"], s_obst["value"]) == (1.0, 1.0, 1.0)
+    assert (s_unavail["state"], s_clear["state"], s_obst["state"]) == ("unavailable", "clear", "obstructed")
+    assert (s_unavail["factor"], s_clear["factor"], s_obst["factor"]) == (None, 1.0, None)
+    assert s_obst["null_state"] == "omit"
+    assert len({json.dumps(x, sort_keys=True) for x in (s_unavail, s_clear, s_obst)}) == 3
+    # coverage survives
+    assert s_unavail["vedha"]["coverage"] == {"overlay": "kala_vedha_gochara", "computed": False,
+                                             "covers_instant": False}
+    assert s_clear["vedha"]["coverage"]["covers_instant"] is True
+    assert s_clear["vedha"]["coverage_horizons"] == [["2025-01-01", "2026-01-01"]]
+    # identities survive on the obstructed row
+    f = s_obst["vedha"]["fired"][0]
+    assert f["primary_contact_identity"]["relation_kind"] == "residence"
+    assert f["primary_contact_identity"]["canonical_target"] == "span:Gemini"
+    assert f["primary_contact_identity"]["independence_group"]
+    assert f["primary_contact_identity"]["occurrence_ordinal"] is None
+    assert f["rule"]["formula_version"] == W.FORMULA_VERSION
+    assert f["rule"]["canonical"].startswith("Phaladipika")
+    assert f["intervals"][0]["obstructor_body"] == "Mars"
+
+
+def test_testimony_and_legacy_rows_persist_distinctly():
+    moon = _writer_row("Moon", "2025-01-01", "2025-06-01",
+                       occupants=[("Saturn", "2025-01-01", "2025-06-01")])
+    clean = _writer_row("Sun", "2025-01-01", "2025-06-01")
+    _, _, s = _persisted([clean, moon], "2025-02-01")
+    assert s["state"] == "clear" and s["vedha"]["fired"] == []
+    assert s["vedha"]["annotations"][0]["operator_role"] == "testimony"
+    assert s["vedha"]["annotations"][0]["primary_contact_identity"]["body"] == "Moon"
+    legacy = VedhaRow(vedha_kind="house_vedha", graha="Sun", window_start="2025-01-01",
+                      window_end="2025-06-01", classical_citation=None,
+                      detail={"malefic_count": 2})
+    _, _, s2 = _persisted([legacy], "2025-02-01")
+    assert s2["state"] == "unavailable" and s2["vedha"]["legacy_shape_rows_ignored"] == 1
+    # a term_breakdown without the gate (pre-§5 evaluation) is 'not_recorded', never clean
+    old = _build_suppression_state({"quality_gates": 1.0}, None)
+    assert old["state"] == "not_recorded" and old["factor"] is None
+    # the chain-row path (term_breakdown only) carries the same summary
+    _, tb, _ = _persisted([clean], "2025-02-01")
+    assert tb["vedha_gate"]["state"] == "clear"
+
+
+def test_primary_contact_identity_uses_the_familys_identity_scheme():
+    from services.gochara_kernel.ids import independence_group
+    from services.gochara_kernel.overlays import date_to_jd
+    row = VG.parse_overlay_rows([_writer_row("Sun", "2025-01-01", "2025-06-01")])["rows"][0]
+    ident = VG.primary_contact_identity(row)
+    expected = independence_group(body="Sun", relation="residence", aspect_deg=0.0,
+                                  target_deg=60.0, t_exact_jd=None,
+                                  t_fallback_jd=date_to_jd(date(2025, 1, 1)))
+    assert ident["independence_group"] == expected
+    assert ident["canonical"] == f"Sun|residence|span:Gemini|kala_vedha_gochara:{W.FORMULA_VERSION}|-"
+    # two residences of one graha in one sign at different starts are two identities
+    row2 = VG.parse_overlay_rows([_writer_row("Sun", "2025-07-01", "2025-09-01")])["rows"][0]
+    assert VG.primary_contact_identity(row2)["independence_group"] != expected
+    assert VG.rule_identity(row)["canonical"].endswith("primary_house=3|vedha_house=9")
+
+
+def test_projection_fetch_reads_formula_version():
+    class _Conn:
+        def execute(self, sql, params=None):
+            rows = []
+            if "information_schema.columns" in sql:
+                rows = [("window_start",), ("window_end",), ("vedha_kind",), ("graha",),
+                        ("detail",), ("classical_citation",), ("formula_version",)]
+            elif "to_regclass" in sql:
+                class _R:
+                    def fetchone(self_inner):
+                        return ("kala_vedha_gochara",)
+                return _R()
+            else:
+                assert "formula_version" in sql
+                rows = [("2025-01-01", "2025-06-01", "house_vedha", "Sun",
+                         {"vedha_intervals": []}, "cite", W.FORMULA_VERSION)]
+            class _C:
+                def fetchall(self_inner):
+                    return rows
+            return _C()
+    out = w.fetch_vedha_rows(_Conn(), "chart")
+    assert out[0]["formula_version"] == W.FORMULA_VERSION
