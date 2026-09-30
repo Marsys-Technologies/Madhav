@@ -12,7 +12,8 @@ rather than a rehearsal-synthetic constant:
     the class's candidate-contact exact instants (t_exact) from the
     `kala_gochara_contacts` ledger. A system is marked active for the class
     iff it is active at AT LEAST ONE of those instants (union semantics —
-    disclosed below).
+    disclosed below). NOTE (FABLE #2/#3, T0-6 repair): this union is now
+    PROVENANCE / STATIC FALLBACK only — see "Per-instant permission" below.
   * TARGETS — the same fetch the served engine uses:
     `gochara_grammar.resonance_map.fetch_resonance_targets` +
     `gochara_intensity.enrichment.enrich_targets`, so the wiring cannot
@@ -20,15 +21,26 @@ rather than a rehearsal-synthetic constant:
   * VALENCE — `gochara_intensity.valence.is_adverse` (live
     `brahma_event_ontology` read with its own documented fallback), feeding
     `class_valence` / `class_is_adverse`.
+  * DASHA PERIODS — `dasha_data.fetch_dasha_periods_multilevel` (MD/AD/PD,
+    levels 1-3, tier `two_pass_verified`, GOCHARA_DESIGN_SPECS_v1_4 §4.0
+    duplicate rules enforced), emitted once as the document's top-level
+    `_dasha_periods` payload so `step06b_windows_projection.py` can evaluate
+    permission AT EACH PROJECTION INSTANT instead of consuming the unioned
+    constant. AD/PD rows carry `parent_row_id` (§4.0 parent linkage).
 
-Union-semantics disclosure: the pinned writer algebra carries PERMISSION as
-one static factor per (chart, class) (`legacy_semantics.compute_permission`
-over a systems_active dict — engine.py:1241-1243). The plurality evaluation
-is inherently time-varying; this wiring collapses it per class by the rule
-"system licensed the class's delivery iff it fired at ≥1 of the class's own
-candidate contact instants in the build horizon". A system that never fires
-at any candidate instant contributes False — the weighted fraction is then
-the pinned honest value, not a fabricated 1.0.
+Per-instant permission (FABLE #2/#3, T0-6): the plurality evaluation is
+inherently time-varying; the pre-repair wiring collapsed it per class by the
+rule "system licensed the class's delivery iff it fired at ≥1 of the class's
+own candidate contact instants in the build horizon" and served that
+constant at every instant of every window. The emitted document now carries
+`_permission_mode: "per_instant_md_ad_pd"` plus the multi-level period rows;
+step06b evaluates `compute_permission` per instant (memoized per
+class × UTC day) from those rows. The unioned `permission_systems` map is
+RETAINED per class as the documented static fallback (old JSON documents and
+`--rehearse-synthetic` have no `_dasha_periods`; step06b then behaves
+exactly as pre-repair) and as the review-trail provenance record. A system
+that never fires at any candidate instant contributes False — the weighted
+fraction is then the pinned honest value, not a fabricated 1.0.
 
 Honest-skip discipline (preserved end-to-end): a class is OMITTED from the
 emitted JSON — never emitted with a fabricated context — when its targets do
@@ -49,6 +61,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -64,8 +77,26 @@ from services.gochara_intensity import enrichment, valence  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
 from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
 
-CONTEXT_SOURCE = ("l1_permission_wiring:v1 (gochara_intensity.permission union "
-                  "over the class's candidate contact t_exact instants)")
+CONTEXT_SOURCE = ("l1_permission_wiring:v2 (per-instant compute_permission "
+                  "over MD/AD/PD periods; union over t_exact instants kept as "
+                  "static-fallback provenance)")
+PERMISSION_MODE = "per_instant_md_ad_pd"
+
+
+def _jsonable_period(p: dict) -> dict:
+    """chart_dashas rows carry datetimes/UUIDs; the class-context document is
+    JSON. ISO strings round-trip through DD.period_contains."""
+    out = {}
+    for k, v in p.items():
+        if isinstance(v, datetime):
+            out[k] = v.isoformat()
+        elif isinstance(v, (list, tuple)):
+            out[k] = [str(x) for x in v]
+        elif v is None or isinstance(v, (str, int, float, bool)):
+            out[k] = v
+        else:
+            out[k] = str(v)
+    return out
 
 
 def _to_jd(ts) -> float:
@@ -103,7 +134,12 @@ def fetch_class_contact_instants(conn, chart_id: str, generation: str):
 def build_class_context(swe, conn, chart_id: str, event_class: str,
                         sample_jds: list[float], dasha_periods) -> dict | None:
     """One class's context entry, or None (honest omission) when the class's
-    targets do not resolve. Never fabricates a permission set."""
+    targets do not resolve. Never fabricates a permission set. The unioned
+    `permission_systems` map is the STATIC FALLBACK / provenance record
+    (T0-6): step06b evaluates permission per instant from the document's
+    top-level `_dasha_periods` when present; this map is what old documents
+    and rehearsal mode still consume. `dasha_periods` here is the
+    MULTI-LEVEL (MD/AD/PD) row set used for the provenance evaluation."""
     targets = enrichment.enrich_targets(
         conn, fetch_resonance_targets(conn, chart_id, event_class))
     if not targets:
@@ -159,7 +195,10 @@ def main(argv: list[str] | None = None) -> int:
         # autocommit: savepoint_scope is a no-op passthrough there and each
         # defensive read is its own transaction (the _dbutil docstring's
         # recommended shape for this engine's many defensive-catch queries).
-        dasha_periods = DD.fetch_dasha_periods(
+        # T0-6: MD/AD/PD (levels 1-3) at the §4.0 contract tier; a duplicate
+        # CONFLICT raises loudly (DashaReadConflict propagates — never
+        # silently served), a DB-shape surprise yields the honest [].
+        dasha_periods = DD.fetch_dasha_periods_multilevel(
             conn, args.chart_id, systems=list(perm.DASHA_SYSTEM_IDS))
 
         contexts: dict[str, dict] = {}
@@ -178,6 +217,11 @@ def main(argv: list[str] | None = None) -> int:
                 })
                 continue
             contexts[cls] = entry
+        # The per-instant payload step06b consumes (T0-6): chart-level rows,
+        # emitted once; per-class entries stay self-describing otherwise.
+        wired_classes = sorted(contexts)
+        contexts["_permission_mode"] = PERMISSION_MODE
+        contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
     finally:
         conn.close()
 
@@ -187,14 +231,20 @@ def main(argv: list[str] | None = None) -> int:
     report = {
         "writer": "step06a_class_context",
         "chart_id": args.chart_id, "generation": args.generation,
-        "classes_wired": sorted(contexts),
+        "classes_wired": wired_classes,
         "classes_omitted": omitted,
         "contacts_null_t_exact_excluded": null_exact,
         "context_source": CONTEXT_SOURCE,
-        "union_semantics": "a system is active for a class iff it fired at "
+        "permission_mode": PERMISSION_MODE,
+        "dasha_periods_emitted": len(contexts.get("_dasha_periods", [])),
+        "dasha_levels": list(DD.DEFAULT_LEVELS),
+        "dasha_read_tier": DD.READ_CONTRACT_TIER,
+        "union_semantics": "RETAINED AS STATIC FALLBACK / provenance only: "
+                           "a system is active for a class iff it fired at "
                            ">=1 of the class's candidate contact t_exact "
-                           "instants (static per-class collapse of the "
-                           "time-varying DR-14 plurality — disclosed)",
+                           "instants. step06b evaluates permission per "
+                           "instant from _dasha_periods (T0-6); the union is "
+                           "consumed only by old documents / rehearsal.",
         "out": args.out,
     }
     print(json.dumps(report, indent=2))

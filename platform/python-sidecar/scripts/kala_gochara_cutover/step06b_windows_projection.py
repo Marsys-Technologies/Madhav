@@ -18,13 +18,17 @@ Semantics (every choice disclosed, none improvised):
     report as contacts_unmapped, never silently dropped).
   * PROMISE — pinned legacy_semantics.compute_promise over the class's map
     weights (noisy-OR; computed once per (chart, class), plan §4.5).
-  * PERMISSION — pinned compute_permission over the class context's
-    systems_active map. The per-class timing-system context is an INPUT
-    (--class-context-json, or the disclosed synthetic context under
-    --rehearse-synthetic): wiring it to the L1 dasha facts is part of the
-    escalated production set. A class with matching contacts but NO context
-    is skipped and recorded (skipped_classes) — never a 0.0 stand-in
-    (plan §4.6).
+  * PERMISSION — T0-6 (FABLE #2/#3): evaluated AT EACH PROJECTION INSTANT by
+    gochara_intensity.permission.compute_permission over the class-context
+    document's `_dasha_periods` (MD/AD/PD levels 1-3, §4.0 tier), memoized
+    per class × UTC day; N-15 testimony renormalization strips the
+    sade-sāti weight (it annotates, never licenses). When the context
+    document carries no `_dasha_periods` (old documents, --rehearse-synthetic)
+    the pinned static per-class constant (compute_permission over the
+    context's systems_active map) is used exactly as pre-repair and the
+    class report records permission_mode='static_systems_active'. A class
+    with matching contacts but NO context is skipped and recorded
+    (skipped_classes) — never a 0.0 stand-in (plan §4.6).
   * ACTIVITY — the pinned noisy-OR of legacy_semantics.compute_activity_v3,
     with per-contact orb_strength = the M-1 `linear_no_box` ANGULAR kernel
     (D-RQ2, sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 finding
@@ -281,6 +285,82 @@ def _default_planet_pos_fn():
     return _PLANET_POS_FN
 
 
+# ── T0-6 per-instant permission (FABLE #2/#3) ────────────────────────────────
+
+
+def _sade_sati_testimony_renormalize(permission: float, detail: dict):
+    """N-15 (candidate flag sade_sati_mode='testimony', mirrored from
+    engine.py:1900-1902): sade sāti ANNOTATES, never weights — its weight
+    leaves both the numerator (when active) and the denominator. The
+    pre-renormalization value is kept in the detail for the review trail.
+    No sade-sati term is introduced by this wiring: the generator was
+    already one of the twelve in permission.compute_permission; this strips
+    its weight so the projection honours the flag it declares."""
+    systems = detail.get("systems") or []
+    ss = next((s for s in systems if s.get("system_id") == "sade_sati"), None)
+    if ss is None:
+        return permission, detail
+    w_ss = float(ss.get("weight") or 0.0)
+    active_weight = sum(float(s["weight"]) for s in systems if s.get("active"))
+    if ss.get("active"):
+        active_weight -= w_ss
+    total = sum(float(s["weight"]) for s in systems) - w_ss
+    newp = active_weight / total if total else 0.0
+    d2 = dict(detail)
+    d2["systems_active"] = [s for s in detail.get("systems_active", [])
+                            if s != "sade_sati"]
+    d2["sade_sati_mode"] = "testimony"
+    d2["sade_sati_testimony"] = {
+        "active": bool(ss.get("active")),
+        "detail": ss.get("detail"),
+        "legacy_permission_including_sade_sati": permission,
+        "note": "N-15: testimony, never weight (mirrors engine.py:1900-1902)",
+    }
+    return newp, d2
+
+
+def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
+                                   dasha_periods: list[dict]):
+    """permission_fn(t_jd) -> (permission, detail) for one event class,
+    evaluated by the REAL plurality machinery
+    (gochara_intensity.permission.compute_permission) at each instant over
+    the MULTI-LEVEL (MD/AD/PD) dasha rows from the class-context document —
+    the T0-6 repair of the per-class unioned constant.
+
+    Targets come from the same fetch step06a and the served engine use
+    (fetch_resonance_targets + enrich_targets — no second wiring to drift).
+    Returns None when the class's targets do not resolve: the caller records
+    the class as skipped, never a fabricated context.
+
+    Memoization: one plurality evaluation per (class, UTC calendar date) —
+    the projection's grids and bisections evaluate the same day repeatedly;
+    no century-long curve is precomputed. N-15: the sade-sāti generator's
+    weight is stripped (testimony renormalization) after each call."""
+    if str(SIDECAR) not in sys.path:
+        sys.path.insert(0, str(SIDECAR))
+    import swisseph as swe
+    from services.gochara_grammar.resonance_map import fetch_resonance_targets
+    from services.gochara_intensity import enrichment
+    from services.gochara_intensity import permission as perm
+
+    targets = enrichment.enrich_targets(
+        conn, fetch_resonance_targets(conn, chart_id, event_class))
+    if not targets:
+        return None
+    cache: dict[str, tuple[float, dict]] = {}
+
+    def at(t_jd: float):
+        key = iso_date_of_jd(t_jd)
+        if key not in cache:
+            raw, detail = perm.compute_permission(
+                swe, conn, chart_id, event_class, targets, t_jd,
+                dasha_periods=dasha_periods)
+            cache[key] = _sade_sati_testimony_renormalize(raw, detail)
+        return cache[key]
+
+    return at
+
+
 # ── per-class lambda evaluator ───────────────────────────────────────────────
 
 
@@ -291,11 +371,22 @@ class ClassContext:
                  permission_systems: dict[str, bool],
                  *, weight_by_target_ref: dict[str, float],
                  class_valence: str = "mixed", class_is_adverse: bool = False,
-                 context_source: str = "class_context_json"):
+                 context_source: str = "class_context_json",
+                 permission_fn=None):
         self.event_class = event_class
         self.weight_by_target_ref = dict(weight_by_target_ref)
         self.promise, self.promise_detail = leg.compute_promise(weights)
-        self.permission = leg.compute_permission(permission_systems)
+        # T0-6 (FABLE #2/#3): when permission_fn is given, PERMISSION is
+        # evaluated AT EACH INSTANT (per-instant MD/AD/PD plurality over the
+        # class context's `_dasha_periods`); the constructor constant is then
+        # not computed (self.permission is None — never served as a stand-in).
+        # Without it (old context documents, --rehearse-synthetic) the pinned
+        # static per-class constant is kept exactly as pre-repair.
+        self.permission_fn = permission_fn
+        self.permission_mode = ("per_instant_md_ad_pd" if permission_fn is not None
+                                else "static_systems_active")
+        self.permission = (None if permission_fn is not None
+                           else leg.compute_permission(permission_systems))
         self.permission_systems = dict(permission_systems)
         self.class_valence = class_valence
         self.class_is_adverse = class_is_adverse
@@ -306,14 +397,32 @@ class ClassContext:
         # N-14: nodal dṛṣṭi removed — the pinned disabled path (modifier 1.0).
         self.w30 = leg.w30_modifier(None, [], enabled=False)
 
+    def permission_at(self, t_jd: float):
+        """(permission, detail) at the evaluation instant. Per-instant mode
+        delegates to permission_fn; static mode returns the pinned constant."""
+        if self.permission_fn is not None:
+            return self.permission_fn(t_jd)
+        return self.permission, {
+            "systems_active": sorted(
+                s for s, on in self.permission_systems.items() if on),
+            "mode": "static_systems_active",
+        }
+
     def factors_record(self) -> dict:
+        per_instant = self.permission_fn is not None
         return {
             "event_class": self.event_class,
             "promise": self.promise,
             "promise_target_count": self.promise_detail["target_count"],
-            "permission": self.permission,
-            "permission_systems_active": sorted(
-                s for s, on in self.permission_systems.items() if on),
+            # T0-6: in per-instant mode PERMISSION varies with t — the class
+            # record carries None (never a constant stand-in) plus the mode;
+            # the licence at each window's own instant is on the row's
+            # contributing_systems / suppression_state.permission_detail.
+            "permission": None if per_instant else self.permission,
+            "permission_mode": self.permission_mode,
+            "permission_systems_active": (
+                None if per_instant else sorted(
+                    s for s, on in self.permission_systems.items() if on)),
             "tara_modifier": self.tara["modifier"],
             "tara_skip_reason": self.tara["skip_reason"],
             "w30_modifier": self.w30["modifier"],
@@ -363,14 +472,20 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         supportive, afflicting, _ch = leg.compute_signed_channels_v3(
             sentences, class_ctx.weight_by_target_ref)
         gates, gates_detail = quality_gate_for_date(iso_date_of_jd(t_jd))
+        # T0-6: PERMISSION at THIS instant (per-instant MD/AD/PD plurality),
+        # never a per-class constant, when the class context carries one.
+        permission, permission_detail = class_ctx.permission_at(t_jd)
         assembled = leg.assemble_lambda_v3(
-            promise=class_ctx.promise, permission=class_ctx.permission,
+            promise=class_ctx.promise, permission=permission,
             activity=activity, tara_modifier=class_ctx.tara["modifier"],
             w30_modifier=class_ctx.w30["modifier"], quality_gates=gates)
         return {
             "lambda_raw": assembled["lambda_raw"],
             "lambda_signed": assembled["lambda_signed"],
             "activity": activity,
+            "permission": permission,
+            "permission_detail": permission_detail,
+            "permission_systems_active": permission_detail["systems_active"],
             "supportive": supportive,
             "afflicting": afflicting,
             "quality_gates": gates,
@@ -582,7 +697,9 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
         "is_adverse": is_adverse,
         "active_sentences": sorted(peak["active_contact_ids"]),
         "contributing_systems": [
-            *sorted(s for s, on in class_ctx.permission_systems.items() if on),
+            # T0-6: the licence at THIS row's own peak instant (per-instant
+            # mode) — not the per-class unioned constant.
+            *peak["permission_systems_active"],
             "promise:gochara_resonance_map",
             "activity:kala_gochara_contacts@m1_linear_no_box",
             f"tara:skipped({class_ctx.tara['skip_reason']})",
@@ -594,6 +711,8 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
         "suppression_state": {
             "quality_gates": peak["quality_gates"],
             "quality_gates_detail": peak["quality_gates_detail"],
+            "permission_at_peak": peak["permission"],
+            "permission_detail": peak["permission_detail"],
             "tara": class_ctx.tara,
             "w30": class_ctx.w30,
             "valence_tension": tension,
@@ -829,9 +948,12 @@ def build_delta_report(*, chart_id: str, generation: str, baseline: str,
                  if base else None)
         delta = (mean4 - mean3) if (mean4 is not None and mean3 is not None) else None
         fmt = lambda v: f"{v:.6f}" if isinstance(v, float) else "—"  # noqa: E731
+        perm_cell = (f"{rep['permission']:.6f}"
+                     if isinstance(rep.get("permission"), float)
+                     else (rep.get("permission_mode") or "—"))
         lines.append(
             f"| {cls} | {rep['era_windows']}/{rep['month_windows']}/{rep['day_windows']}"
-            f" | {rep['promise']:.6f} | {rep['permission']:.6f}"
+            f" | {rep['promise']:.6f} | {perm_cell}"
             f" | {rep['tara_modifier']:.3f} (skip) | {rep['w30_modifier']:.3f} (N-14)"
             f" | {fmt(rep.get('mean_quality_gates'))}"
             f" | {rep['peaks_admitted']}→{rep['peaks_retained']} (H-5 uncapped)"
@@ -859,9 +981,12 @@ def build_delta_report(*, chart_id: str, generation: str, baseline: str,
         "## Notes",
         "",
         "- PROMISE is the pinned noisy-OR over the class's resolved resonance-map weights.",
-        "- PERMISSION comes from the class context input "
-        f"({run_meta.get('class_context_source')}); the L1 timing-system wiring is part of the",
-        "  escalated production set (ADK-0012).",
+        "- PERMISSION context input: "
+        f"{run_meta.get('class_context_source')}.",
+        "- PERMISSION is per-instant when the class context carries `_dasha_periods` (T0-6;",
+        "  MD/AD/PD, memoized per class×day, sade-sāti testimony-renormalized per N-15); the",
+        "  per-class column then reads the mode, not a constant. Otherwise it is the pinned",
+        "  static systems_active fraction (old documents, rehearsal).",
         "- tārā reports the pinned honest skip (M-3 separate Moon channel not wired here);",
         "  w30 is N-14-removed (1.0). quality_gates reproduces the F-11 no-rows path where the",
         "  overlay is absent — disclosed on every row's suppression_state.",
