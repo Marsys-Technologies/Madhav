@@ -124,6 +124,35 @@ export function assertGeneralRunnerMayApply(filename: string): void {
   }
 }
 
+/**
+ * Protected PUBLIC-SCHEMA migrations (Pravāha A5.1, the FROZEN Gochara contract tables).
+ * They CREATE tables/functions/triggers in schema `public`, which the routine migration
+ * role cannot do (USAGE without CREATE — deploy.yml "Apply Protected Public-Schema
+ * Migrations"). They apply ONLY through that job's exact `--only` window
+ * (`workflow_dispatch` input `gochara_contracts_schema_migration=true`, files in ascending
+ * order inside the grant/revoke window). The routine runner refuses them LOUDLY here instead
+ * of failing inside each file's own privilege gate, so a merged-but-not-yet-windowed state is
+ * an actionable message, never a half-applied family. `--only` keeps the same predecessor,
+ * hash and renumber rules as the routine path.
+ */
+export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
+  '1153_gochara_sky_event_substrate.sql',
+  '1154_gochara_rule_path_registry.sql',
+  '1155_gochara_relationship_record.sql',
+  '1156_gochara_eval_window.sql',
+  '1157_gochara_av_polarity_declaration.sql',
+])
+
+export function assertGeneralRunnerMayApplyPublicSchema(filename: string, viaOnly: boolean): void {
+  if (!viaOnly && PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(filename)) {
+    throw new Error(
+      `Protected public-schema migration "${filename}" is pending. ` +
+      'The routine runner cannot create objects in schema public; dispatch deploy.yml with ' +
+      'gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157 in order.'
+    )
+  }
+}
+
 export interface RunOptions {
   dryRun?: boolean
   target?: string
@@ -735,6 +764,7 @@ export async function runMigrations(
         continue
       }
       assertGeneralRunnerMayApply(file.name)
+      assertGeneralRunnerMayApplyPublicSchema(file.name, only !== undefined)
       // Surface a renumbered re-apply from the PREVIEW too, not only from a real run —
       // same reasoning as the dry-run hash check above it.
       assertNotRenumberedReapply(file, readMigrationSql(file), applied, renumbers)
@@ -765,6 +795,7 @@ export async function runMigrations(
     }
 
     assertGeneralRunnerMayApply(file.name)
+    assertGeneralRunnerMayApplyPublicSchema(file.name, only !== undefined)
 
     // Looks new by filename — but is it? Throws unless this is genuinely new content, or a
     // renumber that an operator has explicitly reconciled.
