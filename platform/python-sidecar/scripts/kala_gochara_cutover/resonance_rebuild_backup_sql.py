@@ -353,6 +353,29 @@ def r2_identity_sql(chart_id: str) -> tuple[str, str]:
             f"{cte}{expected}\nEXCEPT\n{actual};")
 
 
+def r4_lord_identity_sql(chart_id: str) -> tuple[str, str]:
+    """R-4 as an ALL-LORD identity (ASTRA v1.3 amendment 3): the exact set of
+    (event_class, lord token) rows must EQUAL the '<n>L' tokens of every
+    lords entry of the writer's eligible classes — the writer's own
+    tokenisation (a `\\d+L` token per entry, deduplicated per class). Both
+    EXCEPT directions: a valid-but-wrong token (marriage:7L → marriage:2L,
+    weight / state / citation / qualifier preserved) surfaces in BOTH; a
+    missing token surfaces in the second. R-5 compares only the afflicted
+    subset and R-1/R-2/R-3 never look at lord rows."""
+    cid = _check_uuid(chart_id)
+    rows = (f"SELECT event_class, target_ref FROM gochara_resonance_map\n"
+            f" WHERE chart_id = '{cid}' AND target_type = 'lord'")
+    expected = ("SELECT DISTINCT o.event_class_id AS event_class, m[1] AS target_ref\n"
+                "  FROM brahma_event_ontology o,\n"
+                "       jsonb_array_elements_text(o.signature_model->'lords') AS l(value),\n"
+                "       regexp_matches(l.value, '(\\d+L)', 'g') AS m\n"
+                f" WHERE o.event_class_id = ANY({eligible_classes_array()})")
+    return (f"-- R-4 identity: lord rows the eligible ontology entries do not name (MUST be 0 rows):\n"
+            f"{rows}\nEXCEPT\n{expected};",
+            f"-- R-4 identity: ontology-named lord tokens MISSING from the map (MUST be 0 rows):\n"
+            f"{expected}\nEXCEPT\n{rows};")
+
+
 def value_invariants_sql(chart_id: str) -> str:
     """Retained VALUES, each checked INDEPENDENTLY against the source it is
     derived from (ASTRA v1.2 P1-3) — a row whose class/type/ref are right
@@ -464,7 +487,8 @@ def value_invariants_sql(chart_id: str) -> str:
 __all__ = [
     "CONTENT_COLUMNS", "NEGATIVE_VALUES", "POSITIVE_VALUES", "EXPECTED_WEIGHTS",
     "ELIGIBLE_EVENT_CLASSES", "eligible_classes_array",
-    "r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "value_invariants_sql",
+    "r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "r4_lord_identity_sql",
+    "value_invariants_sql",
     "snapshot_table_name", "create_snapshot_sql", "partition_digest_sql",
     "full_row_digest_sql", "rollback_sql", "negative_sensitive_targets_sql",
     "dangling_fact_refs_sql", "r5_qualifier_identity_sql", "new_stamp_utc",

@@ -77,13 +77,19 @@ def _passing_ver() -> dict:
         "r1_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r2_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r3_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
+        "r4_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r5_identity_sql": {"qualified_not_in_ontology": 0, "ontology_not_qualified": 0},
         "detector_controls": {
-            "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r5": [0, 0], "value_violations": 0},
-            **{name: {"counts_preserved": True, "global_id_sets_preserved": True, "detected": True}
+            "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0], "r5": [0, 0],
+                      "value_violations": 0},
+            **{name: {"count_preservation_expected": True, "counts_preserved": True,
+                      "global_id_sets_preserved": True, "mutation_applied": True, "detected": True}
                for name in ("sensitive_class_swap", "arudha_class_swap", "yoga_class_swap",
                             "weight_changed", "qualifier_transferred",
-                            "resolution_state_flipped", "provenance_flipped")},
+                            "resolution_state_flipped", "provenance_flipped", "lord_token_wrong")},
+            **{name: {"count_preservation_expected": False, "counts_preserved": False,
+                      "global_id_sets_preserved": True, "mutation_applied": True, "detected": True}
+               for name in ("lord_token_missing", "birth_anchor_row_injected")},
             "restored_after_controls": True},
         "map_unchanged_after_detector_controls": True,
         # ASTRA v1.3 amendment 1: the class universe and the schema are the migrations'
@@ -160,6 +166,15 @@ def test_passing_verification_is_accepted():
     (lambda v: v["r3_identity_sql"].__setitem__("actual_not_expected", 1), "r3_identity_sql"),
     (lambda v: v["r3_identity_sql"].__setitem__("expected_not_actual", 1), "r3_identity_sql"),
     (lambda v: v.pop("r3_identity_sql"), "r3_identity_sql"),
+    # ASTRA v1.3 amendment 3: the ALL-lord identity, both directions
+    (lambda v: v["r4_identity_sql"].__setitem__("actual_not_expected", 1), "r4_identity_sql"),
+    (lambda v: v["r4_identity_sql"].__setitem__("expected_not_actual", 1), "r4_identity_sql"),
+    (lambda v: v.pop("r4_identity_sql"), "r4_identity_sql"),
+    (lambda v: v["detector_controls"]["lord_token_wrong"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["lord_token_missing"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["birth_anchor_row_injected"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["detector_controls"]["lord_token_missing"].__setitem__("mutation_applied", False), "not applied"),
+    (lambda v: v["detector_controls"]["lord_token_wrong"].__setitem__("counts_preserved", False), "control invalid"),
     # detector positive controls must have RUN, been VALID (count/id-set preserving) and DETECTED
     (lambda v: v["detector_controls"]["yoga_class_swap"].__setitem__("detected", False), "NOT detected"),
     (lambda v: v["detector_controls"]["weight_changed"].__setitem__("detected", False), "NOT detected"),
@@ -284,6 +299,29 @@ def test_identity_sql_is_class_associated_pinned_and_bidirectional():
     assert "constituent_houses" in r3 and "constituent_planets" in r3 and "y.fired" in r3
     r2, _ = B.r2_identity_sql(CH)
     assert "'ARUDHA_A' || ch.house::text" in r2 and "fact_key = 'sign'" in r2
+
+
+def test_r4_all_lord_identity_is_bidirectional_scoped_and_tokenised_as_the_writer_does():
+    """ASTRA v1.3 amendment 3: the reviewer's replay (marriage:7L → marriage:2L,
+    weight / state / citation / qualifier preserved; 51 resolved rows, six
+    afflicted, identical counts and global id sets, zero value violations)
+    passed the printed native predicates. The R-4 pair compares ALL
+    (event_class, token) lord rows against every lords entry of the eligible
+    classes in both directions."""
+    fwd, rev = B.r4_lord_identity_sql(CH)
+    for q in (fwd, rev):
+        assert "target_type = 'lord'" in q and "\nEXCEPT\n" in q
+        assert "regexp_matches(l.value, '(\\d+L)', 'g')" in q      # the writer's _LORD_TOKEN_RE
+        assert "SELECT DISTINCT o.event_class_id AS event_class, m[1] AS target_ref" in q
+        assert B.eligible_classes_array() in q and "afflicted" not in q
+    assert fwd.index("gochara_resonance_map") < fwd.index("EXCEPT") < fwd.index("brahma_event_ontology")
+    assert rev.index("brahma_event_ontology") < rev.index("EXCEPT") < rev.index("gochara_resonance_map")
+    assert "MISSING" in rev
+    # the reviewer's replay against the pure expectation: the wrong token is missing AND extra
+    lords, _ = R.expected_lord_identities()
+    actual = (lords - {("marriage", "7L")}) | {("marriage", "2L")}
+    assert len(actual) == len(lords) and {t for _, t in actual} == {t for _, t in lords}
+    assert lords - actual == {("marriage", "7L")} and actual - lords == {("marriage", "2L")}
 
 
 def test_value_invariants_check_each_retained_value_against_its_source():
@@ -589,6 +627,7 @@ def test_runbook_carries_the_module_statements_verbatim():
                   B.rollback_sql(t, CH, 177, "0" * 32),
                   *B.r5_qualifier_identity_sql(CH),
                   *B.r1_identity_sql(CH), *B.r2_identity_sql(CH), *B.r3_identity_sql(CH),
+                  *B.r4_lord_identity_sql(CH),
                   B.value_invariants_sql(CH)):
         assert block in text, block[:80]
     # ASTRA v1.2 P1-3: the global-DISTINCT R-1/R-3 identities are gone

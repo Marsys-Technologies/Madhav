@@ -350,6 +350,31 @@ SELECT target_resolution_state, COUNT(*) FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type='lord'
  GROUP BY 1 ORDER BY 1;   -- expect exactly one group: resolved
 
+-- R-4 identity (ALL lords, both directions): the SET of (event_class, lord token) rows MUST EQUAL the
+-- '<n>L' tokens of every lords entry of the writer's eligible classes. R-5 below compares only the
+-- afflicted subset and R-1/R-2/R-3 never look at lord rows, so a valid-but-wrong token (marriage:7L
+-- replaced by marriage:2L with weight, state, citation and qualifier preserved) or a MISSING token
+-- passed them all — each MUST surface here (the wrong token in BOTH directions, the missing one in
+-- the second). BOTH queries MUST return 0 rows:
+-- R-4 identity: lord rows the eligible ontology entries do not name (MUST be 0 rows):
+SELECT event_class, target_ref FROM gochara_resonance_map
+ WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'lord'
+EXCEPT
+SELECT DISTINCT o.event_class_id AS event_class, m[1] AS target_ref
+  FROM brahma_event_ontology o,
+       jsonb_array_elements_text(o.signature_model->'lords') AS l(value),
+       regexp_matches(l.value, '(\d+L)', 'g') AS m
+ WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[]);
+-- R-4 identity: ontology-named lord tokens MISSING from the map (MUST be 0 rows):
+SELECT DISTINCT o.event_class_id AS event_class, m[1] AS target_ref
+  FROM brahma_event_ontology o,
+       jsonb_array_elements_text(o.signature_model->'lords') AS l(value),
+       regexp_matches(l.value, '(\d+L)', 'g') AS m
+ WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])
+EXCEPT
+SELECT event_class, target_ref FROM gochara_resonance_map
+ WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'lord';
+
 -- R-5 identity: the SET of (event_class, lord token) rows with target_qualifier='afflicted' MUST EQUAL the
 -- SET of '<n>L' tokens in the ontology's '…afflicted…' lord entries — BOTH queries MUST return 0 rows
 -- (a missing, extra or transferred qualifier surfaces in one direction):

@@ -442,7 +442,7 @@ def verify_acceptance(ver: dict) -> list[str]:
     if ver.get("value_invariant_violations", 1) != 0:
         f.append(f"values: {ver.get('value_invariant_violations')} rows violate the writer's "
                  "declared weight/provenance/state/qualifier invariants")
-    for name in ("r1_identity_sql", "r2_identity_sql", "r3_identity_sql"):
+    for name in ("r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "r4_identity_sql"):
         pair = ver.get(name) or {}
         if pair.get("actual_not_expected") != 0 or pair.get("expected_not_actual") != 0:
             f.append(f"{name}: EXCEPT rows {pair} (both directions must be 0)")
@@ -453,9 +453,12 @@ def verify_acceptance(ver: dict) -> list[str]:
         for name, c in dc.items():
             if name in ("clean", "restored_after_controls"):
                 continue
-            if not (c.get("counts_preserved") and c.get("global_id_sets_preserved")):
-                f.append(f"detector control {name}: mutation did not preserve per-class counts "
-                         "and global id sets (control invalid)")
+            if c.get("count_preservation_expected", True):
+                if not (c.get("counts_preserved") and c.get("global_id_sets_preserved")):
+                    f.append(f"detector control {name}: mutation did not preserve per-class counts "
+                             "and global id sets (control invalid)")
+            elif not c.get("mutation_applied"):
+                f.append(f"detector control {name}: mutation was not applied (control invalid)")
             if not c.get("detected"):
                 f.append(f"detector control {name}: NOT detected by the identity/value checks")
         if dc.get("restored_after_controls") is not True:
@@ -785,7 +788,8 @@ def _detector_controls(cur) -> dict:
 
     def measure():
         out = {"value_violations": len(cur.execute(B.value_invariants_sql(CHART_ID)).fetchall())}
-        for nm, fn in (("r1", B.r1_identity_sql), ("r2", B.r2_identity_sql), ("r3", B.r3_identity_sql)):
+        for nm, fn in (("r1", B.r1_identity_sql), ("r2", B.r2_identity_sql), ("r3", B.r3_identity_sql),
+                       ("r4", B.r4_lord_identity_sql)):
             fwd, rev = fn(CHART_ID)
             out[nm] = (len(cur.execute(fwd).fetchall()), len(cur.execute(rev).fetchall()))
         q1, q2 = B.r5_qualifier_identity_sql(CHART_ID)
@@ -834,7 +838,31 @@ def _detector_controls(cur) -> dict:
                                  (CHART_ID, "marriage", "sensitive_degree",
                                   first_ref("marriage", "sensitive_degree")))),
             lambda m: m["value_violations"] >= 2),
+        # ASTRA v1.3 amendment 3: the reviewer's replay — marriage:7L → marriage:2L with
+        # weight / state / citation / qualifier preserved (2L is a valid token elsewhere,
+        # so per-class counts AND the global lord id set are unchanged): R-4 both directions
+        "lord_token_wrong": (
+            lambda: cur.execute(upd.format("target_ref='2L'"), (CHART_ID, "marriage", "lord", "7L")),
+            lambda m: m["r4"][0] >= 1 and m["r4"][1] >= 1),
+        # a MISSING token (marriage:7L deleted): the second direction; count changes by design
+        "lord_token_missing": (
+            lambda: cur.execute("DELETE FROM gochara_resonance_map WHERE chart_id=%s AND event_class=%s"
+                                " AND target_type='lord' AND target_ref=%s", (CHART_ID, "marriage", "7L")),
+            lambda m: m["r4"][0] == 0 and m["r4"][1] >= 1),
+        # ASTRA v1.3 amendment 1: a birth_anchor row (its ontology row exists, so the FK admits
+        # it) is outside the writer's universe — flagged, never expected
+        "birth_anchor_row_injected": (
+            lambda: cur.execute(
+                "INSERT INTO gochara_resonance_map (chart_id, event_class, target_type, target_ref,"
+                " weight, classical_citation, uncited_extension, target_resolution_state)"
+                " VALUES (%s, 'birth_anchor', 'bhava', '1', 1.0,"
+                " 'n/a — defines the natal epoch, not a classically-timed event', FALSE, 'resolved')",
+                (CHART_ID,)),
+            lambda m: m["value_violations"] >= 1),
     }
+    # controls whose mutation necessarily changes a count (a deletion / an insertion): the
+    # validity criterion is that the mutation was APPLIED (shape changed), not preserved
+    count_changing = {"lord_token_missing", "birth_anchor_row_injected"}
     clean = measure()
     shape0 = _map_shape(cur)
     results: dict = {"clean": clean}
@@ -848,8 +876,10 @@ def _detector_controls(cur) -> dict:
             cur.execute("ROLLBACK TO SAVEPOINT detector_control")
             cur.execute("RELEASE SAVEPOINT detector_control")
         results[name] = {
+            "count_preservation_expected": name not in count_changing,
             "counts_preserved": shape1[0] == shape0[0],
             "global_id_sets_preserved": shape1[1] == shape0[1],
+            "mutation_applied": shape1 != shape0 or m != clean,
             "measured": m,
             "detected": bool(detected_by(m)),
         }
@@ -1065,7 +1095,8 @@ def main(argv=None) -> int:
         ver["value_invariant_violations"] = len(_viol)
         ver["value_invariant_violation_rows"] = [list(map(str, r)) for r in _viol[:25]]
         for check_name, fn in (("r1_identity_sql", B.r1_identity_sql), ("r2_identity_sql", B.r2_identity_sql),
-                               ("r3_identity_sql", B.r3_identity_sql)):
+                               ("r3_identity_sql", B.r3_identity_sql),
+                               ("r4_identity_sql", B.r4_lord_identity_sql)):
             fwd_sql, rev_sql = fn(CHART_ID)
             ver[check_name] = {"actual_not_expected": len(cur.execute(fwd_sql).fetchall()),
                          "expected_not_actual": len(cur.execute(rev_sql).fetchall())}
