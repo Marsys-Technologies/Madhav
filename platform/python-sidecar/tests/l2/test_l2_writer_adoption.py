@@ -43,7 +43,10 @@ def test_no_l2_writer_imports_l3_service_or_resolves_activation_windows():
     assert '"active_dasha_periods_jsonb":      json.dumps' not in karanajala
 
 
-def test_upaya_runtime_preserves_legacy_windows_without_new_emission():
+def test_upaya_runtime_clears_legacy_windows_without_new_emission():
+    # R244: the legacy windowed rows are DELETED on rebuild (FK child of the
+    # prescriptions delete); nothing new is emitted. Order is pinned in
+    # test_bo_upaya_source_order.py.
     tree = ast.parse((WRITER_DIR / "bo_upaya.py").read_text())
     writer = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "BoUpayaWriter")
     run = next(n for n in writer.body if isinstance(n, ast.FunctionDef) and n.name == "run")
@@ -53,7 +56,7 @@ def test_upaya_runtime_preserves_legacy_windows_without_new_emission():
         if isinstance(n, ast.Call)
     }
     assert "_build_remedy_leverage_windows" not in calls
-    assert "replace_prior_rm_dasha_windowed" not in calls
+    assert "replace_prior_rm_dasha_windowed" in calls
 
 
 def test_l2_sources_have_no_random_semantic_id_or_live_bhavat_positive_arm():

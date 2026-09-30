@@ -1904,6 +1904,7 @@ class BoUpayaWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         from bodha_writers._idempotency import (
             replace_prior_rm_resonances, replace_prior_rm_prescriptions,
+            replace_prior_rm_dasha_windowed,
         )
 
         chart_id = ctx.config["chart_id"]
@@ -1939,9 +1940,16 @@ class BoUpayaWriter(WriterBase):
                 chart_id, aya, build_id, conn, now
             )
 
-            # DP-SD-015: do not delete or append the legacy daśā-window table.
-            # Existing history remains readable; new L2 generations have no
-            # resolved timing/activation authority.
+            # DP-SD-015: L2 no longer PRODUCES daśā-window rows, and the legacy
+            # bodha_rm_dasha_windowed_prescriptions SCHEMA remains for
+            # compatibility. The decision does not ask for legacy ROWS to survive
+            # a rebuild: per §N.3 a rebuild replaces the prior generation. This
+            # delete is required for rebuild-ability: that table's
+            # base_prescription_id carries a NO ACTION foreign key onto
+            # bodha_rm_remedy_prescriptions, so it must be cleared (child) before
+            # the prescriptions delete (parent) below. Nothing is appended here.
+            # (native ruling R244, option a; restores the pre-#2607 order.)
+            replace_prior_rm_dasha_windowed(conn, chart_id, aya)
             replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
 
