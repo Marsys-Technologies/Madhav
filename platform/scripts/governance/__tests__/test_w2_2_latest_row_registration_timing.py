@@ -724,12 +724,18 @@ def test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na(mon
     reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
     w1._stub_layer(monkeypatch, tmp_path, reg)
     caps = _caps_dir(tmp_path, files)
-    monkeypatch.setattr(ac, "capability_scan", lambda d, t: _REAL["capability_scan"](caps, t))
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: _REAL["capability_scan"](caps, t))
     w1._open_gap(tmp_path, "bg_x", "Dens.served")
     c = ac.measure("L0")
     ds = w1._m(c, "bg_x", "Dens.served")
     assert ds["v"] == verdict, ds
-    assert ac.emit_gaps(c)[2] == (1 if verdict == ac.NA else 0)
+    # E6 fix 1: NA_RULE_DECISIONS is empty in production, so an N/A is not released: it closes nothing.
+    assert ac.emit_gaps(c)[2] == 0
+    if verdict == ac.NA:
+        # ... and it closes only under a declared, caused rule (the only way an N/A ever closes an OPEN gap)
+        assert ds["cause"] == "no-served-surface", ds
+        monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Dens.served#measured:no-served-surface": "N-22/test"})
+        assert ac.emit_gaps(c)[2] == 1
 
 
 # ─────────────────────────── R53: Build.target's FAIL is reachable ───────────────────────────
@@ -817,7 +823,8 @@ def test_r54_a_clean_alias_census_passes_with_severity_zero(monkeypatch, tmp_pat
 
 # ─────────────────────────── R232: Dens.served reads a declared field, never a comment ───────────────────────────
 
-_SERVES = "export const cap = {\n  run: () => query(`SELECT * FROM t_x`),\n"
+# E6.1 (d): the served select carries a tier column, so a REAL declaration can reach PASS (contract AND tier column)
+_SERVES = "export const cap = {\n  run: () => query(`SELECT id, signature_tier FROM t_x`),\n"
 
 
 @pytest.mark.parametrize("extra, declares", [
@@ -834,6 +841,8 @@ def test_r232_only_a_declared_density_contract_counts(tmp_path, extra, declares)
     string as a declaration (review A4: `// TODO: … no density_contract yet` read declaring 1). The
     three declaring cases are the positive control: a real property still counts."""
     cap = ac.capability_scan(_caps_dir(tmp_path, {"query_x.ts": _SERVES + extra}), ["t_x"])
+    # E6.1 (d): `density` now counts capabilities that declare AND carry a tier column; this select carries one, so
+    # a real declaration is dense and a mention is not — `declares` is unchanged, and reads the same.
     assert cap["modules"] == ["query_x.ts"] and cap["density"] == declares, cap
 
 
@@ -848,7 +857,7 @@ def test_r232_an_open_dens_served_gap_does_not_close_on_a_comment(monkeypatch, t
     reg = {"bg_x": w1._reg_row("bg_x", "t_x")}
     w1._stub_layer(monkeypatch, tmp_path, reg)
     caps = _caps_dir(tmp_path, {"query_x.ts": _SERVES + extra})
-    monkeypatch.setattr(ac, "capability_scan", lambda d, t: _REAL["capability_scan"](caps, t))
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: _REAL["capability_scan"](caps, t))
     w1._open_gap(tmp_path, "bg_x", "Dens.served")
     c = ac.measure("L0")
     assert w1._m(c, "bg_x", "Dens.served")["v"] == verdict

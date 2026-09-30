@@ -48,7 +48,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables, thru_rec):
     monkeypatch.setattr(ac, "dependency_graph", lambda: {a: [] for a in reg}, raising=False)
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
-    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: dict(modules=[], density=0, note="stub"))
     monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=0, full=[], never=list(c), note=""))
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
 
