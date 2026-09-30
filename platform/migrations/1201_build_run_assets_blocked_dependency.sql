@@ -71,6 +71,13 @@
 -- platform/migrations/ and platform/supabase/migrations/), with 1200 taken by the A1 migration
 -- (1200_asset_throughput_duration_seconds.sql). SQL below is unchanged.
 
+-- Forward reversal (no automatic down): the backfill below cannot be undone once new runs write the same
+-- disposition value, because backfilled and newly written rows look identical. Drop the column only after the
+-- code that writes it has been rolled back (runner.py writes blocked_by_asset_id unconditionally in the shared
+-- terminal-error UPDATE).
+
+SET LOCAL lock_timeout = '5s';
+
 ALTER TABLE build_run_assets
     ADD COLUMN IF NOT EXISTS blocked_by_asset_id text;
 
