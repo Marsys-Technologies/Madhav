@@ -591,6 +591,60 @@ def _episode_to_dict(ep: gk_episodes.Episode, target: ResolvedTarget,
     }
 
 
+def _residence_span_dict(span: gk_episodes.ResidenceSpan, target: ResolvedTarget,
+                         backend: dict) -> dict:
+    """kernel ResidenceSpan -> the ledger dict for the interval itself
+    (relation='residence'). The ingress episode stays the boundary-exact
+    point row; THIS row is the interval object (M-5/T0-3): t_in=t_enter,
+    t_out=t_exit, t_exact = the observed ingress instant when one exists
+    (else NULL under migration 1152, never fabricated), dwell = span length.
+    """
+    ing = span.ingress_episode
+    truncated = span.truncated_at_horizon
+    if truncated not in ("start", "end"):
+        truncated = None  # kernel 'both' -> NULL (WP1 §3.1 CHECK)
+    return {
+        "independence_group": gk_ids.independence_group(
+            body=span.body, relation="residence", aspect_deg=0.0,
+            target_deg=span.span_lo_deg,
+            t_exact_jd=ing.t_exact, t_fallback_jd=span.t_enter,
+        ),
+        "body": span.body,
+        "relation": "residence",
+        "aspect_deg": 0,
+        "target_type": target.target_type,
+        "target_ref": target.target_ref,
+        "target_fact_id": target.target_fact_id,
+        "target_resolution_state": "resolved",
+        "target_longitude_deg": None,  # interval target: no point longitude
+        "t_in": jd_to_dt(span.t_enter),
+        "t_exact": jd_to_dt(ing.t_exact) if ing.t_exact is not None else None,
+        "t_out": jd_to_dt(span.t_exit),
+        "bracket_seconds": ing.bracket_seconds,
+        "tolerance_arcsec": ing.tolerance_arcsec,
+        "truncated_at_horizon": truncated,
+        "branch": ing.branch,
+        "station_flag": ing.station_flag,
+        "exact_crossing": ing.t_exact is not None,
+        "orb_max_deg": ing.orb_max_deg,  # orb_ingress row: 0.0
+        "orb_source": "orb_ingress",     # convention orb table names residence
+        "dwell_days": span.t_exit - span.t_enter,
+        "epistemic_class": "observed_event",
+        "completeness_state": ing.completeness_state,
+        "operator_role": "kernel",
+        "precision_regime": "instant_grain",
+        "time_basis": "event_time_utc",
+        "comparable_with": "same_convention_same_inputs",
+        "ephemeris_backend": dict(backend),
+        "evidence_fact_ids": [],
+        "classical_citation": target.classical_citation,
+        "uncited_extension": target.uncited_extension,
+        "corpus_verifiable": None,
+        # ADK-0020 dedupe bookkeeping; stripped from the payload before write.
+        "_map_weight": target.weight,
+    }
+
+
 def enumerate_body(
     index: gk_arcs.ArcIndex,
     body: str,
@@ -658,7 +712,15 @@ def enumerate_body(
                 ephe_path=ephe_path, refine=refine)
             for span in spans:
                 _emit([span.ingress_episode], t)
-            _note(t.target_type, ["sign_ingress"])
+                # T0-3 (#6/#7, spec §6.2 inv: "residence spans are intervals
+                # with coverage"): the span ITSELF is persisted as a
+                # relation='residence' row — the ingress episode alone is
+                # zero-width and loses the interval (pre-fix the span was
+                # computed and discarded; FABLE: 98.6% of the ledger inert).
+                out.append(_residence_span_dict(span, t, backend))
+                if span.ingress_episode.t_exact is None:
+                    stats["episodes_without_exact"] += 1
+            _note(t.target_type, ["residence", "sign_ingress"])
     out.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
     stats["searched"] = {k: sorted(v) for k, v in stats["searched"].items()}
     return out, stats

@@ -403,10 +403,24 @@ def test_interval_target_residence_and_agent_restriction():
         ephe_path=None, refine=False)
 
     bhava_eps = [e for e in eps if e["target_ref"] == "4"]
-    assert {e["relation"] for e in bhava_eps} == {"sign_ingress"}
-    assert len(bhava_eps) == 1
-    assert bhava_eps[0]["orb_max_deg"] == 0.0
-    assert bhava_eps[0]["t_exact"].date().isoformat() == "2026-02-20"  # t=50d
+    # M-5: never point contacts — one boundary-exact sign_ingress episode
+    # PLUS the persisted residence span itself (T0-3, relation='residence')
+    assert {e["relation"] for e in bhava_eps} == {"sign_ingress", "residence"}
+    ing = [e for e in bhava_eps if e["relation"] == "sign_ingress"]
+    assert len(ing) == 1
+    assert ing[0]["orb_max_deg"] == 0.0
+    assert ing[0]["t_exact"].date().isoformat() == "2026-02-20"  # t=50d
+    res = [e for e in bhava_eps if e["relation"] == "residence"]
+    assert len(res) == 1
+    r = res[0]
+    assert r["t_in"] == ing[0]["t_in"]  # span entry IS the ingress instant
+    assert r["t_exact"] == ing[0]["t_exact"]  # observed ingress carried over
+    assert r["dwell_days"] == pytest.approx(300.0, abs=1e-3)  # 210→240 at 0.1°/d
+    assert r["truncated_at_horizon"] is None
+    assert r["target_longitude_deg"] is None  # interval target, no point lon
+    # the span row is the interval object: it must NOT equal the zero-width
+    # ingress episode
+    assert r["t_in"] != r["t_out"]
     # mechanism_node names Jupiter: Saturn never enumerates it
     assert not [e for e in eps if e["target_ref"] == "jupiter:double_transit:h4"]
     assert "mechanism_node" not in stats["searched"]
