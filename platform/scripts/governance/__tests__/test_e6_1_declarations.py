@@ -96,17 +96,18 @@ def test_committed_file_declares_no_empty_prose_list():
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
     bg_reference bo_grounding mi_seva mi_vistara bg_cohort bg_concordance ka_kshetra mi_jivanaghatana
-    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa""".split())
+    bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa
+    bo_samskara bg_ephemeris_engine bg_panchanga ka_dasha_kala ka_graha_sancara ka_muhurta_seva ka_tulana""".split())
 
 
-def test_committed_file_declares_no_negative_served_surface_and_nulls_the_contested_ones():
-    # a negative scan is not proof (CLAUDE.md N.8 / N.7.6): no asset is declared `served_surface: false`, and the 17
+def test_committed_file_declares_no_negative_served_surface_and_nulls_the_unproven_ones():
+    # a negative scan is not proof (CLAUDE.md N.8 / N.7.6): no asset is declared `served_surface: false`, and the 24
     # assets whose only evidence was a negative scan / a comment / a provenance label / an unavailable stub are null
     decl = ac.load_asset_declarations()
     vals = {a: (e["carriage"] or {}).get("served_surface") for a, e in decl.items()}
     assert [a for a, v in vals.items() if v is False] == []
     assert sorted(a for a in NULLED_SERVED if vals[a] is not None) == []
-    assert sum(v is True for v in vals.values()) == 110 and sum(v is None for v in vals.values()) == 17
+    assert sum(v is True for v in vals.values()) == 103 and sum(v is None for v in vals.values()) == 24
 
 
 RECHECKED_TRUE = """bg_ghatana bg_gochara_citation_resolution bg_nakshatra bg_prashna_rules bg_rules ga_prashna
@@ -123,6 +124,47 @@ def test_the_nine_rechecked_true_values_cite_a_real_file_line_read_and_mi_sankal
         assert "allow-list" not in ev.split("(real")[0], a
     assert decl["mi_sankalpa"]["carriage"]["served_surface"] is None
     assert "no real served read" in decl["mi_sankalpa"]["evidence"]["carriage"]
+
+
+REPO_ROOT = HERE.parents[3]
+
+
+def _is_sql_read(lines, lineno, token):
+    """The cited line carries `token` as a SQL FROM/JOIN target (same line; or the previous non-blank line ends in
+    FROM/JOIN and this line starts with the token), or (dynamic table map) quotes the token while the same file
+    selects `FROM ${...}`. A comment, a provenance label or an allow-list entry is none of these."""
+    line = lines[lineno - 1]
+    if re.match(r"\s*(//|\*|/\*|#)", line):
+        return False
+    if re.search(rf"\b(FROM|JOIN)\s+(public\.)?{re.escape(token)}\b", line):
+        return True
+    prev = next((x for x in reversed(lines[:lineno - 1]) if x.strip()), "")
+    if re.search(r"\b(FROM|JOIN)\s*$", prev) and re.match(rf"\s*(public\.)?{re.escape(token)}\b", line):
+        return True
+    return bool(re.search(rf"['\"]{re.escape(token)}['\"]", line)) and any("FROM ${" in x for x in lines)
+
+
+def test_every_served_true_cites_a_real_non_test_read_of_its_table():
+    decl = ac.load_asset_declarations()
+    trues = [a for a, e in decl.items() if (e["carriage"] or {}).get("served_surface") is True]
+    assert trues, "no served_surface true declared"
+    for a in trues:
+        e = decl[a]
+        path, line = e["read_evidence"].rsplit(":", 1)
+        f = REPO_ROOT / path
+        assert f.is_file(), (a, path)
+        assert not re.search(r"(\.test\.|/__tests__/|/tests?/|/generated/|/fixtures/|source_query_availability|mcp/db/query)", path), (a, path)
+        lines = f.read_text(encoding="utf-8").splitlines()
+        assert 1 <= int(line) <= len(lines), (a, path, line)
+        assert _is_sql_read(lines, int(line), e["read_table"]), (a, path, line, e["read_table"], lines[int(line) - 1].strip())
+
+
+def test_the_read_check_rejects_comments_labels_and_allowlists():
+    src = ["// FROM t_x", "  * FROM t_x", "  provenance: { tables: ['t_x'] },", "  't_x',", "const q = `SELECT 1 FROM t_x w`", "  FROM", "    t_x a", "JOIN t_y"]
+    assert [_is_sql_read(src, i, "t_x") for i in range(1, 8)] == [False, False, False, False, True, False, True]
+    assert _is_sql_read(["const M = { a: 't_x' }", "sql = `SELECT * FROM ${table}`"], 1, "t_x") is True      # dynamic table map
+    assert _is_sql_read(["const M = { a: 't_x' }"], 1, "t_x") is False                                          # no FROM ${} in the file
+    assert _is_sql_read(["FROM t_xy"], 1, "t_x") is False                                                      # token boundary
 
 
 def test_committed_file_declares_no_dag_dependents_anywhere():
@@ -184,7 +226,8 @@ BAD_DOCS = [
     ("terminal-blank", _doc(a=dict(terminal_by_construction=" "))),
     ("terminal-non-str", _doc(a=dict(terminal_by_construction=True))),
     ("terminal-contradicts-served-true", _doc(a=dict(terminal_by_construction="no reader by design",
-                                                     carriage=dict(served_surface=True)))),
+                                                     carriage=dict(served_surface=True),
+                                                     read_evidence="platform/src/a.ts:12", read_table="t"))),
     ("cross-writes-not-list", _doc(a=dict(cross_asset_writes="t.c", evidence=dict(cross_asset_writes="p")))),
     ("cross-writes-non-str", _doc(a=dict(cross_asset_writes=[1], evidence=dict(cross_asset_writes="p")))),
     ("cross-writes-not-table-dot-column", _doc(a=dict(cross_asset_writes=["justatable"], evidence=dict(cross_asset_writes="p")))),
@@ -193,6 +236,24 @@ BAD_DOCS = [
     ("cross-writes-case-variant-duplicate", _doc(a=dict(cross_asset_writes=["t.c", "T.C"], evidence=dict(cross_asset_writes="p")))),
     ("cross-writes-declared-without-evidence", _doc(a=dict(cross_asset_writes=["t.c"]))),
     ("cross-writes-empty-declared-without-evidence", _doc(a=dict(cross_asset_writes=[]))),
+    ("cross-writes-trailing-newline", _doc(a=dict(cross_asset_writes=["t.c\n"], evidence=dict(cross_asset_writes="p")))),
+    ("served-true-without-read-evidence", _doc(a=dict(carriage=dict(served_surface=True)))),
+    ("served-true-read-evidence-null", _doc(a=dict(carriage=dict(served_surface=True), read_evidence=None, read_table="t"))),
+    ("served-true-without-read-table", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12"))),
+    ("read-evidence-no-line", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts", read_table="t"))),
+    ("read-evidence-line-zero", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:0", read_table="t"))),
+    ("read-evidence-prose", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="see the route handler", read_table="t"))),
+    ("read-evidence-trailing-newline", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12\n", read_table="t"))),
+    ("read-evidence-absolute-path", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="/etc/a.ts:12", read_table="t"))),
+    ("read-evidence-parent-path", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="../a.ts:12", read_table="t"))),
+    ("read-evidence-dotdot-middle", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/../../etc/a.ts:12", read_table="t"))),
+    ("read-evidence-non-str", _doc(a=dict(carriage=dict(served_surface=True), read_evidence=12, read_table="t"))),
+    ("read-table-not-identifier", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="a b"))),
+    ("read-table-trailing-newline", _doc(a=dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t\n"))),
+    ("read-evidence-with-null-served", _doc(a=dict(carriage=dict(served_surface=None), read_evidence="platform/src/a.ts:12", read_table="t"))),
+    ("read-evidence-with-false-served", _doc(a=dict(carriage=dict(served_surface=False), read_evidence="platform/src/a.ts:12", read_table="t"))),
+    ("read-evidence-without-carriage", _doc(a=dict(read_evidence="platform/src/a.ts:12", read_table="t"))),
+    ("read-table-without-evidence", _doc(a=dict(read_table="t"))),
 ]
 
 
@@ -209,8 +270,10 @@ def test_validator_accepts_null_fields_and_every_enum_kind():
                       cross_asset_writes=None),
                z=dict(carriage=dict(served_surface=False), terminal_by_construction="written only by X; no reader by design",
                       cross_asset_writes=["t.c"], evidence=dict(cross_asset_writes="effect contract writes: [t.c]")),
-               w=dict(cross_asset_writes=[], evidence=dict(cross_asset_writes="effect contract writes: []")))
-    assert len(ac.validate_declarations(doc)) == len(ac.DECLARED_KINDS) + 4
+               w=dict(cross_asset_writes=[], evidence=dict(cross_asset_writes="effect contract writes: []")),
+               v=dict(carriage=dict(served_surface=True), read_evidence="platform/src/lib/x/[id]/route-a_b.ts:12", read_table="t_1"),
+               u=dict(carriage=dict(served_surface=None), read_evidence=None, read_table=None))
+    assert len(ac.validate_declarations(doc)) == len(ac.DECLARED_KINDS) + 6
 
 
 def test_validator_checks_asset_ids_against_the_registry_set_only_when_supplied():
@@ -281,6 +344,17 @@ def test_reader_rejects_a_non_list_registry_ids(tmp_path, bad):
         ac.load_asset_declarations(p, registry_ids=bad)
     with pytest.raises(ac.DeclarationsError, match="registry_ids"):
         ac.validate_declarations(_doc(a=dict(kind="data")), registry_ids=bad)
+
+
+def test_reader_wraps_a_5000_digit_integer_value_error(tmp_path):
+    raw = '{"version": "1", "kind_enum": ' + json.dumps(list(ac.DECLARED_KINDS)) + ', "assets": {}, "x": ' + "9" * 5000 + "}"
+    with pytest.raises(ac.DeclarationsError):
+        ac.load_asset_declarations(_write(tmp_path, None, raw=raw))
+
+
+def test_reader_wraps_a_nul_byte_in_the_path():
+    with pytest.raises(ac.DeclarationsError, match="cannot read"):
+        ac.load_asset_declarations("decl\x00.json")
 
 
 def test_reader_rejects_non_string_registry_id_members(tmp_path):
@@ -420,7 +494,7 @@ def _rec(aid, served=None, direct=None, kind=None):
 
 def test_declared_served_false_against_a_measured_dens_pass_or_fail_is_reported():
     decl = {"a": dict(carriage=dict(served_surface=False))}
-    for v in ("PASS", "FAIL"):
+    for v in ("PASS", "FAIL", "PARTIAL"):
         f = ac.facts_for_asset(_rec("a", served=v), decl)
         assert f["declaration_disagreements"] == [dict(field="carriage.served_surface", declared=False, measured=v)], v
     for v in ("N/A", "NO_DETECTOR"):
@@ -431,8 +505,19 @@ def test_declared_served_true_against_a_measured_dens_na_is_reported():
     decl = {"a": dict(carriage=dict(served_surface=True))}
     f = ac.facts_for_asset(_rec("a", served="N/A"), decl)
     assert f["declaration_disagreements"] == [dict(field="carriage.served_surface", declared=True, measured="N/A")]
-    for v in ("PASS", "FAIL", "NO_DETECTOR"):
+    for v in ("PASS", "FAIL", "PARTIAL", "NO_DETECTOR"):
         assert "declaration_disagreements" not in ac.facts_for_asset(_rec("a", served=v), decl), v
+
+
+def test_declared_read_evidence_is_exposed_as_a_fact_when_declared():
+    d = {"a": dict(carriage=dict(served_surface=True), read_evidence="platform/src/a.ts:12", read_table="t"),
+         "b": dict(carriage=dict(served_surface=None), read_evidence=None, read_table=None)}
+    f = ac.declared_facts(d, "a")
+    assert f["declared_read_evidence"] == "platform/src/a.ts:12" and f["declared_read_table"] == "t"
+    g = ac.declared_facts(d, "b")
+    assert "declared_read_evidence" not in g and "declared_read_table" not in g
+    h = ac.declared_facts({"c": dict(read_evidence="platform/src/a.ts:12", read_table=None)}, "c")      # an unpaired (unvalidated) pointer
+    assert "declared_read_evidence" not in h and "declared_read_table" not in h
 
 
 def test_served_surface_disagreement_needs_the_measurement_and_a_declared_value():

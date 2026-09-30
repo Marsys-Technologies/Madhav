@@ -1,6 +1,6 @@
 {
- "version": "1.1.1",
- "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'. carriage.served_surface: true only where a real read was found, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown).",
+ "version": "1.2.0",
+ "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown).",
  "kind_enum": [
   "data",
   "service",
@@ -13,7 +13,7 @@
  "carriage_fields": [
   "served_surface"
  ],
- "derived_on": "2026-09-30 from the saved census (inspector 2a78ec64d, chart 482012f1) and main 4081d5295; registry facts from seed/migrations/T0 witness, not the live DB; 1.1.0 fixes 2026-09-30 after independent review (carriage values unsafe as no-carriage facts); 1.1.1: ten true values re-checked for a real read (nine kept with file:line, mi_sankalpa nulled)",
+ "derived_on": "2026-09-30 from the saved census (inspector 2a78ec64d, chart 482012f1) and main 4081d5295; registry facts from seed/migrations/T0 witness, not the live DB; 1.1.0 fixes 2026-09-30 after independent review (carriage values unsafe as no-carriage facts); 1.1.1: ten true values re-checked for a real read (nine kept with file:line, mi_sankalpa nulled); 1.2.0: every served_surface true re-audited against the read_evidence rule (a real non-test FROM/JOIN read of the asset's own table, cited path:line); 7 nulled",
  "assets": {
   "bg_class_lifetime_counts": {
    "kind": "data",
@@ -23,9 +23,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112",
+   "read_table": "brahma_class_priors",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_class_priors.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts::brahma_class_priors",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -37,9 +39,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112",
+   "read_table": "brahma_class_priors",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_class_priors; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_class_priors.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts::brahma_class_priors",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts:112 reads `brahma_class_priors` (`FROM brahma_class_priors`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -51,6 +55,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_synthetic_cohort; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): the only evidence is a comment, not a read: platform-mcp/src/lib/kala_ritual_resonance.ts:568-575 calls bg_cohort 'a dormant L0 asset with no retrieval capability wired into this surface'; Dens.served N/A.",
@@ -65,9 +71,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79",
+   "read_table": "brahma_compendium_index",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_compendium_index; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
-    "carriage": "Dens.served=FAIL (1 module(s): query_compendium_index.ts; declaring density_co); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts::brahma_compendium_index",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -79,6 +87,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_attributions; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: cla",
     "carriage": "served_surface null (unknown): the only evidence is the asset's own table name in an unavailable stub: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:662 (classical_attribution_lookup 'UNAVAILABLE - fails closed', the classical_attributions store was dropped); Dens.served N/A. (The editorial map lists it as a classical-text source: the sources disagree.)",
@@ -93,9 +103,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64",
+   "read_table": "brahma_dasha_systems",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dasha_systems; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "Dens.served=FAIL (1 module(s): query_dasha_systems.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts::brahma_ontology",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts:64 reads `brahma_dasha_systems` (`FROM brahma_dasha_systems`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -107,9 +119,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:63",
+   "read_table": "bg_avastha_schemes",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_dignity_reference; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=NO_DETECTOR (NO_DETECTOR — no capability module's code references bg_dign); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::bg_dignity_reference",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts:63 reads `bg_avastha_schemes` (`FROM bg_avastha_schemes`). Dens.served=NO_DETECTOR. The asset's own table bg_dignity_reference has no served SELECT; the cited table bg_avastha_schemes is one of the tables in the asset's registry count_sql (the asset's rows).",
     "prose_fields": null
    }
   },
@@ -121,9 +135,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75",
+   "read_table": "brahma_dosha_catalog",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dosha_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "Dens.served=FAIL (2 module(s): query_dosha_catalog.ts, query_parihara_graph.ts); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts::brahma_ontology",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -135,23 +151,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191",
+   "read_table": "ephemeris_daily",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ephemeris_daily; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (4 module(s): query_aspects_at_time.ts, query_planet_position); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts::ephemeris_daily",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts:191 reads `ephemeris_daily` (``SELECT body, latitude FROM ephemeris_daily`). Dens.served=FAIL. The only served SELECT of ephemeris_daily is get_graha_yuddha.ts (latitude lookup in the served graha-yuddha tool); the query_planet_transit description names it but does not SELECT it.",
     "prose_fields": null
    }
   },
   "bg_ephemeris_engine": {
    "kind": "service",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (migration 242 asset_type=service -> asset_kind=service; seed storage_type=service; T0 registry_contract.asset_kind=service); no writer (has_writer=false), no target_table; census Build.target text asset_kind='service'",
-    "carriage": "Dens.served=FAIL (6 module(s): ephemeris_cache_native_lifetime.ts, ephemeris_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts::bg_ephemeris_engine",
+    "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
    }
   },
@@ -163,9 +183,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:67",
+   "read_table": "brahma_formula_constants",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_formula_constants; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_formula_constants.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts::brahma_formula_constants",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts:67 reads `brahma_formula_constants` (`FROM brahma_formula_constants`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -177,9 +199,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1143",
+   "read_table": "brahma_event_ontology",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_event_ontology; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1136 `LEFT JOIN brahma_event_ontology eo` and :1143 `SELECT DISTINCT domain FROM brahma_event_ontology` (served gochara-windows tool); also platform-mcp/src/lib/intervention_filing.ts:83 `SELECT event_class_id FROM brahma_event_ontology`.",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1143 reads `brahma_event_ontology` (``SELECT DISTINCT domain FROM brahma_event_ontology WHERE domain IS NOT NULL ORDER BY 1`,`). Dens.served=N/A (scanner gap: the scan does not see this read). Served gochara-windows tool; also intervention_filing.ts:83 and query_prospective_ledger.ts:207 (LEFT JOIN).",
     "prose_fields": null
    }
   },
@@ -191,6 +215,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_gochara_arcs; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bg_",
     "carriage": "served_surface null (unknown): the negative scan is not proof. Real consumers exist: python-sidecar pipeline/orchestrator/writers/ka_gochara.py:412 (SELECT DISTINCT body, arc_fingerprint FROM bg_gochara_arcs) and python-sidecar/services/w2g/db_source.py:34 (ARC_TABLE); the editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_planet_transit. REGISTRY DEFECT (not edited here): ka_gochara's registry depends_on lacks bg_gochara_arcs, so the census blocking_radius (0) under-reports.",
@@ -205,9 +231,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:800",
+   "read_table": "bg_gochara_citation_resolution",
    "evidence": {
     "kind": "migration supabase/565 creates and seeds it as a static resolution table; has_writer=false and no @register (census writer_files empty); T0 execution_obligation static_acceptance/empty_acceptance; registry asset_kind reads data",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/retrieval/register_gochara_windows.ts:800 `FROM bg_gochara_citation_resolution` in fetchVerseRefs(), called by the served handlers at :1843 and :2169.",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:800 reads `bg_gochara_citation_resolution` (``FROM bg_gochara_citation_resolution ` +`). Dens.served=N/A (scanner gap: the scan does not see this read). fetchVerseRefs() is called by the served handlers at :1843 and :2169.",
     "prose_fields": null
    }
   },
@@ -219,6 +247,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_kota_chakra_rings; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_kota_chakra.",
@@ -233,6 +263,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_kp_sublord_division; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.get_kp_cusps.",
@@ -247,9 +279,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58",
+   "read_table": "bg_medical_mappings",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_medical_mappings; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_medical_mappings.ts; declaring density_co); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts::bg_medical_mappings",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts:58 reads `bg_medical_mappings` (`FROM bg_medical_mappings`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -261,9 +295,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:141",
+   "read_table": "bg_muhurta_lattice",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_muhurta_lattice; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_muhurta_lattice.ts; declaring density_con); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts::bg_muhurta_lattice",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts:141 reads `bg_muhurta_lattice` (`FROM bg_muhurta_lattice`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -275,9 +311,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/register_p1_reference.ts:549",
+   "read_table": "reference_nakshatra",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) reference_nakshatra; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/register_p1_reference.ts:549 `FROM reference_nakshatra n` (served nakshatra reference tool; its rows are returned).",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/register_p1_reference.ts:549 reads `reference_nakshatra` (`FROM reference_nakshatra n`). Dens.served=N/A (scanner gap: the scan does not see this read). Served nakshatra reference tool; rows returned.",
     "prose_fields": null
    }
   },
@@ -289,9 +327,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56",
+   "read_table": "bg_nakshatra_medical",
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py: @register('bg_nakshatra_medical') on the bg_medical_mappings class (sub-table, no independent writer); T0 producer_covered; registry asset_kind data, has_writer=false",
-    "carriage": "Dens.served=FAIL (1 module(s): query_nakshatra_medical.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts::bg_nakshatra_medical",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts:56 reads `bg_nakshatra_medical` (`FROM bg_nakshatra_medical`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -303,23 +343,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:138",
+   "read_table": "brahma_ontology",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_ontology; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (2 module(s): list_entities.ts, resolve_entity.ts; declaring ); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts::brahma_ontology",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:138 reads `brahma_ontology` (`FROM brahma_ontology``). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
   "bg_panchanga": {
    "kind": "service",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (migration 242 asset_type=service -> asset_kind=service; seed storage_type=service; T0 registry_contract.asset_kind=service); no writer (has_writer=false), no target_table; census Build.target text asset_kind='service'",
-    "carriage": "Dens.served=FAIL (1 module(s): call_panchanga_service.ts; declaring density_co); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts::bg_panchanga",
+    "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
    }
   },
@@ -331,9 +375,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:134",
+   "read_table": "bg_parihara_rules",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_parihara_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_parihara_graph.ts; declaring density_cont); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts::bg_muhurta_factor_census",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts:134 reads `bg_parihara_rules` (`FROM bg_parihara_rules`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -345,6 +391,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_phaladeepika_latta; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): provenance LABEL only (query_vedha_gochara.ts:169-170); the query reads kala_vedha_gochara only; Dens.served N/A.",
@@ -359,9 +407,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59",
+   "read_table": "bg_prashna_tajik_yogas",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_prashna_lagna_methods,bg_prashna_tajik_yogas,bg_prashna_significators,bg_prashna_fructification_rules,bg_prashna_special_techniques; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true (real reads; Dens scan N/A is a scanner gap): platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59 `FROM bg_prashna_tajik_yogas`, query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57 (registered capabilities serving the rows).",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts:59 reads `bg_prashna_tajik_yogas` (`FROM bg_prashna_tajik_yogas`). Dens.served=N/A (scanner gap: the scan does not see this read). One of the asset's five tables; siblings read at query_prashna_significators.ts:54, query_prashna_lagna_methods.ts:58, query_prashna_fructification_rules.ts:57.",
     "prose_fields": null
    }
   },
@@ -373,6 +423,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) reference_planets; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_classical_texts.",
@@ -387,9 +439,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101",
+   "read_table": "brahma_remedy_corpus",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_remedy_corpus; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_remedy_corpus.ts; declaring density_contr); surface reference e.g. platform/src/app/api/cockpit/plan/route.ts::brahma_remedy_corpus",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101 reads `brahma_remedy_corpus` (`const sql = `SELECT ${selectCols} FROM brahma_remedy_corpus WHERE ${whereClause} ` +`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -401,9 +455,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536",
+   "read_table": "sutravali_rules",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) sutravali_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536 `FROM sutravali_rules r` in the read_sutravali_rule handler (returns the row); sibling served capabilities query_sutravali_rules / _for_planet in the same file and platform/src/lib/retrieve/sutravali_tools.ts.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:536 reads `sutravali_rules` (`FROM sutravali_rules r`). Dens.served=N/A (scanner gap: the scan does not see this read). read_sutravali_rule handler (returns the row), NOT the fail-closed classical_attribution_lookup stub at :662; siblings query_sutravali_rules / _for_planet in the same file.",
     "prose_fields": null
    }
   },
@@ -415,6 +471,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "migration supabase/529 creates it deliberately empty (ADJUDICATION-11); seed only; has_writer=false and no @register (census writer_files empty); T0 execution_obligation static_acceptance/empty_acceptance; registry asset_kind reads data",
     "carriage": "served_surface null (unknown): the only evidence is a provenance LABEL (query_vedha_gochara.ts:169-170 lists the table in `provenance.tables`; the query reads kala_vedha_gochara only); Dens.served N/A.",
@@ -429,9 +487,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:55",
+   "read_table": "bg_sign_medical",
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py: @register('bg_sign_medical') on the bg_medical_mappings class, docstring 'sub-table of this writer's build scope, no independent writer'; T0 producer_covered, producer_id bg_medical_mappings; registry asset_kind data, has_writer=true (census) vs T0 has_writer=true",
-    "carriage": "Dens.served=FAIL (1 module(s): query_sign_medical.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts::bg_sign_medical",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts:55 reads `bg_sign_medical` (`FROM bg_sign_medical`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -443,9 +503,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:118",
+   "read_table": "bg_sky_calendar",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_sky_calendar; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_sky_calendar.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts::bg_sky_calendar",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts:118 reads `bg_sky_calendar` (`FROM bg_sky_calendar`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -457,9 +519,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:221",
+   "read_table": "classical_text_chunks",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_text_chunks; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: classica",
-    "carriage": "Dens.served=FAIL (2 module(s): query_classical_texts.ts, query_compendium_inde); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts::classical_text_chunks",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:221 reads `classical_text_chunks` (`FROM classical_text_chunks c WHERE c.content_en ILIKE ${queryParam}${textSourcePredicate}``). Dens.served=FAIL. classical_text_chunks is shared with bg_texts; the served query reads the asset's table rows.",
     "prose_fields": null
    }
   },
@@ -471,9 +535,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:221",
+   "read_table": "classical_text_chunks",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) classical_text_chunks; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (2 module(s): query_classical_texts.ts, query_compendium_inde); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts::bg_texts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:221 reads `classical_text_chunks` (`FROM classical_text_chunks c WHERE c.content_en ILIKE ${queryParam}${textSourcePredicate}``). Dens.served=FAIL. classical_text_chunks is shared with bg_text_index; the served query reads the asset's table rows.",
     "prose_fields": null
    }
   },
@@ -485,9 +551,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60",
+   "read_table": "bg_transit_engine",
    "evidence": {
     "kind": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py: second @register('bg_transit_engine') on the bg_transit_rules class (sub-table seeded by seed_transit_rules()); T0 producer_covered, producer_id bg_transit_rules; registry asset_kind data, has_writer=false",
-    "carriage": "Dens.served=FAIL (1 module(s): query_transit_engine.ts; declaring density_cont); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts::bg_transit_engine",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts:60 reads `bg_transit_engine` (`FROM bg_transit_engine`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -499,9 +567,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/register_p1_reference.ts:644",
+   "read_table": "bg_transit_rules",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_transit_rules; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_transit_vedha.ts; declaring density_contr); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::bg_transit_rules",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/register_p1_reference.ts:644 reads `bg_transit_rules` (`FROM bg_transit_rules`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -513,9 +583,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:63",
+   "read_table": "bg_vastu_directions",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bg_vastu_directions; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
-    "carriage": "Dens.served=FAIL (1 module(s): query_vastu_directions.ts; declaring density_co); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts::bg_vastu_direction_remedials",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts:63 reads `bg_vastu_directions` (`FROM bg_vastu_directions`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -527,6 +599,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bg_vedha_malefic_scale; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): provenance LABEL only (query_vedha_gochara.ts:169-170); the query reads kala_vedha_gochara only; Dens.served N/A.",
@@ -541,6 +615,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) vidhi_floor_items; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): the negative scan is not proof. The floors are served through platform/src/lib/vidhi/registry_data.ts (a hand-synchronized TS mirror of the DB rows, its header) -> vidhi compiler; editorial map marks bg_vidhi_floors directly_serves_output for scu.catalog.query_question_lenses. No registry capability reads the DB table itself, so the two sources disagree: unknown, not false.",
@@ -555,6 +631,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) vidhi_primitives; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface null (unknown): same as bg_vidhi_floors (registry_data.ts VIDHI_PRIMITIVES mirror -> compiler; editorial map directly_serves_output, scu.catalog.query_question_lenses).",
@@ -569,9 +647,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57",
+   "read_table": "brahma_yoga_catalog",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_yoga_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
-    "carriage": "Dens.served=FAIL (1 module(s): query_yoga_catalog.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts::brahma_ontology",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57 reads `brahma_yoga_catalog` (`const pageSql  = `SELECT * FROM brahma_yoga_catalog ${whereClause} ORDER BY school, name_e`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -587,9 +667,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202",
+   "read_table": "bodha_discoveries",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_discoveries; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (2 module(s): query_contradictions.ts, query_discoveries.ts; ); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::bodha_discoveries",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202 reads `bodha_discoveries` (`FROM bodha_discoveries`). Dens.served=PASS.",
     "prose_fields": "bodha_discoveries.surface_reading,depth_reading,hypothesis_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -604,9 +686,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'arudha' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -618,9 +702,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610",
+   "read_table": "bodha_cgm_nodes",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_nodes; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=FAIL (1 module(s): traverse_chart_graph.ts; declaring density_cont); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts::bodha_cgm_nodes",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -632,9 +718,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:36",
+   "read_table": "bodha_cdlm_chart_summary",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_chart_summary; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (1 module(s): query_cdlm_summary.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts::bodha_cdlm_chart_summary",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:36 reads `bodha_cdlm_chart_summary` (`chart_summary:       'bodha_cdlm_chart_summary',`). Dens.served=PASS. Dynamic table map: line 36 maps tier chart_summary -> bodha_cdlm_chart_summary and the same file selects `FROM ${table}` (line 180); the default tier serves it.",
     "prose_fields": null
    }
   },
@@ -646,9 +734,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74",
+   "read_table": "bodha_cgm_motifs",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_motifs; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=FAIL (1 module(s): query_cgm_motifs.ts; declaring density_contract); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts::bodha_cgm_motifs",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -660,9 +750,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76",
+   "read_table": "bodha_cgm_paths",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_paths; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=FAIL (1 module(s): query_cgm_paths.ts; declaring density_contract:); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts::bodha_cgm_paths",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts:76 reads `bodha_cgm_paths` (`FROM bodha_cgm_paths`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -674,9 +766,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:89",
+   "read_table": "bodha_chart_gestalt",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_chart_gestalt; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (1 module(s): query_chart_gestalt.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts::bodha_chart_gestalt",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts:89 reads `bodha_chart_gestalt` (`FROM bodha_chart_gestalt`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -688,9 +782,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777",
+   "read_table": "bodha_question_lenses",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_question_lenses; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (2 module(s): query_domain_reading.ts, query_question_lenses.); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts::bo_drishti",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:777 reads `bodha_question_lenses` (`FROM bodha_question_lenses`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -702,6 +798,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed); writer-backed own table(s) bodha_grounding_matches; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map marks it directly_serves_output for scu.catalog.query_attribution, but no consumer is built yet (designed-to-be-consumed): the two sources disagree.",
@@ -716,9 +814,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586",
+   "read_table": "bodha_cgm_edges",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_edges; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=FAIL (2 module(s): query_contradictions.ts, traverse_chart_graph.t); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts::bodha_cgm_edges",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -733,9 +833,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -747,9 +849,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: bodha_ms",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
     "prose_fields": null
    }
   },
@@ -764,9 +868,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'nakshatra_semantic' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -778,9 +884,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86",
+   "read_table": "synthesis_quality_scorecard",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) synthesis_quality_scorecard; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): s",
-    "carriage": "Dens.served=FAIL (1 module(s): query_quality_scorecard.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts::synthesis_quality_scorecard",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts:86 reads `synthesis_quality_scorecard` (`FROM synthesis_quality_scorecard`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -792,23 +900,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161",
+   "read_table": "bodha_pratijna",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_pratijna; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (1 module(s): query_pratijna.ts; declaring density_contract: ); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts::bodha_pratijna",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161 reads `bodha_pratijna` (`FROM bodha_pratijna`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
   "bo_samskara": {
    "kind": "data",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_signal_embeddings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (1 module(s): query_signals.ts; declaring density_contract: 1); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts::bodha_signal_embeddings",
+    "carriage": "served_surface null (unknown): the only pointer was a description; query_signals.ts:484 states the semantic (embedding) path is unavailable at query time and salience ranking is used instead, and no served capability SELECTs bodha_signal_embeddings.",
     "prose_fields": null
    }
   },
@@ -820,9 +932,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:308",
+   "read_table": "vw_chart_digest",
    "evidence": {
     "kind": "seed storage_type=postgres_view, target vw_chart_digest; writer platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py docstring: a VIEW definition, preserved not recreated; census Idem.pattern: no write to own table; registry asset_kind reads data (storage_type disagrees)",
-    "carriage": "Dens.served=FAIL (1 module(s): query_ucd.ts; declaring density_contract: 0); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts::vw_chart_digest",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:308 reads `vw_chart_digest` (`FROM vw_chart_digest`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -834,9 +948,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739",
+   "read_table": "bodha_cdlm_cells",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_cells; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=FAIL (2 module(s): query_domain_reading.ts, query_remedies.ts; dec); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts::bodha_cdlm_cells",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells,`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -851,9 +967,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'special_lagna' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -868,9 +986,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'sudarshana_agreement' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -882,9 +1002,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362",
+   "read_table": "bodha_rm_resonances",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_rm_resonances; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=FAIL (2 module(s): query_remedies.ts, query_rm_resonances.ts; decl); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts::bo_upaya",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362 reads `bodha_rm_resonances` (`FROM bodha_rm_resonances`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -899,9 +1021,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
+   "read_table": "bodha_msr_signals",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (6 module(s): query_discoveries.ts, query_domain_reading.ts, ); surface reference e.g. platform/src/app/api/chat/consult/route.ts::bodha_msr_signals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so classes 'vargottama_amplification' / 'dhana_axis' rows are reachable; the asset's count_sql selects exactly that class filter.",
     "prose_fields": "bodha_msr_signals.signal_headline_text,signal_summary_text: TEXT in DDL (325_l2_bodha_enriched_schema.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -913,9 +1037,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446",
+   "read_table": "bodha_mechanisms",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_mechanisms; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
-    "carriage": "Dens.served=PASS (1 module(s): query_mechanisms.ts; declaring density_contract); surface reference e.g. platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts::bodha_mechanisms",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446 reads `bodha_mechanisms` (`FROM bodha_mechanisms d`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -927,9 +1053,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:85",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:85 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = 'ayurdaya' (this asset's single category).",
     "prose_fields": null
    }
   },
@@ -941,9 +1069,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91",
+   "read_table": "ga_condition_composite",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_condition_composite; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (1 module(s): get_condition_composite.ts; declaring density_c); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91 reads `ga_condition_composite` (`FROM ga_condition_composite`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -955,9 +1085,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:727",
+   "read_table": "chart_dashas",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_dashas; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (3 module(s): coverage_matrix.ts, get_dasha_lord_capability.t); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts::chart_dashas",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:727 reads `chart_dashas` (`FROM chart_dashas d`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -969,9 +1101,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:86",
+   "read_table": "ga_medical",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_medical; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "Dens.served=PASS (1 module(s): get_medical_indications.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts::ga_medical",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts:86 reads `ga_medical` (`FROM ga_medical`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -983,9 +1117,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:91",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:91 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
     "prose_fields": null
    }
   },
@@ -997,9 +1133,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(PANCHANGA_CATEGORIES) (panchanga_* categories, this asset's LIKE 'panchanga%' set).",
     "prose_fields": null
    }
   },
@@ -1011,9 +1149,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
     "prose_fields": null
    }
   },
@@ -1025,9 +1165,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/register_p1_synthesis.ts:1011",
+   "read_table": "ga_prashna_judgment",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_prashna_judgment; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/register_p1_synthesis.ts:1011 `FROM ga_prashna_judgment gj` (prashna_undertaking_get; selects verdict, significators, tajik_yoga, fructification).",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/register_p1_synthesis.ts:1011 reads `ga_prashna_judgment` (`FROM ga_prashna_judgment gj`). Dens.served=N/A (scanner gap: the scan does not see this read). Served prashna_undertaking_get tool (verdict, significators, tajik_yoga, fructification).",
     "prose_fields": null
    }
   },
@@ -1039,9 +1181,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
     "prose_fields": null
    }
   },
@@ -1053,9 +1197,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
     "prose_fields": null
    }
   },
@@ -1067,9 +1213,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:110",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (34 module(s): concept_locate.ts, get_argala.ts, get_ashtakav); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:110 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = 'sensitive_degree_check' (this asset's single category).",
     "prose_fields": null
    }
   },
@@ -1081,9 +1229,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=NO_DETECTOR (NO_DETECTOR — no capability module's code references ga_stre); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189 reads `chart_facts` (`FROM chart_facts`). Dens.served=NO_DETECTOR. Shared table chart_facts: the query filters fact_category = ANY(STRENGTH_CATEGORIES) (graha_shadbala_*, graha_vimsopaka_*, ishta/kashta phala...: the asset's categories).",
     "prose_fields": null
    }
   },
@@ -1095,9 +1245,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138",
+   "read_table": "chart_facts",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts,fact_category_ownership; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (2 module(s): get_structural_signals.ts, get_vichara.ts; decl); surface reference e.g. platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts::chart_facts",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
     "prose_fields": null
    }
   },
@@ -1109,9 +1261,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215",
+   "read_table": "l1_tajik_varsha_year_lords",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) l1_tajik_varsha_year_lords; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): l",
-    "carriage": "Dens.served=PASS (2 module(s): coverage_matrix.ts, get_tajik.ts; declaring den); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts::l1_tajik_varsha_year_lords",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215 reads `l1_tajik_varsha_year_lords` (`let vSql = `SELECT * FROM l1_tajik_varsha_year_lords WHERE chart_id = $1``). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1123,9 +1277,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:74",
+   "read_table": "ga_transit_anchors",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_transit_anchors; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "Dens.served=PASS (1 module(s): get_transit_anchors.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts::ga_transit_anchors",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts:74 reads `ga_transit_anchors` (`FROM ga_transit_anchors`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1137,9 +1293,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90",
+   "read_table": "chart_divisionals",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (4 module(s): coverage_matrix.ts, get_argala.ts, get_chart_sn); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts::chart_divisionals",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1151,9 +1309,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts:98",
+   "read_table": "ga_vastu_planet_direction_map",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_vastu_planet_direction_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "Dens.served=PASS (1 module(s): get_vastu_directions.ts; declaring density_cont); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts::ga_vastu_planet_direction_map",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts:98 reads `ga_vastu_planet_direction_map` (`FROM ga_vastu_planet_direction_map m`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1165,9 +1325,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187",
+   "read_table": "chart_vichara",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_vichara; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
-    "carriage": "Dens.served=PASS (2 module(s): get_dasha_lord_capability.ts, get_vichara.ts; d); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts::chart_vichara",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts:187 reads `chart_vichara` (`FROM chart_vichara`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1179,9 +1341,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213",
+   "read_table": "ga_yoga_firings",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_yoga_firings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "Dens.served=PASS (2 module(s): get_yoga_dosha.ts, get_yoga_firings.ts; declari); surface reference e.g. platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts::ga_yoga_firings",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1193,9 +1357,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93",
+   "read_table": "kala_avadhi",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_avadhi; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_dasha_dossier.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts::ka_avadhi",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1207,23 +1373,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251",
+   "read_table": "kala_bhavishya",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_bhavishya; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (2 module(s): query_projections.ts, query_temporal_activation); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts::ka_bhavishya_lekha",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251 reads `kala_bhavishya` (`FROM kala_bhavishya`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
   "ka_dasha_kala": {
    "kind": "service",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (seed asset_kind='service', T0 service); no target_table; writer platform/python-sidecar/pipeline/orchestrator/writers/services/ka_dasha_kala/ writes no table (census Idem.pattern: no write to own tables, none declared); migration 860 health-probe service",
-    "carriage": "Dens.served=FAIL (1 module(s): call_service_wrappers.ts; declaring density_con); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts::ka_dasha_kala",
+    "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
    }
   },
@@ -1235,9 +1405,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1216",
+   "read_table": "kala_gochara_windows",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_gochara_windows; census Idem.pattern PARTIAL: registry/writer table mismatch (R240, a registry-data findin",
-    "carriage": "Dens.served=FAIL (1 module(s): call_service_wrappers.ts; declaring density_con); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::kala_gochara_windows",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1216 reads `kala_gochara_windows` (`FROM kala_gochara_windows`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1249,23 +1421,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1135",
+   "read_table": "gochara_resonance_map",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1135 and :1197 `FROM gochara_resonance_map rm` (served gochara-windows tool; event-class coverage served from the map).",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1135 reads `gochara_resonance_map` (`FROM gochara_resonance_map rm`). Dens.served=N/A (scanner gap: the scan does not see this read). Served gochara-windows tool (event-class coverage from the resonance map); also :1197.",
     "prose_fields": null
    }
   },
   "ka_graha_sancara": {
    "kind": "service",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (seed asset_kind='service', T0 service); no target_table; writer platform/python-sidecar/pipeline/orchestrator/writers/services/ka_graha_sancara/ writes no table (census Idem.pattern: no write to own tables, none declared); migration 860 health-probe service",
-    "carriage": "Dens.served=FAIL (1 module(s): call_service_wrappers.ts; declaring density_con); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts::ka_graha_sancara",
+    "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
    }
   },
@@ -1277,9 +1453,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158",
+   "read_table": "kala_jivana_parva",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_jivana_parva; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_life_arc.ts; declaring density_contract: ); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts::kala_jivana_parva",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158 reads `kala_jivana_parva` (`FROM kala_jivana_parva`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1291,9 +1469,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87",
+   "read_table": "kala_darshana",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_darshana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_temporal_view.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts::ka_kala_darshana",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87 reads `kala_darshana` (`FROM kala_darshana`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1305,9 +1485,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:287",
+   "read_table": "kala_activation",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_activation; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (2 module(s): call_service_wrappers.ts, query_temporal_activa); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts::kala_activation",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:287 reads `kala_activation` (`FROM kala_activation`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1319,9 +1501,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:110",
+   "read_table": "kala_kota_chakra",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_kota_chakra; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_kota_chakra.ts; declaring density_contrac); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts::kala_kota_chakra",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:110 reads `kala_kota_chakra` (`FROM kala_kota_chakra`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1333,6 +1517,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_field; census Idem.pattern FAIL: rebuild refused when target is populated: services/ka_kshetr",
     "carriage": "served_surface null (unknown): the only evidence is a provenance/comment mention (query_predictive_anchors.ts:209 comment citing ka_kshetra/stage8_spec.py); its table kala_field has no registry capability (platform-mcp/src/tools/kala_views/ritual.ts:783); Dens.served N/A.",
@@ -1347,23 +1533,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:107",
+   "read_table": "kala_moorti_nirnaya",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_moorti_nirnaya; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_moorti_nirnaya.ts; declaring density_cont); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts::kala_moorti_nirnaya",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:107 reads `kala_moorti_nirnaya` (`FROM kala_moorti_nirnaya`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
   "ka_muhurta_seva": {
    "kind": "service",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (seed asset_kind='service', T0 service); no target_table; writer platform/python-sidecar/pipeline/orchestrator/writers/services/ka_muhurta_seva/ writes no table (census Idem.pattern: no write to own tables, none declared); migration 860 health-probe service",
-    "carriage": "Dens.served=FAIL (1 module(s): call_service_wrappers.ts; declaring density_con); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts::ka_muhurta_seva",
+    "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
    }
   },
@@ -1375,9 +1565,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:126",
+   "read_table": "kala_convergence",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_convergence; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (2 module(s): query_convergence_windows.ts, query_temporal_ac); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts::kala_convergence",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:126 reads `kala_convergence` (`FROM kala_convergence`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1389,9 +1581,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:89",
+   "read_table": "kala_sudarshana_varsha",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_sudarshana_varsha; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_sudarshana_varsha.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts::kala_sudarshana_varsha",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:89 reads `kala_sudarshana_varsha` (`FROM kala_sudarshana_varsha`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1403,9 +1597,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts:100",
+   "read_table": "kala_taranga",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_taranga; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_activation_waveform.ts; declaring density); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts::ka_taranga",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts:100 reads `kala_taranga` (`FROM kala_taranga WHERE ${where}`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1417,23 +1613,27 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:91",
+   "read_table": "kala_tithi_pravesha",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_tithi_pravesha; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_tithi_pravesha.ts; declaring density_cont); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts::kala_tithi_pravesha",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:91 reads `kala_tithi_pravesha` (`FROM kala_tithi_pravesha`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
   "ka_tulana": {
    "kind": "service",
    "carriage": {
-    "served_surface": true
+    "served_surface": null
    },
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (seed asset_kind='service', T0 service); no target_table; writer platform/python-sidecar/pipeline/orchestrator/writers/services/ka_tulana/ writes no table (census Idem.pattern: no write to own tables, none declared); migration 860 health-probe service",
-    "carriage": "Dens.served=FAIL (1 module(s): call_service_wrappers.ts; declaring density_con); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts::ka_tulana",
+    "carriage": "served_surface null (unknown): a table-less service asset (registry target_table and count_sql null); there is no `FROM` read of its rows to cite, and a served call of the service is not a read of its rows, so nothing supports true (and nothing supports false).",
     "prose_fields": null
    }
   },
@@ -1445,9 +1645,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts:144",
+   "read_table": "kala_vedha_gochara",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_vedha_gochara; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_vedha_gochara.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts::ka_vedha_gochara",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts:144 reads `kala_vedha_gochara` (`FROM kala_vedha_gochara`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1459,9 +1661,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81",
+   "read_table": "kala_obstruction",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_obstruction; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_obstruction_periods.ts; declaring density); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts::ka_vighnakara",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81 reads `kala_obstruction` (`FROM kala_obstruction`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1473,9 +1677,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:388",
+   "read_table": "kala_activation_predicates",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_activation_predicates; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "Dens.served=FAIL (1 module(s): query_temporal_activation.ts; declaring density); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts::kala_activation_predicates",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:388 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1487,9 +1693,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts:204",
+   "read_table": "life_events",
    "evidence": {
     "kind": "N-22 ruling principle 6 (people-entered, N-46); registry asset_kind reads data (seed, T0, census Build.target text 'asset_kind=data'); has_writer=false, no @register, no target_table, count_sql over life_events (census)",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts:204 `FROM life_events WHERE ...` (capability lel_query) which platform-mcp/src/tools/register_p1_aliases.ts:2076-2086 mimamsa_lel_query calls via callPlatformPrim('lel_query'); its rows are served directly.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts:204 reads `life_events` (`FROM life_events`). Dens.served=N/A (scanner gap: the scan does not see this read). Served capability lel_query; platform-mcp mimamsa_lel_query reaches it through register_p1_aliases.ts:2076-2086 (callPlatformPrim('lel_query')).",
     "prose_fields": null
    }
   },
@@ -1503,9 +1711,11 @@
    "cross_asset_writes": [
     "mimamsa_predictions.lifecycle_status"
    ],
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts:80",
+   "read_table": "mimamsa_journal",
    "evidence": {
     "kind": "registry kind service (seed asset_kind='service'; T0 service); writer platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py only SELECTs its own target mimamsa_journal and UPDATEs mimamsa_predictions.lifecycle_status (mi_bhavisya's table, not its own); python-sidecar/scripts/nirmana_service_effect_contracts.json; census Idem.pattern: no write to own table mimamsa_journal",
-    "carriage": "Dens.served=PASS (1 module(s): query_journal.ts; declaring density_contract: 1); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts::mimamsa_journal",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts:80 reads `mimamsa_journal` (`FROM mimamsa_journal`). Dens.served=PASS.",
     "prose_fields": null,
     "cross_asset_writes": "mi_abhilekha.py:70 `UPDATE mimamsa_predictions SET lifecycle_status` (mi_bhavisya's table); python-sidecar/scripts/nirmana_service_effect_contracts.json contracts.mi_abhilekha.writes=[mimamsa_predictions.lifecycle_status]. It reads mimamsa_journal, which no writer inserts into (migration 691 note: `INSERT INTO mimamsa_journal` returns nothing). A service is NOT write-nothing: a future write-nothing cause must key on cross_asset_writes == [], never on kind service."
    }
@@ -1518,9 +1728,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts:84",
+   "read_table": "mimamsa_load_bearing",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_load_bearing; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (1 module(s): query_load_bearing.ts; declaring density_contra); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts::mi_adhilepa",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts:84 reads `mimamsa_load_bearing` (`FROM mimamsa_load_bearing`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1532,9 +1744,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform-mcp/src/lib/kala_envelope.ts:553",
+   "read_table": "kala_field_skill",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_field_skill; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
-    "carriage": "served_surface true (real read; Dens scan N/A is a scanner gap): platform-mcp/src/lib/kala_envelope.ts:553-556 `FROM kala_field_skill agg` in fetchCalibrationMaturity(), called by the served kala views priority.ts:450, ritual.ts:806, upaya.ts:474, elect.ts:1043. (The registry target_table kala_field_weight_versions has no read; the real read is of kala_field_skill, the table the census found the writer replacing.)",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/lib/kala_envelope.ts:553 reads `kala_field_skill` (`FROM kala_field_skill`). Dens.served=N/A (scanner gap: the scan does not see this read). The registry target_table kala_field_weight_versions has no served read; the read is of kala_field_skill, the table the census found the writer replacing, via fetchCalibrationMaturity() (called by kala views priority.ts:450, ritual.ts:806, upaya.ts:474, elect.ts:1043).",
     "prose_fields": null
    }
   },
@@ -1548,9 +1762,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:151",
+   "read_table": "mimamsa_predictions",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_predictions; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (4 module(s): prediction_lifecycle_sweep.ts, query_calibratio); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts::mimamsa_predictions",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:151 reads `mimamsa_predictions` (`? `JOIN mimamsa_predictions p`). Dens.served=PASS. mimamsa_predictions is joined in the served calibration capability (prediction rows feed the calibration output).",
     "prose_fields": "mimamsa_predictions.outcome_claim: TEXT in DDL (347_mimamsa_bhavisya.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -1564,9 +1780,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts:152",
+   "read_table": "mimamsa_insight_units",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_insight_units; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (2 module(s): query_insight_embeddings.ts, query_insights.ts;); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::mimamsa_insight_units",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts:152 reads `mimamsa_insight_units` (`LEFT JOIN mimamsa_insight_units u`). Dens.served=PASS.",
     "prose_fields": "mimamsa_insight_units.statement: TEXT in DDL (353_mimamsa_darshana.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -1578,9 +1796,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:185",
+   "read_table": "mimamsa_multipliers",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_multipliers; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (1 module(s): query_calibration.ts; declaring density_contrac); surface reference e.g. platform/src/app/api/clients/[id]/learning/route.ts::mimamsa_calibration_snapshot",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:185 reads `mimamsa_multipliers` (`FROM mimamsa_multipliers`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1592,6 +1812,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_event_provenance; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface null (unknown): the only evidence is a resync trigger comment (api/clients/[id]/learning/route.ts:154), not a read; its table mimamsa_event_provenance has no directly serving registry capability (editorial map producer_editorial_review.ts:401); Dens.served N/A.",
@@ -1606,9 +1828,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts:96",
+   "read_table": "mimamsa_signal_families",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_signal_families; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (1 module(s): query_signal_families.ts; declaring density_con); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts::mimamsa_negative_controls",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts:96 reads `mimamsa_signal_families` (`FROM mimamsa_signal_families`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1620,9 +1844,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:192",
+   "read_table": "mimamsa_qa_eval",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_qa_eval; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (3 module(s): query_attribution.ts, query_calibration.ts, que); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts::mimamsa_attribution",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:192 reads `mimamsa_qa_eval` (`FROM mimamsa_qa_eval`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1634,9 +1860,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:166",
+   "read_table": "mimamsa_calibration",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_calibration; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (2 module(s): query_calibration.ts, query_insights.ts; declar); surface reference e.g. platform/src/app/api/clients/[id]/learning/route.ts::mimamsa_calibration",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:166 reads `mimamsa_calibration` (`FROM mimamsa_calibration c`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1648,9 +1876,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts:108",
+   "read_table": "mimamsa_manifestation_grammar",
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_manifestation_grammar; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
-    "carriage": "Dens.served=PASS (2 module(s): query_manifestation_grammar.ts, query_manifesta); surface reference e.g. platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts::mi_sambandha",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts:108 reads `mimamsa_manifestation_grammar` (`FROM mimamsa_manifestation_grammar`). Dens.served=PASS.",
     "prose_fields": null
    }
   },
@@ -1662,6 +1892,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_intervention_ledger; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface null (unknown): no real served read found. Its table mimamsa_intervention_ledger is written by platform/src/lib/mcp/intervention_ledger_writer.ts:65 (filing), SELECTed only for dedupe (intervention_ledger_writer.ts:110) and by its own build service (python-sidecar/services/mi_sankalpa/db.py, used only by pipeline/orchestrator/writers/mi_sankalpa.py), and wiped by cockpit assetClearSpec.ts:176; platform-mcp/src/lib/kala_upaya_diagnosis.ts:1063-1098 buildEfficacyReport states it has no MCP-exposed read path and always returns honest_empty. A kala_upaya_diagnosis.ts comment, the api/mcp/db/query allow-list and a filing-write do not count. Dens.served N/A is correct here.",
@@ -1676,6 +1908,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": [],
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "registry kind service (seed asset_kind='service'; T0 service); writer platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py only SELECTs information_schema (raises if a table is absent), writes nothing; nirmana_service_effect_contracts.json writes=[]; census Idem.pattern: no write to own table mimamsa_preferences",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map marks it directly_serves_output for scu.catalog.query_calibration, but no consumer is built yet (designed-to-be-consumed): the two sources disagree.",
@@ -1691,6 +1925,8 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": null,
+   "read_table": null,
    "evidence": {
     "kind": "NOT DECLARED (sources disagree): registry asset_kind data (seed default, T0 data); writer platform/python-sidecar/pipeline/orchestrator/writers/mi_vistara.py docstring says 'service asset', only verifies the table and COUNTs, writes no table (census Idem.pattern PARTIAL: no write to own table mimamsa_export_log); no registry or manifest witness for service/probe; question to SS",
     "carriage": "served_surface null (unknown): negative scan is not proof; editorial map PRODUCER_SEMANTIC_REVIEW marks it directly_serves_output for scu.catalog.query_insight_embeddings.",
@@ -1707,9 +1943,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:99",
+   "read_table": "phala_muhurta",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_muhurta; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/app/api/mcp/db/query/route.ts::phala_muhurta",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:99 reads `phala_muhurta` (`FROM phala_muhurta`). Dens.served=FAIL.",
     "prose_fields": "phala_muhurta.verdict_reason: TEXT in DDL (331_phala_muhurta.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -1721,9 +1959,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:408",
+   "read_table": "phala_anchors",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_anchors; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (2 module(s): query_phala_calibration.ts, query_predictive_an); surface reference e.g. platform/src/app/api/clients/[id]/learning/route.ts::phala_anchors",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:408 reads `phala_anchors` (`FROM phala_anchors a`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1735,9 +1975,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:94",
+   "read_table": "phala_phaladesa",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_phaladesa; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_domain_result.ts; declaring density_contr); surface reference e.g. platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts::phala_phaladesa",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:94 reads `phala_phaladesa` (`FROM phala_phaladesa`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1751,9 +1993,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:245",
+   "read_table": "phala_pramana",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_pramana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts::ph_pramana",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:245 reads `phala_pramana` (`FROM phala_pramana`). Dens.served=FAIL.",
     "prose_fields": "phala_pramana.falsifier_text: TEXT in DDL (338_phala_pramana.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -1765,9 +2009,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:427",
+   "read_table": "phala_mitigation",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_mitigation; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts::phala_mitigation",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:427 reads `phala_mitigation` (`FROM phala_mitigation`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1779,9 +2025,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:613",
+   "read_table": "phala_rectification",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_rectification; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts::ph_rectification",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:613 reads `phala_rectification` (`FROM phala_rectification`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
@@ -1795,9 +2043,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:181",
+   "read_table": "phala_sankrama",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_sankrama; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts::ph_sankrama",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:181 reads `phala_sankrama` (`FROM phala_sankrama`). Dens.served=FAIL.",
     "prose_fields": "phala_sankrama.mechanism_text: TEXT in DDL (337_phala_sankrama.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -1811,9 +2061,11 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:323",
+   "read_table": "phala_sodhana",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_sodhana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts::ph_sodhana",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:323 reads `phala_sodhana` (`FROM phala_sodhana`). Dens.served=FAIL.",
     "prose_fields": "phala_sodhana.recommendation_text: TEXT in DDL (333_phala_sodhana.sql); listed in census reach.exposed (a capability query SELECTs it); the writer scope references the column(s)"
    }
   },
@@ -1825,9 +2077,11 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:514",
+   "read_table": "phala_suddha_sodhana",
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_suddha_sodhana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
-    "carriage": "Dens.served=FAIL (1 module(s): query_phala_calibration.ts; declaring density_c); surface reference e.g. platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts::phala_suddha_sodhana",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:514 reads `phala_suddha_sodhana` (`FROM phala_suddha_sodhana`). Dens.served=FAIL.",
     "prose_fields": null
    }
   }

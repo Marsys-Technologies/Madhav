@@ -411,9 +411,15 @@ DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_d
 # ever be wrong-or-redundant; it already was wrong for bg_gochara_arcs, whose real reader ka_gochara has no registry
 # depends_on edge (a registry defect, recorded in the evidence file, not a declaration). Nothing overrides the radius.
 CARRIAGE_FIELDS = ("served_surface",)
-_DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes", "evidence")
+_DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
+                    "read_evidence", "read_table", "evidence")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
-_CROSS_WRITE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")   # table.column, nothing else
+_CROSS_WRITE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*")   # table.column; used with fullmatch
+# `served_surface: true` needs a real read: `read_evidence` is a repo-relative `path:line` (1-based) and `read_table` the
+# identifier that line reads FROM/JOINs (a test opens the file and checks the line); neither may exist otherwise.
+# Components are non-empty (so no absolute path) and never '.'/'..' (checked in validate_declarations).
+_READ_EVIDENCE_RE = re.compile(r"[A-Za-z0-9_.\[\]@-]+(?:/[A-Za-z0-9_.\[\]@-]+)*\.(?:ts|tsx|py):[1-9][0-9]*")
+_READ_TABLE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 class DeclarationsError(ValueError):
@@ -490,9 +496,22 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                                         f"(why the asset has no downstream consumer BY CONSTRUCTION)")
             if isinstance(car, dict) and car.get("served_surface") is True:
                 raise DeclarationsError(f"{where}: terminal_by_construction contradicts carriage.served_surface true")
+        re_ = e.get("read_evidence")
+        rt = e.get("read_table")
+        served_true = isinstance(car, dict) and car.get("served_surface") is True
+        if re_ is not None and not (isinstance(re_, str) and _READ_EVIDENCE_RE.fullmatch(re_)
+                                    and not {".", ".."} & set(re_.rsplit(":", 1)[0].split("/"))):
+            raise DeclarationsError(f"{where}.read_evidence must be null or a repo-relative 'path/to/file.ts:LINE' string")
+        if rt is not None and not (isinstance(rt, str) and _READ_TABLE_RE.fullmatch(rt)):
+            raise DeclarationsError(f"{where}.read_table must be null or a table identifier")
+        if served_true and (re_ is None or rt is None):
+            raise DeclarationsError(f"{where}: carriage.served_surface true requires read_evidence ('path:line' of a real "
+                                    f"non-test read of the asset's table) and read_table; without a real read it is null")
+        if not served_true and (re_ is not None or rt is not None):
+            raise DeclarationsError(f"{where}: read_evidence/read_table are only for carriage.served_surface true")
         cw = e.get("cross_asset_writes")
         if cw is not None:
-            if (not isinstance(cw, list) or not all(isinstance(c, str) and _CROSS_WRITE_RE.match(c) for c in cw)
+            if (not isinstance(cw, list) or not all(isinstance(c, str) and _CROSS_WRITE_RE.fullmatch(c) for c in cw)
                     or len({c.lower() for c in cw}) != len(cw)):
                 raise DeclarationsError(f"{where}.cross_asset_writes must be null or a list of distinct (case-insensitively) "
                                         f"'table.column' strings ([] = declared: writes nothing outside its own table)")
@@ -516,7 +535,7 @@ def load_asset_declarations(path=None, registry_ids=None) -> dict:
     p = Path(path) if path is not None else DECLARATIONS_PATH
     try:
         text = p.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
+    except (OSError, ValueError) as exc:     # ValueError: UnicodeDecodeError, an embedded NUL in the path
         raise DeclarationsError(f"cannot read the declarations file {p}: {exc}") from exc
     try:
         doc = json.loads(text, object_pairs_hook=_decl_pairs)
@@ -524,13 +543,16 @@ def load_asset_declarations(path=None, registry_ids=None) -> dict:
         raise DeclarationsError(f"declarations file {p} is not valid JSON: {exc}") from exc
     except RecursionError as exc:
         raise DeclarationsError(f"declarations file {p} is nested too deeply to parse (recursion limit)") from exc
+    except ValueError as exc:                # e.g. an integer literal over the int-parsing digit limit
+        raise DeclarationsError(f"declarations file {p} cannot be parsed: {exc}") from exc
     return validate_declarations(doc, registry_ids)
 
 
 def declared_facts(declarations, asset_id, registry_kind=None, measured_dependents=None, measured_served=None) -> dict:
     """The DECLARED facts for one asset, as separate keys that never replace a measured one:
     `declared_kind`; `declared_carriage` (only the known `served_surface` boolean); `declared_carries_downstream`;
-    `declared_prose_fields`; `declared_terminal_by_construction` (the pointer string); `declared_cross_asset_writes`
+    `declared_prose_fields`; `declared_read_evidence` / `declared_read_table` (the `path:line` of the real read that
+    backs a declared served_surface true); `declared_terminal_by_construction` (the pointer string); `declared_cross_asset_writes`
     (a list of 'table.column'; [] = declared writes-nothing-outside-its-own-table, null = unknown, key omitted); and
     `declaration_disagreements`: every place a declaration contradicts a measured or registry fact, reported and
     never resolved. Absent asset / null field -> key left out (UNKNOWN).
@@ -544,7 +566,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     Measured inputs (each optional; a disagreement is reported only where the measurement is available):
     `registry_kind` (only 'service' and 'data' are compared: `artifact` maps to the declaration file per asset),
     `measured_dependents` (the census blocking_radius.direct; the only word on DAG dependents), `measured_served`
-    (the Dens.served verdict: a declared served_surface False against PASS/FAIL, or True against N/A, is reported)."""
+    (the Dens.served verdict: a declared served_surface False against PASS/FAIL/PARTIAL, or True against N/A, is reported)."""
     facts: dict = {}
     e = (declarations or {}).get(asset_id)
     if not isinstance(e, dict):
@@ -565,7 +587,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     if served is True:
         facts["declared_carries_downstream"] = True
     if isinstance(measured_served, str):
-        if served is False and measured_served in (PASS, FAIL):
+        if served is False and measured_served in (PASS, FAIL, PARTIAL):
             disagree.append(dict(field="carriage.served_surface", declared=False, measured=measured_served))
         elif served is True and measured_served == NA:
             disagree.append(dict(field="carriage.served_surface", declared=True, measured=measured_served))
@@ -582,6 +604,10 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
     cw = e.get("cross_asset_writes")
     if isinstance(cw, list):
         facts["declared_cross_asset_writes"] = list(cw)
+    rev, rtab = e.get("read_evidence"), e.get("read_table")
+    if isinstance(rev, str) and rev.strip() and isinstance(rtab, str) and rtab.strip():
+        facts["declared_read_evidence"] = rev
+        facts["declared_read_table"] = rtab
     if disagree:
         facts["declaration_disagreements"] = disagree
     return facts
