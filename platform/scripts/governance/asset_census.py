@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import bisect
 import datetime as dt
 import json
 import os
@@ -168,7 +169,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches at least one served capability module", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs a capability that declares density_contract AND selects a tier column from the asset's table in its served select", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
     "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
@@ -285,7 +286,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 3     # 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 4     # 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -1416,33 +1417,345 @@ def _ts_code(src: str, blank_strings: bool = False) -> str:
 
 _DENSITY_DECL = re.compile(r"\bdensity_contract\s*\??\s*:")
 
+# E6.1 (d) / N-22 ruling principle 4: the Dens scanner. A tier column is STRUCTURAL vocabulary: `tier`, any `<x>_tier`
+# (signature_tier, efficacy_tier, ...) and the L1 verification tier `verification_pass_status` — a column NAME, never a
+# value check. `confidence*` columns are deliberately not in it (open question to the lead, DESIGN_DENS.md Q1).
+DENS_TIER_COLUMN = re.compile(r"^(?:tier|\w+_tier|verification_pass_status)$", re.I)
+TIER_YES, TIER_NO, TIER_UNKNOWN = "tier", "no-tier", "unknown"
 
-def capability_scan(caps_dir: str, tables: list[str]) -> dict:
-    d = ROOT / caps_dir
-    if not d.is_dir():
-        # R222 / N3: `scanned=False` — "no module references the table" was never established.
-        return dict(modules=[], density=0, note=f"no capability directory at {caps_dir}", scanned=False)
-    hits, density, mentions = [], 0, []
-    for f in sorted(d.glob("*.ts")):
-        if f.name.endswith(".test.ts"):
-            continue
+
+def _ts_mask(src: str, blank_strings: bool = False) -> str:
+    """`_ts_code`'s comment discipline with POSITIONS KEPT: same length as `src`; every comment character becomes a
+    space (newlines stay); with `blank_strings`, literal contents too. Offsets found in the mask are offsets in `src`,
+    which `_ts_code` (it deletes comment text) cannot give — needed to say WHICH top-level declaration a token, a
+    `density_contract:` and a SELECT literal sit in."""
+    out = list(src)
+    i, n = 0, len(src)
+    while i < n:
+        c, nx = src[i], src[i + 1] if i + 1 < n else ""
+        if c == "/" and nx == "/":
+            j = src.find("\n", i)
+            j = n if j < 0 else j
+            out[i:j] = " " * (j - i)
+            i = j
+        elif c == "/" and nx == "*":
+            j = src.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            out[i:j] = [ch if ch == "\n" else " " for ch in src[i:j]]
+            i = j
+        elif c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                j += 2 if src[j] == "\\" else 1
+            if blank_strings:
+                out[i + 1:min(j, n)] = [ch if ch == "\n" else " " for ch in src[i + 1:min(j, n)]]
+            i = j + 1
+        else:
+            i += 1
+    return "".join(out)[:n]
+
+
+def _ts_literal_spans(src: str) -> list[tuple[int, str]]:
+    """`_ts_literals` with each literal's start offset in `src` (comments skipped, strings respected)."""
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c, nx = src[i], src[i + 1] if i + 1 < n else ""
+        if c == "/" and nx == "/":
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "/" and nx == "*":
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                j += 2 if src[j] == "\\" else 1
+            out.append((i + 1, src[i + 1:min(j, n)]))
+            i = j + 1
+        else:
+            i += 1
+    return out
+
+
+_DECL_LINE = re.compile(r"^(?:import\b|export\b|(?:async\s+)?function\b|(?:const|let|var|class|interface|type|enum)\b)", re.M)
+
+
+def _ts_decl_starts(mask: str) -> list[int]:
+    """Offsets where a TOP-LEVEL declaration begins (the unit this scan calls a capability): the point at which a
+    bracket nest returns to depth 0, a `;` at depth 0, and a line that starts a declaration keyword at depth 0.
+    `mask` has comments and string contents blanked, so a brace in either never counts. Limit, disclosed: a regex
+    literal holding a bracket is not recognised."""
+    starts, depth = {0}, 0
+    at_decl = {m.start() for m in _DECL_LINE.finditer(mask)}
+    for i, ch in enumerate(mask):
+        if depth == 0 and i in at_decl:
+            starts.add(i)
+        if ch in "{([":
+            depth += 1
+        elif ch in "})]":
+            depth = max(depth - 1, 0)
+            if depth == 0:
+                starts.add(i + 1)
+        elif ch == ";" and depth == 0:
+            starts.add(i + 1)
+    return sorted(starts)
+
+
+_DENS_RAW: dict[tuple, frozenset] = {}
+_DENS_FACTS: dict[tuple, dict] = {}
+
+
+def _dens_words(f: Path) -> tuple[tuple, frozenset]:
+    """Every `\\w+` word of the file's RAW text (comments included) — a cheap pre-filter: a token that is not a word
+    here is in no comment and no code, so the expensive parse below never runs for the file."""
+    st = f.stat()
+    key = (str(f), st.st_mtime_ns, st.st_size)
+    if key not in _DENS_RAW:
+        _DENS_RAW[key] = frozenset(re.findall(r"\w+", f.read_text(encoding="utf-8", errors="replace")))
+    return key, _DENS_RAW[key]
+
+
+def _dens_module(f: Path, key: tuple) -> dict:
+    """The file parsed once: comment-masked text (strings kept: the SQL lives in them), the declaration starts, the
+    offsets of `density_contract:` DECLARATIONS (R232: comments stripped, strings blanked), and the string literals
+    with their offsets."""
+    if key not in _DENS_FACTS:
         txt = f.read_text(encoding="utf-8", errors="replace")
-        # R51 (L4 handverify): a module SERVES the table only if its code references it — a comment
-        # that names the table (index.ts's catalogue header, a `//` aside, a JSDoc on a CHECK list)
-        # is not serving it. Strings stay: the SQL lives in them.
-        code = _ts_code(txt)
-        if not any(t and re.search(r"\b" + re.escape(t) + r"\b", code) for t in tables) and \
-                any(t and re.search(r"\b" + re.escape(t) + r"\b", txt) for t in tables):
-            mentions.append(f.name)                         # R51: named in a comment only
-        if any(t and re.search(r"\b" + re.escape(t) + r"\b", code) for t in tables):
-            hits.append(f.name)
-            # R232 (W2-1_C1_REVIEW F-S1, review A4): a DECLARED `density_contract:` property in code —
-            # comments stripped, string contents blanked — never a comment (`// no density_contract
-            # yet`) or a string that merely mentions the name. A verdict read from text is not a
-            # measurement of a declaration.
-            if _DENSITY_DECL.search(_ts_code(txt, blank_strings=True)):
-                density += 1
-    return dict(modules=hits, density=density, note="", scanned=True, comment_only=mentions)
+        blank = _ts_mask(txt, blank_strings=True)
+        _DENS_FACTS[key] = dict(
+            cmask=_ts_mask(txt),
+            starts=_ts_decl_starts(blank),
+            contracts=[m.start() for m in _DENSITY_DECL.finditer(blank)],
+            spans=_ts_literal_spans(txt),
+        )
+    return _DENS_FACTS[key]
+
+
+def _decl_of(mod: dict, pos: int) -> int:
+    return bisect.bisect_right(mod["starts"], pos)
+
+
+def _served_selects(table: str, lits: list[str]):
+    """`(i, match, alias, select_list)` for every `FROM|JOIN <table>` in literal `i` that sits under a SELECT list
+    (R23's reader, factored so the Dens scan and `field_reach` read a served select identically). A FROM counts only
+    with a SELECT in front of it — in the same literal or, for `'SELECT a, b ' + 'FROM t'`, the literal before (prose
+    that says "from <table>" is not a query)."""
+    rx = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:public\.)?\"?" + re.escape(table) +
+                    r"\b\"?(?:\s+(?:AS\s+)?([A-Za-z_][A-Za-z_0-9]*))?", re.I)
+    for i, lit in enumerate(lits):
+        for m in rx.finditer(lit):
+            alias = m.group(1) if m.group(1) and m.group(1).lower() not in _ALIAS_STOP else None
+            head = lit[:m.start()]
+            k = head.upper().rfind("SELECT")
+            if k >= 0:
+                sel = head[k + 6:]
+            else:
+                prev = lits[i - 1] if i else ""
+                k2 = prev.upper().rfind("SELECT")
+                if k2 < 0 or re.search(r"\bFROM\b", prev[k2:], re.I):
+                    continue
+                sel = prev[k2 + 6:]
+            yield i, m, alias, sel
+
+
+def _select_tier(sel: str, alias: str | None, table: str, cols: list[str] | None) -> tuple[str, list[str]]:
+    """Does this served select list carry a tier column? `(TIER_YES|TIER_NO|TIER_UNKNOWN, tier columns)`.
+    With the table's columns known (catalog), the list is resolved against them (`SELECT *` -> every column;
+    `b.signature_tier` of another table does not count). With them unknown, only an explicit tier NAME counts
+    (unqualified or qualified by this table/alias); `*` and a `${...}` run-time list stay UNKNOWN — never read as a
+    tier column and never as proof of its absence."""
+    dynamic = "${" in sel
+    if cols:
+        got = sorted(c for c in _selected_columns(sel, cols, alias, table) if DENS_TIER_COLUMN.match(c))
+        if got:
+            return TIER_YES, got
+        return (TIER_UNKNOWN if dynamic else TIER_NO), []
+    mine = {x.lower() for x in (alias, table) if x}
+    clean = re.sub(r"'[^']*'", "''", sel)
+    got, star = set(), False
+    for item in _split_top(clean):
+        it = item.strip()
+        if it == "*" or re.fullmatch(r"(?:DISTINCT\s+)?(?:\w+\.)?\*", it, re.I):
+            star = True
+        for q, name in re.findall(r"(?:\b([A-Za-z_][A-Za-z_0-9]*)\s*\.\s*)?\b([A-Za-z_][A-Za-z_0-9]*)\b", it):
+            if DENS_TIER_COLUMN.match(name) and (not q or q.lower() in mine):
+                got.add(name.lower())
+    if got:
+        return TIER_YES, sorted(got)
+    return (TIER_UNKNOWN if (star or dynamic) else TIER_NO), []
+
+
+def _name(rel: Path, root: str, first: bool) -> str:
+    return rel.as_posix() if first else f"{root}/{rel.as_posix()}"
+
+
+def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=()) -> dict:
+    """E6.1 (d): the Dens scanner, repaired (N-22 ruling principle 4). Structural: it reads source, not behaviour.
+
+    SCOPE. `caps_dirs` (one path or several; `measure()` passes `CAPS_ROOTS`, R23's serving roots) are read
+    RECURSIVELY — every layer directory, the files at the layers root, both MCP roots — for every token in `tables`
+    (target table, asset id, every `count_sql` table). A missing root is `scanned=False` (R222 / N3), never an N/A.
+    `outside_roots` (the wider source trees) are probed ONLY so that an asset with a served select outside the serving
+    roots is never read N/A: they grade nothing (no density contract lives there).
+
+    ATTRIBUTION. A token in `shared` (a table another asset also declares) never attributes a module to THIS asset:
+    `chart_facts` would make every reader serve every asset. Attribution is per capability (a top-level declaration):
+    a `density_contract:` counts for the asset only in a declaration that references it, and only a tier column in a
+    served `SELECT ... FROM <the asset's table>` of THAT SAME declaration makes it dense.
+
+    Returns `modules` (by code, attributing tokens), `density` (capabilities that are dense), `dense`, `declared`
+    (modules whose referencing capability declares the contract, with why the tier half is missing), `tier_only`,
+    `served` (how many served selects of the asset's tables), `shared_only`, `comment_only` (R51: a comment names it,
+    no code does), `outside`."""
+    dirs = [caps_dirs] if isinstance(caps_dirs, str) else list(caps_dirs)
+    for d in dirs:
+        if not (ROOT / d).is_dir():
+            # R222 / N3: `scanned=False` — "no module references the table" was never established.
+            return dict(modules=[], density=0, note=f"no capability directory at {d}", scanned=False)
+    shared = set(shared or ())
+    columns = columns or {}
+    toks = [t for t in dict.fromkeys(tables) if t and t not in shared]
+    sh = [t for t in dict.fromkeys(tables) if t and t in shared]
+    hits, dense, declared, tier_only, shared_only, mentions, elsewhere = [], [], [], [], [], [], []
+    served = 0
+    seen: set[str] = set()
+    for i, root in enumerate(dirs):
+        base = ROOT / root
+        for f in sorted(base.rglob("*.ts")):
+            if f.name.endswith(".test.ts") or "__tests__" in f.parts:
+                continue
+            seen.add(str(f))
+            name = _name(f.relative_to(base), root, i == 0)
+            key, words = _dens_words(f)
+            code_toks = [t for t in toks if t in words]
+            code_sh = [t for t in sh if t in words]
+            if not code_toks and not code_sh:
+                continue
+            mod = _dens_module(f, key)
+            has = lambda t: re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"])      # noqa: E731  (code, strings kept)
+            ref_toks = [t for t in code_toks if has(t)]                                # R51: code, not a comment
+            if not ref_toks:
+                if any(has(t) for t in code_sh):
+                    shared_only.append(name)
+                elif code_toks:
+                    mentions.append(name)                                              # R51: named in a comment only
+                continue
+            hits.append(name)
+            refs = {_decl_of(mod, m.start()) for t in ref_toks for m in re.finditer(r"\b" + re.escape(t) + r"\b", mod["cmask"])}
+            contract_decls = {_decl_of(mod, p) for p in mod["contracts"]} & refs      # a referencing capability's own contract
+            lits = [c for _p, c in mod["spans"]]
+            by_decl: dict[int, list[tuple[str, list[str]]]] = {}
+            # a select of a SHARED table counts only inside a capability that names THIS asset (by its id or by a table
+            # only it declares): the asset id discriminates what the shared table cannot
+            for t in ref_toks + [x for x in code_sh if has(x)]:
+                for li, m, alias, sel in _served_selects(t, lits):
+                    d = _decl_of(mod, mod["spans"][li][0])
+                    if d in refs:
+                        by_decl.setdefault(d, []).append(_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t)))
+                        served += 1
+            tier_decls = {d for d, sels in by_decl.items() if any(st == TIER_YES for st, _c in sels)}
+            both = contract_decls & tier_decls
+            if both:
+                dense.append((name, sorted({c for d in both for st, cs in by_decl[d] if st == TIER_YES for c in cs})))
+            else:
+                # a contract counts for the asset only in a capability that also SERVES it (a served select of its table
+                # in that same declaration) — a declaration that merely names the asset's id is not its serving capability
+                why = set()
+                for d in contract_decls:
+                    sts = {st for st, _c in by_decl.get(d, [])}
+                    if sts:
+                        why.add("tier carriage not established (a run-time select list, or SELECT * with unknown columns)"
+                                if TIER_UNKNOWN in sts else "no tier column in its served select")
+                    elif by_decl:
+                        why.add("its served select of the table is in a different top-level declaration of the module "
+                                "(contract/select attribution not established)")
+                if why:
+                    declared.append((name, sorted(why)))
+                else:
+                    if tier_decls:
+                        tier_only.append(name)
+                    if by_decl and mod["contracts"]:
+                        elsewhere.append(name)       # the module declares a contract, but not in a capability that serves it
+    outside: list[str] = []
+    for root in outside_roots or ():
+        base = ROOT / root
+        if not base.is_dir():
+            return dict(modules=[], density=0, note=f"no source directory at {root}", scanned=False)
+        for ext in ("*.ts", "*.tsx"):
+            for f in sorted(base.rglob(ext)):
+                if str(f) in seen or DENS_OUTSIDE_EXCLUDE.search(str(f)):
+                    continue
+                seen.add(str(f))
+                key, words = _dens_words(f)
+                if not any(t in words for t in toks):
+                    continue
+                mod = _dens_module(f, key)
+                lits = [c for _p, c in mod["spans"]]
+                if any(next(_served_selects(t, lits), None) for t in toks if t in words):
+                    outside.append(f.relative_to(ROOT).as_posix() if f.is_relative_to(ROOT) else str(f))
+    return dict(modules=hits, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
+                declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, elsewhere=elsewhere,
+                shared_tokens=sh, tokens=toks, roots=dirs)
+
+
+def _few(xs, n: int = 6) -> str:
+    xs = list(xs)
+    return ", ".join(xs[:n]) + (f" (+{len(xs) - n} more)" if len(xs) > n else "")
+
+
+def _grade_dens(cap: dict, label: str) -> dict:
+    """`Dens.served` from a `capability_scan` result. STRUCTURAL throughout: the contract is a declared property and the
+    tier column a name in a served select — neither is a check that the served rows are in fact layered.
+    PASS only when a capability that references the asset declares the contract AND a served select of its table in that
+    same capability carries a tier column. See `capability_scan` for the attribution rule."""
+    if cap.get("scanned") is not True:
+        # R222 / N3 (A_REVIEW2 G2): a root was not scanned (missing), so "no module serves this table" was never
+        # established. It read the closable N/A — one live ledger-copy run closed all 24 open L0 Dens.served gaps
+        # with the dir pointed elsewhere.
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — {cap.get('note') or 'capability scan did not run'}; "
+                                       "the served surface was never scanned")
+    mods = cap.get("modules") or []
+    outside = cap.get("outside") or []
+    reach = f"{len(mods)} module(s) reach it by code: {_few(mods)}"
+    tail = (f"; also a served select outside the scanned serving roots (not graded): {_few(outside, 3)}"
+            if outside and mods else "")
+    if mods and cap.get("density"):
+        d = cap.get("dense") or []
+        return dict(v=PASS, measured=(f"STRUCTURAL: {reach}; {cap['density']} capability(ies) declare density_contract AND "
+                                      f"select a tier column from it ({_few(sorted({c for _n, cs in d for c in cs}))}) "
+                                      f"in: {_few(n for n, _c in d)}" + tail))
+    if mods and cap.get("declared"):
+        det = "; ".join(f"{n}: {', '.join(w)}" for n, w in cap["declared"][:4])
+        return dict(v=PARTIAL, measured=(f"STRUCTURAL: {reach}; a referencing capability declares density_contract but "
+                                         f"{det}" + tail))
+    if mods and cap.get("served"):
+        extra = ((f"; a tier column is selected without a contract in: {_few(cap['tier_only'])}" if cap.get("tier_only") else "")
+                 + (f"; a density_contract is declared in {_few(cap['elsewhere'], 3)}, but not in a capability that serves it"
+                    if cap.get("elsewhere") else ""))
+        return dict(v=FAIL, measured=(f"STRUCTURAL: {reach}; {cap['served']} served select(s) of its table; no referencing "
+                                      f"capability that serves it declares density_contract{extra}" + tail))
+    if mods:
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — {reach}, but no served `SELECT ... FROM` its table was found "
+                                        f"(no served select): whether it is served cannot be told by code"
+                                        + tail))
+    if outside:
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — no module in the serving roots references {label}, but a served "
+                                        f"select of it sits outside the scanned serving roots: {_few(outside, 4)} — the "
+                                        "served surface cannot be graded by this scan (never the closable N/A)"))
+    if cap.get("shared_only"):
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — only a table other assets share ({_few(cap.get('shared_tokens') or [])}) "
+                                        f"is referenced, by {len(cap['shared_only'])} module(s): {_few(cap['shared_only'], 3)}; "
+                                        f"the served surface cannot be attributed to {label} by code (never the closable N/A)"))
+    if cap.get("comment_only"):
+        # R51 + §N.8: no module's CODE references the table, but comments do — the asset is named as served (e.g.
+        # "already-served-elsewhere bg_dignity_reference", served by the generic MCP DB route). "Not served" was never
+        # established, so never the closable N/A.
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — no capability module's code references {label}; named in comments "
+                                        f"only in: {', '.join(cap['comment_only'])} — the served surface cannot be "
+                                        "attributed by code (never the closable N/A)"))
+    return _na(f"STRUCTURAL: 0 module(s) reference it by code in the {len(cap.get('roots') or [])} "
+               "serving root(s) scanned, and no served select of it exists in the wider source "
+               "scanned; declaring density_contract: 0", "no-module-references-target")
 
 
 # ─────────── R23 (W2-3): field-level reachability over capability modules ───────────
@@ -1456,6 +1769,10 @@ CAPS_ROOT = "platform/src/lib/retrieval/registry/layers"
 # kala_field_skill). The registry layers alone called ga_prashna_judgment "dark" while
 # `tools/register_p1_synthesis.ts` serves it. Every root is scanned; a missing one leaves R23 unmeasured.
 CAPS_ROOTS = (CAPS_ROOT, "platform-mcp/src/tools", "platform-mcp/src/lib")
+DENS_OUTSIDE_ROOTS = ("platform/src", "platform-mcp/src")
+# `retrieval/registry/knowledge/` holds read-only availability PROBES that mirror a handler's own source query (already read in
+# CAPS_ROOTS) and the catalogue metadata naming every asset; it serves no rows, so it is not a served surface.
+DENS_OUTSIDE_EXCLUDE = re.compile(r"\.test\.tsx?$|\.d\.ts$|__tests__|/generated/|node_modules|/retrieval/registry/knowledge/")
 _SQL_STOP = re.compile(r"\b(?:ORDER\s+BY|GROUP\s+BY|LIMIT|OFFSET|UNION|RETURNING|FROM|WINDOW|HAVING)\b|;", re.I)
 _ALIAS_STOP = {"where", "join", "left", "right", "inner", "outer", "full", "cross", "on", "order", "group", "limit",
                "offset", "union", "as", "using", "natural", "lateral", "window", "having", "returning", "for"}
@@ -1578,40 +1895,27 @@ def field_reach(table: str, cols: list[str], sql_by_module: dict[str, list[str]]
     list is recorded in `dynamic_select` (its columns are unknown — width becomes a lower bound)."""
     exposed: set[str] = set()
     modules, pinned, unpinned, dynamic = [], [], False, []
-    rx = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:public\.)?\"?" + re.escape(table) +
-                    r"\b\"?(?:\s+(?:AS\s+)?([A-Za-z_][A-Za-z_0-9]*))?", re.I)
     for mod, lits in sql_by_module.items():
         hit = False
-        for i, lit in enumerate(lits):
-            for m in rx.finditer(lit):
-                alias = m.group(1) if m.group(1) and m.group(1).lower() not in _ALIAS_STOP else None
-                head = lit[:m.start()]
-                k = head.upper().rfind("SELECT")
-                if k >= 0:
-                    sel = head[k + 6:]
-                else:                                         # `'SELECT a, b ' + 'FROM t'`: an unterminated list before
-                    prev = lits[i - 1] if i else ""
-                    k2 = prev.upper().rfind("SELECT")
-                    if k2 < 0 or re.search(r"\bFROM\b", prev[k2:], re.I):
-                        continue                              # prose ("… rows from ga_yoga_firings"), not a query
-                    sel = prev[k2 + 6:]
-                hit = True
-                if "${" in sel:                               # `SELECT ${cols}`: the list is built at run time
-                    dynamic.append(mod)
-                exposed |= _selected_columns(sel, cols, alias, table)
-                # a keyword read as the alias (`FROM t WHERE …`) belongs to the tail, not the alias
-                tail = lit[m.end() if alias or not m.group(1) else m.start(1):]
-                w = re.search(r"\bWHERE\b", tail, re.I)
-                where = ""
-                if w:
-                    where = tail[w.end():]
-                    stop = _SQL_STOP.search(where)
-                    where = where[:stop.start()] if stop else where
-                p = _literal_pins(where, cols)
-                if p:
-                    pinned.append(p)
-                else:
-                    unpinned = True
+        for i, m, alias, sel in _served_selects(table, lits):
+            lit = lits[i]
+            hit = True
+            if "${" in sel:                               # `SELECT ${cols}`: the list is built at run time
+                dynamic.append(mod)
+            exposed |= _selected_columns(sel, cols, alias, table)
+            # a keyword read as the alias (`FROM t WHERE …`) belongs to the tail, not the alias
+            tail = lit[m.end() if alias or not m.group(1) else m.start(1):]
+            w = re.search(r"\bWHERE\b", tail, re.I)
+            where = ""
+            if w:
+                where = tail[w.end():]
+                stop = _SQL_STOP.search(where)
+                where = where[:stop.start()] if stop else where
+            p = _literal_pins(where, cols)
+            if p:
+                pinned.append(p)
+            else:
+                unpinned = True
         if hit:
             modules.append(mod)
     return dict(modules=modules, exposed=exposed, pinned=pinned, unpinned=unpinned,
@@ -2653,6 +2957,13 @@ def measure(layer_key: str) -> dict:
         caps_sql, caps_note = None, str(exc)
 
     known = set(reg)
+    # E6.1 (d): a table (target or count_sql) that MORE THAN ONE active asset of this layer declares is shared.
+    # Disclosed limit: only this layer's registry is read here; every share in the estate today sits inside one layer.
+    _decl: dict[str, set[str]] = {}
+    for _aid, _r in reg.items():
+        for _t in ([_r["target_table"]] if _r["target_table"] else []) + _count_tables(_r["count_sql"]):
+            _decl.setdefault(_t, set()).add(_aid)
+    dens_shared = frozenset(t for t, who in _decl.items() if len(who) > 1)
     owners: dict = {}                                     # R53: read lazily, at most once per layer
     assets = []
     for aid, r in reg.items():
@@ -2953,27 +3264,13 @@ def measure(layer_key: str) -> dict:
         elif tbl:
             m["Complete.depth"] = dict(v=FAIL, measured=f"target_table '{tbl}' does not exist in production")
 
-        cap = capability_scan(cfg["caps"], [t for t in ([tbl] if tbl else []) + [aid]])
-        if cap.get("scanned") is not True:
-            # R222 / N3 (A_REVIEW2 G2): the capability directory was not scanned (missing), so "no
-            # module serves this table" was never established. It read the closable N/A — one live
-            # ledger-copy run closed all 24 open L0 Dens.served gaps with the dir pointed elsewhere.
-            m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — {cap.get('note') or 'capability scan did not run'}; "
-                                                       "the served surface was never scanned")
-        elif not cap["modules"] and cap.get("comment_only"):
-            # R51 + §N.8: no module's CODE references the table, but comments do — the asset is named
-            # as served (e.g. "already-served-elsewhere bg_dignity_reference", served by the generic
-            # MCP DB route; ga_strength, served through chart_facts). "Not served" was never
-            # established, so never the closable N/A.
-            m["Dens.served"] = dict(v=NO_DET, measured=f"NO_DETECTOR — no capability module's code references "
-                                                       f"{tbl or aid}; named in comments only in: "
-                                                       f"{', '.join(cap['comment_only'])} — the served surface "
-                                                       "cannot be attributed by code (never the closable N/A)")
-        else:
-            dens_text = (f"{len(cap['modules'])} module(s): {', '.join(cap['modules']) or 'none'}; "
-                         f"declaring density_contract: {cap['density']}")
-            m["Dens.served"] = (_na(dens_text, "no-module-references-target") if not cap["modules"]
-                                else dict(v=(PASS if cap["density"] else FAIL), measured=dens_text))
+        # E6.1 (d): every token the asset is served under — target table, asset id, every count_sql table — over every
+        # serving root (R23's CAPS_ROOTS, recursive) plus the wider source probe. A table another active asset of this
+        # layer also declares is SHARED: it names the table, not this asset, so it never attributes a module.
+        dtoks = list(dict.fromkeys([t for t in ([tbl] if tbl else []) + list(ctables) + [aid] if t]))
+        cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
+                              outside_roots=DENS_OUTSIDE_ROOTS)
+        m["Dens.served"] = _grade_dens(cap, tbl or aid)
 
         h = hist["per"].get(aid)
         if not h:

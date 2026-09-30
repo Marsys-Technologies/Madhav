@@ -31,6 +31,8 @@ PINNED_FINGERPRINTS = {
     2: "a0557b51341fdb5d86288b44ac459f1d19c6d9fd7f26eec15f28e8dbc05a99cf",
     # 3 (E6 review fix 2): Earn.build_record gains the cause no-registered-writer (healthy-non-execution narrowed)
     3: "7f30f61e123b473702eb37236b4c22628a5251ef7fd85a31cfb482ca304c6c5e",
+    # 4 (E6.1 d): Dens.served revision 4 (contract AND a tier column in the served select; structural; cause no-served-surface)
+    4: "220f839255b1c592f379a9e5923f0a34f31cda4241cb7e57e7448ca67d9e3274",
 }
 
 
@@ -95,7 +97,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables):
     monkeypatch.setattr(ac, "dependency_graph", lambda: {a: [] for a in reg}, raising=False)
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
-    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t, **kw: dict(modules=[], density=0, note="stub"))
     monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=48, full=list(c), never=[], note=""))
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
 

@@ -54,7 +54,7 @@ def _stub_layer(monkeypatch, ctrl, reg, tables=None, *, registered=None, live=No
     monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
     monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
     monkeypatch.setattr(ac, "capability_scan",
-                        lambda d, t: dict(cap) if cap is not None else dict(modules=[], density=0, note="stub"))
+                        lambda d, t, **kw: dict(cap) if cap is not None else dict(modules=[], density=0, note="stub"))
     monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=48, full=list(c), never=[], note=""))
     monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
     monkeypatch.setattr(ac, "idem_scan", lambda *a, **k: ("PASS", ["stub"]))
