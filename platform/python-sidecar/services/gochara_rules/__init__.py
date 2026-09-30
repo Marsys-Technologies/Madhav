@@ -18,10 +18,12 @@ Public surface:
 """
 from __future__ import annotations
 
-from . import admission, ashtakavarga, frames, p6, permission, predicates  # noqa: F401
+from . import admission, ashtakavarga, dignity, frames, nature, p6  # noqa: F401
+from . import permission, predicates  # noqa: F401
 from . import records, registry, score, valence, vedha  # noqa: F401
 
 __all__ = [
-    "admission", "ashtakavarga", "frames", "p6", "permission", "predicates",
-    "records", "registry", "score", "valence", "vedha",
+    "admission", "ashtakavarga", "dignity", "frames", "nature", "p6",
+    "permission", "predicates", "records", "registry", "score", "valence",
+    "vedha",
 ]

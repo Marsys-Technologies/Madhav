@@ -147,14 +147,147 @@ def signature_lords(event_class: str, chart: dict) -> frozenset[str] | None:
     return frozenset(SIGN_LORDS[s] for s in houses)
 
 
-# ── Kāraka sets per class (spec §2.1: registry content, each carrying its
-# [D] citation or ruling) — no cited kāraka exists yet (B5.2 supplies them);
-# every class therefore carries an EMPTY set in state `computed_empty`
-# (evaluated, no support found — a result, not an absence of work, §1.1).
+# ── Kāraka sets per class (spec §2.1: registry content, each row carrying
+# its [D] citation) — merged from PROMISE_NATURE_YOGA_MAP_v1_1 §5, itself
+# derived from Phaladīpikā Adh. II śl.1–7 (PG47:C1, PG48:C1, PG49:C1) read in
+# full; no claim is made beyond those three chunks (F-32 absence predicate).
+# State semantics: classes with cited kārakas are `computed`; the rest stay
+# `computed_empty` (evaluated, no support found — a result, not an absence
+# of work, §1.1).
+KARAKA_SOURCE = "PROMISE_NATURE_YOGA_MAP_v1_1 §5 (phaladeepika Adh. II śl.1-7)"
+
+
+def _karaka_row(karaka: str, locator: str | None, sloka: int | None,
+                note: str) -> dict:
+    """Write-time guard: a kāraka row without its citation is rejected —
+    every cited row carries text/locator/śloka (§5; no citation ⇒ the class
+    stays computed_empty instead)."""
+    if not locator or sloka is None:
+        raise ValueError(f"kāraka {karaka}: citation locator and śloka required")
+    return {"karaka": karaka, "provenance": "verse_cited",
+            "citation": {"text": "phaladeepika", "locator": locator,
+                         "sloka": sloka},
+            "note": note}
+
+
+_CLASS_KARAKAS: dict[str, list[dict]] = {
+    "marriage": [_karaka_row("Venus", "PG49:C1", 6, "wife/marriage")],
+    "romantic_start": [_karaka_row("Venus", "PG49:C1", 6, "wife/marriage")],
+    "bereavement": [_karaka_row("Sun", "PG47:C1", 1, "father")],
+    "parental_event": [_karaka_row("Sun", "PG47:C1", 1, "father"),
+                       _karaka_row("Moon", "PG47:C1", 2, "mother")],
+    "childbirth": [_karaka_row("Jupiter", "PG48:C1", 5, "sons")],
+    "education_milestone": [_karaka_row("Jupiter", "PG48:C1", 5,
+                                        "knowledge/learning"),
+                            _karaka_row("Mercury", "PG48:C1", 4,
+                                        "learning/intelligence")],
+    "exam_outcome": [_karaka_row("Jupiter", "PG48:C1", 5,
+                                 "knowledge/learning"),
+                     _karaka_row("Mercury", "PG48:C1", 4,
+                                 "learning/intelligence")],
+    "illness_acute": [_karaka_row("Saturn", "PG49:C1", 7, "sickness")],
+    "chronic_onset": [_karaka_row("Saturn", "PG49:C1", 7, "sickness")],
+    "surgery": [_karaka_row("Saturn", "PG49:C1", 7, "sickness")],
+    "career_entry": [_karaka_row("Sun", "PG47:C1", 1,
+                                 "service under the sovereign, glory")],
+    "career_advancement": [_karaka_row("Sun", "PG47:C1", 1,
+                                       "service under the sovereign, glory")],
+    "career_change": [_karaka_row("Sun", "PG47:C1", 1,
+                                  "service under the sovereign, glory")],
+    "career_setback": [_karaka_row("Sun", "PG47:C1", 1,
+                                   "service under the sovereign, glory")],
+    "achievement_recognition": [
+        _karaka_row("Sun", "PG47:C1", 1, "service under the sovereign, glory")],
+    "major_gain": [_karaka_row("Venus", "PG48:C1/PG49:C1", 6,
+                               "wealth (śl.6 head/tail)")],
+    "major_loss": [_karaka_row("Venus", "PG48:C1/PG49:C1", 6,
+                               "wealth (śl.6 head/tail)")],
+}
+# Mars (brothers, PG47:C1 śl.3) is recorded-but-unused: no sibling class
+# exists in the 27-class universe (protocol §2).
+KARAKA_UNATTACHED: tuple[dict, ...] = (
+    _karaka_row("Mars", "PG47:C1", 3,
+                "brothers — recorded, unused (no sibling class in the 27)"),
+)
+
 KARAKA_SETS: dict[str, dict] = {
-    name: {"state": "computed_empty", "karakas": [], "pending": "B5.2"}
+    name: ({"state": "computed", "karakas": _CLASS_KARAKAS[name],
+            "source": KARAKA_SOURCE}
+           if name in _CLASS_KARAKAS else
+           {"state": "computed_empty", "karakas": [], "source": KARAKA_SOURCE})
     for name in CLASS_BY_NAME
 }
+
+# ── Yoga→event map (PROMISE_NATURE_YOGA_MAP_v1_1 §6, verbatim; the
+# `yoga_constituent` role of spec §2.1). The O-RR-5 fixture yoga ("7L Venus
+# conjunct exalted Jupiter in the 9th") is a synthetic oracle fixture and is
+# deliberately NOT in this map. §6 has 7 table rows / 9 distinct yoga_ids
+# (the last row carries three); every entry is verse_cited with a locator.
+
+
+def _yoga_row(yoga_id: str, definition: str, event_classes: list[str],
+              locator: str | None, sloka: str | None,
+              provenance: str = "verse_cited",
+              ocr_degradation: str | None = None) -> dict:
+    """Write-time guard: a verse_cited yoga entry with no locator fails
+    validation (§6; citation is the admission ticket)."""
+    if provenance == "verse_cited" and not locator:
+        raise ValueError(f"{yoga_id}: verse_cited requires a locator")
+    for cls in event_classes:
+        if cls not in CLASS_BY_NAME:
+            raise ValueError(f"{yoga_id}: unknown event class {cls!r}")
+    return {"yoga_id": yoga_id, "definition": definition,
+            "event_classes": tuple(event_classes),
+            "citation": {"text": ("bphs" if locator and locator.startswith("PG38")
+                                  else "phaladeepika"),
+                         "locator": locator, "sloka": sloka},
+            "provenance": provenance,
+            "ocr_degradation": ocr_degradation,
+            "source": "PROMISE_NATURE_YOGA_MAP_v1_1 §6"}
+
+
+YOGA_EVENT_MAP: dict[str, dict] = {r["yoga_id"]: r for r in (
+    _yoga_row("Y-MARRIAGE-T1",
+              "Venus or 7L transits a sign triangular to lagna-lord's "
+              "rāśi/navāṃśa",
+              ["marriage"], "PG144:C1", "12"),
+    _yoga_row("Y-MARRIAGE-D1",
+              "daśā of the occupant / aspector / owner of the 7th",
+              ["marriage"], "PG144:C1", "13"),
+    _yoga_row("Y-MARRIAGE-DT1",
+              "stronger of {7L's rāśi/navāṃśa lords} vs {Venus, Moon} daśā + "
+              "Jupiter transiting triangular to 7L's rāśi/navāṃśa",
+              ["marriage"], "PG145:C1", "14"),
+    _yoga_row("Y-MARRIAGE-COND",
+              "7L inimical/debilitated/eclipsed/malefic-aspected AND 7th "
+              "afflicted — condition side of the marriage promise",
+              ["separation"], "PG145:C1", "15"),
+    _yoga_row("Y-ADHI",
+              "benefics in 6/7/8 from Moon; result scales with participant "
+              "strength",
+              ["achievement_recognition", "career_advancement"],
+              "PG384:C1", "5",
+              ocr_degradation="house order OCR-jumbled in the printed chunk "
+                              "('8th, 6th and ?th' = conventional 6/7/8 from "
+                              "Moon); recorded [D-with-OCR-degradation] at "
+                              "the house list; the event relation is clean"),
+    _yoga_row("Y-DHANA",
+              "3/2/1 benefics in upachaya from Moon ⇒ very/medium/negligible "
+              "affluence",
+              ["major_gain"], "PG384:C1", "6"),
+    _yoga_row("Y-SUNAPHA",
+              "planet (≠ Sun) 2nd from the Moon ⇒ king or equal, "
+              "self-earned wealth",
+              ["major_gain", "achievement_recognition"], "PG384:C1", "7-10"),
+    _yoga_row("Y-ANAPHA",
+              "planet (≠ Sun) 12th from the Moon ⇒ king, free from diseases, "
+              "virtuous, famous",
+              ["major_gain", "achievement_recognition"], "PG384:C1", "7-10"),
+    _yoga_row("Y-DURADHARA",
+              "planet (≠ Sun) both 2nd and 12th from the Moon ⇒ pleasures, "
+              "charitable, wealth, conveyances",
+              ["major_gain", "achievement_recognition"], "PG384:C1", "7-10"),
+)}
 
 # ── P5 missing-input matrix (spec §2.2, R2-S04) ─────────────────────────────
 # Each operand gates exactly its own form — no cross-form knockouts; the whole
@@ -230,6 +363,14 @@ _factor("dignity_of_transit_sign",
         function="categorical_ordered",
         categories=["exaltation", "own", "friendly", "neutral", "inimical",
                     "debility"],
+        ordering_anchor={"mulatrikona": 45, "own": 30, "extreme_friend": 20,
+                         "friend": 15, "neutral": 10, "enemy": 4,
+                         "extreme_enemy": 2,
+                         "units": "virupas (saptavargaja-bala)",
+                         "source": "BPHS ch.27 śl.2-4, PG264:C1 [D] "
+                                   "(PROMISE_NATURE_YOGA_MAP_v1_1 §1.1/§4.1) — "
+                                   "ordering anchor ONLY while "
+                                   "uncalibrated_default; no magnitude claim"},
         range=[0.0, 1.0], units="unitless",
         direction="doctrine-ordered; the direction field flips the assigned "
                   "channel/valence (O-RP-7), values stay in [0,1]",
@@ -268,6 +409,60 @@ _factor("promise_condition",
         effect="promise = strength × condition (§2.3 inv 8); condition false "
                "⇒ promise 0 (O-RP-6)")
 
+# ── B5.2 nature/maitrī/strength factor rows (PROMISE_NATURE_YOGA_MAP_v1_1
+# §1.1, §2, §3.3) — all interpretive modifiers: they assign channel/valence
+# and rank; they NEVER admit, exclude, or zero (spec §2.3 inv 3).
+_factor("agent_nature",
+        operand="natural benefic/malefic of the agent (waning Moon malefic; "
+                "Mercury malefic if joined to a malefic)",
+        function="categorical_ordered",
+        categories=["benefic", "malefic"],
+        range=[0.0, 1.0], units="unitless",
+        direction="benefic → favourable channel; malefic → adverse channel, "
+                  "class-relative per spec §3.1",
+        null_state="unqualified",
+        effect="interpretive modifier — channel/valence assignment only "
+               "(PROMISE_NATURE_YOGA_MAP_v1_1 §2; BPHS ch.3 śl.11 PG26:C1 [D])")
+_factor("moon_paksa",
+        operand="Sun–Moon elongation (waxing Śukla / waning Kṛṣṇa)",
+        function="step", range=[0.0, 1.0], units="degrees",
+        direction="waxing → benefic; waning → malefic",
+        null_state="unqualified",
+        effect="feeds agent_nature for the Moon (PG26:C1 śl.11 + translator's "
+               "Saravali note PG26:C2)")
+_factor("mercury_affiliation",
+        operand="whether Mercury is joined to a malefic",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="joined to a malefic → malefic; else benefic",
+        null_state="unqualified",
+        effect="condition predicate feeding agent_nature for Mercury "
+               "(PG26:C1 śl.11)")
+_factor("maitri_compound",
+        operand="pañcādha (compound) maitrī of the agent pair",
+        function="categorical_ordered",
+        categories=["extreme_friend", "friend", "neutral", "enemy",
+                    "extreme_enemy"],
+        range=[0.0, 1.0], units="unitless",
+        direction="doctrine-ordered five-fold; channel/valence per the §2 "
+                  "agent-nature rule",
+        null_state="unqualified",
+        effect="interpretive modifier (BPHS ch.3 śl.57-58, PG40:C2 [D]; the "
+               "chunk's truncated tail is flagged, not reconstructed)")
+_factor("sad_bala_summary",
+        operand="ṣaḍbala / bhāva-bala summary as L1 operands (never "
+                "recomputed here)",
+        function="step", range=[0.0, 1.0], units="rupas",
+        direction="higher = stronger",
+        null_state="unqualified",
+        purna_bala_thresholds={"Sun": 6.5, "Moon": 6.0, "Mars": 5.0,
+                               "Mercury": 7.0, "Jupiter": 6.5, "Venus": 5.5,
+                               "Saturn": 5.0},
+        bhava_bala_rule="bhāva-bala = lord's strength + 1 rūpa + dig-bala + "
+                        "dṛg-bala of the bhāva (Phaladīpikā IV.24 PG80:C1)",
+        effect="binary strong/weak predicate citable (pūrṇa-bala thresholds, "
+               "Phaladīpikā IV.22-24 PG79:C1/PG80:C1 [D]); any finer scaling "
+               "is not (PROMISE_NATURE_YOGA_MAP_v1_1 §1.1)")
+
 # ── rule_path registry rows P1–P6 (spec §2.2 path catalogue) ────────────────
 RULE_PATHS: dict[tuple[str, str], dict] = {}
 
@@ -293,7 +488,9 @@ _path(
                    composite_ref("natal_bhava_relationship", RULE_VERSION),
                    composite_ref("transit_relation", RULE_VERSION)],
     soft_factors=[composite_ref("dignity_of_transit_sign", RULE_VERSION),
-                  composite_ref("combustion", RULE_VERSION)],
+                  composite_ref("combustion", RULE_VERSION),
+                  composite_ref("agent_nature", RULE_VERSION),
+                  composite_ref("maitri_compound", RULE_VERSION)],
     provenance="verse_cited", operator_role="scored", ruling_ref=None,
     source_text="Phaladīpikā", source_page="PG249-250 (XX.34-38)",
     score_rule="within-path product of factor scores over the admitted base",
