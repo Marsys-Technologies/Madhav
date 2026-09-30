@@ -163,6 +163,23 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`fa0b0a9a003624b8f39e30600e98460a60170bb2`",
     },
+    "D-PINS-A5.4": {
+        # Pins re-admission for the pravaha/a5-tier0s-repairs merge (PR #2769,
+        # Pravaha A5.4 Tier 0-S repairs). The steward's decision (on the
+        # native's 2026-09-30 standing authority, EVENTS.jsonl
+        # 2026-09-30T13:02:03Z, message M20260930T130203-0531) is recorded
+        # verbatim in the evidence document; the authority identity is the
+        # commit that first introduced that document. Scope: exactly one L3
+        # successor admission over the A5.4 repairs changeset, on top of main's
+        # protected baseline l3:f4c69a6d0cd4:829354703812 (the D-PINS-A2
+        # successor, never rewritten). No other layer; no membership change.
+        "authority_commit": "e47d0b274ebf234ada8be7cfe82a34d5446384eb",
+        "evidence_commit": "69382f6860f79c36ddb70b677ed42e234b4fb099",
+        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A5_4_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "d50a9d8e19fe2ddec33ce55f9c61f2c2770eb0d7cbe88ae6732d28e7c9bf0765",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`e47d0b274ebf234ada8be7cfe82a34d5446384eb`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -292,6 +309,17 @@ AUTHORIZED_SOURCE_COMMITS = {
     # delivery topology on this branch and are deliberately absent.
     "D-PINS-A2": {
         "L3": frozenset({"f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24"}),
+    },
+    # D-PINS-A5.4 (Pravaha A5.4, PR #2769): exactly one source commit, for
+    # exactly the one layer (L3) whose writer digests moved on
+    # pravaha/a5-tier0s-repairs after the origin/main merge (16e3725cee36).
+    # The source commit is the branch's writer-digest regeneration commit: its
+    # committed writer inventory is byte-identical to the branch tree's
+    # derived inventory (provenance_inventory --check green). L0, L1, L2, L4,
+    # L5 verify clean in delivery topology on this branch and are deliberately
+    # absent.
+    "D-PINS-A5.4": {
+        "L3": frozenset({"454dab04134d81ae420676210c9700e2d4496c6b"}),
     },
 }
 
