@@ -8,6 +8,7 @@ import { writeAiAudit } from './audit'
 import { CLI_REGISTRY, validateCliModelId } from './cli/registry'
 import { CLI_BUILTIN_MODEL_DB_ID } from './cli/types'
 import { AiConsoleError, AiErrorCodeSchema, normalizeAiError } from './errors'
+import { configurationKindMatchesRoles, type ConfigurationKind } from './configuration-kind'
 import {
   AI_ROLES, CLI_IDS, AiChoiceRefSchema, AiRoleSchema, CliIdSchema, ConversationAiSelectionSchema,
   ProviderIdSchema, RoleAssignmentsSchema, RoutingSnapshotSchema, SafeProviderConnectionSchema,
@@ -138,7 +139,8 @@ export async function listAiConsoleState(userId: string) {
     m.last_probe_input_tokens,m.last_probe_output_tokens,
     c.credential_version AS current_credential_version FROM ai_connection_models m
     JOIN ai_provider_connections c ON c.id=m.connection_id WHERE c.user_id=$1 ORDER BY m.connection_id,m.model_id`, [userId])
-  const configurations = await query(`SELECT id,name,version,deleted_at FROM ai_custom_configurations WHERE user_id=$1 ORDER BY created_at,id`, [userId])
+  const configurations = await query(`SELECT id,name,version,configuration_kind,owner_connection_id,owner_cli_id,deleted_at
+    FROM ai_custom_configurations WHERE user_id=$1 ORDER BY created_at,id`, [userId])
   const roles = await query(`SELECT configuration_id,role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 ORDER BY configuration_id,role`, [userId])
   const defaults = await query('SELECT kind,connection_id,model_id,configuration_id,cli_id FROM ai_user_defaults WHERE user_id=$1', [userId])
   const clis = await query(`SELECT cli.cli_id,
@@ -503,14 +505,33 @@ export async function markConnectionForRevalidation(userId: string, connectionId
   })
 }
 
-const ConfigurationInput = z.object({ id: z.string().uuid().optional(), expectedVersion: z.number().int().positive().optional(),
-  name: nameSchema, roles: RoleAssignmentsSchema }).strict().refine(v => !v.id || !!v.expectedVersion)
+const ConfigurationKindSchema = z.enum(['provider_preset', 'cli_preset', 'custom_api', 'custom_cli'])
+const ConfigurationInput = z.object({ id: uuidSchema.optional(), expectedVersion: z.number().int().positive().optional(),
+  name: nameSchema, roles: RoleAssignmentsSchema, configurationKind: ConfigurationKindSchema,
+  ownerConnectionId: uuidSchema.nullable(), ownerCliId: CliIdSchema.nullable() }).strict()
+  .refine(v => !v.id || !!v.expectedVersion)
+  .refine(v => configurationKindMatchesRoles(v.configurationKind, v.roles, v.ownerConnectionId, v.ownerCliId))
+function parseConfigurationInput(input: unknown) {
+  const raw = z.object({ id: uuidSchema.optional(), expectedVersion: z.number().int().positive().optional(),
+    name: nameSchema, roles: RoleAssignmentsSchema, configurationKind: ConfigurationKindSchema.optional(),
+    ownerConnectionId: uuidSchema.nullable().optional(), ownerCliId: CliIdSchema.nullable().optional() }).strict().parse(input)
+  const inferredKind: ConfigurationKind = raw.configurationKind ?? (AI_ROLES.every(role => raw.roles[role].kind === 'provider_model')
+    ? 'custom_api' : 'custom_cli')
+  return ConfigurationInput.parse({ ...raw, configurationKind: inferredKind,
+    ownerConnectionId: raw.ownerConnectionId ?? null, ownerCliId: raw.ownerCliId ?? null })
+}
 async function persistConfiguration(client: Client, userId: string, data: z.infer<typeof ConfigurationInput>, duplicate = false) {
   await assertAssignments(client, userId, data.roles)
   const row = data.id ? required((await client.query(`UPDATE ai_custom_configurations SET name=$3,version=version+1
-    WHERE user_id=$1 AND id=$2 AND version=$4 AND deleted_at IS NULL RETURNING id,name,version`,
-  [userId, data.id, data.name, data.expectedVersion])).rows)
-    : required((await client.query('INSERT INTO ai_custom_configurations(user_id,name) VALUES($1,$2) RETURNING id,name,version', [userId, data.name])).rows)
+    WHERE user_id=$1 AND id=$2 AND version=$4 AND configuration_kind=$5
+    AND owner_connection_id IS NOT DISTINCT FROM $6::uuid AND owner_cli_id IS NOT DISTINCT FROM $7::text
+    AND deleted_at IS NULL RETURNING id,name,version`,
+  [userId, data.id, data.name, data.expectedVersion, data.configurationKind,
+    data.ownerConnectionId, data.ownerCliId])).rows)
+    : required((await client.query(`INSERT INTO ai_custom_configurations
+      (user_id,name,configuration_kind,owner_connection_id,owner_cli_id)
+      VALUES($1,$2,$3,$4,$5) RETURNING id,name,version`, [userId, data.name, data.configurationKind,
+      data.ownerConnectionId, data.ownerCliId])).rows)
   for (const role of AI_ROLES) {
     const target = data.roles[role]
     await client.query(`INSERT INTO ai_custom_configuration_roles(configuration_id,user_id,role,kind,connection_id,model_id,cli_id)
@@ -521,10 +542,11 @@ async function persistConfiguration(client: Client, userId: string, data: z.infe
       target.kind === 'local_cli' ? target.cliId : null])
   }
   await writeAiAudit(client, userId, { event: duplicate ? 'configuration_duplicated' : data.id ? 'configuration_updated' : 'configuration_created', configurationId: row.id, configurationVersion: Number(row.version) })
-  return { id: row.id as string, name: row.name as string, version: Number(row.version), roles: data.roles }
+  return { id: row.id as string, name: row.name as string, version: Number(row.version), roles: data.roles,
+    configurationKind: data.configurationKind, ownerConnectionId: data.ownerConnectionId, ownerCliId: data.ownerCliId }
 }
 export async function saveConfiguration(userId: string, input: unknown) {
-  const data = ConfigurationInput.parse(input)
+  const data = parseConfigurationInput(input)
   return withUserTransaction(userId, client => persistConfiguration(client, userId, data))
 }
 export async function duplicateConfiguration(userId: string, configurationId: string, name: string) {
@@ -532,7 +554,8 @@ export async function duplicateConfiguration(userId: string, configurationId: st
   return withUserTransaction(userId, async client => {
     required((await client.query('SELECT id FROM ai_custom_configurations WHERE user_id=$1 AND id=$2 AND deleted_at IS NULL FOR NO KEY UPDATE', [userId, configurationId])).rows)
     const rows = (await client.query('SELECT role,kind,connection_id,model_id,cli_id FROM ai_custom_configuration_roles WHERE user_id=$1 AND configuration_id=$2', [userId, configurationId])).rows
-    return persistConfiguration(client, userId, { name: parsed, roles: RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowChoice(row)]))) }, true)
+    return persistConfiguration(client, userId, parseConfigurationInput({ name: parsed,
+      roles: RoleAssignmentsSchema.parse(Object.fromEntries(rows.map(row => [row.role, rowChoice(row)]))) }), true)
   })
 }
 export async function setUserDefault(userId: string, input: unknown) {

@@ -37,7 +37,7 @@ const row = { id, provider_id: 'openai', name: 'Personal', masked_suffix: 'â€¢â€
 const makeState = () => ({ connections: [{ ...row }],
   models: [{ connection_id: id, model_id: 'test-model', display_name: 'Test model', compatible_roles: [...AI_ROLES],
     supports_tools: false, supports_structured_output: true, available: true }],
-  configurations: [{ id: configId, name: 'Four roles', version: 3, deleted_at: null }],
+  configurations: [{ id: configId, name: 'Four roles', version: 3, configuration_kind: 'provider_preset', owner_connection_id: id, owner_cli_id: null, deleted_at: null }],
   roles: AI_ROLES.map(role => ({ configuration_id: configId, role, kind: target.kind, connection_id: id, model_id: target.modelId, cli_id: null })),
   defaultChoice: { kind: 'custom_configuration', configurationId: configId }, clis: [], cliModels: [],
 })
@@ -56,10 +56,41 @@ beforeEach(() => {
   mocks.renameConnection.mockResolvedValue({ ...safeConnection, name: 'Renamed' })
   mocks.replaceConnectionCredential.mockResolvedValue({ connection: safeConnection, credentialVersion: 4 })
   mocks.validate.mockResolvedValue({ state: 'validated', modelCount: 1 })
-  mocks.saveConfiguration.mockResolvedValue({ id: configId, name: 'Four roles', version: 4, roles })
-  mocks.duplicateConfiguration.mockResolvedValue({ id: configId, name: 'Copy', version: 1, roles })
+  mocks.saveConfiguration.mockResolvedValue({ id: configId, name: 'Four roles', version: 4, roles,
+    configurationKind: 'provider_preset', ownerConnectionId: id, ownerCliId: null })
+  mocks.duplicateConfiguration.mockResolvedValue({ id: configId, name: 'Copy', version: 1, roles,
+    configurationKind: 'custom_api', ownerConnectionId: null, ownerCliId: null })
   mocks.previewChoiceDependencies.mockResolvedValue({ configurations: [{ id: configId, name: 'Four roles' }],
     defaultAffected: true, conversations: [{ conversation_id: '33333333-3333-4333-8333-333333333333' }] })
+})
+
+describe('typed four-role configurations', () => {
+  it('projects the provider preset owner to the page', async () => {
+    const response = await root.GET()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.configurations[0]).toMatchObject({ configurationKind: 'provider_preset', ownerConnectionId: id,
+      ownerCliId: null })
+  })
+
+  it('accepts a provider-owned preset and keeps its scope in the saved response', async () => {
+    const payload = { name: 'Personal roles', roles, configurationKind: 'provider_preset',
+      ownerConnectionId: id, ownerCliId: null }
+    const response = await configurations.POST(request('POST', payload))
+    expect(response.status).toBe(201)
+    expect(mocks.saveConfiguration).toHaveBeenCalledWith('owner', payload)
+    expect((await response.json()).configuration).toMatchObject({ configurationKind: 'provider_preset',
+      ownerConnectionId: id })
+  })
+
+  it('rejects a preset whose roles refer to another provider', async () => {
+    const foreignId = '33333333-3333-4333-8333-333333333333'
+    const mismatched = { ...roles, worker: { ...target, connectionId: foreignId } }
+    const response = await configurations.POST(request('POST', { name: 'Invalid', roles: mismatched,
+      configurationKind: 'provider_preset', ownerConnectionId: id, ownerCliId: null }))
+    expect(response.status).toBe(400)
+    expect(mocks.saveConfiguration).not.toHaveBeenCalled()
+  })
 })
 
 describe('single provider-model admission', () => {

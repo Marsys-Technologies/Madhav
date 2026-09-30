@@ -5,7 +5,8 @@ import { selectionKey } from './model_options'
 import type { AiChoiceOption, ConversationSelection } from '../hooks/useAiChoices'
 
 const MOBILE_QUERY = '(max-width: 767px)'
-const GROUPS = ['Provider connections', 'Custom configurations', 'Local CLIs'] as const
+const GROUPS = ['API providers', 'Custom API configurations', 'Local CLIs',
+  'Custom CLI configurations', 'Earlier configurations'] as const
 
 function useMobile(): boolean {
   const [mobile, setMobile] = useState(() => typeof window !== 'undefined'

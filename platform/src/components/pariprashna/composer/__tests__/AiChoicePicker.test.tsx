@@ -13,8 +13,8 @@ const explicit: ConversationSelection = { kind: 'explicit', choice: {
 } }
 const options: AiChoiceOption[] = [
   { key: 'default', group: null, label: 'Default — Personal OpenAI · GPT Safe', selection: defaultSelection, disabled: false },
-  { key: `provider:${CONNECTION_ID}:gpt-safe`, group: 'Provider connections', label: 'Personal OpenAI · GPT Safe', selection: explicit, disabled: false },
-  { key: 'config:config-1', group: 'Custom configurations', label: 'Research quartet', selection: {
+  { key: `provider:${CONNECTION_ID}:gpt-safe`, group: 'API providers', label: 'Personal OpenAI · GPT Safe', selection: explicit, disabled: false },
+  { key: 'config:config-1', group: 'Custom API configurations', label: 'Research quartet', selection: {
     kind: 'explicit', choice: { kind: 'custom_configuration', configurationId: '33333333-3333-4333-8333-333333333333' },
   }, disabled: false },
   { key: 'cli:claude_code:builtin', group: 'Local CLIs', label: 'Claude Code · Built-in default', selection: {
@@ -77,14 +77,14 @@ function renderPicker(overrides: Partial<React.ComponentProps<typeof AiChoicePic
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('AiChoicePicker', () => {
-  it('renders Default first and exactly the three approved explicit groups', () => {
+  it('renders Default first and the supplied explicit groups', () => {
     renderPicker({ open: true })
     expect(screen.getAllByRole('option').map(row => row.textContent)).toEqual(expect.arrayContaining([
       expect.stringContaining('Default'), expect.stringContaining('Personal OpenAI'),
       expect.stringContaining('Research quartet'), expect.stringContaining('Claude Code'),
     ]))
     expect(screen.getAllByRole('group').map(group => group.getAttribute('aria-label'))).toEqual([
-      'Provider connections', 'Custom configurations', 'Local CLIs',
+      'API providers', 'Custom API configurations', 'Local CLIs',
     ])
   })
 

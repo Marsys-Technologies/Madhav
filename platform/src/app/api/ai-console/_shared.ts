@@ -13,6 +13,7 @@ import {
 } from '@/lib/ai-console/types'
 import type { ValidationResult } from '@/lib/ai-console/validation'
 import { CLI_REGISTRY } from '@/lib/ai-console/cli/registry'
+import { configurationKindMatchesRoles } from '@/lib/ai-console/configuration-kind'
 
 export const VALIDATION_DISCLOSURE = 'Testing this connection makes a tiny generation request and may incur a tiny provider charge.'
 export const NameSchema = z.string().trim().min(1).max(120)
@@ -24,6 +25,19 @@ export const ChoiceInputSchema = z.discriminatedUnion('kind', [ProviderInputSche
   CustomConfigurationChoiceSchema.extend({ configurationId: IdSchema })])
 export const AssignmentsInputSchema = RoleAssignmentsSchema.extend({ synthesizer: RoleInputSchema,
   planner: RoleInputSchema, deep_planner: RoleInputSchema, worker: RoleInputSchema })
+const ConfigurationKindInputSchema = z.enum(['provider_preset', 'cli_preset', 'custom_api', 'custom_cli'])
+export const ConfigurationScopeInputSchema = z.object({
+  configurationKind: ConfigurationKindInputSchema.optional(),
+  ownerConnectionId: IdSchema.nullable().optional(),
+  ownerCliId: CliIdSchema.nullable().optional(),
+})
+export function validConfigurationScope(input: { roles: z.infer<typeof AssignmentsInputSchema>;
+  configurationKind?: z.infer<typeof ConfigurationKindInputSchema>;
+  ownerConnectionId?: string | null; ownerCliId?: z.infer<typeof CliIdSchema> | null }) {
+  const kind = input.configurationKind ?? (Object.values(input.roles).every(role => role.kind === 'provider_model')
+    ? 'custom_api' : 'custom_cli')
+  return configurationKindMatchesRoles(kind, input.roles, input.ownerConnectionId ?? null, input.ownerCliId ?? null)
+}
 // Provider formats vary; reject only impossible input, never infer validity from syntax.
 export const CredentialSchema = z.string().min(1).max(4096).regex(/^[\x21-\x7e]+$/)
 export const ChargeSchema = z.object({ acknowledgeCharge: z.literal(true) }).strict()
@@ -230,9 +244,13 @@ function projectRole(row: Row) {
     ? { kind: row.kind, connectionId: row.connection_id, modelId: row.model_id }
     : { kind: row.kind, cliId: row.cli_id, modelId: row.model_id })
 }
-export function projectConfiguration(input: { id: unknown; name: unknown; version: unknown; roles: unknown }) {
+export function projectConfiguration(input: { id: unknown; name: unknown; version: unknown; roles: unknown;
+  configurationKind: unknown; ownerConnectionId: unknown; ownerCliId: unknown }) {
   return { id: IdSchema.parse(input.id), name: NameSchema.parse(input.name),
-    version: z.coerce.number().int().positive().parse(input.version), roles: RoleAssignmentsSchema.parse(input.roles) }
+    version: z.coerce.number().int().positive().parse(input.version), roles: RoleAssignmentsSchema.parse(input.roles),
+    configurationKind: z.enum(['provider_preset', 'cli_preset', 'custom_api', 'custom_cli', 'legacy_mixed']).parse(input.configurationKind),
+    ownerConnectionId: input.ownerConnectionId == null ? null : IdSchema.parse(input.ownerConnectionId),
+    ownerCliId: input.ownerCliId == null ? null : CliIdSchema.parse(input.ownerCliId) }
 }
 
 /** Explicit fields at every level; never return repository rows or spread a credential. */
@@ -253,6 +271,7 @@ export function projectState(state: ConsoleState) {
       lastProbeOutputTokens: row.last_probe_output_tokens == null ? null
         : z.coerce.number().int().nonnegative().parse(row.last_probe_output_tokens) })),
     configurations: state.configurations.map(row => ({ ...projectConfiguration({ id: row.id, name: row.name, version: row.version,
+      configurationKind: row.configuration_kind, ownerConnectionId: row.owner_connection_id, ownerCliId: row.owner_cli_id,
       roles: Object.fromEntries(state.roles.filter(role => role.configuration_id === row.id).map(role => [AiRoleSchema.parse(role.role), projectRole(role)])) }),
     deletedAt: date(row.deleted_at) })),
     defaultChoice: state.defaultChoice === null ? null : AiChoiceRefSchema.parse(state.defaultChoice),

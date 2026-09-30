@@ -8,6 +8,7 @@ export type ConfigurationChoice = { kind: 'custom_configuration'; configurationI
 export type CliChoice = { kind: 'local_cli'; cliId: CliId; modelId: string | null }
 export type AiChoice = ProviderChoice | ConfigurationChoice | CliChoice
 export type RoleTarget = ProviderChoice | CliChoice
+export type ConfigurationKind = 'provider_preset' | 'cli_preset' | 'custom_api' | 'custom_cli' | 'legacy_mixed'
 
 export interface ProviderConnectionDto {
   id: string
@@ -43,6 +44,9 @@ export interface ConfigurationDto {
   name: string
   version: number
   roles: Record<AiRole, RoleTarget>
+  configurationKind: ConfigurationKind
+  ownerConnectionId: string | null
+  ownerCliId: CliId | null
   deletedAt: string | null
 }
 

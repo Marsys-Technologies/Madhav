@@ -20,7 +20,8 @@ const state: AiConsoleStateDto = {
   models: [{ connectionId: CONNECTION_ID, modelId: 'gpt-safe', displayName: 'GPT Safe',
     compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false, supportsStructuredOutput: true, available: true,
     userSelected: true, plainTestedAt: '2026-09-27T10:00:00.000Z' }],
-  configurations: [{ id: CONFIG_ID, name: 'Research quartet', version: 1, deletedAt: null, roles: {
+  configurations: [{ id: CONFIG_ID, name: 'Research quartet', version: 1, deletedAt: null,
+    configurationKind: 'custom_api', ownerConnectionId: null, ownerCliId: null, roles: {
     synthesizer: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
     planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
     deep_planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
@@ -48,6 +49,7 @@ interface SetupOptions {
   cliPending?: boolean
   cliResponse?: CliStateDto
   duplicateNameError?: boolean
+  validationNeedsAttention?: boolean
 }
 
 function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
@@ -62,6 +64,7 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
     if (String(url) === '/api/ai-console' && options.aggregatePending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
+    if (String(url).endsWith('/validate') && options.validationNeedsAttention) return response({ validation: { state: 'needs_attention', modelCount: 0 } })
     if (String(url) === '/api/ai-console/configurations' && init?.method === 'POST'
       && options.duplicateNameError && String(init.body).includes('duplicateFrom')) {
       return response({ error: 'name_conflict' }, 409)
@@ -76,6 +79,54 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
 afterEach(() => { cleanup(); onlineManager.setOnline(true); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('AI Console', () => {
+  it('sets up a provider-owned four-role preset without offering CLI sources', async () => {
+    const { calls } = setup()
+    const card = (await screen.findByText('Personal OpenAI')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Personal OpenAI roles')
+    const source = within(dialog).getByLabelText(/source for synthesizer/i) as HTMLSelectElement
+    expect([...source.options].map(option => option.textContent)).toEqual(['Choose source', 'Personal OpenAI · OpenAI'])
+    expect(within(dialog).queryByText('Claude Code')).toBeNull()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')).toBe(true))
+    const saved = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations' && init?.method === 'POST')!
+    expect(JSON.parse(String(saved[1]?.body))).toMatchObject({ configurationKind: 'provider_preset',
+      ownerConnectionId: CONNECTION_ID, ownerCliId: null })
+  })
+
+  it('offers card-level defaults only for complete provider and CLI role setups', async () => {
+    const apiRoles = state.configurations[0].roles
+    const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
+    setup({ configurations: [
+      { ...state.configurations[0], configurationKind: 'provider_preset', ownerConnectionId: CONNECTION_ID },
+      { ...state.configurations[0], id: '33333333-3333-4333-8333-333333333333', name: 'Claude roles',
+        configurationKind: 'cli_preset', ownerConnectionId: null, ownerCliId: 'claude_code',
+        roles: { synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget } },
+      { ...state.configurations[0], id: '44444444-4444-4444-8444-444444444444', name: 'API mix',
+        configurationKind: 'custom_api', ownerConnectionId: null, roles: apiRoles },
+    ] })
+    const providerCard = (await screen.findByText('Personal OpenAI')).closest('article')!
+    const cliCard = screen.getByText('Claude Code').closest('article')!
+    expect(within(providerCard).getAllByRole('radio')).toHaveLength(1)
+    expect(within(cliCard).getAllByRole('radio')).toHaveLength(1)
+    expect(within(providerCard).getByRole('radio')).not.toBeDisabled()
+    expect(within(cliCard).getByRole('radio')).not.toBeDisabled()
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+  })
+
+  it('keeps a new custom CLI configuration separate from API providers', async () => {
+    setup()
+    await screen.findByText('Claude Code')
+    await userEvent.click(within(screen.getByRole('region', { name: 'Custom CLI configurations' }))
+      .getByRole('button', { name: 'New configuration' }))
+    const dialog = await screen.findByRole('dialog', { name: 'New custom configuration' })
+    const source = within(dialog).getByLabelText(/source for synthesizer/i) as HTMLSelectElement
+    expect([...source.options].map(option => option.textContent)).toEqual(['Choose source', 'Claude Code'])
+    expect([...source.options].some(option => option.textContent?.includes('OpenAI'))).toBe(false)
+  })
+
   it('keeps a large provider catalog out of the page and tests one exact model on request', async () => {
     const models = [...state.models, ...Array.from({ length: 150 }, (_, index) => ({
       ...state.models[0], modelId: `catalog-${index}`, displayName: `Catalog ${index}`,
@@ -114,10 +165,11 @@ describe('AI Console', () => {
   it('opens a named four-role configuration from a reachable CLI card', async () => {
     setup()
     await screen.findByText('Claude Code')
-    await userEvent.click(screen.getByRole('button', { name: 'Configure four roles' }))
-    const dialog = await screen.findByRole('dialog', { name: 'New custom configuration' })
+    await userEvent.click(within(screen.getByText('Claude Code').closest('article')!).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
     expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Claude Code roles')
     expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('__builtin__')
+    expect(within(dialog).getByLabelText(/source for synthesizer/i).querySelectorAll('option')).toHaveLength(2)
   })
 
   it('submits one exact CLI model ID for a local subscription test', async () => {
@@ -131,15 +183,16 @@ describe('AI Console', () => {
     expect(JSON.parse(String(call[1]?.body))).toEqual({ modelId: 'claude-test' })
   })
 
-  it('renders exactly the three approved sections and one unchecked shared default group', async () => {
+  it('renders two collapsible groups with separate API and CLI custom configurations', async () => {
     setup()
     await screen.findByText('Personal OpenAI')
     expect(screen.getAllByRole('heading', { level: 2 }).map(node => node.textContent)).toEqual([
-      'Provider connections', 'Custom configurations', 'Local CLIs',
+      'API connections', 'Custom API configurations', 'Local CLIs', 'Custom CLI configurations',
     ])
+    expect(document.querySelectorAll('details.aic-group')).toHaveLength(2)
     expect(screen.queryByRole('heading', { name: /default ai/i })).toBeNull()
     const radios = screen.getAllByRole('radio') as HTMLInputElement[]
-    expect(radios.length).toBe(3)
+    expect(radios.length).toBe(1)
     expect(radios.every(radio => radio.name === 'ai-console-default' && !radio.checked)).toBe(true)
   })
 
@@ -154,22 +207,22 @@ describe('AI Console', () => {
     const ungrantedCard = screen.getByText('Gemini / Antigravity').closest('article')!
     expect(within(ungrantedCard).getByText('Not granted')).toBeTruthy()
     expect(within(ungrantedCard).queryByText(/version|last check|model/i)).toBeNull()
-    expect(screen.getAllByText('Built-in default')).toHaveLength(2)
+    expect(screen.getAllByText('Built-in default').length).toBeGreaterThan(0)
   })
 
-  it('sends the exact direct choice and waits for accepted mutation before reflecting server state', async () => {
+  it('sends the exact four-role configuration choice and waits for accepted mutation', async () => {
     const { calls } = setup()
-    const radio = await screen.findByRole('radio', { name: /use personal openai gpt safe as default ai/i })
+    const radio = await screen.findByRole('radio', { name: /use research quartet as default ai/i })
     fireEvent.click(radio)
     await waitFor(() => expect(calls.some(([url]) => String(url) === '/api/ai-console/default')).toBe(true))
     const call = calls.find(([url]) => String(url) === '/api/ai-console/default')!
-    expect(JSON.parse(String(call[1]?.body))).toEqual({ choice: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' } })
+    expect(JSON.parse(String(call[1]?.body))).toEqual({ choice: { kind: 'custom_configuration', configurationId: CONFIG_ID } })
   })
 
   it('requires the server-provided charge acknowledgement before a user-triggered provider probe', async () => {
     const { calls } = setup()
     await screen.findByText('Personal OpenAI')
-    fireEvent.click(screen.getByRole('button', { name: 'Test connection' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Test Personal OpenAI connection' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/tiny provider charge/i)).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
@@ -183,6 +236,15 @@ describe('AI Console', () => {
     fireEvent.click(acknowledgement)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
     await waitFor(() => expect(calls.some(([url]) => String(url).endsWith('/validate'))).toBe(true))
+  })
+
+  it('does not announce success when a validation request returns needs attention', async () => {
+    setup(undefined, { validationNeedsAttention: true })
+    await userEvent.click(await screen.findByRole('button', { name: 'Test Personal OpenAI connection' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('checkbox'))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Test connection' }))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Validation needs attention'))
   })
 
   it('associates each provider editor error only with its exact repair control', async () => {
@@ -217,26 +279,21 @@ describe('AI Console', () => {
     expect(key).not.toHaveAttribute('aria-describedby')
   })
 
-  it('uses four roles only, source before model, fill-all convenience, and disables incomplete save', async () => {
+  it('suggests tested models for all four roles and still requires a name', async () => {
     setup()
     await screen.findByText('Research quartet')
-    fireEvent.click(screen.getByRole('button', { name: /new configuration/i }))
+    fireEvent.click(within(screen.getByRole('region', { name: 'Custom API configurations' })).getByRole('button', { name: /new configuration/i }))
     const dialog = await screen.findByRole('dialog')
     for (const label of ['Synthesizer', 'Planner', 'Deep Planner', 'Worker']) expect(within(dialog).getByText(label)).toBeTruthy()
     expect(within(dialog).queryByText(/inspector/i)).toBeNull()
     expect(dialog.querySelector('#aic-synthesizer-source')?.tagName).toBe('SELECT')
-    expect((dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement).disabled).toBe(true)
+    expect((dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement).value).toBe('gpt-safe')
     const fillAll = within(dialog).getByRole('button', { name: 'Use this model for every role' }) as HTMLButtonElement
     const save = within(dialog).getByRole('button', { name: 'Save configuration' }) as HTMLButtonElement
-    expect(fillAll.disabled).toBe(true)
+    expect(fillAll.disabled).toBe(false)
     expect(save.disabled).toBe(true)
 
     fireEvent.change(dialog.querySelector('#aic-config-name')!, { target: { value: 'One model' } })
-    fireEvent.change(dialog.querySelector('#aic-synthesizer-source')!, { target: { value: `provider:${CONNECTION_ID}` } })
-    await waitFor(() => expect((dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement).disabled).toBe(false))
-    fireEvent.change(dialog.querySelector('#aic-synthesizer-model')!, { target: { value: 'gpt-safe' } })
-    await waitFor(() => expect(fillAll.disabled).toBe(false))
-    fireEvent.click(fillAll)
     await waitFor(() => expect(save.disabled).toBe(false))
     for (const role of ['synthesizer', 'planner', 'deep_planner', 'worker']) {
       expect((dialog.querySelector(`#aic-${role}-source`) as HTMLSelectElement).value).toBe(`provider:${CONNECTION_ID}`)
@@ -247,8 +304,8 @@ describe('AI Console', () => {
   it('keeps a broken default visibly identified and never substitutes another radio', async () => {
     setup({ defaultChoice: { kind: 'provider_model', connectionId: '99999999-9999-4999-8999-999999999999', modelId: 'removed-model' } })
     await screen.findByText(/broken default/i)
-    expect(screen.getByText(/removed-model/)).toBeTruthy()
-    expect((screen.getByRole('radio', { name: /personal openai gpt safe/i }) as HTMLInputElement).checked).toBe(false)
+    expect(screen.getAllByText(/removed-model/).length).toBeGreaterThan(0)
+    expect((screen.getByRole('radio', { name: /research quartet/i }) as HTMLInputElement).checked).toBe(false)
     expect((screen.getByRole('radio', { name: /99999999.*removed-model/i }) as HTMLInputElement).checked).toBe(true)
   })
 
@@ -301,10 +358,7 @@ describe('AI Console', () => {
     expect(screen.queryByText(/no provider connections yet/i)).toBeNull()
     expect(screen.queryByText(/no custom configurations yet/i)).toBeNull()
     expect(screen.queryByRole('button', { name: /add connection|new configuration/i })).toBeNull()
-    const unverifiedCli = screen.getByRole('radio', { name: /claude code.*default verification unavailable/i })
-    expect(unverifiedCli).toBeDisabled()
-    expect(unverifiedCli).not.toBeChecked()
-    expect(unverifiedCli.parentElement).toHaveTextContent('Default verification unavailable')
+    expect(screen.queryByRole('radio')).toBeNull()
     expect(aggregateFailure.calls).toBeTruthy()
     cleanup()
 
@@ -333,26 +387,22 @@ describe('AI Console', () => {
 
   it('uses retained validation evidence while validating and blocks a first or replaced credential with no confirmation', async () => {
     setup({ connections: [{ ...state.connections[0], validationState: 'validating', confirmedValid: true }] })
-    const retainedDirect = await screen.findByRole('radio', { name: /personal openai gpt safe/i })
-    expect(retainedDirect).not.toBeDisabled()
+    await screen.findByText('Research quartet')
     const retainedConfiguration = screen.getByText('Research quartet').closest('article')!
     expect(within(retainedConfiguration).getByRole('radio')).not.toBeDisabled()
     cleanup()
 
     setup({ connections: [{ ...state.connections[0], validationState: 'validating', confirmedValid: false, lastValidatedAt: '2026-09-01T10:00:00.000Z' }] })
-    const unknownDirect = await screen.findByRole('radio', { name: /personal openai gpt safe/i })
-    expect(unknownDirect).toBeDisabled()
+    await screen.findByText('Research quartet')
     const unknownConfiguration = screen.getByText('Research quartet').closest('article')!
     expect(within(unknownConfiguration).getByText(/needs repair/i)).toBeTruthy()
     expect(within(unknownConfiguration).getByRole('radio')).toBeDisabled()
   })
 
-  it('does not enable reachable CLI defaults until aggregate default authority is ready', async () => {
+  it('does not offer a CLI default until a four-role CLI setup exists', async () => {
     setup(undefined, { aggregatePending: true })
-    const radio = await screen.findByRole('radio', { name: /claude code.*default verification unavailable/i })
-    expect(radio).toBeDisabled()
-    expect(radio).not.toBeChecked()
-    expect(radio.parentElement).toHaveTextContent('Default verification unavailable')
+    await screen.findByText('Claude Code')
+    expect(screen.queryByRole('radio')).toBeNull()
   })
 
   it('does not call a saved CLI default broken while CLI authority is still loading', async () => {
@@ -364,11 +414,11 @@ describe('AI Console', () => {
 
   it('distinguishes a checked unverified configuration default from a proven unavailable default', async () => {
     const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
-    const cliConfiguration = { ...state.configurations[0], roles: {
+    const cliConfiguration = { ...state.configurations[0], configurationKind: 'custom_cli' as const, roles: {
       synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget,
     } }
     setup({ configurations: [cliConfiguration], defaultChoice: { kind: 'custom_configuration', configurationId: CONFIG_ID } }, { cliError: true })
-    let card = (await screen.findByText('Research quartet')).closest('article')!
+    let card = (await screen.findByRole('heading', { name: 'Research quartet' })).closest('article')!
     let radio = within(card).getByRole('radio')
     expect(radio).toBeChecked()
     expect(radio).toBeDisabled()
@@ -380,7 +430,7 @@ describe('AI Console', () => {
     setup({ configurations: [{ ...cliConfiguration, roles: {
       synthesizer: unavailableTarget, planner: unavailableTarget, deep_planner: unavailableTarget, worker: unavailableTarget,
     } }], defaultChoice: { kind: 'custom_configuration', configurationId: CONFIG_ID } })
-    card = (await screen.findByText('Research quartet')).closest('article')!
+    card = (await screen.findByRole('heading', { name: 'Research quartet' })).closest('article')!
     radio = within(card).getByRole('radio')
     expect(radio).toBeChecked()
     expect(radio).toBeDisabled()
@@ -420,7 +470,7 @@ describe('AI Console', () => {
   it('labels a stale CLI built-in default without exposing its client-only draft encoding', async () => {
     const user = userEvent.setup()
     const cliTarget = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null }
-    const cliConfiguration = { ...state.configurations[0], roles: {
+    const cliConfiguration = { ...state.configurations[0], configurationKind: 'custom_cli' as const, roles: {
       synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget,
     } }
     const cliResponse: CliStateDto = { clis: cliState.clis.map(cli => cli.cliId === 'claude_code' && cli.state !== 'not_granted'
@@ -442,7 +492,7 @@ describe('AI Console', () => {
     onlineManager.setOnline(false)
     setup()
     expect(await screen.findByText('Loading provider connections…')).toBeTruthy()
-    expect(screen.getByText('Loading custom configurations…')).toBeTruthy()
+    expect(screen.getAllByText('Loading custom configurations…')).toHaveLength(2)
     expect(screen.getByText('Checking local CLI access…')).toBeTruthy()
     expect(document.querySelector('.aic-sections')).toHaveAttribute('aria-busy', 'true')
     expect(screen.queryByText(/no provider connections yet/i)).toBeNull()

@@ -19,7 +19,7 @@
 
 import { MODELS, type ModelTier } from '@/lib/models/registry'
 import type { PickerRow } from './PickerPopover'
-import type { AiRole, CliId, ProviderId } from '@/components/ai-console/types'
+import type { AiRole, CliId, ConfigurationKind, ProviderId } from '@/components/ai-console/types'
 import type { AiChoiceOption, ConversationSelection, SelectionView } from '../hooks/useAiChoices'
 
 /** Registry `label` substrings that mark a row as not meant for a user picker
@@ -71,6 +71,9 @@ export interface AiChoicesAggregateDto {
     version: number
     deletedAt: string | null
     roles: Record<AiRole, ProviderChoiceDto | CliChoiceDto>
+    configurationKind?: ConfigurationKind
+    ownerConnectionId?: string | null
+    ownerCliId?: CliId | null
   }>
   defaultChoice: ChoiceDto | null
 }
@@ -134,7 +137,8 @@ function providerUsableForRole(aggregate: AiChoicesAggregateDto, choice: Provide
   const model = aggregate.models.find(row => row.connectionId === choice.connectionId && row.modelId === choice.modelId)
   return !!connection && !connection.deletedAt && connection.confirmedValid
     && (connection.validationState === 'validated' || connection.validationState === 'validating')
-    && !!model && model.available && supportsRole(model.compatibleRoles, role)
+    && !!model && model.available && model.userSelected === true && Boolean(model.plainTestedAt)
+    && supportsRole(model.compatibleRoles, role)
 }
 
 function cliUsableForRole(clis: AiChoicesCliDto, choice: CliChoiceDto, role: AiRole): boolean {
@@ -171,6 +175,14 @@ function choiceLabel(aggregate: AiChoicesAggregateDto, clis: AiChoicesCliDto, ch
   return `${cli.productName} · ${model?.displayName ?? 'Unavailable model'}`
 }
 
+function configurationGroup(kind: ConfigurationKind | undefined): AiChoiceOption['group'] {
+  if (kind === 'provider_preset') return 'API providers'
+  if (kind === 'cli_preset') return 'Local CLIs'
+  if (kind === 'custom_cli') return 'Custom CLI configurations'
+  if (kind === 'legacy_mixed') return 'Earlier configurations'
+  return 'Custom API configurations'
+}
+
 /** Client presentation only. Server ownership/availability remains authoritative. */
 export function buildAiChoiceOptions(
   aggregate: AiChoicesAggregateDto,
@@ -185,30 +197,12 @@ export function buildAiChoiceOptions(
     disabled: !aggregate.defaultChoice || !choiceUsable(aggregate, clis, aggregate.defaultChoice),
   }]
 
-  for (const connection of aggregate.connections) {
-    for (const model of aggregate.models.filter(row => row.connectionId === connection.id)) {
-      const choice: ProviderChoiceDto = { kind: 'provider_model', connectionId: connection.id, modelId: model.modelId }
-      if (!model.userSelected || !model.plainTestedAt || !choiceUsable(aggregate, clis, choice)) continue
-      const selection = explicit(choice)
-      options.push({ key: selectionKey(selection), group: 'Provider connections', label: `${connection.name} · ${model.displayName}`, selection, disabled: false })
-    }
-  }
-
   for (const configuration of aggregate.configurations) {
     const choice: ConfigurationChoiceDto = { kind: 'custom_configuration', configurationId: configuration.id }
     if (!choiceUsable(aggregate, clis, choice)) continue
     const selection = explicit(choice)
-    options.push({ key: selectionKey(selection), group: 'Custom configurations', label: configuration.name, selection, disabled: false })
-  }
-
-  for (const cli of clis.clis) {
-    if (cli.state !== 'reachable') continue
-    for (const model of cli.models) {
-      const choice: CliChoiceDto = { kind: 'local_cli', cliId: cli.cliId, modelId: model.modelId }
-      if (!choiceUsable(aggregate, clis, choice)) continue
-      const selection = explicit(choice)
-      options.push({ key: selectionKey(selection), group: 'Local CLIs', label: `${cli.productName} · ${model.displayName}`, selection, disabled: false })
-    }
+    options.push({ key: selectionKey(selection), group: configurationGroup(configuration.configurationKind),
+      label: configuration.name, selection, disabled: false })
   }
 
   const selectedKey = selectionKey(view.selection)

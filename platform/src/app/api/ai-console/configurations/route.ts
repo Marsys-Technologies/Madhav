@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import { duplicateConfiguration, listAiConsoleState, saveConfiguration } from '@/lib/ai-console/repository'
-import { AssignmentsInputSchema, IdSchema, NameSchema, json, ownedConfiguration, projectConfiguration, projectState, readBody, withAiConsole, withAiConsoleMutation } from '../_shared'
+import { AssignmentsInputSchema, ConfigurationScopeInputSchema, IdSchema, NameSchema, json, ownedConfiguration, projectConfiguration, projectState, readBody, validConfigurationScope, withAiConsole, withAiConsoleMutation } from '../_shared'
 
 export const dynamic = 'force-dynamic'
 
 const CreateSchema = z.union([
-  z.object({ name: NameSchema, roles: AssignmentsInputSchema }).strict(),
+  z.object({ name: NameSchema, roles: AssignmentsInputSchema }).merge(ConfigurationScopeInputSchema).strict().refine(validConfigurationScope),
   z.object({ name: NameSchema, duplicateFrom: IdSchema }).strict(),
 ])
 

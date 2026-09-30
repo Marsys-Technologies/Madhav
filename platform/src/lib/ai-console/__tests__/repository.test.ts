@@ -50,6 +50,29 @@ function validTransport() {
 const calls = () => execute.mock.calls.map(([sql, params]) => ({ sql: String(sql).replace(/\s+/g, ' ').trim(), params: params as unknown[] }))
 
 describe('owned AI configuration repository', () => {
+  it('persists a provider preset only for its owning connection', async () => {
+    validTransport()
+    await repository.saveConfiguration('alice', {
+      name: 'Personal OpenAI roles', configurationKind: 'provider_preset', ownerConnectionId: connectionId,
+      roles: assignments,
+    })
+    const insert = calls().find(call => call.sql.startsWith('INSERT INTO ai_custom_configurations'))!
+    expect(insert.sql).toContain('configuration_kind')
+    expect(insert.params).toEqual(['alice', 'Personal OpenAI roles', 'provider_preset', connectionId, null])
+    await expect(repository.saveConfiguration('alice', {
+      name: 'Wrong preset', configurationKind: 'provider_preset', ownerConnectionId: configurationId,
+      roles: assignments,
+    })).rejects.toBeDefined()
+  })
+
+  it('refuses a new configuration that mixes API and CLI targets', async () => {
+    const mixed = { ...assignments, worker: { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: null } }
+    await expect(repository.saveConfiguration('alice', {
+      name: 'Mixed', configurationKind: 'custom_api', roles: mixed,
+    })).rejects.toBeDefined()
+    expect(calls().some(call => call.sql.startsWith('INSERT INTO ai_custom_configurations'))).toBe(false)
+  })
+
   it('authorizes a managed principal without reading Default or routing state', async () => {
     respond(sql => {
       if (sql.includes('FROM mcp_api_keys')) return [{ key_id: 'mcp_test_KEY001' }]
@@ -283,7 +306,7 @@ describe('owned AI configuration repository', () => {
     const update = calls().find(c => c.sql.startsWith('UPDATE ai_custom_configurations'))!
     expect(update.sql).toContain('version=version+1')
     expect(update.sql).toContain('version=$4')
-    expect(update.params).toEqual(['alice', configurationId, 'Team', 1])
+    expect(update.params).toEqual(['alice', configurationId, 'Team', 1, 'custom_api', null, null])
     const roles = calls().filter(c => c.sql.startsWith('INSERT INTO ai_custom_configuration_roles'))
     expect(roles).toHaveLength(4)
     expect(roles.map(c => c.params[2])).toEqual(['synthesizer', 'planner', 'deep_planner', 'worker'])

@@ -12,7 +12,8 @@ const aggregate = {
   models: [{ connectionId: CONNECTION_ID, modelId: 'gpt-safe', displayName: 'GPT Safe',
     compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: false,
     supportsStructuredOutput: true, available: true, userSelected: true, plainTestedAt: '2026-09-27T10:00:00.000Z' }],
-  configurations: [{ id: CONFIG_ID, name: 'Research quartet', version: 2, deletedAt: null, roles: {
+  configurations: [{ id: CONFIG_ID, name: 'Research quartet', version: 2, deletedAt: null,
+    configurationKind: 'custom_api', ownerConnectionId: null, ownerCliId: null, roles: {
     synthesizer: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
     planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
     deep_planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'gpt-safe' },
@@ -43,6 +44,29 @@ function deferred<T>() {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('useAiChoices', () => {
+  it('shows named API and CLI presets without expanding their individual models', async () => {
+    const cliTarget = { kind: 'local_cli', cliId: 'claude_code', modelId: null }
+    const configured = { ...aggregate, configurations: [
+      { ...aggregate.configurations[0], name: 'OpenAI roles', configurationKind: 'provider_preset',
+        ownerConnectionId: CONNECTION_ID },
+      { ...aggregate.configurations[0], id: '44444444-4444-4444-8444-444444444444', name: 'Claude roles',
+        configurationKind: 'cli_preset', ownerConnectionId: null, ownerCliId: 'claude_code',
+        roles: { synthesizer: cliTarget, planner: cliTarget, deep_planner: cliTarget, worker: cliTarget } },
+    ] }
+    vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
+      if (String(url) === '/api/ai-console') return response(configured)
+      if (String(url) === '/api/ai-console/clis') return response(clis)
+      throw new Error(`unexpected ${url}`)
+    }))
+    const { result } = renderHook(() => useAiChoices(null, true))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.options.map(option => [option.group, option.label])).toEqual([
+      [null, 'Default — Personal OpenAI · GPT Safe'],
+      ['API providers', 'OpenAI roles'],
+      ['Local CLIs', 'Claude roles'],
+    ])
+  })
+
   it('keeps catalog-only provider models out of the explicit picker while preserving Default', async () => {
     vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
       if (String(url) === '/api/ai-console') return response({ ...aggregate,
@@ -53,7 +77,7 @@ describe('useAiChoices', () => {
     const { result } = renderHook(() => useAiChoices(null, true))
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.options[0].label).toBe('Default — Personal OpenAI · GPT Safe')
-    expect(result.current.options.some(option => option.group === 'Provider connections')).toBe(false)
+    expect(result.current.options.some(option => option.group === 'API providers')).toBe(false)
   })
 
   it('keeps a working conversation choice visible after its model leaves the shortlist', async () => {
@@ -74,7 +98,7 @@ describe('useAiChoices', () => {
     expect(result.current.canSubmit).toBe(true)
   })
 
-  it('starts with symbolic Default, then offers exactly the three explicit groups in order', async () => {
+  it('starts with symbolic Default, then offers only saved four-role configurations', async () => {
     vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL) => {
       if (String(url) === '/api/ai-console') return response(aggregate)
       if (String(url) === '/api/ai-console/clis') return response(clis)
@@ -84,7 +108,7 @@ describe('useAiChoices', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.selection).toEqual({ kind: 'default' })
     expect(result.current.options.map(option => option.group)).toEqual([
-      null, 'Provider connections', 'Custom configurations', 'Local CLIs',
+      null, 'Custom API configurations',
     ])
     expect(result.current.options[0].label).toBe('Default — Personal OpenAI · GPT Safe')
     expect(result.current.options.some(option => option.label.includes('Codex'))).toBe(false)
@@ -217,7 +241,7 @@ describe('useAiChoices', () => {
         { ...aggregate.models[0], modelId: 'synth-only', displayName: 'Synth specialist', compatibleRoles: ['synthesizer'] },
         { ...aggregate.models[0], modelId: 'planner-only', displayName: 'Planner specialist', compatibleRoles: ['planner'] },
       ],
-      configurations: [{ ...aggregate.configurations[0], name: 'Specialist quartet', roles: {
+      configurations: [{ ...aggregate.configurations[0], name: 'Specialist quartet', configurationKind: 'legacy_mixed', roles: {
         synthesizer: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'synth-only' },
         planner: { kind: 'provider_model', connectionId: CONNECTION_ID, modelId: 'planner-only' },
         deep_planner: { kind: 'local_cli', cliId: 'claude_code', modelId: 'deep-only' },
@@ -239,7 +263,7 @@ describe('useAiChoices', () => {
     expect(result.current.canSubmit).toBe(true)
     expect(result.current.options.map(option => [option.group, option.label])).toEqual([
       [null, 'Default — Specialist quartet'],
-      ['Custom configurations', 'Specialist quartet'],
+      ['Earlier configurations', 'Specialist quartet'],
     ])
   })
 
