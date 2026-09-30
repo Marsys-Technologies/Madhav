@@ -21,6 +21,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
+
 logger = logging.getLogger(__name__)
 
 DASHA_SYSTEMS = (
@@ -68,7 +70,7 @@ def fetch_dasha_periods(
 # half-open interval [start_iso, end_iso); AD is valid only under its MD and
 # PD only under its AD (linkage by parent row id, never timestamp overlap).
 DEFAULT_LEVELS = (1, 2, 3)  # MD / AD / PD
-READ_CONTRACT_TIER = "two_pass_verified"
+READ_CONTRACT_TIER = TWO_PASS_VERIFIED
 
 
 class DashaReadConflict(ValueError):

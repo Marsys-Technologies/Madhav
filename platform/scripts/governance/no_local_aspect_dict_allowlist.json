@@ -14,8 +14,8 @@
     },
     {
       "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
-      "line": 189,
-      "justification": "SPECIAL_DRISHTI_DEG — F-52 known defect; B-02 stream will migrate to brahmagyan.aspects oracle."
+      "line": 190,
+      "justification": "SPECIAL_DRISHTI_DEG — F-52 known defect; B-02 stream will migrate to brahmagyan.aspects oracle. Line updated 189→190 (2026-09-30, pravaha/a5-tier0s-repairs): A5.4 kakṣyā-key commit added the brahmagyan.graha_vocabulary import + KAKSHYA_ARC_DEG helper above; the dict itself is byte-identical."
     }
   ]
 }
