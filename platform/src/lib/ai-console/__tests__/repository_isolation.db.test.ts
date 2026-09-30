@@ -307,7 +307,7 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
         supportsTools: true, supportsStructuredOutput: true }] })
     // Reproduce a connection migrated with a pre-shortlist saved choice: its
     // credential version had advanced, but no individual probe was recorded.
-    await pool.query('UPDATE ai_provider_connections SET credential_version=3 WHERE id=$1', [id])
+    await pool.query('UPDATE ai_provider_connections SET credential_version=3,model_retest_required=false WHERE id=$1', [id])
     const state = (await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows[0]
     expect(state.model_retest_required).toBe(false)
     await expect(repo.loadRoutingResolution(user, { kind: 'explicit', choice: {
@@ -321,6 +321,9 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     const selected = { kind: 'explicit' as const, choice: { kind: 'provider_model' as const,
       connectionId: id, modelId: model.modelId } }
     await repo.storeConnectionValidation(user, id, { credentialVersion: 1, state: 'validated', models: [model] })
+    expect((await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows)
+      .toEqual([{ model_retest_required: true }])
+    await expect(repo.loadRoutingResolution(user, selected)).rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
     await repo.storeProviderModelProbe(user, id, model.modelId, 1, { ok: true, inputTokens: 1, outputTokens: 1 })
     await expect(repo.loadRoutingResolution(user, selected)).resolves.toMatchObject({ roles: { worker: { credentialVersion: 1 } } })
     await repo.updateConnectionWorkspace(user, id, 'wrkspc_01JEueaSaKJ72sh4drDASzH2')

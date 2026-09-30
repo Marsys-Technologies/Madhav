@@ -371,8 +371,8 @@ export async function createConnection(userId: string, input: unknown, encrypted
   if (data.providerId !== 'anthropic' && data.workspaceId) throw new AiConsoleError('AI_EXECUTION_FAILED')
   return withUserTransaction(userId, async client => {
     const row = required((await client.query(`INSERT INTO ai_provider_connections
-      (user_id,provider_id,name,credential_ciphertext,credential_nonce,credential_tag,wrapped_dek,wrap_nonce,wrap_tag,kek_version,masked_suffix,keyed_fingerprint,anthropic_workspace_id)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING ${safeColumns}`,
+      (user_id,provider_id,name,credential_ciphertext,credential_nonce,credential_tag,wrapped_dek,wrap_nonce,wrap_tag,kek_version,masked_suffix,keyed_fingerprint,anthropic_workspace_id,model_retest_required)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,true) RETURNING ${safeColumns}`,
     [userId, data.providerId, data.name, ...credentialParams(encrypted), data.workspaceId ?? null])).rows)
     await writeAiAudit(client, userId, { event: 'connection_created', connectionId: row.id })
     return safeConnection(row)

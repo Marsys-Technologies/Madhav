@@ -245,6 +245,8 @@ describe('owned AI configuration repository', () => {
     const result = await repository.createConnection('alice', { providerId: 'openai', name: 'Personal' }, encrypted)
     expect(result).toEqual({ id: connectionId, providerId: 'openai', name: 'Personal', maskedSuffix: '••••1234', validationState: 'validated', confirmedValid: true })
     const insert = calls().find(c => c.sql.startsWith('INSERT INTO ai_provider_connections'))!
+    expect(insert.sql).toContain('anthropic_workspace_id,model_retest_required')
+    expect(insert.sql).toContain('$13,true')
     expect(insert.params).toEqual(['alice', 'openai', 'Personal', encrypted.ciphertext, encrypted.nonce, encrypted.authTag, encrypted.wrappedDataKey, encrypted.wrapNonce, encrypted.wrapAuthTag, 'test', '••••1234', encrypted.fingerprint, null])
   })
   it('selects credential validity only to derive the safe confirmation boolean', async () => {
