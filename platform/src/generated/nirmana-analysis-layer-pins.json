@@ -1241,7 +1241,7 @@
       },
       {
         "generation_id": "l3:f4c69a6d0cd4:829354703812",
-        "historical_snapshot_commit": "1010659db391a9770b2af3f16adac0dfa71b02f5",
+        "historical_snapshot_commit": "297c09c7948cbb2d9480cc0ea72c10876ef9c0fc",
         "pin": {
           "admission": {
             "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
@@ -1280,7 +1280,7 @@
           "supersedes_generation_id": "l3:333eb7abcac3:d1bf773c4d94",
           "writer_inventory_sha256": "829354703812b38a8f7cde47795d91db0affd90e37f93ae057f4c9cb3bba44fd"
         },
-        "superseded_by_generation_id": "l3:92c07a9051ab:5a9de6f7002d",
+        "superseded_by_generation_id": "l3:aa6a67fb7152:889e2c1fdcfe",
         "writer_digests": {
           "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
           "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
@@ -1555,7 +1555,7 @@
           "ka_moorti_nirnaya": "approved_intentional_change",
           "ka_vedha_gochara": "approved_intentional_and_derived_import_change"
         },
-        "reason": "D-PINS-A5.4 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T13:02:03Z, M20260930T130203-0531): PR #2769 carries the Pravaha A5.4 Tier 0-S repairs plus the ASTRA_REVIEW_A5_4 closure rework (eight P1 amendments); five L3 writers' provenance closures moved, membership unchanged. ka_gochara_resonance and ka_moorti_nirnaya carry own-module edits only (approved_intentional_change); ka_vedha_gochara carries own-module edits plus import-closure movement via gochara_grammar/* (approved_intentional_and_derived_import_change); ka_gochara and ka_gochara_v3_century_materialize moved only through their import closures \u2014 gochara_grammar/{dasha_data,primitives}.py and gochara_v3/{context,engine,mechanisms/w23_tara_bala}.py \u2014 with no own-module edits (derived_import_change). The branch's earlier lane-local A5.4 successor (l3:454dab04134d:be13d85ab725, snapshot 16e3725ce) is rewound and re-admitted as this ONE successor directly over main's protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 1010659db, named as the historical snapshot) \u2014 the A0.6 precedent: squash delivery cannot resolve a lane-only historical snapshot. Source = the rework's writer-digest regeneration commit.",
+        "reason": "D-PINS-A5.4 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T13:02:03Z, M20260930T130203-0531): PR #2769 carries the Pravaha A5.4 Tier 0-S repairs plus the ASTRA_REVIEW_A5_4 v1.0 and v1.1 closure reworks; five L3 writers' provenance closures moved, membership unchanged. ka_gochara_resonance and ka_moorti_nirnaya carry own-module edits only (approved_intentional_change); ka_vedha_gochara carries own-module edits (logic/writer, plus the new gate.py) and import-closure movement via gochara_grammar/* (approved_intentional_and_derived_import_change); ka_gochara and ka_gochara_v3_century_materialize moved only through their import closures \u2014 gochara_grammar/{dasha_data,primitives}.py, gochara_v3/{context,engine,mechanisms/w23_tara_bala}.py, ka_vedha_gochara/{gate,logic}.py \u2014 with no own-module edits (derived_import_change). ONE successor directly over main's protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 297c09c79, named as the historical snapshot; the A0.6 precedent \u2014 lane-local snapshots cannot survive squash delivery). Source = the r2 writer-digest regeneration commit.",
         "review_artifacts": [
           {
             "commit": "5142109f7f219ea860f859e322646f79d875bee8",
@@ -1565,17 +1565,17 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "92c07a9051abad73815933e3a5b98ffde37fa848"
+        "source_commit": "aa6a67fb715248fa2b2eccffaf5327692319194a"
       },
       "asset_prefix": "ka_",
-      "convergence_commit": "92c07a9051abad73815933e3a5b98ffde37fa848",
-      "generation_id": "l3:92c07a9051ab:5a9de6f7002d",
+      "convergence_commit": "aa6a67fb715248fa2b2eccffaf5327692319194a",
+      "generation_id": "l3:aa6a67fb7152:889e2c1fdcfe",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
       "supersedes_generation_id": "l3:f4c69a6d0cd4:829354703812",
-      "writer_inventory_sha256": "5a9de6f7002d46bf3e6a27d23598d13659e671168dda7f29eb9c9221bf30aea5"
+      "writer_inventory_sha256": "889e2c1fdcfe83a28aea2dd4d01c8f2f8a205cbc94736d25cd19fc29d931a1b9"
     },
     "L4": {
       "admission": {
