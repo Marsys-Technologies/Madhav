@@ -1,4 +1,4 @@
--- Migration 1126: optional Anthropic workspace selection for BYOK connections
+-- Migration 1159: optional Anthropic workspace selection for BYOK connections
 -- Created: 2026-09-30
 -- Additive. The migration runner owns the transaction and tracking insert.
 
