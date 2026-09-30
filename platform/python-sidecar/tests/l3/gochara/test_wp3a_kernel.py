@@ -853,3 +853,63 @@ def test_pisces_whole_sign_span_not_refused():
     assert span.t_exit == pytest.approx(h0 + 60.0 / 0.5, abs=1e-4)  # egress at λ=360, t=120 d
     assert span.truncated_at_horizon is None
     assert span.ingress_episode.relation == "sign_ingress"
+
+
+# ── N2/N3 — no fabricated ingress at a clipped horizon start ────────────────
+
+def test_n2_retrograde_upper_boundary_entry_found():
+    """N2: the ingress search covers BOTH span boundaries. A retrograde body
+    enters a span through its UPPER edge (here the 0°/360° seam of the Pisces
+    whole-sign span); pre-fix only lo_w was searched, so the root was missed
+    and t_exact was fabricated at the clip instant."""
+    h = jd_from_iso("2026-01-01T00:00:00Z")
+
+    def curve(jd):
+        return 361.0 - 0.2 * (jd - h)  # 1° Aries → crosses 360 (Pisces top) at t=5 d
+
+    jds, lons = daily_knots(date(2025, 12, 28), date(2026, 1, 20), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (jds[0], jds[-1])
+    spans = episodes.residence_spans(
+        idx, "Sun", (330.0, 360.0), horizon, "bhava", refine=False
+    )
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.t_enter == pytest.approx(h + 5.0, abs=1e-4)  # λ=360 crossing
+    ep = span.ingress_episode
+    assert ep.exact_crossing is True
+    assert ep.t_exact == pytest.approx(h + 5.0, abs=1e-4)
+    # the root came from the UPPER boundary (0° seam): root-derived fields are
+    # populated — pre-fix (lo_w-only search) found no root and left
+    # spline_exact_jd None while stamping exact_crossing=True (the lie N2 kills)
+    assert ep.spline_exact_jd == pytest.approx(h + 5.0, abs=1e-4)
+    assert ep.t_exact != pytest.approx(horizon[0], abs=1.0)
+
+
+def test_n3_clipped_span_never_fabricates_ingress():
+    """N3/O-SS-3: the true ingress lies BEFORE the horizon start (span clipped
+    at the start edge). The span is KEPT as truncated; the ingress episode
+    carries t_exact=None / exact_crossing=False — never a fabricated instant
+    at the horizon edge stamped as an observed crossing."""
+    h0 = jd_from_iso("2026-01-01T00:00:00Z")
+
+    def curve(jd):
+        return 300.0 + 0.5 * (jd - h0)  # λ=330 at t=60 d, λ=360 at t=120 d
+
+    jds, lons = daily_knots(date(2025, 12, 15), date(2026, 6, 1), curve)
+    idx = arcs.build_arc_index("Saturn", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    horizon = (h0 + 70.0, jds[-1])  # starts 10 d AFTER the true ingress (λ=335)
+    spans = episodes.residence_spans(
+        idx, "Saturn", (330.0, 360.0), horizon, "bhava", refine=False
+    )
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.truncated_at_horizon == "start"
+    assert span.t_enter == pytest.approx(horizon[0], abs=1e-9)  # the clip instant
+    ep = span.ingress_episode
+    assert ep.exact_crossing is False
+    assert ep.t_exact is None
+    assert ep.truncated_at_horizon == "start"
+    # mutation guard: no fabricated exact instant at (or near) the clip edge
+    assert ep.t_in == pytest.approx(horizon[0], abs=1e-9)
+    assert not (ep.exact_crossing and ep.t_exact == ep.t_in)

@@ -48,7 +48,12 @@ fixtures; every rule below is traceable to a pin):
   Boundary relations (sign_ingress, nakshatra_ingress, kakshya_cell_crossing)
   are boundary-exact (WP1 §7 orb_ingress): episodes rooted at the span edge
   with t_in = t_exact = t_out and no orb. Sign-level targets (M-5) get
-  residence spans, never point contacts (residence_spans below).
+  residence spans, never point contacts (residence_spans below). A residence
+  span's ingress search covers BOTH span boundaries (N2 — a retrograde body
+  enters through the upper edge), and a span clipped at the horizon start
+  whose true ingress lies outside carries t_exact=None /
+  exact_crossing=False with truncated_at_horizon='start' (N3/O-SS-3 — never
+  a fabricated ingress instant at the clip edge).
 """
 from __future__ import annotations
 
@@ -443,7 +448,10 @@ def residence_spans(
     ingress_roots = [
         r
         for r in find_boundary_roots(index, body, "sign_ingress", ephe_path, refine=refine)
-        if abs(r.level_deg - lo_w) < 1e-6
+        # N2: the search covers BOTH span boundaries — a direct body enters at
+        # the lower edge lo_w, a retrograde body enters through the UPPER edge
+        # hi_w (e.g. a Pisces re-entry at the 0°/360° seam, O-SS-2 case 2).
+        if abs(r.level_deg - lo_w) < 1e-6 or abs(r.level_deg - hi_w % 360.0) < 1e-6
     ]
     spans: list[ResidenceSpan] = []
     tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
@@ -487,6 +495,17 @@ def residence_spans(
             (r for r in ingress_roots if abs(r.exact_jd - ca) < 1e-6), None
         )
         stamps = _episode_stamps(body, "sign_ingress", "orb_ingress")
+        # N2/N3 + O-SS-3: when no boundary root sits at the span entry, the
+        # true ingress lies before the horizon start (a clipped span). The
+        # entry instant is the horizon clip, NOT an observed crossing — never
+        # fabricate t_exact=ca with exact_crossing=True. The episode keeps the
+        # span (truncated), carries t_exact=None / exact_crossing=False, and
+        # marks the start edge, exactly as build_episodes treats an episode
+        # whose exact root lies outside the horizon (case 04a).
+        if ingress is not None:
+            branch, station_flag, unresolved = classify_branch(index, ingress)
+        else:
+            branch, station_flag, unresolved = "direct", False, False
         ingress_episode = Episode(
             body=body,
             relation="sign_ingress",
@@ -494,16 +513,18 @@ def residence_spans(
             target_deg=lo_w,
             level_deg=lo_w,
             t_in=ca,
-            t_exact=ingress.exact_jd if ingress else ca,
+            t_exact=ingress.exact_jd if ingress else None,
             t_out=ca,
-            branch="direct",
-            station_flag=False,
-            exact_crossing=True,
+            branch=branch,
+            station_flag=station_flag,
+            exact_crossing=ingress is not None,
             orb_source="orb_ingress",
             dwell_days=0.0,
-            truncated_at_horizon="start" if flag == "start" else None,
-            completeness_state="applied",
-            near_station_unresolved=False,
+            truncated_at_horizon=(
+                "start" if flag in ("start", "both") else None
+            ),
+            completeness_state="unqualified" if unresolved else "applied",
+            near_station_unresolved=unresolved,
             spline_exact_jd=ingress.spline_exact_jd if ingress else None,
             **stamps,
         )
