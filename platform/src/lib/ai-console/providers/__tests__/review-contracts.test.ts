@@ -98,6 +98,16 @@ describe('bounded machine-only billing discriminators', () => {
     await expect(getProviderAdapter('kimi').probe(key, { ...model, modelId: 'kimi-k2.5' }, signal())).rejects.toMatchObject({ code: 'AI_BILLING_UNAVAILABLE' })
   })
   it.each([
+    [400, { type: 'invalid_request_error', message: 'You have reached your specified API usage limits until next month.' }, 'AI_BILLING_UNAVAILABLE'],
+    [400, { type: 'invalid_request_error', message: 'You have reached your specified workspace API usage limits.' }, 'AI_BILLING_UNAVAILABLE'],
+    [400, { type: 'invalid_request_error', message: 'An unrelated request problem.' }, 'AI_EXECUTION_FAILED'],
+  ] as const)('classifies bounded Anthropic HTTP %i refusal without retaining its body', async (status, upstream, code) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ error: upstream }, { status })))
+    const error = await getProviderAdapter('anthropic').probe(key, model, signal()).catch(e => e)
+    expect(error.code).toBe(code)
+    expect(JSON.stringify(error)).not.toContain(key); expect(inspect(error)).not.toContain(key)
+  })
+  it.each([
     JSON.stringify({ error: { code: 'rate_limit_exceeded', message: 'insufficient_quota' } }),
     JSON.stringify({ error: { code: key } }), '{malformed',
     JSON.stringify({ error: { code: 'insufficient_quota', message: 'x'.repeat(8192) } }),

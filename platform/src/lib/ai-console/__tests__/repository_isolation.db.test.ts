@@ -105,12 +105,16 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     const migration = readFileSync(resolve(__dirname, '../../../../migrations/1124_ai_console_byok_routing.sql'), 'utf8')
     const repairMigration = readFileSync(resolve(__dirname, '../../../../migrations/1125_ai_snapshot_shape_operator_precedence.sql'), 'utf8')
     const shortlistMigration = readFileSync(resolve(__dirname, '../../../../migrations/1151_ai_console_model_shortlist.sql'), 'utf8')
+    const configurationTypesMigration = readFileSync(resolve(__dirname, '../../../../supabase/migrations/1158_ai_console_configuration_types.sql'), 'utf8')
+    const anthropicWorkspaceMigration = readFileSync(resolve(__dirname, '../../../../supabase/migrations/1159_ai_anthropic_workspace_id.sql'), 'utf8')
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
       await client.query(migration)
       await client.query(repairMigration)
       await client.query(shortlistMigration)
+      await client.query(configurationTypesMigration)
+      await client.query(anthropicWorkspaceMigration)
       await client.query('COMMIT')
     }
     catch (error) { await client.query('ROLLBACK'); throw error }
@@ -295,6 +299,44 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     await pool.query("UPDATE profiles SET status='active' WHERE id=$1", [user])
     await repo.storeProviderModelProbe(user, connectionId, 'model-a', 2,
       { ok: true, inputTokens: 1, outputTokens: 1 })
+  })
+  it('keeps a pre-probe saved model routable despite an older key replacement', async () => {
+    const id = (await repo.createConnection(user, { providerId: 'openai', name: 'Legacy saved choice' }, encrypted())).id
+    await repo.storeConnectionValidation(user, id, { credentialVersion: 1, state: 'validated',
+      models: [{ modelId: 'legacy-model', displayName: 'Legacy Model', compatibleRoles: [...AI_ROLES],
+        supportsTools: true, supportsStructuredOutput: true }] })
+    // Reproduce a connection migrated with a pre-shortlist saved choice: its
+    // credential version had advanced, but no individual probe was recorded.
+    await pool.query('UPDATE ai_provider_connections SET credential_version=3,model_retest_required=false WHERE id=$1', [id])
+    const state = (await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows[0]
+    expect(state.model_retest_required).toBe(false)
+    await expect(repo.loadRoutingResolution(user, { kind: 'explicit', choice: {
+      kind: 'provider_model', connectionId: id, modelId: 'legacy-model',
+    } })).resolves.toMatchObject({ roles: { worker: { credentialVersion: 3 } } })
+  })
+  it('requires a new model probe after changing an Anthropic workspace', async () => {
+    const id = (await repo.createConnection(user, { providerId: 'anthropic', name: 'Workspace test' }, encrypted())).id
+    const model = { modelId: 'claude-test', displayName: 'Claude Test', compatibleRoles: [...AI_ROLES],
+      supportsTools: true, supportsStructuredOutput: true }
+    const selected = { kind: 'explicit' as const, choice: { kind: 'provider_model' as const,
+      connectionId: id, modelId: model.modelId } }
+    await repo.storeConnectionValidation(user, id, { credentialVersion: 1, state: 'validated', models: [model] })
+    expect((await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows)
+      .toEqual([{ model_retest_required: true }])
+    await expect(repo.loadRoutingResolution(user, selected)).rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    await repo.storeProviderModelProbe(user, id, model.modelId, 1, { ok: true, inputTokens: 1, outputTokens: 1 })
+    await expect(repo.loadRoutingResolution(user, selected)).resolves.toMatchObject({ roles: { worker: { credentialVersion: 1 } } })
+    await repo.updateConnectionWorkspace(user, id, 'wrkspc_01JEueaSaKJ72sh4drDASzH2')
+    expect((await pool.query('SELECT model_retest_required FROM ai_provider_connections WHERE id=$1', [id])).rows)
+      .toEqual([{ model_retest_required: true }])
+    expect((await pool.query(`SELECT available,plain_tested_at,tested_credential_version,last_probe_at
+      FROM ai_connection_models WHERE connection_id=$1`, [id])).rows).toEqual([{
+      available: false, plain_tested_at: null, tested_credential_version: null, last_probe_at: null,
+    }])
+    await repo.storeConnectionValidation(user, id, { credentialVersion: 2, state: 'validated', models: [model] })
+    await expect(repo.loadRoutingResolution(user, selected)).rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
+    await repo.storeProviderModelProbe(user, id, model.modelId, 2, { ok: true, inputTokens: 1, outputTokens: 1 })
+    await expect(repo.loadRoutingResolution(user, selected)).resolves.toMatchObject({ roles: { worker: { credentialVersion: 2 } } })
   })
   it('blocks revoke-before-start and serializes concurrent revoke against immediate spawn', async () => {
     await pool.query("INSERT INTO ai_cli_installations(cli_id,validation_state) VALUES('claude_code','reachable')")

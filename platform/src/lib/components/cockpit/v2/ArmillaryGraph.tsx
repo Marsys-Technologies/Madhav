@@ -89,6 +89,32 @@ export function aggregate(assets: AssetWithState[]): LayerAgg {
   return { count: assets.length, state, builtFrac: built / total }
 }
 
+// Packet B2 — C-4, surface 3/3 (review B1_rereview2_20260926T193112Z.md, "BLOCKS
+// B2"): extracted to module scope (mirroring aggregate() above) so it is
+// independently testable, same as ArmillaryGraph.aggregate.test.ts already does
+// for aggregate(). Was a local const inside the component closure — moving it
+// changes nothing about its behavior, only where it can be called from.
+//
+// 'blocked' (cascade victim, disposition==='blocked_dependency') fell through to
+// the neutral grey '#7C725B' default — cosmetic (the tooltip TEXT already reads
+// "blocked" correctly via stateLabel's default fallthrough), but a fourth
+// instance of the same unmapped-default shape C-3/R-6 already found and fixed
+// elsewhere (SEG, AtlasView's switches). Amber '#EC9332' (rgb 236,147,50),
+// matching AssetRow.tsx/AgentsView.tsx/WorkflowView.tsx's shared 'blocked'
+// convention — distinct from 'error'/'service_down' (red, a genuine defect) and
+// from the neutral grey (idle/dormant/not_migrated, not a consequence of
+// anything). 'partial'/'incomplete' (same unmapped-default shape, same line,
+// same fix cost) join 'stale' — unfinished/resumable, never a genuine error —
+// matching LiveDependencyGraph.tsx's strokeFor() grouping.
+export function stateColor(s: string): string {
+  if (s === 'lit' || s === 'service_ok') return '#8FD49B'
+  if (s === 'building') return '#E8C878'
+  if (s === 'stale' || s === 'partial' || s === 'incomplete') return '#D2A23C'
+  if (s === 'error' || s === 'service_down') return '#B5474C'
+  if (s === 'blocked') return '#EC9332'
+  return '#7C725B'
+}
+
 interface Props {
   assets: AssetWithState[]
   activeRun: ActiveRun | null
@@ -143,7 +169,6 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
     st.textContent = text.state; st.style.color = text.color
     tip.style.opacity = '1'
   }
-  const stateColor = (s: string) => (s === 'lit' || s === 'service_ok') ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : (s === 'error' || s === 'service_down') ? '#B5474C' : '#7C725B'
   function applyAssetHover(id: string | null) {
     const a = id ? assetsRef.current.find(x => x.asset_id === id) : null
     hoverRef.current = { assetId: id, layer: a ? (a.layer as Layer) : null }

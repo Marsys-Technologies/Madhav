@@ -36,14 +36,14 @@ export async function discoverConnectionModels(connection: OwnedProviderConnecti
   connection = Object.freeze({ ...connection })
   const record = await ownedCredential(connection)
   let key: string | undefined = decryptCredential(record)
-  try { return await getProviderAdapter(connection.providerId).discover(key, signal, () => assertConnectionRequestAuthorized(connection)) }
+  try { return await getProviderAdapter(connection.providerId).discover(key, signal, () => assertConnectionRequestAuthorized(connection), record.workspaceId) }
   finally { key = undefined }
 }
 export async function probeConnectionModel(connection: OwnedProviderConnection, model: DiscoveredModel, signal: AbortSignal) {
   connection = Object.freeze({ ...connection })
   const record = await ownedCredential(connection)
   let key: string | undefined = decryptCredential(record)
-  try { return await getProviderAdapter(connection.providerId).probe(key, model, signal, () => assertConnectionRequestAuthorized(connection)) }
+  try { return await getProviderAdapter(connection.providerId).probe(key, model, signal, () => assertConnectionRequestAuthorized(connection), record.workspaceId) }
   finally { key = undefined }
 }
 /** Caller owns disposal in a finally block for the entire request, including streams. */
@@ -53,7 +53,7 @@ export async function createConnectionRuntimeBinding(connection: OwnedProviderCo
   let key: string | undefined = decryptCredential(record)
   try {
     const binding = getProviderAdapter(connection.providerId).createRuntimeBinding(key, model,
-      () => assertRuntimeModelRequestAuthorized({ ...connection, modelId: model.modelId }))
+      () => assertRuntimeModelRequestAuthorized({ ...connection, modelId: model.modelId }), record.workspaceId)
     return ownedConnectionBinding(connection.connectionId, binding)
   }
   finally { key = undefined }

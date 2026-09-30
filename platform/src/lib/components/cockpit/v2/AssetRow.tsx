@@ -38,6 +38,48 @@ function derivePrimaryLabel(dormant: boolean): string {
   return dormant ? 'Build' : 'Rebuild'
 }
 
+// Packet B2 ("the DAG-derived downstream count"). The one consumer of
+// the downstream-dependents count (stats route, DOWNSTREAM_DEPENDENTS_SQL) — rendered ONLY next to a
+// GENUINE root failure (never a 'blocked' cascade victim; that asset's own
+// downstream reach is not the story of its own row).
+//
+// Three cases, each rendered honestly rather than collapsed into one another
+// (§N.8 — an absent-or-zero figure must never read as a confident number it
+// is not):
+//   - count is null/undefined  → not computed this poll (the stats route's
+//     downstream-dependents query failed) — render NOTHING. Silence here is
+//     the honest answer: there is no fabricated number to show.
+//   - count === 0              → a genuine leaf asset. Rendered explicitly as
+//     "no downstream impact", never as a blank (which would be indistinguishable
+//     from "not computed") and never as a bare "0" (which reads like an error
+//     count, not an all-clear).
+//   - count > 0                → "could affect up to N downstream", captioned
+//     as an upper bound in the same place the number appears — this is a DAG
+//     upper bound, never an observed or predicted cascade count (the packet's
+//     own before-measurement found the static DAG figure does NOT predict which
+//     failures historically cascaded hardest).
+function DownstreamImpactNote({ count }: { count?: number | null }) {
+  if (count == null) return null
+  if (count === 0) {
+    return (
+      <div
+        style={{ fontSize: '9px', color: 'var(--on-dark-faint)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}
+        title="No other asset transitively depends on this one (DAG upper bound: 0)."
+      >
+        no downstream impact
+      </div>
+    )
+  }
+  return (
+    <div
+      style={{ fontSize: '9px', color: 'var(--on-dark-faint)', marginTop: '2px', fontFamily: 'var(--mono-stack)' }}
+      title={`Upper bound from the dependency graph, not an observed or predicted cascade: ${count} asset${count === 1 ? '' : 's'} transitively depend${count === 1 ? 's' : ''} on this one.`}
+    >
+      could affect up to {count.toLocaleString()} downstream (upper bound, not a prediction)
+    </div>
+  )
+}
+
 // Service-health pill — replaces progress bar for asset_type='service' rows.
 // state='lit' ⟹ GREEN probe passed; 'error'/'service_down' ⟹ probe failed;
 // 'building' ⟹ probe running.
@@ -137,7 +179,11 @@ function StatusDot({
 }) {
   const isDraft = catalogStatus === 'DRAFT'
   const isHealthy = state === 'lit' || state === 'service_ok'
-  const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting'
+  // 'blocked' (Packet B1): a dependent skipped because an upstream failed/was
+  // blocked this run (disposition='blocked_dependency') is a cascade CONSEQUENCE,
+  // not this asset's own defect — grouped with the amber "not this asset's fault"
+  // states, never with the red 'error' state that would misreport it as one.
+  const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting' || state === 'blocked'
   // DRAFT only forces red when the asset is NOT healthy — a running DRAFT asset is green.
   const isRed = state === 'error' || state === 'service_down' || state === 'not_migrated' || (isDraft && !isHealthy)
 
@@ -265,11 +311,6 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
       toast.error(err instanceof Error ? err.message : 'Failed to start build')
     }
   }
-  // O1: distinguish BLOCKED cascade errors from genuine root failures
-  function isBlockedCascade(errorMessage: string): boolean {
-    return errorMessage.startsWith('BLOCKED:')
-  }
-
   const isActive = asset.is_active
   const isDataPlaneDown = stat?.error_class === 'dataplane'
   // Suppress red-error display when the failure is a transient data-plane blip
@@ -363,23 +404,39 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
               </div>
             )}
             {hasError && stat?.error && (
-              isBlockedCascade(stat.error) ? (
-                // O1: blocked cascade — amber/orange, chain icon, distinct tooltip
+              // Packet B1: was a text-sniff (`stat.error.startsWith('BLOCKED:')`,
+              // O1) — replaced with the structural signal. `derivedState === 'blocked'`
+              // traces to build_run_assets.disposition='blocked_dependency'
+              // (migration 1201), read verbatim by the server's deriveState(), never
+              // re-derived from the error TEXT here (§N.7 item 1: a narration must
+              // trace to a cited fact, not re-derive one — the old text-sniff would
+              // have also mislabeled a writer TIMEOUT as a blocked cascade, since a
+              // pre-B1 timeout's message also started with 'BLOCKED:'; Decision 2's
+              // engine fix means a timeout no longer produces that text OR that
+              // disposition, but this UI must not have its own independent copy of
+              // the old, now-corrected heuristic either).
+              derivedState === 'blocked' ? (
+                // blocked cascade — amber/orange, chain icon, distinct tooltip
                 <div
                   style={{ fontSize: '9px', color: 'rgba(236,147,50,0.9)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  title={`Blocked by upstream failure — ${stat.error}`}
+                  title={stat.blocked_by_asset_id
+                    ? `Blocked by upstream failure — ${stat.blocked_by_asset_id}`
+                    : `Blocked by upstream failure — ${stat.error}`}
                 >
                   <Link2 size={9} style={{ flexShrink: 0, color: 'rgba(236,147,50,0.8)' }} />
-                  <span>blocked by upstream failure</span>
+                  <span>blocked by upstream failure{stat.blocked_by_asset_id ? `: ${stat.blocked_by_asset_id}` : ''}</span>
                 </div>
               ) : (
-                // O1: genuine root failure — keep existing red styling
-                <div
-                  style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  title={stat.error}
-                >
-                  {stat.error.slice(0, 64)}
-                </div>
+                // genuine root failure — keep existing red styling
+                <>
+                  <div
+                    style={{ fontSize: '9px', color: 'var(--marsys-error)', marginTop: '2px', fontFamily: 'var(--mono-stack)', maxWidth: '52ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={stat.error}
+                  >
+                    {stat.error.slice(0, 64)}
+                  </div>
+                  <DownstreamImpactNote count={stat.downstream_dependent_count} />
+                </>
               )
             )}
             {/* O2: lit asset with 0 rows — subtle note, not alarming */}

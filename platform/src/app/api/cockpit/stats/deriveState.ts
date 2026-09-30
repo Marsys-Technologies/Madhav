@@ -2,7 +2,20 @@
 // export more than GET/POST/route-config — Next's build-time route-shape check forbids any
 // other export from a route.ts file, which is why this logic cannot live there directly).
 
-export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
+// Packet B2 — C-3 (review B1_rereview2_20260926T193112Z.md): a runtime array
+// declared alongside the type, with the TYPE derived FROM the array (not the
+// reverse) so the two literally cannot drift — a hand-maintained second list would
+// itself be the "no detector checks the actual claim" defect class (§N.8) this
+// fix exists to close. This is the runtime source of truth a test needs to prove
+// "every AssetState has a mapping" in some other module (e.g. AssetProgressBar's
+// SEG) — TypeScript types don't exist at runtime, so a test asserting exhaustive
+// coverage needs a real value to iterate, not just a type.
+export const ALL_ASSET_STATES = [
+  'lit', 'building', 'stale', 'dormant', 'error', 'partial', 'incomplete',
+  'not_migrated', 'service_ok', 'service_down', 'blocked',
+] as const
+
+export type AssetState = typeof ALL_ASSET_STATES[number]
 
 // Badge-honesty defect (pre-D-4b readiness pass, native-flagged, 2026-07-21): a HEAVY
 // (has_substeps=true) writer whose build hit its own writer_timeout_seconds mid-materialization
@@ -62,7 +75,14 @@ export function deriveState(
   actualRows: number | null,
   error: string | null,
   throughputState: string | null,
-  substepsCommitted: number | null = null
+  substepsCommitted: number | null = null,
+  // Packet B1 ("Cascade reads as one cause, N blocked"): the LATEST
+  // build_run_assets.disposition for this asset+chart (migration 1201). Every
+  // consumer of `state` in the v2 cockpit (CockpitShell, LayerPanel, CockpitHeader,
+  // AssetRow) already filters on `state === 'error'` to count failures — none of
+  // them need a code change once 'blocked' is a distinct value here, because they
+  // all read this SAME derived state, never asset_throughput.state directly.
+  latestRunDisposition: string | null = null
 ): AssetState {
   // Service assets have no row count, so their status must be derived from measured
   // probe evidence, never from registration alone. Healthy service_health plus a
@@ -92,6 +112,16 @@ export function deriveState(
   // change what the asset IS.
   if (throughputState === 'incomplete') return 'incomplete'
   if (error) {
+    // Packet B1: a dependent that never ran because an upstream failed/was blocked
+    // IN THE SAME RUN (runner.py::_mark_asset_blocked, disposition='blocked_dependency')
+    // is a cascade CONSEQUENCE, not this asset's own defect. Checked first among the
+    // `error`-shaped branches — before 'partial', because a genuinely blocked asset's
+    // writer never ran at all, so it cannot have committed real substeps this run
+    // either (a stale substep count from a PRIOR run must not relabel a fresh block
+    // as 'partial'). Never derived from the `error` TEXT (§N.7 item 1: narration must
+    // trace to a cited fact, never re-derive) — `latestRunDisposition` is read
+    // verbatim from the build_run_assets row the orchestrator itself wrote.
+    if (latestRunDisposition === 'blocked_dependency') return 'blocked'
     if (asset.has_substeps && substepsCommitted != null && substepsCommitted > 0) return 'partial'
     return 'error'
   }

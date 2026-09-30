@@ -316,9 +316,11 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // successor (PR #2727) now follows it, so it is the archived predecessor.
     const securityL1 = layerPinRecord.history.L1[2].pin
     const securityL2 = layerPinRecord.history.L2[2].pin
+    const l1Admission = securityL1.admission
+    if (!l1Admission) throw new Error('L1 security successor is missing its admission')
     expect(securityL1.generation_id).toBe('l1:149f8479ac4e:93de3b2c84b7')
     expect(securityL2.generation_id).toBe('l2:149f8479ac4e:51d3164426ac')
-    expect(securityL1.admission.changed_assets).toEqual([
+    expect(l1Admission.changed_assets).toEqual([
       'ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga',
       'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree',
       'ga_strength', 'ga_structural', 'ga_tajaka', 'ga_vargas', 'ga_yoga',
@@ -330,7 +332,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       'bo_upaya', 'bo_vargottama_dhana',
     ])
     for (const acceptance of [
-      securityL1.admission.source_acceptance,
+      l1Admission.source_acceptance,
       securityL2.admission?.source_acceptance,
     ]) {
       expect(acceptance).toMatchObject(expectedSourceAcceptance)
@@ -338,10 +340,10 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       expect(acceptance!.reviewed_surface).toHaveLength(23)
       expect(acceptance!.reviewed_surface.every(item => /^[a-f0-9]{40}$/.test(item.blob_oid))).toBe(true)
     }
-    expect(securityL1.admission.review_artifacts).toEqual(
+    expect(l1Admission.review_artifacts).toEqual(
       securityL2.admission?.review_artifacts,
     )
-    expect(securityL1.admission.review_artifacts[0]).toEqual({
+    expect(l1Admission.review_artifacts[0]).toEqual({
       commit: '149f8479ac4e22874aabe9a5e5b340fb86bc16fb',
       decision_binding: 'status: SECURITY_CLEAR_SOURCE_ACCEPTED',
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_0.md',

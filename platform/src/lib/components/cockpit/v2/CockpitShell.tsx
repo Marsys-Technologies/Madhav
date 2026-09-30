@@ -146,6 +146,14 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   // Error badge count — derived from the merged state list that DataAssetsView
   // reports via onAssetsReady. No extra polling needed.
+  //
+  // Packet B1 (review B1_review_20260926T182200Z.md C-2a): THIS is the mechanism —
+  // CockpitHeader has no filter of its own; it only renders the `errorCount` PROP
+  // computed here. `a.state` traces back to the server's deriveState() (via
+  // stats/route.ts -> DataAssetsView's merged list), so a dependent blocked by an
+  // upstream failure (disposition='blocked_dependency') reads 'blocked' here, not
+  // 'error' — it is correctly excluded from this count already, with no change
+  // needed in this file or in CockpitHeader.tsx.
   const errorCount = assetStates.filter(a => a.state === 'error' || a.state === 'service_down').length
 
   // The chart identity + telemetry + actions, compact — rides at the top of the

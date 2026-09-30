@@ -475,15 +475,27 @@ def is_asset_complete(cur, chart_id, asset_id: str) -> bool:
 
 # ── Main entry ────────────────────────────────────────────────────────────────
 
-def _mark_asset_error_terminal(conn, cur, run_id: str, chart_id, asset_id: str, message: str) -> None:
+def _mark_asset_error_terminal(
+    conn, cur, run_id: str, chart_id, asset_id: str, message: str,
+    *, disposition: Optional[str] = None, blocked_by: Optional[str] = None,
+) -> None:
     """
     Shared terminal-error write: asset_throughput + build_run_assets + the
     asset.state_change event, for an asset that fails THIS run without its writer
-    having run at all. Two callers share this exact shape today: a dependent
-    blocked by a failed/diverged upstream (_mark_asset_blocked), and an asset whose
-    own asset_registry row genuinely diverged from the frozen manifest between
-    freeze and check time (_terminalize_diverged_assets, A3). Not used for a
+    having run at all. Three callers share this exact shape today: a dependent
+    blocked by a failed/diverged upstream (_mark_asset_blocked), an asset whose own
+    writer exceeded its writer_timeout_seconds budget (_mark_asset_timeout — Packet
+    B1 Decision 2: a ROOT cause, never routed through _mark_asset_blocked), and an
+    asset whose own asset_registry row genuinely diverged from the frozen manifest
+    between freeze and check time (_terminalize_diverged_assets, A3). Not used for a
     writer's own runtime failure — that path belongs to asset_runner, not this one.
+
+    `disposition`/`blocked_by` (Packet B1 Decision 1) are ONLY ever passed by
+    _mark_asset_blocked, for a genuine dependency/deadlock cascade. Every other
+    caller omits them, so build_run_assets.disposition stays NULL for a root-cause
+    failure (a writer timeout, a registry divergence, a genuine writer crash) —
+    exactly the same "this run did not succeed, and nothing downstream caused it"
+    signal a plain writer failure already gets today.
     """
     if chart_id is not None:
         cur.execute(
@@ -502,9 +514,10 @@ def _mark_asset_error_terminal(conn, cur, run_id: str, chart_id, asset_id: str, 
             (asset_id, message),
         )
     cur.execute(
-        """UPDATE build_run_assets SET state='error', error=%s, ended_at=NOW()
+        """UPDATE build_run_assets
+           SET state='error', error=%s, ended_at=NOW(), disposition=%s, blocked_by_asset_id=%s
            WHERE run_id=%s AND asset_id=%s""",
-        (message[:2000], run_id, asset_id),
+        (message[:2000], disposition, blocked_by, run_id, asset_id),
     )
     conn.commit()
     emit_event({
@@ -520,14 +533,52 @@ def _mark_asset_blocked(conn, cur, run_id: str, chart_id, asset_id: str, blockin
     Recorded as state='error' (the loud, surfaced state — red in the tracker, counted in
     the run's error tally) with a 'BLOCKED:' message, rather than silently running the
     writer on incomplete upstream data and marking it 'complete'. The asset is NOT executed.
+
+    Packet B1 Decision 1: ALSO records disposition='blocked_dependency' (the
+    already-provisioned, previously-dormant CHECK constraint value) plus the
+    immediate blocking asset id(s) in the new blocked_by_asset_id column, so a
+    consumer can count "one cause, N blocked" instead of N failures. This function
+    is called ONLY for a genuine dependency cascade or deadlock (execute_dag's two
+    on_block call sites) — NEVER for a writer's own timeout, which is a root cause
+    wearing cascade-victim clothes and is handled by the separate _mark_asset_timeout
+    below (Decision 2).
     """
+    joined = ", ".join(sorted(blocking_deps))
     msg = (
         "BLOCKED: upstream dependency(ies) %s did not complete in this run; "
-        "skipped to avoid building on incomplete data"
-        % ", ".join(sorted(blocking_deps))
+        "skipped to avoid building on incomplete data" % joined
+    )
+    _mark_asset_error_terminal(
+        conn, cur, run_id, chart_id, asset_id, msg,
+        disposition="blocked_dependency", blocked_by=joined[:2000],
+    )
+    logger.warning("[orchestrator] BLOCKED %s — upstream not complete: %s", asset_id, blocking_deps)
+
+
+def _mark_asset_timeout(conn, cur, run_id: str, chart_id, asset_id: str, budget_seconds: int) -> None:
+    """
+    Mark an asset's OWN writer as the root cause because it exceeded its
+    writer_timeout_seconds budget (execute_dag's H-3/JL-023 watchdog).
+
+    Packet B1 Decision 2: this is NOT a dependency block — `asset_id` itself is the
+    failure, not a dependent of one. Before this fix, execute_dag funneled a timeout
+    through _mark_asset_blocked() with a synthetic, non-asset-id dependency name
+    ('timeout:600s'), which both fabricated a fake blocking dependency and
+    misclassified a genuine root cause as a cascade victim — the exact defect this
+    packet exists to fix, found sitting in the engine's own code
+    (B1_before_20260926T173931Z.json §2). disposition is left NULL (the same
+    default a plain writer crash gets — see asset_runner.py's mark_asset_error),
+    and blocked_by_asset_id is left NULL: nothing blocked this asset, it blocked
+    itself by running too long.
+    """
+    msg = (
+        "TIMEOUT: writer exceeded its writer_timeout_seconds budget (%ds) — "
+        "this asset is the failure, not a blocked dependent" % budget_seconds
     )
     _mark_asset_error_terminal(conn, cur, run_id, chart_id, asset_id, msg)
-    logger.warning("[orchestrator] BLOCKED %s — upstream not complete: %s", asset_id, blocking_deps)
+    logger.warning(
+        "[orchestrator] TIMEOUT %s — exceeded writer_timeout_seconds=%ds", asset_id, budget_seconds,
+    )
 
 
 def _terminalize_diverged_assets(
@@ -579,6 +630,8 @@ def execute_dag(
     seed_completed: Optional[set] = None,
     seed_failed: Optional[set] = None,
     on_block=None,
+    on_timeout=None,          # Packet B1 Decision 2: called(asset, budget_seconds) for a
+                               # writer's OWN timeout — a root cause, distinct from on_block
     should_stop=None,
     on_complete=None,         # called(asset_id) when asset lands in completed; errors are swallowed
     timeouts_of=None,         # optional {asset_id: seconds}; per-writer watchdog budget (JL-023)
@@ -589,7 +642,15 @@ def execute_dag(
 
       run_fn(asset) -> 'lit' | <anything else = failure>   (called on a worker thread)
       should_stop() -> None | 'stop' | 'pause'              (checked each round)
-      on_block(asset, blocking_deps)                        (side effect on block)
+      on_block(asset, blocking_deps)                        (side effect on a genuine
+                                                               dependency cascade/deadlock)
+      on_timeout(asset, budget_seconds)                      (side effect when `asset` ITSELF
+                                                               exceeds its writer_timeout_seconds
+                                                               — Packet B1 Decision 2: never
+                                                               routed through on_block, which
+                                                               would fabricate a fake dependency
+                                                               named 'timeout:Ns' and misreport
+                                                               a root cause as a cascade victim)
 
     Invariant: an asset is dispatched ONLY when every dep is in `completed` and none
     is in `failed`; a failed dep blocks it (transitively). Two assets run at once only
@@ -609,6 +670,7 @@ def execute_dag(
     deadlines: dict = {}          # future → wall-clock deadline (seconds since epoch)
     terminal: Optional[str] = None
     _block = on_block or (lambda a, b: None)
+    _timeout_cb = on_timeout or (lambda a, budget: None)
     _stop = should_stop or (lambda: None)
     _on_complete = on_complete or (lambda a: None)
     # JL-023: per-writer watchdog budget from asset_registry.writer_timeout_seconds;
@@ -670,7 +732,13 @@ def execute_dag(
                         "marking error; daemon thread will die on process exit",
                         a, _budget,
                     )
-                    _block(a, [f"timeout:{_budget}s"])
+                    # Packet B1 Decision 2: a timeout is `a`'s OWN root-cause failure, not a
+                    # dependency block on `a` — must never go through _block()/on_block, which
+                    # would fabricate a fake dependency named 'timeout:Ns' and misclassify this
+                    # root cause as a cascade victim. `a` still joins `failed`, so its OWN
+                    # dependents are correctly cascade-blocked via the ordinary on_block path
+                    # on a later round — only `a` itself is reported as the cause.
+                    _timeout_cb(a, _budget)
                     failed.add(a)
 
             for fut in done:
@@ -903,6 +971,11 @@ def _schedule_parallel(
     def on_block(a, blocking):
         _mark_asset_blocked(conn, cur, run_id, eff(a), a, blocking)
 
+    def on_timeout(a, budget_seconds):
+        # Packet B1 Decision 2: `a`'s own writer timeout is a root cause, not a
+        # dependency block — routed to the dedicated terminal writer, never on_block.
+        _mark_asset_timeout(conn, cur, run_id, eff(a), a, budget_seconds)
+
     from .staleness import propagate_downstream_staleness
 
     def on_complete(asset_id: str) -> None:
@@ -944,6 +1017,7 @@ def _schedule_parallel(
         seed_completed=completed,
         seed_failed=seed_failed,
         on_block=on_block,
+        on_timeout=on_timeout,
         should_stop=should_stop,
         on_complete=on_complete,
         timeouts_of=timeouts_of,

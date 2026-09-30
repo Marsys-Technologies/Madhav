@@ -1,20 +1,38 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle2, CircleDashed, Clock3, Plus, ShieldAlert } from 'lucide-react'
+import { AlertCircle, CheckCircle2, CircleDashed, Clock3, Plus, ShieldAlert, Pencil, Trash2, RotateCw, Settings2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { AiChoiceRadio } from './AiChoiceRadio'
 import {
-  PROVIDER_LABELS, choicesEqual, formatCheckedAt, hasCurrentProviderConfirmation, supportsEveryRole,
+  AI_ROLES, PROVIDER_LABELS, ROLE_LABELS, choicesEqual, formatCheckedAt, hasCurrentProviderConfirmation,
   type AiChoice, type AiConsoleStateDto, type ConsoleMutation, type ProviderConnectionDto, type ProviderId,
 } from './types'
 
 // Direct Kimi onboarding is retired; existing connections remain visible for repair.
-const PROVIDERS = (Object.entries(PROVIDER_LABELS) as [ProviderId, string][]).filter(([id]) => id !== 'kimi')
+const PROVIDERS = (Object.entries(PROVIDER_LABELS) as [ProviderId, string][]).filter(([id]) =>
+  id === 'openai' || id === 'anthropic' || id === 'google' || id === 'openrouter')
 const STATUS_LABELS: Record<ProviderConnectionDto['validationState'], string> = {
   untested: 'Not tested', validating: 'Testing', validated: 'Validated', needs_attention: 'Needs attention',
   invalid: 'Credential rejected', unreachable: 'Provider unreachable',
+}
+
+const FAILURE_GUIDANCE: Record<string, string> = {
+  AI_BILLING_UNAVAILABLE: 'API billing, credits, or a spending limit is blocking this connection. Check the provider account, then test again.',
+  AI_CONNECTION_INVALID: 'The provider rejected this key. Replace it with a key for the correct API product, then test again.',
+  AI_PERMISSION_DENIED: 'The provider denied access. Check this key’s workspace and model permissions.',
+  AI_MODEL_UNAVAILABLE: 'The provider did not make the tested model available to this key.',
+  AI_RATE_LIMITED: 'The provider rate limit was reached. Wait before testing again.',
+  AI_PROVIDER_UNREACHABLE: 'The provider could not be reached. Test again when its service is available.',
+  AI_EXECUTION_FAILED: 'The provider check failed, but the precise reason was not identified. Check the provider account and API access before testing again.',
+}
+
+function validationFeedback(result: unknown): string {
+  const validation = result && typeof result === 'object' && 'validation' in result ? result.validation : null
+  if (!validation || typeof validation !== 'object' || !('state' in validation)) return 'Connection test returned no readable verdict.'
+  if (validation.state === 'validated') return 'Connection validated. Its compatible models are now available.'
+  return 'Connection is not ready. Review the reason on its card.'
 }
 
 function StatusMark({ state }: { state: ProviderConnectionDto['validationState'] }) {
@@ -27,6 +45,7 @@ type Editor =
   | { kind: 'add' }
   | { kind: 'rename'; connection: ProviderConnectionDto }
   | { kind: 'replace'; connection: ProviderConnectionDto }
+  | { kind: 'workspace'; connection: ProviderConnectionDto }
   | { kind: 'test'; connection: ProviderConnectionDto }
   | null
 
@@ -37,16 +56,18 @@ interface Props {
   mutationPending: boolean
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
+  onConfigureRoles: (connectionId: string) => void
 }
 
-type ProviderErrorTarget = 'name' | 'apiKey' | 'acknowledgement' | 'form'
+type ProviderErrorTarget = 'name' | 'apiKey' | 'workspaceId' | 'acknowledgement' | 'form'
 interface ProviderFieldError { message: string; target: ProviderErrorTarget }
 
-export function ProviderConnectionsSection({ state, loading, error, mutationPending, mutate, onSelectDefault }: Props) {
+export function ProviderConnectionsSection({ state, loading, error, mutationPending, mutate, onSelectDefault, onConfigureRoles }: Props) {
   const [editor, setEditor] = useState<Editor>(null)
   const [name, setName] = useState('')
   const [providerId, setProviderId] = useState<ProviderId>('openai')
   const [apiKey, setApiKey] = useState('')
+  const [workspaceId, setWorkspaceId] = useState('')
   const [acknowledgeCharge, setAcknowledgeCharge] = useState(false)
   const [fieldError, setFieldError] = useState<ProviderFieldError | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProviderConnectionDto | null>(null)
@@ -66,6 +87,7 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
     setName(next.kind === 'rename' ? next.connection.name : '')
     setProviderId(next.kind === 'add' ? 'openai' : next.connection.providerId)
     setApiKey('')
+    setWorkspaceId(next.kind === 'add' ? '' : next.connection.workspaceId ?? '')
     setAcknowledgeCharge(false)
     setFieldError(null)
   }
@@ -80,6 +102,11 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       setFieldError({ message: 'Enter the API key.', target: 'apiKey' })
       return
     }
+    if ((editor.kind === 'workspace' || (editor.kind === 'add' && providerId === 'anthropic'))
+      && workspaceId.trim() && !/^wrkspc_[A-Za-z0-9]{20,64}$/.test(workspaceId.trim())) {
+      setFieldError({ message: 'Enter a valid Claude workspace ID, starting with wrkspc_.', target: 'workspaceId' })
+      return
+    }
     if (editor.kind !== 'rename' && !acknowledgeCharge) {
       setFieldError({ message: 'Acknowledge the provider charge disclosure to continue.', target: 'acknowledgement' })
       return
@@ -88,8 +115,9 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
     try {
       if (editor.kind === 'add') {
         await mutate('/api/ai-console/connections', {
-          method: 'POST', body: JSON.stringify({ name: name.trim(), providerId, apiKey, acknowledgeCharge: true }),
-        }, 'Connection saved and tested.')
+          method: 'POST', body: JSON.stringify({ name: name.trim(), providerId, apiKey,
+            ...(providerId === 'anthropic' ? { workspaceId: workspaceId.trim() || null } : {}), acknowledgeCharge: true }),
+        }, validationFeedback)
       } else if (editor.kind === 'rename') {
         await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
           method: 'PATCH', body: JSON.stringify({ name: name.trim() }),
@@ -97,13 +125,18 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       } else if (editor.kind === 'replace') {
         await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
           method: 'PATCH', body: JSON.stringify({ apiKey, acknowledgeCharge: true }),
-        }, 'Credential replaced and tested.')
+        }, validationFeedback)
+      } else if (editor.kind === 'workspace') {
+        await mutate(`/api/ai-console/connections/${editor.connection.id}`, {
+          method: 'PATCH', body: JSON.stringify({ workspaceId: workspaceId.trim() || null, acknowledgeCharge: true }),
+        }, validationFeedback)
       } else {
         await mutate(`/api/ai-console/connections/${editor.connection.id}/validate`, {
           method: 'POST', body: JSON.stringify({ acknowledgeCharge: true }),
-        }, 'Connection test completed.')
+        }, validationFeedback)
       }
       setApiKey('')
+      setWorkspaceId('')
       setEditor(null)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The request could not be completed safely.'
@@ -172,13 +205,13 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
     <section className="aic-section" aria-labelledby="aic-provider-heading">
       <div className="aic-section-head">
         <div>
-          <h2 id="aic-provider-heading">Provider connections</h2>
+          <h2 id="aic-provider-heading">API connections</h2>
           <p className="aic-section-copy">Connect a provider, then test and add only the models you intend to use. A catalog listing alone does not confirm access to every model. For Kimi models, use OpenRouter.</p>
         </div>
         {!error && state && <button className="aic-button" data-primary="true" type="button" onClick={() => openEditor({ kind: 'add' })}><Plus aria-hidden="true" className="inline size-4" /> Add connection</button>}
       </div>
       {state?.validationDisclosure && <p className="aic-disclosure"><strong>Charge notice.</strong> {state.validationDisclosure}</p>}
-      {!error && defaultMissing && providerDefault && <div className="aic-broken"><strong>Broken default.</strong> Provider choice {providerDefault.connectionId} / {providerDefault.modelId} is no longer available. Choose another default below.<div className="aic-model-row" data-default="true"><span className="aic-model-id">Unavailable provider choice</span><AiChoiceRadio choice={providerDefault} checked disabled unavailable label={`${providerDefault.connectionId} ${providerDefault.modelId}`} onSelect={onSelectDefault} /></div></div>}
+      {!error && providerDefault && <div className="aic-broken"><strong>{defaultMissing ? 'Broken default.' : 'Earlier direct-model default.'}</strong> {defaultMissing ? `Provider choice ${providerDefault.connectionId} / ${providerDefault.modelId} is no longer available. Choose another default below.` : 'This saved choice remains active until you replace it with a four-role setup.'}<div className="aic-model-row" data-default="true"><span className="aic-model-id">{providerDefault.modelId}</span><AiChoiceRadio choice={providerDefault} checked disabled unavailable={defaultMissing} label={`${providerDefault.connectionId} ${providerDefault.modelId}`} onSelect={onSelectDefault} /></div></div>}
       {error ? <div className="aic-error" role="alert">Provider connections could not be loaded. Refresh the page to try again.</div> : loading ? <div className="aic-empty">Loading provider connections…</div> : connections.length === 0 ? (
         <div className="aic-empty">No provider connections yet. Add one to validate its available models.</div>
       ) : (
@@ -187,6 +220,17 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
             const catalogCount = (state?.models ?? []).filter(model => model.connectionId === connection.id && model.available).length
             const models = (state?.models ?? []).filter(model => model.connectionId === connection.id && (model.userSelected
               || (providerDefault?.connectionId === connection.id && providerDefault.modelId === model.modelId)))
+            const preset = state?.configurations.find(item => !item.deletedAt && item.configurationKind === 'provider_preset'
+              && item.ownerConnectionId === connection.id)
+            const presetChoice = preset ? { kind: 'custom_configuration' as const, configurationId: preset.id } : null
+            const presetChecked = presetChoice ? choicesEqual(state?.defaultChoice ?? null, presetChoice) : false
+            const presetReady = Boolean(preset && !connection.deletedAt && connection.providerId !== 'kimi'
+              && hasCurrentProviderConfirmation(connection) && AI_ROLES.every(role => {
+                const target = preset.roles[role]
+                if (target.kind !== 'provider_model' || target.connectionId !== connection.id) return false
+                const model = state?.models.find(item => item.connectionId === connection.id && item.modelId === target.modelId)
+                return Boolean(model?.available && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role))
+              }))
             return (
               <article className="aic-card" key={connection.id}>
                 <div className="aic-card-head">
@@ -195,25 +239,31 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                     <StatusMark state={connection.validationState} />
                   </div>
                   <p className="aic-mask" aria-label="Saved credential mask">{connection.maskedSuffix}</p>
+                  {connection.providerId === 'anthropic' && !connection.workspaceId && connection.validationState !== 'validated' &&
+                    <p className="aic-meta">Organization-wide Claude keys need a workspace ID. Set it here, then test the existing key.</p>}
                   <p className="aic-meta">Last check · {formatCheckedAt(connection.lastCheckedAt ?? connection.lastValidatedAt)}</p>
+                  {connection.validationState !== 'validated' && connection.lastErrorCode && (
+                    <p className="aic-failure-guidance">{FAILURE_GUIDANCE[connection.lastErrorCode] ?? FAILURE_GUIDANCE.AI_EXECUTION_FAILED}</p>
+                  )}
                   {connection.deletedAt && <p className="aic-status"><AlertCircle aria-hidden="true" />Deleted connection — retained because a saved choice refers to it</p>}
                   {!connection.deletedAt && <div className="aic-actions">
                     <button className="aic-button" data-primary="true" type="button" onClick={() => { setModelManager(connection); setModelQuery(''); setModelRole('all'); setVisibleLimit(30); setModelCharge(false) }}>Manage models ({models.length}/{catalogCount})</button>
-                    <button className="aic-button" type="button" onClick={() => openEditor({ kind: 'test', connection })}>Test connection</button>
-                    <button className="aic-button" type="button" onClick={() => openEditor({ kind: 'rename', connection })}>Rename</button>
                     <button className="aic-button" type="button" onClick={() => openEditor({ kind: 'replace', connection })}>Replace key</button>
-                    <button className="aic-button" data-danger="true" type="button" onClick={() => previewDelete(connection)}>Delete</button>
+                    {connection.providerId !== 'kimi' && <button className="aic-button" type="button" disabled={!hasCurrentProviderConfirmation(connection)} onClick={() => onConfigureRoles(connection.id)}>{preset ? 'Edit four roles' : 'Set up four roles'}</button>}
+                    <div className="aic-card-menu" aria-label={`${connection.name} more actions`}>
+                      <button className="aic-button aic-icon-button" type="button" aria-label={`Test ${connection.name} connection`} title="Test connection" onClick={() => openEditor({ kind: 'test', connection })}><RotateCw aria-hidden="true" /></button>
+                      <button className="aic-button aic-icon-button" type="button" aria-label={`Rename ${connection.name} connection`} title="Rename" onClick={() => openEditor({ kind: 'rename', connection })}><Pencil aria-hidden="true" /></button>
+                      {connection.providerId === 'anthropic' && <button className="aic-button aic-icon-button" type="button" aria-label="Workspace ID" title="Workspace ID" onClick={() => openEditor({ kind: 'workspace', connection })}><Settings2 aria-hidden="true" /></button>}
+                      <button className="aic-button aic-icon-button" data-danger="true" type="button" aria-label={`Delete ${connection.name} connection`} title="Delete" onClick={() => previewDelete(connection)}><Trash2 aria-hidden="true" /></button>
+                    </div>
                   </div>}
                 </div>
+                {preset && <div className="aic-role-grid aic-card-roles">{AI_ROLES.map(role => <div className="aic-role-row" key={role}><span className="aic-role-label">{ROLE_LABELS[role]}</span><span className="aic-model-id">{preset.roles[role].modelId ?? 'Built-in default'}</span></div>)}</div>}
+                <div className="aic-model-row" data-default={presetChecked}><div><span className="aic-model-name">{preset ? 'Provider role setup' : 'Role setup needed'}</span><span className="aic-model-id">{presetReady ? 'All four roles use tested models from this provider' : connection.providerId === 'kimi' ? 'Direct Kimi API retired · use OpenRouter' : 'Set up four roles with tested models before selecting as default'}</span></div>{presetChoice && <AiChoiceRadio choice={presetChoice} checked={presetChecked} disabled={!presetReady || mutationPending} unavailable={presetChecked && !presetReady} label={connection.name} onSelect={onSelectDefault} />}</div>
                 <div className="aic-model-list" aria-label={`${connection.name} models`}>
                   {models.length === 0 ? <div className="aic-model-row"><span className="aic-model-id">No models in your shortlist. Open Manage models to test and add one.</span></div> : models.map(model => {
-                    const choice = { kind: 'provider_model' as const, connectionId: connection.id, modelId: model.modelId }
-                    const checked = choicesEqual(state?.defaultChoice ?? null, choice)
-                    const usable = !connection.deletedAt && hasCurrentProviderConfirmation(connection) && model.available
-                      && supportsEveryRole(model.compatibleRoles) && model.userSelected && Boolean(model.plainTestedAt)
-                    return <div className="aic-model-row" data-default={checked} key={model.modelId}>
-                      <div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId} · {model.lastProbeErrorCode ? `Latest test failed · ${model.lastProbeErrorCode}` : model.plainTestedAt ? `Generation tested ${formatCheckedAt(model.plainTestedAt)}` : 'Saved before individual model testing'}{model.lastProbeInputTokens != null || model.lastProbeOutputTokens != null ? ` · test tokens ${model.lastProbeInputTokens ?? '?'}/${model.lastProbeOutputTokens ?? '?'} in/out` : ''}{!usable ? ' · unavailable for all four roles' : ''}</span></div>
-                      <AiChoiceRadio choice={choice} checked={checked} disabled={!usable || mutationPending} unavailable={checked && !usable} label={`${connection.name} ${model.displayName}`} onSelect={onSelectDefault} />
+                    return <div className="aic-model-row" key={model.modelId}>
+                      <div><span className="aic-model-name">{model.displayName}</span><span className="aic-model-id">{model.modelId} · {model.lastProbeErrorCode ? `Latest test failed · ${model.lastProbeErrorCode}` : model.plainTestedAt ? `Generation tested ${formatCheckedAt(model.plainTestedAt)}` : 'Saved before individual model testing'}{model.lastProbeInputTokens != null || model.lastProbeOutputTokens != null ? ` · test tokens ${model.lastProbeInputTokens ?? '?'}/${model.lastProbeOutputTokens ?? '?'} in/out` : ''}</span></div>
                     </div>
                   })}
                 </div>
@@ -247,13 +297,14 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
       <Dialog open={editor !== null} onOpenChange={open => { if (!open) { setEditor(null); setApiKey('') } }}>
         <DialogContent className="pp-root aic-dialog">
           <DialogHeader>
-            <DialogTitle>{editor?.kind === 'add' ? 'Add provider connection' : editor?.kind === 'rename' ? 'Rename connection' : editor?.kind === 'replace' ? 'Replace API key' : 'Test connection'}</DialogTitle>
+            <DialogTitle>{editor?.kind === 'add' ? 'Add provider connection' : editor?.kind === 'rename' ? 'Rename connection' : editor?.kind === 'replace' ? 'Replace API key' : editor?.kind === 'workspace' ? 'Set Claude workspace' : 'Test connection'}</DialogTitle>
             <DialogDescription>{editor?.kind === 'rename' ? 'Names distinguish multiple credentials from the same provider.' : state?.validationDisclosure}</DialogDescription>
           </DialogHeader>
           <div className="aic-form">
             {editor?.kind === 'add' && <div className="aic-field"><label htmlFor="aic-provider">Provider</label><select id="aic-provider" value={providerId} onChange={event => setProviderId(event.target.value as ProviderId)}>{PROVIDERS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></div>}
             {(editor?.kind === 'add' || editor?.kind === 'rename') && <div className="aic-field"><label htmlFor="aic-connection-name">Connection name</label><input id="aic-connection-name" value={name} onChange={event => { setName(event.target.value); if (fieldError?.target === 'name') setFieldError(null) }} aria-invalid={fieldError?.target === 'name' || undefined} aria-describedby={fieldError?.target === 'name' ? 'aic-provider-error' : undefined} autoComplete="off" /></div>}
             {(editor?.kind === 'add' || editor?.kind === 'replace') && <div className="aic-field"><label htmlFor="aic-api-key">API key</label><input id="aic-api-key" type="password" value={apiKey} onChange={event => { setApiKey(event.target.value); if (fieldError?.target === 'apiKey') setFieldError(null) }} aria-invalid={fieldError?.target === 'apiKey' || undefined} aria-describedby={fieldError?.target === 'apiKey' ? 'aic-provider-error' : undefined} autoComplete="new-password" /></div>}
+            {((editor?.kind === 'add' && providerId === 'anthropic') || editor?.kind === 'workspace') && <div className="aic-field"><label htmlFor="aic-workspace-id">Claude workspace ID (for organization-wide keys)</label><input id="aic-workspace-id" value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); if (fieldError?.target === 'workspaceId') setFieldError(null) }} aria-invalid={fieldError?.target === 'workspaceId' || undefined} aria-describedby={fieldError?.target === 'workspaceId' ? 'aic-provider-error' : undefined} placeholder="wrkspc_…" autoComplete="off" /><p className="aic-meta">Find the ID in Claude Platform → Settings → Workspaces. Leave blank for a workspace-scoped key.</p></div>}
             {editor?.kind !== 'rename' && <label className="aic-disclosure" htmlFor="aic-charge-acknowledgement"><input id="aic-charge-acknowledgement" type="checkbox" checked={acknowledgeCharge} onChange={event => { setAcknowledgeCharge(event.target.checked); if (fieldError?.target === 'acknowledgement') setFieldError(null) }} aria-invalid={fieldError?.target === 'acknowledgement' || undefined} aria-describedby={fieldError?.target === 'acknowledgement' ? 'aic-provider-error' : undefined} /> I understand that testing makes a tiny provider request and may create a small charge.</label>}
             {fieldError && <p id="aic-provider-error" className="aic-field-error" role="alert">{fieldError.message}</p>}
           </div>

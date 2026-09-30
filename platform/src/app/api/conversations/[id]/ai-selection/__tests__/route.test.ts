@@ -34,12 +34,13 @@ function state(defaultChoice: unknown = { kind: 'provider_model', connectionId: 
   return {
     connections: [{
       id: CONNECTION_ID, provider_id: 'openai', name: 'Personal OpenAI', masked_suffix: '•••1234',
-      validation_state: 'validated', credential_validity: 'valid', deleted_at: null,
+      validation_state: 'validated', credential_validity: 'valid', credential_version: 1, deleted_at: null,
       last_validated_at: null, last_checked_at: null, last_error_code: null,
     }],
     models: [{ connection_id: CONNECTION_ID, model_id: 'gpt-safe', display_name: 'GPT Safe',
       compatible_roles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supports_tools: false,
-      supports_structured_output: true, available: true }],
+      supports_structured_output: true, available: true, user_selected: true,
+      plain_tested_at: '2026-09-27T10:00:00Z', tested_credential_version: 1, current_credential_version: 1 }],
     configurations: [], roles: [], defaultChoice, clis: [], cliModels: [],
   }
 }
@@ -50,14 +51,15 @@ function stateWithAlternatives(defaultChoice: unknown = { kind: 'provider_model'
     ...base,
     connections: [...base.connections, {
       id: SECOND_CONNECTION_ID, provider_id: 'anthropic', name: 'Personal Anthropic', masked_suffix: '•••5678',
-      validation_state: 'validated', credential_validity: 'valid', deleted_at: null,
+      validation_state: 'validated', credential_validity: 'valid', credential_version: 1, deleted_at: null,
       last_validated_at: null, last_checked_at: null, last_error_code: null,
       encrypted_credential: 'must-never-leave-the-server',
     }],
     models: [...base.models, { connection_id: SECOND_CONNECTION_ID, model_id: 'claude-safe', display_name: 'Claude Safe',
       compatible_roles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supports_tools: false,
       supports_structured_output: true, available: true }],
-    configurations: [{ id: CONFIGURATION_ID, name: 'Research quartet', version: 2, deleted_at: null }],
+    configurations: [{ id: CONFIGURATION_ID, name: 'Research quartet', version: 2,
+      configuration_kind: 'custom_api', owner_connection_id: null, owner_cli_id: null, deleted_at: null }],
     roles: ['synthesizer', 'planner', 'deep_planner', 'worker'].map(role => ({
       configuration_id: CONFIGURATION_ID, role, kind: 'provider_model', connection_id: CONNECTION_ID,
       model_id: 'gpt-safe', cli_id: null,
@@ -69,10 +71,13 @@ function specialistConfigurationState() {
   return {
     ...state({ kind: 'custom_configuration', configurationId: CONFIGURATION_ID }),
     models: [
-      { connection_id: CONNECTION_ID, model_id: 'synth-only', display_name: 'Synth specialist', compatible_roles: ['synthesizer'], supports_tools: false, supports_structured_output: true, available: true },
-      { connection_id: CONNECTION_ID, model_id: 'planner-only', display_name: 'Planner specialist', compatible_roles: ['planner'], supports_tools: false, supports_structured_output: true, available: true },
+      { connection_id: CONNECTION_ID, model_id: 'synth-only', display_name: 'Synth specialist', compatible_roles: ['synthesizer'], supports_tools: false, supports_structured_output: true, available: true,
+        user_selected: true, plain_tested_at: '2026-09-27T10:00:00Z', tested_credential_version: 1, current_credential_version: 1 },
+      { connection_id: CONNECTION_ID, model_id: 'planner-only', display_name: 'Planner specialist', compatible_roles: ['planner'], supports_tools: false, supports_structured_output: true, available: true,
+        user_selected: true, plain_tested_at: '2026-09-27T10:00:00Z', tested_credential_version: 1, current_credential_version: 1 },
     ],
-    configurations: [{ id: CONFIGURATION_ID, name: 'Specialist quartet', version: 1, deleted_at: null }],
+    configurations: [{ id: CONFIGURATION_ID, name: 'Specialist quartet', version: 1,
+      configuration_kind: 'legacy_mixed', owner_connection_id: null, owner_cli_id: null, deleted_at: null }],
     roles: [
       { configuration_id: CONFIGURATION_ID, role: 'synthesizer', kind: 'provider_model', connection_id: CONNECTION_ID, model_id: 'synth-only', cli_id: null },
       { configuration_id: CONFIGURATION_ID, role: 'planner', kind: 'provider_model', connection_id: CONNECTION_ID, model_id: 'planner-only', cli_id: null },

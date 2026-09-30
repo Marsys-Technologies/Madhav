@@ -90,6 +90,31 @@ function ErrorRow({ ra }: { ra: ActiveRunAsset }) {
   )
 }
 
+// Packet B1 (review B1_review_20260926T182200Z.md C-2b): amber, not red — a
+// dependent blocked by an upstream failure this run (disposition='blocked_dependency')
+// is a cascade CONSEQUENCE, never this asset's own defect. Mirrors ErrorRow's shape
+// so the two read as siblings, not as one degraded variant of the other.
+function BlockedRow({ ra }: { ra: ActiveRunAsset }) {
+  return (
+    <div style={{
+      padding: '8px 12px',
+      background: 'rgba(236,147,50,0.06)',
+      border: '1px solid rgba(236,147,50,0.25)',
+      borderRadius: '6px',
+      marginBottom: '4px',
+      fontFamily: 'var(--mono-stack)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+        <span style={{ color: 'var(--on-dark)' }}>{ra.asset_id}</span>
+        <span style={{ color: 'rgba(236,147,50,0.9)', fontSize: '9px', textTransform: 'uppercase' }}>blocked</span>
+      </div>
+      <div style={{ marginTop: '4px', fontSize: '10px', color: 'rgba(236,147,50,0.9)' }}>
+        {ra.blocked_by_asset_id ? `blocked by upstream failure: ${ra.blocked_by_asset_id}` : 'blocked by upstream failure'}
+      </div>
+    </div>
+  )
+}
+
 export function AgentsView({ chartId }: Props) {
   const { run: activeRun, assets: runAssets } = useActiveRun(chartId)
 
@@ -103,7 +128,13 @@ export function AgentsView({ chartId }: Props) {
 
   const building = runAssets.filter(ra => ra.state === 'building')
   const completed = runAssets.filter(ra => ra.state === 'complete').slice(-5)
-  const errors = runAssets.filter(ra => ra.state === 'error')
+  // Packet B1 (review C-2b, the worst of the three missed live surfaces): this
+  // route now selects build_run_assets.disposition (runs/active/route.ts) — a
+  // cascade-blocked row (disposition==='blocked_dependency') is a CONSEQUENCE of
+  // someone else's failure, not this asset's own defect, and is reported
+  // separately below rather than counted under "Errors this run".
+  const errors = runAssets.filter(ra => ra.state === 'error' && ra.disposition !== 'blocked_dependency')
+  const blocked = runAssets.filter(ra => ra.state === 'error' && ra.disposition === 'blocked_dependency')
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -141,7 +172,7 @@ export function AgentsView({ chartId }: Props) {
         </section>
       )}
 
-      {/* Errors */}
+      {/* Errors — genuine causes only; a blocked cascade victim is reported separately below */}
       {errors.length > 0 && (
         <section>
           <h3 style={{
@@ -151,6 +182,19 @@ export function AgentsView({ chartId }: Props) {
             Errors this run ({errors.length})
           </h3>
           {errors.map(ra => <ErrorRow key={ra.asset_id} ra={ra} />)}
+        </section>
+      )}
+
+      {/* Blocked — cascade victims of an upstream failure this run (Packet B1) */}
+      {blocked.length > 0 && (
+        <section>
+          <h3 style={{
+            fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.06em',
+            color: 'rgba(236,147,50,0.9)', marginBottom: '8px', fontFamily: 'var(--ui-stack)',
+          }}>
+            Blocked this run ({blocked.length})
+          </h3>
+          {blocked.map(ra => <BlockedRow key={ra.asset_id} ra={ra} />)}
         </section>
       )}
     </div>

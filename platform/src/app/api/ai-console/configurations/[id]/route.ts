@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import { deleteConfiguration, saveConfiguration } from '@/lib/ai-console/repository'
-import { AssignmentsInputSchema, DeleteSchema, NameSchema, dependencyPreview, json, ownedConfiguration, projectConfiguration,
-  readBody, readId, withAiConsole, withAiConsoleMutation, type IdContext } from '../../_shared'
+import { AssignmentsInputSchema, ConfigurationScopeInputSchema, DeleteSchema, NameSchema, dependencyPreview, json, ownedConfiguration, projectConfiguration,
+  readBody, readId, validConfigurationScope, withAiConsole, withAiConsoleMutation, type IdContext } from '../../_shared'
 
 export const dynamic = 'force-dynamic'
 
 // A full atomic edit (including rename) carries all four roles and the viewed version.
-const EditSchema = z.object({ name: NameSchema, expectedVersion: z.number().int().positive(), roles: AssignmentsInputSchema }).strict()
+const EditSchema = z.object({ name: NameSchema, expectedVersion: z.number().int().positive(), roles: AssignmentsInputSchema })
+  .merge(ConfigurationScopeInputSchema).strict().refine(validConfigurationScope)
 
 export async function GET(_request: Request, context: IdContext) {
   return withAiConsole(async userId => {

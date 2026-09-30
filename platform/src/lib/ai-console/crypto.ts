@@ -4,6 +4,8 @@ import { inspect, types as utilTypes } from 'node:util'
 import { AI_ERROR_CODES } from './errors'
 
 export interface EncryptedCredential {
+  /** Connection routing metadata, never part of the encrypted key. */
+  workspaceId?: string | null
   ciphertext: Buffer
   wrappedDataKey: Buffer
   nonce: Buffer

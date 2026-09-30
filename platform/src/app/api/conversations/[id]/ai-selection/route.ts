@@ -36,7 +36,8 @@ function choiceUsableForRole(choice: AiChoiceRef, role: AiRole, state: ConsolePr
     const model = state.models.find(row => row.connectionId === choice.connectionId && row.modelId === choice.modelId)
     return !!connection && !connection.deletedAt && connection.confirmedValid
       && (connection.validationState === 'validated' || connection.validationState === 'validating')
-      && !!model && model.available && model.compatibleRoles.includes(role)
+      && !!model && model.available && model.userSelected === true && Boolean(model.plainTestedAt)
+      && model.compatibleRoles.includes(role)
   }
   if (choice.kind === 'local_cli') {
     const cli = clis.find(row => row.cliId === choice.cliId)

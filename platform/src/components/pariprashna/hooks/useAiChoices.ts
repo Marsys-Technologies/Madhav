@@ -23,7 +23,8 @@ export interface SelectionView {
 
 export interface AiChoiceOption {
   key: string
-  group: 'Provider connections' | 'Custom configurations' | 'Local CLIs' | null
+  group: 'API providers' | 'Custom API configurations' | 'Local CLIs' | 'Custom CLI configurations'
+    | 'Earlier configurations' | null
   label: string
   detail?: string
   selection: ConversationSelection
