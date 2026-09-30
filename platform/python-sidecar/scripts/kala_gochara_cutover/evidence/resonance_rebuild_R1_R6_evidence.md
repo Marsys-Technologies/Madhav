@@ -345,3 +345,68 @@ True, content digest equal True; foreign
 partition untouched: True; rebuild after rollback reproduces the digest:
 True. After counts by type: {'arudha': 67, 'bhava': 67, 'bhava_arudha': 67, 'dasha_lord_portfolio': 43, 'gulika_mandi_distance': 2, 'karaka': 43, 'lord': 51, 'mechanism_node': 9, 'sensitive_degree': 105, 'yamakantaka_difference': 8, 'yoga_constituent': 19}; rerun content
 digest equal True.
+
+## 10. Rework r6 run (ASTRA_REVIEW_A5_4 v1.4 amendments 1 / 2 / P2) — 2026-10-01
+
+Destination cluster asserted before any DDL (`--expect-cluster-id 7690735150699565094`).
+Database `rehearsal_a54_20260930205009_910d7a` created by the run and dropped afterwards (True).
+Schema derived from the checked-in migrations as in §9 (`citations` = `ARRAY`,
+`chart_facts.fact_id` = `text`).
+
+Acceptance: **passed = True**, failures = [].
+
+**Fact references (amendment 1).** Every chart_facts row is minted by its producer's own id function
+(16-hex semantic ids; 36 (subject, key) sensitive pairs across five ayanāṃśas). Fact-backed refs in the
+map: 158; not producer-shaped: 0;
+NULL / blank / dangling under the chart-scoped text-identity resolution: 0;
+non-canonical-ayanāṃśa fact ids referenced: 0.
+
+**Retained values (amendment 2).** Every emitted target type enumerated; value-invariant violations:
+0; mechanism identity pair (both directions): {'actual_not_expected': 0, 'expected_not_actual': 0}.
+Exact tuples now include the mechanism_node rows (weight from the cited rule's type through the writer's
+contract) and the M-6 rows.
+
+| Identity | expected | actual | equal |
+|---|---|---|---|
+| afflicted_rows | 6 | 6 | True |
+| arudha_rows | 67 | 67 | True |
+| exact_row_tuples | 424 | 424 | True |
+| lord_rows | 51 | 51 | True |
+| sensitive_rows | 91 | 91 | True |
+| yoga_rows | 19 | 19 | True |
+
+Runbook pairs: R-1 {'actual_not_expected': 0, 'expected_not_actual': 0}, R-2 {'actual_not_expected': 0, 'expected_not_actual': 0}, R-3 {'actual_not_expected': 0, 'expected_not_actual': 0},
+R-4 {'actual_not_expected': 0, 'expected_not_actual': 0}, R-5 {'ontology_not_qualified': 0, 'qualified_not_in_ontology': 0}, mechanism {'actual_not_expected': 0, 'expected_not_actual': 0}.
+
+Detector positive controls (thirteen named records REQUIRED; the clean baseline's contents validated —
+P2): clean = {'dangling': 0, 'mech': [0, 0], 'r1': [0, 0], 'r2': [0, 0], 'r3': [0, 0], 'r4': [0, 0], 'r5': [0, 0], 'value_violations': 0}.
+
+| Control | expectation | counts / id sets preserved / applied | measured (rows flagged) | detected |
+|---|---|---|---|---|
+| arudha_class_swap | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(2, 2) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=0 dangling=0 | True |
+| birth_anchor_row_injected | count changes by design | False / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=1 dangling=0 | True |
+| fact_ref_foreign_chart | id set changes by design (re-pointed ref) | True / False / True | r1=(1, 1) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=1 dangling=1 | True |
+| fact_ref_missing | id set changes by design (re-pointed ref) | True / False / True | r1=(1, 1) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=1 dangling=1 | True |
+| lord_token_missing | count changes by design | False / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 1) r5=(0, 0) mech=(0, 0) values=0 dangling=0 | True |
+| lord_token_wrong | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(1, 1) r5=(0, 0) mech=(0, 0) values=0 dangling=0 | True |
+| mechanism_weight_sign_flipped | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=1 dangling=0 | True |
+| provenance_flipped | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=2 dangling=0 | True |
+| qualifier_transferred | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(1, 1) mech=(0, 0) values=2 dangling=0 | True |
+| resolution_state_flipped | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=2 dangling=0 | True |
+| sensitive_class_swap | counts + id sets preserved (required) | True / True / True | r1=(2, 2) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=0 dangling=0 | True |
+| weight_changed | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(0, 0) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=1 dangling=0 | True |
+| yoga_class_swap | counts + id sets preserved (required) | True / True / True | r1=(0, 0) r2=(0, 0) r3=(2, 2) r4=(0, 0) r5=(0, 0) mech=(0, 0) values=2 dangling=0 | True |
+
+`fact_ref_missing` (a producer-shaped id no fact carries) and `fact_ref_foreign_chart` (the same id
+minted for another chart, present in chart_facts) are each dangling; `mechanism_weight_sign_flipped`
+(illness_acute saturn:unfavourable:h8, −1.0 → +1.0, everything else unchanged) is a
+`weight:mechanism_rule_type` violation. Map restored after the controls: True;
+post-control digest equals the rerun digest: True.
+
+Rollback: pre/post-refusal certificates equal: True; wrong certificate
+refused before any DELETE: True; exact preimage restored — full-row digest equal
+True, content digest equal True; foreign
+partition untouched: True; rebuild after rollback reproduces the digest:
+True. Snapshot `gochara_resonance_map_snap_482012f1_20260930205011` count 177, full-row
+digest `46d6b07d59e2aefcc83895e2969f0ee1`. After counts by type: {'arudha': 67, 'bhava': 67, 'bhava_arudha': 67, 'dasha_lord_portfolio': 43, 'gulika_mandi_distance': 2, 'karaka': 43, 'lord': 51, 'mechanism_node': 9, 'sensitive_degree': 91, 'yamakantaka_difference': 8, 'yoga_constituent': 19}; rerun content digest
+equal True.
