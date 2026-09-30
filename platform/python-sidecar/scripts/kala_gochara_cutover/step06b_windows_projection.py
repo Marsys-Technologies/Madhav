@@ -730,8 +730,9 @@ def three_field_valence(supportive_channel: float, afflicting_channel: float,
         channel evidence AGAINST (the spec's own example: a 7th-house
         affliction is evidence for the separation class, against the
         marriage class). For every other class the direct reading holds:
-        supportive → for, afflicting → against. Magnitudes are the pinned
-        noisy-OR channel values in [0, 1] — rank-only, never gates.
+        supportive → for, afflicting → against. Magnitudes are the D-SPECS
+        C2 channel sums (max per root per channel, Σ across roots;
+        c2_evidence_channels) — rank-only, never gates; they may exceed 1.
       * NO NETTING (§3.2 inv 1, O-TV-2): the two evidence fields are
         reported as they stand. Nothing anywhere computes
         evidence_for − evidence_against; a contested occurrence (both > 0)
@@ -1095,6 +1096,55 @@ def reduce_shared_roots(scored: list[dict], weight_by_target_ref: dict) -> dict:
             "dropped": dropped, "roots": len(by_root)}
 
 
+def c2_evidence_channels(scored: list[dict]) -> dict:
+    """D-SPECS C2 (GOCHARA_DESIGN_SPECS_v1_4 §2.1 amendment 2, R4-S01) —
+    evidence accumulation and shared roots, on the '4.0' projection path
+    (ASTRA v1.1 P1-5):
+
+        root_id := contact_id on transit rows (here: the ledger's
+                   independence_group / the local physical tuple —
+                   contact_root_key);
+        contribution(root, c) := MAX over the records sharing the root of
+                                 that record's value in channel c;
+        path.c := Σ over roots of contribution(root, c).
+
+    A record's value in its assigned channel is its within-path factor
+    product — here orb strength × |weight| (both in [0, 1]); its other
+    channel is 0; the channel is assigned by the weight's sign (class-
+    relative polarity is applied afterwards by three_field_valence). The
+    reduction is order-independent and channel-preserving; no other
+    reduction — first row, sum across roles, noisy-OR — is permitted. Two
+    distinct roots contributing 0.5 each therefore yield 1.0 (the legacy
+    noisy-OR gave 0.75); two aliases of one root yield 0.5. The sums are
+    rank-only and may exceed 1 (the codomain rule is on FACTORS, not on the
+    accumulated evidence; §1.1 evidence_* are 'rank-only; scale set at L5').
+    """
+    positive: dict = {}
+    negative: dict = {}
+    breakdown = []
+    for rec in scored:
+        root = str(contact_root_key(rec["contact"]))
+        w = float(rec["weight"])
+        value = float(rec["decay"]) * abs(w)
+        entry = {"contact_id": rec["contact"]["contact_id"], "root": root,
+                 "target_ref": rec["contact"]["target_ref"],
+                 "weight": w, "orb_strength": rec["decay"], "value": value,
+                 "channel": ("positive" if w > 0 else "negative" if w < 0 else "none")}
+        breakdown.append(entry)
+        if w > 0:
+            positive[root] = max(positive.get(root, 0.0), value)
+        elif w < 0:
+            negative[root] = max(negative.get(root, 0.0), value)
+    return {
+        "positive": sum(positive.values()),
+        "negative": sum(negative.values()),
+        "roots_positive": len(positive), "roots_negative": len(negative),
+        "per_root": {"positive": positive, "negative": negative},
+        "records": sorted(breakdown, key=lambda e: (e["root"], e["contact_id"])),
+        "reduction": "C2: max per root per channel, sum across roots (order-independent)",
+    }
+
+
 def _sentence_for(rec: dict) -> "leg.Sentence":
     c = rec["contact"]
     return leg.Sentence(
@@ -1172,8 +1222,14 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         # therefore fed |weight|; the SIGN is consumed only by the channels.
         activity, _act_detail, _tb = leg.compute_activity_v3(
             sentences, class_ctx.abs_weight_by_target_ref)
+        # LEGACY signed channels (noisy-OR per channel) — retained ONLY for
+        # the legacy netted verdict (suppression_state.legacy_netted_valence);
+        # the §3 evidence fields use the C2 reduction below.
         supportive, afflicting, _ch = leg.compute_signed_channels_v3(
             channel_sentences, class_ctx.weight_by_target_ref)
+        # D-SPECS C2 (ASTRA v1.1 P1-5): the evidence channels are max per
+        # root per channel, SUMMED across distinct roots.
+        c2 = c2_evidence_channels(scored)
         # The class-wide multiplier is RETIRED: λ receives 1.0 here; the
         # vedha qualification already entered the primaries' orb strengths
         # above (scoped), and its state/provenance is disclosed per row.
@@ -1208,9 +1264,13 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
                 if p5c["state"] == "unresolved":
                     unresolved.append(p5c["operand"])
         tv = three_field_valence(
-            supportive, afflicting, class_valence=class_ctx.class_valence,
+            c2["positive"], c2["negative"], class_valence=class_ctx.class_valence,
             class_is_adverse=class_ctx.class_is_adverse,
             unresolved_operands=unresolved)
+        tv["breakdown"]["c2_reduction"] = {
+            k: c2[k] for k in ("positive", "negative", "roots_positive",
+                               "roots_negative", "per_root", "reduction")}
+        tv["breakdown"]["c2_records"] = c2["records"]
         # T0-6: PERMISSION at THIS instant (per-instant MD/AD/PD plurality),
         # never a per-class constant, when the class context carries one.
         permission, permission_detail = class_ctx.permission_at(t_jd)
@@ -1227,6 +1287,8 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "permission_systems_active": permission_detail["systems_active"],
             "supportive": supportive,
             "afflicting": afflicting,
+            "c2_positive": c2["positive"],
+            "c2_negative": c2["negative"],
             "quality_gates": applied_product,
             "quality_gates_detail": gates_detail,
             "active_contact_ids": active_ids,

@@ -544,3 +544,89 @@ def test_step06a_context_entry_declares_class_polarity_block():
     # build_class_context; pin its vocabulary via the known-valence set the
     # writer orients on
     assert {"gain", "loss", "neutral", "mixed"} == w._CLASS_VALENCE_KNOWN
+
+
+# ── ASTRA v1.1 P1-5: D-SPECS C2 evidence reduction ───────────────────────────
+
+
+def _two_roots(weights):
+    c1 = _contact("r1", T_EXACT - 10, T_EXACT, T_EXACT + 10, target=100.0, body="Saturn")
+    c2 = _contact("r2", T_EXACT - 10, T_EXACT, T_EXACT + 10, target=200.0, body="Jupiter")
+    c1["target_ref"], c2["target_ref"] = "A", "B"
+    pos = lambda b, jd: {"Saturn": 100.0, "Jupiter": 200.0}[b]  # noqa: E731
+    return [c1, c2], pos
+
+
+def test_c2_two_distinct_roots_sum_to_one_not_noisy_or():
+    """Two distinct physical roots contributing 0.5 each ⇒ evidence 1.0
+    (Σ across roots). Mutation caught: the legacy noisy-OR (0.75)."""
+    contacts, pos = _two_roots(None)
+    ctx = _production_ctx("marriage", {"A": 0.5, "B": 0.5},
+                          class_valence="neutral", class_is_adverse=False)
+    ev = w.make_eval_fn(ctx, contacts, _open_gates, planet_pos_fn=pos)(T_EXACT)
+    tv = ev["three_field_valence"]
+    assert tv["evidence_for_occurrence"] == pytest.approx(1.0)
+    assert tv["evidence_for_occurrence"] != pytest.approx(0.75)
+    assert tv["breakdown"]["c2_reduction"]["roots_positive"] == 2
+    # the legacy netted channel is still the noisy-OR — trail only
+    assert ev["supportive"] == pytest.approx(0.75)
+
+
+def test_c2_aliases_of_one_root_stay_at_the_max():
+    c1 = _contact("alias-a", T_EXACT - 10, T_EXACT, T_EXACT + 10)
+    c2 = dict(c1, contact_id="alias-b", target_ref="7L")
+    for c in (c1, c2):
+        c["_independence_group"] = "root-x"
+    ctx = _production_ctx("marriage", {"Venus": 0.5, "7L": 0.3},
+                          class_valence="neutral", class_is_adverse=False)
+    tv = w.make_eval_fn(ctx, [c1, c2], _open_gates,
+                        planet_pos_fn=lambda b, jd: 100.0)(T_EXACT)["three_field_valence"]
+    assert tv["evidence_for_occurrence"] == pytest.approx(0.5)  # max, not sum
+    assert tv["breakdown"]["c2_reduction"]["roots_positive"] == 1
+
+
+def test_c2_channels_are_independent_and_order_independent():
+    """A root on the negative channel and a root on the positive channel
+    accumulate separately; shuffling the contact order changes nothing."""
+    import random
+    contacts, pos = _two_roots(None)
+    ctx = _production_ctx("marriage", {"A": 0.6, "B": -0.4},
+                          class_valence="neutral", class_is_adverse=False)
+    results = []
+    for seed in range(4):
+        cs = list(contacts)
+        random.Random(seed).shuffle(cs)
+        tv = w.make_eval_fn(ctx, cs, _open_gates, planet_pos_fn=pos)(T_EXACT)["three_field_valence"]
+        results.append((tv["evidence_for_occurrence"], tv["evidence_against_occurrence"]))
+    assert all(r == results[0] for r in results)
+    assert results[0] == (pytest.approx(0.6), pytest.approx(0.4))
+
+
+def test_c2_per_record_values_are_factor_products_in_unit_interval():
+    """Codomain (C2): each record's value is orb_strength × |weight| ∈ [0, 1];
+    the accumulated evidence is rank-only and may exceed 1."""
+    contacts, pos = _two_roots(None)
+    ctx = _production_ctx("marriage", {"A": 1.0, "B": 1.0},
+                          class_valence="neutral", class_is_adverse=False)
+    tv = w.make_eval_fn(ctx, contacts, _open_gates, planet_pos_fn=pos)(T_EXACT)["three_field_valence"]
+    for r in tv["breakdown"]["c2_records"]:
+        assert 0.0 <= r["value"] <= 1.0
+    assert tv["evidence_for_occurrence"] == pytest.approx(2.0)
+
+
+def test_c2_reduction_function_directly():
+    scored = [
+        {"contact": {"contact_id": "a", "target_ref": "X", "_independence_group": "g1"},
+         "decay": 1.0, "weight": 0.5},
+        {"contact": {"contact_id": "b", "target_ref": "Y", "_independence_group": "g1"},
+         "decay": 0.8, "weight": 0.5},          # alias of g1: 0.4 < 0.5 ⇒ dropped
+        {"contact": {"contact_id": "c", "target_ref": "Z", "_independence_group": "g2"},
+         "decay": 1.0, "weight": -0.5},         # distinct root, negative channel
+        {"contact": {"contact_id": "d", "target_ref": "W", "_independence_group": "g2"},
+         "decay": 1.0, "weight": 0.2},          # same root, POSITIVE channel: its own max
+    ]
+    out = w.c2_evidence_channels(scored)
+    assert out["positive"] == pytest.approx(0.5 + 0.2)
+    assert out["negative"] == pytest.approx(0.5)
+    assert out["per_root"]["positive"] == {"g1": pytest.approx(0.5), "g2": pytest.approx(0.2)}
+    assert w.c2_evidence_channels(list(reversed(scored)))["positive"] == pytest.approx(0.7)
