@@ -1,42 +1,60 @@
 -- Preflight for migration 1157 (ka_gochara_av_polarity_declaration). READ
--- ONLY — run against the target database before applying 1157.
+-- ONLY — run against the target database BEFORE applying 1157.
 --
--- Must return 0 rows total. Any row returned is a blocking failure: the
--- migration must NOT be applied until the row is understood (fix the
--- environment, not the detector — ADK-0026).
+-- GATE SEMANTICS (amendment 8): FAILS CLOSED — any blocking finding RAISES;
+-- success ends with NOTICE. Fix the environment, not the detector (ADK-0026).
 --
---   (a) the new table/trigger/function names do not already exist
+--   (a) the new table does not exist; no relation-namespace name,
+--       table-scoped trigger name, or exact-signature function collides
 --   (c) migration 1157 is not already recorded in the _migrations_applied
---       ledger (tracked runner: platform/scripts/migrate.ts)
+--       ledger (wildcard-safe: starts_with)
+--   (d) the executing role holds CREATE on schema public
 -- (1157 has no in-database parents: the §8.1 'convention' column deliberately
---  carries no FK — the spec does not name which convention relation it
---  references; see the 1157 header.)
+--  carries no FK — see the 1157 header.)
 
--- (a1) table-name collision
-SELECT 'table_already_exists' AS failure, n.nspname, c.relname
-FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relname = 'ka_gochara_av_polarity_declaration';
-
--- (a2) index-name collision
-SELECT 'index_already_exists' AS failure, indexname
-FROM pg_indexes
-WHERE schemaname = 'public'
-  AND indexname = 'ka_gochara_av_polarity_declaration_pkey';
-
--- (a3) trigger-name collision
-SELECT 'trigger_already_exists' AS failure, tgname
-FROM pg_trigger
-WHERE NOT tgisinternal
-  AND tgname = 'ka_gochara_av_polarity_immutable';
-
--- (a3) function-name collision
-SELECT 'function_already_exists' AS failure, p.proname
-FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-WHERE n.nspname = 'public'
-  AND p.proname = 'ka_gochara_av_polarity_no_mutation';
-
--- (c) migration number not already applied
-SELECT 'migration_already_applied' AS failure, filename
-FROM _migrations_applied
-WHERE filename LIKE '1157_%';
+DO $$
+DECLARE failures text;
+BEGIN
+  WITH f(failure, detail) AS (
+    SELECT 'no_create_privilege_on_public', current_user
+    WHERE NOT has_schema_privilege(current_user, 'public', 'CREATE')
+    UNION ALL
+    SELECT 'table_already_exists', n.nspname || '.' || c.relname
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'ka_gochara_av_polarity_declaration'
+    UNION ALL
+    SELECT 'relation_name_already_exists', n.nspname || '.' || c.relname
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'ka_gochara_av_polarity_declaration_pkey'
+    UNION ALL
+    SELECT 'trigger_already_exists', n.nspname || '.' || c.relname || '.' || t.tgname
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND NOT t.tgisinternal
+      AND c.relname = 'ka_gochara_av_polarity_declaration'
+      AND t.tgname = 'ka_gochara_av_polarity_immutable'
+    UNION ALL
+    SELECT 'function_already_exists',
+           n.nspname || '.' || p.proname || '(' ||
+           pg_get_function_identity_arguments(p.oid) || ')'
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'ka_gochara_av_polarity_no_mutation'
+      AND pg_get_function_identity_arguments(p.oid) = ''
+    UNION ALL
+    SELECT 'migration_already_applied', filename
+    FROM _migrations_applied
+    WHERE starts_with(filename, '1157_')
+  )
+  SELECT string_agg(f.failure || ' :: ' || f.detail, E'\n' ORDER BY f.failure, f.detail)
+  INTO failures
+  FROM f;
+  IF failures IS NOT NULL THEN
+    RAISE EXCEPTION 'preflight 1157 BLOCKED — migration 1157 must NOT be applied:% %', E'\n', failures;
+  END IF;
+  RAISE NOTICE 'preflight 1157: all checks passed';
+END;
+$$;
