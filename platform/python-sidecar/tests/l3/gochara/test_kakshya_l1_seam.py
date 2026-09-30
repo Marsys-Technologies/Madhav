@@ -234,3 +234,82 @@ def test_donor_bindu_read_is_ayanamsha_pinned_and_refuses_conflicts():
     assert conn2.params[0][1] == "raman"
     d = P.kakshya_donor_bindu_detail(_Conn([(1.0,), (0.0,)]), "c", "Saturn", 8, 1)
     assert d["donor_bindu_state"] == "unavailable" and d["donor_bindu"] is None
+
+
+
+# ── ASTRA v1.1 P1-4: identity through filtering; direction end to end ────────
+
+def test_conflict_drop_leaves_a_gap_and_never_relabels_the_boundary():
+    """Drop KAKSHYA_2 (conflicting facts) ⇒ indexes [0,2,3,4,5,6,7] carried
+    as identities: the 217.5° boundary (index 2) is still Mars's cell and
+    consumes Mars's donor (bindu 0 ⇒ unqualified) — never renumbered to
+    Jupiter (bindu 1 ⇒ applied). The reviewer's regression."""
+    conflicting = _producer_facts() + [("KAKSHYA_2", "lord", "Mars", None)]
+    l1 = _fetch_kakshya_boundaries(_Conn(conflicting), "chart-1")
+    assert [r.kakshya_index for r in l1] == [0, 2, 3, 4, 5, 6, 7]
+    from services.gochara_v3.context import BinduContributorRow
+    ctx = _make_context(
+        kakshya_boundaries=tuple(l1),
+        bindu_contributor_rows=(
+            BinduContributorRow(graha="SAT", contributor="JUP", sign_number=8, bindus=1.0),
+            BinduContributorRow(graha="SAT", contributor="MAR", sign_number=8, bindus=0.0)))
+    with patch.object(engine_module, "_KAKSHYA_BINDU_INTERIM_ENABLED", True):
+        with patch("services.gochara_v3.engine.find_aspect_events",
+                   side_effect=lambda swe, planet, b, a, o, s, e:
+                   [_event(_BASE_JD + 1.0, speed=0.05)] if b == 217.5 else []):
+            sentences = _kakshya_cell_crossing_from_context(
+                MagicMock(), ctx, _target("Scorpio"), _BASE_JD, _BASE_JD + 30.0,
+                planets=["Saturn"])
+    assert len(sentences) == 1
+    d = sentences[0].detail
+    assert d["boundary_deg"] == 217.5 and d["kakshya_index"] == 2
+    assert d["kakshya_lord"] == "Mars" and d["donor_row_key"] == "SAT-CONTRIBUTOR_MAR-SIGN_8"
+    assert d["completeness_state"] == "unqualified"   # Mars's mark is 0
+    assert d["failure_detail"]["error_class"] == "donor_mark_zero"
+    # the primitives consumer keeps the same identity
+    P._KAKSHYA_BOUNDARIES_CACHE.clear()
+    with patch("services.gochara_grammar.primitives.find_aspect_events",
+               side_effect=lambda swe, planet, b, a, o, s, e:
+               [_event(_BASE_JD + 1.0, speed=0.05)] if b == 217.5 else []):
+        ps = P.kakshya_cell_crossing(MagicMock(), "chart-9", _target("Scorpio"),
+                                     _BASE_JD, _BASE_JD + 30.0, conn=_Conn(conflicting),
+                                     planets=["Saturn"])
+    P._KAKSHYA_BOUNDARIES_CACHE.clear()
+    assert len(ps) == 1 and ps[0].detail["kakshya_index"] == 2
+    assert ps[0].detail["kakshya_lord"] == "Mars"
+
+
+def test_projection_donor_key_follows_the_ledger_branch():
+    """A retrograde crossing at 217.5° (boundary 2) enters Jupiter's cell
+    (index 1); the projection must request Jupiter's donor, not Mars's.
+    Station/unknown branches take the direct convention, disclosed."""
+    import importlib.util, sys
+    from pathlib import Path as _P
+    spec = importlib.util.spec_from_file_location(
+        "step06b_p14", _P(__file__).resolve().parents[3] / "scripts" /
+        "kala_gochara_cutover" / "step06b_windows_projection.py")
+    w = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = w
+    spec.loader.exec_module(w)
+    key_r, d_r = w.kakshya_donor_key("Saturn", 217.5, "retrograde")
+    assert key_r == "SAT-CONTRIBUTOR_JUP-SIGN_8"
+    assert (d_r["direction"], d_r["kakshya_index"], d_r["boundary_index"]) == ("retrograde", 1, 2)
+    key_d, d_d = w.kakshya_donor_key("Saturn", 217.5, "direct")
+    assert key_d == "SAT-CONTRIBUTOR_MAR-SIGN_8" and d_d["kakshya_index"] == 2
+    key_s, d_s = w.kakshya_donor_key("Saturn", 217.5, "station")
+    assert key_s == key_d and d_s["direction"] == "unknown"
+    # boundary 0 retrograde ⇒ previous sign's cell 7 (Lagna), sign 7
+    key_0, d_0 = w.kakshya_donor_key("Saturn", 210.0, "retrograde")
+    assert key_0 == "SAT-CONTRIBUTOR_LAGNA-SIGN_7" and d_0["sign_number"] == 7
+    # the operand state consults the ENTERED cell's key
+    ctx = w.ClassContext("marriage", [0.8], {"vimshottari": True},
+                         weight_by_target_ref={"Venus": 0.8},
+                         av_donor_keys={"SAT-CONTRIBUTOR_JUP-SIGN_8"})
+    contact = {"relation": "kakshya_cell_crossing", "body": "Saturn",
+               "_target_lon_deg": 217.5, "_branch": "retrograde", "contact_id": "k"}
+    assert ctx.p5c_operand_state(contact)["state"] == "resolved"
+    contact["_branch"] = "direct"
+    assert ctx.p5c_operand_state(contact)["state"] == "unresolved"
+    # fetch_contacts reads the branch column
+    import inspect
+    assert "branch" in inspect.getsource(w.fetch_contacts)

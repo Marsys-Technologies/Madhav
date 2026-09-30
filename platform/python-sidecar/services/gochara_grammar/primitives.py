@@ -879,11 +879,16 @@ def kakshya_cell_crossing(
         db_boundaries = _fetch_kakshya_boundaries(conn, chart_id, planet) if conn is not None else []
         if db_boundaries:
             # L1 rows carry WITHIN-SIGN offsets (sign_relative): add the
-            # target sign's base; legacy per-planet rows are absolute.
-            boundary_degs = sorted({
-                ((sign_start + float(b["start_deg"])) % 360.0
-                 if b.get("sign_relative") else float(b["start_deg"]))
-                for b in db_boundaries if b.get("start_deg") is not None})
+            # target sign's base; legacy per-planet rows are absolute. The
+            # cell IDENTITY is the row's own kakshya_index — never a list
+            # position (ASTRA v1.1 P1-4: a dropped conflicting KAKSHYA_2
+            # must leave a gap, not relabel the 217.5° boundary 'Jupiter').
+            boundary_cells = sorted({
+                (int(b["kakshya_index"]),
+                 ((sign_start + float(b["start_deg"])) % 360.0
+                  if b.get("sign_relative") else float(b["start_deg"])))
+                for b in db_boundaries
+                if b.get("start_deg") is not None and b.get("kakshya_index") is not None})
             citation = C.KAKSHYA_BPHS_66
             uncited = False
             source = "chart_facts.ashtakavarga_kakshya_boundary"
@@ -891,12 +896,12 @@ def kakshya_cell_crossing(
             # Fallback: 8 equal 3.75deg divisions within the sign, classical
             # lord order applied cyclically starting from Saturn (see
             # _KAKSHYA_LORD_ORDER) -- an approximation, honestly flagged.
-            boundary_degs = [sign_start + i * (30.0 / 8.0) for i in range(8)]
+            boundary_cells = [(i, sign_start + i * (30.0 / 8.0)) for i in range(8)]
             citation = None
             uncited = True
             source = "equal_eighths_fixture_approximation"
 
-        for i, b in enumerate(boundary_degs):
+        for i, b in boundary_cells:
             events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
             for ev in events:
                 direction, entered_idx, entered_sign = kakshya_cell_entered(

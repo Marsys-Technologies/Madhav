@@ -1560,21 +1560,24 @@ def _kakshya_cell_crossing_from_context(
         # offsets; ASTRA P1-5); legacy per-planet fixture rows are absolute.
         l1_rows = by_planet.get(planet) or by_planet.get("*", [])
         if l1_rows:
-            boundary_degs = sorted({
-                ((sign_start + float(r.start_deg)) % 360.0
-                 if getattr(r, "sign_relative", False) else float(r.start_deg))
+            # cell IDENTITY = the row's own kakshya_index, never a list
+            # position: a dropped conflicting row leaves a gap (ASTRA v1.1 P1-4)
+            boundary_cells = sorted({
+                (int(r.kakshya_index),
+                 ((sign_start + float(r.start_deg)) % 360.0
+                  if getattr(r, "sign_relative", False) else float(r.start_deg)))
                 for r in l1_rows if r.start_deg is not None
             })
             citation = P.C.KAKSHYA_BPHS_66 if hasattr(P, "C") else None
             uncited = False
             source = "chart_facts.ashtakavarga_kakshya_boundary"
         else:
-            boundary_degs = [sign_start + i * (30.0 / 8.0) for i in range(8)]
+            boundary_cells = [(i, sign_start + i * (30.0 / 8.0)) for i in range(8)]
             citation = None
             uncited = True
             source = "equal_eighths_fixture_approximation"
 
-        for i, b in enumerate(boundary_degs):
+        for i, b in boundary_cells:
             events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
             for ev in events:
                 # Correct cell selection (ASTRA P1-5): direct crossing enters

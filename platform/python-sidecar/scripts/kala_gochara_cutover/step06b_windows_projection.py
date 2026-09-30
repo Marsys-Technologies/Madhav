@@ -754,21 +754,33 @@ AV_DONOR_OPERAND = "av_donor_matrix"
 P5C_RELATION = "kakshya_cell_crossing"
 
 
-def kakshya_donor_key(body: str, target_lon_deg: float) -> tuple[str, dict]:
+BRANCH_TO_SPEED = {"direct": 1.0, "retrograde": -1.0}
+
+
+def kakshya_donor_key(body: str, target_lon_deg: float,
+                      branch: str | None = None) -> tuple[str, dict]:
     """The P5c donor row a kakṣyā crossing consumes (Phaladīpikā XXIII,
-    PG301: fruit delivered in the cell owned by the mark-donor). The crossed
-    boundary's cell is the one it opens (division order Saturn → Lagna,
-    primitives._KAKSHYA_LORD_ORDER); sign N is the absolute rāśi 1–12 of
-    the boundary degree. Returns (writer-scheme key, detail)."""
+    PG301: fruit delivered in the cell owned by the mark-donor). The cell
+    is the one the crossing ENTERS, selected by the ledger's `branch`
+    (ASTRA v1.1 P1-4): a direct crossing of boundary i enters cell i; a
+    retrograde crossing enters cell i−1 (boundary 0 ⇒ cell 7 of the
+    previous sign); 'station'/unknown takes the direct convention,
+    disclosed — the same rule as primitives.kakshya_cell_entered. Sign N is
+    the absolute rāśi 1–12. Returns (writer-scheme key, detail)."""
     from brahmagyan.graha_vocabulary import norm_graha
     from services.gochara_grammar.primitives import (
-        kakshya_index_for_degree_in_sign, kakshya_lord_for_index)
+        kakshya_cell_entered, kakshya_index_for_degree_in_sign,
+        kakshya_lord_for_index)
     lon = float(target_lon_deg) % 360.0
     sign_n = int(lon // 30.0) + 1
-    idx = kakshya_index_for_degree_in_sign(lon)
+    boundary_idx = kakshya_index_for_degree_in_sign(lon)
+    direction, idx, entered_sign = kakshya_cell_entered(
+        BRANCH_TO_SPEED.get(str(branch or "").lower()), boundary_idx, sign_n)
     lord = kakshya_lord_for_index(idx)
-    key = f"{norm_graha(body)}-CONTRIBUTOR_{norm_graha(lord)}-SIGN_{sign_n}"
-    return key, {"sign_number": sign_n, "kakshya_index": idx,
+    key = f"{norm_graha(body)}-CONTRIBUTOR_{norm_graha(lord)}-SIGN_{entered_sign}"
+    return key, {"sign_number": entered_sign, "boundary_sign_number": sign_n,
+                 "boundary_index": boundary_idx, "kakshya_index": idx,
+                 "direction": direction, "branch": branch,
                  "kakshya_lord": lord, "donor_row_key": key}
 
 
@@ -1005,7 +1017,8 @@ class ClassContext:
         if contact.get("relation") != P5C_RELATION:
             return None
         key, detail = kakshya_donor_key(contact["body"],
-                                        contact["_target_lon_deg"])
+                                        contact["_target_lon_deg"],
+                                        contact.get("_branch"))
         if self.av_donor_keys is None:
             legacy_declared = AV_DONOR_OPERAND in self.unresolved_valence_operands
             return {**detail, "state": ("unresolved" if legacy_declared
@@ -1653,13 +1666,13 @@ def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
     rows = conn.execute(
         "SELECT contact_id, body, relation, target_type, target_ref,"
         " target_longitude_deg, t_in, t_exact, t_out, orb_max_deg,"
-        " completeness_state, aspect_deg, independence_group"
+        " completeness_state, aspect_deg, independence_group, branch"
         " FROM kala_gochara_contacts"
         " WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchall()
     out = []
     for (cid, body, relation, ttype, tref, tlon, t_in, t_exact, t_out,
-         orb_max, completeness, aspect_deg, independence_group) in rows:
+         orb_max, completeness, aspect_deg, independence_group, branch) in rows:
         out.append({
             "contact_id": cid, "body": body, "relation": relation,
             "target_type": ttype, "target_ref": tref,
@@ -1668,6 +1681,8 @@ def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
             "completeness_state": completeness,
             "aspect_deg": float(aspect_deg) if aspect_deg is not None else 0.0,
             "independence_group": independence_group,
+            "branch": branch,
+            "_branch": branch,
             "_target_lon_deg": float(tlon) if tlon is not None else None,
             "_orb_deg": (float(orb_max) if orb_max is not None
                          else ORB_MAX_DEG_FALLBACK),
