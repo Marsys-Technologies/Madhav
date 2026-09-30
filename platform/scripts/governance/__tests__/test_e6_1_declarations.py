@@ -379,6 +379,32 @@ _INSERT_RENAMES = {     # (asset, column) -> (text inside the writer's INSERT co
 _BOUND_NAMES = {"narrative": ("narrative", "ad_narrative", "pd_narrative", "proj_narrative"), "falsifiability": ("falsifiability",)}
 
 
+def test_checker_tuple_length_and_placeholder_width_problems():
+    assert nw.check_tuple_json_from_builder(_SYNTH.replace("(1, json.dumps(n), 3)", "(1, json.dumps(n))"), "t", "narrative", "build")
+    assert nw.check_tuple_json_from_builder(_SYNTH.replace("(1, json.dumps(n), 3)", "(1, json.dumps(n), 3, 4)"), "t", "narrative", "build")
+    wide = _SYNTH.replace("(a, narrative, c)", "(a, narrative)").replace("VALUES (%s, %s, %s)", "VALUES (f(%s, %s), %s)").replace(
+        "(1, json.dumps(n), 3)", "(1, 2, json.dumps(n))")
+    assert nw.check_tuple_json_from_builder(wide, "t", "narrative", "build") == []      # narrative sits after a 2-wide expression
+    assert any("placeholders" in p for p in nw.check_tuple_json_from_builder(wide, "t", "a", "build"))
+
+
+def test_no_string_building_checker_reports_every_kind_and_module_corpus_checker_reports_mutation():
+    base = ("import json\nDOSHAS = [{'a': 'x'}]\n"
+            "def seed(conn, d):\n    with conn.cursor() as cur:\n        cur.execute(\"INSERT INTO t (a) VALUES (%s)\", (PARAM,))\n")
+    assert nw.no_string_building_in_bound_params(base.replace("PARAM", 'd["a"][:5] if d else None'), "seed") == []
+    for bad in ('d["a"] + "x"', 'f"{d}"', '"%s" % d["a"]', '"".join([d["a"]])', 'str(d["a"])', 'd["a"].upper()', "[x for x in d]", "(lambda: 1)()"):
+        assert nw.no_string_building_in_bound_params(base.replace("PARAM", bad), "seed"), bad
+    assert nw.no_string_building_in_bound_params(base.replace("(PARAM,)", "d"), "seed")          # params not a literal tuple
+    assert nw.no_string_building_in_bound_params(base.replace("INSERT INTO", "DELETE FROM"), "seed")   # no INSERT seen
+    assert nw.no_string_building_in_bound_params(base, "missing")
+    assert nw.module_level_composition(base, "DOSHAS") == []
+    for bad in ("DOSHAS.append({})", "DOSHAS += [{}]", "DOSHAS = []", "DOSHAS.extend([])", "DOSHAS.pop()"):
+        assert nw.module_level_composition(base + bad + "\n", "DOSHAS"), bad
+    for lit in ("[{'a': f'{1}'}]", "[{'a': 'x' + 'y'}]", "[{'a': 'x'.format()}]", "[{'a': ''.join([])}]", "[{'a': 'x' % ()}]"):
+        assert nw.module_level_composition(base.replace("[{'a': 'x'}]", lit), "DOSHAS"), lit
+    assert nw.module_level_composition("X = 1\n", "DOSHAS")
+
+
 @pytest.mark.parametrize("asset_col", sorted(NARR_TUPLE_TABLES))
 def test_bound_value_checker_kills_the_literal_and_rename_mutants(asset_col):
     asset, col = asset_col
