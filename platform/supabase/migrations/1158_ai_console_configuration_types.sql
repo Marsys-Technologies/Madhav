@@ -8,20 +8,6 @@ ALTER TABLE ai_custom_configurations
   ADD COLUMN IF NOT EXISTS owner_connection_id uuid,
   ADD COLUMN IF NOT EXISTS owner_cli_id text;
 
--- The existing ai_configuration_version_guard requires every metadata update to
--- advance the version. Historical turn snapshots retain their original versions.
-UPDATE ai_custom_configurations c SET configuration_kind = 'custom_api', version = version + 1
-WHERE c.configuration_kind = 'legacy_mixed'
-  AND EXISTS (SELECT 1 FROM ai_custom_configuration_roles r WHERE r.configuration_id = c.id)
-  AND NOT EXISTS (SELECT 1 FROM ai_custom_configuration_roles r
-    WHERE r.configuration_id = c.id AND r.kind <> 'provider_model');
-
-UPDATE ai_custom_configurations c SET configuration_kind = 'custom_cli', version = version + 1
-WHERE c.configuration_kind = 'legacy_mixed'
-  AND EXISTS (SELECT 1 FROM ai_custom_configuration_roles r WHERE r.configuration_id = c.id)
-  AND NOT EXISTS (SELECT 1 FROM ai_custom_configuration_roles r
-    WHERE r.configuration_id = c.id AND r.kind <> 'local_cli');
-
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_configuration_kind_shape'
@@ -97,3 +83,21 @@ END $$;
 DROP TRIGGER IF EXISTS ai_configuration_scope_update ON ai_custom_configurations;
 CREATE TRIGGER ai_configuration_scope_update BEFORE UPDATE ON ai_custom_configurations
   FOR EACH ROW EXECUTE FUNCTION ai_check_configuration_scope_update();
+
+-- Classify existing configurations only after all ALTER TABLE statements and
+-- trigger installation. Updating rows earlier leaves pending FK trigger events
+-- in the migration runner's transaction; PostgreSQL then refuses the later
+-- ALTER TABLE with "cannot ALTER TABLE ... because it has pending trigger events".
+-- The existing ai_configuration_version_guard requires every metadata update to
+-- advance the version. Historical turn snapshots retain their original versions.
+UPDATE ai_custom_configurations c SET configuration_kind = 'custom_api', version = version + 1
+WHERE c.configuration_kind = 'legacy_mixed'
+  AND EXISTS (SELECT 1 FROM ai_custom_configuration_roles r WHERE r.configuration_id = c.id)
+  AND NOT EXISTS (SELECT 1 FROM ai_custom_configuration_roles r
+    WHERE r.configuration_id = c.id AND r.kind <> 'provider_model');
+
+UPDATE ai_custom_configurations c SET configuration_kind = 'custom_cli', version = version + 1
+WHERE c.configuration_kind = 'legacy_mixed'
+  AND EXISTS (SELECT 1 FROM ai_custom_configuration_roles r WHERE r.configuration_id = c.id)
+  AND NOT EXISTS (SELECT 1 FROM ai_custom_configuration_roles r
+    WHERE r.configuration_id = c.id AND r.kind <> 'local_cli');
