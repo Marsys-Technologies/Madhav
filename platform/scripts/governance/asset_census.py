@@ -169,7 +169,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs a capability that declares density_contract AND selects a tier column from the asset's table in its served select", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
     "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
@@ -1415,7 +1415,9 @@ def _ts_code(src: str, blank_strings: bool = False) -> str:
     return "".join(out)
 
 
-_DENSITY_DECL = re.compile(r"\bdensity_contract\s*\??\s*:")
+# `density_contract: <object or identifier>`: a key whose value is `undefined` / `null` / `false` / `true` declares
+# nothing (R232 carried: a declaration needs a real value, not just the key).
+_DENSITY_DECL = re.compile(r"\bdensity_contract\s*\??\s*:\s*(?!(?:undefined|null|false|true)\b)(?=[{A-Za-z_$(\[])")
 
 # E6.1 (d) / N-22 ruling principle 4: the Dens scanner. A tier column is STRUCTURAL vocabulary: `tier`, any `<x>_tier`
 # (signature_tier, efficacy_tier, ...) and the L1 verification tier `verification_pass_status` — a column NAME, never a
@@ -1507,7 +1509,20 @@ def _ts_desynced(src: str) -> bool:
     return False
 
 
-_DYN_FROM = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?\$\{", re.I)
+_DYN_FROM = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?\"?(?:[A-Za-z_]\w*\.)?\"?\$\{", re.I)
+# a literal that ENDS in `FROM` / `JOIN` / `FROM <partial name>` and is concatenated on (`'… FROM ' + T`)
+_DYN_FROM_TAIL = re.compile(r"\b(?:FROM|JOIN)\b(?:\s+(?:ONLY\s+)?\"?[\w.]*)?\s*$", re.I)
+
+
+def _dynamic_from(txt: str, spans: list[tuple[int, str]]) -> bool:
+    """Does any literal name its table at run time: `FROM ${T}` (also `"${T}"`, `public.${T}`, `JOIN`, `ONLY`), or a
+    literal ending in `FROM`/`JOIN`/`FROM t_` that is concatenated on with `+`?"""
+    for pos, c in spans:
+        if _DYN_FROM.search(c):
+            return True
+        if _DYN_FROM_TAIL.search(c) and re.match(r"\s*\+", txt[pos + len(c) + 1:pos + len(c) + 40]):
+            return True
+    return False
 _DECL_LINE = re.compile(r"^(?:import\b|export\b|(?:async\s+)?function\b|(?:const|let|var|class|interface|type|enum)\b)", re.M)
 
 
@@ -1546,6 +1561,33 @@ def _dens_words(f: Path) -> tuple[tuple, frozenset]:
     return key, _DENS_RAW[key]
 
 
+def _enclosing_object(blank: str, pos: int) -> tuple[int, int]:
+    """`(start, end)` of the innermost `{ ... }` around `pos` in the comment- and string-blanked text — the object
+    literal a `density_contract:` key sits directly in: the capability ENTRY it declares the contract for. No enclosing
+    brace: the whole text."""
+    depth, i = 0, pos - 1
+    while i >= 0:
+        ch = blank[i]
+        if ch == "}":
+            depth += 1
+        elif ch == "{":
+            if depth == 0:
+                break
+            depth -= 1
+        i -= 1
+    else:
+        return 0, len(blank)
+    depth = 0
+    for j in range(i, len(blank)):
+        if blank[j] == "{":
+            depth += 1
+        elif blank[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return i, j + 1
+    return i, len(blank)
+
+
 def _dens_module(f: Path, key: tuple) -> dict:
     """The file parsed once: comment-masked text (strings kept: the SQL lives in them), the declaration starts, the
     offsets of `density_contract:` DECLARATIONS (R232: comments stripped, strings blanked), and the string literals
@@ -1558,9 +1600,10 @@ def _dens_module(f: Path, key: tuple) -> dict:
             cmask=_ts_mask(txt),
             starts=_ts_decl_starts(blank),
             contracts=[m.start() for m in _DENSITY_DECL.finditer(blank)],
+            contract_objs=[(m.start(), *_enclosing_object(blank, m.start())) for m in _DENSITY_DECL.finditer(blank)],
             spans=spans,
             desynced=_ts_desynced(txt),
-            dynamic_from=any(_DYN_FROM.search(c) for _p, c in spans),
+            dynamic_from=_dynamic_from(txt, spans),
         )
     return _DENS_FACTS[key]
 
@@ -1569,27 +1612,60 @@ def _decl_of(mod: dict, pos: int) -> int:
     return bisect.bisect_right(mod["starts"], pos)
 
 
-def _served_selects(table: str, lits: list[str]):
+_WORD_SELECT = re.compile(r"\bSELECT\b", re.I)
+_NOT_A_READ_PREFIX = re.compile(r"\b(?:INSERT|CREATE|MERGE|COPY|UNION|INTERSECT|EXCEPT)\b", re.I)
+
+
+def _owner_select(head: str):
+    """The SELECT that owns a FROM sitting at the end of `head`: the last whole-word SELECT after which the
+    parentheses balance (a SELECT inside an earlier `( … )` belongs to that sub-query, not to this FROM)."""
+    flat = re.sub(r"'[^']*'", lambda m: " " * len(m.group(0)), head)
+    for m in reversed(list(_WORD_SELECT.finditer(flat))):
+        depth = 0
+        for ch in flat[m.end():]:
+            depth += (ch == "(") - (ch == ")")
+            if depth < 0:
+                break
+        if depth == 0:
+            return m
+    return None
+
+
+def _is_served_read(head: str, sel_start: int) -> bool:
+    """Is the SELECT at `sel_start` of `head` a served READ — not a `( SELECT …` sub-query (WHERE .. IN, EXISTS, a CTE
+    body) and not the read side of an INSERT / CREATE … AS / MERGE / COPY, nor a UNION / INTERSECT / EXCEPT branch
+    (its column names come from the first branch)?"""
+    pre = head[:sel_start].rsplit(";", 1)[-1]
+    return not pre.rstrip().endswith("(") and not _NOT_A_READ_PREFIX.search(pre)
+
+
+def _served_selects(table: str, lits: list[str], strict: bool = False):
     """`(i, match, alias, select_list)` for every `FROM|JOIN <table>` in literal `i` that sits under a SELECT list
     (R23's reader, factored so the Dens scan and `field_reach` read a served select identically). A FROM counts only
     with a SELECT in front of it — in the same literal or, for `'SELECT a, b ' + 'FROM t'`, the literal before (prose
-    that says "from <table>" is not a query)."""
+    that says "from <table>" is not a query). `SELECT` is a whole word (`is_selected` is not one).
+    `strict` (the Dens scan): the FROM's OWN select is found by paren balance, and when it is not a served read
+    (`_is_served_read`) `select_list` is None — the select is counted as served but its list credits no tier column."""
     rx = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?(?:public\.)?\"?" + re.escape(table) +
                     r"\b\"?(?:\s+(?:AS\s+)?([A-Za-z_][A-Za-z_0-9]*))?", re.I)
     for i, lit in enumerate(lits):
         for m in rx.finditer(lit):
             alias = m.group(1) if m.group(1) and m.group(1).lower() not in _ALIAS_STOP else None
             head = lit[:m.start()]
-            k = head.upper().rfind("SELECT")
-            if k >= 0:
-                sel = head[k + 6:]
+            k = _owner_select(head) if strict else next(iter(reversed(list(_WORD_SELECT.finditer(head)))), None)
+            if k is not None:
+                sel = head[k.end():]
+                ok = _is_served_read(head, k.start())
+            elif strict and _WORD_SELECT.search(head):
+                continue                                   # a SELECT exists but none owns this FROM (EXTRACT(.. FROM t))
             else:
                 prev = lits[i - 1] if i else ""
-                k2 = prev.upper().rfind("SELECT")
-                if k2 < 0 or re.search(r"\bFROM\b", prev[k2:], re.I):
+                k2 = _owner_select(prev) if strict else next(iter(reversed(list(_WORD_SELECT.finditer(prev)))), None)
+                if k2 is None or re.search(r"\bFROM\b", prev[k2.start():], re.I):
                     continue
-                sel = prev[k2 + 6:]
-            yield i, m, alias, sel
+                sel = prev[k2.end():]
+                ok = _is_served_read(prev, k2.start())
+            yield i, m, alias, (sel if (ok or not strict) else None)
 
 
 _SEL_CAST = re.compile(r"::\s*[A-Za-z_][\w.]*(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?(?:\[\])*")
@@ -1698,7 +1774,11 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     ATTRIBUTION. A token in `shared` (a table another asset also declares) never attributes a module to THIS asset:
     `chart_facts` would make every reader serve every asset. Attribution is per capability (a top-level declaration):
     a `density_contract:` counts for the asset only in a declaration that references it, and only a tier column in a
-    served `SELECT ... FROM <the asset's table>` of THAT SAME declaration makes it dense.
+    served `SELECT ... FROM <the asset's table>` INSIDE THE SAME capability entry (the object literal holding the
+    `density_contract:` key, whose value must be a real object/identifier) makes it dense; a sibling entry's select, a
+    sub-select, an INSERT...SELECT or a UNION branch credits nothing. A serving-root file that names the asset but on
+    which the string scanner loses sync (`_ts_desynced`) is returned in `unparsed` and grades NO_DETECTOR (never FAIL,
+    never N/A; a PASS/PARTIAL earned in a clean file stands).
 
     Returns `modules` (by code, attributing tokens), `density` (capabilities that are dense), `dense`, `declared`
     (modules whose referencing capability declares the contract, with why the tier half is missing), `tier_only`,
@@ -1714,6 +1794,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     toks = [t for t in dict.fromkeys(tables) if t and t not in shared]
     sh = [t for t in dict.fromkeys(tables) if t and t in shared]
     hits, dense, declared, tier_only, shared_only, mentions, elsewhere = [], [], [], [], [], [], []
+    unparsed: list[str] = []
     served = 0
     seen: set[str] = set()
     for i, root in enumerate(dirs):
@@ -1729,6 +1810,12 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
             if not code_toks and not code_sh:
                 continue
             mod = _dens_module(f, key)
+            if mod["desynced"] and code_toks:
+                # the string scanner lost sync on this file: what it reports (literals, comment blanking, declaration
+                # boundaries, the contract) is unreliable, so it neither attributes the asset nor proves it unserved.
+                # NO_DETECTOR for the asset (never FAIL, never N/A, never PASS from this file).
+                unparsed.append(name)
+                continue
             has = lambda t: re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"])      # noqa: E731  (code, strings kept)
             ref_toks = [t for t in code_toks if has(t)]                                # R51: code, not a comment
             if not ref_toks:
@@ -1739,31 +1826,44 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 continue
             hits.append(name)
             refs = {_decl_of(mod, m.start()) for t in ref_toks for m in re.finditer(r"\b" + re.escape(t) + r"\b", mod["cmask"])}
-            contract_decls = {_decl_of(mod, p) for p in mod["contracts"]} & refs      # a referencing capability's own contract
+            # a capability ENTRY that declares the contract: the object literal holding the `density_contract:` key, in a
+            # top-level declaration that references the asset
+            cobjs = [o for o in mod["contract_objs"] if _decl_of(mod, o[0]) in refs]
+            contract_decls = {_decl_of(mod, o[0]) for o in cobjs}
             lits = [c for _p, c in mod["spans"]]
-            by_decl: dict[int, list[tuple[str, list[str]]]] = {}
+            sels: list[tuple[int, int, str, list[str]]] = []                           # (declaration, offset, tier state, columns)
             # a select of a SHARED table counts only inside a capability that names THIS asset (by its id or by a table
             # only it declares): the asset id discriminates what the shared table cannot
             for t in ref_toks + [x for x in code_sh if has(x)]:
-                for li, m, alias, sel in _served_selects(t, lits):
-                    d = _decl_of(mod, mod["spans"][li][0])
+                for li, m, alias, sel in _served_selects(t, lits, strict=True):
+                    pos = mod["spans"][li][0]
+                    d = _decl_of(mod, pos)
                     if d in refs:
-                        by_decl.setdefault(d, []).append(_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t)))
+                        st = (_select_tier(sel, alias, t, columns.get(t.lower()) or columns.get(t))
+                              if sel is not None else (TIER_UNKNOWN, []))           # not the served read: credits nothing
+                        sels.append((d, pos, st[0], st[1]))
                         served += 1
-            tier_decls = {d for d, sels in by_decl.items() if any(st == TIER_YES for st, _c in sels)}
-            both = contract_decls & tier_decls
-            if both:
-                dense.append((name, sorted({c for d in both for st, cs in by_decl[d] if st == TIER_YES for c in cs})))
+            tier_decls = {d for d, _p, st, _c in sels if st == TIER_YES}
+            inside = lambda o: [(st, cs) for _d, p, st, cs in sels if o[1] <= p < o[2]]    # noqa: E731
+            dense_cols = sorted({c for o in cobjs for st, cs in inside(o) if st == TIER_YES for c in cs})
+            if dense_cols:
+                # PASS: the contract and the tier select belong to the SAME capability entry (the contract's own object)
+                dense.append((name, dense_cols))
             else:
-                # a contract counts for the asset only in a capability that also SERVES it (a served select of its table
-                # in that same declaration) — a declaration that merely names the asset's id is not its serving capability
+                # a contract counts for the asset only in a capability entry that also SERVES it (a served select of its
+                # table inside the object that declares the contract) — a declaration that merely names the asset's id,
+                # or a sibling entry's select, is not its serving capability
                 why = set()
-                for d in contract_decls:
-                    sts = {st for st, _c in by_decl.get(d, [])}
+                for o in cobjs:
+                    sts = {st for st, _c in inside(o)}
                     if sts:
-                        why.add("tier carriage not established (a run-time select list, or SELECT * with unknown columns)"
-                                if TIER_UNKNOWN in sts else "no tier column in its served select")
-                    elif by_decl:
+                        why.add("tier carriage not established (a run-time select list, a sub-select / INSERT…SELECT / "
+                                "UNION branch, or SELECT * with unknown columns)" if TIER_UNKNOWN in sts
+                                else "no tier column in its served select")
+                    elif any(sd == _decl_of(mod, o[0]) for sd, *_r in sels):
+                        why.add("its served select of the table is in the same top-level declaration but a different "
+                                "capability entry, not the object that declares the contract (attribution not established)")
+                    elif sels:
                         why.add("its served select of the table is in a different top-level declaration of the module "
                                 "(contract/select attribution not established)")
                 if why:
@@ -1771,7 +1871,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 else:
                     if tier_decls:
                         tier_only.append(name)
-                    if by_decl and mod["contracts"]:
+                    if sels and mod["contracts"]:
                         elsewhere.append(name)       # the module declares a contract, but not in a capability that serves it
     outside: list[str] = []
     outside_named: list[str] = []
@@ -1799,12 +1899,12 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     # JSX text / a stray quote desynchronises the string scanner, so a select it missed is not evidence
                     # of none: ANY textual reference (code or comment) keeps the asset off the closable N/A
                     outside_named.append(f"{rel} (unparsed file: the asset is named in its text)")
-                elif not any(re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"]) for t in present):
-                    outside_named.append(f"{rel} (named in comments only)")                     # R51
+                elif any(not re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"]) for t in present):
+                    outside_named.append(f"{rel} (a comment names it)")                          # R51: alone or beside code
                 elif mod["dynamic_from"]:
                     outside_named.append(f"{rel} (holds the table and selects FROM a run-time table name)")
     return dict(modules=hits, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
-                declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, elsewhere=elsewhere,
+                declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, unparsed=unparsed, elsewhere=elsewhere,
                 shared_tokens=sh, tokens=toks, roots=dirs)
 
 
@@ -1838,6 +1938,12 @@ def _grade_dens(cap: dict, label: str) -> dict:
         det = "; ".join(f"{n}: {', '.join(w)}" for n, w in cap["declared"][:4])
         return dict(v=PARTIAL, measured=(f"STRUCTURAL: {reach}; a referencing capability declares density_contract but "
                                          f"{det}" + tail))
+    if cap.get("unparsed"):
+        # a serving-root file that names the asset could not be read reliably: what it serves, and whether it declares the
+        # contract, is unknown — so neither FAIL (no contract anywhere) nor N/A (not served) was established
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — {len(cap['unparsed'])} serving-root file(s) naming {label} lose the "
+                                        f"string scanner's sync (an unbalanced quote): {_few(cap['unparsed'], 4)}; its served "
+                                        "select and density_contract cannot be read — never FAIL, never the closable N/A"))
     if mods and cap.get("served"):
         extra = ((f"; a tier column is selected without a contract in: {_few(cap['tier_only'])}" if cap.get("tier_only") else "")
                  + (f"; a density_contract is declared in {_few(cap['elsewhere'], 3)}, but not in a capability that serves it"

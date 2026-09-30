@@ -543,3 +543,214 @@ def test_the_desync_detector_reads_quotes_newlines_and_comments():
     assert ac._ts_desynced("const re = /'/;\nquery('SELECT 1');\n")    # a stray quote
     assert not ac._ts_desynced("const a = 'it\\'s';\nconst b = `x\ny`;\n// it's a comment\n/* don't */\n")
     assert not ac._ts_desynced("")
+
+
+# ───────────────────────── re-review: PASS is the closable direction (§N.8) — no false PASS, no false FAIL/N-A ─────────────────────────
+
+def _cap_obj(body_sql, contract=True, name="a"):
+    return (f"{{ id: '{name}', {CONTRACT if contract else ''} run: async () => query(`{body_sql}`) }}")
+
+
+def _reg_x():
+    return {"bg_x": w1._reg_row("bg_x", "t_x")}
+
+
+# (1a) contract and tier select in one top-level declaration but DIFFERENT capability entries
+
+def test_a_sibling_capability_in_the_same_array_does_not_lend_its_contract(tree, monkeypatch):
+    """`register([A, B])`: A declares the contract (its select has no tier), B selects a tier column and declares
+    nothing. One top-level declaration holds both halves; no capability ENTRY has them together."""
+    tree.write(tree.layers / "L0_x", "q.ts",
+               "export const caps = [\n  " + _cap_obj("SELECT id FROM t_x", name="a") + ",\n  "
+               + _cap_obj("SELECT id, signature_tier FROM t_x", contract=False, name="b") + ",\n]\n")
+    d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
+    assert d["v"] == ac.PARTIAL and "no tier column" in d["measured"], d
+
+
+def test_a_contract_in_one_entry_and_the_tier_select_in_a_sibling_of_another_asset_is_never_pass(tree, monkeypatch):
+    tree.write(tree.layers / "L0_x", "q.ts",
+               "export const caps = [\n  " + _cap_obj("SELECT id FROM other_table", name="a") + ",\n  "
+               + _cap_obj("SELECT id, signature_tier FROM t_x", contract=False, name="b") + ",\n]\n")
+    d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
+    assert d["v"] == ac.PARTIAL and "different capability entry" in d["measured"], d
+
+
+def test_each_entry_carrying_its_own_contract_and_tier_select_passes(tree, monkeypatch):
+    tree.write(tree.layers / "L0_x", "q.ts",
+               "export const caps = [\n  " + _cap_obj("SELECT id FROM other_table", name="a") + ",\n  "
+               + _cap_obj("SELECT id, signature_tier FROM t_x", name="b") + ",\n]\n")
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+
+
+# (1b) a contract key whose value is undefined / null / false declares nothing
+
+@pytest.mark.parametrize("val", ["undefined", "null", "false"])
+def test_a_contract_key_with_no_real_value_is_not_a_declaration(tree, monkeypatch, val):
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n" % val)
+    tree.write(tree.layers / "L0_x", "q.ts", body)
+    d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
+    assert d["v"] == ac.FAIL, (val, d)
+
+
+@pytest.mark.parametrize("val", ["{ paginated: true }", "DENSITY", "buildContract()"])
+def test_a_contract_key_with_an_object_or_identifier_value_is_a_declaration(tree, monkeypatch, val):
+    body = ("export const cap = {\n  id: 'a',\n  density_contract: %s,\n  run: async () => query(`SELECT id, signature_tier FROM t_x`),\n}\n" % val)
+    tree.write(tree.layers / "L0_x", "q.ts", body)
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+
+
+# (1c, 1d) only the served READ is credited: not a sub-select, an INSERT...SELECT or a UNION branch
+
+@pytest.mark.parametrize("sql", [
+    "SELECT id FROM other WHERE k IN (SELECT signature_tier FROM t_x)",
+    "INSERT INTO z (signature_tier) SELECT signature_tier FROM t_x",
+    "WITH w AS (SELECT signature_tier FROM t_x) SELECT id FROM w",
+    "SELECT id FROM other UNION SELECT signature_tier FROM t_x",
+    "CREATE TABLE z AS SELECT signature_tier FROM t_x",
+], ids=["where-subselect", "insert-select", "cte-body", "union-branch", "create-as"])
+def test_a_tier_column_outside_the_served_read_is_never_a_pass(tree, monkeypatch, sql):
+    tree.write(tree.layers / "L0_x", "q.ts", _cap(sql))
+    d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
+    assert d["v"] == ac.PARTIAL, (sql, d)
+
+
+def test_the_outer_select_owns_its_from_even_with_a_subselect_in_its_list(tree, monkeypatch):
+    """The FROM's own SELECT is the outer one (paren balance), so the select is the served read; a `(SELECT …)` in its
+    list still makes the list unattributable (UNKNOWN -> PARTIAL, never PASS)."""
+    sel = list(ac._served_selects("t_x", ["SELECT (SELECT max(v) FROM o) AS m, x.signature_tier FROM t_x x"], strict=True))
+    assert len(sel) == 1 and sel[0][3].startswith(" (SELECT max(v) FROM o) AS m"), sel
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT (SELECT max(v) FROM o) AS m, x.signature_tier FROM t_x x"))
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
+
+
+# (3) `SELECT` must be a whole word
+
+@pytest.mark.parametrize("extra", ["is_selected", "reselect_count", "selected"])
+def test_a_column_name_holding_select_does_not_truncate_the_select_list(tree, monkeypatch, extra):
+    tree.write(tree.layers / "L0_x", "q.ts", _cap(f"SELECT id, signature_tier, {extra} FROM t_x"))
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+    assert [s.strip() for _i, _m, _a, s in ac._served_selects("t_x", [f"SELECT id, {extra} FROM t_x"])] == [f"id, {extra}"]
+
+
+# (2) a run-time table name in every spelling
+
+@pytest.mark.parametrize("frag", [
+    "FROM \"${T}\"", "FROM public.${T}", "FROM public.\"${T}\"", "JOIN ${T}", "FROM ONLY ${T}",
+])
+def test_a_dynamic_table_name_in_any_spelling_blocks_na(tree, monkeypatch, frag):
+    tree.write(tree.outside, "dyn.ts", "const T = 't_x';\nexport const q = () => query(`SELECT id FROM o %s WHERE k = $1`);\n" % frag
+               if frag.startswith("JOIN") else "const T = 't_x';\nexport const q = () => query(`SELECT id %s WHERE k = $1`);\n" % frag)
+    d = _dens(_measure(monkeypatch, tree, _reg_x(), outside=True), "bg_x")
+    assert _blocked(d)[0] and "run-time" in d["measured"], (frag, d)
+
+
+@pytest.mark.parametrize("src", [
+    "const T = 't_x';\nexport const q = () => query('SELECT id FROM ' + T);\n",
+    "const T = 't_x';\nexport const q = () => query('SELECT id FROM t_' + SUFFIX);\n",
+    "const T = 't_x';\nexport const q = () => query('SELECT id ' + 'FROM ' + T + ' WHERE 1');\n",
+])
+def test_a_concatenated_table_name_blocks_na(tree, monkeypatch, src):
+    tree.write(tree.outside, "dyn.ts", src)
+    d = _dens(_measure(monkeypatch, tree, _reg_x(), outside=True), "bg_x")
+    assert _blocked(d)[0] and "run-time" in d["measured"], (src, d)
+
+
+# (4) a comment naming the asset + a code reference to the table
+
+def test_a_comment_naming_the_asset_blocks_na_even_when_the_table_is_in_code(tree, monkeypatch):
+    tree.write(tree.outside, "m.ts", "// serves bg_x\nexport const T = 't_x'\n")
+    d = _dens(_measure(monkeypatch, tree, _reg_x(), outside=True), "bg_x")
+    assert _blocked(d)[0] and "m.ts" in d["measured"], d
+
+
+# (5) a desynced file INSIDE a serving root
+
+def test_a_desynced_serving_root_file_that_names_the_asset_is_no_detector_never_fail(tree, monkeypatch):
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, signature_tier FROM t_x", contract=False))
+    d = _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")
+    assert d["v"] == ac.NO_DET and "odd.ts" in d["measured"] and "string scanner" in d["measured"], d
+
+
+def test_a_desynced_file_never_mints_pass(tree, monkeypatch):
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\n" + _cap("SELECT id, signature_tier FROM t_x"))
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.NO_DET
+
+
+def test_a_clean_pass_stands_when_a_desynced_file_also_names_the_asset(tree, monkeypatch):
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_x"))
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\nconst x = 't_x';\n")
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PASS
+
+
+def test_a_desynced_file_that_never_names_the_asset_changes_nothing(tree, monkeypatch):
+    tree.write(tree.tools, "odd.ts", "const re = /'/;\nconst x = 'unrelated';\n")
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id FROM t_x", contract=False))
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.FAIL
+
+
+# (6) mutants that only a targeted fixture kills
+
+def test_an_outside_root_that_overlaps_a_serving_root_adds_no_outside_tail(tree):
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT id, signature_tier FROM t_x"))
+    cap = _REAL_SCAN(tree.roots, ["t_x", "bg_x"], outside_roots=(str(tree.tmp),))
+    assert cap["outside"] == [] and cap["outside_named"] == [], cap
+    assert ac._grade_dens(cap, "t_x")["v"] == ac.PASS and "outside" not in ac._grade_dens(cap, "t_x")["measured"]
+
+
+def test_the_outside_probe_reads_every_token_not_only_the_first(tree, monkeypatch):
+    """The served select is of a `count_sql` table (a later token); the file also names the asset's own table."""
+    tree.write(tree.outside, "r.ts", "const A = 't_x';\nexport const q = () => query('SELECT id FROM t_events');\n")
+    reg = {"bg_x": w1._reg_row("bg_x", "t_x", count_sql="SELECT count(*) FROM t_events")}
+    d = _dens(_measure(monkeypatch, tree, reg, outside=True), "bg_x")
+    assert _blocked(d)[0] and "r.ts" in d["measured"], d
+
+
+@pytest.mark.parametrize("src", ["// note {\nexport const a = 1\n", "/* note } */ export const a = 1\n", "// note {"])
+def test_ts_mask_blanks_a_comment_to_its_last_character(src):
+    m = ac._ts_mask(src)
+    assert len(m) == len(src) and "{" not in m and "}" not in m, m
+
+
+def test_a_comment_ending_in_a_brace_does_not_shift_the_declaration_boundaries(tree, monkeypatch):
+    tree.write(tree.layers / "L0_x", "q.ts",
+               "export const capA = { id: 'a', " + CONTRACT + " run: () => query(`SELECT id FROM t_x`) } // {\n"
+               "export const capB = { id: 'b', run: () => query(`SELECT id, signature_tier FROM t_x`) }\n")
+    assert _dens(_measure(monkeypatch, tree, _reg_x()), "bg_x")["v"] == ac.PARTIAL
+
+
+@pytest.mark.parametrize("rel", ["a.d.ts", "node_modules/p/x.ts", "generated/g.ts"])
+def test_declaration_files_node_modules_and_generated_code_do_not_block_na(tree, monkeypatch, rel):
+    p = tree.outside / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(_cap("SELECT id FROM t_x", contract=False), encoding="utf-8")
+    assert _dens(_measure(monkeypatch, tree, _reg_x(), outside=True), "bg_x")["v"] == ac.NA
+
+
+def test_the_tier_vocabulary_is_case_insensitive():
+    for c in ("TIER", "Signature_Tier", "VERIFICATION_PASS_STATUS"):
+        assert ac.DENS_TIER_COLUMN.match(c), c
+    assert ac._select_tier("Signature_Tier", None, "t_x", None)[0] == ac.TIER_YES
+
+
+def test_a_from_literal_after_a_complete_select_is_not_a_select_list_for_it():
+    """`'SELECT id, tier FROM other'` then `'FROM t_x'`: the second literal is prose/another clause; the first literal's
+    SELECT already has its FROM."""
+    assert list(ac._served_selects("t_x", ["SELECT id, tier FROM other ", "FROM t_x"])) == []
+    assert [s for _i, _m, _a, s in ac._served_selects("t_x", ["SELECT id, tier ", "FROM t_x"])] == [" id, tier "]
+
+
+def test_a_from_whose_select_is_unbalanced_is_not_borrowed_from_the_previous_literal():
+    """`EXTRACT(year FROM t_x)` has a SELECT in its literal but none that owns the FROM; the previous literal's
+    dangling SELECT is not its list either."""
+    assert list(ac._served_selects("t_x", ["SELECT signature_tier ", "SELECT EXTRACT(year FROM t_x) AS y"], strict=True)) == []
+
+
+def test_a_literal_ending_in_from_is_dynamic_only_when_it_is_concatenated_on():
+    def dyn(src):
+        return ac._dynamic_from(src, ac._ts_literal_spans(src))
+    assert dyn("const q = 'SELECT id FROM ' + T;\n")
+    assert dyn("const q = 'SELECT id FROM '\n  + T;\n")
+    assert not dyn("const q = 'SELECT id FROM';\nconst T = 't_x';\n")
+    assert not dyn("const q = 'SELECT id FROM t_x' ;\n")
+    assert dyn("const q = `SELECT id FROM public.${T}`;\n") and dyn("const q = `SELECT id FROM \"${T}\"`;\n")
+    assert dyn("const q = `SELECT 1 FROM o JOIN ${T}`;\n") and dyn("const q = `SELECT 1 FROM ONLY ${T}`;\n")
