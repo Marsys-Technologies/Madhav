@@ -29,18 +29,24 @@ runbook is the data-side rebuild that makes the production map honest.
 - The deployed sidecar image carries the R-1..R-6 writer (FORMULA_VERSION
   `ka_gochara_resonance_v2.2`; header block "WP3c corrections").
 
-## 1. Pre-rebuild snapshot and counts (read-only)
+## 1. Pre-rebuild snapshot and counts
 
 Chart: `482012f1-710e-4a25-994a-93821f5871aa` (canonical; repeat per chart as
 the campaign directs — every statement below is per-chart scoped).
 
+**The snapshot below is itself a production write and is part of the native's
+action** (steward M20260930T104810-390a): it is executed by the native on the
+governed path immediately before the rebuild, never by a stream. Its rollback
+procedure is §4.
+
 ```sql
--- Rollback anchor (storage only; NOT a servable surface):
+-- [NATIVE ACTION — production write] Rollback anchor (storage only; NOT a
+-- servable surface):
 CREATE TABLE IF NOT EXISTS gochara_resonance_map_pre_r1r6_backup AS
 SELECT * FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa';
 
--- Finding-#9 baseline: negative-result sensitive targets (expect 154 of 176):
+-- [read-only] Finding-#9 baseline: negative-result sensitive targets (expect 154 of 176):
 SELECT COUNT(*) FILTER (WHERE f.fact_value_text IN
          ('not_fired','not_gandanta','not_pushkara','none')) AS negative_targets,
        COUNT(*) AS sensitive_targets_total
@@ -134,7 +140,8 @@ that stopped firing since the prior build (R-3 drift surfacing, F-21).
 
 ## 4. Rollback
 
-The rebuild is per-chart scoped (DELETE WHERE chart_id … + INSERT inside one
+Rollback restores **from the §1 backup table** (the native's snapshot). The
+rebuild is per-chart scoped (DELETE WHERE chart_id … + INSERT inside one
 orchestrator transaction), so a failed build rolls back atomically and the
 prior partition is untouched; the coverage gate additionally refuses to
 replace the partition on incomplete event-class coverage. If a completed
