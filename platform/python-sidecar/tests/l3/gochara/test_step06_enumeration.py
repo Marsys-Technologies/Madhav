@@ -417,23 +417,21 @@ def test_interval_target_residence_and_agent_restriction():
         ephe_path=None, refine=False)
 
     bhava_eps = [e for e in eps if e["target_ref"] == "4"]
-    # M-5: never point contacts — one boundary-exact sign_ingress episode
-    # PLUS the persisted residence span itself (T0-3, relation='residence')
-    assert {e["relation"] for e in bhava_eps} == {"sign_ingress", "residence"}
-    ing = [e for e in bhava_eps if e["relation"] == "sign_ingress"]
-    assert len(ing) == 1
-    assert ing[0]["orb_max_deg"] == 0.0
-    assert ing[0]["t_exact"].date().isoformat() == "2026-02-20"  # t=50d
-    res = [e for e in bhava_eps if e["relation"] == "residence"]
-    assert len(res) == 1
-    r = res[0]
-    assert r["t_in"] == ing[0]["t_in"]  # span entry IS the ingress instant
-    assert r["t_exact"] == ing[0]["t_exact"]  # observed ingress carried over
+    # M-5: never point contacts — the persisted residence span itself (T0-3,
+    # relation='residence') carrying the observed ingress instant. The
+    # ingress is NOT a separate sign_ingress row (A2.2 amendment 4: the
+    # boundary event is stored once as the per-body sky_event row; the
+    # residence row is the target attachment).
+    assert {e["relation"] for e in bhava_eps} == {"residence"}
+    assert len(bhava_eps) == 1
+    r = bhava_eps[0]
+    assert r["orb_max_deg"] == 0.0
+    assert r["t_exact"].date().isoformat() == "2026-02-20"  # ingress at t=50d
+    assert r["t_in"] == r["t_exact"]  # span entry IS the observed ingress
     assert r["dwell_days"] == pytest.approx(300.0, abs=1e-3)  # 210→240 at 0.1°/d
     assert r["truncated_at_horizon"] is None
     assert r["target_longitude_deg"] is None  # interval target, no point lon
-    # the span row is the interval object: it must NOT equal the zero-width
-    # ingress episode
+    # the span row is the interval object: not zero-width
     assert r["t_in"] != r["t_out"]
     # mechanism_node names Jupiter: Saturn never enumerates it
     assert not [e for e in eps if e["target_ref"] == "jupiter:double_transit:h4"]
@@ -448,7 +446,7 @@ def test_interval_target_residence_and_agent_restriction():
     # NOTE: the index is Saturn's curve; passing body="Jupiter" only relabels
     # the episodes (the solver reads the index). This call proves the agent
     # gate, not Jupiter geometry.
-    assert [e for e in jeps if e["relation"] == "sign_ingress"]
+    assert [e for e in jeps if e["relation"] == "residence"]
 
 
 def test_truncated_contacts_kept_and_counted():
@@ -523,7 +521,9 @@ def test_truncated_both_preserved_and_jd_round_trip():
         index2, "Saturn", [_interval_target((0.0, 30.0))], horizon, 5.0,
         BACKEND, ephe_path=None, refine=False, generation="4.1")[0]
     by_rel = {r["relation"]: r for r in rows}
-    assert by_rel["sign_ingress"]["truncated_at_horizon"] == "both"
+    # one row for the span (the target attachment), carrying 'both' — the
+    # ingress is not a separate boundary row (A2.2 amendment 4)
+    assert set(by_rel) == {"residence"}
     assert by_rel["residence"]["truncated_at_horizon"] == "both"
 
 
@@ -809,7 +809,12 @@ def test_end_to_end_enumerate_and_consume(wp6_enum_schema, tmp_path):
     for e in episodes:
         by_type.setdefault(e["target_type"], set()).add(e["relation"])
     assert "conjunction" in by_type["karaka"]
-    assert by_type.get("bhava") == {"sign_ingress"}  # M-5: intervals, never points
+    # M-5: interval targets never produce point contacts. This run is
+    # generation '4.0', so the candidate-only residence rows are gated out
+    # and bhava yields no rows at all; the boundary events live under
+    # sky_event (R5).
+    assert "bhava" not in by_type
+    assert "sky_event" in by_type  # boundary events, once per body
     # the agent-gated M-6 span may only be touched by its named graha
     for e in episodes:
         if e["target_ref"] == "mandi_sign_distance_from_8L":
@@ -1348,9 +1353,10 @@ def test_candidate_gate_null_exact_and_residence_rows_only_for_41_plus():
 
 
 def test_kimi3_physical_truncation_counted_once():
-    """Kimi #3: a clipped residence span produces TWO null-exact rows (the
-    ingress episode and the residence row) for ONE physical truncation —
-    episodes_truncated_no_exact_kept counts it once."""
+    """Kimi #3: a clipped residence span is ONE physical truncation — counted
+    once in episodes_truncated_no_exact_kept (after A2.2 amendment 4 the span
+    persists as exactly one null-exact residence row; the ingress is not a
+    separate boundary row)."""
     h0 = _jd(2026, 1, 1)
 
     def slow(jd):
@@ -1362,7 +1368,7 @@ def test_kimi3_physical_truncation_counted_once():
         index, "Saturn", [_interval_target((0.0, 30.0))], horizon, 5.0,
         BACKEND, ephe_path=None, refine=False, generation="4.1")
     null_exact_rows = [e for e in eps if e["t_exact"] is None]
-    assert len(null_exact_rows) == 2  # ingress row + residence row
+    assert len(null_exact_rows) == 1  # the residence row only
     assert stats["episodes_without_exact"] == 1  # one physical truncation
 
 
@@ -1382,11 +1388,81 @@ def test_r5_residence_ingress_reuses_the_sky_event():
         BACKEND, ephe_path=None, refine=False, generation="4.1")
     sky = [e for e in eps if e["target_type"] == "sky_event"
            and e["relation"] == "sign_ingress" and e["target_longitude_deg"] == 210.0]
-    ing = [e for e in eps if e["relation"] == "sign_ingress"
-           and e["target_type"] == "bhava"]
     res = [e for e in eps if e["relation"] == "residence"]
-    assert len(sky) == len(ing) == len(res) == 1
-    assert sky[0]["t_exact"] == ing[0]["t_exact"] == res[0]["t_exact"]
-    # one physical contribution: the sky event and the role-attached ingress
-    # share the independence_group (H-6)
-    assert sky[0]["independence_group"] == ing[0]["independence_group"]
+    assert len(sky) == len(res) == 1
+    # reuse: the residence row's ingress instant IS the sky event's instant
+    assert sky[0]["t_exact"] == res[0]["t_exact"]
+    # no target-attached boundary row exists anywhere (A2.2 amendment 4)
+    assert not [e for e in eps if e["relation"] in drv.BOUNDARY_RELATIONS
+                and e["target_type"] != "sky_event"]
+
+
+def test_r5_whole_payload_mixed_fixture_stores_each_event_once():
+    """Codex v1.1 amendment 4 (the reviewer's mixed fixture): three point
+    targets + three interval targets over the same window. Pre-fix: 31
+    normalized boundary rows for 28 physical events (per-interval ingress
+    copies). Now: boundary rows are sky_event only, each physical event once,
+    asserted over the WHOLE normalized payload after dedupe."""
+    h0 = _jd(2026, 1, 1)
+
+    def curve(jd):
+        return 100.0 + 0.5 * (jd - h0)  # 100 → 175 inside the horizon
+
+    index = _index("Saturn", date(2025, 12, 15), date(2026, 6, 1), curve)
+    horizon = (_jd(2026, 1, 1), _jd(2026, 5, 31))
+    targets = [
+        _point_target(120.0, "Venus", "karaka", "a"),
+        _point_target(150.0, "Mars", "karaka", "b"),
+        _point_target(180.0, "Jupiter", "sensitive_degree", "c"),
+        _interval_target((120.0, 150.0), target_type="bhava", target_ref="x"),
+        _interval_target((150.0, 180.0), target_type="bhava", target_ref="y"),
+        _interval_target((60.0, 90.0), target_type="arudha", target_ref="z"),
+    ]
+    eps, _ = drv.enumerate_body(
+        index, "Saturn", targets, horizon, 5.0, BACKEND,
+        ephe_path=None, refine=False, generation="4.1")
+    survivors, _ = drv.dedupe_episodes(
+        eps, chart_id=DEDUPE_CHART, convention_id=DEDUPE_CONV,
+        method_version=DEDUPE_MV)
+    n = drv.assert_boundary_events_stored_once(survivors)  # whole payload
+    # independent derivation: the curve crosses sign cusps 120/150 (2),
+    # nakshatra edges 106.67..173.33 (6), kakshya edges 101.25+3.75k ≤ 175
+    # (20) — 28 physical events, each stored exactly once.
+    assert n == 28
+    # interval targets still got their residence rows (the attachment),
+    # carrying the observed ingress instant where one exists
+    res = [e for e in survivors if e["relation"] == "residence"]
+    assert {e["target_ref"] for e in res} == {"x", "y"}  # z never entered
+    assert all(e["t_exact"] is not None for e in res)
+
+
+def test_r5_reuse_explicit_association_not_timestamp_join():
+    """Codex v1.1 amendment 4, second half: λ=350+0.137t at 1″ tolerance —
+    the two spline-solving brackets disagree by >86 s (the old 1e-3-day join
+    missed exactly this). Association is explicit (level + direction +
+    structural bracket containment): the residence row's ingress instant IS
+    the shared boundary root's refined instant."""
+    h0 = _jd(2026, 1, 1)
+
+    def curve(jd):
+        return 320.0 + 0.137 * (jd - h0)  # enters [330,360] at t≈73, exits at t≈292
+
+    index = _index("Saturn", date(2025, 12, 15), date(2027, 3, 1), curve)
+    horizon = (_jd(2026, 1, 1), _jd(2027, 1, 1))
+    eps, _ = drv.enumerate_body(
+        index, "Saturn", [_interval_target((330.0, 360.0), target_ref="w")],
+        horizon, 5.0, BACKEND, ephe_path=None, refine=False, generation="4.1")
+    sky = sorted(
+        (e for e in eps if e["target_type"] == "sky_event"
+         and e["relation"] == "sign_ingress"),
+        key=lambda e: e["t_exact"])
+    res = [e for e in eps if e["relation"] == "residence"]
+    assert len(sky) == 2  # the 330° entry and the 360°≡0° seam exit
+    assert len(res) == 1
+    assert res[0]["t_exact"] == sky[0]["t_exact"], (
+        "the residence ingress must reuse the shared boundary event "
+        "(structural association), not a timestamp-joined re-solve")
+    assert res[0]["t_in"] == sky[0]["t_exact"]
+    assert res[0]["t_out"] == sky[1]["t_exact"]  # exit through the 360 seam
+    assert sky[0]["target_longitude_deg"] == 330.0
+    assert sky[1]["target_longitude_deg"] == 0.0

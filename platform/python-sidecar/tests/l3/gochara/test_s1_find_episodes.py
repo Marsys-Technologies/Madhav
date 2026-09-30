@@ -252,6 +252,45 @@ class TestMoonOnDemand:
             lambda *a, **k: list(solved),
         )
 
+    def test_40_authority_drops_residence_requests_and_null_exact_moon(
+            self, svc, monkeypatch):
+        """Candidate-only gate (steward scope ruling iii), serving half —
+        Codex v1.1 amendment 5: under the '4.0' authority an explicit
+        relations=['residence'] request returns NOTHING (the published
+        contract predates the relation; EPISODE_RELATIONS is enforced, not
+        just a default), and Moon on-demand output never carries
+        null-exact/truncated rows."""
+        # explicit residence request under '4.0': the row exists in the store
+        # but the relation is outside the '4.0' served vocabulary
+        residence = _contact(body='Saturn', relation='residence', aspect=None)
+        residence['target_type'] = 'bhava'
+        residence['target_ref'] = '4'
+        conn = FakeConn(
+            authority=[{'chart_id': CHART_ID, 'authoritative_generation': '4.0'}],
+            contacts=[residence],
+        )
+        batch = svc.find_episodes(conn, CHART_ID, [], Horizon(H0, H1),
+                                  relations=['residence'])
+        assert batch.episodes == []
+
+        # a null-exact (truncated) Moon on-demand row is dropped under '4.0'
+        null_exact_moon = _kernel_episode(H0 + 4, None, H0 + 6)
+        object.__setattr__(null_exact_moon, 'exact_crossing', False)
+        self._patch_kernel(monkeypatch, [
+            _kernel_episode(H0 + 1, H0 + 2, H0 + 3),  # exact: served
+            null_exact_moon,                           # null-exact: gated
+        ])
+        conn = FakeConn(
+            authority=[{'chart_id': CHART_ID, 'authoritative_generation': '4.0'}],
+        )
+        batch = svc.find_episodes(
+            conn, CHART_ID,
+            [TargetRef('graha', 'graha:mars', longitude_deg=100.0)],
+            Horizon(H0, H1), relations=['conjunction'], moon=True,
+        )
+        assert len(batch.episodes) == 1
+        assert batch.episodes[0].t_exact is not None
+
     def test_moon_episodes_contact_id_null_and_coverage_partition(
             self, svc, monkeypatch):
         self._patch_kernel(monkeypatch, [_kernel_episode(H0 + 4, H0 + 5, H0 + 6)])

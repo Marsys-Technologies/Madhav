@@ -1208,3 +1208,137 @@ def test_exact_contact_ids_byte_identical_to_origin_main():
             f"exact-contact id drifted from origin/main for "
             f"{case['inputs']['body']}/{case['inputs']['relation']}: "
             f"{got} != {case['contact_id']}")
+
+
+# ── Pravāha A2.2 closure-check (v1.1) round-2 regressions ────────────────────
+# Each test is the Codex v1.1 reviewer's own counterexample.
+
+def test_r2q1_domain_start_on_entry_boundary_is_observed_ingress():
+    """Codex v1.1 amendment 2: λ=30+t over [0,40], residence [30,60] — the
+    body sits exactly ON the entry boundary at the domain start. Baseline
+    (95e765c3c) found t_exact = day 0; the strict-comparison rework made it
+    null. Endpoint-on-edge is an observed crossing."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+
+    def curve(jd):
+        return 30.0 + (jd - t0)
+
+    jds, lons = daily_knots(date(2026, 1, 1), date(2026, 2, 20), curve)
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    spans = episodes.residence_spans(
+        idx, "Sun", (30.0, 60.0), (t0, t0 + 40.0), "bhava", refine=False)
+    assert len(spans) == 1
+    ing = spans[0].ingress_episode
+    assert ing.t_exact == pytest.approx(t0, abs=1e-9)  # day 0, observed
+    assert ing.exact_crossing is True
+    assert spans[0].truncated_at_horizon is None
+
+
+def test_r2q1_station_spanning_exit_refined_on_its_own_segment():
+    """Codex v1.1 amendment 1 (analytic probe): λ=20−(t−10)², span [0,30] —
+    a station at t=10 INSIDE the span, entry on the rising leg, exit on the
+    falling leg. The exit must be refined against the FALLING segment (its
+    own), and with the shared roots supplied the construction must not raise
+    (pre-fix it refined the exit against the entry segment → ValueError /
+    wrong instant). λ=20−(t−10)² enters [0,30] at 20−(t−10)²=0 → t=10−√20
+    and exits at t=10+√20."""
+    t0 = swe.julday(2026, 1, 1, 12.0)
+
+    def curve(jd):
+        return 20.0 - (jd - t0 - 10.0) ** 2
+
+    jds, lons = daily_knots(date(2025, 12, 25), date(2026, 1, 20), curve)
+    idx = arcs.build_arc_index("Mars", jds, lons, tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+    roots = contacts.find_boundary_roots(idx, "Mars", "sign_ingress", refine=False)
+    horizon = (jds[0], jds[-1])
+    spans = episodes.residence_spans(
+        idx, "Mars", (0.0, 30.0), horizon, "bhava", refine=False,
+        boundary_roots=roots)  # must NOT raise
+    assert len(spans) == 1
+    span = spans[0]
+    assert span.t_enter - t0 == pytest.approx(10.0 - math.sqrt(20.0), abs=1e-6)
+    assert span.t_exit - t0 == pytest.approx(10.0 + math.sqrt(20.0), abs=1e-6)
+
+
+@requires_swieph
+def test_r2q1_swiss_mars_jupiter_station_spanning_exits():
+    """Codex v1.1 amendment 1, real ephemeris: Mars 2025 residence [60°,90°]
+    (retrograde station inside the span) exits 2025-04-02 at 90° — never
+    2025-03-14 at 84.72° (the wrong-segment refinement); Jupiter [30°,60°]
+    exits 2025-05-14 at 60°. Each exit within 2 min of an independent Swiss
+    bisection."""
+    for body, span_deg, want_exit_date in (
+            ("Mars", (60.0, 90.0), "2025-04-02"),
+            ("Jupiter", (30.0, 60.0), "2025-05-14")):
+        jds, lons = [], []
+        d = date(2024, 12, 15)
+        while d <= date(2026, 1, 15):
+            jd = swe.julday(d.year, d.month, d.day, 12.0)
+            lon, retflag = calc_sidereal_lon(body, jd, EPHE_PATH)
+            if not (retflag & 2) or (retflag & 4):
+                pytest.skip(f"NOT_RUN: {body} retflag {retflag} (F-14)")
+            jds.append(jd)
+            lons.append(lon)
+            d += timedelta(days=1)
+        idx = arcs.build_arc_index(body, jds, lons, tolerance_arcsec=1.0)
+        horizon = (jd_from_iso("2025-01-01T00:00:00Z"),
+                   jd_from_iso("2026-01-01T00:00:00Z"))
+        spans = episodes.residence_spans(
+            idx, body, span_deg, horizon, "bhava", ephe_path=EPHE_PATH)
+        assert len(spans) == 1
+        span = spans[0]
+        assert iso_from_jd(span.t_exit)[:10] == want_exit_date
+        # independent re-derivation of the exit instant (exit edge = span hi)
+        jd_ind, _ = contacts.swiss_bisect(
+            body, span.t_exit - 1.0, span.t_exit + 1.0, span_deg[1], EPHE_PATH)
+        assert abs(jd_ind - span.t_exit) < 120.0 / 86400.0
+
+
+def test_r2q3_multi_revolution_seam_ownership():
+    """Codex v1.1 amendment 3 (verbatim): an arc whose BOTH endpoints are
+    seams owns a distinct crossing at each end. λ=10+t over [0,1500] → seam
+    crossings at 350, 710, 1070, 1430 (the start-anchored dedupe dropped 710
+    and duplicated 1430); λ=t over [0,1000] → 0, 360, 720 (the domain start
+    at 0 is a real crossing)."""
+    for c0, days, want in ((10.0, 1500, [350, 710, 1070, 1430]),
+                           (0.0, 1000, [0, 360, 720])):
+        t0 = swe.julday(2026, 1, 1, 12.0)
+
+        def curve(jd, c0=c0):
+            return c0 + (jd - t0)
+
+        jds, lons = daily_knots(date(2025, 12, 25),
+                                date(2025, 12, 25) + timedelta(days=days + 20),
+                                curve)
+        idx = arcs.build_arc_index("Sun", jds, lons,
+                                   tolerance_arcsec=SYNTHETIC_TOL_ARCSEC)
+        eps = episodes.solve_boundary_episodes(
+            idx, "Sun", "sign_ingress", (t0, t0 + days), refine=False)
+        got = sorted(round(e.t_exact - t0) for e in eps if e.level_deg == 0.0)
+        assert got == want, f"c0={c0}: {got} != {want}"
+
+
+@requires_swieph
+def test_r2q3_swiss_sun_seam_crossings_once_per_year_2025_2035():
+    """Codex v1.1 amendment 3, real ephemeris: Sun seam (0° Aries) crossings
+    2025–2035 — exactly one per year (2026 present, 2034 once). The
+    start-anchored dedupe made 2026 disappear and 2034 appear twice."""
+    jds, lons = [], []
+    d = date(2024, 12, 20)
+    while d <= date(2035, 12, 31):
+        jd = swe.julday(d.year, d.month, d.day, 12.0)
+        lon, retflag = calc_sidereal_lon("Sun", jd, EPHE_PATH)
+        if not (retflag & 2) or (retflag & 4):
+            pytest.skip(f"NOT_RUN: Sun retflag {retflag} (F-14)")
+        jds.append(jd)
+        lons.append(lon)
+        d += timedelta(days=7)  # weekly knots suffice for the year count
+    idx = arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=1.0)
+    horizon = (jd_from_iso("2025-01-01T00:00:00Z"),
+               jd_from_iso("2035-12-31T00:00:00Z"))
+    eps = episodes.solve_boundary_episodes(
+        idx, "Sun", "sign_ingress", horizon, ephe_path=EPHE_PATH)
+    seam_years = sorted(int(iso_from_jd(e.t_exact)[:4])
+                        for e in eps if e.level_deg == 0.0)
+    # horizon covers the March equinoxes of 2025 through 2035 inclusive
+    assert seam_years == list(range(2025, 2036)), seam_years
