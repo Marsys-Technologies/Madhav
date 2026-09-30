@@ -339,6 +339,15 @@ AUTHORIZED_SOURCE_COMMITS = {
             # five-writer scope; ONE successor over the then-current protected
             # baseline. Source = the r2 writer-digest regeneration commit.
             "aa6a67fb715248fa2b2eccffaf5327692319194a",
+            # A5.4 rework r3 (ASTRA_REVIEW_A5_4 v1.2 closure, 2026-09-30): the
+            # round-3 P1-2 amendment (vedha state and identity through the
+            # persisted output) moved the same three writers' import closures
+            # again (ka_vedha_gochara/gate.py, gochara_v3/engine.py, the
+            # materializer's _build_suppression_state); no writer outside the
+            # five. Same decision, same authority, same five-writer scope; ONE
+            # successor over the then-current protected baseline (d4feada9b).
+            # Source = the r3 writer-digest regeneration commit.
+            "de07494333a770192dd8d8a47cc2aae91f31be79",
         }),
     },
 }
