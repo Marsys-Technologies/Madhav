@@ -1,6 +1,7 @@
 {
  "artifact": "EVENT_REGISTRY",
  "version": "2.3",
+ "status": "ACCEPTED — per D-PROTO_DECISION_v1_0 (ACCEPT_WITH_CONDITIONS); steward condition verification passed 2026-09-30 (B4.6)",
  "date": "2026-09-30",
  "author": "Stream B (Śāstra)",
  "supersedes": "event_registry_v2_2.json (sha256 5a3a4cd4…; retained as history — a decided file is never edited)",

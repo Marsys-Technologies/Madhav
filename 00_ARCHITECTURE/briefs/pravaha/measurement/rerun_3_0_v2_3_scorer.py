@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """B4.5b — re-run baseline '3.0' under EVALUATION_PROTOCOL_v2_3 (D-PROTO conditions 1-5).
+Status: ACCEPTED — per D-PROTO_DECISION_v1_0 (ACCEPT_WITH_CONDITIONS); steward condition
+verification passed 2026-09-30 (B4.6).
 Reads baseline_3_0_extract_v1_0.json (914 rows, IST dates, sha256 70ba6142... — NOT re-dumped).
 Registry: event_registry_v2_3.json (machine-readable; 47 held-out = 32 timing-usable
 + 15 year-grain; the two multi-year uncertainties are 731/730-day interval rows).

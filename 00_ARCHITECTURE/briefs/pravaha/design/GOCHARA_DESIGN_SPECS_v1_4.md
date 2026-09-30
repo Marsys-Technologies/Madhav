@@ -2,10 +2,11 @@
 artifact: GOCHARA_DESIGN_SPECS
 canonical_id: GOCHARA_DESIGN_SPECS
 version: "1.4"
-status: REWORKED_PENDING_NATIVE — NOT FROZEN
+status: FROZEN
+frozen_at: "2026-09-30 — per decisions/D-SPECS_DECISION_v1_0.md (FREEZE_WITH_CONDITIONS); steward verification passed: 0 changed lines outside the declared ranges, all 30 « » passages present, forbidden strings absent, 21/36 = 57, v1.3 files untouched (tracker record)"
 date: 2026-09-30
 author: "Stream B (Śāstra) — Kimi Code session, campaign/pravaha"
-decision: "decisions/D-SPECS_DECISION_v1_0.md (FREEZE_WITH_CONDITIONS) — §5 conditions C1–C10 landed verbatim; the steward diffs v1.4 vs v1.3 against the named edits before B3.9"
+decision: "decisions/D-SPECS_DECISION_v1_0.md (FREEZE_WITH_CONDITIONS) — §5 conditions C1–C10 landed verbatim; steward diff verification passed 2026-09-30; FROZEN marked at B3.9"
 supersedes: "design/GOCHARA_DESIGN_SPECS_v1_3.md (sha256 727d174a01060226e05e78cc6b3c264e241069bae652f5c2727c1a4d8988af2d; retained as history — a reviewed file is never edited; v1.4 is the next version)"
 doctrine: "sealed/FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0.md (SEALED; D-BRIEF countersigned 2026-09-29)"
 reconciliation: "design/RECONCILIATION_DESIGN_SPECS_v1_3.md (B3.8d) — per condition, the exact line ranges changed; v1_2 retained as history"

@@ -2,7 +2,7 @@
 artifact: EVENT_REGISTRY
 canonical_id: EVENT_REGISTRY
 version: "2.3"
-status: PRE_DECLARED
+status: ACCEPTED — per D-PROTO_DECISION_v1_0 (ACCEPT_WITH_CONDITIONS); steward condition verification passed 2026-09-30 (B4.6)
 date: 2026-09-30
 author: "Stream B (Śāstra) — Kimi Code session, campaign/pravaha"
 supersedes: "EVENT_REGISTRY_v2_2.md (sha256 1a7a627e…; kept as history — a decided file is never edited; the v2.2 re-run stands as its own record)"

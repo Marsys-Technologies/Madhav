@@ -1,6 +1,8 @@
 {
   "artifact": "GOCHARA_TEST_ORACLES",
   "version": "1.4",
+  "status": "FROZEN",
+  "frozen_at": "2026-09-30 — per decisions/D-SPECS_DECISION_v1_0.md (FREEZE_WITH_CONDITIONS); steward verification passed: 0 changed lines outside the declared ranges, all 30 « » passages present, forbidden strings absent, 21/36 = 57, v1.3 files untouched (tracker record)",
   "date": "2026-09-30",
   "author": "Stream B (Śāstra)",
   "spec": "design/GOCHARA_DESIGN_SPECS_v1_4.md §11",

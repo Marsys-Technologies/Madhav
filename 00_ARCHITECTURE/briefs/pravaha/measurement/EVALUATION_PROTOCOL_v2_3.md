@@ -2,7 +2,8 @@
 artifact: EVALUATION_PROTOCOL
 canonical_id: EVALUATION_PROTOCOL
 version: "2.3"
-status: PRE_DECLARED — amendment implementing D-PROTO_DECISION_v1_0 (ACCEPT_WITH_CONDITIONS); B4.6 marks ACCEPTED only after the steward's condition checks pass
+status: ACCEPTED
+accepted_at: "2026-09-30 — per decisions/D-PROTO_DECISION_v1_0.md (ACCEPT_WITH_CONDITIONS); steward verification passed on all five §6 conditions (gain flags, identical '3.0' figures, F2/F3 probes, tampered-extract rejection, class list, §6.5, prose fixes) (tracker record)"
 date: 2026-09-30
 author: "Stream B (Śāstra) — Kimi Code session, campaign/pravaha"
 supersedes: "EVALUATION_PROTOCOL_v2_2.md (sha256 1803cfe3…; retained as history — a decided file is never edited)"
