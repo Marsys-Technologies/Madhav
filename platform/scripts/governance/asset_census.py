@@ -399,11 +399,149 @@ def _target_columns_fact(tbl: str | None, cat: dict):
     return sorted(cols)
 
 
-def facts_for_asset(asset_record) -> dict:
+# E6.1 declarations packet: the per-asset DECLARED facts (N-22 ruling; SS decisions 2026-09-30). ONE versioned
+# repository file, reviewed in PRs, read here; no migration, the registry CHECK is untouched. A declaration is a FACT
+# and only a fact: nothing in this block makes a gate N/A, changes a criterion, or changes a verdict (rules key on
+# causes, a later packet). An asset absent from the file, and a null field, are UNKNOWN: never a value.
+
+DECLARATIONS_PATH = Path(__file__).resolve().parent / "asset_declarations.json"
+DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_data")   # `multi-table` is a measured fact, not a kind
+CARRIAGE_FIELDS = ("dag_dependents", "served_surface")
+_DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "evidence")
+_DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields")
+
+
+class DeclarationsError(ValueError):
+    """The declarations file (or a document handed to validate_declarations) is malformed."""
+
+
+def _decl_pairs(pairs):
+    seen = {}
+    for k, v in pairs:
+        if k in seen:
+            raise DeclarationsError(f"duplicate key {k!r} in the declarations file")
+        seen[k] = v
+    return seen
+
+
+def validate_declarations(doc, registry_ids=None) -> dict:
+    """Validate a declarations document and return its `assets` mapping (asset_id -> entry). Raises
+    DeclarationsError naming the offending asset/field. `registry_ids` (an iterable of asset ids), when given, is the
+    census registry set: a declared asset id outside it is an error (a typo must not become a silent UNKNOWN)."""
+    if not isinstance(doc, dict):
+        raise DeclarationsError("declarations document must be a JSON object")
+    if not isinstance(doc.get("version"), str) or not doc["version"].strip():
+        raise DeclarationsError("`version` must be a non-empty string")
+    if doc.get("kind_enum") != list(DECLARED_KINDS):
+        raise DeclarationsError(f"`kind_enum` must be exactly {list(DECLARED_KINDS)}, got {doc.get('kind_enum')!r}")
+    assets = doc.get("assets")
+    if not isinstance(assets, dict):
+        raise DeclarationsError("`assets` must be an object mapping asset_id to a declaration")
+    known = None if registry_ids is None else set(registry_ids)
+    for aid, e in assets.items():
+        where = f"assets[{aid!r}]"
+        if not isinstance(aid, str) or not aid.strip():
+            raise DeclarationsError(f"{where}: asset id must be a non-empty string")
+        if known is not None and aid not in known:
+            raise DeclarationsError(f"{where}: asset id is not in the census registry set")
+        if not isinstance(e, dict):
+            raise DeclarationsError(f"{where}: must be an object")
+        extra = sorted(set(e) - set(_DECL_ENTRY_KEYS))
+        if extra:
+            raise DeclarationsError(f"{where}: unknown field(s) {extra}")
+        k = e.get("kind")
+        if k is not None and (not isinstance(k, str) or k not in DECLARED_KINDS):
+            raise DeclarationsError(f"{where}.kind {k!r} is not one of {list(DECLARED_KINDS)} (or null = unknown)")
+        car = e.get("carriage")
+        if car is not None:
+            if not isinstance(car, dict):
+                raise DeclarationsError(f"{where}.carriage must be an object or null")
+            bad = sorted(set(car) - set(CARRIAGE_FIELDS))
+            if bad:
+                raise DeclarationsError(f"{where}.carriage: unknown field(s) {bad}")
+            for f, v in car.items():
+                if v is not None and not isinstance(v, bool):
+                    raise DeclarationsError(f"{where}.carriage.{f} must be true, false or null, got {v!r}")
+        pf = e.get("prose_fields")
+        if pf is not None:
+            if (not isinstance(pf, list) or not all(isinstance(c, str) and c.strip() and c == c.strip() for c in pf)
+                    or len(set(pf)) != len(pf)):
+                raise DeclarationsError(f"{where}.prose_fields must be null or a list of distinct non-blank column names")
+        ev = e.get("evidence")
+        if ev is not None:
+            if (not isinstance(ev, dict) or set(ev) - set(_DECL_EVIDENCE_KEYS)
+                    or not all(v is None or isinstance(v, str) for v in ev.values())):
+                raise DeclarationsError(f"{where}.evidence must be null or an object of pointer strings keyed "
+                                        f"by {list(_DECL_EVIDENCE_KEYS)}")
+    return assets
+
+
+def load_asset_declarations(path=None, registry_ids=None) -> dict:
+    """Pure reader: asset_id -> entry (`kind`, `carriage`, `prose_fields`, `evidence`). Reads only `path`
+    (default DECLARATIONS_PATH). Raises DeclarationsError on a missing, unreadable, non-JSON, duplicate-keyed or
+    malformed file. An asset absent from the result is UNKNOWN; so is any null field of an entry."""
+    p = Path(path) if path is not None else DECLARATIONS_PATH
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise DeclarationsError(f"cannot read the declarations file {p}: {exc}") from exc
+    try:
+        doc = json.loads(text, object_pairs_hook=_decl_pairs)
+    except json.JSONDecodeError as exc:
+        raise DeclarationsError(f"declarations file {p} is not valid JSON: {exc}") from exc
+    return validate_declarations(doc, registry_ids)
+
+
+def declared_facts(declarations, asset_id, registry_kind=None, measured_dependents=None) -> dict:
+    """The DECLARED facts for one asset, as separate keys that never replace a measured one:
+    `declared_kind`, `declared_carriage` (only the known booleans), `declared_carries_downstream` (True if any
+    component is True; False only when BOTH components are declared False; otherwise omitted = unknown),
+    `declared_prose_fields`, and `declaration_disagreements`: every place a declaration contradicts a measured or
+    registry fact, reported and never resolved. `registry_kind` is the registry's asset_kind (only 'service' and
+    'data' are compared: `artifact` maps to the declaration file per asset); `measured_dependents` is the census
+    blocking_radius.direct. Absent asset / null field -> key left out (UNKNOWN)."""
+    facts: dict = {}
+    e = (declarations or {}).get(asset_id)
+    if not isinstance(e, dict):
+        return facts
+    disagree = []
+    kind = e.get("kind")
+    if isinstance(kind, str) and kind in DECLARED_KINDS:
+        facts["declared_kind"] = kind
+        if registry_kind in ("service", "data") and kind != registry_kind:
+            disagree.append(dict(field="kind", declared=kind, registry=registry_kind))
+    car = e.get("carriage")
+    if isinstance(car, dict):
+        known = {f: car[f] for f in CARRIAGE_FIELDS if isinstance(car.get(f), bool)}
+        if known:
+            facts["declared_carriage"] = known
+            if known.get("dag_dependents") is True or known.get("served_surface") is True:
+                facts["declared_carries_downstream"] = True
+            elif len(known) == len(CARRIAGE_FIELDS):
+                facts["declared_carries_downstream"] = False
+        dd = known.get("dag_dependents")
+        if (dd is not None and isinstance(measured_dependents, int) and not isinstance(measured_dependents, bool)
+                and dd != (measured_dependents > 0)):
+            disagree.append(dict(field="carriage.dag_dependents", declared=dd, measured=measured_dependents))
+    pf = e.get("prose_fields")
+    if isinstance(pf, list):
+        facts["declared_prose_fields"] = list(pf)
+    if disagree:
+        facts["declaration_disagreements"] = disagree
+    return facts
+
+
+def facts_for_asset(asset_record, declarations=None) -> dict:
     """The `facts` mapping `rollup_asset` expects (`columns`, `asset_kind`; plus `count_sql_declared` for the
     conditions that will read it), from one measured asset record. A fact that is absent (a record from before
     packet 2a), None (unknown), empty, or of the wrong type is LEFT OUT, so its applicability stays
-    UNKNOWN. `columns_known` is never set: an emitted list cannot assert 'the table is known and has zero columns'."""
+    UNKNOWN. `columns_known` is never set: an emitted list cannot assert 'the table is known and has zero columns'.
+
+    `declarations` (the mapping load_asset_declarations returns; default None = none supplied, the mapping is then
+    exactly what it was before the declarations packet) MERGES the declared facts under their own `declared_*`
+    keys (see declared_facts). The measured `asset_kind` is never overwritten: a declared kind that disagrees with
+    the registry's 'service'/'data' is listed under `declaration_disagreements`, not silently preferred. No
+    criterion reads a declared_* key, so no cell changes."""
     facts: dict = {}
     if not isinstance(asset_record, dict):
         return facts
@@ -416,16 +554,26 @@ def facts_for_asset(asset_record) -> dict:
     declared = asset_record.get("count_sql_declared")
     if isinstance(declared, bool):
         facts["count_sql_declared"] = declared
+    if declarations:
+        br = asset_record.get("blocking_radius")
+        direct = br.get("direct") if isinstance(br, dict) else None
+        aid = asset_record.get("asset_id")
+        if isinstance(aid, str):
+            facts.update(declared_facts(declarations, aid, facts.get("asset_kind"), direct))
     return facts
 
 
-def build_rollup_output(census_by_layer: dict) -> dict:
+def build_rollup_output(census_by_layer: dict, declarations: dict | None = None) -> dict:
     """The `--rollup` payload for {layer: measure() output}: the nine gate cells per asset (computed from each
     asset's emitted facts) and, as information, the measured criteria of the non-nine gates. Read-only; the
     census dicts are not modified (emit_gaps never sees this)."""
     layers, excluded = {}, {}
+    if declarations is None:
+        full = set(census_by_layer) == set(ALL_LAYERS)   # the id check needs the whole registry set, never a partial run
+        ids = [a["asset_id"] for c in census_by_layer.values() for a in c["assets"]] if full else None
+        declarations = load_asset_declarations(registry_ids=ids)
     for k, c in census_by_layer.items():
-        layers[k] = rollup_census(c, {a["asset_id"]: facts_for_asset(a) for a in c["assets"]})
+        layers[k] = rollup_census(c, {a["asset_id"]: facts_for_asset(a, declarations) for a in c["assets"]})
         excluded[k] = {a["asset_id"]: rollup_excluded(c["layer"], a["measurements"]) for a in c["assets"]}
     return dict(rollup=dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
                             layers=layers),
