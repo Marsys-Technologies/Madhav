@@ -523,6 +523,8 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow).toContain('--set-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
     expect(workflow).toContain('DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}')
     expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('DATABASE_URL=amjis-pipeline-db-url')
+    expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('brahma-gochara-century-job')
+    expect(workflow).not.toContain('gcloud run jobs deploy brahma-gochara-century-job')
     expect(workflow).toContain('environment: data-plane-production-cutover')
     expect(workflow).toContain('DATA_PLANE_CUTOVER_AUTHORIZATION')
     expect(workflow).not.toContain('DATA_PLANE_BACKUP_RESTORE_ID')
