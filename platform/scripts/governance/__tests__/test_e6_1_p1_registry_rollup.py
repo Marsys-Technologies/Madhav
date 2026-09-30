@@ -29,6 +29,8 @@ PINNED_FINGERPRINTS = {
     1: "081076941ed6cec9abae08df5676e46e36c834764e84595f418f1155b701c909",
     # 2 (E6 packet a): measured-N/A rule ids are cause-keyed; NA_CAUSES joins the fingerprinted content
     2: "a0557b51341fdb5d86288b44ac459f1d19c6d9fd7f26eec15f28e8dbc05a99cf",
+    # 3 (E6 review fix 2): Earn.build_record gains the cause no-registered-writer (healthy-non-execution narrowed)
+    3: "7f30f61e123b473702eb37236b4c22628a5251ef7fd85a31cfb482ca304c6c5e",
 }
 
 

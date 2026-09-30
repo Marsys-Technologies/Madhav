@@ -247,7 +247,8 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
-    "Earn.build_record": ("never-attempted", "healthy-non-execution", "before-completion-write"),
+    "Earn.build_record": ("never-attempted", "healthy-non-execution", "no-registered-writer",
+                         "before-completion-write"),
 }
 _CAUSE_SLUG = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
@@ -258,7 +259,7 @@ def _na(measured: str, cause: str) -> dict:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 2     # 2: measured-N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 3     # 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -2132,8 +2133,8 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
     (bool — this attempt's writer is on the pre-1094 `_telemetry` path R34 left as a residual; the
     ONLY currently-known cause of a completion write with no duration. Unclassified so far:
     engine-side, migration-1094-dependent; no such marker exists in this environment either).
-    `has_writer` — no registered writer at all (a legacy health-probe service) grades N/A the same
-    as a healthy skip.
+    `has_writer` — no registered writer at all (a legacy health-probe service) grades N/A, but under its own
+    cause `no-registered-writer`: only a skip/probe DISPOSITION earns `healthy-non-execution`.
 
     `baseline`, when not None, is the most recent MEASURED completion on record for this asset at
     this scope: `{"rate": float, "attempt_id": str, "age_days": int}` — provenance, not just a number.
@@ -2158,9 +2159,13 @@ def _grade_earn_cost(attempt: dict | None, instrument_present: bool | None, base
         return dict(nd), dict(nd)
     if attempt is None:
         earn = _na("never attempted — see Build.exercised", "never-attempted")
-    elif attempt.get("disposition") in ("skip_no_delta", "probe_green") or not attempt.get("has_writer", True):
-        why = (attempt.get("disposition") or "no registered writer (legacy health-probe service)")
-        earn = _na(f"healthy non-execution ({why}) — no build was due", "healthy-non-execution")
+    elif attempt.get("disposition") in ("skip_no_delta", "probe_green"):
+        # "healthy non-execution" is the DISPOSITION's claim (the engine skipped / probed green): only that
+        # disposition earns the slug. A no-writer asset whose attempt failed is not "healthy".
+        earn = _na(f"healthy non-execution ({attempt['disposition']}) — no build was due", "healthy-non-execution")
+    elif not attempt.get("has_writer", True):
+        earn = _na(f"no registered writer (attempt {attempt.get('state', '?')}) — no build record applies",
+                   "no-registered-writer")
     elif not attempt.get("reached_completion_write", False):
         earn = _na(f"attempt {attempt.get('state','?')} before completion; see Build.history", "before-completion-write")
     elif attempt.get("duration_seconds") is not None:

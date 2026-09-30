@@ -137,11 +137,18 @@ def test_earn_build_record_causes_come_from_the_d6_classifier():
     probe = g(dict(disposition="probe_green", has_writer=True))
     assert probe["v"] == NA and probe["cause"] == "healthy-non-execution"
     nowriter = g(dict(disposition="", has_writer=False))
-    assert nowriter["v"] == NA and nowriter["cause"] == "healthy-non-execution"
+    assert nowriter["v"] == NA and nowriter["cause"] == "no-registered-writer"
+    # the review's case: an ERRORED attempt on an asset with no registered writer is not a healthy non-execution
+    nowriter_err = g(dict(disposition="", has_writer=False, state="error", reached_completion_write=False))
+    assert nowriter_err["v"] == NA and nowriter_err["cause"] == "no-registered-writer"
+    assert "healthy" not in nowriter_err["measured"] and "error" in nowriter_err["measured"]
+    # healthy-non-execution is the DISPOSITION's claim only: a skip/probe on a no-writer asset is still that claim
+    nowriter_skip = g(dict(disposition="skip_no_delta", has_writer=False))
+    assert nowriter_skip["v"] == NA and nowriter_skip["cause"] == "healthy-non-execution"
+    for k in ("never-attempted", "healthy-non-execution", "before-completion-write", "no-registered-writer"):
+        assert k in ac.NA_CAUSES["Earn.build_record"]
     early = g(dict(disposition="build", has_writer=True, state="error", reached_completion_write=False))
     assert early["v"] == NA and early["cause"] == "before-completion-write"
-    for k in ("never-attempted", "healthy-non-execution", "before-completion-write"):
-        assert k in ac.NA_CAUSES["Earn.build_record"]
 
 
 def test_no_non_na_record_carries_a_cause_and_every_na_record_does(monkeypatch, tmp_path):
