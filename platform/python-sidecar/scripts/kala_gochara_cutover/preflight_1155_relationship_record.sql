@@ -65,11 +65,13 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_relationship_record'
-               AND t.tgname IN ('ka_gochara_rr_1_write_guard', 'ka_gochara_rr_2_coverage_guard',
+               AND t.tgname IN ('ka_gochara_rr_0_statement_lock',
+                                'ka_gochara_rr_1_write_guard', 'ka_gochara_rr_2_coverage_guard',
                                 'ka_gochara_rr_3_sealed_path_check', 'ka_gochara_rr_finalize',
                                 'ka_gochara_rr_no_truncate'))
          OR (c.relname = 'ka_gochara_record_prerequisite'
-               AND t.tgname IN ('ka_gochara_rpr_1_write_guard', 'ka_gochara_rpr_finalize',
+               AND t.tgname IN ('ka_gochara_rpr_0_statement_lock',
+                                'ka_gochara_rpr_1_write_guard', 'ka_gochara_rpr_finalize',
                                 'ka_gochara_rpr_no_truncate'))
          OR (c.relname = 'ka_gochara_contact'
                AND t.tgname = 'ka_gochara_contact_2_propagate_precision') )
@@ -80,7 +82,8 @@ BEGIN
     FROM (VALUES
             ('ka_gochara_precision_ok',                ARRAY['jsonb']),
             ('ka_gochara_intervals_ok',                ARRAY['tstzrange[]']),
-            ('ka_gochara_coverage_digest',             ARRAY['text','tstzrange','text[]']),
+            ('ka_gochara_coverage_facts',              ARRAY['text','tstzrange','text[]']),
+            ('ka_gochara_facts_horizon',               ARRAY['jsonb']),
             ('ka_gochara_chart_write_guard',           ARRAY[]::text[]),
             ('ka_gochara_record_coverage_guard',       ARRAY[]::text[]),
             ('ka_gochara_record_finalize_check',       ARRAY[]::text[]),
@@ -166,7 +169,8 @@ BEGIN
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
                  ('ka_gochara_lock_chart(uuid)'),
-                 ('ka_gochara_lock_global()'),
+                 ('ka_gochara_lock_global_shared()'),
+                 ('ka_gochara_chart_statement_lock()'),
                  ('ka_gochara_require_sealed_rule_path()')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL

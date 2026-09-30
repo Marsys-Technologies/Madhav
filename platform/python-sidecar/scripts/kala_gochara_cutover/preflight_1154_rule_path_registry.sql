@@ -100,6 +100,7 @@ BEGIN
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
                  ('ka_gochara_global_write_guard()'),
                  ('ka_gochara_lock_global()'),
+                 ('ka_gochara_lock_global_shared()'),
                  ('ka_gochara_lock_chart(uuid)'),
                  ('ka_gochara_finite_ok(double precision)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL

@@ -1,16 +1,17 @@
 -- Migration 1155: ka_gochara_relationship_record — the §1.1 typed contract
 --                 + §3.1 valence fields + admission persistence, with
 --                 ownership-bound contact references (F1/F7), coverage
---                 APPLICABILITY bound to a content digest of the coverage
---                 facts (F7/N10), commit-time qualification finalisation (F5)
---                 with membership reparenting prohibited (N8), sealed-
---                 generation freezing (F2/N9), sealed-rule-version references
---                 (F3/N5) and coherent enrichment of dependent precision (N7)
---                 — every write under the orchestrator's chart lock, then the
---                 global lock (steward ruling 2). Depends on 1153, 1154 and
---                 1081/1087 (kala_gochara_coverage). Round-4 rewrite per
---                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 under the steward's
---                 simplification ruling. Never applied anywhere — in-place
+--                 APPLICABILITY bound to an UNAMBIGUOUS snapshot of the
+--                 coverage facts (F7/N10/N14), commit-time qualification
+--                 finalisation (F5) with membership reparenting prohibited
+--                 (N8), sealed-generation freezing (F2/N9), sealed-rule-version
+--                 references (F3/N5) and coherent enrichment of dependent
+--                 precision that survives a later coverage extension (N7/N15)
+--                 — every write under the Gochara-5 chart family key, then the
+--                 global family key SHARED (steward ruling B). Depends on
+--                 1153, 1154 and 1081/1087 (kala_gochara_coverage). Round-5
+--                 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_3 under the steward's
+--                 corrected lock ruling. Never applied anywhere — in-place
 --                 rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
@@ -25,14 +26,17 @@
 -- recorded) → DDL → presence checks. Deploy route: the protected
 -- public-schema window (deploy.yml `gochara_contracts_schema_migration`).
 --
--- ── Lock order (steward ruling 2) ──────────────────────────────────────────
--- Trigger names carry an ordering prefix so the chart-lock guard runs FIRST
--- (BEFORE triggers fire in name order): `_1_write_guard` takes
--- ka_gochara_lock_chart, reads seal state and applies the sealed-generation
--- rules; `_2_coverage_guard` validates applicability; `_3_sealed_path_check`
--- takes the global lock (chart → global, always) and reads the rule-version
--- seal. The generic chart guard (ka_gochara_chart_write_guard) is shared with
--- 1156. Isolation other than READ COMMITTED is refused by the lock helpers.
+-- ── Lock order (steward ruling B; N12/N13) ─────────────────────────────────
+-- Chart-scoped tables: a BEFORE UPDATE OR DELETE **statement-level** trigger
+-- (`_0_statement_lock`, ka_gochara_chart_statement_lock) takes the chart
+-- family key BEFORE PostgreSQL locks any target tuple (N13). Row triggers
+-- then fire in name order: `_1_write_guard` (ka_gochara_chart_write_guard)
+-- takes the chart family key (INSERT) / re-enters it, reads seal state and
+-- applies the sealed-generation rules; `_2_coverage_guard` validates
+-- applicability; `_3_sealed_path_check` takes the global family key SHARED
+-- (chart EXCLUSIVE → global SHARED, always) and reads the rule-version seal.
+-- The orchestrator's session key is never taken (N12). Isolation other than
+-- READ COMMITTED is refused by the lock helpers.
 --
 -- ── F2/N9 — a published generation's record set is FROZEN ─────────────────
 -- Once (chart_id, generation) is sealed: INSERT, UPDATE and DELETE on
@@ -40,18 +44,22 @@
 -- refused (a re-evaluation is a new generation). The ONE exception is N7's
 -- precision re-sync (below). Contacts keep their spec-explicit append.
 --
--- ── N7 — enrichment stays coherent ────────────────────────────────────────
+-- ── N7/N15 — enrichment stays coherent, and survives a coverage extension ─
 -- A record's `precision` restates its contact's solved precision (§1.1;
 -- CLAUDE.md §N.5). When a contact is enriched in place (§6.1: the truncated
 -- centre is solved — t_exact / solver_method / δλ / δt change), an AFTER
 -- UPDATE trigger on ka_gochara_contact re-states the new precision into
 -- every dependent record of the same (chart, generation, contact) — sealed
 -- generations included: the chart guard permits, on a sealed generation,
--- exactly an UPDATE that changes `precision` alone, and the coverage guard
--- re-verifies that the new payload equals the contact's. A direct UPDATE that
--- sets a precision DIFFERENT from the contact's is refused by that same
--- restatement check; a direct UPDATE of anything else on a sealed row is
--- refused by the chart guard.
+-- exactly an UPDATE that changes `precision` alone. For that precision-only
+-- UPDATE the coverage guard re-verifies ONLY that the new payload equals the
+-- contact's; it does NOT re-validate the partition (N15): the row's
+-- `coverage_facts` is the snapshot it was validated against at write time
+-- and stays so — a horizon extended after the fact (the ledger's own
+-- extend-then-enrich sequence) can no longer break the propagation. A direct
+-- UPDATE that sets a precision DIFFERENT from the contact's is refused by the
+-- restatement check; any other UPDATE of a sealed row is refused by the
+-- chart guard.
 --
 -- ── N8 — membership reparenting prohibited ────────────────────────────────
 -- ka_gochara_record_prerequisite may change ONLY `result` on UPDATE
@@ -60,19 +68,33 @@
 -- constraint triggers (membership = the path version's declared list, in
 -- order; admission_state = the state derived from the results).
 --
--- ── F7/N10 — coverage applicability bound to the facts it was checked on ──
+-- ── F7/N10/N14 — coverage applicability bound to the facts checked ───────
 -- The composite FK (chart_id, generation, partition_kind, partition_key) →
 -- kala_gochara_coverage proves the partition exists in the record's own
 -- scope. Applicability (ka_gochara_record_coverage_guard) additionally
--- requires, at every INSERT/UPDATE:
---   * `coverage_digest` = ka_gochara_coverage_digest(convention_id,
+-- requires, at INSERT and at every non-precision-only UPDATE:
+--   * `coverage_facts` = ka_gochara_coverage_facts(convention_id,
 --     completed_horizon, relations_searched) of the partition as it stands —
---     the consumer BINDS to a content digest of the coverage facts it was
---     validated against. Steward ruling 1 forbids any trigger on the legacy
---     coverage table, so a later change to those parent facts cannot be
---     blocked there; instead it can never silently re-validate a child (the
---     stored digest no longer matches) and every re-validation catches it.
---     The writer computes the digest with the same SQL function.
+--     an UNAMBIGUOUS JSON encoding (N14): the horizon is an object that
+--     distinguishes `empty` from unbounded (`lower`/`upper` ISO-8601 UTC
+--     microsecond text or null with explicit `lower_inf`/`upper_inf` and
+--     inclusivity flags); relations_searched is a sorted JSON array whose
+--     elements are JSON strings or null, so ['conjunction'] ≠
+--     ['conjunction', NULL] and ['aspect','conjunction'] ≠
+--     ['aspect,conjunction']. Nothing is hashed; the stored facts are
+--     readable and comparable with jsonb equality.
+--   * THE CONSUMER CONTRACT for parent facts changed AFTER validation (N10):
+--     steward ruling 1 forbids any trigger on the legacy coverage table, so a
+--     later change to the partition cannot be blocked there. Instead:
+--     (1) ka_gochara_coverage_drift(chart_id, generation) (1156, over records
+--     AND windows) classifies every consumer against its partition's CURRENT
+--     facts as `identical` | `extended` (same convention, horizon ⊇, relations
+--     ⊇ — still valid) | `incompatible` | `partition_missing`;
+--     (2) ka_gochara_seal_generation REFUSES to seal while any consumer is
+--     `incompatible`/`partition_missing`, so nothing incompatible is ever
+--     published; (3) a serve-time consumer reads the drift view and treats
+--     `incompatible` as "re-validate before use" — the stored facts are the
+--     evidence of what was validated, never silently refreshed.
 --   * relations_searched with a NULL element is inapplicable outright, and
 --     the relation-membership predicate is evaluated `IS TRUE` (N10);
 --   * event_class partition ⇒ key = event_class; body_target partition ⇒ key
@@ -105,7 +127,8 @@
 --   DROP FUNCTION IF EXISTS ka_gochara_record_finalize_check();
 --   DROP FUNCTION IF EXISTS ka_gochara_record_coverage_guard();
 --   DROP FUNCTION IF EXISTS ka_gochara_chart_write_guard();
---   DROP FUNCTION IF EXISTS ka_gochara_coverage_digest(text, tstzrange, text[]);
+--   DROP FUNCTION IF EXISTS ka_gochara_facts_horizon(jsonb);
+--   DROP FUNCTION IF EXISTS ka_gochara_coverage_facts(text, tstzrange, text[]);
 --   DROP FUNCTION IF EXISTS ka_gochara_intervals_ok(tstzrange[]);
 --   DROP FUNCTION IF EXISTS ka_gochara_precision_ok(jsonb);
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -149,11 +172,13 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_relationship_record'
-               AND t.tgname IN ('ka_gochara_rr_1_write_guard', 'ka_gochara_rr_2_coverage_guard',
+               AND t.tgname IN ('ka_gochara_rr_0_statement_lock',
+                                'ka_gochara_rr_1_write_guard', 'ka_gochara_rr_2_coverage_guard',
                                 'ka_gochara_rr_3_sealed_path_check', 'ka_gochara_rr_finalize',
                                 'ka_gochara_rr_no_truncate'))
          OR (c.relname = 'ka_gochara_record_prerequisite'
-               AND t.tgname IN ('ka_gochara_rpr_1_write_guard', 'ka_gochara_rpr_finalize',
+               AND t.tgname IN ('ka_gochara_rpr_0_statement_lock',
+                                'ka_gochara_rpr_1_write_guard', 'ka_gochara_rpr_finalize',
                                 'ka_gochara_rpr_no_truncate'))
          OR (c.relname = 'ka_gochara_contact'
                AND t.tgname = 'ka_gochara_contact_2_propagate_precision') )
@@ -164,7 +189,8 @@ BEGIN
     FROM (VALUES
             ('ka_gochara_precision_ok',                ARRAY['jsonb']),
             ('ka_gochara_intervals_ok',                ARRAY['tstzrange[]']),
-            ('ka_gochara_coverage_digest',             ARRAY['text','tstzrange','text[]']),
+            ('ka_gochara_coverage_facts',              ARRAY['text','tstzrange','text[]']),
+            ('ka_gochara_facts_horizon',               ARRAY['jsonb']),
             ('ka_gochara_chart_write_guard',           ARRAY[]::text[]),
             ('ka_gochara_record_coverage_guard',       ARRAY[]::text[]),
             ('ka_gochara_record_finalize_check',       ARRAY[]::text[]),
@@ -250,7 +276,8 @@ BEGIN
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
                  ('ka_gochara_lock_chart(uuid)'),
-                 ('ka_gochara_lock_global()'),
+                 ('ka_gochara_lock_global_shared()'),
+                 ('ka_gochara_chart_statement_lock()'),
                  ('ka_gochara_require_sealed_rule_path()')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
@@ -275,7 +302,7 @@ BEGIN
 END;
 $$;
 
--- ── 0. Helpers — TOTAL booleans (F5) + the coverage digest (N10) ──────────
+-- ── 0. Helpers — TOTAL booleans (F5) + the coverage facts (N10/N14) ───────
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_precision_ok(p jsonb)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
@@ -304,28 +331,75 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
      );
 $$;
 
--- Content digest of the coverage facts a consumer binds to (N10). The writer
--- computes it with this same function from the partition row it consumed.
-CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_digest(p_convention_id text, p_completed_horizon tstzrange, p_relations_searched text[])
-RETURNS text LANGUAGE sql IMMUTABLE AS $$
-  SELECT md5(
-    COALESCE(p_convention_id, '') || '|' ||
-    COALESCE(extract(epoch FROM lower(p_completed_horizon))::text, '') || '|' ||
-    COALESCE(extract(epoch FROM upper(p_completed_horizon))::text, '') || '|' ||
-    CASE WHEN lower_inc(p_completed_horizon) THEN '[' ELSE '(' END ||
-    CASE WHEN upper_inc(p_completed_horizon) THEN ']' ELSE ')' END || '|' ||
-    COALESCE((SELECT string_agg(x, ',' ORDER BY x) FROM unnest(p_relations_searched) x), ''));
+-- The UNAMBIGUOUS coverage-facts snapshot a consumer binds to (N10/N14).
+-- The writer computes it with this same function from the partition row it
+-- consumed; the guard recomputes it and compares with jsonb equality.
+--   {"convention_id": text|null,
+--    "horizon": null
+--             | {"empty": true}
+--             | {"empty": false,
+--                "lower": "YYYY-MM-DDTHH:MI:SS.USZ"|null, "lower_inf": bool, "lower_inc": bool,
+--                "upper": "YYYY-MM-DDTHH:MI:SS.USZ"|null, "upper_inf": bool, "upper_inc": bool},
+--    "relations_searched": null | [ sorted JSON strings / nulls, duplicates kept ]}
+-- STABLE, not IMMUTABLE: it calls to_char/AT TIME ZONE, which PostgreSQL marks
+-- STABLE; the output itself is deterministic (explicit UTC, numeric-only
+-- format tokens, ISO-8601 input) and independent of DateStyle/TimeZone/lc_time.
+CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_facts(p_convention_id text, p_completed_horizon tstzrange, p_relations_searched text[])
+RETURNS jsonb LANGUAGE sql STABLE AS $$
+  SELECT jsonb_build_object(
+    'convention_id', p_convention_id,
+    'horizon',
+      CASE
+        WHEN p_completed_horizon IS NULL THEN NULL::jsonb
+        WHEN isempty(p_completed_horizon) THEN jsonb_build_object('empty', true)
+        ELSE jsonb_build_object(
+          'empty', false,
+          'lower', CASE WHEN lower_inf(p_completed_horizon) THEN NULL
+                        ELSE to_char(lower(p_completed_horizon) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') END,
+          'lower_inf', lower_inf(p_completed_horizon),
+          'lower_inc', lower_inc(p_completed_horizon),
+          'upper', CASE WHEN upper_inf(p_completed_horizon) THEN NULL
+                        ELSE to_char(upper(p_completed_horizon) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') END,
+          'upper_inf', upper_inf(p_completed_horizon),
+          'upper_inc', upper_inc(p_completed_horizon))
+      END,
+    'relations_searched',
+      CASE
+        WHEN p_relations_searched IS NULL THEN NULL::jsonb
+        ELSE (SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY x NULLS FIRST), '[]'::jsonb)
+              FROM unnest(p_relations_searched) x)
+      END);
 $$;
 
-COMMENT ON FUNCTION public.ka_gochara_coverage_digest(text, tstzrange, text[]) IS
-  'md5 over (convention_id | completed_horizon bounds as epoch seconds | inclusivity | '
-  'sorted relations_searched). A record/window stores the digest of the coverage partition '
-  'it was validated against; the applicability guard recomputes it from the partition on '
-  'every write (N10 — consumers bind to the facts, not merely to the partition key).';
+COMMENT ON FUNCTION public.ka_gochara_coverage_facts(text, tstzrange, text[]) IS
+  'Unambiguous JSON snapshot of (convention_id, completed_horizon, relations_searched) '
+  '(N10/N14): empty ≠ unbounded horizons (explicit empty/lower_inf/upper_inf/inclusivity '
+  'flags, bounds as ISO-8601 UTC microsecond text), relations as a sorted JSON array of '
+  'strings/nulls (element boundaries and NULLs preserved). A record/window stores the '
+  'snapshot it was validated against; the guard recomputes it from the partition and '
+  'compares with jsonb equality; ka_gochara_coverage_drift classifies later parent changes.';
+
+-- Inverse of the horizon encoding — used by the drift classifier (1156).
+CREATE OR REPLACE FUNCTION public.ka_gochara_facts_horizon(f jsonb)
+RETURNS tstzrange LANGUAGE sql STABLE AS $$
+  SELECT CASE
+    WHEN f IS NULL OR jsonb_typeof(f -> 'horizon') IS DISTINCT FROM 'object' THEN NULL::tstzrange
+    WHEN (f -> 'horizon' ->> 'empty')::boolean THEN 'empty'::tstzrange
+    ELSE tstzrange(
+      CASE WHEN (f -> 'horizon' ->> 'lower_inf')::boolean THEN NULL
+           ELSE (f -> 'horizon' ->> 'lower')::timestamptz END,
+      CASE WHEN (f -> 'horizon' ->> 'upper_inf')::boolean THEN NULL
+           ELSE (f -> 'horizon' ->> 'upper')::timestamptz END,
+      (CASE WHEN (f -> 'horizon' ->> 'lower_inc')::boolean THEN '[' ELSE '(' END)
+      || (CASE WHEN (f -> 'horizon' ->> 'upper_inc')::boolean THEN ']' ELSE ')' END))
+  END;
+$$;
 
 -- Generic chart-scoped write guard (records, prerequisites, windows,
--- membership): lock FIRST, then apply the sealed-generation rules.
+-- membership): chart family key FIRST, then the sealed-generation rules.
 --   TG_ARGV[0] mode: 'plain' | 'precision_sync' | 'result_only' | 'no_update'
+-- UPDATE/DELETE reach this row trigger with the chart family key already
+-- taken by the table's `_0_statement_lock` trigger (N13); INSERT takes it here.
 CREATE OR REPLACE FUNCTION public.ka_gochara_chart_write_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
@@ -403,8 +477,8 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_relationship_record (
   temporal_support_intervals TSTZRANGE[] NOT NULL DEFAULT '{}',
   coverage_partition_kind TEXT NOT NULL,         -- the 1081 partition, scope-bound (FK)
   coverage_partition_key  TEXT NOT NULL,
-  coverage_digest   TEXT NOT NULL,               -- N10: digest of the partition facts
-                                                 --   this row was validated against
+  coverage_facts    JSONB NOT NULL,              -- N10/N14: the partition facts this row
+                                                 --   was validated against (snapshot)
   precision         JSONB,                       -- {solver_method, delta_lambda, delta_t};
                                                  --   REQUIRED on transit rows; restates
                                                  --   the contact (guard; N7 propagation)
@@ -463,7 +537,10 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_relationship_record (
     REFERENCES public.kala_gochara_coverage (chart_id, generation, partition_kind, partition_key),
   CONSTRAINT kgrr_coverage_kind_ck CHECK (coverage_partition_kind IN
     ('body_target','event_class','moon_on_demand','bodies_on_demand')),
-  CONSTRAINT kgrr_coverage_digest_ck CHECK (coverage_digest ~ '^[0-9a-f]{32}$'),
+  CONSTRAINT kgrr_coverage_facts_shape_ck
+    CHECK (jsonb_typeof(coverage_facts) = 'object'
+           AND coverage_facts ? 'convention_id' AND coverage_facts ? 'horizon'
+           AND coverage_facts ? 'relations_searched'),
   CONSTRAINT kgrr_support_state_ck CHECK (temporal_support_state IN
     ('uncomputed','computed_empty','computed')),
   CONSTRAINT kgrr_support_cardinality_ck CHECK (
@@ -521,12 +598,14 @@ COMMENT ON TABLE public.ka_gochara_relationship_record IS
   'Relationship record (GOCHARA_DESIGN_SPECS_v1_4 §1.1): one row per (event_class, '
   'affected_person, frame, agent, relation, object, role, path). Transit rows FK the '
   'OWNED contact ledger row with agent/relation/object consistency (F1/F7); coverage is an '
-  'existing (chart, generation, partition) row, proven APPLICABLE and bound by content '
-  'digest (F7/N10). admission_state + ka_gochara_record_prerequisite.result are finalised '
-  'at COMMIT (F5); membership reparenting is prohibited (N8). Only a sealed rule version '
-  'may produce a row (F3/N5). A sealed generation freezes the row set (F2/N9); precision '
-  're-syncs from contact enrichment (N7). Every write takes the orchestrator''s chart lock '
-  'first, then the global lock. TRUNCATE refused.';
+  'existing (chart, generation, partition) row, proven APPLICABLE and bound by an '
+  'unambiguous facts snapshot (F7/N10/N14; drift classified by ka_gochara_coverage_drift). '
+  'admission_state + ka_gochara_record_prerequisite.result are finalised at COMMIT (F5); '
+  'membership reparenting is prohibited (N8). Only a sealed rule version may produce a row '
+  '(F3/N5). A sealed generation freezes the row set (F2/N9); precision re-syncs from '
+  'contact enrichment without re-validating coverage (N7/N15). Every write takes the '
+  'Gochara-5 chart family key first (statement-level for UPDATE/DELETE), then the global '
+  'family key SHARED. TRUNCATE refused.';
 
 CREATE INDEX IF NOT EXISTS idx_kgrr_chart_gen ON public.ka_gochara_relationship_record
   (chart_id, generation, event_class);
@@ -573,7 +652,7 @@ COMMENT ON TABLE public.ka_gochara_record_prerequisite IS
 CREATE INDEX IF NOT EXISTS idx_kgrpr_record ON public.ka_gochara_record_prerequisite
   (chart_id, generation, record_id);
 
--- ── 3. Coverage applicability (F7/N10) ────────────────────────────────────
+-- ── 3. Coverage applicability (F7/N10/N14/N15) ─────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_record_coverage_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
@@ -581,49 +660,48 @@ DECLARE
   cov     record;
   ct      record;
   bridged text;
-  digest  text;
+  facts   jsonb;
   iv      tstzrange;
+  precision_only boolean := false;
 BEGIN
-  SELECT c.partition_kind, c.partition_key, c.convention_id, c.completed_horizon, c.relations_searched
-    INTO cov
-  FROM public.kala_gochara_coverage c
-  WHERE c.chart_id = NEW.chart_id AND c.generation = NEW.generation
-    AND c.partition_kind = NEW.coverage_partition_kind
-    AND c.partition_key = NEW.coverage_partition_key;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'ka_gochara_relationship_record coverage unresolvable (§1.1 coverage_ref): no kala_gochara_coverage partition (%, %) for (chart %, generation %)',
-      NEW.coverage_partition_kind, NEW.coverage_partition_key, NEW.chart_id, NEW.generation;
-  END IF;
-  IF cov.relations_searched IS NULL OR array_position(cov.relations_searched, NULL) IS NOT NULL THEN
-    RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (N10): partition (%, %) carries a NULL relations_searched element — an uncertain search covers nothing',
-      cov.partition_kind, cov.partition_key;
-  END IF;
-  digest := public.ka_gochara_coverage_digest(cov.convention_id, cov.completed_horizon, cov.relations_searched);
-  IF NEW.coverage_digest IS DISTINCT FROM digest THEN
-    RAISE EXCEPTION 'ka_gochara_relationship_record.coverage_digest % does not bind to the partition''s current facts (expected %) (N10): a consumer binds to the coverage facts it was validated against — compute it with ka_gochara_coverage_digest(convention_id, completed_horizon, relations_searched)',
-      NEW.coverage_digest, digest;
+  IF TG_OP = 'UPDATE' THEN
+    precision_only := (to_jsonb(NEW) - 'precision') = (to_jsonb(OLD) - 'precision');
   END IF;
 
-  IF cov.partition_kind = 'event_class' AND cov.partition_key <> NEW.event_class THEN
-    RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): event_class partition ''%'' does not cover class ''%''',
-      cov.partition_key, NEW.event_class;
-  END IF;
-  IF cov.partition_kind = 'body_target'
-     AND cov.partition_key <> NEW.agent || ':' || NEW.object_role THEN
-    RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7/N10): body_target partition ''%'' does not cover (agent ''%'', object_role ''%'') — the full key is agent:object_role',
-      cov.partition_key, NEW.agent, NEW.object_role;
+  IF NOT precision_only THEN
+    SELECT c.partition_kind, c.partition_key, c.convention_id, c.completed_horizon, c.relations_searched
+      INTO cov
+    FROM public.kala_gochara_coverage c
+    WHERE c.chart_id = NEW.chart_id AND c.generation = NEW.generation
+      AND c.partition_kind = NEW.coverage_partition_kind
+      AND c.partition_key = NEW.coverage_partition_key;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'ka_gochara_relationship_record coverage unresolvable (§1.1 coverage_ref): no kala_gochara_coverage partition (%, %) for (chart %, generation %)',
+        NEW.coverage_partition_kind, NEW.coverage_partition_key, NEW.chart_id, NEW.generation;
+    END IF;
+    IF cov.relations_searched IS NULL OR array_position(cov.relations_searched, NULL) IS NOT NULL THEN
+      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (N10): partition (%, %) carries a NULL relations_searched element — an uncertain search covers nothing',
+        cov.partition_kind, cov.partition_key;
+    END IF;
+    facts := public.ka_gochara_coverage_facts(cov.convention_id, cov.completed_horizon, cov.relations_searched);
+    IF NEW.coverage_facts IS DISTINCT FROM facts THEN
+      RAISE EXCEPTION 'ka_gochara_relationship_record.coverage_facts % does not equal the partition''s current facts % (N10/N14): a consumer binds to the coverage facts it was validated against — compute them with ka_gochara_coverage_facts(convention_id, completed_horizon, relations_searched)',
+        NEW.coverage_facts, facts;
+    END IF;
+
+    IF cov.partition_kind = 'event_class' AND cov.partition_key <> NEW.event_class THEN
+      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): event_class partition ''%'' does not cover class ''%''',
+        cov.partition_key, NEW.event_class;
+    END IF;
+    IF cov.partition_kind = 'body_target'
+       AND cov.partition_key <> NEW.agent || ':' || NEW.object_role THEN
+      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7/N10): body_target partition ''%'' does not cover (agent ''%'', object_role ''%'') — the full key is agent:object_role',
+        cov.partition_key, NEW.agent, NEW.object_role;
+    END IF;
   END IF;
 
   IF NEW.contact_id IS NOT NULL THEN
     -- transit row
-    IF (NEW.agent = 'moon') <> (cov.partition_kind = 'moon_on_demand') THEN
-      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7; §6.1 Moon-on-demand, O-SS-4): agent ''%'' with partition kind ''%'' — a Moon contact is covered only by a moon_on_demand partition, and vice versa',
-        NEW.agent, cov.partition_kind;
-    END IF;
-    IF NOT COALESCE(NEW.relation = ANY (cov.relations_searched), false) THEN
-      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): relation ''%'' is not among the partition''s relations_searched %',
-        NEW.relation, cov.relations_searched;
-    END IF;
     SELECT k.t_in, k.convention_id, k.solver_method, k.delta_lambda, k.delta_t
       INTO ct
     FROM public.ka_gochara_contact k
@@ -633,19 +711,30 @@ BEGIN
       RAISE EXCEPTION 'ka_gochara_relationship_record contact % is not owned by (chart %, generation %) (F1)',
         NEW.contact_id, NEW.chart_id, NEW.generation;
     END IF;
-    SELECT b.sky_convention_id INTO bridged
-    FROM public.ka_gochara_convention_bridge b
-    WHERE b.kala_convention_id = cov.convention_id;
-    IF bridged IS DISTINCT FROM ct.convention_id THEN
-      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): partition convention ''%'' is not bridged to the contact''s sky convention ''%'' (ka_gochara_convention_bridge)',
-        cov.convention_id, ct.convention_id;
-    END IF;
-    IF NOT (cov.completed_horizon @> ct.t_in) THEN
-      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7; §6.1 C7): contact t_in % lies outside the partition''s completed_horizon %',
-        ct.t_in, cov.completed_horizon;
+    IF NOT precision_only THEN
+      IF (NEW.agent = 'moon') <> (cov.partition_kind = 'moon_on_demand') THEN
+        RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7; §6.1 Moon-on-demand, O-SS-4): agent ''%'' with partition kind ''%'' — a Moon contact is covered only by a moon_on_demand partition, and vice versa',
+          NEW.agent, cov.partition_kind;
+      END IF;
+      IF NOT COALESCE(NEW.relation = ANY (cov.relations_searched), false) THEN
+        RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): relation ''%'' is not among the partition''s relations_searched %',
+          NEW.relation, cov.relations_searched;
+      END IF;
+      SELECT b.sky_convention_id INTO bridged
+      FROM public.ka_gochara_convention_bridge b
+      WHERE b.kala_convention_id = cov.convention_id;
+      IF bridged IS DISTINCT FROM ct.convention_id THEN
+        RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): partition convention ''%'' is not bridged to the contact''s sky convention ''%'' (ka_gochara_convention_bridge)',
+          cov.convention_id, ct.convention_id;
+      END IF;
+      IF NOT (cov.completed_horizon @> ct.t_in) THEN
+        RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7; §6.1 C7): contact t_in % lies outside the partition''s completed_horizon %',
+          ct.t_in, cov.completed_horizon;
+      END IF;
     END IF;
     -- a malformed payload is the CHECK constraint's finding (kgrr_precision_typed_ck);
-    -- a well-formed payload must restate the contact (N7 keeps it so on enrichment)
+    -- a well-formed payload must restate the contact (N7 keeps it so on enrichment;
+    -- this is the ONLY check a precision-only re-sync runs — N15)
     IF public.ka_gochara_precision_ok(NEW.precision) IS TRUE
        AND ((NEW.precision ->> 'solver_method') IS DISTINCT FROM ct.solver_method
             OR ((NEW.precision ->> 'delta_lambda')::real) IS DISTINCT FROM ct.delta_lambda
@@ -653,19 +742,21 @@ BEGIN
       RAISE EXCEPTION 'ka_gochara_relationship_record.precision % restates the contact''s solved precision (%, %, %) incorrectly (CLAUDE.md §N.5; N7: precision follows the contact, never the other way round)',
         NEW.precision, ct.solver_method, ct.delta_lambda, ct.delta_t;
     END IF;
-  ELSE
+  ELSIF NOT precision_only THEN
     -- natal-fact row
     IF cov.partition_kind = 'moon_on_demand' THEN
       RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): a natal-fact row never references a moon_on_demand partition';
     END IF;
   END IF;
 
-  FOREACH iv IN ARRAY NEW.temporal_support_intervals LOOP
-    IF NOT (cov.completed_horizon @> iv) THEN
-      RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): support interval % lies outside the partition''s completed_horizon %',
-        iv, cov.completed_horizon;
-    END IF;
-  END LOOP;
+  IF NOT precision_only THEN
+    FOREACH iv IN ARRAY NEW.temporal_support_intervals LOOP
+      IF NOT (cov.completed_horizon @> iv) THEN
+        RAISE EXCEPTION 'ka_gochara_relationship_record coverage not applicable (F7): support interval % lies outside the partition''s completed_horizon %',
+          iv, cov.completed_horizon;
+      END IF;
+    END LOOP;
+  END IF;
   RETURN NEW;
 END;
 $$;
@@ -757,8 +848,12 @@ CREATE TRIGGER ka_gochara_contact_2_propagate_precision
         OR OLD.delta_t IS DISTINCT FROM NEW.delta_t)
   EXECUTE FUNCTION public.ka_gochara_contact_propagate_precision();
 
--- ── 6. Triggers (name order = firing order: lock → coverage → rule seal) ──
+-- ── 6. Triggers (statement lock → row: lock/seal → coverage → rule seal) ──
 
+DROP TRIGGER IF EXISTS ka_gochara_rr_0_statement_lock ON public.ka_gochara_relationship_record;
+CREATE TRIGGER ka_gochara_rr_0_statement_lock
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_relationship_record
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_chart_statement_lock();
 DROP TRIGGER IF EXISTS ka_gochara_rr_1_write_guard ON public.ka_gochara_relationship_record;
 CREATE TRIGGER ka_gochara_rr_1_write_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_relationship_record
@@ -781,6 +876,10 @@ CREATE TRIGGER ka_gochara_rr_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_relationship_record
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
+DROP TRIGGER IF EXISTS ka_gochara_rpr_0_statement_lock ON public.ka_gochara_record_prerequisite;
+CREATE TRIGGER ka_gochara_rpr_0_statement_lock
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_record_prerequisite
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_chart_statement_lock();
 DROP TRIGGER IF EXISTS ka_gochara_rpr_1_write_guard ON public.ka_gochara_record_prerequisite;
 CREATE TRIGGER ka_gochara_rpr_1_write_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_record_prerequisite
@@ -797,6 +896,9 @@ CREATE TRIGGER ka_gochara_rpr_no_truncate
 
 -- ── 7. Post-apply PRESENCE checks (steward ruling 3) + helper self-tests ───
 DO $$
+DECLARE
+  h  tstzrange := tstzrange('2025-01-01T00:00:00Z', '2026-01-01T00:00:00.123456Z', '[)');
+  hu tstzrange := tstzrange(NULL, NULL, '()');
 BEGIN
   IF NOT (public.ka_gochara_precision_ok(NULL) IS FALSE
           AND public.ka_gochara_precision_ok('{"solver_method":null,"delta_lambda":0.001,"delta_t":60}'::jsonb) IS FALSE
@@ -810,14 +912,38 @@ BEGIN
           AND public.ka_gochara_intervals_ok(ARRAY['empty'::tstzrange]) IS FALSE
           AND public.ka_gochara_intervals_ok(ARRAY[NULL::tstzrange]) IS FALSE
           AND public.ka_gochara_intervals_ok('{}'::tstzrange[]) IS TRUE
-          AND public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['b','a'])
-              = public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['a','b'])
-          AND public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['a'])
-              <> public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['a','b'])
-          AND public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['a'])
-              <> public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-06-01T00:00Z','[)'), ARRAY['a'])
-          AND public.ka_gochara_coverage_digest('c', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['a'])
-              <> public.ka_gochara_coverage_digest('d', tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)'), ARRAY['a'])) THEN
+          -- N14: order-insensitive, element-boundary-preserving, NULL-preserving
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['b','a'])
+              = public.ka_gochara_coverage_facts('c', h, ARRAY['a','b'])
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['conjunction'])
+              <> public.ka_gochara_coverage_facts('c', h, ARRAY['conjunction', NULL])
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['aspect','conjunction'])
+              <> public.ka_gochara_coverage_facts('c', h, ARRAY['aspect,conjunction'])
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('c', h, ARRAY['a','a'])
+          AND public.ka_gochara_coverage_facts('c', h, '{}'::text[])
+              <> public.ka_gochara_coverage_facts('c', h, NULL)
+          -- N14: empty ≠ unbounded ≠ NULL horizon; bounds/inclusivity encoded
+          AND public.ka_gochara_coverage_facts('c', 'empty'::tstzrange, ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('c', hu, ARRAY['a'])
+          AND public.ka_gochara_coverage_facts('c', 'empty'::tstzrange, ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('c', NULL, ARRAY['a'])
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('c', tstzrange(lower(h), upper(h), '[]'), ARRAY['a'])
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('c', tstzrange(lower(h), NULL, '[)'), ARRAY['a'])
+          AND public.ka_gochara_coverage_facts('c', h, ARRAY['a'])
+              <> public.ka_gochara_coverage_facts('d', h, ARRAY['a'])
+          AND (public.ka_gochara_coverage_facts('c', h, ARRAY['a']) -> 'horizon' ->> 'lower') = '2025-01-01T00:00:00.000000Z'
+          AND (public.ka_gochara_coverage_facts('c', h, ARRAY['a']) -> 'horizon' ->> 'upper') = '2026-01-01T00:00:00.123456Z'
+          AND (public.ka_gochara_coverage_facts('c', h, ARRAY['x', NULL]) -> 'relations_searched') = '[null, "x"]'::jsonb
+          -- round trip of the horizon encoding (drift classifier input)
+          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', h, ARRAY['a'])) = h
+          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', hu, ARRAY['a'])) = hu
+          AND isempty(public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', 'empty'::tstzrange, ARRAY['a'])))
+          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', NULL, ARRAY['a'])) IS NULL
+          AND public.ka_gochara_facts_horizon(public.ka_gochara_coverage_facts('c', tstzrange(NULL, upper(h), '(]'), ARRAY['a']))
+              = tstzrange(NULL, upper(h), '(]')) THEN
     RAISE EXCEPTION 'migration 1155 post-apply check failed: helper self-test failed';
   END IF;
 END;
@@ -849,7 +975,7 @@ BEGIN
       ('ka_gochara_relationship_record','kgrr_contact_fk'),
       ('ka_gochara_relationship_record','kgrr_coverage_fk'),
       ('ka_gochara_relationship_record','kgrr_coverage_kind_ck'),
-      ('ka_gochara_relationship_record','kgrr_coverage_digest_ck'),
+      ('ka_gochara_relationship_record','kgrr_coverage_facts_shape_ck'),
       ('ka_gochara_relationship_record','kgrr_support_state_ck'),
       ('ka_gochara_relationship_record','kgrr_support_cardinality_ck'),
       ('ka_gochara_relationship_record','kgrr_support_intervals_ck'),
@@ -885,11 +1011,13 @@ BEGIN
   END IF;
 
   WITH expected(tgrelid, tgname) AS (VALUES
+      ('ka_gochara_relationship_record','ka_gochara_rr_0_statement_lock'),
       ('ka_gochara_relationship_record','ka_gochara_rr_1_write_guard'),
       ('ka_gochara_relationship_record','ka_gochara_rr_2_coverage_guard'),
       ('ka_gochara_relationship_record','ka_gochara_rr_3_sealed_path_check'),
       ('ka_gochara_relationship_record','ka_gochara_rr_finalize'),
       ('ka_gochara_relationship_record','ka_gochara_rr_no_truncate'),
+      ('ka_gochara_record_prerequisite','ka_gochara_rpr_0_statement_lock'),
       ('ka_gochara_record_prerequisite','ka_gochara_rpr_1_write_guard'),
       ('ka_gochara_record_prerequisite','ka_gochara_rpr_finalize'),
       ('ka_gochara_record_prerequisite','ka_gochara_rpr_no_truncate'),

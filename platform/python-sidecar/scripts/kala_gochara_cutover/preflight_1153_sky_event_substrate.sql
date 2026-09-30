@@ -79,10 +79,10 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_sky_convention'
-               AND t.tgname IN ('ka_gochara_sky_convention_write_guard',
+               AND t.tgname IN ('ka_gochara_sky_convention_immutable',
                                 'ka_gochara_sky_convention_no_truncate'))
          OR (c.relname = 'ka_gochara_physical_object'
-               AND t.tgname IN ('ka_gochara_physical_object_write_guard',
+               AND t.tgname IN ('ka_gochara_physical_object_immutable',
                                 'ka_gochara_physical_object_no_truncate'))
          OR (c.relname = 'ka_gochara_sky_event'
                AND t.tgname IN ('ka_gochara_sky_event_supersede_check',
@@ -90,16 +90,17 @@ BEGIN
                                 'ka_gochara_sky_event_no_truncate'))
          OR (c.relname = 'ka_gochara_contact_identity'
                AND t.tgname IN ('ka_gochara_contact_identity_supersede_check',
-                                'ka_gochara_contact_identity_write_guard',
+                                'ka_gochara_contact_identity_immutable',
                                 'ka_gochara_contact_identity_no_truncate'))
          OR (c.relname = 'ka_gochara_generation_seal'
                AND t.tgname IN ('ka_gochara_generation_seal_write_guard',
                                 'ka_gochara_generation_seal_no_truncate'))
          OR (c.relname = 'ka_gochara_convention_bridge'
-               AND t.tgname IN ('ka_gochara_convention_bridge_write_guard',
+               AND t.tgname IN ('ka_gochara_convention_bridge_immutable',
                                 'ka_gochara_convention_bridge_no_truncate'))
          OR (c.relname = 'ka_gochara_contact'
-               AND t.tgname IN ('ka_gochara_contact_1_write_guard',
+               AND t.tgname IN ('ka_gochara_contact_0_statement_lock',
+                                'ka_gochara_contact_1_write_guard',
                                 'ka_gochara_contact_no_truncate')) )
     UNION ALL
     -- (a3) function collisions by EXACT ARGUMENT TYPES (F8)
@@ -113,7 +114,10 @@ BEGIN
             ('ka_gochara_generation_governed',              ARRAY['text']),
             ('ka_gochara_lock_chart',                       ARRAY['uuid']),
             ('ka_gochara_lock_global',                      ARRAY[]::text[]),
+            ('ka_gochara_lock_global_shared',               ARRAY[]::text[]),
+            ('ka_gochara_insert_only',                      ARRAY[]::text[]),
             ('ka_gochara_global_write_guard',               ARRAY[]::text[]),
+            ('ka_gochara_chart_statement_lock',             ARRAY[]::text[]),
             ('ka_gochara_generation_is_sealed',             ARRAY['uuid','text']),
             ('ka_gochara_seal_generation',                  ARRAY['uuid','text']),
             ('ka_gochara_generation_seal_guard',            ARRAY[]::text[]),
@@ -127,7 +131,7 @@ BEGIN
     WHERE (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
            FROM unnest(p.proargtypes) WITH ORDINALITY AS u(oid, ord)) = e.argtypes
     UNION ALL
-    -- (b1) in-database parents exist (publication is READ by the seal function only)
+    -- (b1) in-database parents exist (publication is READ by the seal path only)
     SELECT 'parent_table_missing', p.t
     FROM (VALUES ('charts'), ('kala_gochara_publication'), ('kala_gochara_convention')) AS p(t)
     WHERE to_regclass('public.' || p.t) IS NULL

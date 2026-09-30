@@ -56,7 +56,7 @@ BEGIN
                         'kgew_membership_uq',
                         'ka_gochara_eval_window_record', 'ka_gochara_eval_window_record_pkey',
                         'idx_kgew_chart_gen', 'idx_kgew_path', 'idx_kgew_coverage',
-                        'idx_kgewr_record')
+                        'idx_kgewr_record', 'idx_kgewr_chart_gen')
     UNION ALL
     SELECT 'trigger_already_exists', 'public.' || c.relname || '.' || t.tgname
     FROM pg_trigger t
@@ -64,14 +64,19 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_eval_window'
-               AND t.tgname IN ('ka_gochara_ew_1_write_guard', 'ka_gochara_ew_2_coverage_guard',
+               AND t.tgname IN ('ka_gochara_ew_0_statement_lock',
+                                'ka_gochara_ew_1_write_guard', 'ka_gochara_ew_2_coverage_guard',
                                 'ka_gochara_ew_3_sealed_path_check', 'ka_gochara_ew_no_truncate'))
          OR (c.relname = 'ka_gochara_eval_window_record'
-               AND t.tgname IN ('ka_gochara_ewr_1_write_guard', 'ka_gochara_ewr_no_truncate')) )
+               AND t.tgname IN ('ka_gochara_ewr_0_statement_lock',
+                                'ka_gochara_ewr_1_write_guard', 'ka_gochara_ewr_2_membership_guard',
+                                'ka_gochara_ewr_no_truncate')) )
     UNION ALL
     SELECT 'function_already_exists',
            'public.' || p.proname || '(' || array_to_string(e.argtypes, ',') || ')'
-    FROM (VALUES ('ka_gochara_window_coverage_guard', ARRAY[]::text[])) AS e(fname, argtypes)
+    FROM (VALUES ('ka_gochara_window_coverage_guard',   ARRAY[]::text[]),
+                 ('ka_gochara_window_membership_guard', ARRAY[]::text[]),
+                 ('ka_gochara_coverage_drift',          ARRAY['uuid','text'])) AS e(fname, argtypes)
     JOIN pg_proc p ON p.proname = e.fname
     JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
     WHERE (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
@@ -94,6 +99,12 @@ BEGIN
                  ('ka_gochara_relationship_record', 'event_class',        'text'),
                  ('ka_gochara_relationship_record', 'path_id',            'text'),
                  ('ka_gochara_relationship_record', 'rule_version',       'text'),
+                 ('ka_gochara_relationship_record', 'contact_id',         'uuid'),
+                 ('ka_gochara_relationship_record', 'relation',           'text'),
+                 ('ka_gochara_relationship_record', 'coverage_facts',     'jsonb'),
+                 ('ka_gochara_relationship_record', 'coverage_partition_kind', 'text'),
+                 ('ka_gochara_relationship_record', 'coverage_partition_key',  'text'),
+                 ('ka_gochara_relationship_record', 'temporal_support_intervals', 'tstzrange[]'),
                  ('kala_gochara_coverage',          'chart_id',           'uuid'),
                  ('kala_gochara_coverage',          'generation',         'text'),
                  ('kala_gochara_coverage',          'partition_kind',     'text'),
@@ -132,9 +143,12 @@ BEGIN
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
                  ('ka_gochara_lock_chart(uuid)'),
+                 ('ka_gochara_lock_global_shared()'),
+                 ('ka_gochara_chart_statement_lock()'),
                  ('ka_gochara_require_sealed_rule_path()'),
                  ('ka_gochara_chart_write_guard()'),
-                 ('ka_gochara_coverage_digest(text,tstzrange,text[])')) AS e(sig)
+                 ('ka_gochara_coverage_facts(text,tstzrange,text[])'),
+                 ('ka_gochara_facts_horizon(jsonb)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     SELECT 'prerequisite_migration_not_applied', p.prefix

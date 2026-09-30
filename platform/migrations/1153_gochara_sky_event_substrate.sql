@@ -3,10 +3,10 @@
 --                 its per-(chart × generation) ledger, the explicit publication
 --                 seal, and the legacy-convention bridge
 --                 (GOCHARA_DESIGN_SPECS_v1_4 §6.1/§7/§10, FROZEN 2026-09-30).
---                 Round-4 rewrite per ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 (N1–N11)
---                 under the steward's binding SIMPLIFICATION ruling of
---                 2026-09-30. 1153–1157 were never applied anywhere, so this is
---                 an in-place rewrite of the same number.
+--                 Round-5 rewrite per ASTRA_REVIEW_A5_1_MIGRATIONS v1_3
+--                 (N12–N15, residual N2/N7/N10, P2) under the steward's
+--                 CORRECTED lock ruling of 2026-09-30. 1153–1157 were never
+--                 applied anywhere, so this is an in-place rewrite.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
 -- Numbering: 1153 sits inside this lane's granted block (1150–1159 per
@@ -15,88 +15,118 @@
 -- the only 1153–1157 files on any head are this PR's own).
 -- `npm run guard:migration-numbers` green.
 --
--- ── STEWARD RULING (binding; departs from the reviewer's wording where noted)
--- 1. NO TRIGGER, LOCK OR CONSTRAINT ON ANY EXISTING TABLE (N1). Legacy
---    '4.0' is untouched: the round-3 AFTER trigger on kala_gochara_publication
---    is gone, and the seal carries NO foreign key into that table. The seal
---    for governed generations ('5.0'+) is written EXPLICITLY by the governed
---    publication path (A5.x/A6.1) — `SELECT ka_gochara_seal_generation(chart,
---    generation)` in the SAME transaction that sets the manifest to
---    'published' — never by a trigger. The function refuses legacy
---    generations ('v1', '3.0', '4.0', '4.1' and anything below major 5).
---    Every new chart-scoped table CHECKs `ka_gochara_generation_governed`, so
---    no '4.0' row can ever be referenced or governed by these tables.
--- 2. ONE LOCK ORDER — THE ORCHESTRATOR'S (N2/N5). The frozen orchestrator
---    holds a session advisory lock keyed hashtext(chart_id::text) for every
---    chart build and hashtext('nirmana-global-assets') for chart-independent
---    assets (platform/python-sidecar/pipeline/orchestrator/locks.py). Every
---    mutating trigger on the NEW tables FIRST takes pg_advisory_xact_lock on
---    that SAME key (chart key for chart-scoped tables; global key for the
---    substrate, identities, registries, seals and memberships) and only THEN
---    reads seal/membership state. The same session is re-entrant; every other
---    session blocks, so every write path serialises behind the orchestrator
---    and behind each other. Where a trigger needs both keys it takes the
---    chart key first, then the global key — always in that order. Because
---    the state read after the lock must see concurrently committed rows,
---    the lock helpers REFUSE any isolation level other than READ COMMITTED
---    (the reviewer's Repeatable-Read schedule is rejected explicitly, not
---    left unsupported).
--- 3. NO CUSTOM DEFINITION VERIFIER, NO REPLAY GUC (N4). migrate.ts tracks
---    applied files by hash; a re-run is an untracked collision and the gate
---    BLOCKS it. Post-apply checks are simple PRESENCE checks: named tables,
---    named constraints (convalidated) and named triggers exist.
--- 4. DEPLOY ROUTE (N3): these create objects in `public`, so they apply
---    through the protected public-schema window (deploy.yml input
---    `gochara_contracts_schema_migration`, exact files 1153–1157 in order
---    inside the grant/revoke window). The general runner REFUSES to apply
---    them routinely (migrate.ts PROTECTED_PUBLIC_SCHEMA_MIGRATIONS).
+-- ── STEWARD RULING (binding; corrected item 2 supersedes the round-4 text) ─
+-- 1. NO NEW TRIGGER ON ANY EXISTING TABLE (N1, kept). The seal is written
+--    EXPLICITLY by ka_gochara_seal_generation(chart, generation) from the
+--    governed publication path (A5.x/A6.1) in the SAME transaction as the
+--    manifest flip; it refuses 'v1'/'3.0'/'4.0'/'4.1' and anything below
+--    major 5 (ka_gochara_generation_governed — numeric-major regex, never a
+--    lexical comparison). Every chart-scoped table CHECKs it. See
+--    "Operational assertions" below for what this family DOES add to
+--    existing tables (foreign keys) — the round-4 claim of "nothing on any
+--    existing table" was overstated and is withdrawn (P2).
+-- 2. [steward ruling — corrected] THE GOCHARA-5 FAMILY KEYS (N12). The frozen
+--    orchestrator holds its per-chart SESSION advisory lock
+--    (pg_advisory_lock(hashtext(chart_id)), pipeline/orchestrator/locks.py)
+--    on its MAIN connection for the whole run (runner.py ~1092–1212) while
+--    every writer executes on its own WORKER connection (runner.py ~682,
+--    ~753). Advisory-lock re-entrancy does not cross connections, so a
+--    trigger taking the orchestrator's key on a worker would wait on the
+--    scheduler forever. Triggers therefore NEVER take the orchestrator's
+--    keys. They take a dedicated, transaction-scoped family key:
+--      chart  : pg_advisory_xact_lock(hashtext('gochara5:chart:' || chart_id))
+--      global : hashtext('gochara5:global')  (EXCLUSIVE or SHARED)
+--    The orchestrator's session lock stays as it is and still prevents
+--    concurrent builds of one chart; the family keys serialise worker
+--    transactions, the seal function and out-of-band writers against each
+--    other. READ COMMITTED only (the state read after the lock must see
+--    concurrently committed rows).
+-- 3. [steward ruling] DEADLOCK-FREE ORDER, FIXED AND ENFORCED (N13):
+--      * chart-scoped mutating triggers take the chart family key EXCLUSIVE
+--        first; if they need rule-path seal state they then take the global
+--        family key SHARED (pg_advisory_xact_lock_shared);
+--      * rule-path registry, seal and membership mutations take the global
+--        family key EXCLUSIVE and never take a chart key;
+--      * ka_gochara_seal_generation takes the chart family key EXCLUSIVE.
+--    Rule mutators never wait for a chart key, so no cycle exists — and the
+--    order is ENFORCED, not assumed: transaction-local markers
+--    (set_config('gochara5.*', …, true)) make ka_gochara_lock_chart RAISE
+--    inside a transaction that already holds the global key EXCLUSIVE, and
+--    make ka_gochara_lock_global (EXCLUSIVE) RAISE inside a transaction that
+--    already holds a chart key or the global key SHARED. A registry mutation
+--    and a chart-scoped mutation never share a transaction.
+--    TUPLE LOCKS (N13): PostgreSQL locks the target tuple BEFORE it calls a
+--    BEFORE ROW trigger, so a row-level advisory lock cannot precede the
+--    tuple lock. Every chart-scoped table therefore carries a BEFORE
+--    UPDATE OR DELETE **statement-level** trigger
+--    (ka_gochara_chart_statement_lock) that takes the chart family key for
+--    every chart present in the table (ascending) before any tuple is
+--    touched; refusals (insert-only tables, sealed seals) RAISE before any
+--    lock is taken, so a refused statement never waits.
+--    Chart-independent, constraint-guarded tables (substrate convention,
+--    physical object, sky event, contact identity, bridge, AV declaration)
+--    take NO family key: their invariants are UNIQUE/FK constraints and
+--    insert-only guards, which need no serialisation.
+-- 4. NO CUSTOM DEFINITION VERIFIER, NO REPLAY GUC (N4, kept): migrate.ts
+--    tracks applied files by hash; a re-run is an untracked collision and
+--    the gate BLOCKS it; post-apply checks are presence checks.
+-- 5. DEPLOY ROUTE (N3, kept): the protected public-schema window
+--    (deploy.yml `gochara_contracts_schema_migration`, exact files 1153–1157
+--    in order); the general runner REFUSES them
+--    (migrate.ts PROTECTED_PUBLIC_SCHEMA_MIGRATIONS).
+--
+-- ── Operational assertions (P2 — corrected, no overclaims) ────────────────
+-- * EXISTING-TABLE EFFECTS. This family adds NO trigger, function or CHECK
+--   to any existing table, but it DOES add foreign keys that reference
+--   existing tables: charts(id) (seal, ledger, records, windows),
+--   kala_gochara_convention(convention_id) (bridge) and
+--   kala_gochara_coverage(chart_id, generation, partition_kind,
+--   partition_key) (records, windows). Each FK installs PostgreSQL's
+--   internal RI triggers on the referenced table and takes SHARE ROW
+--   EXCLUSIVE on it while the migration transaction runs (bounded by the
+--   SET LOCAL timeouts below, not eliminated). After apply, a referenced
+--   charts / convention / coverage row cannot be deleted while a governed
+--   row references it; kala_gochara_publication and kala_gochara_contacts
+--   receive no dependency of any kind.
+-- * ROUTINE REFUSAL is loud but not write-free: migrate.ts creates/backfills
+--   the tracker (TRACKER DDL, sql_identity backfill) and applies every
+--   pending migration numbered BEFORE 1153 before it reaches and refuses
+--   1153; none of 1153–1157 is applied by that invocation.
+-- * THE PROTECTED WINDOW IS PER-FILE ATOMIC, NOT FAMILY-ATOMIC: each file
+--   and its ledger row commit together; a failure in, say, 1156 leaves
+--   1153–1155 committed, rolls 1156 back and never attempts 1157. Recovery
+--   is to re-dispatch the window: applied files are skipped by hash, the
+--   failed file re-runs from its gate. `--only` refuses to jump an unapplied
+--   predecessor, so the window must be dispatched with every earlier pending
+--   migration already applied.
+-- * The migration files are immutable once applied (CLAUDE.md §N.4); any
+--   later correction is a new forward migration.
 --
 -- ── Transaction ownership (round-1 amendment 2, kept closed) ───────────────
 -- No BEGIN/COMMIT/ROLLBACK here. platform/scripts/migrate.ts owns ONE
--- transaction around (this file + the _migrations_applied ledger insert);
--- SET LOCAL is scoped to that transaction.
+-- transaction around (this file + the _migrations_applied ledger insert).
 --
 -- ── Effective ordered gate (F8/F9, kept) ───────────────────────────────────
 -- (1) pinned schema + timeouts, (2) the PREFLIGHT GATE — a DO block
--- byte-identical to
--- platform/python-sidecar/scripts/kala_gochara_cutover/preflight_1153_sky_event_substrate.sql
--- (the static test asserts identity) checking only real preconditions:
--- privileges, parents by key, untracked collisions (functions by exact
--- ARGUMENT TYPES), prior ledger entry; (3) DDL; (4) presence checks.
--- Outcomes: tracked skip (runner, hash-verified — nothing here runs); fresh
--- apply; untracked collision → BLOCKED.
+-- byte-identical to preflight_1153_sky_event_substrate.sql checking real
+-- preconditions only, (3) DDL, (4) presence checks.
 --
--- ── The contact model (F1/F2/F4, kept; N6 closed) ──────────────────────────
--- * ka_gochara_contact_identity — stable identity; contact_id =
---   hash(physical_object_id, occurrence_ordinal) exactly as frozen; UNIQUE
---   (physical_object_id, occurrence_ordinal); insert-only; never deleted.
+-- ── The contact model (F1/F2/F4/N6, kept) ──────────────────────────────────
+-- * ka_gochara_contact_identity — contact_id = hash(physical_object_id,
+--   occurrence_ordinal) exactly as frozen; UNIQUE (physical_object_id,
+--   occurrence_ordinal); insert-only; never deleted.
 -- * ka_gochara_contact — per-(chart_id, generation) LEDGER row (PK
---   (chart_id, generation, contact_id)) owning the solved values. N6: the
---   SOLVED READING of one identity is consistent across every ledger row
---   that shares it — an INSERT (or enrichment UPDATE) whose non-NULL
---   t_exact / δλ / δt / precision_regime / non-placeholder solver_method
---   disagrees with any other generation's non-NULL value is refused: a
---   changed reading is a correction (new identity under a corrected target
---   or a new convention, §6.1/§7.2 inv 4), never a same-id rewrite. t_in /
---   t_out are partition-observed interval bounds (clipped at partition
---   edges by construction) — not solved readings — and are not compared
---   across generations; §6.1 names t_exact, longitude, ordinal and target as
---   the corrected-reading fields, and ordinal/target are fixed by the
---   identity itself.
--- * Corrections: supersedes edge → a DIFFERENT identity of the SAME (body,
---   relation_kind); chain not tree; never self; never mutable.
--- * Enrichment: an UPDATE may only fill NULL fields / flip truncated
---   true→false with t_exact; solver_method may leave only the
---   'clipped_truncated' placeholder; truncated ⇔ t_exact IS NULL ⇔
---   clipped_truncated is a CHECK. N7 (dependent record precision) is closed
---   in 1155 by an AFTER UPDATE propagation on this ledger.
--- * Sealed generation: DELETE refused; INSERT (append — partition extension,
---   O-RX-1 ordinal 4) and enrichment permitted; TRUNCATE refused on every
---   owned table.
--- * Legacy mapping (steward ruling): legacy kala_gochara_contacts rows are
---   NOT migrated; correspondence is by (chart_id, generation) only.
--- * ka_gochara_convention_bridge (legacy 1081 convention vector → sky
---   convention) is the explicit bridge 1155's applicability guard reads.
+--   (chart_id, generation, contact_id)). N6: the solved reading (t_exact, δλ,
+--   δt, precision_regime, non-placeholder solver_method) of one identity is
+--   consistent across every ledger row sharing it (checked under the chart
+--   family key; sufficient under the D-SCOPE single-chart CHECK).
+-- * Corrections supersede a DIFFERENT identity of the SAME (body,
+--   relation_kind); enrichment fills NULL/truncated fields only; sealed
+--   generation: DELETE refused, INSERT (append) and enrichment permitted;
+--   TRUNCATE refused everywhere.
+-- * Legacy kala_gochara_contacts rows are NOT migrated (steward ruling).
+-- * ka_gochara_convention_bridge maps the legacy 1081 convention vector to
+--   the §6.1 sky convention for 1155's applicability guard.
 --
 -- asset_registry: deliberately NOT registered (same disposition as 1081).
 --
@@ -115,7 +145,10 @@
 --   DROP FUNCTION IF EXISTS ka_gochara_generation_seal_guard();
 --   DROP FUNCTION IF EXISTS ka_gochara_seal_generation(uuid, text);
 --   DROP FUNCTION IF EXISTS ka_gochara_generation_is_sealed(uuid, text);
+--   DROP FUNCTION IF EXISTS ka_gochara_chart_statement_lock();
 --   DROP FUNCTION IF EXISTS ka_gochara_global_write_guard();
+--   DROP FUNCTION IF EXISTS ka_gochara_insert_only();
+--   DROP FUNCTION IF EXISTS ka_gochara_lock_global_shared();
 --   DROP FUNCTION IF EXISTS ka_gochara_lock_global();
 --   DROP FUNCTION IF EXISTS ka_gochara_lock_chart(uuid);
 --   DROP FUNCTION IF EXISTS ka_gochara_generation_governed(text);
@@ -178,10 +211,10 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_sky_convention'
-               AND t.tgname IN ('ka_gochara_sky_convention_write_guard',
+               AND t.tgname IN ('ka_gochara_sky_convention_immutable',
                                 'ka_gochara_sky_convention_no_truncate'))
          OR (c.relname = 'ka_gochara_physical_object'
-               AND t.tgname IN ('ka_gochara_physical_object_write_guard',
+               AND t.tgname IN ('ka_gochara_physical_object_immutable',
                                 'ka_gochara_physical_object_no_truncate'))
          OR (c.relname = 'ka_gochara_sky_event'
                AND t.tgname IN ('ka_gochara_sky_event_supersede_check',
@@ -189,16 +222,17 @@ BEGIN
                                 'ka_gochara_sky_event_no_truncate'))
          OR (c.relname = 'ka_gochara_contact_identity'
                AND t.tgname IN ('ka_gochara_contact_identity_supersede_check',
-                                'ka_gochara_contact_identity_write_guard',
+                                'ka_gochara_contact_identity_immutable',
                                 'ka_gochara_contact_identity_no_truncate'))
          OR (c.relname = 'ka_gochara_generation_seal'
                AND t.tgname IN ('ka_gochara_generation_seal_write_guard',
                                 'ka_gochara_generation_seal_no_truncate'))
          OR (c.relname = 'ka_gochara_convention_bridge'
-               AND t.tgname IN ('ka_gochara_convention_bridge_write_guard',
+               AND t.tgname IN ('ka_gochara_convention_bridge_immutable',
                                 'ka_gochara_convention_bridge_no_truncate'))
          OR (c.relname = 'ka_gochara_contact'
-               AND t.tgname IN ('ka_gochara_contact_1_write_guard',
+               AND t.tgname IN ('ka_gochara_contact_0_statement_lock',
+                                'ka_gochara_contact_1_write_guard',
                                 'ka_gochara_contact_no_truncate')) )
     UNION ALL
     -- (a3) function collisions by EXACT ARGUMENT TYPES (F8)
@@ -212,7 +246,10 @@ BEGIN
             ('ka_gochara_generation_governed',              ARRAY['text']),
             ('ka_gochara_lock_chart',                       ARRAY['uuid']),
             ('ka_gochara_lock_global',                      ARRAY[]::text[]),
+            ('ka_gochara_lock_global_shared',               ARRAY[]::text[]),
+            ('ka_gochara_insert_only',                      ARRAY[]::text[]),
             ('ka_gochara_global_write_guard',               ARRAY[]::text[]),
+            ('ka_gochara_chart_statement_lock',             ARRAY[]::text[]),
             ('ka_gochara_generation_is_sealed',             ARRAY['uuid','text']),
             ('ka_gochara_seal_generation',                  ARRAY['uuid','text']),
             ('ka_gochara_generation_seal_guard',            ARRAY[]::text[]),
@@ -226,7 +263,7 @@ BEGIN
     WHERE (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
            FROM unnest(p.proargtypes) WITH ORDINALITY AS u(oid, ord)) = e.argtypes
     UNION ALL
-    -- (b1) in-database parents exist (publication is READ by the seal function only)
+    -- (b1) in-database parents exist (publication is READ by the seal path only)
     SELECT 'parent_table_missing', p.t
     FROM (VALUES ('charts'), ('kala_gochara_publication'), ('kala_gochara_convention')) AS p(t)
     WHERE to_regclass('public.' || p.t) IS NULL
@@ -276,8 +313,6 @@ $$;
 
 -- ── 0. Shared helpers (this family; reused by 1154–1157) ──────────────────
 
--- TRUNCATE bypasses every row trigger and is generation-blind: refused on
--- every table this family owns (F2).
 CREATE OR REPLACE FUNCTION public.ka_gochara_refuse_truncate()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
@@ -285,7 +320,6 @@ BEGIN
 END;
 $$;
 
--- text[] whose elements are all non-NULL, non-blank, with at least p_min elements.
 CREATE OR REPLACE FUNCTION public.ka_gochara_text_array_ok(a text[], p_min integer)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT a IS NOT NULL
@@ -293,7 +327,6 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
      AND NOT EXISTS (SELECT 1 FROM unnest(a) e WHERE e IS NULL OR btrim(e) = '');
 $$;
 
--- Finite (not NaN, not ±infinity) — NULL passes; callers decide NULL policy.
 CREATE OR REPLACE FUNCTION public.ka_gochara_finite_ok(x double precision)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT x IS NULL
@@ -302,7 +335,6 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
           AND x < 'infinity'::double precision);
 $$;
 
--- Finite and non-negative (F11: `>= 0` alone admits NaN and +infinity).
 CREATE OR REPLACE FUNCTION public.ka_gochara_finite_nonneg_ok(x double precision)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT x IS NULL
@@ -311,32 +343,32 @@ RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
           AND x < 'infinity'::double precision);
 $$;
 
--- The generation contract boundary (steward ruling 1 / N1): a generation is
--- GOVERNED by these tables iff its major version is 5 or above. 'v1', '3.0',
--- '4.0' and the candidate-only '4.1' (D-41) are legacy-kernel generations and
--- never governed. Numeric-major comparison, never lexical (N1).
+-- The generation contract boundary (ruling 1 / N1): governed iff major >= 5.
+-- 'v1', '3.0', '4.0' and the candidate-only '4.1' (D-41) are never governed.
 CREATE OR REPLACE FUNCTION public.ka_gochara_generation_governed(g text)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
   SELECT g IS NOT NULL AND g ~ '^([5-9]|[1-9][0-9]+)\.[0-9]+$';
 $$;
 
--- ── 0b. The ONE lock order — the orchestrator's keys (steward ruling 2) ───
--- pg_advisory_xact_lock(bigint) shares the lock space with the orchestrator's
--- pg_try_advisory_lock(hashtext(chart_id)) session lock: the same session is
--- re-entrant, every other session blocks. Isolation other than READ COMMITTED
--- is refused: the seal/membership state read after the lock must see rows
--- committed while we waited (N2's Repeatable-Read schedule).
+-- ── 0b. The Gochara-5 family keys and the ENFORCED order (rulings 2–3) ────
+-- Transaction-local markers (set_config(..., true)) record which class of
+-- key this transaction holds so the fixed order is enforced, not assumed.
+
 CREATE OR REPLACE FUNCTION public.ka_gochara_lock_chart(p_chart_id uuid)
 RETURNS void LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
   IF current_setting('transaction_isolation') <> 'read committed' THEN
-    RAISE EXCEPTION 'ka_gochara writes require READ COMMITTED (transaction_isolation is %): the seal/membership state read after the advisory lock must see concurrently committed transactions (N2)',
+    RAISE EXCEPTION 'ka_gochara writes require READ COMMITTED (transaction_isolation is %): the seal/membership state read after the family lock must see concurrently committed transactions (N2)',
       current_setting('transaction_isolation');
   END IF;
   IF p_chart_id IS NULL THEN
     RAISE EXCEPTION 'ka_gochara_lock_chart: chart_id is NULL';
   END IF;
-  PERFORM pg_advisory_xact_lock(hashtext(p_chart_id::text)::bigint);
+  IF COALESCE(current_setting('gochara5.global_exclusive', true), '') = 'on' THEN
+    RAISE EXCEPTION 'ka_gochara lock-order violation (steward ruling B / N13): this transaction already holds the gochara5 GLOBAL family key EXCLUSIVE (a rule-path registry/seal/membership mutation) and may not take a chart family key — registry mutations and chart-scoped mutations never share a transaction';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('gochara5:chart:' || p_chart_id::text)::bigint);
+  PERFORM set_config('gochara5.chart_locked', 'on', true);
 END;
 $$;
 
@@ -344,49 +376,104 @@ CREATE OR REPLACE FUNCTION public.ka_gochara_lock_global()
 RETURNS void LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
   IF current_setting('transaction_isolation') <> 'read committed' THEN
-    RAISE EXCEPTION 'ka_gochara writes require READ COMMITTED (transaction_isolation is %): the seal/membership state read after the advisory lock must see concurrently committed transactions (N2/N5)',
+    RAISE EXCEPTION 'ka_gochara writes require READ COMMITTED (transaction_isolation is %): the seal/membership state read after the family lock must see concurrently committed transactions (N2/N5)',
       current_setting('transaction_isolation');
   END IF;
-  PERFORM pg_advisory_xact_lock(hashtext('nirmana-global-assets')::bigint);
+  IF COALESCE(current_setting('gochara5.chart_locked', true), '') = 'on'
+     OR COALESCE(current_setting('gochara5.global_shared', true), '') = 'on' THEN
+    RAISE EXCEPTION 'ka_gochara lock-order violation (steward ruling B / N13): this transaction already holds a chart family key (a chart-scoped mutation) and may not take the GLOBAL family key EXCLUSIVE — rule-path registry/seal/membership mutations never share a transaction with chart-scoped mutations';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('gochara5:global')::bigint);
+  PERFORM set_config('gochara5.global_exclusive', 'on', true);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.ka_gochara_lock_global_shared()
+RETURNS void LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF current_setting('transaction_isolation') <> 'read committed' THEN
+    RAISE EXCEPTION 'ka_gochara writes require READ COMMITTED (transaction_isolation is %)',
+      current_setting('transaction_isolation');
+  END IF;
+  PERFORM pg_advisory_xact_lock_shared(hashtext('gochara5:global')::bigint);
+  PERFORM set_config('gochara5.global_shared', 'on', true);
 END;
 $$;
 
 COMMENT ON FUNCTION public.ka_gochara_lock_chart(uuid) IS
-  'Takes the orchestrator''s per-chart advisory lock (hashtext(chart_id::text), the key of '
-  'pipeline/orchestrator/locks.py) for this transaction. Every mutating trigger on a '
-  'chart-scoped ka_gochara table calls it FIRST (steward ruling 2). READ COMMITTED only.';
+  'Takes the Gochara-5 per-chart FAMILY key (hashtext(''gochara5:chart:''||chart_id), '
+  'transaction-scoped, EXCLUSIVE) — never the orchestrator''s session key, which lives on '
+  'the scheduler''s main connection while writers run on worker connections (N12). Refuses '
+  'a transaction that already holds the global family key EXCLUSIVE (enforced order, N13). '
+  'READ COMMITTED only.';
 COMMENT ON FUNCTION public.ka_gochara_lock_global() IS
-  'Takes the orchestrator''s global-assets advisory lock (hashtext(''nirmana-global-assets'')) '
-  'for this transaction. Every mutating trigger on a chart-independent ka_gochara table '
-  '(substrate, identities, registries, seals, memberships) calls it FIRST (steward ruling 2). '
-  'Taken AFTER the chart lock wherever both are needed. READ COMMITTED only.';
+  'Takes the Gochara-5 GLOBAL family key (hashtext(''gochara5:global''), transaction-scoped) '
+  'EXCLUSIVE — rule-path registry, seal and membership mutations only. Refuses a '
+  'transaction that already holds a chart family key or the global key SHARED (enforced '
+  'order, N13). READ COMMITTED only.';
+COMMENT ON FUNCTION public.ka_gochara_lock_global_shared() IS
+  'Takes the Gochara-5 GLOBAL family key SHARED — chart-scoped writers reading rule-path '
+  'seal state, always AFTER their chart family key. Blocks only behind a registry mutation.';
 
--- Generic guard for chart-independent, insert-only tables: lock, then refuse
--- UPDATE/DELETE.
+-- Insert-only guard for chart-independent, constraint-guarded tables (NO
+-- family key — UNIQUE/FK constraints serialise what needs serialising).
+CREATE OR REPLACE FUNCTION public.ka_gochara_insert_only()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  RAISE EXCEPTION '% is insert-only (GOCHARA_DESIGN_SPECS_v1_4 %): % not permitted; a change is a NEW row (new id / new version / new convention), never an edit',
+    TG_TABLE_NAME, COALESCE(TG_ARGV[0], '§6.1'), TG_OP;
+END;
+$$;
+
+-- Registry-class guard (rule-path registry, seal, membership UPDATE/DELETE):
+-- a refusal RAISES before any lock (a refused statement never waits — N13);
+-- an INSERT takes the global family key EXCLUSIVE.
 CREATE OR REPLACE FUNCTION public.ka_gochara_global_write_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
-  PERFORM public.ka_gochara_lock_global();
   IF TG_OP <> 'INSERT' THEN
-    RAISE EXCEPTION '% is insert-only (GOCHARA_DESIGN_SPECS_v1_4 %): % not permitted; a change is a NEW row (new id / new version / new convention), never an edit',
-      TG_TABLE_NAME, COALESCE(TG_ARGV[0], '§6.1'), TG_OP;
+    RAISE EXCEPTION '% is insert-only (GOCHARA_DESIGN_SPECS_v1_4 %): % not permitted; a change is a NEW row (new version), never an edit',
+      TG_TABLE_NAME, COALESCE(TG_ARGV[0], '§2.1'), TG_OP;
   END IF;
+  PERFORM public.ka_gochara_lock_global();
   RETURN NEW;
 END;
 $$;
 
--- ── 1. Convention (§6.1 substrate dimensions + ordinal-domain pinning) ─────
+-- BEFORE UPDATE OR DELETE, FOR EACH STATEMENT, on every chart-scoped table:
+-- runs before PostgreSQL locks any target tuple (ExecBRUpdateTriggers /
+-- ExecBRDeleteTriggers lock the tuple before ROW triggers — N13), so the
+-- family key always precedes the tuple lock. Every chart present in the
+-- table is locked in ascending order (one chart under the D-SCOPE CHECK).
+CREATE OR REPLACE FUNCTION public.ka_gochara_chart_statement_lock()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE c uuid;
+BEGIN
+  -- distinct chart_ids via a loose index walk (every chart-scoped table has a
+  -- chart_id-leading index), ascending — no full scan per statement
+  FOR c IN EXECUTE format(
+    'WITH RECURSIVE w AS (
+       (SELECT chart_id FROM public.%1$I ORDER BY chart_id LIMIT 1)
+       UNION ALL
+       SELECT (SELECT t.chart_id FROM public.%1$I t WHERE t.chart_id > w.chart_id ORDER BY t.chart_id LIMIT 1)
+       FROM w WHERE w.chart_id IS NOT NULL)
+     SELECT chart_id FROM w WHERE chart_id IS NOT NULL ORDER BY chart_id', TG_TABLE_NAME) LOOP
+    PERFORM public.ka_gochara_lock_chart(c);
+  END LOOP;
+  RETURN NULL;
+END;
+$$;
+
+-- ── 1. Convention (§6.1) — constraint-guarded, insert-only, no family key ─
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_convention (
-  convention_id        TEXT PRIMARY KEY,         -- "sha256:<hex>" over the canonical
-                                                 --   substrate vector (§6.1)
+  convention_id        TEXT PRIMARY KEY,
   ephemeris_generation TEXT NOT NULL,
   ayanamsha            TEXT NOT NULL,
   node_convention      TEXT NOT NULL,
   grid                 TEXT NOT NULL,
-  method_version       TEXT NOT NULL,            -- §7.2 inv 4: tolerance/method change ⇒
-                                                 --   new convention_id
-  domain_start         TIMESTAMPTZ NOT NULL,     -- ordinal-domain pinning (§6.1)
+  method_version       TEXT NOT NULL,
+  domain_start         TIMESTAMPTZ NOT NULL,
   domain_end           TIMESTAMPTZ NOT NULL,
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -396,32 +483,25 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_convention (
 COMMENT ON TABLE public.ka_gochara_sky_convention IS
   'Sky-event substrate convention (GOCHARA_DESIGN_SPECS_v1_4 §6.1): one substrate per '
   '(ephemeris/convention generation, ayanāṃśa, node convention, grid, method version) '
-  'plus the ordinal domain (domain_start/domain_end) that pins occurrence ordinals to '
-  'the FULL-domain ordered crossing set. A backward partition is a new convention_id. '
-  'Insert-only under the global-assets lock; TRUNCATE refused.';
+  'plus the ordinal domain (domain_start/domain_end). A backward partition is a new '
+  'convention_id. Insert-only; TRUNCATE refused.';
 
-DROP TRIGGER IF EXISTS ka_gochara_sky_convention_write_guard ON public.ka_gochara_sky_convention;
-CREATE TRIGGER ka_gochara_sky_convention_write_guard
-  BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_sky_convention
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_global_write_guard('§6.1/§7.2 inv 4');
+DROP TRIGGER IF EXISTS ka_gochara_sky_convention_immutable ON public.ka_gochara_sky_convention;
+CREATE TRIGGER ka_gochara_sky_convention_immutable
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_sky_convention
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_insert_only('§6.1/§7.2 inv 4');
 DROP TRIGGER IF EXISTS ka_gochara_sky_convention_no_truncate ON public.ka_gochara_sky_convention;
 CREATE TRIGGER ka_gochara_sky_convention_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_sky_convention
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
--- ── 2. Physical object (§6.1 canonical physical-object identity) ───────────
+-- ── 2. Physical object (§6.1) ──────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_physical_object (
-  physical_object_id  UUID PRIMARY KEY,          -- hash(body, relation_kind,
-                                                 --   canonical_target, convention_id);
-                                                 --   writer-computed (§6.1)
-  body                TEXT NOT NULL,             -- the transiting body whose crossing
-                                                 --   the object describes
-  relation_kind       TEXT NOT NULL,             -- transit relation (contacts) or
-                                                 --   boundary kind (sky events)
-  canonical_target    TEXT NOT NULL,             -- canonicalised BEFORE any role/label:
-                                                 --   'point:<λ full precision>' /
-                                                 --   'span:<sign>' / 'star:<index>' (§6.1)
+  physical_object_id  UUID PRIMARY KEY,
+  body                TEXT NOT NULL,
+  relation_kind       TEXT NOT NULL,
+  canonical_target    TEXT NOT NULL,
   convention_id       TEXT NOT NULL REFERENCES public.ka_gochara_sky_convention(convention_id),
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -436,26 +516,19 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_physical_object (
     OR canonical_target ~ '^star:([1-9]|1[0-9]|2[0-7])$'),
   CONSTRAINT ka_gochara_physical_object_natural_uq
     UNIQUE (body, relation_kind, canonical_target, convention_id),
-  -- FK target for the composite consistency FKs of ka_gochara_sky_event and
-  -- ka_gochara_contact (F7): an event/contact can never disagree with its
-  -- physical object on body, relation kind or convention.
   CONSTRAINT kgpo_identity_uq
     UNIQUE (physical_object_id, body, relation_kind, convention_id)
 );
 
 COMMENT ON TABLE public.ka_gochara_physical_object IS
   'Canonical physical object (GOCHARA_DESIGN_SPECS_v1_4 §6.1): label-independent physical '
-  'identity (v3.0 #27); one object per (body, relation_kind, canonical_target, '
-  'convention_id). A retrograde re-crossing of one target is a second CONTACT of this one '
-  'object, never a second object (O-RX-1). Canonical identity bytes: '
-  'body|relation_kind|canonical_target|convention_id|ordinal. Hash-collision handling: the '
-  'build fails loudly, no silent dedup (§6.1). Insert-only under the global-assets lock; '
-  'TRUNCATE refused.';
+  'identity; one object per (body, relation_kind, canonical_target, convention_id). '
+  'Insert-only; TRUNCATE refused.';
 
-DROP TRIGGER IF EXISTS ka_gochara_physical_object_write_guard ON public.ka_gochara_physical_object;
-CREATE TRIGGER ka_gochara_physical_object_write_guard
-  BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_physical_object
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_global_write_guard('§6.1 publication immutability');
+DROP TRIGGER IF EXISTS ka_gochara_physical_object_immutable ON public.ka_gochara_physical_object;
+CREATE TRIGGER ka_gochara_physical_object_immutable
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_physical_object
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_insert_only('§6.1 publication immutability');
 DROP TRIGGER IF EXISTS ka_gochara_physical_object_no_truncate ON public.ka_gochara_physical_object;
 CREATE TRIGGER ka_gochara_physical_object_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_physical_object
@@ -464,22 +537,19 @@ CREATE TRIGGER ka_gochara_physical_object_no_truncate
 -- ── 3. Sky event — BOUNDARY EVENTS ONLY (§6.1 + §7.1) ─────────────────────
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_event (
-  event_id            UUID PRIMARY KEY,          -- hash(physical_object_id,
-                                                 --   occurrence_ordinal) — the frozen recipe
+  event_id            UUID PRIMARY KEY,
   physical_object_id  UUID NOT NULL,
   convention_id       TEXT NOT NULL,
-  body                TEXT NOT NULL,             -- MUST equal the object's body (FK)
-  event_kind          TEXT NOT NULL,             -- MUST equal the object's relation_kind (FK)
-  occurrence_ordinal  INTEGER NOT NULL,          -- 1-based index inside the ordered
-                                                 --   crossing set of the same physical
-                                                 --   tuple, over the FULL convention domain
-  t_exact             TIMESTAMPTZ,               -- NULL iff truncated (coverage.truncated)
+  body                TEXT NOT NULL,
+  event_kind          TEXT NOT NULL,
+  occurrence_ordinal  INTEGER NOT NULL,
+  t_exact             TIMESTAMPTZ,
   longitude           DOUBLE PRECISION,
   solver_method       TEXT NOT NULL,
   delta_lambda        REAL,
   delta_t             REAL,
   precision_regime    TEXT,
-  coverage            JSONB NOT NULL,            -- MUST carry boolean 'truncated'
+  coverage            JSONB NOT NULL,
   supersedes_event_id UUID REFERENCES public.ka_gochara_sky_event(event_id),
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -490,8 +560,6 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_event (
     ('sign_ingress','nakshatra_ingress','kakshya_crossing','station','eclipse_instant')),
   CONSTRAINT kgse_body_domain_ck CHECK (body IN
     ('sun','mars','mercury','jupiter','venus','saturn','rahu','ketu')),
-    -- O-SS-4: the global substrate holds NO materialised Moon rows; Moon
-    -- boundary events are generated on demand, never persisted here.
   CONSTRAINT kgse_ordinal_ck CHECK (occurrence_ordinal >= 1),
   CONSTRAINT ka_gochara_sky_event_ordinal_uq
     UNIQUE (physical_object_id, occurrence_ordinal),
@@ -509,35 +577,31 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_event (
     CHECK (t_exact IS NULL
            OR (longitude IS NOT NULL AND delta_lambda IS NOT NULL
                AND delta_t IS NOT NULL AND precision_regime IS NOT NULL)),
-    -- §7.2 inv 1: every REPORTED t_exact carries its uncertainties and regime
   CONSTRAINT kgse_longitude_range_ck
     CHECK (longitude IS NULL OR (longitude >= 0 AND longitude < 360)),
   CONSTRAINT kgse_uncertainty_finite_ck
     CHECK (public.ka_gochara_finite_nonneg_ok(delta_lambda) IS TRUE
            AND public.ka_gochara_finite_nonneg_ok(delta_t) IS TRUE),
   CONSTRAINT kgse_station_refined_ck
-    CHECK (event_kind <> 'station' OR solver_method = 'swiss_refined'), -- O-SM-3
+    CHECK (event_kind <> 'station' OR solver_method = 'swiss_refined'),
   CONSTRAINT kgse_no_self_supersede_ck
     CHECK (supersedes_event_id IS NULL OR supersedes_event_id <> event_id),
   CONSTRAINT kgse_supersedes_uq UNIQUE (supersedes_event_id)
-    -- a chain, never a tree: an event is superseded at most once
 );
 
 COMMENT ON TABLE public.ka_gochara_sky_event IS
   'Boundary-event substrate (GOCHARA_DESIGN_SPECS_v1_4 §6.1, §7.1): the five boundary '
-  'kinds ONLY. Transit contacts live in ka_gochara_contact_identity + ka_gochara_contact. '
-  'Identity: event_id = hash(physical_object_id, occurrence_ordinal). Correction: a NEW '
+  'kinds ONLY. event_id = hash(physical_object_id, occurrence_ordinal). Correction: a NEW '
   'event of the same (body, kind) under a corrected target or a new convention, linked by '
-  'supersedes_event_id (chain; never self; never mutable). Publication immutability: '
-  'DELETE forbidden; UPDATE may only fill NULL fields (truncated→exact flip); TRUNCATE '
-  'refused. All writes under the global-assets lock.';
+  'supersedes_event_id (chain; never self). DELETE forbidden; UPDATE may only fill NULL '
+  'fields (truncated→exact flip); TRUNCATE refused. Constraint-guarded (UNIQUE/FK), no '
+  'family key.';
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_sky_event_supersede_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
   pred_body text; pred_kind text;
 BEGIN
-  PERFORM public.ka_gochara_lock_global();
   IF NEW.supersedes_event_id IS NULL THEN
     RETURN NEW;
   END IF;
@@ -552,6 +616,8 @@ BEGIN
     RAISE EXCEPTION 'ka_gochara_sky_event supersede edge invalid (§6.1 correction): predecessor % is (%, %) but the correction is (%, %) — a correction re-solves the SAME body and kind under a corrected target or a new convention (§7.2 inv 4)',
       NEW.supersedes_event_id, pred_body, pred_kind, NEW.body, NEW.event_kind;
   END IF;
+  -- "superseded at most once": the named message for the common case; the
+  -- race-safe guarantee is kgse_supersedes_uq (no family key on this table)
   IF EXISTS (SELECT 1 FROM public.ka_gochara_sky_event s
              WHERE s.supersedes_event_id = NEW.supersedes_event_id) THEN
     RAISE EXCEPTION 'ka_gochara_sky_event % is already superseded (§6.1): supersession history is a chain, never a tree',
@@ -565,7 +631,6 @@ CREATE OR REPLACE FUNCTION public.ka_gochara_sky_event_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE flip boolean;
 BEGIN
-  PERFORM public.ka_gochara_lock_global();
   IF TG_OP = 'DELETE' THEN
     RAISE EXCEPTION 'ka_gochara_sky_event is publication-immutable (GOCHARA_DESIGN_SPECS_v1_4 §6.1): DELETE forbidden; a correction retires an event via a superseding row, never by deletion';
   END IF;
@@ -618,8 +683,7 @@ CREATE TRIGGER ka_gochara_sky_event_no_truncate
 -- ── 4. Contact IDENTITY — stable, global, never renumbered (§6.1; F1/F4) ───
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_contact_identity (
-  contact_id            UUID PRIMARY KEY,        -- hash(physical_object_id,
-                                                 --   occurrence_ordinal) — frozen recipe
+  contact_id            UUID PRIMARY KEY,
   physical_object_id    UUID NOT NULL REFERENCES public.ka_gochara_physical_object(physical_object_id),
   occurrence_ordinal    INTEGER NOT NULL,
   supersedes_contact_id UUID REFERENCES public.ka_gochara_contact_identity(contact_id),
@@ -631,26 +695,23 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_contact_identity (
   CONSTRAINT kgci_no_self_supersede_ck
     CHECK (supersedes_contact_id IS NULL OR supersedes_contact_id <> contact_id),
   CONSTRAINT kgci_supersedes_uq UNIQUE (supersedes_contact_id),
-    -- a chain, never a tree
-  -- FK target for the ledger's tuple-consistency FK.
   CONSTRAINT kgci_tuple_uq UNIQUE (contact_id, physical_object_id, occurrence_ordinal)
 );
 
 COMMENT ON TABLE public.ka_gochara_contact_identity IS
   'Contact identity (GOCHARA_DESIGN_SPECS_v1_4 §6.1 NK-2; F1/F4): contact_id = '
-  'hash(physical_object_id, occurrence_ordinal), one row per identity, GLOBAL (no '
-  'chart/generation) — the stable physical identity that generation-scoped ledger rows '
-  '(ka_gochara_contact) reference and share. Never renumbered, never reused, never '
-  'deleted (insert-only under the global-assets lock; TRUNCATE refused). Correction: a '
-  'new identity of the same (body, relation_kind) under a corrected target or a new '
-  'convention, linked by supersedes_contact_id (chain; never self); retired iff superseded.';
+  'hash(physical_object_id, occurrence_ordinal), one row per identity, GLOBAL — the stable '
+  'physical identity that generation-scoped ledger rows reference and share. Never '
+  'renumbered, reused or deleted (insert-only; TRUNCATE refused). Correction: a new '
+  'identity of the same (body, relation_kind) under a corrected target or a new '
+  'convention, linked by supersedes_contact_id (chain — kgci_supersedes_uq; never self). '
+  'Constraint-guarded, no family key: a chart writer inserts it beside its ledger row.';
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_contact_identity_supersede_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
   pred_body text; pred_rel text; new_body text; new_rel text;
 BEGIN
-  PERFORM public.ka_gochara_lock_global();
   IF NEW.supersedes_contact_id IS NULL THEN
     RETURN NEW;
   END IF;
@@ -669,6 +730,8 @@ BEGIN
     RAISE EXCEPTION 'ka_gochara_contact_identity supersede edge invalid (§6.1 correction): predecessor % is (%, %) but the correction is (%, %) — a correction re-solves the SAME body and relation under a corrected target or a new convention (§7.2 inv 4)',
       NEW.supersedes_contact_id, pred_body, pred_rel, new_body, new_rel;
   END IF;
+  -- "superseded at most once": the named message for the common case; the
+  -- race-safe guarantee is kgci_supersedes_uq (no family key on this table)
   IF EXISTS (SELECT 1 FROM public.ka_gochara_contact_identity s
              WHERE s.supersedes_contact_id = NEW.supersedes_contact_id) THEN
     RAISE EXCEPTION 'ka_gochara_contact_identity % is already superseded (§6.1): supersession history is a chain, never a tree',
@@ -682,20 +745,16 @@ DROP TRIGGER IF EXISTS ka_gochara_contact_identity_supersede_check ON public.ka_
 CREATE TRIGGER ka_gochara_contact_identity_supersede_check
   BEFORE INSERT ON public.ka_gochara_contact_identity
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_contact_identity_supersede_guard();
-DROP TRIGGER IF EXISTS ka_gochara_contact_identity_write_guard ON public.ka_gochara_contact_identity;
-CREATE TRIGGER ka_gochara_contact_identity_write_guard
+DROP TRIGGER IF EXISTS ka_gochara_contact_identity_immutable ON public.ka_gochara_contact_identity;
+CREATE TRIGGER ka_gochara_contact_identity_immutable
   BEFORE UPDATE OR DELETE ON public.ka_gochara_contact_identity
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_global_write_guard('§6.1 publication immutability — an id is never renumbered or reused');
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_insert_only('§6.1 publication immutability — an id is never renumbered or reused');
 DROP TRIGGER IF EXISTS ka_gochara_contact_identity_no_truncate ON public.ka_gochara_contact_identity;
 CREATE TRIGGER ka_gochara_contact_identity_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_contact_identity
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
--- ── 5. Explicit publication seal (steward ruling 1; F2) ───────────────────
--- Written by the governed publication path via ka_gochara_seal_generation()
--- in the SAME transaction that sets kala_gochara_publication.status =
--- 'published'. NO foreign key into the legacy manifest table (ruling 1); the
--- write guard verifies the manifest is published, under the chart lock.
+-- ── 5. Explicit publication seal (ruling 1; F2) ───────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_generation_seal (
   chart_id    UUID NOT NULL REFERENCES public.charts(id),
@@ -713,13 +772,18 @@ COMMENT ON TABLE public.ka_gochara_generation_seal IS
   'Permanent publication history for GOVERNED generations (major >= 5): one row per '
   '(chart_id, generation) that was ever published, written explicitly by '
   'ka_gochara_seal_generation() from the governed publication path in the same '
-  'transaction as the status flip (steward ruling 1 — no trigger on the legacy manifest '
-  'table). Never updated, deleted or truncated; superseded/rolled_back generations stay '
-  'sealed. Every guard reads it through ka_gochara_generation_is_sealed() under the '
-  'orchestrator''s per-chart lock.';
+  'transaction as the status flip (ruling 1 — no trigger on the legacy manifest table). '
+  'Never updated, deleted or truncated. Sealing refuses a generation whose records/windows '
+  'carry coverage facts incompatible with the current coverage partitions '
+  '(ka_gochara_coverage_drift, 1156). Read under the chart family key.';
 
+-- INSERT: refuse legacy, take the chart family key, require a published
+-- manifest, refuse incompatible coverage drift (1156's detector, once it
+-- exists — the window applies 1153–1157 together). UPDATE/DELETE: refuse
+-- before any lock.
 CREATE OR REPLACE FUNCTION public.ka_gochara_generation_seal_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE n_bad integer := 0;
 BEGIN
   IF TG_OP <> 'INSERT' THEN
     RAISE EXCEPTION 'ka_gochara_generation_seal is permanent (§6.1/§10.1): % not permitted', TG_OP;
@@ -738,6 +802,14 @@ BEGIN
     RAISE EXCEPTION 'ka_gochara_generation_seal refused: manifest % is not a published manifest of (chart %, generation %) — seal in the SAME transaction that sets status = published (CLAUDE.md §N.8: a seal records a real publication)',
       NEW.manifest_id, NEW.chart_id, NEW.generation;
   END IF;
+  IF to_regprocedure('public.ka_gochara_coverage_drift(uuid,text)') IS NOT NULL THEN
+    EXECUTE 'SELECT count(*) FROM public.ka_gochara_coverage_drift($1, $2) d WHERE d.drift IN (''incompatible'', ''partition_missing'')'
+      INTO n_bad USING NEW.chart_id, NEW.generation;
+    IF n_bad > 0 THEN
+      RAISE EXCEPTION 'ka_gochara_generation_seal refused (N10 consumer contract): % record/window row(s) of (chart %, generation %) carry coverage facts that are INCOMPATIBLE with their partition''s current facts (or the partition is missing) — re-validate the candidate before publishing; see ka_gochara_coverage_drift(chart_id, generation)',
+        n_bad, NEW.chart_id, NEW.generation;
+    END IF;
+  END IF;
   RETURN NEW;
 END;
 $$;
@@ -751,9 +823,11 @@ CREATE TRIGGER ka_gochara_generation_seal_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_generation_seal
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
--- The function the governed publication path calls (A5.x/A6.1): refuses
--- legacy generations, takes the chart lock, requires the manifest to be
--- published in this transaction's view, records the seal (idempotent).
+-- The function the governed publication path calls (A5.x/A6.1). Protocol:
+--   SELECT ka_gochara_lock_chart(chart);      -- FIRST, before any content read
+--   ... compute digest/counts, UPDATE kala_gochara_publication SET status='published' ...
+--   SELECT ka_gochara_seal_generation(chart, generation);
+--   COMMIT;
 CREATE OR REPLACE FUNCTION public.ka_gochara_seal_generation(p_chart_id uuid, p_generation text)
 RETURNS uuid LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE m uuid;
@@ -778,14 +852,11 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.ka_gochara_seal_generation(uuid, text) IS
-  'Governed publication path entry point (steward ruling 1): call in the SAME transaction '
-  'that sets kala_gochara_publication.status = ''published'' for a generation of major >= 5. '
-  'Refuses legacy generations; takes the orchestrator''s per-chart lock; records the '
-  'permanent seal; idempotent; returns the manifest id.';
+  'Governed publication path entry point (ruling 1): call in the SAME transaction that '
+  'sets kala_gochara_publication.status = ''published'' for a generation of major >= 5, '
+  'AFTER ka_gochara_lock_chart(chart) was taken first (one lock order, N13). Refuses '
+  'legacy generations and incompatible coverage drift; idempotent; returns the manifest id.';
 
--- The ONE predicate every guard reads: seal row present, read AFTER taking
--- the chart lock (so a concurrent publication either committed before us, or
--- waits for us).
 CREATE OR REPLACE FUNCTION public.ka_gochara_generation_is_sealed(p_chart_id uuid, p_generation text)
 RETURNS boolean LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
@@ -806,15 +877,13 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_convention_bridge (
 
 COMMENT ON TABLE public.ka_gochara_convention_bridge IS
   'Explicit bridge (F7) from the LEGACY 1081 convention vector carried by '
-  'kala_gochara_coverage.convention_id to the §6.1 sky convention carried by contacts. A '
-  'coverage partition is applicable to a transit record only when its convention is '
-  'bridged to the contact''s sky convention (1155 guard). Insert-only under the '
-  'global-assets lock; TRUNCATE refused.';
+  'kala_gochara_coverage.convention_id to the §6.1 sky convention carried by contacts. '
+  'Insert-only; TRUNCATE refused.';
 
-DROP TRIGGER IF EXISTS ka_gochara_convention_bridge_write_guard ON public.ka_gochara_convention_bridge;
-CREATE TRIGGER ka_gochara_convention_bridge_write_guard
-  BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_convention_bridge
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_global_write_guard('§7.2 inv 4 — a convention change is a new convention');
+DROP TRIGGER IF EXISTS ka_gochara_convention_bridge_immutable ON public.ka_gochara_convention_bridge;
+CREATE TRIGGER ka_gochara_convention_bridge_immutable
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_convention_bridge
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_insert_only('§7.2 inv 4 — a convention change is a new convention');
 DROP TRIGGER IF EXISTS ka_gochara_convention_bridge_no_truncate ON public.ka_gochara_convention_bridge;
 CREATE TRIGGER ka_gochara_convention_bridge_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_convention_bridge
@@ -824,24 +893,21 @@ CREATE TRIGGER ka_gochara_convention_bridge_no_truncate
 
 CREATE TABLE IF NOT EXISTS public.ka_gochara_contact (
   chart_id            UUID NOT NULL REFERENCES public.charts(id),
-  generation          TEXT NOT NULL,             -- governed generation (major >= 5)
+  generation          TEXT NOT NULL,
   contact_id          UUID NOT NULL REFERENCES public.ka_gochara_contact_identity(contact_id),
   physical_object_id  UUID NOT NULL,
   occurrence_ordinal  INTEGER NOT NULL,
   convention_id       TEXT NOT NULL,
-  body                TEXT NOT NULL,             -- transiting body = the record's agent
-  relation_kind       TEXT NOT NULL,             -- the transit relations of §1.1
-  t_in                TIMESTAMPTZ NOT NULL,      -- in-orb interval start as observed inside
-                                                 --   the solved partition (clipped at the
-                                                 --   partition start if already in orb)
-  t_out               TIMESTAMPTZ,               -- NULL only while truncated at the
-                                                 --   partition end (N3)
-  t_exact             TIMESTAMPTZ,               -- NULL iff truncated (coverage.truncated)
+  body                TEXT NOT NULL,
+  relation_kind       TEXT NOT NULL,
+  t_in                TIMESTAMPTZ NOT NULL,
+  t_out               TIMESTAMPTZ,
+  t_exact             TIMESTAMPTZ,
   solver_method       TEXT NOT NULL,
   delta_lambda        REAL,
   delta_t             REAL,
   precision_regime    TEXT,
-  coverage            JSONB NOT NULL,            -- MUST carry boolean 'truncated'
+  coverage            JSONB NOT NULL,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   PRIMARY KEY (chart_id, generation, contact_id),
@@ -853,16 +919,13 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_contact (
     REFERENCES public.ka_gochara_physical_object (physical_object_id, body, relation_kind, convention_id),
   CONSTRAINT kgc_canonical_chart_ck
     CHECK (chart_id = '482012f1-710e-4a25-994a-93821f5871aa'::uuid),
-    -- D-SCOPE disposition: canonical chart only; widening requires a migration.
   CONSTRAINT kgc_generation_governed_ck
     CHECK (public.ka_gochara_generation_governed(generation) IS TRUE),
-    -- steward ruling 1 (N1): legacy generations never enter these tables
   CONSTRAINT kgc_body_domain_ck CHECK (body IN
     ('sun','moon','mars','mercury','jupiter','venus','saturn','rahu','ketu')),
   CONSTRAINT kgc_relation_kind_ck CHECK (relation_kind IN
     ('residence','aspect','conjunction')),
   CONSTRAINT kgc_ordinal_ck CHECK (occurrence_ordinal >= 1),
-  -- FK target for 1155's transit-record reference (F1/F7).
   CONSTRAINT kgc_reference_uq
     UNIQUE (chart_id, generation, contact_id, body, relation_kind, physical_object_id),
   CONSTRAINT kgc_solver_method_ck CHECK (solver_method IN
@@ -894,13 +957,12 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_contact (
 COMMENT ON TABLE public.ka_gochara_contact IS
   'Transit-contact LEDGER (GOCHARA_DESIGN_SPECS_v1_4 §6.1/§10; F1): the per-(chart_id × '
   'generation) OWNERSHIP row of a stable contact identity carrying the solved values. PK '
-  '(chart_id, generation, contact_id): one physical contact coexists in a retained '
-  'published generation and a candidate rebuild. N6: the solved reading (t_exact, δλ, δt, '
-  'precision_regime, non-placeholder solver_method) of one identity is consistent across '
-  'every generation that holds it. Writer: per-(chart_id × generation) delete-then-insert '
-  'of CANDIDATE generations (CLAUDE.md §N.3); a sealed generation refuses DELETE; UPDATE is '
-  'enrichment-only; TRUNCATE refused. Every write takes the orchestrator''s chart lock '
-  'first. Legacy kala_gochara_contacts rows are NOT migrated.';
+  '(chart_id, generation, contact_id). N6: one identity, one solved reading across '
+  'generations. Writer: per-(chart_id × generation) delete-then-insert of CANDIDATE '
+  'generations (CLAUDE.md §N.3); a sealed generation refuses DELETE; UPDATE is '
+  'enrichment-only; TRUNCATE refused. Every write takes the Gochara-5 chart family key '
+  'first (statement-level for UPDATE/DELETE — N13). Legacy kala_gochara_contacts rows are '
+  'NOT migrated.';
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_contact_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
@@ -969,6 +1031,10 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS ka_gochara_contact_0_statement_lock ON public.ka_gochara_contact;
+CREATE TRIGGER ka_gochara_contact_0_statement_lock
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_contact
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_chart_statement_lock();
 DROP TRIGGER IF EXISTS ka_gochara_contact_1_write_guard ON public.ka_gochara_contact;
 CREATE TRIGGER ka_gochara_contact_1_write_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_contact
@@ -988,7 +1054,7 @@ CREATE INDEX IF NOT EXISTS idx_kgc_object ON public.ka_gochara_contact
 CREATE INDEX IF NOT EXISTS idx_kgc_identity ON public.ka_gochara_contact
   (contact_id);
 
--- ── 9. Post-apply PRESENCE checks (steward ruling 3) + helper self-tests ───
+-- ── 9. Post-apply PRESENCE checks (ruling 4) + helper self-tests ──────────
 DO $$
 BEGIN
   IF NOT (public.ka_gochara_finite_nonneg_ok('NaN'::double precision) IS FALSE
@@ -1092,20 +1158,21 @@ BEGIN
   END IF;
 
   WITH expected(tgrelid, tgname) AS (VALUES
-      ('ka_gochara_sky_convention','ka_gochara_sky_convention_write_guard'),
+      ('ka_gochara_sky_convention','ka_gochara_sky_convention_immutable'),
       ('ka_gochara_sky_convention','ka_gochara_sky_convention_no_truncate'),
-      ('ka_gochara_physical_object','ka_gochara_physical_object_write_guard'),
+      ('ka_gochara_physical_object','ka_gochara_physical_object_immutable'),
       ('ka_gochara_physical_object','ka_gochara_physical_object_no_truncate'),
       ('ka_gochara_sky_event','ka_gochara_sky_event_supersede_check'),
       ('ka_gochara_sky_event','ka_gochara_sky_event_mutation_guard'),
       ('ka_gochara_sky_event','ka_gochara_sky_event_no_truncate'),
       ('ka_gochara_contact_identity','ka_gochara_contact_identity_supersede_check'),
-      ('ka_gochara_contact_identity','ka_gochara_contact_identity_write_guard'),
+      ('ka_gochara_contact_identity','ka_gochara_contact_identity_immutable'),
       ('ka_gochara_contact_identity','ka_gochara_contact_identity_no_truncate'),
       ('ka_gochara_generation_seal','ka_gochara_generation_seal_write_guard'),
       ('ka_gochara_generation_seal','ka_gochara_generation_seal_no_truncate'),
-      ('ka_gochara_convention_bridge','ka_gochara_convention_bridge_write_guard'),
+      ('ka_gochara_convention_bridge','ka_gochara_convention_bridge_immutable'),
       ('ka_gochara_convention_bridge','ka_gochara_convention_bridge_no_truncate'),
+      ('ka_gochara_contact','ka_gochara_contact_0_statement_lock'),
       ('ka_gochara_contact','ka_gochara_contact_1_write_guard'),
       ('ka_gochara_contact','ka_gochara_contact_no_truncate'))
   SELECT string_agg(e.tgrelid || '.' || e.tgname, ', ' ORDER BY 1) INTO missing
@@ -1118,12 +1185,15 @@ BEGIN
     RAISE EXCEPTION 'migration 1153 post-apply check failed: missing trigger: %', missing;
   END IF;
 
-  -- steward ruling 1: nothing of ours may sit on a legacy table
+  -- ruling 1: none of OUR (user) triggers may sit on a table this family does
+  -- not own. (Foreign keys to charts / kala_gochara_convention /
+  -- kala_gochara_coverage install PostgreSQL's internal RI triggers there —
+  -- disclosed in the header, not hidden by this check.)
   IF EXISTS (
     SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
     WHERE NOT t.tgisinternal AND t.tgname LIKE 'ka\_gochara\_%'
       AND c.relname NOT LIKE 'ka\_gochara\_%') THEN
-    RAISE EXCEPTION 'migration 1153 post-apply check failed: a ka_gochara trigger exists on a table this family does not own (steward ruling 1)';
+    RAISE EXCEPTION 'migration 1153 post-apply check failed: a ka_gochara user trigger exists on a table this family does not own (steward ruling 1)';
   END IF;
   RAISE NOTICE 'migration 1153: presence checks passed';
 END;

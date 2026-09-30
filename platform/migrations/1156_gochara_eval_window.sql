@@ -1,14 +1,17 @@
 -- Migration 1156: ka_gochara_eval_window — the §2.1 eval_window typed
 --                 contract + §3.1 valence fields, with record membership bound
 --                 to the SAME chart, generation, event class and rule version
---                 (F7), coverage applicability bound to a content digest
---                 (F7/N10), a FROZEN membership set once published (F2/N9),
---                 sealed-rule-version references (F3/N5) and finite numeric
---                 domains (F11) — every write under the orchestrator's chart
---                 lock, then the global lock (steward ruling 2). Depends on
---                 1154, 1155 and 1081 (kala_gochara_coverage). Round-4 rewrite
---                 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 under the steward's
---                 simplification ruling. Never applied anywhere — in-place
+--                 AND to the window's coverage (F7/N10), coverage
+--                 applicability bound to an unambiguous facts snapshot
+--                 (F7/N10/N14), the N10 consumer contract
+--                 (ka_gochara_coverage_drift over records AND windows), a
+--                 FROZEN membership set once published (F2/N9), sealed-rule-
+--                 version references (F3/N5) and finite numeric domains (F11)
+--                 — every write under the Gochara-5 chart family key, then
+--                 the global family key SHARED (steward ruling B). Depends on
+--                 1154, 1155 and 1081 (kala_gochara_coverage). Round-5 per
+--                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_3 under the steward's
+--                 corrected lock ruling. Never applied anywhere — in-place
 --                 rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
@@ -22,27 +25,52 @@
 -- to preflight_1156_eval_window.sql; requires 1153–1155 recorded) → DDL →
 -- presence checks. Deploy route: the protected public-schema window.
 --
--- ── Windows and their coverage (F7/N10) ────────────────────────────────────
+-- ── Windows and their coverage (F7/N10/N14) ────────────────────────────────
 -- A window is per (chart, event_class, generation, path version) — it is the
 -- product of the CLASS search, so its coverage partition is the class's
 -- `event_class` partition with key = event_class (P6 produces day rows, never
--- windows — §2.2). `coverage_digest` binds the window to the partition facts
--- it was validated against (same helper and rule as 1155). The window's
--- interval lies inside the partition's completed_horizon.
+-- windows — §2.2). `coverage_facts` binds the window to the unambiguous
+-- snapshot of the partition facts it was validated against (same helper and
+-- rule as 1155). The window's interval lies inside completed_horizon.
 --
--- ── Membership (F7/N9) ─────────────────────────────────────────────────────
+-- ── Membership (F7/N9/N10) ─────────────────────────────────────────────────
 -- ka_gochara_eval_window_record carries (chart_id, generation, event_class,
--- path_id, rule_version) and FKs BOTH ends on all of them. Membership rows
--- are written once with their window and are otherwise IMMUTABLE (no UPDATE);
--- on a sealed generation INSERT and DELETE are refused too, so a published
--- window's record list can never change (N9). ON DELETE CASCADE on both
--- ends serves the §N.3 candidate rebuild only.
+-- path_id, rule_version) and FKs BOTH ends on all of them. Additionally
+-- (N10 — coverage applicability to window CONTRIBUTORS): a contributing
+-- record must have been validated under the SAME convention as the window,
+-- a transit contributor's relation must lie within the window's
+-- relations_searched, and every support interval of the contributor must lie
+-- inside the window's coverage horizon (ka_gochara_window_membership_guard).
+-- Membership rows are written once with their window and are otherwise
+-- IMMUTABLE (no UPDATE); on a sealed generation INSERT and DELETE are refused
+-- too, so a published window's record list can never change (N9). ON DELETE
+-- CASCADE on both ends serves the §N.3 candidate rebuild only.
+--
+-- ── The N10 consumer contract — ka_gochara_coverage_drift ─────────────────
+-- Steward ruling 1 forbids any trigger on the legacy coverage table, so a
+-- partition changed after a consumer was validated cannot be blocked there.
+-- ka_gochara_coverage_drift(chart_id, generation) is the detector: for every
+-- record and window of the generation it compares the stored coverage_facts
+-- with the partition's CURRENT facts and classifies
+--   identical         — unchanged;
+--   extended          — same convention, current horizon ⊇ stored, current
+--                       relations ⊇ stored (no NULL): still valid, more was
+--                       searched afterwards (the ledger's extend-then-enrich);
+--   incompatible      — anything else (convention changed, horizon shrunk or
+--                       moved, relations dropped, NULL introduced);
+--   partition_missing — the partition row is gone.
+-- ka_gochara_seal_generation (1153) REFUSES to seal while any consumer is
+-- incompatible/partition_missing; serve-time consumers read this function
+-- and treat `incompatible` as "re-validate before use". The stored snapshot
+-- is never silently refreshed — it is the evidence of what was validated.
 --
 -- asset_registry: deliberately NOT registered (same disposition as 1081).
 --
 -- ROLLBACK (1157 is independent; this before 1155):
 --   DROP TABLE IF EXISTS ka_gochara_eval_window_record;
 --   DROP TABLE IF EXISTS ka_gochara_eval_window;
+--   DROP FUNCTION IF EXISTS ka_gochara_coverage_drift(uuid, text);
+--   DROP FUNCTION IF EXISTS ka_gochara_window_membership_guard();
 --   DROP FUNCTION IF EXISTS ka_gochara_window_coverage_guard();
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -76,7 +104,7 @@ BEGIN
                         'kgew_membership_uq',
                         'ka_gochara_eval_window_record', 'ka_gochara_eval_window_record_pkey',
                         'idx_kgew_chart_gen', 'idx_kgew_path', 'idx_kgew_coverage',
-                        'idx_kgewr_record')
+                        'idx_kgewr_record', 'idx_kgewr_chart_gen')
     UNION ALL
     SELECT 'trigger_already_exists', 'public.' || c.relname || '.' || t.tgname
     FROM pg_trigger t
@@ -84,14 +112,19 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_eval_window'
-               AND t.tgname IN ('ka_gochara_ew_1_write_guard', 'ka_gochara_ew_2_coverage_guard',
+               AND t.tgname IN ('ka_gochara_ew_0_statement_lock',
+                                'ka_gochara_ew_1_write_guard', 'ka_gochara_ew_2_coverage_guard',
                                 'ka_gochara_ew_3_sealed_path_check', 'ka_gochara_ew_no_truncate'))
          OR (c.relname = 'ka_gochara_eval_window_record'
-               AND t.tgname IN ('ka_gochara_ewr_1_write_guard', 'ka_gochara_ewr_no_truncate')) )
+               AND t.tgname IN ('ka_gochara_ewr_0_statement_lock',
+                                'ka_gochara_ewr_1_write_guard', 'ka_gochara_ewr_2_membership_guard',
+                                'ka_gochara_ewr_no_truncate')) )
     UNION ALL
     SELECT 'function_already_exists',
            'public.' || p.proname || '(' || array_to_string(e.argtypes, ',') || ')'
-    FROM (VALUES ('ka_gochara_window_coverage_guard', ARRAY[]::text[])) AS e(fname, argtypes)
+    FROM (VALUES ('ka_gochara_window_coverage_guard',   ARRAY[]::text[]),
+                 ('ka_gochara_window_membership_guard', ARRAY[]::text[]),
+                 ('ka_gochara_coverage_drift',          ARRAY['uuid','text'])) AS e(fname, argtypes)
     JOIN pg_proc p ON p.proname = e.fname
     JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
     WHERE (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
@@ -114,6 +147,12 @@ BEGIN
                  ('ka_gochara_relationship_record', 'event_class',        'text'),
                  ('ka_gochara_relationship_record', 'path_id',            'text'),
                  ('ka_gochara_relationship_record', 'rule_version',       'text'),
+                 ('ka_gochara_relationship_record', 'contact_id',         'uuid'),
+                 ('ka_gochara_relationship_record', 'relation',           'text'),
+                 ('ka_gochara_relationship_record', 'coverage_facts',     'jsonb'),
+                 ('ka_gochara_relationship_record', 'coverage_partition_kind', 'text'),
+                 ('ka_gochara_relationship_record', 'coverage_partition_key',  'text'),
+                 ('ka_gochara_relationship_record', 'temporal_support_intervals', 'tstzrange[]'),
                  ('kala_gochara_coverage',          'chart_id',           'uuid'),
                  ('kala_gochara_coverage',          'generation',         'text'),
                  ('kala_gochara_coverage',          'partition_kind',     'text'),
@@ -152,9 +191,12 @@ BEGIN
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
                  ('ka_gochara_lock_chart(uuid)'),
+                 ('ka_gochara_lock_global_shared()'),
+                 ('ka_gochara_chart_statement_lock()'),
                  ('ka_gochara_require_sealed_rule_path()'),
                  ('ka_gochara_chart_write_guard()'),
-                 ('ka_gochara_coverage_digest(text,tstzrange,text[])')) AS e(sig)
+                 ('ka_gochara_coverage_facts(text,tstzrange,text[])'),
+                 ('ka_gochara_facts_horizon(jsonb)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     SELECT 'prerequisite_migration_not_applied', p.prefix
@@ -195,7 +237,7 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window (
   severity          REAL,                        -- finite
   coverage_partition_kind TEXT NOT NULL,         -- always 'event_class' (header)
   coverage_partition_key  TEXT NOT NULL,         -- = event_class (guard)
-  coverage_digest   TEXT NOT NULL,               -- N10: digest of the partition facts
+  coverage_facts    JSONB NOT NULL,              -- N10/N14: the partition facts snapshot
   null_states_used  TEXT[] NOT NULL DEFAULT '{}',-- ⊆ {omit, unqualified}
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -233,7 +275,10 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window (
   CONSTRAINT kgew_coverage_fk
     FOREIGN KEY (chart_id, generation, coverage_partition_kind, coverage_partition_key)
     REFERENCES public.kala_gochara_coverage (chart_id, generation, partition_kind, partition_key),
-  CONSTRAINT kgew_coverage_digest_ck CHECK (coverage_digest ~ '^[0-9a-f]{32}$'),
+  CONSTRAINT kgew_coverage_facts_shape_ck
+    CHECK (jsonb_typeof(coverage_facts) = 'object'
+           AND coverage_facts ? 'convention_id' AND coverage_facts ? 'horizon'
+           AND coverage_facts ? 'relations_searched'),
   CONSTRAINT kgew_null_states_ck
     CHECK (public.ka_gochara_text_array_ok(null_states_used, 0) IS TRUE
            AND null_states_used <@ ARRAY['omit','unqualified']::text[]),
@@ -244,11 +289,13 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window (
 COMMENT ON TABLE public.ka_gochara_eval_window IS
   'Evaluated window (GOCHARA_DESIGN_SPECS_v1_4 §2.1 eval_window contract + §3.1 valence '
   'fields): one evaluated interval per (chart, event_class, generation, path). Coverage: '
-  'the class''s event_class partition, bound by content digest (F7/N10). Membership is '
-  'normalised into ka_gochara_eval_window_record, bound on both ends to the SAME chart, '
-  'generation, class and rule version, and FROZEN once the generation is sealed (N9). Only '
-  'a sealed rule version may produce a window (F3/N5). Every write takes the '
-  'orchestrator''s chart lock first, then the global lock. TRUNCATE refused.';
+  'the class''s event_class partition, bound by an unambiguous facts snapshot (F7/N10/N14; '
+  'drift classified by ka_gochara_coverage_drift). Membership is normalised into '
+  'ka_gochara_eval_window_record, bound on both ends to the SAME chart, generation, class '
+  'and rule version, checked against the window''s coverage, and FROZEN once the generation '
+  'is sealed (N9). Only a sealed rule version may produce a window (F3/N5). Every write '
+  'takes the Gochara-5 chart family key first (statement-level for UPDATE/DELETE), then '
+  'the global family key SHARED. TRUNCATE refused.';
 
 CREATE INDEX IF NOT EXISTS idx_kgew_chart_gen ON public.ka_gochara_eval_window
   (chart_id, generation, event_class, interval);
@@ -284,18 +331,22 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window_record (
 COMMENT ON TABLE public.ka_gochara_eval_window_record IS
   'Eval-window record membership (S:185 record_ids [FK] made structural; F7): one row per '
   '(window, contributing record), bound on both ends to the SAME (chart_id, generation, '
-  'event_class, path_id, rule_version). Written once with its window; never updated; '
-  'INSERT/DELETE refused once the generation is sealed (N9). Cascades serve the §N.3 '
-  'candidate rebuild only. TRUNCATE refused.';
+  'event_class, path_id, rule_version), and to the window''s coverage: same convention, '
+  'transit relation within the window''s relations_searched, support intervals inside the '
+  'window''s horizon (N10). Written once with its window; never updated; INSERT/DELETE '
+  'refused once the generation is sealed (N9). Cascades serve the §N.3 candidate rebuild '
+  'only. TRUNCATE refused.';
 
 CREATE INDEX IF NOT EXISTS idx_kgewr_record ON public.ka_gochara_eval_window_record
   (record_id);
+CREATE INDEX IF NOT EXISTS idx_kgewr_chart_gen ON public.ka_gochara_eval_window_record
+  (chart_id, generation);
 
--- ── 3. Coverage applicability for windows (F7/N10) ─────────────────────────
+-- ── 3. Coverage applicability for windows (F7/N10/N14) ─────────────────────
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_window_coverage_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
-DECLARE cov record; digest text;
+DECLARE cov record; facts jsonb;
 BEGIN
   IF NEW.coverage_partition_kind <> 'event_class' THEN
     RETURN NEW;   -- a wrong partition kind is the CHECK constraint's finding (kgew_coverage_kind_ck)
@@ -314,10 +365,10 @@ BEGIN
     RAISE EXCEPTION 'ka_gochara_eval_window coverage not applicable (N10): partition (%, %) carries a NULL relations_searched element',
       cov.partition_kind, cov.partition_key;
   END IF;
-  digest := public.ka_gochara_coverage_digest(cov.convention_id, cov.completed_horizon, cov.relations_searched);
-  IF NEW.coverage_digest IS DISTINCT FROM digest THEN
-    RAISE EXCEPTION 'ka_gochara_eval_window.coverage_digest % does not bind to the partition''s current facts (expected %) (N10)',
-      NEW.coverage_digest, digest;
+  facts := public.ka_gochara_coverage_facts(cov.convention_id, cov.completed_horizon, cov.relations_searched);
+  IF NEW.coverage_facts IS DISTINCT FROM facts THEN
+    RAISE EXCEPTION 'ka_gochara_eval_window.coverage_facts % does not equal the partition''s current facts % (N10/N14)',
+      NEW.coverage_facts, facts;
   END IF;
   IF cov.partition_key <> NEW.event_class THEN
     RAISE EXCEPTION 'ka_gochara_eval_window coverage not applicable (F7): event_class partition ''%'' does not cover class ''%''',
@@ -331,8 +382,112 @@ BEGIN
 END;
 $$;
 
--- ── 4. Triggers (name order = firing order: lock → coverage → rule seal) ──
+-- ── 4. Coverage applicability to window CONTRIBUTORS (N10) ─────────────────
+-- Fires AFTER the chart guard took the chart family key. The FKs already
+-- bind both ends to the same (chart, generation, class, path); this binds
+-- the contributor to the window's COVERAGE.
+CREATE OR REPLACE FUNCTION public.ka_gochara_window_membership_guard()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE
+  w   record;
+  r   record;
+  wh  tstzrange;
+  iv  tstzrange;
+BEGIN
+  SELECT x.coverage_facts INTO w
+  FROM public.ka_gochara_eval_window x
+  WHERE x.window_id = NEW.window_id;
+  IF NOT FOUND THEN
+    RETURN NEW;   -- the FK reports a missing window
+  END IF;
+  SELECT y.contact_id, y.relation, y.coverage_facts, y.temporal_support_intervals INTO r
+  FROM public.ka_gochara_relationship_record y
+  WHERE y.record_id = NEW.record_id;
+  IF NOT FOUND THEN
+    RETURN NEW;   -- the FK reports a missing record
+  END IF;
+  IF (r.coverage_facts ->> 'convention_id') IS DISTINCT FROM (w.coverage_facts ->> 'convention_id') THEN
+    RAISE EXCEPTION 'ka_gochara_eval_window_record not applicable (N10): record % was validated under convention ''%'' but window % was searched under convention ''%''',
+      NEW.record_id, r.coverage_facts ->> 'convention_id', NEW.window_id, w.coverage_facts ->> 'convention_id';
+  END IF;
+  IF r.contact_id IS NOT NULL
+     AND NOT COALESCE((w.coverage_facts -> 'relations_searched') @> to_jsonb(ARRAY[r.relation]), false) THEN
+    RAISE EXCEPTION 'ka_gochara_eval_window_record not applicable (N10): transit record % has relation ''%'' which window % did not search (relations_searched %)',
+      NEW.record_id, r.relation, NEW.window_id, w.coverage_facts -> 'relations_searched';
+  END IF;
+  wh := public.ka_gochara_facts_horizon(w.coverage_facts);
+  FOREACH iv IN ARRAY r.temporal_support_intervals LOOP
+    IF NOT COALESCE(wh @> iv, false) THEN
+      RAISE EXCEPTION 'ka_gochara_eval_window_record not applicable (N10): record % support interval % lies outside window %''s coverage horizon %',
+        NEW.record_id, iv, NEW.window_id, wh;
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
 
+-- ── 5. The N10 consumer contract: drift classifier over records + windows ──
+
+CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_drift(p_chart_id uuid, p_generation text)
+RETURNS TABLE (
+  consumer        text,
+  consumer_id     uuid,
+  partition_kind  text,
+  partition_key   text,
+  drift           text,
+  stored_facts    jsonb,
+  current_facts   jsonb)
+LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+  WITH consumers AS (
+    SELECT 'relationship_record'::text AS consumer, r.record_id AS consumer_id,
+           r.coverage_partition_kind, r.coverage_partition_key, r.coverage_facts
+    FROM public.ka_gochara_relationship_record r
+    WHERE r.chart_id = p_chart_id AND r.generation = p_generation
+    UNION ALL
+    SELECT 'eval_window'::text, w.window_id,
+           w.coverage_partition_kind, w.coverage_partition_key, w.coverage_facts
+    FROM public.ka_gochara_eval_window w
+    WHERE w.chart_id = p_chart_id AND w.generation = p_generation
+  )
+  SELECT c.consumer, c.consumer_id, c.coverage_partition_kind, c.coverage_partition_key,
+         CASE
+           WHEN cov.chart_id IS NULL THEN 'partition_missing'
+           WHEN cur.facts = c.coverage_facts THEN 'identical'
+           WHEN cov.convention_id IS NOT DISTINCT FROM (c.coverage_facts ->> 'convention_id')
+                AND cov.relations_searched IS NOT NULL
+                AND array_position(cov.relations_searched, NULL) IS NULL
+                AND COALESCE(cov.completed_horizon @> public.ka_gochara_facts_horizon(c.coverage_facts), false)
+                AND COALESCE((SELECT bool_and(e = ANY (cov.relations_searched))
+                              FROM jsonb_array_elements_text(c.coverage_facts -> 'relations_searched') e), true)
+                AND jsonb_typeof(c.coverage_facts -> 'relations_searched') = 'array'
+             THEN 'extended'
+           ELSE 'incompatible'
+         END AS drift,
+         c.coverage_facts AS stored_facts,
+         cur.facts AS current_facts
+  FROM consumers c
+  LEFT JOIN public.kala_gochara_coverage cov
+    ON cov.chart_id = p_chart_id AND cov.generation = p_generation
+   AND cov.partition_kind = c.coverage_partition_kind AND cov.partition_key = c.coverage_partition_key
+  CROSS JOIN LATERAL (
+    SELECT CASE WHEN cov.chart_id IS NULL THEN NULL::jsonb
+                ELSE public.ka_gochara_coverage_facts(cov.convention_id, cov.completed_horizon, cov.relations_searched)
+           END AS facts) cur;
+$$;
+
+COMMENT ON FUNCTION public.ka_gochara_coverage_drift(uuid, text) IS
+  'N10 consumer contract: classifies every record/window of (chart, generation) against '
+  'its coverage partition''s CURRENT facts — identical | extended (same convention, horizon '
+  '⊇ stored, relations ⊇ stored, no NULL: still valid) | incompatible | partition_missing. '
+  'ka_gochara_seal_generation refuses to seal while any consumer is incompatible or '
+  'partition_missing; serve-time consumers treat incompatible as re-validate-before-use.';
+
+-- ── 6. Triggers (statement lock → row: lock/seal → coverage → rule seal) ──
+
+DROP TRIGGER IF EXISTS ka_gochara_ew_0_statement_lock ON public.ka_gochara_eval_window;
+CREATE TRIGGER ka_gochara_ew_0_statement_lock
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_eval_window
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_chart_statement_lock();
 DROP TRIGGER IF EXISTS ka_gochara_ew_1_write_guard ON public.ka_gochara_eval_window;
 CREATE TRIGGER ka_gochara_ew_1_write_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_eval_window
@@ -350,16 +505,24 @@ CREATE TRIGGER ka_gochara_ew_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_eval_window
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
+DROP TRIGGER IF EXISTS ka_gochara_ewr_0_statement_lock ON public.ka_gochara_eval_window_record;
+CREATE TRIGGER ka_gochara_ewr_0_statement_lock
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_eval_window_record
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_chart_statement_lock();
 DROP TRIGGER IF EXISTS ka_gochara_ewr_1_write_guard ON public.ka_gochara_eval_window_record;
 CREATE TRIGGER ka_gochara_ewr_1_write_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_eval_window_record
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_chart_write_guard('no_update');
+DROP TRIGGER IF EXISTS ka_gochara_ewr_2_membership_guard ON public.ka_gochara_eval_window_record;
+CREATE TRIGGER ka_gochara_ewr_2_membership_guard
+  BEFORE INSERT ON public.ka_gochara_eval_window_record
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_window_membership_guard();
 DROP TRIGGER IF EXISTS ka_gochara_ewr_no_truncate ON public.ka_gochara_eval_window_record;
 CREATE TRIGGER ka_gochara_ewr_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_eval_window_record
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
--- ── 5. Post-apply PRESENCE checks (steward ruling 3) ───────────────────────
+-- ── 7. Post-apply PRESENCE checks (steward ruling 3) ───────────────────────
 DO $$
 DECLARE missing text;
 BEGIN
@@ -368,6 +531,9 @@ BEGIN
   WHERE to_regclass('public.' || t) IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1156 post-apply check failed: missing table: %', missing;
+  END IF;
+  IF to_regprocedure('public.ka_gochara_coverage_drift(uuid,text)') IS NULL THEN
+    RAISE EXCEPTION 'migration 1156 post-apply check failed: ka_gochara_coverage_drift(uuid,text) missing';
   END IF;
 
   WITH expected(conrelid, conname) AS (VALUES
@@ -384,7 +550,7 @@ BEGIN
       ('ka_gochara_eval_window','kgew_valence_ck'),
       ('ka_gochara_eval_window','kgew_coverage_kind_ck'),
       ('ka_gochara_eval_window','kgew_coverage_fk'),
-      ('ka_gochara_eval_window','kgew_coverage_digest_ck'),
+      ('ka_gochara_eval_window','kgew_coverage_facts_shape_ck'),
       ('ka_gochara_eval_window','kgew_null_states_ck'),
       ('ka_gochara_eval_window','kgew_membership_uq'),
       ('ka_gochara_eval_window_record','ka_gochara_eval_window_record_pkey'),
@@ -401,11 +567,14 @@ BEGIN
   END IF;
 
   WITH expected(tgrelid, tgname) AS (VALUES
+      ('ka_gochara_eval_window','ka_gochara_ew_0_statement_lock'),
       ('ka_gochara_eval_window','ka_gochara_ew_1_write_guard'),
       ('ka_gochara_eval_window','ka_gochara_ew_2_coverage_guard'),
       ('ka_gochara_eval_window','ka_gochara_ew_3_sealed_path_check'),
       ('ka_gochara_eval_window','ka_gochara_ew_no_truncate'),
+      ('ka_gochara_eval_window_record','ka_gochara_ewr_0_statement_lock'),
       ('ka_gochara_eval_window_record','ka_gochara_ewr_1_write_guard'),
+      ('ka_gochara_eval_window_record','ka_gochara_ewr_2_membership_guard'),
       ('ka_gochara_eval_window_record','ka_gochara_ewr_no_truncate'))
   SELECT string_agg(e.tgrelid || '.' || e.tgname, ', ' ORDER BY 1) INTO missing
   FROM expected e

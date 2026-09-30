@@ -2,9 +2,9 @@
 --                 factor, the NORMALISED ordered version-bound membership
 --                 tables, and the rule-version SEAL that makes a complete
 --                 rule definition immutable after construction (F3), all
---                 serialised under the orchestrator's global-assets lock (N5).
---                 Round-4 rewrite per ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 under
---                 the steward's simplification ruling. Depends on 1153.
+--                 serialised under the Gochara-5 GLOBAL family key (N5/N12).
+--                 Round-5 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_3 under the
+--                 steward's corrected lock ruling. Depends on 1153.
 --                 1153–1157 were never applied anywhere — in-place rewrite.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
@@ -19,23 +19,28 @@
 -- presence checks. Deploy route: the protected public-schema window
 -- (deploy.yml `gochara_contracts_schema_migration`).
 --
--- ── F3 + N5 — rule-version completion, serialised (steward ruling 2) ─────
+-- ── F3 + N5 — rule-version completion, serialised (steward ruling B) ─────
 -- prerequisites / soft_factors are membership rows with real composite FKs.
 -- A version is CONSTRUCTED (rule_path row + membership rows) and then SEALED
--- (ka_gochara_rule_path_seal row). Every write to the registries, the
--- memberships and the seal FIRST takes pg_advisory_xact_lock on the
--- orchestrator's global-assets key (hashtext('nirmana-global-assets')) and
--- only then reads seal state, so:
+-- (ka_gochara_rule_path_seal row). Every INSERT into the registries, the
+-- memberships and the seal FIRST takes the Gochara-5 GLOBAL family key
+-- EXCLUSIVE (hashtext('gochara5:global'), transaction-scoped — never the
+-- orchestrator's session key, N12) and only then reads seal state; UPDATE /
+-- DELETE are refused BEFORE any lock (a refused statement never waits, N13).
+-- Registry mutations never take a chart key (enforced by the lock helpers:
+-- a transaction that already holds a chart key cannot take this key
+-- EXCLUSIVE, and vice versa), so:
 --   * a membership INSERT and a seal INSERT for the same version SERIALISE:
 --     whichever commits first wins — a seal committed first refuses the
 --     later membership; a membership committed first is part of the sealed
 --     definition; neither can interleave (N5 both orders);
 --   * a record/window produced against a version (1155/1156's
---     ka_gochara_require_sealed_rule_path, which takes the chart lock and
---     then this lock) waits for any in-flight construction and then sees the
---     committed seal state — production against an unsealed version is
---     refused (N5's "record production before the membership commits");
---   * UPDATE/DELETE were never allowed (insert-only), TRUNCATE is refused.
+--     ka_gochara_require_sealed_rule_path, which takes the chart key and
+--     then this key SHARED) waits for any in-flight construction and then
+--     sees the committed seal state — production against an unsealed
+--     version is refused; many chart writers read concurrently (SHARED),
+--     a registry mutation waits for them and never for a chart key;
+--   * TRUNCATE is refused.
 --
 -- ── F6 — factor discipline exactly as the binding C2 ruling (kept) ───────
 -- range ⊆ [0,1] (finite); calibration_status NOT NULL ∈ {uncalibrated_default,
@@ -141,6 +146,7 @@ BEGIN
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
                  ('ka_gochara_global_write_guard()'),
                  ('ka_gochara_lock_global()'),
+                 ('ka_gochara_lock_global_shared()'),
                  ('ka_gochara_lock_chart(uuid)'),
                  ('ka_gochara_finite_ok(double precision)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
@@ -288,7 +294,7 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_predicate (
 COMMENT ON TABLE public.ka_gochara_predicate IS
   'Predicate registry (GOCHARA_DESIGN_SPECS_v1_4 §2.1): composite (predicate_id, '
   'rule_version) PK; states {true|false|unknown} are evaluator semantics; '
-  'unknown_is_false pinned false. Insert-only under the global-assets lock; TRUNCATE refused.';
+  'unknown_is_false pinned false. Insert-only under the Gochara-5 global family key; TRUNCATE refused.';
 
 DROP TRIGGER IF EXISTS ka_gochara_predicate_write_guard ON public.ka_gochara_predicate;
 CREATE TRIGGER ka_gochara_predicate_write_guard
@@ -347,7 +353,7 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_factor (
 COMMENT ON TABLE public.ka_gochara_factor IS
   'Soft-factor registry (GOCHARA_DESIGN_SPECS_v1_4 §2.1): composite (factor_id, '
   'rule_version) PK. Codomain ⊆ [0,1]. Calibration discipline exactly per D-SPECS C2 (F6). '
-  'Insert-only under the global-assets lock; TRUNCATE refused.';
+  'Insert-only under the Gochara-5 global family key; TRUNCATE refused.';
 
 DROP TRIGGER IF EXISTS ka_gochara_factor_write_guard ON public.ka_gochara_factor;
 CREATE TRIGGER ka_gochara_factor_write_guard
@@ -396,7 +402,7 @@ COMMENT ON TABLE public.ka_gochara_rule_path IS
   'Rule-path registry (GOCHARA_DESIGN_SPECS_v1_4 §2.1): composite (path_id, rule_version) '
   'PK. prerequisites/soft_factors are NORMALISED into membership tables with real '
   'composite FKs; a version is complete once its ka_gochara_rule_path_seal row exists (F3), '
-  'all under the orchestrator''s global-assets lock (N5). Insert-only; TRUNCATE refused.';
+  'all under the Gochara-5 global family key (N5/N12). Insert-only; TRUNCATE refused.';
 
 DROP TRIGGER IF EXISTS ka_gochara_rule_path_write_guard ON public.ka_gochara_rule_path;
 CREATE TRIGGER ka_gochara_rule_path_write_guard
@@ -452,10 +458,11 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_rule_path_seal (
 COMMENT ON TABLE public.ka_gochara_rule_path_seal IS
   'Rule-version completion boundary (F3/N5): after this row exists no prerequisite/'
   'soft-factor row can be added to the version, and only sealed versions may be referenced '
-  'by records/windows. Written and read under the orchestrator''s global-assets lock, so '
-  'sealing and membership construction serialise in both orders. Insert-only; TRUNCATE refused.';
+  'by records/windows. Written under the Gochara-5 global family key EXCLUSIVE and read '
+  'SHARED, so sealing and membership construction serialise in both orders. Insert-only; '
+  'TRUNCATE refused.';
 
--- Membership INSERT: lock first, THEN read the seal (N5).
+-- Membership INSERT: global family key EXCLUSIVE first, THEN read the seal (N5).
 CREATE OR REPLACE FUNCTION public.ka_gochara_membership_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
@@ -469,11 +476,12 @@ BEGIN
 END;
 $$;
 
--- Used by 1155/1156 (after the chart lock): lock global, THEN read the seal.
+-- Used by 1155/1156 (after the chart family key): global family key SHARED,
+-- THEN read the seal (ruling B: chart EXCLUSIVE → global SHARED).
 CREATE OR REPLACE FUNCTION public.ka_gochara_require_sealed_rule_path()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
-  PERFORM public.ka_gochara_lock_global();
+  PERFORM public.ka_gochara_lock_global_shared();
   IF NOT EXISTS (SELECT 1 FROM public.ka_gochara_rule_path_seal s
                  WHERE s.path_id = NEW.path_id AND s.rule_version = NEW.rule_version) THEN
     RAISE EXCEPTION '% refused (F3/N5): rule version (%, %) is not sealed — only a completed (sealed) rule version may produce records or windows',

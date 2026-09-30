@@ -1,11 +1,12 @@
 -- Migration 1157: ka_gochara_av_polarity_declaration — the §8.1 bindu
 --                 polarity declaration, gated before any citation-bearing AV
---                 weight (GOCHARA_DESIGN_SPECS_v1_4 §8, T0-11). Round-4
---                 rewrite per ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 under the
---                 steward's simplification ruling (global-assets lock on every
---                 write; presence checks instead of a verifier). Depends on
---                 1153 (shared helpers). Never applied anywhere — in-place
---                 rewrite of the same number.
+--                 weight (GOCHARA_DESIGN_SPECS_v1_4 §8, T0-11). Round-5 per
+--                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_3 under the steward's
+--                 corrected lock ruling: this table is chart-independent and
+--                 constraint-guarded (PK + CHECKs), so it takes NO family key
+--                 — insert-only guard without a lock; presence checks instead
+--                 of a verifier. Depends on 1153 (shared helpers). Never
+--                 applied anywhere — in-place rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
 -- Numbering: 1157 sits inside this lane's granted block (1150–1159 per
@@ -27,7 +28,8 @@
 --     malefic_mark_name / source_ref NOT NULL non-blank, and the two mark
 --     names distinct; applies_to_fact_categories text[] NOT NULL with ≥ 1
 --     element and no NULL/blank element (F11).
---   * TRIGGER: insert-only under the orchestrator's global-assets lock +
+--   * TRIGGER: insert-only (ka_gochara_insert_only — no family key: the PK
+--     serialises what needs serialising, and a refusal never waits) +
 --     TRUNCATE refused — the declaration is data that evaluations join and
 --     record in lineage (§8.2 inv 2, O-BP-3); a change is a new convention row.
 --   * COMMENT ONLY: §8.2 inv 1 and O-BP-3's write-time citation rejection are
@@ -85,7 +87,7 @@ BEGIN
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
-                 ('ka_gochara_global_write_guard()')) AS e(sig)
+                 ('ka_gochara_insert_only()')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     SELECT 'prerequisite_migration_not_applied', p.prefix
@@ -129,13 +131,13 @@ COMMENT ON TABLE public.ka_gochara_av_polarity_declaration IS
   'AV bindu polarity declaration (GOCHARA_DESIGN_SPECS_v1_4 §8.1): declared before any '
   'citation-bearing AV weight exists (§8.2 inv 1 — T0-11 gates P5; writer-side gate). The '
   'declaration is data: evaluations join it and record it in lineage (§8.2 inv 2, O-BP-3). '
-  'Insert-only under the orchestrator''s global-assets lock: a change is a new convention '
-  'row; TRUNCATE refused.';
+  'Insert-only (no family key — constraint-guarded): a change is a new convention row; '
+  'TRUNCATE refused.';
 
 DROP TRIGGER IF EXISTS ka_gochara_av_polarity_write_guard ON public.ka_gochara_av_polarity_declaration;
 CREATE TRIGGER ka_gochara_av_polarity_write_guard
-  BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_av_polarity_declaration
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_global_write_guard('§8.1/§8.2 inv 2 — a polarity change is a new convention row');
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_av_polarity_declaration
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_insert_only('§8.1/§8.2 inv 2 — a polarity change is a new convention row');
 DROP TRIGGER IF EXISTS ka_gochara_av_polarity_no_truncate ON public.ka_gochara_av_polarity_declaration;
 CREATE TRIGGER ka_gochara_av_polarity_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_av_polarity_declaration

@@ -1,21 +1,34 @@
 // @vitest-environment node
 /**
- * Pravāha A5.1 round 4 — STATIC contract checks on migrations 1153–1157, their
+ * Pravāha A5.1 round 5 — STATIC contract checks on migrations 1153–1157, their
  * preflights, the runner's protected-file refusal and the deploy window,
  * asserted against the on-disk sources (CLAUDE.md §N.8: the detector reads
  * what ships).
  *
- * Steward simplification ruling (ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 N1–N11):
- *   1. NO trigger, lock or constraint on any existing table; the seal is
- *      written explicitly by ka_gochara_seal_generation(); legacy generations
- *      are refused by ka_gochara_generation_governed on every chart-scoped table.
- *   2. ONE lock order — the orchestrator's keys (hashtext(chart_id) /
- *      hashtext('nirmana-global-assets')); every mutating trigger locks FIRST.
+ * Steward rulings (ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 N1–N11, v1_3 N12–N15 + P2,
+ * with the CORRECTED lock ruling superseding the round-4 "orchestrator's keys"):
+ *   1. NO trigger on any existing table; the seal is written explicitly by
+ *      ka_gochara_seal_generation(); legacy generations are refused by
+ *      ka_gochara_generation_governed on every chart-scoped table. Foreign keys
+ *      to charts / kala_gochara_convention / kala_gochara_coverage are DISCLOSED
+ *      (P2), not denied.
+ *   A. The Gochara-5 FAMILY keys (N12): pg_advisory_xact_lock over
+ *      hashtext('gochara5:chart:' || chart_id) and hashtext('gochara5:global');
+ *      NEVER the orchestrator's session keys (hashtext(chart_id) /
+ *      hashtext('nirmana-global-assets')), which the scheduler holds on its
+ *      main connection while writers run on worker connections.
+ *   B. Fixed, ENFORCED order (N13): chart-scoped mutators take the chart key
+ *      EXCLUSIVE first, then (if they read rule-path seal state) the global
+ *      key SHARED; registry/seal/membership mutators take the global key
+ *      EXCLUSIVE and never a chart key; refusals raise BEFORE any lock; the
+ *      family key precedes tuple locks via BEFORE … FOR EACH STATEMENT triggers.
  *   3. NO custom verifier and NO replay GUC; presence checks only.
  *   4. 1153–1157 apply through the protected public-schema window; the routine
  *      runner refuses them.
- *   5. N6/N7/N8/N10/N11 fixed as written (checked by name here; behaviour in
- *      the live-DB suite).
+ *   D. N14 unambiguous coverage facts; N10 consumer contract
+ *      (ka_gochara_coverage_drift + seal refusal + window-contributor
+ *      applicability); N7/N15 precision-only re-sync skips coverage
+ *      re-validation; P2 honest operational assertions.
  *
  * Live-DB behaviour is covered by tests/integration/gochara_a5_1_migrations.db.test.ts.
  */
@@ -27,6 +40,7 @@ import { PROTECTED_PUBLIC_SCHEMA_MIGRATIONS, assertGeneralRunnerMayApplyPublicSc
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
 const PREFLIGHT_DIR = path.resolve(process.cwd(), '../platform/python-sidecar/scripts/kala_gochara_cutover')
 const LOCKS_PY = path.resolve(process.cwd(), 'python-sidecar/pipeline/orchestrator/locks.py')
+const RUNNER_PY = path.resolve(process.cwd(), 'python-sidecar/pipeline/orchestrator/runner.py')
 
 const MIGRATIONS = {
   1153: '1153_gochara_sky_event_substrate.sql',
@@ -90,6 +104,8 @@ const CHART_SCOPED = new Set([
   'ka_gochara_generation_seal', 'ka_gochara_contact', 'ka_gochara_relationship_record',
   'ka_gochara_record_prerequisite', 'ka_gochara_eval_window', 'ka_gochara_eval_window_record',
 ])
+/** Chart-scoped tables that permit UPDATE/DELETE at all (the seal refuses both before any lock). */
+const CHART_SCOPED_MUTABLE = [...CHART_SCOPED].filter(t => t !== 'ka_gochara_generation_seal')
 
 const EVENT_CLASS_LIST = [
   'achievement_recognition', 'bereavement', 'birth_anchor',
@@ -103,7 +119,7 @@ const EVENT_CLASS_LIST = [
   'travel_event',
 ]
 
-describe('A5.1 migrations 1153–1157 — static contract (round 4, steward simplification ruling)', () => {
+describe('A5.1 migrations 1153–1157 — static contract (round 5, corrected lock ruling)', () => {
   it.each(ALL)('amendment 2: migration %i owns NO transaction (no BEGIN/COMMIT; runner owns it)', n => {
     const sql = readMigration(n)
     expect(sql).not.toMatch(/^\s*BEGIN\s*;/im)
@@ -171,6 +187,12 @@ describe('A5.1 migrations 1153–1157 — static contract (round 4, steward simp
       expect(readPreflight(n)).toContain("c.contype IN ('p','u')")
     }
     expect(readPreflight(1153)).toContain("has_table_privilege(p.t, 'REFERENCES')")
+    // every helper the later files depend on is gated by exact signature, including the round-5 ones
+    expect(readPreflight(1154)).toContain("('ka_gochara_lock_global_shared()')")
+    expect(readPreflight(1155)).toContain("('ka_gochara_chart_statement_lock()')")
+    expect(readPreflight(1156)).toContain("('ka_gochara_coverage_facts(text,tstzrange,text[])')")
+    expect(readPreflight(1156)).toContain("('ka_gochara_facts_horizon(jsonb)')")
+    expect(readPreflight(1157)).toContain("('ka_gochara_insert_only()')")
   })
 
   // ── Ruling 3: no verifier, no replay GUC — presence checks only ──────────
@@ -186,8 +208,8 @@ describe('A5.1 migrations 1153–1157 — static contract (round 4, steward simp
     expect(sql).toContain("NOT t.tgisinternal AND t.tgenabled = 'O'")
   })
 
-  // ── Ruling 1: nothing on any existing table; explicit seal; legacy refused ──
-  it('ruling 1 (N1): no trigger, FK or lock on any existing table; the seal is explicit; legacy generations are refused', () => {
+  // ── Ruling 1: no trigger on any existing table; explicit seal; legacy refused ──
+  it('ruling 1 (N1): no trigger on any existing table; FKs only to charts / convention / coverage (disclosed); the seal is explicit; legacy generations are refused', () => {
     const sub = readMigration(1153)
     expect(sub).not.toContain('ON public.kala_gochara_publication')
     expect(sub).not.toContain('REFERENCES public.kala_gochara_publication')
@@ -207,67 +229,161 @@ describe('A5.1 migrations 1153–1157 — static contract (round 4, steward simp
         expect(section.slice(0, end), `${t} generation CHECK`).toContain('ka_gochara_generation_governed(generation) IS TRUE')
       }
     }
-    // the only trigger created on a non-ka_gochara table is none at all
+    // no trigger of ours on a non-ka_gochara table
+    const referenced = new Set<string>()
     for (const n of ALL) {
-      const created = [...readMigration(n).matchAll(/CREATE (?:CONSTRAINT )?TRIGGER \w+\n\s+(?:BEFORE|AFTER) [^\n]+ ON public\.(\w+)/g)].map(m => m[1]!)
+      const sql = readMigration(n)
+      const created = [...sql.matchAll(/CREATE (?:CONSTRAINT )?TRIGGER \w+\n\s+(?:BEFORE|AFTER) [^\n]+ ON public\.(\w+)/g)].map(m => m[1]!)
       for (const t of created) expect(t, `trigger target ${t} in ${n}`).toMatch(/^ka_gochara_/)
+      for (const m of sql.matchAll(/REFERENCES public\.(\w+)/g)) if (!m[1]!.startsWith('ka_gochara_')) referenced.add(m[1]!)
     }
+    // the FK surface on existing tables is exactly the disclosed one (P2)
+    expect([...referenced].sort()).toEqual(['charts', 'kala_gochara_convention', 'kala_gochara_coverage'])
     // the seal reads the manifest, it never binds to it
     expect(sub).toContain("p.status = 'published'")
     expect(sub).toContain('manifest_id UUID NOT NULL,')
   })
 
-  // ── Ruling 2: one lock order — the orchestrator's keys ───────────────────
-  it('ruling 2 (N2/N5): the lock helpers use the orchestrator\'s exact keys and refuse non-READ COMMITTED', () => {
+  // ── Ruling A (N12): the family keys, never the orchestrator's ────────────
+  it('ruling A (N12): the lock helpers use the Gochara-5 FAMILY keys, transaction-scoped, never the orchestrator\'s session keys', () => {
     const sub = readMigration(1153)
     const locks = fs.readFileSync(LOCKS_PY, 'utf8')
+    const runner = fs.readFileSync(RUNNER_PY, 'utf8')
+    // the orchestrator's keys, as shipped (what we must NOT take)
     expect(locks).toContain('_GLOBAL_ASSETS_LOCK_KEY = "nirmana-global-assets"')
     expect(locks).toContain('pg_try_advisory_lock(hashtext(%s))')
-    expect(sub).toContain('PERFORM pg_advisory_xact_lock(hashtext(p_chart_id::text)::bigint);')
-    expect(sub).toContain("PERFORM pg_advisory_xact_lock(hashtext('nirmana-global-assets')::bigint);")
-    expect(sub).not.toContain("hashtext('ka_gochara_generation:'")
-    expect((sub.match(/current_setting\('transaction_isolation'\) <> 'read committed'/g) ?? []).length).toBe(2)
+    expect(runner).toContain('acquire_chart_lock(')
+    // the family keys
+    expect(sub).toContain("PERFORM pg_advisory_xact_lock(hashtext('gochara5:chart:' || p_chart_id::text)::bigint);")
+    expect(sub).toContain("PERFORM pg_advisory_xact_lock(hashtext('gochara5:global')::bigint);")
+    expect(sub).toContain("PERFORM pg_advisory_xact_lock_shared(hashtext('gochara5:global')::bigint);")
+    expect(sub).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_lock_global_shared()')
+    for (const n of ALL) {
+      const sql = readMigration(n)
+      const code = functionBodies(sql).map(f => f.body).join('\n')   // executable bodies, not header prose
+      expect(code, `${n} must not take the orchestrator's global key`).not.toContain('nirmana-global-assets')
+      expect(code, `${n} must not take the orchestrator's chart key`).not.toMatch(/hashtext\(\s*p_chart_id::text\s*\)/)
+      expect(code, `${n} must not take a SESSION advisory lock`).not.toMatch(/pg_advisory_lock\(/)
+      expect(code, `${n} must not take a SESSION advisory lock`).not.toMatch(/pg_try_advisory_lock\(/)
+      expect(code, `${n} must not take a SESSION advisory lock`).not.toMatch(/pg_advisory_lock_shared\(/)
+    }
+    expect((sub.match(/current_setting\('transaction_isolation'\) <> 'read committed'/g) ?? []).length).toBe(3)
   })
 
-  it('ruling 2: every mutating trigger function locks FIRST, on the right key, chart before global', () => {
+  // ── Ruling B (N13): the fixed order is ENFORCED, and precedes tuple locks ─
+  it('ruling B (N13): transaction-local markers enforce chart-EXCLUSIVE → global-SHARED and refuse the two illegal mixes', () => {
+    const sub = readMigration(1153)
+    const bodies = new Map(functionBodies(sub).map(f => [f.name, f.body]))
+    const chart = bodies.get('ka_gochara_lock_chart')!
+    const global = bodies.get('ka_gochara_lock_global')!
+    const shared = bodies.get('ka_gochara_lock_global_shared')!
+    // chart refuses inside a global-EXCLUSIVE holder; global-EXCLUSIVE refuses inside a chart or global-SHARED holder
+    expect(chart).toContain("current_setting('gochara5.global_exclusive', true), '') = 'on'")
+    expect(chart).toContain('lock-order violation')
+    expect(chart).toContain("set_config('gochara5.chart_locked', 'on', true)")
+    expect(global).toContain("current_setting('gochara5.chart_locked', true), '') = 'on'")
+    expect(global).toContain("current_setting('gochara5.global_shared', true), '') = 'on'")
+    expect(global).toContain('lock-order violation')
+    expect(global).toContain("set_config('gochara5.global_exclusive', 'on', true)")
+    expect(shared).toContain("set_config('gochara5.global_shared', 'on', true)")
+    expect(shared).not.toContain('lock-order violation')   // chart → shared is the one legal mix
+    // the check precedes the lock call in both refusing helpers
+    expect(chart.indexOf('lock-order violation')).toBeLessThan(chart.indexOf('pg_advisory_xact_lock('))
+    expect(global.indexOf('lock-order violation')).toBeLessThan(global.indexOf('pg_advisory_xact_lock('))
+  })
+
+  it('ruling B (N13): every mutating trigger function is classified — chart-first, global-EXCLUSIVE-only, global-SHARED-after-chart, no-lock constraint-guarded, or locked by a predecessor', () => {
     const chartFirst = new Set(['ka_gochara_contact_guard', 'ka_gochara_chart_write_guard', 'ka_gochara_generation_seal_guard',
-      'ka_gochara_seal_generation', 'ka_gochara_generation_is_sealed'])
-    const globalFirst = new Set(['ka_gochara_global_write_guard', 'ka_gochara_sky_event_supersede_guard', 'ka_gochara_sky_event_guard',
-      'ka_gochara_contact_identity_supersede_guard', 'ka_gochara_membership_guard', 'ka_gochara_require_sealed_rule_path'])
-    // functions that run strictly AFTER a locking row trigger in the same statement/transaction
+      'ka_gochara_seal_generation', 'ka_gochara_generation_is_sealed', 'ka_gochara_chart_statement_lock'])
+    const globalExclusive = new Set(['ka_gochara_global_write_guard', 'ka_gochara_membership_guard'])
+    const globalShared = new Set(['ka_gochara_require_sealed_rule_path'])
+    // constraint-guarded tables: insert-only / supersession checks need NO family key
+    const noLock = new Set(['ka_gochara_insert_only', 'ka_gochara_sky_event_supersede_guard', 'ka_gochara_sky_event_guard',
+      'ka_gochara_contact_identity_supersede_guard', 'ka_gochara_refuse_truncate'])
+    // functions that run strictly AFTER a locking trigger in the same statement/transaction
     const lockedByPredecessor = new Set(['ka_gochara_record_coverage_guard', 'ka_gochara_window_coverage_guard',
-      'ka_gochara_record_finalize_check', 'ka_gochara_contact_propagate_precision'])
+      'ka_gochara_window_membership_guard', 'ka_gochara_record_finalize_check', 'ka_gochara_contact_propagate_precision'])
     let seen = 0
     for (const n of ALL) {
       for (const { name, body } of functionBodies(readMigration(n))) {
-        if (!chartFirst.has(name) && !globalFirst.has(name)) {
-          if (name.includes('guard') || name.includes('seal') || name.includes('check')) {
-            expect(lockedByPredecessor.has(name) || /RAISE EXCEPTION 'TRUNCATE refused/.test(body), `${name} is a mutating trigger without a lock classification`).toBe(true)
-          }
+        const isTriggerish = name.includes('guard') || name.includes('seal') || name.includes('check') || name.includes('lock') || name.includes('propagate') || name.includes('truncate') || name.includes('insert_only')
+        if (!isTriggerish || /^ka_gochara_lock_(chart|global|global_shared)$/.test(name)) continue
+        const classified = chartFirst.has(name) || globalExclusive.has(name) || globalShared.has(name) || noLock.has(name) || lockedByPredecessor.has(name)
+        expect(classified, `${name} is a mutating trigger function without a lock classification`).toBe(true)
+        seen++
+        if (noLock.has(name) || lockedByPredecessor.has(name)) {
+          expect(body, `${name} must not take a family key itself`).not.toMatch(/ka_gochara_lock_(chart|global|global_shared)\(/)
           continue
         }
-        seen++
-        const lockIdx = body.search(chartFirst.has(name) ? /PERFORM public\.ka_gochara_lock_chart\(/ : /PERFORM public\.ka_gochara_lock_global\(\)/)
-        expect(lockIdx, `${name} must take the lock`).toBeGreaterThan(-1)
-        const firstRead = body.search(/FROM public\.|INSERT INTO public\.|UPDATE public\./)
-        expect(firstRead === -1 || lockIdx < firstRead, `${name} must lock before it reads or writes`).toBe(true)
         if (chartFirst.has(name)) {
-          const globalIdx = body.indexOf('ka_gochara_lock_global')
-          expect(globalIdx === -1 || globalIdx > lockIdx, `${name} must take the chart lock before the global lock`).toBe(true)
+          const lockIdx = body.search(/PERFORM public\.ka_gochara_lock_chart\(/)
+          expect(lockIdx, `${name} must take the chart family key`).toBeGreaterThan(-1)
+          // the statement lock's only read IS the key selection (distinct chart_ids); every other
+          // chart-first function locks before it reads or writes any content
+          const firstRead = name === 'ka_gochara_chart_statement_lock' ? -1 : body.search(/FROM public\.|INSERT INTO public\.|UPDATE public\./)
+          expect(firstRead === -1 || lockIdx < firstRead, `${name} must lock before it reads or writes`).toBe(true)
+          expect(body, `${name} must never take the global key EXCLUSIVE`).not.toContain('ka_gochara_lock_global()')
+        }
+        if (globalExclusive.has(name)) {
+          const lockIdx = body.indexOf('PERFORM public.ka_gochara_lock_global();')
+          expect(lockIdx, `${name} must take the global family key EXCLUSIVE`).toBeGreaterThan(-1)
+          expect(body, `${name} must never take a chart key`).not.toContain('ka_gochara_lock_chart(')
+          const firstRead = body.search(/FROM public\.|INSERT INTO public\.|UPDATE public\./)
+          expect(firstRead === -1 || lockIdx < firstRead, `${name} must lock before it reads`).toBe(true)
+        }
+        if (globalShared.has(name)) {
+          expect(body).toContain('PERFORM public.ka_gochara_lock_global_shared();')
+          expect(body).not.toContain('ka_gochara_lock_global();')
+          expect(body).not.toContain('ka_gochara_lock_chart(')
         }
       }
     }
-    expect(seen).toBe(chartFirst.size + globalFirst.size)
-    // row-trigger firing order on the chart-scoped tables is by name: lock guard first, then the rest
-    for (const [n, table] of [[1155, 'ka_gochara_relationship_record'], [1156, 'ka_gochara_eval_window']] as const) {
+    expect(seen).toBe(chartFirst.size + globalExclusive.size + globalShared.size + noLock.size + lockedByPredecessor.size)
+  })
+
+  it('ruling B (N13): refusals RAISE before any lock (a refused statement never waits)', () => {
+    const sub = readMigration(1153)
+    const bodies = new Map(functionBodies(sub).map(f => [f.name, f.body]))
+    const gw = bodies.get('ka_gochara_global_write_guard')!
+    expect(gw.indexOf("IF TG_OP <> 'INSERT' THEN")).toBeLessThan(gw.indexOf('ka_gochara_lock_global()'))
+    const seal = bodies.get('ka_gochara_generation_seal_guard')!
+    expect(seal.indexOf("IF TG_OP <> 'INSERT' THEN")).toBeLessThan(seal.indexOf('ka_gochara_lock_chart('))
+    expect(seal.indexOf('not governed by the A5.1 contract')).toBeLessThan(seal.indexOf('ka_gochara_lock_chart('))
+    const sealFn = bodies.get('ka_gochara_seal_generation')!
+    expect(sealFn.indexOf('not governed by the A5.1 contract')).toBeLessThan(sealFn.indexOf('ka_gochara_lock_chart('))
+    expect(bodies.get('ka_gochara_insert_only')!).not.toMatch(/ka_gochara_lock_/)
+  })
+
+  it('ruling B (N13): the family key precedes the tuple lock — BEFORE UPDATE OR DELETE … FOR EACH STATEMENT on every mutable chart-scoped table', () => {
+    const all = ALL.map(readMigration).join('\n')
+    for (const t of CHART_SCOPED_MUTABLE) {
+      const re = new RegExp(`CREATE TRIGGER ka_gochara_\\w+_0_statement_lock\\n\\s+BEFORE UPDATE OR DELETE ON public\\.${t}\\n\\s+FOR EACH STATEMENT EXECUTE FUNCTION public\\.ka_gochara_chart_statement_lock\\(\\);`)
+      expect(all, `${t} needs a statement-level family lock`).toMatch(re)
+    }
+    const stmt = functionBodies(readMigration(1153)).find(f => f.name === 'ka_gochara_chart_statement_lock')!.body
+    expect(stmt).toContain('PERFORM public.ka_gochara_lock_chart(c);')
+    expect(stmt).toContain('ORDER BY chart_id')   // ascending, deterministic
+    // chart-independent tables take NO family key: insert-only guards, constraint-guarded
+    for (const t of ['ka_gochara_sky_convention', 'ka_gochara_physical_object', 'ka_gochara_contact_identity', 'ka_gochara_convention_bridge']) {
+      expect(readMigration(1153)).toMatch(new RegExp(`BEFORE UPDATE OR DELETE ON public\\.${t}\\n\\s+FOR EACH ROW EXECUTE FUNCTION public\\.ka_gochara_insert_only\\(`))
+    }
+    expect(readMigration(1157)).toMatch(/BEFORE UPDATE OR DELETE ON public\.ka_gochara_av_polarity_declaration\n\s+FOR EACH ROW EXECUTE FUNCTION public\.ka_gochara_insert_only\(/)
+    // registry tables: global EXCLUSIVE, never a chart key
+    const reg = readMigration(1154)
+    for (const t of ['ka_gochara_predicate', 'ka_gochara_factor', 'ka_gochara_rule_path', 'ka_gochara_rule_path_prerequisite', 'ka_gochara_rule_path_soft_factor', 'ka_gochara_rule_path_seal']) {
+      expect(reg).toMatch(new RegExp(`ON public\\.${t}\\n\\s+FOR EACH ROW EXECUTE FUNCTION public\\.ka_gochara_global_write_guard\\(`))
+    }
+    const regCode = functionBodies(reg).map(f => f.body).join('\n') + '\n' + withoutDollarBodies(reg).replace(/^--.*$/gm, '')
+    expect(regCode).not.toContain('ka_gochara_lock_chart(')
+    expect(regCode).not.toContain('ka_gochara_chart_statement_lock')
+    // row-trigger firing order on the chart-scoped tables is by name: lock/seal guard, then coverage, then rule seal (SHARED)
+    for (const [n, prefix] of [[1155, 'rr'], [1156, 'ew']] as const) {
       const sql = readMigration(n)
-      const prefix = table === 'ka_gochara_relationship_record' ? 'rr' : 'ew'
+      expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_0_statement_lock`)
       expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_1_write_guard`)
       expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_2_coverage_guard`)
       expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_3_sealed_path_check`)
     }
-    // the record/window sealed-path check takes the GLOBAL lock only after the chart lock guard (name order)
-    expect(readMigration(1154)).toMatch(/ka_gochara_require_sealed_rule_path\(\)[\s\S]*?PERFORM public\.ka_gochara_lock_global\(\);/)
   })
 
   // ── Ruling 4: the deploy route ───────────────────────────────────────────
@@ -288,27 +404,99 @@ describe('A5.1 migrations 1153–1157 — static contract (round 4, steward simp
     }
   })
 
-  // ── Ruling 5: N6/N7/N8/N10/N11 as written (by name) ───────────────────────
-  it('ruling 5 (N6/N7/N8/N10): the named mechanisms exist', () => {
+  // ── Ruling D: N14 / N10 / N7+N15 / P2 ────────────────────────────────────
+  it('N14: coverage facts are an unambiguous JSON snapshot, not a digest', () => {
+    const rec = readMigration(1155)
+    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_facts(p_convention_id text, p_completed_horizon tstzrange, p_relations_searched text[])')
+    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_facts_horizon(f jsonb)')
+    expect(rec).toContain("WHEN isempty(p_completed_horizon) THEN jsonb_build_object('empty', true)")
+    expect(rec).toContain("'lower_inf', lower_inf(p_completed_horizon)")
+    expect(rec).toContain("'upper_inf', upper_inf(p_completed_horizon)")
+    expect(rec).toContain('jsonb_agg(to_jsonb(x) ORDER BY x NULLS FIRST)')
+    // the three reviewer collisions are asserted by the migration's own self-test
+    expect(rec).toContain("ARRAY['conjunction', NULL]")
+    expect(rec).toContain("ARRAY['aspect,conjunction']")
+    expect(rec).toContain("'empty'::tstzrange, ARRAY['a'])\n              <> public.ka_gochara_coverage_facts('c', hu, ARRAY['a'])")
+    for (const n of ALL) {
+      const sql = readMigration(n)
+      expect(sql, `${n} must not carry a coverage digest`).not.toContain('coverage_digest')
+      expect(sql, `${n} must not hash coverage facts`).not.toMatch(/\bmd5\(/)
+    }
+    expect(rec).toContain('coverage_facts    JSONB NOT NULL')
+    expect(rec).toContain('kgrr_coverage_facts_shape_ck')
+    expect(readMigration(1156)).toContain('coverage_facts    JSONB NOT NULL')
+    expect(readMigration(1156)).toContain('kgew_coverage_facts_shape_ck')
+    expect(rec).toContain('IF NEW.coverage_facts IS DISTINCT FROM facts THEN')
+  })
+
+  it('N10: the consumer contract — drift classifier over records AND windows, seal refusal, window-contributor applicability', () => {
+    const win = readMigration(1156)
+    expect(win).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_drift(p_chart_id uuid, p_generation text)')
+    for (const cls of ['partition_missing', 'identical', 'extended', 'incompatible']) expect(win).toContain(`'${cls}'`)
+    expect(win).toContain("SELECT 'relationship_record'::text AS consumer")
+    expect(win).toContain("SELECT 'eval_window'::text, w.window_id")
+    expect(win).toContain('cov.completed_horizon @> public.ka_gochara_facts_horizon(c.coverage_facts)')
+    const sub = readMigration(1153)
+    expect(sub).toContain("to_regprocedure('public.ka_gochara_coverage_drift(uuid,text)') IS NOT NULL")
+    expect(sub).toContain("d.drift IN (''incompatible'', ''partition_missing'')")
+    expect(sub).toContain('ka_gochara_generation_seal refused (N10 consumer contract)')
+    // window contributors are checked against the WINDOW's coverage
+    expect(win).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_window_membership_guard()')
+    expect(win).toContain('CREATE TRIGGER ka_gochara_ewr_2_membership_guard')
+    expect(win).toContain("(r.coverage_facts ->> 'convention_id') IS DISTINCT FROM (w.coverage_facts ->> 'convention_id')")
+    expect(win).toContain("(w.coverage_facts -> 'relations_searched') @> to_jsonb(ARRAY[r.relation])")
+    expect(win).toContain('wh := public.ka_gochara_facts_horizon(w.coverage_facts);')
+    // kept N10 rules
+    const rec = readMigration(1155)
+    expect(rec).toContain('IF NOT COALESCE(NEW.relation = ANY (cov.relations_searched), false) THEN')
+    expect(rec).toContain('array_position(cov.relations_searched, NULL) IS NOT NULL')
+    expect(rec).toContain("AND cov.partition_key <> NEW.agent || ':' || NEW.object_role THEN")
+    expect(win).toContain("CHECK (coverage_partition_kind = 'event_class')")
+    expect(win).toContain('array_position(cov.relations_searched, NULL) IS NOT NULL')
+  })
+
+  it('N7/N15: a precision-only re-sync verifies the restatement only — it never re-validates coverage', () => {
+    const rec = readMigration(1155)
+    const guard = functionBodies(rec).find(f => f.name === 'ka_gochara_record_coverage_guard')!.body
+    expect(guard).toContain("precision_only := (to_jsonb(NEW) - 'precision') = (to_jsonb(OLD) - 'precision');")
+    expect(guard).toContain('IF NOT precision_only THEN')
+    // the partition lookup and the facts comparison are inside the non-precision-only branch
+    const branch = guard.indexOf('IF NOT precision_only THEN')
+    expect(guard.indexOf('FROM public.kala_gochara_coverage c')).toBeGreaterThan(branch)
+    expect(guard.indexOf('IF NEW.coverage_facts IS DISTINCT FROM facts THEN')).toBeGreaterThan(branch)
+    // the restatement check runs on every path
+    expect(guard).toContain("restates the contact''s solved precision")
+    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_contact_propagate_precision()')
+    expect(rec).toContain('CREATE TRIGGER ka_gochara_contact_2_propagate_precision')
+    expect(rec).toContain("ka_gochara_chart_write_guard('precision_sync')")
+  })
+
+  it('P2: operational assertions are honest — FK/RI effects, refusal timing, per-file atomicity, recovery are documented; no overclaims', () => {
+    const sub = readMigration(1153)
+    expect(sub).toContain('Operational assertions (P2')
+    expect(sub).toContain('EXISTING-TABLE EFFECTS')
+    expect(sub).toContain('internal RI triggers on the referenced table')
+    expect(sub).toContain('SHARE ROW')
+    expect(sub).toContain('ROUTINE REFUSAL is loud but not write-free')
+    expect(sub).toContain('PER-FILE ATOMIC, NOT FAMILY-ATOMIC')
+    expect(sub).toContain('re-dispatch the window')
+    for (const n of ALL) {
+      const sql = readMigration(n)
+      expect(sql).not.toMatch(/touches nothing/i)
+      expect(sql).not.toMatch(/no effect on any existing table/i)
+      expect(sql).not.toMatch(/(?<!NOT )family[- ]atomic/i)
+    }
+  })
+
+  // ── Ruling 5 (kept): N6/N8 by name ────────────────────────────────────────
+  it('ruling 5 (N6/N8): the named mechanisms exist', () => {
     const sub = readMigration(1153)
     expect(sub).toContain('N6 (INSERT and enrichment UPDATE): one identity, one solved reading')
     expect(sub).toContain('already carries a different solved reading in another generation')
     const rec = readMigration(1155)
-    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_contact_propagate_precision()')
-    expect(rec).toContain('CREATE TRIGGER ka_gochara_contact_2_propagate_precision')
-    expect(rec).toContain("ka_gochara_chart_write_guard('precision_sync')")
     expect(rec).toContain("ka_gochara_chart_write_guard('result_only')")
     expect(rec).toContain('membership reparenting (record_id/ordinal/predicate) is prohibited')
-    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_digest(')
-    expect(rec).toContain('coverage_digest   TEXT NOT NULL')
-    expect(rec).toContain('IF NOT COALESCE(NEW.relation = ANY (cov.relations_searched), false) THEN')
-    expect(rec).toContain('array_position(cov.relations_searched, NULL) IS NOT NULL')
-    expect(rec).toContain("AND cov.partition_key <> NEW.agent || ':' || NEW.object_role THEN")
-    const win = readMigration(1156)
-    expect(win).toContain("ka_gochara_chart_write_guard('no_update')")
-    expect(win).toContain("CHECK (coverage_partition_kind = 'event_class')")
-    expect(win).toContain('coverage_digest   TEXT NOT NULL')
-    expect(win).toContain('array_position(cov.relations_searched, NULL) IS NOT NULL')
+    expect(readMigration(1156)).toContain("ka_gochara_chart_write_guard('no_update')")
   })
 
   // ── Kept from rounds 2–3 (by name) ───────────────────────────────────────
