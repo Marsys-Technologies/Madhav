@@ -137,6 +137,7 @@ ERRORED = "ERRORED"
 #   asset_kinds   — applies only when asset_kind is in the tuple (Earn.service_state's own text).
 # See criterion_applicability() for how these are evaluated: an absent fact is UNKNOWN, never N/A.
 ALL_LAYERS = ("L0", "L1", "L2", "L3", "L4", "L5")
+ALIAS_COLUMN = "synonyms"   # the alias-bearing column: read by the Vocab.alias registry entry AND alias_census()
 CITATION_COLUMNS = ("source_citation", "source_text_id", "classical_citation", "classical_citations", "citation_ref")
 CRITERION_REGISTRY: dict[str, dict] = {
     # ── auto-measured every run (detector = this module's own measure()) ──
@@ -162,7 +163,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=("synonyms",), asset_kinds=None, revision=1),
+    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches at least one served capability module", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -251,6 +252,8 @@ def criterion_applicability(crit: str, layer: str, facts: dict | None = None) ->
     UNKNOWN: one disproving fact is definitive whatever the other says. Raises KeyError for an
     unregistered criterion."""
     e = CRITERION_REGISTRY[crit]
+    if layer not in LAYERS:
+        raise KeyError(f"unknown layer {layer!r}; expected one of {sorted(LAYERS)}")
     if layer not in e["layers"]:
         return dict(state="OUT_OF_LAYER", rule_id=None, reason=f"{crit} is not defined for {layer}")
     facts = facts or {}
@@ -261,8 +264,15 @@ def criterion_applicability(crit: str, layer: str, facts: dict | None = None) ->
         if pattern is None:
             continue
         have = facts.get(fact_key)
-        if have is None:
-            unknown.append(f"{label} not supplied")
+        if key == "columns_any":
+            # evidence only when a list/tuple/set of str; an EMPTY collection counts only when the caller
+            # asserts columns_known is exactly True ("the table is known and has zero columns")
+            usable = (isinstance(have, (list, tuple, set)) and all(isinstance(c, str) for c in have)
+                      and (bool(have) or facts.get("columns_known") is True))
+        else:
+            usable = isinstance(have, str) and bool(have)
+        if not usable:
+            unknown.append(f"{label} not supplied" if have is None else f"{label} unusable ({have!r})")
             continue
         ok = (any(c in pattern for c in have) if key == "columns_any" else have in pattern)
         if not ok:
@@ -273,10 +283,15 @@ def criterion_applicability(crit: str, layer: str, facts: dict | None = None) ->
     return dict(state="APPLIES", rule_id=None, reason="applies")
 
 
-def rollup_verdicts(verdicts: list) -> str:
+def rollup_verdicts(verdicts) -> str:
     """E6.2: worst of FAIL > ERRORED > NO_DETECTOR > PARTIAL > PASS. All N/A -> N/A. No checks ->
     NO_DETECTOR (a gate with no checks measures nothing). A verdict outside PASS/FAIL/PARTIAL/NO_DETECTOR/
-    ERRORED/N/A (NOT_GENERIC included) raises ValueError: an ungradable value is never silently ranked."""
+    ERRORED/N/A (NOT_GENERIC included) raises ValueError: an ungradable value is never silently ranked.
+    Any iterable is accepted (materialised first, so a generator is not drained by validation); a bare str
+    raises TypeError (it would otherwise be iterated character by character)."""
+    if isinstance(verdicts, (str, bytes)):
+        raise TypeError("rollup_verdicts takes an iterable of verdicts, not a bare string")
+    verdicts = list(verdicts)
     for v in verdicts:
         if v not in ROLLUP_ORDER and v != NA:
             raise ValueError(f"verdict {v!r} is outside the rollup vocabulary {list(ROLLUP_ORDER) + [NA]}")
@@ -2201,11 +2216,11 @@ def depth_census(table: str, cols: list[str]) -> dict:
 
 def alias_census(table: str, cols: list[str]) -> dict | None:
     names = set(cols)
-    if "synonyms" not in names:
+    if ALIAS_COLUMN not in names:
         return None
     grp = "entity_class" if "entity_class" in names else "'(all)'"
     rows = psql(f"SELECT {grp}::text, count(*)::text, "
-                "count(*) FILTER (WHERE synonyms IS NULL OR cardinality(synonyms)=0)::text "
+                f"count(*) FILTER (WHERE {ALIAS_COLUMN} IS NULL OR cardinality({ALIAS_COLUMN})=0)::text "
                 f"FROM {table} GROUP BY 1 ORDER BY 1")
     return {r[0]: dict(rows=int(r[1]), no_alias=int(r[2])) for r in rows}
 

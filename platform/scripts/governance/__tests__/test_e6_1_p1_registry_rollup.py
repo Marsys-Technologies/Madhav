@@ -57,8 +57,67 @@ def test_column_patterns_are_the_ones_measure_already_uses():
                                    "classical_citations", "citation_ref")
     assert ac.CRITERION_REGISTRY["Vocab.alias"]["columns_any"] == ("synonyms",)
     assert ac.CRITERION_REGISTRY["Earn.service_state"]["asset_kinds"] == ("service",)
-    src = inspect.getsource(ac.measure)
-    assert "CITATION_COLUMNS" in src, "measure() must read the same constant the registry declares"
+    assert ac.ALIAS_COLUMN == "synonyms"
+    assert ac.CRITERION_REGISTRY["Vocab.alias"]["columns_any"] == (ac.ALIAS_COLUMN,)
+
+
+def test_alias_census_reads_the_shared_alias_column_constant(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ac, "ALIAS_COLUMN", "aka")
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: seen.append(sql) or [["(all)", "3", "1"]])
+    assert ac.alias_census("t", ["id", "synonyms"]) is None          # the old literal is no longer the alias column
+    assert ac.alias_census("t", ["id", "aka"]) == {"(all)": dict(rows=3, no_alias=1)}
+    assert "aka IS NULL OR cardinality(aka)=0" in seen[0] and "synonyms" not in seen[0]
+
+
+def _reg_row(aid, target_table=None):
+    return dict(asset_id=aid, has_writer=False, target_table=target_table, count_sql="",
+                has_integrity=False, depends_on=[], target_floor=None, catalog_status="", asset_kind="")
+
+
+def _stub_layer(monkeypatch, ctrl, reg, tables):
+    # same offline measure() harness as test_r60_ldgr_source_presence_singular_citation.py
+    monkeypatch.setattr(ac, "CTRL", ctrl)
+    monkeypatch.setattr(ac, "registry", lambda k: (dict(reg), dict(registry_total=len(reg), active=len(reg),
+                                                                    excluded_inactive=[])))
+    monkeypatch.setattr(ac, "catalog", lambda ts: dict(exists=set(tables),
+                                                       cols={t: c for t, (c, _k) in tables.items()},
+                                                       keys={t: k for t, (_c, k) in tables.items()}))
+    monkeypatch.setattr(ac, "registered_ids", lambda prefix: {})
+    monkeypatch.setattr(ac, "live_counts", lambda r, *a, **k: ({x: None for x in r}, {}))
+    monkeypatch.setattr(ac, "throughput", lambda prefix, *a, **k: {})
+    monkeypatch.setattr(ac, "build_history", lambda prefix, *a, **k: dict(per={}, global_runs=0, global_with_layer=0, lit=set()))
+    monkeypatch.setattr(ac, "latest_attempts", lambda ids: ({}, None))
+    monkeypatch.setattr(ac, "dependency_graph", lambda: {a: [] for a in reg}, raising=False)
+    monkeypatch.setattr(ac, "local_map_candidates", lambda prefix: -1)
+    monkeypatch.setattr(ac, "duration_instrument_present", lambda: False)
+    monkeypatch.setattr(ac, "capability_scan", lambda d, t: dict(modules=[], density=0, note="stub"))
+    monkeypatch.setattr(ac, "depth_census", lambda t, c: dict(columns=len(c), rows=48, full=list(c), never=[], note=""))
+    monkeypatch.setattr(ac, "alias_census", lambda t, c: None)
+
+
+def test_measure_selects_the_first_of_citation_columns_when_a_table_has_two(monkeypatch, tmp_path):
+    """Behavioural pin (replaces a substring check on measure()'s source): with two citation columns
+    present, measure() must probe the FIRST of CITATION_COLUMNS, the one the registry declares first."""
+    first, later = ac.CITATION_COLUMNS[0], ac.CITATION_COLUMNS[3]
+    assert first != later
+    # column order in the table is the reverse of CITATION_COLUMNS' priority, so a positional pick would differ
+    _stub_layer(monkeypatch, tmp_path, {"bg_two": _reg_row("bg_two", "bg_two")},
+                {"bg_two": (["id", later, first], [])})
+    seen = []
+
+    def fake_psql(sql, sep="\x1f", timeout=None):
+        seen.append(sql)
+        if "count(*)::text FROM bg_two WHERE" in sql:
+            return [["48"]]
+        raise AssertionError(f"unexpected query: {sql[:100]}")
+
+    monkeypatch.setattr(ac, "psql", fake_psql)
+    census = ac.measure("L0")
+    res = next(a for a in census["assets"] if a["asset_id"] == "bg_two")["measurements"]["Ldgr.source_presence"]
+    assert res == dict(v=ac.PASS, measured=f"{first} populated on 48/48 rows")
+    cit_sql = [q for q in seen if "IS NOT NULL" in q]
+    assert cit_sql == [f"SELECT count(*)::text FROM bg_two WHERE {first} IS NOT NULL"]
 
 
 # ───────────────────────── applicability ─────────────────────────
@@ -71,13 +130,44 @@ def test_applicability_layer_columns_kind_and_unknown_are_distinct_states():
     assert f("Ldgr.source_presence", "L1", {})["state"] == "UNKNOWN"
     assert f("Ldgr.source_presence", "L1", {"columns": ["id", "x"]})["state"] == "NOT_APPLICABLE"
     assert f("Ldgr.source_presence", "L1", {"columns": ["id", "classical_citation"]})["state"] == "APPLIES"
-    assert f("Ldgr.source_presence", "L1", {"columns": []})["state"] == "NOT_APPLICABLE"
+    assert f("Ldgr.source_presence", "L1", {"columns": []})["state"] == "UNKNOWN"
     assert f("Earn.service_state", "L3", None)["state"] == "UNKNOWN"
     assert f("Earn.service_state", "L3", {"asset_kind": "data"})["state"] == "NOT_APPLICABLE"
     assert f("Earn.service_state", "L3", {"asset_kind": "service"})["state"] == "APPLIES"
     # NOT_APPLICABLE dominates UNKNOWN when one fact disproves and the other is missing
     assert f("Earn.service_state", "L3", {"asset_kind": "data"})["rule_id"] == "Earn.service_state#asset_kinds"
     assert f("Ldgr.source_presence", "L1", {"columns": ["id"]})["rule_id"] == "Ldgr.source_presence#columns_any"
+
+
+@pytest.mark.parametrize("bad_columns", [[], (), set(), "abc", "source_citation", 7, ["id", 3], {"columns": 1}])
+def test_a_malformed_or_empty_columns_fact_is_not_evidence(bad_columns):
+    """An empty list or a wrong-typed value is not a supplied fact: UNKNOWN, never NOT_APPLICABLE
+    (and never APPLIES from a bare string whose substring matches)."""
+    for layer in ("L1", "L0"):
+        assert ac.criterion_applicability("Ldgr.source_presence", layer, {"columns": bad_columns})["state"] == "UNKNOWN"
+    assert ac.rollup_asset("L1", {}, {"columns": bad_columns})["Ldgr"]["v"] != "N/A"
+
+
+@pytest.mark.parametrize("bad_kind", ["", 3, None, ["service"], b"service"])
+def test_a_malformed_or_empty_asset_kind_fact_is_not_evidence(bad_kind):
+    assert ac.criterion_applicability("Earn.service_state", "L3", {"asset_kind": bad_kind})["state"] == "UNKNOWN"
+
+
+def test_columns_known_true_makes_an_empty_column_list_evidence():
+    f = ac.criterion_applicability
+    r = f("Ldgr.source_presence", "L1", {"columns": [], "columns_known": True})
+    assert r["state"] == "NOT_APPLICABLE" and r["rule_id"] == "Ldgr.source_presence#columns_any"
+    # columns_known must be exactly True, and only relaxes the emptiness rule, not the type rule
+    assert f("Ldgr.source_presence", "L1", {"columns": [], "columns_known": 1})["state"] == "UNKNOWN"
+    assert f("Ldgr.source_presence", "L1", {"columns": "abc", "columns_known": True})["state"] == "UNKNOWN"
+    assert f("Ldgr.source_presence", "L1", {"columns": ("id",), "columns_known": True})["state"] == "NOT_APPLICABLE"
+
+
+def test_unknown_layer_raises_keyerror():
+    with pytest.raises(KeyError):
+        ac.criterion_applicability("Build.dag", "L9", None)
+    with pytest.raises(KeyError):
+        ac.criterion_applicability("Ldgr.source_presence", "", {"columns": ["id"]})
 
 
 def test_out_of_layer_when_layer_not_declared(monkeypatch):
@@ -113,6 +203,19 @@ def test_rollup_verdicts_worst_wins(vs, want):
 
 def test_rollup_order_constant():
     assert ac.ROLLUP_ORDER == ("FAIL", "ERRORED", "NO_DETECTOR", "PARTIAL", "PASS")
+
+
+def test_rollup_verdicts_accepts_any_iterable_and_does_not_drain_it():
+    assert ac.rollup_verdicts(iter(["FAIL"])) == "FAIL"
+    assert ac.rollup_verdicts(("FAIL",)) == "FAIL"
+    assert ac.rollup_verdicts(v for v in ["PASS", "PARTIAL"]) == "PARTIAL"
+    assert ac.rollup_verdicts(iter([])) == "NO_DETECTOR"
+
+
+def test_rollup_verdicts_rejects_a_bare_string():
+    for bare in ("FAIL", "PASS", "N/A", ""):
+        with pytest.raises(TypeError):
+            ac.rollup_verdicts(bare)
 
 
 @pytest.mark.parametrize("bad", ["NOT_GENERIC", "UNKNOWN", "pass", "", None])
