@@ -8410,3 +8410,15 @@ databases). #2760 (head f4bb0adbd, CLEAN, 25/25, three independent reviews with 
 trip `assertAppliedHashMatches` on every later deploy — please do not dispatch `gochara_schema_migration=true` until 1071 is applied
 by the routine job; afterwards it is a harmless no-op. Suggest closing #2762 or leaving it dormant. Purna does not touch it.
 Resume condition for everything downstream: a successful protected deploy with 1071, 1072, 1086 applied.
+
+
+---
+
+## 2026-09-30 — lease open: OBSERVATORY-METERING-VERIFY-20260930
+
+- Lease ID: L-OBSERVATORY-METERING-VERIFY-20260930; holder: Codex.
+- Started: 2026-09-30T14:59:02.438060+00:00; expiry: 2026-09-30T18:59:02.438060+00:00.
+- Status: ACTIVE — LOCAL VERIFICATION FOLLOW-UP ONLY.
+- Worktree: `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`; branch `codex/observatory-metering`.
+- Scope: focused enabled-mode metering test gate, synthetic fixture coverage, task-owned verification evidence and runbook. Application changes remain uncommitted under GIP P.4.
+- No production operation, provider/CLI generation, deployment, migration application outside disposable local PostgreSQL, application push, or protected merge.
