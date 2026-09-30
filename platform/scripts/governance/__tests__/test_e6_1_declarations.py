@@ -26,6 +26,9 @@ FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_t
 REGISTRY_IDS = sorted(a for assets in FIXTURE["layers"].values() for a in assets)
 
 
+PEV = dict(prose_fields="writer file.py:1: composed / stores source text")   # a non-blank evidence pointer
+
+
 def _doc(**assets):
     return dict(version="1.0.0", kind_enum=list(ac.DECLARED_KINDS), assets=assets)
 
@@ -89,9 +92,170 @@ def test_every_non_data_declared_kind_carries_an_evidence_pointer():
             assert e["evidence"]["prose_fields"], aid
 
 
-def test_committed_file_declares_no_empty_prose_list():
-    # [] would claim "no prose"; none is declared: undeclared is null (Null/Narr read NO_DETECTOR)
-    assert all(e["prose_fields"] != [] for e in ac.load_asset_declarations().values())
+# ───────── E6.1 narr: prose_fields ([] positive declaration, `column.$.path`, evidence on every declaration) ─────────
+# SS ruling 2026-10-01: Narr (CLAUDE.md N.7) concerns GENERATED prose. null = undeclared; [] = declared "this asset's
+# writer composes none" (needs evidence); a JSONB narrative is declared as `column.$.key(.key)*`.
+
+def test_parse_prose_field_splits_a_column_from_its_json_path():
+    assert ac.parse_prose_field("narrative") == ("narrative", None)
+    assert ac.parse_prose_field("narrative.$.headline") == ("narrative", ("headline",))
+    assert ac.parse_prose_field("falsifiability.$.confirm_observable") == ("falsifiability", ("confirm_observable",))
+    assert ac.parse_prose_field("n.$.a.b_2.c") == ("n", ("a", "b_2", "c"))
+    assert ac.parse_prose_field("_c1.$._k") == ("_c1", ("_k",))
+
+
+@pytest.mark.parametrize("bad", ["", " ", "narrative.$", "$.x", "n.x", "n.$..x", "n.$.a b", "n.$.a[0]", "n.$.*", "n.$.1a",
+                                 "1n", "n n", "n-n", "t.n", "n\n", ".n", "n.$.x\n", "n.$.$.x", "n.$.", None, 1, ["n"]])
+def test_parse_prose_field_rejects_malformed_entries(bad):
+    with pytest.raises(ac.DeclarationsError):
+        ac.parse_prose_field(bad)
+
+
+def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
+    doc = _doc(none=dict(prose_fields=None),
+               empty=dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none")),
+               some=dict(prose_fields=["a", "b"], evidence=PEV),
+               paths=dict(prose_fields=["n.$.a", "n.$.b", "other", "m.$.k.l"], evidence=PEV),
+               absent_field=dict(kind="data"))
+    decl = ac.load_asset_declarations(_write(tmp_path, doc))
+    assert decl["none"]["prose_fields"] is None
+    assert decl["empty"]["prose_fields"] == [] and decl["empty"]["prose_fields"] is not None
+    assert decl["absent_field"].get("prose_fields") is None
+    assert decl["paths"]["prose_fields"] == ["n.$.a", "n.$.b", "other", "m.$.k.l"]
+    f = {aid: ac.facts_for_asset(dict(asset_id=aid), decl) for aid in decl}
+    assert "declared_prose_fields" not in f["none"] and "declared_prose_fields" not in f["absent_field"]
+    assert f["empty"]["declared_prose_fields"] == [] and "declared_prose_fields" in f["empty"]
+    assert f["some"]["declared_prose_fields"] == ["a", "b"]
+    assert f["paths"]["declared_prose_fields"] == ["n.$.a", "n.$.b", "other", "m.$.k.l"]
+
+
+def test_sibling_paths_of_one_column_and_same_name_paths_of_two_columns_are_not_overlaps():
+    ac.validate_declarations(_doc(a=dict(prose_fields=["n.$.a", "n.$.b", "m.$.a", "n.$.ab"], evidence=PEV)))
+
+
+def test_empty_prose_list_reaches_no_criterion():
+    assert ac.facts_for_asset(dict(asset_id="empty"), DECL)["declared_prose_fields"] == []
+    base = dict(asset_kind="data")
+    for crit in ac.CRITERION_REGISTRY:
+        for layer in ac.ALL_LAYERS:
+            assert (ac.criterion_applicability(crit, layer, dict(base, declared_prose_fields=[]))
+                    == ac.criterion_applicability(crit, layer, base)), (crit, layer)
+
+
+# Decisions recorded 2026-10-01 (evidence: /Users/Dev/suvarna-evidence/E6.1/narr_declarations_evidence.md). Each
+# declaration cites the writer code (file:line) and the test re-reads that line, so a moved/edited writer fails loudly.
+_SC = "platform/python-sidecar/"
+_WR = _SC + "pipeline/orchestrator/writers/"
+_BG = _SC + "brahmagyan/"
+NARR_DECLARED = {
+    "bg_doshas": [],
+    "bg_yogas": ["formation_text"],
+    "bg_remedies": ["prescription_text", "charity_action"],
+    "bg_compendium_index": ["summary_text", "significance"],
+    "bg_ontology": ["description"],
+    "ka_kala_darshana": ["narrative.$.headline", "narrative.$.context", "narrative.$.caution"],
+    "ka_jivana_parva": ["narrative.$.summary"],
+    "ka_bhavishya_lekha": ["narrative.$.headline", "narrative.$.probability_statement", "narrative.$.domain_context",
+                           "narrative.$.caveat", "falsifiability.$.confirm_observable", "falsifiability.$.deny_observable"],
+}
+# (file, line, a substring that line must contain): the code that composes (or, for bg_doshas, loads verbatim) it
+NARR_CITES = {
+    "bg_doshas": [(_BG + "l0_doshas.py", 1972, 'd["formation_text"]'), (_BG + "l0_doshas.py", 1973, 'd["effects_text"]'),
+                  (_BG + "l0_doshas.py", 2003, '["effects_text"][:200]')],
+    "bg_yogas": [(_BG + "l0_yogas.py", 2140, 'f"{name_en}: formation per {verse_ref}'),
+                 (_BG + "l0_yogas.py", 2138, "raw_clause[:200] if raw_clause else name_en")],
+    "bg_remedies": [(_BG + "l0_remedy_corpus.py", 247, "text = ("), (_BG + "l0_remedy_corpus.py", 309, 'f"Donate {item} on {d[\'day\']}."'),
+                    (_BG + "l0_remedy_corpus.py", 2236, "prescription = (")],
+    "bg_compendium_index": [(_WR + "bg_compendium_index.py", 40, "SYNOPSIS_SEPARATOR.join(parts)"),
+                            (_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
+                            (_WR + "bg_compendium_index.py", 109, 'f"{text_id} covers {topic_id} in {len(rows)} passage(s)"')],
+    "bg_ontology": [(_BG + "l0_ontology.py", 147, 'f"Nakshatra {nak_id}/27"'), (_BG + "l0_ontology.py", 171, 'f"Sign {sign_id}/12"')],
+    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 107, "_build_narrative("), (_WR + "ka_kala_darshana.py", 138, "obstruction_summary, narrative"),
+                         (_WR + "ka_kala_darshana.py", 234, "'headline': headline")],
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 185, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = (")],
+    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 323, "_build_projection_narrative("),
+                           (_WR + "ka_bhavishya_lekha.py", 317, "_build_falsifiability("),
+                           (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f")],
+}
+# JSONB narrative paths: the builder function whose returned dict literal must carry every declared key
+NARR_JSON_BUILDERS = {
+    ("ka_kala_darshana", "narrative"): (_WR + "ka_kala_darshana.py", "_build_narrative"),
+    ("ka_jivana_parva", "narrative"): (_WR + "ka_jivana_parva.py", "_build_parva_narrative"),
+    ("ka_bhavishya_lekha", "narrative"): (_WR + "ka_bhavishya_lekha.py", "_build_projection_narrative"),
+    ("ka_bhavishya_lekha", "falsifiability"): (_WR + "ka_bhavishya_lekha.py", "_build_falsifiability"),
+}
+# keys each builder returns that are NOT prose (measured/structured values): never declared
+NARR_JSON_NON_PROSE = {
+    ("ka_jivana_parva", "narrative"): {"dasha_planet", "span", "quality", "high_convergence_count", "avg_effective_score"},
+    ("ka_bhavishya_lekha", "falsifiability"): {"evaluation_date", "evaluation_window_days"},
+}
+
+
+def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
+    decl = ac.load_asset_declarations()
+    got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
+    prior = {"bo_anveshana", "bo_arudha", "bo_laksana", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana",
+             "bo_vargottama_dhana", "mi_bhavisya", "mi_darshana", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana"}
+    assert set(got) == prior | set(NARR_DECLARED)
+    for a, v in NARR_DECLARED.items():
+        assert got[a] == v, a
+    assert [a for a, v in got.items() if v == []] == ["bg_doshas"]      # the only reference corpus that composes nothing
+    assert sum(e["prose_fields"] is None for e in decl.values()) == 127 - 21
+
+
+def test_every_declared_prose_entry_parses_and_carries_a_non_blank_evidence_pointer():
+    for aid, e in ac.load_asset_declarations().items():
+        if e["prose_fields"] is None:
+            continue
+        for f in e["prose_fields"]:
+            ac.parse_prose_field(f)
+        assert isinstance(e["evidence"]["prose_fields"], str) and e["evidence"]["prose_fields"].strip(), aid
+
+
+def test_bg_doshas_empty_declaration_states_its_reason_and_the_other_reference_corpora_do_not_claim_none():
+    decl = ac.load_asset_declarations()
+    assert "stores source text; generates none" in decl["bg_doshas"]["evidence"]["prose_fields"]
+    for a in ("bg_yogas", "bg_remedies", "bg_compendium_index", "bg_ontology"):
+        assert decl[a]["prose_fields"], a            # they compose text: declared fields, never []
+
+
+@pytest.mark.parametrize("asset", sorted(NARR_CITES))
+def test_narr_evidence_cites_writer_lines_that_really_contain_what_it_says(asset):
+    ev = ac.load_asset_declarations()[asset]["evidence"]["prose_fields"]
+    for path, line, needle in NARR_CITES[asset]:
+        lines = (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
+        assert line <= len(lines), (path, line)
+        assert needle in lines[line - 1], (path, line, lines[line - 1])
+        assert f"{path.rsplit('/', 1)[1]}:{line}" in ev, (asset, path, line)
+
+
+def _returned_dict_keys(path, func):
+    import ast
+    tree = ast.parse((REPO_ROOT / path).read_text(encoding="utf-8"))
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == func)
+    rets = [n.value for n in ast.walk(fn) if isinstance(n, ast.Return) and isinstance(n.value, ast.Dict)]
+    assert len(rets) == 1, (path, func)
+    return {k.value for k in rets[0].keys if isinstance(k, ast.Constant)}
+
+
+@pytest.mark.parametrize("asset_col", sorted(NARR_JSON_BUILDERS))
+def test_declared_json_paths_are_keys_the_writer_builder_really_returns(asset_col):
+    asset, col = asset_col
+    path, func = NARR_JSON_BUILDERS[asset_col]
+    keys = _returned_dict_keys(path, func)
+    declared = {ac.parse_prose_field(f)[1] for f in ac.load_asset_declarations()[asset]["prose_fields"]
+                if ac.parse_prose_field(f)[0] == col}
+    assert declared and all(len(p) == 1 for p in declared)
+    declared_keys = {p[0] for p in declared}
+    assert declared_keys <= keys, (declared_keys - keys)
+    # every returned key is either declared prose or explicitly recorded as non-prose: a new key must be decided
+    assert keys == declared_keys | NARR_JSON_NON_PROSE.get(asset_col, set()), keys ^ declared_keys
+
+
+def test_declared_json_columns_are_really_written_by_the_writer():
+    for asset, col in NARR_JSON_BUILDERS:
+        src = (REPO_ROOT / NARR_JSON_BUILDERS[(asset, col)][0]).read_text(encoding="utf-8")
+        assert re.search(rf"\b{col}\b", src), (asset, col)
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
@@ -294,16 +458,55 @@ BAD_DOCS = [
     ("carriage-unknown-field", _doc(a=dict(carriage=dict(served_surface=True, served=True)))),
     ("carriage-int-not-bool", _doc(a=dict(carriage=dict(served_surface=1)))),
     ("carriage-string", _doc(a=dict(carriage=dict(served_surface="yes")))),
-    ("prose-not-list", _doc(a=dict(prose_fields="narrative"))),
-    ("prose-blank", _doc(a=dict(prose_fields=["narrative", " "]))),
-    ("prose-duplicate", _doc(a=dict(prose_fields=["narrative", "narrative"]))),
-    ("prose-non-str", _doc(a=dict(prose_fields=[1]))),
+    ("prose-not-list", _doc(a=dict(prose_fields="narrative", evidence=PEV))),
+    ("prose-string-of-distinct-letters", _doc(a=dict(prose_fields="abc", evidence=PEV))),
+    ("prose-dict-not-list", _doc(a=dict(prose_fields=dict(a="b"), evidence=PEV))),
+    ("prose-tuple-like-nested-list", _doc(a=dict(prose_fields=[["a"]], evidence=PEV))),
+    ("prose-blank", _doc(a=dict(prose_fields=["narrative", " "], evidence=PEV))),
+    ("prose-duplicate", _doc(a=dict(prose_fields=["narrative", "narrative"], evidence=PEV))),
+    ("prose-non-str", _doc(a=dict(prose_fields=[1], evidence=PEV))),
     ("evidence-not-object", _doc(a=dict(evidence="x"))),
     ("evidence-unknown-key", _doc(a=dict(evidence=dict(other="x")))),
     ("evidence-non-str", _doc(a=dict(evidence=dict(kind=1)))),
     ("blank-asset-id", _doc(**{" ": dict(kind="data")})),
     ("dag-dependents-is-measured-not-declared", _doc(a=dict(carriage=dict(dag_dependents=True)))),
-    ("prose-case-variant-duplicate", _doc(a=dict(prose_fields=["Narrative", "narrative"]))),
+    ("prose-case-variant-duplicate", _doc(a=dict(prose_fields=["Narrative", "narrative"], evidence=PEV))),
+    # E6.1 narr: every declared prose_fields (including the positive empty list) carries an evidence pointer
+    ("prose-declared-without-evidence", _doc(a=dict(prose_fields=["narrative"]))),
+    ("prose-empty-declared-without-evidence", _doc(a=dict(prose_fields=[]))),
+    ("prose-declared-evidence-null-object", _doc(a=dict(prose_fields=["narrative"], evidence=None))),
+    ("prose-declared-evidence-pointer-null", _doc(a=dict(prose_fields=["narrative"], evidence=dict(prose_fields=None)))),
+    ("prose-declared-evidence-pointer-blank", _doc(a=dict(prose_fields=["narrative"], evidence=dict(prose_fields="  ")))),
+    ("prose-empty-evidence-pointer-blank", _doc(a=dict(prose_fields=[], evidence=dict(prose_fields="")))),
+    ("prose-evidence-only-on-other-key", _doc(a=dict(prose_fields=[], evidence=dict(kind="x")))),
+    # E6.1 narr: `column` or `column.$.key(.key)*`; a column name must look like a column name
+    ("prose-path-no-key", _doc(a=dict(prose_fields=["narrative.$"], evidence=PEV))),
+    ("prose-path-trailing-dot", _doc(a=dict(prose_fields=["narrative.$."], evidence=PEV))),
+    ("prose-path-no-column", _doc(a=dict(prose_fields=["$.headline"], evidence=PEV))),
+    ("prose-path-no-root-marker", _doc(a=dict(prose_fields=["narrative.headline"], evidence=PEV))),
+    ("prose-path-empty-segment", _doc(a=dict(prose_fields=["narrative.$..headline"], evidence=PEV))),
+    ("prose-path-trailing-segment-dot", _doc(a=dict(prose_fields=["narrative.$.a."], evidence=PEV))),
+    ("prose-path-space-in-key", _doc(a=dict(prose_fields=["narrative.$.head line"], evidence=PEV))),
+    ("prose-path-array-index", _doc(a=dict(prose_fields=["narrative.$.items[0]"], evidence=PEV))),
+    ("prose-path-wildcard", _doc(a=dict(prose_fields=["narrative.$.*"], evidence=PEV))),
+    ("prose-path-digit-key", _doc(a=dict(prose_fields=["narrative.$.1a"], evidence=PEV))),
+    ("prose-path-trailing-newline", _doc(a=dict(prose_fields=["narrative.$.headline\n"], evidence=PEV))),
+    ("prose-path-leading-dot", _doc(a=dict(prose_fields=[".narrative.$.headline"], evidence=PEV))),
+    ("prose-path-double-root", _doc(a=dict(prose_fields=["narrative.$.$.headline"], evidence=PEV))),
+    ("prose-column-digit-first", _doc(a=dict(prose_fields=["1narrative"], evidence=PEV))),
+    ("prose-column-space", _doc(a=dict(prose_fields=["narr ative"], evidence=PEV))),
+    ("prose-column-dash", _doc(a=dict(prose_fields=["narr-ative"], evidence=PEV))),
+    ("prose-column-dotted-table-prefix", _doc(a=dict(prose_fields=["t.narrative"], evidence=PEV))),
+    ("prose-column-trailing-newline", _doc(a=dict(prose_fields=["narrative\n"], evidence=PEV))),
+    ("prose-path-case-variant-duplicate", _doc(a=dict(prose_fields=["n.$.headline", "N.$.Headline"], evidence=PEV))),
+    ("prose-path-exact-duplicate", _doc(a=dict(prose_fields=["n.$.headline", "n.$.headline"], evidence=PEV))),
+    ("prose-column-and-its-own-path", _doc(a=dict(prose_fields=["narrative", "narrative.$.headline"], evidence=PEV))),
+    ("prose-path-and-its-column", _doc(a=dict(prose_fields=["narrative.$.headline", "narrative"], evidence=PEV))),
+    ("prose-path-and-its-own-subpath", _doc(a=dict(prose_fields=["n.$.a", "n.$.a.b"], evidence=PEV))),
+    ("prose-subpath-and-its-parent-path", _doc(a=dict(prose_fields=["n.$.a.b", "n.$.a"], evidence=PEV))),
+    ("prose-non-adjacent-path-overlap", _doc(a=dict(prose_fields=["n.$.a", "x", "n.$.a.b"], evidence=PEV))),
+    ("prose-non-adjacent-column-and-path", _doc(a=dict(prose_fields=["n", "x", "y", "N.$.a"], evidence=PEV))),
+    ("prose-non-adjacent-duplicate", _doc(a=dict(prose_fields=["x", "y", "z", "x"], evidence=PEV))),
     ("terminal-blank", _doc(a=dict(terminal_by_construction=" "))),
     ("terminal-non-str", _doc(a=dict(terminal_by_construction=True))),
     ("terminal-contradicts-served-true", _doc(a=dict(terminal_by_construction="no reader by design",
@@ -356,7 +559,7 @@ def test_validator_accepts_null_fields_and_every_enum_kind():
     doc = _doc(**{f"x{i}": dict(kind=k, carriage=None, prose_fields=None, evidence=None)
                   for i, k in enumerate(list(ac.DECLARED_KINDS) + [None])},
                y=dict(kind=None, carriage=dict(served_surface=None), prose_fields=["a"], terminal_by_construction=None,
-                      cross_asset_writes=None),
+                      cross_asset_writes=None, evidence=PEV),
                z=dict(carriage=dict(served_surface=False), terminal_by_construction="written only by X; no reader by design",
                       cross_asset_writes=["t.c"], evidence=dict(cross_asset_writes="effect contract writes: [t.c]")),
                w=dict(cross_asset_writes=[], evidence=dict(cross_asset_writes="effect contract writes: []")),
