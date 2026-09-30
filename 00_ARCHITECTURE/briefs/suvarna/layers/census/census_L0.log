@@ -1,0 +1,11 @@
+L0 Brahmagyan (fidelity): 40 assets · 36 registered ids vs 34 has_writer=true
+  build scope: 61 global run(s), of which 0 touched this layer  ← the global path never exercises it
+  !! registered with a writer and NEVER run by the orchestrator: ['bg_sign_medical']
+  FAIL 42 · PARTIAL/NO_DETECTOR 147 · ERRORED 0 · assets measured 40
+    FAIL Build.completion: 14 — bg_cohort, bg_ephemeris, bg_formula_constants, bg_gochara_citation_resolution, bg_medical_mappings, bg_muhurta_lattice…
+    FAIL Build.exercised: 1 — bg_sign_medical
+    FAIL Build.registered: 2 — bg_nakshatra_medical, bg_transit_engine
+    FAIL Count.floor: 1 — bg_parihara_rules
+    FAIL Dens.served: 23 — bg_class_lifetime_counts, bg_class_priors, bg_compendium_index, bg_dasha_systems, bg_doshas, bg_ephemeris…
+    FAIL Vocab.alias: 1 — bg_ontology
+census written: ../suvarna-evidence/census/census_L0.json

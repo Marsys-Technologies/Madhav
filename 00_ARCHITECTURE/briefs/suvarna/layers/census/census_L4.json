@@ -1,0 +1,1284 @@
+{
+ "L4": {
+  "generated": "2026-09-30T20:23:50+05:30",
+  "layer": "L4",
+  "layer_name": "Phala",
+  "scoring": "contribution",
+  "n_assets": 9,
+  "population_active": 9,
+  "population_registry_total": 9,
+  "population_excluded_inactive": [],
+  "chart_scope": "482012f1-710e-4a25-994a-93821f5871aa",
+  "chart_scoped_count_sql": 9,
+  "global_runs": 61,
+  "global_runs_touching_layer": 328,
+  "never_exercised_with_writer": [],
+  "registered_ids": 9,
+  "registry_has_writer": 9,
+  "phantom_registered": [],
+  "local_map_candidates": -1,
+  "assets": [
+   {
+    "asset_id": "ph_muhurta",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 134,
+    "reach": {
+     "table": "phala_muhurta",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 24,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "action_class",
+      "chart_personalization_score",
+      "classical_citation",
+      "composite_quality",
+      "hora_lord",
+      "linked_anchor_id",
+      "muhurta_id",
+      "panchanga_score",
+      "personal_adversity_penalty",
+      "verdict_reason",
+      "window_end",
+      "window_quality_verdict",
+      "window_start"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "follow_up_hook_jsonb",
+      "fructification_anchor",
+      "overlapping_obstruction_id",
+      "panchanga_snapshot_jsonb",
+      "personalization_graha",
+      "significators_met_jsonb",
+      "source_citation",
+      "tarabala_chandrabala_jsonb"
+     ],
+     "width": 0.5417,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_muhurta"
+    ],
+    "target_table": "phala_muhurta",
+    "has_writer": true,
+    "writer_files": [
+     "ph_muhurta.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_muhurta.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_muhurta (ph_muhurta.py:63)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_muhurta"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=134 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=134, floor=134, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "183 rows, 24 cols; fully populated 21; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (muhurta_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 13/24 built column(s) (54.2%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'follow_up_hook_jsonb', 'fructification_anchor', 'overlapping_obstruction_id', 'panchanga_snapshot_jsonb', 'personalization_graha', 'significators_met_jsonb', 'source_citation', 'tarabala_chandrabala_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 183/183 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 26 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ka_gochara, ka_kalasutra, ka_sangam, ka_vighnakara, ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "4/8 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ka_kalasutra (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_sangam (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_nimitta",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 4,
+    "reach": {
+     "table": "phala_anchors",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts",
+      "L4_phala/query_predictive_anchors.ts"
+     ],
+     "columns_built": 34,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "anchor_source",
+      "ayanamsha_robustness",
+      "bhavishya_id",
+      "confidence_basis",
+      "confidence_high",
+      "confidence_low",
+      "convergence_id",
+      "dasha_consensus_count",
+      "direction",
+      "discovery_id",
+      "domain",
+      "event_type",
+      "falsifier",
+      "horizon_tier",
+      "lift_vector_jsonb",
+      "magnitude",
+      "magnitude_basis",
+      "malleability",
+      "peak_date",
+      "posterior",
+      "signal_id",
+      "source_citation",
+      "window_end",
+      "window_start"
+     ],
+     "dark": [
+      "causal_chain_jsonb",
+      "chart_id",
+      "computed_at",
+      "contradiction_jsonb",
+      "counterfactual_jsonb",
+      "derivation_ledger_jsonb",
+      "precedent_refs_jsonb",
+      "school_consensus_jsonb",
+      "structured_falsifier_jsonb"
+     ],
+     "width": 0.7353,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 17,
+     "direct": 10,
+     "severity_weight": 18,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_anchors"
+    ],
+    "target_table": "phala_anchors",
+    "has_writer": true,
+    "writer_files": [
+     "ph_nimitta.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_nimitta.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_anchors (ph_nimitta.py:129)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_anchors"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "9 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "live=4, floor=139, delta=-135"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 37 cols; fully populated 29; NEVER populated ['subsystem_source', 'karmic_frame', 'karmic_note']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (anchor_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 25/34 built column(s) (73.5%) selected by 2 capability module(s); dark: ['causal_chain_jsonb', 'chart_id', 'computed_at', 'contradiction_jsonb', 'counterfactual_jsonb', 'derivation_ledger_jsonb', 'precedent_refs_jsonb', 'school_consensus_jsonb', 'structured_falsifier_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): query_phala_calibration.ts, query_predictive_anchors.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "41 executed run(s) of 95 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 27 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ka_bhavishya_lekha, ka_sangam did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "5/9 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_sangam (stale, chart 482012f1)', 'ka_bhavishya_lekha (stale, chart 482012f1)', 'bo_anveshana (stale, chart 482012f1)', 'bo_cgm_paths (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_phaladesa",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 13,
+    "reach": {
+     "table": "phala_phaladesa",
+     "modules": [
+      "L4_phala/query_domain_result.ts"
+     ],
+     "columns_built": 29,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_count",
+      "anomaly_flag_count",
+      "clean_anchor_count",
+      "confidence_high",
+      "confidence_low",
+      "domain",
+      "evidence_type",
+      "incoming_spillover_count",
+      "magnitude",
+      "malleability",
+      "mitigation_available",
+      "muhurta_available",
+      "narration_status",
+      "peak_date",
+      "phaladesa_id",
+      "pramana_window_status",
+      "prediction_window_end",
+      "prediction_window_start",
+      "source_citation",
+      "staged_revision_count",
+      "top_anchor_id"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "contradiction_summary_jsonb",
+      "derivation_ledger_jsonb",
+      "derivation_summary_jsonb",
+      "narration_jsonb",
+      "precedent_refs_jsonb",
+      "spillover_domains_jsonb"
+     ],
+     "width": 0.7241,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 9,
+     "direct": 1,
+     "severity_weight": 10,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_phaladesa"
+    ],
+    "target_table": "phala_phaladesa",
+    "has_writer": true,
+    "writer_files": [
+     "ph_phaladesa.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_phaladesa.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_phaladesa (ph_phaladesa.py:170)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_phaladesa"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "7 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=13 = live=13 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=13, floor=13, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "26 rows, 31 cols; fully populated 16; NEVER populated ['narration_requested_at', 'narration_model']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (phaladesa_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 21/29 built column(s) (72.4%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'contradiction_summary_jsonb', 'derivation_ledger_jsonb', 'derivation_summary_jsonb', 'narration_jsonb', 'precedent_refs_jsonb', 'spillover_domains_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 26/26 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_domain_result.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "37 executed run(s) of 96 build_run_assets row(s), scope(s): asset, asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 32 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ph_muhurta, ph_nimitta, ph_pramana, ph_pratikara, ph_sankrama, ph_suddha_sodhana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "1/7 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ph_muhurta (stale, chart 482012f1)', 'ph_pratikara (stale, chart 482012f1)', 'ph_suddha_sodhana (stale, chart 482012f1)', 'ph_sankrama (stale, chart 482012f1)', 'ph_pramana (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_pramana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 4,
+    "reach": {
+     "table": "phala_pramana",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 11,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "evidence_strength_label",
+      "evidence_type",
+      "falsifier_text",
+      "observable_criteria_jsonb",
+      "pramana_id",
+      "source_citation",
+      "window_status"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb"
+     ],
+     "width": 0.7273,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 10,
+     "direct": 2,
+     "severity_weight": 11,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_pramana"
+    ],
+    "target_table": "phala_pramana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_pramana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_pramana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_pramana (ph_pramana.py:56)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_pramana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 14 cols; fully populated 11; NEVER populated ['lel_entry_id', 'lel_entry_jsonb', 'linked_sodhana_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (pramana_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 8/11 built column(s) (72.7%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "36 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ph_muhurta, ph_nimitta, ph_pratikara, ph_sankrama, ph_sodhana, ph_suddha_sodhana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/6 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ph_sankrama (stale, chart 482012f1)', 'ph_muhurta (stale, chart 482012f1)', 'ph_pratikara (stale, chart 482012f1)', 'ph_sodhana (stale, chart 482012f1)', 'ph_suddha_sodhana (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_pratikara",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 536,
+    "reach": {
+     "table": "phala_mitigation",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 20,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "afflicting_graha",
+      "classical_citation",
+      "cross_tradition_corroboration",
+      "intensity_tier",
+      "linked_anchor_id",
+      "mitigation_id",
+      "obstruction_id",
+      "obstruction_severity",
+      "program_jsonb",
+      "proportionality_basis",
+      "re_evaluation_date",
+      "recommended_tier_jsonb",
+      "tradition_options_jsonb",
+      "window_end",
+      "window_start"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "outcome_hook_jsonb",
+      "source_citation"
+     ],
+     "width": 0.75,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_mitigation"
+    ],
+    "target_table": "phala_mitigation",
+    "has_writer": true,
+    "writer_files": [
+     "ph_pratikara.py"
+    ],
+    "catalog_status": "DRAFT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_pratikara.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_mitigation (ph_pratikara.py:100)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_mitigation"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "4 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=536 = live=536 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=536, floor=536, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "1277 rows, 22 cols; fully populated 16; NEVER populated ['initiation_muhurta_ref', 'source_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (mitigation_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 15/20 built column(s) (75.0%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'outcome_hook_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 1277/1277 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 26 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ka_sangam, ka_vighnakara, ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/4 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'bo_upaya (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_sangam (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_rectification",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 186,
+    "reach": {
+     "table": "phala_rectification",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "ayanamsha_id",
+      "candidate_birth_utc",
+      "id",
+      "lagna_degree_in_sign",
+      "lagna_longitude_deg",
+      "lagna_sign",
+      "lagna_stable",
+      "lel_events_matched",
+      "lel_events_tested",
+      "lel_fit_score",
+      "offset_minutes",
+      "scored_at"
+     ],
+     "dark": [
+      "chart_id"
+     ],
+     "width": 0.9231,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 2 table(s): phala_rectification, phala_rectification_best",
+    "count_sql_tables": [
+     "phala_rectification",
+     "phala_rectification_best"
+    ],
+    "target_table": "phala_rectification",
+    "has_writer": true,
+    "writer_files": [
+     "ph_rectification/__init__.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_rectification/__init__.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_rectification_best (ph_rectification/__init__.py:288), phala_rectification (ph_rectification/__init__.py:291)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_rectification"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=186 = live=186 (count_sql total over 2 table(s): phala_rectification, phala_rectification_best; chart 482012f1); target_table phala_rectification alone: 370 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=186, floor=186, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "370 rows, 13 cols; fully populated 11; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, offset_minutes, ayanamsha_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 12/13 built column(s) (92.3%) selected by 1 capability module(s); dark: ['chart_id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "41 executed run(s) of 95 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 28 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/1 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_sankrama",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 155,
+    "reach": {
+     "table": "phala_sankrama",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 25,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "asymmetry_score",
+      "cascade_depth",
+      "cdlm_cell_id",
+      "confidence_basis",
+      "falsifier",
+      "linkage_strength",
+      "mechanism_text",
+      "projected_peak_date",
+      "projected_window_end",
+      "projected_window_start",
+      "relationship_type",
+      "sankrama_id",
+      "source_anchor_id",
+      "source_domain",
+      "source_window_end",
+      "source_window_start",
+      "spillover_confidence",
+      "target_domain",
+      "trajectory"
+     ],
+     "dark": [
+      "bridge_path_jsonb",
+      "cascade_chain_jsonb",
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "source_citation"
+     ],
+     "width": 0.76,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_sankrama"
+    ],
+    "target_table": "phala_sankrama",
+    "has_writer": true,
+    "writer_files": [
+     "ph_sankrama.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_sankrama.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_sankrama (ph_sankrama.py:78)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_sankrama"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=2510 disagrees with live=155 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "live=155, floor=2510, delta=-2355"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "630 rows, 26 cols; fully populated 24; NEVER populated ['mitigation_ref']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 19/25 built column(s) (76.0%) selected by 1 capability module(s); dark: ['bridge_path_jsonb', 'cascade_chain_jsonb', 'chart_id', 'computed_at', 'derivation_ledger_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 630/630 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 26 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "1/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_sodhana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 0,
+    "reach": {
+     "table": "phala_sodhana",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "anomaly_severity",
+      "anomaly_type",
+      "auto_action",
+      "detected_field",
+      "expected_value_text",
+      "observed_value_text",
+      "recommendation_text",
+      "sodhana_id"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "source_citation"
+     ],
+     "width": 0.6923,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 12,
+     "direct": 2,
+     "severity_weight": 13,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_sodhana"
+    ],
+    "target_table": "phala_sodhana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_sodhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_sodhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_sodhana (ph_sodhana.py:53)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_sodhana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=none); build record rows_written=97"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "41 rows, 14 cols; fully populated 13; NEVER populated ['leakage_class']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (sodhana_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 9/13 built column(s) (69.2%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 41/41 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ph_nimitta did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "1/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_suddha_sodhana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 4,
+    "reach": {
+     "table": "phala_suddha_sodhana",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "cleanliness_status",
+      "confidence_delta_if_applied",
+      "critical_flag_count",
+      "entry_id",
+      "flag_ids_jsonb",
+      "major_flag_count",
+      "minor_flag_count",
+      "staged_revision_jsonb"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "source_citation"
+     ],
+     "width": 0.6923,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_suddha_sodhana"
+    ],
+    "target_table": "phala_suddha_sodhana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_suddha_sodhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_suddha_sodhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_suddha_sodhana (ph_suddha_sodhana.py:46)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_suddha_sodhana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13)"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "live=4, floor=139, delta=-135"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 16 cols; fully populated 10; NEVER populated ['revision_approved_by', 'revision_applied_at', 'magnitude_delta_if_applied']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (entry_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 9/13 built column(s) (69.2%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_phala_calibration.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "36 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 29 error(s) and 9 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-08-12): BLOCKED: upstream dependency(ies) ph_nimitta, ph_sodhana did not complete in this run; skipped to avoid building on incomplete data"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_sodhana (stale, chart 482012f1)', 'ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   }
+  ]
+ }
+}
