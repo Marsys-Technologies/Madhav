@@ -113,6 +113,62 @@ def test_parse_prose_field_rejects_malformed_entries(bad):
         ac.parse_prose_field(bad)
 
 
+def test_parse_prose_field_accepts_an_array_element_segment_after_an_identifier_key():
+    # grammar 1.6.0 (SS ruling 2026-10-01): `key[*]` = every element of the array at `key`; the path tuple carries the
+    # wildcard as the token "[*]" (never a valid identifier, so it cannot collide with a JSON key)
+    assert ac.parse_prose_field("d.$.a[*].b") == ("d", ("a", "[*]", "b"))
+    assert ac.parse_prose_field("derivation.$.factor_ledger[*].connections[*].reason") == (
+        "derivation", ("factor_ledger", "[*]", "connections", "[*]", "reason"))
+    assert ac.parse_prose_field("d.$.a.b[*].c") == ("d", ("a", "b", "[*]", "c"))
+    assert ac.parse_prose_field("d.$.items[*]") == ("d", ("items", "[*]"))         # an array of strings
+    assert ac.parse_prose_field("d.$.a[*].b[*]") == ("d", ("a", "[*]", "b", "[*]"))
+    assert ac.parse_prose_field("d.$.a.b") == ("d", ("a", "b"))                    # unchanged
+
+
+@pytest.mark.parametrize("bad", [
+    "d[*]", "d[*].$.a", "d.$[*].a", "d.$.[*]", "d.$.a[*][*]", "d.$.a[*][*].b", "d.$.a[0]", "d.$.a[0].b", "d.$.a[1]",
+    "d.$.a[-1].b", "d.$.a[ * ].b", "d.$.a[**].b", "d.$.a[*.b", "d.$.a*].b", "d.$.a[].b", "d.$.a[*]b", "d.$.a[*]x.b",
+    "d.$.a[*]..b", "d.$.a[*].", "d.$.a[*]\n", "d.$.a[*].b\n", "d.$.a.[*].b", "d.$.[*].b", "d.$.a[*] .b", "d.$.a [*].b",
+    "d.$.a[\uff0a].b", "d.$.a[*]\u200b.b", "d.$.a[*].b[*", "d.$.a[n].b", "d.$.a['x'].b", "d.$.a[*:].b", "d.$.a[?(@.x)].b",
+    "d.$.*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
+def test_parse_prose_field_rejects_malformed_wildcards(bad):
+    with pytest.raises(ac.DeclarationsError):
+        ac.parse_prose_field(bad)
+
+
+def test_wildcard_identifiers_keep_the_128_character_cap():
+    ok = "c" * 128 + ".$." + "k" * 128 + "[*]." + "m" * 128
+    assert ac.parse_prose_field(ok) == ("c" * 128, ("k" * 128, "[*]", "m" * 128))
+    for bad in ("c.$." + "k" * 129 + "[*].m", "c.$.k[*]." + "m" * 129):
+        with pytest.raises(ac.DeclarationsError):
+            ac.parse_prose_field(bad)
+
+
+def test_a_wildcard_path_overlaps_its_non_wildcard_parent_and_its_own_prefixes(tmp_path):
+    for a, b in (("d.$.x", "d.$.x[*].y"), ("d.$.x[*]", "d.$.x[*].y"), ("d.$.x", "d.$.x[*]"), ("d.$.x[*].y", "d.$.x[*].y"),
+                 ("d.$.x[*].y", "d.$.x"), ("d", "d.$.x[*].y"), ("D.$.X[*].y", "d.$.x"), ("d.$.x[*].y[*]", "d.$.x[*].y")):
+        with pytest.raises(ac.DeclarationsError, match="overlap"):
+            ac.validate_declarations(_doc(a=dict(prose_fields=[a, b], evidence=PEV)))
+    # siblings under one array, different arrays, and an array vs an object of the same key are NOT overlaps
+    ac.validate_declarations(_doc(a=dict(prose_fields=["d.$.x[*].y", "d.$.x[*].z", "d.$.w[*].y", "d.$.x.y", "d.$.xy[*].y",
+                                                      "e.$.x[*].y"], evidence=PEV)))
+    ac.validate_declarations(_doc(a=dict(prose_fields=["d.$.x[*].y", "d.$.x[*].y2"], evidence=PEV)))
+
+
+def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
+    doc = _doc(w=dict(prose_fields=["d.$.a[*].b", "d.$.a[*].c[*].e"], evidence=PEV))
+    decl = ac.load_asset_declarations(_write(tmp_path, doc))
+    assert decl["w"]["prose_fields"] == ["d.$.a[*].b", "d.$.a[*].c[*].e"]
+    assert ac.facts_for_asset(dict(asset_id="w"), decl)["declared_prose_fields"] == ["d.$.a[*].b", "d.$.a[*].c[*].e"]
+    for bad in ("d.$.a[0].b", "d.$.a[*][*].b"):
+        with pytest.raises(ac.DeclarationsError, match="prose_fields"):
+            ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
+
+
+def test_the_file_version_is_1_6_0():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.6.0"
+
+
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
     doc = _doc(none=dict(prose_fields=None),
                empty=dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none (w.py:10)")),
