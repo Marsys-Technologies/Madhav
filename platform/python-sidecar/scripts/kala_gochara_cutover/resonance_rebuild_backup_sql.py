@@ -42,7 +42,11 @@ from pathlib import Path
 _SIDECAR = Path(__file__).resolve().parents[2]
 if str(_SIDECAR) not in sys.path:
     sys.path.insert(0, str(_SIDECAR))
-from services.ka_gochara_resonance.writer import TARGET_EVENT_CLASSES  # noqa: E402
+from services.ka_gochara_resonance.writer import (  # noqa: E402
+    TARGET_EVENT_CLASSES, _MECHANISM_WEIGHTS)
+from services.gochara_grammar.derived_points import (  # noqa: E402
+    M6_EVENT_CLASSES, MANDI_DISTANCE_AGENT, MANDI_DISTANCE_CITATION, MANDI_DISTANCE_REF,
+    YAMAKANTAKA_FORMULAS)
 
 ELIGIBLE_EVENT_CLASSES: tuple[str, ...] = tuple(TARGET_EVENT_CLASSES)
 
@@ -280,7 +284,47 @@ POSITIVE_PAIRS = ("(VALUES ('mrityu_bhaga','fired'),('gandanta','gandanta'),('ka
                   "('kartari','shubha_kartari'),('pushkara','pushkara')) AS pp(fact_key, value)")
 EXPECTED_WEIGHTS = {"bhava": 1.0, "lord": 1.0, "karaka": 1.0, "sensitive_degree": 0.5,
                     "arudha": 0.6, "bhava_arudha": 0.6, "yoga_constituent": 0.7,
-                    "dasha_lord_portfolio": 0.8}
+                    "dasha_lord_portfolio": 0.8,
+                    # M-6 derived rows (writer._build_m6_derived_rows): 0.5 each
+                    "gulika_mandi_distance": 0.5, "yamakantaka_difference": 0.5}
+# mechanism_node: the weight is the CITED bg_transit_rules row's rule_type mapped
+# through the writer's own contract (writer._MECHANISM_WEIGHTS — favourable 1.0,
+# unfavourable -1.0, vedha 0.3, double_transit 0.75); a rule_type outside the
+# contract would be the writer's 0.5 default — not accepted here (ASTRA v1.4 am. 2).
+MECHANISM_WEIGHTS: dict[str, float] = dict(_MECHANISM_WEIGHTS)
+# EVERY target type the writer emits (its _base_row calls) is checked by name —
+# a type outside this tuple is a 'type:unknown' violation, never a silent
+# fall-through (the previous CASE degraded to `m.weight <> m.weight` for a type
+# absent from EXPECTED_WEIGHTS — mechanism_node — so a sign flip passed).
+CHECKED_TARGET_TYPES: tuple[str, ...] = tuple(sorted(list(EXPECTED_WEIGHTS) + ["mechanism_node"]))
+M6_CONSTANT_ROWS: tuple[tuple[str, str, str, str], ...] = tuple(
+    [("gulika_mandi_distance", MANDI_DISTANCE_REF, MANDI_DISTANCE_CITATION, f"agent:{MANDI_DISTANCE_AGENT}")]
+    + [("yamakantaka_difference", f["ref"], f["citation"], f"agent:{f['agent']}") for f in YAMAKANTAKA_FORMULAS])
+
+
+def _sql_str(v: str) -> str:
+    return "'" + str(v).replace("'", "''") + "'"
+
+
+def mechanism_identity_sql(chart_id: str) -> tuple[str, str]:
+    """mechanism_node rows as an identity, both directions: the exact set of
+    (event_class, source_rule_id) rows must EQUAL the bg_transit_rules rows
+    eligible for each class as the writer fetches them (lower(graha) ∈ the
+    class's kārakas AND primary_house ∈ its houses). A row's target_ref and
+    weight are checked against ITS rule by value_invariants_sql."""
+    cid = _check_uuid(chart_id)
+    cte = f"WITH {_class_houses_cte(cid)}\n"
+    expected = ("SELECT DISTINCT o.event_class_id AS event_class, r.id AS source_rule_id\n"
+                "  FROM eligible o\n"
+                "  JOIN class_karakas ck ON ck.event_class = o.event_class_id\n"
+                "  JOIN class_houses ch ON ch.event_class = o.event_class_id\n"
+                "  JOIN bg_transit_rules r ON lower(btrim(r.graha)) = ck.karaka_lower AND r.primary_house = ch.house")
+    actual = (f"SELECT event_class, source_rule_id FROM gochara_resonance_map\n"
+              f" WHERE chart_id = '{cid}' AND target_type = 'mechanism_node'")
+    return (f"-- mechanism identity: mechanism_node rows not backed by an eligible rule (MUST be 0 rows):\n"
+            f"{cte}{actual}\nEXCEPT\n{expected};",
+            f"-- mechanism identity: eligible rules MISSING from the map (MUST be 0 rows):\n"
+            f"{cte}{expected}\nEXCEPT\n{actual};")
 
 
 def _class_houses_cte(chart_id: str) -> str:
@@ -409,12 +453,30 @@ def value_invariants_sql(chart_id: str) -> str:
                       arudha: the cited fact names one of the 12 signs;
                       bhava_arudha: the class-house ARUDHA_A{h} sign fact
                       exists and names a sign; yoga_constituent: resolved;
+                      gulika_mandi_distance / yamakantaka_difference: the
+                      stored state is accepted within the closed enum (their
+                      operand chain is derived_points arithmetic the runbook
+                      does NOT re-derive — an explicit limit, not a silent
+                      fall-through); their ref / citation / qualifier /
+                      provenance and M6 class scope ARE checked;
+      mechanism     — weight = the cited rule's rule_type through the
+                      writer's contract (MECHANISM_WEIGHTS), target_ref =
+                      graha:rule_type:h<house> of that rule, and the rule is
+                      eligible for the class (kāraka ∧ house);
+      type          — every emitted type is enumerated (CHECKED_TARGET_TYPES);
+                      anything else is 'type:unknown', never m.weight <> m.weight;
       qualifier     — lord: 'afflicted' iff an ontology lord entry naming
                       the token says so; yoga_constituent: 'bhanga_active'
                       iff a live fired firing of that id has bhanga_active."""
     cid = _check_uuid(chart_id)
     cases = " ".join(f"WHEN '{t}' THEN {w}" for t, w in EXPECTED_WEIGHTS.items())
-    return (f"WITH lagna AS (SELECT (fact_value_num)::int AS n FROM chart_facts\n"
+    checked = "ARRAY[" + ", ".join(f"'{t}'" for t in CHECKED_TARGET_TYPES) + "]::text[]"
+    mech_values = ", ".join(f"('{rt}', {w})" for rt, w in MECHANISM_WEIGHTS.items())
+    m6_values = ", ".join(f"({_sql_str(t)}, {_sql_str(r)}, {_sql_str(c)}, {_sql_str(q)})"
+                          for t, r, c, q in M6_CONSTANT_ROWS)
+    m6_classes = "ARRAY[" + ", ".join(f"'{c}'" for c in M6_EVENT_CLASSES) + "]::text[]"
+    return (f"WITH {_class_houses_cte(cid)},\n"
+            f"lagna AS (SELECT (fact_value_num)::int AS n FROM chart_facts\n"
             f"  WHERE chart_id = '{cid}' AND ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
             f"    AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'\n"
             f"  ORDER BY fact_value_num LIMIT 1),\n"
@@ -431,12 +493,33 @@ def value_invariants_sql(chart_id: str) -> str:
             f"       ELSE array_to_string(o.citations, '; ') END AS citation\n"
             f"  FROM brahma_event_ontology o),\n"
             f"signs AS (SELECT unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',\n"
-            f"  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name)\n"
+            f"  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name),\n"
+            f"mechanism_weights AS (SELECT * FROM (VALUES {mech_values}) AS mw(rule_type, weight)),\n"
+            f"m6_constants AS (SELECT * FROM (VALUES {m6_values}) AS x(target_type, ref, citation, qualifier))\n"
             f"SELECT m.event_class, m.target_type, m.target_ref, v.violation\n"
             f"  FROM gochara_resonance_map m\n"
             f"  CROSS JOIN LATERAL (SELECT CASE\n"
             f"    WHEN m.event_class <> ALL({eligible_classes_array()}) THEN 'class:not_eligible'\n"
-            f"    WHEN m.weight <> (CASE m.target_type {cases} ELSE m.weight END) THEN 'weight'\n"
+            f"    WHEN m.target_type <> ALL({checked}) THEN 'type:unknown'\n"
+            f"    WHEN m.target_type = 'mechanism_node' AND m.weight IS DISTINCT FROM (\n"
+            f"         SELECT mw.weight FROM bg_transit_rules r JOIN mechanism_weights mw ON mw.rule_type = r.rule_type\n"
+            f"          WHERE r.id = m.source_rule_id) THEN 'weight:mechanism_rule_type'\n"
+            f"    WHEN m.target_type = 'mechanism_node' AND m.target_ref IS DISTINCT FROM (\n"
+            f"         SELECT lower(btrim(r.graha)) || ':' || r.rule_type || ':h' || r.primary_house::text\n"
+            f"           FROM bg_transit_rules r WHERE r.id = m.source_rule_id) THEN 'identity:mechanism_ref'\n"
+            f"    WHEN m.target_type = 'mechanism_node' AND NOT EXISTS (\n"
+            f"         SELECT 1 FROM bg_transit_rules r\n"
+            f"           JOIN class_karakas ck ON ck.event_class = m.event_class AND ck.karaka_lower = lower(btrim(r.graha))\n"
+            f"           JOIN class_houses ch ON ch.event_class = m.event_class AND ch.house = r.primary_house\n"
+            f"          WHERE r.id = m.source_rule_id) THEN 'eligibility:mechanism_rule'\n"
+            f"    WHEN m.target_type <> 'mechanism_node' AND m.weight <> (CASE m.target_type {cases} END) THEN 'weight'\n"
+            f"    WHEN m.target_type IN ('gulika_mandi_distance','yamakantaka_difference')\n"
+            f"         AND m.event_class <> ALL({m6_classes}) THEN 'class:m6_scope'\n"
+            f"    WHEN m.target_type IN ('gulika_mandi_distance','yamakantaka_difference')\n"
+            f"         AND (m.uncited_extension IS TRUE OR NOT EXISTS (SELECT 1 FROM m6_constants x\n"
+            f"              WHERE x.target_type = m.target_type AND x.ref = m.target_ref\n"
+            f"                AND x.citation = m.classical_citation AND x.qualifier = m.target_qualifier))\n"
+            f"         THEN 'provenance:m6_constant'\n"
             f"    WHEN m.target_type IN ('bhava','lord','karaka') AND (m.uncited_extension IS TRUE\n"
             f"         OR m.classical_citation IS DISTINCT FROM (SELECT citation FROM ontology_cite oc\n"
             f"                                                     WHERE oc.event_class_id = m.event_class))\n"
@@ -500,7 +583,8 @@ __all__ = [
     "CONTENT_COLUMNS", "NEGATIVE_VALUES", "POSITIVE_VALUES", "EXPECTED_WEIGHTS",
     "ELIGIBLE_EVENT_CLASSES", "eligible_classes_array", "FACT_BACKED_TARGET_TYPES",
     "r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "r4_lord_identity_sql",
-    "value_invariants_sql",
+    "mechanism_identity_sql", "value_invariants_sql", "MECHANISM_WEIGHTS", "CHECKED_TARGET_TYPES",
+    "M6_CONSTANT_ROWS",
     "snapshot_table_name", "create_snapshot_sql", "partition_digest_sql",
     "full_row_digest_sql", "rollback_sql", "negative_sensitive_targets_sql",
     "dangling_fact_refs_sql", "r5_qualifier_identity_sql", "new_stamp_utc",

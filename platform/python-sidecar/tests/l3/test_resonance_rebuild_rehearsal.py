@@ -81,16 +81,18 @@ def _passing_ver() -> dict:
         "r2_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r3_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r4_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
+        "mechanism_identity_sql": {"actual_not_expected": 0, "expected_not_actual": 0},
         "r5_identity_sql": {"qualified_not_in_ontology": 0, "ontology_not_qualified": 0},
         "detector_controls": {
             "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0], "r5": [0, 0],
-                      "value_violations": 0},
+                      "mech": [0, 0], "value_violations": 0, "dangling": 0},
             **{name: {"count_preservation_expected": True, "id_set_preservation_expected": True,
                       "counts_preserved": True, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
                for name in ("sensitive_class_swap", "arudha_class_swap", "yoga_class_swap",
                             "weight_changed", "qualifier_transferred",
-                            "resolution_state_flipped", "provenance_flipped", "lord_token_wrong")},
+                            "resolution_state_flipped", "provenance_flipped", "lord_token_wrong",
+                            "mechanism_weight_sign_flipped")},
             **{name: {"count_preservation_expected": False, "id_set_preservation_expected": True,
                       "counts_preserved": False, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
@@ -189,6 +191,11 @@ def test_passing_verification_is_accepted():
     (lambda v: v["r4_identity_sql"].__setitem__("actual_not_expected", 1), "r4_identity_sql"),
     (lambda v: v["r4_identity_sql"].__setitem__("expected_not_actual", 1), "r4_identity_sql"),
     (lambda v: v.pop("r4_identity_sql"), "r4_identity_sql"),
+    # ASTRA v1.4 amendment 2: mechanism rows — identity pair + the sign-flip control
+    (lambda v: v["mechanism_identity_sql"].__setitem__("actual_not_expected", 1), "mechanism_identity_sql"),
+    (lambda v: v["mechanism_identity_sql"].__setitem__("expected_not_actual", 1), "mechanism_identity_sql"),
+    (lambda v: v["detector_controls"]["mechanism_weight_sign_flipped"].__setitem__("detected", False), "NOT detected"),
+    (lambda v: v["identities"]["exact_row_tuples"]["actual"].__setitem__(0, "illness_acute|mechanism_node|saturn:unfavourable:h8|1.0|resolved|None|False|Phaladeepika ch.26 (synthetic rehearsal)"), "identity: exact_row_tuples"),
     (lambda v: v["detector_controls"]["lord_token_wrong"].__setitem__("detected", False), "NOT detected"),
     (lambda v: v["detector_controls"]["lord_token_missing"].__setitem__("detected", False), "NOT detected"),
     (lambda v: v["detector_controls"]["birth_anchor_row_injected"].__setitem__("detected", False), "NOT detected"),
@@ -334,7 +341,7 @@ def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
     v["detector_controls"] = {"clean": v["detector_controls"]["clean"], "restored_after_controls": True}
     failures = R.verify_acceptance(v)
     missing = [f for f in failures if "missing detector control record" in f]
-    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 12, failures
+    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 13, failures
     assert set(R.REQUIRED_DETECTOR_CONTROLS) >= {
         "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
         "qualifier_transferred", "resolution_state_flipped", "provenance_flipped"}
@@ -364,6 +371,73 @@ def test_r4_all_lord_identity_is_bidirectional_scoped_and_tokenised_as_the_write
     actual = (lords - {("marriage", "7L")}) | {("marriage", "2L")}
     assert len(actual) == len(lords) and {t for _, t in actual} == {t for _, t in lords}
     assert lords - actual == {("marriage", "7L")} and actual - lords == {("marriage", "2L")}
+
+
+def _writer_emitted_target_types() -> set:
+    """The writer's emitted type set, derived from its source: the literal
+    second argument of every _base_row(...) call."""
+    import ast
+    src = (Path(__file__).resolve().parents[2] / "services" / "ka_gochara_resonance" / "writer.py").read_text()
+    out = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "_base_row" and len(node.args) >= 2:
+            assert isinstance(node.args[1], ast.Constant), ast.dump(node.args[1])
+            out.add(node.args[1].value)
+    return out
+
+
+def test_every_emitted_target_type_is_checked_and_no_weight_compares_with_itself():
+    """ASTRA v1.4 amendment 2: for a type absent from EXPECTED_WEIGHTS the
+    predicate degraded to `m.weight <> m.weight` — mechanism_node was absent,
+    so illness_acute / saturn:unfavourable:h8 with its weight flipped
+    -1.0 → +1.0 produced zero violations. Now every type the writer emits is
+    enumerated (equal to the set of literal types in its _base_row calls);
+    mechanism weights come from the cited rule's rule_type through the
+    writer's own _MECHANISM_WEIGHTS; an unknown type is a violation."""
+    from services.ka_gochara_resonance.writer import _MECHANISM_WEIGHTS
+    emitted = _writer_emitted_target_types()
+    assert set(B.CHECKED_TARGET_TYPES) == emitted, (set(B.CHECKED_TARGET_TYPES) ^ emitted)
+    assert set(B.EXPECTED_WEIGHTS) == emitted - {"mechanism_node"}
+    assert B.MECHANISM_WEIGHTS == _MECHANISM_WEIGHTS and B.MECHANISM_WEIGHTS["unfavourable"] == -1.0
+    sql = B.value_invariants_sql(CH)
+    assert "ELSE m.weight" not in sql and "m.weight <> m.weight" not in sql
+    assert "'type:unknown'" in sql and "'weight:mechanism_rule_type'" in sql
+    assert "'identity:mechanism_ref'" in sql and "'eligibility:mechanism_rule'" in sql
+    assert "('unfavourable', -1.0)" in sql and "('favourable', 1.0)" in sql
+    assert "JOIN mechanism_weights mw ON mw.rule_type = r.rule_type" in sql
+    assert "WHERE r.id = m.source_rule_id" in sql
+    assert "m.target_type <> 'mechanism_node' AND m.weight <> (CASE m.target_type" in sql
+    for t in emitted:
+        assert f"'{t}'" in sql, t
+    # M-6 rows: ref / citation / qualifier from the grammar constants, scope to the two classes
+    assert "'provenance:m6_constant'" in sql and "'class:m6_scope'" in sql
+    assert "mandi_sign_distance_from_8L" in sql and "PG220:C1 śl.26" in sql and "agent:Saturn" in sql
+    assert "WHEN 'gulika_mandi_distance' THEN 0.5" in sql and "WHEN 'yamakantaka_difference' THEN 0.5" in sql
+    # mechanism identity pair: both directions, eligibility as the writer fetches
+    fwd, rev = B.mechanism_identity_sql(CH)
+    for q in (fwd, rev):
+        assert "\nEXCEPT\n" in q and "target_type = 'mechanism_node'" in q
+        assert "lower(btrim(r.graha)) = ck.karaka_lower AND r.primary_house = ch.house" in q
+    assert "MISSING" in rev
+
+
+def test_expected_tuples_cover_mechanism_and_m6_rows_with_the_writers_weights():
+    models = {"illness_acute": ([6, 8], ["6L", "8L"], ["Mars", "Saturn"]),
+              "marriage": ([7, 2], ["7L"], ["Venus"])}
+    fixture = {"positive_facts": [], "arudha_fact_ids_by_house": {}, "arudha_sign_by_house": {},
+               "live_yogas": [], "citation_by_class": {"illness_acute": "c1", "marriage": "c2"},
+               "transit_rules": R.FIXTURE_TRANSIT_RULES}
+    got = R.expected_row_tuples(fixture, models)
+    assert ("illness_acute", "mechanism_node", "saturn:unfavourable:h8", -1.0, "resolved", None, False,
+            "Phaladeepika ch.26 (synthetic rehearsal)") in got
+    assert ("marriage", "mechanism_node", "venus:favourable:h7", 1.0, "resolved", None, False,
+            "BPHS ch.29 (synthetic rehearsal)") in got
+    assert not any(tp[0] == "marriage" and tp[2] == "saturn:unfavourable:h8" for tp in got)
+    assert ("illness_acute", "gulika_mandi_distance", B.MANDI_DISTANCE_REF, 0.5, "resolved",
+            f"agent:{B.MANDI_DISTANCE_AGENT}", False, B.MANDI_DISTANCE_CITATION) in got
+    assert sum(1 for tp in got if tp[0] == "illness_acute" and tp[1] == "yamakantaka_difference") == 4
+    assert not any(tp[0] == "marriage" and tp[1] in ("gulika_mandi_distance", "yamakantaka_difference") for tp in got)
+    assert set(R.EXACT_TYPES) == _writer_emitted_target_types() - {"dasha_lord_portfolio"}
 
 
 def test_value_invariants_check_each_retained_value_against_its_source():
@@ -718,7 +792,7 @@ def test_runbook_carries_the_module_statements_verbatim():
                   B.rollback_sql(t, CH, 177, "0" * 32),
                   *B.r5_qualifier_identity_sql(CH),
                   *B.r1_identity_sql(CH), *B.r2_identity_sql(CH), *B.r3_identity_sql(CH),
-                  *B.r4_lord_identity_sql(CH),
+                  *B.r4_lord_identity_sql(CH), *B.mechanism_identity_sql(CH),
                   B.value_invariants_sql(CH)):
         assert block in text, block[:80]
     # ASTRA v1.2 P1-3: the global-DISTINCT R-1/R-3 identities are gone

@@ -401,11 +401,23 @@ EXCEPT
 SELECT event_class, target_ref FROM gochara_resonance_map
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'lord' AND target_qualifier = 'afflicted';
 
--- Retained VALUES, each checked INDEPENDENTLY against its own source (weight per type; provenance =
+-- Retained VALUES, each checked INDEPENDENTLY against its own source — EVERY emitted target type is
+-- enumerated (bhava, lord, karaka, mechanism_node, sensitive_degree, arudha, bhava_arudha,
+-- gulika_mandi_distance, yamakantaka_difference, yoga_constituent, dasha_lord_portfolio); any other
+-- type is a 'type:unknown' violation, never a self-comparison (weight per type; mechanism weight from
+-- the cited rule's rule_type; M-6 rows' ref / citation / qualifier from the grammar constants; provenance =
 -- ontology citations / cited bg_transit_rules row / own-synthesis NULL; resolution state re-derived
 -- from LAGNA, reference_signs, graha_position, the cited sign fact; lord and yoga qualifiers from the
 -- ontology entry and the live firing). Lists every violating row — MUST return 0 rows:
-WITH lagna AS (SELECT (fact_value_num)::int AS n FROM chart_facts
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value)),
+lagna AS (SELECT (fact_value_num)::int AS n FROM chart_facts
   WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND ayanamsha_id = 'lahiri_chitrapaksha'
     AND fact_category = 'graha_sign_attributes' AND fact_subject = 'LAGNA' AND fact_key = 'sign_num'
   ORDER BY fact_value_num LIMIT 1),
@@ -420,12 +432,33 @@ ontology_cite AS (SELECT o.event_class_id,
        ELSE array_to_string(o.citations, '; ') END AS citation
   FROM brahma_event_ontology o),
 signs AS (SELECT unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',
-  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name)
+  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name),
+mechanism_weights AS (SELECT * FROM (VALUES ('favourable', 1.0), ('unfavourable', -1.0), ('vedha', 0.3), ('double_transit', 0.75)) AS mw(rule_type, weight)),
+m6_constants AS (SELECT * FROM (VALUES ('gulika_mandi_distance', 'mandi_sign_distance_from_8L', 'PG220:C1 śl.26', 'agent:Saturn'), ('yamakantaka_difference', 'lagna_lord_minus_yamakantaka', 'PG214:C1 śl.6; PG217:C1 śl.14', 'agent:Jupiter'), ('yamakantaka_difference', 'sun_minus_yamakantaka', 'PG214:C1 śl.7', 'agent:Jupiter'), ('yamakantaka_difference', 'yamakantaka_minus_mandi', 'PG214:C1 śl.7', 'agent:Saturn'), ('yamakantaka_difference', 'panchama_tara_lord_minus_yamakantaka', 'PG214:C1 śl.8', 'agent:Jupiter')) AS x(target_type, ref, citation, qualifier))
 SELECT m.event_class, m.target_type, m.target_ref, v.violation
   FROM gochara_resonance_map m
   CROSS JOIN LATERAL (SELECT CASE
     WHEN m.event_class <> ALL(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[]) THEN 'class:not_eligible'
-    WHEN m.weight <> (CASE m.target_type WHEN 'bhava' THEN 1.0 WHEN 'lord' THEN 1.0 WHEN 'karaka' THEN 1.0 WHEN 'sensitive_degree' THEN 0.5 WHEN 'arudha' THEN 0.6 WHEN 'bhava_arudha' THEN 0.6 WHEN 'yoga_constituent' THEN 0.7 WHEN 'dasha_lord_portfolio' THEN 0.8 ELSE m.weight END) THEN 'weight'
+    WHEN m.target_type <> ALL(ARRAY['arudha', 'bhava', 'bhava_arudha', 'dasha_lord_portfolio', 'gulika_mandi_distance', 'karaka', 'lord', 'mechanism_node', 'sensitive_degree', 'yamakantaka_difference', 'yoga_constituent']::text[]) THEN 'type:unknown'
+    WHEN m.target_type = 'mechanism_node' AND m.weight IS DISTINCT FROM (
+         SELECT mw.weight FROM bg_transit_rules r JOIN mechanism_weights mw ON mw.rule_type = r.rule_type
+          WHERE r.id = m.source_rule_id) THEN 'weight:mechanism_rule_type'
+    WHEN m.target_type = 'mechanism_node' AND m.target_ref IS DISTINCT FROM (
+         SELECT lower(btrim(r.graha)) || ':' || r.rule_type || ':h' || r.primary_house::text
+           FROM bg_transit_rules r WHERE r.id = m.source_rule_id) THEN 'identity:mechanism_ref'
+    WHEN m.target_type = 'mechanism_node' AND NOT EXISTS (
+         SELECT 1 FROM bg_transit_rules r
+           JOIN class_karakas ck ON ck.event_class = m.event_class AND ck.karaka_lower = lower(btrim(r.graha))
+           JOIN class_houses ch ON ch.event_class = m.event_class AND ch.house = r.primary_house
+          WHERE r.id = m.source_rule_id) THEN 'eligibility:mechanism_rule'
+    WHEN m.target_type <> 'mechanism_node' AND m.weight <> (CASE m.target_type WHEN 'bhava' THEN 1.0 WHEN 'lord' THEN 1.0 WHEN 'karaka' THEN 1.0 WHEN 'sensitive_degree' THEN 0.5 WHEN 'arudha' THEN 0.6 WHEN 'bhava_arudha' THEN 0.6 WHEN 'yoga_constituent' THEN 0.7 WHEN 'dasha_lord_portfolio' THEN 0.8 WHEN 'gulika_mandi_distance' THEN 0.5 WHEN 'yamakantaka_difference' THEN 0.5 END) THEN 'weight'
+    WHEN m.target_type IN ('gulika_mandi_distance','yamakantaka_difference')
+         AND m.event_class <> ALL(ARRAY['bereavement', 'illness_acute']::text[]) THEN 'class:m6_scope'
+    WHEN m.target_type IN ('gulika_mandi_distance','yamakantaka_difference')
+         AND (m.uncited_extension IS TRUE OR NOT EXISTS (SELECT 1 FROM m6_constants x
+              WHERE x.target_type = m.target_type AND x.ref = m.target_ref
+                AND x.citation = m.classical_citation AND x.qualifier = m.target_qualifier))
+         THEN 'provenance:m6_constant'
     WHEN m.target_type IN ('bhava','lord','karaka') AND (m.uncited_extension IS TRUE
          OR m.classical_citation IS DISTINCT FROM (SELECT citation FROM ontology_cite oc
                                                      WHERE oc.event_class_id = m.event_class))
@@ -483,6 +516,48 @@ SELECT m.event_class, m.target_type, m.target_ref, v.violation
     END AS violation) v
  WHERE m.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND v.violation IS NOT NULL
  ORDER BY m.event_class, m.target_type, m.target_ref;
+
+-- mechanism_node identity (both directions): the SET of (event_class, source_rule_id) mechanism rows MUST
+-- EQUAL the bg_transit_rules rows eligible for each class as the writer fetches them (lower(graha) ∈ the
+-- class's kārakas AND primary_house ∈ its houses). Each row's weight (the cited rule's rule_type through
+-- the writer's contract: favourable 1.0, unfavourable -1.0, vedha 0.3, double_transit 0.75) and target_ref
+-- (graha:rule_type:h<house> of that rule) are checked by the values block above — a mechanism row with only
+-- its sign flipped (illness_acute saturn:unfavourable:h8, -1.0 → +1.0) is a 'weight:mechanism_rule_type'
+-- violation there. BOTH queries MUST return 0 rows:
+-- mechanism identity: mechanism_node rows not backed by an eligible rule (MUST be 0 rows):
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+SELECT event_class, source_rule_id FROM gochara_resonance_map
+ WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'mechanism_node'
+EXCEPT
+SELECT DISTINCT o.event_class_id AS event_class, r.id AS source_rule_id
+  FROM eligible o
+  JOIN class_karakas ck ON ck.event_class = o.event_class_id
+  JOIN class_houses ch ON ch.event_class = o.event_class_id
+  JOIN bg_transit_rules r ON lower(btrim(r.graha)) = ck.karaka_lower AND r.primary_house = ch.house;
+-- mechanism identity: eligible rules MISSING from the map (MUST be 0 rows):
+WITH eligible AS (SELECT o.event_class_id, o.signature_model FROM brahma_event_ontology o
+  WHERE o.event_class_id = ANY(ARRAY['marriage', 'major_gain', 'career_advancement', 'illness_acute', 'chronic_onset', 'surgery', 'career_entry', 'career_change', 'career_setback', 'business_launch', 'education_milestone', 'exam_outcome', 'romantic_start', 'separation', 'childbirth', 'parental_event', 'bereavement', 'major_loss', 'property_acquisition', 'relocation', 'foreign_settlement', 'spiritual_turn', 'achievement_recognition', 'financial_deception', 'psychological_arc', 'travel_event']::text[])),
+class_houses AS (SELECT o.event_class_id AS event_class, (btrim(h.value))::int AS house
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'houses') AS h(value)
+  WHERE btrim(h.value) ~ '^[0-9]+$'),
+class_karakas AS (SELECT o.event_class_id AS event_class, k.value AS karaka,
+                         lower(k.value) AS karaka_lower
+  FROM eligible o, jsonb_array_elements_text(o.signature_model->'karakas') AS k(value))
+SELECT DISTINCT o.event_class_id AS event_class, r.id AS source_rule_id
+  FROM eligible o
+  JOIN class_karakas ck ON ck.event_class = o.event_class_id
+  JOIN class_houses ch ON ch.event_class = o.event_class_id
+  JOIN bg_transit_rules r ON lower(btrim(r.graha)) = ck.karaka_lower AND r.primary_house = ch.house
+EXCEPT
+SELECT event_class, source_rule_id FROM gochara_resonance_map
+ WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND target_type = 'mechanism_node';
 
 -- After counts by type (compare with §1 baseline):
 SELECT target_type, COUNT(*) FROM gochara_resonance_map

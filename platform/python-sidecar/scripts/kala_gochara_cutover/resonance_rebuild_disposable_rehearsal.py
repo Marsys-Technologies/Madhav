@@ -405,11 +405,28 @@ def expected_row_tuples(fixture: dict, signature_models: dict = SIGNATURE_MODELS
             if set(y_houses) & set(houses) or set(y_planets) & kl:
                 out.add((cls, "yoga_constituent", yid, 0.7, "resolved",
                          "bhanga_active" if bhanga else None, True, None))
+        # mechanism_node (ASTRA v1.4 amendment 2): every bg_transit_rules row whose
+        # graha is one of the class's kārakas AND whose house is one of its houses,
+        # weight = the writer's contract for the rule type (unfavourable = -1.0)
+        for rule_type, graha, house, _phala, citation in fixture.get("transit_rules", []):
+            if graha.lower() in kl and house in houses:
+                out.add((cls, "mechanism_node", f"{graha.lower()}:{rule_type}:h{house}",
+                         B.MECHANISM_WEIGHTS[rule_type], "resolved", None, False, citation))
+        # M-6 derived rows: the two Phaladīpikā classes only, the grammar's constants
+        if cls in B.M6_EVENT_CLASSES:
+            for ty, ref, citation, qualifier in B.M6_CONSTANT_ROWS:
+                out.add((cls, ty, ref, 0.5, "resolved", qualifier, False, citation))
     return out
 
 
 EXACT_TYPES = ("bhava", "lord", "karaka", "sensitive_degree", "arudha", "bhava_arudha",
-               "yoga_constituent")
+               "yoga_constituent", "mechanism_node", "gulika_mandi_distance",
+               "yamakantaka_difference")
+FIXTURE_TRANSIT_RULES = [  # (rule_type, graha, primary_house, phala, classical_citation)
+    ("favourable", "venus", 7, "gain (synthetic rehearsal)", "BPHS ch.29 (synthetic rehearsal)"),
+    ("favourable", "jupiter", 11, "gain (synthetic rehearsal)", "BPHS ch.29 (synthetic rehearsal)"),
+    ("unfavourable", "saturn", 8, "loss (synthetic rehearsal)", "Phaladeepika ch.26 (synthetic rehearsal)"),
+]
 
 
 def expected_afflicted_lord_rows(signature_models: dict = SIGNATURE_MODELS) -> int:
@@ -434,7 +451,7 @@ REQUIRED_DETECTOR_CONTROLS: tuple[str, ...] = (
     "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
     "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
     "lord_token_wrong", "lord_token_missing", "birth_anchor_row_injected",
-    "fact_ref_missing", "fact_ref_foreign_chart",
+    "mechanism_weight_sign_flipped", "fact_ref_missing", "fact_ref_foreign_chart",
 )
 _DETECTOR_META_KEYS = ("clean", "restored_after_controls")
 
@@ -499,7 +516,8 @@ def verify_acceptance(ver: dict) -> list[str]:
     if ver.get("value_invariant_violations", 1) != 0:
         f.append(f"values: {ver.get('value_invariant_violations')} rows violate the writer's "
                  "declared weight/provenance/state/qualifier invariants")
-    for name in ("r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "r4_identity_sql"):
+    for name in ("r1_identity_sql", "r2_identity_sql", "r3_identity_sql", "r4_identity_sql",
+                 "mechanism_identity_sql"):
         pair = ver.get(name) or {}
         if pair.get("actual_not_expected") != 0 or pair.get("expected_not_actual") != 0:
             f.append(f"{name}: EXCEPT rows {pair} (both directions must be 0)")
@@ -681,11 +699,8 @@ def _seed(cur) -> dict:
                         "non_eligible_classes_present": onto["non_eligible_present"]}
     cur.executemany(
         "INSERT INTO bg_transit_rules (rule_type, graha, primary_house, phala, classical_citation)"
-        " VALUES (%s, %s, %s, %s, %s)",
-        [("favourable", "venus", 7, "gain (synthetic rehearsal)", "BPHS ch.29 (synthetic rehearsal)"),
-         ("favourable", "jupiter", 11, "gain (synthetic rehearsal)", "BPHS ch.29 (synthetic rehearsal)"),
-         ("unfavourable", "saturn", 8, "loss (synthetic rehearsal)", "Phaladeepika ch.26 (synthetic rehearsal)")],
-    )
+        " VALUES (%s, %s, %s, %s, %s)", FIXTURE_TRANSIT_RULES)
+    identities["transit_rules"] = list(FIXTURE_TRANSIT_RULES)
     cur.executemany(
         "INSERT INTO reference_signs (sign_id, canonical_name_en, canonical_name_sa, lord, element,"
         " modality, natural_house, is_odd, is_biped, source_citation)"
@@ -874,7 +889,7 @@ def _detector_controls(cur, fixture: dict) -> dict:
         out = {"value_violations": len(cur.execute(B.value_invariants_sql(CHART_ID)).fetchall()),
                "dangling": cur.execute(B.dangling_fact_refs_sql(CHART_ID)).fetchone()[0]}
         for nm, fn in (("r1", B.r1_identity_sql), ("r2", B.r2_identity_sql), ("r3", B.r3_identity_sql),
-                       ("r4", B.r4_lord_identity_sql)):
+                       ("r4", B.r4_lord_identity_sql), ("mech", B.mechanism_identity_sql)):
             fwd, rev = fn(CHART_ID)
             out[nm] = (len(cur.execute(fwd).fetchall()), len(cur.execute(rev).fetchall()))
         q1, q2 = B.r5_qualifier_identity_sql(CHART_ID)
@@ -952,6 +967,13 @@ def _detector_controls(cur, fixture: dict) -> dict:
         "sensitive_degree_check", "NO_SUCH_SUBJECT", "pushkara", CHART_ID, AYANAMSHA, fixture["build_id"])
     foreign_id = PRODUCER_FACT_ID["sensitive_degree_check"][1](
         "sensitive_degree_check", "VEN", "pushkara", OTHER_CHART_ID, AYANAMSHA, fixture["build_id"])
+    # ASTRA v1.4 amendment 2: the reviewer's replay — illness_acute's mechanism row
+    # saturn:unfavourable:h8 with ONLY its weight flipped, -1.0 → +1.0 (rule id,
+    # citation, state, qualifier, identity, counts and id sets unchanged)
+    controls["mechanism_weight_sign_flipped"] = (
+        lambda: cur.execute(upd.format("weight=1.0"),
+                            (CHART_ID, "illness_acute", "mechanism_node", "saturn:unfavourable:h8")),
+        lambda m: m["value_violations"] >= 1)
     controls["fact_ref_missing"] = (
         lambda: cur.execute(upd.format("target_ref=%s"),
                             (missing_id, CHART_ID, "marriage", "sensitive_degree",
@@ -1221,7 +1243,8 @@ def main(argv=None) -> int:
         ver["value_invariant_violation_rows"] = [list(map(str, r)) for r in _viol[:25]]
         for check_name, fn in (("r1_identity_sql", B.r1_identity_sql), ("r2_identity_sql", B.r2_identity_sql),
                                ("r3_identity_sql", B.r3_identity_sql),
-                               ("r4_identity_sql", B.r4_lord_identity_sql)):
+                               ("r4_identity_sql", B.r4_lord_identity_sql),
+                               ("mechanism_identity_sql", B.mechanism_identity_sql)):
             fwd_sql, rev_sql = fn(CHART_ID)
             ver[check_name] = {"actual_not_expected": len(cur.execute(fwd_sql).fetchall()),
                          "expected_not_actual": len(cur.execute(rev_sql).fetchall())}
