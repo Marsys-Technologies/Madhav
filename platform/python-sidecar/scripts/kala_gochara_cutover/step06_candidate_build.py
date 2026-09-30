@@ -24,6 +24,22 @@ ledger's `_normalize_episode` shape, exactly what write_contacts accepts) and
 `--rehearse-synthetic` fabricates a small synthetic episode set instead —
 synthetic data only, never pointed at a real chart.
 
+NDJSON stream input (Pravāha A2.5, CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2):
+`--episodes-ndjson <path-or-glob>` reads the concatenated per-body NDJSON
+files step06_enumerate_episodes.py wrote (one episode object per line), line
+by line — mutually exclusive with --episodes-json. Memory disclosure: the
+read is streamed per line, but the episodes are then MATERIALIZED as one
+list, because the existing build writes the whole set in a single transaction
+(ledger.write_contacts is delete-then-insert over the full list, and
+publish_candidate/write_coverage are once-per-manifest) — the spec's memory
+design bounds the ENUMERATION side (per-body chunks), not this single build
+read. After the read the list is sorted by the canonical key (t_in, body,
+relation) — the same key dedupe_episodes imposes on the monolithic payload —
+so for the same episode set the row set AND the insert order equal the
+--episodes-json path byte-for-byte, and the manifest's row_counts and
+content_digest (computed over the canonically sorted DB row set at publish,
+ledger._canonical_row_set) are identical.
+
 The factor-level delta report vs '3.0' (§4.11, WP8's
 WP8_FACTOR_DELTA_REPORT_v1_0.md artifact) is attached to the manifest via
 --delta-report; at tranche time it is REQUIRED (7.C), in rehearsal optional.
@@ -31,7 +47,8 @@ WP8_FACTOR_DELTA_REPORT_v1_0.md artifact) is attached to the manifest via
 Usage:
     python3 step06_candidate_build.py --dsn postgresql://... --chart-id <uuid> \
         [--horizon-start 2020-01-01 --horizon-end 2030-01-01] \
-        [--episodes-json eps.json --coverage-json cov.json | --rehearse-synthetic] \
+        [--episodes-json eps.json | --episodes-ndjson 'eps/*.ndjson'] \
+        --coverage-json cov.json (or --rehearse-synthetic) \
         [--orb-deg 5.0] [--delta-report path] [--evidence]
 
 Exit codes: 0 built; 3 cannot proceed; 4 production refusal; 6 publish refused
@@ -104,6 +121,37 @@ def _coerce_episode_times(episodes: list[dict]) -> list[dict]:
     return episodes
 
 
+def read_episodes_ndjson(path_or_glob: str) -> list[dict]:
+    """Streamed read of the concatenated per-body NDJSON files (Pravāha A2.5).
+
+    Parses one JSON object per line — the stream is never held as text — then
+    materializes the episode dicts as ONE list (the single-transaction build
+    requires the full set; see the module docstring's memory disclosure) and
+    sorts by the canonical (t_in, body, relation) key dedupe_episodes imposes
+    on the monolithic payload, so the resulting list is byte-identical in
+    content and order to what --episodes-json yields for the same episodes.
+    A bare path reads that one file; a glob reads every match in sorted-path
+    order (order irrelevant after the canonical re-sort)."""
+    import glob
+
+    paths = sorted(glob.glob(path_or_glob))
+    if not paths and Path(path_or_glob).exists():
+        paths = [path_or_glob]
+    if not paths:
+        raise FileNotFoundError(
+            f"--episodes-ndjson matched no files: {path_or_glob!r}")
+    episodes: list[dict] = []
+    for path in paths:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    episodes.append(json.loads(line))
+    _coerce_episode_times(episodes)
+    episodes.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
+    return episodes
+
+
 def _synthetic_episodes() -> list[dict]:
     t = datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC)
     from datetime import timedelta
@@ -143,13 +191,17 @@ def _synthetic_coverage(horizon: str) -> list[dict]:
     }]
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
     parser.add_argument("--generation", default="4.0")
     parser.add_argument("--horizon-start", default="2020-01-01T00:00:00+00:00")
     parser.add_argument("--horizon-end", default="2030-01-01T00:00:00+00:00")
     parser.add_argument("--episodes-json")
+    parser.add_argument("--episodes-ndjson",
+                        help="path or glob of the concatenated per-body NDJSON "
+                             "episode files (Pravāha A2.5 century chain); "
+                             "mutually exclusive with --episodes-json")
     parser.add_argument("--coverage-json")
     parser.add_argument("--rehearse-synthetic", action="store_true")
     parser.add_argument("--orb-deg", type=float, default=5.0,
@@ -157,11 +209,18 @@ def main() -> int:
                              "ratifies WP8 M-1's 1.0° recommendation")
     parser.add_argument("--delta-report", help="§4.11 factor-level delta report "
                         "vs '3.0' — REQUIRED at tranche time (7.C)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    if not (args.rehearse_synthetic or (args.episodes_json and args.coverage_json)):
-        print("ERROR: provide --episodes-json + --coverage-json, or "
-              "--rehearse-synthetic for rehearsal", file=sys.stderr)
+    if args.episodes_json and args.episodes_ndjson:
+        print("ERROR: --episodes-json and --episodes-ndjson are mutually "
+              "exclusive", file=sys.stderr)
+        return 3
+
+    if not (args.rehearse_synthetic
+            or ((args.episodes_json or args.episodes_ndjson) and args.coverage_json)):
+        print("ERROR: provide --episodes-json or --episodes-ndjson, plus "
+              "--coverage-json, or --rehearse-synthetic for rehearsal",
+              file=sys.stderr)
         return 3
 
     vector = dict(GENERATION_VECTOR_FLAGS)
@@ -177,7 +236,11 @@ def main() -> int:
         horizon_text = f"[{args.horizon_start},{args.horizon_end})"
         coverage = _synthetic_coverage(horizon_text)
     else:
-        episodes = _coerce_episode_times(json.loads(Path(args.episodes_json).read_text()))
+        if args.episodes_ndjson:
+            episodes = read_episodes_ndjson(args.episodes_ndjson)
+        else:
+            episodes = _coerce_episode_times(
+                json.loads(Path(args.episodes_json).read_text()))
         coverage = json.loads(Path(args.coverage_json).read_text())
         horizon_text = f"[{args.horizon_start},{args.horizon_end})"
 

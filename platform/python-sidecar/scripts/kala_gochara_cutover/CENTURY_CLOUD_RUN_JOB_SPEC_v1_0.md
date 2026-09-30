@@ -52,22 +52,36 @@ century scale stays O(10⁷) rows — 16Gi RAM, no disk. The design that fits:
 
 ### Required code/infra changes BEFORE A2.5 (pre-flight checklist, none exist yet)
 
-- [ ] step06: `--episodes-ndjson-out` streaming write (per-body append, no
+- [x] step06: `--episodes-ndjson-out` streaming write (per-body append, no
       century-scale list; per-body sort preserves the canonical ordering the
       content digest depends on). The monolithic `--episodes-out` stays for
-      decade-scale rehearsals.
-- [ ] step06_candidate_build: accept `--episodes-ndjson` (streamed read).
+      decade-scale rehearsals. — done in A2.5 (code; tested locally, never
+      run at century scale — ADK-0028).
+- [x] step06_candidate_build: accept `--episodes-ndjson` (streamed read).
       DB-direct per-body appends were REJECTED: `publish_candidate`/
       `write_coverage` are once-per-manifest and PK/duplicate semantics make
       8 partial builds dishonest; one build from the complete stream is the
-      honest shape.
+      honest shape. — done in A2.5; memory disclosure in the module
+      docstring (the read materializes the full list for the existing
+      single-transaction write; the streaming design bounds the ENUMERATION
+      side).
+- [x] century_run.py execution-chain driver (§3): loops PERSISTED_BODIES,
+      per-body NDJSON stream out, one candidate build, windows projection,
+      report; exit codes propagate (7/6); ADK-0028 guard = env marker
+      `PRAVAHA_CENTURY_RUN_AUTHORIZED=1` + pinned-century-horizon check;
+      `--gcs-prefix` upload path (google-cloud-storage, no bucket creation),
+      no-op when absent. — done in A2.5 (code only; execution GATED on
+      D-CLOUD).
 - [ ] GCS build-artifacts bucket + write grant for
       `data-plane-builder-runtime@…` (precedent: `madhav-marsys-sources` via
       `google-cloud-storage` in the sidecar image). Bucket choice is a native
-      infra decision — flagged here, not assumed.
+      infra decision — flagged here, not assumed. — native infra / A2.5
+      pre-flight (the code path exists behind `--gcs-prefix`; the bucket and
+      grant do not).
 - [ ] Ephemeris `.se1` files present in the job image (the local harness pins
       `/Users/…/.run/se1` with sha256s; the job image must carry the same
-      pinned set — verified as part of A2.5 pre-flight).
+      pinned set — verified as part of A2.5 pre-flight). — native infra /
+      A2.5 pre-flight.
 
 ## 3. Execution chain (per A2.5 run)
 
@@ -79,7 +93,7 @@ gcloud run jobs execute brahma-build-pipeline-job --region=asia-south1 \
                --horizon-end 2084-02-05T00:00:00+00:00>
 ```
 
-where `century_run.py` (to be written with the checklist items) loops
+where `century_run.py` (written in A2.5 with the checklist items above) loops
 PERSISTED_BODIES: step06 (`--bodies <b>`, NDJSON stream out) → then the single
 candidate build → `step06b_windows_projection.py` → report. Exit codes
 propagate per step (§12.9 stale-overlay refusal = 7; publish refusal = 6).

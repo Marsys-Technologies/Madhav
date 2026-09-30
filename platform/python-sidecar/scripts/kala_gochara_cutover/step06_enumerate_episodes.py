@@ -96,13 +96,34 @@ timestamp-tolerance join), so a whole-sign ingress instant IS the stored sky
 event, and the residence row is the target attachment.
 assert_boundary_events_stored_once runs after dedupe over the WHOLE payload.
 
+Streaming NDJSON output (Pravāha A2.5, CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2):
+`--episodes-ndjson-out <path>` writes the payload as newline-delimited JSON —
+one episode object per line — instead of the monolithic `--episodes-out` JSON
+document, and APPENDS to the file when it already exists (per-body chunked
+runs: `century_run.py` invokes this driver once per body into that body's own
+file; callers use a fresh directory per run — this driver never truncates an
+existing NDJSON file). The write is streamed line by line after the
+per-invocation dedupe, so nothing century-scale accumulates: a `--bodies <b>`
+invocation's peak memory is that body's payload only (spec §2.2). The two
+output flags are mutually exclusive. The emitted per-line order is the
+canonical dedupe order (t_in, body, relation) — per-body invocations
+concatenate exactly because the pinned §3.2 contact_id includes the body, so
+no duplicate group ever spans bodies; step06_candidate_build.py re-sorts the
+concatenated stream by the same key, reproducing the monolithic ordering
+byte-for-byte for the same episode set (the manifest content_digest itself is
+computed over the canonically sorted DB row set at publish, ledger
+_canonical_row_set — order-independent; the re-sort keeps even the insert
+order identical).
+
 Usage:
     python3 step06_enumerate_episodes.py --dsn postgresql://... \
         --chart-id <uuid> \
         [--horizon-start 2020-01-01T00:00:00+00:00 \
          --horizon-end 2030-01-01T00:00:00+00:00] \
         [--orb-deg 5.0] [--ephe-path .run/se1] [--no-refine] \
-        --episodes-out eps.json --coverage-out cov.json [--evidence]
+        [--bodies Sun,Saturn] \
+        (--episodes-out eps.json | --episodes-ndjson-out eps.ndjson) \
+        --coverage-out cov.json [--evidence]
 
 Exit codes: 0 enumerated; 3 cannot proceed; 4 production refusal (inherited
 from common.connect, step 6 -> tranche 2); 5 refused: ADK-0020/ADK-0021/
@@ -1149,6 +1170,33 @@ def build_coverage_rows(chart_id: str, generation: str,
     return rows
 
 
+# ── NDJSON streaming write (Pravāha A2.5) ─────────────────────────────────────
+
+
+def write_episodes_ndjson(path: str, episodes: list[dict], *, append: bool = True) -> int:
+    """Stream `episodes` to `path` as newline-delimited JSON — one compact
+    object per line, written incrementally (no second century-scale buffer:
+    json.dumps runs per row straight into the file). `append=True` (the
+    century-chain default) appends to an existing file: per-body invocations
+    of this driver each contribute their own canonical (t_in, body, relation)
+    sorted block, and blocks concatenate exactly because the pinned §3.2
+    contact_id includes the body — no duplicate group spans bodies. Round-trip
+    is lossless against the monolithic --episodes-out document: json.loads of
+    each line yields the same dict json.loads of the monolith yields
+    (datetimes travel as default=str ISO strings in both). Returns the number
+    of lines written."""
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    n = 0
+    with p.open("a" if append else "w", encoding="utf-8") as fh:
+        for ep in episodes:
+            fh.write(json.dumps(ep, default=str, ensure_ascii=False,
+                                separators=(",", ":")))
+            fh.write("\n")
+            n += 1
+    return n
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 
@@ -1173,9 +1221,22 @@ def main(argv: list[str] | None = None) -> int:
                              "Dedupe groups key on the pinned §3.2 contact_id, "
                              "which includes body, so per-body payloads "
                              "concatenate exactly (F-0 P2 century-scale runs).")
-    parser.add_argument("--episodes-out", required=True)
+    parser.add_argument("--episodes-out", default=None,
+                        help="monolithic JSON payload (decade-scale rehearsals); "
+                             "mutually exclusive with --episodes-ndjson-out")
+    parser.add_argument("--episodes-ndjson-out", default=None,
+                        help="streaming newline-delimited JSON payload, appended "
+                             "to (never truncated): the per-body century-chain "
+                             "shape (CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2)")
     parser.add_argument("--coverage-out", required=True)
     args = parser.parse_args(argv)
+
+    if bool(args.episodes_out) == bool(args.episodes_ndjson_out):
+        print("ERROR: exactly one of --episodes-out (monolithic JSON) or "
+              "--episodes-ndjson-out (streaming NDJSON) is required",
+              file=sys.stderr)
+        return 3
+    episodes_out = args.episodes_out or args.episodes_ndjson_out
 
     import swisseph as swe
 
@@ -1291,7 +1352,7 @@ def main(argv: list[str] | None = None) -> int:
             chart_id=args.chart_id,
             convention_id=convention_id,
             method_version=CONVENTION_VECTOR["method_version"],
-            dropped_refs_path=args.episodes_out + ".dropped_refs.json",
+            dropped_refs_path=episodes_out + ".dropped_refs.json",
         )
     except DedupeRefusal as exc:
         print(f"REFUSED (ADK-0020): {exc}", file=sys.stderr)
@@ -1302,8 +1363,13 @@ def main(argv: list[str] | None = None) -> int:
     # boundary row or a duplicated event refuses the run, never ships.
     n_sky_events = assert_boundary_events_stored_once(episodes)
 
-    Path(args.episodes_out).write_text(
-        json.dumps(episodes, indent=2, default=str) + "\n")
+    if args.episodes_ndjson_out:
+        n_written = write_episodes_ndjson(args.episodes_ndjson_out, episodes,
+                                          append=True)
+    else:
+        Path(args.episodes_out).write_text(
+            json.dumps(episodes, indent=2, default=str) + "\n")
+        n_written = len(episodes)
     Path(args.coverage_out).write_text(
         json.dumps(coverage, indent=2, default=str) + "\n")
 
@@ -1320,6 +1386,10 @@ def main(argv: list[str] | None = None) -> int:
         "targets": len(targets),
         "target_resolution_state_counts": state_counts,
         "episodes_emitted": len(episodes),
+        "episodes_payload": episodes_out,
+        "episodes_payload_format": ("ndjson-append" if args.episodes_ndjson_out
+                                    else "json"),
+        "episodes_lines_written": n_written,
         "sky_boundary_events": n_sky_events,
         "episodes_truncated_no_exact_kept": no_exact_total,
         "episodes_truncated_no_exact_withheld_pre_41": no_exact_gated_total,
