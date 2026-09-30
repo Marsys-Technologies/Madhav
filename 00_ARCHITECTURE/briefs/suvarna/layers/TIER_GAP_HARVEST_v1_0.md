@@ -19,6 +19,7 @@ inputs:
   - the six layer instances beside them (read for cross-checks only; no row is taken from them)
   - 00_ARCHITECTURE/briefs/suvarna/tracks/TRACK_A_BRIEF_v1_0.md (§7 the harvest) and TRACK_E_BRIEF_v1_0.md (§6, the D2-ruled agenda list)
 changelog:
+  - "1.1.1 (2026-09-30): re-review (independent Sonnet, 2026-09-30) corrections applied: T2-11 section cite (§1 not §2), T3-05 R113 wording, T3-27 R08 pointer, proposed-wording labels on three unsourced quoted phrases and on option T2-07(a), and the row-level tally caveat (substance count 124). No item, tier or count changed."
   - "1.1 (2026-09-30): gate review corrections applied (independent Sonnet review 2026-09-30): 9 defects. (1) The two detector-only rows (TG-L0-006, TG-L1-010) moved from TGH-T2-06 to TGH-T3-15, the L1 event-time-identity facet kept as a rider on TGH-T2-06. (2) Multi-clause items split: TGH-T2-01 into ownership (kept) and the declared universe (TGH-T4-04, with the three rows that need it); TGH-T2-03 into the layer-by-class table (kept), the rule 4 and 6 population (TGH-T2-20) and the event-class omission (TGH-T2-21); TGH-T3-14 into the undefined section 7 and section order (kept) and the count mismatches (TGH-T3-27); TGH-T3-08 title corrected (L0 has three unmapped instruments, not none). (3) TG-L5-018 re-tiered from T3 to T4 as TGH-T4-05. (4) R94 and R119 taken out of TGH-T2-02's same-gap list, R113 out of TGH-T3-05 and TGH-T3-12. (5) TGH-T2-11 cites T2 L58, not L174, for L0 as the global foundation. (6) Instrument-class label re-derived from the register remedy wording for every item (section 1.7): 3 items instrument-class, 7 T3 items mixed; the SS-ruling bullet restated on that set. (7) Counting convention stated beside each tally; adjacency, item statuses and class labels derived by the check script, not hard-coded. (8) Ordering rule restated and every item re-ranked mechanically; ids are now stable labels (new items take the next number); the scope of TGH-T3-01's 254 figure stated. (9) Wording: TGH-T2-05 and TGH-T3-08 titles; near-label quotes in TGH-T3-08, -10 and -12 paraphrased; TGH-T3-04 option (b) labelled withdrawn; TGH-T2-09 and TGH-T3-19 statuses derived; the script claim and the script corrected (U+2011 hyphens normalised, every table count column checked). Four premises of the review were not applied as stated (section 3.5). Counts after: 159 TG rows folded into 54 items (T1 1 · T2 21 · T3 27 · T4 5); 161 ids in the sources = 159 folded + 2 ledger-only."
   - "1.0 (2026-09-30): first issue. 159 TG rows folded into 49 harvest items (T1 1 · T2 19 · T3 26 · T4 3); 2 further ids (recast and withdrawn by their own drafts) listed in section 3; accounting check in section 6."
 ---
@@ -43,6 +44,7 @@ changelog:
 
 **Counting conventions.** Two conventions are used and each tally says which.
 - *Row level* (columns "rows: same-gap row cited / adjacent row only / no register row", and every same-gap / adjacent / none triple in this file): read from the source row's own register cell. None = the cell begins with none or NEW, which includes the 5 rows worded "NEW (adjacent: …)", counted as their own drafts count them. Adjacent-only = the cell is not none and says nearest, adjacent or no exact row, or cites only rows that the item's Register line records as adjacent (L4's rows for R124 and R51). Same-gap = every other row whose cell cites a register row. The sets are derived by the check in section 7, not listed in it. Counting the 5 "NEW (adjacent: …)" rows as adjacent-only instead gives 126 / 12 / 21.
+- *Caveat on the row-level same-gap count:* it follows each source row's own register cell, so rows whose item text says no register row carries their exact clause (two L5 rows, and the T2-09/T2-20/T2-21 register lines) are counted same-gap by convention; on the substance reading the count is 124 (independent re-review).
 - *Item level* (columns "items on the D2-ruled E2.1 list / covered by an open row, not on the list / new"): derived from the item's own "Same-gap rows cited" list, which holds only the register rows whose clause is the item's clause. A row a draft cited for another clause is listed apart as cited for another clause and is carried by the item that owns that clause, so an item's row-level triple and its item-level status can differ (TGH-T2-09, TGH-T2-21). On the list = the list holds a row on the D2-ruled 31 (asterisk); covered = it holds an open (not CLOSED) row and none on the list; new = it holds no open row. No item carries an override at v1.1; the v1.0 differences (TGH-T2-09, TGH-T3-01, TGH-T3-19) came from cites made for other clauses and are resolved that way.
 
 | tier | items | TG rows folded | rows: same-gap row cited | rows: adjacent row only | rows: no register row | items on the D2-ruled E2.1 list | items covered by an open row, not on the list | items new (no open same-gap row) |
@@ -202,7 +204,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
 - **Proposed remedy (direction or options; not text):**
   - (a) T1 §14 states who declares "where required" (product-level default, or the layer instance, or the asset brief) and leaves the values to that owner.
   - (b) T1 unchanged; T2 §12.2 carries the declaration rule (the item then moves to T2 and out of this section).
-  - (c) No edit: record "where required" as a delegation and have T3 §2.7 say so, so an instance reports "not declared" instead of inventing a tolerance.
+  - (c) No edit: record "where required" as a delegation and have T3 §2.7 say so, so an instance reports that the tolerance is not declared (proposed wording) instead of inventing one.
 - **SS ruling needed:** T1 is sealed and its agenda (T1 R01, R72, R76 per Track E §6) is cosmetic only. Whether T1 opens for a substantive edit, and whether the optional L0 proposal rides with it, is SS's call (N-4.T1).
 
 ### 2.2 T2: Data plane value architecture (21 items, 47 rows)
@@ -329,7 +331,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
 - **Register:** new: no open same-gap register row. Rows: 0 same-gap / 2 adjacent-only / 1 none. Same-gap rows cited: none. Adjacent only: R237, R243, R244, R246, R249. R237 is the 139-versus-4 data finding (open); R243/R244 are the L2 side; R246 is scoped to restrictive keys only; R249 is adjacent. Remedy class: none (no same-gap register row).
 - **Tier:** T2. Drafts named: T2 x1 (L3) · T3 x1 (L2) · T4 x1 (L4). Sources: L2 says T3 (Idem row), L3 says T2 (§11/DP16), L4 says T4 (check 6). Assigned T2: the rule concerns producer-to-consumer coupling across layers, which T2 §11 governs; the T3 and T4 gate wording follows from it.
 - **Proposed remedy (direction or options; not text):**
-  - (a) T2 §11 gains a rule that an upstream rebuild marks dependents stale and does not delete them; T3 Idem and T4 check 6 inherit it.
+  - (a) one option, since the sources only ask whether: T2 §11 gains a rule that an upstream rebuild marks dependents stale and does not delete them; T3 Idem and T4 check 6 inherit it.
   - (b) Treat F-3/N-32 as the resolution and record the gap as closed by construction (no plane clause).
   - (c) T4 §4.2 check 6 / T3 Build gate gain a cause classification (writer over-reported versus rows removed by another asset) and an owner for the repair (the L4 row's second facet; hand to the T4 revision).
 - **SS ruling needed:** Whether the plane needs a rule at all once F-3 removes the eight keys, or whether F-3 is the whole answer (option b), is a scope decision for SS.
@@ -363,7 +365,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
 - **Tier:** T2. Drafts named: T2 x1 (L5) · T3 x1 (L1). Sources: L1 says T3 (no template section), L5 says T2 (the lists differ). Assigned T2: the defect is three plane-level lists that disagree, and reconciling them precedes any template home. The fold is borderline: the L1 row asks for a template home for per-asset typing and the L5 row for a reconciled vocabulary; they share only the reconciliation step, and E2 may split them.
 - **Proposed remedy (direction or options; not text):**
   - (a) T2 designates one list canonical (mapped to T1 §5.2) and maps the others onto it.
-  - (b) T3 gains a per-layer/per-asset "epistemic kind" field in §2.2 or §4.4.
+  - (b) T3 gains a per-layer/per-asset epistemic-kind field (proposed name) in §2.2 or §4.4.
   - (c) Adopt the code's seven-member vocabulary as the reference and map T1/T2 lists to it (owners to accept).
 - **SS ruling needed:** If the reconciliation must change T1 §5.2 (the product definition) instead of mapping T2's lists onto it, the item belongs to the T1 agenda and needs SS's ruling on which list is authoritative.
 
@@ -386,7 +388,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
 
 - **Rank / consequence:** rank 36 of 54; L0 (1); 1 TG row; 40 active assets in those layers.
 - **Folded rows (1; L0):** TG-L0-009
-- **Clause that failed to provide:** T2 §11 (L566-568) and DP16 (L436): a consumer pins the producer generation it consumed and gets dependency-specific stale marking; T2 §2 (L58) "L0 remains the global foundation"; T3 §4.3 (L448-454).
+- **Clause that failed to provide:** T2 §11 (L566-568) and DP16 (L436): a consumer pins the producer generation it consumed and gets dependency-specific stale marking; T2 §1 (L58) "L0 remains the global foundation"; T3 §4.3 (L448-454).
 - **What the drafts needed:** The L0 generation and invalidation statement, and the impact of an L0 change on other charts.
 - **Evidence:**
   - `build_runs` has 734 rows, 0 with a null `chart_id`; L0 assets appear in 118 `build_run_assets` rows across 51 runs (scope `asset_set` 50, `layer` 1), all carrying a chart id (482012f1 x50, 1c826d5a x1); the 61 runs with scope `global` touch no L0 asset (Q-10, CEN-H).
@@ -624,7 +626,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
   - L0: seed and live agree on `target_table` and `depends_on` for 40 of 40; differ on `target_floor` for 4 (`bg_gochara_arcs` 34,553/33,933 · `bg_muhurta_lattice` 91,477/164,575 · `bg_parihara_rules` 439/449 · `bg_transit_rules` 75/76) and `catalog_status` for 1 (`bg_vidhi_primitives` DRAFT/CURRENT). The seed's own upsert SQL declares `depends_on`, `count_sql`, `target_floor`, `catalog_status`, `has_writer` migration-governed once a row exists, so seed-versus-live is not like-for-like for those fields. 28 of 40 L0 ids are named by registry-modifying migrations. An L0 pin exists (`nirmana-analysis-layer-pins.json`, generation `l0:d2369b888e76:3dda261170ee`) but pins writers, not `depends_on`.
   - L1: 45 edges among the 19 assets; only 2 of 19 writer classes declare `depends_on`; migration 416 added and 419 removed `ga_structural -> ga_condition`; the other 18 assets not measured (would need replaying 176 registry-touching migrations). L3: SEED versus live for the 23 `ka_*` ids: 18 identical, 5 differ (`ka_gochara`, `ka_kshetra`, `ka_muhurta_seva`, `ka_sangam`, `ka_vighnakara`).
   - L4: pin file pins L4 membership (receipt_count 9, `l4:d2369b888e76:e73988c0dd03`), not `depends_on`. L5: seed `depends_on` agrees with live for 15 of 15; three other fields differ (`mi_jivanaghatana.scope`, `mi_adhilepa.target_table`, `mi_bhara.target_table`) and `lel_events.catalog_status` (seed DRAFT, live CURRENT); the frozen-manifest `depends_on` reading (migration 690 L9-13) was not located. L2: live registry only.
-- **Register:** covered by an open register row that is not on the D2-ruled E2.1 list. Rows: 6 same-gap / 0 adjacent-only / 0 none. Same-gap rows cited: R86, R102, R132, R214. Adjacent only: none. Cited by the L4 row for the frozen-revision clause, carried in TGH-T3-06: R113. R214 (this clause; L5-facing) is deferred to D2 reopen round 2. R86, R102, R132 are open and not on the D2-ruled 31. Remedy class: mixed (instrument: R86, R102, R132; tier text: R214; see 1.7).
+- **Register:** covered by an open register row that is not on the D2-ruled E2.1 list. Rows: 6 same-gap / 0 adjacent-only / 0 none. Same-gap rows cited: R86, R102, R132, R214. Adjacent only: none. Cited by the L4 row beside R86 (seed/pin reconciliation); R113 is the T3 §2.5 frozen-revision row, carried in TGH-T3-06. R214 (this clause; L5-facing) is deferred to D2 reopen round 2. R86, R102, R132 are open and not on the D2-ruled 31. Remedy class: mixed (instrument: R86, R102, R132; tier text: R214; see 1.7).
 - **Tier:** T3. Every draft named T3.
 - **Proposed remedy (direction or options; not text):**
   - (a) T3 §0.3/§1.1 define seed and pin (where each lives, which is authoritative, and that migration-governed fields are exempt from seed-versus-live comparison).
@@ -644,7 +646,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
 - **Register:** covered by an open register row that is not on the D2-ruled E2.1 list. Rows: 6 same-gap / 0 adjacent-only / 0 none. Same-gap rows cited: R86, R113, R145, R188. Adjacent only: none. Remedy class: instrument-class (R86, R113, R188; no remedy stated: R145; see 1.7).
 - **Tier:** T3. Every draft named T3.
 - **Proposed remedy (direction or options; not text):**
-  - (a) T3 §2.5 says what the clause means under Suvarṇa: the Nirmāṇa revision, the pin record, or "not applicable until the layer is accepted".
+  - (a) T3 §2.5 says what the clause means under Suvarṇa: the Nirmāṇa revision, the pin record, or a statement that it is not applicable until the layer is accepted (proposed wording; the sources only ask the question).
   - (b) The census emits the edge list and names the revision it evaluated against (R113; Track E).
 
 #### TGH-T3-07 · Presentation parity: T2 marks it [TRANSFERS] ("a layer plan does not inherit it as its own work"), T3 makes it an acceptance test
@@ -972,7 +974,7 @@ Only one item is assigned to T1. T1's D2 agenda (R01, R72, R76) is cosmetic; thi
 - **What the drafts needed:** Consistent counts. For L1 the asset count (19) agrees with the registry; only the cross-layer figure differs.
 - **Evidence:**
   - The L1 instance writes a nine-row gate map and carries its unfillable rows in a closing "Corrections with gates" section.
-- **Register:** covered by an open register row that is on the D2-ruled E2.1 list. Rows: 1 same-gap / 0 adjacent-only / 0 none. Same-gap rows cited: R65*, R67*, R220 [CLOSED]. Adjacent only: none. R65 and R67 are on the D2-ruled agenda (T3 halves); R220 (the 129-versus-127 figure) is closed. Remedy class: tier text (R65, R67; see 1.7).
+- **Register:** covered by an open register row that is on the D2-ruled E2.1 list. Rows: 1 same-gap / 0 adjacent-only / 0 none. Same-gap rows cited: R65*, R67*, R220 [CLOSED]. Adjacent only: none. R65 and R67 are on the D2-ruled agenda (T3 halves); R220 (the 129-versus-127 figure) is closed. The L1 row also cites R08 for §7 and the section order (carried in TGH-T3-14). Remedy class: tier text (R65, R67; see 1.7).
 - **Tier:** T3. Every draft named T3.
 - **Proposed remedy (direction or options; not text):**
   - (a) Apply R65 and R67 as recorded on the T3 agenda (the 129-versus-127 figure is R220's, closed).
