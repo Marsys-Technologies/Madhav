@@ -39,8 +39,13 @@ def _build_minimal_context(*, moon_lon_deg: float = 5.0) -> ClassContext:
     no dasha periods, no AV rows. Sufficient to exercise the tara_bala path.
     """
     natal = NatalFacts(
-        graha_longitudes={"Moon": moon_lon_deg},
-        graha_signs={"Moon": "Aries"},
+        # DISCLOSURE (Pravāha A5.4 tara_key, #5): pre-repair this fixture used
+        # the title-case 'Moon' key, matching the mechanism's buggy lookup —
+        # the parity test passed while production (canonical system-A subject
+        # codes from chart_facts.fact_subject) never fired. Keys corrected to
+        # the canonical 'MOON'.
+        graha_longitudes={"MOON": moon_lon_deg},
+        graha_signs={"MOON": "Aries"},
         lagna_sign=None,
         lagna_longitude=None,
     )
