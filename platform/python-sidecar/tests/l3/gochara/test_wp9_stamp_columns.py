@@ -559,6 +559,13 @@ class TestWriterStamps:
             assert r["corpus_verifiable"] is True
 
     def test_moorti_stamp_values(self, wp9_built):
+        """DISCLOSURE (Pravāha A5.4 moorti_flag_honest, doctrine N7): this test
+        previously pinned the defect — it asserted computed moorti rows stamp
+        'verse_cited' + corpus_verifiable=True on computation success alone.
+        The mūrti rule form is NOT in the served corpus, so the stamp now
+        reflects corpus presence: computed rows carry 'algorithmic_approximation'
+        (the migration-1082 CHECK vocabulary for a computed, non-corpus-verifiable
+        rule form) + corpus_verifiable=False, never 'verse_cited'."""
         rows = _fetch_all(WP6_DSN, "kala_moorti_nirnaya")
         assert rows, "expected moorti rows"
         computed = [r for r in rows if r["moorti_computed"]]
@@ -566,12 +573,12 @@ class TestWriterStamps:
         # The Sun sign-2 run (days 100..130) is the one non-truncated run.
         assert computed, "expected at least one moorti-computed row"
         for r in computed:
-            assert r["source_qualification"] == "verse_cited"
+            assert r["source_qualification"] == "algorithmic_approximation"
             # WP9 5.3: non-truncated runs are graded at the true kernel
             # sign-ingress instant -> instant_grain (day-grain only remains
             # on runs the kernel could not solve).
             assert r["precision_regime"] == "instant_grain"
-            assert r["corpus_verifiable"] is True
+            assert r["corpus_verifiable"] is False
         assert uncomputed, "expected moorti-uncomputed rows (truncated horizon runs)"
         for r in uncomputed:
             assert r["source_qualification"] == "unsourced"

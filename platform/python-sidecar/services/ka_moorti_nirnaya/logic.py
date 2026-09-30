@@ -67,23 +67,42 @@ MOORTI_GRAHAS: tuple[str, ...] = (
 
 # ── WP9 overlay stamps (GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §5.4; migration
 # 1082) ──────────────────────────────────────────────────────────────────────
-# A moorti-computed row restates bg_transit_moorti verbatim (migration 401,
-# REAL cited: Phaladeepika Ch.26; BPHS Ch.28) → 'verse_cited', corpus-
-# verifiable. A row whose moorti could NOT be computed (truncated run /
-# ephemeris gap — moorti_computed=False) has no sourced value → 'unsourced',
-# not corpus-verifiable. precision_regime is 'date_grain' for the day-grade
-# ingress date and 'instant_grain' only when the grade was taken at a true
-# kernel sign-ingress instant (WP9 5.3).
+# A moorti-computed row restates bg_transit_moorti verbatim (migration 401).
+# That table is cited (Phaladeepika Ch.26; BPHS Ch.28) but the mūrti
+# (sūkṣma/sthūla Moon-in-sign disposition) RULE FORM is NOT present in the
+# served corpus — so doctrine N7 forbids stamping it 'verse_cited' or
+# corpus-verifiable merely because the computation succeeded. Computed rows
+# stamp 'algorithmic_approximation' (the migration-1082 CHECK vocabulary for
+# a computed value whose rule form is not corpus-verifiable — the same stamp
+# ka_vedha_gochara's sarvatobhadra rows carry with uncited_extension=true),
+# corpus_verifiable=False. A row whose moorti could NOT be computed
+# (truncated run / ephemeris gap — moorti_computed=False) has no sourced
+# value → 'unsourced', not corpus-verifiable. precision_regime is
+# 'date_grain' for the day-grade ingress date and 'instant_grain' only when
+# the grade was taken at a true kernel sign-ingress instant (WP9 5.3).
+#
+# NOTE on the N7 repair token: the doctrine vocabulary token for this defect
+# class is 'uncited_extension', but migration 1082's CHECK constrains
+# kala_moorti_nirnaya.source_qualification to the three values below and the
+# moorti table has no uncited_extension column — stamping the literal token
+# would violate the CHECK at every insert. 'algorithmic_approximation' is the
+# constraint-compatible stamp carrying the same semantics.
 SOURCE_QUALIFICATIONS: tuple[str, ...] = ("verse_cited", "algorithmic_approximation", "unsourced")
 PRECISION_REGIMES: tuple[str, ...] = ("date_grain", "instant_grain")
 
 
 def moorti_source_qualification(moorti_computed: bool) -> str:
-    return "verse_cited" if moorti_computed else "unsourced"
+    # N7: provenance reflects corpus presence of the mūrti rule form, NOT
+    # computation success. The rule form is absent from the served corpus, so
+    # a successfully computed moorti is an algorithmic approximation of an
+    # uncited rule — never 'verse_cited'.
+    return "algorithmic_approximation" if moorti_computed else "unsourced"
 
 
 def moorti_corpus_verifiable(moorti_computed: bool) -> bool:
-    return bool(moorti_computed)
+    # N7: False independent of computation success — the served corpus does
+    # not contain the mūrti rule form, so no row is corpus-verifiable.
+    return False
 
 
 class SignRun(TypedDict):
