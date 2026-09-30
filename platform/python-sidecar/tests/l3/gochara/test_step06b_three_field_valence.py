@@ -286,15 +286,34 @@ NATAL_JUPITER = 249.79   # 9L in the 9th (Sagittarius)
 TRANSIT_SATURN = 253.43  # 2018-11-28: Δ = 3.64° = 3°38′24″ (v3.0 §4)
 
 
+def _production_ctx(event_class, weights_by_ref, *, class_valence,
+                    class_is_adverse):
+    """The PRODUCTION construction path — build_projection_class_context
+    with the SIGNED map weights exactly as main() passes them
+    (weights_all_by_class[cls] is the raw resonance-map weight list). No
+    helper preprocessing: ASTRA v1.1 P1-1 caught the previous test feeding
+    magnitudes to the promise while main() fed signed weights (PROMISE 0)."""
+    ctx_dict = {"permission_systems": {"vimshottari": True},
+                "class_valence": class_valence, "class_is_adverse": class_is_adverse}
+    return w.build_projection_class_context(
+        None, "chart", event_class, ctx_dict, {event_class: ctx_dict},
+        weights=list(weights_by_ref.values()),
+        weight_by_target_ref=weights_by_ref, context_source="test",
+        permission_factory=lambda *a, **k: None)
+
+
 def test_negative_only_evidence_end_to_end_produces_adverse_window():
-    """The reviewer's bereavement probe: a single negative-weight contact
-    (Saturn conjunct natal Jupiter, the 9L, weight −0.8) must yield activity
-    0.8·(1 − 3.64/5) > 0, λ > 0, era/month/day rows, evidence_for > 0 and
-    outcome adverse. Mutation caught: the pinned clamp (negative weight → 0)
-    gave activity 0, λ 0 and ZERO windows — the v1.1 test bypassed this by
-    adding a positive contact."""
-    ctx = _class_ctx("bereavement", {"Jupiter": -0.8},
-                     class_valence="loss", class_is_adverse=True)
+    """The reviewer's bereavement probe THROUGH THE PRODUCTION CONSTRUCTOR:
+    a single negative-weight contact (Saturn conjunct natal Jupiter, the 9L,
+    weight −0.8; Δ = 253.43 − 249.79 = 3.64° = 3°38′24″) must yield PROMISE
+    0.8, activity 0.8·(1 − 3.64/5) = 0.2176, λ > 0, era/month/day rows,
+    evidence_for > 0 and outcome adverse. Mutations caught: the pinned
+    promise clamp (signed −0.8 → PROMISE 0 → λ 0 → zero windows); the
+    activity clamp (activity 0)."""
+    ctx = _production_ctx("bereavement", {"Jupiter": -0.8},
+                          class_valence="loss", class_is_adverse=True)
+    assert ctx.promise == pytest.approx(0.8)
+    assert ctx.promise_detail["weights_signed"] == [-0.8]
     c = _contact("sat-on-9l", T_EXACT - 10, T_EXACT, T_EXACT + 10,
                  target=NATAL_JUPITER, body="Saturn")
     c["target_ref"] = "Jupiter"
@@ -303,6 +322,10 @@ def test_negative_only_evidence_end_to_end_produces_adverse_window():
                         planet_pos_fn=_pos_on(TRANSIT_SATURN))(T_EXACT)
     assert ev["activity"] == pytest.approx(expected_activity, abs=1e-9)
     assert ev["lambda_raw"] > 0.0
+    # λ = PROMISE(0.8) × PERMISSION × activity × 1 × 1 × 1 under the static
+    # permission of this context — nonzero end to end
+    assert ev["lambda_raw"] == pytest.approx(
+        0.8 * ctx.permission * expected_activity, rel=1e-9)
     assert ev["supportive"] == 0.0
     tv = ev["three_field_valence"]
     assert tv["evidence_for_occurrence"] == pytest.approx(expected_activity, abs=1e-9)

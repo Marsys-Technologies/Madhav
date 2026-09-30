@@ -867,7 +867,22 @@ class ClassContext:
         self.weight_by_target_ref = dict(weight_by_target_ref)
         self.abs_weight_by_target_ref = {
             k: abs(float(v)) for k, v in self.weight_by_target_ref.items()}
-        self.promise, self.promise_detail = leg.compute_promise(weights)
+        # ASTRA_REVIEW_A5_4 v1.1 P1-1: PROMISE is the class's occurrence
+        # promise — the MAGNITUDE of each resonance weight. The pinned
+        # compute_promise clamps a negative map weight to 0, so a class whose
+        # only targets carry negative weights (adverse-class evidence) had
+        # PROMISE 0 ⇒ λ 0 ⇒ no window on the production construction path
+        # (main() passes the signed map weights). The sign is consumed by
+        # the evidence channels alone (§3 class-relative polarity).
+        self.promise_weights_signed = [float(w) for w in weights]
+        self.promise, self.promise_detail = leg.compute_promise(
+            [abs(w) for w in self.promise_weights_signed])
+        self.promise_detail = {
+            **self.promise_detail,
+            "weights_signed": self.promise_weights_signed,
+            "magnitude_rule": "PROMISE uses |weight|; sign → evidence channels "
+                              "(ASTRA v1.1 P1-1)",
+        }
         # T0-6 (FABLE #2/#3): when permission_fn is given, PERMISSION is
         # evaluated AT EACH INSTANT (per-instant MD/AD/PD plurality over the
         # class context's `_dasha_periods`); the constructor constant is then
