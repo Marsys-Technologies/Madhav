@@ -33,14 +33,14 @@ describe('dispatchPreparedRun', () => {
     mockInvokeRunJob.mockRejectedValue(new Error('cloud run down'))
     const result = await dispatchPreparedRun('run-1')
     expect(result).toEqual({ ok: false, code: 'JOB_DISPATCH_FAILED', message: 'cloud run down' })
-    expect(mockQuery).toHaveBeenCalledWith(
-      `UPDATE build_runs SET state='failed', ended_at=NOW(), last_error=$1 WHERE id=$2`,
-      ['cloud run down', 'run-1'],
-    )
-    expect(mockQuery).toHaveBeenCalledWith(
-      `UPDATE build_run_assets SET state='aborted' WHERE run_id=$1 AND state='queued'`,
-      ['run-1'],
-    )
+    // A2: one shared statement (terminalizeFailedRun) carries the same text to both tables.
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+    const [sql, params] = mockQuery.mock.calls[0]
+    expect(sql).toContain('UPDATE build_runs')
+    expect(sql).toContain('UPDATE build_run_assets')
+    expect(sql).toContain("state = 'aborted'")
+    expect(sql).toMatch(/SET state = 'aborted', ended_at = NOW\(\), error = \$1/)
+    expect(params).toEqual(['cloud run down', 'run-1'])
   })
 
   it('tags last_error with the JOB_DISPATCH_FAILED prefix when asked (chart correction)', async () => {

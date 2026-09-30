@@ -43,24 +43,35 @@ def _fake_ca(artifacts: dict) -> CanonicalArtifacts:
 # confirming the test actually exercises the filter rather than passing vacuously.
 # --------------------------------------------------------------------------------------
 
-def test_f163_current_row_flagged_predecessor_row_is_not(tmp_path):
+def _write_ca(tmp_path, status_line):
     ca_path = tmp_path / "00_ARCHITECTURE" / "CANONICAL_ARTIFACTS_v1_0.md"
     ca_path.parent.mkdir(parents=True)
-    # Comparison surface exists, but names neither basename.
-    ca_path.write_text("# CANONICAL_ARTIFACTS_v1_0.md\n\nNo relevant rows here.\n")
+    ca_path.write_text(f"---\n{status_line}\n---\n\n# CANONICAL_ARTIFACTS_v1_0.md\n")
+    return ca_path
 
+
+def test_h35_retired_falsifiable_premise_fires_when_ca_not_superseded(tmp_path):
+    """E4.1-001 landing: the Nikasha drift_detector retires the two-registry §H.3.5
+    check (2026-09-25) in favour of ONE falsifiable premise -- CANONICAL_ARTIFACTS
+    declares itself SUPERSEDED. This replaces the F-163 status-filter test, which
+    exercised the loop that retirement removed (the F-163 filter itself lives on in
+    §H.3.8 -- see test_f163_also_applies_to_unreferenced_canonical_scan and
+    test_is_current_vocabulary). Can-fail: a CURRENT CA must produce the finding."""
+    _write_ca(tmp_path, 'status: "CURRENT"')
+    ca = _fake_ca({"X": {"path": "00_ARCHITECTURE/X_v1_0.md", "status": "CURRENT"}})
+    findings = drift_detector.check_file_registry_agreement(tmp_path, ca)
+    assert len(findings) == 1
+    assert findings[0].canonical_id == "CANONICAL_ARTIFACTS"
+    assert findings[0].severity == "HIGH"
+
+
+def test_h35_retired_silent_when_ca_declares_superseded_regardless_of_manifest(tmp_path):
+    _write_ca(tmp_path, 'status: "SUPERSEDED (2026-04-27 -- absorbed into CAPABILITY_MANIFEST.json)"')
     ca = _fake_ca({
         "CURRENT_ROW": {"path": "00_ARCHITECTURE/CURRENT_ROW_v1_0.md", "status": "CURRENT"},
         "PREDECESSOR_ROW": {"path": "00_ARCHITECTURE/PREDECESSOR_ROW_v1_0.md", "status": "PREDECESSOR"},
     })
-
-    findings = drift_detector.check_file_registry_agreement(tmp_path, ca)
-
-    assert len(findings) == 1, (
-        f"expected exactly 1 finding (CURRENT_ROW only), got {len(findings)}: {findings}"
-    )
-    assert findings[0].canonical_id == "CURRENT_ROW"
-    assert findings[0].severity == "MEDIUM"
+    assert drift_detector.check_file_registry_agreement(tmp_path, ca) == []
 
 
 def test_f163_also_applies_to_unreferenced_canonical_scan(tmp_path):
@@ -179,10 +190,8 @@ def test_no_remediation_instructs_editing_file_registry():
 # Surface-missing CRITICAL — a missing comparison surface must still be CRITICAL.
 # --------------------------------------------------------------------------------------
 
-def test_h35_critical_when_canonical_artifacts_missing(tmp_path):
-    # tmp_path has no 00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md at all.
+def test_h35_retired_absence_of_canonical_artifacts_is_not_a_finding(tmp_path):
+    # Retired 2026-09-25: post-cutover the manifest is the sole registry, so an absent
+    # CANONICAL_ARTIFACTS_v1_0.md is fine (previously CRITICAL). tmp_path has none.
     ca = _fake_ca({"X": {"path": "00_ARCHITECTURE/X.md", "status": "CURRENT"}})
-    findings = drift_detector.check_file_registry_agreement(tmp_path, ca)
-    assert len(findings) == 1
-    assert findings[0].severity == "CRITICAL"
-    assert findings[0].canonical_id == "CANONICAL_ARTIFACTS"
+    assert drift_detector.check_file_registry_agreement(tmp_path, ca) == []
