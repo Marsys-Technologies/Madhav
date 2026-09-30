@@ -153,6 +153,104 @@ def fetch_av_donor_matrix(conn, chart_id: str,
     return out
 
 
+# ── frozen C5 chart operands + daśā read contract (ASTRA P1-2) ───────────────
+
+NATAL_SUBJECTS = ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT",
+                  "RAH_MEAN", "KET_MEAN")
+
+
+def fetch_chart_operands(conn, chart_id: str,
+                         ayanamsha_id: str = AV_DONOR_AYANAMSHA) -> dict:
+    """The chart dict the frozen C5 evaluator consumes
+    (services.gochara_rules.permission: {lagna_deg, natal{Title: λ},
+    day_birth, paksha}), read from L1 chart_facts: graha_position/
+    longitude_sidereal (the nine grahas + LAGNA), panchanga_tithi/paksha,
+    saham_position/day_birth. Missing operands are NAMED in
+    `operands_missing` — never defaulted."""
+    from brahmagyan.graha_vocabulary import to_title
+    out = {"chart_id": chart_id, "ayanamsha_id": ayanamsha_id,
+           "lagna_deg": None, "natal": {}, "paksha": None, "day_birth": None,
+           "operands_missing": [], "source": "L1 chart_facts"}
+    try:
+        with savepoint_scope(conn, "c5_chart_operands"):
+            rows = conn.execute(
+                "SELECT fact_category, fact_subject, fact_key,"
+                " fact_value_text, fact_value_num FROM chart_facts"
+                " WHERE chart_id = %s AND ayanamsha_id = %s AND ("
+                "  (fact_category = 'graha_position'"
+                "   AND fact_key = 'longitude_sidereal')"
+                "  OR (fact_category = 'panchanga_tithi' AND fact_key = 'paksha')"
+                "  OR (fact_category = 'saham_position' AND fact_key = 'day_birth'))",
+                [chart_id, ayanamsha_id]).fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[step06a] chart operand read failed for chart %s: %s",
+                    chart_id, exc)
+        out["operands_missing"] = ["chart_facts:unreadable"]
+        out["error"] = str(exc)
+        return out
+    seen_lon: dict[str, set] = {}
+    for row in rows:
+        cat, subj, key, txt, num = (
+            (row["fact_category"], row["fact_subject"], row["fact_key"],
+             row["fact_value_text"], row["fact_value_num"])
+            if isinstance(row, dict) else row)
+        if cat == "graha_position" and num is not None:
+            seen_lon.setdefault(str(subj), set()).add(float(num))
+        elif cat == "panchanga_tithi" and txt:
+            out["paksha"] = str(txt).strip().title()
+        elif cat == "saham_position" and (txt is not None or num is not None):
+            val = str(txt).strip().lower() if txt is not None else str(num)
+            out["day_birth"] = val in ("true", "t", "1", "1.0", "day", "yes")
+    for subj, vals in seen_lon.items():
+        if len(vals) != 1:
+            out["operands_missing"].append(f"graha_position:{subj}:conflict")
+            continue
+        (lon,) = tuple(vals)
+        if subj == "LAGNA":
+            out["lagna_deg"] = lon
+        elif subj in NATAL_SUBJECTS:
+            out["natal"][to_title(subj)] = lon
+    if out["lagna_deg"] is None:
+        out["operands_missing"].append("graha_position:LAGNA")
+    for subj in NATAL_SUBJECTS:
+        if to_title(subj) not in out["natal"]:
+            out["operands_missing"].append(f"graha_position:{subj}")
+    if out["paksha"] is None:
+        out["operands_missing"].append("panchanga_tithi:paksha")
+    if out["day_birth"] is None:
+        out["operands_missing"].append("saham_position:day_birth")
+    return out
+
+
+def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict:
+    """The §4.0 pin step06b reads Vimśottarī rows under: the frozen contract's
+    build for the canonical chart when present; else the single build the
+    tier-filtered rows carry; several builds ⇒ a conflict — refuse (raise),
+    never row-order pick; no Vimśottarī rows ⇒ build None (disclosed)."""
+    from services.gochara_rules.permission import DASHA_READ_CONTRACT
+    builds = sorted({str(p.get("build_id")) for p in dasha_periods
+                     if p.get("system_id") == "vimshottari"
+                     and p.get("build_id") is not None})
+    pinned = DASHA_READ_CONTRACT["build_id"]
+    if str(chart_id) == DASHA_READ_CONTRACT["chart_id"] and pinned in builds:
+        build = pinned
+        basis = "GOCHARA_DESIGN_SPECS_v1_4 §4.0 pinned build"
+    elif len(builds) == 1:
+        build = builds[0]
+        basis = "single two_pass_verified build present"
+    elif not builds:
+        build = None
+        basis = "no vimshottari rows at the read tier"
+    else:
+        raise DD.DashaReadConflict(
+            f"chart_dashas §4.0: several two_pass_verified vimshottari builds "
+            f"{builds} for chart {chart_id} — an unpinned read is a defect; "
+            "refusing to pick by row order")
+    return {"system_id": "vimshottari", "build_id": build,
+            "tier": DD.READ_CONTRACT_TIER, "ayanamsha_id": AV_DONOR_AYANAMSHA,
+            "basis": basis, "builds_seen": builds}
+
+
 def _jsonable_period(p: dict) -> dict:
     """chart_dashas rows carry datetimes/UUIDs; the class-context document is
     JSON. ISO strings round-trip through DD.period_contains."""
@@ -297,6 +395,10 @@ def main(argv: list[str] | None = None) -> int:
         # class-level unresolved operand (P5c alone consumes it).
         av_donor_matrix = fetch_av_donor_matrix(conn, args.chart_id)
         unresolved_valence: list[str] = []
+        # ASTRA P1-2: the frozen C5 licence needs the chart operands and the
+        # §4.0 read pin; both are read once and emitted at the top level.
+        chart_operands = fetch_chart_operands(conn, args.chart_id)
+        dasha_contract = select_dasha_read_contract(args.chart_id, dasha_periods)
 
         contexts: dict[str, dict] = {}
         omitted: list[dict] = []
@@ -320,6 +422,8 @@ def main(argv: list[str] | None = None) -> int:
         contexts["_permission_mode"] = PERMISSION_MODE
         contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
         contexts["_av_donor_matrix"] = av_donor_matrix
+        contexts["_chart"] = chart_operands
+        contexts["_dasha_read_contract"] = dasha_contract
     finally:
         conn.close()
 
@@ -337,6 +441,8 @@ def main(argv: list[str] | None = None) -> int:
         "dasha_periods_emitted": len(contexts.get("_dasha_periods", [])),
         "dasha_levels": list(DD.DEFAULT_LEVELS),
         "dasha_read_tier": DD.READ_CONTRACT_TIER,
+        "dasha_read_contract": dasha_contract,
+        "chart_operands_missing": chart_operands["operands_missing"],
         "valence_unresolved_operands": unresolved_valence,
         "av_donor_matrix": {k: v for k, v in av_donor_matrix.items()
                             if k != "available_keys"} | {

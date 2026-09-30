@@ -18,17 +18,25 @@ Semantics (every choice disclosed, none improvised):
     report as contacts_unmapped, never silently dropped).
   * PROMISE — pinned legacy_semantics.compute_promise over the class's map
     weights (noisy-OR; computed once per (chart, class), plan §4.5).
-  * PERMISSION — T0-6 (FABLE #2/#3): evaluated AT EACH PROJECTION INSTANT by
-    gochara_intensity.permission.compute_permission over the class-context
-    document's `_dasha_periods` (MD/AD/PD levels 1-3, §4.0 tier), memoized
-    per class × UTC day; N-15 testimony renormalization strips the
-    sade-sāti weight (it annotates, never licenses). When the context
-    document carries no `_dasha_periods` (old documents, --rehearse-synthetic)
-    the pinned static per-class constant (compute_permission over the
-    context's systems_active map) is used exactly as pre-repair and the
-    class report records permission_mode='static_systems_active'. A class
-    with matching contacts but NO context is skipped and recorded
-    (skipped_classes) — never a 0.0 stand-in (plan §4.6).
+  * PERMISSION — T0-6 (FABLE #2/#3; ASTRA P1-2): evaluated AT EACH
+    PROJECTION INSTANT as the FROZEN C5 object (GOCHARA_DESIGN_SPECS_v1_4
+    §4.1): per-level MD/AD/PD lord, row id, licence ∈ {scored, testimony,
+    none} and relation from the B5.1 relation-kind evaluator
+    (services.gochara_rules.permission.period_lord_relation) over the
+    document's `_dasha_periods` (L1 rows pinned to `_dasha_read_contract`
+    build/tier, parent-linked, §4.0 duplicate rules), class licence = union
+    over levels, Aṣṭottarī applicability named; composed into the λ factor
+    with the other DR-14 generators (Vimśottarī active iff the class
+    licence is `scored`; sade-sāti testimony and inapplicable systems leave
+    numerator AND denominator). Memoized by the exact instant, never by
+    date. Installed by main() through build_projection_class_context. When
+    the context document carries no `_dasha_periods` (old documents,
+    --rehearse-synthetic) the pinned static per-class constant is used
+    exactly as pre-repair and the class report records
+    permission_mode='static_systems_active'; a document with
+    `_dasha_periods` but no `_chart` is refused. A class with matching
+    contacts but NO context is skipped and recorded (skipped_classes) —
+    never a 0.0 stand-in (plan §4.6).
   * ACTIVITY — the pinned noisy-OR of legacy_semantics.compute_activity_v3,
     with per-contact orb_strength = the M-1 `linear_no_box` ANGULAR kernel
     (D-RQ2, sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 finding
@@ -357,23 +365,223 @@ def _sade_sati_testimony_renormalize(permission: float, detail: dict):
     return newp, d2
 
 
+# ── frozen C5 permission (GOCHARA_DESIGN_SPECS_v1_4 §4, D-SPECS C5) ─────────
+#
+# ASTRA_REVIEW_A5_4 P1-2: the per-instant licence is the FROZEN §4.1 object,
+# evaluated from the L1 chart_dashas rows the class-context document carries
+# (`_dasha_periods`, read per §4.0) and the chart operands it carries
+# (`_chart`): per level (MD/AD/PD) the lord, its row id, its licence ∈
+# {scored, testimony, none} from the P1 relation-kind table
+# (services.gochara_rules.permission.period_lord_relation — the B5.1
+# implementation, reused, never duplicated) and the relation; class-level
+# licence = union over levels (licensed iff some level is `scored`;
+# testimony annotates and never licenses); Aṣṭottarī applicability with both
+# failed conditions named. Rows are pinned to the document's read contract
+# (build_id, tier two_pass_verified), parent-linked (an AD only under its MD,
+# a PD only under its AD — an orphan is ignored and reported, never
+# accepted), and a conflicting duplicate (same level/parent/start, any
+# contract field differing) raises DashaReadConflict — never silently
+# picked. Memoization is by the EXACT instant: a date bucket would put the
+# half-open boundary instant 2020-02-14T11:47:23Z (Rahu) and 00:00 of the
+# same day (Mars) in one cell.
+
+VIMSHOTTARI = "vimshottari"
+PERMISSION_CONTRACT = "frozen_c5:GOCHARA_DESIGN_SPECS_v1_4 §4.1 (D-SPECS C5)"
+# N-15: testimony systems annotate, never weight — out of the fraction.
+TESTIMONY_SYSTEMS = frozenset({"sade_sati"})
+# JD floats carry ~40 µs of slack at J2000+; a boundary instant must resolve
+# to its half-open side deterministically, so the instant is read at 10 ms.
+_INSTANT_ROUND_SECONDS = 0.01
+
+
+def utc_iso_of_jd(t_jd: float) -> str:
+    """The UTC instant the licence is evaluated at (§4.0 instant rule: the
+    read prints the UTC instant it evaluated), rounded to 10 ms."""
+    secs = (float(t_jd) - JD_UNIX_EPOCH) * 86400.0
+    secs = round(secs / _INSTANT_ROUND_SECONDS) * _INSTANT_ROUND_SECONDS
+    return datetime.fromtimestamp(secs, tz=UTC).isoformat()
+
+
+def _rowv(row: dict, key: str):
+    v = row.get(key)
+    return None if v is None else str(v)
+
+
+def select_period_rows(dasha_rows: list[dict], t_jd: float, *,
+                       system: str = VIMSHOTTARI,
+                       pinned_build_id: str | None = None,
+                       tier: str | None = None) -> dict:
+    """§4.0 row selection at t: half-open [start_iso, end_iso), parent-linked
+    per level, pinned build/tier, duplicate rules enforced."""
+    from services.gochara_grammar import dasha_data as DD
+    t_iso = utc_iso_of_jd(t_jd)
+    excluded = {"other_system": 0, "other_build": 0, "other_tier": 0}
+    rows = []
+    for r in dasha_rows:
+        if _rowv(r, "system_id") != system:
+            excluded["other_system"] += 1
+            continue
+        if pinned_build_id and _rowv(r, "build_id") not in (None, str(pinned_build_id)):
+            excluded["other_build"] += 1
+            continue
+        if tier and _rowv(r, "verification_pass_status") not in (None, tier):
+            excluded["other_tier"] += 1
+            continue
+        rows.append(r)
+
+    orphans: list[dict] = []
+
+    def covering(level: int, parent_id: str | None):
+        hits = []
+        for r in rows:
+            if int(r.get("level_n") or 0) != level:
+                continue
+            if not DD.period_contains(r, t_iso):
+                continue
+            if level > 1 and _rowv(r, "parent_row_id") != parent_id:
+                orphans.append({"level_n": level,
+                                "dasha_row_id": _rowv(r, "dasha_row_id"),
+                                "parent_row_id": _rowv(r, "parent_row_id"),
+                                "lord": r.get("lord_graha"),
+                                "reason": "parent is not the selected "
+                                          f"level-{level - 1} row {parent_id}"})
+                continue
+            hits.append(r)
+        if not hits:
+            return None
+        # §4.0 identical-duplicate rule: equal on every contract field ⇒
+        # collapse (record the ids); any difference ⇒ conflict, fail loudly.
+        ident = {(_rowv(r, "lord_graha"), _rowv(r, "start_iso"),
+                  _rowv(r, "end_iso")) for r in hits}
+        if len(ident) > 1:
+            raise DD.DashaReadConflict(
+                f"chart_dashas §4.0 conflict at {t_iso} level {level} under "
+                f"parent {parent_id}: rows "
+                f"{[_rowv(r, 'dasha_row_id') for r in hits]} disagree on "
+                f"{sorted(ident)} — both rejected, never silently picked")
+        keep = dict(hits[0])
+        keep["merged_row_ids"] = sorted({_rowv(r, "dasha_row_id") for r in hits}
+                                        | set(map(str, hits[0].get("merged_row_ids") or [])))
+        return keep
+
+    md = covering(1, None)
+    ad = covering(2, _rowv(md, "dasha_row_id")) if md else None
+    pd = covering(3, _rowv(ad, "dasha_row_id")) if ad else None
+    return {"t_utc": t_iso, "md": md, "ad": ad, "pd": pd,
+            "orphans_ignored": orphans, "rows_excluded": excluded,
+            "rows_considered": len(rows)}
+
+
+def frozen_c5_permission_context(dasha_rows: list[dict], t_jd: float,
+                                 event_class: str, chart: dict, *,
+                                 pinned_build_id: str | None = None,
+                                 tier: str | None = None) -> dict:
+    """§4.1: permission(chart_id, t, event_class) → {admitted_paths,
+    period_context{system, build_id, md/ad/pd{lord,row_id,licence,relation},
+    applicability}, class_licence}. Per-level licences via the B5.1
+    relation-kind evaluator; levels never collapsed into one boolean."""
+    from brahmagyan.graha_vocabulary import to_title
+    from services.gochara_rules.permission import (
+        applicability, period_lord_relation)
+    sel = select_period_rows(dasha_rows, t_jd, pinned_build_id=pinned_build_id,
+                             tier=tier)
+    period_context: dict = {"system": VIMSHOTTARI, "build_id": pinned_build_id,
+                            "tier": tier, "t_utc": sel["t_utc"]}
+    licences = []
+    for level in ("md", "ad", "pd"):
+        row = sel[level]
+        if row is None:
+            period_context[level] = {"lord": None, "row_id": None,
+                                     "licence": "none", "relation": "none",
+                                     "detail": "no covering row"}
+            continue
+        lord = to_title(row.get("lord_graha")) or str(row.get("lord_graha"))
+        rel = period_lord_relation(lord, event_class, chart)
+        period_context[level] = {
+            "lord": lord, "row_id": _rowv(row, "dasha_row_id"),
+            "merged_row_ids": row.get("merged_row_ids"),
+            "start_iso": _rowv(row, "start_iso"), "end_iso": _rowv(row, "end_iso"),
+            "licence": rel["licence"], "relation": rel["relation"],
+            "detail": rel["detail"]}
+        licences.append(rel["licence"])
+    class_licence = ("scored" if "scored" in licences
+                     else "testimony" if "testimony" in licences else "none")
+    period_context["applicability"] = applicability(chart)
+    period_context["orphans_ignored"] = sel["orphans_ignored"]
+    period_context["rows_excluded"] = sel["rows_excluded"]
+    return {"contract": PERMISSION_CONTRACT,
+            "admitted_paths": ["P1"] if class_licence == "scored" else [],
+            "period_context": period_context,
+            "class_licence": class_licence}
+
+
+def frozen_permission_value(legacy_detail: dict, c5: dict) -> tuple[float, dict]:
+    """The λ PERMISSION factor under the frozen contract, composed from the
+    DR-14 generator table the legacy evaluator produced:
+      * Vimśottarī is active iff the C5 class licence is `scored` (the
+        per-level union; testimony never licenses) — the legacy any-row
+        lord match is replaced, not supplemented;
+      * testimony systems (N-15 sade_sati) leave numerator AND denominator;
+      * a system whose applicability is `absent` (Aṣṭottarī on this chart,
+        D-RQ7) leaves numerator AND denominator — absent, not false-weighted.
+    Everything excluded is listed with its reason; the legacy value is kept
+    for the review trail."""
+    systems = [dict(sx) for sx in (legacy_detail.get("systems") or [])]
+    excluded = []
+    applicability = c5["period_context"].get("applicability") or {}
+    absent_systems = ({applicability.get("system")}
+                      if applicability.get("state") == "absent" else set())
+    included = []
+    for sx in systems:
+        sid = sx.get("system_id")
+        if sid == VIMSHOTTARI:
+            sx["active"] = c5["class_licence"] == "scored"
+            sx["licence_source"] = PERMISSION_CONTRACT
+            sx["class_licence"] = c5["class_licence"]
+            sx["detail"] = {lvl: c5["period_context"][lvl]
+                            for lvl in ("md", "ad", "pd")}
+        if sid in TESTIMONY_SYSTEMS:
+            excluded.append({"system_id": sid, "reason": "testimony (N-15) — "
+                             "annotates, never weights", "active": sx.get("active"),
+                             "detail": sx.get("detail")})
+            continue
+        if sid in absent_systems:
+            excluded.append({"system_id": sid, "reason": "inapplicable — "
+                             f"{applicability.get('failed_conditions')}",
+                             "active": sx.get("active")})
+            continue
+        included.append(sx)
+    total = sum(float(sx.get("weight") or 0.0) for sx in included)
+    active_w = sum(float(sx.get("weight") or 0.0) for sx in included if sx.get("active"))
+    value = active_w / total if total else 0.0
+    detail = {
+        **legacy_detail,
+        "systems": included,
+        "systems_active": [sx["system_id"] for sx in included if sx.get("active")],
+        "systems_considered": [sx["system_id"] for sx in included],
+        "system_count_active": sum(1 for sx in included if sx.get("active")),
+        "systems_excluded": excluded,
+        "permission_contract": PERMISSION_CONTRACT,
+        "class_licence": c5["class_licence"],
+        "admitted_paths": c5["admitted_paths"],
+        "period_context": c5["period_context"],
+        "sade_sati_mode": "testimony",
+        "legacy_permission_value": legacy_detail.get("_legacy_permission"),
+    }
+    return value, detail
+
+
 def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
-                                   dasha_periods: list[dict]):
-    """permission_fn(t_jd) -> (permission, detail) for one event class,
-    evaluated by the REAL plurality machinery
-    (gochara_intensity.permission.compute_permission) at each instant over
-    the MULTI-LEVEL (MD/AD/PD) dasha rows from the class-context document —
-    the T0-6 repair of the per-class unioned constant.
-
-    Targets come from the same fetch step06a and the served engine use
-    (fetch_resonance_targets + enrich_targets — no second wiring to drift).
-    Returns None when the class's targets do not resolve: the caller records
-    the class as skipped, never a fabricated context.
-
-    Memoization: one plurality evaluation per (class, UTC calendar date) —
-    the projection's grids and bisections evaluate the same day repeatedly;
-    no century-long curve is precomputed. N-15: the sade-sāti generator's
-    weight is stripped (testimony renormalization) after each call."""
+                                   dasha_periods: list[dict], chart: dict, *,
+                                   pinned_build_id: str | None = None,
+                                   tier: str | None = None):
+    """permission_fn(t_jd) -> (permission, detail) for one event class:
+    the frozen C5 licence (frozen_c5_permission_context) composed with the
+    other DR-14 generators (gochara_intensity.permission.compute_permission
+    — the legacy evaluator supplies the non-Vimśottarī generator rows) via
+    frozen_permission_value. Returns None when the class's targets do not
+    resolve (the caller records the class as skipped, never a fabricated
+    context). Memoized by the EXACT instant (never by date)."""
     if str(SIDECAR) not in sys.path:
         sys.path.insert(0, str(SIDECAR))
     import swisseph as swe
@@ -385,18 +593,70 @@ def make_per_instant_permission_fn(conn, chart_id: str, event_class: str,
         conn, fetch_resonance_targets(conn, chart_id, event_class))
     if not targets:
         return None
-    cache: dict[str, tuple[float, dict]] = {}
+    cache: dict[float, tuple[float, dict]] = {}
 
     def at(t_jd: float):
-        key = iso_date_of_jd(t_jd)
+        key = float(t_jd)
         if key not in cache:
+            c5 = frozen_c5_permission_context(
+                dasha_periods, t_jd, event_class, chart,
+                pinned_build_id=pinned_build_id, tier=tier)
             raw, detail = perm.compute_permission(
                 swe, conn, chart_id, event_class, targets, t_jd,
                 dasha_periods=dasha_periods)
-            cache[key] = _sade_sati_testimony_renormalize(raw, detail)
+            detail = {**detail, "_legacy_permission": raw}
+            cache[key] = frozen_permission_value(detail, c5)
         return cache[key]
 
     return at
+
+
+def build_projection_class_context(conn, chart_id: str, event_class: str,
+                                   ctx_dict: dict, doc: dict | None, *,
+                                   weights: list[float],
+                                   weight_by_target_ref: dict[str, float],
+                                   context_source: str,
+                                   permission_factory=None):
+    """The ONE constructor path main() uses for a class's ClassContext
+    (ASTRA P1-2: the per-instant permission function must be INSTALLED on
+    the executable path, not merely defined). When the document carries
+    `_dasha_periods` AND `_chart`, the frozen C5 per-instant function is
+    built by `permission_factory` (default make_per_instant_permission_fn)
+    and installed; a factory result of None means the class's targets did
+    not resolve → returns None (caller skips the class). A document with
+    `_dasha_periods` but no `_chart` is refused (ValueError): the frozen
+    licence cannot be evaluated without the chart operands — never a silent
+    static fallback. Documents without `_dasha_periods` (old documents,
+    --rehearse-synthetic) keep the pinned static fallback, disclosed."""
+    factory = permission_factory or make_per_instant_permission_fn
+    doc = doc or {}
+    permission_fn = None
+    dasha_rows = doc.get("_dasha_periods")
+    if dasha_rows is not None:
+        chart = doc.get("_chart")
+        if not chart:
+            raise ValueError(
+                "class-context document carries _dasha_periods but no _chart "
+                "operands — the frozen C5 licence (GOCHARA_DESIGN_SPECS_v1_4 "
+                "§4.1) cannot be evaluated; regenerate the document with the "
+                "repaired step06a_class_context.py")
+        contract = doc.get("_dasha_read_contract") or {}
+        permission_fn = factory(
+            conn, chart_id, event_class, dasha_rows, chart,
+            pinned_build_id=contract.get("build_id"),
+            tier=contract.get("tier"))
+        if permission_fn is None:
+            return None
+    return ClassContext(
+        event_class, weights, ctx_dict["permission_systems"],
+        weight_by_target_ref=weight_by_target_ref,
+        class_valence=ctx_dict.get("class_valence", "mixed"),
+        class_is_adverse=ctx_dict.get("class_is_adverse", False),
+        context_source=ctx_dict.get("context_source", context_source),
+        permission_fn=permission_fn,
+        unresolved_valence_operands=ctx_dict.get(
+            "valence_unresolved_operands", ()),
+        av_donor_keys=(doc.get("_av_donor_matrix") or {}).get("available_keys"))
 
 
 # ── T0-7 three-field valence (FABLE #11/#12; GOCHARA_DESIGN_SPECS_v1_4 §3) ───
@@ -640,6 +900,7 @@ class ClassContext:
             # contributing_systems / suppression_state.permission_detail.
             "permission": None if per_instant else self.permission,
             "permission_mode": self.permission_mode,
+            "permission_contract": PERMISSION_CONTRACT if per_instant else None,
             "permission_systems_active": (
                 None if per_instant else sorted(
                     s for s, on in self.permission_systems.items() if on)),
@@ -1611,26 +1872,25 @@ def main(argv: list[str] | None = None) -> int:
                     "contacts_matched": len(cls_contacts),
                 })
                 continue
-            class_ctx = ClassContext(
-                cls, weights_all_by_class[cls], ctx_dict["permission_systems"],
+            # T0-6 / ASTRA P1-2: the frozen C5 per-instant permission is
+            # INSTALLED here (build_projection_class_context) whenever the
+            # document carries _dasha_periods + _chart; None ⇒ the class's
+            # targets did not resolve ⇒ honest skip.
+            class_ctx = build_projection_class_context(
+                conn, args.chart_id, cls, ctx_dict,
+                class_contexts if class_contexts else None,
+                weights=weights_all_by_class[cls],
                 weight_by_target_ref=weight_by_class[cls],
-                class_valence=ctx_dict.get("class_valence", "mixed"),
-                class_is_adverse=ctx_dict.get("class_is_adverse", False),
-                context_source=ctx_dict.get("context_source", context_source),
-                # T0-7: old context documents carry no such key -> [] ->
-                # behaviour identical to pre-repair apart from the new
-                # fields; documents from the repaired step06a declare the
-                # O-TV-3 operand ('av_donor_matrix') when the P5c donor
-                # matrix is absent.
-                unresolved_valence_operands=ctx_dict.get(
-                    "valence_unresolved_operands", ()),
-                # D-SPECS C4: the P5c donor matrix keys the document found
-                # (per-key resolution on kakṣyā contacts only); None when
-                # the document predates the block.
-                av_donor_keys=(
-                    (class_contexts.get("_av_donor_matrix") or {})
-                    .get("available_keys")
-                    if class_contexts else None))
+                context_source=context_source)
+            if class_ctx is None:
+                skipped_classes.append({
+                    "event_class": cls,
+                    "reason": "targets did not resolve for the per-instant "
+                              "permission (fetch_resonance_targets/"
+                              "enrich_targets empty) — honest skip",
+                    "contacts_matched": len(cls_contacts),
+                })
+                continue
             rows, rep = project_class_windows(
                 class_ctx, cls_contacts, horizon_jd, gate_for_date,
                 min_lambda=args.min_lambda,
