@@ -157,7 +157,13 @@ AUTHORITY_BINDINGS = {
         # over the A2.1 kernel-geometry changeset (A2.2-accepted, Codex closure
         # round 3 ACCEPT on ee0dd335f). No other layer; no membership change.
         "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
-        "evidence_commit": "1e5ce331fbb2833d2a2f3bd20448293b36def276",
+        # Evidence re-pointed 2026-09-30 (pravaha/pins-admit-2793): the lane
+        # commit 1e5ce331fbb2833d2a2f3bd20448293b36def276 is not an ancestor of
+        # main (the doc reached main through the #2764 squash); the squash
+        # delivery commit 95e96d63c carries the byte-identical document
+        # (sha256 verified unchanged), so main-side admissions can dereference
+        # the authority evidence.
+        "evidence_commit": "95e96d63cb8f5b58689d19f728266107f39df346",
         "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_PINS_READMISSION_AUTHORITY_v1_0.md",
         "sha256": "78814bbfa4fcf076cf70aebe8cc05855287151318d81e86018d4ceaf0868ca6c",
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
@@ -291,7 +297,18 @@ AUTHORIZED_SOURCE_COMMITS = {
     # (provenance_inventory --check green). L0, L1, L2, L4, L5 verify clean in
     # delivery topology on this branch and are deliberately absent.
     "D-PINS-A2": {
-        "L3": frozenset({"f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24"}),
+        "L3": frozenset({
+            "f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24",
+            # D-PINS-A2 continuation (2026-09-30, steward M20260930T220447-289d):
+            # #2793 (A5.5 kernel F10-F12, the A2.1 changeset's own continuation)
+            # moved ka_sangam, ka_moorti_nirnaya and
+            # ka_gochara_v3_century_materialize through their gochara_kernel
+            # import closures; no own-module edits. Same decision, same
+            # authority identity; ONE successor over the D-PINS-A2 baseline,
+            # never a rewrite. Source = the #2793 merge commit (its committed
+            # writer inventory is byte-identical to this tree).
+            "61e1aa60b5084a144101f4f1a233a6da0edee81c",
+        }),
     },
 }
 
