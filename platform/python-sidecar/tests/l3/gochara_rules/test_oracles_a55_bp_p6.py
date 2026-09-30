@@ -159,19 +159,36 @@ def test_o_bp_4_absent_matrix_disabled_and_fallback_labelled():
     assert d["reason"] == P5C_DISABLED_REASON
     assert "rebuild" in d["reason"] and "#2731" in d["reason"]
     assert "donor_mark" not in d
-    # the sign-level fallback is labelled 'coarser P5a qualification', never
-    # donor evaluation: the only sign-level qualification available is p5a(),
-    # whose form key is P5a — presenting it as P5c is the mutation.
+    # the sign-level fallback: the only sign-level qualification available is
+    # p5a(), whose form key is P5a — presenting it as P5c is the mutation.
     fallback = p5a("Jupiter", "SYN-X", SYNTH_BAV)
     assert fallback["form"] == "P5a"
     assert fallback["state"] == "unresolved"  # nonzero count, no threshold
-    labelled = {"label": "coarser P5a qualification", **fallback}
-    assert labelled["label"] == "coarser P5a qualification"
-    assert labelled["form"] != "P5c"
+    assert fallback["form"] != "P5c"
     # real extract contrast: Aquarius SARVA = 23 (extract v1_0, tier
     # single_pass verbatim) — sign-level P5b band <25 adverse.
     assert SARVA_BY_SIGN["Aquarius"] == 23
     assert p5b("Aquarius", SARVA_BY_SIGN)["state"] == "adverse"
+
+
+@pytest.mark.xfail(
+    reason="A5.5 FINDING: no code path emits the sign-level fallback label "
+           "'coarser P5a qualification' (spec §8/O-BP-4); A5.2/A5.3 to "
+           "implement on the presentation path",
+    strict=True)
+def test_o_bp_4_fallback_label_emitted_by_real_path():
+    # the oracle's label requirement asserted against the REAL emitter:
+    # with the donor matrix absent, the presentation of the sign-level
+    # fallback must carry label 'coarser P5a qualification' — never donor
+    # evaluation. Today qualify_transit emits the disabled P5c dict and a
+    # bare P5a result with no such label (the label exists only in an
+    # ashtakavarga.py docstring) — strict xfail records the gap.
+    out = qualify_transit("Jupiter", "SYN-X", bav_by_graha=SYNTH_BAV,
+                          sav_by_sign=SYNTH_SAV, donor_matrix=None)
+    assert out["P5c"]["state"] == "disabled"
+    emitted_labels = {
+        v.get("label") for v in out.values() if isinstance(v, dict)}
+    assert "coarser P5a qualification" in emitted_labels
 
 
 # ── O-P6-TARA — tārā nine-fold class 6 (twins case), testimony only ──────────
@@ -196,3 +213,18 @@ def test_o_p6_tara_class_6_twins_fixture():
     assert out["annotations"][0]["class"] == 6
     # mutation guard: a wrong nine-fold class fails.
     assert r["class"] != 7
+
+
+@pytest.mark.xfail(
+    reason="A5.5 FINDING: no name→index normalisation exists on the P6 path "
+           "(tara() takes ints; the case-mismatch defect #5 lives in a "
+           "normaliser that is not built); spec §2/O-P6-TARA",
+    strict=True)
+def test_o_p6_tara_name_to_index_normalisation():
+    # the null-key (case-mismatch) guard asserted against the REAL normaliser:
+    # a case-variant nakṣatra key must map to the pinned indices (natal 24,
+    # transit 20) and never to None. No such function exists on the merged
+    # path today — strict xfail records the gap.
+    from services.gochara_rules.p6 import nakshatra_index  # expected emitter
+    assert nakshatra_index("SHATABHISHA".lower()) == 24   # natal star (twins)
+    assert nakshatra_index("purvashadha".upper()) == 20   # day star (twins)
