@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_L5_LAYER_INSTANCE
 canonical_id: SUVARNA_L5_LAYER_INSTANCE
-version: "1.0 (first draft)"
+version: "1.1 (first draft, gate review corrections applied)"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -15,9 +15,10 @@ census_run:
   inspector_commit: 2a78ec64d88e59438bd6527b4c99826432102c57
   generated: "2026-09-30T20:24:11+05:30"
   chart_scope: 482012f1-710e-4a25-994a-93821f5871aa
-tier_gaps: layers/L5/L5_TIER_GAPS_v1_0.md   # TG-L5-001 .. TG-L5-030
+tier_gaps: layers/L5/L5_TIER_GAPS_v1_0.md   # TG-L5-001 .. TG-L5-031
 inputs_not_authority: "00_ARCHITECTURE/briefs/nirmana/nikasha_test/derivations/L5_INSTANCE_SKELETON.md and L5_INVENTIONS.md (2026-09-26). Read; nothing copied. Where a figure differs, Part 6 says so."
 changelog:
+  - "1.1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 10 defects. Instance side: cell total 300 -> 284 (the six counts sum to 284; census re-tallied: 284); §5.4 test 4 read as [TRANSFERS]-pending (R71/R094) instead of not applicable; mi_bhara error cause restated (CEN Build.history says only timeout:600s; ka_kshetra comes from Build.dep_liveness, link inferred); TG-L5-007 narrowed and TG-L5-017 restated where used; Null and Narr gate rows cite the new TG-L5-031; gap total 30 -> 31. Tier-gap file corrections are in L5_TIER_GAPS v1.1."
   - "1.0 (2026-09-30): first draft. Filled from tiers 1-4, the tier-2 companion register, the change register, census_L5.json and read-only queries. Every hole in the tiers is marked TIER GAP with its row; no clause was invented to fill one. No certification record is written (§5.3)."
 ---
 
@@ -213,7 +214,7 @@ basis column says otherwise (CEN `live_rows`, `live_rows_basis`). "Latest run" i
 | `mi_vistara` | data / postgres_table / **global** | CURRENT | `mimamsa_export_log` | 0 (whole table) | 12 | complete; 39 complete runs, no error; last run 2026-09-06 |
 | `mi_seva` | **service** / service / per_chart | **DRAFT** | `mimamsa_preferences` | 0 (whole table) | 4 | complete; 28 errors, 10 aborts on record |
 | `mi_abhilekha` | **service** / service / per_chart | **DRAFT** | `mimamsa_journal` | 0 (chart) | 9 | complete; 26 errors, 9 aborts on record |
-| `mi_bhara` | data / postgres_table / per_chart | CURRENT | `kala_field_skill` (a `ka_`-prefixed table) | 7 (chart) | 17 | error (2026-08-21): blocked on a 600 s timeout upstream (`ka_kshetra`) |
+| `mi_bhara` | data / postgres_table / per_chart | CURRENT | `kala_field_skill` (a `ka_`-prefixed table) | 7 (chart) | 17 | error (2026-08-21): blocked on an upstream dependency that did not complete within `timeout:600s` (CEN `Build.history`, which does not name the asset); `ka_kshetra` is the one declared dependency not lit, from CEN `Build.dep_liveness` ("0/1 … `ka_kshetra` (error)") — the link between the two readings is inferred |
 | `mi_sankalpa` | data / postgres_table / per_chart | CURRENT | `mimamsa_intervention_ledger` | 0 (chart) | 28 | `dormant`; 0 errors, 3 aborts |
 
 Row counts were reproduced by DBQ (`count(*) … WHERE chart_id = 482012f1-…` per table, whole-table for the four tables with no
@@ -399,8 +400,8 @@ measures leakage, chronology or the firewall (TG-L5-008). Code-side checks found
 `platform/src/lib/pariprashna/no_leakage/calibration_leak_guard.ts`, `platform/src/lib/pipeline/no_leakage_filter.ts`. A rule
 with no detector is a wish (T3 §2.1); the instance says so.
 
-**The life-event switch (T2 §9.2; T3 §2.1).** T2 states the plane's two states and "no third". **TIER GAP: TG-L5-007** —
-what L5 emits when OFF, and the storage separation that makes OFF a selection, is not stated per layer. What was measured:
+**The life-event switch (T2 §9.2; T3 §2.1).** T2 states the plane's two states and "no third". **TIER GAP: TG-L5-007** (narrowed) —
+T2 §9.2 line 500 names L5's ON role ("L5 adjudication of frozen claims against admitted observations") and line 501 ("Nothing derived from life events, anywhere") binds L5 when OFF; what no tier states is which L5 tables are event-conditioned overlays and which are event-free, i.e. the per-table storage separation that makes OFF a selection (T2 lines 510-512 give the principle and name no L5 table). What was measured:
 no life-event switch identifier exists in the searched code (every `switch_state` hit is `kill_switch_state`, a claim-family
 kill switch); the three prediction tables (`mimamsa_predictions`, `brahma_prospective_ledger`,
 `brahma_mimamsa_prediction_ledger`) have no column named for switch state or information cutoff, although T1 §7.2 (line 382)
@@ -745,7 +746,7 @@ The tiers name two L5 packets. This draft adds none.
 
 | packet (T2 §13.1) | text (verbatim) | delta item it closes | proof detector |
 |---|---|---|---|
-| W08 Observation/history slice (line 644) | "Canonical intake/revision ownership, purpose/chronology, one historical comparison/protected review." Depends on/exit: "Own intake/firewall contracts; can be designed in parallel, no automatic future conditioning." | TG-L5-006 (ownership), TG-L5-007 (switch), F-01, F-07 | none defined (TG-L5-008) |
+| W08 Observation/history slice (line 644) | "Canonical intake/revision ownership, purpose/chronology, one historical comparison/protected review." Depends on/exit: "Own intake/firewall contracts; can be designed in parallel, no automatic future conditioning." | TG-L5-006 (ownership), TG-L5-007 (overlay separation), F-01, F-07 | none defined (TG-L5-008) |
 | W09 L5 challenge and value (line 645) | "Frozen comparison sets, independently adjudicated outcomes, misfit/unknowns, explanatory and empirical tests; qualified future artifact procedure." Depends on/exit: "DP15a already protected at issuance; DP15b evaluates later. No dormant fitting/service activation without existing gates and separate authority." | §3.1 predictive performance; TG-L5-014, -026, -027 | none defined |
 
 W06 (L4) carries "DP15a issuance/eligibility/firewall proof before forecast cutover" (line 642) and is not L5's. Packets
@@ -760,7 +761,7 @@ traces_to:   2.1 — a rebuild that resets chronology is a hindsight leak
 ```
 
 - **Rebuild replaces its own rows** (T4 §6): true of 11 assets by CEN `Idem.pattern` PASS. Exceptions and refinements that no tier
-  expresses: `mi_gunanaka` snapshot accretion (ratified, F188); `mi_bhara` append-only versions plus a status update;
+  reconciles with the never-accretes rule (T2 line 402, DP15a and T1 §7.3 preserve such records): `mi_gunanaka` snapshot accretion (ratified, F188); `mi_bhara` append-only versions plus a status update;
   `mi_sankalpa` and `mi_bhavisya` scoped deletes; `mi_kula` deletes both its global tables entirely (`mi_kula.py:312-313`);
   three assets write no row of their own table (`mi_abhilekha`, `mi_seva`, `mi_vistara`, `Idem.pattern` PARTIAL "nothing to
   replace") (TG-L5-017, -018).
@@ -788,7 +789,7 @@ the brief author must not invent it.
 |---|---|---|---|
 | 1 | P/V the asset serves | no | TG-L5-001 |
 | 2 | obligations scored on | yes, layer-uniform | predictive performance + operational honesty (§0.2); per-asset weighting not stated (R118) |
-| 3 | correctness rules and switch | partial | six rules quoted (§2.1); switch behaviour TG-L5-007; detectors TG-L5-008 |
+| 3 | correctness rules and switch | partial | six rules quoted (§2.1); switch ON/OFF stated at plane level (T2 §9.2 lines 500-501), per-table overlay separation TG-L5-007; detectors TG-L5-008 |
 | 4 | presentation fields | no | TG-L5-009 |
 | 5 | contracts with declared use | partial | T2c ids, provisional and with a removed id (§2.3); uses TG-L5-010; field/grain TG-L5-003 |
 | 6 | coverage obligations and states | no | TG-L5-011 |
@@ -835,14 +836,14 @@ gate is stated as such). Verdicts are CEN's, unadjusted; nothing here is a certi
 | Ldgr | Ldgr.source_presence | 1 PASS (`mi_sambandha`); no reading for 14 |
 | Idem | Idem.pattern | PASS 11 · PARTIAL 3 (`mi_abhilekha`, `mi_seva`, `mi_vistara`: nothing to replace) · N/A 1 (`lel_events`) |
 | Earn | Earn.build_record (with Cost.baseline) | NO_DETECTOR 15 (instrument absent, migration 1094) |
-| Null | none | no census criterion (E6 builds generic detectors before J1; plan §2.1) |
+| Null | none | no census criterion (E6 builds generic detectors before J1; plan §2.1); per-asset convention TG-L5-031 |
 | Vocab | Vocab.identity | PASS 10 · NO_DETECTOR 4 · no reading for `lel_events` |
 | Carr | Carr.detector | NO_DETECTOR 15 |
 | Narr | none (conditional on the asset emitting prose) | no census criterion; which L5 assets emit prose is unassigned (TG-L5-009) |
 | Dens | Dens.served (conditional on a served surface) | PASS 9 · N/A 6 |
 | Build | Build.registered, .contract, .target, .dag, .count_integrity, .completion, .exercised, .history, .dep_liveness | .registered/.contract/.target PASS 14, N/A 1 · .dag PASS 15 · .count_integrity PASS 15 · .completion FAIL 10, PARTIAL 3, PASS 2 · .exercised PASS 14, N/A 1 · .history FAIL 8, PARTIAL 5, PASS 1, N/A 1 · .dep_liveness FAIL 10, PARTIAL 1, PASS 2, N/A 2 |
 
-Cell totals: FAIL 28, PARTIAL 19, NO_DETECTOR 53, PASS 125, N/A 29, NOT_GENERIC 30 (300 cells), tallied from CEN and matching
+Cell totals: FAIL 28, PARTIAL 19, NO_DETECTOR 53, PASS 125, N/A 29, NOT_GENERIC 30 (284 cells), tallied from CEN and matching
 SUMMARY.md row L5. The 28 FAILs are Build.completion 10, Build.dep_liveness 10, Build.history 8. Non-gate criteria (Cost,
 Count, Complete, Reach) are information, never blockers (D3): Count.floor N/A 15; Complete.width NOT_GENERIC 15; Reach.fields
 NOT_GENERIC 15; Complete.depth PASS 3, PARTIAL 7, NO_DETECTOR 4.
@@ -854,10 +855,10 @@ NOT_GENERIC 15; Complete.depth PASS 3, PARTIAL 7, NO_DETECTOR 4.
 | Ldgr | §2.3 contracts, with declared use | **cannot fill** — upstream `fact_id` sources are not named for any asset (TG-L5-010); one source-presence reading exists (`mi_sambandha`) |
 | Idem | §2.5 edges and order; §4.1 order and baseline | natural keys per §2.6 (10 declared; `lel_events` `(chart_id, event_id)` per its `integrity_check_sql`; `mi_seva` `(user_id, channel_id)`; `mi_vistara` `(export_id)`; `mi_kula` `(family_id)`; `mi_abhilekha` `(chart_id, journal_id)`; `mi_sankalpa` `(chart_id, intervention_class, rite_or_activity_class, elected_window)`); rebuild-scope exceptions in §4.3 (TG-L5-017, -018) |
 | Earn | §2.4 coverage obligations and their states | **cannot fill** — coverage states are unassigned (TG-L5-011); labels that are claims are listed in §3.1 (`evidence_grade`, `held_out_validity`, `promotion_status`, `leakage_status`, `calibration_status`, `publication_status`, `skill_state`) with no falsifier defined by any tier |
-| Null | §2.4 (state vocabulary); §1.4 | **cannot fill** — no asset's own convention for an underivable value is supplied; observed nulls are recorded as facts (§3.1, §3.3) |
+| Null | §2.4 (state vocabulary); §1.4 | **cannot fill** (TG-L5-031) — no asset's own convention for an underivable value is supplied; observed nulls are recorded as facts (§3.1, §3.3) |
 | Vocab | §2.6 | classes as far as §2.6 goes; authority per class unassigned (TG-L5-012) |
 | Carr | §2.7; §4.4 row 13 | **cannot fill** per asset (TG-L5-013); candidates only |
-| Narr | §2.2 presentation fields | **cannot fill** — whether each asset emits prose is not stated (TG-L5-009) |
+| Narr | §2.2 presentation fields | **cannot fill** — whether each asset emits prose is not stated (TG-L5-031) |
 | Dens | §2.2; §3.4 served boundary | modules per asset (§1.4); nine assets serve, six do not |
 | Build | §2.5; §1.1; §4.3 | writer file and registered id, target, edges, build record per asset in §1.1 and §2.5; `lel_events` declared no-writer (§1.1.a) |
 
@@ -882,10 +883,10 @@ traces_to:   —
 
 | test | status |
 |---|---|
-| 1 · Derivability (a fresh-context reader derives one brief with zero inventions) | **not met and not run.** §4.4 shows, of 13 inheritance rows, 5 holes, 2 absent instruments, 5 partial and 1 filled; TG-L5-001 to -030 |
+| 1 · Derivability (a fresh-context reader derives one brief with zero inventions) | **not met and not run.** §4.4 shows, of 13 inheritance rows, 5 holes, 2 absent instruments, 5 partial and 1 filled; TG-L5-001 to -031 |
 | 2 · Alignment (every section names `traces_to`) | done by the author; the reviewer's strike-pass is pending |
 | 3 · Measured, not inherited (every figure names its `measured_by`) | done via the source labels of Appendix A; a reviewer re-run is pending |
-| 4 · Presentation parity | not applicable to a draft with no L5 presentation rows (TG-L5-009; [TRANSFERS]) |
+| 4 · Presentation parity | [TRANSFERS]-pending (R71/R094): T2 §12.2 line 614 marks parity [TRANSFERS], T3 line 628 does not, and the register row is open; the draft carries no L5 presentation rows (TG-L5-009) |
 | 5 · The gate map exists | yes, §5.2 (five of nine rows cannot be filled) |
 | 6 · Independent review, fresh context | **not done.** This is a provisional draft; it may register gaps and may not certify. No verdict is claimed |
 
