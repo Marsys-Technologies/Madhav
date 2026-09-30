@@ -1160,3 +1160,39 @@ def test_bodies_subset_validation(wp6_enum_schema, tmp_path):
     assert r.returncode == 3 and "--bodies" in r.stderr
     r = _run_driver(tmp_path, "--bodies", "Sun,Sun")
     assert r.returncode == 3 and "duplicates" in r.stderr
+
+
+def test_boundary_events_solved_once_per_body(monkeypatch):
+    """T0-3 global boundary table (spec §6.2 inv 5, O-SS-1): boundary events
+    are enumerated per BODY, joined to targets afterwards. With N point
+    targets the solver runs len(BOUNDARY_RELATIONS) times — not N×. The
+    per-target rows still attach (dedupe collapses them to one stored row,
+    H-6); only the redundant re-solving is gone."""
+    h0 = _jd(2026, 1, 1)
+
+    def curve(jd):
+        return 100.0 + 0.5 * (jd - h0)
+
+    index = _index("Saturn", date(2025, 12, 15), date(2026, 6, 1), curve)
+    horizon = (_jd(2026, 1, 1), _jd(2026, 5, 31))
+    targets = [_point_target(120.0, "Venus", "karaka", "a"),
+               _point_target(150.0, "Mars", "karaka", "b"),
+               _point_target(180.0, "Jupiter", "sensitive_degree", "c")]
+
+    calls = {"n": 0}
+    real_solve = drv.gk_episodes.solve_boundary_episodes
+
+    def counting_solve(*a, **kw):
+        calls["n"] += 1
+        return real_solve(*a, **kw)
+
+    monkeypatch.setattr(drv.gk_episodes, "solve_boundary_episodes",
+                        counting_solve)
+    eps, stats = drv.enumerate_body(
+        index, "Saturn", targets, horizon, 5.0, BACKEND,
+        ephe_path=None, refine=False)
+    assert calls["n"] == len(drv.BOUNDARY_RELATIONS)  # per body, not per target
+    # every point target still carries its boundary attachment rows
+    for ref in ("a", "b", "c"):
+        attached = {e["relation"] for e in eps if e["target_ref"] == ref}
+        assert set(drv.BOUNDARY_RELATIONS) <= attached

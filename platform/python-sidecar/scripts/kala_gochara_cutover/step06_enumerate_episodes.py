@@ -675,6 +675,18 @@ def enumerate_body(
                 stats["episodes_without_exact"] += 1
             out.append(_episode_to_dict(e, target, backend))
 
+    # T0-3 global boundary table (spec §6.2 inv 5, O-SS-1): boundary degrees
+    # are chart- and TARGET-independent by construction (boundary_degrees
+    # takes no chart/target argument), so the sky events are solved ONCE per
+    # body and joined to targets afterwards — never re-solved per target
+    # (the pre-fix loop re-derived the identical root set for every point
+    # target and left ADK-0020 dedupe to undo the duplication).
+    boundary_cache = {
+        rel: gk_episodes.solve_boundary_episodes(
+            index, body, rel, horizon_jd, ephe_path=ephe_path, refine=refine)
+        for rel in BOUNDARY_RELATIONS
+    }
+
     for t in targets:
         if t.state != "resolved":
             continue
@@ -697,9 +709,7 @@ def enumerate_body(
             boundary_searched = []
             for rel in BOUNDARY_RELATIONS:
                 boundary_searched.append(rel)
-                _emit(gk_episodes.solve_boundary_episodes(
-                    index, body, rel, horizon_jd, ephe_path=ephe_path,
-                    refine=refine), t)
+                _emit(boundary_cache[rel], t)
             relations = ["conjunction", "drishti_contact", *boundary_searched]
             if t.owner_graha == body:
                 relations.append("return")
