@@ -729,7 +729,13 @@ def test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na(mon
     c = ac.measure("L0")
     ds = w1._m(c, "bg_x", "Dens.served")
     assert ds["v"] == verdict, ds
-    assert ac.emit_gaps(c)[2] == (1 if verdict == ac.NA else 0)
+    # E6 fix 1: NA_RULE_DECISIONS is empty in production, so an N/A is not released: it closes nothing.
+    assert ac.emit_gaps(c)[2] == 0
+    if verdict == ac.NA:
+        # ... and it closes only under a declared, caused rule (the only way an N/A ever closes an OPEN gap)
+        assert ds["cause"] == "no-module-references-target", ds
+        monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Dens.served#measured:no-module-references-target": "N-22/test"})
+        assert ac.emit_gaps(c)[2] == 1
 
 
 # ─────────────────────────── R53: Build.target's FAIL is reachable ───────────────────────────

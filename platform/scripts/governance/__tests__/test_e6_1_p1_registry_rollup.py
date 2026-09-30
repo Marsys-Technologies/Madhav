@@ -27,6 +27,10 @@ ALL_LAYERS = ("L0", "L1", "L2", "L3", "L4", "L5")
 # REGISTRY_REVISION and adding the new pin here fails CI: the revision cannot lag the content.
 PINNED_FINGERPRINTS = {
     1: "081076941ed6cec9abae08df5676e46e36c834764e84595f418f1155b701c909",
+    # 2 (E6 packet a): measured-N/A rule ids are cause-keyed; NA_CAUSES joins the fingerprinted content
+    2: "a0557b51341fdb5d86288b44ac459f1d19c6d9fd7f26eec15f28e8dbc05a99cf",
+    # 3 (E6 review fix 2): Earn.build_record gains the cause no-registered-writer (healthy-non-execution narrowed)
+    3: "7f30f61e123b473702eb37236b4c22628a5251ef7fd85a31cfb482ca304c6c5e",
 }
 
 
@@ -262,12 +266,12 @@ def test_worst_measured_verdict_wins_in_a_gate():
 
 def test_measured_na_is_not_na_without_a_declared_rule_and_is_na_with_one(monkeypatch):
     ms = {c: _m("PASS") for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Build"}
-    ms["Build.registered"] = _m("N/A")
+    ms["Build.registered"] = dict(_m("N/A"), cause="no-writer-registry-agrees")    # E6 (a): N/A carries a cause
     cell = ac.rollup_asset("L2", ms)["Build"]
     assert cell["v"] == "NO_DETECTOR"
     chk = next(c for c in cell["checks"] if c["criterion"] == "Build.registered")
     assert chk["v"] == "NO_DETECTOR" and "N/A rule undecided" in chk["reason"]
-    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.registered#measured": "N-22/test"})
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.registered#measured:no-writer-registry-agrees": "N-22/test"})
     cell = ac.rollup_asset("L2", ms)["Build"]
     assert cell["v"] == "PASS"
     chk = next(c for c in cell["checks"] if c["criterion"] == "Build.registered")
@@ -276,9 +280,9 @@ def test_measured_na_is_not_na_without_a_declared_rule_and_is_na_with_one(monkey
 
 def test_a_gate_is_na_only_when_every_check_is_na_by_declared_rule(monkeypatch):
     crits = [c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Idem"]
-    ms = {c: _m("N/A") for c in crits}
+    ms = {c: dict(_m("N/A"), cause="no-writer-registry-agrees") for c in crits}
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "NO_DETECTOR"
-    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured": "N-22/test" for c in crits})
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-writer-registry-agrees": "N-22/test" for c in crits})
     assert ac.rollup_asset("L2", ms)["Idem"]["v"] == "N/A"
 
 
@@ -355,7 +359,7 @@ def test_fingerprint_is_stable_and_changes_with_any_content(monkeypatch):
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     assert ac.registry_fingerprint() != fp
     monkeypatch.undo()
-    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.dag#measured": "d"})
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.dag#measured:x": "d"})
     assert ac.registry_fingerprint() != fp
     monkeypatch.undo()
     monkeypatch.setattr(ac, "CELL_GATES", ac.CELL_GATES[:-1])
