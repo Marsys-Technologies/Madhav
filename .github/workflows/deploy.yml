@@ -2184,28 +2184,12 @@ jobs:
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
 
-      # Pravāha A2.5 (CENTURY_RUN_4_1_NARROWED_PLAN_v1_0.md): dedicated job for
-      # the narrowed-horizon '4.1' CANDIDATE build of chart 482012f1. A job
-      # execution cannot override the container command (Jobs API
-      # ContainerOverride carries args/env only) and the pipeline image's
-      # ENTRYPOINT is the orchestrator, so the chain lives in the committed
-      # script and this job points at it. --max-retries=0: a failed run is
-      # inspected, never auto-retried (resume = fresh execution, N-7). The run
-      # itself is D-CLOUD-gated and executed by hand, never by this workflow.
-      - name: Create/update the Pravāha narrowed-century Gochara job (A2.5)
-        run: |
-          gcloud run jobs deploy brahma-gochara-century-job \
-            --project=madhav-astrology \
-            --region=${{ env.GCP_REGION }} \
-            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
-            --command=/bin/sh,/app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh \
-            --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
-            --set-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
-            --task-timeout=86400 \
-            --memory=16Gi \
-            --cpu=4 \
-            --max-retries=0 \
-            --quiet
+      # Pravāha A2.5: the dedicated gochara century Cloud Run job that stood here
+      # (#2772) mounted the builder credential/identity on a second job and so
+      # violated the one-named-build-job isolation invariant
+      # (data-plane-secret-isolation-preflight.ts), which skipped every deploy.
+      # Removed; the narrowed '4.1' run needs a vehicle that runs inside
+      # brahma-build-pipeline-job.
   # ── /Orchestrator Convergence Phase 1 ──
 
   # A skipped prerequisite causes all dependent mutation jobs to skip, and

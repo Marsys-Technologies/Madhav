@@ -30,9 +30,22 @@ function pipelinePattern(): RegExp {
   return new RegExp(m[1])
 }
 
-describe('brahma-gochara-century-job wiring (A2.5)', () => {
-  it('the job command path is COPYed into the brahma-pipeline image', () => {
-    expect(workflow).toContain(`--command=/bin/sh,/app/${RUNNER}`)
+describe('Gochara century runner wiring (A2.5)', () => {
+  // The dedicated brahma-gochara-century-job mounted the builder credential on
+  // a second Cloud Run job, violating the one-named-build-job invariant
+  // (data-plane-secret-isolation-preflight.ts) and skipping every deploy. It
+  // must never come back: the builder secret/identity appear on exactly one job.
+  it('deploy.yml creates no second job with the builder credential or identity', () => {
+    expect(workflow).not.toContain('brahma-gochara-century-job')
+    const jobDeploys = [...workflow.matchAll(/gcloud run jobs (?:deploy|update|create) ([a-z0-9-]+)[\s\S]*?--quiet/g)]
+    for (const m of jobDeploys) {
+      if (m[1] === 'brahma-build-pipeline-job') continue
+      expect(m[0], m[1]).not.toContain('data-plane-builder-db-url')
+      expect(m[0], m[1]).not.toContain('data-plane-builder-runtime@')
+    }
+  })
+
+  it('the runner script is COPYed into the brahma-pipeline image', () => {
     expect(dockerfile).toContain(
       `COPY ${SCRIPT_DIR}/ ./${SCRIPT_DIR}/`,
     )
@@ -50,14 +63,14 @@ describe('brahma-gochara-century-job wiring (A2.5)', () => {
     }
   })
 
-  it('PIPELINE_PATTERN covers the scripts dir, so script changes rebuild the image and redeploy the job', () => {
+  it('PIPELINE_PATTERN covers the scripts dir, so script changes rebuild the image', () => {
     const pattern = pipelinePattern()
     expect(pattern.test(RUNNER)).toBe(true)
     expect(pattern.test(`${SCRIPT_DIR}/step06_enumerate_episodes.py`)).toBe(true)
     expect(pattern.test(`${SCRIPT_DIR}/common.py`)).toBe(true)
   })
 
-  it('PIPELINE_PATTERN covers Dockerfile.pipeline itself, so image changes redeploy the job', () => {
+  it('PIPELINE_PATTERN covers Dockerfile.pipeline itself, so image changes rebuild it', () => {
     expect(pipelinePattern().test('platform/python-sidecar/Dockerfile.pipeline')).toBe(true)
   })
 })
