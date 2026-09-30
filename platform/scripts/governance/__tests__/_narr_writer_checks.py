@@ -373,6 +373,33 @@ def composed_keys(tree, dicts):
             if isinstance(k, ast.Constant) and isinstance(k.value, str) and is_composed(tree, v)}
 
 
+# ───────────────────────── (3c) inventory of every text-building expression (for `[]` claims over provenance text) ─────────────────────────
+
+def composed_inventory(node, kinds=("fstr", "binop", "format", "join")):
+    """[(lineno, kind, unparsed source)] of every text-building expression under `node`: f-string (`fstr`, a format-spec
+    sub-f-string is not counted), `+`/`%` (`binop`), `.format(...)` (`format`), `.join(...)` (`join`). Sorted by line."""
+    specs = {id(v.format_spec) for v in ast.walk(node) if isinstance(v, ast.FormattedValue) and v.format_spec is not None}
+    out = []
+    for n in ast.walk(node):
+        kind = None
+        if isinstance(n, ast.JoinedStr) and id(n) not in specs:
+            kind = "fstr"
+        elif isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Mod)):
+            kind = "binop"
+        elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("format", "join"):
+            kind = n.func.attr
+        if kind in kinds:
+            out.append((n.lineno, kind, ast.unparse(n)))
+    return sorted(out, key=lambda t: (t[0], t[1], t[2]))
+
+
+def fstring_interpolations(node):
+    """[(unparsed expression, has format spec or conversion)] for each `{...}` of an f-string node: a `{x:.2f}` / `{x!r}`
+    shapes a value (a number, a repr); a bare name is a pointer/identifier read."""
+    return [(ast.unparse(v.value), v.format_spec is not None or v.conversion != -1)
+            for v in node.values if isinstance(v, ast.FormattedValue)]
+
+
 # ───────────────────────── (4) a `[]` claim: the bound columns are only verbatim/slice/constant ─────────────────────────
 
 _ALLOWED_PARAM_NODES = (ast.Name, ast.Constant, ast.Subscript, ast.Slice, ast.Load, ast.IfExp, ast.BoolOp, ast.Or, ast.And,
@@ -381,10 +408,20 @@ _ALLOWED_PARAM_NODES = (ast.Name, ast.Constant, ast.Subscript, ast.Slice, ast.Lo
 _ALLOWED_CALLS = {"get", "dumps", "len"}     # d.get(...), json.dumps(...), len(...): reads/serialisation, not string building
 
 
-def no_string_building_in_bound_params(src, func):
+def _insert_sql_text(node):
+    """The SQL text of an `execute` first argument when it is a string constant or an f-string (its constant parts)."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        return "".join(v.value for v in node.values if isinstance(v, ast.Constant) and isinstance(v.value, str))
+    return None
+
+
+def no_string_building_in_bound_params(src, func, extra_calls=()):
     """Inside `func`, the parameter tuple of every `cur.execute(sql, (params))` INSERT may only read values: names,
     constants, subscripts/slices, conditionals, `.get`, `json.dumps`. A `+`/`%`/f-string/.format/.join/any other call is
-    string building on a bound column and is returned as a problem."""
+    string building on a bound column and is returned as a problem. `extra_calls` names helper functions (defined in the
+    same module, inventoried separately by the caller) whose call is allowed on a bound column."""
     tree = ast.parse(src)
     fn = _function(tree, func)
     if fn is None:
@@ -392,8 +429,8 @@ def no_string_building_in_bound_params(src, func):
     problems, seen = [], 0
     for call in (c for c in ast.walk(fn) if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)
                  and c.func.attr in ("execute", "executemany")):
-        if not call.args or not (isinstance(call.args[0], ast.Constant) and isinstance(call.args[0].value, str)
-                                 and re.search(r"\bINSERT\b", call.args[0].value, re.I)):
+        sql = _insert_sql_text(call.args[0]) if call.args else None
+        if not (sql and re.search(r"\bINSERT\b", sql, re.I)):
             continue
         seen += 1
         params = call.args[1] if len(call.args) > 1 else None
@@ -407,7 +444,7 @@ def no_string_building_in_bound_params(src, func):
                 problems.append(f"line {getattr(node, "lineno", call.lineno)}: string building (f-string) on a bound column")
             elif isinstance(node, ast.Call):
                 name = _called_name(node)
-                if name not in _ALLOWED_CALLS:
+                if name not in _ALLOWED_CALLS and name not in extra_calls:
                     problems.append(f"line {getattr(node, "lineno", call.lineno)}: call {name!r} on a bound column")
             elif not isinstance(node, _ALLOWED_PARAM_NODES):
                 problems.append(f"line {getattr(node, "lineno", call.lineno)}: {type(node).__name__} on a bound column")

@@ -8,6 +8,7 @@ field is UNKNOWN. Offline: no database.
 """
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
@@ -253,11 +254,12 @@ NARR_DECLARED = {
     "mi_pariksha": ["statement"],
     "bo_pratijna": ["derivation.$.factor_ledger[*].detail", "derivation.$.denials[*].reason",
                     "derivation.$.factor_ledger[*].connections[*].reason"],
+    "bg_yogas": [],
+    "bg_ontology": [],
 }
-# declared `[]` (writer composes none; the evidence carries the AST-backed reason)
-NARR_EMPTY = ("bg_doshas",)
-# Undeclared (null) pending an SS ruling: the composed text is a provenance pointer / ordinal label, see the evidence file.
-NARR_PENDING_SS = ("bg_yogas", "bg_ontology")
+# declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
+# string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
+NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology")
 # the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
 # (no `ddl` marker), 2 removed (null). The marker is gone from all 13.
 PRIOR_REAUDIT_NULLED = {"mi_bhavisya", "ph_pramana"}
@@ -318,6 +320,15 @@ NARR_CITES = {
                     (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
                     (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
                     (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
+    "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2140, 'f"{name_en}: formation per {verse_ref}'),
+                 (_BG + "l0_yogas.py", 2156, '"source_citation": f"{text_id.upper()} Ch.{chapter} ({verse_ref})"'),
+                 (_BG + "l0_yogas.py", 2272, 'y["formation_text"]'), (_BG + "l0_yogas.py", 2310, 'y["significations_text"][:150]'),
+                 (_L + "L0_brahmagyan/query_yoga_catalog.ts", 57, "SELECT * FROM brahma_yoga_catalog")],
+    "bg_ontology": [(_BG + "l0_ontology.py", 145, 'f"nak_{nak_id:02d}_'), (_BG + "l0_ontology.py", 147, 'f"Nakshatra {nak_id}/27"'),
+                    (_BG + "l0_ontology.py", 171, 'f"Sign {sign_id}/12"'), (_BG + "l0_ontology.py", 215, 'f"HOUSE_{house_num:02d}"'),
+                    (_BG + "l0_ontology.py", 219, 'f"house_{house_num:02d}"'), (_BG + "l0_ontology.py", 977, 'code = f"D{n}"'),
+                    (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
+                    (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
     "mi_pariksha": [(_WR + "mi_pariksha.py", 251, 'f"Retrodiction probe for {event_id}'), (_WR + "mi_pariksha.py", 729, "statement = ("),
                     (_L + "L5_mimamsa/query_mimamsa_discoveries.ts", 86, "statement")],
 }
@@ -356,8 +367,6 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
     assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED)
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    for a in NARR_PENDING_SS:
-        assert decl[a]["prose_fields"] is None and decl[a]["evidence"]["prose_fields"] is None, a
     assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY)
     n = len(PRIOR_DDL) + len(NARR_DECLARED)
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
@@ -789,6 +798,169 @@ def test_array_leaf_helpers_follow_constructors_lists_appends_and_comprehensions
     assert nw.terminal_strings(t, [ast.parse("v.b").body[0].value], {"zz": "Res"}) == [(1, False)]   # attr not mapped -> itself
     assert nw.terminal_strings(t, nw.dict_key_values(dicts, "plain"), {"b": "Res"}) == [(15, True)]
     assert nw.composed_keys(t, dicts) == {"k", "plain"}           # "k": r.b follows `r` to its f-string; "n" and the constant do not
+
+
+# ── bg_yogas / bg_ontology `[]` (SS ruling 2026-10-01: provenance pointers, ordinals and labels are not narration) ──
+
+_YOGAS = _BG + "l0_yogas.py"
+_ONTO = _BG + "l0_ontology.py"
+# the text-building expressions of l0_yogas.py whose value is STORED in a bound column: a label, a provenance pointer
+YOGAS_BOUND_TEXT = {
+    "base_name + ' Yoga'": "name_en label (base name + the word Yoga)",
+    "lex_name + ' Yoga'": "detected-name label from the lexicon",
+    "f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'": "formation_text fallback: provenance pointer",
+    "f'{text_id.upper()} Ch.{chapter} ({verse_ref})'": "source_citation: provenance",
+}
+YOGAS_ERROR_PREFIXES = ("bg_yogas ", "invalid yoga source chunk identifier")
+
+
+def _ancestors(node):
+    while node is not None:
+        node = getattr(node, "_parent", None)
+        if node is not None:
+            yield node
+
+
+def _has_str_const(n):
+    return any(isinstance(x, (ast.Constant, ast.JoinedStr)) and (isinstance(x, ast.JoinedStr) or isinstance(x.value, str))
+               for x in ast.walk(n))
+
+
+def test_bg_yogas_every_text_building_expression_is_a_bound_label_or_pointer_or_not_stored():
+    tree = nw._parents(ast.parse(_read(_YOGAS)))
+    fam = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "seed_yoga_families")
+    seed = _read(_WR + "bg_yogas.py")
+    assert "seed_yoga_families" not in seed and "seed_yogas(" in seed                # the writer never reaches the families seeder
+    assert "seed_yoga_families" not in ast.unparse(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "seed_yogas"))
+    bound, unexplained = set(), []
+    specs = {id(v.format_spec) for v in ast.walk(tree) if isinstance(v, ast.FormattedValue) and v.format_spec is not None}
+    for n in ast.walk(tree):
+        if fam.lineno <= getattr(n, "lineno", 0) <= fam.end_lineno:
+            continue
+        kind = ("fstr" if isinstance(n, ast.JoinedStr) and id(n) not in specs else
+                "binop" if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Mod)) else
+                n.func.attr if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("format", "join") else None)
+        if kind is None:
+            continue
+        u = ast.unparse(n)
+        if u in YOGAS_BOUND_TEXT:
+            bound.add(u)
+        elif "re.escape" in u or u.startswith("name + ' '"):
+            pass                                                                    # regex pattern / matching-only text, never stored
+        elif kind == "fstr" and any(isinstance(a, ast.Raise) for a in _ancestors(n)) and any(
+                isinstance(v, ast.Constant) and v.value.startswith(YOGAS_ERROR_PREFIXES) for v in n.values[:1]):
+            pass                                                                    # raised error text
+        elif kind == "binop" and not _has_str_const(n):
+            pass                                                                    # arithmetic / list concatenation
+        else:
+            unexplained.append((n.lineno, u))
+    assert unexplained == []
+    assert bound == set(YOGAS_BOUND_TEXT)
+
+
+def test_bg_yogas_bound_fstrings_interpolate_only_pointer_names_read_from_the_chunk_row():
+    tree = ast.parse(_read(_YOGAS))
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    fstrs = {ast.unparse(n): n for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)}
+    fmt = fstrs["f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'"]
+    assert nw.fstring_interpolations(fmt) == [("name_en", False), ("verse_ref", False), ("text_id", False), ("chapter", False)]
+    cit = fstrs["f'{text_id.upper()} Ch.{chapter} ({verse_ref})'"]
+    assert nw.fstring_interpolations(cit) == [("text_id.upper()", False), ("chapter", False), ("verse_ref", False)]   # no spec/conversion
+    for name, col in (("text_id", "text_id"), ("chapter", "chapter"), ("verse_ref", "verse_ref")):
+        assert [ast.unparse(v) for v in nw._assign_values(fn, name)] == [f"row['{col}']"], name      # read verbatim from classical_text_chunks
+    assert {ast.unparse(v) for v in nw._assign_values(fn, "name_en")} == {
+        "base_name + ' Yoga' if not raw_name.lower().endswith('yoga') else raw_name", "name_en.strip()"}
+    ft = [a for a in nw._assign_values(fn, "formation_text")]
+    assert len(ft) == 1 and isinstance(ft[0], ast.IfExp) and ast.unparse(ft[0].orelse) in fstrs     # the f-string is only the fallback
+    assert ast.unparse(ft[0].body) == "raw_clause"
+    sig = {ast.unparse(v) for v in nw._assign_values(fn, "sig_text")}
+    assert sig == {"''", "rm.group(0).strip()[:300]", "raw_clause[:200] if raw_clause else name_en"}
+
+
+def test_bg_yogas_insert_params_only_read_values_and_the_corpora_build_no_text():
+    src = _read(_YOGAS)
+    assert nw.no_string_building_in_bound_params(src, "seed_yogas", extra_calls=("_yoga_synonyms", "_yoga_citation")) == []
+    tree = ast.parse(src)
+    for name in ("_yoga_synonyms", "_yoga_citation", "_snake", "_first_sentence"):
+        fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
+        inv = nw.composed_inventory(fn)
+        assert [u for _, _, u in inv if "m.start()" not in u] == [], (name, inv)       # _first_sentence: an index +1 only
+    for corpus in ("YOGAS_CORE", "DETECTOR_YOGAS", "SARAVALI_YOGA_LOOKUP"):
+        assert nw.module_level_composition(src, corpus) == [], corpus
+
+
+def test_bg_yogas_checker_kills_a_narration_mutant_in_the_bound_text_and_the_insert():
+    src = _read(_YOGAS)
+    mutant = src.replace('f"{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})"',
+                         'f"{name_en}: formation per {verse_ref}, strength {len(raw_clause) / 10:.1f}"')
+    assert mutant != src
+    fn = next(n for n in ast.parse(mutant).body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    assert ("len(raw_clause) / 10", True) in [i for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)
+                                              for i in nw.fstring_interpolations(n)]
+    old = '                    y["significations_text"][:150],\n'
+    assert src.count(old) == 1
+    assert nw.no_string_building_in_bound_params(
+        src.replace(old, '                    f"{y[\'significations_text\'][:150]} (score {len(y)})",\n'), "seed_yogas",
+        extra_calls=("_yoga_synonyms", "_yoga_citation"))
+
+
+_ONTO_EXPLAINED = {
+    "f\"nak_{nak_id:02d}_{name_en.lower().replace(' ', '_')}\"": "nakshatra canonical_id (identifier)",
+    "f'HOUSE_{house_num:02d}'": "house storage-code synonym", "f'HOUSE_{house_num}'": "house storage-code synonym",
+    "f'H{house_num}'": "house storage-code synonym", "f'house_{house_num:02d}'": "house canonical_id (identifier)",
+    "synonyms + [c for c in storage_codes if c not in synonyms]": "synonym list concatenation",
+    "f'D{n}'": "varga code", "[code] + extra_synonyms": "synonym list concatenation", "f'd{n}'": "varga canonical_id (identifier)",
+    "by_class.get(e['entity_class'], 0) + 1": "counter", "changed + deleted": "counter",
+}
+_ONTO_DESCRIPTIONS = {"f'Nakshatra {nak_id}/27'": ("nak_id", "NAK_DATA", 27), "f'Sign {sign_id}/12'": ("sign_id", "SIGN_DATA", 12)}
+
+
+def test_bg_ontology_every_text_building_expression_is_an_identifier_synonym_counter_sql_or_ordinal_description():
+    tree = ast.parse(_read(_ONTO))
+    rest = []
+    for ln, kind, u in nw.composed_inventory(tree):
+        if u in _ONTO_EXPLAINED or u in _ONTO_DESCRIPTIONS:
+            continue
+        rest.append((ln, kind, u))
+    # what remains is exactly the INSERT statement's f-string (its constant parts are SQL; only the constant conflict clause is
+    # interpolated) and the DELETE-scoping key f-string (a comprehension feeding `owned_canonical_keys`, never stored)
+    assert [k for _, k, _ in rest] == ["fstr", "fstr"], rest
+    sql_fs, key_fs = rest
+    assert "INSERT INTO brahma_ontology" in sql_fs[2] and "{conflict_clause}" in sql_fs[2]
+    assert key_fs[2].startswith("f\"{e['entity_class']}")
+    assert {u for _, _, u in nw.composed_inventory(tree)} >= set(_ONTO_DESCRIPTIONS) | set(_ONTO_EXPLAINED)    # none of the pins is stale
+
+
+def test_bg_ontology_the_only_composed_descriptions_are_ordinal_labels_of_fixed_lists():
+    tree = ast.parse(_read(_ONTO))
+    calls = [c for c in ast.walk(tree) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "_e"]
+    composed = []
+    for c in calls:
+        desc = c.args[5] if len(c.args) > 5 else next((k.value for k in c.keywords if k.arg == "description"), None)
+        if desc is not None and nw.is_composed(tree, desc):
+            composed.append(desc)
+    assert sorted(ast.unparse(d) for d in composed) == sorted(_ONTO_DESCRIPTIONS)
+    for d in composed:
+        var, data, n = _ONTO_DESCRIPTIONS[ast.unparse(d)]
+        assert nw.fstring_interpolations(d) == [(var, False)]                          # a bare loop index, no value shaping
+        (lst,) = nw._assign_values(tree, data)
+        firsts = [e.elts[0].value for e in lst.elts]
+        assert firsts == list(range(1, n + 1)) and len(lst.elts) == n                  # ordinals 1..N of a fixed literal list
+        loops = [f for f in ast.walk(tree) if isinstance(f, ast.For) and isinstance(f.iter, ast.Name) and f.iter.id == data]
+        assert len(loops) == 1 and var in {t.id for t in ast.walk(loops[0].target) if isinstance(t, ast.Name)}
+    # _e_varga passes its description parameter straight through and every caller tuple carries a literal string there
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_e_varga")
+    assert [ast.unparse(v) for v in nw.dict_key_values(nw.dict_nodes(tree, fn.body[-1].value), "description")] == ["description"]
+    (vd,) = nw._assign_values(tree, "VARGA_DATA")
+    assert all(isinstance(t.elts[4], ast.Constant) and isinstance(t.elts[4].value, str) for t in vd.elts)
+
+
+def test_bg_ontology_insert_params_only_read_values():
+    assert nw.no_string_building_in_bound_params(_read(_ONTO), "seed_ontology") == []
+    old = '                e["synonyms"], e.get("description"),\n'
+    src = _read(_ONTO)
+    assert src.count(old) == 1
+    assert nw.no_string_building_in_bound_params(src.replace(old, '                e["synonyms"], f"{e.get(\'description\')}!",\n'), "seed_ontology")
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division

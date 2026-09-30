@@ -364,7 +364,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:138",
@@ -373,7 +373,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_ontology; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:138 reads `brahma_ontology` (`FROM brahma_ontology``). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01. Writer bg_ontology.py delegates to brahmagyan/l0_ontology.py seed_ontology. The only composed description strings are the ordinal labels `Nakshatra {n}/27` (l0_ontology.py:147) and `Sign {n}/12` (l0_ontology.py:171), where n is the 1-based position in the fixed literal NAK_DATA / SIGN_DATA lists and the denominator is that list's length; every other description is a literal in a data tuple. The other composed strings are identifiers and synonym lists (l0_ontology.py:145 nak_ id, l0_ontology.py:215 to l0_ontology.py:219 house ids and synonyms, l0_ontology.py:977 to l0_ontology.py:981 varga codes) and are not narration. The INSERT parameters (l0_ontology.py:1152) only read values. Test guard: every text-building expression in l0_ontology.py is inventoried by AST and only the two ordinal descriptions, identifiers, synonym lists, the INSERT/delete SQL text and counters are accepted. Served: resolve_entity.ts:65 (description)."
    }
   },
   "bg_panchanga": {
@@ -691,7 +691,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57",
@@ -700,7 +700,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_yoga_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57 reads `brahma_yoga_catalog` (`const pageSql  = `SELECT * FROM brahma_yoga_catalog ${whereClause} ORDER BY school, name_e`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01 (a composed string that states or grades a computed value; provenance pointers, ordinals and structural labels are not narration). Writer bg_yogas.py delegates to brahmagyan/l0_yogas.py seed_yogas. formation_text is a verbatim source clause or, when none exists, the provenance pointer f-string at l0_yogas.py:2140 (interpolates only name_en, verse_ref, text_id and chapter of the source chunk: no count, score, dignity or grade); source_citation is the provenance f-string at l0_yogas.py:2156; name_en is the label base_name + ' Yoga' (l0_yogas.py:2057); significations_text is a regex slice or raw_clause[:200] and the ontology description a [:150] slice of it (l0_yogas.py:2310); the inline corpora YOGAS_CORE, DETECTOR_YOGAS and SARAVALI_YOGA_LOOKUP build no text; the catalog INSERT parameters (l0_yogas.py:2272) only read values. Test guard: every text-building expression in l0_yogas.py (outside seed_yoga_families, which the writer never calls) is inventoried by AST and only the four bound provenance/label strings, regex patterns, raised error text and arithmetic are accepted, so a new composed string fails. Served whole: query_yoga_catalog.ts:57 (SELECT *)."
    }
   },
   "bo_anveshana": {
