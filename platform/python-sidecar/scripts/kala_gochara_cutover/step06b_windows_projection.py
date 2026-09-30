@@ -182,7 +182,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import connect, step_parser, write_evidence  # noqa: E402
+from common import connect, resolve_dsn, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
 _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
@@ -2026,7 +2026,7 @@ def main(argv: list[str] | None = None) -> int:
         class_contexts = json.loads(Path(args.class_context_json).read_text())
         context_source = "--class-context-json"
 
-    conn = connect(args.dsn, step=6, autocommit=False)
+    conn = connect(resolve_dsn(args), step=6, autocommit=False)
     build_id = f"wp10-step6b-windows-{int(time.time())}"
     fingerprints = None
     try:
