@@ -239,6 +239,43 @@ def _episode_stamps(body: str, relation: str, orb_source: str) -> dict:
     return {"orb_max_deg": orb, **tol}
 
 
+def _augment_open_edge_flag(
+    flag: str | None,
+    ci0: float,
+    ci1: float,
+    horizon: tuple[float, float],
+    open_start: bool,
+    open_end: bool,
+) -> str | None:
+    """Fold an unresolved knot-edge interval end into the truncation mark.
+
+    An in-orb interval (or residence span) that reaches the END of the fitted
+    knots without an observed exit crossing is OPEN: the true exit lies beyond
+    the data. When the horizon ends there too, _clip_to_horizon sees
+    t_out == h1 and reports no truncation — the contact would look complete.
+    O-SS-3/F11-F12: such a span is truncated at 'end' (never absent, never a
+    fabricated exact). Mirror rule for an open entry at the first knot and
+    the horizon start.
+    """
+    h0, h1 = horizon
+    marks: set[str] = set()
+    if flag == "both":
+        marks.update(("start", "end"))
+    elif flag is not None:
+        marks.add(flag)
+    if open_start and ci0 <= h0 + 1e-9:
+        marks.add("start")
+    if open_end and ci1 >= h1 - 1e-9:
+        marks.add("end")
+    if not marks:
+        return None
+    if marks == {"start"}:
+        return "start"
+    if marks == {"end"}:
+        return "end"
+    return "both"
+
+
 def build_episodes(
     index: ArcIndex,
     body: str,
@@ -283,6 +320,8 @@ def build_episodes(
         by_level[round(r.level_deg, 6)]["roots"].append(r)
 
     episodes: list[Episode] = []
+    data_start = float(index.knot_jds[0])
+    data_end = float(index.knot_jds[-1])
     for level, entry in sorted(by_level.items()):
         aspect_deg = entry["aspect"]
         level_roots = entry["roots"]
@@ -296,6 +335,11 @@ def build_episodes(
                 t_in, t_out, flag, overlaps = _clip_to_horizon(i0, i1, horizon)
                 if not overlaps:
                     continue
+                flag = _augment_open_edge_flag(
+                    flag, t_in, t_out, horizon,
+                    open_start=i0 <= data_start + 1e-9,
+                    open_end=i1 >= data_end - 1e-9,
+                )
                 has_station = any(
                     t_in - 1e-9 <= s <= t_out + 1e-9 for s in index.stations
                 )
@@ -333,6 +377,11 @@ def build_episodes(
                 ci0, ci1, flag, overlaps = _clip_to_horizon(t_in, t_out, horizon)
                 if not overlaps:
                     continue
+                flag = _augment_open_edge_flag(
+                    flag, ci0, ci1, horizon,
+                    open_start=k == 0 and i0 <= data_start + 1e-9,
+                    open_end=k == len(inside) - 1 and i1 >= data_end - 1e-9,
+                )
                 h0, h1 = horizon
                 exact_inside = h0 - 1e-9 <= root.exact_jd <= h1 + 1e-9
                 dwell_base = prev_t_out if prev_t_out is not None else ci0
@@ -399,7 +448,10 @@ def solve_boundary_episodes(
 ) -> list[Episode]:
     """Boundary-exact ingress episodes (WP1 §7 orb_ingress): t_in = t_exact =
     t_out at the grid edge, no orb, never dropped at the horizon edge when the
-    root falls inside it (closed interval).
+    root falls inside it (closed interval — Codex v1.1 amendment 3 / R2Q3:
+    "the domain start at 0 is a real crossing", so a root exactly AT the
+    horizon start is INCLUDED; the 1e-9 slack absorbs float noise at either
+    edge).
 
     `roots` (optional): pre-solved boundary roots for (body, relation) — the
     caller's per-body global boundary table (R5). When supplied, no solving
@@ -611,6 +663,8 @@ def residence_spans(
 
     spans: list[ResidenceSpan] = []
     h0, h1 = horizon
+    data_start = float(index.knot_jds[0])
+    data_end = float(index.knot_jds[-1])
     for a, b, entry_crossing, exit_crossing in merged:
         entry_exact = _refined_edge(entry_crossing) if entry_crossing else None
         exit_exact = _refined_edge(exit_crossing) if exit_crossing else None
@@ -619,6 +673,14 @@ def residence_spans(
         ca, cb, flag, overlaps = _clip_to_horizon(raw_a, raw_b, horizon)
         if not overlaps:
             continue
+        # O-SS-3/F12: a span whose exit (entry) was never observed because the
+        # fitted knots ran out is truncated at the data edge; when the horizon
+        # ends (starts) there too, _clip_to_horizon alone reports None.
+        flag = _augment_open_edge_flag(
+            flag, ca, cb, horizon,
+            open_start=entry_crossing is None and a <= data_start + 1e-9,
+            open_end=exit_crossing is None and b >= data_end - 1e-9,
+        )
         # The ingress is OBSERVED only when its refined instant lies inside
         # the horizon; a crossing before h0 is a clipped span (truncated
         # start), never a fabricated exact stamp (N3).
@@ -665,11 +727,10 @@ def residence_spans(
             orb_source="orb_ingress",
             dwell_days=0.0,
             # Kimi review #2: one span, one truncation mark — the ingress row
-            # carries 'start'/'both' exactly as the residence row does (never
-            # 'both' silently collapsed to 'start', never erased to NULL).
-            truncated_at_horizon=(
-                flag if flag in ("start", "both") else None
-            ),
+            # carries the SAME mark as the residence row ('start', 'end' or
+            # 'both'; never 'both' silently collapsed to 'start', never an
+            # 'end' erased to NULL — O-SS-3/F11).
+            truncated_at_horizon=flag,
             completeness_state="unqualified" if unresolved else "applied",
             near_station_unresolved=unresolved,
             spline_exact_jd=entry_crossing[1] if entry_crossing else None,

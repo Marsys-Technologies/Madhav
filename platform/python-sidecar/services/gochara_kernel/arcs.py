@@ -80,6 +80,15 @@ def _refine_boundary(
         if f_mid == 0.0:
             return mid
         if abs(f_mid) <= tol_deg or (hi_jd - lo_jd) < 1e-9:
+            # Secant close-out on the live bracket (O-SS-2/O-SS-3): returning
+            # the last sampled mid leaves up to tol_deg/|slope| of time error
+            # whenever the exact instant is not one of the binary mids; the
+            # linear-interpolated bracket estimate has second-order error.
+            denom = abs(f_lo) + abs(f_hi)
+            if denom > 0.0:
+                secant = (lo_jd * abs(f_hi) + hi_jd * abs(f_lo)) / denom
+                if lo_jd - 1e-12 <= secant <= hi_jd + 1e-12:
+                    return secant
             return mid
         if f_lo * f_mid <= 0.0:
             hi_jd, f_hi = mid, f_mid
