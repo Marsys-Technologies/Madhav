@@ -11,6 +11,24 @@ E1 retained: the legacy F-07 tropical-arcs defect reproducer stays where it
 is — 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/briefs/evidence_gochara/
 E1_w2g_frame_defect.py — and is NOT moved into this suite. The kernel fixes
 F-07 by construction (sidereal knots before arc-building, knots.py).
+
+Tier 0-G regression index (Pravāha A2.1; GOCHARA_DESIGN_SPECS_v1_4 §6.2,
+GOCHARA_TEST_ORACLES_v1_4) — the mutation guards live in THIS file unless
+noted:
+  aspect_direction        (T0-1/#13): test_oad_aspect_direction[*],
+                          test_oad_levels_computed_as_target_minus_angle
+  zero_degree_seam        (T0-2/#14): test_oss2_case1_*, test_oss2_case2_*,
+                          test_oss1_boundary_counts_one_revolution,
+                          test_oss_grids_include_zero_exactly_once
+  no_fabricated_ingress   (N2/N3):    test_n2_retrograde_upper_boundary_entry_found,
+                          test_n3_clipped_span_never_fabricates_ingress
+  truncated_contacts_kept (T0-3/O-SS-3): test_contact_id_no_exact_t_in_fallback
+                          (identity) + test_step06_enumeration.py::
+                          test_truncated_contacts_kept_and_counted (producer)
+  residence_spans_persisted (T0-3 #6/#7): test_step06_enumeration.py::
+                          test_interval_target_residence_and_agent_restriction
+  global_boundary_table   (O-SS-1):   test_step06_enumeration.py::
+                          test_boundary_events_solved_once_per_body
 """
 from __future__ import annotations
 
