@@ -125,46 +125,59 @@ ERRORED = "ERRORED"
 # named in R79/D4 (`Vocab.rule1.alias`→`Vocab.alias`, `Dens.density_contract`→`Dens.served`,
 # `Carr.D1|D2|D3`→`Carr.detector`, `Completeness.*`→`Complete.*`) are one-time crosswalk entries
 # consumed only by the R81 migration script, and are NOT registered here as runtime equivalences.
+#
+# E6.1 (Track E brief §8) adds three EXPLICIT applicability keys to every entry (None where a key
+# does not restrict; an entry without one is a test failure, never a default):
+#   layers        — tuple of layer keys where the criterion is defined. All six today: every criterion
+#                   the census emits has verdicts wherever it is measured, and narrowing would drop
+#                   committed verdicts (a later, deliberate `layers` narrowing is a registry revision).
+#   columns_any   — column-pattern applicability: applies only when the asset's target table has at
+#                   least one of these exact column names. Ldgr.source_presence shares
+#                   CITATION_COLUMNS with measure(), so the rule and the detector cannot drift.
+#   asset_kinds   — applies only when asset_kind is in the tuple (Earn.service_state's own text).
+# See criterion_applicability() for how these are evaluated: an absent fact is UNKNOWN, never N/A.
+ALL_LAYERS = ("L0", "L1", "L2", "L3", "L4", "L5")
+CITATION_COLUMNS = ("source_citation", "source_text_id", "classical_citation", "classical_citations", "citation_ref")
 CRITERION_REGISTRY: dict[str, dict] = {
     # ── auto-measured every run (detector = this module's own measure()) ──
-    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure)", detector="asset_census.py:measure()", revision=1),
-    "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", revision=1),
-    "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", revision=1),
-    "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", revision=1),
-    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", revision=1),
-    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists", detector="asset_census.py:measure()", revision=2),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS
-    "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", revision=1),
-    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", revision=1),
-    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", revision=1),
-    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", revision=1),
-    "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", revision=1),
+    "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS
+    "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
     # ASSET_ELEVATION_TEMPLATE_v2_0.md §4 (Ldgr/Idem/Earn/Null/Vocab/Carr/Narr/Dens/Build) — they
     # are pre-existing census criteria this registry catalogs as-is (T5_LEDGER_DRIFT.md already
     # lists Cost.baseline and Complete.depth among the ledger's census criteria). R78 is scoped to
     # registering what exists, not to reconciling the gate taxonomy against T4, which is out of
     # this row's scope and left as an out-of-scope finding in the wave report.
-    "Cost.baseline":         dict(gate="Cost",  check="baseline",         applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", revision=1),
-    "Count.floor":           dict(gate="Count", check="floor",            applicability="declares target_floor and a count_sql", detector="asset_census.py:measure()", revision=1),
-    "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", revision=1),
-    "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", revision=1),
-    "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", revision=1),
-    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", revision=1),
-    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", revision=2),
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches at least one served capability module", detector="asset_census.py:measure()", revision=1),
-    "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", revision=1),
-    "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", revision=1),
+    "Cost.baseline":         dict(gate="Cost",  check="baseline",         applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Count.floor":           dict(gate="Count", check="floor",            applicability="declares target_floor and a count_sql", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=("synonyms",), asset_kinds=None, revision=1),
+    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches at least one served capability module", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
     # onto, each strictly MORE SPECIFIC than the generic auto-measured placeholder it sits beside
     # (Carr.D1/D2/D3 vs Carr.detector; Completeness.depth.dasha_link vs Complete.depth;
     # Earn.service_state vs Earn.build_record) — registered so a hand row has somewhere to point,
     # never auto-measured because no in-repo detector exists for the specific claim yet.
-    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset restates a value from a cited source (source correspondence)", detector="NONE", revision=1),
-    "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact", detector="NONE", revision=1),
-    "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset computes a value that a second method could re-derive", detector="NONE", revision=1),
-    "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", revision=1),
-    "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)", detector="NONE", revision=1),
+    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset restates a value from a cited source (source correspondence)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset computes a value that a second method could re-derive", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", layers=ALL_LAYERS, columns_any=("dasha_system_id",), asset_kinds=None, revision=1),
+    "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=("service",), revision=1),
 }
 
 
@@ -198,6 +211,156 @@ def lookup_criterion(asset: str, scope: str | None, crit: str) -> tuple[str, dic
     if entry is None:
         return None
     return gap_id_for(asset, crit, scope), entry
+
+
+# ─────────────────────────── E6.1/E6.2: applicability, rollup, registry revision ───────────────────────────
+# The nine gates of plan §2.1. Only these are rolled up into gate cells (9 x 127). Criteria of any other
+# gate name (Cost, Count, Complete, Reach, Completeness) are reported by rollup_excluded(), never dropped.
+CELL_GATES = ("Ldgr", "Idem", "Earn", "Null", "Vocab", "Carr", "Narr", "Dens", "Build")
+# Worst first. N/A is not in the order: it is a cell value only when EVERY check is N/A by declared rule.
+ROLLUP_ORDER = ("FAIL", "ERRORED", "NO_DETECTOR", "PARTIAL", "PASS")
+
+# Declared N/A rules: rule id -> decision id (plan §2.1: "every rule cites its decision id"; N/A is computed,
+# never typed). Rule ids are "<criterion>#columns_any", "<criterion>#asset_kinds" (a supplied fact disproves the
+# pattern) and "<criterion>#measured" (the census itself measured N/A). EMPTY on purpose: per-gate applicability
+# rules are N-22 (Strategic Suvarna), not yet decided. Until a rule id is declared here, an N/A reads NO_DETECTOR.
+NA_RULE_DECISIONS: dict[str, str] = {}
+
+# Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
+# revision cannot silently lag the content. Every gate cell carries both.
+REGISTRY_REVISION = 1
+
+
+def registry_fingerprint() -> str:
+    """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
+    rules, and the cell-gate list."""
+    import hashlib
+    blob = json.dumps(dict(registry=CRITERION_REGISTRY, na_rules=NA_RULE_DECISIONS, cell_gates=list(CELL_GATES),
+                           rollup_order=list(ROLLUP_ORDER)),
+                      sort_keys=True, default=list, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def criterion_applicability(crit: str, layer: str, facts: dict | None = None) -> dict:
+    """E6.1: is registered criterion `crit` applicable to an asset of `layer`, given the asset `facts` the
+    caller SUPPLIED (`columns`: the target table's column names; `asset_kind`)?
+
+    States: OUT_OF_LAYER (layer not declared; not part of that layer's gate), NOT_APPLICABLE (a supplied
+    fact contradicts a declared pattern; carries the `rule_id` an N/A would need), UNKNOWN (the fact the
+    pattern needs was not supplied — absence is never NOT_APPLICABLE), APPLIES. NOT_APPLICABLE dominates
+    UNKNOWN: one disproving fact is definitive whatever the other says. Raises KeyError for an
+    unregistered criterion."""
+    e = CRITERION_REGISTRY[crit]
+    if layer not in e["layers"]:
+        return dict(state="OUT_OF_LAYER", rule_id=None, reason=f"{crit} is not defined for {layer}")
+    facts = facts or {}
+    unknown = []
+    for key, fact_key, label in (("columns_any", "columns", "target-table columns"),
+                                 ("asset_kinds", "asset_kind", "asset_kind")):
+        pattern = e[key]
+        if pattern is None:
+            continue
+        have = facts.get(fact_key)
+        if have is None:
+            unknown.append(f"{label} not supplied")
+            continue
+        ok = (any(c in pattern for c in have) if key == "columns_any" else have in pattern)
+        if not ok:
+            return dict(state="NOT_APPLICABLE", rule_id=f"{crit}#{key}",
+                        reason=f"{label} {list(have) if key == 'columns_any' else have!r} match none of {list(pattern)}")
+    if unknown:
+        return dict(state="UNKNOWN", rule_id=None, reason="; ".join(unknown) + " — applicability undecidable")
+    return dict(state="APPLIES", rule_id=None, reason="applies")
+
+
+def rollup_verdicts(verdicts: list) -> str:
+    """E6.2: worst of FAIL > ERRORED > NO_DETECTOR > PARTIAL > PASS. All N/A -> N/A. No checks ->
+    NO_DETECTOR (a gate with no checks measures nothing). A verdict outside PASS/FAIL/PARTIAL/NO_DETECTOR/
+    ERRORED/N/A (NOT_GENERIC included) raises ValueError: an ungradable value is never silently ranked."""
+    for v in verdicts:
+        if v not in ROLLUP_ORDER and v != NA:
+            raise ValueError(f"verdict {v!r} is outside the rollup vocabulary {list(ROLLUP_ORDER) + [NA]}")
+    if not verdicts:
+        return NO_DET
+    graded = [v for v in verdicts if v != NA]
+    if not graded:
+        return NA
+    return min(graded, key=ROLLUP_ORDER.index)
+
+
+def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | None) -> dict | None:
+    """One criterion's contribution to its gate cell, or None when it is out of layer and unmeasured."""
+    e = CRITERION_REGISTRY[crit]
+    ap = criterion_applicability(crit, layer, facts)
+    if meas is not None:
+        if ap["state"] == "OUT_OF_LAYER":
+            raise ValueError(f"{crit} was measured on {layer} but the registry declares layers {list(e['layers'])}")
+        v = meas["v"]
+        if v not in ROLLUP_ORDER and v != NA:
+            raise ValueError(f"{crit}: measured verdict {v!r} is outside the rollup vocabulary")
+        if v == NA:
+            rid = f"{crit}#measured"
+            if rid in NA_RULE_DECISIONS:
+                return dict(criterion=crit, v=NA, state="MEASURED", rule_id=rid, decision=NA_RULE_DECISIONS[rid],
+                            reason="measured N/A under a declared rule")
+            return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid,
+                        reason="measured N/A but N/A rule undecided (N-22): an undeclared N/A is not N/A")
+        if v == PASS and e["detector"] == "NONE":
+            return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                        reason="detector NONE never reaches PASS")
+        return dict(criterion=crit, v=v, state="MEASURED", reason="measured")
+    st = ap["state"]
+    if st == "OUT_OF_LAYER":
+        return None
+    if st == "NOT_APPLICABLE":
+        rid = ap["rule_id"]
+        if rid in NA_RULE_DECISIONS:
+            return dict(criterion=crit, v=NA, state=st, rule_id=rid, decision=NA_RULE_DECISIONS[rid], reason=ap["reason"])
+        return dict(criterion=crit, v=NO_DET, state=st, rule_id=rid,
+                    reason=f"N/A rule undecided (N-22): {ap['reason']}")
+    return dict(criterion=crit, v=NO_DET, state=st, reason=f"not measured ({ap['reason']})")
+
+
+def rollup_asset(layer: str, measurements: dict, facts: dict | None = None) -> dict:
+    """E6.2: the nine gate cells for one asset. `measurements` is the census's per-asset
+    `measurements` dict; `facts` optionally supplies `columns` and `asset_kind`. A registered criterion
+    with no measurement still counts (NO_DETECTOR) unless it is out of layer or an N/A rule declared in
+    NA_RULE_DECISIONS disproves it — absence is never N/A. Raises KeyError for a layer or measured
+    criterion not registered, ValueError for a measurement outside its declared layers or verdict set."""
+    if layer not in LAYERS:
+        raise KeyError(f"unknown layer {layer!r}")
+    for crit in measurements:
+        if crit not in CRITERION_REGISTRY:
+            raise KeyError(f"measured criterion {crit!r} is not in CRITERION_REGISTRY")
+    fp = registry_fingerprint()
+    cells = {}
+    for gate in CELL_GATES:
+        checks = []
+        for crit, e in CRITERION_REGISTRY.items():
+            if e["gate"] != gate:
+                continue
+            c = _check_contribution(crit, layer, measurements.get(crit), facts)
+            if c is not None:
+                checks.append(c)
+        cells[gate] = dict(gate=gate, v=rollup_verdicts([c["v"] for c in checks]), checks=checks,
+                           registry_revision=REGISTRY_REVISION, registry_fingerprint=fp)
+    return cells
+
+
+def rollup_excluded(layer: str, measurements: dict) -> dict:
+    """Measured criteria whose gate is not one of the nine cell gates: reported here, never silently
+    dropped (their owner decision is a campaign question, not a rollup choice)."""
+    return {c: mv["v"] for c, mv in measurements.items()
+            if c in CRITERION_REGISTRY and CRITERION_REGISTRY[c]["gate"] not in CELL_GATES}
+
+
+def rollup_census(census_layer: dict, facts_by_asset: dict | None = None) -> dict:
+    """E6.2 over one measured layer (`measure()` output): asset_id -> nine gate cells. Read-only."""
+    layer = census_layer.get("layer")
+    if layer is None:
+        layer = census_layer["assets"][0]["layer"]
+    return {a["asset_id"]: rollup_asset(layer, a["measurements"], (facts_by_asset or {}).get(a["asset_id"]))
+            for a in census_layer["assets"]}
 
 
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
@@ -2634,9 +2797,7 @@ def measure(layer_key: str) -> dict:
             # bg_prashna_* x5, bg_shashtiamsha_deities, bg_sign_medical, bg_transit_av_gates,
             # bg_transit_moorti — measured 2026-09-28 via information_schema) carry it and got no
             # Ldgr.source_presence check at all, despite a populated citation column.
-            cit = [c for c in ("source_citation", "source_text_id", "classical_citation",
-                                "classical_citations", "citation_ref")
-                   if c in tcols]
+            cit = [c for c in CITATION_COLUMNS if c in tcols]
             if cit and dc.get("rows"):
                 col = cit[0]
                 try:
