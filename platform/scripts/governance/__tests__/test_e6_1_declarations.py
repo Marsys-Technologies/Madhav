@@ -131,6 +131,21 @@ def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp
     assert f["paths"]["declared_prose_fields"] == ["n.$.a", "n.$.b", "other", "m.$.k.l"]
 
 
+def test_evidence_shapes_identifier_cap_and_ddl_marker_accepted():
+    ok = [dict(prose_fields=["x"], evidence=dict(prose_fields="w.py:1")),
+          dict(prose_fields=["x"], evidence=dict(prose_fields="platform/src/lib/a/b.ts:12 and c.tsx:3")),
+          dict(prose_fields=["x"], evidence=dict(prose_fields="migrations/001_baseline.sql:469")),
+          dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none; w.py:10")),
+          dict(prose_fields=["c" * 128, "d.$." + "k" * 128 + "." + "m" * 128], evidence=PEV),
+          dict(prose_fields=["x"], evidence_kind="ddl", evidence=dict(prose_fields="TEXT in DDL (325_l2_bodha_enriched_schema.sql)")),
+          dict(prose_fields=["x"], evidence_kind="ddl", evidence=dict(prose_fields="a.sql:1 and 001_b.sql")),
+          dict(prose_fields=None, evidence=dict(prose_fields=None)),
+          dict(prose_fields=None, evidence=None, evidence_kind=None),
+          dict(prose_fields=["x"], evidence_kind=None, evidence=PEV)]
+    for i, entry in enumerate(ok):
+        ac.validate_declarations(_doc(**{f"a{i}": entry}))
+
+
 def test_sibling_paths_of_one_column_and_same_name_paths_of_two_columns_are_not_overlaps():
     ac.validate_declarations(_doc(a=dict(prose_fields=["n.$.a", "n.$.b", "m.$.a", "n.$.ab"], evidence=PEV)))
 
@@ -415,6 +430,87 @@ def test_checker_helpers_on_synthetic_writers():
     assert nw.check_tuple_json_from_builder(unrelated, "t", "narrative", "build") != []
 
 
+def _tree_of(path):
+    import ast
+    return ast.parse(_read(path))
+
+
+def _composed_lines(rep):
+    return sorted(ln for ln, c in rep if c), sorted(ln for ln, c in rep if not c)
+
+
+def test_bo_upaya_maraka_reason_is_bound_into_the_prescription_json_and_composed():
+    import ast
+    src = _read(_WR + "bo_upaya.py")
+    problems, vals = nw.named_bound_values(src, "bodha_rm_remedy_prescriptions", "prescription_detail_jsonb")
+    assert problems == [] and len(vals) == 1
+    roots = [nw.json_dumps_argument(v) for v in vals]
+    assert all(r is not None for r in roots)
+    composed, constant = _composed_lines(nw.composed_report(ast.parse(src), roots, ("maraka_contraindication_verdict", "reason")))
+    assert composed == [1023] and constant == [989]      # the fact-missing branch is a fixed string, the verdict branches compose
+
+
+def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant_stubs():
+    import ast
+    src = _read(_WR + "ka_vighnakara.py")
+    assert nw.check_tuple_json_not_literal(src, "kala_obstruction", "obstruction_detail") == []
+    tree = ast.parse(src)
+    roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
+             if isinstance(k, ast.Constant) and k.value == "detail"]
+    composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
+    assert composed == [553, 589, 644, 695, 773, 829] and constant == [674, 730]
+
+
+def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
+    import ast
+    src = _read(_WR + "ka_avadhi.py")
+    problems, vals = nw.named_bound_values(src, "kala_avadhi", "dossier")
+    assert problems == [] and len(vals) == 1
+    roots = [nw.json_dumps_argument(v) for v in vals]
+    assert nw.composed_report(ast.parse(src), roots, ("sublord_modulation", "note")) == [(293, True)]
+
+
+def test_ph_nimitta_falsifier_is_bound_to_the_anchor_and_composed_by_as_text():
+    import ast
+    problems, vals = nw.bound_values(_read(_WR + "ph_nimitta.py"), "phala_anchors", "falsifier")
+    assert problems == [] and [ast.unparse(v) for v in vals] == ["a.falsifier"]
+    tree = _tree_of(_SC + "services/ph_nimitta/engine.py")
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "as_text")
+    assert any(nw.is_composed(tree, r.value) for r in ast.walk(fn) if isinstance(r, ast.Return))
+    assert any(isinstance(k, ast.keyword) and k.arg == "falsifier" and isinstance(k.value, ast.Call)
+               and isinstance(k.value.func, ast.Attribute) and k.value.func.attr == "as_text" for k in ast.walk(tree))
+
+
+def test_ph_rectification_firewall_note_and_load_bearing_note_are_bound_and_composed():
+    import ast
+    w = _WR + "ph_rectification/__init__.py"
+    src = _read(w)
+    tree = ast.parse(src)
+    problems, vals = nw.bound_values(src, "phala_rectification_best", "leakage_firewall_note")
+    assert problems == [] and len(vals) == 1 and isinstance(vals[0], ast.JoinedStr)
+    assert "best.leakage_firewall_note" in ast.unparse(vals[0])
+    problems, vals = nw.bound_values(src, "phala_rectification_best", "judgment_flags")
+    assert problems == [] and len(vals) == 1 and nw.json_dumps_argument(vals[0]).id == "flags"
+    assert any(nw._called_name(v) == "_apply_discrimination_gate" for v in nw._assign_values(tree, "flags"))
+    gate = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "_apply_discrimination_gate")
+    stores = [a for a in ast.walk(gate) if isinstance(a, ast.Assign) and any(
+        isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value == "load_bearing_note" for t in a.targets)]
+    assert len(stores) == 1 and nw.is_composed(tree, stores[0].value)
+    eng = _tree_of(_SC + "services/ph_rectification/engine.py")
+    assert any(nw.is_composed(eng, v) for v in nw._assign_values(eng, "firewall_note"))
+    assert any(isinstance(k, ast.keyword) and k.arg == "leakage_firewall_note" and isinstance(k.value, ast.Name)
+               and k.value.id == "firewall_note" for k in ast.walk(eng))
+
+
+def test_mi_pariksha_statement_is_composed_in_both_substeps_and_bound_to_the_discoveries_insert():
+    import ast
+    src = _read(_WR + "mi_pariksha.py")
+    tree = ast.parse(src)
+    problems, vals = nw.bound_values(src, "mimamsa_discoveries", "statement", expect_statements=2)
+    assert problems == [] and len(vals) == 2
+    assert all(nw.is_composed(tree, v) for v in vals)
+
+
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
     bg_reference bo_grounding mi_seva mi_vistara bg_cohort bg_concordance ka_kshetra mi_jivanaghatana
     bg_sarvatobhadra_grid bg_vedha_malefic_scale bg_phaladeepika_latta mi_sankalpa
@@ -664,6 +760,31 @@ BAD_DOCS = [
     ("prose-non-adjacent-path-overlap", _doc(a=dict(prose_fields=["n.$.a", "x", "n.$.a.b"], evidence=PEV))),
     ("prose-non-adjacent-column-and-path", _doc(a=dict(prose_fields=["n", "x", "y", "N.$.a"], evidence=PEV))),
     ("prose-non-adjacent-duplicate", _doc(a=dict(prose_fields=["x", "y", "z", "x"], evidence=PEV))),
+    # review 2026-10-01: evidence blank after stripping invisible characters, no writer path:line, orphan, kind, length
+    ("evidence-zero-width-space", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="\u200b")))),
+    ("evidence-invisible-mix", _doc(a=dict(prose_fields=[], evidence=dict(prose_fields="\u200b\u00a0\u2060 \u3000")))),
+    ("evidence-bom", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="\ufeff")))),
+    ("evidence-mongolian-vowel-separator", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="\u180e")))),
+    ("evidence-control-char", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="\x00\x01")))),
+    ("evidence-non-str", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields=["w.py:1"])))),
+    ("evidence-no-path-line", _doc(a=dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none")))),
+    ("evidence-path-without-line", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="writers/w.py composes it")))),
+    ("evidence-line-zero", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="w.py:0")))),
+    ("evidence-non-code-extension", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="notes.txt:3")))),
+    ("evidence-ddl-wording-without-kind", _doc(a=dict(prose_fields=["x"], evidence=dict(prose_fields="TEXT in DDL (325_l2_bodha_enriched_schema.sql)")))),
+    ("orphan-evidence-on-null-prose", _doc(a=dict(prose_fields=None, evidence=dict(prose_fields="w.py:1")))),
+    ("orphan-evidence-on-absent-prose", _doc(a=dict(evidence=dict(prose_fields="w.py:1")))),
+    ("orphan-evidence-blank-string-on-null-prose", _doc(a=dict(prose_fields=None, evidence=dict(prose_fields="")))),
+    ("evidence-kind-unknown", _doc(a=dict(prose_fields=["x"], evidence_kind="sql", evidence=dict(prose_fields="325_a.sql")))),
+    ("evidence-kind-non-str", _doc(a=dict(prose_fields=["x"], evidence_kind=1, evidence=dict(prose_fields="325_a.sql")))),
+    ("evidence-kind-uppercase", _doc(a=dict(prose_fields=["x"], evidence_kind="DDL", evidence=dict(prose_fields="325_a.sql")))),
+    ("evidence-kind-on-null-prose", _doc(a=dict(prose_fields=None, evidence_kind="ddl"))),
+    ("evidence-kind-on-empty-prose", _doc(a=dict(prose_fields=[], evidence_kind="ddl", evidence=dict(prose_fields="325_a.sql")))),
+    ("evidence-kind-ddl-without-migration-file", _doc(a=dict(prose_fields=["x"], evidence_kind="ddl", evidence=dict(prose_fields="the column in the schema")))),
+    ("column-longer-than-128", _doc(a=dict(prose_fields=["c" * 129], evidence=PEV))),
+    ("path-column-longer-than-128", _doc(a=dict(prose_fields=["c" * 129 + ".$.k"], evidence=PEV))),
+    ("path-key-longer-than-128", _doc(a=dict(prose_fields=["n.$." + "k" * 129], evidence=PEV))),
+    ("path-inner-key-longer-than-128", _doc(a=dict(prose_fields=["n.$.a." + "k" * 129 + ".b"], evidence=PEV))),
     ("terminal-blank", _doc(a=dict(terminal_by_construction=" "))),
     ("terminal-non-str", _doc(a=dict(terminal_by_construction=True))),
     ("terminal-contradicts-served-true", _doc(a=dict(terminal_by_construction="no reader by design",
