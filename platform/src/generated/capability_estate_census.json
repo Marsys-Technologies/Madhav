@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "4b7a90b113dbbba216f392119601058e0b853004e4ea0f4e213702a408c2810a",
+  "content_sha256": "d98e752af002ed41b744ddce39a8a51f18d51a7811d56563adc8e94c7544ebf6",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20878,14 +20878,14 @@
       ]
     }
   },
-  "generated_at": "2026-09-30T16:30:58.882Z",
+  "generated_at": "2026-09-30T17:06:08.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
       {
         "id": "analysis_layer_pins",
         "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
-        "sha256": "365ed57ef5a570a6abda834eacaa1abbb5d5e9a6a8bcd7c75b0714026337b2eb"
+        "sha256": "a78efbf16d25a8dbcae399295cf3772f56cbb71b5a6c9c69195db94270e07e00"
       },
       {
         "id": "canonical_public_faces",
@@ -22323,10 +22323,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "8237a50c31e72667020d656b6f52446de3995750e44da70e1bfe5720d0050828"
+        "sha256": "f498444a849741afb4533394e68479a81e19c857363167a41b3e4eafd462c752"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e9bcbabae3f484904e13d19753a6bde51e93939d"
+  "source_revision": "59ec0f7da33226d6076f6e848583160aa177cea9"
 }
