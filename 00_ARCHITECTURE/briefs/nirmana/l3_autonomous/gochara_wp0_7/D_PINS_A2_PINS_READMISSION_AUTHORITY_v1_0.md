@@ -68,5 +68,4 @@ Computed by comparing each writer's provenance closure
 ## Authority identity
 
 The immutable approval identity for this authority is the commit that first
-introduced this document: `AUTHORITY_IDENTITY_PENDING_FIRST_COMMIT` (replaced by
-the identity-bound amendment commit, same pattern as D-E022's `f4cba9d6`).
+introduced this document: `fa0b0a9a003624b8f39e30600e98460a60170bb2`
