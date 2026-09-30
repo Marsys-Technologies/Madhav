@@ -34,11 +34,17 @@ export const TERMINALIZE_EMPTY_MESSAGE_FALLBACK =
  * build_run_assets rows in one atomic statement, propagating the same
  * attributable text to both build_runs.last_error and build_run_assets.error.
  *
- * Idempotent by construction: the inner CTE only matches build_runs rows not
- * already 'failed'/'completed'/'stopped' at a terminal state that would make a
- * re-application meaningless, and the build_run_assets UPDATE only matches rows
- * still 'queued' — re-running this for the same runId after it already applied
- * is a no-op (nothing left to match).
+ * Idempotent by construction: the `failed_run` CTE only matches a build_runs row
+ * not already 'failed'/'completed'/'stopped' (so a completed run is never
+ * clobbered to 'failed' and a failed run keeps its FIRST error text), and the
+ * build_run_assets UPDATE only matches rows still 'queued' — re-running this for
+ * the same runId after it already applied is a no-op (nothing left to match).
+ *
+ * The build_run_assets UPDATE is deliberately INDEPENDENT of the CTE's terminal-
+ * state guard: the pre-A2 idiom aborted a run's still-queued assets
+ * unconditionally, and `cockpit/runs/[id]/stop` sets a planned run straight to
+ * 'stopped' without aborting its assets — a stopped/failed run must not keep
+ * 'queued' assets forever just because the run row itself was already terminal.
  */
 export async function terminalizeFailedRun(runId: string, message: string): Promise<void> {
   const errorText = message && message.trim().length > 0 ? message : TERMINALIZE_EMPTY_MESSAGE_FALLBACK
@@ -53,7 +59,7 @@ export async function terminalizeFailedRun(runId: string, message: string): Prom
      )
      UPDATE build_run_assets
      SET state = 'aborted', ended_at = NOW(), error = $1
-     WHERE run_id IN (SELECT id FROM failed_run)
+     WHERE run_id = $2
        AND state = 'queued'`,
     [errorText, runId]
   )
