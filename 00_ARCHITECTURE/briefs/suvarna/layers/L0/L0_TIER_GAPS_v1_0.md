@@ -1,6 +1,6 @@
 ---
 artifact: L0_TIER_GAPS
-version: "1.0"
+version: "1.1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -14,7 +14,8 @@ census_run:
   chart_scope: 482012f1-710e-4a25-994a-93821f5871aa
 companion: L0_LAYER_INSTANCE_v3_1.md          # holds the Measurement register (CEN-*, Q-*, F-*) that the evidence column cites
 changelog:
-  - "1.0 (2026-09-30): first issue. 29 rows, written before the instance so the harvest (A.H) is not delayed. Each row was checked against the four tier files and the register before being claimed; where the register already carries the gap the row cites it and does not restate it (21 rows; three of them, TG-L0-011, 014 and 025, also carry a facet the register row does not), and where it does not the row says so (8 rows; one of those, TG-L0-028, names three register neighbours that are not the same gap)."
+  - "1.1 (2026-09-30, same session): TG-L0-030 added (edge type per edge, T3 §0.3/§2.5), found while writing the instance's §0.3; it duplicates R133. Counts updated to 30 rows (T1 1, T2 10, T3 17, T4 2); 22 duplicate a register row, 8 do not. No other row changed."
+  - "1.0 (2026-09-30): first issue. 29 rows, written before the instance so the harvest (A.H) is not delayed. Each row was checked against the four tier files and the register before being claimed; where the register already carries the gap the row cites it and does not restate it (21 rows at v1.0, 22 at v1.1; three of them, TG-L0-011, 014 and 025, also carry a facet the register row does not), and where it does not the row says so (8 rows; one of those, TG-L0-028, names three register neighbours that are not the same gap)."
 ---
 
 # L0 — tier gaps (A.L0i)
@@ -41,9 +42,9 @@ those of the files at that commit. `R##` = a row of `NIKASHA_CHANGE_REGISTER_v2_
 |---|---:|---:|---:|
 | T1 | 1 | 0 | 1 |
 | T2 | 10 | 7 | 3 |
-| T3 | 16 | 13 | 3 |
+| T3 | 17 | 14 | 3 |
 | T4 | 2 | 1 | 1 |
-| **total** | **29** | **21** | **8** |
+| **total** | **30** | **22** | **8** |
 
 The five most consequential rows for the L0 layer: **TG-L0-008** (no release identity for the controlled vocabulary the layer
 owns), **TG-L0-009** (no tier defines an L0 generation or how a change reaches the other charts), **TG-L0-012** (three
@@ -52,6 +53,8 @@ idempotency test is undefined for the L0 upsert convention; migration 703 docume
 **TG-L0-025** (two of the nine gates have no census criterion at all, so 80 of L0's 360 gate cells cannot be read).
 
 ## The rows
+
+(Row order follows tier, then first appearance; TG-L0-030 is a T3 row added at v1.1 and sits last.)
 
 | ID | Clause that failed to provide (file · § · lines) | What the L0 draft needed | Evidence | Tier | Register |
 |---|---|---|---|---|---|
@@ -84,6 +87,7 @@ idempotency test is undefined for the L0 upsert convention; migration 703 docume
 | **TG-L0-027** | T3 §5.2 gate-map row `Idem` (L574) needs "the asset's natural key, so 'replaces its own rows' is decidable"; no tier says where the key is declared. | The natural key per L0 asset. | Q-01: `natural_key_partition` is set on 21 of 40 L0 registry rows and NULL on 19 (including bg_ontology, bg_reference, bg_remedies, bg_nakshatra_medical, bg_medical_mappings). | T3 | R116 (primary; proposes the registry declare it), R96 |
 | **TG-L0-028** | T4 §0 `kind` (L74) has five values; T4 §1 Producer (L129–130) has four shapes. L0 has (a) two ids that ride a sibling's writer by extra `@register` decorators (bg_sign_medical, bg_nakshatra_medical ride `bg_medical_mappings.py`; bg_transit_engine rides `bg_transit_rules.py`) and (b) a registry that contradicts the code for two of them. | A `kind`/Producer statement for those three ids and for the 36-versus-34 anomaly. | CEN-H: `registered_ids` 36 vs `registry_has_writer` 34; CEN-M `Build.registered` FAIL for bg_nakshatra_medical and bg_transit_engine (`@register` present, registry says `has_writer=false`); `Build.exercised` FAIL for bg_sign_medical (registered, registry `has_writer=true`, no `build_run_assets` row, Q-10). F-03: the current L0 pin lists 4 non-writer assets (so 36 of 40 writer-backed) and the writer-digest inventory holds 36 `bg_` writers. F-04: 32 writer files, 36 `@register` ids. | T4 | R211, R212, R14 (neighbours: they cover the declared-writer-but-no-code direction and service rows, not this one); R61 (records the cascade) |
 | **TG-L0-029** | T4 §1 storage bullets assume a table (L127–128). L0 has two service assets with no table by design. | The §1 shape for bg_ephemeris_engine and bg_panchanga. | Q-01: `asset_kind = 'service'` ×2, `count_sql`/`target_table`/`target_floor` NULL; CEN-M: `Dens.served` FAIL for bg_ephemeris_engine (6 modules) and bg_panchanga (1 module) although both have no table; `Earn.service_state` is registered with `detector: NONE` (F-08). | T4 | R14 (primary) |
+| **TG-L0-030** | T3 §0.3 (L139–140) and §2.5 (L373–374) ask for the layer's edges "by edge type" and "the edge type of every edge". T2 §3.2 (L146–166) defines five edge types; no tier says where a registry edge's type is recorded or who assigns it. | The edge-type column of the L0 dependency table. v3.0 §0.3/§2.5 asserted that "every outbound edge is edge 1 or edge 3" without a source for the classification. | Q-01/Q-02: `asset_registry` has no edge-type column (column list read from `information_schema`); `depends_on` is a bare `text[]`. 25 intra-L0 edges and 34 cross-layer edges onto L0 (Q-02) are therefore unclassified in every source. | T3 | R133 (primary), R181 |
 
 ## Clauses checked and found sufficient (no gap claimed)
 
