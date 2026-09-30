@@ -13,9 +13,12 @@ Relations (plan §4.2, WP1_CONTRACTS.md §2.2 N-14, §7):
                      30° / 13°20′ / 3°75′ grid edges (boundary-exact, no orb —
                      WP1 §7 orb_ingress; episodes rooted at the span edge). All
                      three grids include the 0°/360° seam (spec §6.2: "0° seam
-                     root exists", #14) — one root per seam crossing, attributed
-                     to the arc that REACHES the boundary (see
-                     arcs.MonotoneArc.covers_degree).
+                     root exists", #14) — one root per seam crossing: an interior
+                     wrap crossing is owned by the arc that REACHES the boundary,
+                     and a domain endpoint sitting exactly on the seam (direct
+                     start at 0°, retrograde end at 0°) keeps its endpoint root
+                     (R6; see arcs.MonotoneArc.covers_degree and
+                     contacts._append_root_deduped).
 
 Two-stage discipline (plan §4.2): the arc index brackets the root from the
 spline; the root is then REFINED by direct Swiss bisection at the instant
@@ -225,12 +228,102 @@ def _levels_for_relation(body: str, relation: str, target_deg: float) -> list[tu
     raise ValueError(f"relation {relation!r} has no exact-separation levels")
 
 
-def _seam_canonical(level: float) -> float:
-    """Wrapped level with the 0°/360° seam read as 360, matching
-    arcs.MonotoneArc.covers_degree: the seam root lives at the 360k END of
-    the arc that reaches the boundary, never at the 0 start of the next band.
+def _level_unwrapped_for_arc(level: float, arc: MonotoneArc) -> float | None:
+    """The unwrapped representative of `level` inside `arc`'s band, or None.
+
+    Every level is wrapped to [0,360); the 0°/360° seam has TWO
+    representatives (0 at a band's start, 360 at the previous band's end).
+    The representative that actually lies inside this arc's longitude range
+    is the one the bisection must solve for: an arc ENDING at the seam solves
+    360·k (the arc that reaches the boundary), an arc STARTING at the seam
+    solves 0·k (the domain endpoint, R6 — a direct path beginning at 0° or a
+    retrograde path ending at 0° owns its endpoint root). Non-seam levels
+    have exactly one representative per band.
     """
-    return float(level) % 360.0 or 360.0
+    w = float(level) % 360.0
+    lo = min(arc.start_lon_unwrapped, arc.end_lon_unwrapped)
+    hi = max(arc.start_lon_unwrapped, arc.end_lon_unwrapped)
+    candidates = (360.0, 0.0) if w == 0.0 else (w,)
+    for c in candidates:
+        level_u = c + 360.0 * arc.wrap_index
+        if lo - 1e-9 <= level_u <= hi + 1e-9:
+            return level_u
+    return None
+
+
+def _append_root_deduped(
+    roots: list[ContactRoot],
+    *,
+    body: str,
+    relation: str,
+    target_deg: float,
+    aspect_deg: float,
+    level: float,
+    arc: MonotoneArc,
+    level_u: float,
+    tol_deg: float,
+    ephe_path: str | None,
+    refine: bool,
+) -> None:
+    """Bracket, (optionally) Swiss-refine and append one root — dropping the
+    duplicate candidate when an interior seam crossing is covered by BOTH the
+    arc that reaches 360 and the next band's arc that starts at 0 (R6
+    ownership): both bisections land on the shared cut instant, so the second
+    candidate of the same (level, instant) is the same physical event and is
+    dropped. The kept root is the arc that REACHES the boundary (its end is
+    the seam instant), preserving the pre-R6 attribution; a genuine endpoint
+    root (domain start/end exactly on the seam) has no twin and is kept.
+    """
+    spline_jd = _bisect_arc(arc, level_u, tol_deg)
+    seam_level = float(level) % 360.0 == 0.0
+    if seam_level:
+        # Anchor the candidate to its arc ENDPOINT when the arc sits on the
+        # seam: wrap-cut arcs share the identical cut float, so the two
+        # candidates of one physical crossing anchor to the same instant even
+        # when the two bisections land a tolerance apart (R6; the pre-anchor
+        # 1e-9-day join missed exactly this on real ephemerides — Venus at
+        # the seam produced two roots 0.02 s apart, one contact_id).
+        def _anchor(a: MonotoneArc, jd: float) -> float:
+            s = a.start_lon_unwrapped % 360.0
+            e = a.end_lon_unwrapped % 360.0
+            if s <= 1e-9 or s >= 360.0 - 1e-9:
+                return a.start_jd
+            if e <= 1e-9 or e >= 360.0 - 1e-9:
+                return a.end_jd
+            return jd
+
+        anchor = _anchor(arc, spline_jd)
+        for existing in roots:
+            if (
+                existing.relation == relation
+                and existing.target_deg == float(target_deg) % 360.0
+                and existing.aspect_deg == float(aspect_deg)
+                and existing.level_deg == float(level)
+                and _anchor(existing.arc, existing.spline_exact_jd) == anchor
+            ):
+                # Same physical seam crossing found twice. Keep the arc that
+                # REACHES the seam (root at its end); if neither does, keep
+                # the first candidate deterministically.
+                if anchor == arc.end_jd and anchor != existing.arc.end_jd:
+                    roots.remove(existing)
+                    break
+                return
+    exact_jd = spline_jd
+    if refine:
+        exact_jd, _ = _refine_root(body, arc, spline_jd, level, ephe_path)
+    roots.append(
+        ContactRoot(
+            body=body,
+            relation=relation,
+            target_deg=float(target_deg) % 360.0,
+            aspect_deg=float(aspect_deg),
+            level_deg=float(level),
+            spline_exact_jd=float(spline_jd),
+            exact_jd=float(exact_jd),
+            bracket=(float(arc.start_jd), float(arc.end_jd)),
+            arc=arc,
+        )
+    )
 
 
 def find_roots(
@@ -251,23 +344,13 @@ def find_roots(
     roots: list[ContactRoot] = []
     for aspect_deg, level in _levels_for_relation(body, relation, target_deg):
         for arc in index.arcs_covering_degree(level):
-            level_u = _seam_canonical(level) + 360.0 * arc.wrap_index
-            spline_jd = _bisect_arc(arc, level_u, tol_deg)
-            exact_jd = spline_jd
-            if refine:
-                exact_jd, _ = _refine_root(body, arc, spline_jd, level, ephe_path)
-            roots.append(
-                ContactRoot(
-                    body=body,
-                    relation=relation,
-                    target_deg=float(target_deg) % 360.0,
-                    aspect_deg=float(aspect_deg),
-                    level_deg=float(level),
-                    spline_exact_jd=float(spline_jd),
-                    exact_jd=float(exact_jd),
-                    bracket=(float(arc.start_jd), float(arc.end_jd)),
-                    arc=arc,
-                )
+            level_u = _level_unwrapped_for_arc(level, arc)
+            if level_u is None:
+                continue
+            _append_root_deduped(
+                roots, body=body, relation=relation, target_deg=target_deg,
+                aspect_deg=aspect_deg, level=level, arc=arc, level_u=level_u,
+                tol_deg=tol_deg, ephe_path=ephe_path, refine=refine,
             )
     roots.sort(key=lambda r: r.exact_jd)
     return roots
@@ -312,23 +395,13 @@ def find_boundary_roots(
     roots: list[ContactRoot] = []
     for level in boundary_degrees(relation):
         for arc in index.arcs_covering_degree(level):
-            level_u = _seam_canonical(level) + 360.0 * arc.wrap_index
-            spline_jd = _bisect_arc(arc, level_u, tol_deg)
-            exact_jd = spline_jd
-            if refine:
-                exact_jd, _ = _refine_root(body, arc, spline_jd, level, ephe_path)
-            roots.append(
-                ContactRoot(
-                    body=body,
-                    relation=relation,
-                    target_deg=float(level),
-                    aspect_deg=0.0,
-                    level_deg=float(level),
-                    spline_exact_jd=float(spline_jd),
-                    exact_jd=float(exact_jd),
-                    bracket=(float(arc.start_jd), float(arc.end_jd)),
-                    arc=arc,
-                )
+            level_u = _level_unwrapped_for_arc(level, arc)
+            if level_u is None:
+                continue
+            _append_root_deduped(
+                roots, body=body, relation=relation, target_deg=level,
+                aspect_deg=0.0, level=level, arc=arc, level_u=level_u,
+                tol_deg=tol_deg, ephe_path=ephe_path, refine=refine,
             )
     roots.sort(key=lambda r: r.exact_jd)
     return roots

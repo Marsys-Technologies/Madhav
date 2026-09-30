@@ -77,6 +77,8 @@ def _refine_boundary(
     for _ in range(MAX_BISECTION_ITERATIONS):
         mid = 0.5 * (lo_jd + hi_jd)
         f_mid = evaluate(mid) - level
+        if f_mid == 0.0:
+            return mid
         if abs(f_mid) <= tol_deg or (hi_jd - lo_jd) < 1e-9:
             return mid
         if f_lo * f_mid <= 0.0:
@@ -154,13 +156,21 @@ class MonotoneArc:
     def covers_degree(self, target_deg: float) -> bool:
         t = float(target_deg) % 360.0
         if t == 0.0:
-            # The 0°/360° seam (spec §6.2, #14): band k−1's arc ENDS at
-            # exactly 360 (its lon_hi) while band k's arc STARTS at 0. Testing
-            # the seam as 360 attributes the root to exactly one arc — the
-            # one that REACHES the boundary — so a wrap crossing yields one
-            # root, never zero or two (and never a fabricated root at the 0
-            # start of an arc that merely departs from the seam).
-            t = 360.0
+            # The 0°/360° seam (spec §6.2, #14). Ownership (R6): the seam is
+            # covered by an arc that REACHES 360 (its lon_hi — an interior wrap
+            # crossing's ending arc) AND by an arc that STARTS/ENDS at exactly
+            # 0 (a domain endpoint sitting on the seam — e.g. the body begins
+            # the horizon at 0°, or retrogrades down to 0° at the horizon end).
+            # When both an ending arc (360) and the next band's starting arc
+            # (0) cover the same physical crossing, the root finders emit one
+            # root per (level, instant): the duplicate candidate at the shared
+            # cut point is dropped there (see contacts._dedupe_seam_roots), so
+            # a wrap crossing yields exactly one root while a genuine endpoint
+            # root is never discarded.
+            return (
+                self.lon_hi_deg >= 360.0 - 1e-9
+                or self.lon_lo_deg <= 1e-9
+            )
         return self.lon_lo_deg - 1e-9 <= t <= self.lon_hi_deg + 1e-9
 
 

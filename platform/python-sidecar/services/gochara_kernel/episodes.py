@@ -49,20 +49,29 @@ fixtures; every rule below is traceable to a pin):
   are boundary-exact (WP1 §7 orb_ingress): episodes rooted at the span edge
   with t_in = t_exact = t_out and no orb. Sign-level targets (M-5) get
   residence spans, never point contacts (residence_spans below). A residence
-  span's ingress search covers BOTH span boundaries (N2 — a retrograde body
-  enters through the upper edge), and a span clipped at the horizon start
-  whose true ingress lies outside carries t_exact=None /
-  exact_crossing=False with truncated_at_horizon='start' (N3/O-SS-3 — never
-  a fabricated ingress instant at the clip edge).
+  span's entry/exit instants are coherent refined boundary events: every
+  revolution band intersecting a segment is enumerated (R3), each edge
+  crossing is refined directly (or reused from the caller's per-body
+  boundary roots, R5) — never joined to a differently refined root by a
+  sub-second timestamp match (R2). A retrograde body enters through the
+  UPPER edge (N2) and the ingress episode names the boundary actually
+  crossed. A span clipped at the horizon start whose true ingress lies
+  outside carries t_exact=None / exact_crossing=False with
+  truncated_at_horizon='start' (N3/O-SS-3 — never a fabricated ingress
+  instant at the clip edge); a span clipped at BOTH edges keeps 'both' on
+  both of its rows (the ingress episode and the residence row).
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from .arcs import ArcIndex, MonotoneArc, _refine_boundary
 from .contacts import (
     BOUNDARY_RELATIONS,
     ContactRoot,
+    _levels_for_relation,
+    _refine_root,
     find_boundary_roots,
     find_roots,
 )
@@ -261,12 +270,22 @@ def build_episodes(
     orb = stamps["orb_max_deg"]
 
     # Group roots by their effective level (dṛṣṭi angles each own a level).
-    by_level: dict[float, list[ContactRoot]] = {}
+    # R4: the level set comes from the RELATION's candidate levels
+    # (contacts._levels_for_relation), not from the found roots — an in-orb
+    # approach whose exact root lies outside the fitted knots (or never quite
+    # reaches exactness) has no root at all yet still owns an in-orb interval
+    # that must be emitted as a truncated/no-exact episode, never as absence
+    # (N3/O-SS-3).
+    by_level: dict[float, dict] = {}
+    for aspect, level in _levels_for_relation(body, relation, target_deg):
+        by_level[round(level, 6)] = {"aspect": aspect, "roots": []}
     for r in roots:
-        by_level.setdefault(round(r.level_deg, 6), []).append(r)
+        by_level[round(r.level_deg, 6)]["roots"].append(r)
 
     episodes: list[Episode] = []
-    for level, level_roots in sorted(by_level.items()):
+    for level, entry in sorted(by_level.items()):
+        aspect_deg = entry["aspect"]
+        level_roots = entry["roots"]
         intervals = in_orb_intervals(index, level, orb)
         for (i0, i1) in intervals:
             inside = [r for r in level_roots if i0 - 1e-9 <= r.exact_jd <= i1 + 1e-9]
@@ -284,7 +303,7 @@ def build_episodes(
                     Episode(
                         body=body,
                         relation=relation,
-                        aspect_deg=level_roots[0].aspect_deg if level_roots else 0.0,
+                        aspect_deg=aspect_deg,
                         target_deg=float(target_deg) % 360.0,
                         level_deg=level,
                         t_in=t_in,
@@ -376,17 +395,22 @@ def solve_boundary_episodes(
     horizon: tuple[float, float],
     ephe_path: str | None = None,
     refine: bool = True,
+    roots: list[ContactRoot] | None = None,
 ) -> list[Episode]:
     """Boundary-exact ingress episodes (WP1 §7 orb_ingress): t_in = t_exact =
     t_out at the grid edge, no orb, never dropped at the horizon edge when the
     root falls inside it (closed interval).
 
+    `roots` (optional): pre-solved boundary roots for (body, relation) — the
+    caller's per-body global boundary table (R5). When supplied, no solving
+    happens here; the episodes are assembled from those exact roots.
     `refine=False` keeps the spline-stage instants (synthetic-fixture use —
     the same additive escape hatch solve_episodes/residence_spans already
     carry; the pinned default stays Swiss-refined)."""
     if relation not in BOUNDARY_RELATIONS:
         raise ValueError(f"{relation!r} is not a boundary relation")
-    roots = find_boundary_roots(index, body, relation, ephe_path, refine=refine)
+    if roots is None:
+        roots = find_boundary_roots(index, body, relation, ephe_path, refine=refine)
     stamps = _episode_stamps(body, relation, "orb_ingress")
     h0, h1 = horizon
     episodes: list[Episode] = []
@@ -422,6 +446,30 @@ def solve_boundary_episodes(
 
 # ── residence spans (M-5 interval objects for sign-level targets) ────────────
 
+def _match_boundary_root(
+    boundary_roots: list[ContactRoot] | None,
+    level_w: float,
+    spline_jd: float,
+    direction: int,
+) -> ContactRoot | None:
+    """The shared per-body boundary event for this span-edge crossing, when the
+    caller supplied the body's solved boundary roots (R5: residence REUSES the
+    same refined events, never re-solves them). Matched on level, direction
+    and the spline-stage instant (both sides derive from the same spline
+    bracket, so the spline instants agree to far below the tolerance)."""
+    if not boundary_roots:
+        return None
+    for r in boundary_roots:
+        if r.arc.direction != direction:
+            continue
+        if ((r.level_deg - level_w) % 360.0) > 1e-6 and \
+                ((level_w - r.level_deg) % 360.0) > 1e-6:
+            continue
+        if abs(r.spline_exact_jd - spline_jd) < 1e-3:
+            return r
+    return None
+
+
 def residence_spans(
     index: ArcIndex,
     body: str,
@@ -430,13 +478,37 @@ def residence_spans(
     target_type: str,
     ephe_path: str | None = None,
     refine: bool = True,
+    boundary_roots: list[ContactRoot] | None = None,
 ) -> list[ResidenceSpan]:
     """Whole-sign (or any ≤30°) residence intervals — interval targets per
     M-5: residence spans and sign-ingress episodes, NEVER point contacts.
     The stored arudha longitude is a sign-cusp placeholder (F-20), so an
     arudha-typed target must arrive here as its sign span, never as a point
     (the WP1 §2.2 resolution contract is the caller's job; this function
-    refuses point-shaped input by construction — it only accepts spans)."""
+    refuses point-shaped input by construction — it only accepts spans).
+
+    Geometry discipline (Pravāha A2 rework, R2/R3):
+      * EVERY revolution band intersecting a segment is enumerated (R3 — a
+        station-bounded segment can span several revolutions; choosing one
+        band from the segment midpoint loses repeated residences).
+      * Entry/exit instants are ONE coherent refined boundary event each
+        (R2): the spline crossing of the actual span edge is Swiss-refined
+        directly (or reused from the caller's per-body boundary roots — R5),
+        never joined to a differently refined root by a sub-second timestamp
+        match. A rising body enters at the LOWER edge lo_w, a falling
+        (retrograde) body enters at the UPPER edge hi_w (N2), and the ingress
+        episode carries the boundary actually crossed (Kimi review #1: a
+        retrograde entry through 30° says 30°, never 0°).
+      * A span clipped at the horizon start (true ingress outside the
+        horizon) keeps t_exact=None / exact_crossing=False with
+        truncated_at_horizon='start' (N3/O-SS-3 — never a fabricated ingress
+        instant at the clip edge); 'both' is preserved verbatim on both rows
+        of the span (Kimi review #2 — one physical span, one truncation mark).
+
+    `boundary_roots` (optional): the body's already-solved sign_ingress
+    ContactRoots (the step06 global boundary table); span edges of whole-sign
+    targets are sign cusps, so the entry/exit instants are reused from that
+    set when present and refined directly otherwise."""
     lo_w, hi_w = float(span[0]) % 360.0, float(span[1]) % 360.0
     if hi_w == 0.0 and float(span[1]) > float(span[0]):
         # A span ending exactly on the circle's end (e.g. the Pisces
@@ -445,87 +517,134 @@ def residence_spans(
         hi_w = 360.0
     if hi_w <= lo_w:
         raise ValueError(f"span must satisfy lo < hi in [0,360): got {span}")
-    ingress_roots = [
-        r
-        for r in find_boundary_roots(index, body, "sign_ingress", ephe_path, refine=refine)
-        # N2: the search covers BOTH span boundaries — a direct body enters at
-        # the lower edge lo_w, a retrograde body enters through the UPPER edge
-        # hi_w (e.g. a Pisces re-entry at the 0°/360° seam, O-SS-2 case 2).
-        if abs(r.level_deg - lo_w) < 1e-6 or abs(r.level_deg - hi_w % 360.0) < 1e-6
-    ]
-    spans: list[ResidenceSpan] = []
+    width = hi_w - lo_w
     tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
-    intervals: list[tuple[float, float]] = []
+
+    # Per segment × revolution band: the in-span interval with its edge
+    # crossings. entry/exit carry (wrapped boundary level, spline jd) or None
+    # when the body was already inside / never left within this segment.
+    intervals: list[tuple[float, float, MonotoneArc, tuple | None, tuple | None]] = []
     for seg in index.segments:
-        mid = 0.5 * (seg.start_lon_unwrapped + seg.end_lon_unwrapped)
-        lo_u = lo_w + 360.0 * round((mid - lo_w) / 360.0)
-        hi_u = lo_u + (hi_w - lo_w)
         span_lo = min(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
         span_hi = max(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
-        if span_hi < lo_u - 1e-12 or span_lo > hi_u + 1e-12:
-            continue
-        a = seg.start_jd
-        b = seg.end_jd
         rising = seg.direction == 1
-        if rising:
-            if span_lo < lo_u - 1e-12:
-                a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo_u, tol_deg)
-            if span_hi > hi_u + 1e-12:
-                b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi_u, tol_deg)
+        # R3: every revolution band [lo_w+360k, hi_w+360k] meeting the segment.
+        k_min = math.ceil((span_lo - lo_w - width) / 360.0 - 1e-9)
+        k_max = math.floor((span_hi - lo_w) / 360.0 + 1e-9)
+        for k in range(k_min, k_max + 1):
+            lo_u = lo_w + 360.0 * k
+            hi_u = lo_u + width
+            if span_hi < lo_u - 1e-12 or span_lo > hi_u + 1e-12:
+                continue
+            a = seg.start_jd
+            b = seg.end_jd
+            entry_crossing: tuple | None = None
+            exit_crossing: tuple | None = None
+            if rising:
+                if span_lo < lo_u - 1e-12:
+                    a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo_u, tol_deg)
+                    entry_crossing = (lo_w, a)
+                if span_hi > hi_u + 1e-12:
+                    b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi_u, tol_deg)
+                    exit_crossing = (hi_w % 360.0, b)
+            else:
+                # Falling: the body enters the span at its TOP edge and
+                # leaves at its BOTTOM edge.
+                if span_hi > hi_u + 1e-12:
+                    a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi_u, tol_deg)
+                    entry_crossing = (hi_w % 360.0, a)
+                if span_lo < lo_u - 1e-12:
+                    b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo_u, tol_deg)
+                    exit_crossing = (lo_w, b)
+            intervals.append((a, b, seg, entry_crossing, exit_crossing))
+    intervals.sort(key=lambda iv: iv[0])
+    merged: list[list] = []
+    for iv in intervals:
+        if merged and iv[0] <= merged[-1][1] + 1e-9:
+            # Contiguous across a station INSIDE the span: the entry stays
+            # with the first piece, the exit with the last.
+            merged[-1][1] = max(merged[-1][1], iv[1])
+            merged[-1][4] = iv[4]
         else:
-            # Falling: the body enters the span at its TOP edge and leaves at
-            # its BOTTOM edge.
-            if span_hi > hi_u + 1e-12:
-                a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi_u, tol_deg)
-            if span_lo < lo_u - 1e-12:
-                b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo_u, tol_deg)
-        intervals.append((a, b))
-    intervals.sort()
-    merged: list[tuple[float, float]] = []
-    for a, b in intervals:
-        if merged and a <= merged[-1][1] + 1e-9:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
-        else:
-            merged.append((a, b))
-    for (a, b) in merged:
-        ca, cb, flag, overlaps = _clip_to_horizon(a, b, horizon)
+            merged.append([iv[0], iv[1], iv[2], iv[3], iv[4]])
+
+    def _refined_edge(seg: MonotoneArc, crossing: tuple) -> float:
+        """One coherent refined boundary event (R2): reuse the shared
+        boundary root when supplied (R5), else Swiss-refine the spline
+        crossing directly. No timestamp join between differently refined
+        instants."""
+        level_w, spline_jd = crossing
+        root = _match_boundary_root(boundary_roots, level_w, spline_jd, seg.direction)
+        if root is not None:
+            return root.exact_jd
+        if refine:
+            jd, _ = _refine_root(body, seg, spline_jd, level_w, ephe_path)
+            return jd
+        return spline_jd
+
+    spans: list[ResidenceSpan] = []
+    h0, h1 = horizon
+    for a, b, seg, entry_crossing, exit_crossing in merged:
+        entry_exact = _refined_edge(seg, entry_crossing) if entry_crossing else None
+        exit_exact = _refined_edge(seg, exit_crossing) if exit_crossing else None
+        raw_a = entry_exact if entry_exact is not None else a
+        raw_b = exit_exact if exit_exact is not None else b
+        ca, cb, flag, overlaps = _clip_to_horizon(raw_a, raw_b, horizon)
         if not overlaps:
             continue
-        ingress = next(
-            (r for r in ingress_roots if abs(r.exact_jd - ca) < 1e-6), None
+        # The ingress is OBSERVED only when its refined instant lies inside
+        # the horizon; a crossing before h0 is a clipped span (truncated
+        # start), never a fabricated exact stamp (N3).
+        ingress_observed = (
+            entry_exact is not None and h0 - 1e-9 <= entry_exact <= h1 + 1e-9
         )
         stamps = _episode_stamps(body, "sign_ingress", "orb_ingress")
-        # N2/N3 + O-SS-3: when no boundary root sits at the span entry, the
-        # true ingress lies before the horizon start (a clipped span). The
-        # entry instant is the horizon clip, NOT an observed crossing — never
-        # fabricate t_exact=ca with exact_crossing=True. The episode keeps the
-        # span (truncated), carries t_exact=None / exact_crossing=False, and
-        # marks the start edge, exactly as build_episodes treats an episode
-        # whose exact root lies outside the horizon (case 04a).
-        if ingress is not None:
-            branch, station_flag, unresolved = classify_branch(index, ingress)
+        if ingress_observed:
+            entry_seg = seg
+            entry_root = _match_boundary_root(
+                boundary_roots, entry_crossing[0], entry_crossing[1], seg.direction)
+            if entry_root is not None:
+                branch, station_flag, unresolved = classify_branch(index, entry_root)
+            else:
+                branch, station_flag, unresolved = classify_branch(
+                    index,
+                    ContactRoot(
+                        body=body, relation="sign_ingress",
+                        target_deg=entry_crossing[0], aspect_deg=0.0,
+                        level_deg=entry_crossing[0],
+                        spline_exact_jd=entry_crossing[1],
+                        exact_jd=entry_exact,
+                        bracket=(entry_seg.start_jd, entry_seg.end_jd),
+                        arc=entry_seg,
+                    ),
+                )
+            entry_level = entry_crossing[0]
         else:
             branch, station_flag, unresolved = "direct", False, False
+            entry_level = lo_w
         ingress_episode = Episode(
             body=body,
             relation="sign_ingress",
             aspect_deg=0.0,
-            target_deg=lo_w,
-            level_deg=lo_w,
+            target_deg=entry_level,
+            level_deg=entry_level,
             t_in=ca,
-            t_exact=ingress.exact_jd if ingress else None,
+            t_exact=entry_exact if ingress_observed else None,
             t_out=ca,
             branch=branch,
             station_flag=station_flag,
-            exact_crossing=ingress is not None,
+            exact_crossing=ingress_observed,
             orb_source="orb_ingress",
             dwell_days=0.0,
+            # Kimi review #2: one span, one truncation mark — the ingress row
+            # carries 'start'/'both' exactly as the residence row does (never
+            # 'both' silently collapsed to 'start', never erased to NULL).
             truncated_at_horizon=(
-                "start" if flag in ("start", "both") else None
+                flag if flag in ("start", "both") else None
             ),
             completeness_state="unqualified" if unresolved else "applied",
             near_station_unresolved=unresolved,
-            spline_exact_jd=ingress.spline_exact_jd if ingress else None,
+            spline_exact_jd=entry_crossing[1] if entry_crossing else None,
             **stamps,
         )
         spans.append(
