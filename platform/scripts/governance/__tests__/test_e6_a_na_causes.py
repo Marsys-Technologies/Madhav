@@ -229,15 +229,19 @@ def test_one_declared_cause_does_not_release_another_cause_of_the_same_criterion
 
 
 def test_the_retired_uncaused_id_releases_nothing(monkeypatch):
+    """Two layers of defence: the validator refuses the declaration outright (see the (3b) tests), and, were it
+    ever bypassed, the per-check decision still does not read the retired id."""
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.registered#measured": "N-22/test"})
-    _, with_cause = _chk(_build_ms(**{"Build.registered": _na("no-writer-registry-agrees")}))
-    _, without = _chk(_build_ms(**{"Build.registered": _na()}))
+    with pytest.raises(ValueError):
+        _chk(_build_ms(**{"Build.registered": _na("no-writer-registry-agrees")}))
+    with_cause = ac._check_contribution("Build.registered", "L2", _na("no-writer-registry-agrees"), None)
+    without = ac._check_contribution("Build.registered", "L2", _na(), None)
     assert with_cause["v"] == "NO_DETECTOR" and without["v"] == "NO_DETECTOR"
+    assert not ac._na_released("Build.registered", _na("no-writer-registry-agrees"))
 
 
 def test_na_without_a_cause_reads_no_detector_even_when_every_id_is_declared(monkeypatch):
-    every = {f"{c}#measured": "d" for c in ac.CRITERION_REGISTRY}
-    every.update({f"{c}#measured:{k}": "d" for c, ks in ac.NA_CAUSES.items() for k in ks})
+    every = {f"{c}#measured:{k}": "d" for c, ks in ac.NA_CAUSES.items() for k in ks}    # every VALID id
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", every)
     cell, c = _chk(_build_ms(**{"Build.registered": _na()}))
     assert cell["v"] == "NO_DETECTOR" and c["v"] == "NO_DETECTOR"
@@ -266,10 +270,15 @@ def test_a_malformed_cause_is_not_a_slug_and_reads_as_no_cause(monkeypatch, bad)
 
 
 def test_a_well_formed_cause_the_registry_does_not_list_is_not_honoured(monkeypatch):
+    # declaring it is refused outright (validate_na_rule_decisions); with no such declaration the N/A is undecided,
+    # and the per-check "not a registered cause" guard still holds if the validator were ever bypassed.
+    _, c = _chk(_build_ms(**{"Build.registered": _na("invented")}))
+    assert c["v"] == "NO_DETECTOR" and "not a registered cause" in c["reason"]
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.registered#measured:invented": "d"})
-    cell, c = _chk(_build_ms(**{"Build.registered": _na("invented")}))
-    assert cell["v"] == "NO_DETECTOR" and c["v"] == "NO_DETECTOR"
-    assert "not a registered cause" in c["reason"]
+    with pytest.raises(ValueError):
+        _chk(_build_ms(**{"Build.registered": _na("invented")}))
+    c = ac._check_contribution("Build.registered", "L2", _na("invented"), None)
+    assert c["v"] == "NO_DETECTOR" and "not a registered cause" in c["reason"]
 
 
 def test_a_cause_on_a_non_na_record_is_ignored_and_changes_nothing(monkeypatch):
@@ -301,13 +310,104 @@ def test_the_cause_encoding_bumped_the_registry_revision():
     assert ac.REGISTRY_REVISION >= 2, "what a cell means changed (rule ids are cause-keyed): revision must be bumped"
 
 
-def test_na_rule_decisions_is_still_empty_and_would_only_hold_well_formed_ids():
+def test_na_rule_decisions_is_still_empty():
     assert ac.NA_RULE_DECISIONS == {}, "the N-22 rule table is not approved: nothing may be declared"
-    # the standing invariant for when it is filled: every `#measured` id is crit#measured:<registered cause>
-    for rid in ac.NA_RULE_DECISIONS:
-        if "#measured" in rid:
-            crit, _, cause = rid.partition("#measured:")
-            assert cause in ac.NA_CAUSES.get(crit, ()), rid
+    ac.validate_na_rule_decisions()    # and the (empty) production table is, trivially, well-formed
+
+
+# ───────────────────────── (3b) the declared rule table is validated, not trusted ─────────────────────────
+# The standing invariant "every `#measured` id is <crit>#measured:<registered cause>" used to loop over the EMPTY
+# production dict and so checked nothing. It is now an enforced function, called by rollup_asset and emit_gaps,
+# and tested here against monkeypatched declarations.
+
+VALID_DECLS = {
+    "Build.registered#measured:no-writer-registry-agrees": "N-22/test",
+    "Build.target#measured:service-no-target-table": "N-22/test",
+    "Earn.build_record#measured:no-registered-writer": "N-22/test",
+    "Ldgr.source_presence#columns_any": "N-22/test",          # the fact-disproved applicability form
+}
+
+BAD_DECLS = [
+    pytest.param("Build.registered#measured", id="retired-uncaused-id"),
+    pytest.param("Build.registered#measured:", id="empty-cause"),
+    pytest.param("Build.registered#measured:invented", id="unregistered-cause"),
+    pytest.param("Build.target#measured:no-writer-registry-agrees", id="cause-registered-for-another-criterion"),
+    pytest.param("Nope.crit#measured:no-writer-registry-agrees", id="unregistered-criterion"),
+    pytest.param("Build.registered#measured: no-writer-registry-agrees", id="whitespace-in-cause"),
+    pytest.param("Build.registered#measured:No-Writer", id="non-slug-cause"),
+    pytest.param("Build.registered#columns_any", id="columns_any-rule-on-a-criterion-with-no-column-pattern"),
+    pytest.param("Build.registered#asset_kinds", id="asset_kinds-rule-on-a-criterion-with-no-kind-pattern"),
+    pytest.param("Build.registered", id="no-rule-suffix"),
+    pytest.param("Build.registered#whatever", id="unknown-rule-kind"),
+    pytest.param("#measured:no-writer-registry-agrees", id="empty-criterion"),
+]
+
+
+def test_validate_accepts_empty_and_every_well_formed_declaration(monkeypatch):
+    ac.validate_na_rule_decisions()
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", dict(VALID_DECLS))
+    ac.validate_na_rule_decisions()
+    # every registered (criterion, cause) pair is declarable
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:{k}": "d" for c, ks in ac.NA_CAUSES.items() for k in ks})
+    ac.validate_na_rule_decisions()
+
+
+@pytest.mark.parametrize("bad", BAD_DECLS)
+def test_validate_rejects_a_malformed_declaration_even_beside_valid_ones(monkeypatch, bad):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**VALID_DECLS, bad: "N-22/test"})
+    with pytest.raises(ValueError) as e:
+        ac.validate_na_rule_decisions()
+    assert bad in str(e.value)
+
+
+@pytest.mark.parametrize("decision", ["", "   ", None, 5, ["N-22"]])
+def test_validate_rejects_a_declaration_with_no_decision_id(monkeypatch, decision):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.registered#measured:no-writer-registry-agrees": decision})
+    with pytest.raises(ValueError):
+        ac.validate_na_rule_decisions()
+
+
+@pytest.mark.parametrize("key", [None, 5, ("Build.registered", "x"), b"Build.registered#measured:x"])
+def test_validate_rejects_a_non_str_rule_id(monkeypatch, key):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {key: "N-22/test"})
+    with pytest.raises(ValueError):
+        ac.validate_na_rule_decisions()
+
+
+def test_validate_reports_every_bad_id_not_just_the_first(monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Build.registered#measured": "d", "Build.target#measured:nope": "d"})
+    with pytest.raises(ValueError) as e:
+        ac.validate_na_rule_decisions()
+    assert "Build.registered#measured" in str(e.value) and "Build.target#measured:nope" in str(e.value)
+
+
+@pytest.mark.parametrize("bad", BAD_DECLS)
+def test_rollup_asset_refuses_a_malformed_declaration(monkeypatch, bad):
+    """A bad declaration must fail LOUD where a cell is computed, not sit inert (the retired uncaused id used to
+    be silently ignored, which is how a typo'd rule reads as 'declared' in review and does nothing)."""
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {bad: "N-22/test"})
+    with pytest.raises(ValueError):
+        ac.rollup_asset("L2", {})
+    with pytest.raises(ValueError):
+        ac.rollup_census(dict(layer="L2", assets=[dict(asset_id="x", layer="L2", measurements={})]))
+
+
+@pytest.mark.parametrize("bad", BAD_DECLS)
+def test_emit_gaps_refuses_a_malformed_declaration_and_writes_nothing(monkeypatch, tmp_path, bad):
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {bad: "N-22/test"})
+    cen = dict(layer="L0", assets=[dict(asset_id="bg_x", measurements={"Build.registered": dict(v="FAIL", measured="m")})])
+    with pytest.raises(ValueError):
+        ac.emit_gaps(cen)
+    assert not (tmp_path / "asset_gaps.jsonl").exists() or (tmp_path / "asset_gaps.jsonl").read_text() == ""
+
+
+def test_valid_declarations_do_not_stop_the_rollup_or_emit(monkeypatch, tmp_path):
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", dict(VALID_DECLS))
+    assert ac.rollup_asset("L2", {})["Build"]["v"] == "NO_DETECTOR"
+    cen = dict(layer="L0", assets=[dict(asset_id="bg_x", measurements={"Build.registered": dict(v="FAIL", measured="m")})])
+    assert ac.emit_gaps(cen)[0] == 1
 
 
 # ───────────────────────── (4) the saved census: nothing can read N/A ─────────────────────────

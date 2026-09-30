@@ -257,6 +257,32 @@ def _na(measured: str, cause: str) -> dict:
     """A measured N/A record: the ONLY record shape that carries a `cause` (the rollup reads it)."""
     return dict(v=NA, measured=measured, cause=cause)
 
+def validate_na_rule_decisions() -> None:
+    """Every declared N/A rule id must be a rule id this module can actually issue, else ValueError naming ALL the
+    offenders (a typo'd or retired id otherwise sits inert: it reads as 'declared' in review and releases nothing).
+    Well-formed ids: `<crit>#measured:<cause>` with `cause` a slug registered for `crit` in NA_CAUSES (the retired
+    uncaused `<crit>#measured` is NOT well-formed), and the fact-disproved applicability forms
+    `<crit>#columns_any` / `<crit>#asset_kinds` for a registered criterion whose registry entry has that pattern
+    (`criterion_applicability` issues exactly these). Each decision must be a non-blank str (plan §2.1: every rule
+    cites its decision id). Called by rollup_asset (every cell) and emit_gaps (every ledger write)."""
+    bad = []
+    for rid, decision in NA_RULE_DECISIONS.items():
+        ok = False
+        if isinstance(rid, str) and isinstance(decision, str) and decision.strip():
+            crit, sep, rule = rid.partition("#")
+            if sep and rule.startswith("measured:"):
+                cause = rule[len("measured:"):]
+                ok = bool(_CAUSE_SLUG.fullmatch(cause)) and cause in NA_CAUSES.get(crit, ())
+            elif sep and rule in ("columns_any", "asset_kinds"):
+                ok = crit in CRITERION_REGISTRY and CRITERION_REGISTRY[crit][rule] is not None
+        if not ok:
+            bad.append(rid)
+    if bad:
+        raise ValueError(f"NA_RULE_DECISIONS holds {len(bad)} id(s) that are not a rule id this inspector can issue "
+                         f"(need <crit>#measured:<registered cause> or <crit>#columns_any/#asset_kinds for a "
+                         f"criterion with that pattern, each with a non-blank decision id): {bad!r}")
+
+
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
 REGISTRY_REVISION = 3     # 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
@@ -388,6 +414,7 @@ def rollup_asset(layer: str, measurements: dict, facts: dict | None = None) -> d
     for crit in measurements:
         if crit not in CRITERION_REGISTRY:
             raise KeyError(f"measured criterion {crit!r} is not in CRITERION_REGISTRY")
+    validate_na_rule_decisions()
     fp = registry_fingerprint()
     cells = {}
     for gate in CELL_GATES:
@@ -3099,6 +3126,7 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
     detects that; re-running the census after such a merge re-measures and appends the correct
     transition.
     """
+    validate_na_rule_decisions()
     path = CTRL / "asset_gaps.jsonl"
     latest: dict[str, dict] = {}
     # F5 (A_REVIEW.md, non-blocking correction): `superseded_by` must be a PERMANENT flag on the
