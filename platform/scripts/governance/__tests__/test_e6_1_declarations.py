@@ -251,7 +251,11 @@ NARR_DECLARED = {
     "ph_nimitta": ["falsifier"],
     "ph_rectification": ["judgment_flags.$.load_bearing_note", "leakage_firewall_note"],
     "mi_pariksha": ["statement"],
+    "bo_pratijna": ["derivation.$.factor_ledger[*].detail", "derivation.$.denials[*].reason",
+                    "derivation.$.factor_ledger[*].connections[*].reason"],
 }
+# declared `[]` (writer composes none; the evidence carries the AST-backed reason)
+NARR_EMPTY = ("bg_doshas",)
 # Undeclared (null) pending an SS ruling: the composed text is a provenance pointer / ordinal label, see the evidence file.
 NARR_PENDING_SS = ("bg_yogas", "bg_ontology")
 # the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
@@ -295,6 +299,25 @@ NARR_CITES = {
                          (_WR + "ph_rectification/__init__.py", 392, "[basis={basis}] {best.leakage_firewall_note}"),
                          (_L + "L4_phala/query_phala_calibration.ts", 644, "judgment_flags"),
                          (_L + "L4_phala/query_phala_calibration.ts", 646, "leakage_firewall_note")],
+    "bo_pratijna": [(_WR + "bo_pratijna_v4_engine.py", 310, 'f"sign={sign_number} matches exaltation_sign"'),
+                    (_WR + "bo_pratijna_v4_engine.py", 410, "naisargika-only (tatkalika unavailable)"),
+                    (_WR + "bo_pratijna_v4_engine.py", 425, "naisargika({graha}->{need.sign_lord})"),
+                    (_WR + "bo_pratijna_v4_engine.py", 945, '"detail": f"DATA GAP: {exc}'),
+                    (_WR + "bo_pratijna_v4_engine.py", 574, "house_lord={house_lord_dig.state}"),
+                    (_WR + "bo_pratijna_v4_engine.py", 624, "core lord ({core_lord_graha}) D1 house="),
+                    (_WR + "bo_pratijna_v4_engine.py", 655, "core lord ({core_lord_graha}) debilitated in its own cited dusthana house"),
+                    (_WR + "bo_pratijna_v4_engine.py", 679, "malefic-occupied={before_malefic}"),
+                    (_WR + "bo_pratijna_v4_engine.py", 696, "adjoining core house {core_house}"),
+                    (_WR + "bo_pratijna_v4_engine.py", 738, "(core lord) placed in house"),
+                    (_WR + "bo_pratijna_v4_engine.py", 753, "no lord-in-house/full-contact/parivartana connection"),
+                    (_WR + "bo_pratijna_v4_engine.py", 774, '"reason": "no D1 house data"'),
+                    (_WR + "bo_pratijna_v4_engine.py", 1033, "return ClassScore("),
+                    (_WR + "bo_pratijna.py", 407, '"factor_ledger": score.factor_ledger'),
+                    (_WR + "bo_pratijna.py", 408, '"denials": score.denials'),
+                    (_WR + "bo_pratijna.py", 428, '"derivation": json.dumps(derivation)'),
+                    (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
+                    (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
+                    (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
     "mi_pariksha": [(_WR + "mi_pariksha.py", 251, 'f"Retrodiction probe for {event_id}'), (_WR + "mi_pariksha.py", 729, "statement = ("),
                     (_L + "L5_mimamsa/query_mimamsa_discoveries.ts", 86, "statement")],
 }
@@ -335,8 +358,9 @@ def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_th
         assert got[a] == v, a
     for a in NARR_PENDING_SS:
         assert decl[a]["prose_fields"] is None and decl[a]["evidence"]["prose_fields"] is None, a
-    assert [a for a, v in got.items() if v == []] == ["bg_doshas"]      # the only reference corpus that composes nothing
-    assert len(got) == 23 and sum(e["prose_fields"] is None for e in decl.values()) == 127 - 23
+    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY)
+    n = len(PRIOR_DDL) + len(NARR_DECLARED)
+    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
 def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
@@ -604,6 +628,167 @@ def test_mi_pariksha_statement_is_composed_in_both_substeps_and_bound_to_the_dis
     problems, vals = nw.bound_values(src, "mimamsa_discoveries", "statement", expect_statements=2)
     assert problems == [] and len(vals) == 2
     assert all(nw.is_composed(tree, v) for v in vals)
+
+
+# ── bo_pratijna `derivation` `[*]` paths (grammar 1.6.0): the engine composes the ledger strings, the writer binds them ──
+
+_PJ_W, _PJ_E = _WR + "bo_pratijna.py", _WR + "bo_pratijna_v4_engine.py"
+# path -> (engine class whose constructor argument is the string, composed line set, constant line set), all in _PJ_E
+PRATIJNA_COMPOSED = {
+    "derivation.$.factor_ledger[*].detail": ("DignityResult", "detail",
+                                              [310, 313, 334, 337, 340, 410, 417, 425, 945], [318, 348, 894, 972]),
+    "derivation.$.denials[*].reason": ("DenialResult", "reason",
+                                        [574, 588, 595, 624, 634, 640, 647, 655, 679, 690, 696], [568, 618]),
+    "derivation.$.factor_ledger[*].connections[*].reason": ("DusthanaConnection", "reason", [738, 743, 745, 751, 753], []),
+}
+
+
+def _pj():
+    import ast
+    w, e = _read(_PJ_W), _read(_PJ_E)
+    wt, et = ast.parse(w), ast.parse(e)
+    problems, vals = nw.named_bound_values(w, "bodha_pratijna", "derivation")
+    assert problems == [] and len(vals) == 2
+    roots = [nw.json_dumps_argument(v) for v in vals]
+    assert all(r is not None for r in roots)
+    scored = [d for r in roots if isinstance(r, ast.Name) for d in nw.dict_nodes(wt, r)]
+    assert len(scored) == 1
+    score_class = next(n for n in ast.walk(et) if isinstance(n, ast.FunctionDef) and n.name == "score_class")
+    return wt, et, scored, score_class
+
+
+def _ledger_dicts(et, scored, key, scope):
+    """the element dict literals of the ledger `derivation[key]` ends up as: the writer stores `score.<key>`, the engine
+    binds ClassScore(<key>=...) (a list/comprehension literal or a Name filled by `.append({...})`)"""
+    import ast
+    vals = nw.dict_key_values(scored, key)
+    assert [ast.unparse(v) for v in vals] == [f"score.{key}"], key
+    ctor = [v for _, v in nw.constructor_values(et, "ClassScore", key) if v is not None]
+    assert len(ctor) == 1, key
+    out = nw.list_element_dicts(et, ctor[0], scope)
+    assert out, key
+    return out
+
+
+def _pratijna_leaf_report(path):
+    import ast
+    wt, et, scored, sc = _pj()
+    cls, field, _, _ = PRATIJNA_COMPOSED[path]
+    col, segs = ac.parse_prose_field(path)
+    assert col == "derivation" and segs[1] == "[*]" and segs[-1] == field
+    dicts = _ledger_dicts(et, scored, segs[0], sc)
+    if len(segs) == 5:                       # factor_ledger[*].connections[*].reason
+        assert segs[2] == "connections" and segs[3] == "[*]"
+        inner = nw.dict_key_values(dicts, "connections")
+        assert len(inner) == 1
+        dicts = nw.list_element_dicts(et, inner[0], sc)
+    else:
+        assert len(segs) == 3
+    leaves = nw.dict_key_values(dicts, field)
+    assert leaves
+    return nw.terminal_strings(et, leaves, {field: cls})
+
+
+@pytest.mark.parametrize("path", sorted(PRATIJNA_COMPOSED))
+def test_bo_pratijna_ledger_strings_are_composed_by_the_engine_and_bound_into_derivation(path):
+    rep = _pratijna_leaf_report(path)
+    _, _, composed, constant = PRATIJNA_COMPOSED[path]
+    assert all(c is not None for _, c in rep), rep                   # every constructor binds the field
+    assert [ln for ln, c in rep if c] == composed and [ln for ln, c in rep if not c] == constant, rep
+
+
+def test_bo_pratijna_ledger_dict_keys_are_all_decided_and_only_the_declared_leaves_are_prose():
+    import ast
+    wt, et, scored, sc = _pj()
+    fl = _ledger_dicts(et, scored, "factor_ledger", sc)
+    den = _ledger_dicts(et, scored, "denials", sc)
+    conn = nw.list_element_dicts(et, nw.dict_key_values(fl, "connections")[0], sc)
+    keys = lambda ds: {k.value for d in ds for k in d.keys if isinstance(k, ast.Constant)}
+    assert keys(fl) == {"slot", "house", "lord", "graha", "varga", "varga_sign", "keywords", "dignity_state", "band",
+                        "weight", "contribution", "detail", "connections"}
+    assert keys(den) == {"config_id", "fired", "deduction", "reason"}
+    assert keys(conn) == {"house", "connected", "reason"}
+    # nothing else in a ledger element is built by string composition (a new composed key must be decided)
+    for ds in (fl, den, conn):
+        assert nw.composed_keys(et, ds) <= {"detail"}, nw.composed_keys(et, ds)
+
+
+def test_bo_pratijna_the_static_strings_stay_undeclared_because_they_are_constants():
+    import ast
+    wt, et, scored, sc = _pj()
+    # condition_ledger[*].reason (engine :774) is one fixed string; so are status_mapping_rule and the no_evidence reason
+    assert '"reason": "no D1 house data"' in _read(_PJ_E).splitlines()[773]
+    cond = [d for d in ast.walk(et) if isinstance(d, ast.Dict)
+            and any(isinstance(k, ast.Constant) and k.value == "malefic" for k in d.keys)]
+    reasons = nw.dict_key_values(cond, "reason")
+    assert reasons and all(isinstance(v, ast.Constant) and isinstance(v.value, str) for v in reasons)
+    _, vals = nw.named_bound_values(_read(_PJ_W), "bodha_pratijna", "derivation")
+    every = [d for v in vals for d in nw.dict_nodes(wt, nw.json_dumps_argument(v))]
+    assert len(every) == 2
+    for key, n in (("status_mapping_rule", 1), ("reason", 1)):
+        got = nw.dict_key_values(every, key)
+        assert len(got) == n and all(isinstance(v, ast.Constant) and isinstance(v.value, str) for v in got), key
+    assert not any(f.startswith("derivation.$.") and f.split("$.")[1].split("[")[0] in ("condition_ledger", "status_mapping_rule", "reason")
+                   for f in (_decl()["bo_pratijna"]["prose_fields"] or []))
+
+
+def test_bo_pratijna_declared_paths_are_exactly_the_ones_the_engine_checks_cover():
+    assert sorted(_decl()["bo_pratijna"]["prose_fields"]) == sorted(PRATIJNA_COMPOSED)
+    assert sorted(NARR_DECLARED["bo_pratijna"]) == sorted(PRATIJNA_COMPOSED)
+
+
+_ARRAY_SYNTH = """
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class Res:
+    a: int
+    b: str
+    c: str
+@dataclass
+class Out:
+    ledger: list
+    note: list
+def build(x):
+    ledger = []
+    r = Res(1, f"b{x}", "const")
+    ledger.append({"k": r.b, "n": 1, "plain": "x" + str(x)})
+    ledger.append({"k": "fixed"})
+    return Out(ledger=ledger, note=[{"t": q.c} for q in [r]])
+def other():
+    return Res(a=2, c="c2", b=str(3))
+def star(z):
+    return Res(*z), Res(1)
+"""
+
+
+def test_array_leaf_helpers_follow_constructors_lists_appends_and_comprehensions():
+    import ast
+    t = ast.parse(_ARRAY_SYNTH)
+    u = lambda v: None if v is None else ast.unparse(v)
+    assert nw.dataclass_fields(t, "Res") == ["a", "b", "c"] and nw.dataclass_fields(t, "Nope") is None
+    assert nw.dataclass_fields(ast.parse("class A: pass\nclass A: pass"), "A") is None             # ambiguous
+    # keyword and positional binding; a call that does not bind the field (star-arg first / too few args) is (lineno, None)
+    assert [(ln, u(v)) for ln, v in nw.constructor_values(t, "Res", "b")] == [(14, "f'b{x}'"), (19, "str(3)"), (21, None), (21, None)]
+    assert [(ln, u(v)) for ln, v in nw.constructor_values(t, "Res", "c")] == [(14, "'const'"), (19, "'c2'"), (21, None), (21, None)]
+    assert [(ln, u(v)) for ln, v in nw.constructor_values(t, "Res", "a")] == [(14, "1"), (19, "2"), (21, None), (21, "1")]
+    assert nw.constructor_values(t, "Res", "zz") == [] and nw.constructor_values(t, "Nope", "b") == []
+    fn = {n.name: n for n in ast.walk(t) if isinstance(n, ast.FunctionDef)}
+    led = nw.constructor_values(t, "Out", "ledger")[0][1]
+    dicts = nw.list_element_dicts(t, led, fn["build"])
+    assert len(dicts) == 2 and {k.value for d in dicts for k in d.keys} == {"k", "n", "plain"}     # the two .append({...}) dicts
+    note = nw.constructor_values(t, "Out", "note")[0][1]
+    assert len(nw.list_element_dicts(t, note, fn["build"])) == 1                                   # comprehension element
+    lit = ast.parse("[{'a': 1}, 2, {'b': 3}]").body[0].value
+    assert len(nw.list_element_dicts(t, lit)) == 2                                                 # non-dict elements skipped
+    assert nw.list_element_dicts(t, ast.parse("foo()").body[0].value) == []
+    assert nw.list_element_dicts(t, led, fn["other"]) == []                                        # scope is honoured
+    # terminal strings: an attribute read is followed to every constructor call (deduplicated), other exprs report themselves
+    attr = ast.parse("r.b").body[0].value
+    rep = nw.terminal_strings(t, [attr, attr], {"b": "Res"})
+    assert rep == [(14, True), (19, False), (21, None)], rep
+    assert nw.terminal_strings(t, [ast.parse("v.b").body[0].value], {"zz": "Res"}) == [(1, False)]   # attr not mapped -> itself
+    assert nw.terminal_strings(t, nw.dict_key_values(dicts, "plain"), {"b": "Res"}) == [(15, True)]
+    assert nw.composed_keys(t, dicts) == {"k", "plain"}           # "k": r.b follows `r` to its f-string; "n" and the constant do not
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division

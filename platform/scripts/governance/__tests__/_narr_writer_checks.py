@@ -299,6 +299,80 @@ def composed_report(tree, roots, path):
                   for kn, v in ((k, v) for k, v in zip(d.keys, d.values) if isinstance(k, ast.Constant) and k.value == key))
 
 
+# ───────────────────────── (3b) `key[*]` array-element leaves (grammar 1.6.0) ─────────────────────────
+
+def dataclass_fields(tree, cls):
+    """Field names of class `cls` in declaration order (annotated class-body names); None when `cls` is not defined once."""
+    defs = [n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == cls]
+    if len(defs) != 1:
+        return None
+    return [s.target.id for s in defs[0].body if isinstance(s, ast.AnnAssign) and isinstance(s.target, ast.Name)]
+
+
+def constructor_values(tree, cls, field):
+    """[(lineno, expression)] bound to `field` in every call `cls(...)` in `tree`: the keyword of that name, else the
+    positional argument at the field's declaration index. A call that does not bind the field (a default, a star-arg
+    before its index) contributes (lineno, None) so the caller cannot mistake silence for a value."""
+    fields = dataclass_fields(tree, cls)
+    if fields is None or field not in fields:
+        return []
+    idx, out = fields.index(field), []
+    for c in (n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == cls):
+        kw = [k.value for k in c.keywords if k.arg == field]
+        if kw:
+            out.append((c.lineno, kw[0]))
+        elif idx < len(c.args) and not any(isinstance(a, ast.Starred) for a in c.args[: idx + 1]):
+            out.append((c.lineno, c.args[idx]))
+        else:
+            out.append((c.lineno, None))
+    return sorted(out, key=lambda t: t[0])
+
+
+def list_element_dicts(tree, expr, scope=None, _seen=None):
+    """Dict literals that can be ELEMENTS of the list `expr` denotes: a list literal's dict elements, a comprehension's
+    element, every assignment of a Name (inside `scope` when given, else `tree`) and every `name.append(<dict>)` on it."""
+    _seen = _seen if _seen is not None else set()
+    if id(expr) in _seen:
+        return []
+    _seen.add(id(expr))
+    out = []
+    if isinstance(expr, ast.List):
+        for e in expr.elts:
+            out += [e] if isinstance(e, ast.Dict) else []
+    elif isinstance(expr, (ast.ListComp, ast.GeneratorExp)):
+        out += [expr.elt] if isinstance(expr.elt, ast.Dict) else []
+    elif isinstance(expr, ast.Name):
+        where = scope if scope is not None else tree
+        for v in _assign_values(where, expr.id):
+            out += list_element_dicts(tree, v, scope, _seen)
+        for c in ast.walk(where):
+            if (isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == "append"
+                    and isinstance(c.func.value, ast.Name) and c.func.value.id == expr.id
+                    and len(c.args) == 1 and isinstance(c.args[0], ast.Dict)):
+                out.append(c.args[0])
+    return out
+
+
+def terminal_strings(tree, exprs, attr_classes):
+    """[(lineno, composed?)] for the string expressions `exprs` can end up as. An attribute read `x.attr` whose `attr` is a
+    field of a dataclass named in `attr_classes` ({attr: class}) is followed to every constructor call of that class and
+    reports the expression bound there; a None (unbound) constructor argument is a problem marker (lineno, None)."""
+    out = []
+    for e in exprs:
+        if isinstance(e, ast.Attribute) and e.attr in attr_classes:
+            for ln, v in constructor_values(tree, attr_classes[e.attr], e.attr):
+                out.append((ln if v is None else v.lineno, None if v is None else is_composed(tree, v)))
+        else:
+            out.append((e.lineno, is_composed(tree, e)))
+    return sorted(set(out), key=lambda t: (t[0], str(t[1])))
+
+
+def composed_keys(tree, dicts):
+    """Keys whose value expression, in any of the dict literals, builds text (f-string, `+`/`%`, .format, .join)."""
+    return {k.value for d in dicts for k, v in zip(d.keys, d.values)
+            if isinstance(k, ast.Constant) and isinstance(k.value, str) and is_composed(tree, v)}
+
+
 # ───────────────────────── (4) a `[]` claim: the bound columns are only verbatim/slice/constant ─────────────────────────
 
 _ALLOWED_PARAM_NODES = (ast.Name, ast.Constant, ast.Subscript, ast.Slice, ast.Load, ast.IfExp, ast.BoolOp, ast.Or, ast.And,

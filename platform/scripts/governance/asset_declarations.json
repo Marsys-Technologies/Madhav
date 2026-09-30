@@ -964,7 +964,11 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "derivation.$.factor_ledger[*].detail",
+    "derivation.$.denials[*].reason",
+    "derivation.$.factor_ledger[*].connections[*].reason"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161",
@@ -973,7 +977,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_pratijna; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161 reads `bodha_pratijna` (`FROM bodha_pratijna`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "Writer code in writers/bo_pratijna_v4_engine.py composes every ledger string by f-string or concatenation from computed L1 values. factor_ledger[*].detail is DignityResult.detail: bo_pratijna_v4_engine.py:310 (sign=N matches exaltation_sign), bo_pratijna_v4_engine.py:410 and bo_pratijna_v4_engine.py:425 (naisargika/tatkalika relation with house numbers), bo_pratijna_v4_engine.py:945 (divisional DATA GAP); the details at bo_pratijna_v4_engine.py:318, :348, :894, :972 are constant stubs. denials[*].reason is DenialResult.reason: bo_pratijna_v4_engine.py:574 (house_lord=<state>, karaka=<state>), bo_pratijna_v4_engine.py:624 (core lord house N), bo_pratijna_v4_engine.py:655 (debilitated-in-dusthana verdict), bo_pratijna_v4_engine.py:679 and bo_pratijna_v4_engine.py:696 (papakartari house numbers); bo_pratijna_v4_engine.py:568 and :618 are constant. factor_ledger[*].connections[*].reason is DusthanaConnection.reason: bo_pratijna_v4_engine.py:738 to bo_pratijna_v4_engine.py:753 (f-strings naming lords and houses). Bound: ClassScore(factor_ledger=, denials=) at bo_pratijna_v4_engine.py:1033 is stored as score.factor_ledger (bo_pratijna.py:407) and score.denials (bo_pratijna.py:408) and json.dumps'd into the derivation INSERT row (bo_pratijna.py:428). Served whole: query_pratijna.ts:159 selects `derivation`. NOT declared (fixed strings): condition_ledger[*].reason (bo_pratijna_v4_engine.py:774), status_mapping_rule (bo_pratijna.py:401), the no_evidence reason (bo_pratijna.py:378)."
    }
   },
   "bo_samskara": {
