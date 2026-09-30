@@ -327,6 +327,8 @@ def no_string_building_in_bound_params(src, func):
             problems.append(f"line {call.lineno}: INSERT params are not a literal tuple")
             continue
         for node in (x for e in params.elts for x in ast.walk(e)):
+            if isinstance(node, (ast.operator, ast.unaryop, ast.boolop, ast.cmpop, ast.expr_context)):
+                continue
             if isinstance(node, (ast.JoinedStr, ast.BinOp)):
                 problems.append(f"line {node.lineno}: string building ({type(node).__name__}) on a bound column")
             elif isinstance(node, ast.Call):

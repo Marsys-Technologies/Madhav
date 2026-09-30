@@ -19,8 +19,10 @@ import pytest
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))
 
 import asset_census as ac  # noqa: E402
+import _narr_writer_checks as nw  # noqa: E402
 
 FIXTURE = json.loads((HERE / "fixtures" / "census_cells_2026-09-30.json").read_text(encoding="utf-8"))
 REGISTRY_IDS = sorted(a for assets in FIXTURE["layers"].values() for a in assets)
@@ -113,7 +115,7 @@ def test_parse_prose_field_rejects_malformed_entries(bad):
 
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
     doc = _doc(none=dict(prose_fields=None),
-               empty=dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none")),
+               empty=dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none (w.py:10)")),
                some=dict(prose_fields=["a", "b"], evidence=PEV),
                paths=dict(prose_fields=["n.$.a", "n.$.b", "other", "m.$.k.l"], evidence=PEV),
                absent_field=dict(kind="data"))
@@ -143,39 +145,70 @@ def test_empty_prose_list_reaches_no_criterion():
 
 
 # Decisions recorded 2026-10-01 (evidence: /Users/Dev/suvarna-evidence/E6.1/narr_declarations_evidence.md). Each
-# declaration cites the writer code (file:line) and the test re-reads that line, so a moved/edited writer fails loudly.
+# declaration cites the writer code (file:line) and the test re-reads that line, so a moved/edited writer fails loudly;
+# the JSONB/plain columns are additionally checked structurally (AST, _narr_writer_checks.py), not by a word search.
 _SC = "platform/python-sidecar/"
 _WR = _SC + "pipeline/orchestrator/writers/"
 _BG = _SC + "brahmagyan/"
+_L = "platform/src/lib/retrieval/registry/layers/"
 NARR_DECLARED = {
     "bg_doshas": [],
-    "bg_yogas": ["formation_text"],
     "bg_remedies": ["prescription_text", "charity_action"],
-    "bg_compendium_index": ["summary_text", "significance"],
-    "bg_ontology": ["description"],
+    "bg_compendium_index": ["significance"],
     "ka_kala_darshana": ["narrative.$.headline", "narrative.$.context", "narrative.$.caution"],
     "ka_jivana_parva": ["narrative.$.summary"],
     "ka_bhavishya_lekha": ["narrative.$.headline", "narrative.$.probability_statement", "narrative.$.domain_context",
                            "narrative.$.caveat", "falsifiability.$.confirm_observable", "falsifiability.$.deny_observable"],
+    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"],
+    "ka_vighnakara": ["obstruction_detail.$.reason"],
+    "ka_avadhi": ["dossier.$.sublord_modulation.note"],
+    "ph_nimitta": ["falsifier"],
+    "ph_rectification": ["judgment_flags.$.load_bearing_note", "leakage_firewall_note"],
+    "mi_pariksha": ["statement"],
 }
-# (file, line, a substring that line must contain): the code that composes (or, for bg_doshas, loads verbatim) it
+# Undeclared (null) pending an SS ruling: the composed text is a provenance pointer / ordinal label, see the evidence file.
+NARR_PENDING_SS = ("bg_yogas", "bg_ontology")
+# the 13 earlier declarations cite the column's DDL and the census, not writer code: marked evidence_kind "ddl"
+PRIOR_DDL = {"bo_anveshana", "bo_arudha", "bo_laksana", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana",
+             "bo_vargottama_dhana", "mi_bhavisya", "mi_darshana", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana"}
+# (file, line, a substring that line must contain): the code that composes (or, for bg_doshas, loads verbatim) it, and the
+# served read. The evidence text must carry `<basename>:<line>` for every cite.
 NARR_CITES = {
     "bg_doshas": [(_BG + "l0_doshas.py", 1972, 'd["formation_text"]'), (_BG + "l0_doshas.py", 1973, 'd["effects_text"]'),
                   (_BG + "l0_doshas.py", 2003, '["effects_text"][:200]')],
-    "bg_yogas": [(_BG + "l0_yogas.py", 2140, 'f"{name_en}: formation per {verse_ref}'),
-                 (_BG + "l0_yogas.py", 2138, "raw_clause[:200] if raw_clause else name_en")],
     "bg_remedies": [(_BG + "l0_remedy_corpus.py", 247, "text = ("), (_BG + "l0_remedy_corpus.py", 309, 'f"Donate {item} on {d[\'day\']}."'),
                     (_BG + "l0_remedy_corpus.py", 2236, "prescription = (")],
-    "bg_compendium_index": [(_WR + "bg_compendium_index.py", 40, "SYNOPSIS_SEPARATOR.join(parts)"),
-                            (_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
+    "bg_compendium_index": [(_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
                             (_WR + "bg_compendium_index.py", 109, 'f"{text_id} covers {topic_id} in {len(rows)} passage(s)"')],
-    "bg_ontology": [(_BG + "l0_ontology.py", 147, 'f"Nakshatra {nak_id}/27"'), (_BG + "l0_ontology.py", 171, 'f"Sign {sign_id}/12"')],
     "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 107, "_build_narrative("), (_WR + "ka_kala_darshana.py", 138, "obstruction_summary, narrative"),
-                         (_WR + "ka_kala_darshana.py", 234, "'headline': headline")],
-    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 185, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = (")],
+                         (_WR + "ka_kala_darshana.py", 234, "'headline': headline"),
+                         (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
+    "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 185, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
+                        (_L + "L3_kala/query_life_arc.ts", 152, "narrative, source_citation")],
     "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 323, "_build_projection_narrative("),
                            (_WR + "ka_bhavishya_lekha.py", 317, "_build_falsifiability("),
-                           (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f")],
+                           (_WR + "ka_bhavishya_lekha.py", 528, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 529, "deny = f"),
+                           (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
+    "bo_upaya": [(_WR + "bo_upaya.py", 1008, "reason = ("), (_WR + "bo_upaya.py", 1690, '"maraka_contraindication_verdict": maraka_verdict'),
+                 (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
+                 (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 553, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 589, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 644, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 695, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 773, "'reason': ("), (_WR + "ka_vighnakara.py", 829, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 241, "json.dumps(obs['detail'])"),
+                      (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
+    "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {sublord} modulates MD lord {lord}."'),
+                  (_WR + "ka_avadhi.py", 303, '"dossier": json.dumps(dossier)'),
+                  (_L + "L3_kala/query_dasha_dossier.ts", 92, "dossier, quality")],
+    "ph_nimitta": [(_SC + "services/ph_nimitta/engine.py", 237, "def as_text"), (_SC + "services/ph_nimitta/engine.py", 552, "falsifier=sf.as_text()"),
+                   (_WR + "ph_nimitta.py", 279, "a.falsifier"), (_L + "L4_phala/query_predictive_anchors.ts", 137, "falsifier, source_citation")],
+    "ph_rectification": [(_SC + "services/ph_rectification/engine.py", 555, "firewall_note = ("),
+                         (_WR + "ph_rectification/__init__.py", 74, 'flags["load_bearing_note"] = ('),
+                         (_WR + "ph_rectification/__init__.py", 392, "[basis={basis}] {best.leakage_firewall_note}"),
+                         (_L + "L4_phala/query_phala_calibration.ts", 644, "judgment_flags"),
+                         (_L + "L4_phala/query_phala_calibration.ts", 646, "leakage_firewall_note")],
+    "mi_pariksha": [(_WR + "mi_pariksha.py", 251, 'f"Retrodiction probe for {event_id}'), (_WR + "mi_pariksha.py", 729, "statement = ("),
+                    (_L + "L5_mimamsa/query_mimamsa_discoveries.ts", 86, "statement")],
 }
 # JSONB narrative paths: the builder function whose returned dict literal must carry every declared key
 NARR_JSON_BUILDERS = {
@@ -189,41 +222,69 @@ NARR_JSON_NON_PROSE = {
     ("ka_jivana_parva", "narrative"): {"dasha_planet", "span", "quality", "high_convergence_count", "avg_effective_score"},
     ("ka_bhavishya_lekha", "falsifiability"): {"evaluation_date", "evaluation_window_days"},
 }
+# (asset, JSON column) -> (writer file, INSERT table) for the tuple-bound writers checked structurally
+NARR_TUPLE_TABLES = {
+    ("ka_kala_darshana", "narrative"): (_WR + "ka_kala_darshana.py", "kala_darshana"),
+    ("ka_jivana_parva", "narrative"): (_WR + "ka_jivana_parva.py", "kala_jivana_parva"),
+    ("ka_bhavishya_lekha", "narrative"): (_WR + "ka_bhavishya_lekha.py", "kala_bhavishya"),
+    ("ka_bhavishya_lekha", "falsifiability"): (_WR + "ka_bhavishya_lekha.py", "kala_bhavishya"),
+}
+
+
+def _decl():
+    return ac.load_asset_declarations()
+
+
+def _read(path):
+    return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
-    prior = {"bo_anveshana", "bo_arudha", "bo_laksana", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana",
-             "bo_vargottama_dhana", "mi_bhavisya", "mi_darshana", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana"}
-    assert set(got) == prior | set(NARR_DECLARED)
+    assert set(got) == PRIOR_DDL | set(NARR_DECLARED)
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
+    for a in NARR_PENDING_SS:
+        assert decl[a]["prose_fields"] is None and decl[a]["evidence"]["prose_fields"] is None, a
     assert [a for a, v in got.items() if v == []] == ["bg_doshas"]      # the only reference corpus that composes nothing
-    assert sum(e["prose_fields"] is None for e in decl.values()) == 127 - 21
+    assert len(got) == 25 and sum(e["prose_fields"] is None for e in decl.values()) == 127 - 25
 
 
-def test_every_declared_prose_entry_parses_and_carries_a_non_blank_evidence_pointer():
-    for aid, e in ac.load_asset_declarations().items():
+def test_the_thirteen_earlier_declarations_are_explicitly_marked_ddl_evidence_and_nothing_else_is():
+    decl = _decl()
+    assert {a for a, e in decl.items() if e.get("evidence_kind") == "ddl"} == PRIOR_DDL
+    for a, e in decl.items():
+        if a not in PRIOR_DDL:
+            assert e.get("evidence_kind") is None, a
+    for a in PRIOR_DDL:
+        assert re.search(r"[0-9]+_[A-Za-z0-9_]+\.sql", decl[a]["evidence"]["prose_fields"]), a
+
+
+def test_every_non_ddl_declared_prose_entry_carries_a_writer_path_line_pointer():
+    for aid, e in _decl().items():
         if e["prose_fields"] is None:
             continue
         for f in e["prose_fields"]:
             ac.parse_prose_field(f)
-        assert isinstance(e["evidence"]["prose_fields"], str) and e["evidence"]["prose_fields"].strip(), aid
+        ev = e["evidence"]["prose_fields"]
+        assert isinstance(ev, str) and ev.strip(), aid
+        if aid not in PRIOR_DDL:
+            assert ac.EVIDENCE_PATH_LINE_RE.search(ev), aid
 
 
 def test_bg_doshas_empty_declaration_states_its_reason_and_the_other_reference_corpora_do_not_claim_none():
-    decl = ac.load_asset_declarations()
+    decl = _decl()
     assert "stores source text; generates none" in decl["bg_doshas"]["evidence"]["prose_fields"]
-    for a in ("bg_yogas", "bg_remedies", "bg_compendium_index", "bg_ontology"):
+    for a in ("bg_remedies", "bg_compendium_index"):
         assert decl[a]["prose_fields"], a            # they compose text: declared fields, never []
 
 
 @pytest.mark.parametrize("asset", sorted(NARR_CITES))
-def test_narr_evidence_cites_writer_lines_that_really_contain_what_it_says(asset):
-    ev = ac.load_asset_declarations()[asset]["evidence"]["prose_fields"]
+def test_narr_evidence_cites_lines_that_really_contain_what_it_says(asset):
+    ev = _decl()[asset]["evidence"]["prose_fields"]
     for path, line, needle in NARR_CITES[asset]:
-        lines = (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
+        lines = _read(path).splitlines()
         assert line <= len(lines), (path, line)
         assert needle in lines[line - 1], (path, line, lines[line - 1])
         assert f"{path.rsplit('/', 1)[1]}:{line}" in ev, (asset, path, line)
@@ -231,7 +292,7 @@ def test_narr_evidence_cites_writer_lines_that_really_contain_what_it_says(asset
 
 def _returned_dict_keys(path, func):
     import ast
-    tree = ast.parse((REPO_ROOT / path).read_text(encoding="utf-8"))
+    tree = ast.parse(_read(path))
     fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == func)
     rets = [n.value for n in ast.walk(fn) if isinstance(n, ast.Return) and isinstance(n.value, ast.Dict)]
     assert len(rets) == 1, (path, func)
@@ -243,7 +304,7 @@ def test_declared_json_paths_are_keys_the_writer_builder_really_returns(asset_co
     asset, col = asset_col
     path, func = NARR_JSON_BUILDERS[asset_col]
     keys = _returned_dict_keys(path, func)
-    declared = {ac.parse_prose_field(f)[1] for f in ac.load_asset_declarations()[asset]["prose_fields"]
+    declared = {ac.parse_prose_field(f)[1] for f in _decl()[asset]["prose_fields"]
                 if ac.parse_prose_field(f)[0] == col}
     assert declared and all(len(p) == 1 for p in declared)
     declared_keys = {p[0] for p in declared}
@@ -252,10 +313,106 @@ def test_declared_json_paths_are_keys_the_writer_builder_really_returns(asset_co
     assert keys == declared_keys | NARR_JSON_NON_PROSE.get(asset_col, set()), keys ^ declared_keys
 
 
-def test_declared_json_columns_are_really_written_by_the_writer():
-    for asset, col in NARR_JSON_BUILDERS:
-        src = (REPO_ROOT / NARR_JSON_BUILDERS[(asset, col)][0]).read_text(encoding="utf-8")
-        assert re.search(rf"\b{col}\b", src), (asset, col)
+# ── structural checks (AST): the INSERT binds the declared column to the builder's output, not to a literal ──
+
+@pytest.mark.parametrize("asset_col", sorted(NARR_TUPLE_TABLES))
+def test_json_column_is_bound_by_the_insert_to_the_builders_output(asset_col):
+    path, table = NARR_TUPLE_TABLES[asset_col]
+    assert nw.check_tuple_json_from_builder(_read(path), table, asset_col[1], NARR_JSON_BUILDERS[asset_col][1]) == []
+
+
+@pytest.mark.parametrize("asset_col", sorted(NARR_JSON_BUILDERS))
+def test_every_declared_json_key_is_composed_by_code_in_the_builder(asset_col):
+    import ast
+    asset, col = asset_col
+    path, func = NARR_JSON_BUILDERS[asset_col]
+    tree = ast.parse(_read(path))
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == func)
+    roots = [r.value for r in ast.walk(fn) if isinstance(r, ast.Return)]
+    for f in _decl()[asset]["prose_fields"]:
+        c, p = ac.parse_prose_field(f)
+        if c == col:
+            rep = nw.composed_report(ast.Module(body=[fn], type_ignores=[]), roots, p)
+            assert rep and all(composed for _, composed in rep), (f, rep)
+
+
+def test_bg_doshas_empty_claim_no_string_building_on_the_bound_columns():
+    src = _read(_BG + "l0_doshas.py")
+    assert nw.no_string_building_in_bound_params(src, "seed_doshas") == []
+    assert nw.module_level_composition(src, "DOSHAS") == []
+    w = _read(_WR + "bg_doshas.py")
+    assert "seed_doshas(" in w and "f\"" not in w.split("def run", 1)[1].split("return WriterResult", 1)[0]
+
+
+def test_bg_doshas_checker_kills_the_concatenation_mutant():
+    src = _read(_BG + "l0_doshas.py")
+    old = '                    d["effects_text"],\n'
+    assert src.count(old) == 1
+    mutant = src.replace(old, '                    d["effects_text"] + " Note: " + d["name_en"],\n')
+    assert nw.no_string_building_in_bound_params(mutant, "seed_doshas")
+    for bad in ('f"{d[\'effects_text\']} x"', 'd["effects_text"] % ()', '" ".join([d["effects_text"]])',
+                'd["effects_text"].format()', 'str(d["effects_text"])'):
+        assert nw.no_string_building_in_bound_params(src.replace(old, f"                    {bad},\n"), "seed_doshas"), bad
+
+
+_INSERT_RENAMES = {     # (asset, column) -> (text inside the writer's INSERT column list, the same text with the column renamed)
+    ("ka_kala_darshana", "narrative"): ("obstruction_summary, narrative, source_citation", "obstruction_summary, narrativ, source_citation"),
+    ("ka_jivana_parva", "narrative"): ("narrative, high_convergence_count", "narrativ, high_convergence_count"),
+    ("ka_bhavishya_lekha", "narrative"): ("\n                    falsifiability, source_chain, narrative,", "\n                    falsifiability, source_chain, narrativ,"),
+    ("ka_bhavishya_lekha", "falsifiability"): ("\n                    falsifiability, source_chain, narrative,", "\n                    falsifiabilit, source_chain, narrative,"),
+}
+_BOUND_NAMES = {"narrative": ("narrative", "ad_narrative", "pd_narrative", "proj_narrative"), "falsifiability": ("falsifiability",)}
+
+
+@pytest.mark.parametrize("asset_col", sorted(NARR_TUPLE_TABLES))
+def test_bound_value_checker_kills_the_literal_and_rename_mutants(asset_col):
+    asset, col = asset_col
+    path, table = NARR_TUPLE_TABLES[asset_col]
+    src, builder = _read(path), NARR_JSON_BUILDERS[asset_col][1]
+    literal = src
+    for n in _BOUND_NAMES[col]:
+        literal = literal.replace(f"json.dumps({n}),", "json.dumps({}),")
+    assert literal != src
+    assert nw.check_tuple_json_from_builder(literal, table, col, builder), "json.dumps({}) must be caught"
+    old, new = _INSERT_RENAMES[asset_col]
+    assert src.count(old) == 1
+    assert nw.check_tuple_json_from_builder(src.replace(old, new), table, col, builder), "renamed INSERT column must be caught"
+
+
+_SYNTH = """import json
+SQL = '''INSERT INTO t (a, narrative, c) VALUES (%s, %s, %s)'''
+def run(conn):
+    rows = []
+    n = build(1)
+    rows.append((1, json.dumps(n), 3))
+    conn.executemany(SQL, rows)
+def build(x):
+    return {"k": f"v{x}"}
+"""
+
+
+def test_checker_helpers_on_synthetic_writers():
+    good = _SYNTH
+    assert nw.check_tuple_json_from_builder(good, "t", "narrative", "build") == []
+    for name, bad in (("literal", good.replace("json.dumps(n)", "json.dumps({})")),
+                      ("other builder", good.replace("n = build(1)", "n = other(1)")),
+                      ("renamed column", good.replace("narrative, c", "narrativ, c")),
+                      ("placeholder count", good.replace("VALUES (%s, %s, %s)", "VALUES (%s, %s)")),
+                      ("star-arg before", good.replace("(1, json", "(*x, json")),
+                      ("not appended to rows", good.replace("rows.append", "other.append")),
+                      ("not executed", good.replace("conn.executemany(", "conn.fetch(")),
+                      ("wrong table", good.replace("INTO t ", "INTO u "))):
+        assert nw.check_tuple_json_from_builder(bad, "t", "narrative", "build"), name
+    # SQL comments with parentheses and a function-valued first expression do not shift the column position
+    commented = good.replace("VALUES (%s, %s, %s)", "VALUES (-- (x), it's\n f(%s, %s), %s, %s, %s)").replace(
+        "(a, narrative, c)", "(a, b, narrative, c)").replace("(1, json", "(1, 1, 2, json")
+    assert nw.check_tuple_json_from_builder(commented, "t", "narrative", "build") == []
+    # a list filled from a loop over `rows` (the bhavishya shape) is followed; one that is not is a problem
+    looped = good.replace("    conn.executemany(SQL, rows)", "    new_rows = []\n    for r in rows:\n        new_rows.append(r)\n    conn.executemany(SQL, new_rows)")
+    assert "new_rows)" in looped
+    assert nw.check_tuple_json_from_builder(looped, "t", "narrative", "build") == []
+    unrelated = looped.replace("new_rows.append(r)", "new_rows.append((9, 9, 9))")
+    assert nw.check_tuple_json_from_builder(unrelated, "t", "narrative", "build") != []
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division

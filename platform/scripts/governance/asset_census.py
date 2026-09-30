@@ -65,6 +65,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
@@ -478,12 +479,26 @@ DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_d
 # depends_on edge (a registry defect, recorded in the evidence file, not a declaration). Nothing overrides the radius.
 CARRIAGE_FIELDS = ("served_surface",)
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
-                    "read_evidence", "read_table", "read_kind", "evidence")
+                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.key(.key)*` (keys are plain identifiers: no indexes, wildcards or quoting). Used with fullmatch.
+PROSE_IDENT_MAX = 128          # a column name / JSON key longer than this is not an identifier anyone declared on purpose
 _PROSE_COLUMN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _PROSE_PATH_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.\$((?:\.[A-Za-z_][A-Za-z0-9_]*)+)")
+# evidence.prose_fields must cite writer code as `path.ext:LINE` (py/ts/tsx/sql); the 13 earlier declarations cite the
+# column's DDL migration instead and are marked `evidence_kind: "ddl"` (they then need a `NNN_name.sql` token, no line).
+EVIDENCE_PATH_LINE_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.(?:py|ts|tsx|sql):[1-9][0-9]*")
+EVIDENCE_KINDS = ("ddl",)
+_DDL_EVIDENCE_RE = re.compile(r"[0-9]+_[A-Za-z0-9_]+\.sql")
+
+
+def _blank_text(s) -> bool:
+    """True for a string with no visible character: empty, whitespace, control, or invisible format/separator code points
+    (zero-width space/joiner, BOM, word joiner, no-break and other Unicode spaces), which str.strip() alone does not remove."""
+    return all(unicodedata.category(ch)[0] in ("Z", "C") for ch in s)
+
+
 _CROSS_WRITE_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*")   # table.column; used with fullmatch
 # `served_surface: true` needs a real read: `read_evidence` is a repo-relative `path:line` (1-based) and `read_table` the
 # identifier that line reads FROM/JOINs (a test opens the file and checks the line); neither may exist otherwise.
@@ -510,10 +525,14 @@ def parse_prose_field(entry):
     prefix, `col.$` with no key, an index or wildcard, a column that does not look like a column name)."""
     if isinstance(entry, str):
         if _PROSE_COLUMN_RE.fullmatch(entry):
-            return entry, None
-        m = _PROSE_PATH_RE.fullmatch(entry)
-        if m:
-            return m.group(1), tuple(m.group(2).split(".")[1:])
+            if len(entry) <= PROSE_IDENT_MAX:
+                return entry, None
+        else:
+            m = _PROSE_PATH_RE.fullmatch(entry)
+            if m:
+                path = tuple(m.group(2).split(".")[1:])
+                if len(m.group(1)) <= PROSE_IDENT_MAX and all(len(k) <= PROSE_IDENT_MAX for k in path):
+                    return m.group(1), path
     raise DeclarationsError(f"prose_fields entry {entry!r} must be a column name or 'column.$.key(.key)*' "
                             f"(a JSON path into a JSONB column; keys are plain identifiers)")
 
@@ -599,9 +618,27 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                         raise DeclarationsError(f"{where}.prose_fields: {pf[i]!r} and {pf[j]!r} overlap (equal, or one "
                                                 f"column/path already covers the other)")
             evp = (e.get("evidence") or {}).get("prose_fields") if isinstance(e.get("evidence"), dict) else None
-            if not (isinstance(evp, str) and evp.strip()):
+            if not (isinstance(evp, str) and not _blank_text(evp)):
                 raise DeclarationsError(f"{where}.prose_fields is declared (even []), so evidence.prose_fields must "
                                         f"carry a non-blank pointer (the writer code read, file:line)")
+            ek = e.get("evidence_kind")
+            if ek is None and not EVIDENCE_PATH_LINE_RE.search(evp):
+                raise DeclarationsError(f"{where}.evidence.prose_fields must cite writer code as 'path.py:LINE' "
+                                        f"(py/ts/tsx/sql); DDL-only evidence needs evidence_kind 'ddl'")
+            if ek is not None:
+                if ek not in EVIDENCE_KINDS:
+                    raise DeclarationsError(f"{where}.evidence_kind must be null or one of {list(EVIDENCE_KINDS)}")
+                if not pf:
+                    raise DeclarationsError(f"{where}: an empty prose_fields ([]) is a claim about writer code, not DDL evidence")
+                if not _DDL_EVIDENCE_RE.search(evp):
+                    raise DeclarationsError(f"{where}: evidence_kind 'ddl' needs the migration file (NNN_name.sql) in evidence.prose_fields")
+        else:
+            ev_orphan = e.get("evidence")
+            if isinstance(ev_orphan, dict) and ev_orphan.get("prose_fields") is not None:
+                raise DeclarationsError(f"{where}.evidence.prose_fields is set but prose_fields is null (undeclared): "
+                                        f"an orphan pointer would read as evidence for a claim nobody made")
+            if e.get("evidence_kind") is not None:
+                raise DeclarationsError(f"{where}.evidence_kind is set but prose_fields is null (undeclared)")
         tbc = e.get("terminal_by_construction")
         if tbc is not None:
             if not isinstance(tbc, str) or not tbc.strip() or tbc != tbc.strip():
