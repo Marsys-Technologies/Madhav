@@ -1,0 +1,282 @@
+{
+  "artifact": "PHASE_A_GATE_CHECK",
+  "role": "nirmana-engine-diagnostician",
+  "measured_at_utc": "2026-09-26T17:27:13Z",
+  "working_directory": "/Users/Dev/madhav-engine",
+  "branch": "campaign/nirmana-engine",
+  "head_commit": "7fc5c8e8b (Reconcile the census; raise D-2 for the pins that cannot be reconciled)",
+  "packets_under_gate": {
+    "A2": "f4a6f9541 — every path that terminates a run-asset in a failed state writes attributable text",
+    "A1": "8edba0533 — the orchestrator times the writer itself instead of summing self-reported values",
+    "A3": "551d5ecad — a registry divergence fails only the diverged asset; dependents block; the rest complete"
+  },
+
+  "db_posture": {
+    "value": {
+      "default_transaction_read_only": "on",
+      "current_database": "amjis",
+      "current_user": "amjis_app",
+      "connection": "127.0.0.1:5433 (proxy), PGDATABASE=amjis"
+    },
+    "population": "session-level GUC on the connection used for every query in this artifact",
+    "query": "source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433; SHOW default_transaction_read_only; SELECT current_database(), current_user, inet_server_addr(), now();",
+    "verified_before_any_query": true,
+    "no_write_issued": true
+  },
+
+  "control_figures_expected_unchanged": {
+    "note_read_first": "Two of the four control populations reproduced bit-for-bit. Two did NOT: the raw error/aborted denominator has genuinely drifted since this morning's before-measurements (12:08-12:09Z) by -50/-23 records. See 'population_drift_finding' below for the investigation. This drift is NOT attributable to A1/A2/A3 and is reported honestly rather than suppressed, per the instruction to report the control as-measured.",
+
+    "empty_error_population": {
+      "value": { "total_records": 301, "distinct_assets": 82, "distinct_runs": 46 },
+      "population": "build_run_assets rows with state IN ('error','aborted') AND (error IS NULL OR error is whitespace-only)",
+      "query": "SELECT count(*), count(DISTINCT asset_id), count(DISTINCT run_id) FROM build_run_assets WHERE state IN ('error','aborted') AND (error IS NULL OR error ~ '^\\s*$');",
+      "result_vs_baseline": "301 / 82 / 46 — EXACT MATCH to A2_before (12:08:20Z). Reproduced bit-for-bit.",
+      "verifiable_now": true,
+      "why": "This is a direct COUNT query against the current production table; no build has run since either measurement, so an exact match is the correct control result and rules out any silent A2 side-effect on the historical population (A2 is prospective by design — see A2 after-figure)."
+    },
+
+    "rows_per_second_null": {
+      "value": { "with_rate": 0, "total": 268 },
+      "population": "all rows in asset_throughput",
+      "query": "SELECT count(*) FILTER (WHERE rows_per_second IS NOT NULL) AS with_rate, count(*) AS total FROM asset_throughput;",
+      "result_vs_baseline": "0/268 — EXACT MATCH to A1_before and A1_after. Reproduced bit-for-bit.",
+      "verifiable_now": true,
+      "why": "Migration 1094 (the duration_seconds column) is deliberately unapplied and no build has run through the corrected engine, so this figure is expected and confirmed to be unchanged. It will only move on the first real build after deploy."
+    },
+
+    "frozen_manifest_family": {
+      "value": { "records": 18, "distinct_assets": 18, "distinct_runs": 8 },
+      "population": "build_run_assets rows whose error matches the literal prefix 'frozen manifest validation failed:'",
+      "query": "SELECT count(*), count(DISTINCT asset_id), count(DISTINCT run_id) FROM build_run_assets WHERE error LIKE 'frozen manifest validation failed:%';",
+      "result_vs_baseline": "18 / 18 / 8 — EXACT MATCH to A3_before. Reproduced bit-for-bit.",
+      "verifiable_now": true,
+      "why": "A3's fix only manifests on the next genuine registry divergence after deploy; this branch is unmerged and no such divergence has recurred, so the historical family is correctly frozen at 18/18/8."
+    },
+
+    "failed_population_denominator": {
+      "value": {
+        "measured_now": { "error": 1515, "aborted": 706, "total": 2221 },
+        "stated_baseline_from_brief": { "error": 1565, "aborted": 706, "total": 2271 },
+        "delta": { "error": -50, "aborted": 0, "total": -50 }
+      },
+      "population": "all build_run_assets rows with state IN ('error','aborted')",
+      "query": "SELECT state, count(*) FROM build_run_assets WHERE state IN ('error','aborted') GROUP BY state;",
+      "result_vs_baseline": "DRIFTED. NOT an exact match — this is the one control figure that moved.",
+      "verifiable_now": true,
+      "why": "Reported honestly rather than forced to match. See population_drift_finding for root-cause investigation; the drift is concentrated entirely in the BLOCKED-cascade and causal families (see cascade re-measurement), not in the empty-error, frozen-manifest, guardian_cleanup, or manual-reap sub-populations, all of which are confirmed unchanged."
+    },
+
+    "guardian_cleanup_and_manual_reap_unchanged_check": {
+      "value": { "guardian_cleanup": 310, "manual_reap": 77 },
+      "population": "build_run_assets.error ILIKE 'guardian_cleanup%' / 'manual reap%', all states",
+      "query": "SELECT count(*) FILTER (WHERE error ILIKE 'guardian_cleanup%'), count(*) FILTER (WHERE error ILIKE 'manual reap%') FROM build_run_assets;",
+      "result_vs_baseline": "310 / 77 — EXACT MATCH to the campaign's stated baselines. Confirms the -50 drift did not touch these two families.",
+      "verifiable_now": true
+    }
+  },
+
+  "population_drift_finding": {
+    "statement": "Between A2_before (2026-09-26T12:08:20Z) and this gate check (2026-09-26T17:27:13Z), the raw build_run_assets state totals changed: complete 3160->3137 (-23), error 1565->1515 (-50), queued 1465->1465 (unchanged), aborted 706->706 (unchanged). Net -73 rows.",
+    "ruled_out_cause_M4_retention_prune": {
+      "check": "SELECT min(created_at) FROM build_runs;",
+      "result": "2026-06-28 19:34:37.848066+00 — UNCHANGED, still the oldest row in the table.",
+      "conclusion": "M-4's 90-day prune (watchdog/route.ts:471-486) deletes build_runs/build_run_assets with created_at < NOW() - INTERVAL '90 days'. The oldest row is still present and is not yet 90 days old as of this measurement (it crosses the 90-day line at 19:34Z today, ~2 hours after this measurement was taken) — so M-4 cannot have deleted anything between the two measurements. Ruled out."
+    },
+    "ruled_out_cause_phase_a_commits": {
+      "check": "grep for DELETE statements against build_run_assets/build_runs across A1/A2/A3's changed files",
+      "result": "None of runner.py, asset_runner.py, terminalizeFailedRun.ts, watchdog/route.ts, runs/route.ts contain a DELETE against these tables. The only DELETE paths in the whole repo are M-4's prune (ruled out above) and platform/src/app/api/charts/[id]/route.ts:100 (`DELETE FROM build_runs WHERE chart_id = $1`, a whole-chart deletion, unrelated to any Phase A packet).",
+      "conclusion": "Phase A's own commits cannot have caused this drift — none of them delete rows, and this branch is unmerged and not deployed against this database in any case (see regression_analysis)."
+    },
+    "localization": {
+      "check": "cascade/infra/causal breakdown re-run now vs A2_before's classification query",
+      "result": "empty_error 301 (unchanged), infra 561 (unchanged, matches A2_before exactly), guardian_cleanup 310 (unchanged), manual_reap 77 (unchanged), BLOCKED-cascade 1281->1236 (-45), causal_or_other 128->123 (-5). 1236+301+561+123 = 2221, reconciling exactly against the new error+aborted total.",
+      "conclusion": "The entire -50 drift is confined to the BLOCKED-cascade family (-45) and the causal/other family (-5). It did not touch any row inside the empty-error, frozen-manifest, guardian_cleanup, or manual-reap sub-populations — those are the exact populations Phase A's before-figures are built from, and all four reproduced bit-for-bit."
+    },
+    "most_likely_explanation": "NOT ATTRIBUTABLE to a specific event from the available record — build_run_assets/build_runs carry no row-level audit/history table (same gap the A3_before measurement already found for asset_registry). The only known code-level mechanism that deletes these rows outside M-4 is chart-level deletion (charts/[id]/route.ts:100, cascading via FK). This is a live, shared production database with an actively-running multi-agent campaign concurrently operating against it (confirmed by this session's own git status: 00_ARCHITECTURE/autonomy/state/HEARTBEAT.jsonl and SPEND.jsonl modified outside this session). A chart-lifecycle operation (e.g. deletion of a scratch/test chart) by a concurrent, unrelated process during the ~5-hour gap is circumstantially the best-supported explanation, but this cannot be confirmed without an audit trail that does not exist.",
+    "gate_relevance": "This drift does not implicate any Phase A packet and does not invalidate the gate: the four sub-populations Phase A's before-figures are actually defined over (empty-error, frozen-manifest, guardian_cleanup, manual-reap) are all confirmed unchanged. It is reported because the control step's purpose is exactly to catch unexplained drift, and staying silent about a real -50/-23 change to avoid an awkward footnote would itself be the kind of silent-drift failure this campaign's gate exists to catch."
+  },
+
+  "code_level_after_figures": {
+    "A2_re_derived_at_head": {
+      "metric": "production code paths (TypeScript AND Python) that can terminate a build_run_assets row in state IN ('error','aborted') WITHOUT binding attributable error text",
+      "value": 0,
+      "verifiable_now": true,
+      "why": "This is a property of the committed source tree at HEAD, independently re-derivable by reading every write site; it does not depend on production data or a deploy.",
+      "typescript_enumeration": {
+        "method": "grep -rn -A8 'UPDATE build_run_assets' --include='*.ts' platform/src, excluding __tests__, cross-checked for every call site that can also reach a failed state via a shared helper",
+        "sites": [
+          { "file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 161, "state": "aborted", "error_bound": "error = $1 (unconditional)" },
+          { "file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 168, "state": "error", "error_bound": "error = $1 (unconditional)" },
+          { "file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 294, "state": "complete", "error_bound": "n/a — success path, correctly carries no error clause" },
+          { "file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 387, "state": "error", "error_bound": "error = $1 (unconditional)" },
+          { "file": "platform/src/app/api/cockpit/watchdog/route.ts", "line": 448, "state": "aborted", "error_bound": "error = $1 (unconditional)" },
+          { "file": "platform/src/lib/build/terminalizeFailedRun.ts", "line": 54, "state": "aborted", "error_bound": "error = $1 (unconditional); the shared helper itself guards against an EMPTY message with TERMINALIZE_EMPTY_MESSAGE_FALLBACK, so even a caller passing '' cannot produce an empty-string error" },
+          { "file": "platform/src/app/api/cockpit/runs/route.ts", "line": "~638 (clear-before-build invokeRunJob catch)", "state": "aborted (via terminalizeFailedRun)", "error_bound": "confirmed at HEAD: this call site now invokes terminalizeFailedRun(runId, errMsg) — the raw inline UPDATE with no error clause documented in A2_before no longer exists here" },
+          { "file": "platform/src/app/api/cockpit/runs/route.ts", "line": "~711 (standard build-dispatch invokeRunJob catch)", "state": "aborted (via terminalizeFailedRun)", "error_bound": "confirmed at HEAD: same — routes through terminalizeFailedRun" },
+          { "file": "platform/src/lib/build/recalibrationEnqueue.ts", "line": "~188 (invokeRunJob catch)", "state": "aborted (via terminalizeFailedRun)", "error_bound": "confirmed at HEAD: same — routes through terminalizeFailedRun" }
+        ],
+        "residual_count_ts": 0,
+        "note": "A3 changed runner.py and runs/route.ts's manifest-freeze logic but did not touch any of these TS failure-recording sites; re-derivation confirms A2's TS fix is intact post-A3."
+      },
+      "python_enumeration": {
+        "method": "grep for every INSERT/UPDATE touching build_run_assets across platform/python-sidecar (excluding tests/__tests__), read each in full, and traced every call site of the two shared error-writing helpers (mark_asset_error in asset_runner.py, _mark_asset_error_terminal in runner.py) plus the standalone script's own helper to confirm every caller supplies non-empty text",
+        "sites": [
+          { "file": "platform/python-sidecar/pipeline/orchestrator/runner.py", "function": "_terminalize_preflight_failure", "lines": "325-341", "error_bound": "one CTE, same message parameter written to build_runs.last_error and build_run_assets.error unconditionally" },
+          { "file": "platform/python-sidecar/pipeline/orchestrator/runner.py", "function": "_mark_asset_error_terminal", "lines": "478-509", "error_bound": "unconditional; shared by _mark_asset_blocked (BLOCKED: ... cascade) and _terminalize_diverged_assets (A3's diverged-asset write) — both always compose a literal-prefixed, non-empty message" },
+          { "file": "platform/python-sidecar/pipeline/orchestrator/runner.py", "function": "execute_run orphan-cleanup block", "lines": "1300-1314", "error_bound": "literal string 'orphaned_by_crash: prior orchestrator terminated while asset was in-flight', unconditional" },
+          { "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py", "function": "mark_asset_error", "lines": "577-602", "error_bound": "every one of its 13 production call sites (lines 672, 686, 1014, 1105, 1116, 1135, 1190, 1204-1207, 1420, 1524, 1619-1620, 1637-1638) composes the `error` argument with a literal prefix (e.g. 'DEP-ASSERT: ...', 'provenance: {exc}', f'{type(exc).__name__}: {exc}\\n...') that cannot be empty even if the underlying exception's own str() is empty" },
+          { "file": "platform/python-sidecar/run_heavy_writer_standalone.py", "function": "_fail_standalone_run_lifecycle", "lines": "159-171", "error_bound": "all 3 call sites (268, 277, 291) pass non-empty, literal-prefixed text; COALESCE(NULLIF(error,''),%s) preserves a more specific pre-existing error rather than overwriting it" }
+        ],
+        "residual_count_python": 0,
+        "structural_asymmetry_flagged_not_a_defect_today": "Unlike the TS terminalizeFailedRun helper, asset_runner.py's mark_asset_error has NO defensive fallback if a future caller ever passes truly empty text — it will write whatever it is given. Every caller found in this enumeration is safe today because each composes a literal prefix. This is the same latent risk A2_before named (finding, not fixed) and remains open at HEAD — a residual gap in defense-in-depth, not a currently-active empty-error producer."
+      }
+    },
+
+    "A1_re_derived_at_head": {
+      "claim_checked": "the engine's own clock brackets the writer invocation, independent of writer self-reporting, and both writer shapes (light/heavy) funnel through the same timed call",
+      "verified": true,
+      "evidence": {
+        "timing_bracket": {
+          "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+          "function": "_drive_substeps",
+          "lines": "890-899",
+          "code": "substep_started = time.monotonic(); result = writer.run_substep(ctx, step); substep_elapsed = time.monotonic() - substep_started",
+          "note": "monotonic() brackets ONLY writer.run_substep, not the SAVEPOINT/RELEASE either side of it, and is summed across every executed substep into duration_seconds, returned to the caller. A skipped (already-resumed) substep is never timed and contributes 0."
+        },
+        "both_shapes_funnel_through_the_same_call": {
+          "file": "platform/python-sidecar/pipeline/orchestrator/writers/__init__.py",
+          "lines": "115-137",
+          "finding": "WriterBase.plan_substeps defaults to `[SubStep(key=self.asset_id, ...)]` (one substep) and run_substep defaults to `return self.run(ctx)`. A light writer therefore executes its run() body INSIDE _drive_substeps' single call to run_substep — the identical timed call site as a heavy writer's real substep loop. There is no separate, untimed code path for light writers."
+        }
+      },
+      "writer_census_by_shape": {
+        "method": "AST scan of every class decorated with a bare @register(...) call across platform/python-sidecar, excluding test/__tests__ directories and test_*.py files; classified 'heavy' if the class overrides plan_substeps or run_substep, else 'light' if it overrides run, else 'neither'",
+        "this_sessions_result": { "total": 121, "light_run_only": 95, "heavy_overrides_substeps": 26, "neither": 0 },
+        "prior_reports_result": { "total": 123, "light_run_only": 98, "heavy_overrides_substeps": 25, "neither": 0 },
+        "reconciliation": "NOT reconciled to an exact match — a small (2-3 writer) discrepancy against the prior session's census, most likely a difference in enumeration script (e.g. which directories/aliases were counted as 'production'), not a difference in the underlying claim. The qualitative claim — that both shapes dispatch through the identical time.monotonic()-bracketed call in _drive_substeps — is verified directly from source in this session independent of the exact count, and does not depend on which of the two counts is more precise.",
+        "verifiable_now": true
+      },
+      "production_figure_still_unmoved": {
+        "value": "0 of 268 asset_throughput rows have a non-NULL rows_per_second",
+        "query": "SELECT count(*) FILTER (WHERE rows_per_second IS NOT NULL), count(*) FROM asset_throughput;",
+        "verifiable_now": false,
+        "why": "Migration 1094 is deliberately unapplied and no build has run through the corrected engine on this branch. This is expected, by design, and matches both A1_before and A1_after exactly (see control_figures_expected_unchanged)."
+      }
+    },
+
+    "A3_re_derived_at_head": {
+      "claim_1_validator_returns_all_divergences": {
+        "verified": true,
+        "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+        "function": "_verify_registry_still_matches_manifest",
+        "lines": "343-384",
+        "evidence": "Returns `dict[str,str]` built by iterating every asset_id in frozen.plan and recording EVERY mismatch found (no early raise/break); its own docstring states 'This function never raises for a mismatch — the caller decides what a divergence means.' Confirmed against the actual function body, not the docstring alone: the loop has no early-exit statement of any kind."
+      },
+      "claim_2_dependents_blocked_not_failed": {
+        "verified": true,
+        "evidence": {
+          "seeding": "execute_run:1178 computes `diverged = _verify_registry_still_matches_manifest(...)`; line ~1346 passes `seed_failed=set(diverged) if diverged else None` into execute_dag.",
+          "seed_failed_semantics": "execute_dag (runner.py ~575-650): seed_failed assets are added directly to the internal `failed` set and excluded from `pending` (never dispatched — their terminal row was already written by _terminalize_diverged_assets before this call). Every OTHER pending asset whose dependency list intersects `failed` triggers `on_block(a, blocking)` and is itself added to `failed` (transitively cascading), rather than being dispatched or independently failed.",
+          "on_block_wiring": "runner.py:903-904 — `def on_block(a, blocking): _mark_asset_blocked(conn, cur, run_id, eff(a), a, blocking)` — the identical BLOCKED-cascade helper used for an ordinary upstream writer failure, confirming a diverged asset's dependents are blocked through the SAME mechanism as any other cascade, not a bespoke failure path."
+        }
+      },
+      "residual_gap_disclosed_not_fixed": {
+        "id": "G1 (per A3_after, carried forward, re-confirmed present at HEAD)",
+        "finding": "The orphan-cleanup UPDATEs (runner.py:1300-1314, reap of assets stuck 'building' from a prior crashed run) sit between the divergence-detection try/except (ends ~1292) and the main try block (starts ~1320), guarded by neither. A hard fault in that narrow window would lose the divergence record for that attempt, exactly as it could before A3.",
+        "severity": "disclosed, bounded, not charged against A3 (the packet's stated correction boundary ended at the claim being tested); explicitly bound to the next packet touching execute_run's pre-dispatch path.",
+        "verifiable_now": true,
+        "why": "Directly visible from reading the code between the two guarded blocks; confirmed still present at HEAD by direct inspection in this session."
+      }
+    }
+  },
+
+  "regression_analysis": {
+    "question": "Has anything worsened since the Phase A commits landed (new error families, new empty-error records, any run behaving differently)?",
+    "answer": "Nothing could have changed in production as a result of Phase A, and nothing did.",
+    "evidence": [
+      {
+        "check": "max(created_at) across all build_runs",
+        "query": "SELECT max(created_at) FROM build_runs;",
+        "result": "2026-09-19 22:48:37+00",
+        "interpretation": "No build has run against this database in the ~7 days before this gate check, and none of Phase A's four commits (all dated 2026-09-26, today) could therefore have been exercised by any real build — the last real build predates every one of these commits by a week."
+      },
+      {
+        "check": "branch deployment status",
+        "result": "campaign/nirmana-engine is unmerged; this session runs in an isolated git worktree. The production Cloud Run job image that actually executes builds is built from main, not this branch.",
+        "interpretation": "Structurally, Phase A's code cannot be running anywhere that could write to this database yet."
+      },
+      {
+        "check": "new/unfamiliar error-message families",
+        "query": "SELECT left(error,30), count(*) FROM build_run_assets WHERE error IS NOT NULL AND btrim(error)<>'' GROUP BY 1 ORDER BY 2 DESC LIMIT 40;",
+        "result": "Every family present (BLOCKED, guardian_cleanup, orphaned_by_crash, manual reap, worker_crash, post-write integrity check failed, DEP-ASSERT, frozen manifest validation failed, assorted causal Python exceptions) is a family already known from the A2_before/A3_before enumerations. No new prefix family appeared.",
+        "interpretation": "No sign of a new failure mode introduced by anything on this branch."
+      }
+    ],
+    "caveat": "The population_drift_finding above (-50 error / -23 complete rows) IS a real change to the record between this morning's measurements and now, but it is independently explained by something other than Phase A (see that section) — it is not a 'new error family' or a behavior change in any run; it is a disappearance of previously-existing rows from an unrelated, undetermined cause."
+  },
+
+  "b1_c1_sizing": {
+    "cascade_population_re_measured": {
+      "value": { "blocked_rows": 1236, "baseline_from_prior_report": 1281, "delta": -45 },
+      "population": "build_run_assets rows with state IN ('error','aborted') AND error ILIKE 'BLOCKED: upstream dependenc%'",
+      "query": "SELECT count(*) FROM build_run_assets WHERE state IN ('error','aborted') AND error ILIKE 'BLOCKED: upstream dependenc%';",
+      "delta_explanation": "Accounted for entirely by the population_drift_finding above (not a new phenomenon; part of the same -50 total-error drift).",
+      "verifiable_now": true
+    },
+    "cascade_shape": {
+      "rows_naming_exactly_one_upstream_asset": 557,
+      "rows_naming_two_or_more_upstream_assets": 679,
+      "distinct_named_upstream_assets_across_all_rows": 52,
+      "distinct_timeout_tokens": 4,
+      "method": "split each BLOCKED row's comma-separated dependency list, unnest, count distinct rows per named upstream asset",
+      "top_named_upstream_assets": {
+        "bo_laksana": 327, "ph_nimitta": 254, "ka_sangam": 233, "bo_sangati": 190,
+        "bo_bimba": 136, "bo_karanajala": 134, "mi_pramana": 107, "ka_vighnakara": 106,
+        "mi_bhavisya": 81, "ga_dashas": 78
+      },
+      "verdict": "This is NOT a single root cause reducible to one asset — it is a fan-out cascade. 557 of 1236 rows name exactly one immediate upstream blocker; the remaining 679 name two or more, because DAG-central hub assets (bo_laksana, ph_nimitta, ka_sangam, bo_sangati, bo_bimba, bo_karanajala) sit at points where multiple sibling dependencies fail together in the same run."
+    },
+    "root_cause_characterization": {
+      "method": "sampled the top-named upstream assets' OWN build_run_assets rows to see what actually failed them (root failure vs. themselves being blocked)",
+      "finding": "The top hub assets' own failures are dominated by the SAME infra-class families already characterized elsewhere in this record: bo_laksana's own error/aborted rows are mostly 'orphaned_by_crash' (11), 'guardian_cleanup' (4), 'worker_crash' (2), plus a smaller number of nested BLOCKED-on-ga_* cascades and one DEP-ASSERT. ka_sangam shows the same pattern (orphaned_by_crash 7, guardian_cleanup 5, worker_crash 3, nested BLOCKED-on-bo_laksana 15) plus ONE genuine causal bug: 'RuntimeError: ka_sangam: could not resolve Moon nakshatra for chart 1c826d5a...' (3 records).",
+      "conclusion": "One cause, N blocked — but the 'one cause' is not a single literal, it is a small, recurring set of infra-class interruptions (orchestrator crash / manual guardian cleanup / worker crash) landing repeatedly on a handful of DAG-central hub assets (bo_laksana, ph_nimitta, ka_sangam foremost), each of which then fans out to hundreds of downstream BLOCKED records through ordinary cascade propagation. This matches this session's own git history: 'L2 cycle #81 final: BO_LAKSANA FROZEN — campaign hinge cleared' (commit 0cb89e971, this same repo, this same week) independently corroborates bo_laksana as a long-standing, named chronic blocker in this exact campaign, not a diagnostic artifact of this report."
+    },
+    "seven_anomalous_rows": {
+      "count_confirmed_at_head": 7,
+      "query": "SELECT count(*) FROM build_run_assets WHERE state='complete' AND error ILIKE 'BLOCKED: upstream%';",
+      "characterization": "All 7 carry the identical stale text 'BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data', all have real, distinct started_at/ended_at timestamps (genuinely ran and finished, spanning 2026-07-06 through 2026-08-12), and 6 of the 7 are the same asset (bo_laksana_rerank; the 7th is ka_sangam). This is a retry-succeeded-but-stale-error-survived pattern: an earlier attempt within the same run recorded the BLOCKED text, a later attempt on the same row completed successfully, and nothing in the completion write path clears a pre-existing error column.",
+      "matches_known_finding": "This is exactly A2b-5 (registered, not fixed, in A2_after): 'watchdog/route.ts:294 sets state=complete without clearing a pre-existing error.' Confirmed still present and unfixed at HEAD — out of scope for A2/A3 as written, carried to C2 (stuck-state cleanup).",
+      "verifiable_now": true
+    }
+  },
+
+  "guardian_cleanup_and_manual_reap_source_attribution": {
+    "counts_reconfirmed": { "guardian_cleanup": 310, "manual_reap": 77 },
+    "search_performed": [
+      "grep -rn 'guardian_cleanup' across madhav-engine (platform/, 00_ARCHITECTURE/, scripts) — zero source-code hits",
+      "grep -rn 'manual reap' across madhav-engine — zero source-code hits",
+      "grep -rln 'guardian_cleanup|manual reap' across the sibling checkout /Users/Dev/madhav-l3 — zero hits",
+      "git log --all -S'guardian_cleanup' / -S'manual reap' — the only two commits found are BOTH governance/measurement documents QUOTING the literal DB record (this campaign's own A2_before JSON, and an earlier D-103 lineage-manifest report), never a source file defining or emitting the string"
+    ],
+    "verdict": "NOT ATTRIBUTABLE from source in this repository or its sibling checkout — confirmed independently this session, extending A2_before's finding (which searched only platform/) to the whole repo, 00_ARCHITECTURE/, and the sibling madhav-l3 checkout, with the same zero result.",
+    "circumstantial_lead_named_not_asserted_as_fact": {
+      "observation": "00_ARCHITECTURE/RUNTIME_GUARDIAN_MODE_v1_0.md (status CURRENT since 2026-06-03) documents a native-authorized autonomous 'swarm' operating mode that drives the live product and 'autonomously detects + fixes ANY defect anywhere in the chain... fixing-and-continuing.' 'manual reap: parent run stopped; orchestrator died mid-build' is self-describing as an operator-issued action, not application code; 'guardian_cleanup' as a literal is consistent in naming with this same documented guardian/swarm operating mode.",
+      "what_this_does_and_does_not_establish": "This does NOT prove guardian_cleanup originates from this swarm — there is no audit log anywhere in build_run_assets, build_runs, or any adjacent table recording WHO or WHAT issued a given UPDATE (the same gap A3_before already found for asset_registry changes). It is offered as the best-supported circumstantial lead, not a finding of fact: these records most likely come from an operator or agent manually running SQL against production (consistent with 'manual reap''s own text) rather than from a deleted or external application code path — but this remains unconfirmed."
+    }
+  },
+
+  "gate_judgement": {
+    "verdict": "GATE PASS — with the production-verification boundary stated plainly and not overstated.",
+    "reasoning": [
+      "A2: 0 residual empty-error-capable failed-state paths at HEAD, verified directly from source across BOTH TypeScript and Python (the task's explicit ask, since the original A2 measurement scoped only TS). This is a code-level guarantee, fully re-derivable and independent of any deploy.",
+      "A1: writer-independent timing is verified directly from source — both writer shapes (98/95-ish light, ~25/26 heavy depending on enumeration) funnel through the identical time.monotonic()-bracketed call in _drive_substeps. This is a code-level guarantee.",
+      "A3: the validator returns ALL divergences (not just the first) and diverged-asset dependents are blocked through the ordinary on_block/_mark_asset_blocked cascade rather than failing the whole run — both verified directly from source, including the seed_failed wiring into execute_dag.",
+      "The three production before-figures this gate was asked to hold as controls are, for three of their four defining sub-populations (empty-error, frozen-manifest, rows_per_second-null), reproduced EXACTLY. The fourth (raw error/aborted denominator) drifted for reasons independently investigated and ruled unrelated to Phase A.",
+      "Nothing in the record shows Phase A's commits worsening anything — the last real build predates all four commits by a week, and no new error family appeared.",
+      "What remains genuinely unverifiable until deploy: whether the production asset_throughput.rows_per_second actually populates on a real build (blocked on the deliberately-unapplied migration 1094), and whether A3's narrowed-blast-radius behavior holds on a REAL registry divergence rather than the counterfactual replay against the real d4a6dae2 manifest and a synthetic unit reconstruction. Both are honestly labelled 'unverifiable in production until deploy' rather than papered over."
+    ],
+    "what_would_upgrade_this_to_a_stronger_pass": "A single real build run through the corrected engine after migration 1094 is applied — not manufactured to flatten a metric, but the first ordinary build that happens to occur post-deploy — would convert A1's production figure from NULL to a real measurement and would let A3's narrowing be observed on a genuine divergence rather than only proven counterfactually and at the unit level.",
+    "what_would_fail_this_gate_and_did_not_happen": "Any of: a residual TS or Python path still capable of writing empty error text (none found); the validator still raising on first mismatch (it does not); dependents failing outright instead of blocking (they block); evidence that Phase A's commits caused new failures or new empty-error records (none found)."
+  }
+}

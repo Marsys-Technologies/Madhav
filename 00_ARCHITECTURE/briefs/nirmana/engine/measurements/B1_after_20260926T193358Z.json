@@ -1,0 +1,83 @@
+{
+  "packet": "B1",
+  "phase": "after",
+  "taken_by": "independent reviewer, re-enumerated against live production; carried verbatim by the executor",
+  "taken_at_utc": "2026-09-26T19:31Z",
+  "db_posture": "read-only (transaction_read_only=on, amjis, PGPORT=5433)",
+  "population_warning": "This database is written by other autonomous campaigns while we measure it. The BLOCKED population moved 1,236 -> 1,243 within one hour, and two assets left the blocked set mid-review. Every figure below carries its timestamp for that reason.",
+
+  "the_premise_was_inverted": {
+    "what_the_before_measurement_claimed": "seven surfaces count a blocked asset as a FAILURE",
+    "what_is_actually_true": "for the whole deriveState chain they counted it as a SUCCESS - fetchAllCounts hard-coded error:null on both paths, so deriveState's entire 'blocked' branch was unreachable for a real cascade victim in every mode",
+    "measured_before": "9 of 10 real production blocked pairs rendered 'lit' (green), 1 rendered 'dormant', 0 rendered 'error', 0 rendered 'blocked'; 7 were on the native's own chart",
+    "executor_accountability": "this was an executor-side diagnosis failure. The census I commissioned and passed to the builder as authoritative was wrong three ways: it NAMED a dead surface (AssetNode.tsx, zero live importers), MISSED live ones (AgentsView, AtlasView, AssetProgressBar, PlanTimeline, runs/[id]/assets, ArmillaryGraph), and MISCHARACTERISED THE DIRECTION for those it did name. Found only because the gate refused the packet twice."
+  },
+
+  "primary_after_figure": {
+    "metric": "real production cascade victims rendering as blocked rather than green",
+    "before": "0 of 10 (9 lit, 1 dormant)",
+    "after": "8 of 8 currently-blocked pairs render 'blocked'",
+    "instrument": "the reviewer re-enumerated every currently-blocked pair from live production and executed the real errorFromThroughput + deriveState against them, rather than against the implementer's fixture",
+    "fixture_fidelity": "verified byte-faithful - all 8 rows diffed programmatically on md5(last_error), microsecond timestamps, rows_written, has_substeps and target_floor",
+    "wider_than_claimed": "the implementer's fixture covered 7; the reviewer found 8 genuinely blocked, the extra being mi_bhara/1c826d5a"
+  },
+
+  "negative_control_decision_2_survives": {
+    "claim": "a timeout is a CAUSE, not a cascade victim",
+    "result": "both timeout rows still render 'error', not 'blocked', including ka_gochara_sweep/cb73cd3d which the fixture omitted",
+    "engine_side": "execute_dag's timeout branch no longer fabricates blocking_deps=['timeout:600s']; _mark_asset_timeout writes an honest TIMEOUT: message with disposition and blocked_by left NULL"
+  },
+
+  "blast_radius_of_the_fix": {
+    "measured": "18 badges flip off green",
+    "breakdown": {"to_blocked": 13, "to_error_or_partial": 4, "timeout": 1},
+    "note": "the 4 flipping to error/partial are PRE-EXISTING FALSE-GREENS repaired as a side effect",
+    "not_a_regression": "all 18 are assets whose own state column already said 'error' - the badge was disagreeing with the database, and now agrees"
+  },
+
+  "the_executor_instruction_that_was_correctly_refused": {
+    "instruction": "carry the existing signal through",
+    "what_the_builder_did_instead": "gated on tp.state === 'error' before returning last_error",
+    "why_it_was_right": "the reviewer states it would have called the unconditional pass-through a DEFECT. Live, exactly two rows carry last_error on a non-error state: bg_transit_engine (state='lit') would have flipped healthy -> error on screen; ga_dashas (state='incomplete') is masked by an earlier branch.",
+    "doctrine": "computed state over stale text - the campaign's own N.8 principle applied against the executor's instruction",
+    "separate_defect_registered": "a never-cleared last_error on a healthy asset is the A2b-5 family and is registered as C-2, so the gate does not become the reason nobody fixes it"
+  },
+
+  "governance_census": {
+    "before": "graded a chart FAIL/PARTIAL from cascade-only history, reading disposition but never checking blocked_dependency",
+    "after": "genuine_error = error - blocked; an all-cascade zero-defect history grades PASS with the blocked count still surfaced rather than silently dropped",
+    "n8_correction_applied": "complete == 0 with blocked rows now grades PARTIAL, not PASS - an asset that has never once finished a build must not read green regardless of why its failures happened",
+    "simulated_impact": "reviewer simulated every asset's post-backfill grade: 6 FAIL->FAIL, 7 FAIL->PARTIAL, 89 PARTIAL->PARTIAL, 22 PASS->PASS, ZERO flips to PASS"
+  },
+
+  "backfill": {
+    "predicate": "state='error' AND disposition IS NULL AND error LIKE 'BLOCKED:%' AND error NOT LIKE '%timeout:%s%'",
+    "verified_against_live_production_at": "2026-09-26T18:12:34Z",
+    "result": "1,183 eligible / 53 excluded / ZERO near-miss / ZERO over-exclusion",
+    "arithmetic_closes": "1183 + 53 + 7 = 1243 = every BLOCKED: row, nothing left over",
+    "root_column_not_backfilled": "prospective-only by decision - 89% of historical blocker edges point to another blocked asset, 3% resolve to nothing, so a root backfill would be invention",
+    "seven_anomalous_rows": "protected twice over - all are state='complete' AND all carry timeout:600s text"
+  },
+
+  "certification_stated_plainly": {
+    "counting_surfaces": "COMPLETE",
+    "labelling_surfaces": "NOT COMPLETE - PlanTimeline and /api/cockpit/runs/[id]/assets deferred to B2 and recorded as in-category; ArmillaryGraph.stateColor newly found; three unmapped-default sites survive",
+    "R6_status": "one-third done - AtlasView is exhaustive with an assertNever; AssetProgressBar was refused on an argument that did not survive contact (sseState has ZERO callers, and 'partial' and 'incomplete' are unmapped in SEG today, silently rendering dormant in production). Carried as C-3."
+  },
+
+  "claims_narrowed_toward_less_certainty": {
+    "note": "all three understate rather than overstate",
+    "items": [
+      "the currently-blocked population is 8, not the 7 the implementer measured",
+      "the 'can hide a count_sql failure' limit is UNEVIDENCED - the reviewer could not construct the case",
+      "'the other 2 since completed via a later successful run' is CONTRADICTED by the run ledger: ga_condition's only completion predates its block by six weeks, so its disappearance from the blocked set is unexplained and most likely the same concurrent-campaign row deletion already documented"
+    ]
+  },
+
+  "mutation_discipline": {
+    "this_pass": 5,
+    "across_three_gates": 16,
+    "every_file_byte_restored": true,
+    "note": "the previous pass's 'decisive assertion' was decorative - deleting the fix left 4/4 green. It now fails under the same mutation that exposed it."
+  }
+}
