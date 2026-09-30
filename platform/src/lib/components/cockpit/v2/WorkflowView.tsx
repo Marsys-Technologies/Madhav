@@ -15,6 +15,12 @@ const STATE_COLOR: Record<string, string> = {
   complete:  'var(--marsys-success, #4caf50)',
   error:     'var(--marsys-error, #e05252)',
   skipped:   'var(--on-dark-mut)',
+  // Packet B2 — C-4 (review B1_rereview2_20260926T193112Z.md): a cascade victim
+  // (disposition==='blocked_dependency') is a CONSEQUENCE of someone else's
+  // failure, never this asset's own defect — amber, matching AgentsView.tsx's
+  // BlockedRow and AssetRow.tsx's own 'blocked' styling, distinct from the red
+  // 'error' above.
+  blocked:   'rgba(236,147,50,0.9)',
 }
 
 const EVENT_COLOR: Record<string, string> = {
@@ -42,7 +48,14 @@ function PlanTimeline({ assets, currentAssetId, now }: { assets: ActiveRunAsset[
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       {assets.map(ra => {
         const isBuilding = ra.state === 'building' || ra.asset_id === currentAssetId
-        const stateColor = STATE_COLOR[ra.state] ?? STATE_COLOR.queued
+        // Packet B2 — C-4: was `ra.state` rendered and coloured RAW — the one
+        // labelling surface that read the literal word "error" (in red) for a
+        // cascade victim, from the same useActiveRun hook AgentsView.tsx already
+        // reads correctly (ra.disposition, migration 1201). Mirrors AgentsView's
+        // own distinction: state='error' + disposition==='blocked_dependency' is
+        // a CONSEQUENCE, never this asset's own defect.
+        const displayState = (ra.state === 'error' && ra.disposition === 'blocked_dependency') ? 'blocked' : ra.state
+        const stateColor = STATE_COLOR[displayState] ?? STATE_COLOR.queued
         const elapsedMs = ra.started_at
           ? (ra.ended_at ? new Date(ra.ended_at).getTime() : now) - new Date(ra.started_at).getTime()
           : null
@@ -79,7 +92,7 @@ function PlanTimeline({ assets, currentAssetId, now }: { assets: ActiveRunAsset[
               </span>
             </div>
             <div style={{ fontSize: '10px', color: stateColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {ra.state}
+              {displayState}
             </div>
             <div style={{ fontSize: '10px', color: 'var(--on-dark-faint)', fontFamily: 'var(--mono-stack)', textAlign: 'right' }}>
               {elapsedStr ?? (ra.started_at ? formatRelative(ra.started_at) : '—')}

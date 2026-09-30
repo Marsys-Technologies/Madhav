@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import type { BuildStage, SubstepInfo } from './buildStage'
 import { stageFill } from './buildStage'
+import type { AssetState } from '@/app/api/cockpit/stats/deriveState'
 
 interface AssetProgressBarProps {
   state: string
@@ -29,7 +30,20 @@ interface SegmentColors {
   trackBorder: string
 }
 
-const SEG: Record<string, SegmentColors> = {
+// Packet B2 — C-3 (review B1_rereview2_20260926T193112Z.md): NOT annotated
+// `Record<string, SegmentColors>` (that annotation is exactly what made a missing
+// AssetState key invisible to `tsc` — an index-signature type has no required
+// properties, so `SEG.partial`/`SEG.incomplete` being absent compiled clean).
+// Left to infer its own literal-keyed object type instead, so the `_exhaustive`
+// witness below can actually catch a missing key at compile time. The runtime
+// lookup (`SEG[effectiveState]`, effectiveState: string) needs an explicit cast
+// at its one call site — seed of the exhaustiveness/dynamic-lookup tension: a
+// literal-keyed type refuses arbitrary string indexing, so the cast is deliberate
+// and singular, not a return to the old blanket `Record<string,...>` escape.
+// Exported for test-only iteration (the SEG-exhaustiveness runtime test asserts
+// every ALL_ASSET_STATES member has a real entry, not a fallback) — not consumed
+// by any other application module.
+export const SEG = {
   lit: {
     filledBg:     'rgba(168,124,42,0.82)',
     filledBorder: 'rgba(212,166,72,0.70)',
@@ -70,6 +84,35 @@ const SEG: Record<string, SegmentColors> = {
     continuousFill: 'rgba(160,104,48,0.60)',
     trackBorder:  'rgba(122,86,24,0.22)',
   },
+  // Packet B2 — C-3 (review B1_rereview2_20260926T193112Z.md): the two AssetState
+  // members that were unmapped here, silently rendering 'dormant' styling in
+  // production. 'partial' (badge-honesty, pre-D-4b readiness pass) and
+  // 'incomplete' (migration 474 / SAMĀPTI B-COCKPIT-INCOMPLETE, DVA Ruling 24) are
+  // both "ran, real substeps committed, not yet finished, resumable, never lit" —
+  // the same visual family as 'stale' (unfinished, not a genuine 'error'), matching
+  // LiveDependencyGraph.tsx's strokeFor() grouping of stale/partial/incomplete
+  // together, distinct from 'blocked' (a CONSEQUENCE, orange) and from 'error' (a
+  // genuine defect, red).
+  partial: {
+    filledBg:     'rgba(160,104,48,0.60)',
+    filledBorder: 'rgba(196,128,64,0.55)',
+    activeBg:     'rgba(160,104,48,0.35)',
+    activeBorder: 'rgba(196,128,64,0.40)',
+    emptyBg:      'rgba(122,86,24,0.08)',
+    emptyBorder:  'rgba(122,86,24,0.14)',
+    continuousFill: 'rgba(160,104,48,0.60)',
+    trackBorder:  'rgba(122,86,24,0.22)',
+  },
+  incomplete: {
+    filledBg:     'rgba(160,104,48,0.60)',
+    filledBorder: 'rgba(196,128,64,0.55)',
+    activeBg:     'rgba(160,104,48,0.35)',
+    activeBorder: 'rgba(196,128,64,0.40)',
+    emptyBg:      'rgba(122,86,24,0.08)',
+    emptyBorder:  'rgba(122,86,24,0.14)',
+    continuousFill: 'rgba(160,104,48,0.60)',
+    trackBorder:  'rgba(122,86,24,0.22)',
+  },
   error: {
     filledBg:     'rgba(181,71,76,0.38)',
     filledBorder: 'rgba(181,71,76,0.60)',
@@ -99,6 +142,24 @@ const SEG: Record<string, SegmentColors> = {
     emptyBorder:  'rgba(122,86,24,0.12)',
     continuousFill: 'rgba(122,86,24,0.20)',
     trackBorder:  'rgba(122,86,24,0.16)',
+  },
+  // Packet B1 (review B1_review_20260926T182200Z.md C-2b): SEG is Record<string,...>,
+  // not typed against AssetState, so `SEG[effectiveState] ?? SEG.dormant` silently
+  // fell back to dormant styling for 'blocked' with nothing to catch the gap at
+  // compile time — precisely the anti-pattern AssetNode.tsx's own docstring warns
+  // against ("the fallback is a crash guard, NOT a licence to leave a known state
+  // unmapped"). Orange, matching AssetRow.tsx/AssetNode.tsx's shared convention for
+  // this state — distinct from both 'error' (red, this asset's own defect) and the
+  // muted 'stale'/'dormant' amber (idle, not a consequence of anything).
+  blocked: {
+    filledBg:     'rgba(236,147,50,0.35)',
+    filledBorder: 'rgba(236,147,50,0.55)',
+    activeBg:     'rgba(236,147,50,0.22)',
+    activeBorder: 'rgba(236,147,50,0.42)',
+    emptyBg:      'rgba(236,147,50,0.10)',
+    emptyBorder:  'rgba(236,147,50,0.20)',
+    continuousFill: 'rgba(236,147,50,0.40)',
+    trackBorder:  'rgba(236,147,50,0.28)',
   },
   not_migrated: {
     filledBg:     'rgba(80,70,50,0.10)',
@@ -132,6 +193,18 @@ const SEG: Record<string, SegmentColors> = {
   },
 }
 
+// Packet B2 — C-3's compile-time witness. If a future AssetState member is added
+// without a matching SEG entry above, THIS LINE fails to compile — `tsc` reports
+// the missing key by name, rather than the gap surviving silently to render
+// 'dormant' styling in production the way 'blocked' once did (B1) and 'partial'/
+// 'incomplete' did until this fix. `reconnecting`/`retired` above are NOT
+// AssetState members (they are pre-existing, SSE-payload-only entries kept for
+// the untyped runtime fallback below — see effectiveState's own comment); their
+// presence here is harmless because this assignment only checks that every
+// REQUIRED (AssetState) key exists, not that SEG has no others.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _exhaustive: Record<AssetState, SegmentColors> = SEG
+
 export function AssetProgressBar({
   state, sseState, actualRows, stage, substep,
 }: AssetProgressBarProps) {
@@ -144,7 +217,26 @@ export function AssetProgressBar({
   const isLit         = effectiveState === 'lit' || effectiveState === 'service_ok' || stage === 'lit'
   const isError       = effectiveState === 'error'
   const isStale       = effectiveState === 'stale'
-  const c = SEG[effectiveState] ?? SEG.dormant
+  // Packet B1 — R-6 (review B1_rereview_20260926T190244Z.md): assessed for a
+  // compile-time exhaustive Record (as AtlasView.tsx's switches got below), and
+  // deliberately NOT converted. `effectiveState` is `sseState ?? state`, and
+  // `sseState` is sourced from a live SSE event payload — a genuinely untyped
+  // string at the language boundary. Packet B2 — C-3 (review
+  // B1_rereview2_20260926T193112Z.md) measured this boundary rather than taking
+  // the untyped-ness on faith: `sseState` has ZERO callers anywhere in
+  // platform/src today (grepped), so `effectiveState` is in practice always
+  // `state` — a server-typed AssetState value passed straight through from
+  // AssetRow.tsx's `derivedState`. The runtime fallback below stays (a future
+  // caller COULD pass a genuinely untyped sseState, and a LOUD dev-only warning
+  // beats a silent one), but the KNOWN, typed states are no longer left to that
+  // fallback's mercy — the `_exhaustive` witness above now makes tsc enforce
+  // that every AssetState has a real SEG entry. The cast below is the one place
+  // that trades exhaustiveness for arbitrary-string indexing, deliberately
+  // singular rather than a return to SEG's old blanket `Record<string,...>` type.
+  if (process.env.NODE_ENV !== 'production' && !(effectiveState in SEG)) {
+    console.warn(`[AssetProgressBar] unmapped state ${JSON.stringify(effectiveState)} — falling back to 'dormant' styling. Add a SEG entry.`)
+  }
+  const c = (SEG as Record<string, SegmentColors>)[effectiveState] ?? SEG.dormant
 
   // Substep-segmented vs. continuous fill
   const hasSubsteps    = isBuilding && substep != null && substep.total > 1
