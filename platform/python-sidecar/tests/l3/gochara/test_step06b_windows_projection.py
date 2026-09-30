@@ -120,8 +120,23 @@ def _ctx(weights=None, perms=None, weights_by_ref=None) -> w.ClassContext:
             weights_by_ref if weights_by_ref is not None else {"Venus": 0.9}))
 
 
-def _open_gates(date_iso: str):
-    return leg.compute_quality_gates([], date_iso, date_iso, {})
+def _clean_overlay_row(graha="Sun", *, start="1900-01-01", end="2100-01-01",
+                       intervals=(), operator_role="scored"):
+    """One T0-8-shaped kala_vedha_gochara row covering [start, end) with the
+    given interval relations (none ⇒ clean)."""
+    return {"window_start": start, "window_end": end, "vedha_kind": "house_vedha",
+            "graha": graha, "classical_citation": "Phaladipika Adh. XXVI (fixture)",
+            "detail": {"vedha_intervals": list(intervals),
+                       "coverage": {"state": "computed", "grain": "date",
+                                    "horizon_start": start, "horizon_end": end},
+                       "operator_role": operator_role, "provenance": "verse_cited",
+                       "primary_house": 3, "vedha_house": 9, "phala": "gain"}}
+
+
+# A covered, clean overlay: the §5 gate reads `clear` (factor 1.0) at every
+# instant — the tests' "open gates" (an EMPTY overlay would honestly read
+# `unavailable`, see test_vedha_interval_gate.py).
+_open_gates = w.make_vedha_gate([_clean_overlay_row()])
 
 
 # ── unit: M-1 angular kernel shape ───────────────────────────────────────────

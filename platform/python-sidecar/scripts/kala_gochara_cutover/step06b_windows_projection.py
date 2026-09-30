@@ -64,9 +64,15 @@ Semantics (every choice disclosed, none improvised):
     Moon channel is not wired into this projection, so the transit-Moon
     input is genuinely unavailable; the skip is recorded on every row.
   * w30 — N-14 removed: pinned w30_modifier(enabled=False) (1.0, recorded).
-  * QUALITY GATES — pinned compute_quality_gates over the chart's
-    kala_vedha_gochara rows (DATE-grain overlap) when the overlay columns
-    exist; the F-11 no-rows path (1.0) is reproduced and disclosed per row.
+  * VEDHA (quality gates) — the §5 interval gate (ASTRA P1-3) over the
+    chart's T0-8 kala_vedha_gochara rows through the shared
+    ka_vedha_gochara.logic.attenuation_at: active segments only (half-open),
+    coverage → `unavailable` with the coverage object (null_state omit,
+    never a clean 1.0), one root attenuates once, no generalised PG353
+    number (D-PG353; an active obstruction is `obstructed` structure with
+    factor None unless a cited scale is supplied), scoped to the primary
+    graha's own contacts, Moon-primary rows testimony (day-row annotations
+    only). The legacy whole-row DATE-grain multiplier is retired.
   * lambda_v3 — pinned assemble_lambda_v3 (product + clamp + term breakdown).
   * Windows — components of {t : lambda(t) >= --min-lambda} over the horizon.
     The sampler evaluates on the union of the daily grid AND every contact
@@ -1046,6 +1052,11 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         planet_pos_fn = _default_planet_pos_fn()
 
     def evaluate(t_jd: float):
+        # §5 vedha qualifier at THIS instant, scoped per primary graha
+        # (ASTRA P1-3): attenuates only the primary's own contacts.
+        gate = quality_gate_for_date(t_jd)
+        factor_by_body = gate.get("factor_by_body") or {}
+        applied = []
         scored = []
         for c in contacts:
             target_lon = c.get("_target_lon_deg")
@@ -1061,6 +1072,11 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             decay = angular_orb_decay(point, target_lon, orb_deg)
             if decay <= 0.0:
                 continue
+            vf = factor_by_body.get(c["body"])
+            if vf is not None and vf != 1.0:
+                applied.append({"contact_id": c["contact_id"], "body": c["body"],
+                                "factor": vf, "decay_before": decay})
+                decay *= vf
             scored.append({
                 "contact": c, "decay": decay,
                 "weight": float(class_ctx.weight_by_target_ref.get(
@@ -1086,7 +1102,16 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             sentences, class_ctx.abs_weight_by_target_ref)
         supportive, afflicting, _ch = leg.compute_signed_channels_v3(
             channel_sentences, class_ctx.weight_by_target_ref)
-        gates, gates_detail = quality_gate_for_date(iso_date_of_jd(t_jd))
+        # The class-wide multiplier is RETIRED: λ receives 1.0 here; the
+        # vedha qualification already entered the primaries' orb strengths
+        # above (scoped), and its state/provenance is disclosed per row.
+        applied_product = 1.0
+        for a in applied:
+            applied_product *= a["factor"]
+        gates = 1.0
+        gates_detail = {**gate, "scoped_application": applied,
+                        "applied_product_on_primaries": applied_product,
+                        "class_multiplier": "retired (scoped per primary; §5.2 inv 1)"}
         # T0-7 (FABLE #11/#12): the three-field valence at THIS instant.
         # Per-operand resolution: a contributing contact whose target_ref has
         # NO weight in the class's map-weight dict would be silently scored
@@ -1130,7 +1155,7 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "permission_systems_active": permission_detail["systems_active"],
             "supportive": supportive,
             "afflicting": afflicting,
-            "quality_gates": gates,
+            "quality_gates": applied_product,
             "quality_gates_detail": gates_detail,
             "active_contact_ids": active_ids,
             "shared_roots": {"roots": reduced["roots"],
@@ -1313,7 +1338,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         "month_windows": retained_total - refined_outside_era,
         "day_windows": retained_total - refined_outside_era,
         "quality_gates_fired": sum(
-            g.get("vedha_fired_count", 0) for g in gate_details_seen.values()),
+            len(g.get("fired") or []) for g in gate_details_seen.values()),
     }
     return rows, report
 
@@ -1370,14 +1395,21 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             "activity:kala_gochara_contacts@m1_linear_no_box",
             f"tara:skipped({class_ctx.tara['skip_reason']})",
             "w30:removed(N-14)",
-            ("quality_gates:kala_vedha_gochara"
-             if peak["quality_gates_detail"].get("vedha_rows_total")
-             else "quality_gates:no_overlay_rows(F-11)"),
+            f"vedha:{peak['quality_gates_detail'].get('state')}"
+            "(kala_vedha_gochara §5 interval gate; scoped per primary)",
             f"valence:{VALENCE_CONTRACT}",
         ],
         "suppression_state": {
             "quality_gates": peak["quality_gates"],
-            "quality_gates_detail": peak["quality_gates_detail"],
+            "quality_gates_detail": {
+                **peak["quality_gates_detail"],
+                # P6 Moon-vedha testimony annotates DAY rows only (§5.2 inv
+                # 3 / S-04); era/month rows carry none.
+                "annotations": (peak["quality_gates_detail"].get("annotations") or []
+                                if tier == "day" else []),
+                "annotations_withheld_for_tier": (
+                    None if tier == "day" else
+                    len(peak["quality_gates_detail"].get("annotations") or []))},
             "permission_at_peak": peak["permission"],
             "permission_detail": peak["permission_detail"],
             "tara": class_ctx.tara,
@@ -1487,17 +1519,188 @@ def _table_exists(conn, table: str) -> bool:
     return conn.execute("SELECT to_regclass(%s)", (table,)).fetchone()[0] is not None
 
 
-def make_quality_gate_for_date(vedha_rows: list[dict],
-                               malefic_scale: dict[int, str]):
-    cache: dict[str, tuple[float, dict]] = {}
+# ── vedha interval gate (GOCHARA_DESIGN_SPECS_v1_4 §5; ASTRA P1-3) ───────────
+#
+# The projection previously called legacy_semantics.compute_quality_gates: a
+# DATE-grain whole-row multiplier applying the PG353 battle-scale grade to
+# every overlay row overlapping the day, regardless of interval state,
+# cancellation, coverage, independence or operator role — the reviewer's
+# probes: a clean row still yielded 0.85; an obstruction ending March 1
+# still yielded 0.70 on April 1; duplicate roots yielded 0.49. The gate
+# below consumes the T0-8 writer payload (detail.vedha_intervals with
+# per-segment states, detail.coverage, operator_role, rule provenance)
+# through the SHARED evaluator services.ka_vedha_gochara.logic.attenuation_at
+# (reused, not duplicated):
+#   * attenuation only where an ACTIVE segment covers t (half-open; #17,
+#     O-VI-1/2/4);
+#   * coverage: t outside the overlay's computed horizon, or no T0-8 rows at
+#     all, reads `unavailable` with the coverage object — the factor is
+#     None and takes the §2.1 null_state `omit` (dropped from the λ product,
+#     disclosed as unavailable, never reported as a clean 1.0; #25, O-VI-5);
+#   * one root attenuates once (independence_group; §5.1);
+#   * NO generalised PG353 number: with no cited suppression scale
+#     (D-PG353) an active obstruction is reported as `obstructed` structure
+#     with factor None (omit) — the state, the fired intervals and the rule
+#     provenance reach every row; a caller holding a CITED scale passes
+#     cited_scale(interval) -> float and it multiplies once per root;
+#   * scoped to the PRIMARY transit: a row for graha G attenuates only G's
+#     own contacts (per-body factor applied to the contact's orb strength),
+#     never the whole class λ;
+#   * Moon-primary rows are P6 testimony (S-04): never a factor; they
+#     annotate day rows only (_window_row filters by tier);
+#   * pre-T0-8 rows (no detail.vedha_intervals) are counted as legacy shape
+#     and contribute nothing — never the PG353 multiplier.
 
-    def for_date(date_iso: str):
-        if date_iso not in cache:
-            cache[date_iso] = leg.compute_quality_gates(
-                vedha_rows, date_iso, date_iso, malefic_scale)
-        return cache[date_iso]
+VEDHA_NULL_STATE = "omit"  # §2.1 factor null_state for an unresolved qualifier
 
-    return for_date
+
+def _date_or_none(v):
+    if v is None:
+        return None
+    return date.fromisoformat(str(v)[:10])
+
+
+def parse_vedha_overlay_rows(vedha_rows: list[dict]) -> dict:
+    """The T0-8 overlay rows as the gate consumes them; coverage = the union
+    of the rows' computed horizons (all rows of one build share it)."""
+    rows, legacy = [], 0
+    cov_start = cov_end = None
+    for r in vedha_rows:
+        d = r.get("detail") or {}
+        intervals = d.get("vedha_intervals")
+        cov = d.get("coverage") or {}
+        if intervals is None or not cov.get("horizon_start") or not cov.get("horizon_end"):
+            legacy += 1
+            continue
+        c_start, c_end = _date_or_none(cov["horizon_start"]), _date_or_none(cov["horizon_end"])
+        cov_start = c_start if cov_start is None else min(cov_start, c_start)
+        cov_end = c_end if cov_end is None else max(cov_end, c_end)
+        parsed_ivs = []
+        for iv in intervals:
+            parsed_ivs.append({
+                "obstructor_body": iv.get("obstructor_body"),
+                "t_in": _date_or_none(iv.get("t_in")),
+                "t_out": _date_or_none(iv.get("t_out")),
+                "state": iv.get("state"),
+                "exception": iv.get("exception"),
+                "independence_group": iv.get("independence_group"),
+                "segments": [{"start": _date_or_none(sg.get("start")),
+                              "end": _date_or_none(sg.get("end")),
+                              "state": sg.get("state")}
+                             for sg in (iv.get("segments") or [])],
+                "operator_role": iv.get("operator_role"),
+                "provenance": iv.get("provenance"),
+            })
+        rows.append({
+            "graha": r.get("graha"), "vedha_kind": r.get("vedha_kind"),
+            "window_start": str(r.get("window_start")),
+            "window_end": str(r.get("window_end")),
+            "classical_citation": r.get("classical_citation"),
+            "operator_role": d.get("operator_role"),
+            "provenance": d.get("provenance"), "ruling_ref": d.get("ruling_ref"),
+            "primary_house": d.get("primary_house"),
+            "vedha_house": d.get("vedha_house"), "phala": d.get("phala"),
+            "coverage": {"start": c_start, "end": c_end, "state": cov.get("state"),
+                         "grain": cov.get("grain")},
+            "intervals": parsed_ivs,
+        })
+    coverage = ({"overlay": "kala_vedha_gochara", "computed": True,
+                 "start": cov_start, "end": cov_end}
+                if cov_start is not None else None)
+    return {"rows": rows, "coverage": coverage, "legacy_rows": legacy,
+            "rows_total": len(vedha_rows)}
+
+
+def make_vedha_gate(vedha_rows: list[dict], *, cited_scale=None):
+    """gate(t_jd) -> the §5 qualifier at t, scoped per primary graha."""
+    from services.ka_vedha_gochara import logic as VL
+    parsed = parse_vedha_overlay_rows(vedha_rows)
+    cache: dict[str, dict] = {}
+
+    def gate(t_jd: float) -> dict:
+        d = date_of_jd(t_jd)
+        key = d.isoformat()
+        if key in cache:
+            return cache[key]
+        cov = parsed["coverage"]
+        base = {"contract": "vedha_interval_relation (GOCHARA_DESIGN_SPECS_v1_4 §5)",
+                "evaluator": "services.ka_vedha_gochara.logic.attenuation_at",
+                "date": key, "null_state": VEDHA_NULL_STATE,
+                "vedha_rows_total": parsed["rows_total"],
+                "legacy_shape_rows_ignored": parsed["legacy_rows"],
+                "scale": ("cited" if cited_scale is not None
+                          else "none_cited (D-PG353: no generalised PG353 attenuation)")}
+        if cov is None or not (cov["start"] <= d < cov["end"]):
+            out = {**base, "state": "unavailable", "factor": None,
+                   "factor_by_body": {}, "fired": [], "annotations": [],
+                   "coverage": ({**cov, "start": cov["start"].isoformat(),
+                                 "end": cov["end"].isoformat()} if cov
+                                else {"overlay": "kala_vedha_gochara",
+                                      "computed": False}),
+                   "reason": ("no T0-8 overlay rows" if cov is None
+                              else "instant outside the overlay's computed horizon")}
+            cache[key] = out
+            return out
+        fired, annotations = [], []
+        groups_by_body: dict[str, dict[str, float]] = {}
+        for row in parsed["rows"]:
+            res = VL.attenuation_at(d, row["intervals"], coverage=row["coverage"],
+                                    scale=cited_scale)
+            if res["state"] != "obstructed":
+                continue
+            entry = {
+                "primary_graha": row["graha"], "vedha_kind": row["vedha_kind"],
+                "primary_house": row["primary_house"],
+                "vedha_house": row["vedha_house"], "phala": row["phala"],
+                "primary_residence": [row["window_start"], row["window_end"]],
+                "classical_citation": row["classical_citation"],
+                "provenance": row["provenance"], "ruling_ref": row["ruling_ref"],
+                "operator_role": row["operator_role"],
+                "fired": [{**f, "t_in": f["t_in"].isoformat(),
+                           "t_out": f["t_out"].isoformat()} for f in res["fired"]],
+                "factor": res["factor"],
+            }
+            if row["operator_role"] == "testimony":
+                entry["note"] = ("P6 Moon-channel vedha — testimony (S-04): "
+                                 "annotates day rows only, never weights")
+                annotations.append(entry)
+                continue
+            fired.append(entry)
+            if cited_scale is not None:
+                # §5.1 independence_group: ONE min per physical root across
+                # every row of this primary graha (a root obstructing two
+                # residences is still one root); the body factor is the
+                # product over distinct roots. Computed from the cited
+                # scale per active interval — never from the row product
+                # (which already folds the row's own roots).
+                by_group = groups_by_body.setdefault(row["graha"], {})
+                for iv in row["intervals"]:
+                    if iv.get("state") != VL.STATE_ACTIVE:
+                        continue
+                    if not any(sg["state"] == VL.STATE_ACTIVE
+                               and sg["start"] <= d < sg["end"]
+                               for sg in iv["segments"]):
+                        continue
+                    g = iv.get("independence_group") or iv["obstructor_body"]
+                    by_group[g] = min(by_group.get(g, 1.0), float(cited_scale(iv)))
+        factor_by_body = {}
+        for body, groups in groups_by_body.items():
+            fac = 1.0
+            for v in groups.values():
+                fac *= v
+            factor_by_body[body] = fac
+        out = {**base,
+               "state": "obstructed" if fired else "clear",
+               "factor": (None if (fired and cited_scale is None)
+                          else (min(factor_by_body.values()) if factor_by_body else 1.0)),
+               "factor_by_body": factor_by_body,
+               "fired": fired, "annotations": annotations,
+               "coverage": {**cov, "start": cov["start"].isoformat(),
+                            "end": cov["end"].isoformat()}}
+        cache[key] = out
+        return out
+
+    return gate
 
 
 def write_windows(conn, chart_id: str, generation: str,
@@ -1854,7 +2057,10 @@ def main(argv: list[str] | None = None) -> int:
             if not joined:
                 unmapped += 1
 
-        gate_for_date = make_quality_gate_for_date(vedha_rows, malefic_scale)
+        # §5 interval gate (ASTRA P1-3). bg_vedha_malefic_scale is read only
+        # for the run report — D-PG353: it is not a general grade source and
+        # no longer feeds scoring.
+        gate_for_date = make_vedha_gate(vedha_rows)
         all_rows: list[dict] = []
         class_reports: list[dict] = []
         skipped_classes: list[dict] = []
@@ -1958,6 +2164,14 @@ def main(argv: list[str] | None = None) -> int:
         "flags": flags,
         "upstream_fingerprints": fingerprints,
         "contacts_read": len(contacts),
+        "vedha_overlay": {
+            "rows_read": len(vedha_rows),
+            "t0_8_rows": parse_vedha_overlay_rows(vedha_rows)["rows_total"]
+            - parse_vedha_overlay_rows(vedha_rows)["legacy_rows"],
+            "legacy_shape_rows_ignored": parse_vedha_overlay_rows(vedha_rows)["legacy_rows"],
+            "malefic_scale_rows": len(malefic_scale),
+            "malefic_scale_role": "report only — D-PG353 (no generalised PG353 attenuation)",
+        },
         "contacts_unmapped_no_class": unmapped,
         "contacts_unmapped_relation": unmapped_relation,
         "classes_projected": len(class_reports),
