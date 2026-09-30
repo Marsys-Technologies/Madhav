@@ -182,6 +182,83 @@ def test_na_causes_are_well_formed_slugs_keyed_by_registered_criteria():
             assert slug.match(c), (crit, c)
 
 
+# ───────────────────────── (1b) no registered cause is unused ─────────────────────────
+# NA_CAUSES is what a declared rule id may name, and it is fingerprinted. A cause registered with no emitting site is
+# a rule the inspector can never trigger: it would read as coverage in the N-22 table and do nothing. Two detectors:
+#   (a) SOURCE SCAN: every slug in NA_CAUSES is a literal cause argument of some `_na(...)` call in asset_census.py
+#       (an ast walk, so a slug chosen by a conditional expression counts for each branch);
+#   (b) HARNESS: executing the offline sites (SITES + the Earn classifier cases) observes every (criterion, cause)
+#       pair in NA_CAUSES, so the pair is emitted under that criterion, not just somewhere.
+
+import ast  # noqa: E402
+
+EARN_CASES = [
+    None,
+    dict(disposition="skip_no_delta", has_writer=True, reached_completion_write=True),
+    dict(disposition="", has_writer=False, state="error", reached_completion_write=False),
+    dict(disposition="build", has_writer=True, state="error", reached_completion_write=False),
+]
+
+
+def _scanned_cause_slugs(src: str) -> set:
+    """Every str literal inside the cause argument (2nd positional, or cause=) of a `_na(...)` call."""
+    out = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_na":
+            arg = node.args[1] if len(node.args) > 1 else next((k.value for k in node.keywords if k.arg == "cause"), None)
+            if arg is not None:
+                out |= {n.value for n in ast.walk(arg) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+    return out
+
+
+def _unemitted(src: str, na_causes: dict) -> set:
+    scanned = _scanned_cause_slugs(src)
+    return {(c, k) for c, ks in na_causes.items() for k in ks if k not in scanned}
+
+
+ASSET_CENSUS_SRC = (HERE.parent / "asset_census.py").read_text(encoding="utf-8")
+
+
+def test_every_registered_cause_has_an_emitting_site_in_the_source():
+    assert _unemitted(ASSET_CENSUS_SRC, ac.NA_CAUSES) == set()
+
+
+def test_the_scanner_finds_an_unused_registered_cause():
+    """Mutants of the scanner's input: each must be reported (a scan that cannot fail proves nothing)."""
+    assert _unemitted(ASSET_CENSUS_SRC, {**ac.NA_CAUSES, "Build.history": ac.NA_CAUSES["Build.history"] + ("ghost",)}) \
+        == {("Build.history", "ghost")}
+    mutated = ASSET_CENSUS_SRC.replace('"no-declared-dependencies")', '"nodeps")')
+    assert mutated != ASSET_CENSUS_SRC
+    assert _unemitted(mutated, ac.NA_CAUSES) == {("Build.dep_liveness", "no-declared-dependencies")}
+    # a slug that appears only in a comment, a string, or a non-_na call is not an emitting site
+    decoy = "def f():\n    # _na('x', 'ghost')\n    s = 'ghost'\n    return dict(cause='ghost')\n"
+    assert _unemitted(decoy, {"C": ("ghost",)}) == {("C", "ghost")}
+    # ... while a conditional cause counts for both branches, and cause= counts
+    cond = "x = _na('t', 'a' if p else 'b')\ny = _na('t', cause='c')\n"
+    assert _unemitted(cond, {"C": ("a", "b", "c")}) == set()
+
+
+def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypatch, tmp_path):
+    observed = set()
+    for _sid, crit, _cause, reg, kw in SITES:
+        rec = _m(monkeypatch, tmp_path, reg, **kw)["x"][crit]
+        assert rec["v"] == NA, (crit, rec)
+        observed.add((crit, rec["cause"]))
+    for attempt in EARN_CASES:
+        rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
+        assert rec["v"] == NA, rec
+        observed.add(("Earn.build_record", rec["cause"]))
+    registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
+    assert registered - observed == set(), "registered but never emitted by the offline harness"
+    assert observed - registered == set(), "emitted but not registered"
+
+
+def test_the_harness_coverage_check_fails_for_an_unused_registered_cause(monkeypatch, tmp_path):
+    monkeypatch.setitem(ac.NA_CAUSES, "Build.history", ac.NA_CAUSES["Build.history"] + ("ghost",))
+    with pytest.raises(AssertionError):
+        test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypatch, tmp_path)
+
+
 # ───────────────────────── (2) the rollup keys the rule id by cause ─────────────────────────
 
 def _na(cause="__absent__"):
