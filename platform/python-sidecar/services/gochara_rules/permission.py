@@ -14,8 +14,9 @@ two_pass_verified, build 1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb).
 """
 from __future__ import annotations
 
-from .frames import Frame, SIGN_LORDS, frame_sign, sign_of
-from .registry import signature_houses
+from .frames import Frame, SIGN_LORDS, frame_sign, house_of, sign_of
+from .records import RelationshipRecord
+from .registry import RULE_VERSION, signature_houses
 
 # The tier value comes from the sanctioned vocabulary module — the literal in
 # an emit position outside brahmagyan/verification_vocab.py is a TAP-6 gate
@@ -124,15 +125,41 @@ def period_lord_relation(lord: str, event_class: str, chart: dict) -> dict:
         return {"relation": "ownership", "licence": "scored",
                 "detail": f"{lord} owns a signature house of {sorted(houses)}"}
 
-    # dispositorship where the DISPOSITOR-of-the-lord chain reaches the class:
-    # for a node, its sign's lord may relate — testimony-only per D-PADMIT.
-    if lord in NODES:
-        disp = SIGN_LORDS[sign_of(natal[lord])]
-        if disp in natal and sign_of(natal[disp]) in houses or \
-                any(SIGN_LORDS[s] == disp for s in houses):
-            return {"relation": "dispositorship", "licence": "testimony",
-                    "detail": f"node-dispositor chain through {disp} is "
-                              "testimony-only per D-PADMIT and cannot licence"}
+    # dispositorship: the lord's dispositor (its natal sign's lord) relates to
+    # the class. Node case: testimony-only per D-PADMIT. Non-node case: no
+    # clause found in Phaladīpikā XX.34–38 (PG249:C1/PG250:C1) — testimony
+    # pending a native ruling (spec C5 relation-kind table,
+    # P1_RELATION_KINDS). Testimony annotates and never licences.
+    disp = SIGN_LORDS[sign_of(natal[lord])]
+    disp_house = None
+    if disp in natal and sign_of(natal[disp]) in houses:
+        disp_house = house_of(natal[disp], Frame("lagna"), chart)
+        rec = RelationshipRecord(
+            chart_id=chart.get("chart_id", DASHA_READ_CONTRACT["chart_id"]),
+            generation=chart.get("generation", "5.0"),
+            event_class=event_class, affected_person="native",
+            frame="lagna", agent=disp, relation="occupancy",
+            object_id=f"obj:sign:{sign_of(natal[disp])}",
+            object_kind="sign_span", object_role="signature_house",
+            contact_id=None, path_id="P1", rule_version=RULE_VERSION,
+            prerequisites=[], provenance="verse_cited",
+            operator_role="scored")
+        rel_ref = (f"dispositorship → {disp}/{disp_house}th "
+                   f"(record {rec.record_id})")
+    elif disp not in NODES and any(SIGN_LORDS[s] == disp for s in houses):
+        rel_ref = f"dispositorship → {disp} owns a signature house"
+    else:
+        rel_ref = None
+    if rel_ref is not None:
+        if lord in NODES:
+            caveat = ("node-dispositor chain is testimony-only per D-PADMIT "
+                      "and cannot licence")
+        else:
+            caveat = ("non-node dispositorship: no clause found in PG249:C1/"
+                      "PG250:C1 (śl. 34–39) — testimony pending a native "
+                      "ruling (P1_RELATION_KINDS)")
+        return {"relation": "dispositorship", "licence": "testimony",
+                "detail": f"{rel_ref}; {caveat}"}
 
     return {"relation": "none", "licence": "none",
             "detail": f"no natal relationship of {lord} to {event_class}"}
@@ -156,7 +183,8 @@ def permission(chart: dict, t: str, event_class: str) -> dict:
         rel = period_lord_relation(row["lord"], event_class, chart)
         period_context[level] = {"lord": row["lord"], "row_id": row["row_id"],
                                  "licence": rel["licence"],
-                                 "relation": rel["relation"]}
+                                 "relation": rel["relation"],
+                                 "detail": rel["detail"]}
         licences.append(rel["licence"])
 
     # Composition: class licence = union over levels — licensed iff some
@@ -179,7 +207,6 @@ def applicability(chart: dict) -> dict:
     natal = chart["natal"]
     lagna_lord = SIGN_LORDS[sign_of(chart["lagna_deg"])]
     ll_frame = Frame("graha", lagna_lord)
-    from .frames import house_of
     rahu_house = house_of(natal["Rahu"], ll_frame, chart)
 
     failed = []

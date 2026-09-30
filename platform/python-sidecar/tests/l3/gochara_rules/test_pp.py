@@ -79,8 +79,19 @@ def test_opp2_per_level_licences(chart):
     assert p2["ad"]["licence"] != "scored"
     # pd.licence = scored at both (Saturn: occupancy of the 7th)
     assert p1["pd"]["licence"] == p2["pd"]["licence"] == "scored"
-    # md.licence identical at both (Mercury)
-    assert p1["md"]["licence"] == p2["md"]["licence"]
+    # md.licence = testimony at both (Mercury: no direct 7th relation; its
+    # dispositor Saturn occupies Libra, the 7th from the Aries lagna —
+    # non-node dispositorship is testimony per the spec C5 relation-kind
+    # table: no clause found in Phaladīpikā XX.34–38, PG249:C1/PG250:C1)
+    assert p1["md"]["licence"] == p2["md"]["licence"] == "testimony"
+    assert p1["md"]["relation"] == p2["md"]["relation"] == "dispositorship"
+    # the testimony names the dispositor relation and its record id, and is
+    # identical at t1 and t2 (same MD row, same natal relation)
+    assert "Saturn" in p1["md"]["detail"] and "7th" in p1["md"]["detail"]
+    assert "sha256:" in p1["md"]["detail"]
+    assert p1["md"] == p2["md"]
+    # mutation: md.licence = none (the defect) or scored fails
+    assert p1["md"]["licence"] not in ("none", "scored")
 
 
 def test_opp2_class_licence_same_at_both(chart):

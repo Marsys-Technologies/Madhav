@@ -396,7 +396,9 @@ _factor("vedha_attenuation",
         function="step", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
         effect="attenuation only where state=active; absent overlay coverage "
-               "⇒ unavailable, never 1.0 (§5)")
+               "⇒ unavailable, never 1.0 (§5); carried as a rule-row data "
+               "field with calibration_status uncalibrated_default — recorded "
+               "choice, steward-accepted 2026-09-30 (B5.1 gap 1)")
 _factor("yoga_strength",
         operand="declared strength operand of the yoga",
         function="ratio", range=[0.0, 1.0], units="unitless",
@@ -566,7 +568,10 @@ _path(
                "nonzero comparison is unresolved with the operand named; SAV "
                "bands >30/25-30/<25 (BPHS2:42332-42335); no universal numeric "
                "multiplier (D-RQ1)",
-    note="after §8 polarity normalisation; T0-11 gates P5 on the declaration row",
+    note="after §8 polarity normalisation; T0-11 gates P5 on the declaration row; "
+         "P5e substrate gated: no Sun-month selection is computed until a rule "
+         "row asks for it — recorded choice, steward-accepted 2026-09-30 "
+         "(B5.1 gap 2)",
 )
 _path(
     "P6",
