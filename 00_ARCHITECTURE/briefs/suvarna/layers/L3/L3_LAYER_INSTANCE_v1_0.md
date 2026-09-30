@@ -1,7 +1,7 @@
 ---
 artifact: L3_LAYER_INSTANCE
 canonical_id: SUVARNA_L3_LAYER_INSTANCE
-version: "1.0"
+version: "1.1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -22,6 +22,7 @@ census_run:
 tier_gaps: 00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_TIER_GAPS_v1_0.md   # TG-L3-001 … 027
 inputs_not_authority: "nikasha_test/derivations/L3_INSTANCE_SKELETON.md and L3_INVENTIONS.md (2026-09-26, sandbox census, 23 assets). Every lead was re-checked against the tier text and the 2026-09-30 census; where they disagree the disagreement is reported (§B)."
 changelog:
+  - "1.1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 8 defects. Build-attempt dates in section 4.1 corrected against the census (ka_sangam 2026-08-13 is a family asset; ka_gochara 2026-09-10 is a zero-row asset); section 3.3 no longer defines must-add as the failing gate cells (T3 408-411 defines it as contract, presentation and coverage fields; recorded as TIER GAP TG-L3-011/009/013/020) and its table is retitled as measured FAIL/PARTIAL cells (information) with the two non-gate criteria marked; the frozen definition revision is NOT MEASURED, not 'none exists'; V02 cited at T2 118; the single-asset ablation method is defined (T2 592-596), only the harness is absent; the L1 rule cited at T1 section 11 line 501; census criteria counted as 20 keys."
   - "1.0 (2026-09-30): first draft. Filled from tiers 1-2 and the L3 census only; every clause the tiers do not supply is marked TIER GAP with its TG-L3 id and is left unfilled. No disposition, no synergy fraction and no certification is written (the status line forbids the last). The five family assets are MEASURED AND RECORDED, never decided (Pravāha and the family sessions own them; TRACK_A_BRIEF §6)."
 ---
 
@@ -55,7 +56,7 @@ traces_to:   —  (this IS the origin)
 | P03, P04 | wording (T1 lines 158-159) | "When will I make substantial money…", "When will my business succeed…" — timing questions |
 | P11 | wording (T1 line 166) | "When might I initiate something" — timing context |
 | V04 | wording (T2 line 120) | "multiple qualified temporal routes, recurrence, inhibition and horizon coverage. Nearest contact is not automatically full manifestation" |
-| V02 | wording (T2 line 117) | "Structural routes and timing must retain these distinctions" |
+| V02 | wording (T2 line 118) | "Structural routes and timing must retain these distinctions" |
 | V05 | wording, partial (T2 line 121; T2 §5 line 337: "Preserve existing services") | Praśna/Muhūrta operators and calendar context; only the service `ka_muhurta_seva` is named in this layer's registry population |
 
 The prediction chain of T1 §7 (lines 362-365) places L3 at one link: "eligible structural mechanism → **applicable temporal activation** → qualified manifestation alternatives". T1 §11 (line 503) gives the layer's product responsibility: "Which structures are engaged by which clocks, when, under what conditions and with which alternatives".
@@ -182,7 +183,7 @@ Columns, contract fields live and "whether current code on any live head differs
 
 ```
 inherits:    Product §14.1 (ablation), Data plane §12.2
-measured_by: NOT MEASURED — no ablation harness exists (T2 §12.2 line 627 for the synergy case; none is defined for a single asset's reading). What CEN does measure is the reach of each asset (below).
+measured_by: NOT MEASURED — no ablation harness exists. The method for a single asset is defined (T2 §12.2 lines 592-596: the reading produced with the asset minus the reading produced without it, the ablated reading being the "competent simpler baseline"; line 627 for the synergy case); only the harness that would run it is absent. What CEN does measure is the reach of each asset (below).
 traces_to:   0.1 (which rows this asset serves)
 ```
 
@@ -267,7 +268,7 @@ traces_to:   0.2
 
 ```
 inherits:    Product §8.1 (this layer's row), §13; Data plane §9.2 (the switch and the storage separation)
-measured_by: a detector per rule — NONE FOUND in CEN (19 criteria; none concerns the switch or circularity). Test files matched by name only: GRP `find platform/python-sidecar -iname '*circularity*'` at 2a78ec64d returns tests/l3/ka_kshetra/test_circularity_guard.py, tests/l3/test_ka_jivana_parva_circularity_guard.py, tests/l5/test_mi_bhara_circularity_guard_w2.py (contents not verified in this pass)
+measured_by: a detector per rule — NONE FOUND in CEN (20 criteria keys; none concerns the switch or circularity). Test files matched by name only: GRP `find platform/python-sidecar -iname '*circularity*'` at 2a78ec64d returns tests/l3/ka_kshetra/test_circularity_guard.py, tests/l3/test_ka_jivana_parva_circularity_guard.py, tests/l5/test_mi_bhara_circularity_guard_w2.py (contents not verified in this pass)
 traces_to:   0.2 — the value is real only if these hold
 ```
 
@@ -286,7 +287,7 @@ traces_to:   0.1 — the acharya rows are unservable if these fields are not car
 ```
 
 **The temporal row** (T2 §3.4 line 197; T3 lines 284-286), which L3 must "retain and hand onward, not merely use internally": the clock geometry, the activation rule, "the named nearest-versus-better-supported criterion", and the manifestation bridge or its falsifier, carried by DP07 (clocks/contacts), DP08 (temporal mechanism), DP09 (manifestation). T2 line 199-202: "A component may present less; it may not *compute* less or *hand onward* less."
-**TIER GAP: TG-L3-009** — the other §3.4 rows (method/school; prerequisites tested and exceptions checked; conventions in force; intermediate quantities; dignity components; competing readings; chain of influence) are mapped to DP contracts, not to layers; which of them L3 carries for its own findings is unassigned. **TIER GAP: TG-L3-010** — T2 §1/§12.2 mark presentation parity **[TRANSFERS]** ("a layer plan does not inherit it as its own work"), T3 §5.4 test 4 makes it an acceptance test of this instance. **TIER GAP: TG-L3-018** — the "named criterion" the temporal row must carry is not named or bounded by any tier.
+**TIER GAP: TG-L3-009** — the other §3.4 rows (method/school; prerequisites tested and exceptions checked; conventions in force; intermediate quantities; dignity components; competing readings; chain of influence) are mapped to DP contracts, not to layers; which of them L3 carries for its own findings is unassigned. **TIER GAP: TG-L3-010** — T2 §1/§12.2 mark presentation parity **[TRANSFERS]** ("a layer plan does not inherit it as its own work"), T3 §5.4 test 4 makes it an acceptance test of this instance. **TIER GAP: TG-L3-018** — the "named criterion" the temporal row must carry is handed to the briefs by T2 (382 "using declared criteria"; 629 briefs predeclare), but no tier names it, bounds the admissible set, or says whether this instance or an asset brief declares it.
 
 ### 2.3 · Contracts produced and consumed
 
@@ -316,7 +317,7 @@ traces_to:   0.3
 | DP06 structural relationship | L2 | "Actor/relation/target, all relevant domains, constituent facts/signals, signed support/opposition, condition/occurrence ledgers, variants and ancestry" (line 425) |
 | DP07 (as consumer) | L0/L1 primitives | line 426 |
 
-The measured upstream assets per L3 asset, by layer, are in §3.4 (52 cross-layer edges). The T1 §3 / L1 rule binds here: "Downstream consumers refer to L1 facts; they do not recompute them" (T1 line 501; CLAUDE.md §N.5 is not a tier and is not cited as one).
+The measured upstream assets per L3 asset, by layer, are in §3.4 (52 cross-layer edges). The L1 rule binds here (T1 §11, line 501, the L1 row): "Downstream consumers refer to L1 facts; they do not recompute them" ( CLAUDE.md §N.5 is not a tier and is not cited as one).
 
 ### 2.4 · Jyotish coverage owned
 
@@ -376,7 +377,7 @@ traces_to:   0.3
 - level 4: ka_kala_darshana
 - level 5: ka_bhavishya_lekha, ka_jivana_parva, ka_tulana
 
-The same levels appear as a column in §3.4. **Edge types:** TIER GAP: TG-L3-005. **Frozen definition revision:** TIER GAP: TG-L3-017 — T3 (lines 369, 374-375) requires gates "scoped to the CURRENT frozen definition revision"; no tier defines that revision and none exists for L3.
+The same levels appear as a column in §3.4. **Edge types:** TIER GAP: TG-L3-005. **Frozen definition revision:** TIER GAP: TG-L3-017 — T3 (lines 369, 374-375) requires gates "scoped to the CURRENT frozen definition revision"; no tier defines that revision, and whether one exists for L3 is **NOT MEASURED** here (`egate.sql` and the campaign-definitions table were not read in this pass; the L2 pass's read of that table found one frozen revision, `t3-2026-09-11-8b884eac`, and did not read its L3 manifest).
 **Build-liveness of the edges (CEN `Build.dep_liveness`):** 9 PASS, 10 PARTIAL (a declared upstream is stale: an upstream "has moved since"), 1 FAIL (ka_taranga: `ka_avadhi (error)`), 1 N/A (ka_muhurta_seva has no declared dependencies). `Build.dag` PASS on 21 of 21 (every edge resolves).
 
 ---
@@ -391,7 +392,7 @@ traces_to:   0.2
 
 ### 3.1 · Per obligation
 
-The layer is scored on one obligation, **Temporal integrity** (T1 §11 line 503). **NOT MEASURED, and no measurement exists to cite** — TIER GAP: TG-L3-019: T2 §12.2's "Temporal boundary" row (line 622) is a planned test shape (T2 line 629: "All tests listed here are planned"), and none of the 19 census criteria concerns boundaries, zones, hierarchy, horizons, nearest-versus-better-supported separation or absence-versus-unavailable semantics. The nine certified gates measure something else (buildability, idempotency, carriage, density, …). The measured cells are therefore given in 3.3 as gate cells, not as a score on this obligation. T3's "ten, not eleven" note (line 392) is respected: Domain correctness is not scored here.
+The layer is scored on one obligation, **Temporal integrity** (T1 §11 line 503). **NOT MEASURED, and no measurement exists to cite** — TIER GAP: TG-L3-019: T2 §12.2's "Temporal boundary" row (line 622) is a planned test shape (T2 line 629: "All tests listed here are planned"), and none of the 20 census criteria keys concerns boundaries, zones, hierarchy, horizons, nearest-versus-better-supported separation or absence-versus-unavailable semantics. The nine certified gates measure something else (buildability, idempotency, carriage, density, …). The measured cells are therefore given in 3.3 as gate cells, not as a score on this obligation. T3's "ten, not eleven" note (line 392) is respected: Domain correctness is not scored here.
 
 ### 3.2 · Per asset — disposition
 
@@ -399,33 +400,35 @@ The layer is scored on one obligation, **Temporal integrity** (T1 §11 line 503)
 
 ### 3.3 · Per asset — what it must add
 
-**Only the measured part.** The "must add" list is every FAIL or PARTIAL gate cell plus inherited must-adds (T3 lines 408-411); the inherited part needs 3.2, which is not written (TG-L3-020, TG-L3-021). The measured part (CEN, 2026-09-30):
+**The must-add list is not written.** T3 (lines 408-411) defines it as "The contract fields (2.3), presentation fields (2.2) and coverage states (2.4) each asset must add to close its share of the delta", the list an asset brief's "exact delta" section inherits. Those three inputs are unfilled: **TIER GAP: TG-L3-011** (contract fields), **TG-L3-009** (presentation fields), **TG-L3-013** (coverage states), and **TG-L3-020** (no evidence-to-disposition rule, so no delta per asset). What can be given, as **information only and not a must-add list**, are the census's measured FAIL and PARTIAL cells. A **†** marks the two criteria that are not gates (`Count.floor`, `Complete.depth`; with `Cost.baseline`, `Complete.width`, `Reach.fields` they are information under the D3 ruling and never blockers); the rest are gate criteria. The measured cells (CEN, 2026-09-30):
+
+**Measured FAIL / PARTIAL cells (information).**
 
 | asset | FAIL cells | PARTIAL cells |
 |---|---|---|
 | ka_avadhi | Build.completion, Dens.served, Build.history | Build.dep_liveness |
-| ka_bhavishya_lekha | Build.completion, Count.floor, Dens.served | Complete.depth, Build.history, Build.dep_liveness |
+| ka_bhavishya_lekha | Build.completion, Count.floor †, Dens.served | Complete.depth †, Build.history, Build.dep_liveness |
 | ka_dasha_kala | Dens.served | Idem.pattern, Build.count_integrity, Build.history |
-| ka_gochara | Build.completion, Count.floor, Dens.served | Idem.pattern, Complete.depth, Build.history |
-| ka_gochara_resonance | — | Complete.depth, Build.history, Ldgr.source_presence |
+| ka_gochara | Build.completion, Count.floor †, Dens.served | Idem.pattern, Complete.depth †, Build.history |
+| ka_gochara_resonance | — | Complete.depth †, Build.history, Ldgr.source_presence |
 | ka_graha_sancara | Dens.served | Idem.pattern, Build.count_integrity |
 | ka_jivana_parva | Dens.served | Build.history, Build.dep_liveness |
-| ka_kala_darshana | Build.completion, Count.floor, Dens.served | Build.history, Build.dep_liveness |
-| ka_kalasutra | Build.completion, Count.floor, Dens.served | Build.history, Build.dep_liveness |
-| ka_kota_chakra | Count.floor, Dens.served | Build.history |
-| ka_kshetra | Idem.pattern, Build.completion, Count.floor, Build.history | Complete.depth, Build.dep_liveness |
+| ka_kala_darshana | Build.completion, Count.floor †, Dens.served | Build.history, Build.dep_liveness |
+| ka_kalasutra | Build.completion, Count.floor †, Dens.served | Build.history, Build.dep_liveness |
+| ka_kota_chakra | Count.floor †, Dens.served | Build.history |
+| ka_kshetra | Idem.pattern, Build.completion, Count.floor †, Build.history | Complete.depth †, Build.dep_liveness |
 | ka_moorti_nirnaya | Build.completion, Dens.served | Build.history |
 | ka_muhurta_seva | Dens.served | Idem.pattern, Build.count_integrity |
-| ka_sangam | Build.completion, Count.floor, Dens.served | Build.history, Build.dep_liveness |
+| ka_sangam | Build.completion, Count.floor †, Dens.served | Build.history, Build.dep_liveness |
 | ka_sudarshana_varsha | Dens.served | Build.history |
 | ka_taranga | Dens.served, Build.dep_liveness | Build.history |
 | ka_tithi_pravesha | Dens.served | Build.history |
 | ka_tulana | Dens.served | Idem.pattern, Build.count_integrity, Build.history, Build.dep_liveness |
-| ka_vedha_gochara | Build.completion, Count.floor, Dens.served | Complete.depth, Build.history |
-| ka_vighnakara | Build.completion, Count.floor, Dens.served | Build.history, Build.dep_liveness |
+| ka_vedha_gochara | Build.completion, Count.floor †, Dens.served | Complete.depth †, Build.history |
+| ka_vighnakara | Build.completion, Count.floor †, Dens.served | Build.history, Build.dep_liveness |
 | ka_yojaka | Dens.served | Build.history, Build.dep_liveness |
 
-Common to all 21 (not repeated per row): `Earn.build_record` and `Cost.baseline` NO_DETECTOR ("instrument absent (migration 1094)"), `Carr.detector` NO_DETECTOR, `Reach.fields` and `Complete.width` NOT_GENERIC ("reported, not graded"). Cell tallies over the layer:
+Common to all 21 (not repeated per row): `Earn.build_record` and `Cost.baseline` NO_DETECTOR ("instrument absent (migration 1094)"), `Carr.detector` NO_DETECTOR, `Reach.fields` and `Complete.width` NOT_GENERIC ("reported, not graded"). Cell tallies over the layer († = non-gate, information under D3):
 
 | criterion | assets with the cell | PASS | FAIL | PARTIAL | NO_DETECTOR | NOT_GENERIC | N/A |
 |---|---|---|---|---|---|---|---|
@@ -438,8 +441,8 @@ Common to all 21 (not repeated per row): `Earn.build_record` and `Cost.baseline`
 | Build.completion | 21 | 7 | 10 | 0 | 0 | 0 | 4 |
 | Earn.build_record | 21 | 0 | 0 | 0 | 21 | 0 | 0 |
 | Cost.baseline | 21 | 0 | 0 | 0 | 21 | 0 | 0 |
-| Count.floor | 19 | 8 | 9 | 0 | 0 | 0 | 2 |
-| Complete.depth | 17 | 12 | 0 | 5 | 0 | 0 | 0 |
+| Count.floor † | 19 | 8 | 9 | 0 | 0 | 0 | 2 |
+| Complete.depth † | 17 | 12 | 0 | 5 | 0 | 0 | 0 |
 | Vocab.identity | 17 | 17 | 0 | 0 | 0 | 0 | 0 |
 | Reach.fields | 21 | 0 | 0 | 0 | 0 | 21 | 0 |
 | Dens.served | 21 | 0 | 19 | 0 | 0 | 0 | 2 |
@@ -498,7 +501,7 @@ measured_by: the DAG (§2.5); three-way baseline: deployed = CEN rows and states
 traces_to:   0.2
 ```
 
-Order: upstream before downstream, by the levels in §2.5, with the cross-layer upstreams (L0 `bg_*` 10 assets, L1 `ga_*` 6, L2 `bo_*` 5 — REG) ahead of level 0. "Within a depth level … chosen for learning value" (T3 lines 431-433) is a strategy choice this draft does not make. **Deployed** (CEN): the row and gate state of §1.1; the build records show 2026-09-07/10/11 attempts for family assets and 2026-08-13 attempts for the six zero-row assets. **Current code:** NOT MEASURED except the ka_kshetra fact in §1.1. **Target:** not written.
+Order: upstream before downstream, by the levels in §2.5, with the cross-layer upstreams (L0 `bg_*` 10 assets, L1 `ga_*` 6, L2 `bo_*` 5 — REG) ahead of level 0. "Within a depth level … chosen for learning value" (T3 lines 431-433) is a strategy choice this draft does not make. **Deployed** (CEN): the row and gate state of §1.1; the build records (§1.1, latest-attempt table) show latest attempts on 2026-09-10 for `ka_gochara`, 2026-09-07 for `ka_gochara_resonance` and `ka_vedha_gochara`, 2026-09-11 for `ka_kshetra` and 2026-08-13 for `ka_sangam` among the family assets; of the six zero-row assets, five (`ka_bhavishya_lekha`, `ka_kala_darshana`, `ka_kalasutra`, `ka_sangam`, `ka_vighnakara`) were last attempted on 2026-08-13 and `ka_gochara` on 2026-09-10 [CEN `Earn.build_record`]. **Current code:** NOT MEASURED except the ka_kshetra fact in §1.1. **Target:** not written.
 
 ### 4.2 · Work packets
 
@@ -537,7 +540,7 @@ traces_to:   0.1
 | 5 | contracts produced and consumed, with declared use | PARTIAL — contract text quoted; asset assignment, fields, grain, declared use open (2.3; TG-L3-003, 011, 012) |
 | 6 | coverage obligations and their current states | PARTIAL — obligation text quoted; states NOT MEASURED (2.4; TG-L3-013, 014) |
 | 7 | position in the order and three-way baseline | PARTIAL — level and edges measured (2.5, 3.4); current-code half NOT MEASURED |
-| 8 | disposition and "must add" list | NO — TG-L3-020; measured must-add cells only (3.3) |
+| 8 | disposition and "must add" list | NO — TG-L3-020; the must-add list itself is TG-L3-011/009/013; measured FAIL/PARTIAL cells are given as information only (3.3) |
 | 9 | individual contribution | NOT MEASURED (1.2) |
 | 10 | synergistic contribution | NOT MEASURED (1.3; TG-L3-006) |
 | 11 | cross-layer contribution | PARTIAL — declared readers measured (1.4, Appendix A); consumer verification NOT MEASURED |
@@ -711,7 +714,7 @@ R134 and R135 (now supplied by CEN), R146/R87 (needs a code-head read), R157/R10
 
 ## Appendix D · Measurement sources and populations
 
-- **CEN** — `/Users/Dev/suvarna-evidence/census/census_L3.json`, exit 2, inspector 2a78ec64d, `generated` 2026-09-30T20:25:37+05:30; 21 assets, 19 criteria (20 with `Ldgr.source_presence`), tallies re-derived from the JSON and equal to `SUMMARY.md` (FAIL 42, PARTIAL 42, NO_DETECTOR 63, PASS 195, N/A 13, NOT_GENERIC 42, ERRORED 0).
+- **CEN** — `/Users/Dev/suvarna-evidence/census/census_L3.json`, exit 2, inspector 2a78ec64d, `generated` 2026-09-30T20:25:37+05:30; 21 assets, 20 criteria keys (`Ldgr.source_presence` emitted for 8 assets only), tallies re-derived from the JSON and equal to `SUMMARY.md` (FAIL 42, PARTIAL 42, NO_DETECTOR 63, PASS 195, N/A 13, NOT_GENERIC 42, ERRORED 0).
 - **REG** — `psql -X` as `suvarna_reader` through the proxy, 2026-09-30: `select … from asset_registry` (129 rows; 23 `layer='kala'`); `select generation, count(*) from kala_gochara_windows where chart_id='482012f1-…' group by 1`; `select count(*) from kala_gochara_windows_v2 where chart_id='482012f1-…'`; `select conrelid::regclass, conname, confdeltype … from pg_constraint where confrelid='bodha_msr_signals'::regclass and contype='f'`; `select count(*) from information_schema.columns where table_name='asset_registry'` (42). Chart 482012f1 only; no session `SET`.
 - **SEED** — `platform/scripts/seed/asset_registry_seed.ts` at 2a78ec64d, blocks delimited by line-anchored `asset_id:` entries, `depends_on: [...]` per block; 129 blocks, 23 `ka_*`, no duplicate ids.
 - **GRP** — over `/Users/Dev/suvarna-census` at 2a78ec64d: `platform/python-sidecar/services/ka_kshetra/**/*.py` (tests excluded) for table identifiers and INSERT/DELETE/UPDATE targets; `platform/python-sidecar/**/*.py` (tests excluded) for `INSERT INTO kala_insights`; `find platform/python-sidecar -iname '*circularity*'`; tier files T1-T4 and the register for the keyword searches named in the gaps file. Where origin/main e2352f881 was also read (ka_kshetra tables), the result is stated.
