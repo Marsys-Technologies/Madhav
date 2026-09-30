@@ -80,6 +80,13 @@ def parse_overlay_rows(vedha_rows: list) -> dict:
             "formula_version": _get(r, "formula_version"),
             "operator_role": d.get("operator_role"),
             "provenance": d.get("provenance"), "ruling_ref": d.get("ruling_ref"),
+            # A SOURCE-BOUND ledger identity for the primary residence, when
+            # the writer carried one (`primary_contact_ledger`: the contacts
+            # ledger's independence_group / contact_id / t_exact for this
+            # residence). The current writer is date-grain and carries none.
+            "ledger_contact": (d.get("primary_contact_ledger")
+                               if isinstance(d.get("primary_contact_ledger"), dict) else None),
+            "precision_regime": _get(r, "precision_regime") or d.get("precision_regime"),
         }
         if kind in ANNOTATION_KINDS:
             annotations.append({**identity,
@@ -124,38 +131,54 @@ def parse_overlay_rows(vedha_rows: list) -> dict:
 
 
 def primary_contact_identity(row: dict) -> dict:
-    """The PRIMARY CONTACT's physical identity (§6.1; ASTRA v1.2 P1-2): the
-    primary residence — graha G in sign S over [window_start, window_end) —
-    keyed by the family's single identity scheme
-    (gochara_kernel.ids.independence_group: body, relation 'residence',
-    the span's lower degree, the window-start instant) — the same scheme the
-    contacts ledger uses for residence rows and the vedha writer for its
-    obstructor roots — plus the §6.1 canonical rendering
-    `body|relation_kind|canonical_target|convention_id|ordinal`. The overlay
-    carries no occurrence ordinal (it is not the contacts ledger), which is
-    stated as `occurrence_ordinal: None` rather than invented; identity
-    within one build is by the residence start."""
-    ws = _date_or_none(row.get("window_start"))
-    sign_idx = row.get("primary_sign_idx")
-    sign_name = row.get("primary_sign_name")
+    """The PRIMARY CONTACT's identity (§6.1; ASTRA v1.2 P1-2, corrected per
+    v1.3 amendment 2): TRUTHFUL, never reconstructed.
+
+    The contacts ledger keys a residence by the family's scheme
+    (gochara_kernel.ids.independence_group over body, 'residence', the span
+    degree and the OBSERVED INGRESS INSTANT, minute-floored). The overlay row
+    is date-grain (the writer's precision_regime is `date_grain`): it knows
+    the residence's calendar dates, not the ingress instant, so a hash of
+    its midnight date is NOT the ledger's identity (the reviewer's probe:
+    ledger `sha256:04886a…` vs a midnight reconstruction `sha256:92cbf5…`).
+
+    Therefore: when the writer carried a source-bound ledger identity
+    (`detail.primary_contact_ledger`), it is passed through verbatim with
+    `identity_resolution: 'ledger'`; otherwise the identity is persisted as
+    EXPLICITLY UNRESOLVED — `independence_group` and `ledger_contact_id`
+    are None, `identity_resolution: 'unresolved'`, with the reason — and
+    only the overlay's own descriptive residence key is carried, labelled
+    as such. No occurrence ordinal is built (`occurrence_ordinal: None`)."""
     graha = row.get("graha")
+    sign_name = row.get("primary_sign_name")
     convention = f"kala_vedha_gochara:{row.get('formula_version') or 'unversioned'}"
-    group = None
-    if ws is not None and sign_idx is not None and graha:
-        group = _kernel_independence_group(
-            body=str(graha), relation="residence", aspect_deg=0.0,
-            target_deg=float(int(sign_idx) * 30), t_exact_jd=None,
-            t_fallback_jd=_date_to_jd(ws))
-    return {
+    base = {
         "body": graha, "relation_kind": "residence",
         "canonical_target": f"span:{sign_name}" if sign_name else None,
         "convention_id": convention, "occurrence_ordinal": None,
         "t_in": row.get("window_start"), "t_out": row.get("window_end"),
-        "independence_group": group,
-        "canonical": (f"{graha}|residence|span:{sign_name}|{convention}|-"
-                      if sign_name else None),
-        "ordinal_note": "overlay rows carry no occurrence ordinal; identity by residence start",
+        # the overlay's OWN descriptive key — explicitly not a ledger identity
+        "overlay_residence_key": (
+            f"{graha}|residence|span:{sign_name}|{convention}|{row.get('window_start')}"
+            if sign_name else None),
+        "ordinal_note": "overlay rows carry no occurrence ordinal; none is built",
     }
+    ledger = row.get("ledger_contact") or {}
+    group = ledger.get("independence_group")
+    contact_id = ledger.get("contact_id")
+    if group or contact_id:
+        return {**base, "identity_resolution": "ledger",
+                "independence_group": group, "ledger_contact_id": contact_id,
+                "ledger_t_exact": ledger.get("t_exact"),
+                "ledger_source": ledger.get("source") or "contacts_ledger"}
+    return {**base, "identity_resolution": "unresolved",
+            "independence_group": None, "ledger_contact_id": None,
+            "ledger_t_exact": None, "ledger_source": None,
+            "reason": ("overlay residence is date-grain (precision_regime="
+                       f"{row.get('precision_regime') or 'date_grain'}); the contacts ledger keys "
+                       "a residence by its observed ingress instant, which the overlay does "
+                       "not carry — no reconstructed (midnight-date) identifier is presented "
+                       "as the ledger's")}
 
 
 def rule_identity(row: dict) -> dict:
@@ -317,10 +340,17 @@ def persistable_summary(gate_result: dict) -> dict:
         })
     annotations = []
     for a in gate_result.get("annotations") or []:
-        annotations.append({k: a.get(k) for k in (
+        entry = {k: a.get(k) for k in (
             "primary_graha", "graha", "vedha_kind", "operator_role",
-            "primary_contact_identity", "rule", "window_start", "window_end",
-            "classical_citation", "formula_version", "note")})
+            "primary_contact", "primary_contact_identity", "rule",
+            "window_start", "window_end", "classical_citation", "formula_version", "note")}
+        # ASTRA v1.3 amendment 2: testimony keeps its OBSTRUCTION EVIDENCE —
+        # the obstructor, the fired interval(s) and the root — so a Saturn
+        # Jan–Jun obstruction and a Mars Jan 15–Mar 1 obstruction on the same
+        # Moon residence persist as different objects.
+        entry["intervals"] = a.get("fired")
+        entry["factor"] = a.get("factor")
+        annotations.append(entry)
     return {
         "contract": gate_result.get("contract"),
         "state": gate_result.get("state"),

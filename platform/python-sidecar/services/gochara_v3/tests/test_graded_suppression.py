@@ -268,9 +268,11 @@ class TestComputeQualityGatesUnit:
         assert fv["primary_graha"] == "Mars" and fv["vedha_kind"] == "house_vedha"
         assert fv["primary_contact"]["primary_house"] == 3
         assert fv["primary_contact"]["residence"] == ["2013-06-01", "2013-09-30"]
-        assert fv["primary_contact_identity"]["canonical"] == (
-            "Mars|residence|span:Capricorn|kala_vedha_gochara:unversioned|-")
-        assert fv["primary_contact_identity"]["independence_group"]
+        assert fv["primary_contact_identity"]["overlay_residence_key"] == (
+            "Mars|residence|span:Capricorn|kala_vedha_gochara:unversioned|2013-06-01")
+        # date-grain overlay: the ledger identity is explicitly unresolved (v1.3 am. 2)
+        assert fv["primary_contact_identity"]["identity_resolution"] == "unresolved"
+        assert fv["primary_contact_identity"]["independence_group"] is None
         assert fv["rule"]["classical_citation"].startswith("Phaladipika")
         assert fv["rule"]["vedha_house"] == 9 and fv["rule"]["provenance"] == "verse_cited"
         assert fv["operator_role"] == "scored"

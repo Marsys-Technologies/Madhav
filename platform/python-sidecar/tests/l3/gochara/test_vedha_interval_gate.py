@@ -610,7 +610,10 @@ def test_three_evaluator_states_persist_as_three_different_objects():
     f = s_obst["vedha"]["fired"][0]
     assert f["primary_contact_identity"]["relation_kind"] == "residence"
     assert f["primary_contact_identity"]["canonical_target"] == "span:Gemini"
-    assert f["primary_contact_identity"]["independence_group"]
+    # v1.3 amendment 2: the overlay is date-grain — the ledger identity is
+    # EXPLICITLY unresolved, never a reconstructed midnight hash
+    assert f["primary_contact_identity"]["identity_resolution"] == "unresolved"
+    assert f["primary_contact_identity"]["independence_group"] is None
     assert f["primary_contact_identity"]["occurrence_ordinal"] is None
     assert f["rule"]["formula_version"] == W.FORMULA_VERSION
     assert f["rule"]["canonical"].startswith("Phaladipika")
@@ -638,20 +641,85 @@ def test_testimony_and_legacy_rows_persist_distinctly():
     assert tb["vedha_gate"]["state"] == "clear"
 
 
-def test_primary_contact_identity_uses_the_familys_identity_scheme():
+def test_primary_contact_identity_is_ledger_bound_or_explicitly_unresolved():
+    """ASTRA v1.3 amendment 2 (the reviewer's probe): the contacts ledger keys
+    a residence by its OBSERVED ingress instant (minute-floored); a hash of
+    the overlay's midnight date is a different value and must never be
+    presented as the ledger's identity. The current writer is date-grain and
+    carries no ledger identity → the persisted identity is EXPLICITLY
+    unresolved (no hash at all); a row that DOES carry the ledger's identity
+    passes it through verbatim."""
     from services.gochara_kernel.ids import independence_group
     from services.gochara_kernel.overlays import date_to_jd
+    # the ledger's identity for Sun entering Gemini at 13:47 UTC on 2025-01-01
+    ingress_jd = date_to_jd(date(2025, 1, 1)) + (13 * 60 + 47) / 1440.0
+    ledger_group = independence_group(body="Sun", relation="residence", aspect_deg=0.0,
+                                      target_deg=60.0, t_exact_jd=ingress_jd,
+                                      t_fallback_jd=ingress_jd)
+    midnight_group = independence_group(body="Sun", relation="residence", aspect_deg=0.0,
+                                        target_deg=60.0, t_exact_jd=None,
+                                        t_fallback_jd=date_to_jd(date(2025, 1, 1)))
+    assert ledger_group != midnight_group  # the probe: 04886a… vs 92cbf5…
     row = VG.parse_overlay_rows([_writer_row("Sun", "2025-01-01", "2025-06-01")])["rows"][0]
     ident = VG.primary_contact_identity(row)
-    expected = independence_group(body="Sun", relation="residence", aspect_deg=0.0,
-                                  target_deg=60.0, t_exact_jd=None,
-                                  t_fallback_jd=date_to_jd(date(2025, 1, 1)))
-    assert ident["independence_group"] == expected
-    assert ident["canonical"] == f"Sun|residence|span:Gemini|kala_vedha_gochara:{W.FORMULA_VERSION}|-"
-    # two residences of one graha in one sign at different starts are two identities
-    row2 = VG.parse_overlay_rows([_writer_row("Sun", "2025-07-01", "2025-09-01")])["rows"][0]
-    assert VG.primary_contact_identity(row2)["independence_group"] != expected
+    assert ident["identity_resolution"] == "unresolved"
+    assert ident["independence_group"] is None and ident["ledger_contact_id"] is None
+    assert ident["occurrence_ordinal"] is None
+    assert "date-grain" in ident["reason"] and "ingress instant" in ident["reason"]
+    dumped = json.dumps(ident)
+    assert midnight_group not in dumped and ledger_group not in dumped
+    assert "canonical" not in ident  # no §6.1 rendering posing as a ledger id
+    assert ident["overlay_residence_key"].startswith("Sun|residence|span:Gemini|kala_vedha_gochara:")
+    assert ident["overlay_residence_key"].endswith("|2025-01-01")
+    # a writer that carries the SOURCE-BOUND ledger identity: passed through verbatim
+    bound = _writer_row("Sun", "2025-01-01", "2025-06-01")
+    bound.detail["primary_contact_ledger"] = {
+        "independence_group": ledger_group, "contact_id": "sha256:contact-abc",
+        "t_exact": "2025-01-01T13:47:00Z", "source": "contacts_ledger"}
+    ident2 = VG.primary_contact_identity(VG.parse_overlay_rows([bound])["rows"][0])
+    assert ident2["identity_resolution"] == "ledger"
+    assert ident2["independence_group"] == ledger_group
+    assert ident2["ledger_contact_id"] == "sha256:contact-abc"
+    assert ident2["ledger_t_exact"] == "2025-01-01T13:47:00Z"
+    # …and it reaches the persisted row unchanged
+    _, _, persisted = _persisted([_writer_row("Sun", "2025-01-01", "2025-06-01",
+                                             occupants=[("Mars", "2025-01-01", "2025-03-01")])])
+    assert persisted["vedha"]["fired"][0]["primary_contact_identity"]["identity_resolution"] == "unresolved"
+    obstructed_bound = _writer_row("Sun", "2025-01-01", "2025-06-01",
+                                   occupants=[("Mars", "2025-01-01", "2025-03-01")])
+    obstructed_bound.detail["primary_contact_ledger"] = {"independence_group": ledger_group}
+    _, _, persisted2 = _persisted([obstructed_bound])
+    assert persisted2["vedha"]["fired"][0]["primary_contact_identity"]["independence_group"] == ledger_group
     assert VG.rule_identity(row)["canonical"].endswith("primary_house=3|vedha_house=9")
+
+
+def test_testimony_persists_its_obstruction_evidence():
+    """ASTRA v1.3 amendment 2 (the reviewer's probe): the same Moon residence
+    obstructed by Saturn Jan–Jun versus by Mars Jan 15–Mar 1 gave two
+    IDENTICAL persisted objects. Testimony now keeps its obstructor, fired
+    interval(s) and root through serialisation."""
+    saturn = _writer_row("Moon", "2025-01-01", "2025-06-01",
+                         occupants=[("Saturn", "2025-01-01", "2025-06-01")])
+    mars = _writer_row("Moon", "2025-01-01", "2025-06-01",
+                       occupants=[("Mars", "2025-01-15", "2025-03-01")])
+    clean = _writer_row("Sun", "2025-01-01", "2025-06-01")
+    _, _, s_sat = _persisted([clean, saturn], "2025-02-01")
+    _, _, s_mars = _persisted([clean, mars], "2025-02-01")
+    assert json.dumps(s_sat, sort_keys=True) != json.dumps(s_mars, sort_keys=True)
+    a_sat, a_mars = s_sat["vedha"]["annotations"][0], s_mars["vedha"]["annotations"][0]
+    assert a_sat["operator_role"] == a_mars["operator_role"] == "testimony"
+    assert [iv["obstructor_body"] for iv in a_sat["intervals"]] == ["Saturn"]
+    assert [iv["obstructor_body"] for iv in a_mars["intervals"]] == ["Mars"]
+    assert (a_sat["intervals"][0]["t_in"], a_sat["intervals"][0]["t_out"]) == ("2025-01-01", "2025-06-01")
+    assert (a_mars["intervals"][0]["t_in"], a_mars["intervals"][0]["t_out"]) == ("2025-01-15", "2025-03-01")
+    assert a_sat["intervals"][0]["independence_group"] != a_mars["intervals"][0]["independence_group"]
+    assert a_sat["primary_contact"]["residence"] == ["2025-01-01", "2025-06-01"]
+    assert a_sat["factor"] is None  # testimony never weights
+    # the state and λ are untouched by testimony (S-04)
+    assert s_sat["state"] == s_mars["state"] == "clear"
+    # the chain-row term_breakdown carries the same evidence
+    _, tb, _ = _persisted([clean, mars], "2025-02-01")
+    assert tb["vedha_gate"]["annotations"][0]["intervals"][0]["obstructor_body"] == "Mars"
 
 
 def test_projection_fetch_reads_formula_version():
