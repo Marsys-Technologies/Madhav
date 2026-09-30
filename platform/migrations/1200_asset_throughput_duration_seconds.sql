@@ -25,6 +25,8 @@
 -- at landing (Suvarna E3.2) because main's sequence had since passed it (max 1152 across BOTH
 -- platform/migrations/ and platform/supabase/migrations/). SQL below is unchanged.
 
+SET LOCAL lock_timeout = '5s';
+
 ALTER TABLE asset_throughput
     ADD COLUMN IF NOT EXISTS duration_seconds double precision;
 
