@@ -64,10 +64,12 @@ contacts (M-5). mechanism_node intervals are enumerated for the graha the ref
 names; M-6 derived intervals for the formula's ruled agent (target_qualifier
 'agent:X') only — the verse names the transiting graha.
 
-t_exact is NOT NULL in migration 1081, so kernel episodes WITHOUT an exact
-crossing inside the horizon (E8-2 tangencies, knot-edge clips) are NOT
-persistable: they are counted in the build report (episodes_without_exact)
-and excluded from the payload rather than fabricating an instant. Kernel
+Migration 1152 makes t_exact nullable, so kernel episodes WITHOUT an exact
+crossing inside the horizon (N3 truncated spans: exact centre off-horizon)
+are KEPT with t_exact=NULL, exact_crossing=false and their
+truncated_at_horizon mark — never dropped as absence, never a fabricated
+instant (GOCHARA_DESIGN_SPECS §6.1/§6.2 inv 2, O-SS-3). They are counted in
+the build report (episodes_truncated_no_exact_kept). Kernel
 'truncated_at_horizon=both' maps to NULL (WP1 §3.1 CHECK).
 
 Usage:
@@ -602,9 +604,9 @@ def enumerate_body(
     """Enumerate one body's episodes over the resolved target set.
 
     Returns (episode_dicts, stats). stats carries episodes_without_exact
-    (kernel episodes with t_exact=None are NOT persistable — 1081 t_exact
-    NOT NULL — so they are counted and excluded, never fabricated) and the
-    searched-relation sets per target_type for coverage."""
+    (kernel episodes with t_exact=None — N3 truncated spans — are KEPT with
+    t_exact NULL since migration 1152; the count is retained as a build-report
+    metric) and the searched-relation sets per target_type for coverage."""
     out: list[dict] = []
     stats = {"episodes_without_exact": 0, "searched": {}}
 
@@ -614,8 +616,9 @@ def enumerate_body(
     def _emit(eps, target) -> None:
         for e in eps:
             if e.t_exact is None:
+                # N3: keep the truncated span; count it, never drop, never
+                # fabricate an instant (O-SS-3).
                 stats["episodes_without_exact"] += 1
-                continue
             out.append(_episode_to_dict(e, target, backend))
 
     for t in targets:
@@ -682,9 +685,14 @@ _SURVIVAL_FIELDS = frozenset({"target_ref", "classical_citation", "_map_weight"}
 
 def _contact_id_of(ep: dict, chart_id: str, convention_id: str,
                    method_version: str) -> str:
-    """The pinned WP1 §3.2 id, exactly as the ledger will compute it."""
+    """The pinned WP1 §3.2 id, exactly as the ledger will compute it. A
+    no-exact (truncated) row is identified by its floored t_in (ids.contact_id
+    t_fallback rule) — marked as a substitution inside the payload."""
     t_exact = ep["t_exact"]
-    t_exact_jd = t_exact.timestamp() / 86400.0 + 2440587.5
+    t_exact_jd = (
+        t_exact.timestamp() / 86400.0 + 2440587.5 if t_exact is not None else None
+    )
+    t_in_jd = ep["t_in"].timestamp() / 86400.0 + 2440587.5
     return gk_ids.contact_id(
         chart_id=chart_id, convention_id=convention_id,
         body=ep["body"], target_type=ep["target_type"],
@@ -694,6 +702,7 @@ def _contact_id_of(ep: dict, chart_id: str, convention_id: str,
         target_fact_id=ep.get("target_fact_id"),
         target_ref=ep.get("target_ref"),
         method_version=method_version,
+        t_fallback_jd=t_in_jd,
     )
 
 
@@ -1105,7 +1114,7 @@ def main(argv: list[str] | None = None) -> int:
         "targets": len(targets),
         "target_resolution_state_counts": state_counts,
         "episodes_emitted": len(episodes),
-        "episodes_without_exact_excluded": no_exact_total,
+        "episodes_truncated_no_exact_kept": no_exact_total,
         "dedupe": dedupe_report,
         "coverage_partitions": len(coverage),
         "upstream_fingerprints": fingerprints,

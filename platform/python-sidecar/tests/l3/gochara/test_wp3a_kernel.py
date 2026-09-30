@@ -913,3 +913,29 @@ def test_n3_clipped_span_never_fabricates_ingress():
     # mutation guard: no fabricated exact instant at (or near) the clip edge
     assert ep.t_in == pytest.approx(horizon[0], abs=1e-9)
     assert not (ep.exact_crossing and ep.t_exact == ep.t_in)
+
+
+def test_contact_id_no_exact_t_in_fallback():
+    """N3 truncated contacts (t_exact=None) get a stable identity from the
+    floored t_in, marked as a substitution in the payload — so a truncated
+    contact can never collide with an exact one at the same minute, and the
+    exact-contact id shape is byte-identical to before the fallback existed."""
+    jd_exact = swe.julday(2026, 3, 6, 0.0) + 37 / 86400.0
+    kw = dict(
+        chart_id="wp2-synth-00000000-0000-4000-8000-00000000000b",
+        convention_id="sha256:abc", body="Saturn", target_type="karaka",
+        relation="conjunction", aspect_deg=0.0, target_ref="Sun",
+        method_version="1.0.0",
+    )
+    exact = contact_id(t_exact_jd=jd_exact, **kw)
+    # exact shape unchanged: no t_fallback needed, same value as pre-change
+    assert exact == contact_id(t_exact_jd=jd_exact, t_fallback_jd=None, **kw)
+    # no-exact: requires the fallback instant
+    with pytest.raises(ValueError):
+        contact_id(t_exact_jd=None, **kw)
+    trunc = contact_id(t_exact_jd=None, t_fallback_jd=jd_exact, **kw)
+    # same minute, same everything — but NOT the same id (substitution marked)
+    assert trunc != exact
+    # stable under sub-minute jitter of t_in
+    assert trunc == contact_id(
+        t_exact_jd=None, t_fallback_jd=jd_exact + 20 / 86400.0, **kw)

@@ -40,24 +40,24 @@ def contact_id(
     target_fact_id: str | None = None,
     target_ref: str | None = None,
     method_version: str,
+    t_fallback_jd: float | None = None,
 ) -> str:
     """WP1_CONTRACTS.md §3.2, verbatim key order semantics.
 
     `target_identity` is `fact:<target_fact_id>` when a fact id is present,
     else `ref:<target_ref>` — the unambiguous prefix makes the two disjoint.
-    `t_exact` is floored to the minute; an episode without an exact crossing
-    floors its (None-replaced) t_in instead, and the caller must say so by
-    passing t_exact_jd=None together with `no_exact=True` semantics — the
-    physical identity still needs an instant, so the pinned rule for
-    no-exact episodes uses t_in (documented here; WP1 §3.2 pins only exact
-    contacts, horizon-truncated episodes inherit by flooring t_in).
+    `t_exact` is floored to the minute. An episode without an exact crossing
+    (N3 truncated span, t_exact_jd=None) is identified by flooring its t_in
+    instead — the caller MUST pass t_fallback_jd=t_in — and the payload marks
+    the substitution explicitly (`"t_exact": null, "t_in": <floored>`) so a
+    truncated contact can never collide with an exact one at the same minute.
+    The exact-crossing payload is byte-identical to the pre-fallback shape.
     """
     if target_fact_id is None and target_ref is None:
         raise ValueError("contact_id needs target_fact_id or target_ref")
     identity = (
         f"fact:{target_fact_id}" if target_fact_id is not None else f"ref:{target_ref}"
     )
-    epoch = (float(t_exact_jd) - 2440587.5) * 86400.0
     payload = {
         "chart_id": str(chart_id),
         "convention_id": str(convention_id),
@@ -66,9 +66,19 @@ def contact_id(
         "target_identity": identity,
         "relation": str(relation),
         "aspect_deg": round(float(aspect_deg) % 360.0, 4),
-        "t_exact": floor_to_minute_utc_iso(epoch),
         "method_version": str(method_version),
     }
+    if t_exact_jd is None:
+        if t_fallback_jd is None:
+            raise ValueError(
+                "contact_id for a no-exact episode needs t_fallback_jd (t_in)"
+            )
+        epoch = (float(t_fallback_jd) - 2440587.5) * 86400.0
+        payload["t_exact"] = None
+        payload["t_in"] = floor_to_minute_utc_iso(epoch)
+    else:
+        epoch = (float(t_exact_jd) - 2440587.5) * 86400.0
+        payload["t_exact"] = floor_to_minute_utc_iso(epoch)
     return _sha256_canonical(payload)
 
 

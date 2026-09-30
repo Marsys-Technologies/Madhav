@@ -15,8 +15,9 @@ consumes. What this file proves:
     the table's 0.5°), return owner-gating, N-14 (Rahu casts no dṛṣṭi), the
     three boundary relations attached per point target, interval targets
     yielding sign_ingress only (M-5), mechanism_node/M-6 agent restriction;
-  * honesty guards: kernel episodes with t_exact=None are excluded and
-    counted (1081 t_exact NOT NULL), truncated_at_horizon='both' maps to
+  * honesty guards: kernel episodes with t_exact=None are KEPT as truncated
+    spans and counted (migration 1152 made t_exact nullable; N3/O-SS-3),
+    truncated_at_horizon='both' maps to
     NULL (WP1 §3.1 CHECK), every emitted dict carries tz-aware UTC instants
     and the ledger _normalize_episode shape;
   * end-to-end on the disposable WP6 Postgres (NOT_RUN when unreachable):
@@ -422,10 +423,13 @@ def test_interval_target_residence_and_agent_restriction():
     assert [e for e in jeps if e["relation"] == "sign_ingress"]
 
 
-def test_episodes_without_exact_are_excluded_and_counted():
-    """1081 t_exact NOT NULL: an episode whose exact crossing falls outside
-    the horizon (orb band entered, exact never reached) is NOT persistable —
-    counted in stats['episodes_without_exact'], absent from the payload."""
+def test_truncated_contacts_kept_and_counted():
+    """N3/O-SS-3 + migration 1152 (t_exact nullable): an episode whose exact
+    crossing falls outside the horizon (orb band entered, exact never reached)
+    is KEPT as a truncated span — t_exact NULL, exact_crossing False — and
+    counted in stats['episodes_without_exact']. Dropping it (the pre-1152
+    behaviour) was absence-fabrication; a non-NULL t_exact on it would be
+    instant-fabrication. Both mutations fail this test."""
     h0 = _jd(2026, 1, 1)
 
     def curve(jd):
@@ -437,9 +441,17 @@ def test_episodes_without_exact_are_excluded_and_counted():
         index, "Saturn", [_point_target(200.0, "Saturn")], horizon, 5.0, BACKEND,
         ephe_path=None, refine=False)
     assert stats["episodes_without_exact"] == 1
-    assert all(e["t_exact"] is not None for e in eps)
-    assert not [e for e in eps if e["relation"] == "conjunction"]
-    # the return band (0.5°) is narrower; its exact is the same root → also excluded
+    rows = [e for e in eps if e["relation"] == "conjunction"]
+    assert len(rows) == 1, "the truncated conjunction must be kept"
+    e = rows[0]
+    assert e["t_exact"] is None
+    assert e["exact_crossing"] is False
+    assert e["truncated_at_horizon"] == "end"
+    # identity still computable (t_in-fallback rule, ids.contact_id)
+    assert drv._contact_id_of(e, "00000000-0000-4000-8000-0000000000aa",
+                              "conv-test", "1.0.0").startswith("sha256:")
+    # the return band (0.5°) is narrower and never entered inside the horizon:
+    # correct ABSENCE (not a truncation) — no return row at all
     assert not [e for e in eps if e["relation"] == "return"]
 
 

@@ -114,18 +114,24 @@ def compute_contact_id(
     aspect_deg,
     t_exact: datetime,
     method_version: str,
+    t_in: datetime | None = None,
 ) -> str:
     """WP1 §3.2 contact id (local implementation).
 
     NOTE: duplicated pending services/gochara_kernel/ids.py (owned by a
     sibling workstream); consolidate once that module lands. The algorithm is
     pinned at WP1_CONTRACTS.md §3.2 so both implementations produce identical
-    ids — the §10 identity test enforces it.
+    ids — the §10 identity test enforces it. A no-exact (N3 truncated) row
+    passes t_exact=None WITH t_in set: identity floors t_in, marked as a
+    substitution in the payload so it cannot collide with an exact contact.
     """
     if _ids_contact_id is not None:
         t_exact_jd = None
         if t_exact is not None:
             t_exact_jd = t_exact.timestamp() / 86400.0 + 2440587.5
+        t_fallback_jd = None
+        if t_in is not None:
+            t_fallback_jd = t_in.timestamp() / 86400.0 + 2440587.5
         return _ids_contact_id(
             chart_id=chart_id,
             convention_id=convention_id,
@@ -137,6 +143,7 @@ def compute_contact_id(
             aspect_deg=aspect_deg,
             t_exact_jd=t_exact_jd,
             method_version=method_version,
+            t_fallback_jd=t_fallback_jd,
         )
     aspect = 0.0 if aspect_deg is None else float(aspect_deg)
     payload = {
@@ -150,9 +157,16 @@ def compute_contact_id(
         ),
         "relation": str(relation),
         "aspect_deg": round(aspect % 360.0, 4),
-        "t_exact": _floor_to_minute_utc_iso(t_exact),
         "method_version": str(method_version),
     }
+    if t_exact is None:
+        if t_in is None:
+            raise ValueError(
+                "compute_contact_id for a no-exact episode needs t_in")
+        payload["t_exact"] = None
+        payload["t_in"] = _floor_to_minute_utc_iso(t_in)
+    else:
+        payload["t_exact"] = _floor_to_minute_utc_iso(t_exact)
     return sha256_tag(canonical_json(payload))
 
 
@@ -285,6 +299,7 @@ def _normalize_episode(ep: dict, chart_id: str, generation: str,
         aspect_deg=merged.get("aspect_deg"),
         t_exact=merged["t_exact"],
         method_version=method_version,
+        t_in=merged["t_in"],
     )
     computed_at = merged.get("computed_at")
     ephem_backend = merged.get("ephemeris_backend")
