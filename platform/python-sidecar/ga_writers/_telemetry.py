@@ -18,6 +18,7 @@ asset_registry, not this table) — but now it succeeds.
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -25,16 +26,39 @@ logger = logging.getLogger(__name__)
 _UPSERT_SQL = """
 INSERT INTO asset_throughput
   (chart_id, asset_id, state, rows_written, last_measured_build_id,
-   last_built_at, last_measured_at)
-VALUES (%s, %s, %s, %s, %s::uuid, NOW(), NOW())
+   last_built_at, last_measured_at, duration_seconds, rows_per_second)
+VALUES (%s, %s, %s, %s, %s::uuid, NOW(), NOW(), %s, %s)
 ON CONFLICT (chart_id, asset_id) WHERE chart_id IS NOT NULL
 DO UPDATE SET
   state                   = EXCLUDED.state,
   rows_written            = EXCLUDED.rows_written,
   last_measured_build_id  = EXCLUDED.last_measured_build_id,
   last_built_at           = NOW(),
-  last_measured_at        = NOW()
+  last_measured_at        = NOW(),
+  duration_seconds        = EXCLUDED.duration_seconds,
+  rows_per_second         = EXCLUDED.rows_per_second
 """
+
+
+def _compute_duration_and_rate(
+    rows_written: int, duration_seconds: float | None,
+) -> tuple[float | None, float | None]:
+    """Same guard as `pipeline.orchestrator.asset_runner._compute_duration_and_rate`
+    (A1, CLAUDE.md §N.8), duplicated rather than imported: this legacy L1 telemetry
+    helper and the orchestrator's own completion write are already two independent,
+    non-shared write paths (see this module's own docstring) — importing across
+    that boundary would create a coupling that does not otherwise exist. A missing,
+    zero, negative, or non-finite duration yields (None, None): never 0, never a
+    ZeroDivisionError, never a fabricated rate."""
+    if duration_seconds is None:
+        return None, None
+    try:
+        duration = float(duration_seconds)
+    except (TypeError, ValueError):
+        return None, None
+    if not math.isfinite(duration) or duration <= 0:
+        return None, None
+    return duration, (rows_written or 0) / duration
 
 
 def update_asset_throughput(
@@ -45,15 +69,30 @@ def update_asset_throughput(
     rows_written: int,
     *,
     state: str = "lit",
+    duration_seconds: float | None = None,
 ) -> None:
     """Best-effort upsert of a writer's per-chart build state into asset_throughput.
 
     SET semantics: `rows_written` is the final/cumulative total for the asset, not a
     delta. `state` is one of the asset_throughput CHECK values
-    (dormant/building/lit/stale/error)."""
+    (dormant/building/lit/stale/error).
+
+    `duration_seconds` (A1, optional, keyword-only): the caller's own measured
+    elapsed time for this call, if it has one. None of this module's current
+    8 ga_writers/*.py callers pass it yet — wiring a real measurement in means
+    editing those call sites, which is out of this packet's scope (see the A1
+    report's honest-limits section); passing nothing here writes NULL for both
+    `duration_seconds` and `rows_per_second`, exactly as before this change. When
+    a future caller does pass a value, it is guarded exactly like the
+    orchestrator's own completion write: a missing/zero/non-finite duration
+    still yields NULL for both columns, never 0, never a fabricated rate."""
+    duration_clean, rate = _compute_duration_and_rate(rows_written, duration_seconds)
     try:
         with conn.transaction():
-            conn.execute(_UPSERT_SQL, [chart_id, asset_id, state, rows_written, str(build_id)])
+            conn.execute(
+                _UPSERT_SQL,
+                [chart_id, asset_id, state, rows_written, str(build_id), duration_clean, rate],
+            )
         logger.info("[telemetry] asset_throughput %s chart=%s rows=%d state=%s",
                     asset_id, chart_id, rows_written, state)
     except Exception as exc:  # noqa: BLE001 — telemetry is non-fatal
