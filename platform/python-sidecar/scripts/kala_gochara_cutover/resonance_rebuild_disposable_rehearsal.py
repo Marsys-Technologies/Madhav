@@ -1,56 +1,74 @@
 """A5.4 resonance_rebuild_R1_R6 — disposable-DB rehearsal of the WP3c (R-1..R-6)
-resonance-map rebuild (FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 T0-12, finding #9).
+resonance-map rebuild (FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 T0-12, finding #9),
+reworked per ASTRA_REVIEW_A5_4 P1-7 / P1-8 into a FAILING acceptance check.
 
-NEVER production. The DSN must name a loopback disposable database (the
-gochara-wp6-disposable PG16 container convention); anything else exits 4.
+NEVER production. Disposable identity is established BY CONSTRUCTION, not by
+a port exclusion: the rehearsal connects to a loopback maintenance database,
+CREATES a fresh database named `<prefix>_<utc-stamp>_<hex>`, verifies it is
+the connected database and empty of user tables before any DDL/DML, runs
+everything inside it, and DROPS it at the end (--keep-database retains it
+for inspection). A forwarded production port cannot satisfy this: the
+rehearsal never writes to a database it did not create seconds earlier.
 
-What this does, on a FRESH disposable database:
-  1. Applies the REAL migrations for the served table verbatim:
-     platform/migrations/459_gochara_resonance_map.sql and
-     platform/migrations/1080_nirmana_l3_gochara_resonance_target_resolution_state.sql
-     (with minimal faithful DDL for the writer's input tables — chart_facts,
-     brahma_event_ontology, bg_transit_rules, ga_yoga_firings, chart_dashas,
-     reference_signs, and an asset_registry stub so 459 applies verbatim).
-  2. Seeds a synthetic canonical-chart fixture (chart_id
-     482012f1-710e-4a25-994a-93821f5871aa) that reproduces the finding-#9
-     production shape: 176 sensitive-degree check facts, 154 of them
-     negative-result (not_fired / not_gandanta / not_pushkara / none), plus a
-     pre-WP3c legacy gochara_resonance_map partition whose 176
-     sensitive_degree targets key those facts (the "before" state).
-  3. Runs the REAL writer — KaGocharaResonanceWriter.run(ctx) — against the
-     disposable DB (the harness owns the connection and commits; the writer
-     never commits, per its contract).
-  4. Prints the verification block: negative-result sensitive targets after
-     the rebuild (must be 0), per-target_type before/after counts,
-     target_resolution_state coverage, arudha sign-level typing, yoga
-     live-validation + dropped_since_prior_build, lord states, and the
-     writer's own WP3c build notes (WriterResult.notes JSON).
+What it does, and what makes it FAIL (exit 1, failures listed):
+  1. Applies the REAL migrations 459 + 1080 verbatim (plus minimal faithful
+     DDL for the writer's inputs).
+  2. Seeds the finding-#9 fixture on the canonical chart id (176
+     sensitive-degree checks, 154 negative-result; a pre-WP3c legacy map
+     partition keying them; a stopped prior-build yoga) AND a foreign
+     chart's partition (the rollback must leave it untouched).
+  3. Takes the runbook's uniquely named snapshot (resonance_rebuild_backup_
+     sql.create_snapshot_sql) and records its count + content digest — the
+     same statements the production runbook quotes.
+  4. Runs the REAL writer (KaGocharaResonanceWriter.run(ctx); the harness
+     owns commit) and evaluates the R-1..R-6 postconditions as ASSERTIONS
+     with positive controls (an empty output cannot pass); dangling / NULL /
+     out-of-vocabulary references are detected with NOT EXISTS.
+  5. Re-runs the writer: the partition content digest must be identical
+     (idempotent rebuild).
+  6. Rehearses the rollback: (a) the runbook's rollback block with a WRONG
+     recorded digest must REFUSE before deleting anything; (b) with the
+     recorded values it must restore the exact preimage (digest equality)
+     while the foreign partition's digest is unchanged; (c) a rebuild after
+     the rollback must reproduce the post-rebuild digest.
 
 Usage:
   python3 resonance_rebuild_disposable_rehearsal.py \
-      --dsn postgresql://wp6:local@127.0.0.1:55435/resonance_a54
+      --maintenance-dsn postgresql://wp6:local@127.0.0.1:55435/postgres \
+      [--database-prefix rehearsal_a54] [--keep-database] [--json-out PATH]
 """
 from __future__ import annotations
 
 import argparse
 import json
+import re
+import secrets
 import sys
 import uuid
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 SIDECAR = Path(__file__).resolve().parents[2]
 MIGRATIONS = SIDECAR.parent / "migrations"
 sys.path.insert(0, str(SIDECAR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import resonance_rebuild_backup_sql as B  # noqa: E402
 
 LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+OTHER_CHART_ID = "11111111-1111-4111-8111-111111111111"  # foreign partition control
 AYANAMSHA = "lahiri_chitrapaksha"
 
-NEGATIVE_VALUES = ["not_fired", "not_gandanta", "not_pushkara", "none"]
-POSITIVE_VALUES = ["fired", "gandanta", "papa_kartari", "shubha_kartari", "pushkara"]
+NEGATIVE_VALUES = list(B.NEGATIVE_VALUES)
+POSITIVE_VALUES = list(B.POSITIVE_VALUES)
 SENSITIVE_KEYS = ["mrityu_bhaga", "gandanta", "kartari", "pushkara"]
+FIXTURE_SENSITIVE_TOTAL = 176
+FIXTURE_SENSITIVE_NEGATIVE = 154
+PRIOR_STOPPED_YOGA = "yoga_demo_stopped"
+
+_DB_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,40}_[0-9]{14}_[0-9a-f]{6}$")
 
 # (subject, sign_num) — graha_sign_attributes; LAGNA anchors whole-sign houses.
 SIGN_NUMS = {
@@ -149,37 +167,139 @@ SIGN_LORDS = [
 ]
 
 
-def _apply_migration_file(cur, name: str) -> None:
-    sql = (MIGRATIONS / name).read_text()
-    cur.execute(sql)
+def expected_afflicted_lord_rows(signature_models: dict = SIGNATURE_MODELS) -> int:
+    """R-5 positive control: every '<n>L afflicted' lord reference in the
+    seeded signature models must survive as a lord row with
+    target_qualifier='afflicted' (e.g. '2L/11L afflicted' ⇒ 2 rows)."""
+    total = 0
+    for _cls, (_houses, lords, _karakas) in signature_models.items():
+        for entry in lords:
+            if "afflicted" in entry:
+                total += len(re.findall(r"\d+L", entry))
+    return total
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dsn", required=True)
-    args = parser.parse_args()
+# ── acceptance (pure; unit-tested) ───────────────────────────────────────────
 
-    parsed = urlparse(args.dsn)
-    if (parsed.hostname or "") not in LOOPBACK or parsed.port == 5433:
-        print(f"REFUSED: DSN {args.dsn!r} is not a loopback disposable database.", file=sys.stderr)
-        return 4
+def verify_acceptance(ver: dict) -> list[str]:
+    """R-1..R-6 + rerun + rollback as FAILING assertions. Returns the list
+    of violated checks (empty ⇒ accepted). Every zero-count check carries a
+    positive control so an empty or no-op build cannot pass."""
+    f: list[str] = []
+    b, a = ver["before"], ver["after"]
+    if (b["sensitive_total"], b["sensitive_negative"]) != (
+            FIXTURE_SENSITIVE_TOTAL, FIXTURE_SENSITIVE_NEGATIVE):
+        f.append(f"fixture control: expected {FIXTURE_SENSITIVE_NEGATIVE}/"
+                 f"{FIXTURE_SENSITIVE_TOTAL} negative sensitive targets before, "
+                 f"got {b['sensitive_negative']}/{b['sensitive_total']}")
+    if a["total"] <= 0:
+        f.append("R-6 control: rebuilt partition is empty")
+    if a["sensitive_negative"] != 0:
+        f.append(f"R-1: {a['sensitive_negative']} negative-result sensitive targets remain")
+    if a["sensitive_total"] <= 0:
+        f.append("R-1 control: no sensitive_degree rows kept (positive facts exist)")
+    if a["sensitive_total"] != ver["sensitive_keyed_to_positive_facts"]:
+        f.append("R-1: kept sensitive rows are not all keyed to positive-result facts")
+    if ver["dangling_or_null_refs"] != 0:
+        f.append(f"refs: {ver['dangling_or_null_refs']} NULL / dangling / non-uuid target refs")
+    if ver["rows_missing_or_bad_resolution_state"] != 0:
+        f.append(f"R-6: {ver['rows_missing_or_bad_resolution_state']} rows with NULL/invalid state")
+    if ver["arudha_rows"] <= 0 or not ver["arudha_all_keyed_to_sign_facts"]:
+        f.append("R-2: arudha rows absent or not all keyed to fact_key='sign' facts")
+    if ver["arudha_invalid_sign_unavailable"] <= 0:
+        f.append("R-2 control: the invalid ARUDHA_A12 sign did not surface as 'unavailable'")
+    if ver["yoga_rows"] <= 0 or ver["yoga_refs_not_live_fired"] != 0:
+        f.append("R-3: yoga rows absent or a ref is not backed by a live fired firing")
+    dropped = ver["writer_notes"].get("yoga_constituent", {}).get("dropped_since_prior_build")
+    if dropped != [PRIOR_STOPPED_YOGA]:
+        f.append(f"R-3 drift: dropped_since_prior_build={dropped!r}, expected [{PRIOR_STOPPED_YOGA!r}]")
+    if ver["lord_rows"] <= 0 or set(ver["lord_states"]) != {"resolved"}:
+        f.append(f"R-4: lord rows {ver['lord_rows']} states {ver['lord_states']} (expected all resolved)")
+    if ver["expected_afflicted_rows"] <= 0 or ver["afflicted_qualifier_rows"] != ver["expected_afflicted_rows"]:
+        f.append(f"R-5: afflicted qualifier rows {ver['afflicted_qualifier_rows']} != expected "
+                 f"{ver['expected_afflicted_rows']}")
+    sd = ver["writer_notes"].get("sensitive_degree", {})
+    if not isinstance(sd.get("negative_dropped_zero_rows"), int) or sd["negative_dropped_zero_rows"] <= 0:
+        f.append("notes: sensitive_degree.negative_dropped_zero_rows absent or zero (per-class exclusion counter)")
+    if ver.get("rerun_digest_equal") is not True:
+        f.append("idempotency: second writer run changed the partition content digest")
+    rb = ver.get("rollback") or {}
+    if rb.get("refused_on_stale_snapshot") is not True or rb.get("partition_untouched_after_refusal") is not True:
+        f.append("rollback: the refuse-unless-verified block did not refuse a stale snapshot before deleting")
+    if rb.get("restored_digest_equal") is not True:
+        f.append("rollback: restored partition is not the exact preimage")
+    if rb.get("other_chart_untouched") is not True:
+        f.append("rollback: the foreign chart's partition changed")
+    if rb.get("rebuild_after_rollback_digest_equal") is not True:
+        f.append("rollback: rebuild after rollback did not reproduce the post-rebuild digest")
+    return f
 
+
+# ── disposable identity by construction ──────────────────────────────────────
+
+def _require_loopback(dsn: str) -> None:
+    parsed = urlparse(dsn)
+    if (parsed.hostname or "") not in LOOPBACK:
+        raise SystemExit(f"REFUSED: maintenance DSN {dsn!r} is not loopback.")
+
+
+def establish_disposable_database(maintenance_dsn: str, prefix: str):
+    """Create a fresh database this run owns; return (dsn, name)."""
     import psycopg
-    import psycopg.rows
+    _require_loopback(maintenance_dsn)
+    if not re.fullmatch(r"[a-z][a-z0-9_]{0,40}", prefix):
+        raise SystemExit(f"REFUSED: bad database prefix {prefix!r}")
+    name = f"{prefix}_{B.new_stamp_utc()}_{secrets.token_hex(3)}"
+    assert _DB_NAME_RE.match(name)
+    with psycopg.connect(maintenance_dsn, autocommit=True) as m:
+        m.execute(f'CREATE DATABASE "{name}"')
+    parsed = urlparse(maintenance_dsn)
+    dsn = urlunparse(parsed._replace(path=f"/{name}"))
+    return dsn, name
 
-    from services.ka_gochara_resonance.writer import (
-        TARGET_EVENT_CLASSES, KaGocharaResonanceWriter,
-    )
 
-    conn = psycopg.connect(args.dsn, autocommit=False)
-    cur = conn.cursor()
+def assert_disposable_identity(conn, expected_name: str) -> dict:
+    """Before any DDL/DML: the connected database IS the one this run
+    created (name equality + the run's naming pattern) and holds no user
+    tables. Together with the loopback maintenance DSN these establish the
+    identity by construction. `inet_server_addr()` is recorded as a
+    diagnostic only: a containerised disposable reports its container
+    address (e.g. 172.17.0.x) even when the client connected over loopback,
+    so it is not a discriminating test."""
+    cur_db = conn.execute("SELECT current_database()").fetchone()[0]
+    addr = conn.execute("SELECT host(inet_server_addr())").fetchone()[0]
+    user_tables = conn.execute(
+        "SELECT COUNT(*) FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema')"
+    ).fetchone()[0]
+    if cur_db != expected_name or not _DB_NAME_RE.match(cur_db):
+        raise SystemExit(f"REFUSED: connected to {cur_db!r}, not the created database {expected_name!r}")
+    if user_tables != 0:
+        raise SystemExit(f"REFUSED: database {cur_db!r} already has {user_tables} user tables — not fresh")
+    return {"database": cur_db, "server_addr_diagnostic": addr,
+            "user_tables_before": user_tables,
+            "identity_basis": "created by this run over a loopback maintenance DSN; "
+                              "name equality; zero user tables"}
 
-    # ── 1. schema: stub inputs + REAL migrations 459 + 1080 ─────────────────
-    cur.execute(STUB_DDL)
-    _apply_migration_file(cur, "459_gochara_resonance_map.sql")
-    _apply_migration_file(cur, "1080_nirmana_l3_gochara_resonance_target_resolution_state.sql")
 
-    # ── 2. seed the synthetic canonical chart ───────────────────────────────
+def drop_disposable_database(maintenance_dsn: str, name: str) -> None:
+    import psycopg
+    assert _DB_NAME_RE.match(name)
+    with psycopg.connect(maintenance_dsn, autocommit=True) as m:
+        m.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+
+
+# ── the rehearsal ─────────────────────────────────────────────────────────────
+
+def _apply_migration_file(cur, name: str) -> None:
+    cur.execute((MIGRATIONS / name).read_text())
+
+
+def _digest(cur, table: str, chart_id: str):
+    n, d = cur.execute(B.partition_digest_sql(table, chart_id)).fetchone()
+    return int(n), str(d)
+
+
+def _seed(cur):
     for event_class, (houses, lords, karakas) in SIGNATURE_MODELS.items():
         cur.execute(
             "INSERT INTO brahma_event_ontology (event_class_id, signature_model, citations)"
@@ -188,9 +308,6 @@ def main() -> int:
              json.dumps({"houses": houses, "lords": lords, "karakas": karakas}),
              json.dumps(["BPHS synthetic rehearsal citation (disposable fixture)"])),
         )
-    missing = set(TARGET_EVENT_CLASSES) - set(SIGNATURE_MODELS)
-    assert not missing, f"fixture missing ontology rows for {missing}"
-
     cur.executemany(
         "INSERT INTO bg_transit_rules (rule_type, graha, primary_house, classical_citation)"
         " VALUES (%s, %s, %s, %s)",
@@ -214,20 +331,16 @@ def main() -> int:
 
     # Finding-#9 shape: 176 sensitive-degree checks, 154 negative-result.
     subjects = [s for s in SIGN_NUMS if s != "LAGNA"]
-    sensitive_fact_ids: list[tuple[str, str]] = []  # (fact_id, value)
-    for i in range(176):
+    sensitive_fact_ids: list[tuple[str, str]] = []
+    vocab = {"mrityu_bhaga": ("fired", "not_fired"),
+             "gandanta": ("gandanta", "not_gandanta"),
+             "kartari": ("papa_kartari", "none"),
+             "pushkara": ("pushkara", "not_pushkara")}
+    for i in range(FIXTURE_SENSITIVE_TOTAL):
         subject = subjects[i % len(subjects)]
         key = SENSITIVE_KEYS[i % len(SENSITIVE_KEYS)]
-        value = NEGATIVE_VALUES[i % len(NEGATIVE_VALUES)] if i < 154 \
-            else POSITIVE_VALUES[i % len(POSITIVE_VALUES)]
-        # kartari's positive vocabulary excludes 'fired'/'gandanta' etc. —
-        # pair each value with a key whose vocabulary contains it.
-        vocab = {"mrityu_bhaga": ("fired", "not_fired"),
-                 "gandanta": ("gandanta", "not_gandanta"),
-                 "kartari": ("papa_kartari", "none"),
-                 "pushkara": ("pushkara", "not_pushkara")}
         pos, neg = vocab[key]
-        value = neg if i < 154 else pos
+        value = neg if i < FIXTURE_SENSITIVE_NEGATIVE else pos
         fid = add_fact("sensitive_degree_check", subject, key, text=value)
         sensitive_fact_ids.append((str(fid), value))
 
@@ -248,7 +361,6 @@ def main() -> int:
         " VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         fact_rows,
     )
-
     cur.executemany(
         "INSERT INTO ga_yoga_firings (chart_id, ayanamsha_id, yoga_canonical_id, fired,"
         " constituent_fact_ids, constituent_planets, constituent_houses, bhanga_active)"
@@ -257,7 +369,7 @@ def main() -> int:
           '["venus","jupiter"]', "[7, 11]", False),
          (CHART_ID, AYANAMSHA, "yoga_demo_bhanga", True, '["f3"]',
           '["sun"]', "[10]", True),
-         (CHART_ID, AYANAMSHA, "yoga_demo_stopped", False, '["f4"]',
+         (CHART_ID, AYANAMSHA, PRIOR_STOPPED_YOGA, False, '["f4"]',
           '["moon"]', "[4]", False)],
     )
     cur.executemany(
@@ -266,8 +378,7 @@ def main() -> int:
         [(CHART_ID, AYANAMSHA, lord) for lord in
          ("venus", "jupiter", "saturn", "sun", "moon", "mars", "mercury", "rahu", "ketu")],
     )
-
-    # ── 3. the BEFORE partition (pre-WP3c legacy map, finding #9 verbatim shape)
+    # the BEFORE partition (pre-WP3c legacy map, finding #9 verbatim shape)
     for fid, _value in sensitive_fact_ids:
         cur.execute(
             "INSERT INTO gochara_resonance_map (chart_id, event_class, target_type,"
@@ -275,80 +386,204 @@ def main() -> int:
             " VALUES (%s, 'marriage', 'sensitive_degree', %s, 0.5, NULL, TRUE)",
             (CHART_ID, fid),
         )
-    # A prior-build yoga id that no longer fires (R-3 drift surfacing).
     cur.execute(
         "INSERT INTO gochara_resonance_map (chart_id, event_class, target_type,"
         " target_ref, weight, classical_citation, uncited_extension)"
-        " VALUES (%s, 'marriage', 'yoga_constituent', 'yoga_demo_stopped', 0.7, NULL, TRUE)",
-        (CHART_ID,),
+        " VALUES (%s, 'marriage', 'yoga_constituent', %s, 0.7, NULL, TRUE)",
+        (CHART_ID, PRIOR_STOPPED_YOGA),
     )
-    conn.commit()
+    # the FOREIGN partition (must survive the rebuild AND the rollback untouched)
+    cur.executemany(
+        "INSERT INTO gochara_resonance_map (chart_id, event_class, target_type,"
+        " target_ref, weight, classical_citation, uncited_extension)"
+        " VALUES (%s, %s, %s, %s, %s, %s, TRUE)",
+        [(OTHER_CHART_ID, "marriage", "karaka", "Venus", 0.9, None),
+         (OTHER_CHART_ID, "career_entry", "bhava", "10", 0.6, None),
+         (OTHER_CHART_ID, "childbirth", "lord", "5L", 0.7, None)],
+    )
 
-    def counts(label):
-        out = {"label": label}
-        out["total"] = cur.execute(
-            "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s", (CHART_ID,)).fetchone()[0]
-        out["by_type"] = dict(cur.execute(
-            "SELECT target_type, COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
-            " GROUP BY target_type ORDER BY target_type", (CHART_ID,)).fetchall())
-        out["sensitive_negative"] = cur.execute(
-            "SELECT COUNT(*) FROM gochara_resonance_map m JOIN chart_facts f"
-            " ON f.fact_id = m.target_ref::uuid"
-            " WHERE m.chart_id=%s AND m.target_type='sensitive_degree'"
-            " AND f.fact_category='sensitive_degree_check'"
-            " AND f.fact_value_text = ANY(%s)",
-            (CHART_ID, NEGATIVE_VALUES)).fetchone()[0]
-        out["sensitive_total"] = out["by_type"].get("sensitive_degree", 0)
-        return out
 
-    before = counts("before_rebuild")
+def _counts(cur, label):
+    out = {"label": label}
+    out["total"] = cur.execute(
+        "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s", (CHART_ID,)).fetchone()[0]
+    out["by_type"] = dict(cur.execute(
+        "SELECT target_type, COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
+        " GROUP BY target_type ORDER BY target_type", (CHART_ID,)).fetchall())
+    out["sensitive_negative"] = cur.execute(B.negative_sensitive_targets_sql(CHART_ID)).fetchone()[0]
+    out["sensitive_total"] = out["by_type"].get("sensitive_degree", 0)
+    return out
 
-    # ── 4. run the REAL writer against the disposable DB ────────────────────
+
+def _run_writer(conn):
     from pipeline.orchestrator.writers import ContextSpec  # noqa: E402
-
+    from services.ka_gochara_resonance.writer import KaGocharaResonanceWriter
     ctx = ContextSpec.__new__(ContextSpec)
     ctx.db_conn = conn
     ctx.config = {"chart_id": CHART_ID}
     ctx.dry_run = False
     result = KaGocharaResonanceWriter().run(ctx)
     conn.commit()  # the harness owns commit; the writer never does
+    return result
 
-    after = counts("after_rebuild")
 
-    # ── 5. verification block ───────────────────────────────────────────────
-    ver: dict = {"before": before, "after": after}
-    ver["rows_missing_or_bad_resolution_state"] = cur.execute(
-        "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
-        " AND (target_resolution_state IS NULL"
-        "      OR target_resolution_state NOT IN ('resolved','unavailable','unqualified'))",
-        (CHART_ID,)).fetchone()[0]
-    ver["resolution_state_counts"] = dict(cur.execute(
-        "SELECT target_resolution_state, COUNT(*) FROM gochara_resonance_map"
-        " WHERE chart_id=%s GROUP BY 1 ORDER BY 1", (CHART_ID,)).fetchall())
-    ver["arudha_all_keyed_to_sign_facts"] = cur.execute(
-        "SELECT COUNT(*) = (SELECT COUNT(*) FROM gochara_resonance_map"
-        "  WHERE chart_id=%s AND target_type='arudha')"
-        " FROM gochara_resonance_map m JOIN chart_facts f ON f.fact_id = m.target_ref::uuid"
-        " WHERE m.chart_id=%s AND m.target_type='arudha' AND f.fact_key='sign'",
-        (CHART_ID, CHART_ID)).fetchone()[0]
-    ver["yoga_refs_not_live_fired"] = cur.execute(
-        "SELECT COUNT(*) FROM gochara_resonance_map m"
-        " WHERE m.chart_id=%s AND m.target_type='yoga_constituent'"
-        " AND NOT EXISTS (SELECT 1 FROM ga_yoga_firings y"
-        "   WHERE y.chart_id=m.chart_id AND y.ayanamsha_id=%s"
-        "   AND y.yoga_canonical_id=m.target_ref AND y.fired)",
-        (CHART_ID, AYANAMSHA)).fetchone()[0]
-    ver["lord_states"] = dict(cur.execute(
-        "SELECT target_resolution_state, COUNT(*) FROM gochara_resonance_map"
-        " WHERE chart_id=%s AND target_type='lord' GROUP BY 1 ORDER BY 1", (CHART_ID,)).fetchall())
-    ver["afflicted_qualifier_rows"] = cur.execute(
-        "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
-        " AND target_type='lord' AND target_qualifier='afflicted'", (CHART_ID,)).fetchone()[0]
-    ver["writer_rows_inserted"] = result.rows_inserted
-    ver["writer_notes"] = json.loads(result.notes)
+def _run_sql_script(dsn: str, script: str) -> str | None:
+    """Execute a BEGIN…COMMIT script on its own autocommit connection (the
+    runbook's psql shape). Returns None on success, the error text on
+    refusal/failure (the aborted transaction is rolled back)."""
+    import psycopg
+    with psycopg.connect(dsn, autocommit=True) as c:
+        try:
+            c.execute(script)
+            return None
+        except psycopg.Error as exc:
+            try:
+                c.execute("ROLLBACK")
+            except psycopg.Error:
+                pass
+            return str(exc)
 
-    print(json.dumps(ver, indent=2, sort_keys=True, default=str))
-    conn.close()
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--maintenance-dsn", required=True,
+                        help="loopback DSN of a maintenance database (e.g. .../postgres); "
+                             "the rehearsal CREATES its own database from here")
+    parser.add_argument("--database-prefix", default="rehearsal_a54")
+    parser.add_argument("--keep-database", action="store_true")
+    parser.add_argument("--json-out")
+    args = parser.parse_args(argv)
+
+    import psycopg
+
+    dsn, name = establish_disposable_database(args.maintenance_dsn, args.database_prefix)
+    report: dict = {"database": name, "acceptance": None}
+    try:
+        conn = psycopg.connect(dsn, autocommit=False)
+        cur = conn.cursor()
+        report["identity"] = assert_disposable_identity(conn, name)
+
+        # 1. schema: stub inputs + REAL migrations 459 + 1080
+        cur.execute(STUB_DDL)
+        _apply_migration_file(cur, "459_gochara_resonance_map.sql")
+        _apply_migration_file(cur, "1080_nirmana_l3_gochara_resonance_target_resolution_state.sql")
+        # 2. seed
+        _seed(cur)
+        conn.commit()
+
+        before = _counts(cur, "before_rebuild")
+        other_before = _digest(cur, "gochara_resonance_map", OTHER_CHART_ID)
+
+        # 3. snapshot (the runbook's §1 statements, verbatim from the module)
+        snap = B.snapshot_table_name(CHART_ID, B.new_stamp_utc())
+        cur.execute(B.create_snapshot_sql(snap, CHART_ID))
+        conn.commit()
+        live_pre = _digest(cur, "gochara_resonance_map", CHART_ID)
+        snap_rec = _digest(cur, snap, CHART_ID)
+        report["snapshot"] = {"table": snap, "recorded_count": snap_rec[0],
+                              "recorded_digest": snap_rec[1],
+                              "matches_live_preimage": snap_rec == live_pre}
+
+        # 4. the REAL writer, then the postconditions
+        result = _run_writer(conn)
+        after = _counts(cur, "after_rebuild")
+        post = _digest(cur, "gochara_resonance_map", CHART_ID)
+        ver: dict = {"before": before, "after": after}
+        ver["sensitive_keyed_to_positive_facts"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map m JOIN chart_facts f"
+            " ON f.fact_id::text = m.target_ref AND f.chart_id = m.chart_id"
+            " WHERE m.chart_id=%s AND m.target_type='sensitive_degree'"
+            " AND f.fact_category='sensitive_degree_check'"
+            " AND f.fact_value_text = ANY(%s)", (CHART_ID, POSITIVE_VALUES)).fetchone()[0]
+        ver["dangling_or_null_refs"] = cur.execute(B.dangling_fact_refs_sql(CHART_ID)).fetchone()[0]
+        ver["rows_missing_or_bad_resolution_state"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
+            " AND (target_resolution_state IS NULL"
+            "      OR target_resolution_state NOT IN ('resolved','unavailable','unqualified'))",
+            (CHART_ID,)).fetchone()[0]
+        ver["resolution_state_counts"] = dict(cur.execute(
+            "SELECT target_resolution_state, COUNT(*) FROM gochara_resonance_map"
+            " WHERE chart_id=%s GROUP BY 1 ORDER BY 1", (CHART_ID,)).fetchall())
+        ver["arudha_rows"] = after["by_type"].get("arudha", 0)
+        ver["arudha_all_keyed_to_sign_facts"] = cur.execute(
+            "SELECT COUNT(*) = (SELECT COUNT(*) FROM gochara_resonance_map"
+            "  WHERE chart_id=%s AND target_type='arudha')"
+            " FROM gochara_resonance_map m JOIN chart_facts f"
+            " ON f.fact_id::text = m.target_ref AND f.chart_id = m.chart_id"
+            " WHERE m.chart_id=%s AND m.target_type='arudha' AND f.fact_key='sign'",
+            (CHART_ID, CHART_ID)).fetchone()[0]
+        ver["arudha_invalid_sign_unavailable"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map m JOIN chart_facts f"
+            " ON f.fact_id::text = m.target_ref AND f.chart_id = m.chart_id"
+            " WHERE m.chart_id=%s AND m.target_type='arudha'"
+            " AND f.fact_subject='ARUDHA_A12' AND m.target_resolution_state='unavailable'",
+            (CHART_ID,)).fetchone()[0]
+        ver["yoga_rows"] = after["by_type"].get("yoga_constituent", 0)
+        ver["yoga_refs_not_live_fired"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map m"
+            " WHERE m.chart_id=%s AND m.target_type='yoga_constituent'"
+            " AND NOT EXISTS (SELECT 1 FROM ga_yoga_firings y"
+            "   WHERE y.chart_id=m.chart_id AND y.ayanamsha_id=%s"
+            "   AND y.yoga_canonical_id=m.target_ref AND y.fired)",
+            (CHART_ID, AYANAMSHA)).fetchone()[0]
+        ver["lord_rows"] = after["by_type"].get("lord", 0)
+        ver["lord_states"] = dict(cur.execute(
+            "SELECT target_resolution_state, COUNT(*) FROM gochara_resonance_map"
+            " WHERE chart_id=%s AND target_type='lord' GROUP BY 1 ORDER BY 1",
+            (CHART_ID,)).fetchall())
+        ver["afflicted_qualifier_rows"] = cur.execute(
+            "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=%s"
+            " AND target_type='lord' AND target_qualifier='afflicted'",
+            (CHART_ID,)).fetchone()[0]
+        ver["expected_afflicted_rows"] = expected_afflicted_lord_rows()
+        ver["writer_rows_inserted"] = result.rows_inserted
+        ver["writer_notes"] = json.loads(result.notes)
+        ver["post_rebuild_digest"] = {"count": post[0], "digest": post[1]}
+        ver["negative_dropped_zero_rows_semantics"] = (
+            "per-class exclusion counter (each negative fact is excluded once per "
+            "event class that would have cited it), NOT the map-level count; the "
+            "map-level R-1 assertion is after.sensitive_negative == 0")
+
+        # 5. idempotent rerun
+        _run_writer(conn)
+        rerun = _digest(cur, "gochara_resonance_map", CHART_ID)
+        ver["rerun_digest_equal"] = rerun == post
+
+        # 6. rollback rehearsal
+        conn.commit()
+        rb: dict = {"snapshot_table": snap}
+        refusal = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_rec[0], "0" * 32))
+        rb["refused_on_stale_snapshot"] = refusal is not None and "ROLLBACK REFUSED" in refusal
+        rb["refusal_message"] = refusal
+        rb["partition_untouched_after_refusal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == rerun
+        err = _run_sql_script(dsn, B.rollback_sql(snap, CHART_ID, snap_rec[0], snap_rec[1]))
+        rb["rollback_error"] = err
+        restored = _digest(cur, "gochara_resonance_map", CHART_ID)
+        rb["restored_digest_equal"] = err is None and restored == live_pre
+        rb["other_chart_untouched"] = _digest(cur, "gochara_resonance_map", OTHER_CHART_ID) == other_before
+        _run_writer(conn)
+        rb["rebuild_after_rollback_digest_equal"] = _digest(cur, "gochara_resonance_map", CHART_ID) == post
+        ver["rollback"] = rb
+
+        failures = verify_acceptance(ver)
+        report["verification"] = ver
+        report["acceptance"] = {"passed": not failures, "failures": failures}
+        conn.close()
+    finally:
+        if args.keep_database:
+            report["database_kept"] = True
+        else:
+            drop_disposable_database(args.maintenance_dsn, name)
+            report["database_dropped"] = True
+
+    text = json.dumps(report, indent=2, sort_keys=True, default=str)
+    print(text)
+    if args.json_out:
+        Path(args.json_out).write_text(text)
+    if report["acceptance"] is None or not report["acceptance"]["passed"]:
+        print("REHEARSAL FAILED: " + "; ".join((report.get("acceptance") or {}).get("failures", ["no acceptance block"])),
+              file=sys.stderr)
+        return 1
     return 0
 
 

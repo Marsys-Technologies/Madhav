@@ -121,3 +121,57 @@ table, and the explicit statement that **only the native executes it**.
   post-check threshold (0 negative targets) is absolute either way.
 - `enrichment.py`'s read-side arudha resolution remains the documented gap
   named in the writer header (out of scope for T0-12).
+
+
+## 6. Rework run (ASTRA_REVIEW_A5_4 P1-7 / P1-8) — 2026-09-30, FAILING acceptance check
+
+Reworked rehearsal (`resonance_rebuild_disposable_rehearsal.py`, exit 1 on any
+violated property) run live against the gochara-wp6-disposable PG16 container.
+Disposable identity by construction: the run CREATED database
+`rehearsal_a54_20260930151025_89df62` over the loopback maintenance DSN, verified
+`current_database()` equality and zero user tables before any DDL/DML, and
+DROPPED it afterwards (`database_dropped: True`; server
+address diagnostic 172.17.0.5 — a container
+address, recorded, not a discriminator).
+
+Acceptance: **passed = True**, failures = [].
+
+| Check | Value | Rule |
+|---|---|---|
+| fixture control (before) | 154 negative / 176 sensitive targets | must be 154/176 |
+| R-1 negative-result sensitive targets (after) | **0** | must be 0 |
+| R-1 positive control: sensitive rows kept / keyed to positive facts | 105 / 105 | > 0 and equal |
+| refs: NULL / dangling / non-uuid target refs (NOT EXISTS) | 0 | must be 0 |
+| R-6 rows with NULL/invalid state; partition total | 0; 481 | 0; > 0 |
+| resolution states | {'resolved': 418, 'unavailable': 63} | recorded |
+| R-2 arudha rows / all keyed to fact_key='sign' | 67 / True | > 0 and true |
+| R-2 control: invalid ARUDHA_A12 surfaced 'unavailable' | 10 rows | > 0 |
+| R-3 yoga rows / refs not live-fired | 19 / 0 | > 0 / 0 |
+| R-3 drift: dropped_since_prior_build | ['yoga_demo_stopped'] | == ['yoga_demo_stopped'] |
+| R-4 lord rows / states | 51 / {'resolved': 51} | > 0 / all resolved |
+| R-5 afflicted qualifier rows / expected from signature models | 6 / 6 | equal, > 0 |
+| notes.sensitive_degree | {'kept_subjects': ['JUP', 'KET_MEAN', 'MAR', 'MER', 'MOON', 'RAH_MEAN', 'SAT', 'SUN', 'VEN'], 'negative_dropped_zero_rows': 735, 'positive_kept': 105, 'unknown_value_dropped_zero_rows': 0} | negative_dropped_zero_rows is the PER-CLASS exclusion counter (735 for 154 facts), never required to equal 154 |
+| idempotent rerun (content digest equal) | True | must be true |
+| post-rebuild content digest | {'count': 481, 'digest': '3fdac1f46bcc72a95916fc510b375301'} | recorded |
+
+Snapshot / rollback rehearsal (the runbook's own statements, from
+`resonance_rebuild_backup_sql.py`):
+
+| Step | Result |
+|---|---|
+| snapshot table (unique per chart × stamp; plain CREATE TABLE) | `gochara_resonance_map_snap_482012f1_20260930151025` |
+| recorded count / content digest; equals live preimage | 177 / `6d250468f359785360e8f48eba26f696`; True |
+| rollback with a WRONG recorded digest | refused before any DELETE: `ROLLBACK REFUSED: snapshot gochara_resonance_map_snap_482012f1_20260930151025 is stale or incomplete (count 177 digest 6…`; partition untouched: True |
+| rollback with the recorded pair | restored exact preimage (digest equal): True |
+| foreign chart partition (11111111-…) | untouched throughout: True |
+| rebuild after rollback reproduces the post-rebuild digest | True |
+
+The production runbook (`resonance_rebuild_R1_R6_runbook.md`) was regenerated
+from the same module: uniquely named snapshot (never IF NOT EXISTS), recorded
+count/digest verification, refuse-unless-verified rollback with post-restore
+verification, postconditions as MUST values with positive controls, NOT EXISTS
+reference checks, and the 154-versus-counter confusion corrected.
+`tests/l3/test_resonance_rebuild_rehearsal.py` holds the runbook to the
+module's statements byte for byte and fails the acceptance function on every
+violated property. The §2 result table above (154 → 0) is superseded by this
+run's numbers, which are identical for the invariants it measured.
