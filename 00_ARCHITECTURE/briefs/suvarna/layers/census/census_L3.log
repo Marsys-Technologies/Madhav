@@ -1,0 +1,13 @@
+L3 Kala (contribution): 21 assets · 22 registered ids vs 21 has_writer=true
+  population: 21 active of 23 registry rows for this layer — excluded (inactive/dead): ka_gochara_sweep, ka_gochara_v3_century_materialize
+  chart scope: 17 chart-scoped count_sql bound to chart 482012f1-710e-4a25-994a-93821f5871aa
+  build scope: 61 global run(s), of which 503 touched this layer
+  !! registered but absent from the registry: ['ka_gochara_v3_century_materialize']
+  FAIL 42 · PARTIAL/NO_DETECTOR 105 · ERRORED 0 · assets measured 21
+    FAIL Build.completion: 10 — ka_avadhi, ka_bhavishya_lekha, ka_gochara, ka_kala_darshana, ka_kalasutra, ka_kshetra…
+    FAIL Build.dep_liveness: 1 — ka_taranga
+    FAIL Build.history: 2 — ka_avadhi, ka_kshetra
+    FAIL Count.floor: 9 — ka_bhavishya_lekha, ka_gochara, ka_kala_darshana, ka_kalasutra, ka_kota_chakra, ka_kshetra…
+    FAIL Dens.served: 19 — ka_avadhi, ka_bhavishya_lekha, ka_dasha_kala, ka_gochara, ka_graha_sancara, ka_jivana_parva…
+    FAIL Idem.pattern: 1 — ka_kshetra
+census written: ../suvarna-evidence/census/census_L3.json

@@ -1178,6 +1178,37 @@ jobs:
         # fact-category-pin-lint for future honest exceptions, if any arise.
         run: python platform/scripts/governance/check_fact_subject_wellformedness.py
 
+  governance-tool-tests:
+    # Suvarṇa E4.1: runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
+    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a
+    # live DB skip on their own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on
+    # this tree skip via __tests__/conftest.py (each skip names the missing input and disarms when it lands).
+    # Measured locally (py3.13): 348 passed, 77 skipped, ~8s.
+    name: Governance Tool Tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml pytest
+
+      - name: pytest — governance tool tests
+        # Env is deliberately scrubbed of DB settings so nothing can reach a database.
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+        run: python -m pytest platform/scripts/governance/__tests__ -q --no-header -rs
+
   governance-gates:
     # v1.2 follow-on (2026-05-28): four gates from session_queue.yaml that the
     # seal-time ci.yml was missing (per OPERATOR_CLEANUP_REPORT_v1_0 line 57 +
@@ -1414,83 +1445,9 @@ jobs:
           # sidecar-owned writer hashes. Any Python writer change must regenerate
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
-          # Nirmana #1715: the per-layer analysis-receipt pins are derived FROM
-          # that inventory. Checking them on the PR head (offline; no DB) is what
-          # keeps the generalised receipt spine fail-closed -- a writer change that
-          # lands without re-pinning its layer fails the build instead of silently
-          # letting a stale analysis authorise a rebuild.
-          #
-          # GitHub squash delivery intentionally removes source-branch ancestry.
-          # Validate the immutable history already packaged on protected main as the
-          # baseline, then require every new source-head successor to carry its own
-          # reachable evidence. Merge-group/main delivery trees recheck the complete
-          # structure and exact delta after that strict source-head check has passed.
-          delivery_topology_required() {
-            case "$1:$2" in
-              merge_group:*|push:refs/heads/main|workflow_dispatch:refs/heads/main) return 0 ;;
-              *) return 1 ;;
-            esac
-          }
-
-          while IFS='|' read -r case_event case_ref expected; do
-            if delivery_topology_required "$case_event" "$case_ref"; then
-              actual=delivery
-            else
-              actual=source
-            fi
-            if [ "$actual" != "$expected" ]; then
-              echo "pin ancestry event matrix mismatch: $case_event $case_ref expected=$expected actual=$actual" >&2
-              exit 1
-            fi
-          done <<'PIN_ANCESTRY_EVENT_MATRIX'
-          pull_request|refs/pull/1/merge|source
-          push|refs/heads/feature|source
-          merge_group|refs/heads/gh-readonly-queue/main/pr-1|delivery
-          push|refs/heads/main|delivery
-          workflow_dispatch|refs/heads/main|delivery
-          workflow_dispatch|refs/heads/feature|source
-          PIN_ANCESTRY_EVENT_MATRIX
-
-          case "$GITHUB_EVENT_NAME" in
-            pull_request)
-              pin_baseline_commit="$(jq -r '.pull_request.base.sha' "$GITHUB_EVENT_PATH")"
-              ;;
-            merge_group)
-              pin_baseline_commit="$(jq -r '.merge_group.base_sha' "$GITHUB_EVENT_PATH")"
-              ;;
-            push)
-              if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-                pin_baseline_commit="$(jq -r '.before' "$GITHUB_EVENT_PATH")"
-              else
-                git fetch --no-tags origin main
-                pin_baseline_commit="$(git merge-base HEAD origin/main)"
-              fi
-              ;;
-            workflow_dispatch)
-              if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-                pin_baseline_commit="$(git rev-parse HEAD^)"
-              else
-                git fetch --no-tags origin main
-                pin_baseline_commit="$(git merge-base HEAD origin/main)"
-              fi
-              ;;
-            *)
-              echo "unsupported pin-check event: $GITHUB_EVENT_NAME" >&2
-              exit 1
-              ;;
-          esac
-
-          pin_check_args=(--check --protected-baseline-commit "$pin_baseline_commit")
-          pin_delivery_topology=0
-          if delivery_topology_required "$GITHUB_EVENT_NAME" "$GITHUB_REF"; then
-            pin_check_args+=(--delivery-topology)
-            pin_delivery_topology=1
-          fi
-          export NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT="$pin_baseline_commit"
-          export NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY="$pin_delivery_topology"
-          python ../scripts/generate/nirmana_analysis_layer_pins.py "${pin_check_args[@]}"
+          # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
+          # the writer digest inventory check above stays (it keeps generated writer hashes honest).
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
-            ../scripts/__tests__/test_nirmana_analysis_layer_pins.py \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \

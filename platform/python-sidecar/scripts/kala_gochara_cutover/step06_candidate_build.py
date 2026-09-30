@@ -50,7 +50,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import connect, step_parser, write_evidence  # noqa: E402
+from common import connect, resolve_dsn, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
 _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
@@ -182,7 +182,7 @@ def main() -> int:
         horizon_text = f"[{args.horizon_start},{args.horizon_end})"
 
     ledger = _load_ledger()
-    conn = connect(args.dsn, step=6, autocommit=False)
+    conn = connect(resolve_dsn(args), step=6, autocommit=False)
 
     # §12.9 gate — BEFORE any ledger write. Refuses a candidate built on vedha rows
     # whose upstream fingerprint is missing or no longer matches the reference tables.

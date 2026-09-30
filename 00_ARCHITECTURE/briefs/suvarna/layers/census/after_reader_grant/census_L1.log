@@ -1,0 +1,8 @@
+L1 Ganita (contribution): 19 assets · 19 registered ids vs 19 has_writer=true
+  chart scope: 19 chart-scoped count_sql bound to chart 482012f1-710e-4a25-994a-93821f5871aa
+  build scope: 61 global run(s), of which 519 touched this layer
+  FAIL 7 · PARTIAL/NO_DETECTOR 90 · ERRORED 0 · assets measured 19
+    FAIL Build.completion: 4 — ga_condition, ga_strength, ga_structural, ga_vargas
+    FAIL Build.history: 1 — ga_positions
+    FAIL Count.floor: 2 — ga_vargas, ga_yoga
+census written: ../suvarna-evidence/census2/census_L1.json

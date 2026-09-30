@@ -1,0 +1,9 @@
+L2 Bodha (contribution): 23 assets · 23 registered ids vs 23 has_writer=true
+  chart scope: 22 chart-scoped count_sql bound to chart 482012f1-710e-4a25-994a-93821f5871aa
+  build scope: 61 global run(s), of which 565 touched this layer
+  FAIL 13 · PARTIAL/NO_DETECTOR 116 · ERRORED 6 · assets measured 23
+  !! 6 check(s) errored (R41: degraded, not layer-aborting) — never counted as PASS; see each asset's measurements for the exception
+    FAIL Build.completion: 3 — bo_bimba, bo_cdlm_summary, bo_karanajala
+    FAIL Count.floor: 2 — bo_laksana, bo_samskara
+    FAIL Dens.served: 8 — bo_bimba, bo_cgm_motifs, bo_cgm_paths, bo_karanajala, bo_pramana_mapa, bo_samvada…
+census written: ../suvarna-evidence/census/census_L2.json
