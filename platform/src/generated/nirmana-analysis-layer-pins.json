@@ -1241,7 +1241,7 @@
       },
       {
         "generation_id": "l3:f4c69a6d0cd4:829354703812",
-        "historical_snapshot_commit": "678ca1776a62d0e4c58e623931bd279ebed10ff4",
+        "historical_snapshot_commit": "729dfe2c4907610754be0a3c1cc244d6f54c9ba4",
         "pin": {
           "admission": {
             "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
@@ -1555,7 +1555,7 @@
           "ka_moorti_nirnaya": "approved_intentional_change",
           "ka_vedha_gochara": "approved_intentional_and_derived_import_change"
         },
-        "reason": "D-PINS-A5.4 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T13:02:03Z, M20260930T130203-0531): PR #2769 carries the Pravaha A5.4 Tier 0-S repairs plus the ASTRA_REVIEW_A5_4 v1.0, v1.1, v1.2 and v1.3 closure reworks; five L3 writers' provenance closures moved, membership unchanged. ka_gochara_resonance and ka_moorti_nirnaya carry own-module edits only (approved_intentional_change); ka_vedha_gochara carries own-module edits (logic/writer, plus gate.py with its identity helpers \u2014 r5: ledger-bound-or-unresolved primary-contact identity, testimony evidence) and import-closure movement via gochara_grammar/* (approved_intentional_and_derived_import_change); ka_gochara and ka_gochara_v3_century_materialize moved only through their import closures \u2014 gochara_grammar/{dasha_data,primitives}.py, gochara_v3/{context,engine,mechanisms/w23_tara_bala}.py, ka_vedha_gochara/{gate,logic}.py, and the materializer's persisted vedha state \u2014 with no own-module edits (derived_import_change). ONE successor directly over main's protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 678ca1776a62d0e4c58e623931bd279ebed10ff4, named as the historical snapshot; the A0.6 precedent \u2014 lane-local snapshots cannot survive squash delivery). Source = the r5 writer-digest regeneration commit.",
+        "reason": "D-PINS-A5.4 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T13:02:03Z, M20260930T130203-0531): PR #2769 carries the Pravaha A5.4 Tier 0-S repairs plus the ASTRA_REVIEW_A5_4 v1.0\u2013v1.4 closure reworks; five L3 writers' provenance closures moved, membership unchanged. ka_gochara_resonance and ka_moorti_nirnaya carry own-module edits only (approved_intentional_change); ka_vedha_gochara carries own-module edits (logic/writer, plus gate.py with its identity helpers) and import-closure movement via gochara_grammar/* (approved_intentional_and_derived_import_change); ka_gochara and ka_gochara_v3_century_materialize moved only through their import closures \u2014 gochara_grammar/{dasha_data,primitives}.py, gochara_v3/{context,engine,mechanisms/w23_tara_bala}.py, ka_vedha_gochara/{gate,logic}.py, and the materializer's persisted vedha state \u2014 with no own-module edits (derived_import_change). ONE successor directly over main's protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 729dfe2c4907610754be0a3c1cc244d6f54c9ba4, named as the historical snapshot; the A0.6 precedent \u2014 lane-local snapshots cannot survive squash delivery). Round 6: NO writer digest moved (the r6 delta is cutover scripts and tests only); this is the same successor re-based over the advanced baseline from the unchanged r5 writer-digest regeneration commit.",
         "review_artifacts": [
           {
             "commit": "5142109f7f219ea860f859e322646f79d875bee8",
