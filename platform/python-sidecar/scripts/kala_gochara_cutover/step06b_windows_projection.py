@@ -33,9 +33,15 @@ Semantics (every choice disclosed, none improvised):
     with per-contact orb_strength = the M-1 `linear_no_box` ANGULAR kernel
     (D-RQ2, sealed doctrine FABLE_ASTROLOGICAL_REVIEW_GOCHARA_v3_0 finding
     N1): activity(t) = 1 − min(|Δλ(t)| / orb, 1), where Δλ(t) is the
-    shortest-arc separation between the transiting body's longitude AT t
-    (Swiss ephemeris, engine.py's _get_planet_pos accessor pattern) and the
-    contact's target_longitude_deg, and orb is the contact's orb_max_deg
+    shortest-arc separation between the contact's ASPECT POINT at t — the
+    transiting body's longitude AT t (Swiss ephemeris, engine.py's
+    _get_planet_pos accessor pattern) plus the ledger's aspect_deg
+    (§6.2 inv 6 forward count; 0 for non-dṛṣṭi relations) — and the
+    contact's target_longitude_deg, and orb is the contact's orb_max_deg.
+    A contact contributes only inside its own episode [t_in, t_out]
+    (a later pass is a different contact), and role aliases of one physical
+    root (same ledger independence_group) contribute once, by max (§2.1
+    shared-root rule) — ASTRA_REVIEW_A5_4 P1-1. orb is the contact's orb_max_deg
     (fallback 5.0°, the --orb-deg / ACTIVITY_MAX_ORB_DEG default, when the
     column is NULL). This is exactly the algebra engine.py's
     _compute_activity_v3 applies under activity_shape='linear_no_box'
@@ -590,44 +596,150 @@ class ClassContext:
         }
 
 
+def contact_aspect_point_deg(body_lon_deg: float, aspect_deg: float) -> float:
+    """The longitude the contact's relation actually touches (§6.2 inv 6,
+    T0-1): a dṛṣṭi from body b falls at (λ_b + aspect_deg) mod 360 — the
+    FORWARD count (Mars 4th/8th +90°/+210°, Saturn 3rd/10th +60°/+270°,
+    Jupiter 5th/9th +120°/+240°, the 7th +180°). A conjunction/return/
+    ingress carries aspect_deg 0 (the ledger stores 0 for every non-dṛṣṭi
+    relation, step06_enumerate_episodes._episode_to_dict) so the point is
+    the body itself. Reading Δλ from the bare body longitude for a dṛṣṭi
+    contact scored every exact aspect 0 (ASTRA_REVIEW_A5_4 P1-1)."""
+    return (float(body_lon_deg) + float(aspect_deg or 0.0)) % 360.0
+
+
+def contact_supports(c: dict, t_jd: float) -> bool:
+    """Episode support (§6.1 occurrence identity; ASTRA P1-1): a contact is
+    ONE solved crossing with its own in-orb interval [t_in, t_out]; outside
+    it the contact is absent — a later pass of the same body over the same
+    target is a DIFFERENT contact (its own occurrence ordinal) and must not
+    contribute at the first pass's instants. Closed on both ends: the span
+    edges are the enumeration's orb crossings where the kernel is 0 anyway
+    for monotone motion."""
+    t_in, t_out = c.get("_t_in_jd"), c.get("_t_out_jd")
+    if t_in is not None and t_jd < t_in:
+        return False
+    if t_out is not None and t_jd > t_out:
+        return False
+    return True
+
+
+def contact_root_key(c: dict):
+    """The physical-root key for the §2.1 shared-root reduction: the
+    ledger's independence_group (gochara_kernel.ids.independence_group —
+    body, relation, aspect_deg, target_deg, t_exact) when carried; else the
+    same tuple rebuilt locally. Role aliases of one physical contact (7L
+    Venus and kāraka Venus both at natal Venus) share one root."""
+    ig = c.get("_independence_group")
+    if ig:
+        return ig
+    return ("root", c.get("body"), c.get("relation"),
+            round(float(c.get("_aspect_deg") or 0.0), 4),
+            round(float(c.get("_target_lon_deg") or 0.0), 4),
+            c.get("_t_exact_jd"))
+
+
+def reduce_shared_roots(scored: list[dict], weight_by_target_ref: dict) -> dict:
+    """§2.1 (amendment 2, R4-S01): contribution(root, channel) := MAX over
+    the records sharing the root of that record's channel value; roots then
+    combine (here: the pinned noisy-OR). No other reduction — first row, sum
+    across roles, noisy-OR ACROSS role aliases — is permitted. `scored` are
+    {contact, decay, weight} records already restricted to supporting,
+    in-orb contacts. Returns {"activity": [records], "channels": [records]}:
+    one record per root for the unsigned occurrence term, and per root the
+    best positive- and best negative-weight record for the signed channels
+    (a root's aliases may sit on different channels; each channel keeps its
+    own max). Annotation of the non-contributing aliases is in `dropped`."""
+    by_root: dict = {}
+    for rec in scored:
+        by_root.setdefault(contact_root_key(rec["contact"]), []).append(rec)
+    activity_recs, channel_recs, dropped = [], [], []
+    for root, recs in by_root.items():
+        best = max(recs, key=lambda r: r["decay"] * abs(r["weight"]))
+        activity_recs.append(best)
+        pos = [r for r in recs if r["weight"] > 0.0]
+        neg = [r for r in recs if r["weight"] < 0.0]
+        keep_ids = {id(best)}
+        if pos:
+            bp = max(pos, key=lambda r: r["decay"] * r["weight"])
+            channel_recs.append(bp)
+            keep_ids.add(id(bp))
+        if neg:
+            bn = max(neg, key=lambda r: r["decay"] * -r["weight"])
+            channel_recs.append(bn)
+            keep_ids.add(id(bn))
+        for r in recs:
+            if id(r) not in keep_ids:
+                dropped.append({"contact_id": r["contact"]["contact_id"],
+                                "root": str(root),
+                                "reason": "role alias of a contributing root "
+                                          "(§2.1 max-per-root; annotation only)"})
+    return {"activity": activity_recs, "channels": channel_recs,
+            "dropped": dropped, "roots": len(by_root)}
+
+
+def _sentence_for(rec: dict) -> "leg.Sentence":
+    c = rec["contact"]
+    return leg.Sentence(
+        primitive=c["_primitive"], target_ref=c["target_ref"],
+        transit_planet=c["body"], event_jd=c["_t_exact_jd"],
+        detail={"orb_strength": rec["decay"]},
+    )
+
+
 def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
                  quality_gate_for_date, *, planet_pos_fn=None):
     """eval_fn(t_jd) -> (lambda_raw, active_contact_ids, signed_channels).
 
     The pinned assemble_lambda_v3 algebra over the M-1 ANGULAR in-orb
     activity (D-RQ2): each contact's orb_strength is 1 − min(|Δλ(t)|/orb, 1)
-    with Δλ from the body's ephemeris longitude at t — never a time
-    triangle. A contact without a target longitude aborts the run (the F-08
-    exception-swallow is NOT reproduced — errors propagate; a silent 0.0 or
-    fallback stand-in would fabricate activity). `planet_pos_fn` is
-    (body, jd) -> longitude deg; default: the Swiss accessor (lazy)."""
+    with Δλ from the contact's ASPECT POINT at t — the body's ephemeris
+    longitude plus the contact's aspect_deg (contact_aspect_point_deg; 0
+    for non-dṛṣṭi relations) — never a time triangle. A contact
+    contributes only inside its own episode [t_in, t_out]
+    (contact_supports), and role aliases of one physical root contribute
+    once (reduce_shared_roots) — ASTRA_REVIEW_A5_4 P1-1. A contact without
+    a target longitude aborts the run (the F-08 exception-swallow is NOT
+    reproduced — errors propagate; a silent 0.0 or fallback stand-in would
+    fabricate activity). `planet_pos_fn` is (body, jd) -> longitude deg;
+    default: the Swiss accessor (lazy)."""
     if planet_pos_fn is None:
         planet_pos_fn = _default_planet_pos_fn()
 
     def evaluate(t_jd: float):
-        sentences = []
-        active_ids = []
+        scored = []
         for c in contacts:
             target_lon = c.get("_target_lon_deg")
             if target_lon is None:
                 raise ValueError(
                     f"contact {c.get('contact_id')} has no target_longitude_deg "
                     "— the angular kernel cannot score it honestly")
+            if not contact_supports(c, t_jd):
+                continue
             orb_deg = c.get("_orb_deg") or ORB_MAX_DEG_FALLBACK
-            decay = angular_orb_decay(
-                planet_pos_fn(c["body"], t_jd), target_lon, orb_deg)
+            point = contact_aspect_point_deg(
+                planet_pos_fn(c["body"], t_jd), c.get("_aspect_deg") or 0.0)
+            decay = angular_orb_decay(point, target_lon, orb_deg)
             if decay <= 0.0:
                 continue
-            sentences.append(leg.Sentence(
-                primitive=c["_primitive"], target_ref=c["target_ref"],
-                transit_planet=c["body"], event_jd=c["_t_exact_jd"],
-                detail={"orb_strength": decay},
-            ))
-            active_ids.append(c["contact_id"])
+            scored.append({
+                "contact": c, "decay": decay,
+                "weight": float(class_ctx.weight_by_target_ref.get(
+                    c["target_ref"], 0.0)),
+            })
+        reduced = reduce_shared_roots(scored, class_ctx.weight_by_target_ref)
+        # in-orb supporting contacts BEFORE the root reduction: the operand
+        # check below must see every alias — an alias with no map weight
+        # leaves its root's true max unknown even when a weighted alias of
+        # the same root contributes (O-TV-3).
+        in_orb_ids = [r["contact"]["contact_id"] for r in scored]
+        active_ids = [r["contact"]["contact_id"] for r in reduced["activity"]]
+        sentences = [_sentence_for(r) for r in reduced["activity"]]
+        channel_sentences = [_sentence_for(r) for r in reduced["channels"]]
         activity, _act_detail, _tb = leg.compute_activity_v3(
             sentences, class_ctx.weight_by_target_ref)
         supportive, afflicting, _ch = leg.compute_signed_channels_v3(
-            sentences, class_ctx.weight_by_target_ref)
+            channel_sentences, class_ctx.weight_by_target_ref)
         gates, gates_detail = quality_gate_for_date(iso_date_of_jd(t_jd))
         # T0-7 (FABLE #11/#12): the three-field valence at THIS instant.
         # Per-operand resolution: a contributing contact whose target_ref has
@@ -640,7 +752,7 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
         # apply.
         unresolved = list(class_ctx.unresolved_valence_operands)
         for c in contacts:
-            if (c["contact_id"] in active_ids
+            if (c["contact_id"] in in_orb_ids
                     and c["target_ref"] not in class_ctx.weight_by_target_ref):
                 unresolved.append(f"map_weight:{c['target_ref']}")
         tv = three_field_valence(
@@ -666,6 +778,8 @@ def make_eval_fn(class_ctx: ClassContext, contacts: list[dict],
             "quality_gates": gates,
             "quality_gates_detail": gates_detail,
             "active_contact_ids": active_ids,
+            "shared_roots": {"roots": reduced["roots"],
+                             "dropped_aliases": reduced["dropped"]},
             "three_field_valence": tv,
         }
 
@@ -928,25 +1042,33 @@ def _table_columns(conn, table: str) -> set[str]:
 
 
 def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
+    # aspect_deg + independence_group (ASTRA P1-1): the dṛṣṭi angle the
+    # kernel must add to the body longitude, and the physical-root key for
+    # the shared-root reduction. Both are ledger columns (WP1 §3); read
+    # explicitly, never defaulted from the relation label.
     rows = conn.execute(
         "SELECT contact_id, body, relation, target_type, target_ref,"
         " target_longitude_deg, t_in, t_exact, t_out, orb_max_deg,"
-        " completeness_state"
+        " completeness_state, aspect_deg, independence_group"
         " FROM kala_gochara_contacts"
         " WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchall()
     out = []
     for (cid, body, relation, ttype, tref, tlon, t_in, t_exact, t_out,
-         orb_max, completeness) in rows:
+         orb_max, completeness, aspect_deg, independence_group) in rows:
         out.append({
             "contact_id": cid, "body": body, "relation": relation,
             "target_type": ttype, "target_ref": tref,
             "target_longitude_deg": float(tlon) if tlon is not None else None,
             "orb_max_deg": float(orb_max) if orb_max is not None else None,
             "completeness_state": completeness,
+            "aspect_deg": float(aspect_deg) if aspect_deg is not None else 0.0,
+            "independence_group": independence_group,
             "_target_lon_deg": float(tlon) if tlon is not None else None,
             "_orb_deg": (float(orb_max) if orb_max is not None
                          else ORB_MAX_DEG_FALLBACK),
+            "_aspect_deg": float(aspect_deg) if aspect_deg is not None else 0.0,
+            "_independence_group": independence_group,
             "_t_in_jd": jd_of(t_in),
             "_t_exact_jd": jd_of(t_exact) if t_exact is not None else None,
             "_t_out_jd": jd_of(t_out),
