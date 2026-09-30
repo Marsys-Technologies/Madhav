@@ -92,6 +92,4 @@ All foreign movement is inside the branch's own A5.4 changeset; no
 ## Authority identity
 
 The immutable approval identity for this authority is the commit that first
-introduced this document: `AUTHORITY_IDENTITY_PENDING_FIRST_COMMIT` (replaced by
-the identity-bound amendment commit, same pattern as D-E022's `f4cba9d6` and
-D-PINS-A2's `fa0b0a9a0`).
+introduced this document: `e47d0b274ebf234ada8be7cfe82a34d5446384eb`
