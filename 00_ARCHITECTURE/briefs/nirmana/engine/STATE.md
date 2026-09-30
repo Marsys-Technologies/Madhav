@@ -1,19 +1,19 @@
 ---
 artifact: NIRMANA_ENGINE_ELEVATION_STATE
 canonical_id: NIRMANA_ENGINE_ELEVATION_STATE
-version: "0.6"
+version: "0.7"
 status: LIVE — rewritten at every packet close
 campaign_id: nirmana-engine
 authority: 00_ARCHITECTURE/briefs/nirmana/NIRMANA_ENGINE_ELEVATION_PROMPT_v1_0.md
 runs_in: /Users/Dev/madhav-engine (branch campaign/nirmana-engine)
-last_updated: 2026-09-26T19:40Z
+last_updated: 2026-09-27T02:40Z
 ---
 
 # Nirmāṇa engine elevation — STATE
 
 ## Where the campaign is
 
-**Phase A CLOSED and gate-checked (PASS). Phase B IN FLIGHT — B1 closed after a REJECT and three rounds; B2 next, carrying B1's C-4.**
+**Phase A CLOSED and gate-checked (PASS). Phase B CLOSED — both packets reviewer-accepted. Next: Phase C (stability), then the campaign report and PR. Both native decisions D-1/D-2 resolved under delegation.**
 
 | packet | title | status | review verdict | before | after |
 |---|---|---|---|---|---|
@@ -23,7 +23,7 @@ last_updated: 2026-09-26T19:40Z
 | A2b | `mark_asset_error` empty-exception hardening | **carried** (split out of A2 to keep waves disjoint) | — | latent, not inflating the 301 | — |
 | A3b | Runs dispatched with no manifest at all | **carried** (split out of A3; 6 of its 8 runs) | — | 7 records / 6 runs | — |
 | B1 | Cascade reads as one cause, N blocked | **CLOSED** | REJECT → ACCEPT_WITH_CORRECTIONS → **ACCEPT** | 0 of 10 blocked assets rendered correctly — **9 rendered green** | **8 of 8 render blocked**; 18 badges flip off green |
-| B2 | Blocking radius, recorded | **rescoped, next** | — | DAG clean, no cycles; radius does **not** predict observed cascade | — |
+| B2 | DAG-derived downstream count (rescoped from "Blocking radius") | **CLOSED** | ACCEPT_WITH_CORRECTIONS ×2 → **ACCEPT** | radius does **not** predict observed cascade; zero consumers; name already taken | view agrees with `plan.ts` on all 127 active; `ga_positions` **79**; one consumer wired |
 | C1 | Crash, orphan and reap | not started | — | — | — |
 | C2 | Stuck states | not started | — | — | — |
 | D1 | Nine checks applied to the engine | not started (authored last; frozen only if the asset contract has stopped moving) | — | — | — |
@@ -213,6 +213,38 @@ mutation that exposed it.
 **Certified honestly:** counting surfaces **complete**; labelling surfaces **not** — `PlanTimeline`,
 `runs/[id]/assets` and `ArmillaryGraph.stateColor` remain, three unmapped-default sites survive, and
 R-6 is one-third done. Carried to B2 as C-3 and C-4.
+
+
+## B2 — closed 2026-09-27, rescoped on falsified premise
+
+**The packet's own proof bar was met; the expectation I added was not.** A recursive CTE, an
+independent Python BFS and the real imported `plan.ts` traversal all agree. But the figure **does not
+predict observed cascades** — `ga_dashas` has the 2nd-largest radius yet ranks *last* in observed
+citations. Real cascades track how often an asset **crashed**, not graph shape. That is reported as
+*my* added expectation failing, not the packet failing.
+
+**Rescoped rather than failed:** stored as a **view** (nothing to go stale — no detector walks
+ancestors, so a stored value would have exactly the §N.8 "detector checks a proxy" defect), renamed
+off the taken term, and required to wire **one** real consumer, since a number nobody reads should not
+be built.
+
+**The correction that mattered, and why it was caught.** I told the builder to reuse `plan.ts`'s
+traversal; it wrote SQL instead, defensibly. So I asked the gate whether the two *actually agree*
+rather than accepting the reasoning — **they disagreed on 13 of 129 real assets.** Three live assets
+read *"could affect up to 1 downstream"* where the 1 was a **retired asset nothing will ever rebuild**,
+and the route would have shipped a count over a population its own response does not contain.
+
+**The semantic question, settled by construction.** With the edge source filtered, a chain through an
+inactive asset is **severed** — and `plan.ts` severs identically, because the mechanisms are isomorphic.
+The reviewer *built* the case rather than inferring it.
+
+**And then found the proof could not fail.** No such path exists live — both inactive assets are pure
+sinks — so the 127-asset comparison never exercised severance. The non-severing variant passed **11/11**.
+One fixture row fixed it: shipped view **11/11**, non-severing variant **5 failed**.
+
+**Measured costs, disclosed:** +30–200 ms per poll. The DB suite was gated off and absent from CI —
+now wired, and the reviewer *ran* it rather than parsing it, dropping the role first so it was genuinely
+absent as in a fresh container.
 
 ## Branch head
 
