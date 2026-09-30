@@ -6,17 +6,19 @@
 -- THIS BLOCK IS BYTE-IDENTICAL TO THE GATE EMBEDDED AT THE TOP OF
 -- platform/migrations/1155_gochara_relationship_record.sql — the migration runs the same
 -- detector itself, in the runner's transaction, before its DDL, so the
--- production deploy path (deploy.yml → the general runner) observes the gate
--- without any workflow change. The static test
+-- protected public-schema window (deploy.yml `gochara_contracts_schema_migration`,
+-- the only route that applies 1153-1157) observes the gate without any
+-- further wiring. The static test
 -- tests/unit/migrations/gochara_a5_1_contract_static.test.ts asserts the two
 -- blocks are identical.
 --
--- GATE SEMANTICS (amendment 8 / F8 / F9): FAILS CLOSED — any blocking finding
--- RAISES (psql -v ON_ERROR_STOP=1 aborts; node-pg rejects); success ends with
--- NOTICE 'preflight 1155: all checks passed'. Fix the environment, not the
--- detector (ADK-0026). Checks:
---   (d) pinned schema 'public' exists; USAGE + CREATE on it; REFERENCES /
---       TRIGGER privileges on the parents this migration binds to;
+-- GATE SEMANTICS (amendment 8 / F8 / F9; steward ruling 3): FAILS CLOSED —
+-- any blocking finding RAISES (psql -v ON_ERROR_STOP=1 aborts; node-pg
+-- rejects); success ends with NOTICE 'preflight 1155: all checks passed'. Fix
+-- the environment, not the detector (ADK-0026). Only REAL preconditions are
+-- checked:
+--   (d) pinned schema 'public' exists; USAGE + CREATE on it; the REFERENCES /
+--       SELECT privileges on the parents this migration binds to or reads;
 --   (a) no untracked same-name collision: relation namespace (tables +
 --       indexes share pg_class), table-scoped triggers, functions by EXACT
 --       ARGUMENT TYPES (proargtypes → format_type; never the name-retaining
@@ -25,13 +27,12 @@
 --       PK/UNIQUE definitions (pg_constraint-verified): charts, kala_gochara_coverage (incl. the columns the applicability guard reads), ka_gochara_contact + kgc_reference_uq, ka_gochara_physical_object, ka_gochara_rule_path(+seal), ka_gochara_predicate, ka_gochara_convention_bridge, ka_gochara_generation_seal, helpers by exact signature and return type;
 --   (c) prerequisite migrations are recorded in _migrations_applied and 1155
 --       is not (wildcard-safe starts_with, not LIKE).
--- Deliberate equivalent replay: SET LOCAL ka_gochara.deliberate_replay = 'on'
--- skips the existence checks (a)/(c-applied) only; the migration's post-DDL
--- definition verification then proves equivalence or fails loudly.
+-- migrate.ts tracks applied files by hash: a tracked file is never re-run;
+-- an untracked re-run is a collision and is BLOCKED here. There is no replay
+-- mode.
 
 DO $$
 DECLARE
-  replay   boolean := COALESCE(current_setting('ka_gochara.deliberate_replay', true), '') = 'on';
   failures text;
 BEGIN
   WITH f(failure, detail) AS (
@@ -50,7 +51,7 @@ BEGIN
     UNION ALL
     SELECT 'relation_already_exists', 'public.' || c.relname
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE NOT replay AND n.nspname = 'public'
+    WHERE n.nspname = 'public'
       AND c.relname IN ('ka_gochara_relationship_record', 'ka_gochara_relationship_record_pkey',
                         'kgrr_identity_uq', 'kgrr_membership_uq',
                         'ka_gochara_record_prerequisite', 'ka_gochara_record_prerequisite_pkey',
@@ -62,29 +63,32 @@ BEGIN
     FROM pg_trigger t
     JOIN pg_class c ON c.oid = t.tgrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE NOT replay AND n.nspname = 'public' AND NOT t.tgisinternal
+    WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_relationship_record'
-               AND t.tgname IN ('ka_gochara_rr_sealed_path_check', 'ka_gochara_rr_coverage_guard',
-                                'ka_gochara_rr_sealed_generation_guard', 'ka_gochara_rr_finalize',
+               AND t.tgname IN ('ka_gochara_rr_1_write_guard', 'ka_gochara_rr_2_coverage_guard',
+                                'ka_gochara_rr_3_sealed_path_check', 'ka_gochara_rr_finalize',
                                 'ka_gochara_rr_no_truncate'))
          OR (c.relname = 'ka_gochara_record_prerequisite'
-               AND t.tgname IN ('ka_gochara_rpr_sealed_generation_guard', 'ka_gochara_rpr_finalize',
-                                'ka_gochara_rpr_no_truncate')) )
+               AND t.tgname IN ('ka_gochara_rpr_1_write_guard', 'ka_gochara_rpr_finalize',
+                                'ka_gochara_rpr_no_truncate'))
+         OR (c.relname = 'ka_gochara_contact'
+               AND t.tgname = 'ka_gochara_contact_2_propagate_precision') )
     UNION ALL
     -- function collisions by EXACT ARGUMENT TYPES (F8) — this file's own helpers
     SELECT 'function_already_exists',
            'public.' || p.proname || '(' || array_to_string(e.argtypes, ',') || ')'
     FROM (VALUES
-            ('ka_gochara_precision_ok',            ARRAY['jsonb']),
-            ('ka_gochara_intervals_ok',            ARRAY['tstzrange[]']),
-            ('ka_gochara_sealed_generation_guard', ARRAY[]::text[]),
-            ('ka_gochara_record_coverage_guard',   ARRAY[]::text[]),
-            ('ka_gochara_record_finalize_check',   ARRAY[]::text[])
+            ('ka_gochara_precision_ok',                ARRAY['jsonb']),
+            ('ka_gochara_intervals_ok',                ARRAY['tstzrange[]']),
+            ('ka_gochara_coverage_digest',             ARRAY['text','tstzrange','text[]']),
+            ('ka_gochara_chart_write_guard',           ARRAY[]::text[]),
+            ('ka_gochara_record_coverage_guard',       ARRAY[]::text[]),
+            ('ka_gochara_record_finalize_check',       ARRAY[]::text[]),
+            ('ka_gochara_contact_propagate_precision', ARRAY[]::text[])
          ) AS e(fname, argtypes)
     JOIN pg_proc p ON p.proname = e.fname
     JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
-    WHERE NOT replay
-      AND (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
+    WHERE (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
            FROM unnest(p.proargtypes) WITH ORDINALITY AS u(oid, ord)) = e.argtypes
     UNION ALL
     -- (b1) parents exist
@@ -153,6 +157,7 @@ BEGIN
                  ('ka_gochara_string_array_ok(jsonb)'),
                  ('ka_gochara_finite_ok(double precision)'),
                  ('ka_gochara_finite_nonneg_ok(double precision)'),
+                 ('ka_gochara_generation_governed(text)'),
                  ('ka_gochara_generation_is_sealed(uuid,text)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
        OR (SELECT format_type(p.prorettype, NULL) FROM pg_proc p
@@ -160,8 +165,9 @@ BEGIN
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
-                 ('ka_gochara_require_sealed_rule_path()'),
-                 ('ka_gochara_verify_definitions(text,jsonb)')) AS e(sig)
+                 ('ka_gochara_lock_chart(uuid)'),
+                 ('ka_gochara_lock_global()'),
+                 ('ka_gochara_require_sealed_rule_path()')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     -- (c1) ordered execution gate
@@ -172,7 +178,7 @@ BEGIN
     UNION ALL
     SELECT 'migration_already_applied', m.filename
     FROM _migrations_applied m
-    WHERE NOT replay AND to_regclass('public._migrations_applied') IS NOT NULL
+    WHERE to_regclass('public._migrations_applied') IS NOT NULL
       AND starts_with(m.filename, '1155_')
   )
   SELECT string_agg(f.failure || ' :: ' || f.detail, E'\n' ORDER BY f.failure, f.detail)
@@ -180,9 +186,6 @@ BEGIN
   FROM f;
   IF failures IS NOT NULL THEN
     RAISE EXCEPTION 'preflight 1155 BLOCKED — migration 1155 must NOT be applied:% %', E'\n', failures;
-  END IF;
-  IF replay THEN
-    RAISE NOTICE 'preflight 1155: deliberate replay — existence checks skipped; definitions are verified post-DDL';
   END IF;
   RAISE NOTICE 'preflight 1155: all checks passed';
 END;

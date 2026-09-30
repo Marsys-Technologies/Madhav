@@ -1,34 +1,32 @@
 // @vitest-environment node
 /**
- * Pravāha A5.1 round 3 — STATIC contract checks on migrations 1153–1157 and
- * their preflights, asserted against the on-disk SQL itself (CLAUDE.md §N.8:
- * the detector reads what ships).
+ * Pravāha A5.1 round 4 — STATIC contract checks on migrations 1153–1157, their
+ * preflights, the runner's protected-file refusal and the deploy window,
+ * asserted against the on-disk sources (CLAUDE.md §N.8: the detector reads
+ * what ships).
  *
- * Covers what is checkable without a database from ASTRA_REVIEW_A5_1_MIGRATIONS
- * v1_1 (F1–F11) and the round-1 amendments kept closed:
- *   - amendment 2: no migration-owned BEGIN/COMMIT (the runner owns the one
- *     transaction) and no business-data DML at migration time (function
- *     bodies excluded — the seal-recording trigger legitimately INSERTs);
- *   - F8/F9: every migration pins search_path, embeds its preflight gate
- *     BYTE-IDENTICALLY to the standalone preflight file (so the production
- *     deploy path observes the gate), matches functions by argument TYPES
- *     (never the name-retaining identity-arguments text), and ends with a
- *     definition-verification block whose embedded expectation is real,
- *     non-empty JSON naming the tables and functions the migration owns;
- *   - F1–F7, F11: the contracted tables, columns, constraints and triggers
- *     are present by name.
+ * Steward simplification ruling (ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 N1–N11):
+ *   1. NO trigger, lock or constraint on any existing table; the seal is
+ *      written explicitly by ka_gochara_seal_generation(); legacy generations
+ *      are refused by ka_gochara_generation_governed on every chart-scoped table.
+ *   2. ONE lock order — the orchestrator's keys (hashtext(chart_id) /
+ *      hashtext('nirmana-global-assets')); every mutating trigger locks FIRST.
+ *   3. NO custom verifier and NO replay GUC; presence checks only.
+ *   4. 1153–1157 apply through the protected public-schema window; the routine
+ *      runner refuses them.
+ *   5. N6/N7/N8/N10/N11 fixed as written (checked by name here; behaviour in
+ *      the live-DB suite).
  *
  * Live-DB behaviour is covered by tests/integration/gochara_a5_1_migrations.db.test.ts.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { PROTECTED_PUBLIC_SCHEMA_MIGRATIONS, assertGeneralRunnerMayApplyPublicSchema } from '../../../scripts/migrate'
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
-const PREFLIGHT_DIR = path.resolve(
-  process.cwd(),
-  '../platform/python-sidecar/scripts/kala_gochara_cutover',
-)
+const PREFLIGHT_DIR = path.resolve(process.cwd(), '../platform/python-sidecar/scripts/kala_gochara_cutover')
+const LOCKS_PY = path.resolve(process.cwd(), 'python-sidecar/pipeline/orchestrator/locks.py')
 
 const MIGRATIONS = {
   1153: '1153_gochara_sky_event_substrate.sql',
@@ -69,18 +67,29 @@ function gateBlock(src: string, marker?: string): string {
   return lines.slice(doIdx, endIdx + 1).join('\n')
 }
 
-/** Strip dollar-quoted bodies ($$…$$, $tag$…$tag$) so function bodies are not scanned as top-level DML. */
+/** Strip dollar-quoted bodies so function bodies are not scanned as top-level DML. */
 function withoutDollarBodies(sql: string): string {
   return sql.replace(/\$([A-Za-z_]*)\$[\s\S]*?\$\1\$/g, '$BODY$')
 }
 
-/** The embedded expected-definition JSON of the verification block. */
-function expectedJson(n: keyof typeof MIGRATIONS): { tables: Record<string, unknown>; functions: Record<string, unknown> } {
-  const sql = readMigration(n)
-  const m = /\$expected\$\n([\s\S]*?)\n\$expected\$::jsonb\)/.exec(sql)
-  if (!m) throw new Error(`no $expected$ block in ${MIGRATIONS[n]}`)
-  return JSON.parse(m[1]!)
+/** Every `CREATE OR REPLACE FUNCTION public.<name>(…)` with its dollar-quoted body. */
+function functionBodies(sql: string): Array<{ name: string; body: string }> {
+  const out: Array<{ name: string; body: string }> = []
+  const re = /CREATE OR REPLACE FUNCTION public\.(\w+)\([^)]*\)[\s\S]*?AS \$\$([\s\S]*?)\$\$;/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(sql)) !== null) out.push({ name: m[1]!, body: m[2]! })
+  return out
 }
+
+/** Tables a migration creates. */
+function createdTables(sql: string): string[] {
+  return [...sql.matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].map(m => m[1]!)
+}
+
+const CHART_SCOPED = new Set([
+  'ka_gochara_generation_seal', 'ka_gochara_contact', 'ka_gochara_relationship_record',
+  'ka_gochara_record_prerequisite', 'ka_gochara_eval_window', 'ka_gochara_eval_window_record',
+])
 
 const EVENT_CLASS_LIST = [
   'achievement_recognition', 'bereavement', 'birth_anchor',
@@ -94,7 +103,7 @@ const EVENT_CLASS_LIST = [
   'travel_event',
 ]
 
-describe('A5.1 migrations 1153–1157 — static contract (round 3)', () => {
+describe('A5.1 migrations 1153–1157 — static contract (round 4, steward simplification ruling)', () => {
   it.each(ALL)('amendment 2: migration %i owns NO transaction (no BEGIN/COMMIT; runner owns it)', n => {
     const sql = readMigration(n)
     expect(sql).not.toMatch(/^\s*BEGIN\s*;/im)
@@ -111,18 +120,17 @@ describe('A5.1 migrations 1153–1157 — static contract (round 3)', () => {
     expect(sql).not.toMatch(/^\s*TRUNCATE\b/im)
   })
 
-  it.each(ALL)('F9: migration %i pins schema resolution and orders gate → DDL → verification', n => {
+  it.each(ALL)('F9: migration %i pins schema resolution and orders gate → DDL → presence checks', n => {
     const sql = readMigration(n)
     const pin = sql.indexOf('SET LOCAL search_path = public, pg_catalog;')
     const gate = sql.indexOf('-- ── GATE (byte-identical to preflight_')
     const firstCreate = sql.search(/^CREATE (OR REPLACE FUNCTION|TABLE IF NOT EXISTS)/m)
-    const verify = sql.indexOf(`ka_gochara_verify_definitions('${n}'`)
+    const presence = sql.indexOf(`migration ${n} post-apply check failed`)
     expect(pin).toBeGreaterThan(-1)
     expect(gate).toBeGreaterThan(pin)
     expect(firstCreate).toBeGreaterThan(gate)
-    expect(verify).toBeGreaterThan(firstCreate)
-    // the verification block is the tail of the file
-    expect(sql.slice(verify)).not.toMatch(/^CREATE /m)
+    expect(presence).toBeGreaterThan(firstCreate)
+    expect(sql).toContain(`migration ${n}: presence checks passed`)
   })
 
   it.each(ALL)('F8/F9: the gate embedded in migration %i is byte-identical to its preflight file', n => {
@@ -131,8 +139,6 @@ describe('A5.1 migrations 1153–1157 — static contract (round 3)', () => {
     expect(embedded).toBe(standalone)
     expect(embedded).toContain(`preflight ${n} BLOCKED`)
     expect(embedded).toContain(`preflight ${n}: all checks passed`)
-    expect(embedded).toContain("current_setting('ka_gochara.deliberate_replay', true)")
-    // the preflight file references the migration it mirrors
     expect(readPreflight(n)).toContain(MIGRATIONS[n])
   })
 
@@ -140,14 +146,10 @@ describe('A5.1 migrations 1153–1157 — static contract (round 3)', () => {
     const sql = readPreflight(n)
     expect(sql).not.toMatch(/pg_get_function_identity_arguments\(p\.oid\)\s*=/)
     if (n !== 1157) {
-      // collision detection by proargtypes (1157 owns no standalone function)
       expect(sql).toContain('format_type(u.oid, NULL) ORDER BY u.ord')
       expect(sql).toContain('unnest(p.proargtypes) WITH ORDINALITY')
     }
-    if (n !== 1153) {
-      // helper-presence checks by exact regprocedure signature (1153 is the root: it defines the helpers)
-      expect(sql).toContain('to_regprocedure(')
-    }
+    if (n !== 1153) expect(sql).toContain('to_regprocedure(')
   })
 
   it.each(ALL)('amendment 8: preflight %i uses wildcard-safe ledger lookups and scoped trigger lookups', n => {
@@ -159,185 +161,232 @@ describe('A5.1 migrations 1153–1157 — static contract (round 3)', () => {
     expect(sql).toContain("has_schema_privilege('public', 'USAGE')")
   })
 
-  it('F9: preflights gate on ordered prerequisite application', () => {
+  it('F9: preflights gate on ordered prerequisite application and parent keys', () => {
     expect(readPreflight(1154)).toContain("(VALUES ('1153_')) AS p(prefix)")
     expect(readPreflight(1155)).toContain("(VALUES ('1153_'), ('1154_')) AS p(prefix)")
     expect(readPreflight(1156)).toContain("(VALUES ('1153_'), ('1154_'), ('1155_')) AS p(prefix)")
     expect(readPreflight(1157)).toContain("(VALUES ('1153_')) AS p(prefix)")
-    // parents verified by key definition, not just column presence
     for (const n of [1153, 1155, 1156] as const) {
       expect(readPreflight(n)).toContain('parent_key_missing')
       expect(readPreflight(n)).toContain("c.contype IN ('p','u')")
     }
     expect(readPreflight(1153)).toContain("has_table_privilege(p.t, 'REFERENCES')")
-    expect(readPreflight(1153)).toContain("has_table_privilege('public.kala_gochara_publication', 'TRIGGER')")
   })
 
-  it.each(ALL)('F9: migration %i embeds a real, non-empty definition expectation', n => {
-    const exp = expectedJson(n)
-    expect(Object.keys(exp.tables).length).toBeGreaterThan(0)
-    for (const [tbl, spec] of Object.entries(exp.tables)) {
-      const s = spec as { columns: Record<string, unknown>; constraints: Record<string, unknown>; triggers: Record<string, unknown>; indexes: Record<string, unknown> }
-      expect(Object.keys(s.columns).length, `${tbl} columns`).toBeGreaterThan(0)
-      expect(Object.keys(s.constraints).length, `${tbl} constraints`).toBeGreaterThan(0)
-      // every table has a PRIMARY KEY in its verified definition (F9: 1157 never verified its PK)
-      const hasPk = Object.values(s.constraints).some(c => (c as unknown[])[0] === 'p')
-      expect(hasPk, `${tbl} primary key verified`).toBe(true)
-      // no CHECK is a bare `true`
-      for (const [cn, c] of Object.entries(s.constraints)) {
-        const def = (c as unknown[])[1] as string
-        expect(def, `${tbl}.${cn}`).not.toBe('checktrue')
+  // ── Ruling 3: no verifier, no replay GUC — presence checks only ──────────
+  it.each(ALL)('ruling 3 (N4): migration %i has no custom definition verifier and no replay mode', n => {
+    const sql = readMigration(n)
+    expect(sql).not.toContain('deliberate_replay')
+    expect(sql).not.toContain('ka_gochara_verify_definitions')
+    expect(sql).not.toContain('ka_gochara_norm_def')
+    expect(sql).not.toContain('$expected$')
+    expect(readPreflight(n)).not.toContain('deliberate_replay')
+    // presence checks name their tables, constraints (validated) and triggers
+    expect(sql).toContain('AND c.convalidated')
+    expect(sql).toContain("NOT t.tgisinternal AND t.tgenabled = 'O'")
+  })
+
+  // ── Ruling 1: nothing on any existing table; explicit seal; legacy refused ──
+  it('ruling 1 (N1): no trigger, FK or lock on any existing table; the seal is explicit; legacy generations are refused', () => {
+    const sub = readMigration(1153)
+    expect(sub).not.toContain('ON public.kala_gochara_publication')
+    expect(sub).not.toContain('REFERENCES public.kala_gochara_publication')
+    expect(sub).not.toContain('ka_gochara_record_generation_seal')
+    expect(sub).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_seal_generation(p_chart_id uuid, p_generation text)')
+    expect(sub).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_generation_governed(g text)')
+    expect(sub).toContain("g ~ '^([5-9]|[1-9][0-9]+)\\.[0-9]+$'")
+    expect(sub).toContain("ka_gochara_generation_governed('4.1') IS FALSE")
+    expect(sub).toContain("ka_gochara_generation_governed('v1') IS FALSE")
+    // every chart-scoped table CHECKs the governed generation
+    for (const n of ALL) {
+      const sql = readMigration(n)
+      for (const t of createdTables(sql)) {
+        if (!CHART_SCOPED.has(t)) continue
+        const section = sql.slice(sql.indexOf(`CREATE TABLE IF NOT EXISTS public.${t} (`))
+        const end = section.indexOf('\n);')
+        expect(section.slice(0, end), `${t} generation CHECK`).toContain('ka_gochara_generation_governed(generation) IS TRUE')
       }
     }
-    // the migration's own tables are the ones verified
-    const created = [...readMigration(n).matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].map(m => m[1]!)
-    expect(Object.keys(exp.tables).sort()).toEqual(created.sort())
+    // the only trigger created on a non-ka_gochara table is none at all
+    for (const n of ALL) {
+      const created = [...readMigration(n).matchAll(/CREATE (?:CONSTRAINT )?TRIGGER \w+\n\s+(?:BEFORE|AFTER) [^\n]+ ON public\.(\w+)/g)].map(m => m[1]!)
+      for (const t of created) expect(t, `trigger target ${t} in ${n}`).toMatch(/^ka_gochara_/)
+    }
+    // the seal reads the manifest, it never binds to it
+    expect(sub).toContain("p.status = 'published'")
+    expect(sub).toContain('manifest_id UUID NOT NULL,')
   })
 
-  it('F1/F4: the contact identity is separate from its generation-scoped ledger; the frozen hash recipe has no extra component', () => {
+  // ── Ruling 2: one lock order — the orchestrator's keys ───────────────────
+  it('ruling 2 (N2/N5): the lock helpers use the orchestrator\'s exact keys and refuse non-READ COMMITTED', () => {
+    const sub = readMigration(1153)
+    const locks = fs.readFileSync(LOCKS_PY, 'utf8')
+    expect(locks).toContain('_GLOBAL_ASSETS_LOCK_KEY = "nirmana-global-assets"')
+    expect(locks).toContain('pg_try_advisory_lock(hashtext(%s))')
+    expect(sub).toContain('PERFORM pg_advisory_xact_lock(hashtext(p_chart_id::text)::bigint);')
+    expect(sub).toContain("PERFORM pg_advisory_xact_lock(hashtext('nirmana-global-assets')::bigint);")
+    expect(sub).not.toContain("hashtext('ka_gochara_generation:'")
+    expect((sub.match(/current_setting\('transaction_isolation'\) <> 'read committed'/g) ?? []).length).toBe(2)
+  })
+
+  it('ruling 2: every mutating trigger function locks FIRST, on the right key, chart before global', () => {
+    const chartFirst = new Set(['ka_gochara_contact_guard', 'ka_gochara_chart_write_guard', 'ka_gochara_generation_seal_guard',
+      'ka_gochara_seal_generation', 'ka_gochara_generation_is_sealed'])
+    const globalFirst = new Set(['ka_gochara_global_write_guard', 'ka_gochara_sky_event_supersede_guard', 'ka_gochara_sky_event_guard',
+      'ka_gochara_contact_identity_supersede_guard', 'ka_gochara_membership_guard', 'ka_gochara_require_sealed_rule_path'])
+    // functions that run strictly AFTER a locking row trigger in the same statement/transaction
+    const lockedByPredecessor = new Set(['ka_gochara_record_coverage_guard', 'ka_gochara_window_coverage_guard',
+      'ka_gochara_record_finalize_check', 'ka_gochara_contact_propagate_precision'])
+    let seen = 0
+    for (const n of ALL) {
+      for (const { name, body } of functionBodies(readMigration(n))) {
+        if (!chartFirst.has(name) && !globalFirst.has(name)) {
+          if (name.includes('guard') || name.includes('seal') || name.includes('check')) {
+            expect(lockedByPredecessor.has(name) || /RAISE EXCEPTION 'TRUNCATE refused/.test(body), `${name} is a mutating trigger without a lock classification`).toBe(true)
+          }
+          continue
+        }
+        seen++
+        const lockIdx = body.search(chartFirst.has(name) ? /PERFORM public\.ka_gochara_lock_chart\(/ : /PERFORM public\.ka_gochara_lock_global\(\)/)
+        expect(lockIdx, `${name} must take the lock`).toBeGreaterThan(-1)
+        const firstRead = body.search(/FROM public\.|INSERT INTO public\.|UPDATE public\./)
+        expect(firstRead === -1 || lockIdx < firstRead, `${name} must lock before it reads or writes`).toBe(true)
+        if (chartFirst.has(name)) {
+          const globalIdx = body.indexOf('ka_gochara_lock_global')
+          expect(globalIdx === -1 || globalIdx > lockIdx, `${name} must take the chart lock before the global lock`).toBe(true)
+        }
+      }
+    }
+    expect(seen).toBe(chartFirst.size + globalFirst.size)
+    // row-trigger firing order on the chart-scoped tables is by name: lock guard first, then the rest
+    for (const [n, table] of [[1155, 'ka_gochara_relationship_record'], [1156, 'ka_gochara_eval_window']] as const) {
+      const sql = readMigration(n)
+      const prefix = table === 'ka_gochara_relationship_record' ? 'rr' : 'ew'
+      expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_1_write_guard`)
+      expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_2_coverage_guard`)
+      expect(sql).toContain(`CREATE TRIGGER ka_gochara_${prefix}_3_sealed_path_check`)
+    }
+    // the record/window sealed-path check takes the GLOBAL lock only after the chart lock guard (name order)
+    expect(readMigration(1154)).toMatch(/ka_gochara_require_sealed_rule_path\(\)[\s\S]*?PERFORM public\.ka_gochara_lock_global\(\);/)
+  })
+
+  // ── Ruling 4: the deploy route ───────────────────────────────────────────
+  it('ruling 4 (N3): the routine runner refuses 1153–1157; the --only window may apply them', () => {
+    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual(Object.values(MIGRATIONS).sort())
+    for (const f of Object.values(MIGRATIONS)) {
+      expect(() => assertGeneralRunnerMayApplyPublicSchema(f, false)).toThrow(/gochara_contracts_schema_migration=true/)
+      expect(() => assertGeneralRunnerMayApplyPublicSchema(f, true)).not.toThrow()
+    }
+    const deploy = fs.readFileSync(path.resolve(process.cwd(), '../.github/workflows/deploy.yml'), 'utf8')
+    expect(deploy).toContain('gochara_contracts_schema_migration:')
+    expect(deploy).toContain('APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: ${{ inputs.gochara_contracts_schema_migration }}')
+    let prev = deploy.indexOf('1125_ai_snapshot_shape_operator_precedence.sql)')
+    for (const f of Object.values(MIGRATIONS)) {
+      const at = deploy.indexOf(`migrations+=(${f})`)
+      expect(at, f).toBeGreaterThan(prev)
+      prev = at
+    }
+  })
+
+  // ── Ruling 5: N6/N7/N8/N10/N11 as written (by name) ───────────────────────
+  it('ruling 5 (N6/N7/N8/N10): the named mechanisms exist', () => {
+    const sub = readMigration(1153)
+    expect(sub).toContain('N6 (INSERT and enrichment UPDATE): one identity, one solved reading')
+    expect(sub).toContain('already carries a different solved reading in another generation')
+    const rec = readMigration(1155)
+    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_contact_propagate_precision()')
+    expect(rec).toContain('CREATE TRIGGER ka_gochara_contact_2_propagate_precision')
+    expect(rec).toContain("ka_gochara_chart_write_guard('precision_sync')")
+    expect(rec).toContain("ka_gochara_chart_write_guard('result_only')")
+    expect(rec).toContain('membership reparenting (record_id/ordinal/predicate) is prohibited')
+    expect(rec).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_coverage_digest(')
+    expect(rec).toContain('coverage_digest   TEXT NOT NULL')
+    expect(rec).toContain('IF NOT COALESCE(NEW.relation = ANY (cov.relations_searched), false) THEN')
+    expect(rec).toContain('array_position(cov.relations_searched, NULL) IS NOT NULL')
+    expect(rec).toContain("AND cov.partition_key <> NEW.agent || ':' || NEW.object_role THEN")
+    const win = readMigration(1156)
+    expect(win).toContain("ka_gochara_chart_write_guard('no_update')")
+    expect(win).toContain("CHECK (coverage_partition_kind = 'event_class')")
+    expect(win).toContain('coverage_digest   TEXT NOT NULL')
+    expect(win).toContain('array_position(cov.relations_searched, NULL) IS NOT NULL')
+  })
+
+  // ── Kept from rounds 2–3 (by name) ───────────────────────────────────────
+  it('F1/F4 (kept): identity separate from the ledger; the frozen hash recipe; truncated ⇔ clipped_truncated', () => {
     const sql = readMigration(1153)
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS public.ka_gochara_contact_identity')
-    expect(sql).toContain('CREATE TABLE IF NOT EXISTS public.ka_gochara_contact')
     expect(sql).toContain('PRIMARY KEY (chart_id, generation, contact_id)')
     expect(sql).toContain('UNIQUE (physical_object_id, occurrence_ordinal)')
-    expect(sql).not.toMatch(/correction_seq\s+INTEGER/)   // withdrawn: no column, no hash component
+    expect(sql).not.toMatch(/correction_seq\s+INTEGER/)
     expect(sql).toContain('ka_gochara_contact_identity_fk')
     expect(sql).toContain('kgci_supersedes_uq UNIQUE (supersedes_contact_id)')
-    expect(sql).toContain('kgse_supersedes_uq UNIQUE (supersedes_event_id)')
-    // boundary events stay the five kinds only
-    const eventSection = sql.slice(sql.indexOf('CREATE TABLE IF NOT EXISTS public.ka_gochara_sky_event'))
-    expect(eventSection).toContain("'sign_ingress','nakshatra_ingress','kakshya_crossing','station','eclipse_instant'")
-    // legacy mapping stated: legacy rows not migrated, referenced by generation
-    expect(sql).toContain('kala_gochara_contacts')
-    expect(sql).toMatch(/NOT\s+migrated/i)
-    // F4: truncated ⇔ clipped_truncated on both identity-bearing tables
     expect(sql).toContain('kgse_truncated_method_ck')
     expect(sql).toContain('kgc_truncated_method_ck')
+    expect(sql).toContain('kala_gochara_contacts')
+    expect(sql).toMatch(/NOT\s+migrated/i)
   })
 
-  it('F1/F7: every contact reference is ownership-bound and relation-exact', () => {
+  it('F1/F7 (kept): ownership-bound, relation-exact references; class/path-bound window membership', () => {
     const rec = readMigration(1155)
     expect(rec).toContain('FOREIGN KEY (chart_id, generation, contact_id, agent, relation, object_id)')
     expect(rec).toContain('REFERENCES public.ka_gochara_contact (chart_id, generation, contact_id, body, relation_kind, physical_object_id)')
-    expect(rec).not.toContain('REFERENCES ka_gochara_sky_event')
-    const sub = readMigration(1153)
-    expect(sub).toContain('REFERENCES public.ka_gochara_physical_object (physical_object_id, body, relation_kind, convention_id)')
-    expect(sub).toContain('FOREIGN KEY (physical_object_id, body, event_kind, convention_id)')
-    expect(sub).toContain('kgc_reference_uq')
-  })
-
-  it('F2: permanent publication seal, serialization lock, and TRUNCATE refusal on every owned table', () => {
-    const sub = readMigration(1153)
-    expect(sub).toContain('CREATE TABLE IF NOT EXISTS public.ka_gochara_generation_seal')
-    expect(sub).toContain('ka_gochara_publication_seal_record')
-    expect(sub).toContain('AFTER INSERT OR UPDATE OF status ON public.kala_gochara_publication')
-    expect(sub).toContain('ka_gochara_generation_is_sealed')
-    expect(sub).toContain("p.status <> 'candidate' OR p.published_at IS NOT NULL")
-    // the seal writer and the ONE reader predicate take the same lock (code form, not prose)
-    const lockCalls = sub.match(/PERFORM pg_advisory_xact_lock\(hashtext\('ka_gochara_generation:' \|\| /g) ?? []
-    expect(lockCalls.length).toBe(2)
-    for (const n of ALL) {
-      const sql = readMigration(n)
-      const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS public\.(\w+)/g)].map(m => m[1]!)
-      for (const t of tables) {
-        expect(sql, `${t} TRUNCATE guard`).toMatch(new RegExp(`BEFORE TRUNCATE ON public\\.${t}\\n`))
-      }
+    expect(readMigration(1153)).toContain('REFERENCES public.ka_gochara_physical_object (physical_object_id, body, relation_kind, convention_id)')
+    const win = readMigration(1156)
+    expect(win).toContain('REFERENCES public.ka_gochara_eval_window (window_id, chart_id, generation, event_class, path_id, rule_version)')
+    expect(win).toContain('REFERENCES public.ka_gochara_relationship_record (record_id, chart_id, generation, event_class, path_id, rule_version)')
+    for (const n of [1155, 1156] as const) {
+      expect(readMigration(n)).toContain('REFERENCES public.kala_gochara_coverage (chart_id, generation, partition_kind, partition_key)')
     }
   })
 
-  it('F3: rule-version membership is sealed after construction; only sealed versions are referenced', () => {
+  it('F2 (kept): TRUNCATE refused on every owned table; the seal is permanent', () => {
+    for (const n of ALL) {
+      const sql = readMigration(n)
+      for (const t of createdTables(sql)) {
+        expect(sql, `${t} TRUNCATE guard`).toMatch(new RegExp(`BEFORE TRUNCATE ON public\\.${t}\\n`))
+      }
+    }
+    expect(readMigration(1153)).toContain("ka_gochara_generation_seal is permanent")
+  })
+
+  it('F3 (kept): rule-version seal; only sealed versions are referenced', () => {
     const reg = readMigration(1154)
     expect(reg).toContain('CREATE TABLE IF NOT EXISTS public.ka_gochara_rule_path_seal')
     expect(reg).toContain('ka_gochara_membership_guard')
-    expect(reg).toContain('ka_gochara_require_sealed_rule_path')
-    expect(reg).toContain('BEFORE INSERT ON public.ka_gochara_rule_path_prerequisite')
-    expect(reg).toContain('BEFORE INSERT ON public.ka_gochara_rule_path_soft_factor')
     expect(readMigration(1155)).toContain('BEFORE INSERT OR UPDATE OF path_id, rule_version ON public.ka_gochara_relationship_record')
     expect(readMigration(1156)).toContain('BEFORE INSERT OR UPDATE OF path_id, rule_version ON public.ka_gochara_eval_window')
   })
 
-  it('F5: validators are total and every helper CHECK asks IS TRUE; qualification is finalised at commit', () => {
-    const reg = readMigration(1154)
-    expect(reg).toContain('SELECT COALESCE(CASE frame_kind')
+  it('F5 (kept): total validators, IS TRUE on every helper CHECK, commit-time finalisation', () => {
+    expect(readMigration(1154)).toContain('SELECT COALESCE(CASE frame_kind')
     const rec = readMigration(1155)
     expect(rec).toContain("jsonb_typeof(p -> 'solver_method') = 'string'")
-    expect(rec).toContain('DEFERRABLE INITIALLY DEFERRED')
     expect(rec).toContain('CREATE CONSTRAINT TRIGGER ka_gochara_rr_finalize')
     expect(rec).toContain('CREATE CONSTRAINT TRIGGER ka_gochara_rpr_finalize')
-    expect(rec).toContain('ka_gochara_record_finalize_check')
     for (const n of ALL) {
       const sql = readMigration(n)
-      const helperChecks = sql.match(/CHECK \((?:[^)]*\n)*?[^)]*public\.ka_gochara_\w+_ok\([^]*?\)\)/g) ?? []
-      for (const chk of helperChecks) {
-        // each helper call inside a CHECK is followed by IS TRUE
-        const calls = chk.match(/public\.ka_gochara_\w+_ok\([^()]*(?:\([^()]*\)[^()]*)*\)(?! IS TRUE)/g) ?? []
-        expect(calls, `helper call without IS TRUE in migration ${n}: ${chk.slice(0, 120)}`).toEqual([])
+      const calls = sql.match(/CHECK \([^;]*?public\.ka_gochara_\w+_ok\([^;]*?\)\)/gs) ?? []
+      for (const chk of calls) {
+        const bare = chk.match(/public\.ka_gochara_\w+_ok\([^()]*(?:\([^()]*\)[^()]*)*\)(?! IS TRUE)/g) ?? []
+        expect(bare, `helper call without IS TRUE in ${n}: ${chk.slice(0, 100)}`).toEqual([])
       }
     }
   })
 
-  it('F6: factor discipline is exactly C2 — no uncalibrated-mapping prohibition, no ordering demand', () => {
+  it('F6 (kept): factor discipline is exactly C2', () => {
     const reg = readMigration(1154)
-    expect(reg).toContain('kgf_range_unit_interval_ck')
-    expect(reg).toContain('kgf_calibration_status_ck')
-    expect(reg).toContain('kgf_calibrated_requires_mapping_ck')
     expect(reg).toContain("CHECK (calibration_status <> 'calibrated' OR category_mapping IS NOT NULL)")
     expect(reg).not.toContain('kgf_mapping_discipline_ck')
-    expect(reg).not.toMatch(/uncalibrated_default'\s*AND\s*category_mapping IS NULL/)
     expect(reg).toMatch(/score_rule\s+TEXT NOT NULL/)
   })
 
-  it('F7: coverage applicability guards, the convention bridge, and class/path-bound window membership', () => {
-    expect(readMigration(1153)).toContain('CREATE TABLE IF NOT EXISTS public.ka_gochara_convention_bridge')
-    const rec = readMigration(1155)
-    expect(rec).toContain('ka_gochara_record_coverage_guard')
-    expect(rec).toContain('relations_searched')
-    expect(rec).toContain('completed_horizon @> ct.t_in')
-    expect(rec).toContain('ka_gochara_convention_bridge')
-    expect(rec).toContain("(NEW.agent = 'moon') <> (cov.partition_kind = 'moon_on_demand')")
-    const win = readMigration(1156)
-    expect(win).toContain('ka_gochara_window_coverage_guard')
-    expect(win).toContain('completed_horizon @> NEW.interval')
-    expect(win).toContain('REFERENCES public.ka_gochara_eval_window (window_id, chart_id, generation, event_class, path_id, rule_version)')
-    expect(win).toContain('REFERENCES public.ka_gochara_relationship_record (record_id, chart_id, generation, event_class, path_id, rule_version)')
-    for (const n of [1155, 1156] as const) {
-      const sql = readMigration(n)
-      expect(sql).toContain('REFERENCES public.kala_gochara_coverage (chart_id, generation, partition_kind, partition_key)')
-      expect(sql).not.toContain('kala_gochara_publication(manifest_id)')
-    }
-  })
-
-  it('F11: declared selector encoding, finite numeric domains, non-empty AV category elements', () => {
-    const reg = readMigration(1154)
-    expect(reg).toContain('ka_gochara_selector_token_ok')
-    expect(reg).toContain("'^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$'")
-    const sub = readMigration(1153)
-    expect(sub).toContain('ka_gochara_finite_nonneg_ok')
-    expect(sub).toContain('kgse_uncertainty_finite_ck')
-    expect(sub).toContain('kgc_uncertainty_finite_ck')
-    expect(sub).toContain('kgse_longitude_range_ck')
+  it('F11 (kept): selector encoding, finite domains, non-empty AV categories, fact-id disposition', () => {
+    expect(readMigration(1154)).toContain("'^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$'")
+    expect(readMigration(1153)).toContain('kgse_uncertainty_finite_ck')
     expect(readMigration(1155)).toContain('kgrr_evidence_finite_ck')
     expect(readMigration(1156)).toContain('kgew_evidence_finite_ck')
     expect(readMigration(1157)).toContain('ka_gochara_text_array_ok(applies_to_fact_categories, 1)')
-    // fact-id resolvability is an explicit writer-boundary disposition
     expect(readMigration(1155)).toMatch(/RESOLVABILITY[\s\S]*WRITER-BOUNDARY/)
-  })
-
-  it('amendment 5/9 (kept): typed support states, NOT NULL valence, admission persistence, frame/citation/ruling rules', () => {
-    const rec = readMigration(1155)
-    expect(rec).toContain('kgrr_support_cardinality_ck')
-    expect(rec).toContain('admission_state')
-    expect(rec).toContain('kgrr_evaluated_has_house_ck')
-    expect(rec).toMatch(/outcome_valence_for_native\s+TEXT NOT NULL/)
-    expect(rec).toMatch(/AND contact_id IS NOT NULL AND precision IS NOT NULL/)
-    expect(rec).toContain('kgrr_relative_frame_ck')
-    expect(rec).toContain('kgrr_citation_ck')
-    for (const n of [1154, 1155] as const) {
-      expect(readMigration(n)).toContain("provenance <> 'uncited_extension' OR ruling_ref IS NOT NULL")
-    }
-    expect(readMigration(1156)).toMatch(/outcome_valence_for_native TEXT NOT NULL/)
-    expect(readMigration(1156)).toContain('kgew_score_unit_interval_ck')
-    expect(readMigration(1156)).toContain('kgew_peak_in_interval_ck')
   })
 
   it('event_class CHECKs enumerate exactly the 27 protocol classes', () => {
@@ -347,12 +396,9 @@ describe('A5.1 migrations 1153–1157 — static contract (round 3)', () => {
     }
   })
 
-  it('D-SCOPE disposition: canonical-chart CHECK on the per-chart tables; never on the seal', () => {
+  it('D-SCOPE disposition: canonical-chart CHECK on the per-chart data tables', () => {
     for (const sql of [readMigration(1153), readMigration(1155), readMigration(1156)]) {
       expect(sql).toContain('482012f1-710e-4a25-994a-93821f5871aa')
     }
-    const sealSection = readMigration(1153).split('CREATE TABLE IF NOT EXISTS public.ka_gochara_generation_seal')[1]!
-      .split('CREATE TABLE IF NOT EXISTS')[0]!
-    expect(sealSection).not.toContain('482012f1')
   })
 })

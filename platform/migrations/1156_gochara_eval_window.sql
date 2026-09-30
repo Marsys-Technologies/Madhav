@@ -1,13 +1,15 @@
 -- Migration 1156: ka_gochara_eval_window — the §2.1 eval_window typed
---                 contract + §3.1 valence fields, with record membership
---                 bound to the SAME chart, generation, event class and rule
---                 version (F7), coverage applicability (F7), sealed-generation
---                 immutability (F2), sealed-rule-version references (F3) and
---                 finite numeric domains (F11). Depends on 1154 (rule_path,
---                 seal), 1155 (relationship_record, sealed-generation guard)
---                 and 1081 (kala_gochara_coverage). Round-3 rewrite per
---                 ASTRA_REVIEW_A5_1_MIGRATIONS v1_1 under the steward rulings.
---                 Never applied anywhere — in-place rewrite of the same number.
+--                 contract + §3.1 valence fields, with record membership bound
+--                 to the SAME chart, generation, event class and rule version
+--                 (F7), coverage applicability bound to a content digest
+--                 (F7/N10), a FROZEN membership set once published (F2/N9),
+--                 sealed-rule-version references (F3/N5) and finite numeric
+--                 domains (F11) — every write under the orchestrator's chart
+--                 lock, then the global lock (steward ruling 2). Depends on
+--                 1154, 1155 and 1081 (kala_gochara_coverage). Round-4 rewrite
+--                 per ASTRA_REVIEW_A5_1_MIGRATIONS v1_2 under the steward's
+--                 simplification ruling. Never applied anywhere — in-place
+--                 rewrite of the same number.
 -- Created: 2026-09-30. Author: pravaha/a5-migrations (Stream A, A5.1).
 --
 -- Numbering: 1156 sits inside this lane's granted block (1150–1159 per
@@ -16,36 +18,25 @@
 -- green.
 --
 -- Transaction ownership: NO BEGIN/COMMIT — migrate.ts owns ONE transaction
--- (see the 1153 header). Effective ordered gate: pinned schema → preflight
--- gate (byte-identical to preflight_1156_eval_window.sql; requires
--- 1153–1155 recorded) → DDL → post-DDL definition verification.
+-- (see the 1153 header). Gate: pinned schema → preflight gate (byte-identical
+-- to preflight_1156_eval_window.sql; requires 1153–1155 recorded) → DDL →
+-- presence checks. Deploy route: the protected public-schema window.
 --
--- ── F7 — window membership binds class and path/version, not just scope ──
+-- ── Windows and their coverage (F7/N10) ────────────────────────────────────
+-- A window is per (chart, event_class, generation, path version) — it is the
+-- product of the CLASS search, so its coverage partition is the class's
+-- `event_class` partition with key = event_class (P6 produces day rows, never
+-- windows — §2.2). `coverage_digest` binds the window to the partition facts
+-- it was validated against (same helper and rule as 1155). The window's
+-- interval lies inside the partition's completed_horizon.
+--
+-- ── Membership (F7/N9) ─────────────────────────────────────────────────────
 -- ka_gochara_eval_window_record carries (chart_id, generation, event_class,
--- path_id, rule_version) and FKs BOTH ends on all of them: a P1/v1 marriage
--- window can hold only P1/v1 marriage records of the same chart and
--- generation (S:183–205: a window is per (path_id, rule_version) and per
--- class). ON DELETE CASCADE on both ends matches the per-(chart_id ×
--- generation) delete-then-insert rebuild ordering (§N.3) for CANDIDATE
--- generations; a sealed generation refuses the parent DELETE first (F2).
---
--- ── F7 — coverage applicability for windows ──────────────────────────────
--- Existence: composite FK to the window's own (chart, generation,
--- partition). Applicability (ka_gochara_window_coverage_guard): an
--- event_class partition's key must equal the window's class; the window's
--- interval must lie inside the partition's completed_horizon (a window
--- evaluated from records whose supports lie inside the searched horizon
--- cannot extend beyond it; a window open at the horizon end is clipped by
--- the writer to the horizon end).
---
--- ── Amendment 7 (kept) — score/interval contract ─────────────────────────
--- score ∈ [0,1] when computed (within-path product and cross-path max both
--- preserve it — S:167-170, 187-188, 209-213), NULL = explicitly unqualified
--- (NK-4); evidence finite and non-negative, no upper bound (F11: NaN/+inf
--- rejected); empty intervals rejected; a computed peak_instant lies inside
--- the window's interval (S:321-323, §7.2 inv 2); valence NOT NULL with
--- 'unqualified' as the honest state; null_states_used ⊆ {omit, unqualified}
--- with no NULL/blank element.
+-- path_id, rule_version) and FKs BOTH ends on all of them. Membership rows
+-- are written once with their window and are otherwise IMMUTABLE (no UPDATE);
+-- on a sealed generation INSERT and DELETE are refused too, so a published
+-- window's record list can never change (N9). ON DELETE CASCADE on both
+-- ends serves the §N.3 candidate rebuild only.
 --
 -- asset_registry: deliberately NOT registered (same disposition as 1081).
 --
@@ -62,7 +53,6 @@ SET LOCAL statement_timeout = '120s';
 -- ── GATE (byte-identical to preflight_1156_eval_window.sql) ────────────────
 DO $$
 DECLARE
-  replay   boolean := COALESCE(current_setting('ka_gochara.deliberate_replay', true), '') = 'on';
   failures text;
 BEGIN
   WITH f(failure, detail) AS (
@@ -81,7 +71,7 @@ BEGIN
     UNION ALL
     SELECT 'relation_already_exists', 'public.' || c.relname
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE NOT replay AND n.nspname = 'public'
+    WHERE n.nspname = 'public'
       AND c.relname IN ('ka_gochara_eval_window', 'ka_gochara_eval_window_pkey',
                         'kgew_membership_uq',
                         'ka_gochara_eval_window_record', 'ka_gochara_eval_window_record_pkey',
@@ -92,43 +82,45 @@ BEGIN
     FROM pg_trigger t
     JOIN pg_class c ON c.oid = t.tgrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE NOT replay AND n.nspname = 'public' AND NOT t.tgisinternal
+    WHERE n.nspname = 'public' AND NOT t.tgisinternal
       AND ( (c.relname = 'ka_gochara_eval_window'
-               AND t.tgname IN ('ka_gochara_ew_sealed_path_check', 'ka_gochara_ew_coverage_guard',
-                                'ka_gochara_ew_sealed_generation_guard', 'ka_gochara_ew_no_truncate'))
+               AND t.tgname IN ('ka_gochara_ew_1_write_guard', 'ka_gochara_ew_2_coverage_guard',
+                                'ka_gochara_ew_3_sealed_path_check', 'ka_gochara_ew_no_truncate'))
          OR (c.relname = 'ka_gochara_eval_window_record'
-               AND t.tgname IN ('ka_gochara_ewr_sealed_generation_guard', 'ka_gochara_ewr_no_truncate')) )
+               AND t.tgname IN ('ka_gochara_ewr_1_write_guard', 'ka_gochara_ewr_no_truncate')) )
     UNION ALL
     SELECT 'function_already_exists',
            'public.' || p.proname || '(' || array_to_string(e.argtypes, ',') || ')'
     FROM (VALUES ('ka_gochara_window_coverage_guard', ARRAY[]::text[])) AS e(fname, argtypes)
     JOIN pg_proc p ON p.proname = e.fname
     JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
-    WHERE NOT replay
-      AND (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
+    WHERE (SELECT COALESCE(array_agg(format_type(u.oid, NULL) ORDER BY u.ord), '{}')
            FROM unnest(p.proargtypes) WITH ORDINALITY AS u(oid, ord)) = e.argtypes
     UNION ALL
     SELECT 'parent_table_missing', p.t
     FROM (VALUES ('charts'), ('ka_gochara_rule_path'), ('ka_gochara_rule_path_seal'),
-                 ('ka_gochara_relationship_record'), ('kala_gochara_coverage')) AS p(t)
+                 ('ka_gochara_relationship_record'), ('kala_gochara_coverage'),
+                 ('ka_gochara_generation_seal')) AS p(t)
     WHERE to_regclass('public.' || p.t) IS NULL
     UNION ALL
     SELECT 'parent_column_missing_or_type',
            e.t || '.' || e.col || ' expected ' || e.typ
-    FROM (VALUES ('charts',                         'id',                'uuid'),
-                 ('ka_gochara_rule_path',           'path_id',           'text'),
-                 ('ka_gochara_rule_path',           'rule_version',      'text'),
-                 ('ka_gochara_relationship_record', 'record_id',         'uuid'),
-                 ('ka_gochara_relationship_record', 'chart_id',          'uuid'),
-                 ('ka_gochara_relationship_record', 'generation',        'text'),
-                 ('ka_gochara_relationship_record', 'event_class',       'text'),
-                 ('ka_gochara_relationship_record', 'path_id',           'text'),
-                 ('ka_gochara_relationship_record', 'rule_version',      'text'),
-                 ('kala_gochara_coverage',          'chart_id',          'uuid'),
-                 ('kala_gochara_coverage',          'generation',        'text'),
-                 ('kala_gochara_coverage',          'partition_kind',    'text'),
-                 ('kala_gochara_coverage',          'partition_key',     'text'),
-                 ('kala_gochara_coverage',          'completed_horizon', 'tstzrange')) AS e(t, col, typ)
+    FROM (VALUES ('charts',                         'id',                 'uuid'),
+                 ('ka_gochara_rule_path',           'path_id',            'text'),
+                 ('ka_gochara_rule_path',           'rule_version',       'text'),
+                 ('ka_gochara_relationship_record', 'record_id',          'uuid'),
+                 ('ka_gochara_relationship_record', 'chart_id',           'uuid'),
+                 ('ka_gochara_relationship_record', 'generation',         'text'),
+                 ('ka_gochara_relationship_record', 'event_class',        'text'),
+                 ('ka_gochara_relationship_record', 'path_id',            'text'),
+                 ('ka_gochara_relationship_record', 'rule_version',       'text'),
+                 ('kala_gochara_coverage',          'chart_id',           'uuid'),
+                 ('kala_gochara_coverage',          'generation',         'text'),
+                 ('kala_gochara_coverage',          'partition_kind',     'text'),
+                 ('kala_gochara_coverage',          'partition_key',      'text'),
+                 ('kala_gochara_coverage',          'convention_id',      'text'),
+                 ('kala_gochara_coverage',          'completed_horizon',  'tstzrange'),
+                 ('kala_gochara_coverage',          'relations_searched', 'text[]')) AS e(t, col, typ)
     LEFT JOIN pg_attribute a
       ON a.attrelid = to_regclass('public.' || e.t) AND a.attname = e.col AND NOT a.attisdropped
     WHERE a.attname IS NULL OR format_type(a.atttypid, a.atttypmod) IS DISTINCT FROM e.typ
@@ -151,6 +143,7 @@ BEGIN
     FROM (VALUES ('ka_gochara_finite_ok(double precision)'),
                  ('ka_gochara_finite_nonneg_ok(double precision)'),
                  ('ka_gochara_text_array_ok(text[],integer)'),
+                 ('ka_gochara_generation_governed(text)'),
                  ('ka_gochara_generation_is_sealed(uuid,text)')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
        OR (SELECT format_type(p.prorettype, NULL) FROM pg_proc p
@@ -158,9 +151,10 @@ BEGIN
     UNION ALL
     SELECT 'helper_function_missing', e.sig
     FROM (VALUES ('ka_gochara_refuse_truncate()'),
+                 ('ka_gochara_lock_chart(uuid)'),
                  ('ka_gochara_require_sealed_rule_path()'),
-                 ('ka_gochara_sealed_generation_guard()'),
-                 ('ka_gochara_verify_definitions(text,jsonb)')) AS e(sig)
+                 ('ka_gochara_chart_write_guard()'),
+                 ('ka_gochara_coverage_digest(text,tstzrange,text[])')) AS e(sig)
     WHERE to_regprocedure('public.' || e.sig) IS NULL
     UNION ALL
     SELECT 'prerequisite_migration_not_applied', p.prefix
@@ -170,7 +164,7 @@ BEGIN
     UNION ALL
     SELECT 'migration_already_applied', m.filename
     FROM _migrations_applied m
-    WHERE NOT replay AND to_regclass('public._migrations_applied') IS NOT NULL
+    WHERE to_regclass('public._migrations_applied') IS NOT NULL
       AND starts_with(m.filename, '1156_')
   )
   SELECT string_agg(f.failure || ' :: ' || f.detail, E'\n' ORDER BY f.failure, f.detail)
@@ -178,9 +172,6 @@ BEGIN
   FROM f;
   IF failures IS NOT NULL THEN
     RAISE EXCEPTION 'preflight 1156 BLOCKED — migration 1156 must NOT be applied:% %', E'\n', failures;
-  END IF;
-  IF replay THEN
-    RAISE NOTICE 'preflight 1156: deliberate replay — existence checks skipped; definitions are verified post-DDL';
   END IF;
   RAISE NOTICE 'preflight 1156: all checks passed';
 END;
@@ -192,30 +183,26 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window (
   window_id         UUID PRIMARY KEY,
   chart_id          UUID NOT NULL REFERENCES public.charts(id),
   event_class       TEXT NOT NULL,
-  generation        TEXT NOT NULL,               -- '4.1'/'5.0'…; generation-scoped
-  path_id           TEXT NOT NULL,               -- mandatory complete version-bound
-  rule_version      TEXT NOT NULL,               --   reference (sealed version — F3)
+  generation        TEXT NOT NULL,               -- governed generation (major >= 5)
+  path_id           TEXT NOT NULL,               -- sealed rule version (F3/N5)
+  rule_version      TEXT NOT NULL,
   interval          TSTZRANGE NOT NULL,          -- the admitted window; never empty
-  peak_instant      TIMESTAMPTZ,                 -- P4: argmax of min(activity_Jupiter,
-                                                 --   activity_Saturn) over the overlap,
-                                                 --   interior extrema (S:321-323, §7.2
-                                                 --   inv 2, O-SM-4); ∈ interval when set
-  score             REAL,                        -- ranks; never admits or excludes (§2);
-                                                 --   NULL = explicitly unqualified (NK-4)
-  evidence_for      REAL,                        -- §3.1: accumulates; never netted; finite ≥ 0
-  evidence_against  REAL,                        -- §3.1: accumulates; never netted; finite ≥ 0
-  outcome_valence_for_native TEXT NOT NULL,      -- §3.1: 'unqualified' is the declared
-                                                 --   honest state — SQL NULL is not a valence
-  severity          REAL,                        -- §3.1: interpretive, rank-only; finite
-  coverage_partition_kind TEXT NOT NULL,         -- coverage partition handle (scope-bound)
-  coverage_partition_key  TEXT NOT NULL,
-  null_states_used  TEXT[] NOT NULL DEFAULT '{}',-- factor null_states exercised (§2.1),
-                                                 --   never silent; ⊆ {omit, unqualified}
+  peak_instant      TIMESTAMPTZ,                 -- ∈ interval when set (S:321-323)
+  score             REAL,                        -- [0,1] when computed; NULL = unqualified
+  evidence_for      REAL,                        -- finite ≥ 0; never netted
+  evidence_against  REAL,                        -- finite ≥ 0; never netted
+  outcome_valence_for_native TEXT NOT NULL,      -- 'unqualified' is the honest state
+  severity          REAL,                        -- finite
+  coverage_partition_kind TEXT NOT NULL,         -- always 'event_class' (header)
+  coverage_partition_key  TEXT NOT NULL,         -- = event_class (guard)
+  coverage_digest   TEXT NOT NULL,               -- N10: digest of the partition facts
+  null_states_used  TEXT[] NOT NULL DEFAULT '{}',-- ⊆ {omit, unqualified}
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   CONSTRAINT kgew_canonical_chart_ck
     CHECK (chart_id = '482012f1-710e-4a25-994a-93821f5871aa'::uuid),
-    -- D-SCOPE disposition: canonical chart only (S:89).
+  CONSTRAINT kgew_generation_governed_ck
+    CHECK (public.ka_gochara_generation_governed(generation) IS TRUE),
   CONSTRAINT kgew_event_class_ck CHECK (event_class IN (
     'achievement_recognition','bereavement','birth_anchor',
     'business_launch','career_advancement','career_change',
@@ -226,7 +213,6 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window (
     'property_acquisition','psychological_arc','relocation',
     'romantic_start','separation','spiritual_turn','surgery',
     'travel_event')),
-    -- the 27 classes of EVALUATION_PROTOCOL_v2_2 §2 — the sole enumeration
   CONSTRAINT kgew_path_fk FOREIGN KEY (path_id, rule_version)
     REFERENCES public.ka_gochara_rule_path (path_id, rule_version),
   CONSTRAINT kgew_interval_nonempty_ck CHECK (NOT isempty(interval)),
@@ -242,27 +228,27 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window (
     CHECK (public.ka_gochara_finite_ok(severity) IS TRUE),
   CONSTRAINT kgew_valence_ck CHECK (outcome_valence_for_native IN
     ('favourable','adverse','mixed','unqualified')),
-  CONSTRAINT kgew_coverage_kind_ck CHECK (coverage_partition_kind IN
-    ('body_target','event_class','moon_on_demand','bodies_on_demand')),
+  CONSTRAINT kgew_coverage_kind_ck CHECK (coverage_partition_kind = 'event_class'),
+    -- a window is the product of the CLASS search (header; N10)
   CONSTRAINT kgew_coverage_fk
     FOREIGN KEY (chart_id, generation, coverage_partition_kind, coverage_partition_key)
     REFERENCES public.kala_gochara_coverage (chart_id, generation, partition_kind, partition_key),
+  CONSTRAINT kgew_coverage_digest_ck CHECK (coverage_digest ~ '^[0-9a-f]{32}$'),
   CONSTRAINT kgew_null_states_ck
     CHECK (public.ka_gochara_text_array_ok(null_states_used, 0) IS TRUE
            AND null_states_used <@ ARRAY['omit','unqualified']::text[]),
-  -- FK target for the scoped membership table (F7).
   CONSTRAINT kgew_membership_uq
     UNIQUE (window_id, chart_id, generation, event_class, path_id, rule_version)
 );
 
 COMMENT ON TABLE public.ka_gochara_eval_window IS
   'Evaluated window (GOCHARA_DESIGN_SPECS_v1_4 §2.1 eval_window contract + §3.1 valence '
-  'fields): one evaluated interval per (chart, event_class, generation, path). Record '
-  'membership is normalised into ka_gochara_eval_window_record, bound on both ends to '
-  'the SAME chart, generation, event class and rule version (F7). score ∈ [0,1] when '
-  'computed, NULL when unqualified; evidence finite, non-negative, never netted. Only a '
-  'sealed rule version may produce a window (F3); coverage is proven applicable by '
-  'trigger (F7); a sealed generation refuses UPDATE/DELETE (F2); TRUNCATE refused.';
+  'fields): one evaluated interval per (chart, event_class, generation, path). Coverage: '
+  'the class''s event_class partition, bound by content digest (F7/N10). Membership is '
+  'normalised into ka_gochara_eval_window_record, bound on both ends to the SAME chart, '
+  'generation, class and rule version, and FROZEN once the generation is sealed (N9). Only '
+  'a sealed rule version may produce a window (F3/N5). Every write takes the '
+  'orchestrator''s chart lock first, then the global lock. TRUNCATE refused.';
 
 CREATE INDEX IF NOT EXISTS idx_kgew_chart_gen ON public.ka_gochara_eval_window
   (chart_id, generation, event_class, interval);
@@ -283,6 +269,8 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window_record (
   rule_version  TEXT NOT NULL,
 
   PRIMARY KEY (window_id, record_id),
+  CONSTRAINT kgewr_generation_governed_ck
+    CHECK (public.ka_gochara_generation_governed(generation) IS TRUE),
   CONSTRAINT kgewr_window_fk
     FOREIGN KEY (window_id, chart_id, generation, event_class, path_id, rule_version)
     REFERENCES public.ka_gochara_eval_window (window_id, chart_id, generation, event_class, path_id, rule_version)
@@ -291,27 +279,29 @@ CREATE TABLE IF NOT EXISTS public.ka_gochara_eval_window_record (
     FOREIGN KEY (record_id, chart_id, generation, event_class, path_id, rule_version)
     REFERENCES public.ka_gochara_relationship_record (record_id, chart_id, generation, event_class, path_id, rule_version)
     ON DELETE CASCADE
-    -- F7: membership can never cross chart, generation, event class or rule
-    -- version; cascades match the §N.3 rebuild ordering for candidates
 );
 
 COMMENT ON TABLE public.ka_gochara_eval_window_record IS
-  'Eval-window record membership (S:185 record_ids [FK] made structural; F7): one row '
-  'per (window, contributing record), bound on both ends to the SAME (chart_id, '
-  'generation, event_class, path_id, rule_version). ON DELETE CASCADE on both ends '
-  'matches the per-(chart × generation) rebuild ordering for candidates; a sealed '
-  'generation refuses the parent DELETE. TRUNCATE refused.';
+  'Eval-window record membership (S:185 record_ids [FK] made structural; F7): one row per '
+  '(window, contributing record), bound on both ends to the SAME (chart_id, generation, '
+  'event_class, path_id, rule_version). Written once with its window; never updated; '
+  'INSERT/DELETE refused once the generation is sealed (N9). Cascades serve the §N.3 '
+  'candidate rebuild only. TRUNCATE refused.';
 
 CREATE INDEX IF NOT EXISTS idx_kgewr_record ON public.ka_gochara_eval_window_record
   (record_id);
 
--- ── 3. Coverage applicability for windows (F7) ─────────────────────────────
+-- ── 3. Coverage applicability for windows (F7/N10) ─────────────────────────
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_window_coverage_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
-DECLARE cov record;
+DECLARE cov record; digest text;
 BEGIN
-  SELECT c.partition_kind, c.partition_key, c.completed_horizon INTO cov
+  IF NEW.coverage_partition_kind <> 'event_class' THEN
+    RETURN NEW;   -- a wrong partition kind is the CHECK constraint's finding (kgew_coverage_kind_ck)
+  END IF;
+  SELECT c.partition_kind, c.partition_key, c.convention_id, c.completed_horizon, c.relations_searched
+    INTO cov
   FROM public.kala_gochara_coverage c
   WHERE c.chart_id = NEW.chart_id AND c.generation = NEW.generation
     AND c.partition_kind = NEW.coverage_partition_kind
@@ -320,7 +310,16 @@ BEGIN
     RAISE EXCEPTION 'ka_gochara_eval_window coverage unresolvable (§2.1 coverage_ref): no kala_gochara_coverage partition (%, %) for (chart %, generation %)',
       NEW.coverage_partition_kind, NEW.coverage_partition_key, NEW.chart_id, NEW.generation;
   END IF;
-  IF cov.partition_kind = 'event_class' AND cov.partition_key <> NEW.event_class THEN
+  IF cov.relations_searched IS NULL OR array_position(cov.relations_searched, NULL) IS NOT NULL THEN
+    RAISE EXCEPTION 'ka_gochara_eval_window coverage not applicable (N10): partition (%, %) carries a NULL relations_searched element',
+      cov.partition_kind, cov.partition_key;
+  END IF;
+  digest := public.ka_gochara_coverage_digest(cov.convention_id, cov.completed_horizon, cov.relations_searched);
+  IF NEW.coverage_digest IS DISTINCT FROM digest THEN
+    RAISE EXCEPTION 'ka_gochara_eval_window.coverage_digest % does not bind to the partition''s current facts (expected %) (N10)',
+      NEW.coverage_digest, digest;
+  END IF;
+  IF cov.partition_key <> NEW.event_class THEN
     RAISE EXCEPTION 'ka_gochara_eval_window coverage not applicable (F7): event_class partition ''%'' does not cover class ''%''',
       cov.partition_key, NEW.event_class;
   END IF;
@@ -332,288 +331,91 @@ BEGIN
 END;
 $$;
 
--- ── 4. Triggers ────────────────────────────────────────────────────────────
+-- ── 4. Triggers (name order = firing order: lock → coverage → rule seal) ──
 
-DROP TRIGGER IF EXISTS ka_gochara_ew_sealed_path_check ON public.ka_gochara_eval_window;
-CREATE TRIGGER ka_gochara_ew_sealed_path_check
-  BEFORE INSERT OR UPDATE OF path_id, rule_version ON public.ka_gochara_eval_window
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_require_sealed_rule_path();
-DROP TRIGGER IF EXISTS ka_gochara_ew_coverage_guard ON public.ka_gochara_eval_window;
-CREATE TRIGGER ka_gochara_ew_coverage_guard
+DROP TRIGGER IF EXISTS ka_gochara_ew_1_write_guard ON public.ka_gochara_eval_window;
+CREATE TRIGGER ka_gochara_ew_1_write_guard
+  BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_eval_window
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_chart_write_guard('plain');
+DROP TRIGGER IF EXISTS ka_gochara_ew_2_coverage_guard ON public.ka_gochara_eval_window;
+CREATE TRIGGER ka_gochara_ew_2_coverage_guard
   BEFORE INSERT OR UPDATE ON public.ka_gochara_eval_window
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_window_coverage_guard();
-DROP TRIGGER IF EXISTS ka_gochara_ew_sealed_generation_guard ON public.ka_gochara_eval_window;
-CREATE TRIGGER ka_gochara_ew_sealed_generation_guard
-  BEFORE UPDATE OR DELETE ON public.ka_gochara_eval_window
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_sealed_generation_guard();
+DROP TRIGGER IF EXISTS ka_gochara_ew_3_sealed_path_check ON public.ka_gochara_eval_window;
+CREATE TRIGGER ka_gochara_ew_3_sealed_path_check
+  BEFORE INSERT OR UPDATE OF path_id, rule_version ON public.ka_gochara_eval_window
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_require_sealed_rule_path();
 DROP TRIGGER IF EXISTS ka_gochara_ew_no_truncate ON public.ka_gochara_eval_window;
 CREATE TRIGGER ka_gochara_ew_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_eval_window
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
-DROP TRIGGER IF EXISTS ka_gochara_ewr_sealed_generation_guard ON public.ka_gochara_eval_window_record;
-CREATE TRIGGER ka_gochara_ewr_sealed_generation_guard
-  BEFORE UPDATE OR DELETE ON public.ka_gochara_eval_window_record
-  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_sealed_generation_guard();
+DROP TRIGGER IF EXISTS ka_gochara_ewr_1_write_guard ON public.ka_gochara_eval_window_record;
+CREATE TRIGGER ka_gochara_ewr_1_write_guard
+  BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_eval_window_record
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_chart_write_guard('no_update');
 DROP TRIGGER IF EXISTS ka_gochara_ewr_no_truncate ON public.ka_gochara_eval_window_record;
 CREATE TRIGGER ka_gochara_ewr_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_eval_window_record
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_refuse_truncate();
 
--- ── 5. Post-DDL definition verification (F9) ───────────────────────────────
+-- ── 5. Post-apply PRESENCE checks (steward ruling 3) ───────────────────────
 DO $$
+DECLARE missing text;
 BEGIN
-  PERFORM public.ka_gochara_verify_definitions('1156', $expected$
-{
-  "functions": {
-    "ka_gochara_window_coverage_guard()": [
-      "trigger",
-      "v",
-      "plpgsql",
-      false,
-      "f"
-    ]
-  },
-  "tables": {
-    "ka_gochara_eval_window": {
-      "columns": {
-        "chart_id": [
-          "uuid",
-          true
-        ],
-        "coverage_partition_key": [
-          "text",
-          true
-        ],
-        "coverage_partition_kind": [
-          "text",
-          true
-        ],
-        "created_at": [
-          "timestamp with time zone",
-          true
-        ],
-        "event_class": [
-          "text",
-          true
-        ],
-        "evidence_against": [
-          "real",
-          false
-        ],
-        "evidence_for": [
-          "real",
-          false
-        ],
-        "generation": [
-          "text",
-          true
-        ],
-        "interval": [
-          "tstzrange",
-          true
-        ],
-        "null_states_used": [
-          "text[]",
-          true
-        ],
-        "outcome_valence_for_native": [
-          "text",
-          true
-        ],
-        "path_id": [
-          "text",
-          true
-        ],
-        "peak_instant": [
-          "timestamp with time zone",
-          false
-        ],
-        "rule_version": [
-          "text",
-          true
-        ],
-        "score": [
-          "real",
-          false
-        ],
-        "severity": [
-          "real",
-          false
-        ],
-        "window_id": [
-          "uuid",
-          true
-        ]
-      },
-      "constraints": {
-        "ka_gochara_eval_window_chart_id_fkey": [
-          "f",
-          "foreignkeychart_idreferenceschartsid",
-          true
-        ],
-        "ka_gochara_eval_window_pkey": [
-          "p",
-          "primarykeywindow_id",
-          true
-        ],
-        "kgew_canonical_chart_ck": [
-          "c",
-          "checkchart_id='482012f1-710e-4a25-994a-93821f5871aa'",
-          true
-        ],
-        "kgew_coverage_fk": [
-          "f",
-          "foreignkeychart_id,generation,coverage_partition_kind,coverage_partition_keyreferenceskala_gochara_coveragechart_id,generation,partition_kind,partition_key",
-          true
-        ],
-        "kgew_coverage_kind_ck": [
-          "c",
-          "checkcoverage_partition_kind=anyarray['body_target','event_class','moon_on_demand','bodies_on_demand']",
-          true
-        ],
-        "kgew_event_class_ck": [
-          "c",
-          "checkevent_class=anyarray['achievement_recognition','bereavement','birth_anchor','business_launch','career_advancement','career_change','career_entry','career_setback','childbirth','chronic_onset','education_milestone','exam_outcome','financial_deception','foreign_settlement','illness_acute','major_gain','major_loss','marriage','parental_event','property_acquisition','psychological_arc','relocation','romantic_start','separation','spiritual_turn','surgery','travel_event']",
-          true
-        ],
-        "kgew_evidence_finite_ck": [
-          "c",
-          "checkka_gochara_finite_nonneg_okevidence_foristrueandka_gochara_finite_nonneg_okevidence_againstistrue",
-          true
-        ],
-        "kgew_interval_nonempty_ck": [
-          "c",
-          "checknotisempty\"interval\"",
-          true
-        ],
-        "kgew_membership_uq": [
-          "u",
-          "uniquewindow_id,chart_id,generation,event_class,path_id,rule_version",
-          true
-        ],
-        "kgew_null_states_ck": [
-          "c",
-          "checkka_gochara_text_array_oknull_states_used,0istrueandnull_states_used<@array['omit','unqualified']",
-          true
-        ],
-        "kgew_path_fk": [
-          "f",
-          "foreignkeypath_id,rule_versionreferenceska_gochara_rule_pathpath_id,rule_version",
-          true
-        ],
-        "kgew_peak_in_interval_ck": [
-          "c",
-          "checkpeak_instantisnullorpeak_instant<@\"interval\"",
-          true
-        ],
-        "kgew_score_unit_interval_ck": [
-          "c",
-          "checkscoreisnullorka_gochara_finite_okscoreistrueandscore>=0andscore<=1",
-          true
-        ],
-        "kgew_severity_finite_ck": [
-          "c",
-          "checkka_gochara_finite_okseverityistrue",
-          true
-        ],
-        "kgew_valence_ck": [
-          "c",
-          "checkoutcome_valence_for_native=anyarray['favourable','adverse','mixed','unqualified']",
-          true
-        ]
-      },
-      "indexes": {
-        "idx_kgew_chart_gen": "createindexidx_kgew_chart_genonka_gochara_eval_windowusingbtreechart_id,generation,event_class,\"interval\"",
-        "idx_kgew_coverage": "createindexidx_kgew_coverageonka_gochara_eval_windowusingbtreechart_id,generation,coverage_partition_kind,coverage_partition_key",
-        "idx_kgew_path": "createindexidx_kgew_pathonka_gochara_eval_windowusingbtreepath_id,rule_version",
-        "ka_gochara_eval_window_pkey": "createuniqueindexka_gochara_eval_window_pkeyonka_gochara_eval_windowusingbtreewindow_id",
-        "kgew_membership_uq": "createuniqueindexkgew_membership_uqonka_gochara_eval_windowusingbtreewindow_id,chart_id,generation,event_class,path_id,rule_version"
-      },
-      "triggers": {
-        "ka_gochara_ew_coverage_guard": [
-          "createtriggerka_gochara_ew_coverage_guardbeforeinsertorupdateonka_gochara_eval_windowforeachrowexecutefunctionka_gochara_window_coverage_guard",
-          "O"
-        ],
-        "ka_gochara_ew_no_truncate": [
-          "createtriggerka_gochara_ew_no_truncatebeforetruncateonka_gochara_eval_windowforeachstatementexecutefunctionka_gochara_refuse_truncate",
-          "O"
-        ],
-        "ka_gochara_ew_sealed_generation_guard": [
-          "createtriggerka_gochara_ew_sealed_generation_guardbeforedeleteorupdateonka_gochara_eval_windowforeachrowexecutefunctionka_gochara_sealed_generation_guard",
-          "O"
-        ],
-        "ka_gochara_ew_sealed_path_check": [
-          "createtriggerka_gochara_ew_sealed_path_checkbeforeinsertorupdateofpath_id,rule_versiononka_gochara_eval_windowforeachrowexecutefunctionka_gochara_require_sealed_rule_path",
-          "O"
-        ]
-      }
-    },
-    "ka_gochara_eval_window_record": {
-      "columns": {
-        "chart_id": [
-          "uuid",
-          true
-        ],
-        "event_class": [
-          "text",
-          true
-        ],
-        "generation": [
-          "text",
-          true
-        ],
-        "path_id": [
-          "text",
-          true
-        ],
-        "record_id": [
-          "uuid",
-          true
-        ],
-        "rule_version": [
-          "text",
-          true
-        ],
-        "window_id": [
-          "uuid",
-          true
-        ]
-      },
-      "constraints": {
-        "ka_gochara_eval_window_record_pkey": [
-          "p",
-          "primarykeywindow_id,record_id",
-          true
-        ],
-        "kgewr_record_fk": [
-          "f",
-          "foreignkeyrecord_id,chart_id,generation,event_class,path_id,rule_versionreferenceska_gochara_relationship_recordrecord_id,chart_id,generation,event_class,path_id,rule_versionondeletecascade",
-          true
-        ],
-        "kgewr_window_fk": [
-          "f",
-          "foreignkeywindow_id,chart_id,generation,event_class,path_id,rule_versionreferenceska_gochara_eval_windowwindow_id,chart_id,generation,event_class,path_id,rule_versionondeletecascade",
-          true
-        ]
-      },
-      "indexes": {
-        "idx_kgewr_record": "createindexidx_kgewr_recordonka_gochara_eval_window_recordusingbtreerecord_id",
-        "ka_gochara_eval_window_record_pkey": "createuniqueindexka_gochara_eval_window_record_pkeyonka_gochara_eval_window_recordusingbtreewindow_id,record_id"
-      },
-      "triggers": {
-        "ka_gochara_ewr_no_truncate": [
-          "createtriggerka_gochara_ewr_no_truncatebeforetruncateonka_gochara_eval_window_recordforeachstatementexecutefunctionka_gochara_refuse_truncate",
-          "O"
-        ],
-        "ka_gochara_ewr_sealed_generation_guard": [
-          "createtriggerka_gochara_ewr_sealed_generation_guardbeforedeleteorupdateonka_gochara_eval_window_recordforeachrowexecutefunctionka_gochara_sealed_generation_guard",
-          "O"
-        ]
-      }
-    }
-  }
-}
-$expected$::jsonb);
+  SELECT string_agg(t, ', ' ORDER BY t) INTO missing
+  FROM unnest(ARRAY['ka_gochara_eval_window','ka_gochara_eval_window_record']) t
+  WHERE to_regclass('public.' || t) IS NULL;
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1156 post-apply check failed: missing table: %', missing;
+  END IF;
+
+  WITH expected(conrelid, conname) AS (VALUES
+      ('ka_gochara_eval_window','ka_gochara_eval_window_pkey'),
+      ('ka_gochara_eval_window','kgew_canonical_chart_ck'),
+      ('ka_gochara_eval_window','kgew_generation_governed_ck'),
+      ('ka_gochara_eval_window','kgew_event_class_ck'),
+      ('ka_gochara_eval_window','kgew_path_fk'),
+      ('ka_gochara_eval_window','kgew_interval_nonempty_ck'),
+      ('ka_gochara_eval_window','kgew_peak_in_interval_ck'),
+      ('ka_gochara_eval_window','kgew_score_unit_interval_ck'),
+      ('ka_gochara_eval_window','kgew_evidence_finite_ck'),
+      ('ka_gochara_eval_window','kgew_severity_finite_ck'),
+      ('ka_gochara_eval_window','kgew_valence_ck'),
+      ('ka_gochara_eval_window','kgew_coverage_kind_ck'),
+      ('ka_gochara_eval_window','kgew_coverage_fk'),
+      ('ka_gochara_eval_window','kgew_coverage_digest_ck'),
+      ('ka_gochara_eval_window','kgew_null_states_ck'),
+      ('ka_gochara_eval_window','kgew_membership_uq'),
+      ('ka_gochara_eval_window_record','ka_gochara_eval_window_record_pkey'),
+      ('ka_gochara_eval_window_record','kgewr_generation_governed_ck'),
+      ('ka_gochara_eval_window_record','kgewr_window_fk'),
+      ('ka_gochara_eval_window_record','kgewr_record_fk'))
+  SELECT string_agg(e.conrelid || '.' || e.conname, ', ' ORDER BY 1) INTO missing
+  FROM expected e
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    WHERE c.conrelid = to_regclass('public.' || e.conrelid) AND c.conname = e.conname AND c.convalidated);
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1156 post-apply check failed: missing or unvalidated constraint: %', missing;
+  END IF;
+
+  WITH expected(tgrelid, tgname) AS (VALUES
+      ('ka_gochara_eval_window','ka_gochara_ew_1_write_guard'),
+      ('ka_gochara_eval_window','ka_gochara_ew_2_coverage_guard'),
+      ('ka_gochara_eval_window','ka_gochara_ew_3_sealed_path_check'),
+      ('ka_gochara_eval_window','ka_gochara_ew_no_truncate'),
+      ('ka_gochara_eval_window_record','ka_gochara_ewr_1_write_guard'),
+      ('ka_gochara_eval_window_record','ka_gochara_ewr_no_truncate'))
+  SELECT string_agg(e.tgrelid || '.' || e.tgname, ', ' ORDER BY 1) INTO missing
+  FROM expected e
+  WHERE NOT EXISTS (
+    SELECT 1 FROM pg_trigger t
+    WHERE t.tgrelid = to_regclass('public.' || e.tgrelid) AND t.tgname = e.tgname
+      AND NOT t.tgisinternal AND t.tgenabled = 'O');
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1156 post-apply check failed: missing trigger: %', missing;
+  END IF;
+  RAISE NOTICE 'migration 1156: presence checks passed';
 END;
 $$;
