@@ -214,6 +214,16 @@ def test_passing_verification_is_accepted():
     (lambda v: v["detector_controls"].__setitem__("sensitive_class_swap", True), "missing detector control"),
     (lambda v: v["detector_controls"].__setitem__("bogus_control", {"detected": True, "counts_preserved": True, "global_id_sets_preserved": True}), "unexpected detector control"),
     (lambda v: v["detector_controls"].pop("clean"), "clean baseline"),
+    # ASTRA v1.4 P2: the clean baseline's CONTENTS are validated (the reviewer's bypass:
+    # r1=[9,9] and value_violations=99 in `clean` still returned [])
+    (lambda v: v["detector_controls"]["clean"].__setitem__("r1", [9, 9]), "clean baseline r1"),
+    (lambda v: v["detector_controls"]["clean"].__setitem__("value_violations", 99), "clean baseline value_violations"),
+    (lambda v: v["detector_controls"]["clean"].__setitem__("dangling", 1), "clean baseline dangling"),
+    (lambda v: v["detector_controls"]["clean"].__setitem__("mech", [0, 1]), "clean baseline mech"),
+    (lambda v: v["detector_controls"]["clean"].pop("r4"), "clean baseline r4"),
+    (lambda v: v["detector_controls"].__setitem__("clean", "ok"), "clean baseline measurement missing"),
+    (lambda v: v["detector_controls"]["weight_changed"].__setitem__("mutation_applied", False), "not applied"),
+    (lambda v: v["detector_controls"]["weight_changed"].pop("mutation_applied"), "not applied"),
     (lambda v: v.pop("detector_controls"), "not run"),
     (lambda v: v.__setitem__("map_unchanged_after_detector_controls", False), "post-control digest"),
     # ASTRA v1.3 amendment 1: eligible class universe + migration-faithful schema
@@ -348,6 +358,25 @@ def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
     # the passing report carries exactly the required names
     names = set(_passing_ver()["detector_controls"]) - {"clean", "restored_after_controls"}
     assert names == set(R.REQUIRED_DETECTOR_CONTROLS)
+
+
+def test_clean_baseline_contents_and_every_controls_application_are_validated():
+    """ASTRA v1.4 P2: `clean` reporting r1=[9,9] and value_violations=99
+    returned []. Every pair must be [0, 0], every count 0, no unmeasured
+    key; every control record must carry mutation_applied=True."""
+    v = copy.deepcopy(_passing_ver())
+    v["detector_controls"]["clean"] = {"r1": [9, 9], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0],
+                                       "r5": [0, 0], "mech": [0, 0], "value_violations": 99, "dangling": 0}
+    failures = R.verify_acceptance(v)
+    assert any("clean baseline r1 = [9, 9]" in f for f in failures), failures
+    assert any("clean baseline value_violations = 99" in f for f in failures), failures
+    assert set(R.CLEAN_BASELINE_PAIRS) == {"r1", "r2", "r3", "r4", "r5", "mech"}
+    assert set(R.CLEAN_BASELINE_ZERO_COUNTS) == {"value_violations", "dangling"}
+    v2 = copy.deepcopy(_passing_ver())
+    for name in R.REQUIRED_DETECTOR_CONTROLS:
+        v2["detector_controls"][name]["mutation_applied"] = False
+    failures2 = R.verify_acceptance(v2)
+    assert sum(1 for f in failures2 if "mutation was not applied" in f) == len(R.REQUIRED_DETECTOR_CONTROLS)
 
 
 def test_r4_all_lord_identity_is_bidirectional_scoped_and_tokenised_as_the_writer_does():

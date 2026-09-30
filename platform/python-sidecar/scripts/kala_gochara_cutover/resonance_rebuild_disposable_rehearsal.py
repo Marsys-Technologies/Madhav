@@ -454,6 +454,10 @@ REQUIRED_DETECTOR_CONTROLS: tuple[str, ...] = (
     "mechanism_weight_sign_flipped", "fact_ref_missing", "fact_ref_foreign_chart",
 )
 _DETECTOR_META_KEYS = ("clean", "restored_after_controls")
+# ASTRA v1.4 P2: the clean baseline is a MEASUREMENT with contents — every identity
+# pair [0, 0], zero value violations, zero dangling refs — not merely a present key.
+CLEAN_BASELINE_PAIRS: tuple[str, ...] = ("r1", "r2", "r3", "r4", "r5", "mech")
+CLEAN_BASELINE_ZERO_COUNTS: tuple[str, ...] = ("value_violations", "dangling")
 
 
 def verify_acceptance(ver: dict) -> list[str]:
@@ -531,8 +535,19 @@ def verify_acceptance(ver: dict) -> list[str]:
                 f.append(f"detector controls: missing detector control record {name!r}")
         for name in sorted(present - set(REQUIRED_DETECTOR_CONTROLS)):
             f.append(f"detector controls: unexpected detector control record {name!r}")
-        if "clean" not in dc:
+        clean = dc.get("clean")
+        if not isinstance(clean, dict):
             f.append("detector controls: clean baseline measurement missing")
+        else:
+            for key in CLEAN_BASELINE_PAIRS:
+                if list(clean.get(key) or []) != [0, 0]:
+                    f.append(f"detector controls: clean baseline {key} = {clean.get(key)!r}, expected [0, 0]")
+            for key in CLEAN_BASELINE_ZERO_COUNTS:
+                if clean.get(key) != 0:
+                    f.append(f"detector controls: clean baseline {key} = {clean.get(key)!r}, expected 0")
+            extra = set(clean) - set(CLEAN_BASELINE_PAIRS) - set(CLEAN_BASELINE_ZERO_COUNTS)
+            if extra:
+                f.append(f"detector controls: clean baseline carries unmeasured keys {sorted(extra)}")
         for name, c in dc.items():
             if name in _DETECTOR_META_KEYS or not isinstance(c, dict):
                 continue
@@ -540,7 +555,7 @@ def verify_acceptance(ver: dict) -> list[str]:
                 f.append(f"detector control {name}: mutation did not preserve per-class counts (control invalid)")
             if c.get("id_set_preservation_expected", True) and not c.get("global_id_sets_preserved"):
                 f.append(f"detector control {name}: mutation did not preserve global id sets (control invalid)")
-            if not c.get("mutation_applied"):
+            if c.get("mutation_applied") is not True:
                 f.append(f"detector control {name}: mutation was not applied (control invalid)")
             if not c.get("detected"):
                 f.append(f"detector control {name}: NOT detected by the identity/value checks")
