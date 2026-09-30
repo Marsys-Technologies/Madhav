@@ -17,12 +17,18 @@ from __future__ import annotations
 from .frames import Frame, SIGN_LORDS, frame_sign, sign_of
 from .registry import signature_houses
 
+# The tier value comes from the sanctioned vocabulary module — the literal in
+# an emit position outside brahmagyan/verification_vocab.py is a TAP-6 gate
+# violation (M-22). Here it is a source label on pinned [L] data, not an
+# emitted verification status.
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
+
 DASHA_READ_CONTRACT = {
     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
     "ayanamsha_id": "lahiri_chitrapaksha",
     "system_id": "vimshottari",
     "build_id": "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb",
-    "tier": "two_pass_verified",
+    "tier": TWO_PASS_VERIFIED,
     "source": "GOCHARA_DESIGN_SPECS_v1_4 §4.0 [L]",
 }
 
