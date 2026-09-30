@@ -217,7 +217,7 @@ def test_measured_criterion_outside_its_layers_raises_never_dropped(monkeypatch)
 def test_unregistered_or_ungradable_measurement_raises():
     with pytest.raises(KeyError):
         ac.rollup_asset("L2", {"Made.up": _m("PASS")})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Build.dag"):   # the error names the offending criterion
         ac.rollup_asset("L2", {"Build.dag": _m("NOT_GENERIC")})
 
 
