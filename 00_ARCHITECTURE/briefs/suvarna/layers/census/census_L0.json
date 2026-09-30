@@ -1,0 +1,5218 @@
+{
+ "L0": {
+  "generated": "2026-09-30T20:21:19+05:30",
+  "layer": "L0",
+  "layer_name": "Brahmagyan",
+  "scoring": "fidelity",
+  "n_assets": 40,
+  "population_active": 40,
+  "population_registry_total": 40,
+  "population_excluded_inactive": [],
+  "chart_scope": "482012f1-710e-4a25-994a-93821f5871aa",
+  "chart_scoped_count_sql": 0,
+  "global_runs": 61,
+  "global_runs_touching_layer": 0,
+  "never_exercised_with_writer": [
+   "bg_sign_medical"
+  ],
+  "registered_ids": 36,
+  "registry_has_writer": 34,
+  "phantom_registered": [],
+  "local_map_candidates": 32,
+  "assets": [
+   {
+    "asset_id": "bg_class_lifetime_counts",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 6,
+    "reach": {
+     "table": "brahma_class_priors",
+     "modules": [
+      "L0_brahmagyan/query_class_priors.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "citation",
+      "class_prior",
+      "contested",
+      "fact_kind",
+      "prior_version",
+      "ratified_by",
+      "signal_tradition",
+      "signal_type_class",
+      "source_subsystem",
+      "varga_weights"
+     ],
+     "dark": [
+      "created_at",
+      "prior_basis",
+      "source_ref"
+     ],
+     "width": 0.7692,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 3,
+     "direct": 1,
+     "severity_weight": 4,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "brahma_class_priors"
+    ],
+    "target_table": "brahma_class_priors",
+    "has_writer": true,
+    "writer_files": [
+     "bg_class_lifetime_counts.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_class_lifetime_counts.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_class_priors (brahmagyan/l0_class_lifetime_counts.py:721 via bg_class_lifetime_counts.py \u2192 brahmagyan/l0_class_lifetime_counts.py:seed_class_lifetime_counts)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_class_priors"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=6 = live=6 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=6, floor=6, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "177 rows, 13 cols; fully populated 10; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 10/13 built column(s) (76.9%) selected by 1 capability module(s); dark: ['created_at', 'prior_basis', 'source_ref']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_class_priors.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_class_priors",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 171,
+    "reach": {
+     "table": "brahma_class_priors",
+     "modules": [
+      "L0_brahmagyan/query_class_priors.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "citation",
+      "class_prior",
+      "contested",
+      "fact_kind",
+      "prior_version",
+      "ratified_by",
+      "signal_tradition",
+      "signal_type_class",
+      "source_subsystem",
+      "varga_weights"
+     ],
+     "dark": [
+      "created_at",
+      "prior_basis",
+      "source_ref"
+     ],
+     "width": 0.7692,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 10,
+     "direct": 1,
+     "severity_weight": 11,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "brahma_class_priors"
+    ],
+    "target_table": "brahma_class_priors",
+    "has_writer": true,
+    "writer_files": [
+     "bg_class_priors.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_class_priors.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_class_priors (brahmagyan/l0_class_priors.py:319 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:340 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:361 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:382 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors), brahma_class_priors (brahmagyan/l0_class_priors.py:407 via bg_class_priors.py \u2192 brahmagyan/l0_class_priors.py:seed_class_priors)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_class_priors"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=171 = live=171 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=171, floor=171, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "177 rows, 13 cols; fully populated 10; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 10/13 built column(s) (76.9%) selected by 1 capability module(s); dark: ['created_at', 'prior_basis', 'source_ref']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_class_priors.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, layer, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "4 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_cohort",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 110000,
+    "reach": {
+     "table": "bg_synthetic_cohort",
+     "modules": [],
+     "columns_built": 11,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "ayanamsha_key",
+      "birth_datetime_utc",
+      "birth_lat",
+      "birth_lon",
+      "build_id",
+      "computed_at",
+      "id",
+      "positions",
+      "sampling_method",
+      "source_citation",
+      "synthetic_id"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 3,
+     "direct": 1,
+     "severity_weight": 4,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 2 table(s): bg_synthetic_cohort, bg_synthetic_cohort_md",
+    "count_sql_tables": [
+     "bg_synthetic_cohort",
+     "bg_synthetic_cohort_md"
+    ],
+    "target_table": "bg_synthetic_cohort",
+    "has_writer": true,
+    "writer_files": [
+     "bg_cohort.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_cohort.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_synthetic_cohort (bg_cohort.py:641), bg_synthetic_cohort_md (bg_cohort.py:672)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_synthetic_cohort"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=10000 disagrees with live=110000 (count_sql total over 2 table(s): bg_synthetic_cohort, bg_synthetic_cohort_md; global); target_table bg_synthetic_cohort alone: 10000 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run d35590e5 complete/skip_no_delta (2026-09-07)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run d35590e5 complete/skip_no_delta (2026-09-07)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=110000, floor=110000, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "10000 rows, 11 cols; fully populated 11; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (synthetic_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/11 built column(s) (0.0%) selected by 0 capability module(s); dark: ['ayanamsha_key', 'birth_datetime_utc', 'birth_lat', 'birth_lon', 'build_id', 'computed_at', 'id', 'positions', 'sampling_method', 'source_citation', 'synthetic_id']; depth 0.0% (no capability module reads this table)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 10000/10000 rows"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 5 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-07"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-04): DEP-ASSERT: declared dependency(ies) not lit before run: bg_ephemeris_engine(receipt:unknown) \u2014 refused to build on incomplete/missing upstream data"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_compendium_index",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 9571,
+    "reach": {
+     "table": "brahma_compendium_index",
+     "modules": [
+      "L0_brahmagyan/query_compendium_index.ts"
+     ],
+     "columns_built": 11,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "chapter_num",
+      "chunk_ids",
+      "classical_significance_score",
+      "index_id",
+      "significance",
+      "summary_text",
+      "text_id",
+      "topic_id",
+      "verse_end",
+      "verse_start"
+     ],
+     "dark": [
+      "created_at"
+     ],
+     "width": 0.9091,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "brahma_compendium_index"
+    ],
+    "target_table": "brahma_compendium_index",
+    "has_writer": true,
+    "writer_files": [
+     "bg_compendium_index.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_compendium_index.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: brahma_compendium_index (bg_compendium_index.py:168) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_compendium_index"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=9571 = live=9571 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 9c96df96 complete/skip_no_delta (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 9c96df96 complete/skip_no_delta (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=9571, floor=9571, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "9571 rows, 13 cols; fully populated 9; NEVER populated ['chapter_title_en', 'chapter_title_sa']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (index_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 10/11 built column(s) (90.9%) selected by 1 capability module(s); dark: ['created_at']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_compendium_index.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 0 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-05): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "2/2 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_concordance",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 721,
+    "reach": {
+     "table": "classical_attributions",
+     "modules": [],
+     "columns_built": 11,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "attribution_id",
+      "created_at",
+      "match_confidence",
+      "match_method",
+      "rule_ids",
+      "school",
+      "source_chunk_ids",
+      "source_text_ids",
+      "topic_canonical_name",
+      "topic_category",
+      "topic_id"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "classical_attributions"
+    ],
+    "target_table": "classical_attributions",
+    "has_writer": true,
+    "writer_files": [
+     "bg_concordance.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_concordance.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: classical_attributions (bg_concordance.py:207) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=classical_attributions"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "4 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=721 = live=721 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 3007f775 complete/build (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 3007f775 complete/build (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=721, floor=721, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "721 rows, 11 cols; fully populated 11; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (attribution_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/11 built column(s) (0.0%) selected by 0 capability module(s); dark: ['attribution_id', 'created_at', 'match_confidence', 'match_method', 'rule_ids', 'school', 'source_chunk_ids', 'source_text_ids', 'topic_canonical_name', 'topic_category', 'topic_id']; depth 0.0% (no capability module reads this table)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "1 executed run(s) of 1 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "1 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "4/4 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_dasha_systems",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 60,
+    "reach": {
+     "table": "brahma_dasha_systems",
+     "modules": [
+      "L0_brahmagyan/query_dasha_systems.ts"
+     ],
+     "columns_built": 14,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "base_unit",
+      "canonical_id",
+      "classical_citations",
+      "computation_method",
+      "computation_pseudocode",
+      "conditions_for_use",
+      "name_en",
+      "name_sa",
+      "school",
+      "sequence_jsonb",
+      "total_cycle_years"
+     ],
+     "dark": [
+      "created_at",
+      "python_impl_module",
+      "source_chunk_ids"
+     ],
+     "width": 0.7857,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 52,
+     "direct": 1,
+     "severity_weight": 53,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 3 table(s): brahma_dasha_systems, brahma_ontology, reference_dasha_systems",
+    "count_sql_tables": [
+     "brahma_dasha_systems",
+     "brahma_ontology",
+     "reference_dasha_systems"
+    ],
+    "target_table": "brahma_dasha_systems",
+    "has_writer": true,
+    "writer_files": [
+     "bg_dasha_systems.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_dasha_systems.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: reference_dasha_systems (brahmagyan/l0_dasha_systems.py:725 via bg_dasha_systems.py \u2192 brahmagyan/l0_dasha_systems.py:seed_dasha_systems), brahma_dasha_systems (brahmagyan/l0_dasha_systems.py:726 via bg_dasha_systems.py \u2192 brahmagyan/l0_dasha_systems.py:seed_dasha_systems), brahma_ontology (brahmagyan/l0_dasha_systems.py:727 via bg_dasha_systems.py \u2192 brahmagyan/l0_dasha_systems.py:seed_dasha_systems) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_dasha_systems"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=60 = live=60 (count_sql total over 3 table(s): brahma_dasha_systems, brahma_ontology, reference_dasha_systems; global); target_table brahma_dasha_systems alone: 20 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 0526b10e complete/skip_no_delta (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 0526b10e complete/skip_no_delta (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=60, floor=60, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "20 rows, 14 cols; fully populated 14; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (canonical_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 11/14 built column(s) (78.6%) selected by 1 capability module(s); dark: ['created_at', 'python_impl_module', 'source_chunk_ids']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citations populated on 20/20 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_dasha_systems.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 5 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 2 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-05): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_dignity_reference",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 151,
+    "reach": {
+     "table": "bg_dignity_reference",
+     "modules": [
+      "platform-mcp/src/tools/kala_views/ahead.ts",
+      "platform-mcp/src/tools/kala_views/now.ts",
+      "platform-mcp/src/tools/register_p1_reference.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "classical_citation",
+      "debilitation_degree",
+      "debilitation_sign",
+      "exaltation_degree",
+      "exaltation_sign",
+      "graha",
+      "moolatrikona_from",
+      "moolatrikona_sign",
+      "moolatrikona_to",
+      "notes",
+      "own_signs"
+     ],
+     "dark": [
+      "id",
+      "variant_traditions"
+     ],
+     "width": 0.8462,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 23,
+     "direct": 1,
+     "severity_weight": 24,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 5 table(s): bg_dignity_reference, bg_avastha_schemes, bg_combustion_orbs, bg_graha_naisargika_friendship, bg_motion_state_thresholds",
+    "count_sql_tables": [
+     "bg_dignity_reference",
+     "bg_avastha_schemes",
+     "bg_combustion_orbs",
+     "bg_graha_naisargika_friendship",
+     "bg_motion_state_thresholds"
+    ],
+    "target_table": "bg_dignity_reference",
+    "has_writer": true,
+    "writer_files": [
+     "bg_dignity_reference.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_dignity_reference.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_dignity_reference (bg_dignity_reference.py:412), bg_graha_naisargika_friendship (bg_dignity_reference.py:445), bg_avastha_schemes (bg_dignity_reference.py:460), bg_motion_state_thresholds (bg_dignity_reference.py:480), bg_combustion_orbs (bg_dignity_reference.py:504)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_dignity_reference"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=151 = live=151 (count_sql total over 5 table(s): bg_dignity_reference, bg_avastha_schemes, bg_combustion_orbs, bg_graha_naisargika_friendship, bg_motion_state_thresholds; global); target_table bg_dignity_reference alone: 9 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 2ec6d233 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 2ec6d233 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=151, floor=151, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "9 rows, 13 cols; fully populated 6; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (graha): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 11/13 built column(s) (84.6%) selected by 3 capability module(s); dark: ['id', 'variant_traditions']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 9/9 rows"
+     },
+     "Dens.served": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 no capability module's code references bg_dignity_reference; named in comments only in: index.ts, query_avastha_schemes.ts, query_combustion_orbs.ts, query_graha_naisargika_friendship.ts, query_motion_state_thresholds.ts \u2014 the served surface cannot be attributed by code (never the closable N/A)"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_doshas",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 237,
+    "reach": {
+     "table": "brahma_dosha_catalog",
+     "modules": [
+      "L0_brahmagyan/query_dosha_catalog.ts",
+      "L0_brahmagyan/query_parihara_graph.ts"
+     ],
+     "columns_built": 14,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "associated_remedies",
+      "cancellation_conditions",
+      "canonical_id",
+      "category",
+      "classical_citations",
+      "created_at",
+      "effects_text",
+      "formation_rule_jsonb",
+      "formation_text",
+      "name_en",
+      "name_sa",
+      "school",
+      "severity_grades",
+      "source_chunk_ids"
+     ],
+     "dark": [],
+     "width": 1.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 1,
+     "direct": 1,
+     "severity_weight": 2,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 3 table(s): brahma_dosha_catalog, brahma_ontology, reference_doshas",
+    "count_sql_tables": [
+     "brahma_dosha_catalog",
+     "brahma_ontology",
+     "reference_doshas"
+    ],
+    "target_table": "brahma_dosha_catalog",
+    "has_writer": true,
+    "writer_files": [
+     "bg_doshas.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_doshas.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: reference_doshas (brahmagyan/l0_doshas.py:1942 via bg_doshas.py \u2192 brahmagyan/l0_doshas.py:seed_doshas), brahma_dosha_catalog (brahmagyan/l0_doshas.py:1943 via bg_doshas.py \u2192 brahmagyan/l0_doshas.py:seed_doshas), brahma_ontology (brahmagyan/l0_doshas.py:1944 via bg_doshas.py \u2192 brahmagyan/l0_doshas.py:seed_doshas) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_dosha_catalog"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=237 = live=237 (count_sql total over 3 table(s): brahma_dosha_catalog, brahma_ontology, reference_doshas; global); target_table brahma_dosha_catalog alone: 79 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 1c44df29 complete/skip_no_delta (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 1c44df29 complete/skip_no_delta (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=237, floor=237, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "79 rows, 14 cols; fully populated 14; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (canonical_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 14/14 built column(s) (100.0%) selected by 2 capability module(s); dark: []; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citations populated on 79/79 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): query_dosha_catalog.ts, query_parihara_graph.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-04): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_ephemeris",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 825084,
+    "reach": {
+     "table": "ephemeris_daily",
+     "modules": [
+      "L1_ganita/get_graha_yuddha.ts"
+     ],
+     "columns_built": 15,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "body",
+      "latitude"
+     ],
+     "dark": [
+      "ayanamsha_id",
+      "computed_at",
+      "date",
+      "degree_in_sign",
+      "epoch_convention",
+      "id",
+      "is_retrograde",
+      "nakshatra_number",
+      "node_mode",
+      "sign_number",
+      "source_citation",
+      "speed_dps",
+      "tropical_longitude"
+     ],
+     "width": 0.1333,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "825084/825084 rows match the capability queries' literal pins (ayanamsha_id::text IN ('tropical'))"
+    },
+    "blocking_radius": {
+     "transitive": 35,
+     "direct": 6,
+     "severity_weight": 36,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "ephemeris_daily"
+    ],
+    "target_table": "ephemeris_daily",
+    "has_writer": true,
+    "writer_files": [
+     "bg_ephemeris.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_ephemeris.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): ephemeris_daily (bg_ephemeris.py:125)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=ephemeris_daily"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=825084 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=825084, floor=825084, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "825084 rows, 15 cols; fully populated 14; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (date, body, ayanamsha_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 2/15 built column(s) (13.3%) selected by 1 capability module(s); dark: ['ayanamsha_id', 'computed_at', 'date', 'degree_in_sign', 'epoch_convention', 'id', 'is_retrograde', 'nakshatra_number', 'node_mode', 'sign_number', 'source_citation', 'speed_dps'] \u2026; depth 100.0% (825084/825084 rows match the capability queries' literal pins (ayanamsha_id::text IN ('tropical')))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 825084/825084 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "4 module(s): query_aspects_at_time.ts, query_planet_position.ts, query_planet_transit.ts, query_retrograde_periods.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_ephemeris_engine",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": null,
+    "reach": null,
+    "blocking_radius": {
+     "transitive": 4,
+     "direct": 1,
+     "severity_weight": 5,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": null,
+    "count_sql_tables": [],
+    "target_table": null,
+    "has_writer": false,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (service or static)"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Build.target": {
+      "v": "N/A",
+      "measured": "no target_table; asset_kind='service', has_writer=False"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "N/A",
+      "measured": "count_sql=no, integrity_check_sql=no"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql and nothing to count: has_writer=False, asset_kind='service', no target_table; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run cd79def6 complete/no disposition (2026-08-27)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run cd79def6 complete/no disposition (2026-08-27)"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "6 module(s): ephemeris_cache_native_lifetime.ts, ephemeris_cache_year.ts, query_aspects_at_time.ts, query_planet_position.ts, query_planet_transit.ts, query_retrograde_periods.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "1 executed run(s) of 1 build_run_assets row(s), scope(s): asset_set, last executed 2026-08-27"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "1 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "no target_table declared: no table to census at field level"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_formula_constants",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 17,
+    "reach": {
+     "table": "brahma_formula_constants",
+     "modules": [
+      "L0_brahmagyan/query_formula_constants.ts"
+     ],
+     "columns_built": 9,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "bounds",
+      "calibratable",
+      "citation_or_ratification",
+      "class",
+      "constant_id",
+      "consumer_assets",
+      "value_jsonb",
+      "version"
+     ],
+     "dark": [
+      "created_at"
+     ],
+     "width": 0.8889,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 7,
+     "direct": 3,
+     "severity_weight": 8,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "brahma_formula_constants"
+    ],
+    "target_table": "brahma_formula_constants",
+    "has_writer": true,
+    "writer_files": [
+     "bg_formula_constants.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_formula_constants.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_formula_constants (brahmagyan/l0_formula_constants.py:237 via bg_formula_constants.py \u2192 brahmagyan/l0_formula_constants.py:seed_formula_constants)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_formula_constants"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=10 disagrees with live=17 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 10182981 complete/skip_no_delta (2026-09-07)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 10182981 complete/skip_no_delta (2026-09-07)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=17, floor=17, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "17 rows, 9 cols; fully populated 8; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (constant_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 8/9 built column(s) (88.9%) selected by 1 capability module(s); dark: ['created_at']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_formula_constants.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "6 executed run(s) of 7 build_run_assets row(s), scope(s): asset_set, layer, last executed 2026-09-07"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_ghatana",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 39,
+    "reach": {
+     "table": "brahma_event_ontology",
+     "modules": [
+      "L4_phala/query_prospective_ledger.ts",
+      "L5_mimamsa/lel_intake_checklist.ts",
+      "L5_mimamsa/prediction_lifecycle_sweep.ts",
+      "reading_checklist.ts",
+      "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+      "platform-mcp/src/lib/ahead_autofile.ts",
+      "platform-mcp/src/lib/intervention_filing.ts"
+     ],
+     "columns_built": 19,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "domain",
+      "event_class_id",
+      "evidence_requirements",
+      "lel_category",
+      "name_en",
+      "temporal_shape"
+     ],
+     "dark": [
+      "adjacency",
+      "base_rate_by_age",
+      "citations",
+      "created_at",
+      "duration_prior",
+      "irreversibility_milestone",
+      "kill_switch_criteria",
+      "magnitude_floor",
+      "matching_rules",
+      "milestone_template",
+      "self_report_non_discriminating",
+      "signature_model",
+      "version"
+     ],
+     "width": 0.3158,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 33,
+     "direct": 6,
+     "severity_weight": 34,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 2 table(s): brahma_event_ontology, brahma_activity_ontology",
+    "count_sql_tables": [
+     "brahma_event_ontology",
+     "brahma_activity_ontology"
+    ],
+    "target_table": "brahma_event_ontology",
+    "has_writer": true,
+    "writer_files": [
+     "bg_ghatana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_ghatana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_event_ontology (brahmagyan/l0_ghatana.py:878 via bg_ghatana.py \u2192 brahmagyan/l0_ghatana.py:seed_ghatana), brahma_activity_ontology (brahmagyan/l0_ghatana.py:923 via bg_ghatana.py \u2192 brahmagyan/l0_ghatana.py:seed_ghatana)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_event_ontology"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=39 = live=39 (count_sql total over 2 table(s): brahma_event_ontology, brahma_activity_ontology; global); target_table brahma_event_ontology alone: 27 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=39, floor=39, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "27 rows, 19 cols; fully populated 15; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (event_class_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 6/19 built column(s) (31.6%) selected by 7 capability module(s); dark: ['adjacency', 'base_rate_by_age', 'citations', 'created_at', 'duration_prior', 'irreversibility_milestone', 'kill_switch_criteria', 'magnitude_floor', 'matching_rules', 'milestone_template', 'self_report_non_discriminating', 'signature_model'] \u2026; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, layer, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "4 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_gochara_arcs",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 33933,
+    "reach": {
+     "table": "bg_gochara_arcs",
+     "modules": [],
+     "columns_built": 16,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "arc_fingerprint",
+      "arc_index",
+      "ayanamsha_id",
+      "body",
+      "build_id",
+      "computed_at",
+      "direction",
+      "end_jd",
+      "end_lon_unwrapped_deg",
+      "engine_version",
+      "lon_hi_deg",
+      "lon_lo_deg",
+      "start_jd",
+      "start_lon_unwrapped_deg",
+      "substrate_version",
+      "wrap_index"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_gochara_arcs"
+    ],
+    "target_table": "bg_gochara_arcs",
+    "has_writer": true,
+    "writer_files": [
+     "bg_gochara_arcs.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_gochara_arcs.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "bg_gochara_arcs.py: GocharaArcsWriter declares both entry points (note, not a violation)"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: bg_gochara_arcs (bg_gochara_arcs.py:149), bg_gochara_arcs (bg_gochara_arcs.py:156) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_gochara_arcs"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=33933 = live=33933 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 25b9bb90 complete/skip_no_delta (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 25b9bb90 complete/skip_no_delta (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=33933, floor=33933, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "33933 rows, 16 cols; fully populated 16; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (substrate_version, body, arc_index): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/16 built column(s) (0.0%) selected by 0 capability module(s); dark: ['arc_fingerprint', 'arc_index', 'ayanamsha_id', 'body', 'build_id', 'computed_at', 'direction', 'end_jd', 'end_lon_unwrapped_deg', 'engine_version', 'lon_hi_deg', 'lon_lo_deg'] \u2026; depth 0.0% (no capability module reads this table)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 5 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-04): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_gochara_citation_resolution",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 14,
+    "reach": {
+     "table": "bg_gochara_citation_resolution",
+     "modules": [
+      "platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+     ],
+     "columns_built": 9,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "chunk_id",
+      "citation_string",
+      "status",
+      "text_id",
+      "verse_ref"
+     ],
+     "dark": [
+      "constant_name",
+      "created_at",
+      "note",
+      "source_citation"
+     ],
+     "width": 0.5556,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_gochara_citation_resolution"
+    ],
+    "target_table": "bg_gochara_citation_resolution",
+    "has_writer": false,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (service or static)"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_gochara_citation_resolution"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "live=14 and no build record at all (chart 482012f1 (global count_sql; no global build row))"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at chart 482012f1"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at chart 482012f1"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=14, floor=14, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "14 rows, 9 cols; fully populated 9; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (citation_string, chunk_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 5/9 built column(s) (55.6%) selected by 1 capability module(s); dark: ['constant_name', 'created_at', 'note', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 14/14 rows"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "N/A",
+      "measured": "never run, and it has no writer \u2014 consistent"
+     },
+     "Build.history": {
+      "v": "N/A",
+      "measured": "never run; check 7 owns this"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_kota_chakra_rings",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 27,
+    "reach": {
+     "table": "bg_kota_chakra_rings",
+     "modules": [],
+     "columns_built": 8,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "citation",
+      "corpus_status",
+      "created_at",
+      "ratified_by",
+      "ring_index",
+      "ring_name",
+      "ring_position",
+      "table_version"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 1,
+     "direct": 1,
+     "severity_weight": 2,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_kota_chakra_rings"
+    ],
+    "target_table": "bg_kota_chakra_rings",
+    "has_writer": true,
+    "writer_files": [
+     "bg_kota_chakra_rings.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_kota_chakra_rings.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_kota_chakra_rings (brahmagyan/l0_kota_chakra_rings.py:154 via bg_kota_chakra_rings.py \u2192 brahmagyan/l0_kota_chakra_rings.py:seed_kota_chakra_rings)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_kota_chakra_rings"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=27 = live=27 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=27, floor=27, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "27 rows, 9 cols; fully populated 8; NEVER populated ['dvara_assignment']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (table_version, ring_position): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/8 built column(s) (0.0%) selected by 0 capability module(s); dark: ['citation', 'corpus_status', 'created_at', 'ratified_by', 'ring_index', 'ring_name', 'ring_position', 'table_version']; depth 0.0% (no capability module reads this table)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_kp_sublord_division",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 249,
+    "reach": {
+     "table": "bg_kp_sublord_division",
+     "modules": [],
+     "columns_built": 14,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "created_at",
+      "division_index",
+      "end_longitude_deg",
+      "nakshatra_number",
+      "pada_at_end",
+      "pada_at_start",
+      "sign_number",
+      "source_citation",
+      "span_arcmin",
+      "split_by_sign_boundary",
+      "star_lord",
+      "start_longitude_deg",
+      "sub_lord",
+      "table_version"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 57,
+     "direct": 1,
+     "severity_weight": 58,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_kp_sublord_division"
+    ],
+    "target_table": "bg_kp_sublord_division",
+    "has_writer": true,
+    "writer_files": [
+     "bg_kp_sublord_division.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_kp_sublord_division.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_kp_sublord_division (brahmagyan/l0_kp_sublord_division.py:316 via bg_kp_sublord_division.py \u2192 brahmagyan/l0_kp_sublord_division.py:seed_kp_sublord_division)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_kp_sublord_division"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=249 = live=249 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=249, floor=249, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "249 rows, 14 cols; fully populated 14; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (table_version, division_index): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/14 built column(s) (0.0%) selected by 0 capability module(s); dark: ['created_at', 'division_index', 'end_longitude_deg', 'nakshatra_number', 'pada_at_end', 'pada_at_start', 'sign_number', 'source_citation', 'span_arcmin', 'split_by_sign_boundary', 'star_lord', 'start_longitude_deg'] \u2026; depth 0.0% (no capability module reads this table)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 249/249 rows"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_medical_mappings",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 21,
+    "reach": {
+     "table": "bg_medical_mappings",
+     "modules": [
+      "L0_brahmagyan/query_medical_mappings.ts"
+     ],
+     "columns_built": 8,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "body_part",
+      "classical_citation",
+      "dhatu",
+      "disease_tendency",
+      "dosha",
+      "graha",
+      "organ_systems"
+     ],
+     "dark": [
+      "id"
+     ],
+     "width": 0.875,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_medical_mappings"
+    ],
+    "target_table": "bg_medical_mappings",
+    "has_writer": true,
+    "writer_files": [
+     "bg_medical_mappings.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_medical_mappings.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_medical_mappings (brahmagyan/l0_medical.py:421 via bg_medical_mappings.py \u2192 brahmagyan/l0_medical.py:seed_medical_mappings)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_medical_mappings"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=60 disagrees with live=21 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=21, floor=21, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "21 rows, 8 cols; fully populated 8; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (graha): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 7/8 built column(s) (87.5%) selected by 1 capability module(s); dark: ['id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 21/21 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_medical_mappings.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_muhurta_lattice",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 173219,
+    "reach": {
+     "table": "bg_muhurta_lattice",
+     "modules": [
+      "L0_brahmagyan/query_muhurta_lattice.ts"
+     ],
+     "columns_built": 16,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "ayanamsha_key",
+      "corpus_status",
+      "detail",
+      "end_utc",
+      "factor_family",
+      "factor_key",
+      "reference_lat",
+      "reference_location_key",
+      "reference_lon",
+      "reference_tz_offset_minutes",
+      "sampling_method",
+      "source_citation",
+      "start_utc"
+     ],
+     "dark": [
+      "build_id",
+      "computed_at",
+      "id"
+     ],
+     "width": 0.8125,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_muhurta_lattice"
+    ],
+    "target_table": "bg_muhurta_lattice",
+    "has_writer": true,
+    "writer_files": [
+     "bg_muhurta_lattice.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_muhurta_lattice.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_muhurta_lattice (bg_muhurta_lattice.py:939)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_muhurta_lattice"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=173219 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=173219, floor=164575, delta=+8644"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "173219 rows, 16 cols; fully populated 16; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (factor_family, factor_key, start_utc): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 13/16 built column(s) (81.2%) selected by 1 capability module(s); dark: ['build_id', 'computed_at', 'id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 173219/173219 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_muhurta_lattice.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_nakshatra",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 2857,
+    "reach": {
+     "table": "reference_nakshatra",
+     "modules": [
+      "platform-mcp/src/tools/register_p1_reference.ts"
+     ],
+     "columns_built": 43,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "nakshatra_id"
+     ],
+     "dark": [
+      "alt_names",
+      "body_part",
+      "build_id",
+      "classical_source",
+      "created_at",
+      "degree_in_rashi_ranges",
+      "deity_domain",
+      "disha",
+      "end_longitude",
+      "favorable_acts",
+      "gana",
+      "guna",
+      "is_abhijit",
+      "is_gandanta",
+      "is_mula_sangya",
+      "is_panchaka",
+      "motivation",
+      "muhurta_type",
+      "nadi",
+      "naisargika_maturity_age",
+      "nakshatra_gender",
+      "name_en",
+      "name_sa_devanagari",
+      "name_sa_iast",
+      "pakshi",
+      "paramayus",
+      "presiding_deity",
+      "prohibited_acts",
+      "rashis_spanned",
+      "ruling_planet",
+      "secondary_deities",
+      "shakti",
+      "span_degrees",
+      "start_longitude",
+      "symbol",
+      "tatva",
+      "tradition_scope",
+      "varna",
+      "vimshottari_lord",
+      "yoni_en",
+      "yoni_sa",
+      "yoni_sex"
+     ],
+     "width": 0.0233,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 58,
+     "direct": 2,
+     "severity_weight": 59,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 3 table(s): reference_nakshatra, reference_nakshatra_pada, reference_nakshatra_matrix",
+    "count_sql_tables": [
+     "reference_nakshatra",
+     "reference_nakshatra_pada",
+     "reference_nakshatra_matrix"
+    ],
+    "target_table": "reference_nakshatra",
+    "has_writer": true,
+    "writer_files": [
+     "bg_nakshatra.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_nakshatra.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: reference_nakshatra_matrix (brahmagyan/l0_nakshatra.py:1395 via bg_nakshatra.py \u2192 brahmagyan/l0_nakshatra.py:seed_nakshatra), reference_nakshatra_pada (brahmagyan/l0_nakshatra.py:1396 via bg_nakshatra.py \u2192 brahmagyan/l0_nakshatra.py:seed_nakshatra), reference_nakshatra (brahmagyan/l0_nakshatra.py:1397 via bg_nakshatra.py \u2192 brahmagyan/l0_nakshatra.py:seed_nakshatra) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=reference_nakshatra"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=2857 = live=2857 (count_sql total over 3 table(s): reference_nakshatra, reference_nakshatra_pada, reference_nakshatra_matrix; global); target_table reference_nakshatra alone: 28 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=2857, floor=2857, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "28 rows, 46 cols; fully populated 33; NEVER populated ['basis_above', 'basis_below', 'net_result']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (nakshatra_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 1/43 built column(s) (2.3%) selected by 1 capability module(s); dark: ['alt_names', 'body_part', 'build_id', 'classical_source', 'created_at', 'degree_in_rashi_ranges', 'deity_domain', 'disha', 'end_longitude', 'favorable_acts', 'gana', 'guna'] \u2026; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_nakshatra_medical",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 27,
+    "reach": {
+     "table": "bg_nakshatra_medical",
+     "modules": [
+      "L0_brahmagyan/query_nakshatra_medical.ts"
+     ],
+     "columns_built": 6,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "body_part",
+      "classical_citation",
+      "nakshatra_name",
+      "nakshatra_number"
+     ],
+     "dark": [
+      "dosha",
+      "id"
+     ],
+     "width": 0.6667,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_nakshatra_medical"
+    ],
+    "target_table": "bg_nakshatra_medical",
+    "has_writer": false,
+    "writer_files": [
+     "bg_medical_mappings.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "FAIL",
+      "measured": "@register in bg_medical_mappings.py but registry says has_writer=false"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_nakshatra_medical (brahmagyan/l0_medical.py:453 via bg_medical_mappings.py \u2192 brahmagyan/l0_medical.py:seed_medical_mappings)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_nakshatra_medical"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=27 = live=27 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=27, floor=27, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "27 rows, 6 cols; fully populated 6; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (nakshatra_name): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 4/6 built column(s) (66.7%) selected by 1 capability module(s); dark: ['dosha', 'id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 27/27 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_nakshatra_medical.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "N/A",
+      "measured": "never run, and it has no writer \u2014 consistent"
+     },
+     "Build.history": {
+      "v": "N/A",
+      "measured": "never run; check 7 owns this"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_ontology",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 741,
+    "reach": {
+     "table": "brahma_ontology",
+     "modules": [
+      "L0_brahmagyan/list_entities.ts",
+      "L0_brahmagyan/resolve_entity.ts"
+     ],
+     "columns_built": 9,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "canonical_id",
+      "canonical_name_en",
+      "canonical_name_sa",
+      "description",
+      "entity_class",
+      "source_citation",
+      "synonyms"
+     ],
+     "dark": [
+      "created_at",
+      "id"
+     ],
+     "width": 0.7778,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 69,
+     "direct": 4,
+     "severity_weight": 70,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "brahma_ontology"
+    ],
+    "target_table": "brahma_ontology",
+    "has_writer": true,
+    "writer_files": [
+     "bg_ontology.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_ontology.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_ontology (brahmagyan/l0_ontology.py:1143 via bg_ontology.py \u2192 brahmagyan/l0_ontology.py:seed_ontology)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_ontology"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=741 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=741, floor=737, delta=+4"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "741 rows, 9 cols; fully populated 9; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (entity_class, canonical_id): 0 duplicate(s)"
+     },
+     "Vocab.alias": {
+      "v": "FAIL",
+      "measured": "16 class(es); 79/741 row(s) lack an alias set (10.7%); empty alias sets: dosha 79/79",
+      "severity": 0.1066
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 7/9 built column(s) (77.8%) selected by 2 capability module(s); dark: ['created_at', 'id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 741/741 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): list_entities.ts, resolve_entity.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_panchanga",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": null,
+    "reach": null,
+    "blocking_radius": {
+     "transitive": 57,
+     "direct": 1,
+     "severity_weight": 58,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": null,
+    "count_sql_tables": [],
+    "target_table": null,
+    "has_writer": false,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (service or static)"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Build.target": {
+      "v": "N/A",
+      "measured": "no target_table; asset_kind='service', has_writer=False"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "N/A",
+      "measured": "count_sql=no, integrity_check_sql=no"
+     },
+     "Build.completion": {
+      "v": "N/A",
+      "measured": "no count_sql and nothing to count: has_writer=False, asset_kind='service', no target_table; build state='lit'"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 759b43c7 complete/no disposition (2026-08-27)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 759b43c7 complete/no disposition (2026-08-27)"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): call_panchanga_service.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "1 executed run(s) of 1 build_run_assets row(s), scope(s): asset_set, last executed 2026-08-27"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "1 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "no target_table declared: no table to census at field level"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_parihara_rules",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 440,
+    "reach": {
+     "table": "bg_parihara_rules",
+     "modules": [
+      "L0_brahmagyan/query_parihara_graph.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "cancellation_condition_text",
+      "cancellation_index",
+      "dosha_canonical_id",
+      "dosha_category",
+      "dosha_name_en",
+      "net_standing",
+      "scope",
+      "source_chapter",
+      "source_citation",
+      "source_text_id"
+     ],
+     "dark": [
+      "build_id",
+      "computed_at",
+      "id"
+     ],
+     "width": 0.7692,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 3 table(s): bg_parihara_rules, bg_muhurta_activity_rules, bg_muhurta_factor_census",
+    "count_sql_tables": [
+     "bg_parihara_rules",
+     "bg_muhurta_activity_rules",
+     "bg_muhurta_factor_census"
+    ],
+    "target_table": "bg_parihara_rules",
+    "has_writer": true,
+    "writer_files": [
+     "bg_parihara_rules.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_parihara_rules.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_parihara_rules (bg_parihara_rules.py:623), bg_muhurta_activity_rules (bg_parihara_rules.py:653), bg_muhurta_factor_census (bg_parihara_rules.py:675)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_parihara_rules"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=440 = live=440 (count_sql total over 3 table(s): bg_parihara_rules, bg_muhurta_activity_rules, bg_muhurta_factor_census; global); target_table bg_parihara_rules alone: 60 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run fe14f22a complete/build (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run fe14f22a complete/build (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "count_sql total=440, floor=449, delta=-9"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 14 cols; fully populated 12; NEVER populated ['extraction_context']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (dosha_canonical_id, cancellation_index): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 10/13 built column(s) (76.9%) selected by 1 capability module(s); dark: ['build_id', 'computed_at', 'id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_parihara_graph.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 3 error(s) and 0 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-06): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "2/2 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_phaladeepika_latta",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 8,
+    "reach": {
+     "table": "bg_phaladeepika_latta",
+     "modules": [],
+     "columns_built": 9,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "affliction_condition",
+      "count_from_graha",
+      "created_at",
+      "direction",
+      "effect_description",
+      "graha",
+      "source_citation",
+      "table_version",
+      "verse_ref"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 31,
+     "direct": 1,
+     "severity_weight": 32,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_phaladeepika_latta"
+    ],
+    "target_table": "bg_phaladeepika_latta",
+    "has_writer": true,
+    "writer_files": [
+     "bg_phaladeepika_vedha.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_phaladeepika_vedha.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_phaladeepika_latta (brahmagyan/l0_phaladeepika_vedha.py:160 via bg_phaladeepika_vedha.py \u2192 brahmagyan/l0_phaladeepika_vedha.py:seed_phaladeepika_latta)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_phaladeepika_latta"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=8 = live=8 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=8, floor=8, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "8 rows, 9 cols; fully populated 8; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (table_version, graha): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/9 built column(s) (0.0%) selected by 0 capability module(s); dark: ['affliction_condition', 'count_from_graha', 'created_at', 'direction', 'effect_description', 'graha', 'source_citation', 'table_version', 'verse_ref']; depth 0.0% (no capability module reads this table)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 8/8 rows"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_prashna_rules",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 41,
+    "reach": null,
+    "blocking_radius": {
+     "transitive": 1,
+     "direct": 1,
+     "severity_weight": 2,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 5 table(s): bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators, bg_prashna_fructification_rules, bg_prashna_special_techniques",
+    "count_sql_tables": [
+     "bg_prashna_lagna_methods",
+     "bg_prashna_tajik_yogas",
+     "bg_prashna_significators",
+     "bg_prashna_fructification_rules",
+     "bg_prashna_special_techniques"
+    ],
+    "target_table": null,
+    "has_writer": true,
+    "writer_files": [
+     "bg_prashna_rules.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_prashna_rules.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_prashna_lagna_methods (brahmagyan/l0_prashna.py:807 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_tajik_yogas (brahmagyan/l0_prashna.py:836 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_significators (brahmagyan/l0_prashna.py:865 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_fructification_rules (brahmagyan/l0_prashna.py:892 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules), bg_prashna_special_techniques (brahmagyan/l0_prashna.py:914 via bg_prashna_rules.py \u2192 brahmagyan/l0_prashna.py:seed_prashna_rules)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "no single target_table: a multi-table asset whose count_sql declares the 5 tables it produces (bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators, bg_prashna_fructification_rules, bg_prashna_special_techniques) \u2014 the engine's produced-table rule"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=41 = live=41 (count_sql total over 5 table(s): bg_prashna_lagna_methods, bg_prashna_tajik_yogas, bg_prashna_significators, bg_prashna_fructification_rules, bg_prashna_special_techniques; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=41, floor=41, delta=+0"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "no target_table declared: no table to census at field level"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_reference",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 1242,
+    "reach": {
+     "table": "reference_planets",
+     "modules": [],
+     "columns_built": 14,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "canonical_name_en",
+      "canonical_name_sa",
+      "created_at",
+      "dasha_years",
+      "debilitation_sign",
+      "exaltation_degree",
+      "exaltation_sign",
+      "id",
+      "karak_domains",
+      "mooltrikona_sign",
+      "natural_benefic",
+      "own_signs",
+      "planet_id",
+      "source_citation"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 62,
+     "direct": 4,
+     "severity_weight": 63,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 11 table(s): reference_planets, reference_signs, reference_aspects, reference_vargas, reference_houses, reference_strength_systems, reference_karakas, reference_upagrahas, reference_constants, reference_topic_tags, reference_glossary",
+    "count_sql_tables": [
+     "reference_planets",
+     "reference_signs",
+     "reference_aspects",
+     "reference_vargas",
+     "reference_houses",
+     "reference_strength_systems",
+     "reference_karakas",
+     "reference_upagrahas",
+     "reference_constants",
+     "reference_topic_tags",
+     "reference_glossary"
+    ],
+    "target_table": "reference_planets",
+    "has_writer": true,
+    "writer_files": [
+     "bg_reference.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_reference.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): reference_planets (brahmagyan/l0_reference.py:1315 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_signs (brahmagyan/l0_reference.py:1362 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_aspects (brahmagyan/l0_reference.py:1381 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_vargas (brahmagyan/l0_reference.py:1401 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_houses (brahmagyan/l0_reference.py:1443 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_strength_systems (brahmagyan/l0_reference.py:1464 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_karakas (brahmagyan/l0_reference.py:1483 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_upagrahas (brahmagyan/l0_reference.py:1502 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_constants (brahmagyan/l0_reference.py:1521 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_topic_tags (brahmagyan/l0_reference.py:1540 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference), reference_glossary (brahmagyan/l0_reference.py:1556 via bg_reference.py \u2192 brahmagyan/l0_reference.py:seed_reference)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=reference_planets"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=1242 (global); target_table reference_planets alone: 11 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=1242, floor=1242, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "11 rows, 14 cols; fully populated 9; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (planet_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/14 built column(s) (0.0%) selected by 0 capability module(s); dark: ['canonical_name_en', 'canonical_name_sa', 'created_at', 'dasha_years', 'debilitation_sign', 'exaltation_degree', 'exaltation_sign', 'id', 'karak_domains', 'mooltrikona_sign', 'natural_benefic', 'own_signs'] \u2026; depth 0.0% (no capability module reads this table)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 11/11 rows"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_remedies",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 341,
+    "reach": {
+     "table": "brahma_remedy_corpus",
+     "modules": [
+      "L0_brahmagyan/query_remedy_corpus.ts",
+      "register_d7_channel.ts",
+      "platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+     ],
+     "columns_built": 26,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "category",
+      "charity_action",
+      "classical_attestation_text",
+      "classical_ref",
+      "color_associated",
+      "confidence",
+      "contraindications",
+      "cost_tier",
+      "created_at",
+      "day_of_week",
+      "deity",
+      "domain",
+      "gemstone",
+      "id",
+      "ingredients_jsonb",
+      "mantra_sanskrit",
+      "mantra_text",
+      "mantra_transliteration",
+      "planet",
+      "prescription_text",
+      "remedy_id",
+      "remedy_type",
+      "scaffold_status",
+      "source_canonical_id",
+      "source_citation",
+      "timing_rules_jsonb"
+     ],
+     "dark": [],
+     "width": 1.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "brahma_remedy_corpus"
+    ],
+    "target_table": "brahma_remedy_corpus",
+    "has_writer": true,
+    "writer_files": [
+     "bg_remedies.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_remedies.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): brahma_remedy_corpus (brahmagyan/l0_remedy_corpus.py:3462 via bg_remedies.py \u2192 brahmagyan/l0_remedy_corpus.py:seed_remedy_corpus), brahma_remedy_corpus (brahmagyan/l0_remedy_loader.py:188 via bg_remedies.py \u2192 brahmagyan/l0_remedy_loader.py:load_remedies)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_remedy_corpus"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=341 = live=341 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 21df3b6a complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=341, floor=341, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "341 rows, 26 cols; fully populated 12; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (remedy_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 26/26 built column(s) (100.0%) selected by 3 capability module(s); dark: []; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 341/341 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_remedy_corpus.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_rules",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 3002,
+    "reach": {
+     "table": "sutravali_rules",
+     "modules": [
+      "register_d7_channel.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "antecedent_jsonb",
+      "confidence",
+      "extracted_by",
+      "predicate_jsonb",
+      "prediction_jsonb",
+      "rule_id",
+      "text_id",
+      "verse_ref"
+     ],
+     "dark": [
+      "created_at",
+      "extraction_pass_log",
+      "quality_score",
+      "transit_marker",
+      "yoga_canonical_id"
+     ],
+     "width": 0.6154,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 51,
+     "direct": 3,
+     "severity_weight": 52,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "sutravali_rules"
+    ],
+    "target_table": "sutravali_rules",
+    "has_writer": true,
+    "writer_files": [
+     "bg_rules.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_rules.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): sutravali_rules (brahmagyan/l0_rules.py:1608 via bg_rules.py \u2192 brahmagyan/l0_rules.py:seed_rules)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=sutravali_rules"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "3 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=3002 = live=3002 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 74b9a283 complete/skip_no_delta (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 74b9a283 complete/skip_no_delta (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=3002, floor=3002, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "3002 rows, 14 cols; fully populated 12; NEVER populated ['dasha_system_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (rule_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 8/13 built column(s) (61.5%) selected by 1 capability module(s); dark: ['created_at', 'extraction_pass_log', 'quality_score', 'transit_marker', 'yoga_canonical_id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 1 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "3/3 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_sarvatobhadra_grid",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 0,
+    "reach": {
+     "table": "bg_sarvatobhadra_grid",
+     "modules": [],
+     "columns_built": 10,
+     "built_basis": "all columns (depth census measured no rows)",
+     "exposed": [],
+     "dark": [
+      "cell_index",
+      "cell_kind",
+      "cell_value",
+      "created_at",
+      "id",
+      "native_confirmed",
+      "school_tag",
+      "source_citation",
+      "source_text_id",
+      "table_version"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 31,
+     "direct": 1,
+     "severity_weight": 32,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_sarvatobhadra_grid"
+    ],
+    "target_table": "bg_sarvatobhadra_grid",
+    "has_writer": false,
+    "writer_files": [],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (service or static)"
+     },
+     "Build.contract": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Idem.pattern": {
+      "v": "N/A",
+      "measured": "no writer, and the registry agrees (has_writer=false) \u2014 nothing to scan"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_sarvatobhadra_grid"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PARTIAL",
+      "measured": "count_sql=yes, integrity_check_sql=no"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=0 = live=0 (count_sql over the target table; global); zero rows declared complete by target_floor=0 (has_writer=false \u2014 no writer at all, the signal honest enough to read as by-design)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Count.floor": {
+      "v": "N/A",
+      "measured": "target_floor=0: the registry declares zero rows complete \u2014 there is no floor to breach (live=0)"
+     },
+     "Complete.depth": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 table empty (0 rows, 10 cols): column population cannot be measured on no rows"
+     },
+     "Vocab.identity": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 table empty: uniqueness under (school_tag, cell_kind, cell_index, table_version) is vacuous on 0 rows"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/10 built column(s) (0.0%) selected by 0 capability module(s); dark: ['cell_index', 'cell_kind', 'cell_value', 'created_at', 'id', 'native_confirmed', 'school_tag', 'source_citation', 'source_text_id', 'table_version']; depth 0.0% (no capability module reads this table)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "N/A",
+      "measured": "never run, and it has no writer \u2014 consistent"
+     },
+     "Build.history": {
+      "v": "N/A",
+      "measured": "never run; check 7 owns this"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_sign_medical",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 12,
+    "reach": {
+     "table": "bg_sign_medical",
+     "modules": [
+      "L0_brahmagyan/query_sign_medical.ts"
+     ],
+     "columns_built": 7,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "body_part",
+      "classical_citation",
+      "dosha",
+      "element",
+      "organ_systems",
+      "sign_name",
+      "sign_number"
+     ],
+     "dark": [],
+     "width": 1.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_sign_medical"
+    ],
+    "target_table": "bg_sign_medical",
+    "has_writer": true,
+    "writer_files": [
+     "bg_medical_mappings.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_medical_mappings.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_sign_medical (brahmagyan/l0_medical.py:479 via bg_medical_mappings.py \u2192 brahmagyan/l0_medical.py:seed_medical_mappings)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_sign_medical"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "live=12 and no build record at all (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=12, floor=12, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "12 rows, 7 cols; fully populated 7; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (sign_number): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 7/7 built column(s) (100.0%) selected by 1 capability module(s); dark: []; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 12/12 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_sign_medical.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "FAIL",
+      "measured": "registered with a writer and the orchestrator has NEVER run it (no build_run_assets row)"
+     },
+     "Build.history": {
+      "v": "N/A",
+      "measured": "never run; check 7 owns this"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_sky_calendar",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 31081,
+    "reach": {
+     "table": "bg_sky_calendar",
+     "modules": [
+      "L0_brahmagyan/query_sky_calendar.ts"
+     ],
+     "columns_built": 17,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "ayanamsha_key",
+      "detail",
+      "event_datetime_utc",
+      "event_type",
+      "longitude_deg",
+      "nakshatra",
+      "primary_body",
+      "sampling_method",
+      "secondary_body",
+      "sign",
+      "source_citation",
+      "speed_dps"
+     ],
+     "dark": [
+      "build_id",
+      "computed_at",
+      "event_jd",
+      "id",
+      "secondary_body_key"
+     ],
+     "width": 0.7059,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_sky_calendar"
+    ],
+    "target_table": "bg_sky_calendar",
+    "has_writer": true,
+    "writer_files": [
+     "bg_sky_calendar.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_sky_calendar.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_sky_calendar (bg_sky_calendar.py:734)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_sky_calendar"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=31081 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=31081, floor=31059, delta=+22"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "31081 rows, 17 cols; fully populated 15; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (event_type, primary_body, secondary_body_key, event_jd): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 12/17 built column(s) (70.6%) selected by 1 capability module(s); dark: ['build_id', 'computed_at', 'event_jd', 'id', 'secondary_body_key']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 31081/31081 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_sky_calendar.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_text_index",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 361,
+    "reach": {
+     "table": "classical_text_chunks",
+     "modules": [
+      "L0_brahmagyan/query_classical_texts.ts"
+     ],
+     "columns_built": 24,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "chapter",
+      "chunk_id",
+      "content_en",
+      "content_sa",
+      "id",
+      "source_citation",
+      "text_id",
+      "topics",
+      "tradition_school",
+      "verse_ref",
+      "verse_start"
+     ],
+     "dark": [
+      "cleaned_devanagari_text",
+      "content_sha256",
+      "embedding",
+      "ingested_at",
+      "low_confidence_flag",
+      "ocr_cleanup_pass_version",
+      "ocr_confidence_score",
+      "ocr_review_note",
+      "topic_tag",
+      "translation_provenance",
+      "translation_status",
+      "translator",
+      "verse_end"
+     ],
+     "width": 0.4583,
+     "width_is_lower_bound": true,
+     "dynamic_select": [
+      "L0_brahmagyan/query_classical_texts.ts"
+     ],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 1,
+     "direct": 1,
+     "severity_weight": 2,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "classical_text_chunks"
+    ],
+    "target_table": "classical_text_chunks",
+    "has_writer": true,
+    "writer_files": [
+     "bg_text_index.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_text_index.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PARTIAL",
+      "measured": "the asset's own table(s) are only UPDATEd in place: classical_text_chunks (bg_text_index.py:546) \u2014 no row is added, but whether a rebuild re-derives every row is not measured [resolved scope: bg_text_index.py]"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=classical_text_chunks"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=361 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 237b88a3 complete/skip_no_delta (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 237b88a3 complete/skip_no_delta (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=361, floor=361, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "10651 rows, 26 cols; fully populated 16; NEVER populated ['content_summary', 'cleaned_translation_text']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chunk_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width \u2265 11/24 built column(s) (45.8%), a lower bound: L0_brahmagyan/query_classical_texts.ts select(s) a run-time column list selected by 1 capability module(s); dark: ['cleaned_devanagari_text', 'content_sha256', 'embedding', 'ingested_at', 'low_confidence_flag', 'ocr_cleanup_pass_version', 'ocr_confidence_score', 'ocr_review_note', 'topic_tag', 'translation_provenance', 'translation_status', 'translator'] \u2026; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 10651/10651 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): query_classical_texts.ts, query_compendium_index.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "3 complete, no error or abort; 2 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "2/2 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_texts",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 10651,
+    "reach": {
+     "table": "classical_text_chunks",
+     "modules": [
+      "L0_brahmagyan/query_classical_texts.ts"
+     ],
+     "columns_built": 24,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "chapter",
+      "chunk_id",
+      "content_en",
+      "content_sa",
+      "id",
+      "source_citation",
+      "text_id",
+      "topics",
+      "tradition_school",
+      "verse_ref",
+      "verse_start"
+     ],
+     "dark": [
+      "cleaned_devanagari_text",
+      "content_sha256",
+      "embedding",
+      "ingested_at",
+      "low_confidence_flag",
+      "ocr_cleanup_pass_version",
+      "ocr_confidence_score",
+      "ocr_review_note",
+      "topic_tag",
+      "translation_provenance",
+      "translation_status",
+      "translator",
+      "verse_end"
+     ],
+     "width": 0.4583,
+     "width_is_lower_bound": true,
+     "dynamic_select": [
+      "L0_brahmagyan/query_classical_texts.ts"
+     ],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 58,
+     "direct": 8,
+     "severity_weight": 59,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "classical_text_chunks"
+    ],
+    "target_table": "classical_text_chunks",
+    "has_writer": true,
+    "writer_files": [
+     "bg_texts.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_texts.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): classical_text_chunks (bg_texts.py:665)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=classical_text_chunks"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=10651 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=10651, floor=10651, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "10651 rows, 26 cols; fully populated 16; NEVER populated ['content_summary', 'cleaned_translation_text']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chunk_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width \u2265 11/24 built column(s) (45.8%), a lower bound: L0_brahmagyan/query_classical_texts.ts select(s) a run-time column list selected by 1 capability module(s); dark: ['cleaned_devanagari_text', 'content_sha256', 'embedding', 'ingested_at', 'low_confidence_flag', 'ocr_cleanup_pass_version', 'ocr_confidence_score', 'ocr_review_note', 'topic_tag', 'translation_provenance', 'translation_status', 'translator'] \u2026; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 10651/10651 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "2 module(s): query_classical_texts.ts, query_compendium_index.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_transit_engine",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 9,
+    "reach": {
+     "table": "bg_transit_engine",
+     "modules": [
+      "L0_brahmagyan/query_transit_engine.ts"
+     ],
+     "columns_built": 6,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "avg_daily_motion_deg",
+      "classical_citation",
+      "graha",
+      "sign_residence_days",
+      "zodiac_period_days"
+     ],
+     "dark": [
+      "id"
+     ],
+     "width": 0.8333,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_transit_engine"
+    ],
+    "target_table": "bg_transit_engine",
+    "has_writer": false,
+    "writer_files": [
+     "bg_transit_rules.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "FAIL",
+      "measured": "@register in bg_transit_rules.py but registry says has_writer=false"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_transit_engine (brahmagyan/l0_transit.py:913 via bg_transit_rules.py \u2192 brahmagyan/l0_transit.py:seed_transit_rules)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_transit_engine"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=9 = live=9 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; no started attempt at any chart (global build record)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=9, floor=9, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "9 rows, 6 cols; fully populated 6; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (graha): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 5/6 built column(s) (83.3%) selected by 1 capability module(s); dark: ['id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 9/9 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_transit_engine.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "N/A",
+      "measured": "never run, and it has no writer \u2014 consistent"
+     },
+     "Build.history": {
+      "v": "N/A",
+      "measured": "never run; check 7 owns this"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_transit_rules",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 76,
+    "reach": {
+     "table": "bg_transit_rules",
+     "modules": [
+      "platform-mcp/src/tools/register_p1_reference.ts"
+     ],
+     "columns_built": 8,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "classical_citation",
+      "graha",
+      "id",
+      "phala",
+      "primary_house",
+      "rule_notes",
+      "rule_type",
+      "vedha_house"
+     ],
+     "dark": [],
+     "width": 1.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 34,
+     "direct": 6,
+     "severity_weight": 35,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_transit_rules"
+    ],
+    "target_table": "bg_transit_rules",
+    "has_writer": true,
+    "writer_files": [
+     "bg_transit_rules.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_transit_rules.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_transit_rules (brahmagyan/l0_transit.py:938 via bg_transit_rules.py \u2192 brahmagyan/l0_transit.py:seed_transit_rules)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_transit_rules"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=104 disagrees with live=76 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=76, floor=76, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "76 rows, 8 cols; fully populated 6; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (graha, rule_type, primary_house): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 8/8 built column(s) (100.0%) selected by 1 capability module(s); dark: []; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 76/76 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_transit_vedha.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_vastu_directions",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 32,
+    "reach": {
+     "table": "bg_vastu_directions",
+     "modules": [
+      "L0_brahmagyan/query_vastu_directions.ts"
+     ],
+     "columns_built": 7,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "classical_citation",
+      "direction",
+      "direction_deg",
+      "element",
+      "favorable_color",
+      "ruling_graha"
+     ],
+     "dark": [
+      "id"
+     ],
+     "width": 0.8571,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 2 table(s): bg_vastu_directions, bg_vastu_direction_remedials",
+    "count_sql_tables": [
+     "bg_vastu_directions",
+     "bg_vastu_direction_remedials"
+    ],
+    "target_table": "bg_vastu_directions",
+    "has_writer": true,
+    "writer_files": [
+     "bg_vastu_directions.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_vastu_directions.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_vastu_directions (brahmagyan/l0_vastu_directions.py:298 via bg_vastu_directions.py \u2192 brahmagyan/l0_vastu_directions.py:seed_vastu_directions), bg_vastu_direction_remedials (brahmagyan/l0_vastu_directions.py:320 via bg_vastu_directions.py \u2192 brahmagyan/l0_vastu_directions.py:seed_vastu_directions)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_vastu_directions"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=32 = live=32 (count_sql total over 2 table(s): bg_vastu_directions, bg_vastu_direction_remedials; global); target_table bg_vastu_directions alone: 8 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=32, floor=32, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "8 rows, 8 cols; fully populated 6; NEVER populated ['secondary_graha']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (direction): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 6/7 built column(s) (85.7%) selected by 1 capability module(s); dark: ['id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citation populated on 8/8 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_vastu_directions.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "2 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_vedha_malefic_scale",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 5,
+    "reach": {
+     "table": "bg_vedha_malefic_scale",
+     "modules": [],
+     "columns_built": 7,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "created_at",
+      "effect_description",
+      "effect_grade",
+      "malefic_count",
+      "source_citation",
+      "table_version",
+      "verse_ref"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 31,
+     "direct": 1,
+     "severity_weight": 32,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "bg_vedha_malefic_scale"
+    ],
+    "target_table": "bg_vedha_malefic_scale",
+    "has_writer": true,
+    "writer_files": [
+     "bg_phaladeepika_vedha.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_phaladeepika_vedha.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): bg_vedha_malefic_scale (brahmagyan/l0_phaladeepika_vedha.py:129 via bg_phaladeepika_vedha.py \u2192 brahmagyan/l0_phaladeepika_vedha.py:seed_vedha_malefic_scale)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=bg_vedha_malefic_scale"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=5 = live=5 (count_sql over the target table; global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 30d6d9b8 complete/skip_no_delta (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 30d6d9b8 complete/skip_no_delta (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=5, floor=5, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "5 rows, 7 cols; fully populated 7; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (table_version, malefic_count): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/7 built column(s) (0.0%) selected by 0 capability module(s); dark: ['created_at', 'effect_description', 'effect_grade', 'malefic_count', 'source_citation', 'table_version', 'verse_ref']; depth 0.0% (no capability module reads this table)"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 5/5 rows"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "4 complete, no error or abort; 2 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_vidhi_floors",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 423,
+    "reach": {
+     "table": "vidhi_floor_items",
+     "modules": [],
+     "columns_built": 7,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "args_override",
+      "band",
+      "hard_floor",
+      "id",
+      "intent",
+      "item_order",
+      "primitive_id"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 2 table(s): vidhi_intent_floors, vidhi_floor_items",
+    "count_sql_tables": [
+     "vidhi_intent_floors",
+     "vidhi_floor_items"
+    ],
+    "target_table": "vidhi_floor_items",
+    "has_writer": true,
+    "writer_files": [
+     "bg_vidhi_floors.py"
+    ],
+    "catalog_status": "DRAFT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_vidhi_floors.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): vidhi_intent_floors (bg_vidhi_floors.py:555)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=vidhi_floor_items"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "1 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=423 = live=423 (count_sql total over 2 table(s): vidhi_intent_floors, vidhi_floor_items; global); target_table vidhi_floor_items alone: 409 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 1d24dbed complete/build (2026-09-05)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 1d24dbed complete/build (2026-09-05)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=423, floor=423, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "409 rows, 7 cols; fully populated 7; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (intent, item_order): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/7 built column(s) (0.0%) selected by 0 capability module(s); dark: ['args_override', 'band', 'hard_floor', 'id', 'intent', 'item_order', 'primitive_id']; depth 0.0% (no capability module reads this table)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "7 executed run(s) of 8 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-05"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-04): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "1/1 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_vidhi_primitives",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 60,
+    "reach": {
+     "table": "vidhi_primitives",
+     "modules": [],
+     "columns_built": 11,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [],
+     "dark": [
+      "category",
+      "cr27_prevents",
+      "definition",
+      "fallback_face",
+      "known_gap",
+      "live_tool",
+      "mandatory_tags",
+      "primitive_id",
+      "tool_args",
+      "updated_at",
+      "version"
+     ],
+     "width": 0.0,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 0.0,
+     "depth_basis": "no capability module reads this table"
+    },
+    "blocking_radius": {
+     "transitive": 1,
+     "direct": 1,
+     "severity_weight": 2,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "vidhi_primitives"
+    ],
+    "target_table": "vidhi_primitives",
+    "has_writer": true,
+    "writer_files": [
+     "bg_vidhi_primitives.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_vidhi_primitives.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "INSERT \u2026 ON CONFLICT into the asset's own table(s) (upsert): vidhi_primitives (bg_vidhi_primitives.py:144)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=vidhi_primitives"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "0 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record says rows_written=0 against live=60 (global)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=60, floor=60, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "60 rows, 11 cols; fully populated 9; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (primitive_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 0/11 built column(s) (0.0%) selected by 0 capability module(s); dark: ['category', 'cr27_prevents', 'definition', 'fallback_face', 'known_gap', 'live_tool', 'mandatory_tags', 'primitive_id', 'tool_args', 'updated_at', 'version']; depth 0.0% (no capability module reads this table)"
+     },
+     "Dens.served": {
+      "v": "N/A",
+      "measured": "0 module(s): none; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "7 executed run(s) of 7 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04"
+     },
+     "Build.history": {
+      "v": "PASS",
+      "measured": "7 complete, no error or abort; 0 skip_no_delta (healthy)"
+     },
+     "Build.dep_liveness": {
+      "v": "N/A",
+      "measured": "no declared dependencies"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   },
+   {
+    "asset_id": "bg_yogas",
+    "layer": "L0",
+    "scoring": "fidelity",
+    "live_rows": 784,
+    "reach": {
+     "table": "brahma_yoga_catalog",
+     "modules": [
+      "L0_brahmagyan/query_yoga_catalog.ts",
+      "L1_ganita/get_yoga_firings.ts"
+     ],
+     "columns_built": 15,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "cancellation_conditions",
+      "canonical_id",
+      "category",
+      "classical_citations",
+      "computed_strength_formula",
+      "created_at",
+      "formation_rule_jsonb",
+      "formation_text",
+      "name_en",
+      "name_sa",
+      "rare",
+      "school",
+      "significations_jsonb",
+      "significations_text",
+      "source_chunk_ids"
+     ],
+     "dark": [],
+     "width": 1.0,
+     "width_is_lower_bound": true,
+     "dynamic_select": [
+      "L1_ganita/get_yoga_firings.ts"
+     ],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 52,
+     "direct": 1,
+     "severity_weight": 53,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 4 table(s): brahma_yoga_catalog, brahma_ontology, reference_yogas, brahma_yoga_source_chunks",
+    "count_sql_tables": [
+     "brahma_yoga_catalog",
+     "brahma_ontology",
+     "reference_yogas",
+     "brahma_yoga_source_chunks"
+    ],
+    "target_table": "brahma_yoga_catalog",
+    "has_writer": true,
+    "writer_files": [
+     "bg_yogas.py"
+    ],
+    "catalog_status": "CURRENT",
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in bg_yogas.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "the asset's own table(s) replaced by delete-then-insert: brahma_yoga_source_chunks (brahmagyan/l0_yogas.py:2244 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas), reference_yogas (brahmagyan/l0_yogas.py:2245 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas), brahma_yoga_catalog (brahmagyan/l0_yogas.py:2247 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas), brahma_ontology (brahmagyan/l0_yogas.py:2249 via bg_yogas.py \u2192 brahmagyan/l0_yogas.py:seed_yogas) \u2014 a full replacement, not the L0 upsert convention, and no accretion"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=brahma_yoga_catalog"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 edge(s), all resolvable"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=784 = live=784 (count_sql total over 4 table(s): brahma_yoga_catalog, brahma_ontology, reference_yogas, brahma_yoga_source_chunks; global); target_table brahma_yoga_catalog alone: 233 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 376c21b7 complete/build (2026-09-06)"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 376c21b7 complete/build (2026-09-06)"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=784, floor=784, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "233 rows, 19 cols; fully populated 14; NEVER populated ['bhanga_rules_jsonb', 'partial_formation_threshold', 'strength_formula_ref', 'result_class']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (canonical_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width \u2265 15/15 built column(s) (100.0%), a lower bound: L1_ganita/get_yoga_firings.ts select(s) a run-time column list selected by 2 capability module(s); dark: []; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "classical_citations populated on 233/233 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "1 module(s): query_yoga_catalog.ts; declaring density_contract: 0"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "4 executed run(s) of 5 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-06"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 3 error(s) and 1 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-06): post-write integrity check failed: integrity_check_sql \u2192 False"
+     },
+     "Build.dep_liveness": {
+      "v": "PASS",
+      "measured": "2/2 declared dependencies lit at chart 482012f1 (or global)"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     },
+     "Carr.detector": {
+      "v": "NO_DETECTOR",
+      "measured": "no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics"
+     }
+    }
+   }
+  ]
+ }
+}
