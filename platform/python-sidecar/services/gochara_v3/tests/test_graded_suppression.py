@@ -1,39 +1,38 @@
 """
-Test W1.3 — Graded suppression: vedha as multiplicative quality_gates in λ_v3.
+Test W1.3 — vedha as the §5 interval qualifier on λ_v3 (reconciled).
 
-Acceptance criteria verified here (VERIFIER will recheck independently):
+RECONCILED with the sealed contract (ASTRA_REVIEW_A5_4 v1.2 P2-a;
+GOCHARA_DESIGN_SPECS_v1_4 §5; FABLE #16/#17/#25; D-PG353). The original W1.3
+criteria AC2/AC3/AC6 pinned a whole-row DATE-grain multiplier graded from a
+legacy `malefic_count` (0.85 for a clean row, PG353 grade factors, 0.70 with
+no scale row, products across overlapping rows). That evaluator is retired
+on the shared v3 path and is NOT restored here. The contract these tests pin:
 
-  AC1. Empty kala_vedha_gochara table → quality_gates = 1.0 (backward compat;
-       no suppression, same as pre-W1.3 placeholder).
+  AC1. No overlay rows → the gate is honestly `unavailable` (no computed
+       horizon) and the λ PRODUCT receives 1.0 (null_state omit).
+  AC2'. A pre-T0-8 row carrying only malefic_count / malefic_obstructing_grahas
+       is not an interval row: ignored (counted), never a factor.
+  AC3'. Attenuation is per obstructing ROOT, once, and multiplies across
+       DISTINCT roots only under an explicitly CITED scale (the production
+       engine cites none — D-PG353): an active obstruction is `obstructed`
+       with factor None; λ is unchanged and the state rides the row.
+  AC4. v1_parity_mode=True path is completely unaffected (unchanged test).
+  AC6'. A fired entry records the primary contact (graha / house / residence),
+       its §6.1 identity, the rule (citation, vedha house, provenance), the
+       obstructing interval(s) with obstructor_body / t_in / t_out, the
+       operator role and the nullable factor.
 
-  AC2. A synthetic vedha row with malefic_count > 0 → quality_gates < 1.0
-       and suppression is recorded in the detail dict (fired_vedha populated).
-
-  AC3. Multiple simultaneous vedhā → quality_gates is their product (strictly
-       less than any single vedha's factor, strictly less than 1.0).
-
-  AC4. v1_parity_mode=True path is completely unaffected (quality_gates only
-       exists in the v3 path; v1 path still uses original formula).
-
-  AC5. No services/gochara_grammar/*.py modified — verified by import check
-       (inherits from test_lambda_v3_bounded.py's TestI2NoV1ModulesEdited;
-       not re-asserted here to avoid duplication).
-
-  AC6. Each suppression event records malefic_obstructing_grahas, effect_grade,
-       suppression_factor, vedha_kind, graha (fact-grounded detail JSONB).
-
-Additional unit tests:
-  - malefic_count = 0 vedha → mild suppression (not 1.0, not 0.0)
-  - suppression factor ordering: higher malefic_count → lower factor
-  - non-overlapping vedha window → no suppression
-  - overlapping AND non-overlapping vedha rows → only overlapping fires
-  - _suppression_factor_for_grade grade-string normalisation
-  - quality_gates always in (0, 1] for any combination of vedha rows
+Retained legacy helpers (`_suppression_factor_for_grade`, the `_VEDHA_*`
+constants, `_LATTA_EFFECTIVE_MALEFIC_COUNT`) still exist in engine.py but
+are unwired on the production path; TestSuppressionFactorForGrade pins the
+helper's own arithmetic only.
 """
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import replace
+from datetime import date
 from typing import Any
 
 import numpy as np
@@ -50,6 +49,7 @@ from services.gochara_intensity.permission import (
 from services.gochara_intensity.engine import SHAPE_MAP
 
 from services.gochara_v3.context import ClassContext, VedhaRow, MaleficScaleRow
+from services.ka_vedha_gochara import gate as VG
 from services.gochara_v3.engine import (
     evaluate_lambda_vector,
     _compute_quality_gates_from_context,
@@ -113,6 +113,35 @@ def _malefic_scale_rows() -> tuple[MaleficScaleRow, ...]:
         )
         for count, grade in grades
     )
+
+
+def _interval(body, t_in, t_out, *, state="active", group=None):
+    """One §5 interval relation as the ka_vedha_gochara writer stores it."""
+    return {"obstructor_body": body, "t_in": t_in, "t_out": t_out, "half_open": True,
+            "state": state, "exception": "none",
+            "independence_group": group or f"ig:{body}:{t_in}",
+            "segments": [{"start": t_in, "end": t_out, "state": state}],
+            "operator_role": "scored", "provenance": "verse_cited"}
+
+
+def _t08_row(graha="Saturn", *, start="2013-01-01", end="2014-12-31", intervals=(),
+             operator_role="scored", extra_detail=None) -> VedhaRow:
+    """A T0-8-shaped kala_vedha_gochara row — the §5 payload the shared gate
+    reads: the primary residence [start, end) with its interval relations and
+    a computed coverage horizon."""
+    detail: dict[str, Any] = {
+        "vedha_intervals": list(intervals),
+        "coverage": {"state": "computed", "grain": "date",
+                     "horizon_start": start, "horizon_end": end},
+        "operator_role": operator_role, "provenance": "verse_cited",
+        "primary_house": 3, "vedha_house": 9, "phala": "gain",
+        "primary_sign_idx": 9, "primary_sign_name": "Capricorn",
+    }
+    if extra_detail:
+        detail.update(extra_detail)
+    return VedhaRow(vedha_kind="house_vedha", graha=graha, window_start=start,
+                    window_end=end, classical_citation="Phaladipika Adh. XXVI (fixture)",
+                    detail=detail)
 
 
 def _build_context(
@@ -203,189 +232,155 @@ class TestComputeQualityGatesUnit:
         )
         assert detail["vedha_fired_count"] == 0
 
-    # AC2: synthetic vedha row with malefic_count > 0 → quality_gates < 1.0
-    def test_overlapping_malefic_vedha_suppresses(self):
-        """AC2: one overlapping vedha with malefic_count=1 → quality_gates < 1.0."""
-        vrow = _vedha_row(
-            window_start="2013-06-01", window_end="2013-09-30",
-            malefic_count=1,
-        )
-        ctx = _build_context(
-            vedha_rows=(vrow,),
-            malefic_scale=_malefic_scale_rows(),
-        )
+    # AC2': a legacy malefic_count row is not an interval row
+    def test_legacy_malefic_count_rows_are_ignored_never_scored(self):
+        """A pre-T0-8 row whose detail carries only malefic_count /
+        malefic_obstructing_grahas has no interval relations and no
+        coverage horizon: the gate ignores it (counted in
+        legacy_shape_rows_ignored), covers nothing (`unavailable`), fires
+        nothing, and the λ product receives 1.0. The retired multiplier
+        scored this row 0.75 ('fear'); no such number is produced."""
+        vrow = _vedha_row(window_start="2013-06-01", window_end="2013-09-30", malefic_count=1)
+        ctx = _build_context(vedha_rows=(vrow,), malefic_scale=_malefic_scale_rows())
         qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert qg < 1.0, f"Malefic vedha must suppress; quality_gates={qg}"
-        assert detail["vedha_fired_count"] == 1
-        assert len(detail["fired_vedha"]) == 1
+        assert qg == 1.0
+        assert detail["state"] == "unavailable" and detail["factor"] is None
+        assert detail["legacy_shape_rows_ignored"] == 1 and detail["vedha_rows_total"] == 1
+        assert detail["vedha_fired_count"] == 0 and detail["fired_vedha"] == []
+        assert detail["coverage"]["covers_instant"] is False
+        assert "suppression_factor" not in json.dumps(detail)
+        assert _suppression_factor_for_grade("fear") == 0.75  # exists only in the unwired helper
+
+    # AC6': the fired entry is identity, not a grade
+    def test_obstructed_detail_carries_identity_fields(self):
+        """A fired entry records the primary contact (graha, house,
+        residence), its §6.1 identity, the rule (citation, vedha house,
+        provenance), the obstructing interval(s) with obstructor_body /
+        t_in / t_out, the operator role and the nullable factor — never a
+        malefic_count / effect_grade / suppression_factor."""
+        row = _t08_row("Mars", start="2013-06-01", end="2013-09-30",
+                       intervals=[_interval("Saturn", "2013-06-10", "2013-07-10")])
+        ctx = _build_context(vedha_rows=(row,), malefic_scale=_malefic_scale_rows())
+        qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
+        assert qg == 1.0 and detail["state"] == "obstructed" and detail["factor"] is None
+        assert detail["null_state"] == "omit" and detail["vedha_fired_count"] == 1
         fv = detail["fired_vedha"][0]
-        assert fv["malefic_count"] == 1
-        assert fv["suppression_factor"] < 1.0
+        assert fv["primary_graha"] == "Mars" and fv["vedha_kind"] == "house_vedha"
+        assert fv["primary_contact"]["primary_house"] == 3
+        assert fv["primary_contact"]["residence"] == ["2013-06-01", "2013-09-30"]
+        assert fv["primary_contact_identity"]["canonical"] == (
+            "Mars|residence|span:Capricorn|kala_vedha_gochara:unversioned|-")
+        assert fv["primary_contact_identity"]["independence_group"]
+        assert fv["rule"]["classical_citation"].startswith("Phaladipika")
+        assert fv["rule"]["vedha_house"] == 9 and fv["rule"]["provenance"] == "verse_cited"
+        assert fv["operator_role"] == "scored"
+        assert fv["fired"][0]["obstructor_body"] == "Saturn"
+        assert (fv["fired"][0]["t_in"], fv["fired"][0]["t_out"]) == ("2013-06-10", "2013-07-10")
+        assert fv["factor"] is None
+        for legacy_key in ("malefic_count", "effect_grade", "suppression_factor",
+                           "malefic_obstructing_grahas"):
+            assert legacy_key not in fv
 
-    # AC2: detail JSONB carries all required fields (AC6)
-    def test_detail_carries_required_fields(self):
-        """AC6: each suppression event records vedha_kind, graha, malefic_count,
-        malefic_obstructing_grahas, effect_grade, suppression_factor."""
-        vrow = _vedha_row(
-            vedha_kind="house_vedha",
-            graha="Mars",
-            window_start="2013-06-01",
-            window_end="2013-09-30",
-            malefic_count=2,
-            malefic_obstructing_grahas=["Saturn", "Mars"],
-        )
-        ctx = _build_context(
-            vedha_rows=(vrow,),
-            malefic_scale=_malefic_scale_rows(),
-        )
-        _, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert detail["vedha_fired_count"] == 1
-        fv = detail["fired_vedha"][0]
-        # AC6: all required fields present
-        assert "vedha_kind" in fv, "fired_vedha must carry vedha_kind"
-        assert "graha" in fv, "fired_vedha must carry graha"
-        assert "malefic_count" in fv, "fired_vedha must carry malefic_count"
-        assert "malefic_obstructing_grahas" in fv, "fired_vedha must carry malefic_obstructing_grahas"
-        assert "effect_grade" in fv, "fired_vedha must carry effect_grade"
-        assert "suppression_factor" in fv, "fired_vedha must carry suppression_factor"
-        # Values are correct
-        assert fv["vedha_kind"] == "house_vedha"
-        assert fv["graha"] == "Mars"
-        assert fv["malefic_count"] == 2
-        assert fv["malefic_obstructing_grahas"] == ["Saturn", "Mars"]
-
-    # AC3: multiple simultaneous vedhā → multiplicative product
-    def test_two_vedha_multiply(self):
-        """AC3: two overlapping vedhā → quality_gates = factor1 * factor2."""
-        vrow1 = _vedha_row(
-            graha="Saturn",
-            window_start="2013-06-01", window_end="2013-09-30",
-            malefic_count=1,
-        )
-        vrow2 = _vedha_row(
-            graha="Mars",
-            window_start="2013-06-01", window_end="2013-09-30",
-            malefic_count=2,
-        )
-        ctx = _build_context(
-            vedha_rows=(vrow1, vrow2),
-            malefic_scale=_malefic_scale_rows(),
-        )
+    # AC3': roots multiply only under a CITED scale; the engine cites none
+    def test_distinct_roots_multiply_only_under_a_cited_scale(self):
+        """Two obstructing roots on the engine path: `obstructed`, factor
+        None, λ product 1.0 (D-PG353 — no cited scale). The multiplicative
+        reduction exists in the gate under an explicitly CITED scale only:
+        each DISTINCT root once, product across roots (0.7 × 0.7 = 0.49);
+        the same root cited twice counts once (0.7, never 0.49)."""
+        two = [_interval("Saturn", "2013-06-01", "2013-09-30", group="root-1"),
+               _interval("Mars", "2013-06-01", "2013-09-30", group="root-2")]
+        row = _t08_row("Venus", start="2013-01-01", end="2013-12-31", intervals=two)
+        ctx = _build_context(vedha_rows=(row,), malefic_scale=_malefic_scale_rows())
         qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert detail["vedha_fired_count"] == 2, (
-            f"Expected 2 vedha to fire, got {detail['vedha_fired_count']}"
-        )
-        # The combined factor should be product of the individual factors
-        f1 = detail["fired_vedha"][0]["suppression_factor"]
-        f2 = detail["fired_vedha"][1]["suppression_factor"]
-        expected = f1 * f2
-        assert qg == pytest.approx(expected, rel=1e-9), (
-            f"quality_gates={qg} should equal f1*f2={expected} "
-            f"(f1={f1}, f2={f2})"
-        )
-        # AC3: second vedha further reduces the already-suppressed value
-        assert qg < min(f1, f2), (
-            f"Two vedhā product ({qg}) must be strictly less than "
-            f"either single factor ({min(f1, f2)})"
-        )
+        assert qg == 1.0 and detail["state"] == "obstructed" and detail["factor"] is None
+        assert len(detail["fired_vedha"][0]["fired"]) == 2 and detail["factor_by_body"] == {}
+        at = date(2013, 6, 15)
+        g = VG.make_gate([row], cited_scale=lambda iv: 0.7)(at)
+        assert g["factor_by_body"]["Venus"] == pytest.approx(0.49)
+        dup = [_interval("Saturn", "2013-06-01", "2013-09-30", group="root-1"),
+               _interval("Saturn", "2013-06-01", "2013-09-30", group="root-1")]
+        g2 = VG.make_gate([_t08_row("Venus", start="2013-01-01", end="2013-12-31",
+                                    intervals=dup)], cited_scale=lambda iv: 0.7)(at)
+        assert g2["factor_by_body"]["Venus"] == pytest.approx(0.7)
 
-    # AC3: three simultaneous vedhā (product of three)
-    def test_three_vedha_multiply(self):
-        """AC3: three overlapping vedhā → product of three factors."""
-        rows = tuple(
-            _vedha_row(
-                graha=g,
-                window_start="2013-06-01", window_end="2013-09-30",
-                malefic_count=c,
-            )
-            for g, c in [("Saturn", 1), ("Mars", 2), ("Rahu", 3)]
-        )
-        ctx = _build_context(vedha_rows=rows, malefic_scale=_malefic_scale_rows())
+    def test_three_roots_under_a_cited_scale_take_the_strongest_per_root_once(self):
+        """Three roots, one cited twice at different strengths: per root the
+        strongest evidence once (0.5 for Saturn, not 0.5 × 0.7), then the
+        product across the three roots — 0.5 × 0.7 × 0.7 = 0.245."""
+        ivs = [_interval("Saturn", "2013-06-01", "2013-09-30", group="r1"),
+               _interval("Saturn", "2013-06-05", "2013-09-30", group="r1"),
+               _interval("Mars", "2013-06-01", "2013-09-30", group="r2"),
+               _interval("Rahu", "2013-06-01", "2013-09-30", group="r3")]
+        row = _t08_row("Venus", start="2013-01-01", end="2013-12-31", intervals=ivs)
+
+        def scale(iv):
+            return 0.5 if (iv["obstructor_body"] == "Saturn" and iv["t_in"] == date(2013, 6, 5)) else 0.7
+
+        g = VG.make_gate([row], cited_scale=scale)(date(2013, 6, 15))
+        assert len(g["fired"][0]["fired"]) == 4
+        assert g["factor_by_body"]["Venus"] == pytest.approx(0.5 * 0.7 * 0.7)
+        assert g["factor"] == pytest.approx(0.245) and g["factor"] != pytest.approx(0.5 * 0.7 ** 3)
+
+    # a clean covered row is clear (1.0), never the legacy 'mild' 0.85
+    def test_clean_covered_row_is_clear_one_never_a_mild_0_85(self):
+        """The retired multiplier scored a malefic_count=0 row at 0.85. A
+        covered row with no active interval is `clear`: factor 1.0, nothing
+        fired, λ product 1.0."""
+        row = _t08_row("Saturn", start="2013-06-01", end="2013-09-30", intervals=[])
+        ctx = _build_context(vedha_rows=(row,), malefic_scale=_malefic_scale_rows())
         qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert detail["vedha_fired_count"] == 3
-        factors = [fv["suppression_factor"] for fv in detail["fired_vedha"]]
-        expected = factors[0] * factors[1] * factors[2]
-        assert qg == pytest.approx(expected, rel=1e-9)
+        assert qg == 1.0 and detail["state"] == "clear" and detail["factor"] == 1.0
+        assert detail["vedha_fired_count"] == 0 and detail["coverage"]["covers_instant"] is True
+        assert _VEDHA_ZERO_MALEFIC_FACTOR == 0.85 and qg != _VEDHA_ZERO_MALEFIC_FACTOR
 
-    # Malefic_count = 0: mild suppression (not 1.0)
-    def test_zero_malefic_count_gives_mild_suppression(self):
-        """malefic_count=0 vedha (benefic obstruction) → mild suppression (not 1.0)."""
-        vrow = _vedha_row(
-            window_start="2013-06-01", window_end="2013-09-30",
-            malefic_count=0,
-            malefic_obstructing_grahas=[],
-        )
-        ctx = _build_context(
-            vedha_rows=(vrow,),
-            malefic_scale=_malefic_scale_rows(),
-        )
-        qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert detail["vedha_fired_count"] == 1
-        fv = detail["fired_vedha"][0]
-        assert fv["effect_grade"] == "no_grade"
-        assert fv["suppression_factor"] == pytest.approx(_VEDHA_ZERO_MALEFIC_FACTOR, abs=1e-9)
-        assert 0.0 < qg < 1.0, (
-            f"Zero-malefic vedha should give mild suppression (not 0 or 1), got {qg}"
-        )
-        assert qg < 1.0 - 1e-9, "Zero-malefic vedha must suppress (quality_gates < 1.0)"
+    # malefic_count never grades the gate (D-PG353)
+    def test_malefic_count_never_grades_the_gate(self):
+        """Legacy grading keys riding alongside the §5 payload (malefic_count
+        0..5, an effect grade) change NOTHING: the same obstructed / None
+        result for every count — no ordering by count exists."""
+        outs = []
+        for count in range(0, 6):
+            row = _t08_row("Saturn", start="2013-06-01", end="2013-09-30",
+                           intervals=[_interval("Mars", "2013-06-01", "2013-09-30")],
+                           extra_detail={"malefic_count": count, "malefic_effect_grade": "ignominy",
+                                         "malefic_obstructing_grahas": ["Mars"] * count})
+            ctx = _build_context(vedha_rows=(row,), malefic_scale=_malefic_scale_rows())
+            qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
+            outs.append((qg, detail["state"], detail["factor"], detail["vedha_fired_count"]))
+        assert outs == [(1.0, "obstructed", None, 1)] * 6
 
-    # Suppression factor ordering
-    def test_higher_malefic_count_gives_lower_factor(self):
-        """Higher malefic_count → lower (more suppressive) factor."""
-        scale = _malefic_scale_rows()
-        ctx_base = _build_context(malefic_scale=scale)
-        factors = {}
-        for count in range(1, 6):
-            vrow = _vedha_row(
-                window_start="2013-06-01", window_end="2013-09-30",
-                malefic_count=count,
-            )
-            ctx = _build_context(vedha_rows=(vrow,), malefic_scale=scale)
-            qg, _ = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-            factors[count] = qg
+    # no cited scale → factor None, never the legacy 0.70 fallback
+    def test_no_cited_scale_is_factor_none_not_0_70(self):
+        """The retired multiplier fell back to 0.70 with an empty scale
+        table. An obstruction without a cited scale is structure — factor
+        None, scale 'none_cited', λ product 1.0 — with or without rows in
+        malefic_scale (the engine never cites it)."""
+        row = _t08_row("Saturn", start="2013-06-01", end="2013-09-30",
+                       intervals=[_interval("Mars", "2013-06-01", "2013-09-30")])
+        for scale in ((), _malefic_scale_rows()):
+            ctx = _build_context(vedha_rows=(row,), malefic_scale=scale)
+            qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
+            assert detail["state"] == "obstructed" and detail["factor"] is None and qg == 1.0
+            assert detail["scale"].startswith("none_cited")
+            assert "suppression_factor" not in json.dumps(detail)
+        assert _VEDHA_NO_SCALE_ROW_FACTOR == 0.70
 
-        # Must be strictly decreasing with malefic_count
-        for c in range(1, 5):
-            assert factors[c] > factors[c + 1], (
-                f"factor[{c}]={factors[c]:.4f} must be > factor[{c+1}]={factors[c+1]:.4f}"
-            )
-
-    # Empty malefic_scale table (CI / absent) + malefic_count > 0
-    def test_empty_malefic_scale_table_gives_no_scale_row_factor(self):
-        """malefic_count > 0 but scale table empty → uses _VEDHA_NO_SCALE_ROW_FACTOR."""
-        vrow = _vedha_row(
-            window_start="2013-06-01", window_end="2013-09-30",
-            malefic_count=3,
-        )
-        ctx = _build_context(vedha_rows=(vrow,), malefic_scale=())
-        qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert detail["vedha_fired_count"] == 1
-        fv = detail["fired_vedha"][0]
-        assert fv["suppression_factor"] == pytest.approx(_VEDHA_NO_SCALE_ROW_FACTOR, abs=1e-9)
-
-    # Mixed: overlapping + non-overlapping
-    def test_only_overlapping_vedha_fires(self):
-        """One overlapping + one non-overlapping vedha: only overlapping fires."""
-        overlapping = _vedha_row(
-            graha="Saturn",
-            window_start="2013-06-01", window_end="2013-09-30",
-            malefic_count=1,
-        )
-        non_overlapping = _vedha_row(
-            graha="Mars",
-            window_start="2012-01-01", window_end="2012-06-01",
-            malefic_count=5,
-        )
-        ctx = _build_context(
-            vedha_rows=(overlapping, non_overlapping),
-            malefic_scale=_malefic_scale_rows(),
-        )
-        qg, detail = _compute_quality_gates_from_context(ctx, "2013-06-15", "2013-06-25")
-        assert detail["vedha_fired_count"] == 1
-        assert detail["fired_vedha"][0]["graha"] == "Saturn"
-        # Only the overlapping (malefic_count=1) factor applies
-        expected_factor = _suppression_factor_for_grade("fear")
-        assert qg == pytest.approx(expected_factor, rel=1e-9)
+    # only the interval covering the INSTANT fires (half-open; the reviewer's April-1 probe)
+    def test_only_the_interval_covering_the_instant_fires(self):
+        """One row, two intervals: Saturn active from March 1; Mars ended
+        March 1 (half-open). On April 1 only Saturn fires — the Mars
+        interval is not a lingering 0.70; on February 1 only Mars."""
+        ivs = [_interval("Saturn", "2013-03-01", "2013-09-30"),
+               _interval("Mars", "2013-01-01", "2013-03-01")]
+        row = _t08_row("Venus", start="2013-01-01", end="2013-12-31", intervals=ivs)
+        ctx = _build_context(vedha_rows=(row,), malefic_scale=_malefic_scale_rows())
+        _, d_apr = _compute_quality_gates_from_context(ctx, "2013-04-01", "2013-04-10")
+        assert [f["obstructor_body"] for f in d_apr["fired_vedha"][0]["fired"]] == ["Saturn"]
+        _, d_feb = _compute_quality_gates_from_context(ctx, "2013-02-01", "2013-02-10")
+        assert [f["obstructor_body"] for f in d_feb["fired_vedha"][0]["fired"]] == ["Mars"]
+        _, d_mar1 = _compute_quality_gates_from_context(ctx, "2013-03-01", "2013-03-02")
+        assert [f["obstructor_body"] for f in d_mar1["fired_vedha"][0]["fired"]] == ["Saturn"]
 
     # quality_gates always in (0, 1]
     def test_quality_gates_always_in_0_1(self):
@@ -496,48 +491,30 @@ class TestV1ParityModeUnaffected:
 class TestEvaluateLambdaWithSuppression:
     """Integration tests: quality_gates flowing through evaluate_lambda_vector."""
 
-    def test_lambda_with_vedha_less_than_without(self):
-        """lambda_v3 with an active vedha < lambda_v3 without, at a JD where
-        PROMISE * PERMISSION * activity > 0."""
-        targets = [t for t in RM.build_fixture_targets(CHART_ID) if t.event_class == "marriage"]
-        dasha_periods = DD.build_fixture_dasha_periods(CHART_ID)
-
-        # Vedha active across the entire test period — every JD will be suppressed.
-        vrow = _vedha_row(
-            window_start="2013-01-01", window_end="2014-12-31",
-            malefic_count=3,
-        )
+    def test_lambda_identical_with_and_without_an_uncited_obstruction(self):
+        """Reconciled: an active obstruction with no cited scale (the
+        production engine cites none — D-PG353) is structure on the row,
+        not a number in λ. λ_v3 is IDENTICAL with and without the overlay
+        row at every JD; the state `obstructed` (factor None) is visible in
+        x_t_detail.quality_gates_detail; the legacy 'suppressed <
+        unsuppressed' ordering is gone. Without any overlay the gate reads
+        `unavailable`, never a clean number."""
+        row = _t08_row("Saturn", start="2013-01-01", end="2014-12-31",
+                       intervals=[_interval("Mars", "2013-01-01", "2014-12-31")])
         ctx_no_vedha = _build_context(vedha_rows=(), malefic_scale=_malefic_scale_rows())
-        ctx_with_vedha = _build_context(
-            vedha_rows=(vrow,), malefic_scale=_malefic_scale_rows()
-        )
+        ctx_with_vedha = _build_context(vedha_rows=(row,), malefic_scale=_malefic_scale_rows())
 
         jd_vector = np.linspace(_jd(2013, 6, 1), _jd(2014, 6, 1), 100)
-
         results_no = evaluate_lambda_vector(swe, ctx_no_vedha, jd_vector, v1_parity_mode=False)
         results_with = evaluate_lambda_vector(swe, ctx_with_vedha, jd_vector, v1_parity_mode=False)
 
-        # For every JD: suppressed result <= unsuppressed result.
-        violations = []
-        suppressed_somewhere = False
+        assert any(r.raw_lambda > 1e-8 for r in results_no), "no primitive fired — vacuous"
         for i, (r_no, r_with) in enumerate(zip(results_no, results_with)):
-            if r_with.raw_lambda > r_no.raw_lambda + 1e-10:
-                violations.append(
-                    f"[{i}] suppressed lambda ({r_with.raw_lambda:.8f}) > "
-                    f"unsuppressed lambda ({r_no.raw_lambda:.8f})"
-                )
-            if r_no.raw_lambda > 1e-8 and r_with.raw_lambda < r_no.raw_lambda - 1e-10:
-                suppressed_somewhere = True
-
-        assert not violations, (
-            "Suppressed lambda must never exceed unsuppressed lambda:\n"
-            + "\n".join(violations[:5])
-        )
-        # Verify suppression is actually visible somewhere (not vacuously passing)
-        assert suppressed_somewhere, (
-            "Suppression was never visible across 100 JDs — "
-            "either all lambda=0 (no primitives fired) or suppression not applied."
-        )
+            assert r_with.raw_lambda == pytest.approx(r_no.raw_lambda, abs=1e-12), i
+            qgd = r_with.x_t_detail["quality_gates_detail"]
+            assert qgd["state"] == "obstructed" and qgd["factor"] is None
+            assert qgd["quality_gates"] == 1.0 and qgd["scoped_application"] == []
+            assert r_no.x_t_detail["quality_gates_detail"]["state"] == "unavailable"
 
     def test_lambda_v3_still_in_0_1_with_suppression(self):
         """AC3 + invariant: lambda_v3 stays in [0,1] even with multiple active vedhā."""
