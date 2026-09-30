@@ -134,6 +134,8 @@ against the reference tables (§12.9).
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import hashlib
 import importlib.util
 import json
 import sys
@@ -143,7 +145,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import connect, step_parser, write_evidence  # noqa: E402
+from common import connect, run_main_guarded, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
 if str(SIDECAR) not in sys.path:
@@ -1170,6 +1172,53 @@ def build_coverage_rows(chart_id: str, generation: str,
     return rows
 
 
+# ── enumeration provenance (Pravāha A2.5, ASTRA round-2 amendment 2) ─────────
+
+
+def _canonical_sha256(payload) -> str:
+    return "sha256:" + hashlib.sha256(json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), default=str,
+        ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def source_snapshot(chart_id: str, map_rows: list[dict],
+                    facts: ResolutionFacts, fingerprints: dict) -> dict:
+    """Content fingerprints of EVERYTHING this enumeration read from the
+    database: the resonance-map rows (order-independent), the resolution
+    facts (chart_facts positions/arudhas/sensitive checks/yoga firings and
+    the resonance writer's context), and the §12.9 upstream fingerprints.
+    Eight per-body invocations that read the same source state produce the
+    SAME snapshot; the century driver refuses a run whose bodies disagree
+    (a mixed-source run), and the candidate build re-verifies the binding."""
+    canon_rows = sorted(json.dumps(r, sort_keys=True, separators=(",", ":"),
+                                   default=str) for r in map_rows)
+    return {
+        "chart_id": chart_id,
+        "resonance_map_sha256": _canonical_sha256(canon_rows),
+        "resonance_map_rows": len(map_rows),
+        "resolution_facts_sha256": _canonical_sha256(dataclasses.asdict(facts)),
+        "upstream_fingerprints": fingerprints,
+    }
+
+
+def ephemeris_checksums(ephe_path: str | None) -> dict:
+    """{name: sha256} of every .se1 file under the ephemeris directory the
+    enumeration used (sorted by name; streamed hashing). Empty when the
+    directory is absent — recorded honestly; the driver/build refuse an
+    empty binding, never the enumerator (it records, it does not gate)."""
+    files: dict[str, str] = {}
+    if ephe_path:
+        root = Path(ephe_path)
+        if root.is_dir():
+            for p in sorted(root.glob("*.se1")):
+                h = hashlib.sha256()
+                with p.open("rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                files[p.name] = "sha256:" + h.hexdigest()
+    return {"path": str(ephe_path) if ephe_path else None, "files": files}
+
+
 # ── NDJSON streaming write (Pravāha A2.5) ─────────────────────────────────────
 
 
@@ -1229,6 +1278,14 @@ def main(argv: list[str] | None = None) -> int:
                              "to (never truncated): the per-body century-chain "
                              "shape (CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2)")
     parser.add_argument("--coverage-out", required=True)
+    parser.add_argument("--receipt-out", default=None,
+                        help="write the CENTURY_ENUMERATION_RECEIPT here on "
+                             "completion: the object's lines/bytes/sha256, "
+                             "the source snapshot, ephemeris checksums, "
+                             "configuration, dedupe provenance and coverage "
+                             "binding the century chain verifies (ASTRA "
+                             "round-2 amendment 2). Written ONLY after the "
+                             "payload and coverage are on disk.")
     args = parser.parse_args(argv)
 
     if bool(args.episodes_out) == bool(args.episodes_ndjson_out):
@@ -1237,6 +1294,11 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 3
     episodes_out = args.episodes_out or args.episodes_ndjson_out
+    if args.receipt_out and Path(args.receipt_out).exists():
+        print(f"ERROR: --receipt-out {args.receipt_out} already exists — a "
+              "completion receipt is written once per fresh invocation, never "
+              "over a previous attempt's", file=sys.stderr)
+        return 3
 
     import swisseph as swe
 
@@ -1311,6 +1373,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: no gochara_resonance_map rows for chart {args.chart_id} "
               "— run ka_gochara_resonance first", file=sys.stderr)
         return 3
+    snapshot = source_snapshot(args.chart_id, map_rows, facts, fingerprints)
 
     targets = resolve_targets(map_rows, facts)
     state_counts: dict[str, int] = {}
@@ -1380,12 +1443,73 @@ def main(argv: list[str] | None = None) -> int:
     Path(args.coverage_out).write_text(
         json.dumps(coverage, indent=2, default=str) + "\n")
 
+    receipt = None
+    if args.receipt_out:
+        # The completion receipt (CENTURY_ENUMERATION_RECEIPT v1.0): written
+        # LAST, after the payload and coverage are on disk, binding the
+        # object exactly as written (streamed stats of the file itself) plus
+        # every provenance the century chain verifies. The receipt's absence
+        # after exit 0 is itself a failure at the driver.
+        from step06_candidate_build import (RECEIPT_ARTIFACT, RECEIPT_VERSION,
+                                            coverage_binding)
+        from common import file_stats, peak_rss_bytes
+        obj_stats = file_stats(episodes_out)
+        dropped_path = dedupe_report.get("dropped_refs_artifact")
+        dropped_stats = file_stats(dropped_path) if dropped_path else None
+        receipt = {
+            "artifact": RECEIPT_ARTIFACT, "version": RECEIPT_VERSION,
+            "completed": True,
+            "chart_id": args.chart_id, "generation": args.generation,
+            "horizon": horizon_text,
+            "bodies_enumerated": list(bodies),
+            "convention_id": convention_id,
+            "method_version": CONVENTION_VECTOR["method_version"],
+            "configuration": {
+                "orb_deg": args.orb_deg,
+                "refine": not args.no_refine,
+                "candidate_flags": dict(CANDIDATE_FLAGS),
+                "ephe_path": args.ephe_path,
+            },
+            "source_snapshot": snapshot,
+            "ephemeris": {**ephemeris_checksums(args.ephe_path),
+                          "backends": backends},
+            "episodes": {
+                "format": ("ndjson-append" if args.episodes_ndjson_out else "json"),
+                "path": episodes_out,
+                **obj_stats,
+                "lines_written": n_written,
+                "episodes_before_dedupe": dedupe_report["episodes_before"],
+                "episodes_after_dedupe": dedupe_report["episodes_after"],
+            },
+            "dedupe": {
+                "rows_dropped": dedupe_report["rows_dropped"],
+                "duplicate_groups": dedupe_report["duplicate_groups"],
+                "dropped_refs_artifact": dropped_path,
+                "dropped_refs_contacts": dedupe_report["dropped_refs_contacts"],
+                "dropped_refs_sha256": dropped_stats["sha256"] if dropped_stats else None,
+                "dropped_refs_bytes": dropped_stats["bytes"] if dropped_stats else None,
+            },
+            "coverage": {
+                "path": args.coverage_out,
+                "partitions": len(coverage),
+                "sha256": coverage_binding(coverage),
+            },
+            "sky_boundary_events": n_sky_events,
+            "memory_guard": getattr(args, "memory_guard", None),
+            "peak_rss_bytes": peak_rss_bytes(),
+        }
+        Path(args.receipt_out).write_text(
+            json.dumps(receipt, indent=2, default=str) + "\n")
+
     report = {
         "driver": "step06_enumerate_episodes",
         "chart_id": args.chart_id, "generation": args.generation,
         "convention_id": convention_id,
         "horizon": horizon_text,
         "candidate_flags": {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg},
+        "receipt_out": args.receipt_out,
+        "source_snapshot": snapshot,
+        "memory_guard": getattr(args, "memory_guard", None),
         "bodies_enumerated": bodies,
         "moon_channel": "separate: Moon served on demand with moon_on_demand "
                         "coverage (M-3/R7); never persisted by this driver",
@@ -1415,4 +1539,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_main_guarded(main))

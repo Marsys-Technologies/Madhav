@@ -100,16 +100,18 @@ stale-overlay refusal.
 """
 from __future__ import annotations
 
+import heapq
 import importlib.util
 import json
 import sys
 import time
 import uuid as _uuid
+from array import array
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import connect, step_parser, write_evidence  # noqa: E402
+from common import connect, run_main_guarded, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
 _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
@@ -368,27 +370,48 @@ def find_components(eval_lambda, points: list[float], min_lambda: float):
     return components
 
 
+def iter_grid(horizon_jd: tuple[float, float], coarse_step_days: float):
+    """The daily evaluation grid, lazily — the SAME accumulation
+    (t += coarse_step_days from horizon start) the whole-class projection
+    used, so every grid float is bit-identical whether the class is
+    projected whole or cluster by cluster."""
+    t = horizon_jd[0]
+    while t <= horizon_jd[1]:
+        yield t
+        t += coarse_step_days
+
+
+def contact_span(c: dict) -> tuple[float, float]:
+    """The instants a contact can contribute to or break the series at:
+    [min(t_in, t_exact), max(t_out, t_exact)] (t_exact is inside the in-orb
+    span by construction; taken defensively so a malformed row can never
+    place a breakpoint outside its own cluster)."""
+    lo, hi = c["_t_in_jd"], c["_t_out_jd"]
+    te = c["_t_exact_jd"]
+    if te is not None:
+        lo, hi = min(lo, te), max(hi, te)
+    return lo, hi
+
+
 def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                           horizon_jd: tuple[float, float],
                           quality_gate_for_date, *,
                           min_lambda: float = MIN_LAMBDA_DEFAULT,
                           coarse_step_days: float = COARSE_STEP_DAYS_DEFAULT,
                           day_stride_days: float = 1.0) -> tuple[list[dict], dict]:
-    """Era -> month -> day window rows for one event class. Returns
-    (window_row_dicts, class_report). Window rows carry logical
-    window_key/parent_key; the writer resolves them to parent_window_id at
-    INSERT time."""
+    """Era -> month -> day window rows for one event class from an in-memory
+    contact list — the rehearsal-scale (and equivalence-oracle) shape; the
+    century path runs project_class_streamed, which is exactly this
+    computation as a bounded sweep. Returns (window_row_dicts,
+    class_report). Window rows carry logical window_key/parent_key; the
+    writer resolves them to parent_window_id at INSERT time."""
     evaluate = make_eval_fn(class_ctx, contacts, quality_gate_for_date)
     eval_lambda = lambda t: evaluate(t)["lambda_raw"]  # noqa: E731
 
     breakpoints = sorted({b for c in contacts
                           for b in (c["_t_in_jd"], c["_t_exact_jd"], c["_t_out_jd"])
                           if b is not None and horizon_jd[0] <= b <= horizon_jd[1]})
-    grid = []
-    t = horizon_jd[0]
-    while t <= horizon_jd[1]:
-        grid.append(t)
-        t += coarse_step_days
+    grid = list(iter_grid(horizon_jd, coarse_step_days))
     series = sorted(set(grid) | set(breakpoints))
     if not series:
         return [], {"event_class": class_ctx.event_class,
@@ -545,7 +568,7 @@ def _table_columns(conn, table: str) -> set[str]:
 def _contact_row_to_dict(row) -> dict:
     (cid, body, relation, ttype, tref, t_in, t_exact, t_out,
      orb_max, completeness) = row
-    return {
+    d = {
         "contact_id": cid, "body": body, "relation": relation,
         "target_type": ttype, "target_ref": tref,
         "orb_max_deg": float(orb_max) if orb_max is not None else None,
@@ -554,6 +577,8 @@ def _contact_row_to_dict(row) -> dict:
         "_t_exact_jd": jd_of(t_exact) if t_exact is not None else None,
         "_t_out_jd": jd_of(t_out),
     }
+    d["_span_lo"], d["_span_hi"] = contact_span(d)
+    return d
 
 
 _CONTACT_COLUMNS_SQL = (
@@ -561,52 +586,102 @@ _CONTACT_COLUMNS_SQL = (
     " t_in, t_exact, t_out, orb_max_deg, completeness_state")
 
 
+def _class_pair_conditions(target_pairs) -> tuple[str, list]:
+    pairs = sorted(target_pairs)
+    conds = " OR ".join(["(target_type = %s AND target_ref = %s)"] * len(pairs))
+    params: list = []
+    for ttype, tref in pairs:
+        params += [ttype, tref]
+    return conds, params
+
+
+def count_class_contacts(conn, chart_id: str, generation: str,
+                         target_pairs: set[tuple[str, str]],
+                         relations: list[str]) -> int:
+    """SQL COUNT of one class's contacts with a scorable relation — the
+    per-class accounting (contacts_matched / no-contact short-circuit)
+    without materializing the class."""
+    if not target_pairs:
+        return 0
+    conds, params = _class_pair_conditions(target_pairs)
+    return int(conn.execute(
+        "SELECT count(*) FROM kala_gochara_contacts"
+        " WHERE chart_id = %s AND generation = %s AND relation = ANY(%s)"
+        f" AND ({conds})",
+        [chart_id, generation, relations, *params]).fetchone()[0])
+
+
 def iter_class_contacts(conn, chart_id: str, generation: str,
                         target_pairs: set[tuple[str, str]]):
     """Stream ONE event class's contacts via a server-side cursor (ASTRA A2.5
-    review amendment 1): the century projection never holds more than one
-    class's contacts in memory. `target_pairs` is the class's (target_type,
+    review amendment 1), ORDERED by span start (LEAST(t_in, t_exact)) so
+    iter_series_points / sweep_class_components can consume them as a
+    sliding window — the projection never holds more than the contacts
+    active around the sweep point (round-2 amendment 1). `target_pairs` is the class's (target_type,
     target_ref) set from gochara_resonance_map (map UNIQUE(chart, class,
-    type, ref) makes the per-class join unambiguous). Rows arrive unordered
-    (the projection's evaluation grid is order-independent — it re-sorts
-    breakpoints itself)."""
-    pairs = sorted(target_pairs)
-    if not pairs:
+    type, ref) makes the per-class join unambiguous)."""
+    if not target_pairs:
         return
-    conds = " OR ".join(["(target_type = %s AND target_ref = %s)"] * len(pairs))
-    params = [chart_id, generation]
-    for ttype, tref in pairs:
-        params += [ttype, tref]
+    conds, params = _class_pair_conditions(target_pairs)
     with conn.cursor(name="step06b_class_contacts") as cur:
         cur.itersize = 10000
         cur.execute(
             f"SELECT {_CONTACT_COLUMNS_SQL} FROM kala_gochara_contacts"
-            f" WHERE chart_id = %s AND generation = %s AND ({conds})",
-            params)
+            f" WHERE chart_id = %s AND generation = %s AND ({conds})"
+            " ORDER BY LEAST(t_in, COALESCE(t_exact, t_in)), contact_id",
+            [chart_id, generation, *params])
         for row in cur:
             yield _contact_row_to_dict(row)
 
 
-def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
+def _dt_of_jd(jd: float) -> datetime:
+    return datetime.fromtimestamp((jd - JD_UNIX_EPOCH) * 86400.0, tz=UTC)
+
+
+def fetch_class_contacts_intersecting(conn, chart_id: str, generation: str,
+                                      target_pairs: set[tuple[str, str]],
+                                      relations: list[str],
+                                      lo_jd: float, hi_jd: float) -> list[dict]:
+    """Pass-2 bounded re-read: the class's scorable contacts whose span
+    intersects [lo, hi], in the stream's (span start, contact_id) order,
+    with _primitive set. The range is a peak's refinement window (about
+    two weeks) or a single instant — never the class."""
+    if not target_pairs:
+        return []
+    conds, params = _class_pair_conditions(target_pairs)
     rows = conn.execute(
-        "SELECT contact_id, body, relation, target_type, target_ref,"
-        " t_in, t_exact, t_out, orb_max_deg, completeness_state"
-        " FROM kala_gochara_contacts"
-        " WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation)).fetchall()
+        f"SELECT {_CONTACT_COLUMNS_SQL} FROM kala_gochara_contacts"
+        f" WHERE chart_id = %s AND generation = %s AND relation = ANY(%s)"
+        f" AND ({conds})"
+        " AND LEAST(t_in, COALESCE(t_exact, t_in)) <= %s"
+        " AND GREATEST(t_out, COALESCE(t_exact, t_out)) >= %s"
+        " ORDER BY LEAST(t_in, COALESCE(t_exact, t_in)), contact_id",
+        [chart_id, generation, relations, *params,
+         _dt_of_jd(hi_jd), _dt_of_jd(lo_jd)]).fetchall()
     out = []
-    for (cid, body, relation, ttype, tref, t_in, t_exact, t_out,
-         orb_max, completeness) in rows:
-        out.append({
-            "contact_id": cid, "body": body, "relation": relation,
-            "target_type": ttype, "target_ref": tref,
-            "orb_max_deg": float(orb_max) if orb_max is not None else None,
-            "completeness_state": completeness,
-            "_t_in_jd": jd_of(t_in),
-            "_t_exact_jd": jd_of(t_exact) if t_exact is not None else None,
-            "_t_out_jd": jd_of(t_out),
-        })
+    for row in rows:
+        c = _contact_row_to_dict(row)
+        c["_primitive"] = RELATION_TO_PRIMITIVE[c["relation"]]
+        out.append(c)
     return out
+
+
+def iter_era_rows(conn, chart_id: str, generation: str):
+    """Stream the written era-tier rows back for the delta report (round-2
+    amendment 1: report data is read from the relation after commit, never
+    retained across classes), ordered the way the report prints them."""
+    with conn.cursor(name="step06b_era_rows") as cur:
+        cur.itersize = 5000
+        cur.execute(
+            "SELECT event_class, peak_date, raw_intensity, signed_intensity,"
+            " valence FROM kala_gochara_windows"
+            " WHERE chart_id = %s AND generation = %s AND resolution = 'era'"
+            " ORDER BY event_class, peak_date",
+            (chart_id, generation))
+        for cls, peak_date, raw, signed, val in cur:
+            yield {"resolution": "era", "event_class": cls,
+                   "peak_date": peak_date, "raw_intensity": float(raw),
+                   "signed_intensity": float(signed), "valence": val}
 
 
 def fetch_map_rows(conn, chart_id: str) -> list[dict]:
@@ -665,26 +740,45 @@ def make_quality_gate_for_date(vedha_rows: list[dict],
     return for_date
 
 
+class WindowWriteState:
+    """Cross-call state for per-cluster write_windows calls within one
+    projection run: the natural-key collapse map and the window_key → id map
+    must persist across the clusters of a class exactly as they did within
+    the single per-class call (adjacent clusters can still retain peaks that
+    land on the same calendar day). One computed_at for the run."""
+
+    def __init__(self):
+        self.id_by_key: dict[str, int] = {}
+        self.seen_natural: dict[tuple, int] = {}
+        self.skipped_dupes = 0
+        self.computed_at = datetime.now(UTC)
+
+
 def write_windows(conn, chart_id: str, generation: str,
                   rows: list[dict], *, source: str,
-                  window_columns: set[str], delete: bool = True) -> tuple[int, int]:
+                  window_columns: set[str], delete: bool = True,
+                  state: WindowWriteState | None = None) -> tuple[int, int]:
     """Plan §4.7 idempotent rebuild: scoped DELETE (chart_id × generation)
     then INSERT, parents before children so parent_window_id resolves to the
     containing row's id. Never touches another generation. The caller holds
     the transaction.
 
-    `delete=False` (the per-class streamed century shape, ASTRA A2.5 review
-    amendment 1): the caller already issued the scoped DELETE once, and each
-    event class's rows are INSERTed as that class is projected — window rows
-    for the whole century never accumulate in this process. Parent linkage is
-    class-internal (a month/day window's parent era is the same class), so a
-    per-class call resolves parent_window_id exactly as the whole-set call."""
+    `delete=False` (the streamed century shape, ASTRA A2.5 review amendment
+    1): the caller already issued the scoped DELETE once, and each overlap
+    cluster's rows are INSERTed as the cluster is projected — window rows
+    for the whole century never accumulate in this process. Parent linkage
+    is cluster-internal (a month/day window's parent era is in the same
+    cluster), and `state` carries the natural-key collapse across clusters
+    so a per-cluster call resolves parent_window_id and duplicate collapse
+    exactly as the whole-set call. Returns (written, skipped) for THIS call."""
     ledger._require_not_published(conn, chart_id, generation, "write_windows")
     if delete:
         conn.execute(
             "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
             (chart_id, generation))
-    computed_at = datetime.now(UTC)
+    if state is None:
+        state = WindowWriteState()
+    computed_at = state.computed_at
     optional = [c for c in OPTIONAL_COLUMNS if c in window_columns]
     base_cols = ["chart_id", "event_class", "temporal_shape", "window_start",
                  "window_end", "peak_date", "milestone_id",
@@ -696,7 +790,7 @@ def write_windows(conn, chart_id: str, generation: str,
     jsonb_cols = {"active_sentences", "contributing_systems", "suppression_state"}
     placeholders = ", ".join(
         f"%s::jsonb" if c in jsonb_cols else "%s" for c in cols)
-    id_by_key: dict[str, int] = {}
+    id_by_key = state.id_by_key
 
     def _values(row: dict) -> tuple:
         vals = {
@@ -723,7 +817,7 @@ def write_windows(conn, chart_id: str, generation: str,
     # (chart, class, window_start, peak_date, milestone_id, resolution,
     # generation). Keep the first in insert order; children of a skipped row
     # re-point to the retained row's id.
-    seen_natural: dict[tuple, int] = {}
+    seen_natural = state.seen_natural
     skipped_dupes = 0
     with conn.cursor() as cur:
         for row in ordered:
@@ -742,11 +836,267 @@ def write_windows(conn, chart_id: str, generation: str,
             id_by_key[row["window_key"]] = rid
             seen_natural[natural] = rid
     if skipped_dupes:
+        state.skipped_dupes += skipped_dupes
         print(f"write_windows: {skipped_dupes} projected row(s) shared a "
               "natural key with an already-written row (adjacent-component "
               "peak collapse to the same date); first occurrence kept, "
               "children re-pointed", file=sys.stderr)
     return len(ordered) - skipped_dupes, skipped_dupes
+
+
+# ── per-class streamed projection: the component sweep (round-2 amendment 1) ─
+#
+# project_class_windows needs the class's whole contact list. The century
+# path cannot hold it (a class is input-sized). project_class_streamed is the
+# SAME computation — the same series, the same find_components runs and
+# bisected boundaries, the same pinned peak admission/retention/refinement,
+# the same rows in the same order — arranged so that nothing input-sized
+# is retained:
+#
+#   pass 1 (sweep_class_components): the evaluation series (daily grid ∪
+#     in-horizon contact breakpoints) is generated lazily in order by
+#     merging the grid with a heap of breakpoints fed from the span-ordered
+#     contact stream; lambda at each point is evaluated over a SLIDING
+#     WINDOW holding only the contacts whose span has not yet ended (M-1
+#     decay is 0 outside (t_in, t_out), so an ended contact can never
+#     contribute again); each lambda >= min_lambda run is kept as two
+#     compact float arrays (jd, lambda) until it closes, exactly the
+#     era_series/era_values the whole-class code builds for that component.
+#   pass 2 (per component, as it closes): the pinned peak machinery runs on
+#     the arrays; the era-peak evaluation, each retained peak's
+#     refine_peak_to_day (±DAY_REFINEMENT_HALF_WINDOW_DAYS) and the
+#     month/day rows re-evaluate lambda over the contacts intersecting that
+#     small range, re-fetched from the relation (fetch_contacts_in) — the
+#     retained-peak count is bounded by the pinned 90-day separation, so
+#     this is at most a few hundred bounded fetches per component.
+#
+# Retained memory per class: the sliding window (overlap depth), one
+# component's compact series (16 bytes per series point — the one residual
+# that is inherently proportional to a continuously-active component,
+# because the pinned P90 admission needs the run's whole value distribution;
+# for a 1M-contact component ≈ 50 MB) plus its PeakCandidate list, and the
+# scalar class report. Never the class's contacts, never the century's rows.
+# Where a run is so long that even the compact residual matters, the
+# driver's RLIMIT_AS guard turns the overrun into a loud exit 3.
+
+_SUMMED_REPORT_KEYS = ("components", "peaks_admitted", "peaks_retained",
+                       "peaks_refined_outside_era", "era_windows",
+                       "month_windows", "day_windows", "quality_gates_fired")
+
+
+class ContactWindow:
+    """The contacts that can still contribute at or after the sweep point,
+    kept in the stream's (span start, contact_id) order — pass 1's ONLY
+    contact retention. make_eval_fn iterates it afresh per evaluation, so
+    the noisy-OR runs over the same contact sequence (minus the zero-decay
+    ones it skips anyway) as the whole-class evaluator."""
+
+    __slots__ = ("_items", "peak_size")
+
+    def __init__(self):
+        self._items: list[dict] = []
+        self.peak_size = 0
+
+    def add(self, c: dict) -> None:
+        self._items.append(c)
+        if len(self._items) > self.peak_size:
+            self.peak_size = len(self._items)
+
+    def evict_through(self, t: float) -> None:
+        """Drop every contact whose span ends at or before t: decay is 0 at
+        and after t_out, so it cannot affect any later point or bisection."""
+        self._items = [c for c in self._items if c["_span_hi"] > t]
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+
+def iter_series_points(contacts, horizon_jd: tuple[float, float],
+                       coarse_step_days: float, window: ContactWindow):
+    """Yield the whole-class evaluation series — sorted(set(grid) |
+    set(in-horizon breakpoints)) — one point at a time without building
+    it: the lazy grid is merged with a heap of breakpoints pushed as the
+    span-ordered contact stream is read. Invariant on every yielded point
+    p: every contact whose span starts at or before p has been added to
+    `window` (so lambda over the window at p, and at any bisection point
+    between p and its successor, equals the whole-class lambda)."""
+    h0, h1 = horizon_jd
+    grid = iter_grid(horizon_jd, coarse_step_days)
+    g = next(grid, None)
+    heap: list[float] = []
+    it = iter(contacts)
+    c = next(it, None)
+    last = None
+    while True:
+        cand = g
+        if heap and (cand is None or heap[0] < cand):
+            cand = heap[0]
+        while c is not None and (cand is None or c["_span_lo"] <= cand):
+            window.add(c)
+            for b in (c["_t_in_jd"], c["_t_exact_jd"], c["_t_out_jd"]):
+                if b is not None and h0 <= b <= h1:
+                    heapq.heappush(heap, b)
+            c = next(it, None)
+            if heap and (cand is None or heap[0] < cand):
+                cand = heap[0]
+        if cand is None:
+            return
+        if g is not None and g == cand:
+            g = next(grid, None)
+        while heap and heap[0] == cand:
+            heapq.heappop(heap)
+        if last is None or cand > last:
+            yield cand
+            last = cand
+
+
+def sweep_class_components(class_ctx: ClassContext, contacts, horizon_jd,
+                           quality_gate_for_date, *,
+                           min_lambda: float = MIN_LAMBDA_DEFAULT,
+                           coarse_step_days: float = COARSE_STEP_DAYS_DEFAULT):
+    """Pass 1: find_components as a sweep. Yields, per component,
+    (enter_jd, exit_jd, jds, lams, era_peak_jd, window_peak_size) where
+    jds/lams are the component's series and values as compact arrays and
+    era_peak_jd is the FIRST maximum (max(range(n), key=...) semantics)."""
+    window = ContactWindow()
+    evaluate = make_eval_fn(class_ctx, window, quality_gate_for_date)
+    eval_lambda = lambda t: evaluate(t)["lambda_raw"]  # noqa: E731
+    prev = None
+    run_jds = run_lams = None
+    enter = best = best_jd = None
+    for p in iter_series_points(contacts, horizon_jd, coarse_step_days,
+                                window):
+        v = eval_lambda(p)
+        if run_jds is None and v >= min_lambda:
+            enter = (_bisect_above(eval_lambda, prev, p, min_lambda)
+                     if prev is not None else p)
+            run_jds, run_lams = array("d"), array("d")
+            best, best_jd = None, None
+        if run_jds is not None:
+            if v >= min_lambda:
+                run_jds.append(p)
+                run_lams.append(v)
+                if best is None or v > best:
+                    best, best_jd = v, p
+            else:
+                exit_jd = _bisect_below(eval_lambda, run_jds[-1], p, min_lambda)
+                yield enter, exit_jd, run_jds, run_lams, best_jd, window.peak_size
+                run_jds = run_lams = None
+        window.evict_through(p)
+        prev = p
+    if run_jds is not None:
+        yield enter, prev, run_jds, run_lams, best_jd, window.peak_size
+
+
+def project_class_streamed(class_ctx: ClassContext, contacts, horizon_jd,
+                           quality_gate_for_date, write_rows,
+                           fetch_contacts_in, *,
+                           min_lambda: float = MIN_LAMBDA_DEFAULT,
+                           coarse_step_days: float = COARSE_STEP_DAYS_DEFAULT
+                           ) -> tuple[dict, dict, int, int]:
+    """Project one class from a span-ordered contact STREAM, component by
+    component, writing each component's rows (write_rows(rows) ->
+    (written, skipped)) before the next component closes.
+    `fetch_contacts_in(lo_jd, hi_jd)` returns the class's scorable contacts
+    whose span intersects [lo, hi], in (span start, contact_id) order —
+    pass 2's bounded re-read. The class report is the SUM of the
+    per-component figures (every summed key is per-component) plus the
+    era-tier aggregates the delta report needs, accumulated as scalars.
+    Returns (class_report, tier_counts, n_written, n_skipped)."""
+    acc = {"event_class": class_ctx.event_class, **class_ctx.factors_record()}
+    for k in _SUMMED_REPORT_KEYS:
+        acc[k] = 0
+    tier_counts = {"era": 0, "month": 0, "day": 0}
+    n_written = n_skipped = 0
+    gates_sum = 0.0
+    gates_n = 0
+    raw_sum = 0.0
+    window_peak = 0
+    longest_component = 0
+    half = leg.DAY_REFINEMENT_HALF_WINDOW_DAYS
+    margin = leg.DAY_REFINEMENT_STEP_DAYS
+
+    def _evaluator_for(lo: float, hi: float):
+        return make_eval_fn(class_ctx, fetch_contacts_in(lo, hi),
+                            quality_gate_for_date)
+
+    for enter_jd, exit_jd, jds, lams, era_peak_jd, win_peak in \
+            sweep_class_components(class_ctx, contacts, horizon_jd,
+                                   quality_gate_for_date, min_lambda=min_lambda,
+                                   coarse_step_days=coarse_step_days):
+        window_peak = max(window_peak, win_peak)
+        longest_component = max(longest_component, len(jds))
+        rows: list[dict] = []
+        era_eval = _evaluator_for(era_peak_jd, era_peak_jd)
+        era_peak = era_eval(era_peak_jd)
+        era_key = f"era-{_uuid.uuid4()}"
+        acc["quality_gates_fired"] += era_peak["quality_gates_detail"].get(
+            "vedha_fired_count", 0)
+
+        era_cands = leg.find_local_maxima(jds, lams)
+        admitted = leg.admit_candidates(era_cands, lams)
+        retained = leg.retain_candidates(
+            admitted, max_peaks=len(admitted) if admitted else 0,
+            min_separation_days=MIN_PEAK_SEPARATION_DAYS)
+        acc["peaks_admitted"] += len(admitted)
+        acc["peaks_retained"] += len(retained)
+        acc["components"] += 1
+        acc["era_windows"] += 1
+
+        rows.append(_window_row(
+            class_ctx, era_eval, window_key=era_key, parent_key=None,
+            tier="era", enter_jd=enter_jd, exit_jd=exit_jd,
+            peak_jd=era_peak_jd))
+
+        for cand in retained:
+            ev = _evaluator_for(cand.jd - half - margin, cand.jd + half + margin)
+            peak_jd_true, _lam = leg.refine_peak_to_day(
+                lambda t, _ev=ev: _ev(t)["lambda_raw"], cand.jd)
+            if not (enter_jd <= peak_jd_true <= exit_jd):
+                acc["peaks_refined_outside_era"] += 1
+                continue
+            d = date_of_jd(peak_jd_true)
+            month_start = date(d.year, d.month, 1)
+            next_month = (date(d.year + 1, 1, 1) if d.month == 12
+                          else date(d.year, d.month + 1, 1))
+            month_end = next_month - timedelta(days=1)
+
+            def _jd_of_date(dd: date) -> float:
+                return JD_UNIX_EPOCH + (dd - date(1970, 1, 1)).days
+
+            month_key = f"month-{_uuid.uuid4()}"
+            rows.append(_window_row(
+                class_ctx, ev, window_key=month_key, parent_key=era_key,
+                tier="month",
+                enter_jd=max(_jd_of_date(month_start), enter_jd),
+                exit_jd=min(_jd_of_date(month_end), exit_jd),
+                peak_jd=peak_jd_true))
+            rows.append(_window_row(
+                class_ctx, ev, window_key=f"day-{_uuid.uuid4()}",
+                parent_key=month_key, tier="day",
+                enter_jd=peak_jd_true, exit_jd=peak_jd_true,
+                peak_jd=peak_jd_true))
+            acc["month_windows"] += 1
+            acc["day_windows"] += 1
+
+        for r in rows:
+            tier_counts[r["resolution"]] += 1
+            if r["resolution"] == "era":
+                gates_sum += r["suppression_state"]["quality_gates"]
+                gates_n += 1
+                raw_sum += r["raw_intensity"]
+        w, s = write_rows(rows)
+        n_written += w
+        n_skipped += s
+    if gates_n:
+        acc["mean_quality_gates"] = gates_sum / gates_n
+    acc["era_raw_intensity_sum"] = raw_sum
+    acc["contact_window_peak"] = window_peak
+    acc["longest_component_points"] = longest_component
+    return acc, tier_counts, n_written, n_skipped
 
 
 def update_manifest_windows_count(conn, chart_id: str, generation: str,
@@ -763,91 +1113,110 @@ def update_manifest_windows_count(conn, chart_id: str, generation: str,
 # ── delta report vs the baseline generation ──────────────────────────────────
 
 
-def build_delta_report(*, chart_id: str, generation: str, baseline: str,
-                       class_reports: list[dict], window_rows: list[dict],
-                       baseline_rows: list[dict], flags: dict,
-                       fingerprints: dict | None, run_meta: dict) -> str:
-    """Factor-level delta report vs the baseline generation's served rows.
+def iter_delta_report_lines(*, chart_id: str, generation: str, baseline: str,
+                            class_reports: list[dict], era_rows,
+                            baseline_rows: list[dict], flags: dict,
+                            fingerprints: dict | None, run_meta: dict):
+    """The factor-level delta report vs the baseline generation, as a LINE
+    STREAM: the per-class table comes from the class reports (one row per
+    class, carrying `era_raw_intensity_sum`/`era_windows` so no window row
+    is needed for the mean), and the per-window section consumes `era_rows`
+    — an iterable of era-tier rows ALREADY sorted by (event_class,
+    peak_date), e.g. iter_era_rows' cursor — one row at a time (round-2
+    amendment 1: report data is never retained across the century).
 
     The baseline ('3.0') rows carry intensities only — every factor cell for
     the baseline is an honest '—' (null), never a back-filled number."""
-    lines = [
-        f"# Windows factor delta report — {generation} vs {baseline}",
-        "",
-        f"- chart_id: `{chart_id}`",
-        f"- generated: {run_meta.get('generated_at')}",
-        f"- writer: `step06b_windows_projection.py` (build {run_meta.get('build_id')})",
-        f"- horizon: {run_meta.get('horizon')}",
-        f"- flags: `{json.dumps(flags, sort_keys=True)}`",
-        f"- §12.9 fingerprints: `{json.dumps(fingerprints, sort_keys=True, default=str)}`",
-        "",
-        "Baseline factor cells are '—' where the baseline row set carries no",
-        "such factor (the '3.0' rows store intensities, not the v3 term",
-        "breakdown) — an honest null, never a 0.0 stand-in.",
-        "",
-        "## Per-class factors",
-        "",
-        "| event_class | windows 4.0 (era/month/day) | promise | permission | tārā | w30 | quality_gates | peaks admitted→retained | mean raw 4.0 | windows 3.0 | mean raw 3.0 | Δ mean raw |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
-    ]
+    yield f"# Windows factor delta report — {generation} vs {baseline}"
+    yield ""
+    yield f"- chart_id: `{chart_id}`"
+    yield f"- generated: {run_meta.get('generated_at')}"
+    yield f"- writer: `step06b_windows_projection.py` (build {run_meta.get('build_id')})"
+    yield f"- horizon: {run_meta.get('horizon')}"
+    yield f"- flags: `{json.dumps(flags, sort_keys=True)}`"
+    yield f"- §12.9 fingerprints: `{json.dumps(fingerprints, sort_keys=True, default=str)}`"
+    yield ""
+    yield "Baseline factor cells are '—' where the baseline row set carries no"
+    yield "such factor (the '3.0' rows store intensities, not the v3 term"
+    yield "breakdown) — an honest null, never a 0.0 stand-in."
+    yield ""
+    yield "## Per-class factors"
+    yield ""
+    yield ("| event_class | windows 4.0 (era/month/day) | promise | permission | tārā | w30 | quality_gates | peaks admitted→retained | mean raw 4.0 | windows 3.0 | mean raw 3.0 | Δ mean raw |")
+    yield "|---|---|---|---|---|---|---|---|---|---|---|---|"
     baseline_by_class: dict[str, list[dict]] = {}
     for r in baseline_rows:
         baseline_by_class.setdefault(r["event_class"], []).append(r)
-    raw_by_class: dict[str, list[float]] = {}
-    for r in window_rows:
-        if r["resolution"] == "era":
-            raw_by_class.setdefault(r["event_class"], []).append(r["raw_intensity"])
+    fmt = lambda v: f"{v:.6f}" if isinstance(v, float) else "—"  # noqa: E731
     for rep in class_reports:
         cls = rep["event_class"]
         base = baseline_by_class.get(cls, [])
-        mean4 = (sum(raw_by_class.get(cls, [])) / len(raw_by_class[cls])
-                 if raw_by_class.get(cls) else None)
+        n_era = rep.get("era_windows") or 0
+        mean4 = (rep["era_raw_intensity_sum"] / n_era
+                 if n_era and rep.get("era_raw_intensity_sum") is not None else None)
         mean3 = (sum(float(b["raw_intensity"]) for b in base) / len(base)
                  if base else None)
         delta = (mean4 - mean3) if (mean4 is not None and mean3 is not None) else None
-        fmt = lambda v: f"{v:.6f}" if isinstance(v, float) else "—"  # noqa: E731
-        lines.append(
+        yield (
             f"| {cls} | {rep['era_windows']}/{rep['month_windows']}/{rep['day_windows']}"
             f" | {rep['promise']:.6f} | {rep['permission']:.6f}"
             f" | {rep['tara_modifier']:.3f} (skip) | {rep['w30_modifier']:.3f} (N-14)"
             f" | {fmt(rep.get('mean_quality_gates'))}"
             f" | {rep['peaks_admitted']}→{rep['peaks_retained']} (H-5 uncapped)"
             f" | {fmt(mean4)} | {len(base)} | {fmt(mean3)} | {fmt(delta)} |")
-    lines += [
-        "",
-        "## Per-window deltas (era tier)",
-        "",
-        "| event_class | peak_date | raw 4.0 | signed 4.0 | valence | nearest 3.0 peak | raw 3.0 | Δ raw |",
-        "|---|---|---|---|---|---|---|---|",
-    ]
-    for r in sorted((w for w in window_rows if w["resolution"] == "era"),
-                    key=lambda w: (w["event_class"], w["peak_date"])):
+    yield ""
+    yield "## Per-window deltas (era tier)"
+    yield ""
+    yield ("| event_class | peak_date | raw 4.0 | signed 4.0 | valence | nearest 3.0 peak | raw 3.0 | Δ raw |")
+    yield "|---|---|---|---|---|---|---|---|"
+    for r in era_rows:
         base = baseline_by_class.get(r["event_class"], [])
         nearest = min(base, key=lambda b: abs((b["peak_date"] - r["peak_date"]).days),
                       default=None)
-        lines.append(
+        yield (
             f"| {r['event_class']} | {r['peak_date']} | {r['raw_intensity']:.6f}"
             f" | {r['signed_intensity']:.6f} | {r['valence']}"
             f" | {nearest['peak_date'] if nearest else '—'}"
             f" | {float(nearest['raw_intensity']) if nearest else '—'}"
             f" | {r['raw_intensity'] - float(nearest['raw_intensity']) if nearest else '—'} |")
-    lines += [
-        "",
-        "## Notes",
-        "",
-        "- PROMISE is the pinned noisy-OR over the class's resolved resonance-map weights.",
-        "- PERMISSION comes from the class context input "
-        f"({run_meta.get('class_context_source')}); the L1 timing-system wiring is part of the",
-        "  escalated production set (ADK-0012).",
-        "- tārā reports the pinned honest skip (M-3 separate Moon channel not wired here);",
-        "  w30 is N-14-removed (1.0). quality_gates reproduces the F-11 no-rows path where the",
-        "  overlay is absent — disclosed on every row's suppression_state.",
-        "- Peak storage is H-5-uncapped (the pre-H-5 cap of 3/era is removed; the pinned 90-day",
-        "  separation is retained).",
-        "- '—' is an honest null: no baseline counterpart exists.",
-        "",
-    ]
-    return "\n".join(lines)
+    yield ""
+    yield "## Notes"
+    yield ""
+    yield "- PROMISE is the pinned noisy-OR over the class's resolved resonance-map weights."
+    yield ("- PERMISSION comes from the class context input "
+           f"({run_meta.get('class_context_source')}); the L1 timing-system wiring is part of the")
+    yield "  escalated production set (ADK-0012)."
+    yield "- tārā reports the pinned honest skip (M-3 separate Moon channel not wired here);"
+    yield "  w30 is N-14-removed (1.0). quality_gates reproduces the F-11 no-rows path where the"
+    yield "  overlay is absent — disclosed on every row's suppression_state."
+    yield "- Peak storage is H-5-uncapped (the pre-H-5 cap of 3/era is removed; the pinned 90-day"
+    yield "  separation is retained)."
+    yield "- '—' is an honest null: no baseline counterpart exists."
+    yield ""
+
+
+def build_delta_report(*, chart_id: str, generation: str, baseline: str,
+                       class_reports: list[dict], window_rows: list[dict],
+                       baseline_rows: list[dict], flags: dict,
+                       fingerprints: dict | None, run_meta: dict) -> str:
+    """Materialized (rehearsal-scale) form of iter_delta_report_lines over an
+    in-memory window row list: era rows are selected and sorted here, and a
+    class report lacking `era_raw_intensity_sum` gets it from the rows."""
+    era = sorted((w for w in window_rows if w["resolution"] == "era"),
+                 key=lambda w: (w["event_class"], w["peak_date"]))
+    raw_by_class: dict[str, float] = {}
+    for r in era:
+        raw_by_class[r["event_class"]] = raw_by_class.get(r["event_class"], 0.0) \
+            + r["raw_intensity"]
+    reports = []
+    for rep in class_reports:
+        if "era_raw_intensity_sum" not in rep:
+            rep = dict(rep, era_raw_intensity_sum=raw_by_class.get(rep["event_class"], 0.0))
+        reports.append(rep)
+    return "\n".join(iter_delta_report_lines(
+        chart_id=chart_id, generation=generation, baseline=baseline,
+        class_reports=reports, era_rows=era, baseline_rows=baseline_rows,
+        flags=flags, fingerprints=fingerprints, run_meta=run_meta))
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
@@ -1022,9 +1391,10 @@ def main(argv: list[str] | None = None) -> int:
         unmapped = n_rel_valid - n_matched_valid
 
         source = SOURCE_REHEARSAL if args.rehearse_synthetic else SOURCE_LIVE
-        # Scoped DELETE once (plan §4.7 idempotent rebuild), then each class's
-        # windows are INSERTed as the class is projected — window rows for the
-        # whole century never accumulate in this process (amendment 1).
+        # Scoped DELETE once (plan §4.7 idempotent rebuild), then each
+        # overlap cluster's windows are INSERTed as the cluster is projected
+        # — window rows for the whole century never accumulate in this
+        # process (amendment 1 / round-2 amendment 1).
         ledger._require_not_published(conn, args.chart_id, args.generation,
                                       "write_windows")
         conn.execute(
@@ -1032,21 +1402,33 @@ def main(argv: list[str] | None = None) -> int:
             (args.chart_id, args.generation))
 
         gate_for_date = make_quality_gate_for_date(vedha_rows, malefic_scale)
-        era_rows: list[dict] = []  # the delta report reads era-tier rows only
+        write_state = WindowWriteState()
         tier_counts = {"era": 0, "month": 0, "day": 0}
         n_written = 0
         skipped_dupes = 0
         class_reports: list[dict] = []
         skipped_classes: list[dict] = []
-        for cls in sorted(weights_all_by_class):
-            cls_contacts: list[dict] = []
-            for c in iter_class_contacts(conn, args.chart_id, args.generation,
-                                         targets_by_class[cls]):
+        largest_window = 0
+
+        def _write_rows(rows: list[dict]) -> tuple[int, int]:
+            return write_windows(conn, args.chart_id, args.generation, rows,
+                                 source=source, window_columns=window_columns,
+                                 delete=False, state=write_state)
+
+        def _scorable(stream):
+            for c in stream:
                 primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
                 if primitive is None:
                     continue  # counted once, globally, in unmapped_relation
-                cls_contacts.append(dict(c, _primitive=primitive))
-            if not cls_contacts:
+                c["_primitive"] = primitive
+                yield c
+
+        for cls in sorted(weights_all_by_class):
+            # per-class accounting as an SQL COUNT — the class is never
+            # materialized to be counted (round-2 amendment 1)
+            n_cls = count_class_contacts(conn, args.chart_id, args.generation,
+                                         targets_by_class[cls], known_relations)
+            if not n_cls:
                 continue  # a class with no contacts honestly yields zero windows
             ctx_dict = (class_contexts.get(cls) if class_contexts
                         else _rehearsal_class_context(cls))
@@ -1055,7 +1437,7 @@ def main(argv: list[str] | None = None) -> int:
                     "event_class": cls,
                     "reason": "no class context (permission systems) — honest "
                               "skip, never a 0.0 stand-in (plan §4.6)",
-                    "contacts_matched": len(cls_contacts),
+                    "contacts_matched": n_cls,
                 })
                 continue
             class_ctx = ClassContext(
@@ -1064,30 +1446,58 @@ def main(argv: list[str] | None = None) -> int:
                 class_valence=ctx_dict.get("class_valence", "mixed"),
                 class_is_adverse=ctx_dict.get("class_is_adverse", False),
                 context_source=ctx_dict.get("context_source", context_source))
-            rows, rep = project_class_windows(
-                class_ctx, cls_contacts, horizon_jd, gate_for_date,
+            pairs = targets_by_class[cls]
+            rep, tiers, w_cls, s_cls = project_class_streamed(
+                class_ctx,
+                _scorable(iter_class_contacts(conn, args.chart_id,
+                                              args.generation, pairs)),
+                horizon_jd, gate_for_date, _write_rows,
+                lambda lo, hi, _p=pairs: fetch_class_contacts_intersecting(
+                    conn, args.chart_id, args.generation, _p,
+                    known_relations, lo, hi),
                 min_lambda=args.min_lambda,
                 coarse_step_days=args.coarse_step_days)
-            if rows:
-                gates_mean = sum(
-                    r["suppression_state"]["quality_gates"] for r in rows
-                    if r["resolution"] == "era") / max(1, sum(
-                        1 for r in rows if r["resolution"] == "era"))
-                rep["mean_quality_gates"] = gates_mean
-            for r in rows:
-                tier_counts[r["resolution"]] += 1
-            w_cls, s_cls = write_windows(
-                conn, args.chart_id, args.generation,
-                rows, source=source, window_columns=window_columns,
-                delete=False)
+            for k, v in tiers.items():
+                tier_counts[k] += v
             n_written += w_cls
             skipped_dupes += s_cls
-            era_rows.extend(r for r in rows if r["resolution"] == "era")
+            largest_window = max(largest_window, rep["contact_window_peak"])
             class_reports.append(rep)
 
         update_manifest_windows_count(conn, args.chart_id, args.generation,
                                       n_written)
         conn.commit()
+
+        # The delta report's per-window section is streamed back from the
+        # relation (era-tier rows, a named cursor) after the commit — no
+        # window row is retained across classes for it (round-2 amendment 1).
+        flags = {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg,
+                 "min_lambda": args.min_lambda,
+                 "coarse_step_days": args.coarse_step_days}
+        run_meta = {
+            "build_id": build_id,
+            "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "horizon": f"[{args.horizon_start},{args.horizon_end})",
+            "class_context_source": context_source,
+        }
+        if args.delta_report_out:
+            if "resolution" in window_columns:
+                era_stream = iter_era_rows(conn, args.chart_id, args.generation)
+            else:
+                # legacy schema without migration 567's resolution column:
+                # tiers are indistinguishable in the relation — the per-window
+                # section is honestly empty, never reconstructed from memory
+                era_stream = iter(())
+            with Path(args.delta_report_out).open("w", encoding="utf-8") as fh:
+                for line in iter_delta_report_lines(
+                        chart_id=args.chart_id, generation=args.generation,
+                        baseline=args.baseline_generation,
+                        class_reports=class_reports, era_rows=era_stream,
+                        baseline_rows=baseline_rows, flags=flags,
+                        fingerprints=fingerprints, run_meta=run_meta):
+                    fh.write(line)
+                    fh.write("\n")
+            conn.rollback()  # the report read only; leave no open transaction
     except ledger.PublishedGenerationRefusal as exc:
         conn.rollback()
         print(f"REFUSED: {exc}", file=sys.stderr)
@@ -1102,23 +1512,6 @@ def main(argv: list[str] | None = None) -> int:
             conn.close()
         except Exception:  # noqa: BLE001
             pass
-
-    flags = {**CANDIDATE_FLAGS, "orb_max_deg": args.orb_deg,
-             "min_lambda": args.min_lambda,
-             "coarse_step_days": args.coarse_step_days}
-    run_meta = {
-        "build_id": build_id,
-        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "horizon": f"[{args.horizon_start},{args.horizon_end})",
-        "class_context_source": context_source,
-    }
-    delta_report = build_delta_report(
-        chart_id=args.chart_id, generation=args.generation,
-        baseline=args.baseline_generation, class_reports=class_reports,
-        window_rows=era_rows, baseline_rows=baseline_rows, flags=flags,
-        fingerprints=fingerprints, run_meta=run_meta)
-    if args.delta_report_out:
-        Path(args.delta_report_out).write_text(delta_report)
 
     if unmapped or unmapped_relation:
         print(f"WARNING: contacts excluded from the activity function — "
@@ -1142,10 +1535,18 @@ def main(argv: list[str] | None = None) -> int:
         "windows_written": n_written,
         "windows_collapsed_dupes": skipped_dupes,
         "windows_by_tier": tier_counts,
-        "memory_shape": "per-class server-side-cursor streaming (amendment "
-            "1): contacts are fetched class by class and each class's "
-            "windows are written before the next class is read; only "
-            "era-tier rows are retained for the delta report",
+        "memory_shape": "component sweep (round-2 amendment 1): each class's "
+            "contacts stream through a span-ordered server-side cursor into a "
+            "sliding window; the evaluation series is generated lazily; each "
+            "lambda>=min run is held as compact float arrays until it closes, "
+            "then its peaks are refined against bounded range re-reads and "
+            "its windows written before the next component closes; class "
+            "reports are scalar aggregates; the delta report's per-window "
+            "section is streamed back from the relation after commit. "
+            "Retained: O(contact overlap depth) + one component's compact "
+            "series + O(classes) + the baseline generation's rows",
+        "contact_window_peak": largest_window,
+        "memory_guard": getattr(args, "memory_guard", None),
         "windows_by_tier_basis": "pre-dedupe projection counts; "
             "windows_written is post-dedupe, so "
             "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",
@@ -1164,4 +1565,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run_main_guarded(main))

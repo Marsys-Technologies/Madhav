@@ -52,15 +52,25 @@ content_digest once volatile metadata (computed_at, build_id, manifest
 linkage) is controlled — the digest itself (ledger._canonical_row_set) is
 order-independent over the canonically sorted DB row set.
 
-Finalized input manifest (amendment 2, §N.8): with --input-manifest the build
-verifies — before any candidate success (commit/GREEN) — the manifest's run
-identity (run_id uniform across manifest and every object), chart_id,
-generation, horizon, the full expected body set (PERSISTED_BODIES, imported,
-never restated), the coverage binding (order-independent sha256 of the merged
-coverage rows), and every object's streamed line count, byte count, and
-sha256. A missing, truncated (clean-prefix truncations included), altered,
-mixed-run, or unreadable object FAILS the build (exit 3, transaction rolled
-back) — a truncated or partial stream can never earn GREEN/COMPLETE.
+Finalized input manifest (amendment 2 + round-2 amendment 2, §N.8): with
+--input-manifest the build verifies — before any candidate success
+(commit/GREEN) — the CENTURY_INPUT_MANIFEST v1.1 schema; run identity
+(run_id uniform across manifest and every object); chart_id, generation,
+horizon; the full expected body set (PERSISTED_BODIES, imported, never
+restated); the run-level provenance (configuration incl. orb_deg == THIS
+build's, source snapshot, ephemeris checksums, convention id / method
+version == this build's); the coverage binding (order-independent sha256)
+plus partitions and horizons per body; every body's enumeration completion
+receipt (bytes/sha256 bound, content attesting a completed enumeration of
+THAT body with the object's exact stats, provenance uniform across bodies);
+the dedupe-provenance sidecar bindings (streamed bytes/sha256); the ACTUAL
+body identity of every streamed line; and every object's streamed line
+count, byte count, and sha256. A missing, empty-without-receipt, truncated
+(clean-prefix truncations included), altered, mixed-run, mixed-source,
+foreign-body or unreadable input FAILS the build (exit 3, transaction
+rolled back) — never GREEN/COMPLETE. A duplicate contact_id rejected by the
+relation's primary key (psycopg IntegrityError family / SQLSTATE 23xxx)
+exits 5 (round-2 amendment 6).
 
 The factor-level delta report vs '3.0' (§4.11, WP8's
 WP8_FACTOR_DELTA_REPORT_v1_0.md artifact) is attached to the manifest via
@@ -186,6 +196,158 @@ class ManifestVerificationError(ValueError):
     GREEN/COMPLETE."""
 
 
+# ── finalized-manifest schema (ASTRA A2.5 round-2 amendment 2) ───────────────
+#
+# CENTURY_INPUT_MANIFEST v1.1 binds, per body, the object AND the enumeration
+# completion receipt step06 wrote for it (CENTURY_ENUMERATION_RECEIPT v1.0),
+# and, once for the run, the provenance every receipt must agree on:
+#
+#   configuration    — orb_deg, refine, candidate_flags, ephe_path (what the
+#                      enumeration was asked to compute; the build refuses a
+#                      manifest whose orb_deg is not the build's own);
+#   source_snapshot  — sha256 of the resonance-map rows and of the resolution
+#                      facts each enumerator read, plus the §12.9 upstream
+#                      fingerprints (eight bodies enumerated against eight
+#                      DIFFERENT source states are a mixed-source run and
+#                      refuse at the driver AND at the build);
+#   ephemeris        — the sha256 of every .se1 file under the ephemeris path
+#                      the enumerators used (non-empty, uniform across bodies);
+#   convention_id / method_version — must equal the build's own.
+#
+# Per object: lines/bytes/sha256 of the NDJSON, the receipt's own
+# lines/bytes/sha256 binding, episodes_after_dedupe, and the dedupe-provenance
+# sidecar binding (.dropped_refs.json: uri/bytes/sha256) whenever the receipt
+# says the enumerator wrote one. Coverage: uri, order-independent sha256,
+# partition count, and partitions_by_body (every body >= 1 partition, every
+# partition's horizon == the build's).
+
+MANIFEST_ARTIFACT = "CENTURY_INPUT_MANIFEST"
+MANIFEST_VERSION = "1.1"
+RECEIPT_ARTIFACT = "CENTURY_ENUMERATION_RECEIPT"
+RECEIPT_VERSION = "1.0"
+PROVENANCE_KEYS = ("configuration", "source_snapshot", "ephemeris",
+                   "convention_id", "method_version")
+REQUIRED_CONFIGURATION_KEYS = ("orb_deg", "refine", "candidate_flags",
+                               "ephe_path")
+REQUIRED_SNAPSHOT_KEYS = ("resonance_map_sha256", "resonance_map_rows",
+                          "resolution_facts_sha256", "upstream_fingerprints")
+OBJECT_STAT_KEYS = ("lines", "bytes", "sha256")
+
+
+def receipt_provenance(receipt: dict) -> dict:
+    """The provenance block every body's receipt must agree on — exactly the
+    keys the manifest carries once for the run."""
+    return {k: receipt.get(k) for k in PROVENANCE_KEYS}
+
+
+def _require(cond: bool, msg: str) -> None:
+    if not cond:
+        raise ManifestVerificationError(msg)
+
+
+def verify_receipt(receipt: dict, *, body: str, chart_id: str,
+                   generation: str, horizon_text: str,
+                   object_stats: dict) -> None:
+    """One body's enumeration completion receipt against the object it
+    claims to describe (`object_stats` = the independently streamed
+    lines/bytes/sha256 of that object). Raises ManifestVerificationError on
+    any absent or inconsistent binding — a body without a completed receipt
+    bound to ITS object has no verified enumeration explanation, so even an
+    empty object cannot pass without one."""
+    _require(isinstance(receipt, dict), f"receipt for {body!r} is not a JSON object")
+    _require(receipt.get("artifact") == RECEIPT_ARTIFACT
+             and receipt.get("version") == RECEIPT_VERSION,
+             f"receipt for {body!r} is not a {RECEIPT_ARTIFACT} v{RECEIPT_VERSION}")
+    _require(receipt.get("completed") is True,
+             f"receipt for {body!r} does not attest a COMPLETED enumeration")
+    _require(receipt.get("bodies_enumerated") == [body],
+             f"receipt for {body!r} was written by an enumeration of "
+             f"{receipt.get('bodies_enumerated')!r}, not [{body!r}] — actual "
+             "body identity does not match the declared object")
+    for field, want in (("chart_id", chart_id), ("generation", generation),
+                        ("horizon", horizon_text)):
+        _require(receipt.get(field) == want,
+                 f"receipt for {body!r}: {field}={receipt.get(field)!r} != "
+                 f"{want!r}")
+    eps = receipt.get("episodes")
+    _require(isinstance(eps, dict), f"receipt for {body!r} lacks the episodes block")
+    for stat in OBJECT_STAT_KEYS:
+        _require(eps.get(stat) == object_stats.get(stat),
+                 f"receipt for {body!r}: episodes.{stat}={eps.get(stat)!r} "
+                 f"!= object {object_stats.get(stat)!r} — the receipt does "
+                 "not describe this object")
+    _require(eps.get("lines_written") == eps.get("lines")
+             == eps.get("episodes_after_dedupe"),
+             f"receipt for {body!r}: lines_written={eps.get('lines_written')!r} "
+             f"lines={eps.get('lines')!r} episodes_after_dedupe="
+             f"{eps.get('episodes_after_dedupe')!r} disagree — the object is "
+             "not exactly this invocation's completed payload")
+    cfg = receipt.get("configuration")
+    _require(isinstance(cfg, dict)
+             and all(k in cfg for k in REQUIRED_CONFIGURATION_KEYS),
+             f"receipt for {body!r} lacks configuration keys "
+             f"{list(REQUIRED_CONFIGURATION_KEYS)}")
+    snap = receipt.get("source_snapshot")
+    _require(isinstance(snap, dict)
+             and all(snap.get(k) not in (None, "", {}) for k in REQUIRED_SNAPSHOT_KEYS),
+             f"receipt for {body!r} lacks a bound source snapshot "
+             f"({list(REQUIRED_SNAPSHOT_KEYS)})")
+    ephe = receipt.get("ephemeris")
+    _require(isinstance(ephe, dict) and isinstance(ephe.get("files"), dict)
+             and ephe["files"]
+             and all(str(v).startswith("sha256:") for v in ephe["files"].values()),
+             f"receipt for {body!r} carries no ephemeris file checksums — an "
+             "enumeration whose ephemeris cannot be bound is unverifiable")
+    _require(bool(receipt.get("convention_id")) and bool(receipt.get("method_version")),
+             f"receipt for {body!r} lacks convention_id/method_version")
+    cov = receipt.get("coverage")
+    _require(isinstance(cov, dict) and isinstance(cov.get("partitions"), int)
+             and cov["partitions"] >= 1 and cov.get("sha256"),
+             f"receipt for {body!r} binds no coverage partitions — an "
+             "enumeration that searched nothing has no coverage to attest")
+    dd = receipt.get("dedupe")
+    _require(isinstance(dd, dict) and "dropped_refs_artifact" in dd
+             and "dropped_refs_contacts" in dd,
+             f"receipt for {body!r} lacks dedupe provenance")
+    if dd.get("dropped_refs_artifact"):
+        _require(bool(dd.get("dropped_refs_sha256")) and isinstance(dd.get("dropped_refs_bytes"), int),
+                 f"receipt for {body!r} names a dropped-refs artifact without "
+                 "binding its sha256/bytes")
+
+
+def verify_coverage_rows(coverage, *, horizon_text: str,
+                         expected_bodies) -> dict:
+    """Coverage partitions and horizons (amendment 2): every partition must
+    declare requested == completed == THIS horizon, name a body of the
+    expected set, and every expected body must own >= 1 partition. Returns
+    partitions_by_body. Empty coverage, a shortened/mismatched horizon, or a
+    body with no partition all refuse."""
+    _require(isinstance(coverage, list) and coverage,
+             "coverage is empty — nothing attests what was searched")
+    expected = list(expected_bodies)
+    by_body = {b: 0 for b in expected}
+    lower_to_body = {b.lower(): b for b in expected}
+    for i, row in enumerate(coverage):
+        _require(isinstance(row, dict) and row.get("partition_kind")
+                 and row.get("partition_key"),
+                 f"coverage[{i}] lacks partition_kind/partition_key")
+        for field in ("requested_horizon", "completed_horizon"):
+            _require(row.get(field) == horizon_text,
+                     f"coverage[{i}] {row['partition_key']!r}: {field}="
+                     f"{row.get(field)!r} != {horizon_text!r} — a partition "
+                     "not completed over the build horizon refuses")
+        body_l = str(row["partition_key"]).split(":", 1)[0]
+        _require(body_l in lower_to_body,
+                 f"coverage[{i}] {row['partition_key']!r} names a body outside "
+                 f"the expected set {expected}")
+        by_body[lower_to_body[body_l]] += 1
+    missing = [b for b, n in by_body.items() if n == 0]
+    _require(not missing,
+             f"coverage has no partition for bodies {missing} — an unsearched "
+             "body cannot be declared complete")
+    return by_body
+
+
 def episode_stream_key(ep: dict) -> tuple:
     """The TOTAL canonical order for the streamed century build (amendment 6):
     (t_in, body, relation, canonical-json). The first three components are the
@@ -219,10 +381,33 @@ def _open_binary_uri(uri: str, *, gcs_client=None):
 
 
 def read_text_uri(uri: str, *, gcs_client=None) -> str:
-    """Small-document read (manifest, coverage) from a local path or gs://
-    URI, streamed through _open_binary_uri."""
+    """Small-document read (manifest, coverage, receipt) from a local path or
+    gs:// URI, streamed through _open_binary_uri."""
     with _open_binary_uri(uri, gcs_client=gcs_client) as fh:
         return io.TextIOWrapper(fh, encoding="utf-8").read()
+
+
+def stream_uri_stats(uri: str, *, gcs_client=None) -> dict:
+    """Streamed {lines, bytes, sha256} of a local path or gs:// object — the
+    same binding common.file_stats computes locally, without materializing
+    the object (a century-scale dedupe sidecar is verified this way)."""
+    hasher = hashlib.sha256()
+    nbytes = 0
+    lines = 0
+    try:
+        fh = _open_binary_uri(uri, gcs_client=gcs_client)
+    except EpisodeStreamError:
+        raise
+    except Exception as exc:
+        raise ManifestVerificationError(
+            f"bound object {uri!r} is unreadable: {exc}") from exc
+    with fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            hasher.update(chunk)
+            nbytes += len(chunk)
+            lines += chunk.count(b"\n")
+    return {"lines": lines, "bytes": nbytes,
+            "sha256": "sha256:" + hasher.hexdigest()}
 
 
 class EpisodeObjectStream:
@@ -231,16 +416,21 @@ class EpisodeObjectStream:
     Iterates parsed episode dicts (times coerced) one line at a time —
     local path or gs:// URI — while accumulating the object's line count,
     byte count, and sha256 over the exact bytes, and VERIFYING the canonical
-    per-object order (episode_stream_key non-decreasing line over line). Any
-    unparsable line, missing required key, naive instant, or out-of-order
-    line raises EpisodeStreamError. After exhaustion, `stats` carries
-    {lines, bytes, sha256} for the finalized-manifest binding."""
+    per-object order (episode_stream_key non-decreasing line over line) and,
+    when `expected_body` is given, the ACTUAL body identity of every line
+    (a Sun object carrying a Mercury contact is refused — amendment r2-2).
+    Any unparsable line, missing required key, naive instant, out-of-order
+    line, or foreign body raises EpisodeStreamError. After exhaustion,
+    `stats` carries {lines, bytes, sha256} for the finalized-manifest
+    binding."""
 
     REQUIRED_KEYS = ("t_in", "body", "relation", "target_type", "target_ref",
                      "t_out", "independence_group")
 
-    def __init__(self, uri: str, *, gcs_client=None):
+    def __init__(self, uri: str, *, gcs_client=None,
+                 expected_body: str | None = None):
         self.uri = uri
+        self.expected_body = expected_body
         self._gcs_client = gcs_client
         self._hasher = hashlib.sha256()
         self.lines = 0
@@ -279,6 +469,13 @@ class EpisodeObjectStream:
                     raise EpisodeStreamError(
                         f"{self.uri}:{self.lines}: episode missing keys "
                         f"{missing}")
+                if (self.expected_body is not None
+                        and str(ep["body"]) != self.expected_body):
+                    raise EpisodeStreamError(
+                        f"{self.uri}:{self.lines}: object declared for body "
+                        f"{self.expected_body!r} carries a {ep['body']!r} "
+                        "episode — actual body identity does not match the "
+                        "manifest; refused (amendment 2)")
                 _coerce_episode_times([ep])
                 key = episode_stream_key(ep)
                 if prev_key is not None and key < prev_key:
@@ -335,56 +532,179 @@ def load_input_manifest(uri: str, *, gcs_client=None) -> dict:
             f"input manifest {uri!r} unreadable/unparsable: {exc}") from exc
 
 
+def _binding_ok(entry) -> bool:
+    return (isinstance(entry, dict) and bool(entry.get("uri"))
+            and isinstance(entry.get("bytes"), int)
+            and str(entry.get("sha256", "")).startswith("sha256:"))
+
+
 def verify_manifest_static(manifest: dict, *, chart_id: str, generation: str,
-                           horizon_text: str, expected_bodies) -> list[str]:
+                           horizon_text: str, expected_bodies,
+                           orb_deg: float | None = None,
+                           convention_id: str | None = None,
+                           method_version: str | None = None) -> list[str]:
     """Everything checkable BEFORE touching the database or the stream
-    content (amendment 2): finalization marker, run identity, chart,
-    generation, horizon, and the full expected body set each with a uniform
-    run_id and a usable object entry. Returns the per-body object URIs in
-    expected_bodies order."""
-    if not isinstance(manifest, dict):
-        raise ManifestVerificationError("input manifest is not a JSON object")
-    if manifest.get("finalized") is not True:
-        raise ManifestVerificationError(
-            "input manifest is not FINALIZED — the enumeration chain did not "
-            "complete; an incomplete stream earns nothing (§N.8)")
+    content (amendment 2): finalization marker, schema version, run
+    identity, chart, generation, horizon, the full expected body set each
+    with a uniform run_id, a usable object entry and a bound receipt, the
+    run-level provenance (configuration incl. THIS build's orb_deg, source
+    snapshot, ephemeris checksums, convention id / method version), and the
+    coverage binding with partitions_by_body covering every body. Returns
+    the per-body object URIs in expected_bodies order."""
+    _require(isinstance(manifest, dict), "input manifest is not a JSON object")
+    _require(manifest.get("artifact") == MANIFEST_ARTIFACT
+             and manifest.get("version") == MANIFEST_VERSION,
+             f"input manifest is not a {MANIFEST_ARTIFACT} v{MANIFEST_VERSION} "
+             f"(got {manifest.get('artifact')!r} v{manifest.get('version')!r}) "
+             "— an older/foreign manifest binds less than this build verifies")
+    _require(manifest.get("finalized") is True,
+             "input manifest is not FINALIZED — the enumeration chain did not "
+             "complete; an incomplete stream earns nothing (§N.8)")
     run_id = manifest.get("run_id")
-    if not run_id:
-        raise ManifestVerificationError("input manifest carries no run_id")
+    _require(bool(run_id), "input manifest carries no run_id")
     for field, want in (("chart_id", chart_id), ("generation", generation),
                         ("horizon", horizon_text)):
-        if manifest.get(field) != want:
-            raise ManifestVerificationError(
-                f"input manifest {field}={manifest.get(field)!r} != this "
-                f"build's {want!r} — refusing a mismatched/mixed build")
+        _require(manifest.get(field) == want,
+                 f"input manifest {field}={manifest.get(field)!r} != this "
+                 f"build's {want!r} — refusing a mismatched/mixed build")
     bodies = manifest.get("bodies")
     objects = manifest.get("objects")
-    if bodies != list(expected_bodies) or not isinstance(objects, dict):
-        raise ManifestVerificationError(
-            f"input manifest bodies {bodies!r} != expected "
-            f"{list(expected_bodies)!r}")
+    _require(bodies == list(expected_bodies) and isinstance(objects, dict),
+             f"input manifest bodies {bodies!r} != expected "
+             f"{list(expected_bodies)!r}")
+
+    # run-level provenance
+    cfg = manifest.get("configuration")
+    _require(isinstance(cfg, dict)
+             and all(k in cfg for k in REQUIRED_CONFIGURATION_KEYS),
+             "input manifest lacks the configuration binding "
+             f"{list(REQUIRED_CONFIGURATION_KEYS)}")
+    if orb_deg is not None:
+        _require(cfg.get("orb_deg") == orb_deg,
+                 f"input manifest was enumerated with orb_deg={cfg.get('orb_deg')!r} "
+                 f"but this build declares {orb_deg!r} — the candidate would "
+                 "misdescribe its own input; refused")
+    snap = manifest.get("source_snapshot")
+    _require(isinstance(snap, dict)
+             and all(snap.get(k) not in (None, "", {}) for k in REQUIRED_SNAPSHOT_KEYS),
+             "input manifest lacks the source snapshot binding "
+             f"{list(REQUIRED_SNAPSHOT_KEYS)} — unbound source data cannot earn GREEN")
+    ephe = manifest.get("ephemeris")
+    _require(isinstance(ephe, dict) and isinstance(ephe.get("files"), dict)
+             and ephe["files"],
+             "input manifest carries no ephemeris file checksums")
+    _require(bool(manifest.get("convention_id")) and bool(manifest.get("method_version")),
+             "input manifest lacks convention_id/method_version")
+    if convention_id is not None:
+        _require(manifest["convention_id"] == convention_id,
+                 f"input manifest convention_id {manifest['convention_id']!r} != "
+                 f"this build's {convention_id!r}")
+    if method_version is not None:
+        _require(manifest["method_version"] == method_version,
+                 f"input manifest method_version {manifest['method_version']!r} "
+                 f"!= this build's {method_version!r}")
+
     uris = []
     for body in expected_bodies:
         entry = objects.get(body)
-        if not isinstance(entry, dict) or not entry.get("uri"):
-            raise ManifestVerificationError(
-                f"input manifest has no finalized object for body {body!r} — "
-                "an omitted body fails the build, never GREEN")
-        if entry.get("run_id") != run_id:
-            raise ManifestVerificationError(
-                f"object for {body!r} carries run_id {entry.get('run_id')!r} "
-                f"!= manifest run_id {run_id!r} — mixed-run input refuses "
-                "the build")
-        for stat in ("lines", "bytes", "sha256"):
-            if stat not in entry:
-                raise ManifestVerificationError(
-                    f"object for {body!r} lacks finalized stat {stat!r}")
+        _require(isinstance(entry, dict) and bool(entry.get("uri")),
+                 f"input manifest has no finalized object for body {body!r} — "
+                 "an omitted body fails the build, never GREEN")
+        _require(entry.get("run_id") == run_id,
+                 f"object for {body!r} carries run_id {entry.get('run_id')!r} "
+                 f"!= manifest run_id {run_id!r} — mixed-run input refuses "
+                 "the build")
+        for stat in OBJECT_STAT_KEYS:
+            _require(stat in entry,
+                     f"object for {body!r} lacks finalized stat {stat!r}")
+        _require(isinstance(entry.get("episodes_after_dedupe"), int)
+                 and entry["episodes_after_dedupe"] == entry["lines"],
+                 f"object for {body!r}: episodes_after_dedupe="
+                 f"{entry.get('episodes_after_dedupe')!r} != lines "
+                 f"{entry.get('lines')!r}")
+        _require(_binding_ok(entry.get("receipt")),
+                 f"object for {body!r} has no bound enumeration completion "
+                 "receipt (uri/bytes/sha256) — no verified enumeration "
+                 "explanation, no GREEN")
+        _require("dropped_refs" in entry
+                 and (entry["dropped_refs"] is None or _binding_ok(entry["dropped_refs"])),
+                 f"object for {body!r} lacks the dedupe-provenance binding "
+                 "(dropped_refs: null or {uri, bytes, sha256})")
         uris.append(entry["uri"])
+
     cov = manifest.get("coverage")
-    if not isinstance(cov, dict) or not cov.get("uri") or not cov.get("sha256"):
-        raise ManifestVerificationError(
-            "input manifest lacks the coverage binding (uri + sha256)")
+    _require(isinstance(cov, dict) and bool(cov.get("uri")) and bool(cov.get("sha256")),
+             "input manifest lacks the coverage binding (uri + sha256)")
+    _require(isinstance(cov.get("partitions"), int) and cov["partitions"] >= 1,
+             "input manifest binds zero coverage partitions")
+    pbb = cov.get("partitions_by_body")
+    _require(isinstance(pbb, dict) and all(
+                 isinstance(pbb.get(b), int) and pbb[b] >= 1 for b in expected_bodies),
+             "input manifest coverage.partitions_by_body does not give every "
+             "expected body >= 1 partition")
+    _require(sum(pbb[b] for b in expected_bodies) == cov["partitions"],
+             "input manifest coverage.partitions != sum(partitions_by_body)")
     return uris
+
+
+def verify_manifest_receipts(manifest: dict, *, chart_id: str,
+                             generation: str, horizon_text: str,
+                             expected_bodies, gcs_client=None) -> dict:
+    """Load and verify every body's bound enumeration receipt (amendment
+    r2-2): the receipt object's streamed bytes/sha256 equal the manifest's
+    receipt binding; the receipt attests a completed enumeration of THAT
+    body whose object stats equal the manifest's object binding; its
+    provenance equals the manifest's run-level provenance (so eight bodies
+    enumerated against different source states or configurations refuse);
+    and its dedupe provenance is consistent with the manifest's sidecar
+    binding, whose bytes/sha256 are re-verified by streaming. Returns
+    {body: receipt}."""
+    objects = manifest["objects"]
+    manifest_prov = {k: manifest.get(k) for k in PROVENANCE_KEYS}
+    receipts = {}
+    for body in expected_bodies:
+        entry = objects[body]
+        rb = entry["receipt"]
+        got = stream_uri_stats(rb["uri"], gcs_client=gcs_client)
+        _require(got["bytes"] == rb["bytes"] and got["sha256"] == rb["sha256"],
+                 f"receipt object for {body!r} does not match its manifest "
+                 "binding (bytes/sha256) — altered or foreign receipt")
+        try:
+            receipt = json.loads(read_text_uri(rb["uri"], gcs_client=gcs_client))
+        except Exception as exc:
+            raise ManifestVerificationError(
+                f"receipt for {body!r} unreadable/unparsable: {exc}") from exc
+        verify_receipt(receipt, body=body, chart_id=chart_id,
+                       generation=generation, horizon_text=horizon_text,
+                       object_stats={k: entry[k] for k in OBJECT_STAT_KEYS})
+        _require(receipt["episodes"]["episodes_after_dedupe"] == entry["episodes_after_dedupe"],
+                 f"receipt for {body!r}: episodes_after_dedupe != manifest's")
+        prov = receipt_provenance(receipt)
+        _require(prov == manifest_prov,
+                 f"receipt for {body!r} carries provenance "
+                 f"{json.dumps(prov, sort_keys=True, default=str)[:400]} != the "
+                 "manifest's run-level provenance — mixed-source/mixed-"
+                 "configuration input refuses the build")
+        dd = receipt["dedupe"]
+        if dd.get("dropped_refs_artifact"):
+            _require(entry["dropped_refs"] is not None,
+                     f"receipt for {body!r} says a dedupe-provenance sidecar was "
+                     "written but the manifest binds none — provenance lost")
+            _require(entry["dropped_refs"]["sha256"] == dd["dropped_refs_sha256"]
+                     and entry["dropped_refs"]["bytes"] == dd["dropped_refs_bytes"],
+                     f"dedupe sidecar binding for {body!r} != the receipt's")
+            got_dr = stream_uri_stats(entry["dropped_refs"]["uri"],
+                                      gcs_client=gcs_client)
+            _require(got_dr["bytes"] == dd["dropped_refs_bytes"]
+                     and got_dr["sha256"] == dd["dropped_refs_sha256"],
+                     f"dedupe sidecar for {body!r} does not match its binding "
+                     "(bytes/sha256) — truncated or altered provenance")
+        else:
+            _require(entry["dropped_refs"] is None,
+                     f"manifest binds a dedupe sidecar for {body!r} that the "
+                     "receipt does not attest — inconsistent provenance")
+        receipts[body] = receipt
+    return receipts
 
 
 def verify_object_stats(streams: list[EpisodeObjectStream],
@@ -396,12 +716,30 @@ def verify_object_stats(streams: list[EpisodeObjectStream],
     for body, stream in zip(expected_bodies, streams):
         want = objects[body]
         got = stream.stats
-        for stat in ("lines", "bytes", "sha256"):
+        for stat in OBJECT_STAT_KEYS:
             if got[stat] != want[stat]:
                 raise ManifestVerificationError(
                     f"object for {body!r}: streamed {stat}={got[stat]!r} != "
                     f"finalized manifest {want[stat]!r} — truncated/altered "
                     "input fails the build, never GREEN (§N.8)")
+
+
+def is_integrity_error(exc: BaseException) -> bool:
+    """psycopg's IntegrityError family (UniqueViolation, ForeignKeyViolation,
+    …) or any exception carrying an SQLSTATE of class 23 (integrity
+    constraint violation) — the ADK-0020 duplicate-contact refusal surface
+    (amendment r2-6). Never a bare class-name comparison."""
+    try:
+        import psycopg
+        if isinstance(exc, psycopg.IntegrityError):
+            return True
+    except ImportError:
+        pass
+    sqlstate = getattr(exc, "sqlstate", None)
+    if not sqlstate:
+        diag = getattr(exc, "diag", None)
+        sqlstate = getattr(diag, "sqlstate", None) if diag is not None else None
+    return isinstance(sqlstate, str) and sqlstate.startswith("23")
 
 
 def _synthetic_episodes() -> list[dict]:
@@ -508,6 +846,7 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
     expected_bodies = None
     manifest = None
     episodes = None            # materialized list (monolithic paths only)
+    ledger = _load_ledger()
 
     try:
         if args.rehearse_synthetic:
@@ -520,20 +859,53 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
             expected_bodies = list(PERSISTED_BODIES)
             manifest = load_input_manifest(args.input_manifest,
                                            gcs_client=gcs_client)
+            # the convention id is a pure function of the declared vector —
+            # verifiable before any connection is opened
+            own_cid = ledger.convention_id_for(CONVENTION_VECTOR)
             uris = verify_manifest_static(
                 manifest, chart_id=args.chart_id,
                 generation=args.generation, horizon_text=horizon_text,
-                expected_bodies=expected_bodies)
-            coverage = json.loads(read_text_uri(manifest["coverage"]["uri"],
-                                                gcs_client=gcs_client))
+                expected_bodies=expected_bodies, orb_deg=args.orb_deg,
+                convention_id=own_cid,
+                method_version=CONVENTION_VECTOR["method_version"])
+            try:
+                coverage = json.loads(read_text_uri(
+                    manifest["coverage"]["uri"], gcs_client=gcs_client))
+            except (ManifestVerificationError, EpisodeStreamError):
+                raise
+            except Exception as exc:
+                raise ManifestVerificationError(
+                    f"coverage {manifest['coverage']['uri']!r} unreadable/"
+                    f"unparsable: {exc}") from exc
             if coverage_binding(coverage) != manifest["coverage"]["sha256"]:
                 raise ManifestVerificationError(
                     "coverage payload does not match the finalized manifest's "
                     "coverage binding — refusing (§N.8)")
-            stream_objects = [EpisodeObjectStream(u, gcs_client=gcs_client)
-                              for u in uris]
+            by_body = verify_coverage_rows(coverage, horizon_text=horizon_text,
+                                           expected_bodies=expected_bodies)
+            if by_body != manifest["coverage"]["partitions_by_body"] \
+                    or len(coverage) != manifest["coverage"]["partitions"]:
+                raise ManifestVerificationError(
+                    f"coverage partitions {by_body} (total {len(coverage)}) != "
+                    f"the manifest's {manifest['coverage']['partitions_by_body']} "
+                    f"(total {manifest['coverage']['partitions']}) — refusing")
+            receipts = verify_manifest_receipts(
+                manifest, chart_id=args.chart_id, generation=args.generation,
+                horizon_text=horizon_text, expected_bodies=expected_bodies,
+                gcs_client=gcs_client)
+            for body in expected_bodies:
+                if receipts[body]["coverage"]["partitions"] != by_body[body]:
+                    raise ManifestVerificationError(
+                        f"receipt for {body!r} attests "
+                        f"{receipts[body]['coverage']['partitions']} coverage "
+                        f"partitions; the merged coverage carries {by_body[body]}")
+            stream_objects = [EpisodeObjectStream(u, gcs_client=gcs_client,
+                                                  expected_body=body)
+                              for body, u in zip(expected_bodies, uris)]
             episode_stream = iter_episodes_merged(stream_objects)
             vector["input_manifest_run_id"] = manifest["run_id"]
+            vector["input_manifest_provenance"] = {
+                k: manifest[k] for k in PROVENANCE_KEYS}
         else:
             if args.episodes_ndjson:
                 paths = sorted(glob.glob(args.episodes_ndjson))
@@ -550,7 +922,8 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
                     json.loads(Path(args.episodes_json).read_text()))
             coverage = json.loads(Path(args.coverage_json).read_text())
     except (ManifestVerificationError, EpisodeStreamError) as exc:
-        print(f"REFUSED (input verification): {exc}", file=sys.stderr)
+        print(f"REFUSED (input verification): {redact_text(exc)}",
+              file=sys.stderr)
         return 3
 
     # Coverage insertion order is by partition_key in every mode — the order
@@ -558,7 +931,6 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
     coverage = sorted(coverage, key=lambda c: (c["partition_kind"],
                                                c["partition_key"]))
 
-    ledger = _load_ledger()
     conn = connect(args.dsn, step=6, autocommit=False)
 
     # §12.9 gate — BEFORE any ledger write. Refuses a candidate built on vedha rows
@@ -623,10 +995,13 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
         conn.close()
         # ADK-0020 residual: the relation's primary key rejects a duplicate
         # contact_id in a (corrupt) stream — the dedupe refusal surface.
-        if type(exc).__name__ == "IntegrityError":
+        # psycopg raises the SQLSTATE-specific SUBCLASS (UniqueViolation),
+        # so the classification is isinstance/SQLSTATE-based (amendment r2-6).
+        if is_integrity_error(exc):
             print(f"REFUSED (ADK-0020): the ledger primary key rejected a "
-                  f"duplicate/invalid contact row: {redact_text(exc)}",
-                  file=sys.stderr)
+                  f"duplicate/invalid contact row ({type(exc).__name__}, "
+                  f"sqlstate={getattr(exc, 'sqlstate', None)!r}): "
+                  f"{redact_text(exc)}", file=sys.stderr)
             return 5
         raise
     conn.close()
@@ -637,14 +1012,21 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
         "build_id": build_id, "contacts_written": n_contacts,
         "coverage_rows_written": n_cov,
         "input_generation_vector": vector,
+        "memory_guard": getattr(args, "memory_guard", None),
     }
     if manifest is not None:
         report["input_manifest"] = {
             "run_id": manifest["run_id"],
             "objects_verified": len(stream_objects),
-            "verification": "finalized manifest: bodies, run identity, "
-                            "horizon, coverage binding, and per-object "
-                            "lines/bytes/sha256 all verified before commit",
+            "verification": "finalized manifest v1.1: schema, bodies, run "
+                            "identity, horizon, configuration (orb == build), "
+                            "source snapshot, ephemeris checksums, convention "
+                            "id, coverage binding + partitions/horizons per "
+                            "body, every body's completion receipt (bound "
+                            "bytes/sha256, provenance uniform), dedupe "
+                            "provenance sidecars, per-line body identity, and "
+                            "per-object lines/bytes/sha256 all verified "
+                            "before commit",
         }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
@@ -654,4 +1036,5 @@ def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from common import run_main_guarded
+    sys.exit(run_main_guarded(main))
