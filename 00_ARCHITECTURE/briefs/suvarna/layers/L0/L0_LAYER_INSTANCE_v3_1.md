@@ -3,7 +3,7 @@ artifact: L0_LAYER_INSTANCE
 continues_canonical_id: MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY   # v3.0's id; this file continues that artifact line and does not claim the id
 tier: 3
 kind: instance
-version: "3.1"
+version: "3.1-rev1"
 status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_on: 2026-09-30
 produced_in: "Exec Suvarṇa"
@@ -14,7 +14,7 @@ template: 00_ARCHITECTURE/briefs/nirmana/LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_
 parents:
   - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_FINAL.md                                 # tier 1
   - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_FINAL.md        # tier 2
-tier_gaps: "L0_TIER_GAPS_v1_0.md (file name kept per arch §12.6; its frontmatter version is 1.1) — 30 rows, TG-L0-001 … TG-L0-030, cited below as TG-L0-nnn"
+tier_gaps: "L0_TIER_GAPS_v1_0.md (file name kept per arch §12.6; its frontmatter version is 1.1-rev1) — TG-L0-001 … TG-L0-030 are cited below as TG-L0-nnn; 28 are tier gaps, TG-L0-001 is a T1 proposal (not a gap) and TG-L0-028 is withdrawn as a tier gap (a layer finding); see that file's Summary"
 census_run:
   path: /Users/Dev/suvarna-evidence/census/census_L0.json     # log beside it: census_L0.log; summary: SUMMARY.md
   exit_code: 2            # FAIL rows present = MEASURED (arch §12.14); no exit 4/5/75, none UNMEASURED
@@ -25,6 +25,7 @@ census_run:
 measured_at: "Census as above. Read-only queries as suvarna_reader (127.0.0.1:5433, read-only by privilege, D6) on 2026-09-30 (UTC afternoon, after the census); files read at the census checkout, commit 2a78ec64d. Nothing was written to the database, the registry, a ledger or the checkout."
 verdict: "NONE. This is a provisional draft: it may register gaps and may not certify. §5.4 states which acceptance tests are met (2 of 6)."
 changelog:
+  - "3.1-rev1 (2026-09-30): gate review corrections applied (independent Opus review 2026-09-30): 10 defects. Struck: the three obligations v3.0 added on its own authority (Computational correctness, Delivery fidelity, Operational honesty; §0.2, §3.1, §4.4) because T1 §11 assigns L0 one obligation and T2 §13.3 item 1 forbids a layer naming its own; removed: the PASS verdicts in §2.1 and the five-state results in §2.4, which rested on detectors and rules the draft chose itself (the instance now reports measured facts and assigns no verdict or state until a tier supplies the detector and owner, as the L1 instance does); corrected: '24 of 40 assets reach a served module' to 26 (census reach; 31 modules; Dens.served counts 23), the DP10/DP16 citation (T2 L456-457 names DP10 only; DP16 is in the §7.1 table at L436 and names no layer), the served-surface comparison with L1-L5 (non-test counts: L1 22, L2 7, L4 1, L5 15, L3 0), the pin generation (written in full), the §3.2 evidence for disposition P, and the TG-L0-006, -028 and -004 statements (T2 §9.2 and T4 §0/§1 supply more than the draft credited); labelled as outside the tiers: CLAUDE.md §N.8 (§2.1) and §N.4 (W-L0-6)."
   - "3.1 (2026-09-30, Exec Suvarṇa A.L0i): continues and RE-MEASURES v3.0 (2026-09-26). Method: every v3.0 figure was re-read from the census JSON (CEN-*), a read-only query (Q-*) or a named file (F-*); all 38 inventory counts and floors and the further figures listed in Appendix C reproduce unchanged. Fourteen changes are recorded in 'What changed versus v3.0' (CH-01 … CH-14): nine correct or withdraw a v3.0 statement that did not reproduce or was unsourced (CH-01, 02, 03, 05, 07, 08, 09, 11, 13), five update or extend one (CH-04, 06, 10, 12, 14), each with the measurement that replaced it. The three that change what a reader would conclude: (CH-01) v3.0 said no migration or pin exists for L0 — 28 of 40 L0 ids are named by registry-modifying migrations and an L0 pin exists; (CH-02) v3.0 said the DAG is two levels deep at most — it is four (max depth 3); (CH-03) v3.0 said 19 of 40 assets have a downstream consumer — 26 do (18 across layers). New in 3.1: the census gate cells (Appendix B), the L0-specific records the brief requires (§1.1.1 global scope · §1.1.2 the two other charts with L1+ rows, counts only · §1.1.3 bg_vidhi_floors DRAFT · §1.1.4 the Gochara L0 inputs, R9 · §1.1.5 the 36-versus-34 writer anomaly and bg_sign_medical), the Measurement register (Appendix A), and a TIER GAP mark on every section the tiers do not supply. v3.0's authored judgements (§0.1 P/V rows, §1.3 seams, §3.2 dispositions, §4.2 packets) are carried and marked CARRIED; none is presented as derived."
 ---
 
@@ -44,18 +45,18 @@ Its individual term is fidelity, not ablation (T2 §12.2, L601–607).
 
 | # | v3.0 said | Measured now | Evidence | Why it matters |
 |---|---|---|---|---|
-| CH-01 | §0.3: the migration-governed pin "does not exist for L0. No migration asserts L0 registry rows." | 28 of 40 L0 ids are named by a statement that inserts into or updates `asset_registry` (e.g. migration 599 sets five L0 `depends_on` arrays; 642 rewrites bg_vidhi_floors' description; 644/703 the parihara floor and integrity check); an L0 pin exists (`nirmana-analysis-layer-pins.json`: current generation `l0:d2369b888e76`, `receipt_count` 40, 4 non-writer assets, a `definition_bindings.L0` block; a 36-writer digest inventory in `nirmana-writer-digests.json`). Seed↔live: `target_table` and `depends_on` agree for 40/40 (unchanged) but `target_floor` differs for 4 and `catalog_status` for 1. | F-01, F-02, F-03 | v3.0 looked for a `depends_on` pin and concluded there was none; the three-source reading is possible but the template never says which artefact is "the pin" (TG-L0-014). |
+| CH-01 | §0.3: the migration-governed pin "does not exist for L0. No migration asserts L0 registry rows." | 28 of 40 L0 ids are named by a statement that inserts into or updates `asset_registry` (e.g. migration 599 sets five L0 `depends_on` arrays; 642 rewrites bg_vidhi_floors' description; 644/703 the parihara floor and integrity check); an L0 pin exists (`nirmana-analysis-layer-pins.json`: current generation `l0:d2369b888e76:3dda261170ee`, `receipt_count` 40, 4 non-writer assets, a `definition_bindings.L0` block; a 36-writer digest inventory in `nirmana-writer-digests.json`). Seed↔live: `target_table` and `depends_on` agree for 40/40 (unchanged) but `target_floor` differs for 4 and `catalog_status` for 1. | F-01, F-02, F-03 | v3.0 looked for a `depends_on` pin and concluded there was none; the three-source reading is possible but the template never says which artefact is "the pin" (TG-L0-014). |
 | CH-02 | §2.5: "a DAG two levels deep at most". | Depth histogram over the 40 assets: 24 at depth 0, 11 at 1, 4 at 2, 1 at 3 (bg_concordance ← bg_rules ← bg_yogas ← bg_ontology). Four levels, not two. Roots (24), assets with intra-L0 edges (16) and edges outside L0 (0) unchanged; 25 intra-L0 edges. | Q-02 | Order and rollback (§4.1, §4.3) depend on depth. |
 | CH-03 | §1.4: "only 19 of 40 `bg_*` assets have any downstream consumer in `depends_on`; 21 have none". | 26 of 40 have ≥1 active dependent in any layer (agrees with the census's own `blocking_radius.transitive > 0` for 26); 18 of 40 have a dependent in another layer; 14 have none. Cross-layer edges: 34 from 22 assets (kala 21, mimamsa 7, ganita 5, bodha 1). The Gaṇita figure (5) reproduces; the 19 does not, and v3.0 stated no population. | Q-02, CEN-R | The "no consumer" set is 14, not 21, before any code read. |
 | CH-04 | §1.1 finding 1: `bg_parihara_rules` is 9 below floor, "cause not established". | Established from committed migrations: 644 set the floor to 449 when the components were 61 + 329 + 59; 703 (applied 2026-09-06) deleted 9 orphaned rows (1 from `bg_parihara_rules` → 60; 8 from `bg_muhurta_factor_census` → 51) after the upsert-only writer failed to remove them, and re-pinned the integrity check — but left `target_floor` at 449. Live 60 + 329 + 51 = 440. | F-02, Q-12, Q-15 | The −9 is a stale registry floor, not lost data; it is also the documented instance of the upsert accretion TG-L0-023 records. No action here. |
 | CH-05 | §2.6 rule 3: the 289 unresolved remedy ids "differ from resolving ones only by case". | Exact resolution 52 of 341 (unchanged) → 289 unresolved. Of those, 204 resolve case-insensitively; **85 do not** — `classical_tradition` ×80 (the placeholder) and 5 others (Tajaka ×3, nadi_navamsa_patel ×1, bphs_jaimini ×1). | Q-05 | "Normalisation drift" explains 204 of 289, not all. |
 | CH-06 | §1.2/§2.1 measured the placeholder citation on doṣas only (53 of 79). | Doṣas 53 of 79 (unchanged); **also 1 of 233 yoga rows** cites `classical_tradition`; 0 of 20 daśā systems. | Q-04 | The placeholder is not confined to one catalogue. |
-| CH-07 | §2.4: āyurdāya — "1 ontology concept exists and 0 rules qualify a method". | No `concept` row matches `ayur`/`lifespan`/`longevity`; the ontology holds `domain: longevity` (1), `karaka: karaka_longevity` (1) and `remedy_type: ayurvedic`; 0 of 3,002 rules and 0 of 10,651 chunks (topic tag or topics) match `ayur`. State stays **unresolved**; the "1 concept" is not reproduced (population unstated in v3.0). | Q-16 | The thinnest coverage L0 has is thinner than recorded. |
+| CH-07 | §2.4: āyurdāya — "1 ontology concept exists and 0 rules qualify a method". | No `concept` row matches `ayur`/`lifespan`/`longevity`; the ontology holds `domain: longevity` (1), `karaka: karaka_longevity` (1) and `remedy_type: ayurvedic`; 0 of 3,002 rules and 0 of 10,651 chunks (topic tag or topics) match `ayur`. No coverage state is assigned (TG-L0-007); the "1 concept" is not reproduced (population unstated in v3.0). | Q-16 | The thinnest coverage L0 has is thinner than recorded. |
 | CH-08 | §2.6 rule 6: "6 candidate sites in `brahmagyan/` alone". | The inspector reports 32 (files under `platform/python-sidecar/brahmagyan`, 125 `.py` files, holding L0–L5 code, that contain a quoted `Sun` followed by `,`/`:` and a quoted `Venus`); 11 are `l0_*` files. Different regex and population; still a heuristic, still **NO DETECTOR** for rule 6. | CEN-H, F-08, F-09 | The two figures are not comparable; neither is a per-class map census (TG-L0-011). |
 | CH-09 | §3.2: "P preserve — 29 assets" beside 4 E + 2 Q + 2 I + 2 C = 39 assets; U: "the 21 assets with no declared downstream consumer". | 30 P (40 − 10 others); U is an annotation on the **14** assets with no active dependent, not a second disposition. | Q-02, arithmetic | v3.0 accounted for 39 of 40 assets. |
 | CH-10 | §1.1/§5.2: tracker "NO_BRIEF 40/40 · gates certified 0/360" (pre-emission snapshot). | Read from the ledgers at the checkout (the tracker was not re-run): `asset_gaps.jsonl` holds 290 L0 rows (271 open gap, 1 in-progress gap, 18 open opportunity) across all 40 assets; `asset_certs.jsonl` holds its `_schema` line only — **0 certification records** (unchanged). | F-06 | v3.0's own note said this figure would drift; it has. |
 | CH-11 | §4.1: "risk = current code − deployed = 0 … L0 is the one layer where nothing is in flight". | **Not measured.** No instrument compares deployed structure with the newest live-head writer (TG-L0-015). The L0 pin was superseded once (DP-SD-018) with seven assets changed — L0 code has moved. | F-03 | An asserted zero is withdrawn, not replaced by another number. |
-| CH-12 | §2.3: L0 produces DP01, DP02 and its half of DP05. | Also the clock primitives of **DP07** (ephemeris, sky calendar, muhūrta lattice, gochara arcs) and, as a producer *about itself*, DP10 and DP16 (T2 L456–457). | T2 L418–437 | The contract table was incomplete against T2 (TG-L0-004). |
+| CH-12 | §2.3: L0 produces DP01, DP02 and its half of DP05. | Also the clock primitives of **DP07** (ephemeris, sky calendar, muhūrta lattice, gochara arcs) and, as a producer *about itself*, DP10 (T2 L456–457; DP16 is a row of the §7.1 table at L436 whose producer column names no layer, so L0's part in it is the draft's reading). | T2 L418–437 | The contract table was incomplete against T2 (TG-L0-004, narrowed). |
 | CH-13 | §5.2: `Build.completion` "already failing … for 3 of the 5 measured on check 6"; §0.3 edge types asserted. | `Build.completion` FAIL for **14 of 40** (8 with `rows_written = 0` against a populated table, 4 whose `rows_written` disagrees with live, 2 with no build record at all). Edge types: no source records them (TG-L0-030) — the v3.0 claim "every outbound edge is edge 1 or 3" is `[CARRIED]`, unsourced. | CEN-M, Q-01 | The build-status surface is honest about being unreliable; edge classification is an assertion. |
 | CH-14 | §5.3/§4.4: no explicit statement of the asset-level gate cells. | Applying the plan's own rollup (§1.4) to the census: `Null` and `Narr` have **no census criterion** (80 of 360 cells unreadable); `Earn` NO_DETECTOR 40/40; `Carr` NO_DETECTOR 40/40; `Ldgr` reads 24 of 40. | CEN-M, F-08 | The gate map can be filled at layer level only (§5.2; TG-L0-025). |
 
@@ -79,7 +80,7 @@ that closure's L0 slice, computed from the live `depends_on`.
 | P15 "what supports this in the tradition, where do schools disagree" | No source testimony and no school record: 721 attributions in `classical_attributions` (CEN-R), 8 `school` ontology rows (Q-03). |
 | P22 "let me read the texts themselves" | The corpus *is* this layer: 15 texts, 10,651 chunks (Q-07). |
 | P20 "which form of Jyotish suits my question" | Method identity, scope and applicability are L0 declarations (20 daśā systems — 60 cockpit rows over three tables — and 41 praśna-method rows over five tables, CEN-R, Q-04). |
-| P07 / P23 "what does the tradition say about wellbeing / lifespan" | The method, its school and its cancellations are doctrine held here; āyurdāya coverage is **unresolved** (§2.4, CH-07). |
+| P07 / P23 "what does the tradition say about wellbeing / lifespan" | The method, its school and its cancellations are doctrine held here; āyurdāya has no method concept, rule or tagged chunk (§2.4, CH-07). |
 | P09 "does this yoga form" | The catalogue definition and its prerequisites are what formation is tested against: 233 yoga and 79 doṣa definitions (Q-04). |
 | P11 "when might I initiate something, which practices" | The muhūrta lattice (173,219 rows) and the attributed practice corpus (341 rows) (CEN-R). |
 | P13 "does a different convention change this" | The conventions themselves — ayanāṃśa, node, house system, varga construction — are L0 declarations (`reference_*`, `brahma_formula_constants` 17 rows). |
@@ -118,16 +119,17 @@ join not answers but the vocabulary and the warrant that make answers checkable.
 - **Must not claim**: personal fate; raw private biography as global truth; source count as probability.
 
 **Obligations this layer is scored on.** T1 §11 (L500) names **one**: *Source and domain fidelity* — "canonical identity,
-source fidelity, method boundaries". That is the only obligation the tiers assign to L0. **[TIER GAP: TG-L0-001]** v3.0
-added three more on its own authority, each with its reason; they are `[CARRIED]` and labelled as the draft's, not as
-inherited:
+source fidelity, method boundaries". That is the only obligation the tiers assign to L0, and T2 §13.3 item 1 (L662–665) says a layer
+plan that "names its own criteria instead of inheriting these is not derived from the product definition". T1 L500 already lists
+"ephemeris and calendar foundations" in the L0 row, so the computed substrate is scored under fidelity too. v3.0 §0.2 added three
+further obligations on its own authority (Computational correctness, Delivery fidelity, Operational honesty); **they are struck at
+rev1** and nothing in this instance is scored on them. The measurements v3.0 attached to them stay where they are used as facts:
+computed-substrate row counts (§1.1, §3.1), served-surface counts (§1.4), registry status counts (§1.1, §5.2). Whether T1 §14's
+fidelity wording should say what it means for a computed quantity is a **proposal to T1**, recorded as TG-L0-001 (not a gap).
 
-| obligation | why v3.0 applied it to L0 | figure (re-measured) |
+| obligation | scored on | applies to |
 |---|---|---|
-| Source and domain fidelity | T1 §11 — the layer's primary score, over all 40 assets | — |
-| Computational correctness `[CARRIED, not tier-assigned]` | five assets are computed substrate, not testimony | bg_ephemeris 825,084 · bg_muhurta_lattice 173,219 · bg_gochara_arcs 33,933 · bg_sky_calendar 31,081 · bg_cohort 110,000 across two tables, 10,000 in the target table (CEN-R; CEN-M `Build.completion` for bg_cohort) |
-| Delivery fidelity `[CARRIED, not tier-assigned]` | L0 is rendered through served capability modules | 46 non-test capability modules besides `index.ts` (47 `.ts` files with it), 39 declaring a `CapabilityDescriptor`, 0 declaring a `density_contract` (F-05) |
-| Operational honesty `[CARRIED, not tier-assigned]` | L0 is the registry's root; a registry description asserting a provenance its table lacks is an L0 defect | 39 CURRENT / 1 DRAFT; 38 `count_sql`, 37 integrity SQL (Q-01) |
+| Source and domain fidelity (T1 §11, L500; §14, L585) | the layer's one obligation | all 40 assets, including the five computed ones (ephemeris, sky calendar, muhūrta lattice, gochara arcs, cohort) |
 
 **Not scored on** (T2 §13.3 item 1, L662–671): concept and relationship completeness (L2) · temporal integrity (L3) ·
 interpretive fidelity, distinctive understanding, consumer understanding (formed above this plane) · predictive
@@ -150,8 +152,8 @@ traces_to:   0.2
   edge-type column, so the classification of these edges as "definition" (edge 1) or "serving-context" (edge 3) is v3.0's
   assertion and stays `[CARRIED]`, unsourced. Contracts: **DP01 identity/release** and **DP02 rule qualification**; L0's
   half of **DP05** (the catalogue definition formation is tested against); and `[CHANGED — CH-12]` the clock primitives of
-  **DP07** (T2 L426, "L0/L1/L3 primitives"), plus DP10 and DP16 as a producer's obligations about itself (T2 L456–457).
-  **[TIER GAP: TG-L0-004]**.
+  **DP07** (T2 L426, "L0/L1/L3 primitives"), plus DP10 as a producer's obligation about itself (T2 L456–457); DP16 (T2 L436) names no layer in its producer column.
+  **[TIER GAP: TG-L0-004, narrowed]** T2 §7.1 names L0 for DP01, DP02, DP05 and DP07 (and "All producers" for DP10); what no tier supplies is the per-asset and consumed-side assignment.
 - **What the join needs from it:** the closed alias set that lets one identity render as *Śukra* for the acharya and *Venus*
   for the layperson; the school behind a rule and the fact that authorities disagree; the convention in force; the method
   boundary that says where a rule stops. The alias half is **not yet true for doṣas** (79 of 79 with an empty alias set,
@@ -178,7 +180,7 @@ reliably for 5 assets whose literals are multi-line or template strings (parse l
 
 ### 0.4 · The alignment test
 
-Every section from Part 1 on carries `traces_to:`. Run on this draft: no section was struck. The L0-specific records the
+Every section from Part 1 on carries `traces_to:`. Run on this draft: no section was struck; at rev1 the gate review struck three obligation rows inside §0.2 (they traced to no tier clause) and their dependants in §3.1 and §4.4. The L0-specific records the
 brief requires (§1.1.1–1.1.5) each name the Part 0 item they serve, and Appendices A–D carry no obligation of their own.
 Two v3.0 candidates struck at 3.0 (a governance-cadence subsection, an L0-owned glossary of layer names) stay struck.
 
@@ -288,8 +290,8 @@ traces_to:   0.3
 
 L0 serves every chart; it is built and read once. Measured: all 40 registry rows are `scope = global` (Q-01); the census's
 chart-scoped `count_sql` count is 0 (CEN-H `chart_scoped_count_sql`); none of the 66 tables named by the 40 assets'
-`count_sql` or `target_table` has a `chart_id`, `subject_id` or any column matching `chart`/`subject` (Q-09) — so the rule
-"private observations must never become global doctrine" holds structurally (§2.1). Build scope: of 734 recorded
+`count_sql` or `target_table` has a `chart_id`, `subject_id` or any column matching `chart`/`subject` (Q-09) — so no structural
+column of that kind exists (a measured fact; whether it is the detector for "private observations must never become global doctrine" is TG-L0-017, §2.1). Build scope: of 734 recorded
 `build_runs`, none has a null `chart_id`; 61 have `scope = 'global'` and **none of those touched an L0 asset** (CEN-H
 `global_runs` 61, `global_runs_touching_layer` 0); L0 assets appear in 118 `build_run_assets` rows across 51 runs
 (2026-07-04 → 2026-09-07), every one a chart-carrying `asset_set` (50) or `layer` (1) run — 50 against 482012f1, 1
@@ -403,8 +405,10 @@ orchestrator did run three times (2026-09-04, Q-10) — so the 12 rows plausibly
 inference; the census records only that the asset itself was never dispatched. Five L0 assets in all have never been
 dispatched: bg_sign_medical, bg_nakshatra_medical, bg_transit_engine, bg_sarvatobhadra_grid,
 bg_gochara_citation_resolution (CEN-M `Build.exercised`: 1 FAIL + 4 N/A "never run, and it has no writer — consistent") —
-unchanged from R84's "5/40". **Finding, no action.** **[TIER GAP: TG-L0-028]** T4's `kind` and Producer vocabulary has no
-place for an id that rides a sibling's writer with a contradicting registry.
+unchanged from R84's "5/40". **Finding, no action.** T4's `kind` and Producer vocabulary already has a place for an id that rides
+a sibling's writer (`rider (producer_covered)`, T4 L74; "or the asset it rides on", T4 L129); what remains is the
+registry-versus-code contradiction for two of the three ids, a layer finding (C-12). v3.1 recorded this as TG-L0-028; it is
+withdrawn as a tier gap at rev1.
 
 ### 1.2 · Individual contribution — fidelity, not ablation
 
@@ -466,8 +470,7 @@ restricted to `.py/.ts/.tsx` non-test files the same tables read 44, 34, 38, 21,
 why no L0 asset may be dispositioned R on registry evidence alone.
 
 **Served state** (F-05, CEN-R): the L0 capability directory holds 47 non-test `.ts` files (46 excluding `index.ts`) and 3 test
-entries; 39 files declare a `CapabilityDescriptor`; **0 declare a `density_contract`** `[RE-MEASURED = v3.0]` — against
-L1 25 files, L2 9, L4 2, L5 15, L3 0 (same grep). The census reads `Dens.served` FAIL for 23 assets, NO_DETECTOR for 1
+entries; 39 files declare a `CapabilityDescriptor` (the pattern is stated in F-05); **0 declare a `density_contract`** `[RE-MEASURED = v3.0]` — against, on the same non-test basis (paths containing `test` excluded, recomputed at rev1, F-05), L1 22 files, L2 7, L4 1, L5 15, L3 0 (v3.1 compared L0's non-test count with test-inclusive counts for the others, L1 25, L2 9, L4 2; those are not comparable). The census reads `Dens.served` FAIL for 23 assets, NO_DETECTOR for 1
 (bg_dignity_reference — its modules mention it only in comments) and N/A for 16; 26 assets are read by ≥1 module (table
 basis) through 31 distinct modules; mean column width selected 0.509 over 37 assets, 11 at 0, 252 dark columns
 `[NEW]`. **[TIER GAP: TG-L0-016]** no consumer-side probe exists for the six evidence states.
@@ -510,17 +513,21 @@ last and defines no corrections section (**TG-L0-021**, R08).
 
 ```
 inherits:    Product §8.1 (L0 row, T1 L422), §13; Data plane §9.2 (T2 L493–517)
-measured_by: a detector per rule, named below, each able to report the rule violated
+measured_by: the detector each rule needs; none is supplied by any tier for L0 (TG-L0-017, TG-L0-006), so the table reports measured facts and gives NO verdict
 traces_to:   0.2
 ```
 
-| rule | detector | state 2026-09-30 |
-|---|---|---|
-| **Private observations must never become global doctrine or reference truth** (T1 §8.1, L0 row, verbatim) | any L0 target or count table carrying `chart_id`, `subject_id` or a column matching `chart`/`subject` | **PASS — 0 of 66 tables** (Q-09) `[RE-MEASURED = v3.0, population widened from 40 assets to 66 tables]`. Structural, not policy. **[TIER GAP: TG-L0-017]** the detector is the draft's own choice. |
-| **Switch ON** — L0 may supply shared event vocabulary, precision and provenance definitions | `brahma_event_ontology` (27 rows) and `brahma_activity_ontology` (12 rows; together bg_ghatana's 39) are vocabularies, not event stores: no per-subject column (Q-09, Q-15) | PASS `[RE-MEASURED = v3.0]` |
-| **Switch OFF** — nothing derived from life events, anywhere | same detector: with no subject column there is nothing to deselect | **PASS; storage separation trivial** — OFF is a selection because L0 holds no event-conditioned overlay. **[TIER GAP: TG-L0-006]** no per-layer ON/OFF clause. |
-| **No invented computation, source, detector, confidence or score** (T1 §13, L566) | (a) the abstaining grid; (b) `assert_legal()` on the verification vocabulary `[CARRIED, not re-measured]`; (c) citation fields naming a real text | **PARTIAL.** (a) holds; (b) not re-measured; (c) fails for 53 doṣa rows and 1 yoga row citing `classical_tradition` (Q-04) and 80 remedy rows citing it as `source_canonical_id` (Q-05). |
-| **A status is earned or null** (§N.8) | `count_sql` present, `integrity_check_sql` present, and a detector behind each status | 38/40 `count_sql`, 37/40 integrity (Q-01) `[RE-MEASURED = v3.0]`; the two services and the abstaining grid lack integrity — correct absences. `Earn.build_record` is NO_DETECTOR on 40/40 (instrument absent, migration 1094; CEN-M); `asset_throughput.state = 'lit'` carries no detector (§1.1 finding 5). |
+Rev1: v3.1 graded three of these rows PASS using a detector the draft chose itself and a fourth PARTIAL on the draft's own three-part test.
+Those verdicts are removed. A verdict needs a detector and an owner a tier supplies (T3 §2.1: "A rule with no detector is a wish"); until then
+the instance states what was measured and stops, as the L1 instance does.
+
+| rule | source | measured fact (no verdict) | detector |
+|---|---|---|---|
+| **Private observations must never become global doctrine or reference truth** | T1 §8.1, L0 row, verbatim | 0 of 66 tables named by the 40 assets' `count_sql` or target carry `chart_id`, `subject_id` or any column matching `chart`/`subject` (Q-09) `[RE-MEASURED = v3.0, population widened from 40 assets to 66 tables]` | **none supplied — TIER GAP: TG-L0-017**; the column test is the draft's own choice and is not offered as the detector |
+| **Switch ON** — L0 may supply shared event vocabulary, precision and provenance definitions | T2 §9.2, ON row (L500: "L0 event vocabulary") | `brahma_event_ontology` (27 rows) and `brahma_activity_ontology` (12 rows; together bg_ghatana's 39) hold vocabulary; neither has a per-subject column (Q-09, Q-15) | none supplied — TG-L0-006 (narrowed to the detector), TG-L0-017 |
+| **Switch OFF** — nothing derived from life events, anywhere | T2 §9.2, OFF row (L501) and storage separation (L510–512) | the same tables carry no per-subject column (Q-09); v3.0 argued OFF is therefore a selection, which is an argument, not a measurement | none supplied — TG-L0-006 (narrowed), TG-L0-017 |
+| **No invented computation, source, detector, confidence or score** | T1 §13, L566 | 53 doṣa rows and 1 yoga row cite the placeholder `classical_tradition` (Q-04) and 80 remedy rows cite it as `source_canonical_id` (Q-05); the abstaining grid `bg_sarvatobhadra_grid` holds 0 rows by ruling; `assert_legal()` on the verification vocabulary is `[CARRIED, not re-measured]` | none supplied — TG-L0-017 |
+| **A status is earned or null** (CLAUDE.md §N.8 — **outside the tiers**: it is not a T1 §8.1/§13 or T2 §9.2 rule, and is kept because the project's own doctrine names it) | CLAUDE.md §N.8 | 38/40 `count_sql`, 37/40 integrity SQL (Q-01) `[RE-MEASURED = v3.0]`; the two services and the abstaining grid lack integrity, and their absence is by design. `Earn.build_record` is NO_DETECTOR on 40/40 (instrument absent, migration 1094; CEN-M); `asset_throughput.state = 'lit'` carries no detector (§1.1 finding 5) | `Earn.build_record` (census) — NO_DETECTOR |
 
 ### 2.2 · Presentation obligation
 
@@ -556,7 +563,7 @@ traces_to:   0.3
 | **DP02 rule qualification** | L1 formation, L2 interpretation, L3 activation, investigator | rule clauses, method, school, prerequisites and exceptions to be tested, unresolved alternatives, executable scope | one row per rule | live for clauses and verse; school/disagreement PARTIAL; **executable scope not a column** (`sutravali_rules` columns, Q-06) |
 | **DP05 (L0's half)** | L2 via L1 | the catalogue definition formation is tested against | one row per configuration definition | live (233 yoga, 79 doṣa; `bhanga_rules_jsonb`, `partial_formation_threshold`, `strength_formula_ref`, `result_class` never populated on `brahma_yoga_catalog`, CEN-M `Complete.depth`) |
 | **DP07 primitives** `[NEW]` | L3 temporal integrators | ephemeris (`ephemeris_daily`), sky calendar, muhūrta lattice, gochara arcs — actual boundaries, geometry, reference frame | per body×day / per event / per factor×interval / per arc | live; consumers declared: bg_ephemeris ← 5 ka_* assets + bg_gochara_arcs (Q-02); the lattice is global but reference-location bound (T2 L317) |
-| **DP10 / DP16 (about itself)** `[NEW]` | registry / investigator; dependent products | capability metadata, honest gaps; stale marking | — | DP10: 0 of the L0 modules declare a `density_contract`; DP16: no L0 generation to mark (TG-L0-009) |
+| **DP10 (about itself; T2 L456–457) / DP16 (T2 L436, no layer named in its producer column)** `[NEW]` | registry / investigator; dependent products | capability metadata, honest gaps; stale marking | — | DP10: 0 of the L0 modules declare a `density_contract`; DP16: no L0 generation to mark (TG-L0-009) |
 
 **Consumed:** none from any layer — 0 of 40 assets declare a non-`bg_*` dependency (Q-02) `[RE-MEASURED = v3.0]`. L0's inputs
 are external (corpus, ephemeris, native rulings), which is why its Part 2 has no consumed-contract table with declared uses.
@@ -565,28 +572,29 @@ are external (corpus, ephemeris, native rulings), which is why its Part 2 has no
 
 ```
 inherits:    Product §3, Data plane §5 (T2 L325–339)
-measured_by: per obligation, one of the five states — applied / inapplicable-with-reason / unavailable / unqualified / unresolved; never a blank. Row counts from Q-03, CEN-R.
+measured_by: presence counts only (Q-03, CEN-R). The five states per obligation (applied / inapplicable-with-reason / unavailable / unqualified / unresolved) are NOT assigned: no tier assigns an obligation to L0 or declares its universe (TG-L0-007)
 traces_to:   0.1
 ```
 
-L0 owns the **meaning half** of each row, never the chart half `[CARRIED]` — **[TIER GAP: TG-L0-007]** T2 §5 assigns no owner
-layer, and the census width is NOT_GENERIC on 40/40 (no declared universe).
+Rev1: v3.1 gave each row one of the five states using a "meaning half versus chart half" rule of its own. Assigning a state without a tier
+clause for ownership and a declared universe would be an invented result, so the state column is removed and the presence figures stay.
+The "L0's half" column is the draft's own halving rule `[CARRIED]`, not a tier statement; the census width is NOT_GENERIC on 40/40 (no declared universe).
 
-| data plane §5 obligation | L0's half | state |
+| data plane §5 obligation | L0's half (the draft's own halving rule) | measured presence (state: **not assigned**, TG-L0-007) |
 |---|---|---|
-| Graha contextual roles | role vocabulary: natural, functional, lordship, kāraka kept distinct | **applied** (77 kāraka + 11 planet ontology rows) |
-| Rāśi / bhāva / lord / kāraka | reference frames and significator vocabulary | **applied** (12 sign + 12 house) |
-| Bala / dignity / avasthā | dignity reference and units | **applied** (151 cockpit rows over five tables, bg_dignity_reference) |
-| Sambandha | typed relation vocabulary, aspect school and orb | **applied** (13 aspect-type rows) |
-| Bhāvat Bhāvam | the derived-house doctrine and its limits | **unqualified** — concept `bhavat_bhavam` resolves in the ontology; 0 of 3,002 rules mention it (Q-16) `[RE-MEASURED = v3.0]` |
-| Varga and reference perspectives | varga method identity and domain | **applied** (30 varga rows) |
-| Yoga / doṣa / bhaṅga | catalogue definitions, participants, cancellation conditions | **applied**, with an **unqualified subset**: 53 of 79 doṣa and 1 of 233 yoga rows cite a placeholder `[CHANGED — CH-06]` |
-| Nakshatra / KP | pada relationships, sub-lord division | **applied** (2,857 nakshatra-family + 249 KP rows) |
-| Present interval (P24) | no L0 half | **inapplicable with reason** — the interval set is L3's and its expression L4's |
-| Kāla | transit rule vocabulary, arcs, calendar substrate | **applied** (76 + 33,933 + 31,081) |
-| Praśna / Muhūrta / calendar | method eligibility and constraint vocabulary | **applied** (lattice 173,219; praśna methods 41; the lattice is reference-location bound) |
-| Āyurdāya and constitution | method and school identity, inputs, cancellations | **unresolved** — no method concept, 0 rules, 0 tagged chunks (Q-16) `[CHANGED — CH-07]` |
-| Voluntary practice and wider tradition | attributed practice, scope, burden, evidence class | **applied** (341 rows), provenance PARTIAL (289 unresolved ids) |
+| Graha contextual roles | role vocabulary: natural, functional, lordship, kāraka kept distinct | 77 kāraka + 11 planet ontology rows |
+| Rāśi / bhāva / lord / kāraka | reference frames and significator vocabulary | 12 sign + 12 house rows |
+| Bala / dignity / avasthā | dignity reference and units | 151 cockpit rows over five tables (bg_dignity_reference) |
+| Sambandha | typed relation vocabulary, aspect school and orb | 13 aspect-type rows |
+| Bhāvat Bhāvam | the derived-house doctrine and its limits | concept `bhavat_bhavam` resolves in the ontology; 0 of 3,002 rules mention it (Q-16) `[RE-MEASURED = v3.0]` |
+| Varga and reference perspectives | varga method identity and domain | 30 varga rows |
+| Yoga / doṣa / bhaṅga | catalogue definitions, participants, cancellation conditions | definitions present; 53 of 79 doṣa and 1 of 233 yoga rows cite a placeholder `[CHANGED — CH-06]` |
+| Nakshatra / KP | pada relationships, sub-lord division | 2,857 nakshatra-family + 249 KP rows |
+| Present interval (P24) | none, by the draft's halving rule: the interval set is L3's and its expression L4's | — |
+| Kāla | transit rule vocabulary, arcs, calendar substrate | 76 + 33,933 + 31,081 rows |
+| Praśna / Muhūrta / calendar | method eligibility and constraint vocabulary | lattice 173,219; praśna methods 41; the lattice is reference-location bound |
+| Āyurdāya and constitution | method and school identity, inputs, cancellations | no method concept, 0 rules, 0 tagged chunks (Q-16) `[CHANGED — CH-07]` |
+| Voluntary practice and wider tradition | attributed practice, scope, burden, evidence class | 341 rows; provenance PARTIAL (289 unresolved ids) |
 
 ### 2.6 · Vocabulary conformance — **L0 owns the set**
 
@@ -682,14 +690,16 @@ traces_to:   0.2
 
 ### 3.1 · Per obligation
 
-Ten obligations exist; L0 is scored on the one T1 §11 assigns plus, `[CARRIED]`, three the draft adds (§0.2, TG-L0-001).
+Ten obligations exist; L0 is scored on the one T1 §11 assigns, **Source and domain fidelity** (§0.2). T2 §13.3 item 1 forbids adding
+others; the three v3.0 added on its own authority (Computational correctness, Delivery fidelity, Operational honesty) are struck at rev1.
 
 | obligation | where L0 stands, measured | what closes the gap |
 |---|---|---|
-| **Source and domain fidelity** | 3,002 rules all carry a verse reference across 14 texts; 721 attributions stored. Against that: 53 doṣa + 1 yoga rows cite a placeholder, 289 remedy source ids do not resolve (85 not even case-folded), and no detector compares any encoding to its cited passage | W-L0-3 · W-L0-5 |
-| **Computational correctness** `[CARRIED]` | 5 computed assets, no independent re-derivation detector at L0 (§2.7 c); ephemeris grid complete (Q-14) | W-L0-4 |
-| **Delivery fidelity** `[CARRIED]` | 46 modules, 39 descriptors, 0 declaring a density contract; parity never run | W-L0-8 |
-| **Operational honesty** `[CARRIED]` | 38/40 `count_sql`, 37/40 integrity, 1 DRAFT; `Build.completion` FAIL on 14; `lit` without a build on 4; 0 gates certified | W-L0-2 (briefs) and the registry corrections listed in Part 6 |
+| **Source and domain fidelity** | 3,002 rules all carry a verse reference across 14 texts; 721 attributions stored. Against that: 53 doṣa + 1 yoga rows cite a placeholder, 289 remedy source ids do not resolve (85 not even case-folded), and no detector compares any encoding to its cited passage. The computed substrate T1 L500 lists under this obligation: 5 computed assets (825,084 · 173,219 · 33,933 · 31,081 · 110,000 rows), no independent re-derivation detector at L0 (§2.7 c), ephemeris grid complete (Q-14) | W-L0-3 · W-L0-4 · W-L0-5 |
+
+Facts v3.0 filed under the struck obligations are kept where they are used, as facts and not as scores: build-status counts (38/40 `count_sql`, 37/40 integrity SQL,
+1 DRAFT, `Build.completion` FAIL on 14, `lit` without a build on 4, 0 gates certified; §1.1, §5.2) and served-surface counts (46 modules, 0 declaring a density contract;
+parity never run; §1.4).
 
 ### 3.2 · Per asset — disposition
 
@@ -699,7 +709,7 @@ counts `[CHANGED — CH-09]`. **No asset receives R.**
 
 | disposition | assets | evidence |
 |---|---|---|
-| **P** preserve | **30** — every asset not listed below | at or above floor (bar the stale parihara registry floor), integrity present, no fidelity failure measured |
+| **P** preserve | **30** — every asset not listed below `[CARRIED]` | at or above floor except the stale parihara registry floor; integrity SQL present except the two services and the empty grid, where absence is by design (§2.1); fidelity was measured for only one of the 30, **bg_yogas**, which is PARTIAL (1 placeholder citation, §1.2) and appears under must-add in §3.3, so the P assignment for it is v3.0's judgement and is left to the A.L0 dispositions file (Track A brief §5), not settled here |
 | **E** enrich/correct | **bg_ontology** (doṣa alias sets; a declared release), **bg_remedies** (normalise 289 ids), **bg_doshas** (replace 53 placeholder citations), **bg_rules** (concept linkage beyond 17/3,002; an executable-scope field) | §1.2, §1.3 |
 | **Q** qualify/limit authority | **bg_sarvatobhadra_grid** — keep the abstention visible; **bg_vidhi_floors** — DRAFT is the honest authority limit until 2 floors are ratified | ADJUDICATION-11; §1.1.3 |
 | **I** integrate | **bg_prashna_rules** (declare its table set), **bg_text_index** (its 361 is a distinct-tag measure sharing a table with bg_texts — one declared grain) | §1.1 findings 2–3 |
@@ -766,13 +776,13 @@ because its cause is established. Scheduling belongs to the campaign plan, not t
 | packet | closes | proof (fails if not landed) |
 |---|---|---|
 | **W-L0-1** fidelity census for the 33 unmeasured assets | §1.2 | a per-asset fidelity record exists for 40/40, each naming its query (needs TG-L0-012 answered first) |
-| **W-L0-2** first tier-4 briefs | §3.1 operational honesty | the ledger's L0 rows carry a brief per asset; the nine-gate map filled per brief |
+| **W-L0-2** first tier-4 briefs | §4.4 (derivable briefs), §5.2 (gate map per asset) | the ledger's L0 rows carry a brief per asset; the nine-gate map filled per brief |
 | **W-L0-3** source-correspondence detector | §2.7a | runs over bg_rules/bg_yogas/bg_doshas/bg_remedies and reports a non-zero mismatch count it can also report as zero |
 | **W-L0-4** independent re-derivation on the computed five | §2.7c | a second derivation with a declared tolerance, and a seeded mismatch the check catches |
 | **W-L0-5** identity and normalisation repair | §1.2, §1.3, §2.6 rules 1 and 3 | `count(*) = count(DISTINCT (entity_class, canonical_id))` holds; 79/79 doṣa alias sets; remedy unresolved 289 → 0 |
-| **W-L0-6** the parihara −9 `[CHANGED — CH-04]` | §1.1 finding 1 | `live ≥ floor` for all 40 — by correcting the registry floor to the achieved count (§N.4), since migration 703 established the rows were deliberately removed |
+| **W-L0-6** the parihara −9 `[CHANGED — CH-04]` | §1.1 finding 1 | `live ≥ floor` for all 40 — by correcting the registry floor to the achieved count (CLAUDE.md §N.4, outside the tiers), since migration 703 established the rows were deliberately removed |
 | **W-L0-7** L0 ablation harness (cross-layer flavour only) | §1.3, §1.5 | a seam can be broken and the served reading measured |
-| **W-L0-8** density declarations and first parity run | §2.2, §3.1 | `density_contract` on every module that paginates or facets; one parity run recorded |
+| **W-L0-8** density declarations and first parity run | §2.2, §1.4 | `density_contract` on every module that paginates or facets; one parity run recorded |
 | **W-L0-9** rule 5 and rule 6 censuses | §2.6 | per-parameter typing census and per-class independent-map census exist and can fail (needs TG-L0-011 answered first) |
 
 ### 4.3 · Generation, invalidation, rollback
@@ -807,8 +817,8 @@ traces_to:   0.1
 ```
 
 Every tier-4 L0 brief receives, without inventing it: its P-needs and V-journeys (§0.1, narrowed — `[TIER GAP: TG-L0-003]`) ·
-the obligation it is scored on (§0.2; one tier-assigned, three carried) · its correctness rules and switch behaviour
-(§2.1; structurally satisfied; TG-L0-006) · its presentation fields (§2.2; TG-L0-005) · its produced contracts (§2.3;
+the obligation it is scored on (§0.2; the one tier-assigned obligation, none may be added) · its correctness rules and switch behaviour
+(§2.1; measured facts only, no verdict; TG-L0-006, TG-L0-017) · its presentation fields (§2.2; TG-L0-005) · its produced contracts (§2.3;
 TG-L0-004) · its coverage states (§2.4; TG-L0-007) · its position in the order (§2.5, §4.1; depth listed) and baseline
 (current-code half **not measured**, TG-L0-015) · its disposition and must-add (§3.2, §3.3; TG-L0-019) · its fidelity,
 synergistic and cross-layer terms (§1.2–§1.4; TG-L0-012/013/016) · its role (`neither`: L0 supplies the vocabulary both
@@ -855,7 +865,7 @@ the E6.2 rollup, which is not yet coded. Counts are assets (of 40).
 | **Vocab** | §2.6 | L0 owns 16 classes, authority bg_ontology, composite key; *inverts* for L0 | PASS 35 · FAIL 1 (bg_ontology alias) · NO_DETECTOR 1 · no reading 3 |
 | **Carr** | §2.7, §4.4 row 13 | per-asset (concept, check) **unassigned** (TG-L0-018); layer-level: a NO DETECTOR, b PARTIAL, c NO DETECTOR | NO_DETECTOR 40 |
 | **Narr** | §2.2 | prose-bearing columns exist (`formation_text`, `effects_text`, `significations_text`, `prescription_text`, `content_en`) but no census measure says which assets emit prose (R194) | **no census criterion** 40 |
-| **Dens** | §2.2, §3.4 | served: 24 of 40 assets reach ≥1 module via 31 modules; 0 declare a `density_contract` | FAIL 23 · NO_DETECTOR 1 · N/A 16 |
+| **Dens** | §2.2, §3.4 | served: 26 of 40 assets reach ≥1 module (census reach; 31 distinct modules), while `Dens.served` counts a registry-attributed module for 23; 0 declare a `density_contract` | FAIL 23 · NO_DETECTOR 1 · N/A 16 |
 | **Build** | §2.5, §1.1, §4.3 | writer and registered id, target, edges, build record: the §1.1 table and §1.1.5 | FAIL 16 · PARTIAL 11 · PASS 13 |
 
 Gate/opportunity boundary (T3 L523–527): a passing gate writes a certification record and no ledger row; ledger rows come
@@ -964,7 +974,7 @@ CEN-S — `/Users/Dev/suvarna-evidence/census/SUMMARY.md` and `census_L0.log` (c
 | F-02 | migrations | 522 `.sql` in `platform/migrations`: statements matching `insert into asset_registry` / `update asset_registry … ;` that name an L0 id (28 of 40); headers of 599, 642, 644, 703, 912 read |
 | F-03 | pins | `platform/src/generated/nirmana-analysis-layer-pins.json` (`layers.L0`, `history.L0`, `definition_bindings.L0`) and `nirmana-writer-digests.json` (123 writers, 36 `bg_`) |
 | F-04 | writers | `platform/python-sidecar/pipeline/orchestrator/writers/bg_*.py` (32 files); `@register('…')` ids counted (36) |
-| F-05 | served surface | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` (47 non-test `.ts` incl. `index.ts`; 3 test entries); `CapabilityDescriptor` and `density_contract` greps per layer directory |
+| F-05 | served surface | `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` (47 non-test `.ts` incl. `index.ts`; 3 test entries); `CapabilityDescriptor` and `density_contract` greps per layer directory, non-test paths only (paths containing `test` excluded; recomputed at rev1: `density_contract` L0 0, L1 22, L2 7, L3 0, L4 1, L5 15). "39 declare a descriptor" counts files matching `const <name>: CapabilityDescriptor`; a bare-word `grep -rlw CapabilityDescriptor` finds 41 non-test files in the L0 directory, 40 excluding `index.ts` |
 | F-06 | ledgers | `00_ARCHITECTURE/control/asset_gaps.jsonl` (857 rows; 290 for `bg_`), `asset_certs.jsonl` (1 line: `_schema`) |
 | F-07 | file references | word-match `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src`, excluding `node_modules`; all file types (reproduces v3.0) and `.py/.ts/.tsx` non-test |
 | F-07b | Gochara readers | `grep -rl 'bg_gochara_arcs'` and `'bg_gochara_citation_resolution'` over the same three roots, any file type, paths containing `test` excluded (used only in §1.1.4) |
