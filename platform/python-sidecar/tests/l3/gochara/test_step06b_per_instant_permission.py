@@ -772,3 +772,109 @@ def test_multilevel_fetch_pins_build_in_the_query_and_drops_null_tier_rows():
     assert "AND build_id = %s" in seen["sql"] and seen["params"][-1] == "b1"
     assert seen["params"][4] == DD.READ_CONTRACT_TIER  # tier pinned before duplicates
     assert [r["dasha_row_id"] for r in out] == ["r1"]  # NULL-tier row rejected
+
+
+# ── ASTRA v1.2 P1-1: pin BEFORE canonicalization on main()'s path; recursive trees ──
+
+
+class _DashaConn:
+    """Stub chart_dashas: answers the RAW tier-pinned read (no build
+    predicate) with rows of every build, and the build-PINNED read with the
+    pinned build's rows only — the two reads main() now performs."""
+
+    def __init__(self, rows_by_build: dict):
+        self._rows = rows_by_build
+        self.queries: list[tuple[str, list]] = []
+
+    def execute(self, sql, params):
+        self.queries.append((sql, params))
+        systems = params[2]
+        pinned = params[-1] if "AND build_id = %s" in sql else None
+        out = []
+        for build, rows in self._rows.items():
+            if pinned is not None and build != pinned:
+                continue
+            for r in rows:
+                if r["system_id"] in systems:
+                    out.append([r["dasha_row_id"], r["system_id"], r["level_n"],
+                                r["parent_row_id"], r["lord_graha"], r["start_iso"],
+                                r["end_iso"], build, r["verification_pass_status"]])
+
+        class _X:
+            def fetchall(self_inner):
+                return out
+        return _X()
+
+
+def test_actual_main_path_pins_the_build_before_canonicalization():
+    """The reviewer's mixed-build reproduction: an UNRELATED build whose MD
+    row overlaps the pinned build's MD would be rejected as a (level,
+    parent, index) conflict if all builds were canonicalized first. main()'s
+    load_pinned_dasha_periods selects the pin from a RAW read and
+    canonicalizes only the pinned rows — the foreign build never enters the
+    conflict pass."""
+    mod = _load_step06a()
+    foreign = [_l1row("md-foreign", 1, None, "Venus", "2005-01-01T00:00:00Z",
+                      "2025-01-01T00:00:00Z", build="other-build")]
+    conn = _DashaConn({BUILD: _l1_rows(), "other-build": foreign})
+    periods, contract = mod.load_pinned_dasha_periods(
+        conn, CHART["chart_id"], ["vimshottari", "yogini"])
+    assert contract["build_id"] == BUILD and contract["basis"].endswith("pinned build")
+    assert contract["raw_vimshottari_rows"] == len(_l1_rows()) + 1
+    assert contract["rows_excluded_by_build_pin"] == 1
+    assert {str(p["build_id"]) for p in periods if p["system_id"] == "vimshottari"} == {BUILD}
+    assert not any(p["dasha_row_id"] == "md-foreign" for p in periods)
+    # the raw read carried no build predicate; the pinned read did
+    raw_sql, raw_params = conn.queries[0]
+    pinned_sql, pinned_params = conn.queries[1]
+    assert "AND build_id = %s" not in raw_sql and raw_params[2] == ["vimshottari"]
+    assert "AND build_id = %s" in pinned_sql and pinned_params[-1] == BUILD
+    # and the C5 licence evaluates on the pinned set at t₁ (Mars AD scored)
+    ctx = w.frozen_c5_permission_context(periods, w.jd_of(T1), "marriage", CHART,
+                                         pinned_build_id=contract["build_id"],
+                                         tier=contract["tier"])
+    assert ctx["period_context"]["ad"]["lord"] == "Mars"
+    # mutation: canonicalizing every build first raises on the foreign overlap
+    with pytest.raises(DD.DashaReadConflict):
+        DD.canonicalize_multilevel_rows(_l1_rows() + foreign)
+
+
+def test_main_calls_the_pinned_loader_and_never_the_unpinned_fetch():
+    import ast, inspect
+    mod = _load_step06a()
+    src = inspect.getsource(mod.main)
+    calls = {n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", None)
+             for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call)}
+    assert "load_pinned_dasha_periods" in calls
+    assert "fetch_dasha_periods_multilevel" not in calls
+
+
+def test_complete_duplicated_md_ad_pd_tree_collapses_recursively():
+    """A whole duplicated tree (two MD rows, two AD rows under each, two PD
+    rows under each AD — identical fields, distinct ids): the reviewer's
+    probe failed after the parents converged because the identical children
+    were then rejected as overlapping siblings. Descendants are normalised
+    after their parents and collapsed after normalisation."""
+    def tree(suffix):
+        md = _l1row(f"md-{suffix}", 1, None, "Mercury", "2010-08-18T15:50:23Z", "2027-08-18T21:50:23Z")
+        ad1 = _l1row(f"ad1-{suffix}", 2, f"md-{suffix}", "Mars", "2019-02-17T06:50:23Z", "2020-02-14T11:47:23Z")
+        ad2 = _l1row(f"ad2-{suffix}", 2, f"md-{suffix}", "Rahu", "2020-02-14T11:47:23Z", "2022-09-02T21:05:23Z")
+        pd1 = _l1row(f"pd1-{suffix}", 3, f"ad1-{suffix}", "Saturn", "2019-06-21T00:55:52Z", "2019-08-17T09:18:53Z")
+        pd2 = _l1row(f"pd2-{suffix}", 3, f"ad2-{suffix}", "Saturn", "2020-11-04T09:13:29Z", "2021-03-31T20:29:50Z")
+        return [md, ad1, ad2, pd1, pd2]
+    rows = tree("a") + tree("b")
+    out = DD.canonicalize_multilevel_rows(rows)
+    by_id = {r["dasha_row_id"]: r for r in out}
+    assert set(by_id) == {"md-a", "ad1-a", "ad2-a", "pd1-a", "pd2-a"}
+    assert by_id["md-a"]["merged_row_ids"] == ["md-a", "md-b"]
+    assert by_id["ad1-a"]["merged_row_ids"] == ["ad1-a", "ad1-b"]
+    assert by_id["pd1-a"]["merged_row_ids"] == ["pd1-a", "pd1-b"]
+    assert by_id["pd2-a"]["parent_row_id"] == "ad2-a"
+    assert (by_id["ad1-a"]["index"], by_id["ad2-a"]["index"]) == (0, 1)
+    # order-independent
+    out2 = DD.canonicalize_multilevel_rows(list(reversed(rows)))
+    assert {r["dasha_row_id"] for r in out2} == {"md-b", "ad1-b", "ad2-b", "pd1-b", "pd2-b"}
+    # the licence evaluates on the collapsed tree (Mars AD scored at t₁)
+    sel = w.select_period_rows(rows, w.jd_of(T1), pinned_build_id=BUILD, tier=TIER)
+    assert sel["ad"]["lord_graha"] == "Mars" and sel["pd"]["lord_graha"] == "Saturn"
+    assert sel["orphans_ignored"] == []

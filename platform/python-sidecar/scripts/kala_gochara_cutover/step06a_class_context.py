@@ -262,6 +262,30 @@ def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict
             "basis": basis, "builds_seen": builds}
 
 
+def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[list[dict], dict]:
+    """The §4.0 read as main() performs it (ASTRA v1.2 P1-1): (1) a RAW,
+    non-canonicalized read of the tier-pinned Vimśottarī rows selects the
+    build pin (select_dasha_read_contract); (2) the Vimśottarī rows are then
+    fetched PINNED to that build and canonicalized — a foreign build's
+    overlapping rows never enter the duplicate/conflict pass; (3) the other
+    DR-14 systems (legacy generators) are fetched and canonicalized on their
+    own. Returns (periods, contract)."""
+    raw_vim = DD.fetch_dasha_periods_multilevel(
+        conn, chart_id, systems=["vimshottari"], canonicalize=False)
+    contract = select_dasha_read_contract(chart_id, raw_vim)
+    contract["raw_vimshottari_rows"] = len(raw_vim)
+    if contract["build_id"] is not None:
+        vim = DD.fetch_dasha_periods_multilevel(
+            conn, chart_id, systems=["vimshottari"], build_id=contract["build_id"])
+    else:
+        vim = []
+    contract["rows_excluded_by_build_pin"] = len(raw_vim) - len(
+        [r for r in raw_vim if str(r.get("build_id")) == str(contract["build_id"])])
+    others = [s for s in systems if s != "vimshottari"]
+    rest = DD.fetch_dasha_periods_multilevel(conn, chart_id, systems=others) if others else []
+    return list(vim) + list(rest), contract
+
+
 def _jsonable_period(p: dict) -> dict:
     """chart_dashas rows carry datetimes/UUIDs; the class-context document is
     JSON. ISO strings round-trip through DD.period_contains."""
@@ -398,8 +422,10 @@ def main(argv: list[str] | None = None) -> int:
         # T0-6: MD/AD/PD (levels 1-3) at the §4.0 contract tier; a duplicate
         # CONFLICT raises loudly (DashaReadConflict propagates — never
         # silently served), a DB-shape surprise yields the honest [].
-        dasha_periods = DD.fetch_dasha_periods_multilevel(
-            conn, args.chart_id, systems=list(perm.DASHA_SYSTEM_IDS))
+        # ASTRA v1.2 P1-1: the build pin is selected from a RAW read and
+        # applied BEFORE canonicalization (load_pinned_dasha_periods).
+        dasha_periods, dasha_contract = load_pinned_dasha_periods(
+            conn, args.chart_id, list(perm.DASHA_SYSTEM_IDS))
 
         # T0-7 / O-TV-3 / D-SPECS C4: the AV donor matrix is read once as a
         # per-key set and emitted at the document's top level; it is NOT a
@@ -409,16 +435,6 @@ def main(argv: list[str] | None = None) -> int:
         # ASTRA P1-2: the frozen C5 licence needs the chart operands and the
         # §4.0 read pin; both are read once and emitted at the top level.
         chart_operands = fetch_chart_operands(conn, args.chart_id)
-        dasha_contract = select_dasha_read_contract(args.chart_id, dasha_periods)
-        # the emitted Vimśottarī rows are PINNED to the contract's build (rows
-        # of other builds are excluded and counted; other systems untouched)
-        before = len(dasha_periods)
-        dasha_periods = [
-            p for p in dasha_periods
-            if p.get("system_id") != "vimshottari"
-            or (dasha_contract["build_id"] is not None
-                and str(p.get("build_id")) == str(dasha_contract["build_id"]))]
-        dasha_contract["rows_excluded_by_build_pin"] = before - len(dasha_periods)
 
         contexts: dict[str, dict] = {}
         omitted: list[dict] = []

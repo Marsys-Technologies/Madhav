@@ -115,29 +115,37 @@ def canonicalize_multilevel_rows(rows: list[dict]) -> list[dict]:
     The pinning (build / ayanāṃśa / tier) MUST happen before this pass —
     the caller's job; this function does not know the pins.
     """
-    # 1. identical collapse with alias map
-    keepers: dict[tuple, dict] = {}
+    # 1./2. identical collapse and parent canonicalization, RECURSIVELY by
+    # level (ASTRA v1.2 P1-1): a duplicated MD/AD/PD tree collapses at the
+    # MD level first; its AD children are re-pointed to the keeper and only
+    # THEN collapsed (their identity key now shares the canonical parent),
+    # and so on down — descendants are normalised after their parents and
+    # collapsed after normalisation, never rejected as overlapping siblings.
     alias: dict[str, str] = {}
-    for row in rows:
-        key = tuple(str(row.get(k)) for k in (
-            "system_id", "level_n", "parent_row_id", "lord_graha", "start_iso",
-            "end_iso", "build_id", "verification_pass_status"))
-        rid = str(row.get("dasha_row_id"))
-        if key not in keepers:
-            keeper = dict(row)
-            keeper["merged_row_ids"] = sorted(set(map(str, row.get("merged_row_ids") or [])) | {rid})
-            keepers[key] = keeper
-            continue
-        keeper = keepers[key]
-        keeper["merged_row_ids"] = sorted(set(keeper["merged_row_ids"]) | {rid})
-        alias[rid] = str(keeper.get("dasha_row_id"))
-    survivors = list(keepers.values())
-    # 2. parent canonicalization through the alias map
-    for row in survivors:
-        parent = row.get("parent_row_id")
-        if parent is not None and str(parent) in alias:
-            row["parent_row_id_original"] = str(parent)
-            row["parent_row_id"] = alias[str(parent)]
+    survivors: list[dict] = []
+    levels = sorted({int(r.get("level_n") or 0) for r in rows})
+    for level in levels:
+        keepers: dict[tuple, dict] = {}
+        for row in rows:
+            if int(row.get("level_n") or 0) != level:
+                continue
+            row = dict(row)
+            parent = row.get("parent_row_id")
+            if parent is not None and str(parent) in alias:
+                row["parent_row_id_original"] = str(parent)
+                row["parent_row_id"] = alias[str(parent)]
+            key = tuple(str(row.get(k)) for k in (
+                "system_id", "level_n", "parent_row_id", "lord_graha", "start_iso",
+                "end_iso", "build_id", "verification_pass_status"))
+            rid = str(row.get("dasha_row_id"))
+            if key not in keepers:
+                row["merged_row_ids"] = sorted(set(map(str, row.get("merged_row_ids") or [])) | {rid})
+                keepers[key] = row
+                continue
+            keeper = keepers[key]
+            keeper["merged_row_ids"] = sorted(set(keeper["merged_row_ids"]) | {rid})
+            alias[rid] = str(keeper.get("dasha_row_id"))
+        survivors.extend(keepers.values())
     # 3./4. sibling index + overlap conflict
     groups: dict[tuple, list[dict]] = {}
     for row in survivors:
@@ -167,6 +175,7 @@ def fetch_dasha_periods_multilevel(
     levels: tuple[int, ...] = DEFAULT_LEVELS,
     tier: str = READ_CONTRACT_TIER,
     build_id: Optional[str] = None,
+    canonicalize: bool = True,
 ) -> list[dict]:
     """§4.0 multi-level (MD/AD/PD) read of `chart_dashas`, with parent
     linkage preserved (`parent_row_id`) and the contract's duplicate rules
@@ -220,6 +229,12 @@ def fetch_dasha_periods_multilevel(
     parsed = [r for r in parsed
               if r.get("verification_pass_status") is not None
               and (build_id is None or r.get("build_id") is not None)]
+    if not canonicalize:
+        # RAW pinned rows — for a caller that must SELECT the build pin
+        # first (the §4.0 read contract) and only then canonicalize the
+        # pinned set; canonicalizing across builds would reject a foreign
+        # build's overlapping rows as conflicts (ASTRA v1.2 P1-1).
+        return parsed
     return canonicalize_multilevel_rows(parsed)
 
 
