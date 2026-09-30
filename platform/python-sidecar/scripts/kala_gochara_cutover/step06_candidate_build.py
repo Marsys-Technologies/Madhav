@@ -25,20 +25,42 @@ ledger's `_normalize_episode` shape, exactly what write_contacts accepts) and
 synthetic data only, never pointed at a real chart.
 
 NDJSON stream input (Pravāha A2.5, CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2):
-`--episodes-ndjson <path-or-glob>` reads the concatenated per-body NDJSON
-files step06_enumerate_episodes.py wrote (one episode object per line), line
-by line — mutually exclusive with --episodes-json. Memory disclosure: the
-read is streamed per line, but the episodes are then MATERIALIZED as one
-list, because the existing build writes the whole set in a single transaction
-(ledger.write_contacts is delete-then-insert over the full list, and
-publish_candidate/write_coverage are once-per-manifest) — the spec's memory
-design bounds the ENUMERATION side (per-body chunks), not this single build
-read. After the read the list is sorted by the canonical key (t_in, body,
-relation) — the same key dedupe_episodes imposes on the monolithic payload —
-so for the same episode set the row set AND the insert order equal the
---episodes-json path byte-for-byte, and the manifest's row_counts and
-content_digest (computed over the canonically sorted DB row set at publish,
-ledger._canonical_row_set) are identical.
+`--episodes-ndjson <path-or-glob>` (local rehearsal) or `--input-manifest
+<manifest.json>` (the finalized century chain — the only shape century_run.py
+drives) reads the per-body NDJSON objects step06_enumerate_episodes.py wrote
+(one episode object per line). Both are mutually exclusive with
+--episodes-json.
+
+Bounded memory end-to-end (ASTRA A2.5 review amendment 1): the read is a
+STREAMED k-way merge over the per-body objects — local files or gs:// URIs
+(google-cloud-storage blob streaming, lazy import; injectable transport for
+tests) — and the insert is bounded: ledger.write_contacts_streaming
+normalizes and inserts in fixed-size batches inside the ONE candidate
+transaction. Neither the episode dicts nor the normalized rows nor a
+contact-id list are ever materialized century-scale in this process.
+
+Canonical stream order (amendment 6 — the equivalence definition): each
+per-body object is written sorted by the TOTAL order `episode_stream_key` =
+(t_in, body, relation, canonical-json of the episode); the merge preserves it
+and VERIFIES it per object (an unsorted object — foreign, hand-made, or
+stale-format — is rejected, never silently re-ordered). Equivalence with the
+monolithic --episodes-json build is defined precisely as: (a) the same
+contact row SET keyed by the pinned §3.2 contact_id (dedupe/identity), (b)
+the same coverage row set with insertion order by partition_key (the order
+build_coverage_rows emits monolithically), and (c) the same manifest
+content_digest once volatile metadata (computed_at, build_id, manifest
+linkage) is controlled — the digest itself (ledger._canonical_row_set) is
+order-independent over the canonically sorted DB row set.
+
+Finalized input manifest (amendment 2, §N.8): with --input-manifest the build
+verifies — before any candidate success (commit/GREEN) — the manifest's run
+identity (run_id uniform across manifest and every object), chart_id,
+generation, horizon, the full expected body set (PERSISTED_BODIES, imported,
+never restated), the coverage binding (order-independent sha256 of the merged
+coverage rows), and every object's streamed line count, byte count, and
+sha256. A missing, truncated (clean-prefix truncations included), altered,
+mixed-run, or unreadable object FAILS the build (exit 3, transaction rolled
+back) — a truncated or partial stream can never earn GREEN/COMPLETE.
 
 The factor-level delta report vs '3.0' (§4.11, WP8's
 WP8_FACTOR_DELTA_REPORT_v1_0.md artifact) is attached to the manifest via
@@ -59,7 +81,11 @@ refuted citations). Skipped, and recorded as NOT_RUN, under --rehearse-synthetic
 """
 from __future__ import annotations
 
+import glob
+import hashlib
+import heapq
 import importlib.util
+import io
 import json
 import sys
 import time
@@ -67,7 +93,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import connect, step_parser, write_evidence  # noqa: E402
+from common import connect, redact_text, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
 _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
@@ -122,18 +148,12 @@ def _coerce_episode_times(episodes: list[dict]) -> list[dict]:
 
 
 def read_episodes_ndjson(path_or_glob: str) -> list[dict]:
-    """Streamed read of the concatenated per-body NDJSON files (Pravāha A2.5).
-
-    Parses one JSON object per line — the stream is never held as text — then
-    materializes the episode dicts as ONE list (the single-transaction build
-    requires the full set; see the module docstring's memory disclosure) and
-    sorts by the canonical (t_in, body, relation) key dedupe_episodes imposes
-    on the monolithic payload, so the resulting list is byte-identical in
-    content and order to what --episodes-json yields for the same episodes.
-    A bare path reads that one file; a glob reads every match in sorted-path
-    order (order irrelevant after the canonical re-sort)."""
-    import glob
-
+    """Rehearsal-scale materializing read of concatenated per-body NDJSON
+    (decade payloads, unit tests). The CENTURY build never uses this: it
+    streams through EpisodeObjectStream + iter_episodes_merged into
+    ledger.write_contacts_streaming (see the module docstring). Retained for
+    small local payloads; sorts by the total canonical stream key, so the
+    result is deterministic regardless of file/line order."""
     paths = sorted(glob.glob(path_or_glob))
     if not paths and Path(path_or_glob).exists():
         paths = [path_or_glob]
@@ -148,8 +168,240 @@ def read_episodes_ndjson(path_or_glob: str) -> list[dict]:
                 if line:
                     episodes.append(json.loads(line))
     _coerce_episode_times(episodes)
-    episodes.sort(key=lambda d: (d["t_in"], d["body"], d["relation"]))
+    episodes.sort(key=episode_stream_key)
     return episodes
+
+
+# ── streamed century consumption (Pravāha A2.5; ASTRA review amendments 1/2/6) ─
+
+
+class EpisodeStreamError(ValueError):
+    """A stream object is unreadable, unparsable, or violates the canonical
+    per-object ordering — the build fails, never a silent repair."""
+
+
+class ManifestVerificationError(ValueError):
+    """The finalized input manifest fails verification (§N.8): missing,
+    truncated, altered, mixed-run, or non-final input can never earn
+    GREEN/COMPLETE."""
+
+
+def episode_stream_key(ep: dict) -> tuple:
+    """The TOTAL canonical order for the streamed century build (amendment 6):
+    (t_in, body, relation, canonical-json). The first three components are the
+    dedupe_episodes sort key; because (t_in, body, relation) does not totally
+    order distinct contacts, the canonical JSON serialization is the
+    deterministic tie-break — two distinct episodes never compare equal, so
+    the merged order is independent of shard/ingestion order. Expects coerced
+    (datetime) t_in, exactly what the enumerator holds when it pre-sorts the
+    NDJSON payload."""
+    return (ep["t_in"], str(ep["body"]), str(ep["relation"]),
+            json.dumps(ep, sort_keys=True, separators=(",", ":"), default=str))
+
+
+def _open_binary_uri(uri: str, *, gcs_client=None):
+    """A readable binary stream for a local path or a gs://bucket/object URI
+    (the REAL streamed code path: google-cloud-storage blob.open, imported
+    lazily so local runs never require the library; `gcs_client` is the
+    test-injected transport, same call shape as storage.Client)."""
+    if uri.startswith("gs://"):
+        bucket_name, _, blob_name = uri[5:].partition("/")
+        if not bucket_name or not blob_name:
+            raise EpisodeStreamError(f"malformed gs:// URI: {uri!r}")
+        if gcs_client is not None:
+            client = gcs_client
+        else:
+            from google.cloud import storage  # lazy: sidecar image only
+            client = storage.Client()
+        blob = client.bucket(bucket_name).blob(blob_name)
+        return blob.open("rb")
+    return open(uri, "rb")
+
+
+def read_text_uri(uri: str, *, gcs_client=None) -> str:
+    """Small-document read (manifest, coverage) from a local path or gs://
+    URI, streamed through _open_binary_uri."""
+    with _open_binary_uri(uri, gcs_client=gcs_client) as fh:
+        return io.TextIOWrapper(fh, encoding="utf-8").read()
+
+
+class EpisodeObjectStream:
+    """One per-body NDJSON object as a bounded, verifying stream.
+
+    Iterates parsed episode dicts (times coerced) one line at a time —
+    local path or gs:// URI — while accumulating the object's line count,
+    byte count, and sha256 over the exact bytes, and VERIFYING the canonical
+    per-object order (episode_stream_key non-decreasing line over line). Any
+    unparsable line, missing required key, naive instant, or out-of-order
+    line raises EpisodeStreamError. After exhaustion, `stats` carries
+    {lines, bytes, sha256} for the finalized-manifest binding."""
+
+    REQUIRED_KEYS = ("t_in", "body", "relation", "target_type", "target_ref",
+                     "t_out", "independence_group")
+
+    def __init__(self, uri: str, *, gcs_client=None):
+        self.uri = uri
+        self._gcs_client = gcs_client
+        self._hasher = hashlib.sha256()
+        self.lines = 0
+        self.bytes = 0
+
+    @property
+    def stats(self) -> dict:
+        return {"lines": self.lines, "bytes": self.bytes,
+                "sha256": "sha256:" + self._hasher.hexdigest()}
+
+    def __iter__(self):
+        prev_key = None
+        try:
+            fh = _open_binary_uri(self.uri, gcs_client=self._gcs_client)
+        except EpisodeStreamError:
+            raise
+        except Exception as exc:
+            raise EpisodeStreamError(
+                f"unreadable episode object {self.uri!r}: {exc}") from exc
+        with fh:
+            for raw in fh:
+                self._hasher.update(raw)
+                self.bytes += len(raw)
+                line = raw.decode("utf-8").strip()
+                if not line:
+                    continue
+                self.lines += 1
+                try:
+                    ep = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise EpisodeStreamError(
+                        f"{self.uri}:{self.lines}: unparsable NDJSON line: "
+                        f"{exc}") from exc
+                missing = [k for k in self.REQUIRED_KEYS if k not in ep]
+                if missing:
+                    raise EpisodeStreamError(
+                        f"{self.uri}:{self.lines}: episode missing keys "
+                        f"{missing}")
+                _coerce_episode_times([ep])
+                key = episode_stream_key(ep)
+                if prev_key is not None and key < prev_key:
+                    raise EpisodeStreamError(
+                        f"{self.uri}:{self.lines}: episode object violates "
+                        "the canonical per-body stream order (not written by "
+                        "the finalized century chain) — rejected, never "
+                        "silently re-ordered")
+                prev_key = key
+                yield ep
+
+
+def iter_episodes_merged(streams: list[EpisodeObjectStream]):
+    """k-way merge of per-body EpisodeObjectStreams into ONE canonical-order
+    episode stream. O(len(streams)) memory — never a dataset-scale list.
+    After the generator is exhausted each stream's `stats` are final (the
+    caller binds them against the finalized input manifest)."""
+    iterators = [iter(s) for s in streams]
+    heap: list[tuple] = []
+    for i, it in enumerate(iterators):
+        try:
+            ep = next(it)
+        except StopIteration:
+            continue
+        heapq.heappush(heap, (episode_stream_key(ep), i, ep))
+    while heap:
+        _, i, ep = heapq.heappop(heap)
+        yield ep
+        try:
+            nxt = next(iterators[i])
+        except StopIteration:
+            continue
+        heapq.heappush(heap, (episode_stream_key(nxt), i, nxt))
+
+
+def coverage_binding(coverage: list[dict]) -> str:
+    """Order-independent sha256 binding of the merged coverage rows — the
+    finalized manifest records it and the build re-verifies it, so a
+    coverage payload that does not match the finalized enumeration cannot
+    earn GREEN."""
+    canon = sorted(json.dumps(c, sort_keys=True, separators=(",", ":"),
+                              default=str) for c in coverage)
+    return "sha256:" + hashlib.sha256(
+        json.dumps(canon, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def load_input_manifest(uri: str, *, gcs_client=None) -> dict:
+    try:
+        return json.loads(read_text_uri(uri, gcs_client=gcs_client))
+    except EpisodeStreamError:
+        raise
+    except Exception as exc:
+        raise ManifestVerificationError(
+            f"input manifest {uri!r} unreadable/unparsable: {exc}") from exc
+
+
+def verify_manifest_static(manifest: dict, *, chart_id: str, generation: str,
+                           horizon_text: str, expected_bodies) -> list[str]:
+    """Everything checkable BEFORE touching the database or the stream
+    content (amendment 2): finalization marker, run identity, chart,
+    generation, horizon, and the full expected body set each with a uniform
+    run_id and a usable object entry. Returns the per-body object URIs in
+    expected_bodies order."""
+    if not isinstance(manifest, dict):
+        raise ManifestVerificationError("input manifest is not a JSON object")
+    if manifest.get("finalized") is not True:
+        raise ManifestVerificationError(
+            "input manifest is not FINALIZED — the enumeration chain did not "
+            "complete; an incomplete stream earns nothing (§N.8)")
+    run_id = manifest.get("run_id")
+    if not run_id:
+        raise ManifestVerificationError("input manifest carries no run_id")
+    for field, want in (("chart_id", chart_id), ("generation", generation),
+                        ("horizon", horizon_text)):
+        if manifest.get(field) != want:
+            raise ManifestVerificationError(
+                f"input manifest {field}={manifest.get(field)!r} != this "
+                f"build's {want!r} — refusing a mismatched/mixed build")
+    bodies = manifest.get("bodies")
+    objects = manifest.get("objects")
+    if bodies != list(expected_bodies) or not isinstance(objects, dict):
+        raise ManifestVerificationError(
+            f"input manifest bodies {bodies!r} != expected "
+            f"{list(expected_bodies)!r}")
+    uris = []
+    for body in expected_bodies:
+        entry = objects.get(body)
+        if not isinstance(entry, dict) or not entry.get("uri"):
+            raise ManifestVerificationError(
+                f"input manifest has no finalized object for body {body!r} — "
+                "an omitted body fails the build, never GREEN")
+        if entry.get("run_id") != run_id:
+            raise ManifestVerificationError(
+                f"object for {body!r} carries run_id {entry.get('run_id')!r} "
+                f"!= manifest run_id {run_id!r} — mixed-run input refuses "
+                "the build")
+        for stat in ("lines", "bytes", "sha256"):
+            if stat not in entry:
+                raise ManifestVerificationError(
+                    f"object for {body!r} lacks finalized stat {stat!r}")
+        uris.append(entry["uri"])
+    cov = manifest.get("coverage")
+    if not isinstance(cov, dict) or not cov.get("uri") or not cov.get("sha256"):
+        raise ManifestVerificationError(
+            "input manifest lacks the coverage binding (uri + sha256)")
+    return uris
+
+
+def verify_object_stats(streams: list[EpisodeObjectStream],
+                        manifest: dict, expected_bodies) -> None:
+    """Post-consumption content binding (amendment 2): each object's streamed
+    line count, byte count, and sha256 must equal the finalized manifest's —
+    clean-prefix truncation and same-length alteration both fail here."""
+    objects = manifest["objects"]
+    for body, stream in zip(expected_bodies, streams):
+        want = objects[body]
+        got = stream.stats
+        for stat in ("lines", "bytes", "sha256"):
+            if got[stat] != want[stat]:
+                raise ManifestVerificationError(
+                    f"object for {body!r}: streamed {stat}={got[stat]!r} != "
+                    f"finalized manifest {want[stat]!r} — truncated/altered "
+                    "input fails the build, never GREEN (§N.8)")
 
 
 def _synthetic_episodes() -> list[dict]:
@@ -191,7 +443,7 @@ def _synthetic_coverage(horizon: str) -> list[dict]:
     }]
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, gcs_client=None) -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
     parser.add_argument("--generation", default="4.0")
@@ -199,9 +451,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--horizon-end", default="2030-01-01T00:00:00+00:00")
     parser.add_argument("--episodes-json")
     parser.add_argument("--episodes-ndjson",
-                        help="path or glob of the concatenated per-body NDJSON "
-                             "episode files (Pravāha A2.5 century chain); "
-                             "mutually exclusive with --episodes-json")
+                        help="path or glob of the per-body NDJSON episode "
+                             "files, streamed and order-verified (bounded "
+                             "memory); the rehearsal-scale streamed shape — "
+                             "the century chain uses --input-manifest. "
+                             "Mutually exclusive with --episodes-json and "
+                             "--input-manifest")
+    parser.add_argument("--input-manifest",
+                        help="the FINALIZED century input manifest "
+                             "(CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2): object "
+                             "URIs, per-object counts/checksums, run "
+                             "identity, horizon, and the coverage binding are "
+                             "verified before any candidate success (§N.8). "
+                             "Object bodies + coverage come from the manifest "
+                             "(--episodes-* and --coverage-json not used)")
+    parser.add_argument("--insert-batch-size", type=int, default=10000,
+                        help="rows per INSERT batch in the bounded streamed "
+                             "write (memory bound, not a correctness input)")
     parser.add_argument("--coverage-json")
     parser.add_argument("--rehearse-synthetic", action="store_true")
     parser.add_argument("--orb-deg", type=float, default=5.0,
@@ -211,15 +477,20 @@ def main(argv: list[str] | None = None) -> int:
                         "vs '3.0' — REQUIRED at tranche time (7.C)")
     args = parser.parse_args(argv)
 
-    if args.episodes_json and args.episodes_ndjson:
-        print("ERROR: --episodes-json and --episodes-ndjson are mutually "
-              "exclusive", file=sys.stderr)
+    episode_sources = [bool(args.episodes_json), bool(args.episodes_ndjson),
+                       bool(args.input_manifest)]
+    if sum(episode_sources) > 1:
+        print("ERROR: --episodes-json, --episodes-ndjson, and "
+              "--input-manifest are mutually exclusive", file=sys.stderr)
         return 3
 
     if not (args.rehearse_synthetic
-            or ((args.episodes_json or args.episodes_ndjson) and args.coverage_json)):
+            or (args.input_manifest
+                or ((args.episodes_json or args.episodes_ndjson)
+                    and args.coverage_json))):
         print("ERROR: provide --episodes-json or --episodes-ndjson, plus "
-              "--coverage-json, or --rehearse-synthetic for rehearsal",
+              "--coverage-json, or --input-manifest (finalized century "
+              "chain), or --rehearse-synthetic for rehearsal",
               file=sys.stderr)
         return 3
 
@@ -229,20 +500,63 @@ def main(argv: list[str] | None = None) -> int:
                             if args.orb_deg == 5.0 else "per --orb-deg")
     vector["delta_report"] = args.delta_report
 
-    if args.rehearse_synthetic:
-        episodes = _synthetic_episodes()
-        for ep in episodes:
-            ep["orb_max_deg"] = args.orb_deg
-        horizon_text = f"[{args.horizon_start},{args.horizon_end})"
-        coverage = _synthetic_coverage(horizon_text)
-    else:
-        if args.episodes_ndjson:
-            episodes = read_episodes_ndjson(args.episodes_ndjson)
+    horizon_text = f"[{args.horizon_start},{args.horizon_end})"
+    # The streamed paths feed ledger.write_contacts_streaming; the small
+    # monolithic paths keep write_contacts.
+    episode_stream = None      # iterator of episode dicts (bounded)
+    stream_objects = None      # list[EpisodeObjectStream] for manifest binding
+    expected_bodies = None
+    manifest = None
+    episodes = None            # materialized list (monolithic paths only)
+
+    try:
+        if args.rehearse_synthetic:
+            episodes = _synthetic_episodes()
+            for ep in episodes:
+                ep["orb_max_deg"] = args.orb_deg
+            coverage = _synthetic_coverage(horizon_text)
+        elif args.input_manifest:
+            from step06_enumerate_episodes import PERSISTED_BODIES
+            expected_bodies = list(PERSISTED_BODIES)
+            manifest = load_input_manifest(args.input_manifest,
+                                           gcs_client=gcs_client)
+            uris = verify_manifest_static(
+                manifest, chart_id=args.chart_id,
+                generation=args.generation, horizon_text=horizon_text,
+                expected_bodies=expected_bodies)
+            coverage = json.loads(read_text_uri(manifest["coverage"]["uri"],
+                                                gcs_client=gcs_client))
+            if coverage_binding(coverage) != manifest["coverage"]["sha256"]:
+                raise ManifestVerificationError(
+                    "coverage payload does not match the finalized manifest's "
+                    "coverage binding — refusing (§N.8)")
+            stream_objects = [EpisodeObjectStream(u, gcs_client=gcs_client)
+                              for u in uris]
+            episode_stream = iter_episodes_merged(stream_objects)
+            vector["input_manifest_run_id"] = manifest["run_id"]
         else:
-            episodes = _coerce_episode_times(
-                json.loads(Path(args.episodes_json).read_text()))
-        coverage = json.loads(Path(args.coverage_json).read_text())
-        horizon_text = f"[{args.horizon_start},{args.horizon_end})"
+            if args.episodes_ndjson:
+                paths = sorted(glob.glob(args.episodes_ndjson))
+                if not paths and Path(args.episodes_ndjson).exists():
+                    paths = [args.episodes_ndjson]
+                if not paths:
+                    raise EpisodeStreamError(
+                        f"--episodes-ndjson matched no files: "
+                        f"{args.episodes_ndjson!r}")
+                stream_objects = [EpisodeObjectStream(p) for p in paths]
+                episode_stream = iter_episodes_merged(stream_objects)
+            else:
+                episodes = _coerce_episode_times(
+                    json.loads(Path(args.episodes_json).read_text()))
+            coverage = json.loads(Path(args.coverage_json).read_text())
+    except (ManifestVerificationError, EpisodeStreamError) as exc:
+        print(f"REFUSED (input verification): {exc}", file=sys.stderr)
+        return 3
+
+    # Coverage insertion order is by partition_key in every mode — the order
+    # build_coverage_rows imposes on the monolithic payload (amendment 6).
+    coverage = sorted(coverage, key=lambda c: (c["partition_kind"],
+                                               c["partition_key"]))
 
     ledger = _load_ledger()
     conn = connect(args.dsn, step=6, autocommit=False)
@@ -276,29 +590,62 @@ def main(argv: list[str] | None = None) -> int:
         manifest_id = ledger.publish_candidate(
             conn, args.chart_id, args.generation, cid, vector,
             {"backend": "swieph", "retflag": 258}, horizon_text)
-        ids = ledger.write_contacts(conn, args.chart_id, args.generation, cid,
-                                    episodes, build_id)
+        if episode_stream is not None:
+            n_contacts = ledger.write_contacts_streaming(
+                conn, args.chart_id, args.generation, cid,
+                episode_stream, build_id, batch_size=args.insert_batch_size)
+        else:
+            n_contacts = len(ledger.write_contacts(
+                conn, args.chart_id, args.generation, cid, episodes, build_id))
+        # §N.8: the finalized-manifest content binding verifies AFTER the
+        # stream is fully consumed and BEFORE the commit — a truncated,
+        # altered, or unreadable object rolls the whole transaction back and
+        # never earns GREEN.
+        if manifest is not None:
+            verify_object_stats(stream_objects, manifest, expected_bodies)
         n_cov = ledger.write_coverage(conn, args.chart_id, args.generation, cid,
                                       coverage, build_id)
         conn.commit()
     except ledger.PublishedGenerationRefusal as exc:
         conn.rollback()
-        print(f"REFUSED: {exc}", file=sys.stderr)
+        print(f"REFUSED: {redact_text(exc)}", file=sys.stderr)
         conn.close()
         return 6
-    except Exception:
+    except (ManifestVerificationError, EpisodeStreamError) as exc:
         conn.rollback()
         conn.close()
+        print(f"REFUSED (input verification): {redact_text(exc)} — the "
+              "candidate build failed, rolled back, and earns no GREEN "
+              "(§N.8)", file=sys.stderr)
+        return 3
+    except Exception as exc:
+        conn.rollback()
+        conn.close()
+        # ADK-0020 residual: the relation's primary key rejects a duplicate
+        # contact_id in a (corrupt) stream — the dedupe refusal surface.
+        if type(exc).__name__ == "IntegrityError":
+            print(f"REFUSED (ADK-0020): the ledger primary key rejected a "
+                  f"duplicate/invalid contact row: {redact_text(exc)}",
+                  file=sys.stderr)
+            return 5
         raise
     conn.close()
 
     report = {
         "chart_id": args.chart_id, "generation": args.generation,
         "convention_id": cid, "manifest_id": manifest_id,
-        "build_id": build_id, "contacts_written": len(ids),
+        "build_id": build_id, "contacts_written": n_contacts,
         "coverage_rows_written": n_cov,
         "input_generation_vector": vector,
     }
+    if manifest is not None:
+        report["input_manifest"] = {
+            "run_id": manifest["run_id"],
+            "objects_verified": len(stream_objects),
+            "verification": "finalized manifest: bodies, run identity, "
+                            "horizon, coverage binding, and per-object "
+                            "lines/bytes/sha256 all verified before commit",
+        }
     print(json.dumps(report, indent=2, default=str))
     if args.evidence:
         write_evidence(6, "GREEN",

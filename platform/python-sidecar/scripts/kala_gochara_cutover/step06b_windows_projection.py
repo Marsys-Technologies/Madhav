@@ -542,6 +542,51 @@ def _table_columns(conn, table: str) -> set[str]:
         "WHERE table_name = %s", (table,)).fetchall()}
 
 
+def _contact_row_to_dict(row) -> dict:
+    (cid, body, relation, ttype, tref, t_in, t_exact, t_out,
+     orb_max, completeness) = row
+    return {
+        "contact_id": cid, "body": body, "relation": relation,
+        "target_type": ttype, "target_ref": tref,
+        "orb_max_deg": float(orb_max) if orb_max is not None else None,
+        "completeness_state": completeness,
+        "_t_in_jd": jd_of(t_in),
+        "_t_exact_jd": jd_of(t_exact) if t_exact is not None else None,
+        "_t_out_jd": jd_of(t_out),
+    }
+
+
+_CONTACT_COLUMNS_SQL = (
+    "contact_id, body, relation, target_type, target_ref,"
+    " t_in, t_exact, t_out, orb_max_deg, completeness_state")
+
+
+def iter_class_contacts(conn, chart_id: str, generation: str,
+                        target_pairs: set[tuple[str, str]]):
+    """Stream ONE event class's contacts via a server-side cursor (ASTRA A2.5
+    review amendment 1): the century projection never holds more than one
+    class's contacts in memory. `target_pairs` is the class's (target_type,
+    target_ref) set from gochara_resonance_map (map UNIQUE(chart, class,
+    type, ref) makes the per-class join unambiguous). Rows arrive unordered
+    (the projection's evaluation grid is order-independent — it re-sorts
+    breakpoints itself)."""
+    pairs = sorted(target_pairs)
+    if not pairs:
+        return
+    conds = " OR ".join(["(target_type = %s AND target_ref = %s)"] * len(pairs))
+    params = [chart_id, generation]
+    for ttype, tref in pairs:
+        params += [ttype, tref]
+    with conn.cursor(name="step06b_class_contacts") as cur:
+        cur.itersize = 10000
+        cur.execute(
+            f"SELECT {_CONTACT_COLUMNS_SQL} FROM kala_gochara_contacts"
+            f" WHERE chart_id = %s AND generation = %s AND ({conds})",
+            params)
+        for row in cur:
+            yield _contact_row_to_dict(row)
+
+
 def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
     rows = conn.execute(
         "SELECT contact_id, body, relation, target_type, target_ref,"
@@ -622,15 +667,23 @@ def make_quality_gate_for_date(vedha_rows: list[dict],
 
 def write_windows(conn, chart_id: str, generation: str,
                   rows: list[dict], *, source: str,
-                  window_columns: set[str]) -> int:
+                  window_columns: set[str], delete: bool = True) -> tuple[int, int]:
     """Plan §4.7 idempotent rebuild: scoped DELETE (chart_id × generation)
     then INSERT, parents before children so parent_window_id resolves to the
     containing row's id. Never touches another generation. The caller holds
-    the transaction."""
+    the transaction.
+
+    `delete=False` (the per-class streamed century shape, ASTRA A2.5 review
+    amendment 1): the caller already issued the scoped DELETE once, and each
+    event class's rows are INSERTed as that class is projected — window rows
+    for the whole century never accumulate in this process. Parent linkage is
+    class-internal (a month/day window's parent era is the same class), so a
+    per-class call resolves parent_window_id exactly as the whole-set call."""
     ledger._require_not_published(conn, chart_id, generation, "write_windows")
-    conn.execute(
-        "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation))
+    if delete:
+        conn.execute(
+            "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation))
     computed_at = datetime.now(UTC)
     optional = [c for c in OPTIONAL_COLUMNS if c in window_columns]
     base_cols = ["chart_id", "event_class", "temporal_shape", "window_start",
@@ -905,8 +958,11 @@ def main(argv: list[str] | None = None) -> int:
             conn.close()
             return 3
 
-        contacts = fetch_contacts(conn, args.chart_id, args.generation)
-        if not contacts:
+        n_contacts_total = conn.execute(
+            "SELECT count(*) FROM kala_gochara_contacts"
+            " WHERE chart_id = %s AND generation = %s",
+            (args.chart_id, args.generation)).fetchone()[0]
+        if not n_contacts_total:
             conn.rollback()
             print(f"ERROR: no kala_gochara_contacts rows for chart "
                   f"{args.chart_id} generation {args.generation!r} — run "
@@ -937,33 +993,59 @@ def main(argv: list[str] | None = None) -> int:
         # the per-class weight unambiguous)
         weight_by_class: dict[str, dict[str, float]] = {}
         weights_all_by_class: dict[str, list[float]] = {}
+        targets_by_class: dict[str, set[tuple[str, str]]] = {}
         for m in map_rows:
             weight_by_class.setdefault(m["event_class"], {})[m["target_ref"]] = m["weight"]
             weights_all_by_class.setdefault(m["event_class"], []).append(m["weight"])
-        contacts_by_class: dict[str, list[dict]] = {}
-        unmapped = 0
-        unmapped_relation = 0
-        for c in contacts:
-            primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
-            if primitive is None:
-                unmapped_relation += 1
-                continue
-            joined = False
-            for m in map_rows:
-                if (m["target_type"] == c["target_type"]
-                        and m["target_ref"] == c["target_ref"]):
-                    c2 = dict(c, _primitive=primitive)
-                    contacts_by_class.setdefault(m["event_class"], []).append(c2)
-                    joined = True
-            if not joined:
-                unmapped += 1
+            targets_by_class.setdefault(m["event_class"], set()).add(
+                (m["target_type"], m["target_ref"]))
+        all_pairs = sorted({p for pairs in targets_by_class.values()
+                            for p in pairs})
+        known_relations = sorted(RELATION_TO_PRIMITIVE)
+        # Unmapped accounting as SQL COUNTs — the century projection never
+        # materializes the contact set just to count it (amendment 1).
+        n_rel_valid = conn.execute(
+            "SELECT count(*) FROM kala_gochara_contacts"
+            " WHERE chart_id = %s AND generation = %s AND relation = ANY(%s)",
+            (args.chart_id, args.generation, known_relations)).fetchone()[0]
+        pair_conds = " OR ".join(
+            ["(target_type = %s AND target_ref = %s)"] * len(all_pairs))
+        pair_params = [args.chart_id, args.generation, known_relations]
+        for ttype, tref in all_pairs:
+            pair_params += [ttype, tref]
+        n_matched_valid = conn.execute(
+            "SELECT count(*) FROM kala_gochara_contacts"
+            " WHERE chart_id = %s AND generation = %s AND relation = ANY(%s)"
+            f" AND ({pair_conds})",
+            pair_params).fetchone()[0]
+        unmapped_relation = n_contacts_total - n_rel_valid
+        unmapped = n_rel_valid - n_matched_valid
+
+        source = SOURCE_REHEARSAL if args.rehearse_synthetic else SOURCE_LIVE
+        # Scoped DELETE once (plan §4.7 idempotent rebuild), then each class's
+        # windows are INSERTed as the class is projected — window rows for the
+        # whole century never accumulate in this process (amendment 1).
+        ledger._require_not_published(conn, args.chart_id, args.generation,
+                                      "write_windows")
+        conn.execute(
+            "DELETE FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",
+            (args.chart_id, args.generation))
 
         gate_for_date = make_quality_gate_for_date(vedha_rows, malefic_scale)
-        all_rows: list[dict] = []
+        era_rows: list[dict] = []  # the delta report reads era-tier rows only
+        tier_counts = {"era": 0, "month": 0, "day": 0}
+        n_written = 0
+        skipped_dupes = 0
         class_reports: list[dict] = []
         skipped_classes: list[dict] = []
         for cls in sorted(weights_all_by_class):
-            cls_contacts = contacts_by_class.get(cls, [])
+            cls_contacts: list[dict] = []
+            for c in iter_class_contacts(conn, args.chart_id, args.generation,
+                                         targets_by_class[cls]):
+                primitive = RELATION_TO_PRIMITIVE.get(c["relation"])
+                if primitive is None:
+                    continue  # counted once, globally, in unmapped_relation
+                cls_contacts.append(dict(c, _primitive=primitive))
             if not cls_contacts:
                 continue  # a class with no contacts honestly yields zero windows
             ctx_dict = (class_contexts.get(cls) if class_contexts
@@ -992,13 +1074,17 @@ def main(argv: list[str] | None = None) -> int:
                     if r["resolution"] == "era") / max(1, sum(
                         1 for r in rows if r["resolution"] == "era"))
                 rep["mean_quality_gates"] = gates_mean
-            all_rows.extend(rows)
+            for r in rows:
+                tier_counts[r["resolution"]] += 1
+            w_cls, s_cls = write_windows(
+                conn, args.chart_id, args.generation,
+                rows, source=source, window_columns=window_columns,
+                delete=False)
+            n_written += w_cls
+            skipped_dupes += s_cls
+            era_rows.extend(r for r in rows if r["resolution"] == "era")
             class_reports.append(rep)
 
-        source = SOURCE_REHEARSAL if args.rehearse_synthetic else SOURCE_LIVE
-        n_written, skipped_dupes = write_windows(
-            conn, args.chart_id, args.generation,
-            all_rows, source=source, window_columns=window_columns)
         update_manifest_windows_count(conn, args.chart_id, args.generation,
                                       n_written)
         conn.commit()
@@ -1029,7 +1115,7 @@ def main(argv: list[str] | None = None) -> int:
     delta_report = build_delta_report(
         chart_id=args.chart_id, generation=args.generation,
         baseline=args.baseline_generation, class_reports=class_reports,
-        window_rows=all_rows, baseline_rows=baseline_rows, flags=flags,
+        window_rows=era_rows, baseline_rows=baseline_rows, flags=flags,
         fingerprints=fingerprints, run_meta=run_meta)
     if args.delta_report_out:
         Path(args.delta_report_out).write_text(delta_report)
@@ -1048,16 +1134,18 @@ def main(argv: list[str] | None = None) -> int:
         "source": source,
         "flags": flags,
         "upstream_fingerprints": fingerprints,
-        "contacts_read": len(contacts),
+        "contacts_read": n_contacts_total,
         "contacts_unmapped_no_class": unmapped,
         "contacts_unmapped_relation": unmapped_relation,
         "classes_projected": len(class_reports),
         "skipped_classes": skipped_classes,
         "windows_written": n_written,
         "windows_collapsed_dupes": skipped_dupes,
-        "windows_by_tier": {
-            tier: sum(1 for r in all_rows if r["resolution"] == tier)
-            for tier in ("era", "month", "day")},
+        "windows_by_tier": tier_counts,
+        "memory_shape": "per-class server-side-cursor streaming (amendment "
+            "1): contacts are fetched class by class and each class's "
+            "windows are written before the next class is read; only "
+            "era-tier rows are retained for the delta report",
         "windows_by_tier_basis": "pre-dedupe projection counts; "
             "windows_written is post-dedupe, so "
             "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",

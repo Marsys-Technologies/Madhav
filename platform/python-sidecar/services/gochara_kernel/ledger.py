@@ -411,6 +411,52 @@ def write_contacts(conn, chart_id: str, generation: str, convention_id: str,
     return [r[2] for r in rows]
 
 
+def write_contacts_streaming(conn, chart_id: str, generation: str,
+                             convention_id: str, episodes, build_id: str,
+                             *, batch_size: int = 10000) -> int:
+    """Bounded-memory write_contacts for the streamed century build (Pravāha
+    A2.5, ASTRA review amendment 1).
+
+    Same lifecycle and SQL shape as write_contacts — scoped delete-then-insert
+    inside the CALLER's single transaction, candidate-only, manifest id on
+    every row — but consumes `episodes` as an ITERABLE, normalizing and
+    inserting in batches of at most `batch_size` rows. The full row set is
+    never materialized in this process (peak memory is O(batch_size), not
+    O(total episodes)), and no century-scale id list is built: returns the
+    number of rows written, not the ids.
+
+    Duplicate contact_ids are rejected by the relation's primary key — the
+    enumerator's ADK-0020 dedupe already guarantees uniqueness per finalized
+    stream; a violation aborts the transaction (the caller rolls back), never
+    a silent dedupe. Does NOT commit: the caller owns the transaction.
+    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be >= 1")
+    _require_not_published(conn, chart_id, generation, "write_contacts_streaming")
+    manifest_id = _candidate_manifest_id(conn, chart_id, generation)
+    method_version = conn.execute(
+        "SELECT method_version FROM kala_gochara_convention WHERE convention_id = %s",
+        (convention_id,),
+    ).fetchone()[0]
+    conn.execute(
+        "DELETE FROM kala_gochara_contacts WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation),
+    )
+    n = 0
+    batch: list[tuple] = []
+    for ep in episodes:
+        batch.append(_normalize_episode(ep, chart_id, generation, convention_id,
+                                        method_version, manifest_id, build_id))
+        if len(batch) >= batch_size:
+            _insert_contact_rows(conn, batch)
+            n += len(batch)
+            batch.clear()
+    if batch:
+        _insert_contact_rows(conn, batch)
+        n += len(batch)
+    return n
+
+
 def write_coverage(conn, chart_id: str, generation: str, convention_id: str,
                    partitions: list[dict], build_id: str) -> int:
     """Delete-then-insert of the coverage manifest, scoped (chart_id,

@@ -101,19 +101,19 @@ Streaming NDJSON output (Pravāha A2.5, CENTURY_CLOUD_RUN_JOB_SPEC_v1_0 §2):
 one episode object per line — instead of the monolithic `--episodes-out` JSON
 document, and APPENDS to the file when it already exists (per-body chunked
 runs: `century_run.py` invokes this driver once per body into that body's own
-file; callers use a fresh directory per run — this driver never truncates an
-existing NDJSON file). The write is streamed line by line after the
+file, inside a FRESH per-attempt run directory — this driver never truncates
+an existing NDJSON file). The write is streamed line by line after the
 per-invocation dedupe, so nothing century-scale accumulates: a `--bodies <b>`
 invocation's peak memory is that body's payload only (spec §2.2). The two
-output flags are mutually exclusive. The emitted per-line order is the
-canonical dedupe order (t_in, body, relation) — per-body invocations
-concatenate exactly because the pinned §3.2 contact_id includes the body, so
-no duplicate group ever spans bodies; step06_candidate_build.py re-sorts the
-concatenated stream by the same key, reproducing the monolithic ordering
-byte-for-byte for the same episode set (the manifest content_digest itself is
-computed over the canonically sorted DB row set at publish, ledger
-_canonical_row_set — order-independent; the re-sort keeps even the insert
-order identical).
+output flags are mutually exclusive. The emitted per-line order is the TOTAL
+canonical stream key (t_in, body, relation, canonical-json) the candidate
+build's merge verifies — per-body invocations concatenate exactly because the
+pinned §3.2 contact_id includes the body, so no duplicate group ever spans
+bodies; step06_candidate_build.py k-way merges the per-body objects under
+that same total key, so the insert order is deterministic regardless of
+shard/ingestion order, and the manifest content_digest (computed over the
+canonically sorted DB row set at publish, ledger _canonical_row_set) is
+order-independent and identical for the same episode set.
 
 Usage:
     python3 step06_enumerate_episodes.py --dsn postgresql://... \
@@ -1364,6 +1364,13 @@ def main(argv: list[str] | None = None) -> int:
     n_sky_events = assert_boundary_events_stored_once(episodes)
 
     if args.episodes_ndjson_out:
+        # The streamed build consumes each per-body object as a k-way merge
+        # input and VERIFIES canonical order per object; the payload must be
+        # sorted by the TOTAL stream key (t_in, body, relation, canonical
+        # json) — (t_in, body, relation) alone does not totally order
+        # distinct contacts (ASTRA A2.5 review amendment 6).
+        from step06_candidate_build import episode_stream_key
+        episodes.sort(key=episode_stream_key)
         n_written = write_episodes_ndjson(args.episodes_ndjson_out, episodes,
                                           append=True)
     else:

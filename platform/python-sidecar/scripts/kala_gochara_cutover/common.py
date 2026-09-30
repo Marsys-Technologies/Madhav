@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +42,45 @@ PRODUCTION_PROXY_PORT = 5433  # Cloud SQL proxy convention (tests/ DATABASE_URL)
 
 def tranche_for_step(step: int) -> int:
     return 1 if step <= 5 else 2
+
+
+# ── DSN redaction (Pravāha A2.5 / ASTRA A2.5 review amendment 3) ─────────────
+#
+# Connection strings carry credentials; none may ever reach a log line or a
+# failure diagnostic. Every chain script logs subprocess argv and error text
+# ONLY through these helpers.
+
+_DSN_PASSWORD_RE = re.compile(
+    r"((?:postgresql|postgres)(?:\+[a-z0-9]+)?://[^:/@\s]+):[^@\s]+@",
+    re.IGNORECASE)
+
+REDACTED = "***REDACTED***"
+
+
+def redact_text(text: str) -> str:
+    """Redact the password component of any postgres connection URI appearing
+    in arbitrary text (log lines, exception messages, diagnostics)."""
+    return _DSN_PASSWORD_RE.sub(r"\1:" + REDACTED + "@", str(text))
+
+
+def redact_argv(argv: list[str]) -> list[str]:
+    """A copy of a command vector safe to log: the value of every --dsn (both
+    '--dsn X' and '--dsn=X' forms) is replaced, and any residual URI password
+    in the remaining tokens is scrubbed by redact_text."""
+    out: list[str] = []
+    skip = False
+    for i, token in enumerate(argv):
+        if skip:
+            skip = False
+            continue
+        if token == "--dsn" and i + 1 < len(argv):
+            out.extend(["--dsn", REDACTED])
+            skip = True
+        elif token.startswith("--dsn="):
+            out.append("--dsn=" + REDACTED)
+        else:
+            out.append(redact_text(token))
+    return out
 
 
 def is_production_dsn(dsn: str) -> bool:
