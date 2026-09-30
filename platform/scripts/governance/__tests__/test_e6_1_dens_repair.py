@@ -408,3 +408,49 @@ def test_the_false_tier_shapes_do_not_mint_pass_through_the_scan(tree, monkeypat
 def test_a_plain_tier_column_item_still_counts(sel, cols):
     st, got = ac._select_tier(sel, "x", "t_x", cols)
     assert st == ac.TIER_YES and got, (sel, st, got)
+
+
+# ───────────────────────── review findings 3 and 4: test files are not a serving surface; constants and evidence text pinned ─────────────────────────
+
+def test_test_files_and_tests_directories_are_excluded_from_the_serving_roots(tree, monkeypatch):
+    """A `*.test.ts` or a file under `__tests__/` holding a contract plus a tier select is a fixture, not a capability:
+    it must never mint PASS (nor count as a module reaching the asset)."""
+    (tree.tools / "__tests__").mkdir()
+    sql = "SELECT id, signature_tier FROM t_x"
+    tree.write(tree.tools / "__tests__", "x.ts", _cap(sql))
+    tree.write(tree.tools, "x.test.ts", _cap(sql))
+    tree.write(tree.layers / "L0_x" , "y.test.ts", _cap(sql))
+    cap = _scan(tree, ["t_x", "bg_x"])
+    assert cap["modules"] == [] and cap["density"] == 0, cap
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
+    assert d["v"] == ac.NA, d          # nothing real reaches it: not a PASS, and not credited to a fixture
+    # the same file OUTSIDE a tests path is a real capability
+    tree.write(tree.tools, "x.ts", _cap(sql))
+    assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")["v"] == ac.PASS
+
+
+def test_test_files_outside_the_serving_roots_do_not_block_na(tree, monkeypatch):
+    (tree.outside / "__tests__").mkdir()
+    tree.write(tree.outside / "__tests__", "route.ts", _cap("SELECT id FROM t_x", contract=False))
+    tree.write(tree.outside, "route.test.tsx", _cap("SELECT id FROM t_x", contract=False))
+    assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")["v"] == ac.NA
+
+
+def test_the_wider_probe_covers_both_source_trees_including_the_mcp_server():
+    """Constant pin: a probe that drops `platform-mcp/src` lets an asset served only there read N/A."""
+    assert "platform-mcp/src" in ac.DENS_OUTSIDE_ROOTS and "platform/src" in ac.DENS_OUTSIDE_ROOTS
+    assert ac.DENS_TIER_COLUMN.match("verification_pass_status") and ac.DENS_TIER_COLUMN.match("evidence_tier")
+
+
+def test_a_tier_column_without_a_contract_is_surfaced_in_the_fail_evidence(tree, monkeypatch):
+    tree.write(tree.layers / "L0_x", "q.ts", _cap("SELECT fact_id, signature_tier FROM t_x", contract=False))
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
+    assert d["v"] == ac.FAIL and "a tier column is selected without a contract in: L0_x/q.ts" in d["measured"], d
+
+
+def test_a_fail_with_a_contract_elsewhere_in_the_module_names_where(tree, monkeypatch):
+    tree.write(tree.tools, "tool.ts",
+               "export const cap = {\n  " + CONTRACT + "\n  run: () => other(),\n}\n"
+               "async function other() {\n  return query(`SELECT id FROM t_x`)\n}\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
+    assert d["v"] == ac.FAIL and "a density_contract is declared in" in d["measured"] and "tool.ts" in d["measured"], d
