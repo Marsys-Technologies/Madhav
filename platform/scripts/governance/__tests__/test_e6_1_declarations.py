@@ -131,6 +131,20 @@ def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp
     assert f["paths"]["declared_prose_fields"] == ["n.$.a", "n.$.b", "other", "m.$.k.l"]
 
 
+@pytest.mark.parametrize("blank", ["", " ", "\t\n", "\u200b", "\u200c\u200d", "\u2060", "\ufeff", "\u180e", "\u00a0", "\u2003",
+                                   "\u3000", "\u202f", "\x00", "\x7f", "\u200b \u00a0\ufeff", "\u2028", "\u2029"])
+@pytest.mark.parametrize("prose", [["x"], []])
+def test_blank_evidence_is_named_as_blank_not_just_rejected_for_lacking_a_path(blank, prose):
+    with pytest.raises(ac.DeclarationsError, match="non-blank pointer"):
+        ac.validate_declarations(_doc(a=dict(prose_fields=prose, evidence=dict(prose_fields=blank))))
+
+
+def test_visible_evidence_is_not_blank():
+    for ok in ("a", "w.py:1", "\u200bw.py:1\u200b", " x "):
+        assert not ac._blank_text(ok)
+    assert ac._blank_text("") and ac._blank_text("\u200b\u00a0")
+
+
 def test_evidence_shapes_identifier_cap_and_ddl_marker_accepted():
     ok = [dict(prose_fields=["x"], evidence=dict(prose_fields="w.py:1")),
           dict(prose_fields=["x"], evidence=dict(prose_fields="platform/src/lib/a/b.ts:12 and c.tsx:3")),
