@@ -454,3 +454,70 @@ def test_a_fail_with_a_contract_elsewhere_in_the_module_names_where(tree, monkey
                "async function other() {\n  return query(`SELECT id FROM t_x`)\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.FAIL and "a density_contract is declared in" in d["measured"] and "tool.ts" in d["measured"], d
+
+
+# ───────────────────────── review findings 5 and 6: the outside probe never reads N/A on an unreadable or merely-named file ─────────────────────────
+# A served select the string scanner cannot see must not be read as "no served select". An apostrophe in JSX text
+# (`<p>don't</p>`) flips the scanner's string state for the rest of a `.tsx` file; a `FROM ${T}` names its table at
+# run time. Both, and a comment that names the asset (R51), keep the asset off the closable N/A.
+
+def _blocked(d):
+    return d["v"] == ac.NO_DET and "outside the scanned serving roots" in d["measured"], d
+
+
+def test_a_jsx_apostrophe_does_not_hide_a_later_served_select_behind_na(tree, monkeypatch):
+    tree.write(tree.outside, "page.tsx",
+               "export function P() {\n  return <p>don't</p>\n}\n"
+               "export async function load() {\n  return query('SELECT id FROM t_x')\n}\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")
+    assert _blocked(d)[0], d
+    assert "page.tsx" in d["measured"], d
+
+
+def test_any_textual_reference_in_a_tsx_file_blocks_na(tree, monkeypatch):
+    """`.tsx` is not parsed reliably (JSX text): a bare reference is enough to keep the asset off N/A."""
+    tree.write(tree.outside, "view.tsx", "export const V = () => <span>t_x</span>\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")
+    assert _blocked(d)[0] and "view.tsx" in d["measured"], d
+
+
+def test_a_ts_file_the_scanner_ends_desynced_on_is_a_textual_reference_not_a_miss(tree, monkeypatch):
+    """A regex literal holding a quote opens a phantom string for the rest of the file; the scanner never sees the
+    select. A desynced file falls back to the textual rule."""
+    tree.write(tree.outside, "odd.ts",
+               "const re = /'/;\nexport const q = () => query('SELECT id FROM t_x');\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")
+    assert _blocked(d)[0] and "odd.ts" in d["measured"], d
+
+
+def test_a_dynamic_table_name_in_a_file_that_holds_the_table_blocks_na(tree, monkeypatch):
+    tree.write(tree.outside, "dyn.ts",
+               "const T = 't_x';\nexport const q = () => query(`SELECT id FROM ${T} WHERE k = $1`);\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")
+    assert _blocked(d)[0] and "dyn.ts" in d["measured"] and "run-time" in d["measured"], d
+
+
+def test_a_dynamic_from_in_a_file_that_never_names_the_asset_does_not_block_na(tree, monkeypatch):
+    tree.write(tree.outside, "dyn.ts", "export const q = (t: string) => query(`SELECT id FROM ${t}`);\n")
+    assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")["v"] == ac.NA
+
+
+@pytest.mark.parametrize("name", ["registry_data.ts", "types.tsx"])
+def test_a_comment_naming_the_asset_outside_the_serving_roots_blocks_na_r51(tree, monkeypatch, name):
+    """R51 on the outside probe: bg_vidhi_floors is named in a comment of platform/src/lib/vidhi/registry_data.ts and
+    types.ts and served through platform-mcp/src/resources/vidhi — it must not read the closable N/A."""
+    tree.write(tree.outside, name, "/**\n * seeded by `bg_x.py` (DB table t_x)\n */\nexport const X = 1\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")
+    assert _blocked(d)[0] and name in d["measured"], d
+
+
+def test_a_comment_naming_the_asset_outside_the_roots_is_named_in_the_scan_result(tree):
+    tree.write(tree.outside, "c.ts", "// served elsewhere: bg_x\nexport {}\n")
+    cap = _scan(tree, ["t_x", "bg_x"], outside=True)
+    assert cap["outside"] == [] and any("c.ts" in n for n in cap["outside_named"]), cap
+
+
+def test_a_clean_ts_reference_that_is_neither_select_nor_comment_still_reads_na(tree, monkeypatch):
+    """Unchanged: a names-map in a cleanly parsed `.ts` file holds no served select and no comment."""
+    tree.write(tree.outside, "names.ts", "export const NAMES = { bg_x: 't_x' }\n")
+    assert _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}, outside=True), "bg_x")["v"] == ac.NA

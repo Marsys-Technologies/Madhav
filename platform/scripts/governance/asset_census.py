@@ -1477,6 +1477,37 @@ def _ts_literal_spans(src: str) -> list[tuple[int, str]]:
     return out
 
 
+def _ts_desynced(src: str) -> bool:
+    """Did the string/comment scanner lose sync with the file? True when a quoted string is never closed, or a `'` / `"`
+    string spans a raw newline (neither is legal TypeScript; both are what a stray quote — an apostrophe in JSX text
+    (`<p>don't</p>`), a quote inside a regex literal — does to every literal after it). Everything `_ts_mask`,
+    `_ts_literal_spans` and `_ts_decl_starts` report for such a file is unreliable, so the outside probe never reads
+    "no served select" from it. Limit, disclosed: two stray quotes re-sync by accident and are not detected (a `.tsx`
+    file is never trusted for that reason — it is always read textually)."""
+    i, n = 0, len(src)
+    while i < n:
+        c, nx = src[i], src[i + 1] if i + 1 < n else ""
+        if c == "/" and nx == "/":
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif c == "/" and nx == "*":
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                if c != "`" and src[j] == "\n":
+                    return True
+                j += 2 if src[j] == "\\" else 1
+            if j >= n:
+                return True
+            i = j + 1
+        else:
+            i += 1
+    return False
+
+
+_DYN_FROM = re.compile(r"\b(?:FROM|JOIN)\s+(?:ONLY\s+)?\$\{", re.I)
 _DECL_LINE = re.compile(r"^(?:import\b|export\b|(?:async\s+)?function\b|(?:const|let|var|class|interface|type|enum)\b)", re.M)
 
 
@@ -1522,11 +1553,14 @@ def _dens_module(f: Path, key: tuple) -> dict:
     if key not in _DENS_FACTS:
         txt = f.read_text(encoding="utf-8", errors="replace")
         blank = _ts_mask(txt, blank_strings=True)
+        spans = _ts_literal_spans(txt)
         _DENS_FACTS[key] = dict(
             cmask=_ts_mask(txt),
             starts=_ts_decl_starts(blank),
             contracts=[m.start() for m in _DENSITY_DECL.finditer(blank)],
-            spans=_ts_literal_spans(txt),
+            spans=spans,
+            desynced=_ts_desynced(txt),
+            dynamic_from=any(_DYN_FROM.search(c) for _p, c in spans),
         )
     return _DENS_FACTS[key]
 
@@ -1653,7 +1687,13 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     RECURSIVELY — every layer directory, the files at the layers root, both MCP roots — for every token in `tables`
     (target table, asset id, every `count_sql` table). A missing root is `scanned=False` (R222 / N3), never an N/A.
     `outside_roots` (the wider source trees) are probed ONLY so that an asset with a served select outside the serving
-    roots is never read N/A: they grade nothing (no density contract lives there).
+    roots is never read N/A: they grade nothing (no density contract lives there). The probe honours R51 (§N.8): a
+    served select read in code is `outside`; otherwise the file is `outside_named` — and so also blocks N/A — when
+    (a) only a COMMENT names a token, (b) the file is `.tsx` or the string scanner ends desynchronised on it (an
+    apostrophe in JSX text, a quote in a regex literal: `_ts_desynced`) and ANY text names a token, or (c) it holds a
+    token in code and selects `FROM ${...}` (a run-time table name). Limits, disclosed: a run-time table name built
+    in a file that never names the asset or its table, and two stray quotes that re-sync the scanner by accident in a
+    `.ts` file, are not seen; a names-map in a cleanly parsed `.ts` file (no select, no comment) does not block N/A.
 
     ATTRIBUTION. A token in `shared` (a table another asset also declares) never attributes a module to THIS asset:
     `chart_facts` would make every reader serve every asset. Attribution is per capability (a top-level declaration):
@@ -1663,7 +1703,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     Returns `modules` (by code, attributing tokens), `density` (capabilities that are dense), `dense`, `declared`
     (modules whose referencing capability declares the contract, with why the tier half is missing), `tier_only`,
     `served` (how many served selects of the asset's tables), `shared_only`, `comment_only` (R51: a comment names it,
-    no code does), `outside`."""
+    no code does), `outside`, `outside_named`."""
     dirs = [caps_dirs] if isinstance(caps_dirs, str) else list(caps_dirs)
     for d in dirs:
         if not (ROOT / d).is_dir():
@@ -1734,6 +1774,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     if by_decl and mod["contracts"]:
                         elsewhere.append(name)       # the module declares a contract, but not in a capability that serves it
     outside: list[str] = []
+    outside_named: list[str] = []
     for root in outside_roots or ():
         base = ROOT / root
         if not base.is_dir():
@@ -1744,14 +1785,26 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     continue
                 seen.add(str(f))
                 key, words = _dens_words(f)
-                if not any(t in words for t in toks):
+                present = [t for t in toks if t in words]
+                if not present:
                     continue
                 mod = _dens_module(f, key)
+                rel = f.relative_to(ROOT).as_posix() if f.is_relative_to(ROOT) else str(f)
                 lits = [c for _p, c in mod["spans"]]
-                if any(next(_served_selects(t, lits), None) for t in toks if t in words):
-                    outside.append(f.relative_to(ROOT).as_posix() if f.is_relative_to(ROOT) else str(f))
+                if any(next(_served_selects(t, lits), None) for t in present):
+                    outside.append(rel)
+                    continue
+                # No served select was read. That is a finding only for a file the scanner read RELIABLY (R51 / §N.8):
+                if ext == "*.tsx" or mod["desynced"]:
+                    # JSX text / a stray quote desynchronises the string scanner, so a select it missed is not evidence
+                    # of none: ANY textual reference (code or comment) keeps the asset off the closable N/A
+                    outside_named.append(f"{rel} (unparsed file: the asset is named in its text)")
+                elif not any(re.search(r"\b" + re.escape(t) + r"\b", mod["cmask"]) for t in present):
+                    outside_named.append(f"{rel} (named in comments only)")                     # R51
+                elif mod["dynamic_from"]:
+                    outside_named.append(f"{rel} (holds the table and selects FROM a run-time table name)")
     return dict(modules=hits, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
-                declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, elsewhere=elsewhere,
+                declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, elsewhere=elsewhere,
                 shared_tokens=sh, tokens=toks, roots=dirs)
 
 
@@ -1799,6 +1852,10 @@ def _grade_dens(cap: dict, label: str) -> dict:
         return dict(v=NO_DET, measured=(f"NO_DETECTOR — no module in the serving roots references {label}, but a served "
                                         f"select of it sits outside the scanned serving roots: {_few(outside, 4)} — the "
                                         "served surface cannot be graded by this scan (never the closable N/A)"))
+    if cap.get("outside_named"):
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — no module in the serving roots references {label}, but it is "
+                                        f"named outside the scanned serving roots where a served select cannot be ruled "
+                                        f"out (R51): {_few(cap['outside_named'], 4)} — never the closable N/A"))
     if cap.get("shared_only"):
         return dict(v=NO_DET, measured=(f"NO_DETECTOR — only a table other assets share ({_few(cap.get('shared_tokens') or [])}) "
                                         f"is referenced, by {len(cap['shared_only'])} module(s): {_few(cap['shared_only'], 3)}; "
