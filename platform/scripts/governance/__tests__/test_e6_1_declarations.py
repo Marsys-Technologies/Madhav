@@ -197,7 +197,9 @@ NARR_DECLARED = {
 }
 # Undeclared (null) pending an SS ruling: the composed text is a provenance pointer / ordinal label, see the evidence file.
 NARR_PENDING_SS = ("bg_yogas", "bg_ontology")
-# the 13 earlier declarations cite the column's DDL and the census, not writer code: marked evidence_kind "ddl"
+# the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
+# (no `ddl` marker), 2 removed (null). The marker is gone from all 13.
+PRIOR_REAUDIT_NULLED = {"mi_bhavisya", "ph_pramana"}
 PRIOR_DDL = {"bo_anveshana", "bo_arudha", "bo_laksana", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana",
              "bo_vargottama_dhana", "mi_bhavisya", "mi_darshana", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana"}
 # (file, line, a substring that line must contain): the code that composes (or, for bg_doshas, loads verbatim) it, and the
@@ -271,23 +273,20 @@ def _read(path):
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
     decl = _decl()
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
-    assert set(got) == PRIOR_DDL | set(NARR_DECLARED)
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED)
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
     for a in NARR_PENDING_SS:
         assert decl[a]["prose_fields"] is None and decl[a]["evidence"]["prose_fields"] is None, a
     assert [a for a, v in got.items() if v == []] == ["bg_doshas"]      # the only reference corpus that composes nothing
-    assert len(got) == 25 and sum(e["prose_fields"] is None for e in decl.values()) == 127 - 25
+    assert len(got) == 23 and sum(e["prose_fields"] is None for e in decl.values()) == 127 - 23
 
 
-def test_the_thirteen_earlier_declarations_are_explicitly_marked_ddl_evidence_and_nothing_else_is():
+def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
     decl = _decl()
-    assert {a for a, e in decl.items() if e.get("evidence_kind") == "ddl"} == PRIOR_DDL
+    assert {a for a, e in decl.items() if e.get("evidence_kind") == "ddl"} == set()
     for a, e in decl.items():
-        if a not in PRIOR_DDL:
-            assert e.get("evidence_kind") is None, a
-    for a in PRIOR_DDL:
-        assert re.search(r"[0-9]+_[A-Za-z0-9_]+\.sql", decl[a]["evidence"]["prose_fields"]), a
+        assert e.get("evidence_kind") is None, a
 
 
 def test_every_non_ddl_declared_prose_entry_carries_a_writer_path_line_pointer():
@@ -298,8 +297,7 @@ def test_every_non_ddl_declared_prose_entry_carries_a_writer_path_line_pointer()
             ac.parse_prose_field(f)
         ev = e["evidence"]["prose_fields"]
         assert isinstance(ev, str) and ev.strip(), aid
-        if aid not in PRIOR_DDL:
-            assert ac.EVIDENCE_PATH_LINE_RE.search(ev), aid
+        assert ac.EVIDENCE_PATH_LINE_RE.search(ev), aid
 
 
 def test_bg_doshas_empty_declaration_states_its_reason_and_the_other_reference_corpora_do_not_claim_none():
