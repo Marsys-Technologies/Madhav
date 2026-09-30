@@ -117,6 +117,7 @@ from panchang_engine.tara_bala import compute_tara_position, get_tara_detail
 # module's orchestrator-nested (G-4) context and any standalone (no outer
 # savepoint) context.
 from services.gochara_intensity._dbutil import savepoint_scope
+from brahmagyan.graha_vocabulary import norm_graha
 
 from .models import ConfigurationSentence, ResonanceTarget
 from . import citations as C
@@ -627,6 +628,33 @@ def nakshatra_ingress_tara(
 
 _KAKSHYA_LORD_ORDER = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"]
 
+# Kakṣyā cell width: 30° / 8 = 3.75° (3°45′) per cell — matches
+# ga_strength_writer.py's KAKSHYA_ARC_DEG and the grid it writes
+# (ashtakavarga_kakshya_boundary rows). Cell 0 = 0°00′–3°45′ owned by Saturn,
+# cell 7 = 26°15′–30° owned by Lagna (BPHS ch.66 division order above).
+KAKSHYA_ARC_DEG = 30.0 / 8.0
+
+
+def kakshya_index_for_degree_in_sign(deg_in_sign: float) -> int:
+    """0-based kakṣyā cell index for a longitude within its sign (0–30°).
+
+    deg_in_sign is taken mod 30 so an absolute sidereal longitude is also
+    accepted. The 30° boundary itself maps back to cell 0 of the next sign —
+    callers computing a crossing AT a boundary should use the emitted
+    boundary's index directly, not this helper.
+    """
+    d = float(deg_in_sign) % 30.0
+    idx = int(d // KAKSHYA_ARC_DEG)
+    return min(idx, 7)
+
+
+def kakshya_lord_for_index(kakshya_index: int) -> Optional[str]:
+    """Donor lord owning the 0-based kakṣyā cell (division order Saturn →
+    Lagna). None for an out-of-range index — never a guessed lord."""
+    if 0 <= int(kakshya_index) < len(_KAKSHYA_LORD_ORDER):
+        return _KAKSHYA_LORD_ORDER[int(kakshya_index)]
+    return None
+
 
 def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
     """Real path: read `ashtakavarga_kakshya_boundary` rows written by
@@ -662,6 +690,92 @@ def _fetch_kakshya_boundaries(conn, chart_id: str, planet: str) -> list[dict]:
     result = list(by_subject.values())
     _KAKSHYA_BOUNDARIES_CACHE[cache_key] = result
     return result
+
+
+def _fetch_kakshya_donor_bindu(
+    conn, chart_id: str, planet: str, donor_lord: str, sign_number: int
+) -> Optional[float]:
+    """Read the mark-donor's BAV contribution for one kakṣyā cell.
+
+    Joins ga_strength_writer.py's per-contributor BAV matrix on the WRITER's
+    own key scheme (the one production data exists under):
+      fact_category='ashtakavarga_bindu_contributor',
+      fact_subject='{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}'
+      fact_key='bindus'
+    where GRAHA/DONOR are canonical subject codes (norm_graha) and N is the
+    absolute rāśi number 1-12. Returns the donor's 0/1 mark, or None when the
+    row/value is absent or the read fails — None is the honest 'unavailable',
+    never a fabricated 0 or 1 (P5c: donor rows are pending the
+    native-authorised ga_strength rebuild on production).
+    """
+    if conn is None:
+        return None
+    subject = (
+        f"{norm_graha(planet)}-CONTRIBUTOR_{norm_graha(donor_lord)}"
+        f"-SIGN_{int(sign_number)}"
+    )
+    try:
+        with savepoint_scope(conn, "kakshya_donor_bindu"):
+            cur = conn.execute(
+                """
+                SELECT fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s
+                   AND fact_category = 'ashtakavarga_bindu_contributor'
+                   AND fact_subject = %s
+                   AND fact_key = 'bindus'
+                """,
+                [chart_id, subject],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[kakshya_donor_bindu] contributor read failed: %s", exc)
+        return None
+    if not rows:
+        return None
+    row = rows[0]
+    val = row["fact_value_num"] if isinstance(row, dict) else row[0]
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def kakshya_donor_bindu_detail(
+    conn, chart_id: str, planet: str, sign_number: int, kakshya_index: int
+) -> dict:
+    """P5c donor-key detail for one crossed kakṣyā cell.
+
+    The fruit of a kakṣyā transit is delivered in the cell owned by the
+    mark-donor (Phaladīpikā XXIII, PG301): the cell's lord is
+    _KAKSHYA_LORD_ORDER[kakshya_index], and the qualifying mark is THAT
+    lord's contribution to the transiting graha's BAV in the transited sign —
+    not the transiting graha's own sign-level count.
+
+    Returns a detail fragment with an explicit state:
+      donor_bindu_state='resolved'   -> donor_bindu is the real 0/1 mark
+      donor_bindu_state='unavailable'-> contributor rows absent/unreadable;
+                                        donor_bindu is None (never fabricated)
+    """
+    lord = kakshya_lord_for_index(kakshya_index)
+    detail: dict = {
+        "kakshya_lord": lord,
+        "donor_bindu": None,
+        "donor_bindu_state": "unavailable",
+        "donor_row_key": None,
+    }
+    if lord is None:
+        return detail
+    detail["donor_row_key"] = (
+        f"{norm_graha(planet)}-CONTRIBUTOR_{norm_graha(lord)}-SIGN_{int(sign_number)}"
+    )
+    mark = _fetch_kakshya_donor_bindu(conn, chart_id, planet, lord, sign_number)
+    if mark is not None:
+        detail["donor_bindu"] = int(mark)
+        detail["donor_bindu_state"] = "resolved"
+    return detail
 
 
 def kakshya_cell_crossing(
@@ -718,7 +832,12 @@ def kakshya_cell_crossing(
                     fact_ids=[_fact_id("kakshya_cell_crossing", chart_id, target.target_ref, planet, ev.event_jd)],
                     classical_citation=citation,
                     uncited_extension=uncited,
-                    detail={"boundary_deg": b, "kakshya_index": i, "source": source},
+                    detail={
+                        "boundary_deg": b,
+                        "kakshya_index": i,
+                        "kakshya_lord": kakshya_lord_for_index(i),
+                        "source": source,
+                    },
                 ))
     return sentences
 

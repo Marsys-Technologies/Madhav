@@ -192,14 +192,24 @@ _W23_TARA_BALA_ENABLED: bool = True
 # `kakshya_bindu_interim` (input generation vector; mechanism_register.yaml
 # "PLANNED INPUT-VECTOR FLAGS"), default OFF.
 #
-# When True, a kakṣyā crossing whose transiting graha has no resolvable bindu
-# in the transited sign (chart_facts `ashtakavarga_bindu_sign`, graha × sign —
-# count 0 or row absent) contributes NO activity and carries
-# detail['completeness_state']='unqualified' with a failure_detail
-# ({primitive, error_class, message, row_identity}, per the WP2 honesty
-# pinning). A crossing with a resolvable count >= 1 is qualified by it and
-# declared at the coarser grain: detail['qualification_grain']='sign' (the
-# sign-level BAV, interim for the kakṣyā-grain qualification M-7 requires).
+# When True, a kakṣyā crossing is qualified by the P5c DONOR key first
+# (FABLE #19 / T0-10): the crossed cell's lord's contribution to the
+# transiting graha's BAV in the transited sign
+# (chart_facts `ashtakavarga_bindu_contributor`, writer key
+# '{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}'). A resolvable donor mark of 1
+# qualifies at detail['qualification_grain']='kakshya'; a mark of 0 is
+# 'unqualified' (error_class 'donor_mark_zero'). When the donor matrix is
+# absent (production, pending the native-authorised ga_strength rebuild),
+# the donor operand is stamped 'unavailable' (never a fabricated 0/1) and the
+# sign-grain interim applies: a kakṣyā crossing whose transiting graha has
+# no resolvable bindu in the transited sign (chart_facts
+# `ashtakavarga_bindu_sign`, graha × sign — count 0 or row absent)
+# contributes NO activity and carries detail['completeness_state']=
+# 'unqualified' with a failure_detail ({primitive, error_class, message,
+# row_identity}, per the WP2 honesty pinning). A crossing with a resolvable
+# count >= 1 is qualified by it and declared at the coarser grain:
+# detail['qualification_grain']='sign' (the sign-level BAV, a labelled P5a
+# coarser qualification — never donor evaluation).
 # When False the kakṣyā path is byte-identical to the pre-interim engine:
 # no detail keys are added and _compute_activity_v3's skip never fires.
 # ---------------------------------------------------------------------------
@@ -1443,6 +1453,11 @@ def _bindu_interim_detail(
     the pre-fetched L1 rows. A resolvable count >= 1 qualifies the crossing at
     the coarser sign grain; a count of 0 or an absent row leaves it
     'unqualified' with a failure_detail in the WP2-honesty pinned shape.
+
+    This is the SIGN-grain (P5a-coarser) key. The kakṣyā-grain P5c donor key
+    (_bindu_donor_detail) takes precedence whenever the per-contributor BAV
+    matrix resolves; this interim is the labelled fallback, never donor
+    evaluation (sealed FABLE #19 / T0-10).
     """
     graha_code = norm_graha(planet)
     row_key = (graha_code, sign_number)
@@ -1479,6 +1494,72 @@ def _bindu_interim_detail(
     }
 
 
+def _bindu_donor_detail(
+    context: ClassContext,
+    contributor_lookup: dict[tuple[str, str, int], Optional[float]],
+    planet: str,
+    sign_number: int,
+    kakshya_index: int,
+) -> Optional[dict]:
+    """P5c (GOCHARA_DESIGN_SPECS_v1_4 §2.2, sealed FABLE #19 / T0-10):
+    kakṣyā-grain bindu qualification by the mark-DONOR key.
+
+    The fruit of a kakṣyā crossing is delivered in the cell owned by the
+    mark-donor (Phaladīpikā XXIII, PG301): the crossed cell's lord —
+    P.kakshya_lord_for_index(kakshya_index), division order Saturn → Lagna —
+    donates (or withholds) the mark in the transiting graha's BAV for the
+    transited sign. The join key is ga_strength_writer.py's actual
+    contributor-matrix scheme,
+    '{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}' (ashtakavarga_bindu_contributor) —
+    NOT the transiting graha's own sign-level BAV count (that wrong key is
+    the N-22/N-13 sign-grain interim in _bindu_interim_detail, retained below
+    as the labelled coarser fallback).
+
+    Returns None when the donor operand is unavailable (contributor matrix
+    absent — the production state pending the native-authorised ga_strength
+    rebuild — or this row missing/unreadable): the caller then falls back to
+    the sign-grain interim and stamps the donor keys 'unavailable'. Never
+    fabricates a 0 or 1.
+    """
+    lord = P.kakshya_lord_for_index(kakshya_index)
+    if lord is None or not contributor_lookup:
+        return None
+    graha_code = norm_graha(planet)
+    donor_code = norm_graha(lord)
+    row_key = f"{graha_code}-CONTRIBUTOR_{donor_code}-SIGN_{sign_number}"
+    mark = contributor_lookup.get((graha_code, donor_code, sign_number))
+    if mark is None:
+        return None
+    mark_int = int(mark)
+    base = {
+        "kakshya_lord": lord,
+        "donor_bindu": mark_int,
+        "donor_bindu_state": "resolved",
+        "donor_row_key": row_key,
+    }
+    if mark_int >= 1:
+        return {
+            **base,
+            "completeness_state": "applied",
+            "qualification_grain": "kakshya",
+            "bindu_count": mark_int,
+            "bindu_source": "chart_facts.ashtakavarga_bindu_contributor",
+        }
+    return {
+        **base,
+        "completeness_state": "unqualified",
+        "failure_detail": {
+            "primitive": "kakshya_cell_crossing",
+            "error_class": "donor_mark_zero",
+            "message": (
+                f"donor {donor_code} contributes 0 marks to {graha_code}'s "
+                f"BAV in sign {sign_number} (ashtakavarga_bindu_contributor)"
+            ),
+            "row_identity": f"{context.chart_id}:{row_key}",
+        },
+    }
+
+
 def _kakshya_cell_crossing_from_context(
     swe,
     context: ClassContext,
@@ -1511,12 +1592,20 @@ def _kakshya_cell_crossing_from_context(
     # ashtakavarga_bindu_sign subject convention) and the bindu lookup once
     # per call. Empty lookup when the flag is off — nothing is stamped then.
     bindu_lookup: dict[tuple[str, int], Optional[float]] = {}
+    contributor_lookup: dict[tuple[str, str, int], Optional[float]] = {}
     sign_number = 0
     if _KAKSHYA_BINDU_INTERIM_ENABLED:
         sign_number = P._sign_index(target.target_sign) + 1
         bindu_lookup = {
             (r.graha, r.sign_number): r.bindus
             for r in context.bindu_sign_rows
+        }
+        # P5c donor matrix (per-contributor BAV). Empty on production pending
+        # the native-authorised ga_strength rebuild — the donor path then
+        # reports 'unavailable' and the sign-grain interim applies.
+        contributor_lookup = {
+            (r.graha, r.contributor, r.sign_number): r.bindus
+            for r in context.bindu_contributor_rows
         }
 
     # Build a fast lookup: planet -> list of KakshyaBoundaryRow
@@ -1544,9 +1633,29 @@ def _kakshya_cell_crossing_from_context(
             for ev in events:
                 detail = {"boundary_deg": b, "kakshya_index": i, "source": source}
                 if _KAKSHYA_BINDU_INTERIM_ENABLED:
-                    detail.update(
-                        _bindu_interim_detail(context, bindu_lookup, planet, sign_number)
+                    # P5c donor key takes precedence when the contributor
+                    # matrix resolves; otherwise the N-22/N-13 sign-grain
+                    # interim applies, labelled as the coarser P5a
+                    # qualification, with the donor operand honestly
+                    # 'unavailable' (never a fabricated 0/1).
+                    donor_detail = _bindu_donor_detail(
+                        context, contributor_lookup, planet, sign_number, i
                     )
+                    if donor_detail is not None:
+                        detail.update(donor_detail)
+                    else:
+                        detail.update(
+                            _bindu_interim_detail(context, bindu_lookup, planet, sign_number)
+                        )
+                        lord = P.kakshya_lord_for_index(i)
+                        detail["kakshya_lord"] = lord
+                        detail["donor_bindu"] = None
+                        detail["donor_bindu_state"] = "unavailable"
+                        detail["donor_row_key"] = (
+                            f"{norm_graha(planet)}-CONTRIBUTOR_{norm_graha(lord)}"
+                            f"-SIGN_{sign_number}"
+                            if lord is not None else None
+                        )
                 sentences.append(ConfigurationSentence(
                     primitive="kakshya_cell_crossing",
                     chart_id=context.chart_id,

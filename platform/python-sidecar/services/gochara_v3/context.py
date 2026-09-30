@@ -141,6 +141,26 @@ class BinduSignRow:
 
 
 @dataclass(frozen=True)
+class BinduContributorRow:
+    """One L1 per-contributor BAV matrix row from chart_facts (P5c donor key).
+
+    fact_category='ashtakavarga_bindu_contributor',
+    fact_subject='{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}' — the
+    ga_strength_writer.py (G-10 / ruling sheet M-7) key scheme, read here on
+    the writer's own keys (the scheme with production data). GRAHA is the
+    transiting graha's canonical code, DONOR the mark-donor's canonical code
+    (the crossed kakṣyā cell's lord), N the absolute rāśi number 1-12;
+    fact_key='bindus', the donor's 0/1 prastara mark in fact_value_num.
+    Empty/absent rows mean the donor matrix is not built for this chart —
+    consumers must treat that as 'unavailable', never as a 0 or 1.
+    """
+    graha: str
+    contributor: str
+    sign_number: int
+    bindus: Optional[float] = None
+
+
+@dataclass(frozen=True)
 class ClassContext:
     """All data needed to evaluate lambda_e for a (chart x event_class) pair,
     fetched ONCE. After construction this object is immutable and contains
@@ -228,6 +248,16 @@ class ClassContext:
     # flag off this field is never read.
     bindu_sign_rows: tuple[BinduSignRow, ...] = ()
 
+    # P5c (GOCHARA_DESIGN_SPECS_v1_4 §2.2, sealed FABLE #19 / T0-10):
+    # per-contributor BAV matrix rows for the kakṣyā DONOR-key qualification —
+    # the crossed cell's lord donates (or withholds) the mark. Read behind the
+    # same `kakshya_bindu_interim` flag. Empty when the chart has no
+    # ashtakavarga_bindu_contributor rows (production pending the
+    # native-authorised ga_strength rebuild) — the engine then falls back to
+    # the coarser sign-grain interim, labelled as such, and stamps the donor
+    # operand 'unavailable' (never a fabricated 0/1).
+    bindu_contributor_rows: tuple[BinduContributorRow, ...] = ()
+
     @classmethod
     def fetch(
         cls,
@@ -301,6 +331,10 @@ class ClassContext:
         # read only when the kakshya_bindu_interim flag is on)
         bindu_sign_rows = _fetch_bindu_sign_rows(conn, chart_id)
 
+        # 16. P5c (FABLE #19 / T0-10): per-contributor BAV donor matrix
+        # (time-invariant; read only when the kakshya_bindu_interim flag is on)
+        bindu_contributor_rows = _fetch_bindu_contributor_rows(conn, chart_id)
+
         return cls(
             chart_id=chart_id,
             event_class=event_class,
@@ -324,6 +358,7 @@ class ClassContext:
             kakshya_boundaries=tuple(kakshya_boundaries),
             moorti_rows=tuple(moorti_rows),
             bindu_sign_rows=tuple(bindu_sign_rows),
+            bindu_contributor_rows=tuple(bindu_contributor_rows),
         )
 
 
@@ -748,7 +783,71 @@ def _fetch_bindu_sign_rows(conn, chart_id: str) -> list[BinduSignRow]:
     return result
 
 
+def _fetch_bindu_contributor_rows(conn, chart_id: str) -> list[BinduContributorRow]:
+    """Pre-fetch L1 per-contributor BAV matrix rows from chart_facts.
+
+    Reads fact_category='ashtakavarga_bindu_contributor', fact_key='bindus'
+    rows (written by ga_strength_writer.py, G-10 / ruling sheet M-7) on the
+    WRITER's key scheme — fact_subject='{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}'.
+    This deliberately does NOT follow the '{planet}.{kakshya_index}' subject
+    convention the kakṣyā boundary reads use: the boundary scheme has no
+    production contributor data, and the read side must join the scheme the
+    data actually exists under. Empty list when the rows are absent (the
+    production state pending the native-authorised rebuild) — consumers treat
+    that as 'unavailable', never as 0/1.
+    """
+    if conn is None:
+        return []
+    try:
+        with savepoint_scope(conn, "v3_bindu_contributor_rows"):
+            cur = conn.execute(
+                """
+                SELECT fact_subject, fact_value_num
+                  FROM chart_facts
+                 WHERE chart_id = %s AND fact_category = 'ashtakavarga_bindu_contributor'
+                   AND fact_key = 'bindus'
+                """,
+                [chart_id],
+            )
+            rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[v3.context] bindu_contributor_rows fetch failed: %s", exc)
+        return []
+
+    result = []
+    for row in rows:
+        d = row if isinstance(row, dict) else dict(
+            zip(["fact_subject", "fact_value_num"], row)
+        )
+        subject = d["fact_subject"] or ""
+        if "-CONTRIBUTOR_" not in subject or "-SIGN_" not in subject:
+            continue
+        graha, rest = subject.split("-CONTRIBUTOR_", 1)
+        contributor, sign_part = rest.rsplit("-SIGN_", 1)
+        if not graha or not contributor:
+            continue
+        try:
+            sign_number = int(sign_part)
+        except (TypeError, ValueError):
+            continue
+        try:
+            bindus = (
+                float(d["fact_value_num"])
+                if d.get("fact_value_num") is not None else None
+            )
+        except (TypeError, ValueError):
+            bindus = None
+        result.append(BinduContributorRow(
+            graha=graha,
+            contributor=contributor,
+            sign_number=sign_number,
+            bindus=bindus,
+        ))
+    return result
+
+
 __all__ = [
     "ClassContext", "NatalFacts", "DashaPeriod", "AVGateRow",
     "VedhaRow", "MaleficScaleRow", "KakshyaBoundaryRow", "BinduSignRow",
+    "BinduContributorRow",
 ]
