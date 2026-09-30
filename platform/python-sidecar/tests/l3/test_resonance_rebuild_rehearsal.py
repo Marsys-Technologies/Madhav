@@ -156,7 +156,7 @@ def test_a_transferred_qualifier_with_the_same_count_is_rejected():
     assert any("afflicted_rows" in f for f in failures)
 
 
-def test_cluster_identity_is_asserted_before_any_create_database():
+def test_cluster_identity_is_asserted_before_any_create_database(monkeypatch):
     executed = []
 
     class _M:
@@ -191,16 +191,15 @@ def test_cluster_identity_is_asserted_before_any_create_database():
         def __exit__(self, *a):
             return False
     fake = types.SimpleNamespace(connect=lambda *a, **k: _Ctx(_M("999")))
-    import sys as _sys
-    _sys.modules["psycopg"] = fake
-    try:
-        with pytest.raises(SystemExit, match="not the expected"):
-            R.establish_disposable_database("postgresql://u:p@127.0.0.1:1/postgres", "x", "123")
-        assert not any("CREATE DATABASE" in q for q in executed)
-        with pytest.raises(SystemExit, match="--expect-cluster-id is required"):
-            R.establish_disposable_database("postgresql://u:p@127.0.0.1:1/postgres", "x", None)
-    finally:
-        _sys.modules.pop("psycopg", None)
+    # monkeypatch restores the ORIGINAL module object afterwards (a manual
+    # set/pop re-imported a bare `psycopg` without its `rows` submodule and
+    # broke a later test in the same session)
+    monkeypatch.setitem(sys.modules, "psycopg", fake)
+    with pytest.raises(SystemExit, match="not the expected"):
+        R.establish_disposable_database("postgresql://u:p@127.0.0.1:1/postgres", "x", "123")
+    assert not any("CREATE DATABASE" in q for q in executed)
+    with pytest.raises(SystemExit, match="--expect-cluster-id is required"):
+        R.establish_disposable_database("postgresql://u:p@127.0.0.1:1/postgres", "x", None)
 
 
 def test_main_returns_failure_when_acceptance_fails(monkeypatch, capsys):
