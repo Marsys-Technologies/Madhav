@@ -854,7 +854,18 @@ def _evaluate_single_from_context(
         enabled=_W23_TARA_BALA_ENABLED,
         transit_body_longitude_deg=_tara_moon_lon,
     )
-    tara_modifier = _tara_result.modifier
+    # S-04 / O-P6-TARA (GOCHARA_DESIGN_SPECS_v1_4 §0, §2.2 P6; sealed
+    # FABLE v3.0 §2.4 "testimony only"): every P6 Moon-channel operator —
+    # tārā included — is `operator_role = testimony`: it annotates, it never
+    # weights, gates or admits. The mechanism's would-be modifier (0.70–1.20)
+    # is therefore recorded as a labelled NON-SCORING annotation
+    # (term_breakdown.tara_annotation, below) and the product receives 1.0.
+    # The variable name `tara_modifier` is deliberately KEPT in the product
+    # line so the N-16 wiring detector's AST trace continues to see the
+    # wiring (the same discipline as w30 under N-14). ASTRA_REVIEW_A5_4 P1-6:
+    # the #5 key repair had activated this multiplier on every evaluation.
+    tara_annotation_value = _tara_result.modifier
+    tara_modifier = 1.0
 
     # 4d. quality_gates: W1.3 vedha-based multiplicative suppression gate.
     #     Looks up kala_vedha_gochara rows (pre-fetched in context) that
@@ -916,6 +927,10 @@ def _evaluate_single_from_context(
             "skipped": _tara_result.skipped,
             "skip_reason": _tara_result.skip_reason,
             "mechanism_id": _tara_result.mechanism_id,
+            "operator_role": "testimony",
+            "ruling_ref": "D-PADMIT",
+            "would_be_modifier": round(tara_annotation_value, 8),
+            "scoring": False,
         },
         "quality_gates": quality_gates,
         "quality_gates_detail": quality_gates_detail,
@@ -1045,6 +1060,21 @@ def _evaluate_single_from_context(
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
         "formula": TERM_BREAKDOWN_FORMULA,
+    }
+    # S-04: tārā is P6 testimony — the annotation carries the nine-fold
+    # class and the value the mechanism would have contributed, explicitly
+    # outside the product (never a factor; O-P6-TARA / O-RR-7).
+    w15_term_breakdown["tara_annotation"] = {
+        "label": ("S-04 / O-P6-TARA: tārā is a P6 Moon-channel operator — "
+                  "testimony; annotates, never weights"),
+        "scoring": False,
+        "operator_role": "testimony",
+        "ruling_ref": "D-PADMIT",
+        "tara_name": _tara_result.tara_name,
+        "tara_position": _tara_result.tara_position,
+        "skipped": _tara_result.skipped,
+        "skip_reason": _tara_result.skip_reason,
+        "would_be_modifier": round(tara_annotation_value, 8),
     }
     if nodal_drishti == "removed":
         # N-14 (flag nodal_drishti): the removed w30 term is kept one

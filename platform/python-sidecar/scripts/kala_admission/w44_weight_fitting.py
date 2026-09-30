@@ -109,8 +109,14 @@ PROXY_ABLATION_FRACTION = 0.1
 # engine.py imports its services.gochara_v3.mechanisms.<module> and multiplies
 # the resulting modifier into the production raw_lambda (= lambda_v3) product.
 #
-# State as of 2026-09-23 (HEAD on l3/gochara-autonomous-wp0-7):
-#   - w23_tara_bala    : True  (multiplied into raw_lambda)
+# State as of 2026-09-30 (Pravāha A5.4 rework, ASTRA_REVIEW_A5_4 P1-6):
+#   - w23_tara_bala    : False (S-04 / O-P6-TARA: tārā is a P6 Moon-channel
+#                               TESTIMONY operator — engine.py still invokes
+#                               compute() and records the nine-fold class and
+#                               would-be modifier as term_breakdown.
+#                               tara_annotation, but the λ product receives
+#                               1.0; it is never multiplied in. Ablating it
+#                               is therefore an honest zero delta.)
 #   - w30_nodal_drishti: True  (multiplied into raw_lambda; N-14 retires it
 #                               behind flag nodal_drishti ∈ {enabled,removed})
 #   - w21, w22, w24-w27c: False (admitted modules, not yet wired into lambda_v3)
@@ -124,7 +130,7 @@ PROXY_ABLATION_FRACTION = 0.1
 MECHANISM_ENGINE_WIRED: dict[str, bool] = {
     "w21_av_gating": False,
     "w22_moorti_nirnaya": False,
-    "w23_tara_bala": True,
+    "w23_tara_bala": False,  # S-04 testimony annotation, never a factor (A5.4)
     "w24_sade_sati": False,
     "w25_kota_chakra": False,
     "w26_real_eclipses": False,

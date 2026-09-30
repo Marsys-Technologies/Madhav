@@ -60,9 +60,12 @@ Semantics (every choice disclosed, none improvised):
     the flag retires. The span edges are the enumeration's orb crossings,
     so for monotone motion the kernel reaches 0 at t_in/t_out physically,
     not by time construction.
-  * tārā — pinned honest skip (modifier 1.0, skipped=True): the M-3 separate
-    Moon channel is not wired into this projection, so the transit-Moon
-    input is genuinely unavailable; the skip is recorded on every row.
+  * tārā — P6 TESTIMONY (S-04, O-P6-TARA; ASTRA P1-6): the λ product's
+    tara term is pinned to 1.0; the nine-fold class (gochara_rules.p6.tara
+    over the document's natal Moon and the transit Moon at the row's peak)
+    annotates DAY rows only — P6 is the sole day-resolution source. λ is
+    identical with and without the annotation; no natal Moon in _chart ⇒
+    an honest skip record, never a fabricated class.
   * w30 — N-14 removed: pinned w30_modifier(enabled=False) (1.0, recorded).
   * VEDHA (quality gates) — the §5 interval gate (ASTRA P1-3) over the
     chart's T0-8 kala_vedha_gochara rows through the shared
@@ -662,7 +665,8 @@ def build_projection_class_context(conn, chart_id: str, event_class: str,
         permission_fn=permission_fn,
         unresolved_valence_operands=ctx_dict.get(
             "valence_unresolved_operands", ()),
-        av_donor_keys=(doc.get("_av_donor_matrix") or {}).get("available_keys"))
+        av_donor_keys=(doc.get("_av_donor_matrix") or {}).get("available_keys"),
+        natal_moon_deg=((doc.get("_chart") or {}).get("natal") or {}).get("Moon"))
 
 
 # ── T0-7 three-field valence (FABLE #11/#12; GOCHARA_DESIGN_SPECS_v1_4 §3) ───
@@ -805,6 +809,47 @@ def three_field_valence(supportive_channel: float, afflicting_channel: float,
     }
 
 
+# ── tārā: P6 testimony annotation on day rows (S-04, O-P6-TARA; ASTRA P1-6) ──
+
+NAKSHATRA_ARC_DEG = 360.0 / 27.0
+TARA_CONTRACT = "P6 tārā testimony (GOCHARA_DESIGN_SPECS_v1_4 §2.2 P6; S-04; D-PADMIT)"
+
+
+def nakshatra_index_1based(longitude_deg: float) -> int:
+    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention."""
+    idx = int((float(longitude_deg) % 360.0) // NAKSHATRA_ARC_DEG) + 1
+    return max(1, min(27, idx))
+
+
+def make_tara_annotator(natal_moon_deg, planet_pos_fn):
+    """annotator(jd) -> the P6 tārā testimony record for a DAY row: the
+    nine-fold class of the transit Moon's nakṣatra counted from the janma
+    nakṣatra (services.gochara_rules.p6.tara — reused; weight 0.0, operator
+    testimony). It annotates only: the λ product's tara term is pinned to
+    1.0 (ClassContext.tara). natal_moon_deg None ⇒ an honest skip record,
+    never a fabricated class."""
+    from services.gochara_rules.p6 import tara as p6_tara
+
+    def annotate(jd: float) -> dict:
+        if natal_moon_deg is None:
+            return {"contract": TARA_CONTRACT, "state": "skipped",
+                    "operator_role": "testimony",
+                    "reason": "natal Moon longitude absent from the context "
+                              "document's _chart operands"}
+        moon_lon = float(planet_pos_fn("Moon", jd))
+        natal_idx = nakshatra_index_1based(natal_moon_deg)
+        transit_idx = nakshatra_index_1based(moon_lon)
+        term = p6_tara(natal_idx, transit_idx)
+        return {"contract": TARA_CONTRACT, "state": "annotated",
+                "natal_moon_deg": float(natal_moon_deg),
+                "transit_moon_deg": moon_lon,
+                "natal_nakshatra_index": natal_idx,
+                "transit_nakshatra_index": transit_idx,
+                **term}
+
+    return annotate
+
+
 # ── per-class lambda evaluator ───────────────────────────────────────────────
 
 
@@ -817,7 +862,7 @@ class ClassContext:
                  class_valence: str = "mixed", class_is_adverse: bool = False,
                  context_source: str = "class_context_json",
                  permission_fn=None, unresolved_valence_operands=(),
-                 av_donor_keys=None):
+                 av_donor_keys=None, natal_moon_deg=None):
         self.event_class = event_class
         self.weight_by_target_ref = dict(weight_by_target_ref)
         self.abs_weight_by_target_ref = {
@@ -851,9 +896,21 @@ class ClassContext:
         self.av_donor_keys = (None if av_donor_keys is None
                               else frozenset(av_donor_keys))
         self.context_source = context_source
-        # tārā: the transit-Moon channel is not wired into this projection
-        # (M-3 separate channel) — the pinned honest skip (modifier 1.0).
-        self.tara = leg.tara_modifier(None, None)
+        # tārā (S-04 / O-P6-TARA; ASTRA P1-6): a P6 Moon-channel operator is
+        # TESTIMONY — the λ product's tara term is pinned to 1.0 and the
+        # nine-fold class annotates DAY rows only (make_tara_annotator over
+        # the document's natal Moon; None ⇒ honest skip on the annotation).
+        self.natal_moon_deg = (None if natal_moon_deg is None
+                               else float(natal_moon_deg))
+        self.tara = {
+            "modifier": 1.0, "operator_role": "testimony",
+            "contract": TARA_CONTRACT,
+            "skipped": self.natal_moon_deg is None,
+            "skip_reason": (None if self.natal_moon_deg is not None else
+                            "natal Moon longitude absent from _chart — "
+                            "annotation skipped (never weights either way)"),
+            "annotation_path": "day rows only (P6 is the sole day-resolution source)",
+        }
         # N-14: nodal dṛṣṭi removed — the pinned disabled path (modifier 1.0).
         self.w30 = leg.w30_modifier(None, [], enabled=False)
 
@@ -1232,9 +1289,12 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
     window_key/parent_key; the writer resolves them to parent_window_id at
     INSERT time. `planet_pos_fn` is forwarded to make_eval_fn (the angular
     kernel's ephemeris accessor; default: Swiss, lazy)."""
+    if planet_pos_fn is None:
+        planet_pos_fn = _default_planet_pos_fn()
     evaluate = make_eval_fn(class_ctx, contacts, quality_gate_for_date,
                             planet_pos_fn=planet_pos_fn)
     eval_lambda = lambda t: evaluate(t)["lambda_raw"]  # noqa: E731
+    tara_annotator = make_tara_annotator(class_ctx.natal_moon_deg, planet_pos_fn)
 
     breakpoints = sorted({b for c in contacts
                           for b in (c["_t_in_jd"], c["_t_exact_jd"], c["_t_out_jd"])
@@ -1325,7 +1385,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                 class_ctx, evaluate, window_key=f"day-{_uuid.uuid4()}",
                 parent_key=month_key, tier="day",
                 enter_jd=peak_jd_true, exit_jd=peak_jd_true,
-                peak_jd=peak_jd_true))
+                peak_jd=peak_jd_true, tara_annotator=tara_annotator))
 
     report = {
         "event_class": class_ctx.event_class,
@@ -1345,8 +1405,15 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
 
 def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
                 parent_key: str | None, tier: str, enter_jd: float,
-                exit_jd: float, peak_jd: float) -> dict:
+                exit_jd: float, peak_jd: float, tara_annotator=None) -> dict:
     peak = evaluate(peak_jd)
+    # P6 tārā testimony: DAY rows only (P6 is the sole day-resolution
+    # source, §2.3 inv 6); era/month rows carry the not-applicable record.
+    if tier == "day" and tara_annotator is not None:
+        tara_record = {**class_ctx.tara, "annotation": tara_annotator(peak_jd)}
+    else:
+        tara_record = {**class_ctx.tara, "annotation": None,
+                       "annotation_state": f"not_applicable({tier} row; P6 annotates day rows)"}
     tv = peak["three_field_valence"]
     raw = peak["lambda_raw"]
     # The served single-axis columns (valence / is_adverse / the sign of
@@ -1393,7 +1460,8 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             *peak["permission_systems_active"],
             "promise:gochara_resonance_map",
             "activity:kala_gochara_contacts@m1_linear_no_box",
-            f"tara:skipped({class_ctx.tara['skip_reason']})",
+            ("tara:testimony(P6 day annotation; never weights)" if tier == "day"
+             else f"tara:not_applicable({tier} row; P6 testimony annotates day rows)"),
             "w30:removed(N-14)",
             f"vedha:{peak['quality_gates_detail'].get('state')}"
             "(kala_vedha_gochara §5 interval gate; scoped per primary)",
@@ -1412,7 +1480,7 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
                     len(peak["quality_gates_detail"].get("annotations") or []))},
             "permission_at_peak": peak["permission"],
             "permission_detail": peak["permission_detail"],
-            "tara": class_ctx.tara,
+            "tara": tara_record,
             "w30": class_ctx.w30,
             "valence_tension": tension,
             "legacy_netted_valence": {

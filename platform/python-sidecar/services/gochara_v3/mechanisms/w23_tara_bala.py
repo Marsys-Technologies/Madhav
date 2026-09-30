@@ -2,7 +2,12 @@
 W2.3 — Tara bala: 9-cycle nakshatra quality modifier for gochara transits vs natal Moon.
 
 Wired into engine.py (evaluate_lambda_vector, _w23.compute at the per-JD
-evaluation site); toggled by TOGGLE_KEY / W23_TARA_BALA_ENABLED.
+evaluation site); toggled by TOGGLE_KEY / W23_TARA_BALA_ENABLED. The engine
+consumes the result as P6 TESTIMONY (S-04, D-PADMIT, O-P6-TARA): the
+nine-fold class and this module's would-be modifier are recorded as a
+non-scoring annotation (term_breakdown.tara_annotation); the λ product
+receives 1.0. This module still computes the classical modifier table so the
+annotation can carry it — it is never applied.
 
 Background
 ----------
