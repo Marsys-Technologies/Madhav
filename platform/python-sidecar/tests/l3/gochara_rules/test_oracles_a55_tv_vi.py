@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import pytest
 
+from services.gochara_rules.admission import p3_admit
+from services.gochara_rules.predicates import ADMITTED
 from services.gochara_rules.valence import compute_valence
 from services.gochara_rules.vedha import (
     VedhaInterval, attenuation_at, create_vedha_interval,
@@ -24,7 +26,9 @@ from services.gochara_rules.vedha import (
 NATAL_JUPITER = 249.79   # 9L, natal Jupiter
 TRANSIT_SATURN = 253.43  # father-frame contact (E8)
 LAGNA_DEG = 12.43        # Aries lagna
-def test_o_tv_1_bereavement_valence_adverse():
+
+
+def test_o_tv_1_bereavement_valence_adverse(chart):
     # given: father frame — transit Saturn 253.43° vs natal Jupiter 249.79°
     # (9L): Δ = 3.64° = 3°38′24″, in the 9th.
     delta = TRANSIT_SATURN - NATAL_JUPITER
@@ -35,6 +39,9 @@ def test_o_tv_1_bereavement_valence_adverse():
     assert int(NATAL_JUPITER // 30) == 8          # Sagittarius
     assert int(LAGNA_DEG // 30) == 0              # Aries
     assert (8 - 0) % 12 + 1 == 9                  # house from lagna = 9
+    # the P3 admission evaluator admits the father-frame contact (> 0) from
+    # the literal longitudes (steward batch-1 note a).
+    assert p3_admit("Saturn", TRANSIT_SATURN, "bereavement", chart) == ADMITTED
     # when/then: evidence_for_occurrence > 0 AND outcome adverse; the
     # all-favourable era table (E5) is the regression.
     v = compute_valence("bereavement", evidence_for=0.5, evidence_against=0.0)
@@ -146,6 +153,3 @@ def test_o_vi_5_absent_overlay_unavailable():
     assert r["coverage"] == {"overlay": "vedha", "computed": False}
     # mutation guard: default 1.0 on missing overlay fails.
     assert r["factor"] != 1.0
-
-
-# ── O-BP-2 — each operand gates exactly its own P5 form ──────────────────────
