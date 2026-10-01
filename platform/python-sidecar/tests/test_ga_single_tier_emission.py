@@ -71,12 +71,14 @@ def test_structural_catalog_label_rows_emit_single():
 # ── ga_strength ──────────────────────────────────────────────────────────────
 
 
-def test_strength_ashtakavarga_verifier_emits_single():
+def test_strength_ashtakavarga_verifier_emits_classical_match():
     from ga_writers.ga_strength_writer import _verify_ashtakavarga
 
     bav = {g: [4] * 12 for g in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")}
     bav["SARVA"] = [28] * 12  # 12 * 28 = 336, within tolerance of 337
-    assert _verify_ashtakavarga(bav, tolerance=2) == "single"
+    # Q03 / SS N-62: a passed consistency check over the raw bindus earns `classical_match` (the writer
+    # applies it only to the raw-bindu rows it examines; every other ga_strength row is `single`).
+    assert _verify_ashtakavarga(bav, tolerance=2) == "classical_match"
 
 
 # ── chart_facts insert choke points ──────────────────────────────────────────
