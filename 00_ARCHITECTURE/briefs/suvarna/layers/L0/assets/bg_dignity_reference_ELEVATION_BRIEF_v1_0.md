@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-22, TI-L0-25]
 ledger_gap_ids: [bg_dignity_reference-Earn.build_record, bg_dignity_reference-Cost.baseline, bg_dignity_reference-Dens.served, bg_dignity_reference-Carr.detector]
 ---
 # bg_dignity_reference — Planetary dignity and state reference (5 tables, 151 rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -64,30 +66,30 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 |---|---|---|---|
 | bg_dignity_reference-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_dignity_reference-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_dignity_reference-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 5 module(s): index.ts, query_avastha_schemes.ts, query_combustion_orbs.ts, query_graha_naisargika_friendship.ts, query_motion_state_thresholds.ts; declaring de… |
+| bg_dignity_reference-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 5 module(s): index.ts, query_avastha_schemes.ts, query_combustion_orbs.ts, query_graha_naisargika_friendship.ts, query_motion_state_thresholds.ts; declaring de… |
 | bg_dignity_reference-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
 
 ## 3 · Disposition
 
-**keep (P)** — all applicable Build/Idem/Vocab cells PASS; open items are detectors and the served-surface attribution. One seam is flagged for a read-only check (below): the combustion orbs exist in two L0 assets.
+**keep (P)** — all applicable Build/Idem/Vocab cells PASS; open items are detectors and the served-surface attribution. One seam, the combustion orbs held in two L0 assets, is a Track I consolidation item (SS Q15).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10); the combustion-orbs consolidation (Q15) is a Track I item, not a change of disposition.
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Duplicate-authority parity check (combustion orbs)
+### FD-1 · One authority for combustion orbs: `bg_combustion_orbs` (Track I consolidation item)
 
 - **Answers:** no census cell and no ledger row (no detector exists); found by reading `l0_formula_constants.py:28-48` against `bg_dignity_reference.py` (combustion rows): the same orbs (Moon 12, Mars 17/15, Mercury 14/12, Jupiter 11/9, Venus 10/8, Saturn 15/12, Rahu/Ketu 9/7) are held both in `brahma_formula_constants` (`combustion_orbs`, citing "Already in bg_combustion_orbs; ka_vighnakara must read from here") and in `bg_combustion_orbs`
-- **Change:** add a parity test that the two copies agree value by value (and, if SS wants one authority, name which asset owns the value and make the other read it). The values agree where visible in code; no divergence is claimed. `dignity_scores` in formula_constants was not compared.
-- **Files / declaration / migration:** a test under `platform/python-sidecar/pipeline/orchestrator/writers/tests/` comparing the two seed structures; no asset file changes
+- **Change:** decided (SS 2026-10-01, Q15): `bg_combustion_orbs` holds the values and `brahma_formula_constants` (`combustion_orbs`) references it rather than duplicating it; consumers `ga_condition`, `ka_vighnakara`, `ph_sodhana` are repointed. Until the consolidation lands, keep a parity test so the two copies cannot drift.
+- **Files / declaration / migration:** `brahmagyan/l0_formula_constants.py:28-48` (replace the value by a reference), the three consumers, a parity test under `platform/python-sidecar/pipeline/orchestrator/writers/tests/`
 - **Failing-first test and mutation:** failing-first: perturb one copy in a fixture → test fails
-- **Output change:** none
+- **Output change:** the `combustion_orbs` constant becomes a reference; consumers read the orbs table
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none (test only)
+- **Rebuild:** needs production rebuild of bg_formula_constants (after the reference lands) and the consumers read the new source
 - **Gate it moves:** Carr/Vocab (independent-authority check; no registered gate cell yet)
-- **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent
-- **Question for SS:** Is the second copy of the combustion orbs (formula_constants vs bg_combustion_orbs) intended redundancy, or a consolidation question (T2 §10.1 C)?
+- **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q15): one authority: `bg_combustion_orbs` holds the values and `brahma_formula_constants` references it rather than duplicating it (Track I consolidation item).
 
 ### FD-2 · Carr detector — D1 against cited sources
 
@@ -124,14 +126,14 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Rebuild:** none
 - **Gate it moves:** Dens (NO_DETECTOR → FAIL/PASS/N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: N-22 + TGH-T3-26
-- **Question for SS:** Does Dens apply to this reference table at all (CF-04)?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* NO_DETECTOR by attribution, not FAIL
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* NO_DETECTOR by attribution, not FAIL
 - **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert over five tables, no DELETE found
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -144,6 +146,13 @@ Natural key `graha` for `bg_dignity_reference` (census, 0 duplicates); each sub-
 - **Carriage check chosen (T4 §4.1; one only):** D1 (source correspondence); the duplicated combustion orbs add an internal-consistency check.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Combustion orbs held in two L0 assets: redundancy or consolidation candidate?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q15): one authority: `bg_combustion_orbs` holds the values and `brahma_formula_constants` references it rather than duplicating it (Track I consolidation item).
+2. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+3. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+4. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-22, TI-L0-25.
