@@ -26,3 +26,7 @@ Exactly one L0 successor admission over the `bg_gochara_arcs` digest move caused
 ## Procedure bound to this record
 
 `python -m scripts.generate.nirmana_analysis_layer_pins --admit-successor --layer L0 ... --authority-decision N-71 --classification bg_gochara_arcs=derived_import_change`, with the standing L0 acceptance artifact as review artifact; verification with `--check` and `--check --delivery-topology`.
+
+## Authority identity
+
+Immutable approval identity (the commit that first introduced this document): `26cbb7e004db6f443658cbf0018603891ef7f2ed`
