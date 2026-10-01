@@ -1,6 +1,6 @@
 ---
 artifact: F_A2_KEY_WIDENING_D6_PLAN
-version: "1.1"
+version: "1.2"
 status: DRAFT_FOR_REVIEW
 date: 2026-10-02
 lane: suvarna/land/TI-l1-fa2-key-001
@@ -10,6 +10,7 @@ decision: L1 decision sheet Q-L1-01 (SS-ruled N-62, accepted as recommended)
 execution: NONE against any real system. DB access was SELECT and catalog reads as `suvarna_reader`; the executor script and migration 1222 were exercised only against disposable local PostgreSQL 15 databases built for this lane. Nothing was applied.
 approval_needed: SS `APPROVED <plan hash>` for the hash `d6_f_a2_key_widening_DRAFT.py --dry-run` prints (the FROZEN hash is recorded in the hand-off, section 11), plus the owner's standing authorization in the executing session. Migration 1222 is allocated by SS and rides the normal pipeline.
 changelog:
+  - "1.2 (2026-10-02): independent review of #2858 (ACCEPT WITH CORRECTIONS) and SS rulings. (1) BLOCKER fixed: the executor stored the trigger attestation digest from the schema-QUALIFIED pg_get_triggerdef text (it ran under search_path pg_catalog, pg_temp) while the deploy gate recomputes it under the default path; it now runs under pg_catalog, public, pg_temp, COPIES the gate's own trigger-shape / trigger-surface / function-digest queries and runs them under search_path public before AND after as an explicit commit condition, and prints the stored and gate-side digests; the previous dry-run-only approval of 37403070... is VOID, SS must re-approve the new hash. (2) 'writer first, then D6' is a HARD RULE with a read-only executor precondition (section 6). (3) lock footprint stated (section 6). (4) what can still go wrong in the first real run (section 12). (5) downstream consumers, reader fixes (separate commit), 1223 intent (separate document). (6) asset_frozen / schema-of-record drift table / CI collection (sections 13-15). (7) collision accounting notes; acceptance notes (section 8). (8) per-row-path tests."
   - "1.1 (2026-10-02): SS direction on #2858. (1) approach accepted. (2) integrity: conjunct (e) kept, (f) dropped from integrity_check_sql and turned into S-L1 ACCEPTANCE CRITERIA (section 8) with a read-only check script. (3) the registry migration is now platform/migrations/1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql (routine, guarded, not applied). (4) the executor gains a readable catalog-diff dry run, an identity probe, owner-role reads (the administrator holds no table privilege), an ANY-chart build guard, a builder-session guard, a pgcrypto precondition and window timestamps; the plan hash now binds the executor's own source. (5) sequencing: the WRITER deploys FIRST (section 6)."
   - "1.0 (2026-10-02): first draft."
 ---
@@ -80,13 +81,15 @@ Verification after the run (read-only, by chart and ayanamsha): `count(*)` per c
 
 ## 6. The D6 plan (`d6_f_a2_key_widening_DRAFT.py`)
 
-One transaction, `lock_timeout 5s`, `statement_timeout 120s`, `search_path = pg_catalog, pg_temp` (`public.digest` is schema-qualified).
+One transaction, `lock_timeout 5s`, `statement_timeout 120s`, `search_path = pg_catalog, public, pg_temp` (v1.1 used `pg_catalog, pg_temp`, which was the blocker below; `public.digest` stays schema-qualified).
 
 Preconditions (abort and ROLLBACK otherwise; reads only, the plan never writes a run):
 - no `build_runs` row in `planned` / `running` / `paused` **on ANY chart**: the query has no chart filter (`FROM public.build_runs WHERE state IN ('planned','running','paused')`), and `build_runs.state` is CHECK-constrained to exactly `planned, running, paused, completed, stopped, failed` (read live), so those three are every non-terminal state. If another workstream's run appears in the gap, the plan prints that run's chart and state, stops, and does not touch it;
 - no `l1_data_plane_generations` row in `building`; no `data_plane_builder` session active or idle-in-transaction (a hidden state, if the administrator lacks `pg_read_all_stats`, is printed as a warning and `build_runs` is then the only guard);
 - the live index, trigger and function have exactly the pre-state this plan was written against;
 - `public.digest(text,text)` resolves (the extension's schema is printed). **Production, read as `suvarna_reader` 2026-10-02: extension `pgcrypto` is in schema `public`; `digest(bytea,text)` and `digest(text,text)` are in `public`.** The executor calls `public.digest` (schema-qualified) because it runs under `SET LOCAL search_path = pg_catalog, pg_temp`, where an unqualified `digest()` would fail. The live capture function calls `digest(` unqualified but carries its own `SET search_path = 'pg_catalog', 'public', 'pg_temp'` (read from `pg_get_functiondef`), which `CREATE OR REPLACE` from the live definition preserves, so it resolves in `public` too. The status gate's own query (`data-plane-ownership-status.ts`) is unqualified under the default path, which also includes `public`.
+
+**The deploy-gate blocker and its fix (independent review, #2858).** `pg_get_triggerdef` is search_path sensitive. Under `pg_catalog, pg_temp` it prints `... ON public.chart_divisionals ... EXECUTE FUNCTION public.l1_data_plane_capture_row(...)`; under the default path the gate's pooled session uses it prints the unqualified text. The v1.1 executor stored the digest of the QUALIFIED text (production, read-only, per the independent review: executor path `b6fa8aa8...` against the attested default-path `d0064f5e...`; the attested value `d0064f5e` is also what I read from the live attestation table), so after COMMIT `data-plane-ownership-status.ts` would throw "Protected trigger inventory or definition drift detected" and "Inspect DB Migration State" would go RED, while the executor's own check, recomputing under the same path, said ALL HOLD (the function digest is unaffected: `pg_get_functiondef` always qualifies its own name). Fix, all in the executor: (a) everything runs under `pg_catalog, public, pg_temp`, which keeps the text unqualified; (b) the gate's OWN three queries (trigger shape, trigger surface, function digests; copied from `data-plane-ownership-status.ts`, with the L1/L2 table lists parsed from `data-plane-ownership-preflight.ts` at run time) run under `search_path = public` before the plan (the gate must already be green: otherwise the plan refuses, because a pre-existing red cannot be attributed) and AFTER it, and "all three false" is an explicit commit condition; (c) the stored and gate-side digests of the capture trigger and the capture function must be equal, and `--dry-run` prints them. Test: `platform/python-sidecar/tests/test_f_a2_d6_executor.py` reproduces the old mismatch (the same trigger text differs by search_path) and shows the executor refuses the old path (`DEPLOY GATE WOULD GO RED`), nothing committed; it fails 7 of 8 on the v1.1 executor. **Any edit changes the plan hash: the earlier dry-run-only approval of `37403070...` is VOID; SS must re-approve the new hash (hand-off).**
 
 Role handling: the administrator holds no table privilege (I-11 incident review), so every table read and the whole plan run as `SET LOCAL ROLE data_plane_l1_owner` (owner of the table, index, function and both attestation tables), and the `build_runs` read as `amjis_app` (its owner). Both are transient `GRANT <role> TO CURRENT_USER`; the role-membership snapshot is taken before any grant and must equal the one after the revoke.
 
@@ -107,16 +110,22 @@ Rollback: before the S-L1 rebuild, the reverse statements restore the old state 
 
 Exercised locally (never against production): the executor's `run()` against a disposable PostgreSQL 15 holding a model of the objects built from the **live** function text (the model's function has the same md5 as production, `1e079261...`, so the printed hunk is the production hunk), run as a NON-superuser administrator with `CREATEROLE` and no table privilege, as production's. Results: `--count` read-only; `--dry-run` printed the diff and probe and rolled back with the state unchanged; an active build on a DIFFERENT chart refused the apply and was not touched; `--apply` committed with all conditions holding and left the index 7-column, the trigger 7-argument, the function hunk present, both append-only triggers enabled and still enforcing, and the administrator no longer a member of the owner role; a second apply was refused by the preconditions. (This run found and fixed a real defect: the first version read owner-only tables as the administrator.) What this does not prove: Cloud SQL's real grants, or the real attestation tables' extra columns/constraints.
 
-### Order and gap (SS direction 2026-10-02): the WRITER deploys first
+**Lock footprint (approval wording).** The dry run is data-safe but NOT lock-free: it takes the same locks as the apply (SHARE on `chart_divisionals` from the index build, then ACCESS EXCLUSIVE at `DROP INDEX` / `DROP TRIGGER`; `lock_timeout` 5 s bounds the wait). The reviewer measured concurrent SELECT/UPDATE blocking for 2.01 s with an artificial 2 s pause in the transaction; the production index build over ~71k rows is expected in the low hundreds of milliseconds. Run the dry run in the SAME quiet window as the apply (deploy idle, zero runs) and report both windows' start/end timestamps (the executor prints them).
 
-Together, immediately before S-L1: migration 1219 + this D6 plan + the writer deploy. Order:
+### HARD RULE: the WRITER deploys first, then this plan. Never the reverse.
 
-1. **Writer deploy FIRST.** The new writer fails closed on a missing seven-column index (`assert_unique_key_grain`, before any DELETE), so deploying it against the six-column index is safe: any `ga_vargas` build simply refuses with a message naming the cause. Nothing is written.
-2. **Then the D6 plan** (`--apply --expect-plan <frozen hash>`).
-3. Migration 1222 (e) is independent of the index and may apply earlier in the normal pipeline (it is TRUE on production today).
-4. S-L1 `ga_vargas` rebuild (one rebuild carries F-A1, F-A2, F-A3 for the charts).
+Together, immediately before S-L1: migration 1219 + 1222 + this D6 plan + the writer deploy (and 1223 once authorised, `F_A2_1223_OUTPUT_DIGEST_SPEC_INTENT_v1_0.md`). Order:
 
-The gap: between the index swap and the writer deploy any `ga_vargas` build fails either way (old writer: six-column target on a seven-column index; new writer: not yet deployed). That is why the writer goes first: the only window in which a build can fail is then the plan's own seconds. The executor prints UTC start/end timestamps and the `index-swap-to-end window`; report them to SS. If another workstream's run appears at any point (planned/running/paused on ANY chart) the plan stops and does not touch it.
+1. **Writer deploy FIRST.** The new writer fails closed on a missing seven-column index (`assert_unique_key_grain` runs before any DELETE), so any `ga_vargas` build that starts before the D6 apply stops with a message naming the cause and writes nothing.
+2. **Then the D6 plan** (`--apply --expect-plan <frozen hash> --writer-commit <sha>`).
+3. Migration 1222 (e) is independent of the index and may apply earlier.
+4. S-L1 `ga_vargas` rebuild.
+
+**Why the reverse is dangerous (independent review, reproduced on a model):** an OLD writer on the seven-column index returns 0 rows with NO exception and DELETES the scope's prior rows (its six-column `ON CONFLICT` target matches no index inference... and the per-row fallback of the old code swallowed the rejections; 5 existing chart rows went to 0). A NEW writer on the six-column index fails closed. The gap between the index swap and a not-yet-deployed writer is therefore not "builds fail" but "builds can erase data": hence writer first.
+
+**Pre-apply check, enforced by the executor (read-only) and repeated by the operator.** `--apply` REQUIRES `--writer-commit <sha>` and refuses unless BOTH hold: (i) `gcloud run jobs describe brahma-build-pipeline-job --region asia-south1 --format='value(spec.template.spec.template.spec.containers[0].image)'` returns an image whose tag is that commit (`deploy.yml` deploys `brahma-pipeline:${DEPLOY_SHA}` to that job; the same describe is what the deploy workflow's own change detection uses), and (ii) `git show <sha>:platform/src/generated/nirmana-writer-digests.json` has `writers.ga_vargas` equal to the digest this plan was frozen against (`WRITER_DIGEST`, inside the hashed executor). Operator verification without the executor: the same two commands by hand. If any shared module the writer imports changes after the freeze (as `verification_vocab.py` once shifted ~24 writers' digests), (ii) fails safe and the plan is re-frozen with the new digest (a new hash). An unreadable image or inventory fails closed (`UNVERIFIED`). `--dry-run` runs the check when `--writer-commit` is given and otherwise prints `NOT CHECKED`.
+
+**What the gap looks like.** Before the D6 apply any ga_vargas build fails closed (writer first). After it, the new writer works. The executor prints UTC start/end timestamps and the `index-swap-to-end window`; report them to SS. If another workstream's run appears at any point (planned/running/paused on ANY chart) the plan stops and does not touch it.
 
 ## 7. The writer change (this branch)
 
@@ -136,6 +145,8 @@ The gap: between the index swap and the writer deploy any `ga_vargas` build fail
 SS dropped the key-grain clause (f) from the integrity check entirely (bare count pins, red by design). Tests: a static vitest (`nirmana_l1_ga_vargas_integrity_nonvacuity.test.ts`: routine/guarded/asset_registry-only; the SQL passes the REAL elevation validators `nirmanaReadOnlyDetectorSqlAcceptable` and no-bind-placeholder; (f) and `<> 12/96/60` absent) and behaviour tests on a disposable PostgreSQL (empty / one row short / a whole varga missing / other chart: false; complete data: true; data collapsed by the six-column key still passes (e), i.e. (e) alone does not pin the grain; the migration applies once and refuses a second run).
 
 ### S-L1 ACCEPTANCE CRITERIA for `ga_vargas` (checked from the run result, not by integrity_check_sql)
+
+Notes the acceptance reader needs: (a) **C7 is vacuous** (the seven-column unique index forces it to 0); it is kept as a regression guard only (a dropped or narrowed index would surface here), and the script says so. (b) **`rows_inserted` summed over the five partitions is 38,620, not 38,596**: each of the five calls re-deletes and re-inserts the six INVARIANT sentinels (5 x 7,724 = 38,620 attempted and landed; 38,596 remain stored). C1 counts the table, not the sum of partition counts. (c) **Collisions and skips do not fail the build**: only a row the database REJECTS raises; a key collision or a conflict skip is counted (`collided`, `db_skipped`), logged and put in `WriterResult.notes` / `rows_skipped`, and a collided row is counted once. The acceptance script, not the run status, is what proves the grain. (d) **Deity-table drift moves the totals:** `varga_deity_attribution` follows `bg_shashtiamsha_deities` (production: 60 rows, every `deity_name` NULL, 135 rows per ayanamsha, hence 7,724 attempted / 7,718 stored per ayanamsha). Populating that table or a failed read changes the counts: with all 60 deity names present the offline model gives 7,733 attempted / 7,727 stored per ayanamsha; with the table unreadable (empty reference) 7,715 attempted / 7,709 stored (the writer floors, never fabricates). All three variants were run offline on the shipping writer and agree with the independent review. C1/C2 would then read 38,641 / 7,727 or 38,551 / 7,709 while C4-C6 stay exact: investigate the deity table, not the key.
 
 `s_l1_ga_vargas_acceptance_check.sql` in this folder is one read-only SELECT with no parameters, to be run as `suvarna_reader` after the S-L1 rebuild of the canonical chart. It prints one row per criterion (PASS/FAIL) and a final `ACCEPTED` row.
 
@@ -174,8 +185,60 @@ Run against production **now** (read-only, pre-S-L1 state) as a check that the S
 ## 11. Final review package for SS (what accompanies the frozen hash)
 
 1. **The frozen plan hash** (binds `d6_f_a2_key_widening_DRAFT.py`'s own bytes, this document and the expected diff), recorded in the hand-off with the HEAD that produced it (`python d6_f_a2_key_widening_DRAFT.py --print-hash`). Any edit to the script or this document changes it.
-2. **A `--dry-run` against production under the owner's standing authorization** (run by the coordinator when SS asks): it must print the same hash, the exact diff of section 6 with `ONE ENTRY CHANGES` on all five categories, the identity probe (84 / 84 / 18), `commit conditions: ALL HOLD`, and `ROLLED BACK (dry run)`.
+2. **A `--dry-run --writer-commit <sha>` against production under the owner's standing authorization** (run by the coordinator when SS asks, in a quiet window): it must print the same hash, `writer-first check` with the image tag and digest, the exact diff of section 6 with `ONE ENTRY CHANGES` on all five categories, the DEPLOY GATE block (all three flags False before and after; stored == gate-side digests for the capture trigger and function), the identity probe (84 / 84 / 18), `commit conditions: ALL HOLD`, and `ROLLED BACK (dry run)`.
 3. The independent review verdict.
-4. The unverified items that matter for safety: section 10 items 1, 6, 7, 8.
+4. The unverified items that matter for safety: section 10 items 1, 6, 7, 8 and section 12.
 5. The S-L1 acceptance script and 1222's static and behaviour tests (section 8).
+
+## 12. What can still go wrong in the first real run (the dry run does not fire the capture path)
+
+The identity probe proves the identity expression and the count equality; it does not fire `l1_data_plane_capture_row` or `complete_l1_data_plane_partition` (they require `session_user = data_plane_builder` and an admitted generation). So, until the S-L1 run itself:
+
+1. **The `ga_condition` dependency hunk's runtime path** (the `source_row_identities` array built from `chart_divisionals` natural-key parts) is only syntax-checked (the function is recreated successfully) until a `ga_condition` build executes it; a mistake there would surface as a `ga_condition` partition error or as provenance references that match no snapshot, not at the D6 apply.
+2. **Snapshot volume grows about 58%** for `chart_divisionals` (38,596 vs 24,392 rows per chart captured per generation into `l1_data_plane_row_snapshots`, append-only): more rows per partition and a longer capture.
+3. **Deity-table drift** changes the counts (section 8 note d).
+4. A real ga_vargas partition may reveal an interaction the model cannot (the real attestation tables' extra constraints, role grants). The plan is reversible only until the rebuild lands the widened rows (rollback paragraph).
+
+## 13. Downstream consumers of the widened table (documented; fixes only where low-risk)
+
+Fixed in this PR, in a SEPARATE commit named `reader:` (no pin moved except as listed):
+- `get_divisionals.ts`: `ORDER BY ... fact_key` was no longer unique (401 tie groups, per the independent review): OFFSET paging could duplicate or skip rows. It now ends in `fact_subject`. The handler already reports truncation honestly (it fetches `limit + 1` and returns `more_available` / `next_offset`; a test pins this for the default page of 300, which D2 and D30 pages now exceed; D9 grows 188 -> 281 rows, per the independent review).
+- `register_d9_judgment.ts`: the 12 per-sign ashtakavarga bindus rows per graha sort first by category, ahead of the placement/dignity rows that confirm the varga, so a head-keeping trim cut those first. `orderVargaConfirmationRows` makes the order a stable partition (bindus last). Description and schema untouched; Pūrṇa's final sentence in that file is not touched.
+- Line pins checked: `asset_declarations.json` `get_divisionals.ts:90` and the `register_d9_judgment.ts` pins (143, 415, 1146, 1263, 1489) are all before the edits and unmoved.
+
+NOT edited (listed for the batches that own them):
+- `source_query_availability.ts:2120-2122` mirrors the same `ORDER BY` (and its `source_refs` cite `get_divisionals.ts:80-101` and `:112-120`): it moves `capability_content_hash`, so it goes to the **tool-text batch** as its own `tool-text:` commit: add `fact_subject` to the mirror's `ORDER BY`.
+- `register_d7_channel.ts:1075` and `address_resolver.ts:567` look up sign/house without a `fact_category` filter; they were already polluted by `varga_house_lord` rows and now see all 12 house-lord rows. Reader fix (add the category/key filter), not made here.
+- `asset_output_digest_specs` (migration 883) for ga_vargas keys on six columns: tied rows have no deterministic order. Revision drafted as an intent document only: `F_A2_1223_OUTPUT_DIGEST_SPEC_INTENT_v1_0.md` (migration 1223 allocated; no file until the owner's typed authorisation).
+
+## 14. Other consequences
+
+- **`asset_frozen`:** `ga_vargas` is frozen (L1, 2026-09-07). Migration 1222 and the writer change move its registry fingerprint and writer digest, so the freeze monitor will report `evidence_refresh_required` for `ga_vargas`. No refreeze is needed (N-51; nothing in the run path gates on it).
+- **Schema-of-record drift** (what a fresh or restored database built from the migrations differs from live after the D6 plan; the engine session's replay schema must apply these):
+
+| object | migrations define | live after the D6 plan |
+|---|---|---|
+| `chart_divisionals_unique_idx` | `platform/supabase/migrations/218_chart_divisionals_unique_idx_fix.sql`: six columns | seven columns (`+ fact_subject`), NULLS NOT DISTINCT |
+| trigger `l1_data_plane_capture` on `chart_divisionals` | `1035_data_plane_l1_producer_history.sql` (~:1873): six key arguments | seven arguments (`+ 'fact_subject'`) |
+| function `l1_data_plane_capture_row()` | `1035` (~:722-1100) | one hunk changed (ga_vargas dependency identity gains `'fact_subject=' \|\| COALESCE(cd.fact_subject,'<null>')` and the ORDER BY gains `cd.fact_subject`) |
+| `l1_data_plane_trigger_attestations` row (`chart_divisionals`, `l1_data_plane_capture`) | digest computed at 1035 apply time from the six-argument trigger | digest of the seven-argument trigger |
+| `l1_data_plane_function_attestations` row (`l1_data_plane_capture_row()`) | digest of the 1035 function | digest of the changed function |
+| `asset_registry.integrity_check_sql` (ga_vargas) | migration 884 text | migration 1222 text (1222 IS a migration: no drift once applied) |
+| `asset_output_digest_specs` (ga_vargas) | migration 883 spec (six-column key) | unchanged until 1223 exists (then a migration: no drift) |
+
+Nothing else differs (no row data, ACL, RLS, policy or membership change; the executor checks this). A database replayed from the migrations has the six-column index and six-argument trigger, so the NEW writer fails its preflight there (fail closed): a replay used for rehearsal must apply the D6 steps (or their equivalent) after 1035. No migration redefines these objects, by design (they are owner-path); the follow-up, if SS wants the migrations to be the schema of record, is a deployment-only attested migration like 1035 itself.
+- **CI collection:** the CI step "pytest — pyjhora_adapter + pipeline" (`.github/workflows/ci.yml`, the `pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ ...` command near line 1506) collects `tests/` (so `tests/test_f_a2_d6_executor.py` runs there; its PostgreSQL tests skip without `F_A2_PG_DSN`) but NOT `ga_writers/__tests__`. `ci.yml` is not edited here. Snippet for the follow-up ci.yml PR (add to that pytest command):
+
+```
+            ga_writers/__tests__/test_ga_vargas_key_widening.py \
+            ga_writers/__tests__/test_ga_vargas_integrity_nonvacuity_and_acceptance.py \
+            ga_writers/__tests__/test_ga_vargas_delete_grain.py \
+            ga_writers/__tests__/test_ga_vargas_birth_instant.py \
+```
+and, in a job that has a PostgreSQL service (superuser DSN of a disposable cluster), set `F_A2_PG_DSN=postgresql://postgres:postgres@localhost:5432/postgres` for `tests/test_f_a2_d6_executor.py` and `ga_writers/__tests__/test_ga_vargas_integrity_nonvacuity_and_acceptance.py` so their database tests run (they create and drop their own database / scratch schema). Command form: `cd platform/python-sidecar && F_A2_PG_DSN=... python -m pytest tests/test_f_a2_d6_executor.py ga_writers/__tests__/test_ga_vargas_key_widening.py ga_writers/__tests__/test_ga_vargas_integrity_nonvacuity_and_acceptance.py ga_writers/__tests__/test_ga_vargas_delete_grain.py ga_writers/__tests__/test_ga_vargas_birth_instant.py -q -p no:cacheprovider`.
+
+## 15. Noted, not caused by this PR
+
+- Re-running ga_vargas with the SAME `build_id` loses rows (7,724 -> 7,461 on this PR, 4,880 -> 4,710 on base): the `_check_already_written` incremental skip.
+- Polar births (69.6 N and beyond) fail in `swisseph.houses_ex`.
 

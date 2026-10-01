@@ -18,7 +18,14 @@
 --   C6  varga_d30_lord_per_amsa = 60 rows per ayanamsha                (5 lords x 12 signs)
 --   C7  zero rows share the seven-column key (chart, graha, ayanamsha, varga, category, key, subject)
 -- Family totals expected on the canonical chart: ashtakavarga 14,400, house_lord 1,800, d30 lords 300.
--- Caveat: C1/C2 include varga_deity_attribution, which follows the live bg_shashtiamsha_deities table (135 per ayanamsha).
+-- Caveat: C1/C2 include varga_deity_attribution, which follows the live bg_shashtiamsha_deities table (production: 60 rows,
+-- every deity_name NULL, 135 rows per ayanamsha). If that table changes (all names populated: 7,727 stored per ayanamsha,
+-- C1 = 38,641; unreadable/empty reference: 7,709 per ayanamsha, C1 = 38,551) C1/C2 move while C4-C6 stay exact: investigate the
+-- deity table, not the key.
+-- Notes: (1) C7 is VACUOUS today (the seven-column unique index forces it to 0); it is a regression guard only, so a dropped or
+-- narrowed index would show here. (2) The sum of rows_inserted over the five ga_vargas partitions is 38,620, not 38,596: each
+-- partition re-deletes and re-inserts the six INVARIANT sentinels (5 x 7,724 = 38,620 landed; 38,596 remain). C1 counts the
+-- TABLE. (3) A key collision or conflict skip does not fail the build; this script is what proves the grain.
 
 WITH canon AS (SELECT '482012f1-710e-4a25-994a-93821f5871aa'::text AS chart_id),
 ayas AS (SELECT unnest(ARRAY['lahiri_chitrapaksha','true_chitra','krishnamurti','raman','surya_siddhanta_classical']) AS ayanamsha_id),

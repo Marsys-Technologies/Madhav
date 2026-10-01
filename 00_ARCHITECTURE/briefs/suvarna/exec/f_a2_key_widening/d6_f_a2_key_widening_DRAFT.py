@@ -26,6 +26,27 @@ trigger or function. The two attestation UPDATEs bypass the append-only trigger 
 same transaction (the mechanism data_plane_protected_roles.db.test.ts uses); the end-state check proves the trigger is
 enabled again and that exactly the two intended attestation rows changed.
 
+HARD RULE: THE WRITER DEPLOYS FIRST, THEN THIS PLAN. Never the reverse. A NEW writer on the six-column index fails
+closed (assert_unique_key_grain raises before any DELETE). An OLD writer on the seven-column index returns 0 rows with
+no exception and DELETES the scope's prior rows (reproduced by the independent review: 5 existing rows went to 0).
+Before this plan applies, any ga_vargas build that starts fails closed. --apply therefore REQUIRES --writer-commit <sha>
+and checks, read-only, that the Cloud Run job brahma-build-pipeline-job runs the image tagged with that commit and that
+nirmana-writer-digests.json at that commit carries the ga_vargas digest this plan was frozen against.
+
+DEPLOY GATE (the reviewed blocker): data-plane-ownership-status.ts recomputes the trigger and function digests under the
+DEFAULT search_path. pg_get_triggerdef is search_path sensitive (under `pg_catalog, pg_temp` it prints
+`ON public.chart_divisionals ... EXECUTE FUNCTION public.l1_data_plane_capture_row(`; under the default path it prints the
+unqualified text), so a digest stored from the qualified text fails the gate after COMMIT while a check that recomputes
+under the same path says ALL HOLD. This executor therefore (a) computes everything under SEARCH_PATH
+`pg_catalog, public, pg_temp`, (b) COPIES the gate's own trigger-shape, trigger-surface and function-digest queries and
+runs them under GATE_SEARCH_PATH (`public`) before AND after the plan as an explicit commit condition, and (c) prints the
+stored, gate-side and executor-path digests in --dry-run.
+
+LOCKS: the dry run is data-safe but NOT lock-free. It takes the same locks as the apply: SHARE on chart_divisionals for the
+index build, then ACCESS EXCLUSIVE at DROP INDEX / DROP TRIGGER; lock_timeout 5s bounds the wait; concurrent reads and
+writes of chart_divisionals block for the duration (an index build over ~71k rows is expected in the low hundreds of ms).
+Run the dry run in the SAME quiet window as the apply (deploy idle, zero runs) and report both windows' timestamps.
+
 GUARDS (any failure = print the reason and ROLLBACK; nothing else is touched):
   * ANY build_run in planned/running/paused, on ANY chart (no chart filter), and any L1 generation in 'building';
   * any data_plane_builder session that is active or idle-in-transaction;
@@ -37,11 +58,12 @@ GUARDS (any failure = print the reason and ROLLBACK; nothing else is touched):
 MODES
   --print-hash                  print the frozen plan hash (needs no database)
   --count                       read-only: preconditions + pre-state, always ROLLBACK
-  --dry-run                     applies the plan inside one transaction, prints the exact catalog diff in readable
-                                form, fires the identity probe, runs every commit condition, then ROLLBACK; prints the
-                                same plan hash and UTC start/end timestamps
-  --apply --expect-plan H       same transaction; COMMIT only if H == plan hash and every check holds; prints the
-                                UTC start/end timestamps of the index-swap-to-commit window (report them to SS)
+  --dry-run [--writer-commit S] applies the plan inside one transaction, prints the exact catalog diff in readable
+                                form, the gate-side digests, fires the identity probe, runs every commit condition,
+                                then ROLLBACK; prints the same plan hash and UTC start/end timestamps
+  --apply --expect-plan H --writer-commit S
+                                same transaction; COMMIT only if H == plan hash, the writer image check passes and
+                                every check holds; prints the UTC start/end timestamps of the window (report to SS)
 
 SEQUENCING (see the plan, section 6): the WRITER deploys FIRST (it fails closed on a missing seven-column index), THEN
 this plan runs. Between the index swap and the writer deploy any ga_vargas build fails either way, so the gap is kept
@@ -78,6 +100,20 @@ FN_ATT = "public.l1_data_plane_function_attestations"
 FN_ATT_IMMUTABLE = "l1_data_plane_function_attestations_immutable"
 PROJECT = "madhav-astrology"
 PLAN_DOC = pathlib.Path(__file__).with_name("F_A2_KEY_WIDENING_D6_PLAN_v1_0.md")
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[5]
+SEARCH_PATH = "pg_catalog, public, pg_temp"  # keeps pg_get_triggerdef unqualified, as under the gate's session
+GATE_SEARCH_PATH = "public"                  # what the gate's pooled session resolves names with (default path)
+# the writer this plan was frozen against: ga_vargas in platform/src/generated/nirmana-writer-digests.json
+WRITER_DIGEST = "0d4f8a14a23fdd47efaea4c51346417ec18908de3d1047746e7036fa1fdb4c11"
+WRITER_IMAGE_JOB = "brahma-build-pipeline-job"
+WRITER_IMAGE_REGION = "asia-south1"
+# data-plane-ownership-status.ts passes exactly these lifecycle functions to its function-digest query
+GATE_LIFECYCLE_FUNCTIONS = (
+    "open_l1_data_plane_generation", "capture_l1_data_plane_dasha_partition", "authorize_l1_chart_facts_delete",
+    "complete_l1_data_plane_partition", "select_l1_data_plane_generation", "rollback_l1_data_plane_generation",
+    "assert_l2_msr_delete_safe", "bind_l2_exact_inputs", "open_l2_data_plane_generation",
+    "complete_l2_data_plane_partition", "select_l2_data_plane_generation", "rollback_l2_data_plane_generation",
+)
 
 # The one hunk of the capture function that spells the chart_divisionals natural key (migration 1035, the
 # ga_condition_composite dependency identities). Read from the live function on 2026-10-02: it occurs exactly once.
@@ -98,6 +134,8 @@ EXPECTED_DIFF = {
     "function_attestation": [f"{CAPTURE_FN_SIG}|digest"],
     "rls_policy_acl_membership_rowdata": [],
     "identity_probe": "landed == distinct identities under the live widened trigger arguments (84 == 84; legacy 6 args: 18)",
+    "deploy_gate": "the gate's own trigger-shape, trigger-surface and function-digest queries are false before AND after, under search_path public",
+    "writer_first": "--apply requires --writer-commit: job image tag == commit and ga_vargas digest at that commit == WRITER_DIGEST",
 }
 
 SNAP_SQL = {
@@ -146,6 +184,158 @@ def plan_hash() -> str:
     body = PLAN_DOC.read_text(encoding="utf-8") + "\n" + json.dumps(EXPECTED_DIFF, sort_keys=True)
     body += "\n" + hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# the deploy gate's own queries (platform/scripts/data-plane-ownership-status.ts), copied, parameterised by table list
+# ------------------------------------------------------------------------------------------------------------------
+GATE_TRIGGER_SHAPE = """
+SELECT EXISTS (
+  SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+  JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_proc p ON p.oid=t.tgfoid
+  WHERE NOT t.tgisinternal AND n.nspname='public' AND c.relname=ANY(%(tables)s::text[])
+    AND (
+      (t.tgname='l1_data_plane_mutation_guard' AND (t.tgtype<>31 OR p.oid<>'public.l1_data_plane_guard_active_mutation()'::regprocedure))
+      OR (t.tgname='l1_data_plane_capture' AND (t.tgtype<>21 OR p.oid<>'public.l1_data_plane_capture_row()'::regprocedure))
+      OR (t.tgname='l2_data_plane_mutation_guard' AND (t.tgtype<>31 OR p.oid<>'public.l2_data_plane_guard_active_mutation()'::regprocedure))
+      OR (t.tgname='l2_data_plane_capture' AND (t.tgtype<>21 OR p.oid<>'public.l2_data_plane_capture_row()'::regprocedure))
+    )
+) OR (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+       JOIN pg_namespace n ON n.oid=c.relnamespace
+       WHERE NOT t.tgisinternal AND n.nspname='public' AND c.relname=ANY(%(tables)s::text[])
+         AND t.tgname IN ('l1_data_plane_mutation_guard','l2_data_plane_mutation_guard')) <> cardinality(%(tables)s::text[])
+AS unsafe
+"""
+GATE_TRIGGER_SURFACE = """
+WITH expected AS (
+  SELECT * FROM public.l1_data_plane_trigger_attestations
+  UNION ALL SELECT * FROM public.l2_data_plane_trigger_attestations
+), actual AS (
+  SELECT c.relname table_name,t.tgname trigger_name,t.tgtype trigger_type,
+         t.tgenabled enabled,t.tgfoid function_oid,t.tgfoid::regprocedure::text function_signature,
+         encode(digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') definition_digest
+  FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+  JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE NOT t.tgisinternal AND n.nspname='public' AND c.relname=ANY(%(tables)s::text[])
+)
+SELECT EXISTS (
+  SELECT 1 FROM actual a FULL JOIN expected e
+    ON a.table_name=e.table_name AND a.trigger_name=e.trigger_name
+   AND a.trigger_type=e.trigger_type AND a.enabled=e.enabled
+   AND a.function_oid=e.function_oid AND a.function_signature=e.function_signature
+   AND a.definition_digest=e.definition_digest
+  WHERE a.table_name IS NULL OR e.table_name IS NULL
+) AS unsafe
+"""
+GATE_FUNCTION_DIGESTS = """
+SELECT EXISTS (
+  SELECT 1 FROM (
+    SELECT * FROM public.l1_data_plane_function_attestations
+    UNION ALL SELECT * FROM public.l2_data_plane_function_attestations
+  ) a
+  LEFT JOIN pg_proc p ON p.oid=to_regprocedure('public.'||a.function_signature)
+  WHERE p.oid IS NULL OR a.definition_digest<>encode(digest(pg_get_functiondef(p.oid),'sha256'),'hex')
+    OR a.owner_name<>pg_get_userbyid(p.proowner)
+    OR a.security_definer<>p.prosecdef
+    OR a.config IS DISTINCT FROM p.proconfig
+) OR EXISTS (
+  SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+  JOIN pg_roles owner ON owner.oid=p.proowner
+  WHERE n.nspname='public' AND owner.rolname=ANY(%(owners)s::text[])
+    AND (p.proname LIKE 'l1_data_plane_%%' OR p.proname LIKE 'l2_data_plane_%%'
+      OR p.proname=ANY(%(lifecycle)s::text[]))
+    AND NOT EXISTS (
+      SELECT 1 FROM (
+        SELECT function_signature FROM public.l1_data_plane_function_attestations
+        UNION ALL SELECT function_signature FROM public.l2_data_plane_function_attestations
+      ) a WHERE p.oid=to_regprocedure('public.'||a.function_signature)
+    )
+) AS unsafe
+"""
+GATE_DIGEST_SHOW = """
+SELECT a.definition_digest,
+       encode(digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex')
+FROM public.l1_data_plane_trigger_attestations a
+JOIN pg_class c ON c.relname=a.table_name JOIN pg_trigger t ON t.tgrelid=c.oid AND t.tgname=a.trigger_name
+WHERE a.table_name=%s AND a.trigger_name=%s
+"""
+GATE_FN_DIGEST_SHOW = """
+SELECT a.definition_digest, encode(digest(pg_get_functiondef(p.oid),'sha256'),'hex')
+FROM public.l1_data_plane_function_attestations a
+JOIN pg_proc p ON p.oid=to_regprocedure('public.'||a.function_signature)
+WHERE a.function_signature=%s
+"""
+
+
+def load_gate_tables(root: pathlib.Path = REPO_ROOT) -> list[str]:
+    """L1_ACTIVE_TABLES + L2_ACTIVE_TABLES, parsed from the gate's own source so they cannot drift from it."""
+    text = (root / "platform/scripts/data-plane-ownership-preflight.ts").read_text(encoding="utf-8")
+    out: list[str] = []
+    for name in ("L1_ACTIVE_TABLES", "L2_ACTIVE_TABLES"):
+        m = re.search(r"export const %s = \[(.*?)\] as const" % name, text, re.S)
+        if not m:
+            raise SystemExit(f"cannot parse {name} from data-plane-ownership-preflight.ts")
+        out += re.findall(r"'([a-z0-9_]+)'", m.group(1))
+    return out
+
+
+def gate_mirror(cur, tables: list[str] | None = None) -> dict:
+    """Run the deploy gate's OWN trigger and function digest queries, as the gate's session would resolve names
+    (GATE_SEARCH_PATH), and return the three `unsafe` flags plus the capture trigger / function digests."""
+    tables = tables if tables is not None else load_gate_tables()
+    cur.execute(f"SET LOCAL ROLE {OWNER}")  # the attestation tables are owner-readable only
+    cur.execute(f"SET LOCAL search_path = {GATE_SEARCH_PATH}")
+    out: dict = {}
+    cur.execute(GATE_TRIGGER_SHAPE, {"tables": tables})
+    out["trigger_shape_unsafe"] = bool(cur.fetchone()[0])
+    cur.execute(GATE_TRIGGER_SURFACE, {"tables": tables})
+    out["trigger_surface_unsafe"] = bool(cur.fetchone()[0])
+    cur.execute(GATE_FUNCTION_DIGESTS, {"owners": ["data_plane_l1_owner", "data_plane_l2_owner"],
+                                        "lifecycle": list(GATE_LIFECYCLE_FUNCTIONS)})
+    out["function_digests_unsafe"] = bool(cur.fetchone()[0])
+    cur.execute(GATE_DIGEST_SHOW, (TABLE, TRIGGER))
+    row = cur.fetchone()
+    out["trigger_digest_stored"], out["trigger_digest_gate_side"] = (row[0], row[1]) if row else (None, None)
+    cur.execute(GATE_FN_DIGEST_SHOW, (CAPTURE_FN_SIG,))
+    row = cur.fetchone()
+    out["function_digest_stored"], out["function_digest_gate_side"] = (row[0], row[1]) if row else (None, None)
+    cur.execute(f"SET LOCAL search_path = {SEARCH_PATH}")
+    cur.execute("RESET ROLE")
+    return out
+
+
+def gate_red(g: dict) -> list[str]:
+    return [k for k in ("trigger_shape_unsafe", "trigger_surface_unsafe", "function_digests_unsafe") if g[k]]
+
+
+def _run_cmd(argv: list[str]) -> str:
+    r = subprocess.run(argv, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"{argv[0]} failed: {r.stderr.strip()[:200]}")
+    return r.stdout.strip()
+
+
+def writer_check(commit: str | None, run_cmd=_run_cmd) -> tuple[list[str], str]:
+    """HARD RULE: the new writer is deployed before this plan. Read-only: the Cloud Run job's image tag and the
+    ga_vargas digest recorded at that commit. Returns (problems, human line)."""
+    if not commit:
+        return ["--writer-commit <sha> is required: the writer must be deployed BEFORE this plan applies"], "NOT CHECKED"
+    try:
+        image = run_cmd(["gcloud", "run", "jobs", "describe", WRITER_IMAGE_JOB, "--project", PROJECT,
+                         "--region", WRITER_IMAGE_REGION,
+                         "--format=value(spec.template.spec.template.spec.containers[0].image)"])
+        tag = image.rsplit(":", 1)[-1] if ":" in image else ""
+        inventory = run_cmd(["git", "-C", str(REPO_ROOT), "show",
+                             f"{commit}:platform/src/generated/nirmana-writer-digests.json"])
+        digest = json.loads(inventory)["writers"]["ga_vargas"]
+    except Exception as exc:  # fail closed: an unverifiable writer is not a deployed writer
+        return [f"writer image check failed: {type(exc).__name__}: {str(exc)[:160]}"], "UNVERIFIED"
+    problems = []
+    if not tag or not (tag == commit or commit.startswith(tag) or tag.startswith(commit)):
+        problems.append(f"job {WRITER_IMAGE_JOB} runs image tag {tag!r}, not commit {commit[:12]}")
+    if digest != WRITER_DIGEST:
+        problems.append(f"ga_vargas digest at {commit[:12]} is {digest[:12]}..., this plan was frozen against {WRITER_DIGEST[:12]}...")
+    return problems, f"image tag {tag[:12]!r}; ga_vargas digest at {commit[:12]} = {digest[:12]}..."
 
 
 def snap(cur) -> dict:
@@ -396,12 +586,13 @@ def check_after(cur, before: dict, after: dict, plan: dict, probe: dict) -> list
     return bad
 
 
-def run(conn, mode: str, out=print) -> bool:
+def run(conn, mode: str, out=print, writer_commit: str | None = None, gate_tables: list[str] | None = None,
+        writer_runner=_run_cmd) -> bool:
     """Returns True only when the transaction may be committed (mode apply, all checks hold)."""
     cur = conn.cursor()
     started = utcnow()
     out(f"start (UTC): {started}")
-    cur.execute("SET LOCAL search_path = pg_catalog, pg_temp")
+    cur.execute(f"SET LOCAL search_path = {SEARCH_PATH}")
     cur.execute("SET LOCAL lock_timeout = '5s'")
     cur.execute("SET LOCAL statement_timeout = '120s'")
     cur.execute(SNAP_SQL["membership"])
@@ -410,6 +601,15 @@ def run(conn, mode: str, out=print) -> bool:
     for r in transient:
         cur.execute(f"GRANT {r} TO CURRENT_USER")
     problems = preconditions(cur)
+    writer_problems, writer_line = writer_check(writer_commit, writer_runner)
+    out(f"writer-first check: {writer_line}")
+    if mode == "apply":  # a dry run may run without it (printed NOT CHECKED); an apply never may
+        problems += writer_problems
+    elif writer_commit:
+        problems += writer_problems
+    gate_before = gate_mirror(cur, gate_tables)
+    if gate_red(gate_before):
+        problems.append(f"the deploy gate is already RED before the plan ({gate_red(gate_before)}); not attributable to it")
     out("preconditions: " + ("OK" if not problems else "REFUSED"))
     for p in problems:
         out("  - " + p)
@@ -426,6 +626,13 @@ def run(conn, mode: str, out=print) -> bool:
     after = snap(cur)
     after["membership"] = membership_before  # placeholder until the transient grants are revoked below
     bad = check_after(cur, before, after, plan, probe)  # needs the owner role, so it runs before the revoke
+    gate_after = gate_mirror(cur, gate_tables)
+    if gate_red(gate_after):
+        bad.append(f"DEPLOY GATE WOULD GO RED after commit: {gate_red(gate_after)} (stored vs gate-side digest mismatch)")
+    if gate_after["trigger_digest_stored"] != gate_after["trigger_digest_gate_side"]:
+        bad.append("capture trigger attestation digest != the digest the gate computes under its own search_path")
+    if gate_after["function_digest_stored"] != gate_after["function_digest_gate_side"]:
+        bad.append("capture function attestation digest != the digest the gate computes under its own search_path")
     for r in transient:
         cur.execute(f"REVOKE {r} FROM CURRENT_USER")
     cur.execute(SNAP_SQL["membership"])
@@ -434,6 +641,14 @@ def run(conn, mode: str, out=print) -> bool:
         bad.append("role membership differs from the pre-state after the transient grants were revoked")
     window_end = utcnow()
     out(render_diff(before, after, plan))
+    out("== DEPLOY GATE, run as the gate does (its own queries, search_path = %s) ==" % GATE_SEARCH_PATH)
+    for tag, g in (("before the plan", gate_before), ("after the plan ", gate_after)):
+        out(f"  {tag}: trigger_shape_unsafe={g['trigger_shape_unsafe']} trigger_surface_unsafe={g['trigger_surface_unsafe']} "
+            f"function_digests_unsafe={g['function_digests_unsafe']}")
+    out(f"  capture trigger digest  stored {gate_after['trigger_digest_stored']}")
+    out(f"                          gate   {gate_after['trigger_digest_gate_side']}")
+    out(f"  capture function digest stored {gate_after['function_digest_stored']}")
+    out(f"                          gate   {gate_after['function_digest_gate_side']}")
     out("== IDENTITY PROBE (fixture rows through the widened key; session-local table, rolled back) ==")
     out(f"  live unique index columns : {probe['live_index_cols']}")
     out(f"  live trigger arguments    : {probe['trigger_args']}")
@@ -451,23 +666,34 @@ def run(conn, mode: str, out=print) -> bool:
 def main(argv: list[str]) -> int:
     h = plan_hash()
     print("plan sha256:", h)
-    if argv == ["--print-hash"]:
+    args = list(argv)
+    writer_commit = None
+    if "--writer-commit" in args:
+        i = args.index("--writer-commit")
+        writer_commit = args[i + 1] if i + 1 < len(args) else None
+        if not writer_commit:
+            raise SystemExit("--writer-commit needs a commit sha")
+        del args[i:i + 2]
+    if args == ["--print-hash"]:
         return 0
-    if argv == ["--count"]:
+    if args == ["--count"]:
         mode, expect = "count", None
-    elif argv == ["--dry-run"]:
+    elif args == ["--dry-run"]:
         mode, expect = "dry-run", None
-    elif len(argv) == 3 and argv[0] == "--apply" and argv[1] == "--expect-plan":
-        mode, expect = "apply", argv[2]
+    elif len(args) == 3 and args[0] == "--apply" and args[1] == "--expect-plan":
+        mode, expect = "apply", args[2]
     else:
-        raise SystemExit("usage: --print-hash | --count | --dry-run | --apply --expect-plan <hash>")
+        raise SystemExit("usage: --print-hash | --count | --dry-run [--writer-commit S] | "
+                         "--apply --expect-plan <hash> --writer-commit S")
     if mode == "apply" and expect != h:
         raise SystemExit("REFUSED: --expect-plan does not equal the plan hash")
+    if mode == "apply" and not writer_commit:
+        raise SystemExit("REFUSED: --apply requires --writer-commit (the writer deploys BEFORE this plan)")
     import psycopg  # imported late so --print-hash needs no driver
     with psycopg.connect(host="127.0.0.1", port=5433, dbname="amjis", user="postgres",
                          password=secret("cloudsql-postgres-admin-password"), sslmode="disable",
                          connect_timeout=15) as conn:
-        ok = run(conn, mode)
+        ok = run(conn, mode, writer_commit=writer_commit)
         if ok:
             conn.commit()
             print("COMMITTED")
