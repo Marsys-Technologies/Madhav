@@ -394,6 +394,9 @@ def run(fn):
     ss.backend_name()          # still swieph right after the call (raises otherwise)
     return fn.__name__, out
 
+if %(eager)r:
+    import pyjhora_adapter._jhora   # strict mode: import in the main thread, before any worker
+
 if %(single)r:
     results = [(fn.__name__, fn()) for fn in TASKS]
 else:
@@ -411,14 +414,28 @@ print("RESULT:" + json.dumps({k: next(iter(v)) for k, v in sorted(merged.items()
 
 @needs_corpus
 def test_threaded_mixed_callers_stay_on_swieph_and_match_single_threaded(corpus_dir):
-    env = {_HIDDEN_ENV: str(corpus_dir)}
-    threaded = json.loads(_run_script(
-        _THREAD_SCRIPT % {"hidden": _HIDDEN_ENV, "single": False}, extra_env=env))
-    sequential = json.loads(_run_script(
-        _THREAD_SCRIPT % {"hidden": _HIDDEN_ENV, "single": True}, extra_env=env))
+    """Production-like: SE_EPHE_PATH set (as in both images), PyJHora's FIRST import happens
+    inside a worker thread concurrently with compute_panchang / panchanga_instant."""
+    env = {"SE_EPHE_PATH": str(corpus_dir)}
+    spec = {"hidden": "SE_EPHE_PATH", "eager": False}
+    threaded = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": False}, extra_env=env))
+    sequential = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": True}, extra_env=env))
     assert threaded.keys() == sequential.keys() and len(threaded) >= 27
     for key, value in sequential.items():
         assert threaded[key] == value, key
+
+
+@needs_corpus
+def test_threaded_mixed_callers_strict_no_env_hint_with_pyjhora_imported_first(corpus_dir):
+    """Strict: the C library gets NO environment hint (only the helper's explicit set_ephe_path
+    can put the process on swieph).  PyJHora is imported in the main thread first: the short
+    window between jhora.const's path reset and the re-assert during a worker's FIRST import is
+    by design only harmless when SE_EPHE_PATH is in the environment (covered above)."""
+    env = {_HIDDEN_ENV: str(corpus_dir)}
+    spec = {"hidden": _HIDDEN_ENV, "eager": True}
+    threaded = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": False}, extra_env=env))
+    sequential = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": True}, extra_env=env))
+    assert threaded == sequential and len(threaded) >= 27
 
 
 # ── 5. the helper really holds the lock and really probes (mutation guards) ───
