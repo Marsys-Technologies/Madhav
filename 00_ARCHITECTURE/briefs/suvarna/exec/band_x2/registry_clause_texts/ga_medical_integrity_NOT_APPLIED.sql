@@ -41,16 +41,11 @@ SELECT
         )
     )
   )
-  -- (c) FORENSIC advisory for the canonical chart's Sun, re-asserted at the data layer
-  -- (ga_medical_writer.py, lahiri_chitrapaksha only): Sun in Capricorn (Saturn's sign, Sun's enemy_sign,
-  -- NOT debilitation) -> condition_score<0.4 -> 'strong'. The Saturn conjunct of migration 740 is
-  -- REMOVED (SS ruling 2026-10-02): a label assertion about one chart's Saturn, tied to an unsourced
-  -- cut point, is not a FORENSIC anchor (the seven anchors are positional); Saturn's score and band
-  -- are pinned by a golden test (tests/test_ga_medical_saturn_golden.py) instead.
-  AND NOT EXISTS (
-    SELECT 1 FROM ga_medical
-    WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND ayanamsha_id = 'lahiri_chitrapaksha'
-      AND graha = 'Sun' AND indication_strength <> 'strong'
-  )
+  -- (c) NONE. The Saturn conjunct (migration 740) and the Sun conjunct (migration 740) are both REMOVED
+  -- (SS rulings 2026-10-02): each hard-coded one chart (482012f1-...), one ayanamsha and one graha and
+  -- asserted a label about that one value. An asset's integrity clause must be true for ANY chart, so
+  -- this clause is chart-independent: (a) tier/disclosure constants, (b) label = the band-table rule.
+  -- Saturn's and Sun's canonical scores and bands are pinned by golden tests
+  -- (tests/test_ga_medical_saturn_golden.py, tests/test_ga_medical_sun_golden.py) instead.
   AS integrity_passed
 

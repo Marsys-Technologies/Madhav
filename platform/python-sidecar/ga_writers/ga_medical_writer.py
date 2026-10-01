@@ -21,18 +21,12 @@ Algorithm:
 
 Idempotency: L1 pattern — DELETE WHERE (chart_id, ayanamsha_id) then INSERT.
 
-FORENSIC guard (canonical chart 482012f1-710e-4a25-994a-93821f5871aa):
-  Sun  = Capricorn (Saturn's sign — classical enemy_sign, NOT debilitation;
-         Sun debilitates in Libra) → condition_score expected moderately low
-         (measured 0.26) → 'strong'. Non-fatal: logged, not build-halting
-         (F-E5 — the prior "debilitated" rationale was factually wrong, even
-         though the threshold check it gated happened to still hold).
-  Moon = Purva Bhadrapada         → nakshatra_body_part = 'left_side'
-  (Saturn: there is NO build-time Saturn guard. SS ruling 2026-10-02: a build-halting assertion
-         about one chart's label, inside a writer that runs for every chart, tied to an unsourced
-         cut point, is not a FORENSIC anchor -- the seven anchors are positional. Saturn's stored
-         score and band are pinned by a golden TEST instead:
-         tests/test_ga_medical_saturn_golden.py, so a change shows in CI, not as a production halt.)
+No chart-specific assertions (SS rulings 2026-10-02): this writer runs for every chart, so it asserts
+nothing about one chart's values -- no build-halting Saturn guard, no Sun advisory, no Moon/Sun/Saturn
+FORENSIC logging. What those checks protected is pinned as golden TESTS on fixtures read from the
+canonical chart (tests/test_ga_medical_saturn_golden.py, tests/test_ga_medical_sun_golden.py), so a
+change shows in CI, not as a production halt or a log line. (The seven FORENSIC anchors are positional
+facts owned by L1; they are not asserted here.)
 
 MEDICAL DISCLAIMER (NON-NEGOTIABLE):
   Every row carries indication_tier = 'jyotish_indication' AND not_diagnosis = TRUE.
@@ -127,32 +121,6 @@ def indication_strength_from_score(condition_score: Optional[float]) -> str:
     if band is None:
         return INDICATION_STRENGTH_UNKNOWN
     return INDICATION_STRENGTH_BY_BAND[band]
-
-
-def sun_forensic_guard_warning(sun_score: Optional[float]) -> Optional[str]:
-    """F-E5: Sun's FORENSIC check for the canonical native, non-fatal.
-
-    The prior version raised a build-halting AssertionError on this check
-    with the stated ground "Sun debilitated in Capricorn" — Sun's actual
-    debilitation sign is Libra; Capricorn (Saturn's sign) is merely Sun's
-    classical enemy_sign, a weaker relationship. The check passed today only
-    because enemy_sign's score (0.26) happens to also fall under the 0.4
-    threshold a genuinely debilitated Sun (score 0.0) would produce — the
-    assertion's own stated claim was never what the code actually measured
-    (§N.8). Downgraded to a warning (§N.4 S7 precedent: an honest, correctly-
-    reasoned signal beats a build-fatal one resting on a false premise).
-
-    Returns a warning message when the expected 'strong' tier does not hold,
-    or None when it does.
-    """
-    sun_strength = indication_strength_from_score(sun_score)
-    if sun_strength == "strong":
-        return None
-    return (
-        f"FORENSIC ADVISORY: Sun indication_strength={sun_strength!r} but expected "
-        f"'strong' (Sun sits in Capricorn — Saturn's sign, Sun's classical enemy_sign, "
-        f"NOT debilitation; Sun debilitates in Libra), score={sun_score!r}"
-    )
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -307,9 +275,6 @@ def build_ga_medical_substep(
        - For Moon: look up nakshatra_body_part from bg_nakshatra_medical.
     6. INSERT 9 rows with NOT NULL indication_tier + not_diagnosis enforcement.
 
-    FORENSIC log (canonical chart):
-      Sun=Capricorn → 'strong' (advisory only); Moon=Purva Bhadrapada → left_side (logged).
-
     Returns: number of rows inserted.
     """
     now = datetime.now(timezone.utc)
@@ -331,29 +296,6 @@ def build_ga_medical_substep(
     condition_scores = _load_condition_scores(conn, chart_id, ayanamsha_id)
     medical_mappings = _load_medical_mappings(conn)
     positions        = _load_graha_positions(conn, chart_id, ayanamsha_id)
-
-    # FORENSIC log for the canonical chart. Sun: non-fatal advisory only (F-E5) — see
-    # sun_forensic_guard_warning's docstring for why. There is no Saturn assertion (SS ruling
-    # 2026-10-02; see the module docstring): Saturn's score/band is pinned by a golden test.
-    if chart_id == CANONICAL_CHART_ID and ayanamsha_id == "lahiri_chitrapaksha":
-        sun_score = condition_scores.get("Sun")
-        saturn_score = condition_scores.get("Saturn")
-        moon_nak = positions.get("Moon", {}).get("nakshatra")
-        logger.info(
-            "[ga_medical_writer] FORENSIC chart=%s aya=%s — "
-            "Sun condition_score=%s (expected<0.4→'strong'); "
-            "Saturn condition_score=%s (logged only; pinned by tests/test_ga_medical_saturn_golden.py); "
-            "Moon nakshatra=%s (expected Purva Bhadrapada)",
-            chart_id, ayanamsha_id, sun_score, saturn_score, moon_nak,
-        )
-        # F-E5: Sun in Capricorn is enemy_sign, not debilitation (Sun debilitates
-        # in Libra) — non-fatal advisory, not a build-halting assertion.
-        sun_warning = sun_forensic_guard_warning(sun_score)
-        if sun_warning:
-            logger.warning(
-                "[ga_medical_writer] %s for chart_id=%s ayanamsha=%s",
-                sun_warning, CANONICAL_CHART_ID, ayanamsha_id,
-            )
 
     # Step 3–5: Build rows
     rows_to_insert = []
