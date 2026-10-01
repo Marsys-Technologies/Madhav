@@ -10,22 +10,20 @@ source_branch: "suvarna/land/A-L1-briefs-001 (PR #2832, open) at f315b2dc2 (code
 source_files: "00_ARCHITECTURE/briefs/suvarna/layers/L1/assets/INDEX.md (section 7, the 17 questions) and the 19 per-asset briefs in the same directory"
 scope: "docs only; no code, registry, migration or database write"
 provisional: "every ruling taken from this sheet is provisional until the J1 independent review"
-changelog: "1.0-early rulings (2026-10-02): SS rulings on group B-0 (decision N-61) recorded: Rulings section, a ruling line per item AR-1..AR-6, summary column; the rulings are also recorded in the L1 INDEX and the ga_structural brief on suvarna/land/A-L1-briefs-001-rulings (c5c3c284f), on which this sheet is rebased. 1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six argala items), put first at SS's priority request so they can be ruled ahead of the rest. The remainder (Group A, Group B, the full summary table) follows in the next commit of this file."
+changelog: "1.0 (2026-10-02): complete sheet: Group A, Group B (Q-L1-01..17), B-X (X1, X2), summary table, findings beyond the briefs, unverifiable items, appendix. Earlier entry, 1.0-early rulings (2026-10-02): SS rulings on group B-0 (decision N-61) recorded: Rulings section, a ruling line per item AR-1..AR-6, summary column; the rulings are also recorded in the L1 INDEX and the ga_structural brief on suvarna/land/A-L1-briefs-001-rulings (c5c3c284f), on which this sheet is rebased. 1.0-early (2026-10-02): the first commit carried only group B-0 (the six argala items), put first at SS's priority request."
 ---
 
 # L1 Gaṇita decision sheet (for one ruling pass by Strategic Suvarṇa)
 
-> **Early commit.** This version holds the argala block only (Group B-0, items AR-1 to AR-6). Group A (already ruled), Group B (the 17 open questions of the L1 INDEX) and the one-page summary of everything follow in the next commit of this same file. The argala block is self-contained: it can be ruled on its own.
-
 ## 0 · How to read this sheet
 
-**Structure.** Group B-0 (this commit) holds the six argala items SS asked for. Every item has the same fields: question, facts, recommendation, effect of each possible answer (outputs, which assets rebuild, doc/registry only), citation. A summary of the block closes it; the final commit replaces it by the one-page table for the whole sheet.
+**Structure.** The sheet opens with the Rulings section and Group B-0, the six argala items, because SS asked for them first (they are RULED, N-61). Group A (already ruled or resolved: argala, the `chart_divisionals` RLS fix, the canonical ephemeris backend as a first-class finding, Gandanta width, MEAN node) records each ruling, the facts I verified, what the ruling requires in the code, and the effect, so it can be executed without another round; it is not re-asked. Group B holds the 17 open questions of the L1 INDEX (section 7) as Q-L1-01 to Q-L1-17, and B-X holds two new questions found while verifying. Every open item has the same fields: question, facts, recommendation, effect of each possible answer (outputs, which assets rebuild, doc/registry only), citation. A one-page summary table closes the sheet, followed by findings beyond the briefs and what I could not verify.
 
 **Rules SS gave for rulings (applied throughout).** (1) A classical fact needs a `bg_texts` corpus citation (B.3). (2) Where traditions differ, the project's existing L1/engine convention is the authority (CLAUDE.md §N.5) and the alternative is recorded as a named variant. (3) Every ruling is provisional until the J1 independent review. (4) Items that raise or define a verdict, or change stored outputs, are marked **(R)**.
 
 **Citation states (SS rule, applied to every citation).** An OCR text-search hit not checked against print is `sourced_ocr_unverified`. A passage I looked for and did not find is `unsourced`. Only a citation verified at passage level counts toward a PASS on Ldgr; nothing in this sheet is above `sourced_ocr_unverified`.
 
-**Evidence tags.** `[code]` = read in the repository at `f315b2dc2` (file:line). `[db]` = read-only `SELECT` as `suvarna_reader` (2026-10-01 to 2026-10-02; queries in the appendix; no write, no credential shown). `[corpus]` = text search of `classical_text_chunks` (the chunk table of the `bg_texts` corpus); the chunk id is given so the passage can be re-found; the text is OCR and I read it, but it is not checked against the printed book. `[calc]` = a figure I computed offline from stored L1 facts read with `[db]` (method stated; not a rebuild result). `[brief]` = quoted from a brief or INDEX and not re-verified.
+**Evidence tags.** `[code]` = read in the repository at `f315b2dc2` (file:line). `[investigation]` = quoted from the ephemeris investigation of PR #2840 and not re-run by me. `[db]` = read-only `SELECT` as `suvarna_reader` (2026-10-01 to 2026-10-02; queries in the appendix; no write, no credential shown). `[corpus]` = text search of `classical_text_chunks` (the chunk table of the `bg_texts` corpus); the chunk id is given so the passage can be re-found; the text is OCR and I read it, but it is not checked against the printed book. `[calc]` = a figure I computed offline from stored L1 facts read with `[db]` (method stated; not a rebuild result). `[brief]` = quoted from a brief or INDEX and not re-verified.
 
 **Charts.** Canonical = `482012f1` (native). Abhinandan = `1c826d5a`. Third chart = `cb73cd3d`. Every `[db]` figure is the canonical chart unless another chart is named.
 
@@ -59,7 +57,7 @@ SS ruled the argala block (group B-0). **All six recommendations are ACCEPTED**,
 - **Stored (canonical chart):** 21,600 argala rows + 21,600 virodha rows + 1,800 net rows = 45,000 `chart_facts` rows (30 divisional charts x 5 ayanamshas), every one `verification_pass_status = single` `[db]`.
 - **L2 computes its own argala** from graha signs, graha to graha: `ARGALA_POSITIONS = {2, 4, 11}`, `VIRODHA_POSITIONS = {12, 3, 10}`, a pairing `{2: 12, 4: 3, 11: 10}`, malefic set `{Saturn, Mars, Rahu, Ketu}` (`pipeline/orchestrator/writers/bo_karanajala.py:387-390, 409, 548`). Stored edges, canonical chart, Lahiri: 24 (15 `argala_positive`, 9 `argala_virodha`, 2 cancelled); the same shape in the other four ayanamshas (surya_siddhanta 15 + 8) `[db]`. All 119 canonical-chart argala edges carry `constituent_fact_ids_array = {}` (empty), citation `BPHS_Ch28/argala`, tier `documented_approximation` `[db]`; the writer defaults the array to empty (`:1521-1522`) `[code]`. No `bo_*` writer reads any of the three L1 argala categories (grep over `platform/` for the three category names finds only L1 migrations and comments in `ka_yojaka.py`) `[code]`.
 - **Rebuild blast radius** (live `asset_registry.depends_on`, transitive closure, `is_active`) `[db]`: a `ga_structural` rebuild reaches 55 declared dependents (3 L1, 20 L2, 12 L3, 9 L4, 11 L5); a `bo_karanajala` rebuild reaches 44 (13 L2, 11 L3, 9 L4, 11 L5). `bo_karanajala` declares no edge to `ga_structural`, but `ga_structural` is in its transitive closure through `ga_vichara`, so a new read of `ga_structural`'s categories needs no new edge (the reads-match detector accepts any producer in the declared transitive closure) `[db][brief]`.
-- **Hold already in force (SS, 2026-10-01):** any L1 rebuild is held until the ephemeris boundary-flip report is reviewed (Group A of the full sheet, A-3 in the next commit). `ga_structural` computes through the PyJHora adapter, whose L1 `chart_facts` path the investigation (PR #2840) shows ran on the Moshier fallback. An argala-only `ga_structural` rebuild now would therefore have to be repeated after the ephemeris fix; the economical order is one `ga_structural` rebuild that carries both (recommendation under AR-6).
+- **Hold already in force (SS, 2026-10-01):** any L1 rebuild is held until the ephemeris boundary-flip report is reviewed (A-3 below). `ga_structural` computes through the PyJHora adapter, whose L1 `chart_facts` path the investigation (PR #2840) shows ran on the Moshier fallback. An argala-only `ga_structural` rebuild now would therefore have to be repeated after the ephemeris fix; the economical order is one `ga_structural` rebuild that carries both (recommendation under AR-6).
 
 ---
 
@@ -195,7 +193,7 @@ SS ruled the argala block (group B-0). **All six recommendations are ACCEPTED**,
 **Recommendation.** (1) Canonical offsets: L1's {2, 4, 5, 11} with obstructors {12, 10, 9, 3} and the pairs of AR-1; {2, 4, 11} is recorded as a named variant ("basic set"), produced if ever needed as a filter over the same rows (exclude offset 5 and its 9th obstruction), never as a second definition. (2) L2 consumes L1: L1 adds a graha-level family in `ga_structural` (working name `argala_graha_natal`; D1 first, other divisional charts only on a later ruling): per (target graha, source graha) at an argala offset, the offset, `count_direction` (AR-2), the paired obstruction offset (AR-1), the obstructing grahas and the argala and obstructor counts, and an outcome of `argala_prevails`, `obstructed` or `undetermined` (equal counts: strength comparison is null, because no sourced basis exists). L2 builds its edges from those rows and cites their `fact_id`s, deleting its constants and its own malefic set (classification of benefic or malefic stays out of the L1 rows; if a label is needed, one L0 definition with BPHS's Sun, Saturn and Mars plus the nodes). (3) Sequence: one `ga_structural` rebuild that carries AR-1 to AR-6 and the pending ephemeris fix (so the 55 dependents execute once), then one `bo_karanajala` rebuild. Reason: SS ruling (L1 authority, L2 references), §N.5, §N.7 item 3, SS rule 2 (BPHS and Jaimini support the L1 set).
 
 **Effect.**
-- (a) **L1 graha-level rows, L2 reads them (recommended) (R).** L1: at most 72 ordered pairs per ayanamsha for D1 (360 rows per chart; 9 grahas x 8 sources x 5 ayanamshas), of which only those at argala offsets are meaningful (28 per ayanamsha on the canonical chart in Lahiri); the new category must be added to `fact_category_ownership` by a surgical migration (otherwise it joins the 4,816 `ga_structural` rows that are already unowned; see CF-02 in the full sheet) and to `ga_structural`'s `count_sql`/floor (floors aspirational, CLAUDE.md §N.4). L2: edges change from 24 to 28 argala pairs per ayanamsha on the canonical chart before AR-1 and AR-2 effects, gain the 9th-house obstruction, and gain real `constituent_fact_ids_array` (the 119 empty become resolvable). Rebuilds: `ga_structural` (55 declared dependents) then `bo_karanajala` (44); the single batched L2 rebuild is this one.
+- (a) **L1 graha-level rows, L2 reads them (recommended) (R).** L1: at most 72 ordered pairs per ayanamsha for D1 (360 rows per chart; 9 grahas x 8 sources x 5 ayanamshas), of which only those at argala offsets are meaningful (28 per ayanamsha on the canonical chart in Lahiri); the new category must be added to `fact_category_ownership` by a surgical migration (otherwise it joins the 4,816 `ga_structural` rows that are already unowned; see Q-L1-04 below) and to `ga_structural`'s `count_sql`/floor (floors aspirational, CLAUDE.md §N.4). L2: edges change from 24 to 28 argala pairs per ayanamsha on the canonical chart before AR-1 and AR-2 effects, gain the 9th-house obstruction, and gain real `constituent_fact_ids_array` (the 119 empty become resolvable). Rebuilds: `ga_structural` (55 declared dependents) then `bo_karanajala` (44); the single batched L2 rebuild is this one.
 - (b) **L2 reads L1 sign-level cells plus `graha_position` and applies L1's pairing and reversal.** No new L1 category; L1 still adds the paired-offset key (AR-1a) and the reversal has to be coded in L2, which then holds a classical rule; `ga_structural` and `bo_karanajala` still rebuild.
 - (c) **Keep L2's own set, record {2, 4, 11} as a named class (the Q-L2-21 option b).** No L1 change; L2 keeps its recomputation, contradicting the ruling that L1 is the authority; about 24 duplicated edges per ayanamsha.
 - (d) **Status quo.** No rebuild; L2 stays at 24 of 28 pairs with a swapped pairing and no L1 citation.
@@ -204,7 +202,7 @@ SS ruled the argala block (group B-0). **All six recommendations are ACCEPTED**,
 
 ---
 
-### Argala block summary (replaced by the one-page table of the full sheet in the next commit)
+### Argala block summary
 
 | id | short question | recommendation | (R) | rebuilds | SS ruling (2026-10-02) |
 |---|---|---|---|---|---|
@@ -217,33 +215,507 @@ SS ruled the argala block (group B-0). **All six recommendations are ACCEPTED**,
 
 ---
 
-## Appendix (argala block) · read-only evidence queries
+---
 
-Run through a subshell that sources the credential file silently; no credential is shown. All are `SELECT`, as `suvarna_reader`.
+## GROUP A · Already ruled or resolved (recorded; do not re-ask)
+
+### A-1 · Argala: L1 is the authority, L2 references
+
+**Ruling (SS).** By CLAUDE.md §N.5 L1 is the authority for argala and L2 references it. The residual questions were ruled on 2026-10-02 (decision N-61); see the Rulings section and group B-0 above. Nothing further to ask here.
+
+---
+
+### A-2 · `chart_divisionals` access incident: FIXED 2026-10-01 (RLS disabled, plan D); data intact; CF-16 closed as an access incident
+
+**Ruling (SS / coordinator).** Row-level security was disabled on `chart_divisionals` (plan D). The data is intact: canonical 24,392 rows, Abhinandan 23,542, third chart 23,542; the `chart_snapshot` canary passes for all three. Every "table empty" reading in the briefs was a reader-side artefact and is resolved; CF-16 is now an access incident, closed.
+
+**Facts verified by me `[db]`, 2026-10-01.**
+- `pg_class` for `chart_divisionals`: `relrowsecurity = false`, `relforcerowsecurity = false`; no policy rows; `suvarna_reader` reads the table.
+- Rows per chart: 24,392 / 23,542 / 23,542 (canonical, Abhinandan, third); the three sum to 71,476, which equals `reltuples` (71,476) exactly. Each chart holds 33 divisional-chart ids, 27 fact categories and 6 distinct `ayanamsha_id` values.
+- The unique index is unchanged: `chart_divisionals_unique_idx (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key) NULLS NOT DISTINCT`; no `fact_subject` in it (Q-L1-01).
+- The `ga_vargas` integrity SQL is unchanged and still has no clause that requires rows to exist (its four conjuncts are all `NOT EXISTS`-shaped), so it still passes on an empty table (Q-L1-01).
+
+**What this does to the briefs.** The CF-16 text (INDEX section 4 item 1, the `ga_vargas` brief gaps and FD-1, and the one-line CF-16 pointers in the other 17 briefs) and the saved `ga_vargas` census cells (Count.floor, Build.completion, Complete.depth, Vocab.identity) were written before the fix. They should be corrected in the rulings pass; this sheet does not edit them. One figure the briefs use as the "intact" test does not reconcile and is recorded as finding F-4 below: the build records say 24,400 / 38,620 / 38,620 rows, the live counts are 24,392 / 23,542 / 23,542.
+
+**Effect.** None to rows. Registry/doc only: the CF-16 diagnosis rows become closed; the residual real items (F-A2, the non-empty guard, the cutover-gate check) are asked at Q-L1-01.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### A-3 · First-class finding: the canonical ephemeris backend is Swiss `.se1`; production L1 and `panchanga_daily` ran on the Moshier fallback
+
+**Ruling (SS).** The Swiss file backend (`swieph`) is canonical. Production L1 `chart_facts` and `panchanga_daily` were computed on the Moshier fallback (proven by reproduction, investigation PR #2840, `00_ARCHITECTURE/briefs/suvarna/exec/INVESTIGATION_EPHEMERIS_BACKEND_v1_0.md`). A fix PR and a boundary-flip report for all three charts are in progress. **Any L1 or panchanga rebuild is held until the flip report is reviewed.** (Sequence terms as SS names them in the N-61 ruling: G-EPH = the ephemeris fix, G-FLIP = the flip report reviewed, S-L1 = the single L1 rebuild batch, S-L2 = the single L2 batch.)
+
+**Facts.**
+- **The investigation** (read from `suvarna/land/TI-ephemeris-backend-001`, PR #2840, not re-run by me): the images set `SWE_EPHE_PATH`, which the Swiss library never reads; `set_ephe_path(None)` consults only `SE_EPHE_PATH` (set nowhere); PyJHora re-points the path to a wheel directory with no planetary `.se1` at import; the orchestrator runs assets as threads in one process, so an unchecked asset sees whatever the last writer left. Stored native Moon `327.055230133129` reproduces Moshier to 0.000 arcsec and differs from the `.se1` files by 0.665 arcsec; `panchanga_daily` likewise (0.2 to 0.9 arcsec on the Moon) `[investigation]`.
+- **L1 call sites, verified at `f315b2dc2` `[code]`.** `panchang_engine/__init__.py:71, 149, 252, 347` call `swe.set_ephe_path(None)`. `ga_sade_sati_writer.py:366, 439, 1595` call `swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))`; neither the variable nor that directory is created by either image per the investigation, so the asset points at a missing directory; its docstring labels the source "swisseph/DE441" (`:1909`). `pyjhora_adapter/_jhora.py:26-43` says in its own header that "no planetary .se1 ephemeris files ship with the wheel" and names a Moshier-range failure. No L1 writer records a backend; `ephemeris_version` stores the library version, not the backend `[investigation]`.
+- **Labels that still say Swiss `[db][code]`.** 180 canonical-chart `midpoint` rows read "MC from Swiss Ephemeris (swe.houses_ex ...)" in their provenance text; `ga_sensitive_writer.py:24` describes the upagraha check as "swisseph derivation"; the panchanga rows cite "Swiss Ephemeris / pyswisseph" `[investigation]`.
+- **L1 briefs that name Swiss and are affected.** `ga_positions` FD (Carr D3: "a second Swiss Ephemeris call (different flags)", brief line 118), `ga_sade_sati` (D3 "second ephemeris root-find", line 116), `ga_sensitive` (D3 "upagraha Swiss-Ephemeris vs BPHS formula", lines 26, 132, 149). `ga_tajaka`'s recorded "outside Moshier planet range" error is not evidence of the backend (the investigation shows Swiss falls back to the same text for that Julian day).
+- **Consequence for the proposed D3 detectors.** A D3 check that recomputes a longitude with "a second ephemeris call" compares two calls inside the same process-global state; unless the path is set explicitly and the returned flag recorded, a PASS cannot tell the two backends apart (CLAUDE.md §N.8). The Carr designs must record `retflag` or an explicit backend per run before they can read PASS.
+- **Blast radius (live `asset_registry.depends_on`, transitive, `is_active`) `[db]`.** `ga_positions` has 79 declared transitive dependents (18 L1, 23 L2, 18 L3, 9 L4, 11 L5); `ga_vargas` 61; `ga_dashas` 61; `ga_sensitive` 58; `ga_condition` 51. The PyJHora-routed L1 assets are `ga_positions`, `ga_dashas`, `ga_vargas`, `ga_strength`, `ga_structural`, `ga_tajaka`, `ga_sensitive`, `ga_nakshatra`, `ga_condition`; `ga_panchanga` and `ga_sade_sati` use the engine and the missing-directory path.
+- **The node convention limits the damage.** L1 uses the MEAN node (A-5), which the investigation reports as SWIEPH under every path (analytic); the 25 arcsec TRUE-node difference does not apply to L1 `[investigation][code]`.
+- **Boundary margins `[calc]`** (stored `graha_position.longitude_sidereal`, Lahiri, 9 grahas plus Lagna, per chart; margin = distance to the nearest sign, nakshatra or pāda boundary, in arcseconds): Abhinandan 6,064 / 4,040 / 380 (closest to a pāda boundary: the Moon); canonical 3,020 / 3,248 / 765 (Jupiter); third chart 2,539 / 207 / 207 (Ketu, a mean node, which does not move). Against a Moon difference of about 1 arcsec, no sign, nakshatra or pāda flips on D1 in Lahiri. Not examined here: the other four ayanamshas, the finer divisional charts (D60 to D2700 are narrower than a pāda), dasha boundary dates (the Moon moves about 1,980 arcsec per hour, so 1 arcsec is about 2 seconds), tithi and yoga ends. That is what the flip report is for.
+
+**What the ruling requires in L1 (design, not executed).** (1) Re-assert the Swiss path at the single choke point every `ga_*` passes through (`pyjhora_adapter/_jhora.py`, after the `jhora` imports) and replace the four `set_ephe_path(None)` calls in `panchang_engine` and the three `/usr/share/ephe` calls in `ga_sade_sati_writer.py` by one shared helper that sets the `/app/ephe` path, probes the returned flag and returns `{backend, path, file digest}` (investigation §7 R1 to R5; R6 would need a freeze exception, so use `WriterResult.notes`). (2) Each L1 writer writes the recorded backend into its `WriterResult.notes` (inside the frozen contract). (3) Correct the provenance strings above in the same change. (4) The D3 detectors read the recorded backend. (5) One S-L1 rebuild after G-FLIP.
+
+**Effect.**
+- **Output (R).** Every L1 position, divisional, dasha boundary, Tajaka, sensitive point and panchanga value moves by up to about 1 arcsec (Moon); stored digests change; sign, nakshatra, tithi flags can flip only near boundaries (none on D1 Lahiri for the three charts, above).
+- **Rebuild.** All of S-L1 (the 11 PyJHora-routed assets plus `ga_panchanga`, `ga_sade_sati`), after G-EPH and G-FLIP; the 79 dependents of `ga_positions` execute rather than delta-skip. Every L1 question below that needs a rebuild rides this one batch.
+- **Doc/registry only (now).** The three brief passages above are worded for "Swiss"; they should read "an explicit, recorded backend" in the rulings pass.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### A-4 · Gandanta: canonical width 3°20' each side; 0°48' a named stricter variant; one shared L0 module (L1 is the existing definition)
+
+**Ruling (SS).** Canonical width is 3°20' each side (one pāda); 0°48' is kept only as a named stricter variant; one shared L0 module.
+
+**Facts.**
+- **L1's existing definition conforms.** `ga_writers/ga_sensitive_degree_writer.py:194-224`: `GANDANTA_ARC = 30.0 / 9.0` (3°20'), water signs {Cancer, Scorpio, Pisces}, fire signs {Leo, Sagittarius, Aries}, `check_gandanta(sign_num, degree_in_sign)` fires on the last arc of a water sign OR the first arc of a fire sign. It is a private function inside a writer, not an L0 module; `ga_structural_writer.py:3362-3392` imports it by name from that writer (inside a bare `except Exception: fires = False`, so an import or wiring error silently reports "no gandanta") `[code]`.
+- **The 0°48' reading is inside L1 under the unqualified name.** `ga_writers/ga_nakshatra_compute.py:20-21, 74-108`: junctions 0°, 120°, 240°, orb 48 arcmin each side; `ga_nakshatra_emitters.py:186-216` writes it as `graha_gandanta` / `is_gandanta`. There is no variant label on those rows `[code]`. The `chart_facts.formula_id` column is the existing variant mechanism (1,295 canonical rows use it: `bphs_93_20` / `alt_96_40` Yogi points, `kn_rao_rahu_included` / `parashari_rahu_excluded` karakas, `bphs_ch39` / `saravali` / `tajik_aapamrityu` mṛtyu points) `[db]`.
+- **The two L1 assets contradict each other on a real chart `[db]`.** Abhinandan, Mars, Lahiri: 3.18° before the end of Pisces. `sensitive_degree_check.gandanta` reads `gandanta` on 7 rows (Mars in 5 ayanamshas, Venus in raman and surya_siddhanta); `graha_gandanta.is_gandanta` reads `true` on 1 row (Mars, surya_siddhanta, 12.97 arcmin). On the canonical and third charts both read false everywhere (45 and 50 rows).
+- **Other places that define it.** L0 `brahma_dosha_catalog` `gandanta_dosha`: "Moon at a water-fire sign junction (last 3deg20' of Cancer/Scorpio/Pisces or first 3deg20' of Leo/Sagittarius/Aries)" with a narrative rule string the generic evaluator does not execute (no `gandanta` row in any stored `dosha_label`); L2 `bodha_writers/nakshatra_semantic_emitter.py:68-103` uses 0.8° on pāda 4 / pāda 1 `[db][code]`.
+- The writer's citation names "BPHS / Sarvartha Chintamani" (`GANDANTA_CITATION`, `:201-205`).
+
+**What the ruling requires.** (1) Move `GANDANTA_ARC`, the sign sets and `check_gandanta` to one L0 module (precedent: `domain_vocabulary.py`, `graha_vocabulary.py`, `verification_vocab.py`), imported by `ga_sensitive_degree`, `ga_structural` and `ga_nakshatra`; their source digests change once. (2) `ga_nakshatra`'s 0°48' flag becomes the named stricter variant (a `formula_id` such as `strict_0_48`) and its unqualified `is_gandanta` follows the canonical width: that is X1 below. (3) Every width carries its citation state (below). (4) The `except Exception` around the import in `ga_structural` should count and log, not hide.
+
+**Effect.**
+- Output (R): `graha_gandanta` rows change (50 per chart; Abhinandan `true` goes from 1 to 7 on the canonical width, `[calc]` from the stored sensitive-degree rows); `ga_structural`'s hardcoded gandanta rule is only in the legacy fallback and does not appear in stored data.
+- Rebuild: `ga_nakshatra`, `ga_sensitive_degree`, `ga_structural` rows only where they change, in S-L1; the L0 module edit is a source-hash event for the three writers (flag to the L1 owner). L2 `nakshatra_semantic_emitter` (0.8°) and `ka_vighnakara` read the same module in their own sets.
+
+**Citation.** BPHS (Santhanam trans.) `bphs_pg0111_c01`, translator's note: "The last Navamsas of Cancer, of Scorpio and of Pisces are called as Gandanta": `sourced_ocr_unverified` (the water side, one navamsa = 3°20'). BPHS Ch. 92 (`bphs_pg1018_c01`, `bphs_pg1019_c01`): Tithi, Nakshatra and Lagna Gandanta in ghatikas (the last half ghatika of Pisces / Cancer / Scorpio and the first half ghatika of Aries / Leo / Sagittarius for Lagna), not in degrees: `sourced_ocr_unverified`. Uttara Kalamrita `uttara_kalamrita_pg0176_c02`, `uttara_kalamrita_pg0177_c01`: the last degrees of Aslesha, Jyeshtha, Revati and the first degrees of Magha, Mula, Asvini, no width: `sourced_ocr_unverified`. **Width states:** 3°20' water side `sourced_ocr_unverified` (`bphs_pg0111_c01`); 3°20' fire side `unsourced` (a symmetric convention; BPHS Ch. 92 gives ghatikas); 0°48' `unsourced` (no passage in the code or the corpus search); the writer's "Sarvartha Chintamani" pointer `unsourced` (the corpus holds that text, 342 chunks, with no gandanta passage found); the L0 catalog's `{"chapter": 9, "text_id": "bphs"}` pointer not corroborated: `unsourced`.
+
+---
+
+### A-5 · MEAN node is the L1/engine convention; TRUE is a named variant
+
+**Ruling (SS).** The MEAN node is the L1/engine convention; the TRUE node is a named variant.
+
+**Facts `[code][db]`.** L1 pins Rahu and Ketu to the MEAN node for all ayanamshas and redirects any TRUE-node request at the lowest shared layer (`pyjhora_adapter/_jhora.py:23-55`, `positions.py:4-22`, `vargas.py:5-21`, `ga_writers/ga_vargas_writer.py:869-874`); `panchang_engine/planets.py:6-8, 118-124` forbids the TRUE node with an assertion. Stored subjects are `RAH_MEAN` and `KET_MEAN` (1,946 canonical rows); no stored subject names a TRUE node; Rahu and Ketu are exactly 180° apart (49.0330441° and 229.0330441°, canonical, Lahiri). The ayanamsha `true_chitra` is unrelated to the TRUE node (a name collision only). Not verified: that no PyJHora path reaches `swe.TRUE_NODE` without going through `drik.sidereal_longitude` (the redirect covers that function only).
+
+**Effect.** Recorded convention; no row, registry or rebuild change. If the TRUE node is ever wanted it is a named variant (a `formula_id`), never a second default.
+
+**Citation.** Not classical (a project convention, CLAUDE.md / Phase 4B). citation: n/a.
+
+---
+
+## GROUP B · Open questions (the 17 questions of INDEX section 7; the argala questions are in B-0 above)
+
+All rebuilds below ride **S-L1** (after G-EPH and G-FLIP) and, where an L2 reader changes, the single S-L2 batch; nothing is run on its own.
+
+### Q-L1-01 — CF-16 residual: the `fact_subject` key (F-A2), the vacuous integrity check, the cutover-gate check
+
+**Question.** With the access fix done, do we widen the `chart_divisionals` unique key to include `fact_subject` (F-A2), add a non-empty clause to the `ga_vargas` integrity check, and add the cutover-gate check for a protected table with RLS and no policy?
+
+**Facts.**
+- The conflict target omits `fact_subject` and the statement is `ON CONFLICT ... DO NOTHING` (`ga_writers/ga_vargas_writer.py:2638-2661`), so rows differing only in `fact_subject` are silently dropped `[code]`.
+- **Measured `[db]`:** `varga_d30_lord_per_amsa` stores 10 rows per ayanamsha (5 lords x 2 subjects) on each chart (50 per chart); the writer emits 12 signs x 5 regions = 60 per ayanamsha (`:1555-1590`: `fact_key = {lord}_{start}_{end}`, `fact_subject = D30.S{n}`), so 250 rows per chart are lost, as the briefs' "60 to 10" says.
+- `mv_chart_vargas_summary` and `mv_chart_super_vargottama_bodies` read `chart_divisionals` `[db]`; their grain after a wider key was not re-read.
+- The integrity SQL has four clauses, all `NOT EXISTS` (sign consistency, vargottama, D1 against `chart_facts` for the canonical chart, non-null identity); none requires a row to exist, so an empty or unreadable table passes (CLAUDE.md §N.8) `[db]`. The cutover-gate check is `[brief]`.
+
+**Recommendation.** Yes to all three. F-A2: a surgical migration widening `chart_divisionals_unique_idx` and the two `ON CONFLICT` targets, verified by production structure, never editing 002/1035; the rows appear in the S-L1 `ga_vargas` rebuild (no extra run). Integrity: add a clause that the chart has at least one `varga_position` row per declared ayanamsha. Cutover gate: fail a protected active table with `relrowsecurity` and no policy for a serving or builder role. Reason: the fixed key is the intended grain (the writer comment says so); §N.8.
+
+**Effect.**
+- Widen the key (R): +250 rows per chart (about 24,392 to 24,642 canonical, `[calc]`); floor 22,092 then re-declared after the build (floors equal the achieved count); the two materialised views refresh. Rebuild: `ga_vargas` (61 declared dependents execute).
+- Integrity clause: registry only (one surgical migration); no rebuild.
+- Cutover gate: tooling only.
+- Decline: the D30 lords stay collapsed to 10 of 60 per ayanamsha; the integrity check stays vacuous.
+
+**Citation.** Not classical. citation: n/a (the D30 region table is `unsourced` in this sheet: not examined).
+
+---
+
+### Q-L1-02 — CF-13: declare the two missing `ga_vargas` edges; where does the daridra-cancellation pass belong
+
+**Question.** Declare `ga_dashas -> ga_vargas` and `ga_yoga -> ga_vargas`, and move the daridra-cancellation pass out of `ga_structural`: into `ga_vichara`, a declared stale read, or a new post-yoga asset?
+
+**Facts.**
+- Live `depends_on`: `ga_dashas {ga_positions}`, `ga_yoga {ga_structural, ga_dashas}`, `ga_vichara {ga_structural, ga_strength, ga_dashas, ga_yoga}`, `ga_structural {ga_dashas, ga_nakshatra, ga_panchanga, ga_positions, ga_sensitive, ga_strength, ga_vargas}` `[db]`. `ga_dashas` reads `chart_divisionals` (`ga_dashas_writer.py:575-587`); `ga_yoga` reads D9 through `ga_structural_writer._load_varga_positions` (`ga_yoga_writer.py:2435-2445`) `[code]`. `ga_dashas` has 16 direct dependents. The dependency gate reads `lit` and fresh state, not row counts; `ga_vargas` is `lit` on all three charts `[db]`. The access fix removes the precondition the INDEX set.
+- **The back-read.** `ga_structural` reads `chart_vichara` and `ga_yoga_firings` to decide whether Daridra is cancelled (`ga_structural_writer.py:2765-2830, 2839-2892`), and swallows any error as "no data" (`return None` / `return []`). `ga_yoga` is built after `ga_structural`, so on a first build the read sees nothing and on a rebuild sees the previous generation.
+- **Live proof of the order effect `[db][calc]`.** Daridra (`dosha_label`, subject `daridra`): Abhinandan stored `fires = false`, `bhanga_active = true`, `bhanga_rule_fired = dhana_structure_fires:dhana_yoga_lagna_2`; the third chart stored `fires = true`, `bhanga_active = false` in all five ayanamshas. The third chart's `ga_yoga_firings` hold three dhana yogas (`dhana_yoga_2_11`, `dhana_yoga_2_5_9_11`, `dhana_yoga_house_lords`, constituent planets sun and venus), its Lagna is Cancer (lords: 2nd Sun, 9th Jupiter, 11th Venus), so the cancel rule as written (a fired `%dhana%` yoga whose planets intersect the 2nd, 9th and 11th lords) would cancel it; it is stored uncancelled. The Daridra rows were written about 15 seconds before the yoga rows on that chart (09:03:12 against 09:03:27), which is the order the DAG imposes. That a rebuild would flip the third chart's Daridra is an inference from the rule and the stored firings, not a rebuild result.
+
+**Recommendation.** Yes to both edges (one guarded, append-only, acyclic-checked migration of the 1210 kind; with S-L1 executing everything the new upstream hash costs nothing extra). Move the cancellation into `ga_vichara`, which already follows `ga_structural`, `ga_yoga`, `ga_strength` and `ga_dashas` in the DAG and already owns the wealth ratification the cancel rule reads; `ga_structural` keeps only the detection and its grounds; `ga_vichara` writes the cancellation as its own family (not an update of `ga_structural`'s rows). Reason: removes the back-read cycle, makes the result order-independent (§N.5, §N.8).
+
+**Effect.**
+- Edges (registry): `ga_dashas` moves to level 2; no data row; consumers execute at S-L1 anyway.
+- (a) Move to `ga_vichara` (R): Daridra cancellation rows move between assets (`ga_structural` loses the `bhanga_*` content of `dosha_label` for daridra, `ga_vichara` gains a family; floors 98,446 and 8,249 shift); the third chart's Daridra probably flips to cancelled; readers of `dosha_label` bhanga fields (not traced) see the move. Rebuild `ga_structural` and `ga_vichara`.
+- (b) Declare a stale read: no data change; the outcome stays order-dependent.
+- (c) A new post-yoga asset: a registry row, a writer and a DAG change for one family; the largest change.
+
+**Citation.** The daridra cancellation conditions cite the L0 catalog (`classical_tradition`, `bphs:daridra:...`): not classical in the code; for the corpus: citation not found in repo, needs bg_texts lookup: `unsourced`.
+
+---
+
+### Q-L1-03 — CF-19: the earned verification tier (`two_pass_verified`)
+
+**Question.** May the `ga_sensitive` default and literal `two_pass_verified` stamps be corrected, and which tier does an invariant, a bounds check or an arithmetic re-evaluation earn?
+
+**Facts.**
+- `ga_sensitive_writer.py:373-374` defaults `verification_pass_status=TWO_PASS_VERIFIED` and `tolerance_arcsec=0.0` in `_make_row`; the Yogi/Dagdha rows pass the literal `"two_pass_verified"` (`:2650-2680`); the module header says "Every row two-pass verified" (`:9`) `[code]`. `two_pass_verdict` is called only in `ga_nakshatra.py:147`, `ga_kp_significators.py:224` and `_vimshottari_independent_verifier.py:1147` `[code]`.
+- **The census SS asked for, read-only `[db]` (canonical chart, 143,299 `chart_facts` rows).** `two_pass_verified` = 9,320 rows: `ga_sensitive` 8,750, `ga_sade_sati` 320, `ga_nakshatra` 190, `ga_sensitive_degree` 60. **`ga_strength` stores none** (its rows are `single_pass` 10,575, `floored`, `computed_extension`, `single`, `documented_approximation`, `not_defined_for_nodes`, `classical_match` 14), so the brief's CF-19 reading of `ga_strength` does not apply to stored data. Of the 8,750 `ga_sensitive` rows, 1,780 (20%) carry the default `tolerance_arcsec = 0` (`tajik_hadda_lord` 1,200, `sun_derived_upagraha` 140, `lal_kitab_special_point` 100, and six smaller categories) and 6,970 carry a positive tolerance (whether each emitter really ran a second path was not read emitter by emitter).
+- `ga_sade_sati`'s `two_pass_verify_cycles` checks a 7.5-year duration band and entry ordering (`:632-659`): bounds and ordering invariants, not a re-derivation. `ga_sensitive_degree`'s Yogi check re-evaluates `Sun + Moon + 93°20'` in integer arcseconds (`:506-530`): the same formula and inputs, different arithmetic.
+- **L2 effect.** `bodha_writers/formulas.py:535-542`: `two_pass_verified` 1.00, `classical_match` 0.90, `single` 0.85 (the alias `single_pass` resolves to it). **The alias is stored in 10,836 canonical rows** (7.6%: `ga_strength` 10,575, `ga_panchanga` 176, `ga_structural` 85), so the CF-17 spelling clean-up is larger than the brief's `ga_panchanga` 437 rows `[db]`. `ga_panchanga` writes `single_pass` for the four FORENSIC angas on purpose (`ga_panchanga_writer.py:140-151`).
+- **Yogi-point authority `[db]`.** Three categories hold it: `esoteric_point_yogi` (`ga_sensitive`; two rows per key, `formula_id = bphs_93_20` value 352.351181 and `alt_96_40` value 355.684514, labelled in provenance text "Krishnamurti variant"), `esoteric_point_yogi_system.YOGI_GRAHA` (`ga_sensitive`, 93°20', Mercury / Revati) and `sensitive_point_yogi.YOGI` (`ga_sensitive_degree`, 352.351181, Mercury / Revati). The 93°20' values agree; the 96°40' variant also doubles `esoteric_point_avayogi` (179.018 Chitra vs 189.018 Swati) and the mṛtyu, brahma, vishnu and shiva categories carry similar `formula_id` variants (955 canonical rows in seven categories sit in same-key groups, 490 of them the two karaka reckonings). `ga_sensitive_degree` re-derives the point instead of reading `ga_sensitive`'s.
+
+**Recommendation.**
+1. **Yes**, correct the default: `_make_row` defaults to `UNVERIFIED_DEFAULT`; each verified stamp is earned per emitter through `two_pass_verdict(primary, independent)` with an independent path; table lookups and relays use `CLASSICAL_MATCH`. The first act is the per-emitter audit of the 6,970 positive-tolerance rows.
+2. **A bounds or ordering invariant that can fail earns `classical_match`; an arithmetic re-evaluation of the same formula from the same inputs earns at most `classical_match`; only an independent re-derivation earns `two_pass_verified`.** So `ga_sade_sati` cycles and the Yogi arcsecond check move to `classical_match`; `ga_nakshatra`'s cross-ayanamsha agreement stays.
+3. **A second derivation of the four pañcāṅga FORENSIC angas from `ga_positions` longitudes: yes, later**, as a genuinely different code path read from stored L1 facts; it does not guard against a backend error common to both (A-3), so the backend is recorded.
+4. **Yogi authority:** `esoteric_point_yogi` with `formula_id = bphs_93_20` (the existing convention, SS rule 2); `alt_96_40` stays a named variant; `ga_sensitive_degree` reads it rather than re-deriving (§N.7 item 3).
+5. Emit the canonical spelling `single`, never the alias `single_pass`.
+
+**Effect.**
+- (a) Accept 1 to 5 (R): stored tier changes on the S-L1 rebuild: up to 1,780 `ga_sensitive` rows to `single`, the audited remainder case by case, 320 + 60 to `classical_match`, 10,836 alias rows respelled; L2 weights move 1.00 to 0.85 or 0.90 for the demoted rows (an effect for the S-L2 batch). Rebuild: `ga_sensitive`, `ga_sade_sati`, `ga_sensitive_degree`, `ga_strength`, `ga_panchanga`, `ga_structural` (spelling).
+- (b) Decline: 8,750 `ga_sensitive` rows keep a strongest tier that 20% of them cannot have earned.
+- Sub-answer 3 alone: no change now.
+
+**Citation.** The Yogi point `Sun + Moon + 93°20'` and the Avayogi offsets: citation not found in repo, needs bg_texts lookup (searches for Yogi, Avayogi, Yogi Sphuta in the corpus returned no passage): `unsourced`; the writer's "BPHS Ch.20" label is uncorroborated.
+
+---
+
+### Q-L1-04 — CF-02: who owns which `chart_facts` rows; what counts as a writer's `rows_written`
+
+**Question.** Which asset owns the 420 rows both `ga_strength`'s `count_sql` and `fact_category_ownership` claim, do the 41,042 rows with no ownership row get owners, and do the rows a writer puts on `chart_facts` count as its `rows_written` (`ga_condition`)?
+
+**Facts `[db]` (canonical chart, 143,299 rows).**
+- `fact_category_ownership` has 67 rows over three owners (`ga_structural` 64, `ga_ayurdaya` 1, `ga_condition` 2) and leaves **41,042 rows with no ownership row**.
+- I split those 41,042 by the live `count_sql` predicates of the declared producers: 36,226 fall inside another asset's predicate (`ga_strength` 13,721, `ga_sensitive` 8,775, `ga_sade_sati` 6,287, `ga_nakshatra` 2,847, `ga_condition` 2,835, `ga_positions` 1,205, `ga_sensitive_degree` 335, `ga_panchanga` 221); **4,816 rows in 12 categories match no predicate and no ownership row**, and the writer grep puts all 12 in `ga_structural_writer.py` only (`virupa_drishti` 2,850, `karaka_web_per_varga` 1,100, `significator_path` 360, `panchadha_maitri` 210, `conjunction_special_point` 137, `nakshatra_lord_relationship` 45, `tara_bala` 43, `yoga_label` 34, `kendradhipati_dosha` 20, `upapada_lagna` 10, `dosha_label` 6, `nakshatra_co_tenancy` 1). Close to, but not equal to, the 4,670-row gap between `ga_structural`'s build record (106,707) and its live count (102,037): 102,037 + 4,816 = 106,853, 146 more than the record; not reconciled.
+- **The 420 rows are `bhava_bala_*`** (7 categories x 60). `ga_strength`'s predicate has `LIKE '%bhava_bala%'`; the ownership table gives them to `ga_structural`, and the writer emitting them is `ga_structural_writer.py` (`:60`, `:1673`). `ga_strength`'s live count 14,141 minus 420 is 13,721, within 6 of its build record 13,715; the "426" gap is 420 plus 6 `[db][code]`.
+- `ga_condition`: `count_sql` = 45 composite rows + 2,925 `chart_facts` rows; its per-varga avastha writer `_insert_per_varga_avastha_rows` returns nothing (`ga_condition_writer.py:1183-1215`, `:1692, 1701`), so `rows_written` = 45 beside 2,925 written `[code][db]`.
+
+**Recommendation.** (1) `ga_structural` owns the `bhava_bala_*` rows; narrow `ga_strength`'s predicate to its own categories. (2) Complete `fact_category_ownership` for every producer (the migration-842 pattern): the 12 `ga_structural` categories, and the other eight producers' categories, so there is one ownership mechanism rather than two; add the writer-constants-to-ownership parity test. (3) Yes: the rows a writer puts on `chart_facts` count as its `rows_written` (`ga_condition` reports all it writes); per SS's earlier Q19 answer `count_sql` scopes to the primary table and the asset is declared multi-table.
+
+**Effect.** Registry rows and counts only: no `chart_facts` row changes. The ownership additions can ride migration 1219 or take their own surgical number; floors re-declared in the same migration from the achieved counts (floors equal the achieved count): on the canonical chart `ga_condition` goes from 2,970 to 135 (composite plus its owned rows) or 45 (primary table only), `ga_strength` from 14,141 to 13,721, `ga_structural` from 102,037 to 106,853. `ga_condition`'s `rows_written` change takes effect on its next dispatch (S-L1).
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-05 — CF-06: is a fixed-vocabulary threshold grade narration for the Null/Narr gates
+
+**Question.** Are `direction_impact` (`ga_vastu`), `indication_strength` (`ga_medical`) and `strength_label` (`ga_yoga`) narration under the Null/Narr gates?
+
+**Facts.** Each is a fixed label that grades a stored value against thresholds: `ga_vastu_writer.py:52-67` (`< 0.4` weakened, `< 0.7` neutral, else strengthened; NULL gives `neutral`), `ga_medical_writer.py:75-98` (`< 0.4` strong, `<= 0.6` moderate, else mild; NULL gives `unknown`) `[code]`. CLAUDE.md §N.7 item 5: the sentence that grades a value needs its own golden test; §N.7 item 6: a default that reads as a judgment is invented. Declarations 1.6.0 leave `prose_fields` null for `ga_medical`, `ga_vastu`, and incomplete for `ga_yoga` (INDEX section 4, CF-06).
+
+**Recommendation.** Yes, narration: declare `["direction_impact"]`, `["indication_strength"]` and extend `ga_yoga` to `derivation`, `strength_label`, `bhanga_na_reason`, with a golden-value test at each cut point. Reason: they grade a computed value in words.
+
+**Effect.** Declaration plus tests only; no row change, no rebuild. Decline: three assets stay NO_DETECTOR on Null and Narr.
+
+**Citation.** Not classical (project thresholds). citation: n/a.
+
+---
+
+### Q-L1-06 — CF-04: does Dens read per partition for the shared-table producers
+
+**Question.** Should the Dens inspector read the served surface per `fact_category` partition for the seven `chart_facts` producers, and which served selects still lack a tier column?
+
+**Facts.** Seven producers declare `natural_key_partition` and a partition-scoped `count_sql` live `[db]`. The brief lists `get_argala.ts` among the served selects with no tier column; **its main select does carry `verification_pass_status`** (`platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts:135-136`); the two other selects in that file are aggregates (`:148`, `:169`), which is the likely source of the scanner's PARTIAL (inference, not run). `get_condition_composite.ts`, `get_transit_anchors.ts`, `get_vichara.ts`, `get_yoga_firings.ts`, `get_prashna_lagna.ts` do not select a tier (`grep`: 0 tier references) `[code]`. `uniform_authority` does not fit: stored tiers are mixed (A-3, Q-L1-03).
+
+**Recommendation.** Yes, per partition via the declarations `carriage.served_surface`; add the tier to the selects that lack it (additive fields); correct the INDEX list for `get_argala.ts`; have the scanner read the primary select of a module. Reason: the rev-4 rule and the mixed-authority ruling (L0 Q2).
+
+**Effect.** Inspector change (Track E) plus additive response fields; no row change; no rebuild.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-07 — CF-10: does `ga_positions` need a clean asset-set rerun
+
+**Question.** Is a separate clean rerun of `ga_positions` needed to clear its Build.history FAIL?
+
+**Facts `[db]`.** The latest `ga_positions` run is an `asset_set` run on the canonical chart created 2026-09-19 22:48, state `aborted`, no error text; the runs before it (2026-09-07, four of them) are `complete`, and a 2026-09-05 `error` (UUID serialization, fixed) precedes them. `asset_throughput` reads `lit`, 1,205 rows, for all three charts. The ledger gives no cause for the abort (it post-dates the RLS cutover of 2026-09-18, but `ga_positions` does not read `chart_divisionals`). Under the L0 Q11 answer Build.history counts only runs since the last change to the writer or registry row.
+
+**Recommendation.** No separate rerun. `ga_positions` is rebuilt in S-L1 anyway (the ephemeris fix sits at its choke point, A-3), and that clean run supersedes the abort; ask the run-ledger owner why the 09-19 run aborted before S-L1 starts.
+
+**Effect.** None now; a standalone rerun would be a production run that S-L1 makes redundant.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-08 — CF-12: the Idem claim for delete-then-insert writers
+
+**Question.** Is "no orphan rows under the writer's own partition" the Idem claim for L1 delete-then-insert writers whose delete scope follows the rows written?
+
+**Facts.** Delete scopes are built from the rows about to be written: `replace_prior_chart_facts` deletes `chart_id` x categories present x ayanamshas present (`ga_writers/_idempotency.py:54-72`), `replace_prior_chart_dashas` by system, `replace_prior_chart_divisionals` by varga, `replace_prior_tajik_varsha` by exact year triples `[code]`. A category a rebuild stops emitting is never deleted. I did not run an orphan census; the only partition check I ran (A-2, Q-L1-04) found no category in the canonical chart that no writer emits (the 12 `ga_structural` categories are emitted, only unowned). The `ga_tajaka` window grows with the clock, so no orphans arise from it (Q-L1-14).
+
+**Recommendation.** Yes, confirm: Idem PASS = zero live keys under the writer's own partition (`natural_key_partition`, migrations 868-874, or its table scope) that its produced-key set (dry run) does not contain; a prune is scoped to that partition; the proof is the rebuild-twice fingerprint.
+
+**Effect.** Definition and Track E tooling only; no row change.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-09 — CF-07: the verified subset as the Carr PASS population; D2 for āyurdāya
+
+**Question.** Is the verified subset the PASS population for D3 (never presence), and is D2 (three method rows, none an average) the carriage check for `ga_ayurdaya`?
+
+**Facts.** Carr is NO_DETECTOR on all 19 (census). The second derivations in code are `_vimshottari_independent_verifier.py`, `compute_cross_ayanamsha_agreement` / `two_pass_verdict` (`ga_nakshatra`), the upagraha tolerance (`ga_sensitive`); `ga_sade_sati` and Yogi checks are invariants and arithmetic re-evaluations (Q-L1-03). A-3: a second call inside one process-global backend does not discriminate backends.
+
+**Recommendation.** Yes to both. A D3 detector reports verified, unverified and divergent counts per asset partition and PASSES only on the verified subset; a detector built on an invariant or an arithmetic re-evaluation reads PARTIAL, not PASS; every detector ships a seeded mismatch it must catch; every detector records the backend (A-3). D2 for `ga_ayurdaya`: three method rows exist and none is an average (`ga_ayurdaya_writer.py:134-137`; stored `PINDAYU` 98.75, `NISARGAYU` 99.19, `AMSAYU` 36.34 years, canonical, Lahiri) `[db]`.
+
+**Effect.** Track E tooling; no asset or row change.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-10 — `ga_ayurdaya` (enrich): the harana enrichment, and may it read other producers' facts
+
+**Question.** Is the harana (cancellation) enrichment in the first L1 wave, and may it read `ga_structural` / `ga_condition` facts through new `depends_on` edges?
+
+**Facts.** The writer stores base totals only (`apply_haranas=False`, `ga_ayurdaya_writer.py:134-137`; `harana_status: base_only_haranas_deferred_to_w3`, `:224, 242`) `[code]`. **The stored totals are unreduced**: canonical, Lahiri, Pindayu 98.75, Nisargayu 99.19, Amsayu 36.34 years, `harana_status` on each total, tier `single` `[db]`. `ga_ayurdaya` has 0 declared dependents and depends only on `ga_positions` `[db]`; its served reader is `get_ayurdaya.ts`. The inputs a harana needs exist as L1 facts: `graha_position.combustion_state` (`ga_positions`), dignity and sign-lordship facts (`ga_structural`, `ga_condition`) `[db]`.
+
+**Recommendation.** Yes, in S-L1, staged: first the three BPHS Pindayu haranas computed from stored L1 facts (combustion, enemy sign, the 12th-to-7th house reduction, with the rule that only the largest reduction applies), emitted beside the base totals, never replacing them, each applied harana named; Nisargayu and Amsayu keep `base_only` until their rules are sourced; Krurodaya and Chakrapata follow Brihat Jataka Ch. 7. New edges: yes (to `ga_structural` and/or `ga_condition`; `ga_ayurdaya` has no dependents, so nothing downstream moves). Until then the served totals should say they are unreduced base figures. Reason: the tier text asks for cancellations; an unreduced near-100-year figure served without that note overstates (Ethical Framework: probabilistic, calibrated outputs).
+
+**Effect.** (R) additive fact keys on 130 rows per chart (existing keys unchanged); `ga_ayurdaya` rebuild in S-L1; it moves from level 1 to a later level; `get_ayurdaya.ts` shows more keys; floor refresh. Decline: the base totals stay the only longevity figures.
+
+**Citation.** BPHS Ch. 43 (Pindayu): `bphs_pg0420_c01` (the reduction method), `bphs_pg0420_c02` (Vyayadi Harana), `bphs_pg0421_c01`, `bphs_pg0422_c01`, `bphs_pg0423_c01` (only the highest reduction applies), `bphs_pg0424_c01` (Shatru-kshetra Harana worked example): `sourced_ocr_unverified`. Brihat Jataka Ch. 7: `brihat_jataka_pg0193_c01` (Krurodaya): `sourced_ocr_unverified`. Chakrapata: only a mention in the Dasa context was found (`brihat_jataka_pg0207_c01`), not the Ayurdaya rule itself: `unsourced`. The astangata (combustion) rule's exact wording was not isolated: `unsourced` until read.
+
+---
+
+### Q-L1-11 — `ga_yoga` (enrich): the 63 to 53 shortfall; the DP05 fields
+
+**Question.** May SS authorise the read-only per-yoga comparison of the last two builds, and are `partial_formation_pct`, `activation_dasha_periods` and a D9 lineage id in the first wave?
+
+**Facts `[db]`.** `ga_yoga_firings` holds one generation per chart (one `build_id` each); the writer deletes and reinserts, so "the last two builds" cannot be compared from the table. Rows: canonical 53 (11, 11, 10, 10, 11 per ayanamsha), Abhinandan 69, third chart 80; the registry floor 63 was set by migration 650 as the minimum across three charts on 2026-09-05. A floor over a chart-dependent count is a category error: a chart simply has the yogas it has. Of the 53 canonical firings only 3 cite D9 (one in each of three ayanamshas), so the corrected D9 positions can explain at most 3 of the 10 missing rows; the rest is unexplained. D9 loading degrades silently (`ga_yoga_writer.py:2435-2455`: `{}` on any error, "honest degradation, logged"). `chart_divisionals.id` is `gen_random_uuid()` at insert (`ga_vargas_writer.py:2650`) and the writer's semantic `fact_id` is not stored, so a D9 lineage by row id breaks at every `ga_vargas` rebuild.
+
+**Recommendation.** (1) Authorise an offline dry run of the writer's detectors against the stored L1 facts to reproduce the 53 and list the D9-dependent firings (read-only, no DB write); do not spend more diagnosis on the 10 rows, and set the floor to the achieved count after S-L1 (floors aspirational, §N.4). (2) `activation_dasha_periods`: yes, read from stored `chart_dashas` rows of the constituent lords, never recomputed; Nabhasa yogas get null with a stated reason. `partial_formation_pct`: defer; it is a project field with no sourced clause weights. D9 lineage: yes, as a natural-key reference (chart, ayanamsha, varga, graha, category, key) in the existing `grounds_jsonb`, not a row uuid.
+
+**Effect.** (1) none to data; registry floor edit later. (2) (R) additive fields on 53 rows per chart; `ga_yoga` rebuild in S-L1; `get_yoga_firings.ts` shows new keys; 4 direct and 51 transitive dependents execute anyway. Decline: the DP05 clauses stay unpopulated.
+
+**Citation.** Brihat Jataka Ch. 8 sl. 20: yogas "must be duly assigned to the planets concerned in their respective dasas", Nabhasa yogas excepted: `brihat_jataka_pg0227_c01`; "Nabhasa yogas take effect at all times and periods irrespective of any dasa or bhukti": `brihat_jataka_pg0302_c01`: both `sourced_ocr_unverified`. `partial_formation_pct`: not classical. citation: n/a.
+
+---
+
+### Q-L1-12 — `ga_prashna` (qualify): N/A basis and the letter
+
+**Question.** Is the registry-recorded dormancy (`data_disposition = RETAINED_AS_CAPITAL` plus the R-1 text) a sufficient basis for an N-22 N/A rule on Build.completion, Complete and Vocab, and is `qualify` the right letter?
+
+**Facts `[db]`.** `asset_registry.data_disposition = RETAINED_AS_CAPITAL`; the volume text records the native ruling R-1 (2026-09-05): dormant by design, 0 rows is correct, the cast route is mounted and "2 charts cast 2026-06-18". Live: `ga_prashna_lagna` 5 rows and `prashna_charts` 2 rows (last cast 2026-06-18), `ga_prashna_judgment` 0; the registry `count_sql` is chart-scoped and reads 0 for the three birth charts; `asset_throughput` `lit`, 0 rows, on all three. So the facility holds data for the two cast question-moment charts; a natal build writes none by design.
+
+**Recommendation.** Yes to the N/A rule, with the cause stated precisely: "no question-moment chart is built for a natal chart (R-1)", through `NA_RULE_DECISIONS` with SS approval, not a blanket "empty is fine"; `qualify` is the right letter.
+
+**Effect.** Registry/declaration and inspector only; no row change; do not "fix" the zero count.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-13 — `ga_transit_anchors`: lineage as a column, a declaration, or integration into `chart_facts`
+
+**Question.** How should the restated positions carry lineage?
+
+**Facts.** The table stores sign, `natal_house_from_moon` and `natal_degree_absolute` for 9 grahas x 5 ayanamshas (45 rows per chart) with no source `fact_id` (`pipeline/orchestrator/writers/ga_transit_anchors.py:182-215`) `[code]`. **The served tool already resolves lineage at read time**: `get_transit_anchors.ts:88-111` (F-D25) re-runs a `chart_facts` filter on `graha_position` / `graha_sign_attributes` x keys `sign, longitude_sidereal, nakshatra` per subject and returns `constituent_fact_ids`; that is a superset resolved at serve time, not the exact rows the writer read. No writer reads the table; only the served tool and tests reference it (grep) `[code]`.
+
+**Recommendation.** Add the stored `source_fact_ids` column (additive, 45 rows per chart), written from the rows the writer actually read, and have the served tool read it, keeping the serve-time resolver only as a fallback until the rebuild. Reason: §N.7 item 1 (narration reads, never re-derives); the rebuild is in S-L1 anyway and costs 45 rows; integration into `chart_facts` adds a consumer-free view as a fact family for no gain.
+
+**Effect.** (R, additive column) one surgical migration; `ga_transit_anchors` rebuild in S-L1; the served tool changes. Declaration-only alternative: no migration, lineage stays derived at serve time. Integration: a registry and writer change for an asset with no declared dependents.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+
+### Q-L1-14 — `ga_tajaka`: the clock-dependent hybrid window
+
+**Question.** Is a window that follows the build clock acceptable for an L1 correctness asset (record the reference year), or must a rebuild reproduce its recorded window?
+
+**Facts.** `reference_year` defaults to the build year and the orchestrator never passes it (`ga_writers/ga_tajaka_writer.py:72-76, 725-734, 756-766`) `[code]`. Stored windows `[db]`: canonical varsha 1..48, 240 rows; Abhinandan 1..47, 235; third chart 1..61, 305; registry floor 240 (the canonical achieved count of 2026-06-11).
+
+**Recommendation.** Acceptable, as a declared rolling horizon (the L3 Q-L3-12 pattern): record the reference year in the build's `WriterResult.notes` and in the registry text; fingerprints and any reproduction fix the year; Count.floor reads N/A by cause `rolling_horizon` through `NA_RULE_DECISIONS` (SS approval). Reason: the window must follow the clock to stay useful; the defect would be an unrecorded year.
+
+**Effect.** Notes and registry/declaration only; no row change. (A rebuild in 2027 writes 245 rows for the canonical chart, not 240.)
+
+**Citation.** Not classical (project window, A7 Q4). citation: n/a.
+
+---
+
+### Q-L1-15 — `ga_condition`: the four NULL composite columns
+
+**Question.** Populate `avastha_lajjitaadi`, `avastha_sayanadi`, `speed_degrees_per_day` and `graha_yuddha_result` from L1 facts, or drop them?
+
+**Facts `[db]`.** All four are NULL on all 135 composite rows (45 per chart); `graha_yuddha_with` is NULL too; `motion_state` is filled on 10 of 45 canonical rows (`vakra`). L1 facts exist for two of them: `graha_avastha_sayanadi` and `graha_avastha_lajjitadi` (45 rows each per chart) and `graha_yuddha_per_varga` (14 rows canonical). No stored L1 fact carries a graha's daily speed (`graha_position` keys: pada, longitude_sidereal, sign_lord, sign, house_d1, combustion_state, nakshatra, nakshatra_lord, retrograde_flag).
+
+**Recommendation.** Populate the three that have L1 facts by reading them (reference the `fact_id`, never re-derive); for `speed_degrees_per_day` either add the speed as an L1 fact in `ga_positions` first or drop the column (B.10: no invented value; `[EXTERNAL_COMPUTATION_REQUIRED]` until computed by the engine).
+
+**Effect.** (R) composite rows change; `ga_condition` rebuild in S-L1, which re-executes `ga_medical` and `ga_vastu`; the composite score does not use these columns (breakdown weights: varga 0.20, baladi 0.10, deeptaadi 0.20, combustion 0.15, dignity_d1 0.35). Drop: a schema migration.
+
+**Citation.** Sayanadi and Lajjitadi are existing L1 facts with their own citations; no new classical claim. citation: n/a.
+
+---
+
+### Q-L1-16 — CF-17, CF-14, CF-20: tier constants; legacy `_telemetry` sites; the `condition_score` cut points
+
+**Question.** (a) Add named constants for the other vocabulary members to the shared L0 module, or use `entry_for()`? (b) Remove the eight legacy `_telemetry` sites with the CLI path, or keep them declared CLI-only? (c) Where do the `condition_score` cut points live, and may the vāstu and medical scales differ?
+
+**Facts.**
+- (a) The vocabulary exports four constants (`verification_vocab.py:274-282`); `single_pass`, `floored`, `computed_extension`, `documented_approximation`, `pending_w3_verification`, `not_defined_for_nodes`, `scope_cap_sentinel` have none. My recount of quoted tier strings per writer (comparisons included; indicative): `ga_strength` 23, `ga_vargas` 21, `ga_structural` 18, `ga_sensitive` 15, `ga_panchanga` 15, `ga_sade_sati` 10, `ga_dashas` 8, `ga_sensitive_degree` 7, `ga_tajaka` 4, `ga_condition` 6, `ga_yoga` 4, `ga_positions` 3, `ga_ayurdaya` 2 (the INDEX regex counts differ slightly). One guard exists (`tests/test_ga_dashas_f_a17_bare_tier_literals.py`). An L0 edit shifts the source hash of about 24 L1 and L2 writers (`ga_dashas_writer.py:54-72`) `[brief]`.
+- (b) The eight sites sit under `if owns_conn` (the standalone path): `ga_dashas_writer.py:3078`, `ga_panchanga_writer.py:1315`, `ga_positions_writer.py:693`, `ga_sade_sati_writer.py:1876`, `ga_sensitive_writer.py:3038`, `ga_strength_writer.py:1961`, `ga_structural_writer.py:8143`, `ga_tajaka_writer.py:835`. The CLI `platform/python-sidecar/scripts/run_l1_ganita_build.py` and `ga_writers/build_runner.py` still exist and are named in the L1 closure documents (grep) `[code]`.
+- (c) The two cut-point sets: vāstu `< 0.4` / `< 0.7` (`ga_vastu_writer.py:52-67`), medical `< 0.4` / `<= 0.6` (`ga_medical_writer.py:75-98`), over the same `condition_score`; the labels have opposite polarity by design (low score: medical "strong" indication, vāstu "weakened"). Canonical chart, 45 composite rows `[db]`: 5 below 0.4, 20 between 0.4 and 0.6, **15 between 0.6 and 0.7 (medical "mild", vāstu "neutral")**, 5 at 0.7 or more; third chart 5 in the 0.6 to 0.7 band; no score is NULL, so vāstu's invented `neutral` for NULL is unreached on stored data. Neither threshold set has a source.
+
+**Recommendation.** (a) Add the constants to the L0 module BEFORE S-L1 starts, so the hash shift is absorbed by the batch (S-L1 and S-L2 execute everything); emit `single`, never the alias. (b) Keep the eight sites, declared CLI-only, with a grep guard that no `ga_writers` module calls `update_asset_throughput(` outside the declared CLI; remove them when the CLI is retired. (c) The cut points live in one declared band table at the score's owner (`ga_condition`), read by both writers; the label vocabularies may differ, the cut points may not; adopt 0.4 / 0.7 (a friend-sign planet scoring 0.6 stays in the middle band in both); NULL score gives NULL / `unknown`, never `neutral`. All thresholds are labelled project conventions (`unsourced`).
+
+**Effect.** (a) strings only; rides S-L1. (b) a guard test; no data. (c) (R) `ga_medical`: the 15 canonical rows (and 5 on the third chart) between 0.6 and 0.7 move from "mild" to "moderate"; `ga_vastu` unchanged; rebuild `ga_medical` in S-L1.
+
+**Citation.** The medical label cites BPHS Ch. 18 for the causation framework and the vāstu directions cite "Mayamata Ch.6" (no Mayamata text is in the corpus): `unsourced`; the thresholds themselves are not classical. citation: n/a.
+
+---
+
+### Q-L1-17 — dispositions
+
+**Question.** Accept keep for 16 assets, enrich for `ga_ayurdaya` and `ga_yoga`, qualify for `ga_prashna`?
+
+**Facts.** The evidence behind the letters is in Q-L1-10, -11, -12. Two facts found while verifying bear on `keep` letters: `ga_condition` (X2: the composite fell back to D1 dignity on 90 of 135 rows) and `ga_dashas` (the third chart's `asset_throughput` state is `incomplete`, 505,348 rows, not investigated).
+
+**Recommendation.** Accept all 19 letters, with `ga_condition` and `ga_dashas` kept subject to X2 and finding F-8.
+
+**Effect.** Registry/doc only.
+
+**Citation.** n/a.
+
+---
+
+## GROUP B-X · Two new questions found while verifying
+
+### X1 — `ga_nakshatra` writes the 0°48' reading as plain `is_gandanta`
+
+**Question.** After the A-4 ruling, should `graha_gandanta.is_gandanta` follow the canonical 3°20' width, with the 0°48' reading kept as a named variant row?
+
+**Facts.** See A-4: `graha_gandanta` is stored without a width label; on Abhinandan it reads `true` once while `sensitive_degree_check.gandanta` reads `gandanta` seven times, so two L1 assets answer "is this graha in gandanta" differently on the same chart. The variant mechanism (`formula_id`) exists.
+
+**Recommendation.** Yes: `is_gandanta` computes from the shared L0 module (3°20'); the 0°48' reading is emitted as variant rows with `formula_id = strict_0_48`; the junction and side keys are kept.
+
+**Effect.** (R) `graha_gandanta` 50 rows per chart change (Abhinandan `true` 1 to 7, `[calc]`) plus the variant rows; `ga_nakshatra` rebuild in S-L1; L2 `bo_laksana` reads the category (`bo_laksana.py:302`) and sees the change in S-L2. No-answer: the contradiction stays.
+
+**Citation.** As A-4: `bphs_pg0111_c01` `sourced_ocr_unverified`; 0°48' `unsourced`.
+
+---
+
+### X2 — `ga_condition` ran on a D1 fallback for two of three charts
+
+**Question.** Should the composite refuse to score (or flag) when the divisional-chart dignity is missing, and should the two affected charts be rebuilt in S-L1?
+
+**Facts `[db]`.** `ga_condition_composite.varga_dignity_composite` is NULL on all 90 rows of Abhinandan and the third chart; `condition_score_breakdown.varga_fallback_used` is `true` on all 90 (and `false` on the canonical chart's 45). The writer substitutes the D1 dignity score for the missing varga score and records the flag (`ga_condition_writer.py:500-501, 529`), so `condition_score` and everything that reads it (`ga_medical`, `ga_vastu`) rest on D1 alone for those charts. The composites were written 2026-08-06 and 2026-07-27, while the divisional charts for both charts existed from 2026-07-26 and 2026-07-27 08:39 (the third chart's composite, 09:02, was built after them); the RLS window began 2026-09-18, so it does not explain these rows; the cause is not established. One Abhinandan row has `condition_score = 0`.
+
+**Recommendation.** Yes to both: the flag stays but a fallback row must be visible to readers (a served field and a Dens facet), and both charts are rebuilt in S-L1 after `ga_vargas` so the composite reads the divisional dignity; add a clause to the composite's integrity check that a fallback row on a chart with divisionals is a failure.
+
+**Effect.** (R) 90 composite rows, then `ga_medical` and `ga_vastu` (45 rows each per chart), change on the two charts; `ga_condition` rebuild in S-L1. No-answer: two charts keep scores built on D1 alone, labelled only in a JSON key.
+
+**Citation.** Not classical. citation: n/a.
+
+---
+## SUMMARY TABLE (one page)
+
+(R) = raises or defines a verdict, or changes stored outputs: provisional until J1. "Ruled" = SS ruled on 2026-10-02 (N-61) or earlier. All L1 rebuilds ride S-L1 after G-EPH and G-FLIP.
+
+| id | short question | recommendation | (R) |
+|---|---|---|---|
+| A-1 (ruled) | Argala: L1 authority, L2 references | Record; residuals ruled in B-0 | |
+| A-2 (resolved) | `chart_divisionals` RLS | Record: RLS off, 24,392 / 23,542 / 23,542, CF-16 closed as an access incident; briefs' "empty" text to be corrected; build-record gap noted (F-4) | |
+| A-3 (ruled) | Ephemeris: Swiss `.se1` canonical; L1 ran on Moshier | Record as first-class finding; L1 fix at the PyJHora choke point, engine and `ga_sade_sati`; record the backend per writer; one S-L1 rebuild after G-FLIP; D3 detectors must record the backend | (R) |
+| A-4 (ruled) | Gandanta 3°20' each side; 0°48' variant; one L0 module | L1's `check_gandanta` conforms; move to L0; `ga_nakshatra` and `ga_structural` import it; contradiction on Abhinandan Mars (7 vs 1 rows) | (R) |
+| A-5 (ruled) | MEAN node convention | Record; TRUE node a named variant; one unverified path (PyJHora paths outside `drik.sidereal_longitude`) | |
+| AR-1 | Argala pairing (L2 swaps 4 and 11 obstructors) | L1 owns 2-12, 4-10, 11-3, 5-9; outcome by count. **Ruled, accepted** | (R) |
+| AR-2 | Rahu/Ketu reversal | Both nodes when the node is the reference, in L1 graha-level rows. **Ruled, accepted** | (R) |
+| AR-3 | Empty source sign scores 1.0 (47.8% of cells) | NULL with `no_occupant`. **Ruled, accepted** | (R) |
+| AR-4 | `single` tier on argala rows | Keep; fix the provenance string. **Ruled, accepted** | |
+| AR-5 | BPHS Ch. 28 vs Ch. 31 | Chunk ids, `sourced_ocr_unverified`. **Ruled, accepted** | |
+| AR-6 | Canonical offsets; L2 consumes L1 rows | L1 canonical, graha-level D1 family, L2 reads and cites. **Ruled, accepted** | (R) |
+| Q-L1-01 | `chart_divisionals` residuals: F-A2 key, vacuous integrity check, cutover gate | Yes to all three; D30 60 to 10 measured; +250 rows per chart in S-L1 | (R) |
+| Q-L1-02 | Edges `ga_dashas`/`ga_yoga` to `ga_vargas`; where daridra cancellation lives | Declare both; move cancellation to `ga_vichara`; third chart's Daridra order effect shown | (R) |
+| Q-L1-03 | Earned tier: `ga_sensitive` default, invariants, Yogi authority | Default to `single`; invariant or arithmetic re-check earns `classical_match`; Yogi authority `bphs_93_20`; 8,750 / 9,320 `two_pass` rows are `ga_sensitive`; `ga_strength` stores none | (R) |
+| Q-L1-04 | Row ownership, 420 and 41,042 rows, `rows_written` | `ga_structural` owns `bhava_bala_*`; 4,816 more `ga_structural` rows unowned; complete ownership; count all rows written | |
+| Q-L1-05 | Threshold grades as narration | Yes; declare and golden-test | |
+| Q-L1-06 | Dens per partition; tier-less selects | Yes per partition; `get_argala.ts` already selects the tier | |
+| Q-L1-07 | `ga_positions` rerun | No; S-L1 supersedes; ask why the 09-19 run aborted | |
+| Q-L1-08 | Idem claim for L1 | Yes: zero orphan keys under the writer's own partition | |
+| Q-L1-09 | Carr D3 verified subset; D2 for āyurdāya | Yes; invariant-only detectors read PARTIAL; record backend | |
+| Q-L1-10 | `ga_ayurdaya` harana enrichment | Yes, staged (Pindayu haranas first); new edges allowed; stored totals are unreduced | (R) |
+| Q-L1-11 | `ga_yoga` shortfall; DP05 fields | Offline dry run, not a two-build diff (one generation stored); activation periods yes; D9 lineage by natural key | (R) |
+| Q-L1-12 | `ga_prashna` N/A basis; letter | Yes, precise cause; qualify | |
+| Q-L1-13 | `ga_transit_anchors` lineage | Stored `source_fact_ids` column; serve-time resolver already exists | (R) |
+| Q-L1-14 | `ga_tajaka` rolling window | Accept as `rolling_horizon`; record the reference year | |
+| Q-L1-15 | `ga_condition` NULL columns | Populate three from L1 facts; speed needs an L1 fact first or drop | (R) |
+| Q-L1-16 | Tier constants, `_telemetry` sites, cut points | Constants before S-L1; keep sites declared CLI-only; one band table 0.4 / 0.7 | (R) |
+| Q-L1-17 | Dispositions | Accept 16 keep, 2 enrich, 1 qualify | |
+| X1 | `ga_nakshatra` 0°48' written as plain `is_gandanta` | Canonical width in `is_gandanta`; 0°48' as `formula_id` variant rows | (R) |
+| X2 | `ga_condition` fell back to D1 on 90 rows | Make it visible; rebuild both charts in S-L1 after `ga_vargas` | (R) |
+
+---
+
+## Findings beyond the briefs (found while verifying; each has its evidence above)
+
+- **F-1 Argala (the B-0 block):** L2's 4th and 11th obstructors are swapped against the BPHS worked example (the flag differs on 7 of 9 edges, canonical Lahiri); 47.8% of argala-offset cells are empty-sign 1.0; the node reversal cannot be carried by the sign matrix; L2's malefic set omits the Sun; a provenance string names a PyJHora module that does not exist; `get_argala.ts:64-65` lists the obstruction offsets wrongly.
+- **F-2 Moshier in L1 is wider than the briefs say:** `ga_sade_sati` points at a missing directory by name; the Carr D3 designs compare two calls in one process-global backend; 180 `midpoint` rows still say "from Swiss Ephemeris".
+- **F-3 Gandanta:** four definitions across L0, L1 and L2; two L1 assets disagree on a real chart (Abhinandan Mars 7 rows vs 1).
+- **F-4 `chart_divisionals` build records do not reconcile:** the last build records say 38,620 rows for Abhinandan and the third chart; each holds 23,542 (15,078 fewer, 39%); the canonical chart is consistent (24,400 vs 24,392). The briefs tested "intact" against the build records. The live counts sum to `reltuples` exactly. Unexplained; the S-L1 fingerprint should settle it.
+- **F-5 Daridra cancellation order effect shown in data** (third chart uncancelled while stored dhana firings would cancel it; rows written 15 seconds before the firings).
+- **F-6 The 4,816-row ownership gap is `ga_structural`'s own 12 categories; the 420-row "overlap" is `ga_strength`'s predicate over-claiming `bhava_bala_*`; `ga_strength` stores no `two_pass_verified` at all** (the brief's CF-19 reading of it does not hold on stored data); the `single_pass` alias is on 10,836 rows, not 437.
+- **F-7 `ga_condition` composite fallback:** `varga_dignity_composite` NULL and `varga_fallback_used = true` on all 90 rows of two charts, with no RLS explanation.
+- **F-8 `ga_dashas` for the third chart is `incomplete`** (505,348 rows) in `asset_throughput`; the latest `ga_positions` run (2026-09-19) aborted with no error text.
+- **F-9 `ga_yoga` keeps one generation;** the proposed two-build comparison cannot be made from the table; the floor 63 is a cross-chart minimum for a per-chart count; `chart_divisionals.id` is a fresh uuid per insert, so a D9 lineage by row id would not survive a rebuild.
+- **F-10 `get_transit_anchors.ts` already resolves lineage at serve time (F-D25);** the brief says the table has none and proposes a column; both are true, the column makes it stored.
+- **F-11 `ga_ayurdaya` serves unreduced longevity totals (98.75, 99.19 years for the native)** with only a `harana_status` note; the Ethical Framework bears on how that is shown.
+- **F-12 `ga_prashna` is not empty:** 5 `ga_prashna_lagna` rows and 2 `prashna_charts` exist for two cast question-moment charts; only the natal-chart build is empty by design.
+
+## What I could not verify
+
+- **Not re-run by me:** the ephemeris reproduction (A-3 rests on the investigation of PR #2840, read at its branch; I did not re-compute Moshier against `.se1`); the L2 CF-20 ruling status; the `chart_snapshot` canary (the coordinator's statement).
+- **Not checked emitter by emitter:** whether each of the 6,970 positive-tolerance `ga_sensitive` rows ran a real second path (Q-L1-03); readers of `dosha_label` bhanga fields (Q-L1-02); the grain of `mv_chart_vargas_summary` after a wider key (Q-L1-01); whether `ka_yojaka` consumes `net_argala_per_varga` values (B-0).
+- **Counts that need a rebuild, not a read:** the post-F-A2 row count (+250 per chart is arithmetic from the D30 table shape), the Daridra flip on the third chart (an inference from the rule and the stored firings), the flag changes in the L2 argala edges (a reproduction of L2's rule over stored L1 signs, not a `bo_karanajala` run), the Moon boundary margins outside Lahiri and the finer divisional charts.
+- **Unfound corpus passages (`unsourced`):** Yogi / Avayogi Sphuta (93°20'); the fire-side Gandanta width in degrees; 0°48'; the Sarvartha Chintamani and L0 "BPHS Ch. 9" Gandanta pointers; the astangata harana wording; Mayamata; every threshold and the argala 1.0 / 0.25 score. Every passage I did find is OCR text read by me and not checked against print: `sourced_ocr_unverified`; nothing in this sheet is `sourced`.
+- **Unexplained, flagged:** the 15,078-row build-record gap (F-4); the `ga_dashas` `incomplete` state on the third chart; the 2026-09-19 `ga_positions` abort; the cause of the `ga_condition` fallback (X2); the 146-row residue in the `ga_structural` count reconciliation.
+- **Process note.** Rebuild effects assume SS's sequence (one S-L1 after G-EPH and G-FLIP, one S-L2); I have not read the rebuild plan or the flip report. The migration number for the key widening and the ownership rows is not allocated here (1219 is SS's for the argala ownership row only).
+
+## Appendix · read-only evidence queries (as `suvarna_reader`, 2026-10-01 to 2026-10-02)
+
+Run through a wrapper script that sources the credential file silently and runs `psql`; no credential is shown. All are `SELECT`.
 
 ```sql
--- tier, counts, ownership of the three L1 argala families
-select fact_category, verification_pass_status, count(*) from chart_facts
- where chart_id='482012f1-710e-4a25-994a-93821f5871aa'
-   and fact_category in ('argala_natal_matrix','virodha_argala_natal_matrix','net_argala_per_varga') group by 1,2;
-select fact_category, owning_asset_id from fact_category_ownership
- where fact_category in ('argala_natal_matrix','virodha_argala_natal_matrix','net_argala_per_varga');
--- L2 edges (class, cancelled, citation, constituent ids)
-select ayanamsha_id, relationship_class, count(*), count(*) filter (where cancelled_flag)
-  from bodha_cgm_edges where chart_id='482012f1-710e-4a25-994a-93821f5871aa'
-   and relationship_class in ('argala_positive','argala_virodha') group by 1,2;
-select citation_ref, verification_pass_status, count(*) from bodha_cgm_edges
- where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and relationship_class in ('argala_positive','argala_virodha') group by 1,2;
-select count(*), count(*) filter (where constituent_fact_ids_array is null or cardinality(constituent_fact_ids_array)=0)
-  from bodha_cgm_edges where chart_id='482012f1-710e-4a25-994a-93821f5871aa'
-   and relationship_class in ('argala_positive','argala_virodha');
--- AR-3: argala-offset cells with an empty source sign, all divisional charts x ayanamshas
---   occupants per (ayanamsha, varga, sign_number) from chart_divisionals(varga_position, sign) for the 9 grahas,
---   left-joined to argala_natal_matrix cells (offset parsed from fact_key 'from_sign_<s>_offset_<o>');
---   cells with offset in (2,4,5,11) and no occupant = 3,444 of 7,200, all scored 1.0
--- AR-1/AR-2/AR-6: graha signs, canonical, from chart_facts(graha_position, sign) for
---   SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN; offsets computed as ((src - tgt) % 12) + 1;
---   L2 rule reproduced (9 malefic edges, 2 cancelled, Lahiri) before the BPHS pairing was applied
--- blast radius: recursive closure over asset_registry.depends_on (is_active) from ga_structural and bo_karanajala
--- corpus: classical_text_chunks, text_id in (bphs, bphs_jaimini), pattern search on 'Argala' and 'malefic'
+-- A-2: RLS state, counts, index
+select relname, relrowsecurity, relforcerowsecurity, reltuples::bigint from pg_class where relname='chart_divisionals';
+select chart_id, count(*) from chart_divisionals group by 1;
+select indexdef from pg_indexes where tablename='chart_divisionals' and indexdef ilike '%unique%';
+select asset_id, target_floor, integrity_check_sql from asset_registry where asset_id='ga_vargas';
+-- Q-L1-01: D30 collapse
+select fact_category, count(*), count(distinct fact_subject), count(distinct (graha, varga))
+  from chart_divisionals where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and ayanamsha_id='lahiri_chitrapaksha'
+   and fact_category in ('varga_d30_lord_per_amsa','varga_ashtakavarga') group by 1;
+-- A-4 / X1: the two Gandanta readings, all charts
+select chart_id, fact_category, fact_key, fact_value_text, count(*) from chart_facts
+ where (fact_category='graha_gandanta' and fact_key='is_gandanta') or (fact_category='sensitive_degree_check' and fact_key='gandanta') group by 1,2,3,4;
+select canonical_id, formation_rule_jsonb::text from brahma_dosha_catalog where canonical_id='gandanta_dosha';
+-- A-3: margins (graha_position.longitude_sidereal, Lahiri; distance to nearest sign, nakshatra, pada boundary, arcsec)
+-- A-3: transitive dependents of ga_positions / ga_vargas / ga_dashas / ga_sensitive / ga_condition (recursive over asset_registry.depends_on, is_active)
+-- A-5: RAH_MEAN / KET_MEAN subjects; no subject ilike '%true%'
+-- Q-L1-02: registry depends_on; Daridra rows and firings
+select chart_id, ayanamsha_id, fact_value_jsonb->>'fires', fact_value_jsonb->>'bhanga_active', fact_value_jsonb->>'bhanga_rule_fired'
+  from chart_facts where fact_category='dosha_label' and fact_subject='daridra';
+select chart_id, ayanamsha_id, yoga_canonical_id, constituent_planets from ga_yoga_firings where yoga_canonical_id ilike '%dhana%';
+-- Q-L1-03: tier census by producer (canonical chart; producer = the live count_sql predicate of each asset)
+select engine_version, verification_pass_status, count(*) from chart_facts where chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1,2;
+select fact_category, count(*) from chart_facts where chart_id='482012f1-710e-4a25-994a-93821f5871aa'
+   and verification_pass_status='two_pass_verified' and tolerance_arcsec=0 group by 1;   -- restricted to the ga_sensitive predicate
+select fact_category, formula_id, count(*) from chart_facts where chart_id='482012f1-710e-4a25-994a-93821f5871aa' and formula_id is not null group by 1,2;
+-- Q-L1-04: ownership
+select owning_asset_id, count(*) from fact_category_ownership group by 1;
+select count(*), count(*) filter (where f.fact_category is null) from chart_facts c left join fact_category_ownership f using (fact_category) where c.chart_id='482012f1-710e-4a25-994a-93821f5871aa';
+-- Q-L1-07: ga_positions runs
+select a.state, r.created_at from build_run_assets a join build_runs r on r.id=a.run_id where a.asset_id='ga_positions' order by r.created_at desc limit 8;
+-- Q-L1-11: ga_yoga_firings per chart / ayanamsha, builds
+select chart_id, ayanamsha_id, count(*), count(distinct build_id) from ga_yoga_firings group by 1,2;
+-- Q-L1-12: prashna tables
+select (select count(*) from ga_prashna_lagna), (select count(*) from ga_prashna_judgment), (select count(*) from prashna_charts);
+-- Q-L1-14: tajaka windows
+select chart_id, count(*), min(varsha_year), max(varsha_year) from l1_tajik_varsha_year_lords group by 1;
+-- Q-L1-15 / X2: composite
+select chart_id, count(avastha_lajjitaadi), count(avastha_sayanadi), count(speed_degrees_per_day), count(graha_yuddha_result), count(varga_dignity_composite) from ga_condition_composite group by 1;
+select chart_id, condition_score_breakdown->>'varga_fallback_used', count(*) from ga_condition_composite group by 1,2;
+-- Q-L1-16: score bands
+select chart_id, count(*) filter (where condition_score<0.4), count(*) filter (where condition_score between 0.4 and 0.6),
+       count(*) filter (where condition_score>0.6 and condition_score<0.7), count(*) filter (where condition_score>=0.7) from ga_condition_composite group by 1;
+-- corpus (all citations): classical_text_chunks(text_id, chunk_id, content_en) searched with ~* patterns
 ```
