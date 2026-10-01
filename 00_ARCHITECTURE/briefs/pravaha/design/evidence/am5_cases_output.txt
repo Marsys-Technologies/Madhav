@@ -1,24 +1,35 @@
-baseline: []
-C1 W2 as written: [('marriage', 'committed_set_mismatch', ('p5a', '1.0'), ['b817eebc-627b-84c1-9d96-7371de7e0430', 'cfd4db84-9845-81fa-a678-2298e35628c8'])]
-C1b included pin with empty commitment: REFUSED AT INSERT -> pin CHECK: included needs >=1 committed ob_id
-C2 absent pin: [('marriage', 'registry_unaccounted_path', ('p5a', '1.0'))]
-C3 false computed_empty: [('marriage', 'verification_missing_or_mismatch', '')]
-C3b no verification row: [('marriage', 'verification_missing_or_mismatch', '')]
-C5 genuine computed_empty, verifier agrees: []
-C4 obligation without intervals: [('marriage', 'obligation_uncovered', 'cfd4db84')]
-C7 uncommitted obligation: REFUSED AT INSERT -> obligation ob_id not in pin.committed_ob_ids
-C8a interval bound to different input_digest: REFUSED AT INSERT -> interval FK (chart,gen,input_digest) -> snapshot/inventory
-C8b second snapshot in same generation: REFUSED AT INSERT -> PK(chart,generation): one snapshot per generation
-C9 L1 drift before seal: [('*', 'input_snapshot_drift', 'l1')]
-C9b manifest input vector changed: [('*', 'input_vector_mismatch', '')]
-C11 overlapping interval: REFUSED AT INSERT -> overlap trigger
-C12 interval outside horizon: REFUSED AT INSERT -> interval outside horizon / not [lo,hi)
-C14 missing_inputs interval: [('marriage', 'obligation_uncovered', 'b817eebc'), ('marriage', 'missing_inputs_present', 'b817eebc')]
-C15 same targets/paths/convention, different L1: input digests differ: 800d572c7db3 791096106058
-   inventory_digest: d952163615c9bca8 vs 893619b785daf5df
-C16 initial seal violations: []
-   registry advance, FIRST-seal predicate (what v0.4 trigger would apply to a replay): [('marriage', 'registry_unaccounted_path', ('p7', '1.0'))]
-   replay branch (already sealed -> integrity only): []
+PASS baseline seals clean -> []
+PASS C1 Codex W2 as written -> ['committed_set_mismatch']
+PASS C1b included pin, empty commitment -> ('REFUSED', 'pin CHECK: included needs >=1 committed ob_id')
+PASS C2 absent pin for sealed registry path -> ['registry_unaccounted_path']
+PASS C3 false computed_empty (verifier derives non-empty) -> ['verification_missing_or_mismatch']
+PASS C3b no verification row -> ['verification_missing_or_mismatch']
+PASS C3c smaller committed AND stored set -> ['verification_missing_or_mismatch']
+PASS C4 obligation without intervals -> ['obligation_uncovered']
+PASS C5 genuine computed_empty, verifier agrees -> []
+PASS C7 uncommitted obligation -> ('REFUSED', 'obligation ob_id not in pin.committed_ob_ids')
+PASS C8a interval with different input_digest -> ('REFUSED', 'interval FK (chart,gen,input_digest) -> snapshot/inventory')
+PASS C8b second snapshot, same generation -> ('REFUSED', 'PK(chart,generation): one snapshot per generation')
+PASS C9 L1 drift before seal -> ['input_snapshot_drift']
+PASS C9b manifest vector changed -> ['input_vector_mismatch']
+PASS C11 overlapping interval -> ('REFUSED', 'overlap trigger')
+PASS C12 interval outside horizon -> ('REFUSED', 'interval outside horizon / not [lo,hi)')
+PASS C14 missing_inputs interval -> ['missing_inputs_present', 'obligation_uncovered']
+PASS C15 changed L1 -> different input and inventory digests -> True
+PASS C16.1 initial seal -> sealed
+PASS C16.2 identical replay -> replay_noop
+PASS C16.3 registry advance, replay again (no registry accounting) -> replay_noop
+PASS C16.4 replay with a different manifest_id -> ('REFUSED', 'replay: manifest_id differs from the existing seal')
+PASS C16.5 post-seal mutation (new interval) -> ('REFUSED', 'post-seal mutation refused (generation sealed)')
+PASS C16.6 FIRST seal after registry advance is refused -> ('REFUSED', "[('marriage', 'registry_unaccounted_path', ('p7', '1.0'))]")
+PASS M1 changing basis changes inventory_digest -> True
+PASS M2 changing ruling_ref changes inventory_digest -> True
+PASS M3 changing exclusion reason changes inventory_digest -> True
+PASS M4 basis edited after verification -> seal refuses -> ['verification_missing_or_mismatch']
+PASS M5 writer under-declares (non-degrading) what verifier derives as degrading -> ['verification_missing_or_mismatch']
+PASS M6a degrading exclusion without ruling_ref refused (for that reason) -> ('REFUSED', 'pin CHECK: ruling_ref iff degrading reason')
+PASS M6b basis outside the closed grammar refused -> ('REFUSED', 'pin CHECK: basis grammar (spec:<artifact>@<ver>#<anchor> | ruling:<id>')
+PASS M6c ruling_ref on a non-degrading reason refused -> ('REFUSED', 'pin CHECK: ruling_ref iff degrading reason')
 ---- INPUT PREIMAGE
 av_declarations=1157:lahiri_av_v1:f6493ca574a3
 convention_id=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
@@ -30,11 +41,11 @@ input_digest=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 convention=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
 horizon=[2025-01-01T00:00:00Z,2025-03-01T00:00:00Z)
 input=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
-pin=p1|1.0|included||60b22060-4b9c-892b-9d19-f05eb3b2f70b,b08c2264-6ddc-8323-8476-8d8fcb71c463
-pin=p6|1.0|excluded|on_demand_tier|
+pin=p1|1.0|included||||60b22060-4b9c-892b-9d19-f05eb3b2f70b,b08c2264-6ddc-8323-8476-8d8fcb71c463
+pin=p6|1.0|excluded|on_demand_tier||spec:GOCHARA_DESIGN_SPECS@1.4#§2.2/P6|
 ob=marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self
 ob=marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self
-inventory_digest=494d59f3dbeba2e8424ec65b34e5fe9e370e9b687ad5e3a7d4e251ee7d174146
+inventory_digest=fb278bb92edce1505d649c6aabab96a01f65622fd00e6437a3a33c30836d07db
 ---- LEDGER PREIMAGE H1
 60b22060-4b9c-892b-9d19-f05eb3b2f70b|2025-02-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 b08c2264-6ddc-8323-8476-8d8fcb71c463|2025-01-01T00:00:00Z|2025-02-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
@@ -43,3 +54,5 @@ ledger_digest=ddbd5a44d0745682d402b5c1118439e9f4fca95b90bf4676984e818e6bc5bd82
 60b22060-4b9c-892b-9d19-f05eb3b2f70b|2025-01-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 b08c2264-6ddc-8323-8476-8d8fcb71c463|2025-01-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 ledger_digest=62c4224ee2a0eb23416769c3aa8cc3ccab4a6452bedb09f893d0368df6d2f1a7
+
+ALL ASSERTIONS PASS

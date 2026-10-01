@@ -29,6 +29,10 @@ supersedes: "v1.2 — whose exhibits (draft v0.3) returned ASTRA_REVIEW_A5_5_SPE
    predicates only* (Codex v1.4 listed its limits: no real partition/manifest
    fidelity, no seal lifecycle, no independent derivation); it is **not**
    acceptance evidence for the SQL, which F-1 owes on a disposable Postgres.
+   *Addendum (after round 5):* draft **v0.6** adds AM-10 and closes F-2's spec
+   text (exclusion `basis`/`ruling_ref`/`reason` inside the verified preimage,
+   new W1 vector `fb278bb9…07db`, model mutation cases M1–M6); v0.6 has not been
+   reviewed.
 2. **PR #2817** — migration 1204 + preflight + protected-window wiring + tests;
    rebased on `main`, head `b9d5d2718`, CI green; **HOLD** for the steward's
    protected window. Independently ACCEPTED in rounds 3, 4 and 5 as a

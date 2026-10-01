@@ -1,10 +1,10 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.5
-status: ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
+version: 0.6
+status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
-supersedes: v0.4 (454881c71) — AM-5 completeness reworked (committed obligation sets + proven-empty disposition, immutable search-input snapshot bound to every interval, independent pre-seal verification, seal-replay branch, complete W1 preimages, adversarial-case matrix with an executable model); AM-2 example A repaired. v0.4 itself superseded v0.3 (340f5a7d9) — AM-2 corrected to SQL-valid 'span:' bytes and 1153's enrichment-vs-correction model; AM-5 completed with an obligation inventory, manifest binding, seal integration and the chart→global-SHARED protocol; the five v1.2 P2s listed as named gate follow-ups
+supersedes: v0.5 (5626290c6, ACCEPTED at pre-gate; v0.6 = AM-10 + F-2 exclusion-evidence binding + header/follow-up renumbering F-1..F-6). v0.5 itself superseded v0.4 (454881c71) — AM-5 completeness reworked (committed obligation sets + proven-empty disposition, immutable search-input snapshot bound to every interval, independent pre-seal verification, seal-replay branch, complete W1 preimages, adversarial-case matrix with an executable model); AM-2 example A repaired. v0.4 itself superseded v0.3 (340f5a7d9) — AM-2 corrected to SQL-valid 'span:' bytes and 1153's enrichment-vs-correction model; AM-5 completed with an obligation inventory, manifest binding, seal integration and the chart→global-SHARED protocol; the five v1.2 P2s listed as named gate follow-ups
 sources: >
   ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_3 (Codex gpt-6-astra, REJECT on AM-5; AM-2
   CLOSED, example repair; five ranked items); steward revision order
@@ -19,7 +19,7 @@ sources: >
   stream-B reports M20261001T172813-94e5, M20261001T180938-eac8.
 ---
 
-# GOCHARA_DESIGN_SPECS v1.5 — AMENDMENT LIST (draft v0.5)
+# GOCHARA_DESIGN_SPECS v1.5 — AMENDMENT LIST (draft v0.6)
 
 Revision disposition against ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_3 (round 5).
 Per the steward's order only **AM-5 completeness** is reworked, plus three
@@ -563,6 +563,25 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 > | `on_demand_tier` (P6 testimony; never admits a window) | no |
 > | `disabled_form` / `inputs_unavailable` / `tier_withheld_by_ruling` (each requires `ruling_ref`) | **yes** |
 >
+> **Exclusion and `computed_empty` evidence is structured, derivable and
+> verified (F-2).** `basis` is a **closed-grammar reference**, never prose:
+> `spec:<artifact>@<version>#<anchor>` | `ruling:<id>` | `oracle:<id>`
+> (regex `^(spec:[A-Za-z0-9_.-]+@[0-9][0-9A-Za-z.]*#[^|\n%]+|ruling:[A-Za-z0-9._-]+|oracle:[A-Za-z0-9._-]+)$`
+> — it can contain no `|`, newline or `%`, so the preimage needs no escaping).
+> It is **required** on `excluded` and `computed_empty` pins and **absent** on
+> `included` pins. `ruling_ref` (`^[A-Za-z0-9._-]+$`) is **present iff** the
+> reason is one of the three degrading reasons (`disabled_form`,
+> `inputs_unavailable`, `tier_withheld_by_ruling`) and absent otherwise; `reason`,
+> `ruling_ref` and `basis` apply only to `excluded` (basis also to
+> `computed_empty`). All three are inserted into the pin row's CHECKs and into
+> the pinned `inventory_digest` preimage, so the independent verifier — which
+> derives each path's disposition, reason, ruling and basis from **its own**
+> applicability table and ruling registry, not from the writer's rows — must
+> reproduce them byte-for-byte or the digests differ and the seal refuses
+> (`verification_missing_or_mismatch`). Free-text commentary may live in a
+> non-authoritative `note` column that is **excluded** from every digest and
+> never read by serving.
+>
 > **Absent obligations vs a proven empty set are therefore different rows:**
 > "never inserted" is `committed_ob_ids ≠ stored obligations` (a seal
 > violation, below); "proven empty" is the explicit `computed_empty` disposition,
@@ -591,8 +610,8 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 >
 > **`inventory_digest` preimage (pinned; sorted within sections, `\n`-joined):**
 > `convention=<id>` · `horizon=[<lo>,<hi>)` (UTC, `Z`) · `input=<input_digest>` ·
-> one `pin=<path>|<rule_version>|<disposition>|<reason>|<committed ids, comma-joined>`
-> per pin · one `ob=<canonical bytes>` per stored obligation.
+> one `pin=<path>|<rule_version>|<disposition>|<reason>|<ruling_ref>|<basis>|<committed ids, comma-joined>`
+> per pin (absent fields rendered empty; **`reason`, `ruling_ref` and `basis` are inside the verified preimage**, v1.4 F-2) · one `ob=<canonical bytes>` per stored obligation.
 > `ledger_digest` preimage: `<ob_id>|<lower>|<upper>|<state>|<input_digest>` rows,
 > sorted. `inventories_digest` = sha256 over sorted
 > `(event_class, inventory_digest, ledger_digest)` triples.
@@ -692,7 +711,7 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 **Adversarial cases** (every "can never be read as complete" claim, the concrete
 row set that would break it, and the guard that stops it). Cases below were
 executed against a scratch executable model of the stated predicates —
-`design/evidence/am5_model.py`, `am5_cases.py`, output `am5_cases_output.txt`
+`design/evidence/am5_model.py`, `am5_cases.py` (32 self-asserting cases; exit status non-zero on any failure), output `am5_cases_output.txt`
 (**not Postgres; it checks the logic of the specified predicates, not the SQL**).
 Cases marked "not modelled" are by inspection of the predicate; every other refusal appears under its stated guard:
 
@@ -716,7 +735,13 @@ Cases marked "not modelled" are by inspection of the predicate; every other refu
 | C14 | A `missing_inputs` interval | `obligation_uncovered` + `missing_inputs_present` | **REFUSED** |
 | C15 | Same targets/paths/convention, different L1 snapshot: does the completion identity survive? | `input_digest` ∈ both digests | **No**: input digests `800d572c…` vs `79109610…`; inventory digests `d9521636…` vs `893619b7…` |
 | C16 | Seal replay after registry advance (initial seal → identical replay → registry advance → replay again) | replay branch (item 5) | initial: pass; replay: no-op; after P7 sealed: **replay passes**, while a **first** seal under the same state is refused (`registry_unaccounted_path` P7); different `manifest_id` on replay → raise (specified; not modelled) |
-| C17 | Exclusion falsely declared `not_applicable_to_class` | verifier re-derivation (same mechanism as C3) | REFUSED if the verifier derives the path as applicable; **otherwise the named residual** |
+| C17 | Exclusion falsely declared `not_applicable_to_class` | verifier re-derivation (same mechanism as C3/M5; `basis`/`ruling_ref`/`reason` are in the preimage) | REFUSED if the verifier derives the path as applicable; **otherwise the named residual** |
+| M1 | A pin's `basis` changed (e.g. P6's on-demand basis swapped for another anchor) | `basis` ∈ preimage → `inventory_digest` changes | digest differs (executed) |
+| M2 | A pin's `ruling_ref` changed | `ruling_ref` ∈ preimage | digest differs (executed) |
+| M3 | An exclusion `reason` swapped (non-degrading ↔ degrading) | `reason` ∈ preimage | digest differs (executed) |
+| M4 | The writer edits an exclusion's basis **after** verification | stored digest/verification mismatch → `verification_missing_or_mismatch` | **REFUSED** (executed) |
+| M5 | The writer declares a non-degrading exclusion where the verifier derives a degrading one (hiding a reduced scope) | verifier digest ≠ stored → `verification_missing_or_mismatch` | **REFUSED** (executed) |
+| M6 | (a) degrading exclusion with no `ruling_ref`; (b) `basis` outside the closed grammar (prose); (c) `ruling_ref` on a non-degrading reason | pin CHECKs (basis grammar; ruling_ref iff degrading) | refused at insert (executed; each asserted for its own reason) |
 
 **Worked example W1 — the reviewer's within-path case, with the COMPLETE
 preimages (illustrative synthetic tokens and input components — not doctrine,
@@ -735,12 +760,12 @@ dasha_digest=a244291a2514cca194fa335fa2aac9fa9e2661be5959866518fe55dba423d448
 input_generation_vector={"bg_transit_av_gates":"d2","bg_transit_rules":"d1"}
 l1_facts_digest=f1bd785eb72ddd67c93664e53d18eb8434e38297ebc37017fde64372b3f5cd11
 
--- inventory preimage -> inventory_digest = 494d59f3dbeba2e8424ec65b34e5fe9e370e9b687ad5e3a7d4e251ee7d174146
+-- inventory preimage -> inventory_digest = fb278bb92edce1505d649c6aabab96a01f65622fd00e6437a3a33c30836d07db
 convention=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
 horizon=[2025-01-01T00:00:00Z,2025-03-01T00:00:00Z)
 input=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
-pin=p1|1.0|included||60b22060-4b9c-892b-9d19-f05eb3b2f70b,b08c2264-6ddc-8323-8476-8d8fcb71c463
-pin=p6|1.0|excluded|on_demand_tier|
+pin=p1|1.0|included||||60b22060-4b9c-892b-9d19-f05eb3b2f70b,b08c2264-6ddc-8323-8476-8d8fcb71c463
+pin=p6|1.0|excluded|on_demand_tier||spec:GOCHARA_DESIGN_SPECS@1.4#§2.2/P6|
 ob=marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self
 ob=marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self
 ```
@@ -1097,7 +1122,7 @@ F-3→F-1, (new)→F-2, F-4→F-3, F-5→F-4, F-6→F-5, F-7→F-6. Owner **A** 
 | ID | Codex rank | Required completion | Owner | Blocks |
 |---|---:|---|---|---|
 | F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 4 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again) | **B** drafts the migration + DB tests (per steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
-| F-2 | 2 | Bind exclusion `basis` / `ruling_ref` into the verified inventory preimage (or an explicit separate comparison); mutation tests; revised digest vectors (W1 and the model) | **B** | AM-5 verification acceptance |
+| F-2 | 2 | Bind exclusion `basis` / `ruling_ref` into the verified inventory preimage; mutation tests; revised digest vectors. **Spec text, vectors and model mutation cases M1–M6 CLOSED in v0.6 (not yet reviewed)**; remaining: the same mutations as real INSERT/seal attempts in F-1's database suite | **B** | AM-5 verification acceptance |
 | F-3 | 3 | Canonical bytes and storage-domain mapping (the synthetic `self` token vs stored `affected_person='native'`; period-lord role tokens → concrete grahas via the pinned dasha snapshot; frame args, target bytes, timestamp precision, delimiters); full-precision formatter / quantization question; declared class census (an absent class reports `not_searched`); registry-version selection (historical/superseded versions neither vanish nor double-count); candidate replacement/invalidation across verification rows, manifest bindings and derived outputs; qualified-geometry planning and O-RW-1 invalidation; retain O-RX-1a | **B** (bytes/spec) + **A** (identity builder, writer) | A5.5 identity and writer gate |
 | F-4 | 4 | Typed rūpa/bindu operand storage; declaration-key bytes and L1 build/convention identity; P5a/P5b path ids and applicability storage; `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), **not** the membership (draft text at AM-6 still says membership — one-line correction owed); edition/translator for Phaladīpikā IV.22–23 | **B** (AM-6/AM-7 text) + **A** (storage) | AM-6/AM-7 writer acceptance |
 | F-5 | 5 | Actual P5 evaluator fixtures: numeric bindu mismatch, BAV/SAV selection, independent P5a/P5b missingness, citation through declaration (not the test-local `consumeDeclaration`); repair the oracle map's stale 1205 reference (line 133) and the B6-F16/F17 sentinels | **A** (PR #2817 fixtures/evaluators) + **B** (oracle map v1.2) | P5/A5.5 acceptance (not vocabulary-only 1204) |
