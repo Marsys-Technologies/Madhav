@@ -3801,9 +3801,9 @@ def _cascade_skip_note(rec_state: str, h: dict | None) -> str:
     if rec_state != "error" or not h:
         return ""
     if h.get("last_state") == "error" and h.get("last_disposition") == "blocked_dependency":
-        return ("; the 'error' is a cascade skip, not this asset's own failure: its latest build_run_assets "
-                f"attempt ({h.get('last_when') or 'undated'}, any chart) is blocked_dependency — an upstream did not "
-                "complete, so the writer never ran")
+        return ("; the throughput 'error' may be a cascade skip, not this asset's own failure: its latest recorded "
+                f"build_run_assets attempt ({h.get('last_when') or 'undated'}, any chart) is blocked_dependency — an "
+                "upstream did not complete, so the writer never ran on that attempt")
     return ""
 
 
