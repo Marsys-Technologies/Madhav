@@ -923,3 +923,41 @@ def test_a_declared_json_path_column_counts_as_declared_for_the_two_way_check():
 def test_a_declared_but_absent_column_still_fails_whatever_is_written():
     got = ac.prose_checks("a", _decl(["ghost"]), _ctx(written={"t": {"citation_human"}}, vocabulary={"citation_human"}))
     assert got["Narr.agree"]["v"] == ac.FAIL
+
+
+# ───────────────────────── review round: F6 (the rollup does not trust the record) ─────────────────────────
+
+def _chk(crit, **rec):
+    cells = ac.rollup_asset("L2", {crit: dict(measured="x", **rec)})
+    gate = ac.CRITERION_REGISTRY[crit]["gate"]
+    return next(c for c in cells[gate]["checks"] if c["criterion"] == crit), cells[gate]
+
+
+@pytest.mark.parametrize("v", [ac.PASS, ac.PARTIAL])
+def test_an_inconclusive_record_rolls_up_no_detector_and_carries_the_flag(v):
+    c, cell = _chk("Narr.checkable", v=v, inconclusive=True)
+    assert c["v"] == ac.NO_DET and c["inconclusive"] is True and "INCONCLUSIVE" in c["reason"], c
+    assert cell["v"] == ac.NO_DET
+
+
+def test_an_inconclusive_fail_or_errored_record_is_not_softened():
+    assert _chk("Null.blank_rows", v=ac.FAIL, inconclusive=True)[0]["v"] == ac.FAIL
+    assert _chk("Null.blank_rows", v=ac.ERRORED, inconclusive=True)[0]["v"] == ac.ERRORED
+
+
+def test_a_null_check_never_rolls_up_pass_and_the_null_cell_never_reads_pass():
+    c, _ = _chk("Null.schema_default", v=ac.PASS)
+    assert c["v"] == ac.PARTIAL and "Null" in c["reason"], c
+    ms = {crit: dict(v=ac.PASS, measured="x") for crit, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"}
+    assert ac.rollup_asset("L2", ms)["Null"]["v"] == ac.PARTIAL
+
+
+def test_a_fidelity_pass_record_is_capped_at_partial_in_the_rollup():
+    assert _chk("Narr.fidelity_test", v=ac.PASS)[0]["v"] == ac.PARTIAL
+    ms = {crit: dict(v=ac.PASS, measured="x") for crit, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Narr"}
+    assert ac.rollup_asset("L2", ms)["Narr"]["v"] == ac.PARTIAL
+
+
+def test_a_plain_measured_record_has_no_inconclusive_key():
+    c, _ = _chk("Narr.agree", v=ac.PASS)
+    assert c["v"] == ac.PASS and "inconclusive" not in c

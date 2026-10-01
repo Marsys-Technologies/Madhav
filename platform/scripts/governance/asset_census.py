@@ -400,7 +400,17 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         if v == PASS and e["detector"] == "NONE":
             return dict(criterion=crit, v=NO_DET, state="MEASURED",
                         reason="detector NONE never reaches PASS")
-        return dict(criterion=crit, v=v, state="MEASURED", reason="measured")
+        # E6 packet (c): the rollup does not trust a record's own verdict where the claim cannot be established
+        # (INCONCLUSIVE is a state: nothing was measured), and the two capped checks cannot read PASS (SS: Null "never
+        # PASS alone"; Narr.fidelity_test structural only)
+        infl = meas.get("inconclusive") is True
+        if infl and v in (PASS, PARTIAL):
+            return dict(criterion=crit, v=NO_DET, state="MEASURED", inconclusive=True,
+                        reason="INCONCLUSIVE record: nothing was established, so it cannot read PASS or PARTIAL")
+        if v == PASS and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
+            return dict(criterion=crit, v=PARTIAL, state="MEASURED",
+                        reason=f"{crit} is capped at PARTIAL (Null: never PASS alone; fidelity_test: structural only)")
+        return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}))
     st = ap["state"]
     if st == "OUT_OF_LAYER":
         return None
