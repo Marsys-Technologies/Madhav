@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "qualify (Q)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06, TI-L0-28]
 ledger_gap_ids: [bg_vidhi_floors-Earn.build_record, bg_vidhi_floors-Cost.baseline, bg_vidhi_floors-Carr.detector, bg_vidhi_floors-Build.history]
 ---
 # bg_vidhi_floors — Vidhi registry — intent floors and floor items (14 + 409 = 423 rows; catalog_status DRAFT)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -68,13 +70,13 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_vidhi_floors-Build.history | Build | history | 1 error 2026-09-04 (`post-write integrity check failed`) and 1 abort; latest run complete; CF-10 \| ledger: measured: latest run complete, but 1 error(s) and 1 abort(s) on record. post-write integrity check failed: integrity_check_sql → False / required: the Build gate's claim |
 | census: Ldgr (no reading) | Ldgr | detector | no recognised citation column on the target table; CF-08 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
-| layer instance §1.1.3 / TG-L0-024 | Build / certification | detector (definition open) | no tier says whether a DRAFT asset can be ELEVATED or what DRAFT blocks; TGH-T3-21 |
+| layer instance §1.1.3 / TG-L0-024 | Build / certification | information (decided: DRAFT blocks certification, SS Q14) | DRAFT blocks certification while DRAFT (SS 2026-10-01); TGH-T3-21 records the missing tier clause |
 
 ## 3 · Disposition
 
 **qualify (Q)** — agreed with the carried Q: DRAFT is the honest authority limit while two floors are unratified; the asset is retained and its limit kept explicit. T4 does not say what DRAFT blocks (TGH-T3-21).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -90,18 +92,18 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02
 
-### FD-2 · Ratification state for the two CANDIDATE floors
+### FD-2 · DRAFT blocks certification; ratification after the milestone review
 
 - **Answers:** registry description; TGH-T3-21; no census cell
-- **Change:** keep the DRAFT status and expose the per-floor state (MANDATORY / CANDIDATE) as data (it is already a writer tag), so a reader can tell a ratified floor from a candidate without reading the description; ratification itself (P-2) is not this brief’s decision.
+- **Change:** decided (SS 2026-10-01, Q14): `catalog_status = DRAFT` blocks certification while DRAFT; SS ratifies the deep-dive floors (`education_deepdive`, `progeny_deepdive`) after the milestone independent review. Keep the DRAFT status and expose the per-floor MANDATORY/CANDIDATE tag as data.
 - **Files / declaration / migration:** none beyond reading the existing tag; a declarations note
 - **Failing-first test and mutation:** a query returns 12 MANDATORY and 2 CANDIDATE floors; mutation: flip a tag → the count moves
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none
 - **Gate it moves:** Null/Earn (a declared authority limit)
-- **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-21
-- **Question for SS:** What does DRAFT block for certification (TGH-T3-21), and who ratifies the two CANDIDATE floors?
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q14): `catalog_status = DRAFT` blocks certification while DRAFT; SS ratifies the deep-dive floors after the milestone independent review.
 
 ### FD-3 · Declare `prose_fields` (Null and Narr gates)
 
@@ -145,6 +147,12 @@ Natural keys `(intent, item_order)` (census, 0 duplicates) for `vidhi_floor_item
 - **Carriage check chosen (T4 §4.1; one only):** D3-equivalent: the existing two-copy parity gate (TS canonical source vs Python seed).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. What does DRAFT block for certification, and who ratifies `education_deepdive` and `progeny_deepdive`?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q14): `catalog_status = DRAFT` blocks certification while DRAFT; SS ratifies the deep-dive floors after the milestone independent review.
+2. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+3. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-28.

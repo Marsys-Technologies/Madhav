@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-01, TI-L0-03, TI-L0-06, TI-L0-28]
 ledger_gap_ids: [bg_vidhi_primitives-Build.completion, bg_vidhi_primitives-Earn.build_record, bg_vidhi_primitives-Cost.baseline, bg_vidhi_primitives-Carr.detector]
 ---
 # bg_vidhi_primitives — Vidhi registry — primitives (60 rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -74,22 +76,21 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — all applicable cells PASS except the changed-rows reading (CF-01) and the detector gaps; the CI parity gate is an existing carriage mechanism.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Build.completion: converged rerun reports 0 changed rows
+### FD-1 · Build.completion: declare the changed-rows convention (CF-01 option A, R)
 
 - **Answers:** census `Build.completion` FAIL ("rows_written=0 against live=…"); CF-01
-- **Change:** apply CF-01 option A (or B after the ruling): `ON CONFLICT DO UPDATE` leaves unchanged rows without a rowcount; the record shows 0 against 60
-- **Files / declaration / migration:** `platform/scripts/governance/asset_census.py` (Build.completion) + the asset’s declarations entry; option B instead edits the seed function’s returned counts
+- **Change:** decided (SS 2026-10-01, Q1, R, PROVISIONAL until the J1 review): declare the changed-rows convention for this writer (`ON CONFLICT DO UPDATE` leaves unchanged rows without a rowcount; the record shows 0 against 60); Build.completion then reads PASS only if the convention is declared AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
+- **Files / declaration / migration:** `asset_declarations.json` entry (convention + writer `file:line`); the verdict rule is `platform/scripts/governance/asset_census.py` (E6 detector work); no writer change
 - **Failing-first test and mutation:** see CF-01
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none (option A, recommended); option B would write a new record by rebuilding this asset (idempotent, no data change)
+- **Rebuild:** none (declaration + detector rule; no rebuild)
 - **Gate it moves:** Build (completion)
-- **Fix class:** detector/tooling (A) or writer code (B); **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording
-- **Question for SS:** CF-01: is a converged-rerun `rows_written = 0` on a declared changed-rows writer a PASS?
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided; the criterion change is provisional until the J1 review)
 
 ### FD-2 · Register the existing CI parity gate as the Carr detector
 
@@ -142,7 +143,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
-- **CF-01** — Build.completion for converged reruns (rows_written = changed rows, not rows present). *This asset:* rows_written = 0 against 60
+- **CF-01** — Build.completion for converged reruns (rows_written = changed rows): option A decided (R). *This asset:* rows_written = 0 against 60
 - **CF-03** — Registry correction batch (one surgical migration + seed literals). *This asset:* seed literal DRAFT vs live CURRENT
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* register the existing CI parity gate
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
@@ -157,3 +158,13 @@ Natural key `primitive_id` (census, 0 duplicates). Fingerprint over `(primitive_
 - **Preserved kernel:** the 60 primitives and their live-tool mappings, as mirrored from the TS registry.
 - **Carriage check chosen (T4 §4.1; one only):** D3-equivalent: the existing two-copy parity gate.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
+
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
+
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. CF-01: ANSWERED by SS 2026-10-01 (Q1): CF-01 option A (R, PROVISIONAL until the J1 review): a converged rerun with `rows_written = 0` reads Build.completion PASS ONLY IF the writer declares the changed-rows convention AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
+2. CF-03: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+
+**Track I items arising (see INDEX section 8):** TI-L0-01, TI-L0-03, TI-L0-06, TI-L0-28.
