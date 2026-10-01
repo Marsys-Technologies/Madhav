@@ -65,6 +65,18 @@ def _configure_swiss_corpus_for_tests() -> None:
 _configure_swiss_corpus_for_tests()
 
 
+def pytest_report_header(config):
+    path = os.environ.get("SE_EPHE_PATH", "").strip()
+    if path:
+        return f"swiss .se1 corpus: SE_EPHE_PATH={path}"
+    return (
+        "swiss .se1 corpus: NOT CONFIGURED -- tests that compute (panchang, PyJHora, L1/L3 "
+        "writers) fail closed with SwissBackendError, by design (no silent Moshier). Set "
+        "MARSYS_TEST_SE1_DIR or SWE_EPHE_PATH to a dir with the three pinned .se1 files "
+        "(sepl_18, semo_18, seas_18; see Dockerfile.pipeline)."
+    )
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _isolate_conductor_halt_log(tmp_path_factory: pytest.TempPathFactory):
     """Redirect every ga_writers `_write_halt_log()` call to a tmp dir.

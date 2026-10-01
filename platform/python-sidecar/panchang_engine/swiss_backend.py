@@ -38,11 +38,26 @@ precondition instead of ambient process state.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import os
+import sys
 from functools import wraps
+from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
 from .swiss_state import serialized_swiss_state
+
+_log = logging.getLogger(__name__)
+
+# SHA-256 pins of the corpus (identical to Dockerfile / Dockerfile.pipeline); used only by
+# the `python -m panchang_engine.swiss_backend` probe below.
+_PINNED_SHA256 = {
+    "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+    "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+    "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
+}
 
 SE_EPHE_PATH_ENV = "SE_EPHE_PATH"
 BACKEND_SWIEPH = "swieph"
@@ -105,7 +120,10 @@ def ensure_swiss_backend() -> SwissBackend:
     if not path:
         raise SwissBackendError(
             f"{SE_EPHE_PATH_ENV} is not set; refusing to run on the implicit "
-            "Moshier fallback (Swiss .se1 files are the canonical ephemeris)"
+            "Moshier fallback (Swiss .se1 files are the canonical ephemeris). "
+            "Point it at a directory holding the three SHA-pinned .se1 files "
+            "(sepl_18, semo_18, seas_18; see Dockerfile.pipeline); in tests set "
+            "MARSYS_TEST_SE1_DIR or SWE_EPHE_PATH to that directory"
         )
     swe.set_ephe_path(path)
     observed = _observed_backend_name(swe)
@@ -159,6 +177,11 @@ def records_swiss_backend(cls):
             result = method(self, ctx, *args, **kwargs)
             note = backend_note()
             result.notes = f"{result.notes}; {note}" if result.notes else note
+            # The orchestrator does not persist WriterResult.notes, so the probed
+            # backend is also LOGGED (INFO, visible in the Cloud Run job logs) -- the
+            # observable trace that a decorated writer ran on swieph.
+            _log.info("%s ephemeris_backend=%s path=%s", getattr(cls, "asset_id", cls.__name__),
+                      BACKEND_SWIEPH, os.environ.get(SE_EPHE_PATH_ENV, ""))
             return result
 
         return guarded
@@ -169,3 +192,32 @@ def records_swiss_backend(cls):
             setattr(cls, name, wrap(method))
     cls.records_swiss_backend = True
     return cls
+
+
+def _probe_main() -> int:
+    """`python -m panchang_engine.swiss_backend`: print one JSON line proving the
+    backend of THIS image/process (read-only; no DB, no network).  Exit 0 only when
+    the backend is swieph AND all three corpus files match their SHA-256 pins."""
+    out: dict[str, Any] = {"se_ephe_path": os.environ.get(SE_EPHE_PATH_ENV, "")}
+    ok = False
+    try:
+        got = ensure_swiss_backend()
+        out["backend"] = got.name
+        files = {}
+        for name, pin in _PINNED_SHA256.items():
+            digest = hashlib.sha256((Path(got.path) / name).read_bytes()).hexdigest()
+            files[name] = {"sha256": digest, "pinned": digest == pin}
+        out["files"] = files
+        ok = all(f["pinned"] for f in files.values())
+    except Exception as exc:  # report, then fail closed via the exit code
+        out["backend"] = None
+        out["error"] = f"{type(exc).__name__}: {exc}"
+    swe = _import_swisseph()
+    out["swisseph_version"] = swe.version
+    out["ok"] = ok
+    print(json.dumps(out, sort_keys=True))
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(_probe_main())

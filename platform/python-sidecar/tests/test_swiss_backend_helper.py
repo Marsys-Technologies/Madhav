@@ -474,6 +474,38 @@ def test_decorator_fails_closed_if_the_backend_drifts_during_the_body(hidden_env
         Drifter().run(object())
 
 
+@needs_corpus
+def test_decorator_logs_the_probed_backend_because_notes_are_not_persisted(hidden_env, caplog):
+    import logging
+
+    @records_swiss_backend
+    class Writer:
+        asset_id = "ga_example"
+
+        def run(self, ctx):
+            return _Result("")
+
+    with caplog.at_level(logging.INFO, logger="panchang_engine.swiss_backend"):
+        Writer().run(object())
+    assert any("ga_example ephemeris_backend=swieph" in r.getMessage() for r in caplog.records)
+
+
+def test_probe_cli_fails_closed_and_reports_when_unconfigured(capsys):
+    assert ss._probe_main() == 1
+    report = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert report["ok"] is False and report["backend"] is None and "SE_EPHE_PATH" in report["error"]
+
+
+@needs_corpus
+def test_probe_cli_reports_swieph_and_the_pinned_digests(monkeypatch, capsys):
+    monkeypatch.setenv("SE_EPHE_PATH", str(_CORPUS))
+    assert ss._probe_main() == 0
+    report = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert report["ok"] is True and report["backend"] == "swieph"
+    assert set(report["files"]) == set(ss._PINNED_SHA256)
+    assert all(f["pinned"] for f in report["files"].values())
+
+
 _DECORATED_ASSETS = {
     "ga_positions", "ga_dashas", "ga_vargas", "ga_strength", "ga_structural",
     "ga_tajaka", "ga_sensitive", "ga_nakshatra", "ga_panchanga", "ga_sade_sati",
