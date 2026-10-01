@@ -176,6 +176,11 @@ def _read(path):
 
 # ───────────────────────── (1) the committed file ─────────────────────────
 
+# E6.6 (declarations 1.6.0): the citation_human sweep (test_e6_1_declarations.py, CITATION_DECISIONS) appended `citation_human` to three of
+# the audited MSR declarations, whose writers compose it from a computed placement; the audited columns above are unchanged
+_CITATION_EXT = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
+
+
 def test_the_thirteen_are_exactly_the_audited_set_and_none_keeps_the_ddl_marker():
     from_test = {"bo_anveshana", "bo_arudha", "bo_laksana", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana",
                  "bo_vargottama_dhana", "mi_bhavisya", "mi_darshana", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana"}
@@ -188,7 +193,7 @@ def test_the_thirteen_are_exactly_the_audited_set_and_none_keeps_the_ddl_marker(
 @pytest.mark.parametrize("asset", sorted(KEPT))
 def test_kept_declaration_lists_exactly_the_audited_columns_and_cites_writer_code(asset):
     e = _decl()[asset]
-    assert e["prose_fields"] == KEPT[asset]["cols"], asset
+    assert e["prose_fields"] == KEPT[asset]["cols"] + _CITATION_EXT.get(asset, []), asset
     ev = e["evidence"]["prose_fields"]
     assert ac.EVIDENCE_PATH_LINE_RE.search(ev)
     assert not re.search(r"TEXT in DDL", ev), "the DDL wording must not be the evidence any more"

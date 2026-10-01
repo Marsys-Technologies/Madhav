@@ -482,10 +482,13 @@ _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_constructio
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
-# a JSONB column, `column.$.key(.key)*` (keys are plain identifiers: no indexes, wildcards or quoting). Used with fullmatch.
+# a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
+# of the array at that key; grammar 1.6.0). No index numbers, no `[*][*]`, no `[*]` on the column itself, no quoting.
+# Used with fullmatch.
 PROSE_IDENT_MAX = 128          # a column name / JSON key longer than this is not an identifier anyone declared on purpose
 _PROSE_COLUMN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_PROSE_PATH_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.\$((?:\.[A-Za-z_][A-Za-z0-9_]*)+)")
+_PROSE_PATH_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.\$((?:\.[A-Za-z_][A-Za-z0-9_]*(?:\[\*\])?)+)")
+PROSE_WILDCARD = "[*]"         # the path-tuple token for an array-element segment (not a valid identifier: no key collides)
 # evidence.prose_fields must cite writer code as `path.ext:LINE` (py/ts/tsx; never .sql, never a test path) and carries
 # `evidence_kind: "writer"`; a declaration that cites the column's DDL migration instead is marked `evidence_kind: "ddl"` (it then
 # needs a `NNN_name.sql` token, no line). An unmarked (null) kind gets the same cite checks as "writer".
@@ -525,8 +528,10 @@ class DeclarationsError(ValueError):
 def parse_prose_field(entry):
     """One `prose_fields` entry -> (column, path): `"narrative"` -> ("narrative", None);
     `"narrative.$.headline"` -> ("narrative", ("headline",)) (the JSON path of a composed string inside a JSONB column,
-    which is what a Narr detector reads). Raises DeclarationsError on anything else (a blank, a non-string, a table
-    prefix, `col.$` with no key, an index or wildcard, a column that does not look like a column name)."""
+    which is what a Narr detector reads); `"d.$.a[*].b"` -> ("d", ("a", "[*]", "b")) (`[*]` = every element of the array
+    at `a`, carried as the token "[*]"). Raises DeclarationsError on anything else (a blank, a non-string, a table
+    prefix, `col.$` with no key, an index number, `[*][*]`, `[*]` on the column itself, a column that does not look like
+    a column name)."""
     if isinstance(entry, str):
         if _PROSE_COLUMN_RE.fullmatch(entry):
             if len(entry) <= PROSE_IDENT_MAX:
@@ -534,11 +539,17 @@ def parse_prose_field(entry):
         else:
             m = _PROSE_PATH_RE.fullmatch(entry)
             if m:
-                path = tuple(m.group(2).split(".")[1:])
+                path = []
+                for seg in m.group(2).split(".")[1:]:
+                    wild = seg.endswith(PROSE_WILDCARD)
+                    path.append(seg[:-len(PROSE_WILDCARD)] if wild else seg)
+                    if wild:
+                        path.append(PROSE_WILDCARD)
+                path = tuple(path)
                 if len(m.group(1)) <= PROSE_IDENT_MAX and all(len(k) <= PROSE_IDENT_MAX for k in path):
                     return m.group(1), path
     raise DeclarationsError(f"prose_fields entry {entry!r} must be a column name or 'column.$.key(.key)*' "
-                            f"(a JSON path into a JSONB column; keys are plain identifiers)")
+                            f"(a JSON path into a JSONB column; keys are plain identifiers, each optionally followed by one [*])")
 
 
 def _registry_id_set(registry_ids):
