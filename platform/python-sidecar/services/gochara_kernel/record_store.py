@@ -855,6 +855,7 @@ def write_class_coverage(
     kala_convention_id: str,
     build_id: str,
     arc_index_available: bool = False,
+    inventory_facts: dict | None = None,
 ) -> None:
     """The `coverage:<event_class>` substep: ONE class-level event_class
     coverage partition (the frozen F7 key convention), written before any
@@ -919,6 +920,19 @@ def write_class_coverage(
     searched = (len(residence if position_at is not None else [])
                 + (len(point) if point_solved else 0) + len(natal))
     total = len(class_edges)
+    if inventory_facts is not None:
+        # AM-5: the partition is only the guard-facing SUMMARY of the stored inventory —
+        # its horizon IS the inventory horizon and its relations_searched are EXACTLY the
+        # obligations' distinct relations (`partition_overclaims` is a seal violation).
+        horizon = inventory_facts["horizon"]
+        relations_searched = list(inventory_facts["relations"])
+        total = inventory_facts["obligations"]
+        searched = total - inventory_facts["missing_inputs"]
+        if inventory_facts["missing_inputs"]:
+            unavailable["inventory"] = (f"{inventory_facts['missing_inputs']} obligation(s) "
+                                        "carry a missing_inputs interval (a seal refusal)")
+            unsearched = "; ".join(x for x in (unsearched, "obligations with missing inputs")
+                                   if x)
     store.ensure_bridge(kala_convention_id, sky_convention_id)
     store.write_coverage(
         chart_id=chart_id, generation=generation, event_class=event_class,

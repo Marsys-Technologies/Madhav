@@ -61,6 +61,11 @@ from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
 from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
+from services.gochara_kernel import inventory as gk_inventory
+from services.gochara_kernel import inventory_verifier as gk_verifier
+from services.gochara_kernel import ledger as gk_ledger
+from services.gochara_kernel.dasha_read import load_pinned_vimshottari
+from services.gochara_kernel.inventory_store import InventoryStore
 from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
 from services.gochara_kernel.substrate import (SUBSTRATE_BODIES,
                                                SUBSTRATE_DOMAIN_END,
@@ -76,6 +81,21 @@ CONVENTION_SUBSTEP = "convention"
 BODY_SUBSTEP_PREFIX = "body:"
 COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
+# AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
+MANIFEST_SUBSTEP = "manifest"
+SNAPSHOT_SUBSTEP = "snapshot"
+INVENTORY_SUBSTEP_PREFIX = "inventory:"
+VERIFY_SUBSTEP_PREFIX = "verify:"
+
+# The VERIFIER's own copy of the two standing rulings — deliberately NOT imported from
+# the builder's inventory module: the verifier is told its rulings independently of the
+# code it checks (draft §AM-5 item 4 / O-RP-9).
+VERIFIER_PATH_RULINGS = {"p5": {"reason": "tier_withheld_by_ruling",
+                                "basis": "ruling:ST-P5-HOLD-20261001",
+                                "ruling_ref": "ST-P5-HOLD-20261001"}}
+VERIFIER_H_UNKNOWN_RULING = {"reason": "inputs_unavailable",
+                             "basis": "ruling:ST-H-UNKNOWN-20261002",
+                             "ruling_ref": "ST-H-UNKNOWN-20261002"}
 
 GENERATION = "5.0"
 # interval_sweep record grains: P1–P4 only. P5 record grains HOLD (D7 —
@@ -83,7 +103,11 @@ GENERATION = "5.0"
 # brief §interval_sweep + the batch list). The hold is a plan-level absence,
 # never a silent skip: the substep labels say so.
 RECORD_PATHS = tuple(p for p in BOUND_PATHS if p != "P5")
-SCORED_CLASSES = tuple(sorted(gk_evaluator.ROW_MEMBERSHIP))
+# birth_anchor is excluded from enumeration entirely (O-CF-N6: zero rows) — it is NOT a
+# scored class (27 − 1 = 26); the evaluator refuses it by design, so planning it would
+# crash the build at its first substep.
+SCORED_CLASSES = tuple(sorted(c for c, k in gk_evaluator.ROW_MEMBERSHIP.items()
+                              if k is not None))
 # The campaign's scored horizon (the A2.5 narrowing: LEL-scored window);
 # overridable in config for rehearsals.
 DEFAULT_HORIZON = (datetime(1998, 1, 1, tzinfo=timezone.utc),
@@ -174,7 +198,17 @@ class GocharaV5Writer(WriterBase):
         )
         # interval_sweep (design v1.1): per class, the coverage partition
         # first (pin 7), then its record grains over P1–P4 (P5 held — D7).
+        steps.append(SubStep(
+            key=MANIFEST_SUBSTEP,
+            label="candidate manifest (the search snapshot's input vector is bound to it)"))
+        steps.append(SubStep(
+            key=SNAPSHOT_SUBSTEP,
+            label="AM-5 search-input snapshot (ONE per generation; L1/daśā/AV digests)"))
         for event_class in SCORED_CLASSES:
+            steps.append(SubStep(
+                key=f"{INVENTORY_SUBSTEP_PREFIX}{event_class}",
+                label=f"AM-5 search inventory: pins → obligations → interval ledger "
+                      f"→ finalisation: {event_class}"))
             steps.append(SubStep(
                 key=f"{COVERAGE_SUBSTEP_PREFIX}{event_class}",
                 label=f"class coverage partition (P1–P4 searched; P5 held — D7): "
@@ -185,6 +219,9 @@ class GocharaV5Writer(WriterBase):
                               "(residence + point solves + natal facts)")
                 for pid in RECORD_PATHS
             )
+            steps.append(SubStep(
+                key=f"{VERIFY_SUBSTEP_PREFIX}{event_class}",
+                label=f"independent inventory verification: {event_class}"))
         return steps
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
@@ -199,8 +236,10 @@ class GocharaV5Writer(WriterBase):
         solve AND the write (there is nothing to stage)."""
         chart_id = ctx.config["chart_id"]
         _require_pinned_chart(chart_id)
-        known = (RULES_SUBSTEP, CONVENTION_SUBSTEP)
+        known = (RULES_SUBSTEP, CONVENTION_SUBSTEP, MANIFEST_SUBSTEP, SNAPSHOT_SUBSTEP)
         if (step.key not in known
+                and not step.key.startswith(INVENTORY_SUBSTEP_PREFIX)
+                and not step.key.startswith(VERIFY_SUBSTEP_PREFIX)
                 and not step.key.startswith(BODY_SUBSTEP_PREFIX)
                 and not step.key.startswith(COVERAGE_SUBSTEP_PREFIX)
                 and not step.key.startswith(RECORD_SUBSTEP_PREFIX)):
@@ -231,6 +270,9 @@ class GocharaV5Writer(WriterBase):
             cid = store.register_convention()
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"convention {cid[:24]}… registered (idempotent)")
+        if (step.key in (MANIFEST_SUBSTEP, SNAPSHOT_SUBSTEP)
+                or step.key.startswith((INVENTORY_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX))):
+            return self._run_inventory_phase(ctx, step, chart_id)
         if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
             return self._run_record_phase(ctx, step, chart_id)
         body = step.key[len(BODY_SUBSTEP_PREFIX):]
@@ -248,6 +290,131 @@ class GocharaV5Writer(WriterBase):
                    "physical objects (idempotent insert-if-absent)"))
 
     # ------------------------------------------------------------------
+
+    def _run_inventory_phase(self, ctx: ContextSpec, step: SubStep,
+                             chart_id: str) -> WriterResult:
+        """AM-5 chain (chart lock already taken by the caller; every INVENTORY write takes
+        the global SHARED key after it — chart → global SHARED, draft item 7):
+        `manifest` → `snapshot` → `inventory:<class>` → (coverage, records) →
+        `verify:<class>`. Sealing is NOT this writer's step (A6)."""
+        horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+        ephe_path = ctx.config.get("ephe_path")
+        inv_store = InventoryStore(ctx.db_conn)
+        rstore = RecordStore(ctx.db_conn)
+
+        if step.key == MANIFEST_SUBSTEP:
+            sky_cid = SkyEventStore(ctx.db_conn).register_convention()
+            kala_cid = rstore.ensure_kala_convention()
+            rstore.ensure_bridge(kala_cid, sky_cid)
+            sealed = inv_store.sealed_rule_paths()
+            import hashlib
+            import json as _j
+            vector = {
+                "rule_registry": hashlib.sha256(
+                    _j.dumps(sealed, sort_keys=True).encode()).hexdigest(),
+                "sky_convention": sky_cid,
+            }
+            jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
+            _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
+            if not (retflag & 2):
+                raise RuntimeError(f"manifest: Swiss backend probe retflag {retflag} (F-14)")
+            mid = gk_ledger.publish_candidate(
+                ctx.db_conn, chart_id, GENERATION, kala_cid, vector,
+                {"backend": "swieph", "probe_retflag": int(retflag)},
+                f"[{horizon[0].isoformat()},{horizon[1].isoformat()})",
+                writer_asset_id=ASSET_ID)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                notes=f"candidate manifest {mid[:8]}… (vector: registry digest "
+                                      "+ sky convention)")
+
+        if step.key == SNAPSHOT_SUBSTEP:
+            context = fetch_chart_context(ctx.db_conn, chart_id)
+            require_complete(context)
+            sky_cid = SkyEventStore(ctx.db_conn).register_convention()
+            rows, contract = load_pinned_vimshottari(ctx.db_conn, chart_id)
+            lo, hi = horizon
+            dasha_ids = [str(r["dasha_row_id"]) for r in rows
+                         if int(r["level_n"]) in (1, 2, 3)
+                         and r["start_iso"] < hi and r["end_iso"] > lo]
+            inv_store.delete_generation_inventory(chart_id, GENERATION)
+            digest = inv_store.insert_snapshot(
+                chart_id=chart_id, generation=GENERATION, convention_id=sky_cid,
+                consumed_fact_ids=context["source_fact_ids"],
+                consumed_dasha_row_ids=dasha_ids)
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=1,
+                notes=(f"search-input snapshot {digest[:12]}…: {len(context['source_fact_ids'])} "
+                       f"L1 facts, {len(dasha_ids)} daśā rows (build "
+                       f"{contract.get('build_id')}); no AV declarations (P5 held)"))
+
+        event_class = step.key.split(":", 1)[1]
+        if event_class not in SCORED_CLASSES:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                notes=f"unknown class {event_class!r}")
+
+        if step.key.startswith(INVENTORY_SUBSTEP_PREFIX):
+            context = fetch_chart_context(ctx.db_conn, chart_id)
+            require_complete(context)
+            chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
+            digest = inv_store.snapshot_input_digest(chart_id, GENERATION)
+            if digest is None:
+                return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                    notes=f"inventory {event_class} refused: no search-input "
+                                          "snapshot (the snapshot substep runs first)")
+            path_excl, h_unknown = gk_inventory.standing_exclusions()
+            plan = gk_inventory.plan_class_inventory(
+                event_class=event_class, chart=chart, horizon=horizon,
+                sealed_paths=inv_store.sealed_rule_paths(),
+                capability=gk_inventory.SearchCapability(position_probe=True, arc_index=True),
+                path_exclusions=path_excl, h_unknown_exclusion=h_unknown,
+                dasha_rows=inv_store.consumed_dasha_rows(chart_id, GENERATION))
+            out = inv_store.write_class_inventory(
+                chart_id=chart_id, generation=GENERATION, plan=plan, input_digest=digest)
+            dispositions = ",".join(f"{p.path_id}:{p.disposition}" for p in plan.pins)
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=out["obligations"] + out["pins"],
+                notes=(f"inventory {event_class}: {out['obligations']} obligations, "
+                       f"{out['intervals']} intervals, pins {dispositions}; "
+                       f"inventory_digest={out['inventory_digest'][:12]}…"))
+
+        # verify:<class> — the INDEPENDENT verifier (shares no code with the builder)
+        sealed = inv_store.sealed_rule_paths()
+        try:
+            res = gk_verifier.rederive_inventory_digest(
+                ctx.db_conn, chart_id=chart_id, generation=GENERATION,
+                event_class=event_class, sealed_paths=sealed,
+                path_exclusions=VERIFIER_PATH_RULINGS,
+                h_unknown_exclusion=VERIFIER_H_UNKNOWN_RULING)
+        except gk_verifier.Unverifiable as exc:
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=0,
+                notes=f"verify {event_class}: UNVERIFIED — {exc} (no verification row; the "
+                      "class cannot seal until the verifier can derive every path)")
+        stored = inv_store.finalised_class_facts(chart_id, GENERATION, event_class)
+        if stored is None or res["digest"] != stored["inventory_digest"]:
+            raise RuntimeError(
+                f"verify {event_class}: the independent derivation DISAGREES with the stored "
+                f"inventory (verifier {res['digest']} vs stored "
+                f"{stored and stored['inventory_digest']}) — a misreading in one of the two "
+                "paths; the build fails rather than store a mismatching verification row")
+        led = gk_verifier.rederive_ledger_digest(
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+            obligations=res["obligations"],
+            capability={"position_probe": True, "arc_index": True})
+        db_led = ctx.db_conn.execute(
+            "SELECT ledger_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s"
+            " AND generation = %s AND event_class = %s", (chart_id, GENERATION, event_class)
+        ).fetchone()[0]
+        if led != db_led:
+            raise RuntimeError(
+                f"verify {event_class}: the independent LEDGER derivation (daśā cuts / "
+                f"resolved agents) disagrees with the stored ledger ({led} vs {db_led})")
+        gk_verifier.write_verification(
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+            rederived_digest=res["digest"])
+        return WriterResult(asset_id=self.asset_id, rows_inserted=1,
+                            notes=f"verify {event_class}: inventory + ledger digests "
+                                  "independently reproduced; verification row written")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str) -> WriterResult:
@@ -300,12 +467,22 @@ class GocharaV5Writer(WriterBase):
                 for edge in gk_evaluator.enumerate_edges(event_class, pid, chart)
             ]
             kala_cid = store.ensure_kala_convention()
+            # AM-5: the partition is the guard-facing SUMMARY of the stored inventory —
+            # the inventory substep runs first and the partition is aligned to it.
+            inv_facts = InventoryStore(ctx.db_conn).finalised_class_facts(
+                chart_id, GENERATION, event_class)
+            if inv_facts is None:
+                return WriterResult(
+                    asset_id=self.asset_id, rows_inserted=0,
+                    notes=f"coverage {event_class} refused: no finalised search inventory "
+                          "(the inventory substep runs first)")
             write_class_coverage(
                 store, chart_id=chart_id, generation=GENERATION,
                 event_class=event_class, class_edges=class_edges,
                 horizon=horizon, position_at=position_at,
                 sky_convention_id=sky_cid, kala_convention_id=kala_cid,
-                build_id=ctx.build_id, arc_index_available=True)
+                build_id=ctx.build_id, arc_index_available=True,
+                inventory_facts=inv_facts)
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"coverage partition {event_class} written "

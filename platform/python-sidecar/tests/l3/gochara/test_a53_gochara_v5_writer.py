@@ -192,18 +192,24 @@ def test_plan_is_rules_then_convention_then_eight_bodies_moon_excluded():
     assert not any("moon" in k.lower() for k in keys)
 
 
-def test_plan_then_interleaves_class_coverage_and_p1_p4_record_grains():
-    """interval_sweep plan extension (design v1.1): per class, coverage
-    before its record grains; P5 held (D7) — never planned."""
+def test_plan_then_interleaves_class_inventory_coverage_records_and_verification():
+    """Per class: the AM-5 inventory FIRST (the partition is aligned to it), then the
+    coverage partition, the P1–P4 record grains (P5 held — D7), then the independent
+    verification. manifest → snapshot precede every class; birth_anchor is not planned."""
     w = writer_mod.GocharaV5Writer()
-    keys = [s.key for s in w.plan_substeps(_ctx())][10:]
+    keys = [s.key for s in w.plan_substeps(_ctx())]
+    assert keys[10:12] == ["manifest", "snapshot"]
+    rest = keys[12:]
     classes = writer_mod.SCORED_CLASSES
-    assert len(keys) == len(classes) * (1 + len(writer_mod.RECORD_PATHS))
+    assert len(classes) == 26 and "birth_anchor" not in classes
+    per = 1 + 1 + len(writer_mod.RECORD_PATHS) + 1
+    assert len(rest) == len(classes) * per
     for i, event_class in enumerate(classes):
-        block = keys[i * 5:(i + 1) * 5]
-        assert block[0] == f"coverage:{event_class}"
-        assert block[1:] == [f"record:{event_class}:{pid}"
-                             for pid in ("P1", "P2", "P3", "P4")]
+        block = rest[i * per:(i + 1) * per]
+        assert block[0] == f"inventory:{event_class}"
+        assert block[1] == f"coverage:{event_class}"
+        assert block[2:-1] == [f"record:{event_class}:{pid}" for pid in ("P1", "P2", "P3", "P4")]
+        assert block[-1] == f"verify:{event_class}"
     assert not any(":P5" in k for k in keys)
 
 
@@ -233,6 +239,16 @@ def _record_phase_fakes(monkeypatch):
         def ensure_kala_convention(self, vector=None, probe=None):
             return "sha256:kala"
 
+    class _FakeInventoryStore:
+        def __init__(self, conn):
+            pass
+
+        def finalised_class_facts(self, chart_id, generation, event_class):
+            return {"horizon": ("lo", "hi"), "relations": ["residence"],
+                    "obligations": 3, "missing_inputs": 0,
+                    "inventory_digest": "d" * 64}
+
+    monkeypatch.setattr(writer_mod, "InventoryStore", _FakeInventoryStore)
     monkeypatch.setattr(writer_mod, "RecordStore", _FakeRecordStore)
     monkeypatch.setattr(
         writer_mod, "write_class_coverage",

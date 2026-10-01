@@ -22,7 +22,7 @@ import json as _json
 from datetime import datetime
 from typing import Any, Sequence
 
-from .inventory import ClassInventory
+from .inventory import ClassInventory, DashaRow
 from .record_store import SealedGenerationError
 
 _CLASS_TABLES_DELETE_ORDER = (
@@ -143,6 +143,18 @@ class InventoryStore:
             " VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)",
             (chart_id, generation, convention_id, vec_json, facts, dashas, av, l1, dd, digest))
         return digest
+
+    def consumed_dasha_rows(self, chart_id: str, generation: str) -> list[DashaRow]:
+        """The pinned daśā rows the snapshot CONSUMED (read by id — the inventory is cut at
+        exactly the rows the snapshot's digest covers, never a fresh read)."""
+        rows = self.conn.execute(
+            "SELECT d.dasha_row_id::text, d.level_n, d.lord_graha, d.start_iso, d.end_iso"
+            " FROM public.chart_dashas d"
+            " JOIN public.ka_gochara_search_input_snapshot s"
+            "   ON d.dasha_row_id::text = ANY (s.consumed_dasha_row_ids)"
+            " WHERE s.chart_id = %s AND s.generation = %s ORDER BY d.level_n, d.start_iso",
+            (chart_id, generation)).fetchall()
+        return [DashaRow(r[0], int(r[1]), str(r[2]).lower(), r[3], r[4]) for r in rows]
 
     def snapshot_input_digest(self, chart_id: str, generation: str) -> str | None:
         row = self.conn.execute(

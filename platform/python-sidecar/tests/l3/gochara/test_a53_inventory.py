@@ -37,6 +37,11 @@ def _row(i, level, lord, a, b):
     return inv.DashaRow(str(uuid.UUID(int=i)), level, lord, a, b)
 
 
+#: parent of each fixture row (an AD nests in its MD, a PD in its AD — §4.0 linkage)
+DASHA_PARENT = {1: None, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
+PINNED_BUILD = "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"      # the frozen §4.0 contract build
+
+
 # Pinned Vimśottarī rows around the class horizon [2025-01-01, 2025-03-01): each level
 # partitions it (the AD row starting before the horizon is clipped, §4.0 half-open).
 DASHA = [
@@ -44,8 +49,8 @@ DASHA = [
     _row(2, 2, "venus", _dt(2024, 12, 1), _dt(2025, 2, 1)),
     _row(3, 2, "sun", _dt(2025, 2, 1), _dt(2025, 4, 1)),
     _row(4, 3, "mars", _dt(2024, 12, 20), _dt(2025, 1, 15)),
-    _row(5, 3, "rahu", _dt(2025, 1, 15), _dt(2025, 2, 10)),
-    _row(6, 3, "jupiter", _dt(2025, 2, 10), _dt(2025, 3, 20)),
+    _row(5, 3, "rahu", _dt(2025, 1, 15), _dt(2025, 2, 1)),
+    _row(6, 3, "jupiter", _dt(2025, 2, 1), _dt(2025, 3, 20)),
 ]
 DASHA_IDS = [r.row_id for r in DASHA]
 SEALED = [("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0")]
@@ -179,56 +184,83 @@ def test_horizon_must_be_whole_second_utc():
 
 # ── store (real 1206) ────────────────────────────────────────────────────────
 
-@pytest.fixture(scope="module")
-def _am5_dsn():
+def create_am5_database(tag="am5"):
+    """A throwaway database with the real chain + 1206 applied and the L1 tables stubbed.
+    Returns (admin_conn, name, dsn); the caller drops it (refusing non-prefixed names)."""
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
     try:
         admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
-    name = f"{DB_PREFIX}am5_{uuid.uuid4().hex[:8]}"
+    name = f"{DB_PREFIX}{tag}_{uuid.uuid4().hex[:8]}"
     admin.execute(f'CREATE DATABASE "{name}"')
     dsn = make_conninfo(ADMIN_DSN, dbname=name)
     try:
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
-        with conn.cursor() as cur:
-            cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
-            cur.execute("CREATE TABLE public._migrations_applied"
-                        " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
-            cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
-                        " chart_id uuid, fact_category text, fact_subject text, fact_key text,"
-                        " fact_value_num double precision, created_at timestamptz DEFAULT now())")
-            cur.execute("CREATE TABLE public.chart_dashas (dasha_row_id uuid PRIMARY KEY,"
-                        " chart_id uuid, system_id text, level_n int, lord_graha text,"
-                        " start_iso timestamptz, end_iso timestamptz,"
-                        " computed_at timestamptz DEFAULT now())")
-            for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"]:
-                cur.execute((MIGRATIONS / fname).read_text())
-                cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
-                            (fname,))
-            cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
-            subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"],
-                    "MOON": CHART["natal"]["Moon"], "MAR": CHART["natal"]["Mars"],
-                    "MER": CHART["natal"]["Mercury"], "JUP": CHART["natal"]["Jupiter"],
-                    "VEN": CHART["natal"]["Venus"], "SAT": CHART["natal"]["Saturn"],
-                    "RAH_MEAN": CHART["natal"]["Rahu"], "KET_MEAN": CHART["natal"]["Ketu"]}
-            for sname, lon in subj.items():
-                cur.execute("INSERT INTO public.chart_facts(fact_id, chart_id, fact_category,"
-                            " fact_subject, fact_key, fact_value_num)"
-                            " VALUES (%s,%s,'graha_position',%s,'longitude_sidereal',%s)",
-                            (f"fact-{sname}", CHART_ID, sname, lon))
-            for r in DASHA:
-                cur.execute("INSERT INTO public.chart_dashas(dasha_row_id, chart_id, system_id,"
-                            " level_n, lord_graha, start_iso, end_iso)"
-                            " VALUES (%s,%s,'vimshottari',%s,%s,%s,%s)",
-                            (r.row_id, CHART_ID, r.level, r.lord.title(), r.start, r.end))
+        _populate_am5_database(conn)
         conn.close()
+    except BaseException:
+        drop_am5_database(admin, name)
+        raise
+    return admin, name, dsn
+
+
+def drop_am5_database(admin, name):
+    assert name.startswith(DB_PREFIX), name           # never drop what we did not create
+    admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+    admin.close()
+
+
+def _populate_am5_database(conn):
+    with conn.cursor() as cur:
+        cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
+        cur.execute("CREATE TABLE public._migrations_applied"
+                    " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+        cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
+                    " chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,"
+                    " fact_key text,"
+                    " fact_value_num double precision, created_at timestamptz DEFAULT now())")
+        cur.execute("CREATE TABLE public.chart_dashas (dasha_row_id uuid PRIMARY KEY,"
+                    " chart_id uuid, ayanamsha_id text, system_id text, level_n int,"
+                    " parent_row_id uuid, lord_graha text, start_iso timestamptz,"
+                    " end_iso timestamptz, build_id uuid, verification_pass_status text,"
+                    " computed_at timestamptz DEFAULT now())")
+        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"]:
+            cur.execute((MIGRATIONS / fname).read_text())
+            cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
+                        (fname,))
+        cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
+        subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"],
+                "MOON": CHART["natal"]["Moon"], "MAR": CHART["natal"]["Mars"],
+                "MER": CHART["natal"]["Mercury"], "JUP": CHART["natal"]["Jupiter"],
+                "VEN": CHART["natal"]["Venus"], "SAT": CHART["natal"]["Saturn"],
+                "RAH_MEAN": CHART["natal"]["Rahu"], "KET_MEAN": CHART["natal"]["Ketu"]}
+        for sname, lon in subj.items():
+            cur.execute("INSERT INTO public.chart_facts(fact_id, chart_id, ayanamsha_id,"
+                        " fact_category, fact_subject, fact_key, fact_value_num)"
+                        " VALUES (%s,%s,'lahiri_chitrapaksha','graha_position',%s,"
+                        " 'longitude_sidereal',%s)",
+                        (f"fact-{sname}", CHART_ID, sname, lon))
+        for r in DASHA:
+            parent = DASHA_PARENT[int(uuid.UUID(r.row_id).int)]
+            cur.execute("INSERT INTO public.chart_dashas(dasha_row_id, chart_id,"
+                        " ayanamsha_id, system_id, level_n, parent_row_id, lord_graha,"
+                        " start_iso, end_iso, build_id, verification_pass_status)"
+                        " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,%s,%s,%s,%s,"
+                        " %s,'two_pass_verified')",
+                        (r.row_id, CHART_ID, r.level,
+                         None if parent is None else str(uuid.UUID(int=parent)),
+                         r.lord.title(), r.start, r.end, PINNED_BUILD))
+
+
+@pytest.fixture(scope="module")
+def _am5_dsn():
+    admin, name, dsn = create_am5_database("am5")
+    try:
         yield dsn
     finally:
-        assert name.startswith(DB_PREFIX)
-        admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
-        admin.close()
+        drop_am5_database(admin, name)
 
 
 @pytest.fixture()
@@ -485,8 +517,8 @@ def test_p1_intervals_are_cut_at_the_pinned_dasha_rows_with_the_resolved_agent()
         (_dt(2025, 2, 1), H1, "sun", str(uuid.UUID(int=3)), "searched_complete")]
     assert cuts("pd") == [
         (H0, _dt(2025, 1, 15), "mars", str(uuid.UUID(int=4)), "searched_complete"),
-        (_dt(2025, 1, 15), _dt(2025, 2, 10), "rahu", str(uuid.UUID(int=5)), "searched_complete"),
-        (_dt(2025, 2, 10), H1, "jupiter", str(uuid.UUID(int=6)), "searched_complete")]
+        (_dt(2025, 1, 15), _dt(2025, 2, 1), "rahu", str(uuid.UUID(int=5)), "searched_complete"),
+        (_dt(2025, 2, 1), H1, "jupiter", str(uuid.UUID(int=6)), "searched_complete")]
 
 
 def test_a_dasha_gap_is_a_missing_inputs_interval_never_silently_covered():
@@ -495,7 +527,7 @@ def test_a_dasha_gap_is_a_missing_inputs_interval_never_silently_covered():
     _p1, obs = _p1_obs(plan)
     pd = next(o for o in obs if o.agent == "period_lord:pd")
     gaps = [iv for iv in plan.intervals if iv.ob_id == pd.ob_id and iv.state == "missing_inputs"]
-    assert [(g.start, g.end) for g in gaps] == [(_dt(2025, 1, 15), _dt(2025, 2, 10))]
+    assert [(g.start, g.end) for g in gaps] == [(_dt(2025, 1, 15), _dt(2025, 2, 1))]
     assert gaps[0].detail == {"resolved_agent": None, "dasha_row_id": None}
 
 
