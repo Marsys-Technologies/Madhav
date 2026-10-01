@@ -1,10 +1,11 @@
 ---
 artifact: BUILDER_PRIVILEGE_AUDIT_GOCHARA
-version: "1.0"
+version: "1.1"
 status: CURRENT
 date: 2026-10-02
-author: Stream C (Kimi), TASK C2 (steward M20261001T221019-7dbe)
+author: Stream C (Kimi), TASK C2 (steward M20261001T221019-7dbe); v1.1 extension TASK C3 PART B (steward M20261001T222338-763f)
 writes: "NONE — every production query below was a SELECT through the read-only credential (amjis_app, default_transaction_read_only=on)"
+changelog: "v1.1 (2026-10-02): C3 PART B — extended to the helper services (gochara_grammar, gochara_intensity, ka_gochara_sweep, gochara_rules, all of gochara_kernel); 0 new gaps; 1 NOT PRESENT relation."
 ---
 
 # data_plane_builder privilege audit — Gochara writer family
@@ -172,13 +173,93 @@ no migration was written** (per the task).
 
 ## NOT PRESENT
 
-None — all 24 relations referenced by the in-scope SQL exist in production.
+None in the v1.0 scope — all 24 relations referenced by the in-scope SQL exist
+in production. (v1.1 adds one NOT PRESENT relation; see below.)
 
-## Out-of-scope note
+---
 
-The steward's scope excluded the helper services the w2g ka_gochara writer
-imports for its read path (`services/gochara_grammar/*`,
-`services/gochara_intensity/*`, `services/ka_gochara_sweep/*` — see
-`pipeline/orchestrator/writers/ka_gochara.py:102-112` and
-`services/w2g/materialize.py:58-68`). Their SQL was not audited here; if the
-steward wants the full transitive read path covered, that is a follow-up task.
+# v1.1 extension (TASK C3 PART B) — helper services and the full kernel
+
+Same method and read-only credential as v1.0. Scope added:
+`services/gochara_grammar/*`, `services/gochara_intensity/*`,
+`services/ka_gochara_sweep/*`, `services/gochara_rules/*`, and **every** module
+of `services/gochara_kernel/*` (not only ledger.py — the other kernel modules
+carry no SQL at all; verified by reading each). `services/gochara_rules/*`
+executes **no SQL** (no `execute`/`executemany` call sites; its registry is
+pure Python) — recorded so the scope is provably covered, not skipped.
+
+## Per-module surface added in v1.1
+
+### gochara_grammar
+
+| relation | op | file:line | granted? | RLS? |
+|---|---|---|---|---|
+| gochara_resonance_map | S | resonance_map.py:50 | yes | off |
+| chart_facts | S | primitives.py:721, 790, 1347 | yes | off |
+| bg_transit_av_gates | S | primitives.py:949 | **NO — same gap as v1.0 (gochara_v3/context.py:444); C3 PART A migration 1225 closes it** | off |
+| bg_transit_rules | S | primitives.py:1053 | yes | off |
+| chart_dashas | S | dasha_data.py:53, 208 | yes | off |
+| brahma_event_ontology | S | event_class_scope.py:167 | yes | off |
+| l1_sarvatobhadra_vedha | S | sarvatobhadra.py:112, 114 | **NOT PRESENT** (relation absent in production — presumably an unapplied migration; listed per the task, not a grant gap) | — |
+
+### gochara_intensity
+
+| relation | op | file:line | granted? | RLS? |
+|---|---|---|---|---|
+| chart_facts | S | enrichment.py:164, 199, 245 | yes | off |
+| reference_signs | S | enrichment.py:224 | yes | off |
+| brahma_event_ontology | S | engine.py:81; valence.py:96 | yes | off |
+
+(`_dbutil.py` holds the savepoint machinery only — no relation references.)
+
+### ka_gochara_sweep
+
+| relation | op | file:line | granted? | RLS? |
+|---|---|---|---|---|
+| brahma_event_ontology | S | sweep.py:151 | yes | off |
+| kala_gochara_windows | D | writer.py:337, 554 | yes | off |
+| kala_gochara_windows | S | writer.py:506 | yes | off |
+| kala_gochara_windows | I | writer.py:710 | yes | off |
+| build_substep_progress | D | writer.py:342 | yes | off |
+| build_substep_progress | S | writer.py:651 | yes | off |
+| build_substep_progress | I + U | writer.py:666 (ON CONFLICT DO UPDATE) | yes / yes | off |
+| gochara_resonance_map | S | writer.py:563 | yes | off |
+| public.charts | S | writer.py:608 | yes | **ON** — see RLS chase below |
+| chart_dashas | S | writer.py:626 | yes | off |
+
+### gochara_kernel (all modules)
+
+Only `ledger.py` executes SQL — already covered in v1.0 (all privileges
+granted). `__init__.py`, `arcs.py`, `contacts.py`, `convention.py`,
+`coverage.py`, `episodes.py`, `fingerprint.py`, `ids.py`, `knots.py`,
+`legacy_semantics.py`, `lifecycle.py`, `overlays.py`, `peaks.py` carry no SQL
+(verified module by module). `record_store` does not exist.
+
+## RLS chase — public.charts
+
+`charts` has `relrowsecurity = true` (the only RLS relation in the whole audit).
+Its three policies (`chart_service_policy`, `chart_owner_policy`,
+`chart_grant_policy`, all PERMISSIVE, role `{public}`) reference exactly one
+other relation: `chart_grants` (in `chart_grant_policy`'s qual). Checks:
+`chart_grants` exists; builder SELECT on `chart_grants` = **granted**;
+`chart_grants` itself has RLS **off**. Additionally `charts` is owned by
+`amjis_app` with `relforcerowsecurity = false`, and `chart_service_policy`
+passes when `app.principal_id` is unset — the build job sets no such GUC, and
+the builder holds plain SELECT regardless. **No gap.**
+
+`build_substep_progress` has no owned identity/serial sequence
+(`pg_get_serial_sequence` over identity columns: none), so its INSERT/upsert
+needs no sequence USAGE.
+
+## v1.1 totals
+
+- New relations checked: 3 (`l1_sarvatobhadra_vedha`, `build_substep_progress`,
+  `charts`) + `chart_grants` via the RLS chase.
+- **New gaps: 0.** The running total stays **1** (`bg_transit_av_gates` SELECT
+  — which PART B confirmed is also read by `gochara_grammar/primitives.py:949`;
+  C3 PART A's migration 1225 closes it).
+- NOT PRESENT: 1 — `l1_sarvatobhadra_vedha` (gochara_grammar/sarvatobhadra.py
+  fallback-pair reads). Note: `sarvatobhadra.py` reads it through
+  `_vedha_pairs_from_db`, whose callers treat a missing table as the
+  no-DB-fallback path; flagged here so the migration that eventually creates it
+  also grants the builder SELECT.
