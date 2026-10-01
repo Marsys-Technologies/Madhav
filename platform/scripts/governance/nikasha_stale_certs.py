@@ -23,32 +23,29 @@ has gone stale, writes that decision into the same append-only ledger, and recor
   (4) BOUNDED RE-WALKS. At most `MAX_REWALKS` (2) invalidating walks per (layer, acceptance epoch); the third
       raises `RewalkLimitExceeded` carrying the findings, writes nothing (no watermark either), for Strategic Suvarna.
 
-LEDGER LINE SHAPES (both are accepted by E5.1's strict `read_ledger`/`parse_ledger` unchanged: each carries
-`cert_key`, `generation`, `cert_id == cert_key@generation`, a `verdict` string and, since E5.1's hash chain, a
-`prev_sha256` = sha256 of the previous line's bytes, in a key namespace E5.1 never looks up). A reader that does not
-know `kind` sees a verdict outside the certification vocabulary and fails closed. The chain is verified by E5.1's own
-parser on EVERY read here (a tampered earlier line, or an appended line with a wrong `prev_sha256`, raises
-LedgerShapeError code bad_ledger) and the lines this module appends are chained from the ledger's last line.
+LEDGER LINE SHAPES. Both are EVENTS in E5.1's vocabulary (`nikasha_certify.append_records` / `parse_records`): a
+`type` that is not "cert" and NO `cert_key`. E5.1 chains (`prev_sha256`) and numbers (`seq`) every line and verifies
+the whole ledger on every read and write; this module never serialises, hashes or numbers a line itself: every append
+goes through `nc.append_records`, every read through `nc.read_records` / `nc.parse_records`. An event is not in E5.1's
+certificate index, so it can neither shadow nor be mistaken for a certificate.
 
-  invalidation  {"asset": <asset>, "kind": "invalidation", "layer": "L0".."L5",
-                 "cert_key": "<asset>|invalidation|<invalidated cert_id>", "generation": 1,
-                 "cert_id": "<cert_key>@1", "verdict": "INVALIDATED", "invalidates": "<cert_id>",
+  invalidation  {"type": "invalidation", "asset": <asset>, "layer": "L0".."L5", "invalidates": "<cert_id>",
                  "reason": [{"code": "writer_hash"|"semantic_fingerprint"|"registry"|"upstream_generation"|
                              "upstream_stale"|"upstream_not_passing", ...detail}],
                  "walk": <int, one per invalidating run>, "epoch": <acceptance epoch id>,
                  "detected_by": "nikasha_stale_certs.py", "detected_on": <tz-aware ISO>, "record_version": 1,
-                 "prev_sha256": <sha256 of the previous line>}
-  watermark     {"asset": "_ledger", "kind": "watermark", "cert_key": "_ledger|watermark|global",
-                 "generation": <n>, "cert_id": "<cert_key>@<n>", "verdict": "WATERMARK",
-                 "events_processed": <count of certificate records (kind gate|addition) before this line>,
-                 "last_cert_id": <cert_id of the last of them, or null when none>, "commit": <repo commit the
-                 evaluation ran at>, "evaluated_on": <tz-aware ISO>, "record_version": 1,
-                 "prev_sha256": <sha256 of the previous line>}
+                 "seq": .., "prev_sha256": ..}
+  watermark     {"type": "watermark", "asset": "_ledger", "covers_seq": <E5.1 seq of the last record the evaluation
+                 read; 0 for a schema-only ledger>, "certs_processed": <certificates with seq <= covers_seq>,
+                 "last_cert_id": <cert_id of the last of them | null>, "commit": <repo commit the evaluation ran at>,
+                 "evaluated_on": <tz-aware ISO>, "record_version": 1, "seq": .., "prev_sha256": ..}
 
-The watermark is OK iff the ledger's last watermark line is truthful (its `events_processed`/`last_cert_id` match the
-certificate records actually before it) and NO certificate record follows it. A certificate whose invalidation line
-exists is not current until a new generation is certified (E5.1). Invalidation and watermark lines are outputs, not
-events: they never make the watermark behind.
+The watermark is OK iff the ledger's last watermark line is truthful (`certs_processed` / `last_cert_id` match the
+certificates with seq <= `covers_seq`, `covers_seq` is below the line's own seq and not behind the previous watermark)
+and NO certificate has seq > `covers_seq`. A certificate appended between this module's read and its append is
+therefore simply "behind", never a lie. An invalidated certificate is not current until a new generation is
+certified (E5.1). Invalidation and watermark lines are outputs: they never make the watermark behind. A repeated
+invalidation of one certificate (two racing runs) is tolerated and counted once; the first wins.
 
 Usage:
   nikasha_stale_certs.py invalidate --ledger L --observed obs.json --epoch E1 --commit <sha> [--max-rewalks 2]
@@ -63,11 +60,9 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import decimal
-import fcntl
 import hashlib
 import json
 import math
-import os
 import re
 import subprocess
 import sys
@@ -84,8 +79,8 @@ MAX_REWALKS = 2
 RECORD_VERSION = 1
 DETECTED_BY = "nikasha_stale_certs.py"
 CERT_KINDS = ("gate", "addition")
+EVENT_TYPES = ("invalidation", "watermark")
 PASSING = ("PASS", "N/A")
-WATERMARK_KEY = "_ledger|watermark|global"
 DEFAULT_LEDGER_IN_REPO = "00_ARCHITECTURE/control/asset_certs.jsonl"
 
 _IDENT = re.compile(r"[a-z_][a-z0-9_]{0,62}")          # the whitelist: lower-case SQL-safe identifiers, never quoted-through
@@ -399,13 +394,13 @@ def table_fingerprint(conn, decl, chart_id=None) -> str:
 
 @dataclass
 class Ledger:
-    certs: list = field(default_factory=list)            # certificate records in file order
+    certs: list = field(default_factory=list)            # certificate records in file order (each carries E5.1's seq)
     pos: dict = field(default_factory=dict)              # cert_id -> index in certs
     by_key: dict = field(default_factory=dict)           # cert_key -> [records] in generation order
     invs: list = field(default_factory=list)
-    inv_targets: dict = field(default_factory=dict)      # invalidated cert_id -> invalidation record
+    inv_targets: dict = field(default_factory=dict)      # invalidated cert_id -> first invalidation record
     wms: list = field(default_factory=list)
-    tail_sha: str = ""                                    # sha256 of the last non-blank line (E5.1's chain head)
+    last_seq: int = 0                                    # seq of the last record line (0: schema row only)
 
     @property
     def cert_count(self) -> int:
@@ -420,65 +415,73 @@ def _as_bytes(data) -> bytes:
     raise UnreadableInput("ledger content must be bytes or str")
 
 
+def _wrap(e: "nc.CertificationRefused") -> StaleCertsError:
+    """E5.1's refusal, as this module's error (its code is kept: bad_ledger, torn_ledger, ledger_missing, ...)."""
+    if e.code in ("ledger_missing", "bad_ledger_path"):
+        return UnreadableInput(e.message, e.code)
+    return LedgerShapeError(e.message, e.code)
+
+
 def parse_events(data) -> Ledger:
-    """Strict ledger parse for E5.5 / E6.3: E5.1's own checks first, then the E5.5 line shapes, the ordering and the
-    watermark's truthfulness. Raises LedgerShapeError."""
-    raw = _as_bytes(data)
+    """Strict ledger parse for E5.5 / E6.3: E5.1's `parse_records` first (chain, seq, generations, torn tail), then
+    the E5.5 event shapes and the watermark's truthfulness. Raises LedgerShapeError."""
     try:
-        _by_key, tail = nc._parse(raw)     # E5.1's strict parse incl. the prev_sha256 chain; `tail` is the chain head
+        records = nc.parse_records(_as_bytes(data))
     except nc.CertificationRefused as e:
-        raise LedgerShapeError(e.message, e.code) from e
-    lg = Ledger(tail_sha=tail)
-    for n, ln in enumerate(raw.decode("utf-8").split("\n"), 1):
-        if not ln.strip():
-            continue
-        r = nc.strict_json_loads(ln)
-        if r.get("asset") == "_schema":
-            continue
-        kind = r.get("kind")
-        if kind in CERT_KINDS:
+        raise _wrap(e) from e
+    return _ledger_from_records(records)
+
+
+def _ledger_from_records(records: list) -> Ledger:
+    lg = Ledger()
+    for r in records:
+        n = r["seq"]
+        if "cert_key" in r:
+            if r.get("kind") not in CERT_KINDS:
+                raise LedgerShapeError(f"seq {n}: a certificate of kind {r.get('kind')!r}")
             lg.pos[r["cert_id"]] = len(lg.certs)
             lg.certs.append(r)
             lg.by_key.setdefault(r["cert_key"], []).append(r)
-        elif kind == "invalidation":
+        elif r.get("type") == "invalidation":
             _check_invalidation(r, lg, n)
             lg.invs.append(r)
-            lg.inv_targets[r["invalidates"]] = r
-        elif kind == "watermark":
+            lg.inv_targets.setdefault(r["invalidates"], r)
+        elif r.get("type") == "watermark":
             _check_watermark_line(r, lg, n)
             lg.wms.append(r)
         else:
-            raise LedgerShapeError(f"line {n}: unknown record kind {kind!r}")
+            raise LedgerShapeError(f"seq {n}: unknown event type {r.get('type')!r}")
+        lg.last_seq = n
     return lg
 
 
 def _check_invalidation(r: dict, lg: Ledger, n: int) -> None:
     t = r.get("invalidates")
     if not isinstance(t, str) or t not in lg.pos:
-        raise LedgerShapeError(f"line {n}: invalidates {t!r}, which is not a certificate earlier in the ledger")
+        raise LedgerShapeError(f"seq {n}: invalidates {t!r}, which is not a certificate earlier in the ledger")
     target = lg.certs[lg.pos[t]]
-    if (r.get("cert_key") != f"{target['asset']}|invalidation|{t}" or r.get("asset") != target["asset"]
-            or r.get("layer") != target.get("layer") or r.get("layer") not in ac.LAYERS):
-        raise LedgerShapeError(f"line {n}: invalidation does not agree with the certificate it invalidates")
+    if r.get("asset") != target["asset"] or r.get("layer") != target.get("layer") or r.get("layer") not in ac.LAYERS:
+        raise LedgerShapeError(f"seq {n}: invalidation does not agree with the certificate it invalidates")
     w = r.get("walk")
     reason = r.get("reason")
     if (isinstance(w, bool) or not isinstance(w, int) or w < 1 or not _nonblank(r.get("epoch"))
             or not isinstance(reason, list) or not reason
             or not all(isinstance(x, dict) and _nonblank(x.get("code")) for x in reason)):
-        raise LedgerShapeError(f"line {n}: invalidation needs walk >= 1, an epoch and a non-empty reason list")
-    # a second invalidation of the same target has the same cert_key at generation 1: E5.1's parse_ledger (run first)
-    # already refuses it as a generation-sequence break
+        raise LedgerShapeError(f"seq {n}: invalidation needs walk >= 1, an epoch and a non-empty reason list")
 
 
 def _check_watermark_line(r: dict, lg: Ledger, n: int) -> None:
-    ep, last = r.get("events_processed"), r.get("last_cert_id")
-    want_last = lg.certs[-1]["cert_id"] if lg.certs else None
-    if (r.get("asset") != "_ledger" or r.get("cert_key") != WATERMARK_KEY or isinstance(ep, bool)
-            or not isinstance(ep, int) or not _nonblank(r.get("commit"))):
-        raise LedgerShapeError(f"line {n}: malformed watermark line")
-    if ep != lg.cert_count or last != want_last:
-        raise LedgerShapeError(f"line {n}: the watermark claims {ep} certificate(s) ending {last!r} but the ledger "
-                               f"holds {lg.cert_count} ending {want_last!r} before it: a watermark that miscounts is a lie")
+    cov, ep, last = r.get("covers_seq"), r.get("certs_processed"), r.get("last_cert_id")
+    if (r.get("asset") != "_ledger" or not _nonblank(r.get("commit")) or isinstance(cov, bool)
+            or not isinstance(cov, int) or isinstance(ep, bool) or not isinstance(ep, int)):
+        raise LedgerShapeError(f"seq {n}: malformed watermark line")
+    covered = [c for c in lg.certs if c["seq"] <= cov]
+    want_last = covered[-1]["cert_id"] if covered else None
+    if cov < 0 or cov >= n or (lg.wms and cov < lg.wms[-1]["covers_seq"]):
+        raise LedgerShapeError(f"seq {n}: watermark covers_seq {cov} is outside 0..{n - 1} or behind the previous watermark")
+    if ep != len(covered) or last != want_last:
+        raise LedgerShapeError(f"seq {n}: the watermark claims {ep} certificate(s) ending {last!r} up to seq {cov} but "
+                               f"the ledger holds {len(covered)} ending {want_last!r}: a watermark that miscounts is a lie")
 
 
 def _as_ledger(data) -> Ledger:
@@ -497,12 +500,12 @@ class Evaluation:
 
 
 def certificate_flags(rec: dict) -> list[str]:
-    """Caveats a CURRENT certificate carries (never a reason to drop it): the census head carried no registry
-    binding; the writer hashes were typed rather than verified; the record was not census cross-checked; the census
-    cell was transitive_only / inconclusive; the verdict is a PASS by declaration."""
+    """Caveats a CURRENT certificate carries (never a reason to drop it): the census it cites is not yet committed at
+    HEAD (`census_git` staged / unknown); the writer hashes were typed rather than verified; the record was not census
+    cross-checked; the census cell was transitive_only / inconclusive; the verdict is a PASS by declaration."""
     out = []
-    if rec.get("registry_binding") == "census_unbound":
-        out.append("registry_unbound")
+    if rec.get("kind") == "gate" and (rec.get("evidence") or {}).get("census_git") != "committed":
+        out.append("census_not_committed")
     if rec.get("writer_hashes") and rec.get("writer_hashes_verified") is not True:
         out.append("writer_hashes_unverified")
     if rec.get("kind") == "gate" and rec.get("cross_checked") is not True:
@@ -576,7 +579,7 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
         if registry is not None and rec["kind"] == "gate" and (
                 rec.get("registry_revision") != registry["revision"]
                 or rec.get("registry_fingerprint") != registry["fingerprint"]):
-            reasons.append(dict(code="registry", binding=rec.get("registry_binding"),
+            reasons.append(dict(code="registry",
                                 recorded=dict(revision=rec.get("registry_revision"),
                                               fingerprint=rec.get("registry_fingerprint")),
                                 observed=dict(revision=registry["revision"], fingerprint=registry["fingerprint"])))
@@ -621,7 +624,8 @@ def evaluate(data, observed, registry=None) -> Evaluation:
 def watermark_status(data) -> dict:
     lg = _as_ledger(data)
     wm = lg.wms[-1] if lg.wms else None
-    unevaluated = lg.cert_count - (wm["events_processed"] if wm else 0)
+    cov = wm["covers_seq"] if wm else 0
+    unevaluated = sum(1 for c in lg.certs if c["seq"] > cov)
     return dict(ok=wm is not None and unevaluated == 0, watermark=wm, unevaluated=unevaluated,
                 reason=("no watermark: E5.5 has never evaluated this ledger" if wm is None else
                         (f"{unevaluated} certificate record(s) follow the watermark" if unevaluated else "ok")))
@@ -694,10 +698,12 @@ class InvalidateResult:
 
 def invalidate(ledger_path, observed, *, epoch, commit, registry=None, now=None,
                max_rewalks: int = MAX_REWALKS) -> InvalidateResult:
-    """Evaluate, then append (in ONE write, under the ledger's exclusive lock) one invalidation line per newly
-    stale certificate and a watermark line. Idempotent: if nothing is newly stale and the watermark already
-    covers the ledger, nothing is appended and no walk is used. Raises RewalkLimitExceeded, before writing, when
-    any layer touched already has `max_rewalks` invalidating walks in this epoch."""
+    """Evaluate, then append (through `nc.append_records`: one atomic, chained, numbered write) one invalidation line
+    per newly stale certificate and a watermark line. Idempotent: if nothing is newly stale and the watermark already
+    covers the ledger, nothing is appended and no walk is used. Raises RewalkLimitExceeded, before writing, when any
+    layer touched already has `max_rewalks` invalidating walks in this epoch. The read (shared lock) and the append
+    (exclusive lock) are separate E5.1 calls: a certificate that lands between them is covered by neither this
+    run's evaluation nor its watermark (`covers_seq`), so it reads as "behind", never as evaluated."""
     if not _nonblank(epoch):
         raise StaleCertsError("epoch is required (the acceptance epoch id)", "bad_epoch")
     if not _nonblank(commit):
@@ -705,56 +711,35 @@ def invalidate(ledger_path, observed, *, epoch, commit, registry=None, now=None,
     if isinstance(max_rewalks, bool) or not isinstance(max_rewalks, int) or max_rewalks < 1:
         raise StaleCertsError("max_rewalks must be an int >= 1", "bad_max_rewalks")
     path = nc.resolve_ledger_path(ledger_path)
-    if not path.exists():
-        raise UnreadableInput(f"{path} does not exist", "ledger_missing")
     stamp = now or dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    if os.path.islink(path):
-        raise UnreadableInput(f"{path} is a symlink: the ledger path is never followed", "bad_ledger_path")
     try:
-        fd = os.open(path, os.O_RDWR | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0))
-    except OSError as e:
-        raise UnreadableInput(f"{path} cannot be opened as a regular file ({e.strerror})", "bad_ledger_path") from e
-    with os.fdopen(fd, "a+b") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        f.seek(0)
-        data = f.read()
-        lg = parse_events(data)
-        ev = _evaluate(lg, observed, registry)
-        layers = {}
-        for cid in ev.stale:
-            layers.setdefault(lg.certs[lg.pos[cid]]["layer"], []).append(cid)
-        counts = rewalk_counts(lg)
-        for layer in sorted(layers):
-            if counts.get((layer, epoch), 0) >= max_rewalks:
-                raise RewalkLimitExceeded(layer, epoch, counts[(layer, epoch)], ev.stale, max_rewalks)
-        if not ev.stale and watermark_status(lg)["ok"]:
-            return InvalidateResult("unchanged", [], None, None, path)
-        walk = (max((r["walk"] for r in lg.invs), default=0) + 1) if ev.stale else None
-        out = []
-        for cid, reasons in ev.stale.items():
-            t = lg.certs[lg.pos[cid]]
-            key = f"{t['asset']}|invalidation|{cid}"
-            out.append(dict(asset=t["asset"], kind="invalidation", layer=t["layer"], cert_key=key, generation=1,
-                            cert_id=f"{key}@1", verdict="INVALIDATED", invalidates=cid, reason=reasons, walk=walk,
-                            epoch=epoch, detected_by=DETECTED_BY, detected_on=stamp, record_version=RECORD_VERSION))
-        wm = dict(asset="_ledger", kind="watermark", cert_key=WATERMARK_KEY, generation=len(lg.wms) + 1,
-                  cert_id=f"{WATERMARK_KEY}@{len(lg.wms) + 1}", verdict="WATERMARK",
-                  events_processed=lg.cert_count, last_cert_id=lg.certs[-1]["cert_id"] if lg.certs else None,
-                  commit=commit, evaluated_on=stamp, record_version=RECORD_VERSION)
-        # chain every appended line from the ledger's last line, serialised exactly as E5.1 serialises (E5.1 exposes
-        # no public append helper: this uses its `_sha` and mirrors its json.dumps(...) so its parser verifies us)
-        prev, parts = lg.tail_sha, []
-        for x in out + [wm]:
-            x["prev_sha256"] = prev
-            line = json.dumps(x, ensure_ascii=False, allow_nan=False).encode("utf-8")
-            prev = nc._sha(line)
-            parts.append(line + b"\n")
-        blob = b"".join(parts)
-        if data and not data.endswith(b"\n"):
-            blob = b"\n" + blob
-        f.write(blob)
-        f.flush()
-        os.fsync(f.fileno())
+        lg = _ledger_from_records(nc.read_records(path))
+    except nc.CertificationRefused as e:
+        raise _wrap(e) from e
+    ev = _evaluate(lg, observed, registry)
+    layers = {}
+    for cid in ev.stale:
+        layers.setdefault(lg.certs[lg.pos[cid]]["layer"], []).append(cid)
+    counts = rewalk_counts(lg)
+    for layer in sorted(layers):
+        if counts.get((layer, epoch), 0) >= max_rewalks:
+            raise RewalkLimitExceeded(layer, epoch, counts[(layer, epoch)], ev.stale, max_rewalks)
+    if not ev.stale and watermark_status(lg)["ok"]:
+        return InvalidateResult("unchanged", [], None, None, path)
+    walk = (max((r["walk"] for r in lg.invs), default=0) + 1) if ev.stale else None
+    out = []
+    for cid, reasons in ev.stale.items():
+        t = lg.certs[lg.pos[cid]]
+        out.append(dict(type="invalidation", asset=t["asset"], layer=t["layer"], invalidates=cid, reason=reasons,
+                        walk=walk, epoch=epoch, detected_by=DETECTED_BY, detected_on=stamp,
+                        record_version=RECORD_VERSION))
+    wm = dict(type="watermark", asset="_ledger", covers_seq=lg.last_seq, certs_processed=lg.cert_count,
+              last_cert_id=lg.certs[-1]["cert_id"] if lg.certs else None, commit=commit, evaluated_on=stamp,
+              record_version=RECORD_VERSION)
+    try:
+        nc.append_records(path, out + [wm])
+    except nc.CertificationRefused as e:
+        raise _wrap(e) from e
     return InvalidateResult("appended", list(ev.stale), walk, wm, path)
 
 
