@@ -5678,12 +5678,24 @@ def _build_karaka_web_rows(
     reckoning — kn_rao_rahu_included (8-karaka, matching ga_sensitive's own
     _build_karaka_rows) — so the map is a coherent single-school 8→8 permutation.
     The dual-school karaka DATA itself is preserved intact at ga_sensitive.
+
+    ORDER INDEPENDENCE + DIRECTIONALITY (S-L1 karaka-web order fix): the old
+    builder read the karaka rows with no ORDER BY and tested the aspect only from
+    the earlier planet to the later one in that arbitrary order, so whether an
+    aspect row existed, and on which planet's subject, depended on read order.
+    Now: total ORDER BY on the read; planets visited in the fixed ALL_GRAHAS
+    order; every ORDERED pair is evaluated (row on subject X, key aspect_Y means
+    "X aspects Y"; conjunction, being symmetric, is emitted on both subjects).
     """
     rows: list[dict[str, Any]] = []
     _CANONICAL_KARAKA_SCHOOL = "kn_rao_rahu_included"
 
     try:
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            # Total ORDER BY (fact_subject, fact_id): the stored role rows must
+            # reach Python in a fixed order, never in heap/plan order. This is
+            # the read-order half of the S-L1 karaka-web order fix (the pair
+            # loop below is independent of this order as well; belt and braces).
             cur.execute(
                 """
                 SELECT fact_subject, fact_value_text, fact_value_num, fact_value_jsonb
@@ -5693,6 +5705,7 @@ def _build_karaka_web_rows(
                   AND fact_category = 'karaka_chara_position'
                   AND fact_key = 'assigned_graha'
                   AND formula_id = %s
+                ORDER BY fact_subject, fact_id
                 """,
                 (chart_id, ayanamsha_id, _CANONICAL_KARAKA_SCHOOL),
             )
@@ -5704,24 +5717,53 @@ def _build_karaka_web_rows(
     if not karaka_rows:
         return rows
 
-    # Build role → planet mapping (single canonical school → 8 distinct planets)
+    # Build role → planet mapping (single canonical school → 8 distinct planets).
+    # Rows are re-sorted here on (role, planet) so the map and the planet→role
+    # label choice below are a pure function of the SET of stored rows, whatever
+    # order the driver (or a test stub) returned them in.
     karaka_map: dict[str, str] = {}
-    for row in karaka_rows:
+    for row in sorted(karaka_rows, key=lambda r: (str(r[0] or ""), str(r[1] or ""))):
         role = row[0]   # fact_subject = role name (ATMAKARAKA, etc.)
         planet = row[1]  # fact_value_text = planet name
         if role and planet:
             karaka_map[role] = planet
 
-    # Defensive: dedupe planets while preserving order — a single school is a
-    # clean 8→8 permutation, but a residual degree-tie must never re-introduce a
-    # duplicate-fact_id halt (the pair-loop keys rows on planet, not role).
-    karaka_planets = list(dict.fromkeys(karaka_map.values()))
+    # Defensive: dedupe planets — a single school is a clean 8→8 permutation, but
+    # a residual degree-tie must never re-introduce a duplicate-fact_id halt (the
+    # pair-loop keys rows on planet, not role).
+    #
+    # CANONICAL PAIR ORDER (S-L1 karaka-web order fix): planets are visited in the
+    # fixed nine-graha order ALL_GRAHAS (Sun, Moon, Mars, Mercury, Jupiter, Venus,
+    # Saturn, Rahu, Ketu); any name outside it sorts after, alphabetically. The
+    # output is therefore independent of the read order of the karaka rows.
+    _graha_rank = {g: i for i, g in enumerate(ALL_GRAHAS)}
+    karaka_planets = sorted(
+        set(karaka_map.values()),
+        key=lambda g: (_graha_rank.get(g, len(ALL_GRAHAS)), g),
+    )
     if len(karaka_planets) < 2:
         return rows
 
-    # Check each pair for conjunction or aspect in this varga
-    for i, p_a in enumerate(karaka_planets):
-        for p_b in karaka_planets[i + 1:]:
+    # Role label per planet: the alphabetically first role mapped to it (map is
+    # built in sorted-role order, so this is deterministic even in the degenerate
+    # two-roles-one-planet case).
+    planet_role: dict[str, str] = {}
+    for _role, _planet in karaka_map.items():
+        planet_role.setdefault(_planet, _role)
+
+    # DIRECTED relationships. Parashari graha-drishti is NOT symmetric (Mars 4/8,
+    # Jupiter 5/9, Saturn 3/10, nodes 5/9 cast aspects their targets do not cast
+    # back), so every ORDERED pair (p_a, p_b), p_a != p_b, is evaluated on its
+    # own: the row on subject p_a with key "aspect_<p_b>" means "p_a aspects
+    # p_b". A conjunction (same sign) is symmetric and is emitted on BOTH
+    # subjects (one row per ordered pair, key "conjunction_<other>"), so a
+    # per-subject read sees it whichever planet it starts from. Each ordered pair
+    # yields at most one row (conjunction wins over aspect, as before), so
+    # (subject, key) — hence fact_id — is unique by construction.
+    for p_a in karaka_planets:
+        for p_b in karaka_planets:
+            if p_a == p_b:
+                continue
             data_a = varga_state.get(p_a)
             data_b = varga_state.get(p_b)
             if not data_a or not data_b:
@@ -5737,7 +5779,7 @@ def _build_karaka_web_rows(
             if sign_a and sign_a == sign_b:
                 relationship = "conjunction"
             else:
-                # Check Parashari aspect from A to B.
+                # Parashari aspect cast BY p_a ONTO p_b (directional).
                 asp_offsets = get_graha_aspects(p_a)
                 for offset in asp_offsets:
                     target_house = ((house_a - 1 + offset - 1) % 12) + 1
@@ -5746,10 +5788,14 @@ def _build_karaka_web_rows(
                         break
 
             if relationship:
-                role_a = next((r for r, p in karaka_map.items() if p == p_a), p_a)
-                role_b = next((r for r, p in karaka_map.items() if p == p_b), p_b)
+                role_a = planet_role.get(p_a, p_a)
+                role_b = planet_role.get(p_b, p_b)
                 subj_a = PLANET_TO_SUBJECT.get(p_a, p_a.upper())
                 subj_b = PLANET_TO_SUBJECT.get(p_b, p_b.upper())
+                if relationship == "aspect":
+                    statement = f"{role_a} ({p_a}) aspects {role_b} ({p_b})"
+                else:
+                    statement = f"{role_a} ({p_a}) conjunct {role_b} ({p_b})"
                 rows.append(_base_row(
                     "karaka_web_per_varga",
                     f"{varga}_{subj_a}",
@@ -5763,6 +5809,7 @@ def _build_karaka_web_rows(
                         "role_a": role_a,
                         "role_b": role_b,
                         "relationship": relationship,
+                        "direction": "a_to_b" if relationship == "aspect" else "symmetric",
                         "house_a": house_a,
                         "house_b": house_b,
                         "ayanamsha_id": ayanamsha_id,
@@ -5770,10 +5817,7 @@ def _build_karaka_web_rows(
                     },
                     verif=UNVERIFIED_DEFAULT,
                     source=f"ga_structural.karaka_web_per_varga/{eng_ver}",
-                    citation_human=(
-                        f"{role_a} ({p_a}) {relationship} with {role_b} ({p_b}) "
-                        f"in {varga} ({ayanamsha_id})."
-                    ),
+                    citation_human=f"{statement} in {varga} ({ayanamsha_id}).",
                 ))
 
     return rows
