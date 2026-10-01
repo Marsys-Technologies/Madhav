@@ -177,6 +177,100 @@
           "bg_vidhi_primitives": "63f0a35a4be711d2a19af5f28124316b7b8d0d2940d6fc6d62bc46780bb99cca",
           "bg_yogas": "18340f9966fb8dfb18519f7463ed276a3a5d63dcd0e72873a712e019ea39aca2"
         }
+      },
+      {
+        "generation_id": "l0:7d40f8c70640:64b8859fe692",
+        "historical_snapshot_commit": "1b2b635a4380cf713155175f978e3a466297f59c",
+        "pin": {
+          "admission": {
+            "authority_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee",
+            "authority_decision": "NATIVE-2026-09-24-L0-REPAIR-REPIN",
+            "changed_assets": [
+              "bg_cohort",
+              "bg_ephemeris",
+              "bg_gochara_arcs",
+              "bg_muhurta_lattice",
+              "bg_phaladeepika_latta",
+              "bg_sky_calendar",
+              "bg_transit_engine",
+              "bg_transit_rules",
+              "bg_vedha_malefic_scale"
+            ],
+            "delta_classifications": {
+              "bg_cohort": "derived_import_change",
+              "bg_ephemeris": "approved_intentional_change",
+              "bg_gochara_arcs": "derived_import_change",
+              "bg_muhurta_lattice": "derived_import_change",
+              "bg_phaladeepika_latta": "approved_intentional_change",
+              "bg_sky_calendar": "derived_import_change",
+              "bg_transit_engine": "approved_intentional_change",
+              "bg_transit_rules": "approved_intentional_change",
+              "bg_vedha_malefic_scale": "approved_intentional_change"
+            },
+            "reason": "L0 repair PR #2727: five source edits legitimately moved 9 L0 writer digest(s); writers whose own module was edited are classified intentional, all others derived_import_change (shared upstream l0_ephemeris / service_probes). Decision recorded in 00_ARCHITECTURE/briefs/nirmana/L0_REPAIR_ANALYSIS_REPIN_DECISION_v1_0.md.",
+            "review_artifacts": [
+              {
+                "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+                "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+                "sha256": "abeb3ffa67d646bdbf4777145ba43e97318e04da9226c78a3fb2e0876b7e76f4"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a"
+          },
+          "asset_prefix": "bg_",
+          "convergence_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a",
+          "generation_id": "l0:7d40f8c70640:64b8859fe692",
+          "non_writer_assets": [
+            "bg_ephemeris_engine",
+            "bg_gochara_citation_resolution",
+            "bg_panchanga",
+            "bg_sarvatobhadra_grid"
+          ],
+          "receipt_count": 40,
+          "supersedes_generation_id": "l0:d2369b888e76:3dda261170ee",
+          "writer_inventory_sha256": "64b8859fe6925c178719f6da8b130de73cd29ffe03dcf4bdc19bd0981a0ffff1"
+        },
+        "superseded_by_generation_id": "l0:48c2d55f1596:082c4bbe8c37",
+        "writer_digests": {
+          "bg_class_lifetime_counts": "3f19ed97443e3adb4c0b6edfc4c06b664b3cdfa97cd678a2c103a5a5e8ad89dc",
+          "bg_class_priors": "902a427cce3c7f1a34476e0868a9e071b1377076942f957b5bfb6c2a4975b9ea",
+          "bg_cohort": "db2e035c1b455c53967c19f9a9bd8d801c27ff91d7adb1306f334f05f84ee9e8",
+          "bg_compendium_index": "6b90756b1fc08129529be0d0f741f1a5c66409e9400ef09d0b202983081bf3e0",
+          "bg_concordance": "f50945458f0643664d3659d6d2783c9037db1f3d855eb9affcf3697476966327",
+          "bg_dasha_systems": "66585e94ff6436555eedca470ae72542392054ae2d24afa7db0b6503ad02edb7",
+          "bg_dignity_reference": "28c4e6ac68bd3864eea1995a9c8289047c286d5363d64ce10afbed206537c359",
+          "bg_doshas": "14f7d534dade5db960f4a1779d1bd7143a356523e77e62f5bf834ba93e29aed1",
+          "bg_ephemeris": "0d362cef30e7ad50d73aa41d4a485c7388a4012746210696e0a4ac927565f655",
+          "bg_formula_constants": "54c8bbee62cbe3ffde5dc25a42d119f1f74cf8445149c184d07d6c7ecec8c5a0",
+          "bg_ghatana": "db43d48b92aa425c11522ae20fc9c93efe64e346daf688bff162e9ca784f0a4b",
+          "bg_gochara_arcs": "3ee972f44436b39b85df180bca433103cde29eea0f8ca578ca9dffbb3ffe7887",
+          "bg_kota_chakra_rings": "f416a3c52b95938def7a287f491b58883c193c579fa4fd57c4e80ecd5bc70076",
+          "bg_kp_sublord_division": "ece749ff2c9ac3768b73731d941d6c9479fc0404ecc5ad6efa4e08ec11ff5a39",
+          "bg_medical_mappings": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
+          "bg_muhurta_lattice": "de91c4526bfae808ccf9df84e5cb67c56293cce362a674423c4166752db5f65f",
+          "bg_nakshatra": "1371918553b7af0b5a54ce492fc3238c8b5a78267577a46381b787a0eac12df4",
+          "bg_nakshatra_medical": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
+          "bg_ontology": "6e2f349634c5f98d0658c363b3ac03153eed61f921e74376dd19f5c40aeb1017",
+          "bg_parihara_rules": "e3d5118746f02847dbb1f6f317c6367b37df5d89d41626cc1977a0016ab7ecf2",
+          "bg_phaladeepika_latta": "2e3a372e2df64199020fc5d6aa07728478b01109cc0a26a6d8afbf180a4bddba",
+          "bg_prashna_rules": "07b6ac8065abbcfb98cc76ea37dc7c32ad7a4f7edcafe8c08ccf35b15c3db6eb",
+          "bg_reference": "36c611ee482f7f51b74c3af1b29e9ccda84881e7bcf28403694848b4fcf591b3",
+          "bg_remedies": "bee3d7237648b0ac8f5fd491d35e819c6cecff0ccc8b4e884a69e8f587399987",
+          "bg_rules": "d49b62e17f3e0f493de8e12e10f45f1b66a2e1b87ef17fae7d607ca466290102",
+          "bg_sign_medical": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
+          "bg_sky_calendar": "de65097295c8d599b5f4391b1d0956b08eeca3310f12664b0c91c4762c3dac4d",
+          "bg_text_index": "6c0ac3bd5529a4ea812c80787093a5224adde0087d16d4a14bf3654d4cf76d26",
+          "bg_texts": "04f78c4fd926e7aeb9d34c6b5b27e304bb006114c2833c41b48ff5b849c00834",
+          "bg_transit_engine": "824c6d7d7237ae812cff52b98473228e0c8fc6233d23f976351420a2b63470e1",
+          "bg_transit_rules": "824c6d7d7237ae812cff52b98473228e0c8fc6233d23f976351420a2b63470e1",
+          "bg_vastu_directions": "6c010f59476b462252235407b811c491410d192a8afe3aaf658fc9aaa0462d4d",
+          "bg_vedha_malefic_scale": "2e3a372e2df64199020fc5d6aa07728478b01109cc0a26a6d8afbf180a4bddba",
+          "bg_vidhi_floors": "2c22fdd83accc3ad1a732951eb7cfcca2f0ed4aa9569c604e24505c6466d33b9",
+          "bg_vidhi_primitives": "63f0a35a4be711d2a19af5f28124316b7b8d0d2940d6fc6d62bc46780bb99cca",
+          "bg_yogas": "18340f9966fb8dfb18519f7463ed276a3a5d63dcd0e72873a712e019ea39aca2"
+        }
       }
     ],
     "L1": [
@@ -1433,31 +1527,15 @@
   "layers": {
     "L0": {
       "admission": {
-        "authority_commit": "101171f76517fa3c6b0b44fa9d1cc46358612eee",
-        "authority_decision": "NATIVE-2026-09-24-L0-REPAIR-REPIN",
+        "authority_commit": "26cbb7e004db6f443658cbf0018603891ef7f2ed",
+        "authority_decision": "N-71",
         "changed_assets": [
-          "bg_cohort",
-          "bg_ephemeris",
-          "bg_gochara_arcs",
-          "bg_muhurta_lattice",
-          "bg_phaladeepika_latta",
-          "bg_sky_calendar",
-          "bg_transit_engine",
-          "bg_transit_rules",
-          "bg_vedha_malefic_scale"
+          "bg_gochara_arcs"
         ],
         "delta_classifications": {
-          "bg_cohort": "derived_import_change",
-          "bg_ephemeris": "approved_intentional_change",
-          "bg_gochara_arcs": "derived_import_change",
-          "bg_muhurta_lattice": "derived_import_change",
-          "bg_phaladeepika_latta": "approved_intentional_change",
-          "bg_sky_calendar": "derived_import_change",
-          "bg_transit_engine": "approved_intentional_change",
-          "bg_transit_rules": "approved_intentional_change",
-          "bg_vedha_malefic_scale": "approved_intentional_change"
+          "bg_gochara_arcs": "derived_import_change"
         },
-        "reason": "L0 repair PR #2727: five source edits legitimately moved 9 L0 writer digest(s); writers whose own module was edited are classified intentional, all others derived_import_change (shared upstream l0_ephemeris / service_probes). Decision recorded in 00_ARCHITECTURE/briefs/nirmana/L0_REPAIR_ANALYSIS_REPIN_DECISION_v1_0.md.",
+        "reason": "L0 writer digest bg_gochara_arcs moved only by an import-closure change (services/w2g/db_source.py node-mode pin, PR #2882), admitted under N-71.",
         "review_artifacts": [
           {
             "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
@@ -1467,11 +1545,11 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a"
+        "source_commit": "48c2d55f159605e9b9feea7ed2aabc30cbfdebe6"
       },
       "asset_prefix": "bg_",
-      "convergence_commit": "7d40f8c706406ee8187eadb5c3930553800a1a4a",
-      "generation_id": "l0:7d40f8c70640:64b8859fe692",
+      "convergence_commit": "48c2d55f159605e9b9feea7ed2aabc30cbfdebe6",
+      "generation_id": "l0:48c2d55f1596:082c4bbe8c37",
       "non_writer_assets": [
         "bg_ephemeris_engine",
         "bg_gochara_citation_resolution",
@@ -1479,8 +1557,8 @@
         "bg_sarvatobhadra_grid"
       ],
       "receipt_count": 40,
-      "supersedes_generation_id": "l0:d2369b888e76:3dda261170ee",
-      "writer_inventory_sha256": "64b8859fe6925c178719f6da8b130de73cd29ffe03dcf4bdc19bd0981a0ffff1"
+      "supersedes_generation_id": "l0:7d40f8c70640:64b8859fe692",
+      "writer_inventory_sha256": "082c4bbe8c374313ef8720e7d75ab6e64ad9fb41d4bee6a3a38fcb616fbd23ec"
     },
     "L1": {
       "admission": {
