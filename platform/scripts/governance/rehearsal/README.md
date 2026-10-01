@@ -114,3 +114,30 @@ five kala tables, `phala_anchors` and its four children), which is the brief's 2
 * `reset --yes` deletes only the literal path `/Users/Dev/suvarna/rehearsal/pg`.
 * `init` twice is a no-op; `replay` twice is a no-op; `stop`/`start` are idempotent.
 * Disposable by design (`fsync=off`): never place anything of value here.
+
+## E5.7 L0 rebuild drill — cost estimate (not run; research only, 2026-10-02)
+
+* **Assets:** the 2026-09-04 registry snapshot (`00_ARCHITECTURE/briefs/nirmana/L0_ASSET_REGISTRY_SNAPSHOT_2026-09-04.json`)
+  has 40 `bg_*` rows. Writers are `@register` / `WriterBase` classes in
+  `platform/python-sidecar/pipeline/orchestrator/writers/bg_*.py` over `brahmagyan/l0_*.py`. No writer uses an LLM.
+  No writer at all: `bg_panchanga`, `bg_ephemeris_engine` (service probes), `bg_sarvatobhadra_grid` (empty by
+  design), `bg_gochara_citation_resolution` (migration seed, 14 rows).
+* **Sources:** ~25 assets are hard-coded constants or DB-derived (seconds each). `bg_ephemeris` (825,084 rows),
+  `bg_sky_calendar`, `bg_muhurta_lattice`, `bg_cohort` (110k rows) and `bg_gochara_arcs` need Swiss Ephemeris
+  (`.se1` files exist locally under `/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/se1/`; set `SWE_EPHE_PATH`).
+  `bg_texts` needs 20 pinned objects in a private GCS bucket plus Vertex embeddings (credentials: not obtainable here).
+* **Runtime (estimates; only `bg_gochara_arcs` ~1 min is measured):** ephemeris 4-10 min, muhurta lattice 15-60 min
+  (longest), cohort 3-8 min, sky calendar 1-10 min, text-derived assets 1-5 min each; **30-90 min serial if
+  `classical_text_chunks` is seeded, 45-135 min if `bg_texts` is rebuilt.** Disk < 1 GB (+0.5 GB source PDFs), RAM 1-2 GB peak.
+* **Seed from production (read-only, as `suvarna_reader`):** `classical_text_chunks` (10,651 rows with 768-d
+  embeddings; the practical alternative to rebuilding `bg_texts`), optionally `classical_texts`, the 14-row
+  `bg_gochara_citation_resolution`, and every asset's production fingerprint for the comparison.
+* **Blockers:** (1) the schema replay above lacks `classical_text_chunks`, `bg_transit_rules`,
+  `gochara_resonance_map`, `remedy_review_queue` and has 93 of ~128 registry rows (PA-R10 baseline repair first);
+  (2) `bg_sky_calendar` refuses to write off Linux/x86_64 (`_require_reproducible_write_runtime`) — this Mac is
+  arm64, so a linux/amd64 container with pyswisseph 2.10.3.2 is needed; (3) rolling horizons (`bg_muhurta_lattice`
+  today..+5y, `bg_sky_calendar` ..+10y) need a pinned as-of window for fingerprints; (4) `bg_texts` is not exactly
+  reproducible offline (embeddings, PyMuPDF version); (5) the orchestrator entry point needs a digest-verified
+  `build_runs` plan created by an evidence-gated dispatcher — practical path is `get_writer(asset)().run(ContextSpec(...))`
+  in DAG order, as `run_heavy_writer_standalone.py` does; (6) the E5.5 fingerprint code lives on branch
+  `suvarna/e5.5-stale-certs` (`nikasha_stale_certs.py`), per-asset declarations are in the L0 asset briefs §5.
