@@ -25,6 +25,13 @@ fresh and proven, "gate_ok").
 Every number below was read from the live DB (query in the Evidence appendix) or from the repo at the cited file; estimates
 are labelled "estimate". Code-derived predictions (never observed in production) are labelled "code-derived".
 
+> **v1.1 box (2026-10-01, SS rulings; read this first).** The filename keeps `v1_0`; the frontmatter version is 1.1.
+> - **Authority:** this document is still a REVIEW to SS. It carries no execution authority; any production build, grant, migration or access fix named here is a separate act that SS reviews and the owner/executor performs.
+> - **Sections added:** P0b (`chart_divisionals` access precondition and the `ga_vargas` decision), P0c (grant and migration gates by stage), 1.5 (MSR-before-Kala/Phala ordering invariant, detector scripts), 1.6 (`ka_dasha_kala` ordering), 8.2 (stage S7 `ka_kshetra`), Evidence E12.
+> - **Sections amended:** P0.5 (GO conditions, correction of the "S0-S4 need no grants" claim), 0 (items 1-2 notes), 0.1 (row 1c), 1.3 (wave 0 and wave 1), section 5 (rows 5 and 14-19), 7 (risks R-12 to R-16), 8 (stage table with gates, S0v, S0m, S7), 9 (Q1, Q2, Q9 notes; Q12-Q15 new).
+> - **Numbers:** every figure not re-read in v1.1 stays as v1.0 (attributed to its Evidence block); figures taken from the other PRs' documents are attributed to them; live values re-read 2026-10-01 about 16:20-16:28Z are in E12. Where v1.0 says "the 26", it means the v1.0 computed set; the v1.1 launch set adds `ka_dasha_kala` (27).
+> - **State when read:** none of PRs #2825 (grants), #2826 (1212, 1213), #2827 (1215), #2828 (1214), #2830 (`ka_kshetra`), #2833 (incident fix, ON HOLD) was merged or applied; P0, P0b and every P0c gate are red (section 5 rows 1, 14-16).
+
 ## P0. PRECONDITION 0: the builder audit grant is deployed AND one smoke build completes
 
 No governed production build can complete today, and the wave must not start until this precondition is proven. SS added
