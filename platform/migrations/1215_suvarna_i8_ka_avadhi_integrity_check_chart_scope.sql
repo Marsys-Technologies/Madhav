@@ -4,14 +4,17 @@
 -- Transaction ownership belongs to platform/scripts/migrate.ts (BEGIN/COMMIT around this file).
 --
 -- WHAT. Re-writes ka_avadhi's `integrity_check_sql` (migration 670, conjunct (d) corrected by 1023)
--- in two ways and no other:
+-- in three ways and no other:
 --   (1) every conjunct (a)-(e) is SCOPED to the canonical chart
 --       482012f1-710e-4a25-994a-93821f5871aa (hard-coded literal, same mechanism as ka_yojaka's
 --       migrations 1019 and 1022);
 --   (2) conjunct (b)'s system array lists 'chara_karaka' (the L1 / writer vocabulary) instead of
---       'chara'.
--- Nothing else changes: all five conjuncts and every predicate inside them are kept; only the ROW SET
--- each one scans narrows (conjunct (a), (c), (d), (e) on kala_avadhi a; conjunct (b) on chart_dashas d).
+--       'chara';
+--   (3) a new NON-VACUITY conjunct (f): the canonical chart must have >= 1 kala_avadhi row.
+-- Nothing else changes: all five original conjuncts and every predicate inside them are kept; only the
+-- ROW SET each one scans narrows (conjunct (a), (c), (d), (e) on kala_avadhi a; (b) on chart_dashas d).
+-- Textual edits versus 1023: 5 scope predicates, 1 vocabulary literal, 1 closing paren (conjunct (d)),
+-- 1 new conjunct (f).
 -- The pre-existing comments are byte-identical; one `-- SCOPE (migration 1215)` line is added per conjunct.
 --
 -- WHY (diagnosis I-7, TRACK_I_FIX_ITEMS). The runner executes `integrity_check_sql` with NO parameters
@@ -31,6 +34,20 @@
 -- scope does NOT trade away: every conjunct still runs, in full, against the chart this campaign can certify.
 -- A canonical rebuild now ADDS chara_karaka rows (21 MD + 241 AD); with 'chara_karaka' in (b) their coverage
 -- is guarded for the first time.
+--
+-- WHY (f) (independent review of I-8). With one scoped chart, conjunct (b)'s own guard
+-- `AND EXISTS (SELECT 1 FROM kala_avadhi k WHERE k.chart_id = d.chart_id)` ("only chains the asset has
+-- built") makes (b) VACUOUS when the canonical chart has chart_dashas but ZERO kala_avadhi rows: every
+-- scoped conjunct then passes on an empty table, so the check reads TRUE and the freeze-time
+-- `integrity_verified` detector (src/lib/nirmana-elevation/definitions.ts), which runs this SQL standalone,
+-- would certify an EMPTY canonical table. (f) closes that: a run that leaves the canonical chart with no
+-- kala_avadhi rows now FAILS the check instead of reading dormant, which is the more truthful outcome.
+--
+-- FOLLOW-UP (disclosed, not done here). The scope should be widened when other charts are rebuilt with the
+-- fixed writer: for any NON-canonical chart build this post-write gate no longer measures that chart's own
+-- output and couples its pass/fail to the canonical chart's state (same disclosed precedent as 882, 884,
+-- 902, 1019, 1022). Informational, unchanged here: the registry `target_floor` 1169 and the volume formula
+-- (migration 859) still reflect 6 dasha systems, not 7 (chara_karaka adds 262 rows on a canonical rebuild).
 --
 -- DEPLOY. Applies surgically via the normal migrate.ts run. Pre- and post-conditions are asserted below
 -- (loud failure, never a silent no-op: CLAUDE.md N.4). Idempotent: re-running writes the same constant.
@@ -151,6 +168,12 @@ SELECT
       SELECT 1 FROM bodha_pratijna bp
       WHERE bp.chart_id = a.chart_id AND bp.pratijna_id::text = p)
   )
+  -- (f) non-vacuity (migration 1215): the canonical chart must actually HAVE kala_avadhi rows. Without this,
+  -- conjunct (b)'s "chart has built" guard plus the scoped (a)/(c)/(d)/(e) all pass on an EMPTY table.
+  AND EXISTS (
+    SELECT 1 FROM kala_avadhi
+    WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+  )
   AS integrity_passed
 $ck$
  WHERE asset_id = 'ka_avadhi';
@@ -163,6 +186,10 @@ BEGIN
       AND position('482012f1-710e-4a25-994a-93821f5871aa' IN integrity_check_sql) > 0
       AND position('''chara_karaka''' IN integrity_check_sql) > 0
       AND position('''chara'',' IN integrity_check_sql) = 0
+      AND position('AND EXISTS (
+    SELECT 1 FROM kala_avadhi
+    WHERE chart_id = ''482012f1-710e-4a25-994a-93821f5871aa''
+  )' IN integrity_check_sql) > 0
   ) THEN
     RAISE EXCEPTION '1215: ka_avadhi integrity_check_sql did not take the new text';
   END IF;

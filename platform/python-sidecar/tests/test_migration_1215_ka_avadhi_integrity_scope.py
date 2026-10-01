@@ -39,7 +39,7 @@ _TREE_WALK = _REPO / "platform" / "python-sidecar" / "services" / "ka_dasha_kala
 CANONICAL = "482012f1-710e-4a25-994a-93821f5871aa"
 PHANTOM = "362f9f17"
 # conjunct -> alias of the OUTER row set that must carry the chart scope
-_OUTER_ALIAS = {"a": "a", "b": "d", "c": "a", "d": "a", "e": "a"}
+_OUTER_ALIAS = {"a": "a", "b": "d", "c": "a", "d": "a", "e": "a"}  # (f) is the non-vacuity conjunct
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -62,9 +62,9 @@ def _collapse(sql: str) -> str:
 
 def _conjunct_blocks(body: str) -> dict[str, str]:
     """Split the detector body on its `-- (a)` ... `-- (e)` header comments."""
-    marks = list(re.finditer(r"^[ \t]*-- \(([a-e])\)", body, re.M))
+    marks = list(re.finditer(r"^[ \t]*-- \(([a-f])\)", body, re.M))
     letters = [m.group(1) for m in marks]
-    assert letters == list("abcde"), f"conjunct markers are {letters}"
+    assert letters == list("abcdef"), f"conjunct markers are {letters}"
     blocks = {}
     for i, m in enumerate(marks):
         end = marks[i + 1].start() if i + 1 < len(marks) else len(body)
@@ -81,6 +81,14 @@ def _scope_findings(body: str, canonical: str = CANONICAL) -> list[str]:
         return [f"structure: {exc}"]
     for letter, block in blocks.items():
         code = _strip_comments(block)
+        if letter == "f":
+            # non-vacuity: a TOP-LEVEL `AND EXISTS (SELECT 1 FROM kala_avadhi WHERE chart_id = <canonical>)`
+            if not re.search(
+                rf"AND\s+EXISTS\s*\(\s*SELECT 1 FROM kala_avadhi\s+WHERE chart_id = '{canonical}'\s*\)\s*AS integrity_passed",
+                code,
+            ):
+                out.append("(f) non-vacuity conjunct missing or not canonical-scoped")
+            continue
         w = re.search(r"\bWHERE\b", code)
         if not w:
             out.append(f"({letter}) no WHERE")
@@ -160,7 +168,8 @@ def test_previous_text_had_the_stale_chara_literal():
 
 
 def test_nothing_else_changed_versus_1023_golden_transformation(body):
-    """1023's live text + exactly the six scope/vocabulary edits == 1215's text (comments ignored).
+    """1023's live text + exactly the seven textual edits (5 scopes, 1 vocabulary, 1 closing paren,
+    1 non-vacuity conjunct (f)) == 1215's text (comments ignored).
 
     This is the 'do not weaken what the check guards' proof: every predicate of every conjunct survives;
     only the row set narrows and 'chara' becomes 'chara_karaka'.
@@ -178,6 +187,8 @@ def test_nothing_else_changed_versus_1023_golden_transformation(body):
         ("AS r WHERE upper(r->>'fact_subject') IS DISTINCT FROM (",
          f"AS r WHERE a.chart_id = {C} AND (upper(r->>'fact_subject') IS DISTINCT FROM ("),
         ("f.fact_id = r->>'fact_id') )", "f.fact_id = r->>'fact_id') ) )"),
+        ("= p) ) AS integrity_passed",
+         f"= p) ) AND EXISTS ( SELECT 1 FROM kala_avadhi WHERE chart_id = {C} ) AS integrity_passed"),
         ("AS p WHERE NOT EXISTS (", f"AS p WHERE a.chart_id = {C} AND NOT EXISTS ("),
     ]
     expected = old
@@ -200,7 +211,7 @@ def test_all_five_conjuncts_and_their_predicates_survive(body):
         "AS integrity_passed",
     ):
         assert needle in code, needle
-    assert len(re.findall(r"-- \([a-e]\)", body)) == 5
+    assert len(re.findall(r"-- \([a-f]\)", body)) == 6
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -252,6 +263,21 @@ def test_registry_only_lock_timeout_idempotent_with_loud_assertions(mig_text):
     assert "now()" not in code.lower() and "random" not in code.lower()
 
 
+def test_post_check_literals_are_substrings_of_the_detector_text(mig_text, body):
+    """The $post$ RAISE check must be satisfiable by the very text the UPDATE writes (no deploy-time false alarm)."""
+    post = mig_text.split("$post$")[1]
+    found = re.findall(r"position\('((?:[^']|'')*)' IN integrity_check_sql\)\s*([>=])\s*0", post)
+    lits = [lit.replace("''", "'") for lit, _op in found]
+    assert [op for _lit, op in found] == [">", ">", "=", ">"], found
+    assert lits[0] in body and lits[1] in body and lits[2] not in body, lits
+    assert lits[3] in body and lits[3].startswith("AND EXISTS ("), lits
+
+
+def test_non_vacuity_conjunct_f_is_present_and_documented(mig_text, body):
+    assert re.search(r"AND EXISTS \(\s*SELECT 1 FROM kala_avadhi\s+WHERE chart_id = '%s'\s*\)\s*AS integrity_passed" % CANONICAL, body)
+    assert "NON-VACUITY" in mig_text and "FOLLOW-UP" in mig_text and "target_floor" in mig_text
+
+
 def test_pglast_parses_the_whole_migration_and_scope_is_in_the_ast(mig_text):
     pglast = pytest.importorskip("pglast")
     stmts = pglast.parse_sql(mig_text)
@@ -295,6 +321,15 @@ def test_mutant_or_widened_scope_is_flagged(body):
     widened = body.replace(f"a.chart_id = '{CANONICAL}'\n      AND NOT EXISTS (\n      SELECT 1 FROM chart_dashas",
                            f"a.chart_id = '{CANONICAL}'\n      OR NOT EXISTS (\n      SELECT 1 FROM chart_dashas")
     assert widened != body and _scope_findings(widened)
+
+
+def test_mutant_missing_or_unscoped_non_vacuity_conjunct_is_flagged(body):
+    no_f = re.sub(r"  AND EXISTS \(\s*SELECT 1 FROM kala_avadhi\s+WHERE chart_id = '[0-9a-f-]+'\s*\)\n", "", body)
+    assert no_f != body and _scope_findings(no_f)
+    unscoped = re.sub(r"(AND EXISTS \(\s*SELECT 1 FROM kala_avadhi)\s+WHERE chart_id = '[0-9a-f-]+'", r"\1", body)
+    assert unscoped != body and _scope_findings(unscoped)
+    wrong = body.replace(f"SELECT 1 FROM kala_avadhi\n    WHERE chart_id = '{CANONICAL}'", "SELECT 1 FROM kala_avadhi\n    WHERE chart_id = '1c826d5a-0000-0000-0000-000000000000'")
+    assert wrong != body and _scope_findings(wrong)
 
 
 def test_mutant_stale_chara_literal_is_flagged(body):
