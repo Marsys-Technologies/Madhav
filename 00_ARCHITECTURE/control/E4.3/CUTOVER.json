@@ -1,5 +1,6 @@
 {
   "item": "E4.3",
+  "_doc": "INFORMATIONAL fields: main_sha (FILLED_AFTER_MERGE until the merge) and nikasha_ref_repointed are filled by the strategist; no detector and no verify_cutover.py check reads them, by design. Everything under files/ and the two *_md5_equal flags is computed and verified by verify_cutover.py.",
   "doc": "Ledger cut-over record: line count and md5 of both ledgers and the register at the cut commit (old) vs on main (new). Recomputed by verify_cutover.py.",
   "cut_sha": "2a78ec64d88e59438bd6527b4c99826432102c57",
   "cut_ref": "origin/campaign/nikasha-test",

@@ -185,6 +185,8 @@ def test_real_ledgers_still_begin_with_the_cut_rows_byte_for_byte():
     code, report = vc.verify(REPO, _record(), "prefix", use_git=False)
     assert code in (vc.EXIT_NO_DETECTOR, vc.EXIT_OK), report
     assert not any(line.startswith("FAIL") for line in report), report
+    # an empty files map, or a regression that emits no comparison, must not pass by having nothing to fail
+    assert any(line.startswith("ok") for line in report), f"no comparison was made: {report}"
 
 
 @needs_cut
@@ -198,3 +200,41 @@ def test_cli_exit_code_follows_verify(tmp_tree, capsys):
     assert rc == vc.EXIT_NO_DETECTOR
     _flip_one_byte(tmp_tree / GAPS, 3)
     assert vc.main(["--root", str(tmp_tree), "--no-git", "--cutover", str(CUTOVER)]) == vc.EXIT_MISMATCH
+
+
+# ---- review fixes: malformed record entries, informational fields -------------------------------
+
+@pytest.mark.parametrize("key", ["old_lines", "old_bytes", "old_md5"])
+def test_a_file_entry_missing_an_old_value_is_a_usage_error_not_a_traceback(tmp_tree, key):
+    rec = _record()
+    del rec["files"][GAPS][key]
+    code, report = vc.verify(tmp_tree, rec, "exact", use_git=False)
+    assert code == vc.EXIT_USAGE, report
+    assert key in report[0] and GAPS in report[0]
+
+
+def test_a_non_object_file_entry_is_a_usage_error(tmp_tree):
+    rec = _record()
+    rec["files"][CERTS] = "not an object"
+    assert vc.verify(tmp_tree, rec, "prefix", use_git=False)[0] == vc.EXIT_USAGE
+
+
+def test_cli_reports_usage_error_exit_2_for_an_incomplete_record(tmp_tree, tmp_path):
+    rec = _record()
+    del rec["files"][REGISTER]["old_md5"]
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(rec), encoding="utf-8")
+    assert vc.main(["--root", str(tmp_tree), "--no-git", "--cutover", str(bad)]) == vc.EXIT_USAGE
+
+
+def test_record_documents_that_main_sha_and_the_repoint_flag_are_informational():
+    rec = _record()
+    assert "INFORMATIONAL" in rec["_doc"] and "main_sha" in rec["_doc"] and "nikasha_ref_repointed" in rec["_doc"]
+
+
+@needs_cut
+def test_verified_run_says_main_sha_and_the_repoint_flag_are_informational(tmp_tree):
+    code, report = vc.verify(tmp_tree, _record(), "exact", git_repo=REPO)
+    assert code == vc.EXIT_OK, report
+    assert any(line.startswith("info") and "INFORMATIONAL" in line and "main_sha" in line
+               and "nikasha_ref_repointed" in line for line in report), report

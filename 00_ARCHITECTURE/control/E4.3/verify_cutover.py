@@ -16,13 +16,17 @@ Two modes:
                      equal the cut (a historical row was not rewritten) while later rows are allowed. The register
                      is not append-only: it is not checked in this mode (the report says so).
 
+INFORMATIONAL fields: CUTOVER.json's `main_sha` (FILLED_AFTER_MERGE until the merge) and `nikasha_ref_repointed`
+are filled by the strategist and are NOT checked by this script or by any detector, by design; on a verified run
+the script prints a line saying so, so a green result is never read as covering them.
+
 Exit codes (the verdict is never PASS unless every comparison that exists was made and agreed):
   0  verified: recorded values agree with the working tree AND with git show <cut_sha>
   1  MISMATCH or unreadable: a file is missing, or any number/md5 differs
   4  NO_DETECTOR: the working tree agrees with the record but the cut commit is not reachable here, so the
      git-side comparison could not be made. This is a non-zero, non-passing result by design -- a check that
      could not run must not read as green (CLAUDE.md section N.8).
-  2  usage error (bad CUTOVER.json)
+  2  usage error (bad CUTOVER.json: no 40-hex cut_sha, empty files map, or a file entry missing old_lines/old_bytes/old_md5)
 
 Usage:  python3 00_ARCHITECTURE/control/E4.3/verify_cutover.py [--mode exact|prefix] [--root DIR] [--git-repo DIR]
         [--cutover PATH] [--no-git]
@@ -42,6 +46,9 @@ DEFAULT_CUTOVER = HERE / "CUTOVER.json"
 
 EXIT_OK, EXIT_MISMATCH, EXIT_USAGE, EXIT_NO_DETECTOR = 0, 1, 2, 4
 PLACEHOLDER = "FILLED_AFTER_MERGE"
+REQUIRED_KEYS = ("old_lines", "old_bytes", "old_md5")
+INFO_LINE = (f"info  main_sha ({PLACEHOLDER} until the merge) and nikasha_ref_repointed are INFORMATIONAL: no detector "
+             "reads them, by design; the strategist fills them. They are not part of this verification.")
 
 
 def measure(data: bytes) -> dict:
@@ -75,6 +82,11 @@ def verify(root: pathlib.Path, cutover: dict, mode: str = "exact", git_repo: pat
     files = cutover.get("files")
     if not (isinstance(cut_sha, str) and len(cut_sha) == 40) or not isinstance(files, dict) or not files:
         return EXIT_USAGE, ["CUTOVER.json lacks a 40-hex cut_sha or a non-empty files map"]
+    for rel, rec in sorted(files.items()):
+        missing = [k for k in REQUIRED_KEYS if not isinstance(rec, dict) or k not in rec]
+        if missing:
+            return EXIT_USAGE, [f"CUTOVER.json files[{rel!r}] is missing {', '.join(missing)} "
+                                f"(each file entry needs {', '.join(REQUIRED_KEYS)})"]
     git_repo = git_repo or root
     report: list[str] = []
     bad = False
@@ -123,8 +135,7 @@ def verify(root: pathlib.Path, cutover: dict, mode: str = "exact", git_repo: pat
                       f"{' (git disabled)' if not use_git else ''}; only the working-tree-vs-record comparison "
                       "was made, which is not a verification of the cut. Not a pass.")
         return EXIT_NO_DETECTOR, report
-    if cutover.get("main_sha") == PLACEHOLDER:
-        report.append(f"note  main_sha is still {PLACEHOLDER}: fill it after the merge")
+    report.append(INFO_LINE)
     return EXIT_OK, report
 
 
