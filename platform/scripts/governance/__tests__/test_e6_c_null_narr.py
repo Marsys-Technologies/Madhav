@@ -1381,3 +1381,29 @@ def test_the_rollup_reads_the_inconclusive_flag_by_truthiness(flag):
 def test_a_falsy_inconclusive_flag_is_not_an_inconclusive_record():
     c, _ = _chk("Narr.agree", v=ac.PASS, inconclusive=0)
     assert c["v"] == ac.PASS and "inconclusive" not in c
+
+
+# ───────────────────────── final review: the eight surviving mutants ─────────────────────────
+
+@pytest.mark.parametrize("v", [ac.FAIL, ac.ERRORED])
+def test_the_inconclusive_flag_is_carried_into_every_rollup_record_that_had_it(v):
+    assert _chk("Null.blank_rows", v=v, inconclusive=True)[0]["inconclusive"] is True
+
+
+def test_a_single_blank_row_is_enough_to_fail_in_a_chart_scoped_count():
+    r = ac.grade_null_blank_rows(["a"], {"a": {"checkable": 9, "blank": 1, "scope": "chart-scoped by count_sql"}})
+    assert r["v"] == ac.FAIL and "a=1" in r["measured"]
+
+
+def test_an_entry_held_by_two_owned_tables_is_counted_in_the_first_one(monkeypatch):
+    cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}), t_facts=(["id", "a"], {}, {}))
+    out, sqls = _mp(["a"], cat, ["t_main", "t_facts"], monkeypatch=monkeypatch)
+    assert len(sqls) == 1 and " FROM t_main" in sqls[0], sqls
+
+
+@pytest.mark.parametrize("leaf", ["statement", "reason", "text", "summary", "description", "note"])
+def test_each_generic_leaf_is_covered_only_in_an_assert_or_beside_a_specific_key(leaf):
+    inp = _H + f"def test_a():\n    out = build_narration({{'{leaf}': 1}})\n    assert out\n"
+    assert ac.narr_fidelity_scan([leaf], CITE, _tests(test_a=inp))["covered"] == []
+    asr = _H + f"def test_a():\n    out = build_narration(1)\n    assert out['{leaf}']\n"
+    assert ac.narr_fidelity_scan([leaf], CITE, _tests(test_a=asr))["covered"] == [leaf]
