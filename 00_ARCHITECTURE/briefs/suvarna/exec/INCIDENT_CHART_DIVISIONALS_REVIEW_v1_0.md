@@ -1,14 +1,16 @@
 ---
 artifact: INCIDENT_CHART_DIVISIONALS_REVIEW
 version: "1.0"
-status: DRAFT-FOR-REVIEW
+status: SS-APPROVED-ON-HOLD
 produced_by: exec-suvarna (analysis lane)
 date: 2026-10-01
 base_commit: origin/main 066c58587358537d76880712241562e5f6ce722d
 related: TRACK_I_FIX_ITEMS.md I-11 (branch TI-i11-divisionals-001, read-only), BUILDER_GRANT_PLAN (branch grant-plan-001, read-only), reader_grants.py (D6 in-process pattern), CF-16 (L1 briefs)
 execution: NONE against any real system. Analysis only: no policy, DDL, admin action, DB write, push, PR, workflow or CLAUDE.md change. Every SQL statement and plan below is a draft. The only database access was read-only as `suvarna_reader` (SELECT and catalog reads); what that role cannot see is listed in Part IV.
 approval_needed: SS `APPROVED <plan hash>` for the printed plan hash of a dry run, plus the owner's standing authorization in the executing session. Nothing here is available to this lane to run.
+hold: "2026-10-01: SS APPROVED count 6d9745dd8005fa2a1845aa2326c101472f3d3db12794478db9f08e6ddf02953f and apply D 531c0940ae6eb654972e3401fd317f95cf2051cca10ae7249ff44e420a741aad, then ordered HOLD after the owner told Pravaha \"don't worry about it, any which way, we will rebuild it\". Do not run unless the owner says otherwise in the executing session. The access fix is the precondition of any ga_vargas rebuild (rebuild plan v1.1, P0b)."
 changelog:
+  - "1.0.1 (2026-10-01): status set to SS-APPROVED-ON-HOLD (see hold field); no content change."
   - "1.0 (2026-10-01): first draft. Restructured on SS's scope change: Part I is the stand-alone, minimal incident fix (chart_divisionals only, not bundled with the builder grant plan); Parts II-III hold the secondary and follow-up material."
 ---
 
