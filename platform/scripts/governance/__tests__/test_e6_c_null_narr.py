@@ -505,11 +505,13 @@ class P(WriterBase):
     monkeypatch.setattr(ac, "python_tests", lambda *a, **k: [])
     seen = []
 
+    base = w1._pg_like_psql({"t_own": 3})
+
     def psql(sql, sep="\x1f", timeout=None):
         seen.append(sql)
         if "FILTER" in sql:
             return [["4", "0"]]
-        return [["3"]]
+        return base(sql, sep, timeout)
     monkeypatch.setattr(ac, "psql", psql)
     c = ac.measure("L0")
     m = next(a for a in c["assets"] if a["asset_id"] == "bo_p")["measurements"]
@@ -522,9 +524,9 @@ class P(WriterBase):
 
 
 def test_measure_isolates_an_unreadable_declarations_file_to_the_six_checks(monkeypatch, tmp_path):
-    reg = {"bg_a": w1._reg_row("bg_a", "t1", count_sql="SELECT count(*) FROM t1")}
-    w1._stub_layer(monkeypatch, tmp_path, reg, tables={"t1": (["a"], [])})
-    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t1": 3}))
+    reg = {"bg_a": w1._reg_row("bg_a", "t_one", count_sql="SELECT count(*) FROM t_one")}
+    w1._stub_layer(monkeypatch, tmp_path, reg, tables={"t_one": (["a"], [])})
+    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t_one": 3}))
 
     def boom(*a, **k):
         raise ac.DeclarationsError("unreadable")

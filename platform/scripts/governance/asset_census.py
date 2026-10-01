@@ -4025,6 +4025,37 @@ def _layer_read(name: str, fn, *args):
         raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
 
 
+def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> dict:
+    """measure()'s glue for the six Narr/Null checks: gathers the inputs (catalog columns/types/defaults, the asset's
+    row counts from its own count_sql scope, the writer scope, tests) and calls prose_checks. Fault-isolated (R41)."""
+    tbl = r["target_table"]
+    pf = decl.get("prose_fields") if isinstance(decl, dict) else None
+    ctx = dict(table=tbl, columns=_target_columns_fact(tbl, cat), tests=ptests, vocabulary=vocab,
+               types=(cat.get("types") or {}).get(tbl) if cat.get("types") is not None else None,
+               defaults=((cat.get("defaults") or {}).get(tbl, {}) if tbl else {}) if cat.get("defaults") is not None else None,
+               counts=None, paths=[], written=None)
+    if files and pf is not None:
+        try:
+            units, _beyond = _delegation_scope(aid, files)
+            ctx["paths"] = [u["path"] for u in units]
+            ctx["written"] = written_columns(units, [tbl] + list(ctables))
+        except Unknown:
+            pass
+    errored = {}
+    if pf and tbl and tbl in cat["exists"]:
+        tail = _count_scope_tail(r["count_sql"], tbl)
+        if tail is None and tbl not in shared:
+            tail = ""
+        if tail is not None:
+            try:
+                ctx["counts"] = prose_row_counts(tbl, pf, _bind_chart(tail, CHART_ID))
+            except Unknown as exc:
+                errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
+    out = prose_checks(aid, decl, ctx)
+    out.update(errored)
+    return out
+
+
 def measure(layer_key: str) -> dict:
     """Measure one layer.
 
@@ -4086,6 +4117,12 @@ def measure(layer_key: str) -> dict:
             _decl.setdefault(_t, set()).add(_aid)
     dens_shared = frozenset(t for t, who in _decl.items() if len(who) > 1)
     owners: dict = {}                                     # R53: read lazily, at most once per layer
+    try:                                                   # E6 packet (c): read once per layer run
+        prose_decls = load_asset_declarations()
+        prose_vocab = prose_vocabulary(prose_decls)
+    except DeclarationsError as exc:
+        prose_decls, prose_vocab = exc, set()
+    prose_tests = None
     assets = []
     for aid, r in reg.items():
         m: dict[str, dict] = {}
@@ -4392,6 +4429,20 @@ def measure(layer_key: str) -> dict:
         cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
                               outside_roots=DENS_OUTSIDE_ROOTS)
         m["Dens.served"] = _grade_dens(cap, tbl or aid)
+
+        # E6 packet (c): the Null and Narr checks (declarations file + catalog + writer scope + tests; fault-isolated)
+        if isinstance(prose_decls, DeclarationsError):
+            for _c in NARR_CHECKS + NULL_CHECKS:
+                m[_c] = dict(v=ERRORED, measured=f"check errored: the declarations file is unreadable ({prose_decls})")
+        else:
+            try:
+                if prose_tests is None and (prose_decls.get(aid) or {}).get("prose_fields"):
+                    prose_tests = python_tests()
+                m.update(_measure_prose(aid, prose_decls.get(aid), r, files, cat, ctables, dens_shared, prose_tests or (),
+                                        prose_vocab))
+            except (Unknown, DeclarationsError) as exc:
+                for _c in NARR_CHECKS + NULL_CHECKS:
+                    m[_c] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
         h = hist["per"].get(aid)
         if not h:
