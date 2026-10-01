@@ -1,23 +1,39 @@
 -- 1218_suvarna_bodha_writer_timeouts.sql
 --
--- Suvarna ruling R-25 (SS, 2026-10-01): raise asset_registry.writer_timeout_seconds from 600 to 10800
--- (3 h) for bo_grounding and bo_laksana_rerank ONLY. 10800 is the value the other 15 bodha assets
--- already carry (bo_anveshana, bo_bimba, bo_cdlm_summary, bo_cgm_motifs, bo_cgm_paths,
--- bo_chart_gestalt, bo_drishti, bo_karanajala, bo_laksana, bo_pramana_mapa, bo_pratijna,
--- bo_samskara, bo_samvada, bo_sangati, bo_upaya), the same value mi_bhara already holds in
--- production (F-71: mi_bhara timed out on the 600 s budget), and the value the parisesa
--- F104/F35 rebuild packet recorded for its ten assets. Transaction ownership belongs to
--- platform/scripts/migrate.ts (BEGIN/COMMIT around this file). Data-only: one UPDATE of two
--- asset_registry rows, no DDL. NOT applied by this change.
+-- Suvarna ruling R-25 (SS, 2026-10-01; value superseded by SS to 1800): raise
+-- asset_registry.writer_timeout_seconds from 600 to 1800 (30 min) for bo_grounding and
+-- bo_laksana_rerank ONLY. Transaction ownership belongs to platform/scripts/migrate.ts
+-- (BEGIN/COMMIT around this file). Data-only: one UPDATE of two asset_registry rows, no DDL.
+-- NOT applied by this change.
 --
 -- WHY THESE TWO. The in-process per-writer watchdog is the timeout that can actually FAIL an asset and
 -- block a batch: runner.py execute_dag computes `deadlines[fut] = monotonic() + _timeout_for(asset)`
 -- from asset_registry.writer_timeout_seconds (runner.py:679 `_timeout_for`, :726 deadline check), marks
 -- the asset `error` on expiry, and cascade-blocks its dependents. Both assets are still on the 600 s
 -- default. The N-59 L2 fixes add work to the bo_laksana_rerank pass, so its 600 s headroom is the
--- one that shrinks. bo_grounding is raised with it so the pair is not left as the only 600 s members
--- of a chain whose other 15 members are at 10800. Evidence: INVESTIGATION_R25_REAPER_VS_L2_v1_0.md
--- (branch suvarna/land/TI-r25-reaper-001, PR #2843), options 1 + 3 taken.
+-- one that shrinks. bo_grounding is raised with it so the pair is not left as the only 600 s
+-- members of the chain.
+--
+-- WHY 1800 AND NOT 10800. SS first ruled 10800 (the value 15 other bodha assets carry and
+-- mi_bhara holds in production), then superseded it with 1800: (a) it covers the worst recorded runs
+-- with margin (bo_laksana_rerank 1233 s, bo_grounding 1157 s; INVESTIGATION_R25_REAPER_VS_L2_v1_0.md
+-- section 2); (b) it BOUNDS a real hang at 30 minutes instead of 3 hours, which matters because
+-- bo_sangati depends directly on bo_laksana_rerank (live asset_registry.depends_on) and is blocked
+-- until the rerank finishes or times out; (c) it matches the 30-minute idle-in-transaction cap the
+-- orchestrator sets on its connections (pipeline/orchestrator/db.py:49-76, which also sets
+-- statement_timeout = 0, so the writer timeout is the only wall-clock bound on a statement).
+--
+-- HONEST TRADE-OFFS (what 1800 does and does not fix):
+--   * It changes only the in-process budget (P1). The 15-minute stuck-asset watchdog, clause 2
+--     (platform/src/app/api/cockpit/watchdog/route.ts:216-394), never reads the registry. Any run of
+--     either asset longer than 15 minutes is still exposed to it, and a light writer re-running over
+--     existing data can be falsely promoted to `lit` while its worker is still running. A `lit` flip
+--     seen while the worker is alive is a watchdog artefact: verify the final state after the worker
+--     ends, do not trust the interim one.
+--   * A larger timeout lengthens hang detection for bo_laksana_rerank (and bo_grounding) from 10
+--     minutes to up to 30 minutes, and keeps bo_sangati blocked that long on a real hang.
+--   * Neither writer has substeps (light writers), so substep-progress monitoring (the S-L2 12-minute
+--     stop rule) cannot observe them; watch their wall time directly.
 --
 -- SCOPE. Exactly these two rows and exactly this one column. NOT touched: the other six bodha assets
 -- that are still at 600 (bo_arudha, bo_nakshatra_semantic, bo_special_lagna, bo_sudarshana,
@@ -52,16 +68,23 @@
 -- (verified read-only: pg_class.relowner = amjis_app), so this UPDATE is issued by the owner.
 --
 -- BEHAVIOUR. Guarded and append-only. The UPDATE matches only rows still at 600, so it is idempotent
--- (a replay finds nothing to change) and never overwrites a different value (a row already at any
--- other value is left as it is, with a NOTICE). On a fresh bootstrap where neither row exists yet it
--- is a no-op (rows seeded later take the 600 default; that is a bootstrap-ordering matter for
--- a fresh environment, not for this live-registry fact). A snapshot of every asset_registry row's writer_timeout_seconds is taken
--- inside the transaction and compared afterwards: the migration RAISEs unless exactly the rows it
--- meant to change changed, to 10800, and no other row's value moved.
+-- (a replay finds nothing to change) and never overwrites a different value. A target row that holds
+-- any value other than 600 (already 1800, or a deliberate other value such as 10800) is LEFT ALONE
+-- with a NOTICE and the migration STILL SUCCEEDS, so a green deploy does not by itself prove both
+-- rows read 1800: run the post-apply check below. On a fresh bootstrap where neither row exists yet
+-- it is a no-op (rows seeded later take the 600 default; that is a bootstrap-ordering matter for a
+-- fresh environment, not for this live-registry fact). A snapshot of every asset_registry row's
+-- writer_timeout_seconds is taken inside the transaction and compared afterwards: the migration
+-- RAISEs unless exactly the rows it meant to change changed, to 1800, and no other row's value moved.
+-- The snapshot is taken at READ COMMITTED without a table lock (a lock would block builders for no
+-- benefit), so a concurrent committed writer_timeout_seconds edit on ANY row between the snapshot and
+-- the verify is counted as a stray change and fails the migration closed; re-running it succeeds.
 --
--- Tests: platform/tests/unit/migrations/suvarna_bodha_writer_timeouts_1218.test.ts (static).
+-- Tests: platform/tests/unit/migrations/suvarna_bodha_writer_timeouts_1218.test.ts (static) and
+-- platform/tests/integration/suvarna_bodha_writer_timeouts_1218.db.test.ts (executes this file on a
+-- throwaway Postgres with the real trigger; env-gated, wired into CI db-integration-tests).
 --
--- Post-apply verification (CLAUDE.md N.4): expect 2 rows, both 10800.
+-- Post-apply verification (CLAUDE.md N.4): expect 2 rows, both 1800.
 --   SELECT asset_id, writer_timeout_seconds FROM asset_registry
 --    WHERE asset_id IN ('bo_grounding','bo_laksana_rerank') ORDER BY asset_id;
 
@@ -85,7 +108,7 @@ BEGIN
 END $$;
 
 UPDATE asset_registry
-   SET writer_timeout_seconds = 10800
+   SET writer_timeout_seconds = 1800
  WHERE asset_id IN ('bo_grounding', 'bo_laksana_rerank')
    AND writer_timeout_seconds = 600;
 
@@ -115,38 +138,38 @@ BEGIN
             actual_changes, expected_changes;
     END IF;
 
-    -- no changed row may be outside the two targets, and every changed row must now read 10800
+    -- no changed row may be outside the two targets, and every changed row must now read 1800
     SELECT string_agg(coalesce(r.asset_id, b.asset_id), ', ' ORDER BY coalesce(r.asset_id, b.asset_id))
       INTO stray
       FROM _m1218_before b
       FULL JOIN asset_registry r ON r.asset_id = b.asset_id
      WHERE r.writer_timeout_seconds IS DISTINCT FROM b.writer_timeout_seconds
        AND (coalesce(r.asset_id, b.asset_id) NOT IN ('bo_grounding', 'bo_laksana_rerank')
-            OR r.writer_timeout_seconds IS DISTINCT FROM 10800);
+            OR r.writer_timeout_seconds IS DISTINCT FROM 1800);
     IF stray IS NOT NULL THEN
         RAISE EXCEPTION '1218: unexpected writer_timeout_seconds change on: %', stray;
     END IF;
 
-    -- every target present must read 10800, unless it held a different, deliberate value that the
-    -- 600 guard correctly left alone (that case is reported, not overwritten)
+    -- every target that was at 600 must now read 1800; a target that held a different, deliberate
+    -- value was correctly left alone by the 600 guard (reported below, not overwritten)
     SELECT string_agg(r.asset_id || '=' || coalesce(r.writer_timeout_seconds::text, 'NULL'), ', '
                       ORDER BY r.asset_id)
       INTO unmet
       FROM asset_registry r
       JOIN _m1218_before b ON b.asset_id = r.asset_id
      WHERE r.asset_id IN ('bo_grounding', 'bo_laksana_rerank')
-       AND r.writer_timeout_seconds IS DISTINCT FROM 10800
+       AND r.writer_timeout_seconds IS DISTINCT FROM 1800
        AND b.writer_timeout_seconds = 600;
     IF unmet IS NOT NULL THEN
-        RAISE EXCEPTION '1218: target row(s) not at 10800 after update: %', unmet;
+        RAISE EXCEPTION '1218: target row(s) not at 1800 after update: %', unmet;
     END IF;
 
     IF expected_changes < (SELECT count(*) FROM _m1218_before
                             WHERE asset_id IN ('bo_grounding', 'bo_laksana_rerank')) THEN
-        RAISE NOTICE '1218: a target row was not at 600 (already 10800, or a deliberate other value) and was left untouched';
+        RAISE NOTICE '1218: a target row was not at 600 (already 1800, or a deliberate other value) and was left untouched';
     END IF;
 END $$;
 
 -- DOWN (ops reference, not executed by migrate.ts): restore exactly these two rows.
 --   UPDATE asset_registry SET writer_timeout_seconds = 600
---    WHERE asset_id IN ('bo_grounding', 'bo_laksana_rerank') AND writer_timeout_seconds = 10800;
+--    WHERE asset_id IN ('bo_grounding', 'bo_laksana_rerank') AND writer_timeout_seconds = 1800;

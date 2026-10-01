@@ -18,25 +18,60 @@ const definitions = readFileSync(
 )
 const seed = readFileSync(join(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
 
-describe('migration 1218: bodha writer timeouts (SS ruling R-25)', () => {
-  it('raises exactly bo_grounding and bo_laksana_rerank from 600 to 10800, nothing else', () => {
-    const updates = code.match(/UPDATE\s+asset_registry\b[\s\S]*?;/g) ?? []
-    expect(updates).toHaveLength(1)
-    const update = updates[0]
-    expect(update).toMatch(/SET\s+writer_timeout_seconds\s*=\s*10800\b/)
-    expect(update).toMatch(/asset_id\s+IN\s*\(\s*'bo_grounding'\s*,\s*'bo_laksana_rerank'\s*\)/)
-    // sets one column only
-    expect(update.match(/\bSET\b/g)).toHaveLength(1)
-    expect(update).not.toMatch(/SET[\s\S]*,\s*[a-z_]+\s*=/)
+const WRITE_TARGET = /\b(?:UPDATE|INSERT\s+INTO|DELETE\s+FROM|MERGE\s+INTO|TRUNCATE(?:\s+TABLE)?)\s+(?:ONLY\s+)?(?:"?public"?\.)?"?asset_registry"?(?![\w])/gi
+const UPDATE_STATEMENT = /UPDATE\s+(?:ONLY\s+)?(?:"?public"?\.)?"?asset_registry"?\b[\s\S]*?;/i
+
+/** The one UPDATE, whitespace-collapsed with any `public.` qualifier removed, for exact comparison. */
+function normalizedUpdate(): string {
+  const match = code.match(UPDATE_STATEMENT)
+  if (!match) throw new Error('no UPDATE asset_registry statement found')
+  return match[0].replace(/\bpublic\./gi, '').replace(/\s+/g, ' ').trim()
+}
+
+describe('migration 1218: bodha writer timeouts (SS ruling R-25, value 1800)', () => {
+  it('raises exactly bo_grounding and bo_laksana_rerank from 600 to 1800, nothing else', () => {
+    // Exact statement: one column in SET, the two ids, the = 600 guard, and no OR / extra predicate
+    // (kills `= 600 OR TRUE`, a widened id list, a dropped guard, a second SET column).
+    expect(normalizedUpdate()).toBe(
+      "UPDATE asset_registry SET writer_timeout_seconds = 1800 WHERE asset_id IN ('bo_grounding', 'bo_laksana_rerank') AND writer_timeout_seconds = 600;",
+    )
+  })
+
+  it('tolerates a schema qualifier on the UPDATE target', () => {
+    const qualified = 'UPDATE public.asset_registry\n   SET writer_timeout_seconds = 1800\n WHERE asset_id IN (\'a\');'
+    expect(qualified.match(UPDATE_STATEMENT)).not.toBeNull()
+    expect(('UPDATE "public"."asset_registry" SET x = 1;').match(UPDATE_STATEMENT)).not.toBeNull()
+  })
+
+  it('performs exactly one write to asset_registry (no second UPDATE/INSERT/DELETE/MERGE/TRUNCATE)', () => {
+    expect(code.match(WRITE_TARGET)).toHaveLength(1)
+    // the detector itself recognises each write form, qualified or not
+    for (const write of [
+      'UPDATE asset_registry SET a = 1',
+      'UPDATE public.asset_registry SET a = 1',
+      'INSERT INTO asset_registry (a) VALUES (1)',
+      'INSERT INTO public.asset_registry (a) VALUES (1)',
+      'DELETE FROM asset_registry',
+      'MERGE INTO asset_registry',
+      'TRUNCATE asset_registry',
+    ]) {
+      expect(write.match(WRITE_TARGET), write).toHaveLength(1)
+    }
+    expect('SELECT 1 FROM asset_registry r'.match(WRITE_TARGET)).toBeNull()
   })
 
   it('is idempotent and never overwrites a different value (guarded on = 600)', () => {
-    const update = (code.match(/UPDATE\s+asset_registry\b[\s\S]*?;/) ?? [''])[0]
-    expect(update).toMatch(/AND\s+writer_timeout_seconds\s*=\s*600\b/)
+    expect(normalizedUpdate()).toMatch(/AND writer_timeout_seconds = 600;$/)
+    expect(normalizedUpdate()).not.toMatch(/\bOR\b/i)
     // (`ON COMMIT DROP` on the temp snapshot is the only DROP in the file and is not a DROP statement)
     expect(code).not.toMatch(
-      /\bDELETE\s+FROM\b|\bTRUNCATE\b|\bALTER\s+(TABLE|FUNCTION|TRIGGER)\b|\bDROP\s+(TABLE|COLUMN|FUNCTION|TRIGGER|INDEX|CONSTRAINT)\b|\bINSERT\s+INTO\s+asset_registry\b/i,
+      /\bDELETE\s+FROM\b|\bTRUNCATE\b|\bALTER\s+(TABLE|FUNCTION|TRIGGER)\b|\bDROP\s+(TABLE|COLUMN|FUNCTION|TRIGGER|INDEX|CONSTRAINT)\b/i,
     )
+  })
+
+  it('does not carry the superseded 10800 value in executable SQL', () => {
+    expect(code).not.toMatch(/\b10800\b/)
+    expect(code.match(/\b1800\b/g)?.length).toBeGreaterThanOrEqual(4)
   })
 
   it('leaves transaction ownership to migrate.ts', () => {
@@ -50,19 +85,19 @@ describe('migration 1218: bodha writer timeouts (SS ruling R-25)', () => {
     expect(code).toContain('r.writer_timeout_seconds IS DISTINCT FROM b.writer_timeout_seconds')
     expect(code).toMatch(/RAISE EXCEPTION '1218: % asset_registry row\(s\) changed writer_timeout_seconds, expected exactly %'/)
     expect(code).toMatch(/RAISE EXCEPTION '1218: unexpected writer_timeout_seconds change on: %'/)
-    expect(code).toMatch(/RAISE EXCEPTION '1218: target row\(s\) not at 10800 after update: %'/)
+    expect(code).toMatch(/RAISE EXCEPTION '1218: target row\(s\) not at 1800 after update: %'/)
     expect(code).toMatch(/RAISE EXCEPTION '1218: expected both or neither of bo_grounding\/bo_laksana_rerank/)
   })
 
   it('verifies after the UPDATE, never before it', () => {
-    const updateAt = code.search(/UPDATE\s+asset_registry\b/)
-    const stray = code.indexOf("unexpected writer_timeout_seconds change on")
+    const updateAt = code.search(UPDATE_STATEMENT)
+    const stray = code.indexOf('unexpected writer_timeout_seconds change on')
     expect(updateAt).toBeGreaterThan(-1)
     expect(stray).toBeGreaterThan(updateAt)
   })
 
   it('does not touch a column that the registry-receipt invalidation trigger or a frozen manifest watches', () => {
-    const update = (code.match(/UPDATE\s+asset_registry\b[\s\S]*?;/) ?? [''])[0]
+    const update = normalizedUpdate()
     // nirmana_registry_receipt_invalidation fires AFTER UPDATE OF these columns (live DB, read-only check)
     const triggerColumns = [
       'depends_on', 'natural_key_partition', 'health_probe', 'integrity_check_sql', 'target_floor',
