@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t1, 2026-09-09"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-04, TI-L2-10, TI-L2-13, TI-L2-14]
 ledger_gap_ids: [bo_yantra_mechanism-Earn.build_record, bo_yantra_mechanism-Cost.baseline, bo_yantra_mechanism-Build.history, bo_yantra_mechanism-Build.dep_liveness, bo_yantra_mechanism-Carr.detector]
 ---
 # bo_yantra_mechanism — Mechanism object: named, valenced CGM subgraphs (Yantra)
@@ -148,3 +150,9 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (
 ## 8 · Questions for Strategic Suvarṇa
 
 1. CF-04: is a declared tier column in the descriptor an acceptable way to give the Dens detector a static tier read, or must the select be static?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-02 - accepted.** `query_mechanisms.ts` gets a fixed select including `verification_pass_status` so the Dens detector can read the tier from the SQL; the scanner fix is Track E before the re-measure. No rebuild. TI-L2-04.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

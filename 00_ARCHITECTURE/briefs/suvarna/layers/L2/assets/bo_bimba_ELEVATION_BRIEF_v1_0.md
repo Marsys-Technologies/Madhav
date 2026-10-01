@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-1's output change needs SS (R5)"
 nirmana_freeze: "t3, 2026-09-11"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-02, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-17, TI-L2-19, TI-L2-30]
 ledger_gap_ids: [bo_bimba-Idem.pattern, bo_bimba-Build.completion, bo_bimba-Earn.build_record, bo_bimba-Cost.baseline, bo_bimba-Complete.depth, bo_bimba-Dens.served, bo_bimba-Build.history, bo_bimba-Carr.detector]
 ---
 # bo_bimba — CGM nodes: one `bodha_cgm_nodes` row per chart entity
@@ -91,6 +93,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1's output change needs S
 
 ### FD-1 · Separate a yoga/dosha node's display name from its identity key
 
+- **SS ruling (N-59, 2026-10-01):** The name fix AND the identity fix (identity = `signal_type_id` + configuration key) are done together in the one `bo_bimba` rebuild. BEFORE coding, the 7 non-name subjects are classified (a real yoga with a bad name gets its catalogue name; a flag, timestamp or number that is not a yoga gets NO yoga node) and the id-change list is produced as one short design REVIEW for SS. Batched. TI-L2-19, TI-L2-30.
 - **Answers:** the Narr/Vocab candidate above; CLAUDE.md §N.7 items 1 and 6
 - **Change:** split `_yoga_config_name` into (a) the unchanged identity input used by `yoga_node_subject` (so every `node_id`, derived by `bodha_cgm_node_identity()` from `node_subject`, is unchanged and no edge in `bo_karanajala` re-wires) and (b) a display name that never reads `fact_value_text`: `yoga_name`, `dosha_name`, `name`, `label`, then the L1/L0 catalogue name for `signal_type_id`; use (b) for `node_label_human` and `citation_human`. If the measurement above shows two distinct yogas share a `node_subject`, report it as a separate identity finding (an identity-mapping change, SS).
 - **Files / declaration / migration:** `platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py` (`_yoga_config_name` `:252`, label `:505`, citation `:523`) and its consumers of `yoga_node_subject` (`bo_karanajala.py`)
@@ -157,3 +160,11 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (
 1. FD-1: display-name-only fix (no identity change), and is the measurement of yoga/dosha node-subject collisions to be run before the fix is approved?
 2. CF-02 / CF-19: record the shared `bodha_cgm_nodes` table as two producers (255 + 130) so the build record compares per producer?
 3. Registry truth: drop the `pgvector` storage type and the VECTOR(768) wording, or populate `node_embedding_vec` (an output change)?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-01 - accepted.** The produced-table set of this asset is declared (option A) with a detector clause; `count_sql` is neither widened nor narrowed. The reader SELECT on the 10 unreadable `bodha_*` tables goes first (they are owned by `data_plane_l2_owner` and pinned in the ownership preflight, so it is a D6 plan with hash as REVIEW, not an amjis_app migration); the gap in this asset's count is confirmed from the tables before the detector is written. TI-L2-01, TI-L2-02.
+- **Q-L2-06 (R) - changed.** The name fix AND the identity fix (identity = `signal_type_id` + configuration key) are done together in the one `bo_bimba` rebuild. BEFORE coding, the 7 non-name subjects are classified (a real yoga with a bad name gets its catalogue name; a flag, timestamp or number that is not a yoga gets NO yoga node) and the id-change list is produced as one short design REVIEW for SS. Batched. TI-L2-19, TI-L2-30.
+- **Q-L2-15 - accepted.** `bo_bimba` receives the arudha/special_lagna node builder (node ids are deterministic; its build record becomes the 385 of the table) in the same change as Q-L2-06. TI-L2-30.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

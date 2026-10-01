@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t3, 2026-09-11"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-02, TI-L2-03, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-31]
 ledger_gap_ids: [bo_sangati-Build.completion, bo_sangati-Earn.build_record, bo_sangati-Cost.baseline, bo_sangati-Dens.served, bo_sangati-Build.history, bo_sangati-Carr.detector]
 ---
 # bo_sangati — Cross-Domain Linkage Matrix (CDLM): cells, convergence and triangulation
@@ -153,3 +155,11 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (
 
 1. CF-02: confirm the 60-row gap is the convergence table (a read of `bodha_convergence` on a login that can select it), then choose the count scope (CF-02).
 2. CF-16: what is the counting rule for "independent support" so the empty shared-root columns can be filled or retired (TG-L2-021)?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-01 - accepted.** The produced-table set of this asset is declared (option A) with a detector clause; `count_sql` is neither widened nor narrowed. The reader SELECT on the 10 unreadable `bodha_*` tables goes first (they are owned by `data_plane_l2_owner` and pinned in the ownership preflight, so it is a D6 plan with hash as REVIEW, not an amjis_app migration); the gap in this asset's count is confirmed from the tables before the detector is written. TI-L2-01, TI-L2-02.
+- **Q-L2-02 - accepted.** The module's `density_contract` is declared as what the handler does (`paginated: false`, the true `empty_reason`; precedent `query_cdlm_summary.ts:144`, `query_chart_gestalt.ts:64`). No rebuild. TI-L2-03.
+- **Q-L2-14 (R) - accepted.** One independence rule: root = fact subject (plus varga where the subject is a varga sign), replacing sangati's fact-id fallback; `shared_factor_keys_jsonb` and `shared_factor_count` are written from it. The unit is on the J1 reviewers' list BY NAME. Batched. TI-L2-22, TI-L2-31.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

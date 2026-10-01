@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-2's output change needs SS (R5)"
 nirmana_freeze: "t3, 2026-09-11"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-02, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-16, TI-L2-17, TI-L2-19, TI-L2-30, TI-L2-33]
 ledger_gap_ids: [bo_karanajala-Idem.pattern, bo_karanajala-Build.completion, bo_karanajala-Earn.build_record, bo_karanajala-Cost.baseline, bo_karanajala-Dens.served, bo_karanajala-Build.history, bo_karanajala-Carr.detector]
 ---
 # bo_karanajala — CGM edges and contradictions (Kāraṇajāla)
@@ -93,6 +95,7 @@ Approver under Track A brief §10: **Steward (G16); FD-2's output change needs S
 
 ### FD-1 · Declare and scope the cross-asset node writes
 
+- **SS ruling (N-59, 2026-10-01):** (1) The cross-asset writes (`bodha_cgm_nodes` arudha/special_lagna rows, the centrality UPDATE) are declared and the orphan census run now; (2) the node builder moves to `bo_bimba` in the same change as Q-L2-06, in the one rebuild. TI-L2-17, TI-L2-30.
 - **Answers:** CF-19, CF-12; the Idem/Build declaration gap above
 - **Change:** declare `bodha_cgm_nodes.*` (arudha, special_lagna rows) and the centrality UPDATE as this asset's cross-asset writes; extend the Idem reading (or its orphan census) to the node upsert: run the node builder in `ctx.dry_run`, compare the produced `(node_type, node_subject)` set with the live arudha/special_lagna nodes and report orphans; if orphans can occur, add a prune scoped to `node_type IN ('arudha','special_lagna')` in `replace_prior` (never table-wide); record the shared table as two producers in the registry attribution
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json`; `bo_karanajala.py` / `bodha_writers/_idempotency.py` (scoped prune, only if orphans are found); registry `natural_key_partition` and `count_sql` via CF-03
@@ -105,6 +108,7 @@ Approver under Track A brief §10: **Steward (G16); FD-2's output change needs S
 
 ### FD-2 · Argala edges reference L1's computed argala (SS ruling: ANSWERED)
 
+- **SS ruling (N-59, 2026-10-01):** No separate BPHS {2,4,11} class. The virodha pairing, the Rahu/Ketu reversal and the empty-source-sign score of 1.0 go to the L1 sheet as L1 items (L1 owns the pairing); this asset's argala fix lands after the L1 ruling; a graha edge is created only where an occupant exists; 'BPHS Ch. 28' is replaced by the chunk ids and marked `sourced_ocr_unverified`. Batched, gated on the L1 ruling. TI-L2-16, TI-L2-33.
 - **Answers:** the Carr/Vocab argala observation; CLAUDE.md §N.5; SS ruling relayed 2026-10-01
 - **Change:** build the argala edges from L1's `argala_natal_matrix` / `virodha_argala_natal_matrix` facts (which source signs have argala on a target sign, offsets {2, 4, 5, 11}, Jaimini) joined to `graha_position` (which grahas occupy those signs), citing the L1 `fact_id`s in `constituent_fact_ids_array`, instead of recomputing `ARGALA_POSITIONS` from sign numbers (`_build_argala_edges` `:495`); remove `ARGALA_POSITIONS`/`VIRODHA_POSITIONS` (`:386-391`) from the writer. If a domain reading shows L2 genuinely needs the BPHS Ch.28 {2, 4, 11} variant, emit it only as a separately named, cited class (its own `relationship_class`/`semantic_path_class` and source citation) alongside, never as the default `argala` edge
 - **Files / declaration / migration:** `platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py` (`:386-391`, `:495-560`); no L1 change (L1 is the authority)
@@ -173,3 +177,12 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (
 1. FD-2 (principle ANSWERED: reference L1): does L2 need the BPHS {2, 4, 11} variant as a separately named, cited class?
 2. FD-1 / CF-12: is node ownership of `arudha`/`special_lagna` to stay with `bo_karanajala` (declared cross-asset write) or move to `bo_bimba`'s node builder (the in-code comment says it was placed here because bimba was outside the lane's scope)?
 3. Edge types in the docstring with no live rows (`yoga_domain`, `dosha_domain`, `conjunction`, `sade_sati`): intended for this chart, or unwired?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-01 - accepted.** The produced-table set of this asset is declared (option A) with a detector clause; `count_sql` is neither widened nor narrowed. The reader SELECT on the 10 unreadable `bodha_*` tables goes first (they are owned by `data_plane_l2_owner` and pinned in the ownership preflight, so it is a D6 plan with hash as REVIEW, not an amjis_app migration); the gap in this asset's count is confirmed from the tables before the detector is written. TI-L2-01, TI-L2-02.
+- **Q-L2-06 (R) - changed.** `yoga_node_subject` (shared with `bo_bimba`) changes with the identity fix; the `yoga_member` edges and every key built on it follow, per the design REVIEW SS will see before coding. Batched. TI-L2-19, TI-L2-30.
+- **Q-L2-15 - accepted.** (1) The cross-asset writes (`bodha_cgm_nodes` arudha/special_lagna rows, the centrality UPDATE) are declared and the orphan census run now; (2) the node builder moves to `bo_bimba` in the same change as Q-L2-06, in the one rebuild. TI-L2-17, TI-L2-30.
+- **Q-L2-21 / A-1 (R) - accepted.** No separate BPHS {2,4,11} class. The virodha pairing, the Rahu/Ketu reversal and the empty-source-sign score of 1.0 go to the L1 sheet as L1 items (L1 owns the pairing); this asset's argala fix lands after the L1 ruling; a graha edge is created only where an occupant exists; 'BPHS Ch. 28' is replaced by the chunk ids and marked `sourced_ocr_unverified`. Batched, gated on the L1 ruling. TI-L2-16, TI-L2-33.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t1, 2026-09-09"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-03, TI-L2-10, TI-L2-11, TI-L2-13, TI-L2-14, TI-L2-34]
 ledger_gap_ids: [bo_cgm_paths-Earn.build_record, bo_cgm_paths-Cost.baseline, bo_cgm_paths-Dens.served, bo_cgm_paths-Build.history, bo_cgm_paths-Carr.detector]
 ---
 # bo_cgm_paths — CGM dispositor-chain paths
@@ -147,3 +149,10 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (
 ## 8 · Questions for Strategic Suvarṇa
 
 1. CF-06: is a path label that states "self-ruling / final dispositor" narration (declare `path_label_human`) or a structural label (declare `[]`)?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-02 - accepted.** The module's `density_contract` is declared as what the handler does (`paginated: false`, the true `empty_reason`; precedent `query_cdlm_summary.ts:144`, `query_chart_gestalt.ts:64`). No rebuild. TI-L2-03.
+- **Q-L2-13 - accepted.** `path_label_human` is narration: declared in `prose_fields` with writer evidence and a golden-value test. The `SELF_RULING_PAIRS` observation (a wrapper-local constant, section N.7 item 3) is routed to the owner; if taken it rides the one rebuild. TI-L2-11, TI-L2-34.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

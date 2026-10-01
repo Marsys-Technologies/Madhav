@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t3, 2026-09-11"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-10, TI-L2-11, TI-L2-12, TI-L2-13, TI-L2-14]
 ledger_gap_ids: [bo_samskara-Idem.pattern, bo_samskara-Earn.build_record, bo_samskara-Cost.baseline, bo_samskara-Count.floor, bo_samskara-Build.history, bo_samskara-Carr.detector]
 ---
 # bo_samskara — Signal embeddings (one 768-dim vector per MSR signal)
@@ -153,3 +155,10 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (
 
 1. FD-1: is the embedding table a navigation aid with no served surface (declare it), or must the semantic query be built?
 2. CF-06: is `embedding_input_summary` narration (a composed string of computed values) or an embedding input, outside the Narr rule?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-13 - accepted.** `embedding_input_summary` is narration: declared in `prose_fields` with writer evidence and a golden-value test. TI-L2-11.
+- **Q-L2-17 - accepted.** `bodha_signal_embeddings` is declared a build-time substrate with its readers (`bo_anveshana`, `bo_pramana_mapa`, `ph_nimitta`); the pgvector / '100% populated' wording in `query_signals.ts` and the dead `coverage_matrix.ts:709` pointer are corrected; no semantic query now. No rebuild. TI-L2-12.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t1, 2026-09-09"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-03, TI-L2-13, TI-L2-14]
 ledger_gap_ids: [bo_cgm_motifs-Earn.build_record, bo_cgm_motifs-Cost.baseline, bo_cgm_motifs-Dens.served, bo_cgm_motifs-Build.history, bo_cgm_motifs-Carr.detector]
 ---
 # bo_cgm_motifs — CGM structural motifs, sub-graphs and topology summary
@@ -147,3 +149,8 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (
 ## 8 · Questions for Strategic Suvarṇa
 
 1. CF-04: must the contract state `paginated: false` (honest) or should the handler first gain offset/total (a served-surface change)?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-02 - accepted.** `query_cgm_motifs.ts` declares `paginated: false` and gains an `offset` (84 triangle motifs against a cap of 50 in Lahiri). No rebuild. TI-L2-03.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
