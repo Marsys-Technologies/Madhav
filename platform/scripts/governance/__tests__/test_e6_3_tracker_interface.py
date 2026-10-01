@@ -329,6 +329,16 @@ def test_an_epoch_reset_event_is_accepted_and_changes_nothing(w):
     assert w.elevated(T) == ALL
 
 
+def test_an_event_type_nobody_reads_raises_even_if_the_rest_of_the_line_is_well_formed(w):
+    from _e6_3_fixtures import epoch_reset
+    row = epoch_reset()
+    row["type"] = "surprise"                                 # an epoch_reset-shaped line under an unknown type
+    w.invals.append(row)
+    w.commit()
+    with pytest.raises(T.ElevatedInputError):
+        w.elevated(T)
+
+
 @pytest.mark.parametrize("mutate", [lambda r: r.update(decision="x"), lambda r: r.update(layer="L9"),
                                     lambda r: r.update(asset="ga_alpha"), lambda r: r.pop("decision")])
 def test_a_malformed_epoch_reset_raises(w, mutate):

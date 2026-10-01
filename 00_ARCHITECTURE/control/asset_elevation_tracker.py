@@ -837,8 +837,8 @@ def _e63_is_cert_line(r):
 
 def _e63_is_event_line(r):
     t = r.get("type")
-    if not isinstance(t, str) or t not in E63_EVENT_TYPES or t in E63_CERT_KINDS:
-        return False
+    if not isinstance(t, str) or t in E63_CERT_KINDS:
+        return False                                 # (an unknown type is refused by the dispatch in _e63_parse_certs)
     if any(k in r for k in E63_EVENT_FORBIDDEN):
         return False
     return not (r.get("kind") in E63_CERT_KINDS or (isinstance(r.get("verdict"), str) and r["verdict"] in E63_VERDICTS))
@@ -959,8 +959,10 @@ def _e63_parse_certs(data, facts):
         elif r["type"] == "watermark":
             _e63_check_watermark(r, r["seq"], certs, led.last_covers)
             led.last_covers = r["covers_seq"]
-        else:
+        elif r["type"] == "epoch_reset":
             _e63_check_epoch_reset(r, n, facts)
+        else:
+            _e63_fail("malformed", f"{where}: unknown event type {r['type']!r}")
     cov = led.last_covers if led.last_covers is not None else 0
     led.unevaluated = sum(1 for c in certs if c["seq"] > cov)
     return led
