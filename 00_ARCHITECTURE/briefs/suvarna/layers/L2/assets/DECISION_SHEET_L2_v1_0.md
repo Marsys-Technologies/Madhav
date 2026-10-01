@@ -283,7 +283,7 @@ SS N-59 (2026-10-01): 17 accepted as recommended (Q-L2-01, 02, 04, 05, 07, 09, 1
 
 **Citation.** Not classical. citation: n/a.
 
-**RULING (SS, N-59, 2026-10-01).** Accepted as recommended. The two edges may ride the held-edges migration (1216, branch TI-edges-002) if it is still unapplied, else max+1. The `bo_pratijna` re-point only after the two untraced reads (`chart_fact_identity`, `brahma_reference_planets`) are traced. **Found while recording:** `origin/main` has no migration above 1214 and the only TI-edges branch on origin is TI-edges-001 (no migration beyond 1210), so 1216 / TI-edges-002 could not be verified from here: confirm at execution. TI-L2-05, TI-L2-06.
+**RULING (SS, N-59, 2026-10-01).** Accepted as recommended. The two edges may ride the held-edges migration (branch TI-edges-002; number 1216 now taken on main by Pravāha A2.5, use max+1) if it is still unapplied, else max+1. The `bo_pratijna` re-point only after the two untraced reads (`chart_fact_identity`, `brahma_reference_planets`) are traced. **Found while recording:** `origin/main` has no migration above 1214 and the only TI-edges branch on origin is TI-edges-001 (no migration beyond 1210), so 1216 / TI-edges-002 could not be verified from here: confirm at execution. TI-L2-05, TI-L2-06.
 
 ---
 
@@ -588,7 +588,7 @@ SS N-59 (2026-10-01): 17 accepted as recommended (Q-L2-01, 02, 04, 05, 07, 09, 1
 | Q-L2-04 | `bo_laksana` constant 2 and hand-set salience | NULL on 3 sites (54 rows); ratify the class-weight table; fix the v1.0/v2.0 stamp. (R) | Accepted; named stamp allowed (no CHECK); J1 list by name |
 | Q-L2-05 | `bo_anveshana` confidence/fragility/falsifier + acharya claim | NULL until earned; drop or define the attention claim. (R) | Accepted; NULL now; fragility post-J1 |
 | Q-L2-06 | `bo_bimba` yoga/dosha names + collisions | Approve display fix now; rule the identity collision separately (15 signals lost). (R) | CHANGED: name + identity fix together; design REVIEW first |
-| Q-L2-07 | CF-15 edges (`ga_yoga`, `bo_bimba`, pratijna re-point) | Add the two; re-point pratijna after audit (L1: ga_vargas, ga_positions, ga_structural, ga_sensitive + 2 untraced); new migration number. | Accepted; 1216 unverified; trace two reads first |
+| Q-L2-07 | CF-15 edges (`ga_yoga`, `bo_bimba`, pratijna re-point) | Add the two; re-point pratijna after audit (L1: ga_vargas, ga_positions, ga_structural, ga_sensitive + 2 untraced); new migration number. | Accepted; 1216 now taken on main (use max+1); trace two reads first |
 | Q-L2-08 | `bo_grounding` integrate / substrate / retire | Integrate narrowly, layered (234 of 50,731 earned); #1726 satisfied in practice. (R) | CHANGED: declared substrate; integrate post-J1 |
 | Q-L2-09 | `bo_samvada` qualify; build record; consolidation | Confirm qualify; real chart-scoped count (reads 5); record 0; no consolidation now. | Accepted |
 | Q-L2-10 | CF-13 R243 annotation | Reword once; drop per-asset chart lists; no order-guard gate. | Accepted |
@@ -607,6 +607,8 @@ SS N-59 (2026-10-01): 17 accepted as recommended (Q-L2-01, 02, 04, 05, 07, 09, 1
 ---
 
 ## Rulings (SS, N-59, 2026-10-01)
+
+**Addendum (SS, 2026-10-02).** One named item is added to the single L2 batch list: TI-L2-36 (the F-10 tier-rank table of `bo_pramana_mapa` aligned with the L1 respelling to `single`, and `bo_bimba` and `bo_karanajala` switched from `single_pass` to the `single` constant in the same batch), and two notes are recorded for the S-L2 REVIEW (section Record for the S-L2 REVIEW below). `bo_pramana_mapa` therefore joins the assets whose writers change (12 of 23). Also found while recording: migration number 1216 is now taken on `origin/main` (Pravāha A2.5, `65789c86c`), so the held edges migration of Q-L2-07 needs another number.
 
 SS ruled this sheet on 2026-10-01 (decision N-59; PR #2841, branch `suvarna/land/A-L2-decisions-001`, HEAD `1ad09993b`; the briefs are PR #2831, branch `suvarna/land/A-L2-briefs-001`). Group A is accepted as written. Of the 21 open questions, **17 are accepted as recommended** (Q-L2-01, 02, 04, 05, 07, 09, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21; Q-L2-01, 04, 05, 07, 14 and 21 carry notes) and **4 are changed** (Q-L2-03, 06, 08, 16). Items marked (R) in the summary raise or define a verdict or change stored outputs and stay PROVISIONAL until the J1 independent review. Each ruling line above is the record; this section adds what I found while recording them (all read-only), the binding sequencing, and the lists SS asked for.
 
@@ -647,7 +649,7 @@ The L2 INDEX carried no Track I numbering (the L0 and L3 INDEXes do: `TI-L0-nn`,
 | TI-L2-02 | bo_bimba, bo_cdlm_summary, bo_karanajala, bo_sangati, bo_upaya | declarations-schema field for each asset's produced-table set, validator, and a Build.completion detector clause comparing `rows_written` with the chart-scoped count over that set; shared tables by partition (`producer_asset_id`; `node_type`) under the L0 Q6 rider relation; `count_sql` neither widened nor narrowed | declaration + detector | n | Q-L2-01 |
 | TI-L2-03 | bo_cgm_motifs, bo_cgm_paths, bo_pramana_mapa (`query_quality_scorecard`), the bo_sangati modules (`query_triangulation` and the others) | declare `density_contract` with `paginated: false` and the true `empty_reason` (precedent `query_cdlm_summary.ts:144`, `query_chart_gestalt.ts:64`); add `offset` to `query_cgm_motifs.ts` only | served surface (TS, additive) | n | Q-L2-02 (a) |
 | TI-L2-04 | the seven MSR producers, bo_yantra_mechanism, scanner | accept the `signal_type_class` facet as the MSR attribution rule; fix the scanner on `registry_bridge.ts` and `register_p1_synthesis.ts` before the re-measure; give `query_mechanisms.ts` a fixed select including `verification_pass_status` | detector + served surface (TS) | n | Q-L2-02 (b)-(d) |
-| TI-L2-05 | bo_laksana, bo_upaya | add `bo_laksana -> ga_yoga` and `bo_upaya -> bo_bimba`; ride the held-edges migration (1216, branch TI-edges-002) if still unapplied, else max+1 across both migration directories; verify by production structure | registry | n | Q-L2-07 |
+| TI-L2-05 | bo_laksana, bo_upaya | add `bo_laksana -> ga_yoga` and `bo_upaya -> bo_bimba`; ride the held-edges migration (branch TI-edges-002) if still unapplied; its number 1216 is now taken on `origin/main` by Pravāha A2.5 (`65789c86c`, gochara grants), so the number is max+1 across both migration directories at execution across both migration directories; verify by production structure | registry | n | Q-L2-07 |
 | TI-L2-06 | bo_pratijna | trace the producers of the two reads the brief missed (`chart_fact_identity`, `brahma_reference_planets`) and close the per-category audit; only then replace the two L2 edges by direct L1 edges (first-pass set `ga_vargas`, `ga_positions`, `ga_structural`, `ga_sensitive`) in one migration; the held `ph_nimitta -> bo_pratijna` edge waits | research, then registry | n | Q-L2-07 |
 | TI-L2-07 | bo_grounding | declare it a substrate: outside the denominator (D-NATIVE-11), no consumer, reason stated; stays DRAFT; no retire; no new served surface before J1; record adjudication #1726 as 'satisfied in practice' (not ours to close) | declaration | n | Q-L2-08 |
 | TI-L2-08 | bo_samvada | chart-scoped `count_sql` over the view (reads 5), floor 5, `natural_key_partition`, build record 0 under the changed-rows convention (L0 Q1); correct the docstring (`bo_samvada.py:31-40`) and the `cr_status.ts` comment | registry + documentation | n | Q-L2-09 |
@@ -688,10 +690,11 @@ The L2 INDEX carried no Track I numbering (the L0 and L3 INDEXes do: `TI-L0-nn`,
 | TI-L2-33 | bo_karanajala | argala edges from the L1 matrix cells joined to occupants (a graha edge only where an occupant exists); remove the local offset constants; replace the comment 'BPHS Ch. 28' by the chunk ids `bphs_pg0310_c01`, `bphs_pg0311_c01`, `bphs_jaimini_pg0023_c01` marked `sourced_ocr_unverified`; lands after the L1 ruling (TI-L2-16) | writer code (R) | y | Q-L2-21 / A-1 |
 | TI-L2-34 | bo_cgm_paths | route the `SELF_RULING_PAIRS` observation (a wrapper-local constant, section N.7 item 3) to the owner; if taken it rides the one rebuild (not scheduled by the ruling) | writer code (conditional) | y if taken | Q-L2-13 |
 | TI-L2-35 | `bodha_writers/_idempotency.py` | comment-only: the stale 'all eight CASCADE' text (`:179-180`, `:89`); changes every L2 writer's helper digest, so it rides the rebuild change set, not a separate run | documentation in code | rides the rebuild | A-2 |
+| TI-L2-36 | bo_pramana_mapa, bo_bimba, bo_karanajala | align the F-10 tier-rank table `_VERIFICATION_TIER_RANKS` (`bo_pramana_mapa.py:430-438`: `single_pass` = 2 and `single` = 1, one alias carrying two ranks) with the L1 respelling (L1 writers now emit `single`, never `single_pass`; PR #2854), and switch `bo_bimba` (the stamp sites `:349`, `:404`, `:454` and the default `:494`) and `bo_karanajala` (the five sites `:706`, `:783`, `:1022`, `:1670`, `:1730`) from the literal `single_pass` to the `single` constant of `brahmagyan/verification_vocab.py` (all nine are grandfathered in the AST guard); same batch, one rebuild | writer code (stamp text; weight unchanged, `single_pass` is an alias of `single` in `VERIFICATION_RESCALE`) | y | SS 2026-10-02 (tier respelling, PR #2854) |
 
 ### (b) L2 assets whose writers would change (for the sequencing statement)
 
-**Code changes (11 of the 23 assets):**
+**Code changes (12 of the 23 assets):**
 
 | asset(s) | why |
 |---|---|
@@ -702,6 +705,7 @@ The L2 INDEX carried no Track I numbering (the L0 and L3 INDEXes do: `TI-L0-nn`,
 | bo_bimba | Q-L2-06 (name + identity), Q-L2-15 (2) (receives the arudha/special_lagna node builder) |
 | bo_karanajala | Q-L2-06 (`yoga_node_subject` consumers), Q-L2-15 (2) (loses the node builder), Q-L2-21 / A-1 (argala from L1, gated on the L1 ruling) |
 | bo_sangati | Q-L2-14 |
+| bo_pramana_mapa | TI-L2-36 (tier-rank table aligned with the L1 respelling; the three pass-flags are still read after the rebuild) |
 
 **Conditional or comment-only:**
 
@@ -710,7 +714,7 @@ The L2 INDEX carried no Track I numbering (the L0 and L3 INDEXes do: `TI-L0-nn`,
 | bo_cgm_paths | TI-L2-34, only if the owner takes the `SELF_RULING_PAIRS` observation |
 | `bodha_writers/_idempotency.py` (helper) and `bo_samvada.py` (docstring) | comment/docstring only (TI-L2-35, TI-L2-08); no behaviour change; the digest moves, a no-op writer's rebuild changes nothing |
 
-**Re-run in the same rebuild with no writer change (12 of the 23):** bo_samskara, bo_grounding, bo_cgm_motifs, bo_cgm_paths, bo_yantra_mechanism, bo_drishti, bo_cdlm_summary, bo_pratijna, bo_upaya, bo_chart_gestalt, bo_pramana_mapa, bo_samvada. All 23 run, in DAG order, once: the 11 above change code and the other 12 sit downstream of an MSR producer or of a changed asset. `bo_laksana` and `bo_laksana_rerank` are one source file (`bo_laksana.py`), so their code changes together.
+**Re-run in the same rebuild with no writer change (11 of the 23):** bo_samskara, bo_grounding, bo_cgm_motifs, bo_cgm_paths, bo_yantra_mechanism, bo_drishti, bo_cdlm_summary, bo_pratijna, bo_upaya, bo_chart_gestalt, bo_samvada. All 23 run, in DAG order, once: the 12 above change code and the other 11 sit downstream of an MSR producer or of a changed asset. `bo_laksana` and `bo_laksana_rerank` are one source file (`bo_laksana.py`), so their code changes together.
 
 ### J1 reviewers' list, BY NAME (items SS asked to be named)
 
@@ -718,6 +722,11 @@ The L2 INDEX carried no Track I numbering (the L0 and L3 INDEXes do: `TI-L0-nn`,
 2. The **independence unit**: root = fact subject (plus varga where the subject is a varga sign), one rule in `bo_sangati` and the rerank, Q-L2-14.
 
 Other (R) rulings, provisional until J1: A-1 and Q-L2-21 (argala from L1), Q-L2-02 (Dens declarations), Q-L2-03 (Optional salience terms, formula version bump), Q-L2-05 (NULL discovery epistemics), Q-L2-06 (node identity), Q-L2-16 (valence NULL). Q-L2-08 loses its (R) because no served surface is added before J1.
+
+### Record for the S-L2 REVIEW (SS, 2026-10-02)
+
+1. **The tier-inversion count (F-10) is NOT to be read between S-L1 and S-L2.** `count_divergent_signals` term b (`_TIER_INVERSION_SQL`, `bo_pramana_mapa.py:440-490`) compares each signal's `verification_pass_status` rank with the rank of the L1 facts it cites. L1 rows respell to `single` while L2 signals stay `single_pass` until the L2 batch rebuild, and the rank table ranks `single_pass` 2 above `single` 1, so every such signal over a respelled fact counts as an inversion: the count reads inflated until TI-L2-36 and the rebuild land. (Live canonical state today: `bo_laksana` rows carry both spellings, `single` 40,318 and `single_pass` 3,186; `bo_bimba` and `bo_karanajala` rows stamp `single_pass` at the nine sites.)
+2. **The S-L2 REVIEW must report the salience-weight effect of the tier demotions (1.00 to 0.85 / 0.90)**, after tracing how L2 `bodha_msr_signals` inherit the L1 tier. The audit is `AUDIT_L1_TIERS_PER_EMITTER_v1_0.md` (v1.1, branch `suvarna/land/TI-l1-tier-audit-001`, PR #2852). Facts for that trace, read while recording: `VERIFICATION_RESCALE` in `bodha_writers/formulas.py` weighs `two_pass_verified` 1.00, `classical_match` 0.90, `single` 0.85, with `single_pass` resolving to `single` through `canonical()`, so the respelling alone changes no weight; a weight changes only where an L1 demotion (`two_pass_verified` to `classical_match` or `single`) reaches an L2 signal. Live `bo_laksana` rows on the canonical chart by stamp: `two_pass_verified` 4,216; `classical_match` 60; `single` 40,318; `single_pass` 3,186; `computed_extension` 1,517; `documented_approximation` 821; `floored` 345. Whether an L2 signal's stamp is inherited from its cited facts or assigned by the emitter was not traced here: that is the first step of the REVIEW.
 
 ### Effects on other sheets
 
