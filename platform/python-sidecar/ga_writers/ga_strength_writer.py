@@ -91,15 +91,44 @@ KAKSHYA_LORDS: list[str] = [
 ]
 KAKSHYA_ARC_DEG: float = 30.0 / 8.0  # 3.75° = 3°45′
 
-# Classical required shadbala (rupa) per graha
+# Classical required (minimum) shadbala per graha — THE single source of truth for
+# the `graha_shadbala_total|required_rupa` L1 fact (stored under the pseudo-ayanamsha
+# 'INVARIANT'). Every other consumer READS that L1 fact (ga_structural composite
+# strength, ga_yoga constituent_bala_v1, ga_vichara/bo_*/serving) — none carries a
+# copy (CLAUDE.md §N.5 / §N.7 item 3).
+#
+# Source figures, in virupas (60 virupa = 1 rupa), per the two independent served
+# sources that agree on every graha:
+#   (1) BPHS ch.27 śl.32-33 (R. Santhanam trans.; corpus chunk bphs_pg0286_c01, also
+#       00_ARCHITECTURE/SOURCE_DATA/classical_texts/BPHS/bphs_vol1_rsanthanam_djvu.txt):
+#       "390, 360, 300, 420, 390, 330 and 300 Virupas are the Shadbala Pindas needed
+#       for the Sun etc. (upto Saturn)"; the translator's note gives the same in
+#       rupas: Sun 6.5, Moon 6.0, Mars 5.0, Mercury 7.0, Jupiter 6.5, Venus 5.5,
+#       Saturn 5.0. (OCR blemishes in the verse line — Moon "3*0", Mercury "42C" —
+#       are resolved by the explicit rupa note; they are not a source of doubt.)
+#   (2) Phaladīpikā IV.22-23 (V. Subrahmanya Sastri trans.; chunk
+#       phaladeepika_pg0079_c01): Sun 6½, Moon 6, Mars 5, Mercury 7, Jupiter 6½,
+#       Venus 5½, Saturn 5 rupas (the ½ glyphs OCR as "6J-"/"6j"/"5*").
+# Pravāha's sad_bala_sufficient v1.0 (PR #2869, services/gochara_rules/registry.py)
+# cites the same two sources and carries the same seven thresholds.
+#
+# History: the Sun was stored as 5.0 here before 2026-10 (a mis-transcription; BPHS
+# and Phaladīpikā both give 390 virupa = 6.5 rupa). Mars/Saturn at 5.0 were always
+# correct. See 00_ARCHITECTURE/briefs/suvarna/exec/sun_required_rupa/.
+SHADBALA_REQUIRED_VIRUPA: dict[str, int] = {
+    "Sun": 390,
+    "Moon": 360,
+    "Mars": 300,
+    "Mercury": 420,
+    "Jupiter": 390,
+    "Venus": 330,
+    "Saturn": 300,
+}
+
+# Classical required shadbala (rupa) per graha — derived from the virupa figures
+# above (all seven quotients are exact in binary floating point).
 SHADBALA_REQUIRED: dict[str, float] = {
-    "Sun": 5.0,
-    "Moon": 6.0,
-    "Mars": 5.0,
-    "Mercury": 7.0,
-    "Jupiter": 6.5,
-    "Venus": 5.5,
-    "Saturn": 5.0,
+    g: v / 60.0 for g, v in SHADBALA_REQUIRED_VIRUPA.items()
 }
 
 # Ashtakavarga invariant: sum of sarvashtakavarga across all 12 houses = 337
