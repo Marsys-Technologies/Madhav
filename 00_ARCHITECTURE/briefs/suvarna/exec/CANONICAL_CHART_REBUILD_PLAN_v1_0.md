@@ -508,6 +508,96 @@ REVIEW section. For each asset: whether the 27-asset wave (and what S0b forces) 
 **Not verified here (S0c):** which tables the three writers write beyond their registry `target_table`; the target-table grants of `kala_moorti_nirnaya` and `kala_vedha_gochara` for the builder (only `gochara_resonance_map` was checked); #2769 and what it changes; durations.
 
 
+## EPH. Ephemeris exposure (v1.3, SS rulings on the production ephemeris backend)
+
+REVIEW section; no execution authority. Read-only: code at `origin/main` 57bcef8c9 (worktree), the investigation `INVESTIGATION_EPHEMERIS_BACKEND_v1_0.md` (branch `origin/suvarna/land/TI-ephemeris-backend-001`, 4830710f1, PR #2840, base 4eb40bec1), and two DB reads at 2026-10-01 about 18:20Z (E15). The fix PR itself (Dockerfile `SE_EPHE_PATH`, shared fail-closed helper, backend recorded in `WriterResult.notes`) is in progress and was not read.
+
+### EPH.1 The rulings (SS/Pravāha, recorded as given) and what the investigation established
+
+1. **Canonical backend is Swiss `.se1` files (swieph); Moshier must never be silent.** A fix PR is in progress.
+2. **Until the fix deploys, no stage whose writers call the ephemeris without a recorded backend is built.**
+3. **After the fix deploys and before any L1/panchanga rebuild, a boundary-flip report for all three charts is required** (`BOUNDARY_FLIP_REPORT_v1_0.md`, being produced by a worker). Zero flips: the L1/panchanga rebuild joins the wave as an ordinary stage, as an SS REVIEW. Any flip: it goes to SS first (it is the natal chart; SS informs the owner). A changed FORENSIC anchor is an immediate ALERT.
+4. Pravāha's kernel assets are unaffected.
+
+Investigation verdict, in brief (its section 0, not re-measured here): the production backend is split. L1 `chart_facts` (PyJHora) and `panchanga_daily` are **Moshier** (native Moon reproduced to 0.000 arcsec with Moshier, 0.665 arcsec off the pinned `.se1`); `ephemeris_daily` (bg_ephemeris) and Pravāha's ledger are **Swiss files**. Root cause: the images set `SWE_EPHE_PATH`, which the Swiss C library never reads (`set_ephe_path(None)` reads `SE_EPHE_PATH`), PyJHora re-points the path to its `.se1`-free wheel directory at import (`jhora/const.py:262`), `panchang_engine` calls `set_ephe_path(None)` at the start and end of each call, and the orchestrator runs up to 4 assets as threads in one process, so an unchecked call sees whatever backend the last writer left. Magnitude: Moon 0.2-0.9 arcsec, TRUE_NODE about 25 arcsec, Sun and mean node about 0; it matters at sign, nakshatra and tithi boundaries. No receipt, row or log records the backend for any L1/L2/L3 non-Pravāha asset.
+
+### EPH.2 Method
+
+For every asset of the wave (the 31-asset set of v1.2.1, plus the S0 smoke asset, the S7 asset and the optional `bg_vidhi_primitives`) I took the **same static import closure the runner hashes for the code digest** (`asset_runner._writer_source_files`: the writer file or declared package plus its local imports, transitively), pruned the orchestrator infrastructure every asset shares (`asset_runner`, `runner`, `service_probes`, `provenance`, ...; they import swisseph for the probe, which an ordinary writer never runs), searched it for `import swisseph` and `swe.*` calls, and then read each call site to see whether the writer actually reaches it. Classes: **EXPOSED** (calls the ephemeris on ambient or reset state, no flag check, no backend recorded), **NOT EXPOSED** (no call in the closure, or only analytic or Swiss-proven inputs), **PRAVĀHA-KERNEL** (the gochara kernel: fails closed on Moshier via `_check_retflag`, records `swieph`). Not covered: dynamic imports and calls made through objects handed in at runtime; a second column gives data lineage, which is separate from calls.
+
+### EPH.3 Classification of the wave (call level)
+
+"L1 anc." = number of L1 `ga_*` assets among the asset's transitive dependencies (live registry, E15); every `ga_*` built through PyJHora is on the Moshier path today, so an asset with L1 ancestors inherits Moshier-derived inputs without calling the ephemeris itself.
+
+| Asset | Stage (v1.2.1) | Class | Where it calls (file:line) | L1 anc. |
+|---|---|---|---|---|
+| `ka_tithi_pravesha` | S0 smoke | **EXPOSED** | `services/ka_tithi_pravesha/writer.py:138` (`compute_positions`, the Moon at each candidate date of the lunar-return root-find; the root-find itself is `services/ka_tithi_pravesha/logic.py:121`) and `:153` (`compute_chart`, the annual chart), both through PyJHora: `pyjhora_adapter/positions.py` (`drik.dhasavarga`), `pyjhora_adapter/_jhora.py:44`, `houses.py:74-88` (`FLG_SWIEPH`). Ambient path, no check, no record. Natal Moon is read from `chart_facts` (Moshier). | 1 |
+| `bg_transit_rules` | S0b | NOT EXPOSED | closure is 3 files including `writers/bg_transit_rules.py` and `brahmagyan/l0_transit.py`; no swisseph import or call; static seed upserts | 0 |
+| `bg_vedha_malefic_scale` | S0L | NOT EXPOSED | `writers/bg_phaladeepika_vedha.py:26`, `brahmagyan/l0_phaladeepika_vedha.py`: static seed upserts, no swisseph | 0 |
+| `bg_vidhi_primitives` (optional) | S0L | NOT EXPOSED | `writers/bg_vidhi_primitives.py`: static seed upserts | 0 |
+| `ka_muhurta_seva` | S1 | **EXPOSED** | `services/ka_muhurta_seva/writer.py:160` (`panchanga_instant`) and `:211` (`compute_panchang`) in its FORENSIC self-test; `panchang_engine/__init__.py:71,149,252,347` `swe.set_ephe_path(None)` at start and end of each call (leaves the process on the default path). Writes no data table, but the self-test verdict is computed on that state and the call changes the state other threads see. | 0 |
+| `ka_dasha_kala` | S1 | NOT EXPOSED | closure 5 files, no swisseph; reads `ga_dashas` | 2 |
+| `bo_karanajala`, `bo_pratijna`, `bo_drishti`, `bo_cgm_motifs`, `bo_cgm_paths`, `bo_anveshana`, `bo_upaya` | S1, S2 | NOT EXPOSED | closures of 9, 10, 2, 3, 3, 2, 7 files, no swisseph; they read L1/L2 rows through the chart readers | 12 each |
+| `ka_gochara` | S0c (was S3) | **PRAVĀHA-KERNEL** | `writers/ka_gochara.py:262,318` (`KaGocharaService(swe)`), `services/ka_gochara/service.py:170-175,611-633` (Moon knots and episodes through `gochara_kernel`), kernel `knots.py:92-123` (`_check_retflag`, `calc_sidereal_lon`; sets the path only when one is passed, else ambient) and `contacts.py:145`: fails closed, records `swieph`. Caveat: the same service's legacy `find_*_events` (`service.py:186-223`) use `pipeline/transit_search.py:242-258` `_get_planet_pos`, which sets the explicit path when `/app/ephe/sepl_18.se1` exists and checks no flag; whether the S0c writer calls them was not traced. | 9 |
+| `ka_moorti_nirnaya` | S0c | **PRAVĀHA-KERNEL** (with a caller fallback) | transiting positions from `ephemeris_daily` (`services/ka_moorti_nirnaya/writer.py:93`, Swiss files, proven in the investigation) and the analytic ayanamsa (`brahmagyan/l0_ephemeris.py:227-228` `set_sid_mode` + `get_ayanamsa_ut`, no planetary file); sub-day roots from the kernel `find_boundary_roots(..., refine=True)` (`writer.py:199`), which fails closed on Moshier, **but the writer catches the failure and falls back to `refine=False` (`writer.py:200-201`)**: never silent Moshier, but the refined-versus-spline outcome depends on process state and the backend is not recorded in `notes`. | 1 |
+| `ka_vedha_gochara` | S0c | NOT EXPOSED | positions from `ephemeris_daily` (`services/ka_vedha_gochara/writer.py:160,189`) plus the analytic ayanamsa (`l0_ephemeris.py:227-228`); `sarvatobhadra.py:65` imports `transit_search` but the writer calls only `_vedha_pairs_from_db` and `opposite_nakshatra_id` (the only mention of `find_sarvatobhadra_vedha_states` is a comment, `writer.py:669`) | 1 |
+| `ka_gochara_resonance` | Pravāha's | NOT EXPOSED | closure 4 files, no swisseph | 0 |
+| `ka_yojaka`, `ka_avadhi` | S3 | NOT EXPOSED | closures of 8 and 5 files, no swisseph | 12 |
+| `ka_sangam` | S3 | **EXPOSED** | `services/ka_sangam/engine.py:429-431` (`set_sid_mode` + `calc_ut(Moon, FLG_SIDEREAL)` for the janma nakshatra, ambient), `:1153` and `:1382` (`find_aspect_events` through `pipeline/transit_search.py:242-258`, explicit path when the file exists, no flag check; `search_long_horizon` not traced), `writers/ka_sangam.py:317` (`KaGocharaService(swe)`, the kernel part fails closed) | 13 |
+| `ka_kalasutra`, `ka_kala_darshana`, `ka_bhavishya_lekha` | S4 | NOT EXPOSED | closures of 3, 1, 2 files, no swisseph | 13 each |
+| `ka_vighnakara` | S4 | **EXPOSED** | `writers/ka_vighnakara.py:153-154` (`_get_sidereal_lon`: `set_sid_mode` + `calc_ut(FLG_SIDEREAL)`, no path, no check) and `:704-705` (`compute_panchang`, which resets the path to None); within one peak date the backend flips between detectors (investigation 1.3) | 13 |
+| `ph_muhurta` | S5 | **EXPOSED** | `writers/ph_muhurta.py:687-693` (`panchanga_instant` for tara and chandra bala, with an honest-placeholder fallback if the engine is unavailable); `panchang_engine/__init__.py:252,347` | 13 |
+| `ph_nimitta`, `ph_pratikara`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, `ph_pramana`, `ph_phaladesa` | S5 | NOT EXPOSED | closures of 2-3 files, no swisseph | 13 each |
+| `mi_bhavisya` | S6 | NOT EXPOSED | closure 2 files, no swisseph | 13 |
+| `ka_kshetra` (separate stage S7, not in the 31) | S7 | **EXPOSED** | `services/ka_kshetra/stage3_clocks.py:879-892` (`calc_ut(Moon, FLG_SWIEPH + FLG_SPEED)`, ambient, no flag check; Moon speed at birth and per window); `stage0_kinematics.py:623` is the analytic ayanamsa; it also reads Pravāha's ledger | 12 |
+
+Totals over the 31: **4 EXPOSED** (`ka_muhurta_seva`, `ka_sangam`, `ka_vighnakara`, `ph_muhurta`), **2 PRAVĀHA-KERNEL** (`ka_gochara`, `ka_moorti_nirnaya`), **25 NOT EXPOSED**. Outside the 31: `ka_tithi_pravesha` (S0) and `ka_kshetra` (S7) are EXPOSED. In the conditional stages: `ga_vargas` (S0v) is an L1 PyJHora writer, hence EXPOSED (investigation 1.3); the six MSR producers (S0m) were not closure-checked here (they read L1 rows; not verified).
+
+**Lineage, separately from calls.** Only 4 of the 31 have no L1 ancestor (`bg_transit_rules`, `bg_vedha_malefic_scale`, `ka_gochara_resonance`, `ka_muhurta_seva`; also the optional `bg_vidhi_primitives`); `ka_moorti_nirnaya`, `ka_vedha_gochara` and `ka_dasha_kala` have 1-2; the other 24 have 9-13. If the L1/panchanga rebuild later joins the wave (EPH.6), every asset with L1 ancestors goes stale and is rebuilt a second time, so building them before that decision is allowed by ruling 2 but is rework unless the flip report says the L1 rebuild will not happen.
+
+### EPH.4 S0 and S0b explicitly
+
+- **S0 (`ka_tithi_pravesha`) touches the ephemeris, so it may NOT run before the fix.** It calls PyJHora positions per candidate date (writer.py:138) and casts the annual chart (:153) on the ambient (Moshier) backend with no record. v1.0 and v1.1 expected a delta-skip (no writer call); that is withdrawn: the stored receipt's code digest is `3448e974fbb2` (2026-09-07 21:18:40Z) and the writer closure's digest on `main` is now `adb915f15af4` (equal to the digest inventory), so the pre-execution gate cannot pass and the writer **executes**: delete-then-insert of the 120 `kala_tithi_pravesha` rows on an unrecorded backend. After the fix its digest changes again, and its lunar-return instants would move by an unquantified sub-second to seconds, so a pre-fix smoke would also have to be repeated.
+- **S0-alt (proposal, SS decides; SS pre-approved the `ka_tithi_pravesha` smoke, not this).** `bg_vidhi_primitives` as the write-path smoke: no swisseph in its closure, 0 L1 ancestors, source = live (60 = 60 rows, 0 change), the writer executes (code digest differs) so it exercises the receipt, freshness and audit path as a global asset, its only dependent `bg_vidhi_floors` is global so no canonical row flips, and it needs only the `asset_freshness` half of Grant v1.4 (its tables are already granted). It does not exercise a chart-scoped throughput row; S0b then does. `ka_tithi_pravesha` stays as a later smoke (S0t) after the fix.
+- **S0b (`bg_transit_rules`) does NOT touch the ephemeris and MAY run before the fix.** Its writer calls `seed_transit_rules` (static rows from `brahmagyan/l0_transit.py`, upserts); neither file imports swisseph; no L1 ancestor; its inputs and output are independent of the backend. The fix PR does not change its closure (its digest `824c6d7d7237` stands). The S0b gates are unchanged (Grant v1.4, job image, dispatch authorization, Pravāha told).
+
+### EPH.5 Gates and which stages are HELD
+
+| Gate | Condition | Status (about 18:20Z) |
+|---|---|---|
+| **G-EPH** (fix deployed and verified) | The fix PR is merged AND deployed to the pipeline-job image: the "Build & Deploy Pipeline Job Image" job ran (Trap 103; the deploy that carried 1211 skipped it), the image sets `SE_EPHE_PATH=/app/ephe`, the helper fails closed, and the first exposed writer run shows the backend in `WriterResult.notes` (`swieph`, path, `.se1` digest) | not met: fix in progress |
+| **G-FLIP** (boundary-flip report) | After G-EPH, before ANY L1/panchanga rebuild: `BOUNDARY_FLIP_REPORT_v1_0.md` for all three charts (`482012f1`, `1c826d5a`, `cb73cd3d`) read by SS. **Zero flips:** the L1/panchanga rebuild joins the wave as an ordinary stage (S-L1) under an SS REVIEW. **Any flip:** goes to SS first (natal chart; SS informs the owner). **A changed FORENSIC anchor (Sun Capricorn, Moon Purva Bhadrapada, Lagna Aries, Tithi Shukla Tritiya, Vara Ravivara, Yoga Shiva, Karana Garaja): immediate ALERT**, nothing proceeds | not met: report in production |
+
+| Stage (v1.2.1) | Ephemeris verdict | Held until |
+|---|---|---|
+| S0 smoke `ka_tithi_pravesha` | EXPOSED | G-EPH (and, as a smoke of the post-fix path, after the L1 decision); S0-alt `bg_vidhi_primitives` may stand in now |
+| **S0b** `bg_transit_rules` | not exposed | **not held** (other gates: P0.7, S0b.8) |
+| **S0L** `bg_vedha_malefic_scale` (+ `bg_vidhi_primitives`) | not exposed | **not held** |
+| S0c (`ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_gochara`) | kernel / not exposed; Pravāha's assets unaffected | **not held by ruling 2** (other gates: P0.7, Pravāha's grants); lineage-flagged (EPH.3), and `ka_moorti_nirnaya` records no backend (it can degrade to spline roots) |
+| S0v (`ga_vargas`), S0m (MSR producers) | L1 PyJHora: EXPOSED / unverified | G-EPH and G-FLIP (they are L1 rebuilds) |
+| S1 split: **S1a** (`ka_dasha_kala`, `bo_karanajala`) | not exposed | not held by ruling 2 (lineage-flagged) |
+| S1 split: **S1b** (`ka_muhurta_seva`) | EXPOSED | G-EPH. It must precede `ka_sangam` (section 1.6), so S3's `ka_sangam` waits behind it |
+| S2 (`bo_*`) | not exposed | not held by ruling 2 (lineage-flagged) |
+| S3 split: **S3a** (`ka_yojaka`, `ka_avadhi`) | not exposed | not held by ruling 2 (lineage-flagged) |
+| S3 split: **S3b** (`ka_sangam`) | EXPOSED | G-EPH |
+| S4 (`ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`) | `ka_vighnakara` EXPOSED; `ka_kalasutra` depends on `ka_sangam`; the other two on `ka_vighnakara` | G-EPH (the whole stage, by exposure and by dependency) |
+| S5 (8 `ph_*`) | `ph_muhurta` EXPOSED; the rest depend on S4 | G-EPH |
+| S6 `mi_bhavisya` | not exposed, but depends on S5 | G-EPH (by dependency) |
+| S7 `ka_kshetra` | EXPOSED | G-EPH (and the existing S7 gates) |
+
+### EPH.6 v1.3 order
+
+1. **Now, before the fix (no ephemeris call, no L1 ancestor):** Grant v1.4 (1217) -> S0-alt smoke (`bg_vidhi_primitives`, if SS accepts the substitution) -> **S0b** -> **S0L**. Nothing else is recommended before the fix.
+2. **Permitted by ruling 2 but not recommended before G-FLIP** (the lineage cost of EPH.3): S0c, S1a, S2, S3a. They are not exposed, so SS may run them early; if the L1/panchanga rebuild later joins the wave, they are rebuilt again. This is a decision for SS (Q20).
+3. **Fix deploys -> G-EPH verified -> G-FLIP (boundary-flip report, three charts).** Zero flips: **S-L1**, the L1/panchanga rebuild (the `ga_*` set, `panchanga_daily`, and the conditional S0v/S0m), as an ordinary stage under its own SS REVIEW (not drafted here); it makes every L1-dependent asset stale. Any flip: SS first. FORENSIC anchor changed: ALERT, stop.
+4. **After G-EPH and the L1 decision:** S0t (the `ka_tithi_pravesha` smoke, recording the backend) -> S0c -> S1 (S1a, then S1b `ka_muhurta_seva`) -> S2 -> S3 (S3a, then S3b `ka_sangam`) -> S4 -> S5 -> S6 -> S7, as in section 8, with the ordering invariants unchanged (MSR before Kala/Phala, `ka_dasha_kala` before `ka_sangam`, S0c before S3). Every exposed writer that runs after the fix is expected to record its backend in `notes`; a run whose exposed writer records `moshier`, or nothing, stops the stage.
+5. The fix changes the writer closures of the exposed assets, so their receipts mismatch and they execute rather than delta-skip, and the digest inventory is regenerated (S0b.8 item 3 applies to every stage: the job image must contain the fix).
+
+### EPH.7 Not verified (EPH)
+
+The fix PR's content; whether `bg_vedha_malefic_scale`/`bg_transit_rules` closures stay untouched by it (expected, not read); dynamic imports and runtime-injected `swe` objects (a static closure can miss a call and, for shared modules, over-report one); the six MSR producers' closures (S0m); `ka_gochara`'s legacy `find_*_events` use; the realised thread interleaving (investigation 8); the size of the effect on `kala_tithi_pravesha` (not quantified); the investigation's own unverified list (live job env, Linux-image reproduction, only the native chart's Moon and Sun compared).
+
+
 ## 0. What this review needs you to see first
 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
@@ -2120,5 +2210,53 @@ data_plane_builder on the 18 ka_gochara_* tables (1153-1157) and kala_gochara_co
 data_plane_builder on kala_gochara_authority, kala_gochara_windows, kala_gochara_windows_v2, kala_gochara_v2_build_state: s=t i=t u=t d=t; kala_gochara_windows_archive_20260805: s=t only
 ```
 The content md5 uses the F4 form of section 3.2 (`to_jsonb(row)` minus `id`, `build_id`, `computed_at`, `created_at`, `updated_at`, ordered by its own text). `dispatch_frozen_rebuild.py` was read (arguments, manifest construction, `create_run` ROLLBACK without `--commit`, `--confirm`), not run. The rulings of v1.2.1 (acceptance, Grant v1.4 ownership and number, Pravāha's confirmation about run 1865991c, S0c conditions, S0L scope, NL-1, S0b.7a) are recorded as given by SS/Pravāha and were not independently verifiable in the DB.
+
+### E15. v1.3 ephemeris-exposure read (2026-10-01 about 18:20Z; code at `origin/main` 57bcef8c9; DB as `suvarna_reader`, SELECT only)
+
+Closure search (script below; static import closure per asset as hashed by `asset_runner._writer_source_files`, orchestrator infrastructure pruned; hits are lines matching `import swisseph` or `swe.<call>`; run from the worktree, no DB). Per-asset result (closure files / files with swisseph references): `bg_transit_rules` 3/0, `bg_vedha_malefic_scale` 3/0, `bg_vidhi_primitives` 2/0, `ka_dasha_kala` 5/0, `bo_karanajala` 9/0, `bo_pratijna` 10/0, `bo_drishti` 2/0, `bo_cgm_motifs` 3/0, `bo_cgm_paths` 3/0, `bo_anveshana` 2/0, `bo_upaya` 7/0, `ka_avadhi` 5/0, `ka_yojaka` 8/0, `ka_kalasutra` 3/0, `ka_kala_darshana` 1/0, `ka_bhavishya_lekha` 2/0, `ka_gochara_resonance` 4/0, `ph_nimitta` 3/0, `ph_pratikara` 2/0, `ph_sankrama` 2/0, `ph_sodhana` 2/0, `ph_suddha_sodhana` 2/0, `ph_pramana` 3/0, `ph_phaladesa` 3/0, `mi_bhavisya` 2/0; with references: `ka_tithi_pravesha` 20/3 (`pyjhora_adapter/_jhora.py`, `houses.py`, `positions.py`), `ka_muhurta_seva` 20/8 (`panchang_engine/*`), `ka_sangam` 38/14 (`panchang_engine/*`, `pipeline/transit_search.py`, `gochara_kernel`, `ka_gochara/service.py`, `ka_sangam/engine.py`, the writer), `ka_vighnakara` 22/9 (`panchang_engine/*`, the writer), `ph_muhurta` 20/8 (`panchang_engine/*`), `ka_gochara` 42/8 (the writer, `transit_search`, `w2g*`, `ka_gochara_sweep`, `l0_ephemeris`), `ka_moorti_nirnaya` 16/4 (`l0_ephemeris`, `gochara_kernel`, `ka_graha_sancara/engine`), `ka_vedha_gochara` 22/3 (`l0_ephemeris`, `transit_search`, `ka_graha_sancara/engine`), `ka_kshetra` 23/1 (`stage3_clocks.py`). Each reference was then read at its call site (EPH.3 gives the lines); `transit_search` is imported by `sarvatobhadra.py` for `ka_vedha_gochara` but the writer does not call it, and `ka_graha_sancara/engine.py` and `l0_ephemeris.py` are reached through `derive_sidereal` (analytic ayanamsa). Before pruning, the closure of every `bo_*` asset also reached `panchang_engine` and `l0_ephemeris`, only through `bodha_writers/data_plane_contracts.py` -> `pipeline/orchestrator/asset_runner.py` -> `service_probes.py` (the shared orchestrator import chain, not a writer call); that is why the pruning is applied.
+```python
+import sys, re
+sys.path.insert(0,'/Users/Dev/suvarna-lane-rebuildplan/platform/python-sidecar')
+from pathlib import Path
+from pipeline.orchestrator import asset_runner as ar
+from pipeline.orchestrator.writers import discover_all
+discover_all()
+PRUNE = re.compile(r'pipeline/orchestrator/(asset_runner|runner|service_probes|provenance|output_digest|db|events|locks|staleness|birth_params|main|global_runner|__init__|dag_edge_guard|kala_derivation_completeness_guard)\.py$|orchestrator/writers/__init__\.py$')
+PAT = re.compile(r'(import swisseph|from swisseph|swisseph as|\bswe\.[a-z_]+\(|\bswe\.[A-Z_]+\b)')
+def rel(p): return str(p).split('python-sidecar/')[-1]
+for asset in sys.argv[1].split(','):
+    roots=[(ar._REPO_ROOT/p) for p in ar._writer_source_paths(asset)]
+    parent={}; q=[]
+    for r in roots:
+        fs=[f for f in r.rglob('*.py') if 'tests' not in f.parts] if r.is_dir() else [r]
+        for f in fs: f=f.resolve(); parent[f]=None; q.append(f)
+    i=0
+    while i<len(q):
+        f=q[i]; i+=1
+        if PRUNE.search(str(f)) : continue
+        for g in ar._local_import_files(f):
+            g=g.resolve()
+            if g not in parent and not PRUNE.search(str(g)):
+                parent[g]=f; q.append(g)
+    hits={}
+    for f in parent:
+        t=f.read_text(encoding='utf-8',errors='replace').split('\n')
+        ls=[i+1 for i,l in enumerate(t) if PAT.search(l) and not l.lstrip().startswith('#')]
+        if ls: hits[f]=ls
+    print('##',asset,'closure files',len(parent),'swisseph files',len(hits))
+    for f,ls in sorted(hits.items(), key=lambda x:str(x[0])):
+        chain=[];c=f
+        while c is not None: chain.append(Path(rel(c)).name); c=parent[c]
+        print('   ',rel(f),ls[:5],'via',' <- '.join(chain[1:4]) if len(chain)>1 else '(root)')
+```
+`ka_tithi_pravesha` digests: stored receipt `code_digest` `3448e974fbb2e7224f6cc502ef2dc1087212b6a34e301e88b604209beb3c2997` (canonical chart, observed 2026-09-07 21:18:40Z); `get_writer_source_hash('ka_tithi_pravesha')` on the worktree `adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5`, equal to the `origin/main` digest inventory entry. L1 ancestor counts (live registry, 18:20Z; `ga_*` among the transitive dependencies):
+```sql
+\set wave '''ka_tithi_pravesha,bg_transit_rules,bg_vedha_malefic_scale,bg_vidhi_primitives,ka_muhurta_seva,ka_dasha_kala,bo_karanajala,bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya,ka_avadhi,ka_gochara,ka_yojaka,ka_sangam,ka_kalasutra,ka_vighnakara,ka_kala_darshana,ka_bhavishya_lekha,ph_nimitta,ph_muhurta,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana,ph_pramana,ph_phaladesa,mi_bhavisya,ka_moorti_nirnaya,ka_vedha_gochara,ka_gochara_resonance,ka_kshetra'''
+with recursive w(a) as (select unnest(string_to_array(:wave, ','))),
+up(root, d) as (select a, a from w union select up.root, y from up join asset_registry r on r.asset_id=up.d cross join lateral unnest(coalesce(r.depends_on,'{}')) y)
+select root, count(distinct d) filter (where d like 'ga\_%') n_l1_ancestors, string_agg(distinct d, ',' order by d) filter (where d like 'ga\_%' and d in (select unnest(array['ga_positions','ga_dashas','ga_vargas','ga_strength','ga_structural','ga_tajaka','ga_sensitive','ga_nakshatra','ga_condition','ga_panchanga','ga_sade_sati']))) exposed_l1
+from up group by root order by root;
+```
+Result: `bg_transit_rules`, `bg_vedha_malefic_scale`, `bg_vidhi_primitives`, `ka_gochara_resonance`, `ka_muhurta_seva` 0; `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_tithi_pravesha` 1 (`ga_positions`); `ka_dasha_kala` 2; `ka_gochara` 9; `bo_*`, `ka_avadhi`, `ka_yojaka`, `ka_kshetra` 12; `ka_sangam`, `ka_vighnakara`, `ka_kalasutra`, `ka_kala_darshana`, `ka_bhavishya_lekha`, `ph_*`, `mi_bhavisya` 13. Investigation read: `git show origin/suvarna/land/TI-ephemeris-backend-001:00_ARCHITECTURE/briefs/suvarna/exec/INVESTIGATION_EPHEMERIS_BACKEND_v1_0.md` (188 lines, status DRAFT_FOR_REVIEW); its figures are cited, not re-measured.
 
 *End of document.*
