@@ -912,7 +912,10 @@ class TestCitationFormat(unittest.TestCase):
             assert isinstance(human, str) and len(human) > 0
 
     def test_72_verification_pass_status_valid(self):
-        valid_statuses = {"two_pass_verified", "classical_match", "divergent_flagged"}
+        # Q03 / SS N-62: rows straight out of compute_*() have not been through any verifier yet
+        # (the verdict is applied per examined row by build_system's post-pass), so the raw stamp
+        # is the honest `single`, never a pre-stamped tier the check has not earned.
+        valid_statuses = {"single"}
         for r in self.rows[:20]:
             status = r.get("verification_pass_status")
             assert status in valid_statuses, (
