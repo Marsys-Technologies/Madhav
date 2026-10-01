@@ -906,6 +906,103 @@ def grade_null_schema_default(entries, columns, defaults) -> dict:
                                     "literal fallbacks and constant columns are not measured here, so this is never PASS")
 
 
+# Placeholder literals that stand in for NULL in prose (closed, lowercase; compared trimmed and lowercased).
+PROSE_PLACEHOLDERS = ("", "n/a", "na", "none", "null", "unknown", "tbd", "-", "--", "undefined", "nan")
+_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_SCOPE_COUNT = re.compile(r"\s*select\s+count\(\s*(?:\*|1)\s*\)(?:\s+as\s+\w+)?\s+from\s+(?:public\.)?(\w+)"
+                          r"(\s+where\s+.+?)?\s*;?\s*", re.I | re.S)
+_SCOPE_BANNED = re.compile(r"\b(?:select|join|group|having|union|limit|order|intersect|except)\b|;", re.I)
+
+
+def _count_scope_tail(count_sql: str, table: str):
+    """The ` WHERE ...` tail (or "") of a registry count_sql that is a plain `SELECT count(*) FROM <table> [WHERE ...]`
+    over `table`; None for any other shape (join, group, union, subselect, constant, another table): the asset's
+    own rows cannot then be scoped from it."""
+    q = re.sub(r"--[^\n]*", "", count_sql or "")
+    m = _SCOPE_COUNT.fullmatch(q)
+    if not m or m.group(1).lower() != (table or "").lower():
+        return None
+    tail = (m.group(2) or "").strip()
+    if tail and _SCOPE_BANNED.search(tail):
+        return None
+    return " " + tail if tail else ""
+
+
+def _in_list() -> str:
+    return ", ".join("'" + p + "'" for p in PROSE_PLACEHOLDERS)
+
+
+def prose_row_counts_sql(table: str, entries, where_tail: str) -> str:
+    """One read-only count query: per declared entry, `count(*) FILTER` rows whose text is checkable (non-NULL, not
+    blank, not a placeholder) and rows holding a blank/placeholder string instead of NULL. A plain column reads
+    `"c"::text`; a JSON path `("c"::jsonb #>> '{k,k}')`; an array path (`[*]`) an EXISTS over jsonb_path_query.
+    Identifiers come from parse_prose_field (regex-validated): ValueError otherwise."""
+    if not _IDENT.fullmatch(table or "") or not entries:
+        raise ValueError("prose_row_counts_sql needs a table identifier and at least one declared entry")
+    items = []
+    for e in entries:
+        col, path = parse_prose_field(e)
+        if path and PROSE_WILDCARD in path:
+            jp = "$"
+            for seg in path:
+                jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
+            src = f"EXISTS (SELECT 1 FROM jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) WHERE jsonb_typeof(x) = 'string' AND lower(btrim(x #>> '{{}}')) "
+            checkable, blank = src + f"NOT IN ({_in_list()}))", src + f"IN ({_in_list()}))"
+        else:
+            v = f'"{col}"::text' if path is None else f"(\"{col}\"::jsonb #>> '{{{','.join(path)}}}')"
+            checkable = f"{v} IS NOT NULL AND lower(btrim({v})) NOT IN ({_in_list()})"
+            blank = f"{v} IS NOT NULL AND lower(btrim({v})) IN ({_in_list()})"
+        items += [f"count(*) FILTER (WHERE {checkable})::text", f"count(*) FILTER (WHERE {blank})::text"]
+    return f"SELECT {', '.join(items)} FROM {table}{where_tail}"
+
+
+def prose_row_counts(table: str, entries, where_tail: str) -> dict:
+    """entry -> dict(checkable=int, blank=int), from one read-only query. A malformed answer raises Unknown."""
+    row = (psql(prose_row_counts_sql(table, entries, where_tail)) or [[]])[0]
+    if len(row) != 2 * len(entries):
+        raise Unknown(f"prose row-count query answered {len(row)} value(s) for {len(entries)} declared entr(ies)")
+    try:
+        return {e: dict(checkable=int(row[2 * i]), blank=int(row[2 * i + 1])) for i, e in enumerate(entries)}
+    except ValueError as exc:
+        raise Unknown(f"prose row-count query returned a non-integer: {exc}") from exc
+
+
+def grade_narr_checkable(entries, counts) -> dict:
+    """Narr.checkable (SS 2026-10-01): rows actually CHECKABLE per declared entry. PASS: every entry has >= 1.
+    PARTIAL: some have none (named). Zero everywhere, or no row data: INCONCLUSIVE (NO_DETECTOR + inconclusive),
+    never PASS."""
+    if not isinstance(counts, dict):
+        return dict(v=NO_DET, inconclusive=True, measured="INCONCLUSIVE: no row data was read for the declared prose "
+                                                          "entries (scope unsupported or not measured); no PASS is possible")
+    n = {e: int((counts.get(e) or {}).get("checkable", 0)) for e in entries}
+    text = ", ".join(f"{e}={k}" for e, k in n.items())
+    if not any(n.values()):
+        return dict(v=NO_DET, inconclusive=True, checkable=n,
+                    measured=f"INCONCLUSIVE: 0 checkable rows on every declared entry ({text})")
+    zero = [e for e, k in n.items() if not k]
+    if zero:
+        return dict(v=PARTIAL, checkable=n, measured=f"checkable rows per declared entry: {text}; none on {', '.join(zero)}")
+    return dict(v=PASS, checkable=n, measured=f"checkable rows per declared entry: {text}")
+
+
+def grade_null_blank_rows(entries, counts) -> dict:
+    """Null.blank_rows: declared prose rows holding a blank string or a placeholder literal instead of NULL. FAIL on
+    any. PARTIAL (never PASS) when none in >= 1 checkable row; INCONCLUSIVE without row data or checkable rows."""
+    if isinstance(counts, dict):
+        bad = {e: int((counts.get(e) or {}).get("blank", 0)) for e in entries}
+        hit = [f"{e}={k}" for e, k in bad.items() if k]
+        if hit:
+            return dict(v=FAIL, blank=bad, measured="blank or placeholder rows standing in for NULL in declared prose "
+                                                    "column(s): " + ", ".join(hit))
+        if any((counts.get(e) or {}).get("checkable", 0) for e in entries):
+            return dict(v=PARTIAL, blank=bad, measured="no blank or placeholder row among the checkable prose rows; "
+                                                       "schema defaults are read by Null.schema_default and writer "
+                                                       "literal fallbacks and constant columns are not measured, so "
+                                                       "this is never PASS")
+    return dict(v=NO_DET, inconclusive=True,
+                measured="INCONCLUSIVE: no checkable prose rows were read for the declared entries")
+
+
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
 # and `--layer all` census unrunnable on production. Configurable via env so an operator pointed
