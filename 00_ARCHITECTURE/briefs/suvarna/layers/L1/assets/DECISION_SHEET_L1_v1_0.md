@@ -2,15 +2,15 @@
 artifact: DECISION_SHEET_L1
 layer: L1 Gaṇita (ga_*)
 version: "1.0"
-status: DRAFT-FOR-RULING
+status: "DRAFT-FOR-RULING (group B-0, the argala block, RULED by SS 2026-10-02, decision N-61; the rest awaits ruling)"
 produced_by: exec-suvarna
 produced_on: 2026-10-02
 plan_item: A.L1 (decision sheet over the briefs; one pass for Strategic Suvarṇa)
-source_branch: "suvarna/land/A-L1-briefs-001 (PR #2832, open) at f315b2dc2 (code and briefs read here); this sheet is on suvarna/land/A-L1-decisions-001"
+source_branch: "suvarna/land/A-L1-briefs-001 (PR #2832, open) at f315b2dc2 (code and briefs read here); the SS rulings on the argala block are recorded in the briefs and INDEX on suvarna/land/A-L1-briefs-001-rulings (c5c3c284f, a fast-forward of the briefs branch); this sheet (suvarna/land/A-L1-decisions-001) is rebased on that tip"
 source_files: "00_ARCHITECTURE/briefs/suvarna/layers/L1/assets/INDEX.md (section 7, the 17 questions) and the 19 per-asset briefs in the same directory"
 scope: "docs only; no code, registry, migration or database write"
 provisional: "every ruling taken from this sheet is provisional until the J1 independent review"
-changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six argala items), put first at SS's priority request so they can be ruled ahead of the rest. The remainder (Group A, Group B, the full summary table) follows in the next commit of this file."
+changelog: "1.0-early rulings (2026-10-02): SS rulings on group B-0 (decision N-61) recorded: Rulings section, a ruling line per item AR-1..AR-6, summary column; the rulings are also recorded in the L1 INDEX and the ga_structural brief on suvarna/land/A-L1-briefs-001-rulings (c5c3c284f), on which this sheet is rebased. 1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six argala items), put first at SS's priority request so they can be ruled ahead of the rest. The remainder (Group A, Group B, the full summary table) follows in the next commit of this file."
 ---
 
 # L1 Gaṇita decision sheet (for one ruling pass by Strategic Suvarṇa)
@@ -33,6 +33,24 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 
 ---
 
+## Rulings (SS, 2026-10-02, decision N-61) — argala block
+
+SS ruled the argala block (group B-0). **All six recommendations are ACCEPTED**, with the points below made binding or more precise. Every (R) item is provisional until the J1 independent review, and **the argala pairing and the node reversal go on the J1 reviewers' list BY NAME.**
+
+| item | what SS ruled (beyond or sharpening the recommendation) |
+|---|---|
+| AR-1 (R) | (a): L1 owns the pairing 2-12, 4-10, 11-3, 5-9. Obstruction applies to benefic AND malefic argala. Outcome by count only: argala count > obstructor count = `argala_prevails`; fewer = `obstructed`; equal = `undetermined`; "stronger" stays null (unsourced). `virodha` means the obstruction in every layer; L2's "argala by a malefic" gets a different name (the L2 design note proposes it). The `get_argala.ts` offsets text is fixed now (pre-approved). |
+| AR-2 (R) | (a): reverse for BOTH nodes when the node is the reference, in the L1 graha-level rows (`count_direction`). Ketu-only is a named stricter variant. The sign matrix stays forward-only and says so. |
+| AR-3 (R) | (a): empty source sign = NULL with `no_occupant`. The 1.0 / 0.25 formula stays as a project convention (`unsourced`); the BPHS count grading is post-J1. |
+| AR-4 | (a): keep `single`; correct the provenance string to the real writer function. |
+| AR-5 | Accepted as written. |
+| AR-6 (R) | (a): L1 {2, 4, 5, 11} / {12, 10, 9, 3} canonical, {2, 4, 11} a named filter. L1 adds the graha-level family, D1 only. L2 builds edges from those rows, cites their `fact_id`s, and deletes its offset constants, its pairing and its own malefic set. If an edge needs a benefic/malefic label, ONE cited definition in the L0 graha vocabulary (Sun, Saturn, Mars; nodes stated separately) read by both layers. The vipareeta / 3rd-house evil argala is recorded, not built. |
+| Sequence (binding) | ONE `ga_structural` rebuild carrying the argala change AND the ephemeris fix, after G-EPH and G-FLIP, as part of S-L1; then `bo_karanajala` inside the single S-L2 batch; no argala-only L1 rebuild. Migration 1219 is allocated for the `fact_category_ownership` row (and the `count_sql` / floor touch). |
+
+**Track I items** (continuing the L1 INDEX numbering after I-13; defined in `INDEX.md` section 9): I-14 graha-level family, pairing, node reversal (AR-1, AR-2, AR-6); I-15 empty cells (AR-3); I-16 provenance string and citation block (AR-4, AR-5); I-17 `get_argala.ts` description (AR-1); I-18 L0 benefic/malefic definition (AR-6); I-19 `bo_karanajala` reads L1 rows (L2 set); I-20 binding sequence and migration 1219.
+
+---
+
 ## GROUP B-0 · Argala (priority block; the bo_karanajala fix and the single batched L2 rebuild wait on this)
 
 ### What L1 and L2 hold today (shared facts for AR-1 to AR-6)
@@ -46,6 +64,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 ---
 
 ### AR-1 · Virodha pairing: which obstructor offset cancels which argala offset, and who states it
+
+**SS ruling (2026-10-02):** (R) (a) accepted; outcome by count, "stronger" null; `virodha` = the obstruction in every layer, L2's malefic-argala class renamed; `get_argala.ts` text fixed now. J1 by name. Track I: I-14, I-17, I-19.
 
 **Question.** Should L1 own the argala-to-obstructor pairing (2 with 12, 4 with 10, 11 with 3, 5 with 9) as a named, cited rule that L2 reads, correcting L2's current pairing?
 
@@ -69,6 +89,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 
 ### AR-2 · Rahu and Ketu: reverse the count (neither layer does)
 
+**SS ruling (2026-10-02):** (R) (a) accepted: both nodes reversed when the node is the reference, `count_direction` in the L1 graha-level rows; Ketu-only a named stricter variant; sign matrix forward-only. J1 by name. Track I: I-14.
+
 **Question.** When Rahu or Ketu is the reference (the one receiving the argala), should argala and its obstruction be counted in reverse order, in L1, and for both nodes?
 
 **Facts.**
@@ -91,6 +113,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 
 ### AR-3 · An empty source sign scores 1.0 in L1
 
+**SS ruling (2026-10-02):** (R) (a) accepted: NULL with `no_occupant`; formula stays `unsourced`; BPHS count grading post-J1. Track I: I-15.
+
 **Question.** Should an argala cell whose source sign holds no graha be stored as a null (no claim) instead of the current score of 1.0?
 
 **Facts.**
@@ -111,6 +135,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 ---
 
 ### AR-4 · L1 argala rows carry the `single` verification tier
+
+**SS ruling (2026-10-02):** (a) accepted: keep `single`, correct the provenance string. Track I: I-16.
 
 **Question.** Is `single` the honest tier for the L1 argala rows (never claimed as verified), and should the mislabelled provenance string be corrected?
 
@@ -134,6 +160,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 
 ### AR-5 · The chapter label: BPHS "Ch. 28" versus Ch. 31 in the corpus
 
+**SS ruling (2026-10-02):** accepted as written. Track I: I-16.
+
 **Question.** Replace the writer's "BPHS Ch. 28" label by the corpus chunk ids, marked `sourced_ocr_unverified`, and give L1 rows a classical reference they do not carry today?
 
 **Facts.**
@@ -151,6 +179,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 ---
 
 ### AR-6 · Which offsets are canonical, and does L2 consume the L1 rows or recompute
+
+**SS ruling (2026-10-02):** (R) (a) accepted: L1 offsets canonical, {2, 4, 11} a named filter; L1 graha-level family, D1 only; L2 reads and cites it and deletes its constants and malefic set; one L0 benefic/malefic definition if a label is needed; binding sequence (one `ga_structural` rebuild with the ephemeris fix after G-EPH and G-FLIP, then `bo_karanajala` in the S-L2 batch); migration 1219. Track I: I-14, I-18, I-19, I-20.
 
 **Question.** Is L1's set {2, 4, 5, 11} with obstructors {12, 10, 9, 3} the canonical one (L2's {2, 4, 11} then a named variant), and should L2 build its argala edges from L1 fact rows instead of recomputing?
 
@@ -176,8 +206,8 @@ changelog: "1.0-early (2026-10-02): first commit carries ONLY Group B-0 (the six
 
 ### Argala block summary (replaced by the one-page table of the full sheet in the next commit)
 
-| id | short question | recommendation | (R) | rebuilds |
-|---|---|---|---|---|
+| id | short question | recommendation | (R) | rebuilds | SS ruling (2026-10-02) |
+|---|---|---|---|---|---|
 | AR-1 | Who owns the argala/obstructor pairing; L2's 4->3 and 11->10 contradict BPHS | L1 owns 2-12, 4-10, 11-3, 5-9 (paired offset on rows, obstruction facts); L2 reads | (R) | `ga_structural` then `bo_karanajala` |
 | AR-2 | Reverse the count for Rahu and Ketu | Yes, both nodes, when the node is the reference, in L1 graha-level rows | (R) | same two |
 | AR-3 | Empty source sign scores 1.0 (3,444 of 7,200 cells) | NULL with `no_occupant`; formula stays, labelled `unsourced`; count grading is a separate ruling | (R) | `ga_structural` |
