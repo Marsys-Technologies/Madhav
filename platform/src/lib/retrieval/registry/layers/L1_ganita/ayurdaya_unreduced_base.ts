@@ -48,6 +48,14 @@ export const AYURDAYA_STATUS_UNVERIFIED_CAVEAT =
 export const AYURDAYA_MIXED_CAVEAT =
   'Classical pinda/amsa/nisarga figures: some are confirmed unreduced base figures (no reductions (harana) applied) and some have a harana (reduction) status that could not be confirmed; read each row\'s figure_kind; none is a reduced or final figure; not a prediction of lifespan.'
 
+/**
+ * Caveat for a mixed page on a surface whose rows are NOT individually marked (chart_facts_query):
+ * it describes the page-level reality only (counts given in `figure_counts`), and never tells the
+ * reader to look for a per-row `figure_kind` that this surface does not carry.
+ */
+export const AYURDAYA_MIXED_PAGE_CAVEAT =
+  'Classical pinda/amsa/nisarga figures on this page: some are confirmed unreduced base figures (no reductions (harana) applied) and some have a harana (reduction) status that could not be confirmed; rows are not individually marked on this surface (figure_counts gives how many of each); none is a reduced or final figure; not a prediction of lifespan.'
+
 /** harana_status values the writer emits for "base ayus only, reductive haranas not applied". */
 const UNREDUCED_BASE_HARANA_STATUSES: ReadonlySet<string> = new Set(['base_only_haranas_deferred_to_w3'])
 
@@ -69,6 +77,8 @@ export interface AyurdayaFigureDisclosure {
   caveat: string
   figure_counts: { unreduced_base: number; reduction_status_unverified: number }
   judgment_flag: JudgmentFlag
+  /** true when this surface marks each row with its own figure_kind; false = page-level disclosure only. */
+  rows_marked: boolean
   /** Per-row figure, keyed by the very row object that was passed in. */
   row_figures: Map<Row, AyurdayaRowFigure>
 }
@@ -79,6 +89,11 @@ export interface AyurdayaDeriveOptions {
    * fact_category because its WHERE already pins it; every other surface leaves this false.
    */
   assumeAyurdayaCategory?: boolean
+  /**
+   * false = the surface does NOT annotate rows individually (chart_facts_query): the disclosure then
+   * describes the page only and its wording never refers to a per-row figure_kind. Default true.
+   */
+  rowsMarked?: boolean
 }
 
 // ── Row normalisation (fact-shaped chart_facts rows AND L2 `ayurdaya:*` MSR signal rows) ──────────
@@ -226,7 +241,7 @@ function classifyRows(rows: readonly Row[], assumeCategory: boolean): Map<Row, A
 }
 
 /** Page-level summary of a per-row figure map (null when empty). */
-function summarize(rowFigures: Map<Row, AyurdayaRowFigure>): AyurdayaFigureDisclosure | null {
+function summarize(rowFigures: Map<Row, AyurdayaRowFigure>, rowsMarked = true): AyurdayaFigureDisclosure | null {
   if (rowFigures.size === 0) return null
   let unreduced = 0
   let unverified = 0
@@ -237,15 +252,15 @@ function summarize(rowFigures: Map<Row, AyurdayaRowFigure>): AyurdayaFigureDiscl
   if (unverified === 0) {
     return {
       figure_kind: AYURDAYA_FIGURE_KIND_UNREDUCED_BASE, reductions_applied: false, caveat: AYURDAYA_UNREDUCED_BASE_CAVEAT,
-      figure_counts, row_figures: rowFigures,
+      figure_counts, rows_marked: rowsMarked, row_figures: rowFigures,
       judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', AYURDAYA_UNREDUCED_BASE_CAVEAT, 'info'),
     }
   }
   const mixed = unreduced > 0
-  const caveat = mixed ? AYURDAYA_MIXED_CAVEAT : AYURDAYA_STATUS_UNVERIFIED_CAVEAT
+  const caveat = mixed ? (rowsMarked ? AYURDAYA_MIXED_CAVEAT : AYURDAYA_MIXED_PAGE_CAVEAT) : AYURDAYA_STATUS_UNVERIFIED_CAVEAT
   return {
     figure_kind: mixed ? AYURDAYA_FIGURE_KIND_MIXED : AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED,
-    reductions_applied: null, caveat, figure_counts, row_figures: rowFigures,
+    reductions_applied: null, caveat, figure_counts, rows_marked: rowsMarked, row_figures: rowFigures,
     judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', caveat, 'warning'),
   }
 }
@@ -258,7 +273,7 @@ export function deriveAyurdayaFigureDisclosure(
   rows: readonly Row[],
   opts: AyurdayaDeriveOptions = {},
 ): AyurdayaFigureDisclosure | null {
-  return summarize(classifyRows(rows, opts.assumeAyurdayaCategory === true))
+  return summarize(classifyRows(rows, opts.assumeAyurdayaCategory === true), opts.rowsMarked !== false)
 }
 
 /**
@@ -281,7 +296,9 @@ export function ayurdayaDisclosureObject(disclosure: AyurdayaFigureDisclosure): 
     reductions_applied: disclosure.reductions_applied,
     caveat: disclosure.caveat,
     figure_counts: disclosure.figure_counts,
-    applies_to: 'ayurdaya rows/signals with fact_key total_years / *_contribution_years / applicable_method; each carries its own figure_kind',
+    applies_to: disclosure.rows_marked
+      ? 'ayurdaya rows/signals with fact_key total_years / *_contribution_years / applicable_method; each carries its own figure_kind'
+      : 'ayurdaya rows with fact_key total_years / *_contribution_years / applicable_method on this page; this is a page-level disclosure: rows are not individually marked on this surface (see figure_counts)',
   }
 }
 
@@ -295,7 +312,7 @@ export function withAyurdayaFigureDisclosure<T extends { content: unknown; is_er
   result: T,
   servedRows: readonly Row[],
 ): T {
-  const disclosure = deriveAyurdayaFigureDisclosure(servedRows)
+  const disclosure = deriveAyurdayaFigureDisclosure(servedRows, { rowsMarked: false })
   if (!disclosure || !result.content || typeof result.content !== 'object' || Array.isArray(result.content)) return result
   const { judgment_flags: priorFlags, ...rest } = result.content as Record<string, unknown>
   const flags = Array.isArray(priorFlags) ? priorFlags : []

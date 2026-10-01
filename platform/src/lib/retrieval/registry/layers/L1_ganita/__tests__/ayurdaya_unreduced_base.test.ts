@@ -6,6 +6,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   AYURDAYA_FIGURE_KIND_MIXED,
   AYURDAYA_MIXED_CAVEAT,
+  AYURDAYA_MIXED_PAGE_CAVEAT,
   AYURDAYA_STATUS_UNVERIFIED_CAVEAT,
   AYURDAYA_UNREDUCED_BASE_CAVEAT,
   annotateAyurdayaYearRows,
@@ -254,6 +255,30 @@ describe('withAyurdayaFigureDisclosure (chart_facts_query adapter)', () => {
     const flags = (res.content as Row)['judgment_flags'] as Array<Row>
     expect(flags[0]).toBe(prior)
     expect(flags[1]?.['code']).toBe('ayurdaya_unreduced_base_figures')
+  })
+  it('a MIXED page on this surface is described at page level: counts, no per-row figure_kind reference', () => {
+    const res = withAyurdayaFigureDisclosure(
+      { content: { chart_id: 'c', rows: [1] }, is_error: false },
+      [total('PINDAYU', BASE), total('AMSAYU', 'other')],
+    )
+    const d = (res.content as Row)['ayurdaya_figure_disclosure'] as Row
+    expect(d['figure_kind']).toBe(AYURDAYA_FIGURE_KIND_MIXED)
+    expect(d['caveat']).toBe(AYURDAYA_MIXED_PAGE_CAVEAT)
+    expect(d['figure_counts']).toEqual({ unreduced_base: 1, reduction_status_unverified: 1 })
+    // The sentence is true for this surface: rows here carry NO figure_kind of their own.
+    expect(String(d['caveat'])).not.toMatch(/read each row/i)
+    expect(String(d['applies_to'])).not.toMatch(/each carries its own figure_kind/)
+    expect(String(d['applies_to'])).toMatch(/not individually marked/)
+    const flags = (res.content as Row)['judgment_flags'] as Array<Row>
+    expect(flags[0]?.['detail']).toBe(AYURDAYA_MIXED_PAGE_CAVEAT)
+  })
+  it('a surface that marks rows keeps the per-row wording (derive default)', () => {
+    const d = deriveAyurdayaFigureDisclosure([total('PINDAYU', BASE), total('AMSAYU', 'other')])!
+    expect(d.caveat).toBe(AYURDAYA_MIXED_CAVEAT)
+    expect(d.rows_marked).toBe(true)
+    const explicit = deriveAyurdayaFigureDisclosure([total('PINDAYU', BASE), total('AMSAYU', 'other')], { rowsMarked: false })!
+    expect(explicit.caveat).toBe(AYURDAYA_MIXED_PAGE_CAVEAT)
+    expect(explicit.rows_marked).toBe(false)
   })
   it('returns the same reference for a non-ayurdaya page', () => {
     const res = { content: { chart_id: 'c' }, is_error: false }
