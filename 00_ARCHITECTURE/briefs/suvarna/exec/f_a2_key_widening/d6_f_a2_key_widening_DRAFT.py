@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """DRAFT D6 in-process executor: F-A2 key widening for public.chart_divisionals (Q-L1-01, SS-ruled N-62).
 
-STATUS: DRAFT. NEVER RUN BY THE AUTHOR. No database was written. It needs, before any use:
-  * SS `APPROVED <plan hash>` for the hash a --dry-run prints (the hash binds this script's statements to
-    F_A2_KEY_WIDENING_D6_PLAN_v1_0.md), and
+STATUS: DRAFT. NEVER RUN BY THE AUTHOR AGAINST ANY REAL SYSTEM. It needs, before any apply:
+  * SS `APPROVED <plan hash>` for the hash a --dry-run prints (the hash binds THIS SCRIPT's source and
+    F_A2_KEY_WIDENING_D6_PLAN_v1_0.md together), and
   * the owner's standing authorization in the executing session (same terms as the I-11 RLS fix).
 
 WHY IT IS OWNER-PATH. chart_divisionals, its unique index, the L1 capture function and both L1 attestation tables
-are owned by the NOLOGIN role data_plane_l1_owner (read from the catalog 2026-10-02). `postgres` reaches them only
-through a transient `GRANT data_plane_l1_owner TO postgres` + `SET LOCAL ROLE data_plane_l1_owner`, exactly as the
-D6 pattern of reader_grants.py / the I-11 executor.
+are owned by the NOLOGIN role data_plane_l1_owner (catalog, 2026-10-02). The administrator reaches them only through a
+transient `GRANT data_plane_l1_owner TO CURRENT_USER` + `SET LOCAL ROLE data_plane_l1_owner`, as in the I-11 executor.
 
 WHAT IT CHANGES (all in ONE transaction; commit only if every check below holds, else ROLLBACK):
   1. unique index chart_divisionals_unique_idx: six columns -> the same six + fact_subject (NULLS NOT DISTINCT);
@@ -24,25 +23,47 @@ distinct identities and every partition aborts ("reported N rows but protected c
 
 WHAT IT DOES NOT TOUCH: any chart_divisionals row; RLS; policies; ACLs; memberships; any other table, index,
 trigger or function. The two attestation UPDATEs bypass the append-only trigger by DISABLE/ENABLE TRIGGER inside the
-same transaction (the same mechanism data_plane_protected_roles.db.test.ts uses); the end-state check proves the
-trigger is enabled again and that exactly the two intended attestation rows changed.
+same transaction (the mechanism data_plane_protected_roles.db.test.ts uses); the end-state check proves the trigger is
+enabled again and that exactly the two intended attestation rows changed.
 
-  --count                       read-only: prints the pre-state and the plan hash, always ROLLBACK
-  --dry-run                     applies the plan inside one transaction, runs every check, then ROLLBACK
-  --apply --expect-plan H       same transaction; COMMIT only if H == plan hash and every check holds
+GUARDS (any failure = print the reason and ROLLBACK; nothing else is touched):
+  * ANY build_run in planned/running/paused, on ANY chart (no chart filter), and any L1 generation in 'building';
+  * any data_plane_builder session that is active or idle-in-transaction;
+  * the live index / trigger / function are not exactly the pre-state this plan was written against;
+  * public.digest(text,text) does not resolve (pgcrypto's schema is printed; production: extension pgcrypto in `public`).
+  If ANOTHER workstream's run appears in the gap, the guard refuses and this script never touches that run: it only
+  reads build_runs, it never writes it.
+
+MODES
+  --print-hash                  print the frozen plan hash (needs no database)
+  --count                       read-only: preconditions + pre-state, always ROLLBACK
+  --dry-run                     applies the plan inside one transaction, prints the exact catalog diff in readable
+                                form, fires the identity probe, runs every commit condition, then ROLLBACK; prints the
+                                same plan hash and UTC start/end timestamps
+  --apply --expect-plan H       same transaction; COMMIT only if H == plan hash and every check holds; prints the
+                                UTC start/end timestamps of the index-swap-to-commit window (report them to SS)
+
+SEQUENCING (see the plan, section 6): the WRITER deploys FIRST (it fails closed on a missing seven-column index), THEN
+this plan runs. Between the index swap and the writer deploy any ga_vargas build fails either way, so the gap is kept
+minimal and its timestamps are reported.
 
 The administrator password is fetched from Secret Manager inside this process and never printed or saved.
 Connection: local Cloud SQL proxy 127.0.0.1:5433, database amjis.
 """
 from __future__ import annotations
 
+import datetime
+import difflib
 import hashlib
 import json
 import pathlib
+import re
 import subprocess
 import sys
 
 OWNER = "data_plane_l1_owner"
+BUILDER = "data_plane_builder"
+APP_OWNER = "amjis_app"  # owns build_runs; the administrator holds no table privilege and reads only as an owner
 TABLE = "chart_divisionals"
 INDEX = "chart_divisionals_unique_idx"
 NEW_INDEX_TMP = "chart_divisionals_unique_idx_f_a2"
@@ -68,7 +89,7 @@ HUNK_NEW_KEY = (
     "              ) ORDER BY cd.varga, cd.fact_category, cd.fact_key, cd.fact_subject\n"
 )
 
-# every check below compares a before-snapshot with an after-snapshot of ALL public relations/triggers/functions
+# every check below compares a before-snapshot with an after-snapshot of ALL public indexes/triggers/l1_,l2_ functions
 EXPECTED_DIFF = {
     "index": [f"{TABLE}|{INDEX}|6col->7col"],
     "trigger": [f"{TABLE}|{TRIGGER}|args 6->7"],
@@ -76,6 +97,7 @@ EXPECTED_DIFF = {
     "function": [f"{CAPTURE_FN_SIG}|definition|+fact_subject in ga_vargas dependency identity"],
     "function_attestation": [f"{CAPTURE_FN_SIG}|digest"],
     "rls_policy_acl_membership_rowdata": [],
+    "identity_probe": "landed == distinct identities under the live widened trigger arguments (84 == 84; legacy 6 args: 18)",
 }
 
 SNAP_SQL = {
@@ -107,6 +129,10 @@ ROWDATA_SQL = ("SELECT chart_id::text, count(*), md5(string_agg(id::text, ',' OR
                f"FROM public.{TABLE} GROUP BY chart_id ORDER BY chart_id")
 
 
+def utcnow() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
 def secret(name: str) -> str:
     r = subprocess.run(["gcloud", "secrets", "versions", "access", "latest", "--secret", name, "--project", PROJECT],
                        capture_output=True, text=True)
@@ -116,19 +142,23 @@ def secret(name: str) -> str:
 
 
 def plan_hash() -> str:
-    """Binds this script's statements and expected diff to the reviewed plan document."""
+    """The FROZEN hash: this script's own bytes + the reviewed plan document + the expected diff."""
     body = PLAN_DOC.read_text(encoding="utf-8") + "\n" + json.dumps(EXPECTED_DIFF, sort_keys=True)
-    body += "\n" + json.dumps([HUNK_OLD_KEY, HUNK_NEW_KEY, list(OLD_COLS), list(NEW_COLS)])
+    body += "\n" + hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
 def snap(cur) -> dict:
+    """Snapshot read AS the owner: the administrator holds no table privilege (I-11 incident review), and the
+    attestation tables and chart_divisionals are owner-readable. Catalog views are readable by every role."""
     out = {}
+    cur.execute(f"SET LOCAL ROLE {OWNER}")
     for k, sql in SNAP_SQL.items():
         cur.execute(sql)
         out[k] = {tuple(str(x) for x in row) for row in cur.fetchall()}
     cur.execute(ROWDATA_SQL)
     out["rowdata"] = {tuple(str(x) for x in row) for row in cur.fetchall()}
+    cur.execute("RESET ROLE")
     return out
 
 
@@ -138,15 +168,32 @@ def is_member(cur, role: str) -> bool:
 
 
 def preconditions(cur) -> list[str]:
-    """Refuse (return reasons) unless the table is quiescent. Admin reads; nothing is written."""
+    """Refuse (return reasons) unless the table is quiescent. Reads only; nothing is written, no run is touched."""
     problems = []
-    cur.execute("SELECT count(*) FROM public.build_runs WHERE state IN ('planned','running','paused')")
-    if cur.fetchone()[0]:
-        problems.append("build_runs in planned/running/paused exist (merge/apply gate PF-1)")
+    # ANY chart, ANY layer: no chart filter. build_runs.state is CHECK-constrained to
+    # planned/running/paused/completed/stopped/failed, so these three are exactly the non-terminal states.
+    cur.execute(f"SET LOCAL ROLE {APP_OWNER}")
+    cur.execute("SELECT count(*), COALESCE(string_agg(DISTINCT left(chart_id::text,8) || ':' || state, ', '), '') "
+                "FROM public.build_runs WHERE state IN ('planned','running','paused')")
+    n, which = cur.fetchone()
+    cur.execute("RESET ROLE")
+    if n:
+        problems.append(f"{n} build_run(s) in planned/running/paused on ANY chart ({which}); not touched, plan stops")
+    cur.execute(f"SET LOCAL ROLE {OWNER}")
     cur.execute("SELECT count(*) FROM public.l1_data_plane_generations WHERE status = 'building'")
-    if cur.fetchone()[0]:
+    building = cur.fetchone()[0]
+    cur.execute("RESET ROLE")
+    if building:
         problems.append("an L1 data-plane generation is still 'building'")
-    cur.execute(f"SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname=%s", (INDEX,))
+    cur.execute("SELECT count(*) FILTER (WHERE state IN ('active','idle in transaction','idle in transaction (aborted)')), "
+                "count(*) FILTER (WHERE state IS NULL) FROM pg_stat_activity WHERE usename = %s AND pid <> pg_backend_pid()",
+                (BUILDER,))
+    busy, hidden = cur.fetchone()
+    if hidden:
+        print(f"WARNING: {hidden} {BUILDER} session(s) have a hidden state (no pg_read_all_stats); only build_runs guards them")
+    if busy:
+        problems.append(f"a {BUILDER} session is active or idle-in-transaction")
+    cur.execute("SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname=%s", (INDEX,))
     row = cur.fetchone()
     want = "(" + ", ".join(OLD_COLS) + ") NULLS NOT DISTINCT"
     if not row or want not in row[0]:
@@ -160,6 +207,14 @@ def preconditions(cur) -> list[str]:
     fn = cur.fetchone()[0]
     if fn.count(HUNK_OLD_KEY) != 1 or "fact_subject=" in fn:
         problems.append("capture function does not contain the dependency-identity hunk exactly once")
+    # the digest function the plan (and the status gate) calls: where does pgcrypto live?
+    cur.execute("SELECT extnamespace::regnamespace::text FROM pg_extension WHERE extname = 'pgcrypto'")
+    ext = cur.fetchone()
+    cur.execute("SELECT to_regprocedure('public.digest(text,text)') IS NOT NULL")
+    ok = cur.fetchone()[0]
+    print(f"pgcrypto schema: {ext[0] if ext else 'NOT INSTALLED'}; public.digest(text,text) resolves: {ok}")
+    if not ok:
+        problems.append("public.digest(text,text) does not resolve; this plan schema-qualifies it")
     return problems
 
 
@@ -197,24 +252,117 @@ def apply_plan(cur) -> dict:
         (CAPTURE_FN_SIG,))
     fn_rows = cur.rowcount
     cur.execute(f"ALTER TABLE {FN_ATT} ENABLE TRIGGER {FN_ATT_IMMUTABLE}")
-    return {"trigger_attestation_rows": trg_rows, "function_attestation_rows": fn_rows}
+    return {"trigger_attestation_rows": trg_rows, "function_attestation_rows": fn_rows,
+            "old_def": old_def, "new_def": new_def}
 
 
-def check_after(cur, before: dict, after: dict, counts: dict) -> list[str]:
+# ------------------------------------------------------------------------------------------------------------------
+# identity probe: the capture path's identity arithmetic, fired on fixture rows inside the rolled-back transaction
+# ------------------------------------------------------------------------------------------------------------------
+_D30_ODD = [("Mars", 0, 5), ("Saturn", 5, 10), ("Jupiter", 10, 18), ("Mercury", 18, 25), ("Venus", 25, 30)]
+_D30_EVEN = [("Venus", 0, 5), ("Mercury", 5, 12), ("Jupiter", 12, 20), ("Saturn", 20, 25), ("Mars", 25, 30)]
+_SIGN_LORDS = ["Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter"]
+
+
+def probe_rows() -> list[dict]:
+    """The three families the old key collapsed, in the writer's own shapes: 60 D30 lords, 12 house lords, 12 bindus."""
+    rows = []
+    for s in range(12):
+        for lord, a, b in (_D30_ODD if s % 2 == 0 else _D30_EVEN):
+            rows.append(dict(graha=lord, varga="D30", fact_category="varga_d30_lord_per_amsa",
+                             fact_key=f"{lord}_{a}_{b}", fact_subject=f"D30.S{s + 1}"))
+    for h in range(12):
+        rows.append(dict(graha=_SIGN_LORDS[h], varga="D1", fact_category="varga_house_lord",
+                         fact_key="lord", fact_subject=f"D1.H{h + 1}"))
+    for s in range(12):
+        rows.append(dict(graha="Sun", varga="D1", fact_category="varga_ashtakavarga",
+                         fact_key="bindus", fact_subject=f"D1.SUN.S{s + 1}"))
+    return rows
+
+
+def identity_probe(cur) -> dict:
+    """Reproduce, on a session-local copy of the table, exactly what the live trigger + completion check do.
+
+    What fires: an INSERT ... ON CONFLICT (<the LIVE unique index's columns>) DO NOTHING of 84 fixture rows; the
+    capture identity of each stored row, built the way l1_data_plane_capture_row builds v_identity (the live trigger's
+    own arguments, `col=value` joined with '|', NULL as '<null>'); then the completion arithmetic: stored rows must equal
+    count(DISTINCT identity). What does NOT fire: the capture function itself and complete_l1_data_plane_partition.
+    The first line of the live capture function is `IF session_user <> 'data_plane_builder' THEN RAISE EXCEPTION`, and a
+    non-superuser administrator cannot SET SESSION AUTHORIZATION, so no administrator transaction can fire it; it also
+    needs an admitted generation (build_runs running + build_run_assets building + a partition context).
+    """
+    cur.execute(f"SET LOCAL ROLE {OWNER}")  # the administrator cannot read chart_divisionals (LIKE needs SELECT)
+    cur.execute("SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname=%s", (INDEX,))
+    live_cols = tuple(c.strip() for c in re.search(r"\(([^)]*)\)", cur.fetchone()[0]).group(1).split(","))
+    cur.execute("SELECT pg_get_triggerdef(t.oid,true) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
+                "WHERE c.relname=%s AND t.tgname=%s", (TABLE, TRIGGER))
+    trg_args = tuple(a.strip().strip("'") for a in
+                     re.search(r"l1_data_plane_capture_row\((.*)\)\s*$", cur.fetchone()[0]).group(1).split(","))
+    for ident in live_cols + trg_args:
+        assert re.fullmatch(r"[a-z_]+", ident), ident
+    cur.execute(f"CREATE TEMP TABLE fa2_probe (LIKE public.{TABLE} INCLUDING DEFAULTS) ON COMMIT DROP")
+    cur.execute(f"CREATE UNIQUE INDEX fa2_probe_uq ON fa2_probe ({', '.join(live_cols)}) NULLS NOT DISTINCT")
+    cols = ("chart_id", "ayanamsha_id", "build_id", "graha", "varga", "fact_category", "fact_key", "fact_subject")
+    sql = (f"INSERT INTO fa2_probe ({', '.join(cols)}) VALUES (%(chart_id)s::uuid, %(ayanamsha_id)s, %(build_id)s, "
+           f"%(graha)s, %(varga)s, %(fact_category)s, %(fact_key)s, %(fact_subject)s) "
+           f"ON CONFLICT ({', '.join(live_cols)}) DO NOTHING")
+    landed = 0
+    fixture = probe_rows()
+    for r in fixture:
+        r = dict(r, chart_id="00000000-0000-0000-0000-00000000fa20", ayanamsha_id="fa2_probe", build_id="fa2-probe")
+        cur.execute(sql, r)
+        landed += cur.rowcount
+
+    def distinct_identities(args) -> int:
+        parts = ", ".join(f"'{a}=' || COALESCE(to_jsonb(t)->>'{a}', '<null>')" for a in args)
+        cur.execute(f"SELECT count(DISTINCT array_to_string(ARRAY[{parts}], '|')) FROM fa2_probe t")
+        return cur.fetchone()[0]
+
+    result = {"fixture_rows": len(fixture), "landed": landed, "live_index_cols": live_cols,
+              "trigger_args": trg_args, "identities_live_args": distinct_identities(trg_args),
+              "identities_legacy_6_args": distinct_identities(OLD_COLS)}
+    cur.execute("RESET ROLE")
+    return result
+
+
+def render_diff(before: dict, after: dict, plan: dict) -> str:
+    """The exact catalog diff, readable: one block per category, plus what must be identical."""
+    out = []
+    names = {"index": "INDEX DEFINITION", "trigger": "TRIGGER DEFINITION",
+             "trigger_attestation": "TRIGGER ATTESTATION ROW (table, trigger, type, enabled, fn oid, fn, digest)",
+             "function": "FUNCTION (signature, md5(def), owner, secdef, config, acl)",
+             "function_attestation": "FUNCTION ATTESTATION ROW (signature, digest, owner, secdef, config)"}
+    for key, title in names.items():
+        removed, added = sorted(before[key] - after[key]), sorted(after[key] - before[key])
+        out.append(f"== {title}: exactly {len(removed)} removed / {len(added)} added "
+                   f"({'ONE ENTRY CHANGES' if len(removed) == len(added) == 1 else 'UNEXPECTED'}) ==")
+        for r in removed:
+            out.append("  - " + " | ".join(r))
+        for a in added:
+            out.append("  + " + " | ".join(a))
+    out.append("== FUNCTION HUNK (unified diff of pg_get_functiondef, before -> after) ==")
+    out.extend("  " + line.rstrip("\n") for line in difflib.unified_diff(
+        plan["old_def"].splitlines(True), plan["new_def"].splitlines(True),
+        fromfile="l1_data_plane_capture_row() before", tofile="after", n=3))
+    for key in ("acl", "membership", "rls", "policy", "rowdata"):
+        out.append(f"== {key.upper()}: {'IDENTICAL' if before[key] == after[key] else 'CHANGED (UNEXPECTED)'} "
+                   f"({len(before[key])} entries) ==")
+    return "\n".join(out)
+
+
+def check_after(cur, before: dict, after: dict, plan: dict, probe: dict) -> list[str]:
     """Every commit condition. Returns the list of failures (empty = commit allowed)."""
     bad = []
-    if counts != {"trigger_attestation_rows": 1, "function_attestation_rows": 1}:
-        bad.append(f"attestation UPDATE row counts {counts}")
-    # exactly the intended objects moved
-    for key, expected_changed in (("index", 1), ("trigger", 1), ("trigger_attestation", 1),
-                                  ("function", 1), ("function_attestation", 1)):
+    cur.execute(f"SET LOCAL ROLE {OWNER}")  # the attestation tables are owner-readable only
+    if (plan["trigger_attestation_rows"], plan["function_attestation_rows"]) != (1, 1):
+        bad.append(f"attestation UPDATE row counts {plan['trigger_attestation_rows']}/{plan['function_attestation_rows']}")
+    for key in ("index", "trigger", "trigger_attestation", "function", "function_attestation"):
         removed, added = before[key] - after[key], after[key] - before[key]
-        if len(removed) != expected_changed or len(added) != expected_changed:
-            bad.append(f"{key}: expected exactly {expected_changed} changed entry, got -{len(removed)} +{len(added)}")
+        if len(removed) != 1 or len(added) != 1:
+            bad.append(f"{key}: expected exactly 1 changed entry, got -{len(removed)} +{len(added)}")
     for key in ("acl", "membership", "rls", "policy", "rowdata"):
         if before[key] != after[key]:
             bad.append(f"{key} changed")
-    # the new index is the right one and is usable
     cur.execute("SELECT i.indisunique, i.indisvalid, i.indnullsnotdistinct, "
                 "array(SELECT a.attname::text FROM unnest(i.indkey) WITH ORDINALITY k(attnum,ord) "
                 "JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum ORDER BY k.ord) "
@@ -222,12 +370,10 @@ def check_after(cur, before: dict, after: dict, counts: dict) -> list[str]:
     row = cur.fetchone()
     if not row or not (row[0] and row[1] and row[2] and tuple(row[3]) == NEW_COLS):
         bad.append(f"new index shape wrong: {row}")
-    # both attestation triggers are enabled again; function owner/secdef/config unchanged (covered by 'function')
     cur.execute("SELECT count(*) FROM pg_trigger WHERE tgname = ANY(%s) AND tgenabled = 'O'",
                 ([TRG_ATT_IMMUTABLE, FN_ATT_IMMUTABLE],))
     if cur.fetchone()[0] != 2:
         bad.append("an attestation append-only trigger is not enabled after the plan")
-    # the gate's own comparisons, in SQL, for the two re-attested rows
     cur.execute(
         f"SELECT count(*) FROM {TRG_ATT} a JOIN pg_class c ON c.relname=a.table_name JOIN pg_trigger t "
         "ON t.tgrelid=c.oid AND t.tgname=a.trigger_name WHERE a.table_name=%s AND a.trigger_name=%s "
@@ -242,39 +388,67 @@ def check_after(cur, before: dict, after: dict, counts: dict) -> list[str]:
         "AND a.config IS NOT DISTINCT FROM p.proconfig", (CAPTURE_FN_SIG,))
     if cur.fetchone()[0] != 1:
         bad.append("function attestation does not match the live function")
+    if not (probe["landed"] == probe["fixture_rows"] == probe["identities_live_args"]
+            and probe["trigger_args"] == NEW_COLS and probe["live_index_cols"] == NEW_COLS
+            and probe["identities_legacy_6_args"] < probe["landed"]):
+        bad.append(f"identity probe: {probe}")
+    cur.execute("RESET ROLE")
     return bad
 
 
-def run(conn, mode: str) -> bool:
+def run(conn, mode: str, out=print) -> bool:
     """Returns True only when the transaction may be committed (mode apply, all checks hold)."""
     cur = conn.cursor()
+    started = utcnow()
+    out(f"start (UTC): {started}")
     cur.execute("SET LOCAL search_path = pg_catalog, pg_temp")
     cur.execute("SET LOCAL lock_timeout = '5s'")
     cur.execute("SET LOCAL statement_timeout = '120s'")
-    granted = False
-    if not is_member(cur, OWNER):
-        cur.execute(f"GRANT {OWNER} TO CURRENT_USER")
-        granted = True
+    cur.execute(SNAP_SQL["membership"])
+    membership_before = {tuple(str(x) for x in row) for row in cur.fetchall()}  # BEFORE any transient grant
+    transient = [r for r in (OWNER, APP_OWNER) if not is_member(cur, r)]
+    for r in transient:
+        cur.execute(f"GRANT {r} TO CURRENT_USER")
     problems = preconditions(cur)
-    print("preconditions:", "OK" if not problems else problems)
-    if mode == "count":
-        return False
-    if problems:
+    out("preconditions: " + ("OK" if not problems else "REFUSED"))
+    for p in problems:
+        out("  - " + p)
+    if mode == "count" or problems:
+        out(f"end (UTC): {utcnow()}")
         return False
     before = snap(cur)
+    before["membership"] = membership_before
     cur.execute(f"SET LOCAL ROLE {OWNER}")
-    counts = apply_plan(cur)
+    window_start = utcnow()
+    plan = apply_plan(cur)
     cur.execute("RESET ROLE")
-    if granted:
-        cur.execute(f"REVOKE {OWNER} FROM CURRENT_USER")
+    probe = identity_probe(cur)
     after = snap(cur)
-    bad = check_after(cur, before, after, counts)
-    print("commit conditions:", "ALL HOLD" if not bad else bad)
+    after["membership"] = membership_before  # placeholder until the transient grants are revoked below
+    bad = check_after(cur, before, after, plan, probe)  # needs the owner role, so it runs before the revoke
+    for r in transient:
+        cur.execute(f"REVOKE {r} FROM CURRENT_USER")
+    cur.execute(SNAP_SQL["membership"])
+    after["membership"] = {tuple(str(x) for x in row) for row in cur.fetchall()}
+    if after["membership"] != membership_before:
+        bad.append("role membership differs from the pre-state after the transient grants were revoked")
+    window_end = utcnow()
+    out(render_diff(before, after, plan))
+    out("== IDENTITY PROBE (fixture rows through the widened key; session-local table, rolled back) ==")
+    out(f"  live unique index columns : {probe['live_index_cols']}")
+    out(f"  live trigger arguments    : {probe['trigger_args']}")
+    out(f"  fixture rows / landed     : {probe['fixture_rows']} / {probe['landed']}  (ON CONFLICT on the live index columns)")
+    out(f"  distinct identities, live trigger args   : {probe['identities_live_args']}  "
+        f"(completion check needs this == rows_inserted)")
+    out(f"  distinct identities, legacy 6 args       : {probe['identities_legacy_6_args']}  "
+        f"(what the unwidened trigger would capture: the abort the plan prevents)")
+    out("commit conditions: " + ("ALL HOLD" if not bad else f"FAILED {bad}"))
+    out(f"index-swap-to-end window (UTC): {window_start} -> {window_end}")
+    out(f"end (UTC): {utcnow()}")
     return not bad and mode == "apply"
 
 
 def main(argv: list[str]) -> int:
-    import psycopg  # imported late so a plan-hash --print needs no driver
     h = plan_hash()
     print("plan sha256:", h)
     if argv == ["--print-hash"]:
@@ -289,6 +463,7 @@ def main(argv: list[str]) -> int:
         raise SystemExit("usage: --print-hash | --count | --dry-run | --apply --expect-plan <hash>")
     if mode == "apply" and expect != h:
         raise SystemExit("REFUSED: --expect-plan does not equal the plan hash")
+    import psycopg  # imported late so --print-hash needs no driver
     with psycopg.connect(host="127.0.0.1", port=5433, dbname="amjis", user="postgres",
                          password=secret("cloudsql-postgres-admin-password"), sslmode="disable",
                          connect_timeout=15) as conn:
@@ -296,9 +471,11 @@ def main(argv: list[str]) -> int:
         if ok:
             conn.commit()
             print("COMMITTED")
+            print("plan sha256:", h)
             return 0
         conn.rollback()
-        print("ROLLED BACK (%s)" % {"count": "read-only", "dry-run": "dry run", "apply": "checks failed"}[mode])
+        print("ROLLED BACK (%s)" % {"count": "read-only", "dry-run": "dry run", "apply": "refused or checks failed"}[mode])
+        print("plan sha256:", h)
         return 1 if mode == "apply" else 0
 
 
