@@ -125,12 +125,14 @@ class InventoryStore:
             "SELECT public.ka_gochara_search_av_entry(k) FROM unnest(%s::text[]) k",
             (list(av_declaration_keys),)).fetchall()) if av_declaration_keys else []
         av = [r[0] for r in av]
+        # 1206 v1.2 (accepted): the live-input digests are keyed by (chart, id) — the chart is the
+        # first argument — and the daśā ids are uuid[] (joined without a text cast).
         l1 = self.conn.execute(
-            "SELECT public.ka_gochara_search_l1_facts_digest(%s::text[])", (facts,)
-        ).fetchone()[0]
+            "SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
+            (chart_id, facts)).fetchone()[0]
         dd = self.conn.execute(
-            "SELECT public.ka_gochara_search_dasha_digest(%s::text[])", (dashas,)
-        ).fetchone()[0]
+            "SELECT public.ka_gochara_search_dasha_digest(%s::uuid, %s::uuid[])",
+            (chart_id, dashas)).fetchone()[0]
         vec_json = _json.dumps(vector)
         digest = self.conn.execute(
             "SELECT public.ka_gochara_search_input_digest(%s, %s::jsonb, %s, %s, %s::text[])",
@@ -140,7 +142,7 @@ class InventoryStore:
             " (chart_id, generation, convention_id, input_generation_vector,"
             "  consumed_fact_ids, consumed_dasha_row_ids, av_declarations,"
             "  l1_facts_digest, dasha_digest, input_digest)"
-            " VALUES (%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s)",
+            " VALUES (%s,%s,%s,%s::jsonb,%s,%s::uuid[],%s,%s,%s,%s)",
             (chart_id, generation, convention_id, vec_json, facts, dashas, av, l1, dd, digest))
         return digest
 
@@ -151,7 +153,7 @@ class InventoryStore:
             "SELECT d.dasha_row_id::text, d.level_n, d.lord_graha, d.start_iso, d.end_iso"
             " FROM public.chart_dashas d"
             " JOIN public.ka_gochara_search_input_snapshot s"
-            "   ON d.dasha_row_id::text = ANY (s.consumed_dasha_row_ids)"
+            "   ON d.chart_id = s.chart_id AND d.dasha_row_id = ANY (s.consumed_dasha_row_ids)"
             " WHERE s.chart_id = %s AND s.generation = %s ORDER BY d.level_n, d.start_iso",
             (chart_id, generation)).fetchall()
         return [DashaRow(r[0], int(r[1]), str(r[2]).lower(), r[3], r[4]) for r in rows]

@@ -2,7 +2,8 @@
 
 Pure planner tests need no database. The store tests run on a throwaway database with the
 REAL chain 1081/1152–1157 + 1206 applied verbatim (L1 tables stubbed minimally). 1206's
-shapes are not frozen until the Codex verdict — these tests are where a shape change shows.
+shapes are FROZEN at the Codex-accepted v1.2 (#2867 @ffc4b5b05, steward M20261001T233255-baf3) — these
+tests are where a shape change shows.
 """
 from __future__ import annotations
 
@@ -632,3 +633,64 @@ def test_the_verifier_ledger_check_catches_a_wrong_cut_that_sql_cannot(am5):
         am5, chart_id=CHART_ID, generation="5.13", event_class="marriage",
         obligations=out["obligations"], capability={"position_probe": True, "arc_index": True})
     assert real != db_led
+
+
+# ── the accepted 1206 v1.1/v1.2 contract points this writer depends on ───────
+
+def test_the_live_input_digests_are_chart_keyed_and_the_dasha_ids_are_uuids(am5):
+    """1206 v1.1 R4: rows are keyed by (chart, id) — the chart is the first argument — and the
+    snapshot's `consumed_dasha_row_ids` is uuid[]. A digest asked for ANOTHER chart sees none of
+    this chart's rows (every id MISSING), so it differs."""
+    store, sky, _ = _boot(am5, "5.80")
+    _write(am5, store, sky, "5.80", _plan())
+    snap = am5.execute(
+        "SELECT consumed_dasha_row_ids, l1_facts_digest, dasha_digest FROM"
+        " public.ka_gochara_search_input_snapshot WHERE generation = '5.80'").fetchone()
+    assert [str(x) for x in snap[0]] == sorted(DASHA_IDS)            # uuid[] round trip
+    other = str(uuid.UUID(int=0xDEAD))
+    assert am5.execute("SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
+                       (CHART_ID, sorted(FACT_IDS))).fetchone()[0] == snap[1]
+    assert am5.execute("SELECT public.ka_gochara_search_l1_facts_digest(%s::uuid, %s::text[])",
+                       (other, sorted(FACT_IDS))).fetchone()[0] != snap[1]
+    assert am5.execute("SELECT public.ka_gochara_search_dasha_digest(%s::uuid, %s::uuid[])",
+                       (other, sorted(DASHA_IDS))).fetchone()[0] != snap[2]
+
+
+def test_an_empty_ledger_is_input_bound_and_the_verifier_derives_the_same_preimage(am5):
+    """1206 v1.1: the ledger_digest preimage starts with `input=<input_digest>`, so even a class
+    with NO obligations has a digest that changes with the snapshot — and the independent verifier
+    derives that exact preimage (an EMPTY ledger included)."""
+    import hashlib
+    from services.gochara_kernel import inventory_verifier as ver
+    store, sky, _ = _boot(am5, "5.81")
+    empty = inv.ClassInventory(event_class="marriage", horizon=(H0, H1), pins=(), intervals=())
+    digest, out = _write(am5, store, sky, "5.81", empty)
+    expected = hashlib.sha256(f"input={digest}".encode()).hexdigest()
+    assert out["ledger_digest"] == expected
+    assert ver.rederive_ledger_digest(
+        am5, chart_id=CHART_ID, generation="5.81", event_class="marriage",
+        obligations=[], capability={"position_probe": True, "arc_index": True}) == expected
+    # input-bound: a different snapshot (a different fact set) changes the empty ledger's digest
+    with am5.transaction():
+        am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        store.delete_generation_inventory(CHART_ID, "5.81")
+        digest2 = store.insert_snapshot(
+            chart_id=CHART_ID, generation="5.81", convention_id=sky,
+            consumed_fact_ids=FACT_IDS[:-1], consumed_dasha_row_ids=DASHA_IDS)
+        out2 = store.write_class_inventory(
+            chart_id=CHART_ID, generation="5.81", plan=empty, input_digest=digest2)
+    assert digest2 != digest and out2["ledger_digest"] != out["ledger_digest"]
+
+
+def test_a_snapshot_not_bound_to_the_publications_bridged_convention_is_refused(am5):
+    """1206 v1.1 R2: the snapshot's sky convention must be the one the publication's legacy
+    convention is bridged to (immutable 1:1 bridge) — anything else is refused by the database."""
+    import psycopg
+    store, sky, _ = _boot(am5, "5.82")
+    with pytest.raises(psycopg.errors.RaiseException, match="R2"):
+        with am5.transaction():
+            am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            store.delete_generation_inventory(CHART_ID, "5.82")
+            store.insert_snapshot(
+                chart_id=CHART_ID, generation="5.82", convention_id="sha256:" + "ab" * 32,
+                consumed_fact_ids=FACT_IDS, consumed_dasha_row_ids=DASHA_IDS)

@@ -320,8 +320,8 @@ def rederive_ledger_digest(
     lo, hi = hdr
     rows = conn.execute(
         "SELECT level_n, start_iso, end_iso FROM public.chart_dashas"
-        " WHERE dasha_row_id::text = ANY(%s::text[]) ORDER BY level_n, start_iso",
-        (list(snap[0]),)).fetchall()
+        " WHERE chart_id = %s AND dasha_row_id = ANY(%s::uuid[]) ORDER BY level_n, start_iso",
+        (chart_id, [str(x) for x in snap[0]])).fetchall()
     lines = []
     for ob in obligations:
         agent, relation = ob.split("|")[3], ob.split("|")[4]
@@ -350,7 +350,9 @@ def rederive_ledger_digest(
                 lines.append(f"{oid}|{_utc_ts(cursor)}|{_utc_ts(hi)}|missing_inputs|{snap[1]}")
         else:
             lines.append(f"{oid}|{_utc_ts(lo)}|{_utc_ts(hi)}|{state}|{snap[1]}")
-    return _sha("\n".join(sorted(lines)))
+    # 1206 v1.1 (accepted): the preimage starts with `input=<input_digest>` so an EMPTY ledger is
+    # input-bound too; the sorted interval rows (byte order — 'C' collation) follow, one per line.
+    return _sha(f"input={snap[1]}" + ("\n" + "\n".join(sorted(lines)) if lines else ""))
 
 
 def write_verification(conn: Any, *, chart_id: str, generation: str, event_class: str,
