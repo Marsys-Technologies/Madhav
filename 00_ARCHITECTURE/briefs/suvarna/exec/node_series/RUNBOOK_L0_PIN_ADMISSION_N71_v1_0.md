@@ -1,6 +1,6 @@
 ---
 artifact: RUNBOOK_L0_PIN_ADMISSION_N71
-version: "1.0"
+version: "1.1"
 status: "REHEARSED on a scratch checkout of main (2026-10-02, nothing pushed); to be run for Pravāha's #2882 (bg_gochara_arcs) and again for Suvarṇa's bg_ephemeris change"
 produced_by: Exec Suvarṇa
 decision: "N-71 (Strategic Suvarṇa under the owner's delegation N-43; owner informed 2026-10-02)"
@@ -22,6 +22,10 @@ decision: "N-71 (Strategic Suvarṇa under the owner's delegation N-43; owner in
 3. Command (from `platform/`; read-only DSN as the reader; never print it):
    `( source ~/.config/suvarna/pgenv.sh; DATABASE_URL='postgresql://' python -m scripts.generate.nirmana_analysis_layer_pins --admit-successor --layer L0 --protected-baseline-commit <main tip> --source-commit <S> --historical-snapshot-commit <main tip> --definition-snapshot-commit 5142109f7f219ea860f859e322646f79d875bee8 --authority-decision N-71 --authority-commit <first commit of the docs PR> --review-artifact '{"commit":"f6fed12c794224329f6b3b436f8b1b814499d06d","path":"00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md","sha256":"abeb3ffa67d646bdbf4777145ba43e97318e04da9226c78a3fb2e0876b7e76f4","decision_binding":"status: PRODUCER_READY_ACCEPTED"}' --reason "<bounded reason>" --classification <asset>=derived_import_change )`
 4. **Verify before pushing:** exactly one L0 digest differs between main's and the branch's `nirmana-writer-digests.json` (`bg_` entries); the admission commit's diff contains only the two files above; `python -m scripts.generate.nirmana_analysis_layer_pins --check --protected-baseline-commit <main tip>` reports NO line mentioning L0; `npx vitest run src/generated/__tests__/nirmana-l0-analysis-receipts.test.ts` passes. State in the commit message and PR body: "exactly one L0 digest moved (<asset>), other 39 byte-identical", before sha, after sha.
+
+## Ancestry requirement (found at the real admission, 2026-10-02)
+The generator dereferences the authority evidence commit through `_require_reachable_commit`: it must be an ANCESTOR of HEAD when the admission runs. Therefore the source branch must be based on a main that already CONTAINS the authority document's squash commit. Sequence fix: (0) authority doc merges to main; (1) the source branch REBASES onto main at or after that squash commit and regenerates digests and census; (2) it freezes at head S2; (3) the admission commit goes on S2 (`AUTHORIZED_SOURCE_COMMITS` = S2). An admission commit on a head that predates the doc's merge cannot validate.
+Also: the precise statement is "exactly one L0 writer digest moved (<asset>); the other 35 of 36 L0 writer digests are byte-identical (the L0 pin covers 40 receipt assets)"; "other 39" is receipt-asset arithmetic, not the writer-digest count.
 
 ## Gotchas found in the rehearsal
 - `--check` (every variant) is RED on clean main for L1, L2 and L3 ("writer_inventory_sha256 is stale", "changed_assets do not match exact delta"): pre-existing, not L0, and `test_nirmana_analysis_layer_pins.py` has 9 known failures. "Green" for the admission means: no L0 failure and the receipts test passing; do not try to fix other layers' pins in this commit.
