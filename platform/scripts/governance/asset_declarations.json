@@ -909,7 +909,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
@@ -918,7 +918,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: bodha_ms",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
-    "prose_fields": null
+    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (bo_laksana.py:3823 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (bo_laksana.py:3872 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE bo_laksana.py:3887), valence and valence_source (bo_laksana.py:3949, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at bo_laksana.py:388), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (bo_laksana.py:3726, bo_laksana.py:3756, bo_laksana.py:3764). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (bo_laksana.py:3960, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at bo_laksana.py:433 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: query_signals.ts:507."
    }
   },
   "bo_nakshatra_semantic": {
@@ -2143,7 +2143,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "narration_jsonb.$.text"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:94",
@@ -2152,7 +2154,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_phaladesa; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:94 reads `phala_phaladesa` (`FROM phala_phaladesa`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "Writer ph_phaladesa.py builds a template narration from computed phaladesa fields (_build_deterministic_narration, ph_phaladesa.py:94): the f-strings at ph_phaladesa.py:103, ph_phaladesa.py:107, ph_phaladesa.py:110, ph_phaladesa.py:113, ph_phaladesa.py:115, ph_phaladesa.py:117, ph_phaladesa.py:121, ph_phaladesa.py:132, ph_phaladesa.py:136, ph_phaladesa.py:142 state the anchor and clean-anchor counts, magnitude, window dates, peak date, confidence band, malleability, spillover count, falsifiability status and contradiction count, joined into the text at ph_phaladesa.py:146 (\"text\": \" \".join(parts)); the dict is bound to narration_jsonb by json.dumps(narration) in the INSERT (ph_phaladesa.py:204 builds it, ph_phaladesa.py:208 INSERT, ph_phaladesa.py:280 binds). Declared although no served surface selects narration_jsonb (query_domain_result.ts:92 selects narration_status only): Narr applies when the asset emits prose (SS ruling 2026-10-01). The other keys of the dict (language, method, model, prompt_hash, generated_at) are constants or a date."
    }
   },
   "ph_pramana": {

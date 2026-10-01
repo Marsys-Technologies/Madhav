@@ -256,10 +256,12 @@ NARR_DECLARED = {
                     "derivation.$.factor_ledger[*].connections[*].reason"],
     "bg_yogas": [],
     "bg_ontology": [],
+    "bo_laksana_rerank": [],
+    "ph_phaladesa": ["narration_jsonb.$.text"],
 }
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
-NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology")
+NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology", "bo_laksana_rerank")
 # the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
 # (no `ddl` marker), 2 removed (null). The marker is gone from all 13.
 PRIOR_REAUDIT_NULLED = {"mi_bhavisya", "ph_pramana"}
@@ -329,6 +331,21 @@ NARR_CITES = {
                     (_BG + "l0_ontology.py", 219, 'f"house_{house_num:02d}"'), (_BG + "l0_ontology.py", 977, 'code = f"D{n}"'),
                     (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
                     (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
+    "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
+                          (_WR + "bo_laksana.py", 3726, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3756, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 3764, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 3823, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 3872, "payload = {"), (_WR + "bo_laksana.py", 3887, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 3949, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 3960, "notes=("),
+                          (_L + "L2_bodha/query_signals.ts", 507, "bodha_msr_signals")],
+    "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
+                     (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
+                     (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
+                     (_WR + "ph_phaladesa.py", 117, "active window runs {win}."), (_WR + "ph_phaladesa.py", 121, "Confidence band spans"),
+                     (_WR + "ph_phaladesa.py", 132, "cross-domain spillover(s)"), (_WR + "ph_phaladesa.py", 136, "Falsifiability status"),
+                     (_WR + "ph_phaladesa.py", 142, "contradiction signal(s)"), (_WR + "ph_phaladesa.py", 146, '"text": " ".join(parts)'),
+                     (_WR + "ph_phaladesa.py", 204, "narration = _build_deterministic_narration(rec)"),
+                     (_WR + "ph_phaladesa.py", 208, "INSERT INTO phala_phaladesa"), (_WR + "ph_phaladesa.py", 280, "json.dumps(narration, cls=_UUIDEncoder)"),
+                     (_L + "L4_phala/query_domain_result.ts", 92, "narration_status")],
     "mi_pariksha": [(_WR + "mi_pariksha.py", 251, 'f"Retrodiction probe for {event_id}'), (_WR + "mi_pariksha.py", 729, "statement = ("),
                     (_L + "L5_mimamsa/query_mimamsa_discoveries.ts", 86, "statement")],
 }
@@ -961,6 +978,147 @@ def test_bg_ontology_insert_params_only_read_values():
     src = _read(_ONTO)
     assert src.count(old) == 1
     assert nw.no_string_building_in_bound_params(src.replace(old, '                e["synonyms"], f"{e.get(\'description\')}!",\n'), "seed_ontology")
+
+
+# ── bo_laksana_rerank `[]` and ph_phaladesa `narration_jsonb.$.text` ──
+
+_LK = _WR + "bo_laksana.py"
+LAKSANA_RERANK_FUNCS = ("BoLaksanaRerankWriter", "_extract_primary_graha_for_rerank", "_structural_role_from_centrality",
+                        "_fetch_graha_centrality", "_populate_synthesis_rollups")
+LAKSANA_RERANK_COLUMNS = {"graph_node_strength_contribution_jsonb", "valence", "valence_source", "system_convergence_count",
+                          "cross_system_consensus_count", "contradicts_signals_array"}
+_SQL_TEXT_OPS = re.compile(r"\|\||concat|format\s*\(|string_agg|replace\s*\(|to_char|lpad|rpad|substr|initcap|upper\s*\(|lower\s*\(|trim\s*\(", re.I)
+
+
+def _laksana():
+    tree = nw._parents(ast.parse(_read(_LK)))
+    fns = {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))}
+    sqls = {t.targets[0].id: t.value.value for t in tree.body if isinstance(t, ast.Assign) and isinstance(t.targets[0], ast.Name)
+            and t.targets[0].id in ("_SYNTHESIS_ROLLUP_SQL", "_CLEAR_CONTRADICTS_SQL", "_CONTRADICTS_SQL")}
+    return tree, fns, sqls
+
+
+def _update_set_columns(sql):
+    seg = re.split(r"\bSET\b", sql, maxsplit=1, flags=re.I)[1]
+    seg = re.split(r"\bWHERE\b|\bFROM\b", seg, maxsplit=1, flags=re.I)[0]
+    return set(re.findall(r"(?:^|,)\s*([a-z_]+)\s*=", seg, re.I | re.M))
+
+
+def test_bo_laksana_rerank_is_update_only_and_writes_exactly_six_non_text_columns():
+    tree, fns, sqls = _laksana()
+    assert set(sqls) == {"_SYNTHESIS_ROLLUP_SQL", "_CLEAR_CONTRADICTS_SQL", "_CONTRADICTS_SQL"}
+    cls = fns["BoLaksanaRerankWriter"]
+    inline = [n.value for n in ast.walk(cls) if isinstance(n, ast.Constant) and isinstance(n.value, str) and re.match(r"\s*UPDATE\b", n.value)]
+    assert len(inline) == 2
+    texts = list(sqls.values()) + inline
+    cols = set().union(*(_update_set_columns(t) for t in texts))
+    assert cols == LAKSANA_RERANK_COLUMNS, cols
+    assert not any(re.search(r"\bINSERT\b|\bDELETE\b", t, re.I) for t in texts)
+    for fname in LAKSANA_RERANK_FUNCS:
+        assert not any(isinstance(n, ast.Constant) and isinstance(n.value, str) and re.search(r"\bINSERT\s+INTO\b", n.value, re.I)
+                       for n in ast.walk(fns[fname])), fname
+    for t in texts:
+        assert _SQL_TEXT_OPS.search(t) is None, t
+
+
+def test_bo_laksana_rerank_has_no_text_building_expression_that_reaches_a_column():
+    tree, fns, _ = _laksana()
+    found = {}
+    for fname in LAKSANA_RERANK_FUNCS:
+        found[fname] = nw.composed_inventory(fns[fname])
+    # the only f-string in the class is the WriterResult notes (a return note, bound to no column)
+    cls_inv = found["BoLaksanaRerankWriter"]
+    assert [(k, u.startswith("f'structural_role_updated=")) for _, k, u in cls_inv] == [("fstr", True)]
+    fs = next(n for n in ast.walk(fns["BoLaksanaRerankWriter"]) if isinstance(n, ast.JoinedStr))
+    assert isinstance(fs._parent, ast.keyword) and fs._parent.arg == "notes" and nw._called_name(fs._parent._parent) == "WriterResult"
+    # the helpers hold numeric arithmetic only (no string operand), and nothing else
+    for fname in LAKSANA_RERANK_FUNCS[1:]:
+        for n in ast.walk(fns[fname]):
+            if isinstance(n, ast.JoinedStr) or (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("format", "join")):
+                raise AssertionError((fname, ast.unparse(n)))
+            if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Mod)):
+                assert not _has_str_const(n), (fname, ast.unparse(n))
+    # _resolve_valence is the one other function whose output is stored (valence): its only f-string is a lookup key
+    rv = fns["_resolve_valence"]
+    keyf = [u for _, _, u in nw.composed_inventory(rv)]
+    assert keyf == ["f'{varga}_HOUSE_{house_num}'"]
+    loads = [n for n in ast.walk(rv) if isinstance(n, ast.Name) and n.id == "target_key" and isinstance(n.ctx, ast.Load)]
+    assert len(loads) == 1 and any(isinstance(a, ast.Call) and isinstance(a.func, ast.Attribute) and a.func.attr == "get"
+                                   and a.func.value.id == "vichara_lookup" for a in _ancestors(loads[0]))
+    (vmap,) = [a.value for a in tree.body if isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name)
+               and a.target.id == "_VICHARA_TO_MSR_VALENCE"]
+    assert all(isinstance(v, ast.Constant) and isinstance(v.value, str) for v in vmap.values)
+    rets = [r for r in ast.walk(rv) if isinstance(r, ast.Return)]
+    gav = [r for r in rets if isinstance(r.value, ast.Tuple) and ast.unparse(r.value.elts[1]) == "'ga_vichara_v1'"]
+    assert len(gav) == 1 and ast.unparse(gav[0].value.elts[0]) == "mapped"
+    assert [ast.unparse(v) for v in nw._assign_values(rv, "mapped")] == ["_VICHARA_TO_MSR_VALENCE.get(value_text, 'neutral')"]
+
+
+def test_bo_laksana_rerank_update_parameters_carry_no_composed_value():
+    tree, fns, _ = _laksana()
+    cls = fns["BoLaksanaRerankWriter"]
+    execs = [c for c in ast.walk(cls) if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == "execute"
+             and len(c.args) >= 2 and isinstance(c.args[0], ast.Constant) and re.match(r"\s*UPDATE\b", c.args[0].value)]
+    assert sorted(ast.unparse(c.args[1]) for c in execs) == ["[json.dumps(payload), sig['signal_id']]",
+                                                          "[new_valence, new_source, row['signal_id']]"]
+    (payload,) = nw._assign_values(cls, "payload")
+    assert isinstance(payload, ast.Dict)
+    assert {k.value for k in payload.keys} == {"structural_role_score", "primary_graha", "pagerank_score", "eigenvector_centrality",
+                                              "betweenness_centrality", "harmonic_centrality", "formula_version", "computed_at"}
+    assert nw.composed_keys(cls, [payload]) == set()                 # names resolved inside the writer class only
+    valence_update = next(c for c in execs if "SET valence" in c.args[0].value)
+    guard = [a for a in _ancestors(valence_update) if isinstance(a, ast.If)]
+    assert any(ast.unparse(g.test) == "new_source == 'ga_vichara_v1'" for g in guard)       # only the L1-valence_pass rows are updated
+
+
+_PHAL = _WR + "ph_phaladesa.py"
+PHALADESA_INTERPOLATIONS = ["domain_label", "mag", "mall", "n", "rec.anchor_count", "rec.clean_anchor_count", "rec.confidence_high",
+                            "rec.confidence_low", "rec.incoming_spillover_count", "rec.peak_date", "rec.pramana_window_status",
+                            "rec.prediction_window_end", "rec.prediction_window_start", "win"]
+
+
+def test_ph_phaladesa_narration_text_is_a_template_over_computed_fields_bound_to_narration_jsonb():
+    src = _read(_PHAL)
+    tree = ast.parse(src)
+    assert nw.check_tuple_json_from_builder(src, "phala_phaladesa", "narration_jsonb", "_build_deterministic_narration") == []
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_build_deterministic_narration")
+    roots = [r.value for r in ast.walk(fn) if isinstance(r, ast.Return)]
+    mod = ast.Module(body=[fn], type_ignores=[])
+    assert nw.composed_report(mod, roots, ("text",)) == [(146, True)]
+    (ret,) = roots
+    keys = {k.value for k in ret.keys}
+    assert keys == {"language", "text", "method", "model", "prompt_hash", "generated_at"}
+    assert nw.composed_keys(mod, [ret]) == {"text"}                                           # every other key is a constant or a date
+    # what the template states: computed counts, window dates, confidence band, status (no format spec/conversion anywhere)
+    inter = sorted({e for n in ast.walk(fn) if isinstance(n, ast.JoinedStr) for e, _ in nw.fstring_interpolations(n)})
+    assert inter == PHALADESA_INTERPOLATIONS
+    assert [spec for n in ast.walk(fn) if isinstance(n, ast.JoinedStr) for _, spec in nw.fstring_interpolations(n)] == [False] * sum(
+        len(nw.fstring_interpolations(n)) for n in ast.walk(fn) if isinstance(n, ast.JoinedStr))
+    assert any("anchor_count" in e or "confidence" in e for e in inter)
+
+
+def test_ph_phaladesa_checker_kills_the_constant_text_mutant():
+    src = _read(_PHAL)
+    assert nw.check_tuple_json_from_builder(src.replace('"text": " ".join(parts),', '"text": "pending",'), "phala_phaladesa",
+                                            "narration_jsonb", "_build_deterministic_narration") == []     # binding is intact ...
+    fn = next(n for n in ast.parse(src.replace('"text": " ".join(parts),', '"text": "pending",')).body
+              if isinstance(n, ast.FunctionDef) and n.name == "_build_deterministic_narration")
+    roots = [r.value for r in ast.walk(fn) if isinstance(r, ast.Return)]
+    assert nw.composed_report(ast.Module(body=[fn], type_ignores=[]), roots, ("text",)) == [(146, False)]    # ... but the leaf is no longer composed
+    assert nw.check_tuple_json_from_builder(src.replace("json.dumps(narration, cls=_UUIDEncoder)", "json.dumps({}, cls=_UUIDEncoder)"),
+                                            "phala_phaladesa", "narration_jsonb", "_build_deterministic_narration")
+
+
+def test_no_served_surface_reads_ph_phaladesa_narration_jsonb_so_the_declaration_rests_on_the_writer():
+    import os
+    hits = []
+    for root, dirs, files in os.walk(REPO_ROOT / "platform" / "src"):
+        dirs[:] = [d for d in dirs if d not in ("node_modules", "__tests__", "generated")]
+        for f in files:
+            if f.endswith((".ts", ".tsx")) and not re.search(r"\.(test|spec)\.", f):
+                if "narration_jsonb" in (pathlib.Path(root) / f).read_text(encoding="utf-8", errors="replace"):
+                    hits.append(f)
+    assert hits == []         # when one appears, add its read to the evidence and drop this guard
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
