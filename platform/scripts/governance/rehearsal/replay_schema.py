@@ -25,7 +25,9 @@ runner. It is a bounded, honest best-effort replay:
      POINT: files that fail are retried after the rest have run (dependency-order repair), until
      a full pass makes no progress;
   6. record each success in `_migrations_applied` with the exact sha256 migrate.ts computes;
-  7. write a machine-readable report (applied / failed + last error lines) and exit 3 if ANY file
+  7. refuse (REFUSED_UNSAFE, never executed, listed in the report) any file containing a psql
+     meta-command, COPY ... PROGRAM, dblink, *_fdw, CREATE SERVER, ALTER SYSTEM or lo_import/export;
+  8. write a machine-readable report (applied / failed + last error lines) and exit 3 if ANY file
      failed — a partial replay never reads as a green one (CLAUDE.md §N.8).
 
 `verify` compares every ledger row's sha256 with the file on disk and lists files with no ledger
@@ -34,18 +36,21 @@ row. No data is read from or written to anything except the rehearsal database.
 from __future__ import annotations
 
 import argparse
+import atexit
 import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from rehearsal_guard import REHEARSAL_PORT, check_rehearsal_url  # noqa: E402
+from rehearsal_guard import REHEARSAL_PORT, normalise_rehearsal_url  # noqa: E402
 
 PG_BIN = os.environ.get("REHEARSAL_PG_BIN", "/opt/homebrew/opt/postgresql@15/bin")
 REHEARSAL_HOME = Path("/Users/Dev/suvarna/rehearsal")
@@ -73,10 +78,24 @@ REPLAY_REPAIRS = (
 )
 
 
+_EMPTY_HOME: str | None = None
+
+
+def empty_home() -> str:
+    """A private empty HOME (never the real one: no ~/.pgpass, ~/.pg_service.conf, ~/.psqlrc)."""
+    global _EMPTY_HOME
+    if _EMPTY_HOME is None:
+        _EMPTY_HOME = tempfile.mkdtemp(prefix="rehearsal-home-")
+        atexit.register(shutil.rmtree, _EMPTY_HOME, ignore_errors=True)
+    return _EMPTY_HOME
+
+
 def pg_env() -> dict[str, str]:
     """Explicit minimal environment: nothing inherited, so no PG*/DATABASE_URL can redirect psql."""
-    return {"PATH": f"{PG_BIN}:/usr/bin:/bin", "HOME": os.environ.get("HOME", ""),
-            "LANG": "en_US.UTF-8", "PGOPTIONS": "-c client_min_messages=warning"}
+    return {"PATH": f"{PG_BIN}:/usr/bin:/bin", "HOME": empty_home(), "LANG": "en_US.UTF-8",
+            "PGPASSFILE": os.path.join(empty_home(), ".no-pgpass"),
+            "PGSERVICEFILE": os.path.join(empty_home(), ".no-pg-service"),
+            "PGOPTIONS": "-c client_min_messages=warning"}
 
 
 def psql_args(url: str, *extra: str) -> list[str]:
@@ -86,8 +105,9 @@ def psql_args(url: str, *extra: str) -> list[str]:
 
 
 def run_psql(url: str, *extra: str, stdin: str | None = None) -> subprocess.CompletedProcess:
+    # psql never inherits a terminal/pipe stdin: it gets exactly the SQL we pass, or nothing.
     return subprocess.run(psql_args(url, *extra), input=stdin, capture_output=True, text=True,
-                          env=pg_env())
+                          env=pg_env(), **({} if stdin is not None else {"stdin": subprocess.DEVNULL}))
 
 
 def scalar(url: str, sql: str) -> str:
@@ -98,9 +118,7 @@ def scalar(url: str, sql: str) -> str:
 
 
 def assert_rehearsal_server(url: str) -> None:
-    ok, why = check_rehearsal_url(url)
-    if not ok:
-        raise SystemExit(f"REFUSED: {why}")
+    url = normalise_rehearsal_url(url)  # raises on anything the guard refuses
     ident = scalar(url, "SELECT inet_server_port()||'|'||current_database()||'|'||current_setting('data_directory')")
     port, db, ddir = ident.split("|", 2)
     if int(port) != REHEARSAL_PORT or not db.startswith("rehearsal") or ddir != EXPECTED_DATA_DIR:
@@ -139,14 +157,48 @@ def tracked(url: str) -> set[str]:
 
 
 def record(url: str, name: str, path: Path) -> None:
-    r = run_psql(url, "-c", f"INSERT INTO _migrations_applied (filename, sha256) VALUES "
-                 f"('{name}', '{sha256_of(path)}') ON CONFLICT (filename) DO NOTHING")
+    # No SQL text is built from the filename: psql variables, interpolated as quoted literals.
+    r = run_psql(url, "-v", f"fname={name}", "-v", f"fsha={sha256_of(path)}",
+                 stdin="INSERT INTO _migrations_applied (filename, sha256) VALUES (:'fname', :'fsha') "
+                       "ON CONFLICT (filename) DO NOTHING;\n")
     if r.returncode != 0:
         raise RuntimeError(f"ledger insert failed for {name}: {r.stderr.strip()}")
 
 
+# --- pre-scan: constructs a replayed file must never contain ---------------------------------------
+UNSAFE_META = re.compile(r"^[ \t]*\\", re.M)  # psql meta-command (\!, \copy, \i, \o | cmd ...) at line start
+UNSAFE_SQL = (
+    ("COPY ... PROGRAM", re.compile(r"\bCOPY\b[^;]*\bPROGRAM\b", re.I | re.S)),
+    ("dblink", re.compile(r"\bdblink", re.I)),
+    ("foreign data wrapper (_fdw)", re.compile(r"_fdw\b", re.I)),
+    ("CREATE SERVER", re.compile(r"\bCREATE\s+SERVER\b", re.I)),
+    ("ALTER SYSTEM", re.compile(r"\bALTER\s+SYSTEM\b", re.I)),
+    ("lo_import/lo_export", re.compile(r"\blo_(import|export)\b", re.I)),
+)
+_COMMENTS = re.compile(r"--[^\n]*|/\*.*?\*/", re.S)
+
+
+def unsafe_reason(sql: str) -> str | None:
+    """Why this file must not be replayed, or None. Meta-commands are scanned on the raw text (a line
+    starting with a backslash is refused even inside a comment/dollar quote: fail closed); the SQL
+    constructs on the comment-stripped text."""
+    if UNSAFE_META.search(sql):
+        return "psql meta-command (line starting with a backslash)"
+    stripped = _COMMENTS.sub(" ", sql)
+    for label, rx in UNSAFE_SQL:
+        if rx.search(stripped):
+            return label
+    return None
+
+
+REFUSED_UNSAFE = "REFUSED_UNSAFE: "
+
+
 def apply_file(url: str, name: str, path: Path) -> tuple[bool, str]:
     sql = path.read_text(encoding="utf8")
+    why = unsafe_reason(sql)
+    if why is not None:
+        return False, REFUSED_UNSAFE + why
     if name == BASELINE:
         # Stream rewrite only; the file on disk is untouched.
         sql = sql.replace("\nCREATE SCHEMA public;\n", "\nCREATE SCHEMA IF NOT EXISTS public;\n")
@@ -193,13 +245,19 @@ def cmd_replay(url: str) -> int:
     pending = [n for n in order if n not in done]
     applied_now: list[str] = []
     errors: dict[str, str] = {}
+    refused: dict[str, str] = {}
     passno = 0
     while pending:
         passno += 1
         still: list[str] = []
         progress = 0
         for n in pending:
+            if n in refused:
+                still.append(n)
+                continue
             ok, err = apply_file(url, n, files[n])
+            if not ok and err.startswith(REFUSED_UNSAFE):
+                refused[n] = err[len(REFUSED_UNSAFE):]
             if ok:
                 record(url, n, files[n])
                 applied_now.append(n)
@@ -210,13 +268,14 @@ def cmd_replay(url: str) -> int:
                 errors[n] = err
         print(f"pass {passno}: applied {progress}, still failing {len(still)} ({time.time() - t0:.0f}s)", flush=True)
         pending = still
-        if progress == 0:
+        if progress == 0 or all(n in refused for n in pending):
             break
     report = {
         "applied_this_run": len(applied_now),
         "ledger_rows": len(tracked(url)),
         "files_on_disk": len(files),
         "failed": errors,
+        "refused_unsafe": refused,
         "seeds_recorded_not_executed": [s for s in SEED_FILES if s in files],
     }
     REHEARSAL_HOME.mkdir(parents=True, exist_ok=True)
@@ -249,11 +308,12 @@ def main(argv: list[str]) -> int:
     ap.add_argument("command", choices=("replay", "verify"))
     ap.add_argument("--url", default="")
     a = ap.parse_args(argv)
-    ok, why = check_rehearsal_url(a.url)
-    if not ok:
-        print(f"REFUSED: {why}", file=sys.stderr)
+    try:
+        url = normalise_rehearsal_url(a.url)  # use ONLY the normalised value from here on
+    except ValueError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
         return 2
-    return cmd_replay(a.url) if a.command == "replay" else cmd_verify(a.url)
+    return cmd_replay(url) if a.command == "replay" else cmd_verify(url)
 
 
 if __name__ == "__main__":

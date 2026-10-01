@@ -9,8 +9,8 @@ phase 1; seeding (via `suvarna_reader`) is a later phase and is not done here.
 |---|---|
 | Binaries | `/opt/homebrew/opt/postgresql@15/bin` (15.17; CI/production pin 15.x — `ci.yml` uses `postgres:15.18`) |
 | Data dir | `/Users/Dev/suvarna/rehearsal/pg` — **outside the repo, never committed** |
-| Listen | `127.0.0.1:55432` only (`listen_addresses='127.0.0.1'`), socket in `/Users/Dev/suvarna/rehearsal/sock` |
-| Auth | `trust` on the owner-only unix socket and on `127.0.0.1/32` only (no password, no other rule) |
+| Listen | `127.0.0.1:55432` only (`listen_addresses='127.0.0.1'`); unix socket in `/Users/Dev/suvarna/rehearsal/sock` (directory `0700`, `unix_socket_permissions = 0700`, `unix_socket_group = ''`) |
+| Auth | `trust` on the unix socket (reachable only by the owner: mode 0700) and on `127.0.0.1/32` (reachable by **any local process of any local user**); no password, no other rule. **Accepted residual:** anything running on this machine can connect over loopback as superuser `Dev`, and a superuser can run programs as `Dev` (`COPY ... PROGRAM`). Tolerated only because the cluster is disposable, holds no production data and no secrets, and the machine is single-user; do not run it on a shared host. |
 | Superuser | the current OS user (`Dev`); database `rehearsal` |
 | Extensions | `pgcrypto`, `uuid-ossp`, `vector` (pgvector, Homebrew), `pg_trgm` |
 | Local stand-in roles | `amjis_app`, `data_plane_builder`, `purna_inquiry_owner`, `service_role`, `anon`, `authenticated` — `NOLOGIN`, no password, no privileges (the migrations reference them) |
@@ -33,24 +33,43 @@ cd /Users/Dev/suvarna-engine-lane-e5-6/platform/scripts/governance/rehearsal   #
 ./apply_schema.sh migrate --dry-run   # the repo's real runner (migrate.ts) against the rehearsal URL only
 ```
 
-Every PostgreSQL / Node / Python child process is started with `env -i` and an explicit environment
-(`PATH`, `HOME`, and for the runner only `DATABASE_URL`). Nothing is inherited, so `PG*`, `DATABASE_URL`
-or a sourced credential file in the calling shell can never redirect a command. Do not `source` any
+Every PostgreSQL / Node / Python child process is started with `env -i`, an explicit environment and a
+**private empty `HOME`** (a fresh temp dir, so no `~/.pgpass`, `~/.pg_service.conf` or `~/.psqlrc`;
+`PGPASSFILE`/`PGSERVICEFILE` point at nonexistent files inside it). `psql` alone gets
+`PGOPTIONS=-c client_min_messages=warning`; the migration runner gets only `PATH`, `HOME` and
+`DATABASE_URL`. Nothing else is inherited, so `PG*`, `DATABASE_URL` or a sourced credential file in the
+calling shell can never redirect a command. Do not `source` any
 `pgenv`/`dbenv` file in the shell you use for these scripts.
 
 ## The URL guard
 
-`rehearsal_guard.py::check_rehearsal_url` is the single decision point. `apply_schema.sh` and
-`replay_schema.py` both call it **before any process receives the URL**, then verify the live server
-(`inet_server_port()`, `current_database()`, `data_directory` must equal 55432 / `rehearsal*` /
-`/Users/Dev/suvarna/rehearsal/pg`). It refuses: empty URLs; any host other than `localhost` /
-`127.0.0.1` (no IPv6, no `0.0.0.0`, no multi-host, no unix-socket paths); any port other than 55432 (a
-missing port is refused); any database other than `rehearsal` / `rehearsal_<suffix>`; a password in the
-URL; any libpq override (`host=`, `hostaddr=`, `port=`, `service=`, ...; only `application_name` is
-allowed); and any URL containing a production-like marker (`cloudsql`, `amjis`, `supabase`, `prod`, ...).
-`__tests__/test_e5_6_rehearsal_guard.py` proves each refusal and a mutation (guard disabled) that fails
-the same table (56 tests; 48 fail when the guard is disabled). The shell-level tests substitute a stub
-`psql`, so even a broken guard cannot open a connection from the test.
+`rehearsal_guard.py` is the single decision point. `apply_schema.sh` and `replay_schema.py` call it
+**before any process receives the URL**, and from then on use only the **normalised URL it returns**
+(rebuilt from validated components), never the original string. Rules (exact text, nothing fuzzy):
+no whitespace/control character/backslash anywhere; lower-case `postgres`/`postgresql` scheme; at most one
+`@`, a plain user name, **no password**; the host is exactly `127.0.0.1` (`localhost` is refused: it can
+resolve to `::1`, which an ssh tunnel or another listener could own; so are `127.1`, decimal/hex/octal,
+IPv6 and `%`-encoded spellings); the port is exactly `55432`; the database fullmatches `rehearsal` or
+`rehearsal_<suffix>`; the only query parameter is one `application_name` (`host=`, `hostaddr=`, `port=`,
+`service=`, `sslmode=`, `options=`, any case or `%`-encoding, is refused); and no production-like marker
+(`cloudsql`, `amjis`, `supabase`, `prod`, ...). After that the live server is verified
+(`inet_server_port()`, `current_database()`, `data_directory` = 55432 / `rehearsal*` /
+`/Users/Dev/suvarna/rehearsal/pg`); `rehearsal_cluster.sh` also verifies `inet_server_addr()` before every
+statement.
+
+`replay_schema.py` additionally **refuses to execute** (`REFUSED_UNSAFE` in the report, exit 3) any
+migration file containing a psql meta-command (a line starting with a backslash), `COPY ... PROGRAM`,
+`dblink`, `*_fdw`, `CREATE SERVER`, `ALTER SYSTEM` or `lo_import`/`lo_export` (none of the 883 files
+today). `rehearsal_cluster.sh` refuses any symlink in the data dir's path, fails closed when `lsof`
+cannot prove the port is free, and `reset --yes` deletes only `<rehearsal home>/pg`.
+
+`__tests__/test_e5_6_rehearsal_guard.py` (143 tests, no database or network) runs the guard cases, a static
+"guard precedes every psql/python/tsx call" check for all subcommands, env-leak checks (a stub `psql`/`tsx`
+dumps its argv and environment while the caller sets `PGHOST`, `PGSERVICE`, `PGPASSFILE`, `DATABASE_URL`, ...),
+sandboxed tests of `rehearsal_cluster.sh` against stub binaries, and **47 per-rule mutants** (each removes or
+weakens one rule: port, host, query key, userinfo, whitespace, env, symlink, identity, ... in the guard, the
+three scripts; each must make a check fail, and does). Shell tests use stub binaries, so even a broken guard
+cannot open a connection from the test.
 
 ```bash
 python -m pytest platform/scripts/governance/__tests__/test_e5_6_rehearsal_guard.py -q
@@ -109,9 +128,9 @@ five kala tables, `phala_anchors` and its four children), which is the brief's 2
 
 ## Safety summary
 
-* Binds `127.0.0.1:55432` only; trust auth is reachable only from this machine's loopback/socket.
+* Binds `127.0.0.1:55432` only. Trust auth on loopback means any local process can connect as `Dev` (accepted residual, see above); the unix socket is `0700`.
 * No production dump, credential, URL, or environment variable is read, copied or referenced.
-* `reset --yes` deletes only the literal path `/Users/Dev/suvarna/rehearsal/pg`.
+* `reset --yes` deletes only `/Users/Dev/suvarna/rehearsal/pg` (and refuses symlinked paths).
 * `init` twice is a no-op; `replay` twice is a no-op; `stop`/`start` are idempotent.
 * Disposable by design (`fsync=off`): never place anything of value here.
 
