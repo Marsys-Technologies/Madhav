@@ -394,7 +394,9 @@ def test_measure_candidate_flows_through_the_rollup_as_no_detector_undecided(mon
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-carriage": "SS-test" for c in CHECKS})
     by = {c["criterion"]: c for c in ac.rollup_asset("L0", ms["t"])["Carr"]["checks"]}
     assert all(by[c]["v"] == NA for c in CHECKS)
-    assert by["Carr.detector"]["v"] != NA                 # the retired-later meta check is untouched here (packet i)
+    # E6 item (i): the meta-check is retired, so Carr is exactly D1-D3 and the declared candidates alone decide the cell
+    assert "Carr.detector" not in by and sorted(by) == sorted(CHECKS)
+    assert ac.rollup_asset("L0", ms["t"])["Carr"]["v"] == NA
 
 
 def test_a_candidate_does_not_close_a_ledger_gap_while_the_rule_is_undecided():
