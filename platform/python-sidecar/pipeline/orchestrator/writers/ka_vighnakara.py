@@ -39,23 +39,54 @@ logger = logging.getLogger(__name__)
 # most a few dozen distinct MD/AD midpoints, so this ceiling is generous.
 _MAX_DASHA_ANCHORS = 200
 
-# Adversarial signs for Saturn relative to this native:
-# Native lagna = Aries (1), Moon = Aquarius (11).
-# Saturn is obstructive when transiting dusthāna from lagna (6=Virgo, 8=Scorpio, 12=Pisces)
-# OR when it enters the native's Moon sign or adjacent signs (sade-sati: 10=Capricorn, 11=Aquarius, 12=Pisces).
-_SATURN_ADVERSE_SIGNS = {
-    'Virgo':      0.50,  # 6th from Aries lagna
-    'Scorpio':    0.60,  # 8th from Aries lagna (severe)
-    'Pisces':     0.45,  # 12th from lagna / sade-sati phase
-    'Capricorn':  0.45,  # sade-sati rising phase (12th from Moon)
-    'Aquarius':   0.65,  # sade-sati peak — Moon sign itself (severe)
-}
-# Rahu adversarial: ecliptic anomaly zones and natal-lagna opposition
-_RAHU_ADVERSE_SIGNS = {
-    'Libra':      0.40,  # 7th from Aries (maraka axis)
-    'Virgo':      0.45,  # 6th (enemy)
-    'Scorpio':    0.45,  # 8th (death)
-}
+# Chart-relative adversity (Track I-2). These used to be literal sign-name tables for one
+# Aries-lagna / Aquarius-Moon native, applied to every chart. The rules are unchanged but are
+# now expressed as house offsets (1 = the reference sign itself) from THIS chart's lagna / Moon:
+#   Saturn: dusthana from lagna (6th .50, 8th .60 severe, 12th .45); sade-sati from Moon
+#           (12th .45 rising, 1st .65 peak, 2nd .45 setting).
+#   Rahu:   from lagna only: 7th .40 (maraka axis), 6th .45 (enemy), 8th .45 (death).
+_SATURN_LAGNA_OFFSETS = ((6, 0.50), (8, 0.60), (12, 0.45))
+_SATURN_MOON_OFFSETS = ((12, 0.45), (1, 0.65), (2, 0.45))
+_RAHU_LAGNA_OFFSETS = ((7, 0.40), (6, 0.45), (8, 0.45))
+
+_SIGN_NAMES = (
+    'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+    'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
+)
+
+
+def _ordinal(n: int) -> str:
+    return {1: '1st', 2: '2nd', 3: '3rd'}.get(n, f'{n}th')
+
+
+def _chart_adverse_signs(
+    natal_lagna_lon: Optional[float],
+    natal_moon_lon: Optional[float],
+) -> tuple[dict, dict]:
+    """Return ({sign: (score, [relations])} for Saturn, same for Rahu) for ONE chart.
+
+    A missing natal lagna / Moon longitude contributes no entries (an honest omission, never
+    another native's table). Overlapping relations on one sign keep the max score and list all.
+    """
+    def _build(specs):
+        out: dict[str, tuple[float, list[str]]] = {}
+        for lon, offsets, label in specs:
+            if lon is None:
+                continue
+            base = int(lon % 360.0 // 30)
+            for offset, score in offsets:
+                sign = _SIGN_NAMES[(base + offset - 1) % 12]
+                prev_score, rels = out.get(sign, (0.0, []))
+                rels = rels + [f"{_ordinal(offset)} from {label}"]
+                out[sign] = (max(prev_score, score), rels)
+        return out
+
+    saturn = _build([
+        (natal_lagna_lon, _SATURN_LAGNA_OFFSETS, 'lagna'),
+        (natal_moon_lon, _SATURN_MOON_OFFSETS, 'Moon'),
+    ])
+    rahu = _build([(natal_lagna_lon, _RAHU_LAGNA_OFFSETS, 'lagna')])
+    return saturn, rahu
 
 # Gandanta: last 3°20' (3.333°) of water signs before fire-sign junction
 _GANDANTA_RANGES = [
@@ -191,6 +222,8 @@ class KaVighnakaraWriter(WriterBase):
 
         # Pre-fetch natal lagna longitude from chart_facts (for papakartari + combustion)
         natal_lagna_lon: Optional[float] = self._fetch_natal_lagna_lon(conn, chart_id)
+        # Track I-2: the Moon's natal sidereal longitude, same pinned graha_position source.
+        natal_moon_lon: Optional[float] = self._fetch_natal_moon_lon(conn, chart_id)
 
         # Try to obtain muhurta service for real tithi
         try:
@@ -227,6 +260,7 @@ class KaVighnakaraWriter(WriterBase):
                 native_location=native_location_ctx,
                 natal_lagna_lon=natal_lagna_lon,
                 combustion_orbs=combustion_orbs,
+                natal_moon_lon=natal_moon_lon,
             )
 
             for obs in obstructions:
@@ -263,6 +297,7 @@ class KaVighnakaraWriter(WriterBase):
                 native_location=native_location_ctx,
                 natal_lagna_lon=natal_lagna_lon,
                 combustion_orbs=combustion_orbs,
+                natal_moon_lon=natal_moon_lon,
             )
             for obs in obstructions:
                 detail = dict(obs['detail'])
@@ -364,6 +399,34 @@ class KaVighnakaraWriter(WriterBase):
             ) from exc
 
         return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
+
+    def _fetch_natal_moon_lon(self, conn, chart_id: str) -> Optional[float]:
+        """Natal Moon sidereal longitude from chart_facts (Track I-2).
+
+        Same pins as `_fetch_natal_lagna_lon` (§N.7 item 2): fact_category, fact_subject='MOON',
+        fact_key='longitude_sidereal', canonical ayanamsha, total ORDER BY. None when absent
+        (callers then omit the Moon clause rather than invent a sign).
+        """
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_num FROM chart_facts
+                    WHERE chart_id = %s AND fact_category = 'graha_position'
+                      AND fact_subject = 'MOON'
+                      AND fact_key = 'longitude_sidereal'
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    ORDER BY fact_id
+                    LIMIT 1
+                    """,
+                    (chart_id,),
+                )
+                row = cur.fetchone()
+                if row and row['fact_value_num'] is not None:
+                    return float(row['fact_value_num']) % 360.0
+        except Exception as exc:
+            logger.debug("ka_vighnakara: natal moon fetch failed: %s", exc)
+        return None
 
     def _fetch_natal_lagna_lon(self, conn, chart_id: str) -> Optional[float]:
         """Fetch the natal lagna degree from chart_facts.
@@ -486,11 +549,20 @@ def _detect_all(
     native_location: dict,
     natal_lagna_lon: Optional[float],
     combustion_orbs: Optional[dict[str, float]] = None,
+    natal_moon_lon: Optional[float] = None,
 ) -> list[dict]:
     """Run all obstruction detectors for one convergence window peak."""
     results = []
+    try:
+        obs = _check_malefic_transit(
+            peak_date, jd, swe, muhurta_service, native_location, natal_lagna_lon,
+            natal_moon_lon=natal_moon_lon,
+        )
+        if obs:
+            results.append(obs)
+    except Exception as exc:
+        logger.debug("ka_vighnakara: _check_malefic_transit failed for %s: %s", peak_date, exc)
     for check in (
-        _check_malefic_transit,
         _check_panchanga_obstruction,
         _check_gandanta,
         _check_papakartari,
@@ -517,6 +589,7 @@ def _detect_all(
 
 def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
                            native_location=None, natal_lagna_lon=None,
+                           natal_moon_lon=None,
                            _test_proxy_windows: Optional[list] = None) -> Optional[dict]:
     """
     Live malefic transit: Saturn or Rahu in an adversarial sign at peak_date.
@@ -557,26 +630,40 @@ def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
                 }
         return None
 
+    saturn_adverse, rahu_adverse = _chart_adverse_signs(natal_lagna_lon, natal_moon_lon)
+    # With neither natal anchor known both maps are empty: no adversity is judged (honest null).
+
     worst_score = 0.0
     worst_planet = None
     worst_sign   = None
+    worst_rels: list[str] = []
 
     for planet_name, swe_id, adverse_map in (
-        ('Saturn', _SWE_IDS['Saturn'], _SATURN_ADVERSE_SIGNS),
-        ('Rahu',   _SWE_IDS['Rahu'],   _RAHU_ADVERSE_SIGNS),
+        ('Saturn', _SWE_IDS['Saturn'], saturn_adverse),
+        ('Rahu',   _SWE_IDS['Rahu'],   rahu_adverse),
     ):
         lon = _get_sidereal_lon(swe, jd, swe_id)
         if lon is None:
             continue
         sign = _lon_to_sign(lon)
-        score = adverse_map.get(sign, 0.0)
+        score, rels = adverse_map.get(sign, (0.0, []))
         if score > worst_score:
             worst_score  = score
             worst_planet = planet_name
             worst_sign   = sign
+            worst_rels   = rels
 
     if worst_score < 0.2:
         return None
+
+    lagna_sign = _lon_to_sign(natal_lagna_lon) if natal_lagna_lon is not None else None
+    moon_sign = _lon_to_sign(natal_moon_lon) if natal_moon_lon is not None else None
+    anchors = " / ".join(
+        part for part in (
+            f"native lagna ({lagna_sign})" if lagna_sign else None,
+            f"Moon ({moon_sign})" if moon_sign else None,
+        ) if part
+    )
 
     return {
         'obstruction_type': 'malefic_transit',
@@ -586,9 +673,11 @@ def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
         'detail': {
             'planet': worst_planet,
             'sign': worst_sign,
+            'natal_lagna_sign': lagna_sign,
+            'natal_moon_sign': moon_sign,
             'reason': (
-                f"{worst_planet} transiting {worst_sign} — adversarial to native "
-                "lagna (Aries) / moon (Aquarius); classical gochara obstruction."
+                f"{worst_planet} transiting {worst_sign} — adversarial to {anchors} "
+                f"({'; '.join(worst_rels)}); classical gochara obstruction."
             ),
             'peak_date': str(peak_date),
             'source': 'swisseph/lahiri',
