@@ -486,10 +486,14 @@ _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 PROSE_IDENT_MAX = 128          # a column name / JSON key longer than this is not an identifier anyone declared on purpose
 _PROSE_COLUMN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _PROSE_PATH_RE = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\.\$((?:\.[A-Za-z_][A-Za-z0-9_]*)+)")
-# evidence.prose_fields must cite writer code as `path.ext:LINE` (py/ts/tsx/sql); the 13 earlier declarations cite the
-# column's DDL migration instead and are marked `evidence_kind: "ddl"` (they then need a `NNN_name.sql` token, no line).
-EVIDENCE_PATH_LINE_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.(?:py|ts|tsx|sql):[1-9][0-9]*")
-EVIDENCE_KINDS = ("ddl",)
+# evidence.prose_fields must cite writer code as `path.ext:LINE` (py/ts/tsx; never .sql, never a test path) and carries
+# `evidence_kind: "writer"`; a declaration that cites the column's DDL migration instead is marked `evidence_kind: "ddl"` (it then
+# needs a `NNN_name.sql` token, no line). An unmarked (null) kind gets the same cite checks as "writer".
+EVIDENCE_PATH_LINE_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.(?:py|ts|tsx):[1-9][0-9]*")
+_EVIDENCE_SQL_LINE_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.sql:[1-9][0-9]*")
+_EVIDENCE_ANY_CITE_RE = re.compile(r"([A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.(?:py|ts|tsx)):[1-9][0-9]*")
+_EVIDENCE_TEST_PATH_RE = re.compile(r"(^|/)(__tests__|tests?|fixtures)/|(^|/)test_[^/]*$|_test\.py$|\.(test|spec)\.tsx?$")
+EVIDENCE_KINDS = ("ddl", "writer")
 _DDL_EVIDENCE_RE = re.compile(r"[0-9]+_[A-Za-z0-9_]+\.sql")
 
 
@@ -622,12 +626,18 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                 raise DeclarationsError(f"{where}.prose_fields is declared (even []), so evidence.prose_fields must "
                                         f"carry a non-blank pointer (the writer code read, file:line)")
             ek = e.get("evidence_kind")
-            if ek is None and not EVIDENCE_PATH_LINE_RE.search(evp):
-                raise DeclarationsError(f"{where}.evidence.prose_fields must cite writer code as 'path.py:LINE' "
-                                        f"(py/ts/tsx/sql); DDL-only evidence needs evidence_kind 'ddl'")
-            if ek is not None:
-                if ek not in EVIDENCE_KINDS:
-                    raise DeclarationsError(f"{where}.evidence_kind must be null or one of {list(EVIDENCE_KINDS)}")
+            if ek is not None and ek not in EVIDENCE_KINDS:
+                raise DeclarationsError(f"{where}.evidence_kind must be null or one of {list(EVIDENCE_KINDS)}")
+            if ek in (None, "writer"):
+                cites = _EVIDENCE_ANY_CITE_RE.findall(evp)
+                if not cites:
+                    raise DeclarationsError(f"{where}.evidence.prose_fields must cite writer code as 'path.py:LINE' "
+                                            f"(py/ts/tsx); DDL-only evidence needs evidence_kind 'ddl'")
+                if _EVIDENCE_SQL_LINE_RE.search(evp):
+                    raise DeclarationsError(f"{where}.evidence.prose_fields: a .sql:LINE cite is not writer code")
+                if any(_EVIDENCE_TEST_PATH_RE.search(c) for c in cites):
+                    raise DeclarationsError(f"{where}.evidence.prose_fields: a test/fixture path is not writer code")
+            else:
                 if not pf:
                     raise DeclarationsError(f"{where}: an empty prose_fields ([]) is a claim about writer code, not DDL evidence")
                 if not _DDL_EVIDENCE_RE.search(evp):
