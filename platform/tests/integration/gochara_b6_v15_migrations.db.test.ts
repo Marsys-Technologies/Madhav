@@ -23,9 +23,16 @@
  *     house-span-residence qualification (a full writer-path record against a
  *     relation_kind='residence' contact COMMITs — every trigger, CHECK and
  *     the commit-time finaliser pass; the review's fixture correction:
- *     residence, not a conjunction) and still REJECTS an unknown role with a
- *     kgrr_object_role_ck violation; EVERY v1.0 role still passes the CHECK
- *     (full probe, not only karaka);
+ *     residence, not a conjunction) carrying object_kind='house_span' and
+ *     consuming a seeded 1157 AV polarity declaration through the writer
+ *     read-back gate (O-BP-3: absent/mismatched declaration ⇒ loud throw);
+ *     an unknown role is still REJECTED with kgrr_object_role_ck;
+ *   - EVERY v1.0 role passes the CHECK by a FULL ACCEPTANCE probe (valid
+ *     per-role coverage partition + real contact + committed record —
+ *     ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_1 rank 4: v0.2's dangling-contact
+ *     probes failed before the INSERT and could not detect a dropped role),
+ *     backed by an isolated live pg_get_constraintdef assertion — removing
+ *     an old role from the CHECK fails BOTH detectors;
  *   - ka_gochara_object_selector_ok widens the same way (the Codex-accepted
  *     fold — see the 1204 header);
  *   - the routine runner REFUSES 1204 (no --only), loudly naming the window;
@@ -73,6 +80,8 @@ const CID_2 = '10000000-0000-4000-8000-000000000012'
 const COV_KIND = 'body_target'
 const HORIZON = "tstzrange('2025-01-01T00:00Z','2026-01-01T00:00Z','[)')"
 const SUPPORT = "ARRAY[tstzrange('2025-03-09T00:00Z','2025-03-11T00:00Z')]::tstzrange[]"
+const AV_DECL = 'av-build:l1:482012f1:v1'   // the 1157 declaration the P5 fixture consumes
+const AV_CATEGORY = 'ashtakavarga_bindu'
 
 const V10_ROLES = ['lord', 'occupant', 'karaka', 'dispositor', 'maraka_of_house',
   'period_lord', 'yoga_constituent', 'pada', 'signature_house'] as const
@@ -238,6 +247,17 @@ const RECORD_COLS = `record_id, chart_id, generation, contact_id, event_class,
   evidence_for_occurrence, evidence_against_occurrence, outcome_valence_for_native,
   severity`
 
+/** The writer-side O-BP-3 gate (1157 defers it to the writer/evaluator):
+ *  read back the AV declaration being consumed; absent key or a category the
+ *  declaration does not govern is a LOUD refusal, before any record write. */
+async function consumeDeclaration(c: Q, key: string, category: string): Promise<void> {
+  const r = await c.query<{ applies_to_fact_categories: string[] }>(
+    `SELECT applies_to_fact_categories FROM ka_gochara_av_polarity_declaration WHERE convention = $1`, [key])
+  if (!r.rows[0]) throw new Error(`O-BP-3: AV declaration '${key}' absent — a P5 record cannot consume it`)
+  if (!r.rows[0]!.applies_to_fact_categories.includes(category))
+    throw new Error(`O-BP-3: AV declaration '${key}' does not govern category '${category}'`)
+}
+
 /** A full writer-path record (contact + precision + prerequisite membership) for the given role. */
 async function insertRecord(c: Q, o: {
   objectRole: string
@@ -247,6 +267,11 @@ async function insertRecord(c: Q, o: {
   objectId?: string
   relation?: string
   frameKind?: string
+  objectKind?: string
+  grain?: string
+  sourceText?: string
+  sourcePage?: string
+  sourceFactIds?: string
 }): Promise<string> {
   const id = uuid()
   // N10: the body_target full key is agent:object_role — the partition the
@@ -256,14 +281,16 @@ async function insertRecord(c: Q, o: {
   await c.query(
     `INSERT INTO ka_gochara_relationship_record (${RECORD_COLS})
      VALUES ($1, $2, $3, $4, 'marriage', 'native', $11, NULL, 'mars', $12,
-             $5, 'degree_point', $6, $7, 'v1', 'computed', 'day', ${SUPPORT},
+             $5, $13, $6, $7, 'v1', 'computed', $14, ${SUPPORT},
              $8, $9, $10::jsonb,
              '{"solver_method":"swiss_refined","delta_lambda":0.001,"delta_t":60}'::jsonb,
-             'Phaladīpikā', 'PG249-250 (XX.34-38)', '["fact-1"]', false,
+             $15, $16, $17::jsonb, false,
              'verse_cited', 'scored', NULL, 'admitted', 7, 0.8, NULL, 'favourable', NULL)`,
     [id, CHART, GEN, o.contactId ?? CID_1, o.objectId ?? OBJ_MARS, o.objectRole,
      o.pathId ?? 'P1', COV_KIND, covKey, facts, o.frameKind ?? 'dasha_lord',
-     o.relation ?? 'conjunction'],
+     o.relation ?? 'conjunction', o.objectKind ?? 'degree_point', o.grain ?? 'day',
+     o.sourceText ?? 'Phaladīpikā', o.sourcePage ?? 'PG249-250 (XX.34-38)',
+     o.sourceFactIds ?? '["fact-1"]'],
   )
   await c.query(
     `INSERT INTO ka_gochara_record_prerequisite
@@ -295,11 +322,18 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
       await seedSkyConvention(c)
       await c.query(`INSERT INTO ka_gochara_convention_bridge (kala_convention_id, sky_convention_id) VALUES ($1, $2)`, [LEGACY_CONV, CONV])
       await seedPublication(c)
-      // one body_target partition per probed role (agent:object_role full key, N10)
-      await seedCoverage(c, 'mars:karaka')
-      await seedCoverage(c, 'mars:av_qualifier')
-      await seedCoverage(c, 'mars:not_a_role')
+      // one body_target partition per probed role (agent:object_role full key, N10):
+      // EVERY v1.0 role + the widened role + the unknown-role probe — a full
+      // acceptance probe needs a real partition, not a factsFor throw (v1.1 rank 4)
+      for (const role of [...V10_ROLES, 'av_qualifier', 'not_a_role']) await seedCoverage(c, `mars:${role}`)
       await seedObjects(c)
+      // the 1157 AV polarity declaration the P5 residence fixture consumes
+      await c.query(
+        `INSERT INTO ka_gochara_av_polarity_declaration
+           (convention, benefic_mark_name, malefic_mark_name, source_ref, applies_to_fact_categories)
+         VALUES ($1, 'rekhā', 'khaṇḍa', 'L1_ASHTAKAVARGA_EXTRACT_v1_1', ARRAY[$2])`,
+        [AV_DECL, AV_CATEGORY],
+      )
     })
     await tx(async c => { await seedRegistries(c) })
     await tx(async c => { await seedContact(c, CID_1, OBJ_MARS, 'mars', 'conjunction') })
@@ -313,16 +347,41 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
   })
 
   it("AM-7: the widened CHECK ACCEPTS 'av_qualifier' on a REAL house-span residence — a full writer-path record COMMITs", async () => {
-    // The review's fixture correction: the qualification is the transiting
-    // agent's RESIDENCE in the qualified span (relation_kind='residence',
-    // canonical_target 'span:7', lagna frame), not a conjunction.
-    const id = await tx(async c => insertRecord(c, {
-      objectRole: 'av_qualifier', pathId: 'P5A',
-      contactId: CID_2, objectId: OBJ_MARS_RES, relation: 'residence', frameKind: 'lagna',
-    }))
+    // The review's fixture correction (v1.1 rank 4): the qualification is the
+    // transiting agent's RESIDENCE in the qualified span (relation_kind=
+    // 'residence', canonical_target 'span:7', lagna frame, object_kind=
+    // 'house_span'), consuming a seeded 1157 AV declaration with typed bindu
+    // lineage — not a conjunction with a synthetic degree_point and 'fact-1'.
+    const id = await tx(async c => {
+      await consumeDeclaration(c, AV_DECL, AV_CATEGORY)
+      return insertRecord(c, {
+        objectRole: 'av_qualifier', pathId: 'P5A',
+        contactId: CID_2, objectId: OBJ_MARS_RES, relation: 'residence', frameKind: 'lagna',
+        objectKind: 'house_span', grain: 'transit_residence',
+        sourceText: 'ka_gochara_av_polarity_declaration', sourcePage: AV_DECL,
+        sourceFactIds: JSON.stringify([AV_DECL, 'fact-bav-mars-span7', 'fact-sav-span7']),
+      })
+    })
     const r = await pool.query(
-      `SELECT object_role, relation, frame_kind FROM ka_gochara_relationship_record WHERE record_id = $1`, [id])
-    expect(r.rows[0]).toMatchObject({ object_role: 'av_qualifier', relation: 'residence', frame_kind: 'lagna' })
+      `SELECT object_role, relation, frame_kind, object_kind, source_fact_ids
+       FROM ka_gochara_relationship_record WHERE record_id = $1`, [id])
+    expect(r.rows[0]).toMatchObject({
+      object_role: 'av_qualifier', relation: 'residence', frame_kind: 'lagna',
+      object_kind: 'house_span',
+    })
+    expect(r.rows[0]!.source_fact_ids).toContain(AV_DECL)
+    // read-back: the consumed declaration is a live row governing the category
+    const d = await pool.query(
+      `SELECT convention FROM ka_gochara_av_polarity_declaration
+       WHERE convention = $1 AND $2 = ANY (applies_to_fact_categories)`, [AV_DECL, AV_CATEGORY])
+    expect(d.rows).toHaveLength(1)
+  })
+
+  it('AM-7 (O-BP-3 writer gate): a missing or mismatched AV declaration is refused BEFORE any write', async () => {
+    await expect(tx(async c => consumeDeclaration(c, 'av-build:never-declared', AV_CATEGORY)))
+      .rejects.toThrow(/O-BP-3: AV declaration 'av-build:never-declared' absent/)
+    await expect(tx(async c => consumeDeclaration(c, AV_DECL, 'some_other_category')))
+      .rejects.toThrow(/does not govern category/)
   })
 
   it('AM-7: the widened CHECK still REJECTS an unknown role with kgrr_object_role_ck', async () => {
@@ -330,23 +389,27 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
       .rejects.toThrow(/kgrr_object_role_ck/)
   })
 
-  it('AM-7: every v1.0 role still passes the widened CHECK (full probe, not only karaka)', async () => {
-    // Writer-path proof for karaka (the role P1's selector carries):
-    const id = await tx(async c => insertRecord(c, { objectRole: 'karaka' }))
-    const r = await pool.query(`SELECT object_role FROM ka_gochara_relationship_record WHERE record_id = $1`, [id])
-    expect(r.rows[0]?.object_role).toBe('karaka')
-    // Vocabulary proof for every v1.0 role: an insert whose role the CHECK
-    // admits must fail on something ELSE (here the deliberately dangling
-    // contact FK / downstream guards) — never on kgrr_object_role_ck. If the
-    // widening had dropped a v1.0 role, that role's probe fails WITH it.
+  it('AM-7: every v1.0 role passes the widened CHECK — full acceptance probe per role + live constraint assertion', async () => {
+    // v1.1 rank 4 detector repair: each role gets a REAL acceptance probe
+    // (seeded mars:<role> partition, real contact, committed writer-path
+    // record). A mutation removing an old role from the CHECK fails its
+    // probe WITH kgrr_object_role_ck — the test cannot pass without the role.
     for (const role of V10_ROLES) {
-      // The dangling contact forces a failure; the failure must NOT be the
-      // role CHECK. (An unexpected success would fail `.rejects` itself.)
-      await expect(tx(async c => insertRecord(c, {
-        objectRole: role, covKey: `mars:${role}`,
-        contactId: '10000000-0000-4000-8000-0000000000ff',
-        objectId: OBJ_MARS,
-      }))).rejects.not.toThrow(/kgrr_object_role_ck/)
+      const id = await tx(async c => insertRecord(c, { objectRole: role }))
+      const r = await pool.query(
+        `SELECT object_role FROM ka_gochara_relationship_record WHERE record_id = $1`, [id])
+      expect(r.rows[0]?.object_role, `acceptance probe: ${role}`).toBe(role)
+    }
+    // Isolated check-specific assertion on the LIVE constraint definition —
+    // the second, fixture-independent detector (Codex: "or an isolated
+    // check-specific assertion").
+    const def = await pool.query<{ d: string }>(
+      `SELECT pg_get_constraintdef(c.oid) AS d FROM pg_constraint c
+       WHERE c.conrelid = 'public.ka_gochara_relationship_record'::regclass
+         AND c.conname = 'kgrr_object_role_ck' AND c.convalidated`)
+    expect(def.rows).toHaveLength(1)
+    for (const role of [...V10_ROLES, 'av_qualifier']) {
+      expect(def.rows[0]!.d, `live CHECK contains ${role}`).toContain(`'${role}'`)
     }
   })
 

@@ -5,7 +5,7 @@
  * runner's protected-file refusal and the deploy window, asserted against the
  * on-disk sources (CLAUDE.md §N.8: the detector reads what ships).
  *
- * Source: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT v0.2 §AM-7; steward work package
+ * Source: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT v0.3 §AM-7; steward work package
  * M20261001T125220-a4c1. Mirror of the A5.1 wiring (#2765): a NEW migration
  * file (1154/1155 are applied and never edited), preflight byte-identical to
  * the embedded gate, registration in migrate.ts
@@ -51,6 +51,15 @@ function gateBlock(sql: string, n: string): string {
   expect(start, `migration ${n}: gate DO block present`).toBeGreaterThan(-1)
   expect(end, `migration ${n}: gate DO block terminated`).toBeGreaterThan(start)
   return sql.slice(start, end + 3)
+}
+
+/** The migration's EXECUTABLE text: full-line `--` comments removed. The
+ *  rollback block carries the OLD constraint/function text as comments; a
+ *  detector that scans from the first textual occurrence can pass on the
+ *  comment even when the live swap lost a role (Codex v1.1 rank 4's
+ *  demonstrated false positive). */
+function executableSql(sql: string): string {
+  return sql.split('\n').filter(l => !l.trimStart().startsWith('--')).join('\n')
 }
 
 describe('B6.0 v1.5 contract migration 1204 — static contract', () => {
@@ -109,12 +118,18 @@ describe('B6.0 v1.5 contract migration 1204 — static contract', () => {
   it("AM-7: 1204 widens kgrr_object_role_ck with exactly 'av_qualifier' added to the v1.0 set", () => {
     const sql = readMigration(M1204)
     expect(sql).toContain('DROP CONSTRAINT kgrr_object_role_ck')
-    expect(sql).toContain('ADD CONSTRAINT kgrr_object_role_ck')
-    const added = sql.slice(sql.indexOf('ADD CONSTRAINT kgrr_object_role_ck'))
+    // scan the EXECUTABLE text only — the rollback comment quotes the old
+    // CHECK and must not satisfy the detector (v1.1 rank 4); and extract the
+    // CHECK's OWN role list, not the file tail (the selector function later
+    // in the file carries the same role names and must not satisfy it either)
+    const exec = executableSql(sql)
+    const m = /ADD CONSTRAINT kgrr_object_role_ck CHECK \(object_role IN\s*\(([^)]*)\)/.exec(exec)
+    expect(m, 'live ADD CONSTRAINT present outside comments').toBeTruthy()
+    const roleList = m![1]!
     for (const role of [...V10_ROLES, 'av_qualifier']) {
-      expect(added, `role ${role} present`).toContain(`'${role}'`)
+      expect(roleList, `role ${role} present in the live CHECK`).toContain(`'${role}'`)
     }
-    // 1155 is applied and never edited: its on-disk file keeps the v1.0 vocabulary
+    // the live CHECK adds exactly one role to the v1.0 set
     const m1155 = readMigration('1155_gochara_relationship_record.sql')
     expect(m1155).not.toContain('av_qualifier')
     expect(m1155).toContain('kgrr_object_role_ck')
@@ -123,9 +138,12 @@ describe('B6.0 v1.5 contract migration 1204 — static contract', () => {
   it('AM-7 (selector fold, Codex-accepted): 1204 widens ka_gochara_object_selector_ok with the same single value', () => {
     const sql = readMigration(M1204)
     expect(sql).toContain('CREATE OR REPLACE FUNCTION public.ka_gochara_object_selector_ok(j jsonb)')
-    const fn = sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.ka_gochara_object_selector_ok'))
+    const exec = executableSql(sql)
+    const fs0 = exec.indexOf('CREATE OR REPLACE FUNCTION public.ka_gochara_object_selector_ok')
+    expect(fs0, 'live selector replace present outside comments').toBeGreaterThan(-1)
+    const fn = exec.slice(fs0, exec.indexOf('$$;', fs0))
     for (const role of [...V10_ROLES, 'av_qualifier']) {
-      expect(fn, `selector role ${role} present`).toContain(`'${role}'`)
+      expect(fn, `selector role ${role} present in the live function`).toContain(`'${role}'`)
     }
     // 1154 is applied and never edited
     const m1154 = readMigration('1154_gochara_rule_path_registry.sql')
