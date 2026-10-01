@@ -57,7 +57,7 @@ def sha(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-WH = {W1: sha(W1_BYTES)}
+WH = {W1: sha(W1_BYTES), W2: sha(W2_BYTES)}     # an asset with a writer: a PASS hashes ALL its census-listed writer files
 W3 = "platform/python-sidecar/pipeline/orchestrator/writers/bg_third.py"     # committed, NOT in the census's writer_files
 W4 = "platform/python-sidecar/pipeline/orchestrator/writers/bg_untracked.py"  # in the census's writer_files, never committed
 COMMIT_DATE = "2026-09-30T10:00:00+05:30"                                      # before RUN: the census postdates the writers
@@ -174,7 +174,7 @@ def kw(ledger, **over):
     multi = over.pop("multi", False)
     d = dict(asset="bg_ontology", layer="L0", criterion="Build.registered", verdict="PASS",
              evidence=dict(census_run_id=RUN, measured="registered writer agrees"),
-             verified_by="census-run", writer_files=[W1], writer_repo=ENV.repo, semantic_fingerprint=FP,
+             verified_by="census-run", writer_files=[W1, W2], writer_repo=ENV.repo, semantic_fingerprint=FP,
              ledger_path=ledger, verified_on="2026-10-01T11:00:00+05:30")
     for k, v in over.items():
         if v is ...:
@@ -463,7 +463,7 @@ def test_a_census_changed_after_it_was_staged_is_refused(ledger):
 
 
 def test_a_committed_census_is_recorded_as_committed(tmp_path, monkeypatch):
-    repo = make_repo(tmp_path / "r2", {W1: W1_BYTES})
+    repo = make_repo(tmp_path / "r2", {W1: W1_BYTES, W2: W2_BYTES})
     _point_asset_census_at(monkeypatch, repo)
     monkeypatch.setattr(ENV, "repo", repo)
     monkeypatch.setattr(ENV, "cdir", repo / CENSUS_DIR_REL)
@@ -887,9 +887,10 @@ def test_a_census_older_than_the_writers_last_commit_is_refused(ledger):
 def test_an_undeterminable_writer_commit_time_is_refused_strictly(ledger, tmp_path, monkeypatch):
     refused(ledger, "writer_time_unknown", writer_files=[W4], rec=dict(writer_files=["bg_untracked.py"]))   # untracked
     norepo = tmp_path / "norepo"                                                     # no git at all
-    f = norepo / W1
-    f.parent.mkdir(parents=True)
-    f.write_bytes(W1_BYTES)
+    for rel, b in ((W1, W1_BYTES), (W2, W2_BYTES)):
+        f = norepo / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(b)
     refused(ledger, "writer_time_unknown", writer_repo=norepo)
 
 
@@ -897,7 +898,7 @@ def test_a_dirty_writer_without_a_ref_is_undeterminable_but_a_ref_pins_the_commi
     (fresh_repo / W1).write_bytes(b"# edited after the commit\n")
     refused(ledger, "writer_time_unknown", writer_repo=fresh_repo)
     r = nc.write_certification(**kw(ledger, writer_repo=fresh_repo, writer_ref="HEAD"))
-    assert r.record["writer_hashes"] == {W1: sha(W1_BYTES)}                        # the committed blob, not the edit
+    assert r.record["writer_hashes"] == WH                                          # the committed blobs, not the edit
 
 
 def test_the_writer_commit_time_is_taken_at_the_given_ref(ledger, fresh_repo):
@@ -907,7 +908,7 @@ def test_the_writer_commit_time_is_taken_at_the_given_ref(ledger, fresh_repo):
     git(fresh_repo, "commit", "-q", "-m", "v2", date="2026-10-01T20:00:00+05:30")     # AFTER the census (RUN, 10:00)
     refused(ledger, "census_older_than_writer", writer_repo=fresh_repo)               # HEAD: the writer postdates it
     r = nc.write_certification(**kw(ledger, writer_repo=fresh_repo, writer_ref=first))
-    assert r.record["writer_hashes"] == {W1: sha(W1_BYTES)}                          # at the measured commit: fine
+    assert r.record["writer_hashes"] == WH                                            # at the measured commit: fine
 
 
 def test_unverified_typed_hashes_skip_the_time_check_but_not_the_binding(ledger):
@@ -915,6 +916,111 @@ def test_unverified_typed_hashes_skip_the_time_check_but_not_the_binding(ledger)
                                     writer_hashes=dict(WH), evidence=dict(census_run_id="2026-09-29T10:00:00+05:30"),
                                     generated="2026-09-29T10:00:00+05:30"))
     assert r.record["writer_hashes_verified"] is False
+
+
+# ───────────────────────── a PASS hashes ALL the census-listed writer files ─────────────────────────
+
+def test_a_pass_must_hash_every_writer_file_the_census_lists(ledger):
+    e = refused(ledger, "writer_files_incomplete", writer_files=[W1])               # 1 of {W1, W2}
+    assert "bg_other.py" in str(e)
+    refused(ledger, "writer_files_incomplete", writer_files=[W2])
+    refused(ledger, "writer_files_incomplete", writer_files=[W1, W3],
+            rec=dict(writer_files=["bg_ontology.py", "bg_other.py", "bg_third.py"]))   # a.py of {a, b, c}
+    refused(ledger, "writer_files_incomplete", writer_files=[W1, W2], rec=dict(
+        writer_files=["bg_ontology.py", "bg_other.py", "bg_third.py"]))
+    refused(ledger, "writer_files_incomplete", writer_files=..., writer_hashes={W1: WH[W1]})   # typed + verified, partial
+    assert nc.write_certification(**kw(ledger, writer_files=..., writer_hashes=dict(WH))).status == "appended"
+    assert nc.write_certification(**kw(ledger, asset="bg_panchanga", writer_files=[W1, W2, W3], rec=dict(
+        writer_files=["bg_ontology.py", "bg_other.py", "bg_third.py"]))).status == "appended"
+
+
+def test_completeness_applies_to_pass_and_measured_na_not_to_a_fail_or_a_writerless_asset(ledger, monkeypatch):
+    r = nc.write_certification(**kw(ledger, verdict="FAIL", semantic_fingerprint=None, writer_files=[W1]))
+    assert r.record["writer_hashes"] == {W1: WH[W1]}                                 # a FAIL may be partial
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {MEAS_NA: "N-22.nr"})
+    refused(ledger, "writer_files_incomplete", **measured_na(writer_files=[W1], asset="bg_panchanga"))
+    assert nc.write_certification(**kw(ledger, **measured_na(asset="bg_third_asset"))).record["verdict"] == "N/A"
+    ok = nc.write_certification(**kw(ledger, asset="bg_nowriter", writer_files=..., writer_hashes_reason="service_no_writer",
+                                     rec=dict(has_writer=False, writer_files=[])))
+    assert ok.record["writer_hashes_reason"] == "service_no_writer"
+
+
+# ───────────────────────── census lifecycle: a cited census is never edited; archive_census ─────────────────────────
+
+def test_a_cited_census_path_regenerated_with_other_bytes_is_refused_census_path_reused(ledger):
+    p = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    nc.write_certification(**kw(ledger, census_path=p))
+    before = ledger.read_bytes()
+    p.write_text(p.read_text().replace('"measured": "m"', '"measured": "regenerated"'))      # same path, new bytes
+    git(ENV.repo, "add", "--", str(p))
+    e = refused(ledger, "census_path_reused", census_path=p)                               # identical currency
+    assert "archive_census" in str(e)
+    refused(ledger, "census_path_reused", census_path=p, semantic_fingerprint=FP2)         # changed currency too
+    assert ledger.read_bytes() == before
+
+
+def test_re_certifying_against_the_same_unchanged_census_is_still_unchanged_and_a_new_name_is_fine(ledger):
+    p = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    nc.write_certification(**kw(ledger, census_path=p))
+    assert nc.write_certification(**kw(ledger, census_path=p)).status == "unchanged"
+    q = write_census_file({"Build.registered": dict(v="PASS", measured="regenerated")})       # a new unique name
+    assert nc.write_certification(**kw(ledger, census_path=q)).status == "unchanged"          # nothing semantic changed
+
+
+def test_archive_census_copies_byte_identically_to_a_unique_name_and_never_overwrites(fresh_repo, tmp_path):
+    src = tmp_path / "asset_census.json"
+    src.write_bytes(b"  " + json.dumps({"L0": json.loads(write_census_file({}).read_text()), "rollup": {}},
+                                          indent=1).encode() + b"\n\n")                       # whitespace must survive
+    gen = RUN
+    rel = nc.archive_census(src, fresh_repo, gen)
+    assert rel == "00_ARCHITECTURE/control/census/asset_census_2026-10-01T100000+0530.json"
+    assert (fresh_repo / rel).read_bytes() == src.read_bytes()                              # byte identical
+    assert nc.archive_census(src, fresh_repo, gen) == rel                                   # identical: idempotent
+    src.write_bytes(src.read_bytes().replace(b'"has_writer": true', b'"has_writer": false'))
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(src, fresh_repo, gen)
+    assert ei.value.code == "census_archive_exists"
+    assert (fresh_repo / rel).read_bytes() != src.read_bytes()                              # the old file is untouched
+
+
+def test_archive_census_refuses_a_bad_generated_or_a_file_that_is_not_that_census(fresh_repo, tmp_path):
+    good = tmp_path / "c.json"
+    good.write_text(write_census_file({}).read_text())
+    for bad_gen in ("yesterday", "2026-10-01T10:00:00", None, 5, RUN2):                     # RUN2: not in the file
+        with pytest.raises(nc.CertificationRefused) as ei:
+            nc.archive_census(good, fresh_repo, bad_gen)
+        assert ei.value.code == "bad_census"
+    naive = tmp_path / "naive.json"                                                     # generated present but not tz-aware
+    naive.write_text(json.dumps(dict(generated="2026-10-01T10:00:00", layer="L0", assets=[])))
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(naive, fresh_repo, "2026-10-01T10:00:00")
+    assert ei.value.code == "bad_census" and "tz-aware" in str(ei.value)
+    junk = tmp_path / "junk.json"
+    junk.write_text("{not json")
+    for src in (junk, tmp_path / "missing.json", tmp_path):
+        with pytest.raises(nc.CertificationRefused) as ei:
+            nc.archive_census(src, fresh_repo, RUN)
+        assert ei.value.code == "bad_census"
+    assert not list((fresh_repo / CENSUS_DIR_REL).glob("asset_census_*"))
+
+
+def test_an_archived_census_can_be_cited_once_added_and_is_recorded_under_its_unique_name(ledger, fresh_repo, tmp_path):
+    src = tmp_path / "asset_census.json"
+    src.write_text(write_census_file({"Build.registered": dict(v="PASS", measured="m")}).read_text())
+    rel = nc.archive_census(src, fresh_repo, RUN)
+    git(fresh_repo, "add", "--", rel)
+    r = nc.write_certification(**kw(ledger, census_path=fresh_repo / rel, writer_repo=fresh_repo))
+    assert r.record["evidence"]["census_file"] == rel and r.record["evidence"]["census_sha256"] == sha(src.read_bytes())
+
+
+def test_cli_archive_census(fresh_repo, tmp_path):
+    src = tmp_path / "asset_census.json"
+    src.write_text(write_census_file({}).read_text())
+    p = cli(["--archive-census", str(src), "--repo", str(fresh_repo), "--generated", RUN], cwd=str(fresh_repo))
+    assert p.returncode == 0, p.stderr
+    assert (fresh_repo / json.loads(p.stdout)["archived"]).read_bytes() == src.read_bytes()
+    q = cli(["--archive-census", str(src), "--repo", str(fresh_repo), "--generated", RUN2], cwd=str(fresh_repo))
+    assert q.returncode == 2 and "bad_census" in q.stderr
 
 
 # ───────────────────────── R3: N/A is computed, never typed ─────────────────────────
@@ -1260,8 +1366,7 @@ def test_a_remeasurement_that_changes_no_currency_field_appends_nothing(ledger):
 
 @pytest.mark.parametrize("change", [
     dict(semantic_fingerprint=FP2),
-    dict(writer_files=[W2]),
-    dict(writer_files=[W1, W2]),
+    dict(writer_files=[W2], rec=dict(writer_files=["bg_other.py"])),            # a different (complete) writer set
     dict(verdict="FAIL"),
     dict(verdict="PARTIAL"),
 ])
@@ -1705,7 +1810,7 @@ def test_r9_a_refusal_under_init_on_a_fresh_ledger_leaves_no_file_behind(tmp_pat
 # ───────────────────────── the public append API (E5.5 appends events through it) ─────────────────────────
 
 def ev(t="invalidation", **kv):
-    d = dict(type=t, cert_id="bg_ontology|gate|Build.registered@1", note="drift")
+    d = dict(type=t, target="bg_ontology|gate|Build.registered@1", note="drift")
     d.update(kv)
     return d
 
@@ -1756,18 +1861,39 @@ def test_append_records_is_all_or_nothing_and_never_edits_a_byte(ledger):
         assert ledger.read_bytes() == before
 
 
-def test_append_records_continues_a_cert_key_only_at_the_next_generation(ledger):
+def test_append_records_refuses_certificates_they_go_only_through_write_certification(ledger):
     nc.write_certification(**kw(ledger))
     rec = nc.read_ledger(ledger)["bg_ontology|gate|Build.registered"][0]
     nxt = {k: v for k, v in rec.items() if k not in ("seq", "prev_sha256")}
-    skip = dict(nxt, generation=3, cert_id="bg_ontology|gate|Build.registered@3")
     before = ledger.read_bytes()
-    with pytest.raises(nc.CertificationRefused) as ei:
-        nc.append_records(ledger, [skip])
-    assert ei.value.code == "bad_record" and ledger.read_bytes() == before
-    two = dict(nxt, generation=2, cert_id="bg_ontology|gate|Build.registered@2")
-    assert nc.append_records(ledger, [two]) == 1
-    assert len(nc.read_ledger(ledger)["bg_ontology|gate|Build.registered"]) == 2
+    forged_gate = dict(asset="bg_c", layer="L0", kind="gate", criterion="Build.dag", cert_key="bg_c|gate|Build.dag",
+                       generation=1, cert_id="bg_c|gate|Build.dag@1", verdict="PASS")
+    forged_add = dict(forged_gate, kind="addition", cert_key="bg_c|addition|D-X", cert_id="bg_c|addition|D-X@1")
+    no_kind = {k: v for k, v in forged_gate.items() if k != "kind"}
+    for bad in (forged_gate, forged_add, no_kind, dict(nxt, generation=2, cert_id="bg_ontology|gate|Build.registered@2"),
+                dict(type="invalidation", kind="gate"), dict(type="invalidation", cert_id="x@1"),
+                dict(kind="addition", type="watermark")):
+        with pytest.raises(nc.CertificationRefused) as ei:
+            nc.append_records(ledger, [bad])
+        assert ei.value.code == "bad_record", bad
+        assert ledger.read_bytes() == before
+    with pytest.raises(nc.CertificationRefused):
+        nc.append_records(ledger, [ev(), forged_gate])                          # one bad record refuses the batch
+    with pytest.raises(nc.CertificationRefused) as ei:                          # the refusal says where certificates go
+        nc.append_records(ledger, [dict(kind="gate", type="invalidation")])
+    assert "write_certification" in str(ei.value)
+    assert ledger.read_bytes() == before
+
+
+def test_events_may_name_themselves_by_kind_invalidation_or_watermark(ledger):
+    nc.write_certification(**kw(ledger))
+    assert nc.append_records(ledger, [dict(kind="invalidation", target="x"), dict(kind="watermark", value=3)]) == 2
+    recs = nc.read_records(ledger)
+    assert [r.get("kind") for r in recs] == ["gate", "invalidation", "watermark"]
+    assert len(nc.read_ledger(ledger)) == 1
+    for bad in (dict(kind="Bad Kind"), dict(kind=5), dict(note="neither type nor kind")):
+        with pytest.raises(nc.CertificationRefused):
+            nc.append_records(ledger, [bad])
 
 
 def test_append_records_refuses_a_missing_torn_or_linked_ledger_and_init_creates_one(tmp_path):
@@ -1996,6 +2122,90 @@ def test_verify_reports_no_detector_for_a_ledger_with_no_gate_record(fresh_repo)
     assert res["status"] == "NO_DETECTOR" and "no gate record" in res["reason"]
 
 
+def doctor(repo, **changes):
+    """Forge the committed record: set top-level fields (dotted `evidence.x`), re-chain, commit."""
+    def mutate(recs):
+        for k, v in changes.items():
+            if k.startswith("evidence."):
+                recs[0]["evidence"][k.split(".", 1)[1]] = v
+            else:
+                recs[0][k] = v
+    rewrite_ledger(repo, mutate)
+    commit_all(repo, "doctored")
+
+
+def fail_cert(repo):
+    cert_in_repo(repo, verdict="FAIL", criterion="Build.dag", semantic_fingerprint=None, writer_files=...)
+    commit_all(repo)
+
+
+def test_verify_catches_a_record_that_says_pass_over_a_fail_cell_with_a_real_census_file_and_sha(fresh_repo):
+    fail_cert(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"            # the honest FAIL record verifies
+    doctor(fresh_repo, verdict="PASS")                                                         # same census_file + sha
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert ei.value.code == "census_verdict_mismatch" and "census cell says 'FAIL'" in str(ei.value)
+
+
+@pytest.mark.parametrize("changes,needle", [
+    (dict(basis="declaration"), "basis"),
+    (dict(registry_revision=ac.REGISTRY_REVISION + 1), "registry"),
+    (dict(registry_fingerprint="0" * 64), "registry"),
+    (dict(**{"evidence.census_tool_commit": "b" * 40}), "tool_commit"),
+    (dict(**{"evidence.census_run_id": RUN2}), "run id"),
+    (dict(criterion="Build.contract"), "no cell"),
+    (dict(asset="bg_other_asset"), "cannot be read"),
+    (dict(layer="L1"), "layer"),
+])
+def test_verify_compares_basis_registry_stamp_tool_commit_run_id_and_cell_presence(fresh_repo, changes, needle):
+    fail_cert(fresh_repo)
+    doctor(fresh_repo, **changes)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert ei.value.code == "census_verdict_mismatch" and needle in str(ei.value), str(ei.value)
+
+
+def test_verify_compares_a_measured_na_cause_with_the_cell(fresh_repo, monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {MEAS_NA: "N-22.nr"})
+    cert_in_repo(fresh_repo, **measured_na())
+    commit_all(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
+    doctor(fresh_repo, na=dict(rule_id=MEAS_NA, decision_id="N-22.nr", basis="measured_cause", cause="other", facts=None))
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert ei.value.code == "census_verdict_mismatch" and "N/A cause" in str(ei.value)
+
+
+def test_verify_reads_an_applicability_na_with_no_cell_and_refuses_a_non_na_over_a_missing_cell(fresh_repo, monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {NA_RID: "N-22.test"})
+    cert_in_repo(fresh_repo, **na_kw(None))
+    commit_all(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
+    doctor(fresh_repo, verdict="PASS")
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert ei.value.code == "census_verdict_mismatch" and "no cell" in str(ei.value)
+
+
+def test_verify_reports_unmeasured_addition_pass_records_as_information_not_failure(fresh_repo):
+    cert_in_repo(fresh_repo)
+    nc.write_certification(**kw(fresh_repo / nc.LEDGER_RELPATH, **add_kw(None)))              # an addition PASS (caller verdict)
+    nc.write_certification(**kw(fresh_repo / nc.LEDGER_RELPATH, **add_kw(None, criterion="D-OTHER", verdict="FAIL",
+                                                                        semantic_fingerprint=None, writer_files=...)))
+    commit_all(fresh_repo)
+    res = nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert res["status"] == "PASS" and res["unmeasured_addition"] == 1
+    assert res["unmeasured_addition_cert_ids"] == ["bg_ontology|addition|D-GROUNDING@1"]
+
+
+def test_verify_reports_zero_unmeasured_additions_when_there_are_none_and_on_no_detector(fresh_repo):
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["unmeasured_addition"] == 0
+    cert_in_repo(fresh_repo)
+    commit_all(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["unmeasured_addition"] == 0
+
+
 def test_verify_fails_on_a_census_changed_after_the_cert(fresh_repo):
     cert_in_repo(fresh_repo)
     good = commit_all(fresh_repo)
@@ -2116,7 +2326,7 @@ def cli_args(ledger, *extra, cell=None, census=True):
     args = ["--ledger", str(ledger), "--asset", "bg_ontology", "--layer", "L0", "--criterion", "Build.registered",
             "--verdict", "PASS", "--measured", "registered writer agrees",
             "--verified-by", "census-run", "--semantic-fingerprint", FP,
-            "--writer-repo", str(ENV.repo), "--writer-file", W1, "--verified-on", "2026-10-01T11:00:00+05:30"]
+            "--writer-repo", str(ENV.repo), "--writer-file", W1, "--writer-file", W2, "--verified-on", "2026-10-01T11:00:00+05:30"]
     if census:
         cf = write_census_file({"Build.registered": dict(v="PASS", measured="m", **(cell or {}))})
         args += ["--census", str(cf)]
