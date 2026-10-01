@@ -61,7 +61,7 @@ from services.gochara_rules.registry import (
 from services.gochara_rules.frames import SIGN_LORDS, Frame
 
 #: Paths whose enumeration machinery has landed in this increment.
-IMPLEMENTED_PATHS = ("P2", "P3", "P4")
+IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4")
 
 #: Frame kinds per class row (P3 truth table; bereavement (father) counts
 #: from the 9th — spec §2.2). Everything else is lagna-frame.
@@ -314,19 +314,134 @@ def enumerate_p2_edges(event_class: str, chart: dict,
     return edges
 
 
+def enumerate_p1_edges(event_class: str, chart: dict,
+                       convention_id: str | None = None) -> list[RecordEdge]:
+    """P1 (daśā-lord path, Phaladīpikā XX.34-38 PG249-250):
+
+      * NATAL-FACT rows per class (H known): ownership (the lord of each
+        signature-house sign) and occupancy (each graha whose natal sign is a
+        signature-house sign) — both verse_cited/scored (P1_RELATION_KINDS);
+        node-dispositor TESTIMONY rows (D-PADMIT): each node's dispositor is
+        the lord of its natal sign.
+      * TRANSIT edges: each graha's residence in the signs P1's content
+        names — its own, exaltation and debility signs (the dignity factor
+        evaluates there), plus Sun/Jupiter in EVERY graha's exaltation sign
+        ("Sun or Jupiter transiting the bhukti lord's exaltation sign
+        delivers the bhukti's fruit", śl.34-38). Nodes: no cited transit
+        residence content ⇒ no transit edges.
+      * D3: non-node dispositorship and association rows are NOT emitted —
+        uncited_extension without a ruling_ref violates kgrr_ruling_ck
+        ("no clause found … pending a native ruling", P1_RELATION_KINDS).
+
+    Frame: dasha_lord. The period_running_at prerequisite evaluates per
+    occurrence at materialisation against the §4.0 dasha rows — enumeration
+    itself is period-independent (any graha may hold a period role).
+    """
+    from services.gochara_rules.dignity import DEBILITY, EXALTATION
+    from services.gochara_rules.frames import sign_of as _sign_of
+
+    cid = convention_id or convention_id_for()
+    if event_class == "birth_anchor":
+        raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
+    H = signature_houses(event_class, chart)
+    text, page = _path_citation("P1")
+    person = _CLASS_AFFECTED_PERSON.get(event_class, "native")
+    natal = chart["natal"]
+    edges: list[RecordEdge] = []
+    if H is None:
+        # H unknown ⇒ P1's natal-bhāva-relationship prerequisite is
+        # unevaluable (unqualified, never false); no inert rows by
+        # construction (contract §6 #8).
+        return []
+    for h in sorted(H):
+        lord = SIGN_LORDS[h]
+        edges.append(RecordEdge(
+            event_class=event_class, affected_person=person,
+            frame_kind="dasha_lord", frame_arg=None,
+            agent=lord.lower(), relation="ownership",
+            obj=PhysicalObjectId(
+                body=lord.lower(), relation_kind="residence",
+                canonical_target=_span_target(h), convention_id=cid),
+            object_kind="house_span", object_role="signature_house",
+            path_id="P1", rule_version=RULE_VERSION,
+            provenance="verse_cited", operator_role="scored",
+            ruling_ref=None, source_text=text, source_page=page,
+            transit=False))
+        for graha, lam in natal.items():
+            if _sign_of(lam) != h:
+                continue
+            edges.append(RecordEdge(
+                event_class=event_class, affected_person=person,
+                frame_kind="dasha_lord", frame_arg=None,
+                agent=graha.lower(), relation="occupancy",
+                obj=PhysicalObjectId(
+                    body=graha.lower(), relation_kind="residence",
+                    canonical_target=_span_target(h), convention_id=cid),
+                object_kind="house_span", object_role="signature_house",
+                path_id="P1", rule_version=RULE_VERSION,
+                provenance="verse_cited", operator_role="scored",
+                ruling_ref=None, source_text=text, source_page=page,
+                transit=False))
+    # Node-dispositor testimony rows (D-PADMIT) — natal facts, period- and
+    # class-independent: the node's delivery rides its dispositor.
+    for node in ("Rahu", "Ketu"):
+        lam = natal.get(node)
+        if lam is None:
+            continue
+        sign = _sign_of(lam)
+        dispositor = SIGN_LORDS[sign]
+        edges.append(RecordEdge(
+            event_class=event_class, affected_person=person,
+            frame_kind="dasha_lord", frame_arg=None,
+            agent=node.lower(), relation="dispositorship",
+            obj=PhysicalObjectId(
+                body=dispositor.lower(), relation_kind="residence",
+                canonical_target=_span_target(sign), convention_id=cid),
+            object_kind="house_span", object_role="dispositor",
+            path_id="P1", rule_version=RULE_VERSION,
+            provenance="uncited_extension", operator_role="testimony",
+            ruling_ref="D-PADMIT", source_text=text, source_page=page,
+            transit=False))
+
+    # Transit residence edges on the signs P1's content names.
+    for graha, _ in ((g, None) for g in (
+            "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")):
+        signs = {s for s, lord in SIGN_LORDS.items() if lord == graha}
+        signs.add(EXALTATION[graha]["sign"])
+        signs.add(DEBILITY[graha]["sign"])
+        if graha in ("Sun", "Jupiter"):
+            signs |= {EXALTATION[g]["sign"] for g in EXALTATION}
+        for sign in sorted(signs):
+            edges.append(RecordEdge(
+                event_class=event_class, affected_person=person,
+                frame_kind="dasha_lord", frame_arg=None,
+                agent=graha.lower(), relation="residence",
+                obj=PhysicalObjectId(
+                    body=graha.lower(), relation_kind="residence",
+                    canonical_target=_span_target(sign), convention_id=cid),
+                object_kind="house_span", object_role="period_lord",
+                path_id="P1", rule_version=RULE_VERSION,
+                provenance="verse_cited", operator_role="scored",
+                ruling_ref=None, source_text=text, source_page=page,
+                transit=True))
+    return edges
+
+
 def enumerate_edges(event_class: str, path_id: str, chart: dict,
                     convention_id: str | None = None) -> list[RecordEdge]:
     """The grain's edge set. Unimplemented paths refuse LOUDLY — a grain is
     never silently empty (unknown is a state, never an omission)."""
     if event_class not in CLASS_BY_NAME:
         raise ValueError(f"unknown event class {event_class!r}")
+    if path_id == "P1":
+        return enumerate_p1_edges(event_class, chart, convention_id)
     if path_id == "P2":
         return enumerate_p2_edges(event_class, chart, convention_id)
     if path_id == "P3":
         return enumerate_p3_edges(event_class, chart, convention_id)
     if path_id == "P4":
         return enumerate_p4_edges(event_class, chart, convention_id)
-    if path_id in ("P1", "P5"):
+    if path_id == "P5":
         raise NotImplementedError(
             f"{path_id} record enumeration lands in a later window_evaluator "
             "increment — never a silent empty grain"

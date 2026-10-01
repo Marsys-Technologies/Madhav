@@ -204,6 +204,64 @@ def test_p2_adverse_classes_all_covered():
             assert ev.enumerate_edges(cls, "P2", CHART), cls
 
 
+# ── (c2) P1 ───────────────────────────────────────────────────────────────────
+
+
+def test_p1_marriage_natal_rows():
+    """Aries lagna ⇒ 7th Libra: Venus ownership; Mars (198.52) and Saturn
+    (202.43) occupancy — O-RR-3's natal-Saturn-as-7th-occupant target."""
+    edges = ev.enumerate_edges("marriage", "P1", CHART)
+    natal = [e for e in edges if not e.transit]
+    own = [e for e in natal if e.relation == "ownership"]
+    occ = [e for e in natal if e.relation == "occupancy"]
+    assert [(e.agent, e.obj.canonical_target) for e in own] == [
+        ("venus", "span:sign:libra")]
+    assert {(e.agent, e.obj.canonical_target) for e in occ} == {
+        ("mars", "span:sign:libra"), ("saturn", "span:sign:libra")}
+    assert all(e.frame_kind == "dasha_lord" and e.operator_role == "scored"
+               for e in own + occ)
+
+
+def test_p1_node_dispositor_testimony_rows():
+    edges = ev.enumerate_edges("marriage", "P1", CHART)
+    nodes = [e for e in edges if e.relation == "dispositorship"]
+    # Rahu 49.03 Taurus → Venus; Ketu 229.03 Scorpio → Mars
+    assert {(e.agent, e.obj.body, e.obj.canonical_target) for e in nodes} == {
+        ("rahu", "venus", "span:sign:taurus"),
+        ("ketu", "mars", "span:sign:scorpio")}
+    assert all(e.operator_role == "testimony" and e.ruling_ref == "D-PADMIT"
+               for e in nodes)
+
+
+def test_p1_no_unruled_relation_rows():
+    """D3: non-node dispositorship / association rows are absent (uncited,
+    no ruling_ref — kgrr_ruling_ck)."""
+    for cls in ("marriage", "bereavement", "illness_acute"):
+        assert not [e for e in ev.enumerate_edges(cls, "P1", CHART)
+                    if e.relation == "association"]
+
+
+def test_p1_transit_edges_cover_the_cited_dignity_signs():
+    edges = ev.enumerate_edges("career_entry", "P1", CHART)
+    transit = {(e.agent, e.obj.canonical_target) for e in edges if e.transit}
+    # every graha's own + exaltation + debility signs are present
+    assert ("saturn", "span:sign:libra") in transit      # exaltation
+    assert ("saturn", "span:sign:capricorn") in transit  # own
+    assert ("saturn", "span:sign:aries") in transit      # debility
+    # Sun and Jupiter ride EVERY graha's exaltation sign (śl.34-38)
+    for sign in ("aries", "taurus", "capricorn", "virgo", "cancer",
+                 "pisces", "libra"):
+        assert ("sun", f"span:sign:{sign}") in transit
+        assert ("jupiter", f"span:sign:{sign}") in transit
+    # nodes carry no cited transit residence content
+    assert not {a for a, _ in transit} & {"rahu", "ketu"}
+    assert all(e.object_role == "period_lord" for e in edges if e.transit)
+
+
+def test_p1_h_unknown_class_enumerates_empty():
+    assert ev.enumerate_edges("spiritual_turn", "P1", CHART) == []
+
+
 # ── (d) P4 ────────────────────────────────────────────────────────────────────
 
 
@@ -230,7 +288,7 @@ def test_birth_anchor_refused():
 
 
 def test_unimplemented_paths_refuse_loudly():
-    for path in ("P1", "P5"):
+    for path in ("P5",):
         with pytest.raises(NotImplementedError, match=path):
             ev.enumerate_edges("marriage", path, CHART)
     with pytest.raises(ValueError):
