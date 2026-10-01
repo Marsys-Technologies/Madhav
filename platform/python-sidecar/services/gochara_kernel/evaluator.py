@@ -61,6 +61,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, replace
 
+from services.gochara_kernel import targets
 from services.gochara_kernel.substrate import (
     PhysicalObjectId,
     _uuid8_of,
@@ -149,11 +150,13 @@ def record_uuid(natural_key: dict):
 
 
 def _span_target(sign: str) -> str:
-    return f"span:{sign.lower()}"
+    """AM-2: the ABSOLUTE sign numeral (`span:7` = Libra), never the name."""
+    return targets.span_target(sign)
 
 
 def _point_target(lam: float) -> str:
-    return f"point:{float(lam)!r}"
+    """AM-2: full-precision decimal, no exponent (targets.point_target)."""
+    return targets.point_target(lam)
 
 
 def _path_citation(path_id: str) -> tuple[str | None, str | None]:

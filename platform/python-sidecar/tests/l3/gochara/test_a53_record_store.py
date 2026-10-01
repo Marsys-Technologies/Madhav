@@ -54,7 +54,7 @@ NOT_LIBRA_MID = 15.0
 def _libra_edge() -> ev.RecordEdge:
     edges = [e for e in ev.enumerate_edges("marriage", "P3", CHART)
              if e.transit and e.relation == "residence" and e.agent == "saturn"
-             and e.obj.canonical_target == "span:libra"]
+             and e.obj.canonical_target == "span:7"]
     assert len(edges) == 1
     return edges[0]
 
@@ -678,7 +678,7 @@ P4_PREREQS = [["p4_double_transit", "1.0.0"]]
 def _p1_libra_edge(agent: str) -> ev.RecordEdge:
     edges = [e for e in ev.enumerate_edges("marriage", "P1", CHART)
              if e.transit and e.relation == "residence" and e.agent == agent
-             and e.obj.canonical_target == "span:libra"]
+             and e.obj.canonical_target == "span:7"]
     assert len(edges) == 1
     return edges[0]
 
@@ -686,7 +686,7 @@ def _p1_libra_edge(agent: str) -> ev.RecordEdge:
 def _p4_libra_edge(agent: str) -> ev.RecordEdge:
     edges = [e for e in ev.enumerate_edges("marriage", "P4", CHART)
              if e.transit and e.relation == "residence" and e.agent == agent
-             and e.obj.canonical_target == "span:libra"]
+             and e.obj.canonical_target == "span:7"]
     assert len(edges) == 1
     return edges[0]
 

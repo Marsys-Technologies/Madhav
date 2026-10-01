@@ -33,6 +33,7 @@ from datetime import datetime
 from typing import Callable, Sequence
 
 from services.gochara_rules.frames import sign_of
+from . import targets
 from .evaluator import RecordEdge, record_uuid
 from .substrate import PhysicalObjectId, SubstrateContact
 
@@ -121,9 +122,7 @@ def spans_for_object(
     """The contact occurrences of one residence object (body × span:<X>):
     ordinals 1..N over the FULL-domain ordered span set (R3 amendment 1 —
     truncated spans order by their clipped start; append-only stable)."""
-    target = obj.canonical_target
-    assert target.startswith("span:"), target
-    sign = target[len("span:"):]
+    sign = targets.span_sign_name(obj.canonical_target)
     mine = sorted(
         (s for s in spans if s.sign.lower() == sign.lower()),
         key=lambda s: s.t_in,
@@ -152,7 +151,7 @@ def mint_transit_records(
         f"mint_transit_records: {edge.relation} edge — only residence spans "
         "materialise through this path (aspect/conjunction solve per the "
         "boundary solver; natal facts mint directly)")
-    sign = edge.obj.canonical_target.removeprefix("span:")
+    sign = targets.span_sign_name(edge.obj.canonical_target)
     mine = sorted(
         (s for s in spans if s.sign.lower() == sign.lower()),
         key=lambda s: s.t_in,

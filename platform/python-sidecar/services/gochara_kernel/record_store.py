@@ -62,6 +62,7 @@ from datetime import datetime
 from typing import Callable, Sequence
 
 from . import ledger as gk_ledger
+from . import targets
 from .contacts import find_roots
 from .convention import ORB_TABLE
 from .evaluator import RecordEdge, record_uuid
@@ -1025,7 +1026,7 @@ def materialise_record_grain(
 
 
 def _edge_sign(edge: RecordEdge) -> str:
-    return edge.obj.canonical_target.removeprefix("span:").lower()
+    return targets.span_sign_name(edge.obj.canonical_target)
 
 
 __all__ = [

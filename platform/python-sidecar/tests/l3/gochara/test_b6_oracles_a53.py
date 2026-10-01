@@ -81,6 +81,17 @@ SIGNS_ARIES_FIRST = (
 )
 
 
+# AM-2: span targets are the ABSOLUTE sign numeral (span:7 = Libra); the oracle's
+# own written-out sign list turns a numeral back into the name its Moon-count uses.
+SIGN_NUM = {"aries": 1, "taurus": 2, "gemini": 3, "cancer": 4, "leo": 5,
+            "virgo": 6, "libra": 7, "scorpio": 8, "sagittarius": 9,
+            "capricorn": 10, "aquarius": 11, "pisces": 12}
+
+
+def _sign_of_span(target: str) -> str:
+    return SIGNS_ARIES_FIRST[int(target.removeprefix("span:")) - 1]
+
+
 def _house_from_moon(sign: str) -> int:
     """The inclusive count from the Moon sign, written out per oracle
     convention: Aquarius 1st, Pisces 2nd, Aries 3rd, Taurus 4th, Gemini
@@ -115,12 +126,12 @@ def test_o_rp_5a_saturn_8th_from_moon_scores_for_illness_acute_only():
     """given natal Moon 327.06° Aquarius and Saturn transiting 172.00°
     Virgo (the count: Aquarius 1st … Virgo 8th); when illness_acute is
     evaluated; then the residence contributes evidence FOR the adverse
-    class — enumeration leg: a SCORED Saturn-residence span:virgo edge
+    class — enumeration leg: a SCORED Saturn-residence span:6 edge
     exists for illness_acute and the RQ-5 plan is exactly these 13
     edges."""
     edges = ev.enumerate_p2_edges("illness_acute", CHART)
     saturn_virgo = [e for e in edges
-                    if e.agent == "saturn" and e.obj.canonical_target == "span:virgo"]
+                    if e.agent == "saturn" and e.obj.canonical_target == "span:6"]
     assert len(saturn_virgo) == 1
     edge = saturn_virgo[0]
     assert edge.operator_role == "scored" and edge.provenance == "verse_cited"
@@ -134,7 +145,7 @@ def test_o_rp_5a_saturn_8th_from_moon_scores_for_illness_acute_only():
         + [("saturn", h, True) for h in (12, 1, 2)]
     )
     house_of_span = {1: "aquarius", 2: "pisces", 8: "virgo", 12: "capricorn"}
-    expected_set = {(agent, f"span:{house_of_span[h]}", testimony)
+    expected_set = {(agent, f"span:{SIGN_NUM[house_of_span[h]]}", testimony)
                     for agent, h, testimony in expected}
     actual_set = {(e.agent, e.obj.canonical_target,
                    e.operator_role == "testimony") for e in edges}
@@ -149,7 +160,7 @@ def test_o_rp_5a_saturn_8th_from_moon_scores_for_illness_acute_only():
         for e in gain_edges:
             # a gain-class edge is justified only by the favourable table:
             # its span must be a FAVOURABLE house of its agent from the Moon
-            assert _house_from_moon(e.obj.canonical_target.removeprefix("span:")) \
+            assert _house_from_moon(_sign_of_span(e.obj.canonical_target)) \
                 in favourable_houses(e.agent.title()), (gain_class, e)
 
 
@@ -165,10 +176,10 @@ def test_o_rp_5a_mutation_target_gain_class_attachment_fails():
         edges = ev.enumerate_p2_edges(cls, CHART)
         if row["polarity"] == "adverse":
             assert edges, f"adverse class {cls} enumerates the RQ-5 plan"
-            assert all(_house_from_moon(e.obj.canonical_target.removeprefix("span:"))
+            assert all(_house_from_moon(_sign_of_span(e.obj.canonical_target))
                        in (12, 8, 1, 2) for e in edges)
         elif row["polarity"] == "gain":
-            assert all(_house_from_moon(e.obj.canonical_target.removeprefix("span:"))
+            assert all(_house_from_moon(_sign_of_span(e.obj.canonical_target))
                        in favourable_houses(e.agent.title()) for e in edges)
         else:
             assert edges == [], f"non-adverse non-gain class {cls} must be empty"
@@ -186,9 +197,9 @@ def test_o_rp_5b_sade_sati_phase_rows_are_testimony_and_never_on_gain():
     adverse = ev.enumerate_p2_edges("illness_acute", CHART)
     testimony = [e for e in adverse if e.operator_role == "testimony"]
     assert {(e.agent, e.obj.canonical_target) for e in testimony} == {
-        ("saturn", "span:capricorn"),  # 12th from the Aquarius Moon (count written)
-        ("saturn", "span:aquarius"),   # 1st — phase 2
-        ("saturn", "span:pisces"),     # 2nd — phase 3
+        ("saturn", "span:10"),  # 12th from the Aquarius Moon (count written)
+        ("saturn", "span:11"),   # 1st — phase 2
+        ("saturn", "span:12"),     # 2nd — phase 3
     }
     for e in testimony:
         assert e.provenance == "uncited_extension"
@@ -197,7 +208,7 @@ def test_o_rp_5b_sade_sati_phase_rows_are_testimony_and_never_on_gain():
     for gain_class in ("childbirth", "marriage", "major_gain"):
         edges = ev.enumerate_p2_edges(gain_class, CHART)
         assert all(e.operator_role != "testimony" for e in edges), gain_class
-        sade_sati_spans = {"span:capricorn", "span:aquarius", "span:pisces"}
+        sade_sati_spans = {"span:10", "span:11", "span:12"}
         assert not any(e.agent == "saturn"
                        and e.obj.canonical_target in sade_sati_spans
                        and e.provenance == "uncited_extension" for e in edges), gain_class
@@ -252,17 +263,17 @@ def test_o_rp_8_marriage_p3_exact_qualified_row_set():
     agents7 = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
     expected = set()
     for a in agents7 + ("rahu", "ketu"):
-        expected.add((a, "residence", "span:libra", "signature_house", "scored"))
+        expected.add((a, "residence", "span:7", "signature_house", "scored"))
         expected.add((a, "conjunction", "point:259.19", "lord", "scored"))
     for a in agents7:
-        expected.add((a, "aspect", "span:libra", "signature_house", "scored"))
+        expected.add((a, "aspect", "span:7", "signature_house", "scored"))
         expected.add((a, "aspect", "point:259.19", "lord", "scored"))
-    expected.add(("venus", "ownership", "span:taurus", "maraka_of_house", "testimony"))
-    expected.add(("venus", "ownership", "span:libra", "maraka_of_house", "testimony"))
+    expected.add(("venus", "ownership", "span:2", "maraka_of_house", "testimony"))
+    expected.add(("venus", "ownership", "span:7", "maraka_of_house", "testimony"))
     assert actual == expected, (
         f"extra {sorted(actual - expected)}; missing {sorted(expected - actual)}")
     # every span/point target is a QUALIFIED target only
-    assert _targets(edges) <= {"span:libra", "span:taurus", "point:259.19"}
+    assert _targets(edges) <= {"span:7", "span:2", "point:259.19"}
 
 
 # ── O-RR-3 ───────────────────────────────────────────────────────────────────
@@ -278,16 +289,16 @@ def test_o_rr_3_natal_saturn_is_an_occupant_of_the_7th_for_marriage():
                         if e.agent == "saturn" and e.relation == "occupancy"]
     assert len(saturn_occupancy) == 1
     edge = saturn_occupancy[0]
-    assert edge.obj.canonical_target == "span:libra"
+    assert edge.obj.canonical_target == "span:7"
     assert edge.object_role == "signature_house"   # E3 binding of the §1 occupant row
     assert edge.transit is False                   # natal-fact row
     assert edge.provenance == "verse_cited" and edge.operator_role == "scored"
     # the 7L Venus ownership row accompanies it (lord AND occupant, the union)
     assert any(e.agent == "venus" and e.relation == "ownership"
-               and e.obj.canonical_target == "span:libra" for e in edges)
+               and e.obj.canonical_target == "span:7" for e in edges)
     # occupant at a DIFFERENT longitude would fail: no other occupancy row
     # names a non-signature sign for marriage (H = {7} only)
-    assert all(e.obj.canonical_target == "span:libra"
+    assert all(e.obj.canonical_target == "span:7"
                for e in edges if e.relation == "occupancy")
 
 

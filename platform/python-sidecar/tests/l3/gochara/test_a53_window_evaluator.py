@@ -46,6 +46,14 @@ CHART = {
     },
 }
 
+# AM-2: span targets are the ABSOLUTE sign numeral (1 = Meṣa). An independent,
+# spelled-out table — the tests must not derive their expectations from the
+# production helper they are checking.
+SIGN_NUM = {"aries": 1, "taurus": 2, "gemini": 3, "cancer": 4, "leo": 5,
+            "virgo": 6, "libra": 7, "scorpio": 8, "sagittarius": 9,
+            "capricorn": 10, "aquarius": 11, "pisces": 12}
+
+
 
 # ── (a) chart_context ─────────────────────────────────────────────────────────
 
@@ -122,8 +130,8 @@ def test_p3_bereavement_oracle_truth_table():
     edges = ev.enumerate_edges("bereavement", "P3", CHART)
     spans = {e.obj.canonical_target for e in edges
              if e.object_role == "signature_house" and e.relation == "residence"}
-    assert spans == {"span:sagittarius", "span:capricorn",
-                     "span:gemini", "span:cancer"}
+    assert spans == {"span:9", "span:10",
+                     "span:3", "span:4"}
     assert {(e.frame_kind, e.frame_arg) for e in edges} == {("bhavat_bhavam", "9")}
     assert {e.affected_person for e in edges} == {"father"}
     maraka = [e for e in edges if e.object_role == "maraka_of_house"]
@@ -174,7 +182,7 @@ def test_p2_scored_adverse_residence_oracle_shape():
     edges = ev.enumerate_edges("illness_acute", "P2", CHART)
     sat8 = [e for e in edges if e.agent == "saturn" and e.operator_role == "scored"]
     # Aquarius 1st … Virgo 8th (the oracle's written-out count)
-    assert [e.obj.canonical_target for e in sat8] == ["span:virgo"]
+    assert [e.obj.canonical_target for e in sat8] == ["span:6"]
     assert all(e.frame_kind == "moon" and e.affected_person == "native"
                and e.relation == "residence" and e.transit for e in edges)
 
@@ -185,10 +193,10 @@ def test_p2_sade_sati_phase_rows_are_testimony_only():
     edges = ev.enumerate_edges("illness_acute", "P2", CHART)
     sat = {(e.obj.canonical_target, e.operator_role) for e in edges
            if e.agent == "saturn"}
-    assert sat == {("span:virgo", "scored"),       # 8th — scored
-                   ("span:capricorn", "testimony"),  # 12th
-                   ("span:aquarius", "testimony"),   # 1st
-                   ("span:pisces", "testimony")}     # 2nd
+    assert sat == {("span:6", "scored"),       # 8th — scored
+                   ("span:10", "testimony"),  # 12th
+                   ("span:11", "testimony"),   # 1st
+                   ("span:12", "testimony")}     # 2nd
     assert all(e.ruling_ref == "D-PADMIT" for e in edges
                if e.operator_role == "testimony")
     # no natural-key collision: one (agent, relation, object) appears once
@@ -210,7 +218,7 @@ def test_p2_adverse_residence_never_attaches_to_gain_classes():
             assert e.operator_role == "scored"
             assert e.provenance == "verse_cited"
             assert (e.agent, e.obj.canonical_target) not in {
-                (a, f"span:{s}") for a, s in adverse_targets}
+                (a, f"span:{SIGN_NUM[s]}") for a, s in adverse_targets}
 
 
 def test_p2_gain_classes_enumerate_the_cited_favourable_table():
@@ -227,15 +235,15 @@ def test_p2_gain_classes_enumerate_the_cited_favourable_table():
     for agent, row in FAVOURABLE_HOUSES_FROM_MOON.items():
         for h in sorted(favourable_houses(agent)):
             expected.add((agent.lower(),
-                          f"span:{nth_sign_from(moon, h, CHART).lower()}"))
+                          f"span:{SIGN_NUM[nth_sign_from(moon, h, CHART).lower()]}"))
     got = {(e.agent, e.obj.canonical_target) for e in edges}
     assert got == expected
-    assert ("sun", "span:aries") in got            # 3rd from Aquarius
-    assert ("rahu", "span:aries") in got           # śl.2: Rāhu = Sun
-    assert ("ketu", "span:scorpio") in got         # śl.2: Ketu = Sun, 10th
+    assert ("sun", "span:1") in got            # 3rd from Aquarius
+    assert ("rahu", "span:1") in got           # śl.2: Rāhu = Sun
+    assert ("ketu", "span:8") in got         # śl.2: Ketu = Sun, 10th
     # the 10th for the nodes is the very row brahmagyan/l0_transit.py omits —
     # the recorded L0 deviation the steward named (M20261001T084530-9b65)
-    assert ("rahu", "span:scorpio") in got
+    assert ("rahu", "span:8") in got
     assert all(e.source_page and "PG32" in e.source_page for e in edges)  # E9
     # no natural-key collision
     keys = [(e.agent, e.relation, e.obj.canonical_target) for e in edges]
@@ -269,9 +277,9 @@ def test_p1_marriage_natal_rows():
     own = [e for e in natal if e.relation == "ownership"]
     occ = [e for e in natal if e.relation == "occupancy"]
     assert [(e.agent, e.obj.canonical_target) for e in own] == [
-        ("venus", "span:libra")]
+        ("venus", "span:7")]
     assert {(e.agent, e.obj.canonical_target) for e in occ} == {
-        ("mars", "span:libra"), ("saturn", "span:libra")}
+        ("mars", "span:7"), ("saturn", "span:7")}
     assert all(e.frame_kind == "dasha_lord" and e.operator_role == "scored"
                for e in own + occ)
 
@@ -281,8 +289,8 @@ def test_p1_node_dispositor_testimony_rows():
     nodes = [e for e in edges if e.relation == "dispositorship"]
     # Rahu 49.03 Taurus → Venus; Ketu 229.03 Scorpio → Mars
     assert {(e.agent, e.obj.body, e.obj.canonical_target) for e in nodes} == {
-        ("rahu", "venus", "span:taurus"),
-        ("ketu", "mars", "span:scorpio")}
+        ("rahu", "venus", "span:2"),
+        ("ketu", "mars", "span:8")}
     assert all(e.operator_role == "testimony" and e.ruling_ref == "D-PADMIT"
                for e in nodes)
 
@@ -299,14 +307,14 @@ def test_p1_transit_edges_cover_the_cited_dignity_signs():
     edges = ev.enumerate_edges("career_entry", "P1", CHART)
     transit = {(e.agent, e.obj.canonical_target) for e in edges if e.transit}
     # every graha's own + exaltation + debility signs are present
-    assert ("saturn", "span:libra") in transit      # exaltation
-    assert ("saturn", "span:capricorn") in transit  # own
-    assert ("saturn", "span:aries") in transit      # debility
+    assert ("saturn", "span:7") in transit      # exaltation
+    assert ("saturn", "span:10") in transit  # own
+    assert ("saturn", "span:1") in transit      # debility
     # Sun and Jupiter ride EVERY graha's exaltation sign (śl.34-38)
     for sign in ("aries", "taurus", "capricorn", "virgo", "cancer",
                  "pisces", "libra"):
-        assert ("sun", f"span:{sign}") in transit
-        assert ("jupiter", f"span:{sign}") in transit
+        assert ("sun", f"span:{SIGN_NUM[sign]}") in transit
+        assert ("jupiter", f"span:{SIGN_NUM[sign]}") in transit
     # nodes carry no cited transit residence content
     assert not {a for a, _ in transit} & {"rahu", "ketu"}
     assert all(e.object_role == "period_lord" for e in edges if e.transit)

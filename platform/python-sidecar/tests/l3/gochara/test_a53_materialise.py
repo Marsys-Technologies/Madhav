@@ -60,10 +60,18 @@ def _piecewise(points: list[tuple[float, float]]):
     return position_at
 
 
+# AM-2: span targets are the ABSOLUTE sign numeral (1 = Meṣa). An independent,
+# spelled-out table — the tests must not derive their expectations from the
+# production helper they are checking.
+SIGN_NUM = {"aries": 1, "taurus": 2, "gemini": 3, "cancer": 4, "leo": 5,
+            "virgo": 6, "libra": 7, "scorpio": 8, "sagittarius": 9,
+            "capricorn": 10, "aquarius": 11, "pisces": 12}
+
+
 def _p5_edge(sign: str, agent: str = "saturn") -> ev.RecordEdge:
     edges = [e for e in ev.enumerate_edges("marriage", "P5", CHART)
              if e.agent == agent
-             and e.obj.canonical_target == f"span:{sign}"]
+             and e.obj.canonical_target == f"span:{SIGN_NUM[sign]}"]
     assert len(edges) == 1
     return edges[0]
 

@@ -36,6 +36,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Sequence
 
+from . import targets
+
 
 def _uuid8_of(canonical_bytes: bytes) -> uuid.UUID:
     """First 128 bits of sha256, version-8 / variant bits set (pin 4)."""
@@ -58,6 +60,12 @@ class PhysicalObjectId:
     relation_kind: str
     canonical_target: str
     convention_id: str
+
+    def __post_init__(self) -> None:
+        # AM-2: the identity builder REJECTS a non-canonical target (the SQL
+        # CHECK is looser than the contract for `span:`); no PhysicalObjectId
+        # with `span:libra`, `span:13`, `span:07` or `sign:7` can exist.
+        targets.validate_canonical_target(self.canonical_target)
 
     @property
     def identity_bytes(self) -> str:
@@ -235,7 +243,7 @@ def boundary_target(level_deg: float) -> str:
     """§6.1 canonical target of a boundary crossing: `point:<λ full precision>`
     (boundary events are enumerated per body and joined to targets afterwards
     — §6.2 inv 5 — so the physical target is the boundary itself)."""
-    return f"point:{float(level_deg)!r}"
+    return targets.point_target(level_deg)
 
 
 @dataclass(frozen=True)
