@@ -63,7 +63,7 @@ def _piecewise(points: list[tuple[float, float]]):
 def _p5_edge(sign: str, agent: str = "saturn") -> ev.RecordEdge:
     edges = [e for e in ev.enumerate_edges("marriage", "P5", CHART)
              if e.agent == agent
-             and e.obj.canonical_target == f"span:sign:{sign}"]
+             and e.obj.canonical_target == f"span:{sign}"]
     assert len(edges) == 1
     return edges[0]
 

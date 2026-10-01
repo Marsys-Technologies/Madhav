@@ -6,7 +6,7 @@ boundary crossings (the A2 global boundary table — sky events per body,
 joined to targets afterwards per §6.2 inv 5), derive the edge's contact
 occurrences and mint one record per occurrence:
 
-  * residence on span:sign:<X> — a span is [ingress into X, egress). Between
+  * residence on span:<X> — a span is [ingress into X, egress). Between
     two CONSECUTIVE crossings the body crosses no boundary, so the resided
     sign is constant over the interval and is decided by ONE position probe
     at the interval's midpoint (`position_at`, injected — this module never
@@ -118,12 +118,12 @@ def spans_for_object(
     spans: Sequence[ResidenceSpan],
     obj: PhysicalObjectId,
 ) -> list[SubstrateContact]:
-    """The contact occurrences of one residence object (body × span:sign:<X>):
+    """The contact occurrences of one residence object (body × span:<X>):
     ordinals 1..N over the FULL-domain ordered span set (R3 amendment 1 —
     truncated spans order by their clipped start; append-only stable)."""
     target = obj.canonical_target
-    assert target.startswith("span:sign:"), target
-    sign = target[len("span:sign:"):]
+    assert target.startswith("span:"), target
+    sign = target[len("span:"):]
     mine = sorted(
         (s for s in spans if s.sign.lower() == sign.lower()),
         key=lambda s: s.t_in,
@@ -152,7 +152,7 @@ def mint_transit_records(
         f"mint_transit_records: {edge.relation} edge — only residence spans "
         "materialise through this path (aspect/conjunction solve per the "
         "boundary solver; natal facts mint directly)")
-    sign = edge.obj.canonical_target.removeprefix("span:sign:")
+    sign = edge.obj.canonical_target.removeprefix("span:")
     mine = sorted(
         (s for s in spans if s.sign.lower() == sign.lower()),
         key=lambda s: s.t_in,

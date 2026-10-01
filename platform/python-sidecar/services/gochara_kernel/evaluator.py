@@ -19,7 +19,7 @@ flagged to the steward):
   E8. Object conventions (kgpo vocab: body ∈ 9 grahas; relation_kind ∈
       residence|aspect|conjunction|…; target point:|span:|star:):
         * house-span target of an agent: (agent, residence|aspect,
-          span:sign:<sign>) — aspect-to-span is the aspect point's ingress
+          span:<sign>) — aspect-to-span is the aspect point's ingress
           into the span;
         * natal-lord point target: (agent, conjunction|aspect,
           point:<λ_natal full precision>) — O-RX-1's own convention
@@ -149,7 +149,7 @@ def record_uuid(natural_key: dict):
 
 
 def _span_target(sign: str) -> str:
-    return f"span:sign:{sign.lower()}"
+    return f"span:{sign.lower()}"
 
 
 def _point_target(lam: float) -> str:

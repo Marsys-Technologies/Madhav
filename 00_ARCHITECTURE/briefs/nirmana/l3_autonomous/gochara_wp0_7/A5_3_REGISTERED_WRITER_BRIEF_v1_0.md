@@ -165,6 +165,43 @@ Contact materialisation per grain (`record:` substep):
    `event_class`, key `<event_class>:<path_id>`, horizon + relations_searched +
    per-state counts + `unavailable_inputs` named (e.g. the P5c donor matrix).
 
+### Design v1.1 (2026-10-01, 2/N implementation — what the applied contract taught)
+
+The disposable-PG rehearsal of v1.0 surfaced four divergences between the design
+and the FROZEN, already-applied artefacts. The frozen side won every time (ADK-0026:
+fix the data — here, the writer's own design — never the detector). No CHECK
+weakened; the v1.5 batch is untouched.
+
+1. **`span:<sign>`, not `span:sign:<sign>`.** Spec v1.4 §6.1 renders span targets
+   `span:<sign>` and 1153's `kgpo_target_form_ck` admits exactly
+   `^span:[a-z0-9_]+$`. `evaluator._span_target` and the materialise assertions
+   were aligned (single colon). Pre-writes, so no stored identity changes.
+2. **F7: the `event_class` coverage key IS the class.** 1155's
+   `ka_gochara_record_coverage_guard` rejects any other key. The per-grain
+   `<class>:<path>` key in v1.0 item 6 is REPLACED by a `coverage:<event_class>`
+   substep owning ONE class-level partition (the class's whole-generation
+   declared search over every bound path, deterministic from the static
+   enumeration, insert-if-absent + byte check). Record grains only BIND to the
+   stored partition and REFUSE without it (`MissingCoverageError`). Pin 7 holds
+   as existence-before-records; per-grain detail rides WriterResult notes.
+3. **F5: prerequisite membership is read, never guessed.** Records mint their
+   `ka_gochara_record_prerequisite` rows from the seeded
+   `ka_gochara_rule_path_prerequisite` declaration (ordinal order); the grain
+   fetches it when the caller does not supply it.
+4. **Pin-3 tz false divergence fixed.** `substrate.register_convention`
+   formatted the stored `timestamptz` domain in the session tz with a `Z`
+   suffix — any non-UTC session fabricated a divergence. Now compares in UTC.
+
+Also in 2/N: `record_store.py` (RecordStore + write_class_coverage +
+materialise_record_grain), contact rows clipped per kgc (coverage.truncated ⇔
+t_exact NULL; end-clipped spans carry their exact ingress with t_out = horizon),
+resolution = max crossing ε actually read (0.0 = named non-claim), records
+insert with `admission_state`/`outcome_valence` 'unqualified' and prerequisite
+results NULL (unknown) — result EVALUATION (v1.0 item 5) is 3/N scope with the
+point solves. Tests: tests/l3/gochara/test_a53_record_store.py — 9 fake-store +
+2 disposable-PG (GOCHARA_A53_DSN, default postgresql://wp6:local@localhost:55434/a53;
+the chain 1081+1152–1157 applied verbatim; NOT_RUN skip when unreachable).
+
 The sweep (`window:` substep): per grain, admitted windows = the union of
 scored-edge support intervals whose prerequisites pass; peaks = interior
 extrema of the activity kernel within each window (§7.2 inv 2); era/month are

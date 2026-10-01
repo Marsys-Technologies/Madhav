@@ -328,11 +328,19 @@ class SkyEventStore:
             (cid,),
         ).fetchone()
         if row is not None:
+            def _utc_iso(dt: datetime) -> str:
+                # timestamptz arrives in the SESSION tz; compare in UTC or a
+                # non-UTC session fabricates a false divergence (pin 3 must
+                # fire on real divergence, never on tz rendering)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
             stored = {
                 "ephemeris_generation": row[0], "ayanamsha": row[1],
                 "node_convention": row[2], "grid": row[3], "method_version": row[4],
-                "domain_start": row[5].strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "domain_end": row[6].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "domain_start": _utc_iso(row[5]),
+                "domain_end": _utc_iso(row[6]),
             }
             declared = {k: v[k] for k in stored}
             if stored != declared:
