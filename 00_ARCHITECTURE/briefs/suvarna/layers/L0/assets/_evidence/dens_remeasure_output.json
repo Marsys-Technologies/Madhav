@@ -1,0 +1,162 @@
+{
+ "bg_class_lifetime_counts": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: L0_brahmagyan/query_class_priors.ts; 1 served select(s) of its table; no referencing capability that serves "
+ ],
+ "bg_class_priors": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 no module in the serving roots references brahma_class_priors, but it is named outside the scanned serving roots where a served select c"
+ ],
+ "bg_cohort": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 2 module(s) reach it by code: platform-mcp/src/tools/kala_views/priority.ts, platform-mcp/src/lib/kala_ritual_resonance.ts, but no serve"
+ ],
+ "bg_compendium_index": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L0_brahmagyan/query_compendium_index.ts, L1_ganita/coverage_matrix.ts; 2 served select(s) of its table; no r"
+ ],
+ "bg_concordance": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 1 module(s) reach it by code: register_d7_channel.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it"
+ ],
+ "bg_dasha_systems": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L0_brahmagyan/query_dasha_systems.ts, platform-mcp/src/tools/register_p1_reference.ts; 1 served select(s) of"
+ ],
+ "bg_dignity_reference": [
+  "PARTIAL",
+  "STRUCTURAL: 7 module(s) reach it by code: L0_brahmagyan/query_avastha_schemes.ts, L0_brahmagyan/query_combustion_orbs.ts, L0_brahmagyan/query_graha_na"
+ ],
+ "bg_doshas": [
+  "FAIL",
+  "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_dosha_catalog.ts, L0_brahmagyan/query_parihara_graph.ts, L1_ganita/coverage_matrix.ts; 3"
+ ],
+ "bg_ephemeris": [
+  "FAIL",
+  "STRUCTURAL: 9 module(s) reach it by code: L0_brahmagyan/query_aspects_at_time.ts, L0_brahmagyan/query_planet_position.ts, L0_brahmagyan/query_planet_t"
+ ],
+ "bg_ephemeris_engine": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 7 module(s) reach it by code: L0_brahmagyan/ephemeris_cache_native_lifetime.ts, L0_brahmagyan/ephemeris_cache_year.ts, L0_brahmagyan/que"
+ ],
+ "bg_formula_constants": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: L0_brahmagyan/query_formula_constants.ts; 1 served select(s) of its table; no referencing capability that se"
+ ],
+ "bg_ghatana": [
+  "PARTIAL",
+  "STRUCTURAL: 13 module(s) reach it by code: L4_phala/query_predictive_anchors.ts, L4_phala/query_prospective_ledger.ts, L5_mimamsa/lel_intake_checklist"
+ ],
+ "bg_gochara_arcs": [
+  "N/A",
+  "STRUCTURAL: 0 module(s) reference it by code in the 3 serving root(s) scanned, and no served select of it exists in the wider source scanned; declarin"
+ ],
+ "bg_gochara_citation_resolution": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/retrieval/register_gochara_windows.ts; 1 served select(s) of its table; no referencin"
+ ],
+ "bg_kota_chakra_rings": [
+  "N/A",
+  "STRUCTURAL: 0 module(s) reference it by code in the 3 serving root(s) scanned, and no served select of it exists in the wider source scanned; declarin"
+ ],
+ "bg_kp_sublord_division": [
+  "N/A",
+  "STRUCTURAL: 0 module(s) reference it by code in the 3 serving root(s) scanned, and no served select of it exists in the wider source scanned; declarin"
+ ],
+ "bg_medical_mappings": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L0_brahmagyan/query_medical_mappings.ts, L1_ganita/get_medical_indications.ts; 1 served select(s) of its tab"
+ ],
+ "bg_muhurta_lattice": [
+  "FAIL",
+  "STRUCTURAL: 5 module(s) reach it by code: L0_brahmagyan/query_muhurta_lattice.ts, platform-mcp/src/tools/kala_views/elect.ts, platform-mcp/src/lib/agn"
+ ],
+ "bg_nakshatra": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/register_p1_reference.ts; 3 served select(s) of its table; no referencing capability "
+ ],
+ "bg_nakshatra_medical": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: L0_brahmagyan/query_nakshatra_medical.ts; 1 served select(s) of its table; no referencing capability that se"
+ ],
+ "bg_ontology": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 no module in the serving roots references brahma_ontology, but it is named outside the scanned serving roots where a served select canno"
+ ],
+ "bg_panchanga": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 1 module(s) reach it by code: L0_brahmagyan/call_panchanga_service.ts, but no served `SELECT ... FROM` its table was found (no served se"
+ ],
+ "bg_parihara_rules": [
+  "FAIL",
+  "STRUCTURAL: 7 module(s) reach it by code: L0_brahmagyan/query_muhurta_lattice.ts, L0_brahmagyan/query_parihara_graph.ts, platform-mcp/src/tools/kala_v"
+ ],
+ "bg_phaladeepika_latta": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 1 module(s) reach it by code: L3_kala/query_vedha_gochara.ts, but no served `SELECT ... FROM` its table was found (no served select): wh"
+ ],
+ "bg_prashna_rules": [
+  "FAIL",
+  "STRUCTURAL: 5 module(s) reach it by code: L0_brahmagyan/query_prashna_fructification_rules.ts, L0_brahmagyan/query_prashna_lagna_methods.ts, L0_brahma"
+ ],
+ "bg_reference": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 no module in the serving roots references reference_planets, but it is named outside the scanned serving roots where a served select can"
+ ],
+ "bg_remedies": [
+  "PARTIAL",
+  "STRUCTURAL: 10 module(s) reach it by code: L0_brahmagyan/query_remedy_corpus.ts, L1_ganita/coverage_matrix.ts, register_d7_channel.ts, platform-mcp/sr"
+ ],
+ "bg_rules": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: register_d7_channel.ts; 1 served select(s) of its table; no referencing capability that serves it declares d"
+ ],
+ "bg_sarvatobhadra_grid": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 1 module(s) reach it by code: L3_kala/query_vedha_gochara.ts, but no served `SELECT ... FROM` its table was found (no served select): wh"
+ ],
+ "bg_sign_medical": [
+  "FAIL",
+  "STRUCTURAL: 2 module(s) reach it by code: L0_brahmagyan/query_sign_medical.ts, platform-mcp/src/tools/register_p1_aliases.ts; 1 served select(s) of it"
+ ],
+ "bg_sky_calendar": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: L0_brahmagyan/query_sky_calendar.ts; 1 served select(s) of its table; no referencing capability that serves "
+ ],
+ "bg_text_index": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 no module in the serving roots references classical_text_chunks, but it is named outside the scanned serving roots where a served select"
+ ],
+ "bg_texts": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 1 module(s) reach it by code: L0_brahmagyan/query_classical_texts.ts, but no served `SELECT ... FROM` its table was found (no served sel"
+ ],
+ "bg_transit_engine": [
+  "FAIL",
+  "STRUCTURAL: 1 module(s) reach it by code: L0_brahmagyan/query_transit_engine.ts; 1 served select(s) of its table; no referencing capability that serve"
+ ],
+ "bg_transit_rules": [
+  "FAIL",
+  "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_transit_vedha.ts, L3_kala/query_vedha_gochara.ts, platform-mcp/src/tools/register_p1_ref"
+ ],
+ "bg_vastu_directions": [
+  "PARTIAL",
+  "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_vastu_direction_remedials.ts, L0_brahmagyan/query_vastu_directions.ts, L1_ganita/get_vas"
+ ],
+ "bg_vedha_malefic_scale": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 1 module(s) reach it by code: L3_kala/query_vedha_gochara.ts, but no served `SELECT ... FROM` its table was found (no served select): wh"
+ ],
+ "bg_vidhi_floors": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 no module in the serving roots references vidhi_floor_items, but it is named outside the scanned serving roots where a served select can"
+ ],
+ "bg_vidhi_primitives": [
+  "NO_DETECTOR",
+  "NO_DETECTOR \u2014 no module in the serving roots references vidhi_primitives, but it is named outside the scanned serving roots where a served select cann"
+ ],
+ "bg_yogas": [
+  "PARTIAL",
+  "STRUCTURAL: 3 module(s) reach it by code: L0_brahmagyan/query_yoga_catalog.ts, L1_ganita/coverage_matrix.ts, L1_ganita/get_yoga_firings.ts; a referenc"
+ ]
+}
