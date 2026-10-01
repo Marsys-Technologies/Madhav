@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-20]
 ledger_gap_ids: [bg_gochara_citation_resolution-Build.completion, bg_gochara_citation_resolution-Earn.build_record, bg_gochara_citation_resolution-Cost.baseline, bg_gochara_citation_resolution-Carr.detector]
 ---
 # bg_gochara_citation_resolution — Gochara citation → verse-ref resolution table (R9 input; 14 rows; static)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -67,7 +69,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, or census cell) | gate | class | note |
 |---|---|---|---|
-| bg_gochara_citation_resolution-Build.completion | Build | real as a status gap; cause = static kind with no writer (a ruling is needed) | live = 14 and no build record at all \| ledger: measured: live=14 and no build record at all / required: the Build gate's claim |
+| bg_gochara_citation_resolution-Build.completion | Build | real as a status gap; cause = static kind with no writer (decided SS Q7: dispatchable writer) | live = 14 and no build record at all \| ledger: measured: live=14 and no build record at all / required: the Build gate's claim |
 | bg_gochara_citation_resolution-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_gochara_citation_resolution-Cost.baseline | Cost | information | same absent instrument; CF-05 |
 | bg_gochara_citation_resolution-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
@@ -77,22 +79,22 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — the table is correct as seeded and read by a live module; its only gaps are build-system status artefacts of being migration-seeded (no writer to dispatch, so no build record). Retire is not in question (reference asset).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Build.completion for a migration-seeded static asset
+### FD-1 · Dispatchable writer that re-seeds from the git source (delete-then-insert)
 
 - **Answers:** census `Build.completion` FAIL ("live=14 and no build record at all"); ledger `bg_gochara_citation_resolution-Build.completion`
-- **Change:** two options: **(a)** declare the asset `kind: static` (already declared) and let the Build gate read it N/A with a cause under an N-22 applicability rule (a static asset has no run to record) — no code change; **(b)** register a writer that re-asserts the 14 rows idempotently so the orchestrator can dispatch it (a writer file + registry `has_writer` + dispatch). (a) is smaller and keeps R9 quiet; (b) makes the asset rebuildable by the orchestrator, which T4 §4.2 ("seamlessly when triggered") may require.
-- **Files / declaration / migration:** (a) `NA_RULE_DECISIONS` entry citing the decision id (Track E file) + the declarations entry; (b) `pipeline/orchestrator/writers/bg_gochara_citation_resolution.py` (new), registry row, a test
-- **Failing-first test and mutation:** failing-first: (a) the cell reads N/A with the cause and a seeded writer-backed asset with no record stays FAIL; (b) rerun leaves the 14 rows unchanged (fingerprint)
+- **Change:** decided (SS 2026-10-01, Q7): register a writer that re-seeds the 14 rows from the git source of migrations 565/630/631 by delete-then-insert, so the orchestrator can dispatch it and Build is measurable. Option (a) N/A-by-rule is not taken. R9 asset: the writer and any rebuild wait for SS after notifying Pravāha.
+- **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_gochara_citation_resolution.py` (new `@register`, `WriterBase`), registry `has_writer = true`, a test
+- **Failing-first test and mutation:** failing-first: a rerun leaves the 14 rows’ fingerprint unchanged and a `build_run_assets` row exists; mutation: remove a row → the rerun restores it
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** (a) none. (b) needs production rebuild/dispatch (14 rows) and is R9: waits for SS after notifying Pravāha
+- **Rebuild:** needs production rebuild/dispatch (14 rows, idempotent); R9: waits for SS after notifying Pravāha
 - **Gate it moves:** Build (completion, exercised, registered)
-- **Fix class:** registry/declaration only (a) or writer code (b); **buildable before J1:** tier-dependent: TGH-T4-01/T4-03 (kind vocabulary; empty/static assets)
-- **Question for SS:** Static migration-seeded asset: N/A by rule (a) or a dispatchable writer (b)?
+- **Fix class:** writer code; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q7): static migration-seeded assets get a DISPATCHABLE writer that re-seeds from the git source (delete-then-insert), which makes Build measurable and ELEVATED reachable (Track I item; R9 assets wait for SS after notifying Pravāha).
 
 ### FD-2 · Carr detector — D1 on the resolved rows
 
@@ -121,22 +123,22 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-4 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 0 L0 modules; 1 platform-mcp module (`register_gochara_windows.ts`) reads it, so attribution is by `carriage` declaration; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* served by a platform-mcp module rather than an L0 registry module; attribution by declaration
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* served by a platform-mcp module rather than an L0 registry module; attribution by declaration
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -148,6 +150,12 @@ Natural key `(citation_string, chunk_id)` (census, 0 duplicates). Static rows: f
 - **Carriage check chosen (T4 §4.1; one only):** D1 (correspondence of each resolved citation to its chunk).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Static asset: N/A by rule or a dispatchable writer? (R9 asset: any writer/rebuild waits for SS after notifying Pravāha.)
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q7): static migration-seeded assets get a DISPATCHABLE writer that re-seeds from the git source (delete-then-insert), which makes Build measurable and ELEVATED reachable (Track I item; R9 assets wait for SS after notifying Pravāha).
+2. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+3. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-20.
