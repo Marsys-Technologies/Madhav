@@ -138,6 +138,7 @@ Approver under Track A brief §10: **Strategic Suvarṇa (output change, R5)**.
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-16** — `ga_vargas` restore and downstream re-earn: `chart_divisionals` empty for the canonical chart under a `lit` record. *This asset:* FD-1: D9 detectors read `chart_divisionals`; rebuild after the restore
+- **CF-03** — Registry correction batch (live registry vs seed literals: floors, edges, status) in one surgical migration plus seed literals. *This asset:* FD-1 (re-floor option): floor 63 may be re-declared by a registry migration if the diagnosis shows it was set high
 - **CF-13** — Build.dag reads-match: declared `depends_on` against the tables each L1 writer reads (missing edges, two back-reads). *This asset:* FD-4: missing direct edge; back-read by `ga_structural`
 - **CF-06** — `prose_fields` declarations for the L1 assets that have none or an incomplete one (Null and Narr gates). *This asset:* FD-3: declaration incomplete (`derivation`, `strength_label`, `bhanga_na_reason`)
 - **CF-15** — Narr golden tests that name the declared `citation_human` field (assertion on the sentence, not only on the builder). *This asset:* Narr: declared; fidelity PARTIAL

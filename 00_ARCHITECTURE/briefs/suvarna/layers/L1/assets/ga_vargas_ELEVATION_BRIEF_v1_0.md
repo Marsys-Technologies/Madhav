@@ -74,9 +74,10 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | brief: integrity contract conjunct (c) is red by design | Build | history | migration 654's D1-sign cross-check against `chart_facts.graha_position` returns false today, deliberately, until the corrected writer rebuilds (Moon reads Pisces here vs Aquarius in `chart_facts` on `raman`: the F-A1 offset); it should read true after FD-1's rebuild |
 | ga_vargas-Build.history | Build | history | PARTIAL: 5 errors / 6 aborts; latest error 2026-09-07 `post-write integrity check failed` (the conjunct above); CF-10 |
 | brief: verification tier literals | Earn | real | 5 bare tier literals in the emit path and 21 quoted tier strings in the module (indicative regex count, comparisons included); `chart_divisionals` carries a narrower CHECK vocabulary (`verification_vocab.RESTRICTED_TABLE_VOCAB`, migrations 206/210); CF-17 |
-| brief: Narr (declared `citation_human`) | Narr | real | declared; offline fidelity PARTIAL (tests call the builder, none names the declared field); CF-15 |
+| brief: Narr (declared `citation_human`) | Narr | real | declared; offline fidelity PARTIAL (8 test files reference `citation_human` in the same test function as a builder call; whether the assertion grades the sentence is not read, so the grader never reads PASS); CF-15 |
 | brief: Dens (offline rev 4) | Dens | detector | PARTIAL: contract declared but `get_argala.ts` has no tier column in its served select; the table is empty so no served read is exercised on this chart; CF-04 |
 | brief: `ga_dashas` reads this table without a declared edge | Build.dag | real | Track I evidence §D: `ga_dashas` → `ga_vargas` missing edge (read at `ga_dashas_writer.py:579`); `ga_yoga` → `ga_vargas` direct edge missing (transitive path through `ga_structural` exists); CF-13 |
+| brief: seed floor literal vs live registry | Count | information | seed `target_floor` 21635 vs live 22,092 (migration 439): the seed lags; CF-03 |
 | ga_vargas-Earn / Cost / Carr | Earn, Cost, Carr | detector | CF-05; CF-07. The empty table shows that a `lit` status has no detector able to read false (CLAUDE.md §N.8): that is the Earn-class claim for this asset |
 
 ## 3 · Disposition
@@ -140,6 +141,7 @@ Approver under Track A brief §10: **Steward (G16); the restore and any rebuild 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-16** — `ga_vargas` restore and downstream re-earn: `chart_divisionals` empty for the canonical chart under a `lit` record. *This asset:* the anchor of the cascade: FD-1/FD-2
+- **CF-03** — Registry correction batch (live registry vs seed literals: floors, edges, status) in one surgical migration plus seed literals. *This asset:* seed literal vs live floor: seed `target_floor` 21635 vs live 22,092 (migration 439); the floor will change again after FD-2 (more rows per D30 lord chain)
 - **CF-13** — Build.dag reads-match: declared `depends_on` against the tables each L1 writer reads (missing edges, two back-reads). *This asset:* FD-4: missing edges on its consumers
 - **CF-10** — Build.history PARTIAL/FAIL is a record of past errors and aborts; no edit changes it. *This asset:* PARTIAL: 5 errors / 6 aborts: the 2026-09-07 integrity error is conjunct (c) red by design
 - **CF-17** — Verification-tier string literals in L1 writers (CLAUDE.md §N.4: named constants from `verification_vocab.py`). *This asset:* FD-3: 5 literals

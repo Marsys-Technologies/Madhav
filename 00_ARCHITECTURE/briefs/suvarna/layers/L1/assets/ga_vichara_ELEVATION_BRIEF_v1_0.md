@@ -68,6 +68,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | brief: back-read by `ga_structural` | Build.dag | real | `ga_structural` reads `chart_vichara` for the wealth ratification (`ga_structural_writer.py:2761-2770`) though `ga_vichara` depends on it; see `ga_structural` FD-1 (the proposed home for the daridra-cancellation pass is this asset); CF-13 |
 | brief: `prose_fields` undeclared | Null, Narr | detector | declarations `prose_fields: null`; `source_citation` carries design-document references (constants such as `DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §11`, `:648,680,750,904`) or a `citation` variable (`:437,519`); `value_jsonb.known_gaps` holds gap statements; candidate: `[]` for `source_citation` if every site is a constant, plus a JSON path for `known_gaps` if composed (neither read in full); CF-06 |
 | brief: epistemic type of each output | Carr/Narr | SS question | valence, ratification factor and leverage index are judgments built on stored facts; the layer instance (TG-L1-020) leaves the typing open; a row-level type field or a declared output class would let consumers tell judged from computed |
+| brief: seed floor literal vs live registry | Count | information | seed `target_floor` 8240 vs live 8,249; CF-03 |
 | ga_vichara-Build.history | Build | history | PARTIAL: 14 errors / 3 aborts; latest error 2026-08-05 `BLOCKED: upstream ga_dashas, ga_structural, ga_yoga did not complete` (cascade); CF-10 |
 | brief: Dens (offline rev 4) | Dens | detector | PARTIAL: contract declared but `get_dasha_lord_capability.ts` and `get_vichara.ts` carry no tier column in their served selects; CF-04 |
 | brief: Carr | Carr | detector | D3 applies to the recomputable parts (ratification and consistency are functions of stored dignities and constants): recompute from the stored `chart_facts` and the constants table and compare; CF-07 |
@@ -121,6 +122,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-13** — Build.dag reads-match: declared `depends_on` against the tables each L1 writer reads (missing edges, two back-reads). *This asset:* FD-2: back-read by `ga_structural`; sink of the DAG
+- **CF-03** — Registry correction batch (live registry vs seed literals: floors, edges, status) in one surgical migration plus seed literals. *This asset:* seed literal vs live floor: seed `target_floor` 8240 vs live 8,249 (layer instance §1.1); `catalog_status` already CURRENT
 - **CF-06** — `prose_fields` declarations for the L1 assets that have none or an incomplete one (Null and Narr gates). *This asset:* FD-3: undeclared
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset (D3 dominates in L1). *This asset:* D3: recompute ratification/consistency
 - **CF-04** — Dens (serving density) on the L1 served modules: applicability, tier column, shared-table attribution. *This asset:* offline PARTIAL: tier column absent in two served selects
