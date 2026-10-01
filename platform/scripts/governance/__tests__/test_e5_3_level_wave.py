@@ -24,6 +24,7 @@ import itertools
 import json
 import pathlib
 import random
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -78,6 +79,9 @@ class FakeConn:
         return FakeCursor(self.db, self)
 
     def commit(self):
+        self.db.commit_calls += 1
+        if self.db.fail_commit_nth == self.db.commit_calls:
+            raise RuntimeError("fake connection dropped during COMMIT")
         self.db.log.append(("commit",))
 
     def rollback(self):
@@ -95,12 +99,13 @@ class FakeDB:
     freshness, kind)} for the dependency query. runs: {run_id: state or [states]} for the terminal poll."""
 
     def __init__(self, candidates, deps=None, active=(), run_states=None, run_assets=None, fk_rows=None, table_rows=None,
-                 closure=None, fail_on=None, close_raises_after_commit=False):
+                 closure=None, fail_on=None, close_raises_after_commit=False, fail_commit_nth=None):
         self.log, self.cand, self.deps, self.active = [], list(candidates), deps or {}, list(active)
         self.closure = closure or {}
         self.fail_on = dict(fail_on or {})          # {sql substring: nth occurrence (1-based) that raises}
         self.fail_seen = {}
         self.close_raises_after_commit = close_raises_after_commit
+        self.fail_commit_nth, self.commit_calls = fail_commit_nth, 0
         self.cand_calls = 0
         self.run_states = run_states or {}
         self.run_assets = run_assets or {}
@@ -144,7 +149,7 @@ class FakeDB:
         if "FROM build_run_assets bra" in sql:
             if params[0] in self.run_assets:
                 return list(self.run_assets[params[0]])
-            return [{"asset_id": a, "position": i, "state": "complete", "error": None, "throughput_state": "lit",
+            return [{"asset_id": a, "position": i, "state": "complete", "disposition": "build", "error": None, "throughput_state": "lit",
                      "started_at": T0 + timedelta(seconds=10 * i), "ended_at": T0 + timedelta(seconds=10 * i + 5)}
                     for i, a in enumerate(self.inserted.get(params[0], []))]
         if "FROM pg_constraint" in sql:
@@ -168,10 +173,11 @@ class FakeGit:
     """Answers the four git calls load_family_info / load_deployed_writer_digests make."""
 
     def __init__(self, *, family_text=None, family_listed=True, ref_ok=True, deployed=None, show_fails=False,
-                 rev_map=None, remote_sha=None, remote_fails=False):
+                 rev_map=None, remote_sha=None, remote_fails=False, remote_stdout=None):
         self.family_text, self.family_listed, self.ref_ok = family_text, family_listed, ref_ok
         self.deployed, self.show_fails = deployed, show_fails
         self.rev_map, self.remote_sha, self.remote_fails = dict(rev_map or {}), remote_sha, remote_fails
+        self.remote_stdout = remote_stdout
         self.calls = []
 
     def __call__(self, repo, args):
@@ -179,10 +185,13 @@ class FakeGit:
         cp = lambda rc=0, out="", err="": subprocess.CompletedProcess(args, rc, out, err)  # noqa: E731
         if args[0] == "rev-parse":
             ref = args[2][: -len("^{commit}")] if args[2].endswith("^{commit}") else args[2]
-            return cp(0 if self.ref_ok else 128, (self.rev_map.get(ref) or sha_of(ref)) + "\n", "" if self.ref_ok else "bad ref")
+            full = ref if re.fullmatch(r"[0-9a-f]{40}", ref) else sha_of(ref)
+            return cp(0 if self.ref_ok else 128, (self.rev_map.get(ref) or full) + "\n", "" if self.ref_ok else "bad ref")
         if args[0] == "ls-remote":
             if self.remote_fails:
                 return cp(128, "", "could not read from remote")
+            if self.remote_stdout is not None:
+                return cp(0, self.remote_stdout)
             return cp(0, f"{self.remote_sha or sha_of('origin/main')}\t{args[2]}\n")
         if args[0] == "ls-tree":
             return cp(0, slw.FAMILY_FILE_REL + "\n" if self.family_listed else "")
@@ -806,8 +815,10 @@ def test_a_stop_file_stops_and_so_does_the_timeout(tmp_path):
 WBW_WAVES = [["w0a", "w0b"], ["w1"], ["w2"]]
 
 
-def ok_report(run_id, state="complete"):
-    return {"assets": [{"asset_id": a, "state": state} for a in WBW_WAVES[int(run_id.replace("run", "").replace("r", ""))]]}
+def ok_report(run_id, state="complete", tp="lit", disposition="build", only=None):
+    wave = WBW_WAVES[int(run_id.replace("run", "").replace("r", ""))]
+    return {"assets": [{"asset_id": a, "state": state, "throughput_state": tp, "disposition": disposition}
+                       for a in wave if only is None or a in only]}
 
 
 def _wbw_plan():
@@ -859,7 +870,7 @@ def test_a_run_that_does_not_complete_stops_before_the_hook_and_the_next_wave(te
 
 def test_a_wave_whose_report_is_missing_or_empty_stops_it_is_not_a_pass():
     plan, _ = _wbw_plan()
-    for report in ({"assets": []}, {"assets": [], "error": "no rows"}, {"assets": [{"asset_id": "w0a", "state": "complete"}]}):
+    for report in ({"assets": []}, {"assets": [], "error": "no rows"}, ok_report("run0", only=["w0a"])):
         res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": "r"}, wait_terminal=lambda r: {"state": "completed"},
                                    wave_report=lambda r: report, hook=lambda *a: pytest.fail("hook must not run"))
         assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
@@ -868,7 +879,8 @@ def test_a_wave_whose_report_is_missing_or_empty_stops_it_is_not_a_pass():
 def test_a_wave_with_an_errored_asset_stops_even_if_the_run_says_completed():
     plan, _ = _wbw_plan()
     res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": "r"}, wait_terminal=lambda r: {"state": "completed"},
-                               wave_report=lambda r: {"assets": [{"asset_id": "w0a", "state": "error"}, {"asset_id": "w0b", "state": "complete"}]},
+                               wave_report=lambda r: {"assets": [{"asset_id": "w0a", "state": "error", "throughput_state": "error", "disposition": "build"},
+                                                                 {"asset_id": "w0b", "state": "complete", "throughput_state": "lit", "disposition": "build"}]},
                                hook=lambda *a: pytest.fail("hook must not run"))
     assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE" and res["waves"][0]["assets_not_complete"] == ["w0a"]
 
@@ -904,7 +916,8 @@ def test_cli_wave_by_wave_dispatches_one_run_per_wave_with_its_own_manifest(env,
     assert {a["asset_id"]: a["depends_on"] for a in second["assets"]}["a_two"] == ["a_one"]
 
 
-def jobfile(tmp_path, text="deadbeef", name="job_sha.txt"):
+def jobfile(tmp_path, text=None, name="job_sha.txt"):
+    text = sha_of("deadbeef") if text is None else text
     f = tmp_path / name
     f.write_text(text + "\n")
     return str(f)
@@ -927,8 +940,8 @@ def test_cli_wave_by_wave_needs_a_confirm_for_the_whole_plan_and_a_pause_dir(env
 T0 = datetime(2026, 10, 3, 6, 0, 0, tzinfo=timezone.utc)
 
 
-def _ra(asset, pos, start_s, end_s, state="complete", error=None, tp="lit"):
-    return {"asset_id": asset, "position": pos, "state": state, "error": error, "throughput_state": tp,
+def _ra(asset, pos, start_s, end_s, state="complete", error=None, tp="lit", disposition="build"):
+    return {"asset_id": asset, "position": pos, "state": state, "error": error, "throughput_state": tp, "disposition": disposition,
             "started_at": None if start_s is None else T0 + timedelta(seconds=start_s),
             "ended_at": None if end_s is None else T0 + timedelta(seconds=end_s)}
 
@@ -1359,7 +1372,7 @@ def test_the_job_sha_file_is_re_read_before_every_wave_and_a_redeploy_stops_the_
     jf = jobfile(tmp_path)
 
     def redeploy(done, summary, info):                   # the live job image changes while the operator is paused
-        pathlib.Path(jf).write_text("cafebabe\n")
+        pathlib.Path(jf).write_text(sha_of("cafebabe") + "\n")
         return True
     code, lines_, _, db = _full_wbw(env, tmp_path, hook=redeploy, job_file=jf)
     summ = lines_[-1]
@@ -1378,7 +1391,7 @@ def test_a_missing_or_empty_job_sha_file_refuses(env, tmp_path):
 
 def test_a_job_sha_file_naming_another_commit_refuses_at_start(env, tmp_path):
     repo, git = env
-    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path, text="cafebabe")), FakeDB([SMALL], READY), git)
+    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path, text=sha_of("cafebabe"))), FakeDB([SMALL], READY), git)
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_CHANGED"
 
 
@@ -1442,7 +1455,7 @@ def test_wave_by_wave_dispatch_failure_carries_the_run_id_and_the_warning(env, t
     db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")}, fail_on={"UPDATE build_runs SET state='failed'": 1})
     code, lines_, _, _ = _full_wbw(env, tmp_path, db=db, dispatch=lambda r: (_ for _ in ()).throw(RuntimeError("gcloud down")))
     ref = lines_[-1]["wave_by_wave"]["waves"][0]["refusals"][0]
-    assert code == slw.EXIT_CAMPAIGN_STOPPED and ref["code"] == "DISPATCH_FAILED" and ref["run_id"] in ref["terminalise_warning"]
+    assert code == slw.EXIT_DISPATCH_FAILED and ref["code"] == "DISPATCH_FAILED" and ref["run_id"] in ref["terminalise_warning"]
     assert "BLOCKS chart" in ref["terminalise_warning"]
 
 
@@ -1491,20 +1504,29 @@ def test_a_non_per_chart_asset_is_refused(env):
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "NON_PER_CHART_SCOPE"
 
 
-def test_skipped_is_not_success_unless_declared_and_is_always_reported():
+def test_a_no_delta_skip_is_not_success_unless_declared_and_is_always_reported():
     plan, _ = _wbw_plan()
+    skip = lambda r: ok_report(r, disposition="skip_no_delta")  # noqa: E731  (state='complete', as the runner writes it)
     res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
-                               wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: pytest.fail("no pause"))
+                               wave_report=skip, hook=lambda *a: pytest.fail("no pause"))
     assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
-    assert res["waves"][0]["assets_skipped"] == ["w0a", "w0b"] and res["waves"][0]["assets_not_complete"] == ["w0a", "w0b"]
+    w0 = res["waves"][0]
+    assert w0["assets_skipped"] == ["w0a", "w0b"] and w0["assets_not_complete"] == ["w0a", "w0b"]
+    assert "not in --declared-skips" in w0["not_complete_reasons"]["w0a"]
     partial = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
-                                   wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: pytest.fail("no pause"),
-                                   declared_skips=["w0a"])
+                                   wave_report=skip, hook=lambda *a: pytest.fail("no pause"), declared_skips=["w0a"])
     assert partial["waves"][0]["assets_not_complete"] == ["w0b"]
     ok = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
-                              wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: True,
-                              declared_skips=["w0a", "w0b", "w1", "w2"])
+                              wave_report=skip, hook=lambda *a: True, declared_skips=["w0a", "w0b", "w1", "w2"])
     assert ok["status"] == "ALL_WAVES_COMPLETED" and ok["waves"][0]["assets_skipped"] == ["w0a", "w0b"]
+
+
+def test_the_dead_skipped_state_is_not_a_success_signal():
+    plan, _ = _wbw_plan()
+    res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                               wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: pytest.fail("no pause"),
+                               declared_skips=["w0a", "w0b"])
+    assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE" and "not 'complete'" in res["waves"][0]["not_complete_reasons"]["w0a"]
 
 
 # ── L6: family names and the freshness of the family ref ──
@@ -1552,7 +1574,7 @@ def test_a_non_remote_family_ref_can_not_back_a_commit(tmp_path):
 def test_exit_codes_are_distinct_and_documented(monkeypatch, capsys):
     codes = [slw.EXIT_NO_DATABASE_URL, slw.EXIT_BAD_INPUT, slw.EXIT_DISPATCH_FAILED, slw.REFUSAL_EXIT_CODE,
              slw.EXIT_CAMPAIGN_STOPPED, slw.EXIT_UNEXPECTED]
-    assert codes == [1, 2, 3, 4, 5, 6]
+    assert codes == [1, 2, 3, 4, 5, 6] and slw.EXIT_INTERRUPTED == 7
     monkeypatch.delenv("DATABASE_URL", raising=False)
     assert slw.main(["--chart-id", CHART, "--assets", "a_one"]) == slw.EXIT_NO_DATABASE_URL
     flat = " ".join(slw.build_parser().format_help().split())
@@ -1578,3 +1600,365 @@ def test_commit_stays_refused_until_the_family_file_is_on_the_ref(tmp_path):
     db = FakeDB([SMALL], READY)
     code, out = run(args_for(repo, "a_one", "--commit", "--confirm", "x", mode="single-run"), db, git)
     assert code == slw.REFUSAL_EXIT_CODE and "FAMILY_FILE_MISSING" in [r["code"] for r in out["refusals"]] and db.log == []
+
+
+# ═════════════════════════ delta security review (MED-1 and the LOW fixes) ═════════════════════════
+
+# ── MED-1: a build_run_assets.state of 'complete' proves nothing about the build ──
+
+def _drive(report, *, declared=(), hook=lambda *a: True):
+    plan, _ = _wbw_plan()
+    return slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                                wave_report=report, hook=hook, declared_skips=declared)
+
+
+def test_the_good_throughput_states_are_exactly_the_runners_success_states():
+    sys.path.insert(0, str(REPO / "platform/python-sidecar"))
+    try:
+        from pipeline.orchestrator.runner import _SUCCESS_OUTCOMES
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"frozen runner not importable here: {exc.__class__.__name__}")
+    assert slw.GOOD_THROUGHPUT_STATES == frozenset({"lit", "mature", "dormant", "service_ok"})
+    assert slw.GOOD_THROUGHPUT_STATES == frozenset(_SUCCESS_OUTCOMES) - {"complete"}
+
+
+@pytest.mark.parametrize("tp", ["lit", "mature", "dormant", "service_ok"])
+def test_every_good_throughput_state_passes(tp):
+    assert _drive(lambda r: ok_report(r, tp=tp))["status"] == "ALL_WAVES_COMPLETED"
+
+
+@pytest.mark.parametrize("tp", ["incomplete", "error", "stale", "building", "absent", "", None])
+def test_state_complete_with_a_bad_or_missing_throughput_state_stops_the_campaign(tp):
+    res = _drive(lambda r: ok_report(r, tp=tp), hook=lambda *a: pytest.fail("no pause after a failed wave"))
+    assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
+    w0 = res["waves"][0]
+    assert w0["assets_not_complete"] == ["w0a", "w0b"] and len(res["waves"]) == 1
+    assert "asset_throughput.state" in w0["not_complete_reasons"]["w0a"] and repr(tp) in w0["not_complete_reasons"]["w0a"]
+
+
+def test_an_incomplete_asset_in_the_LAST_wave_stops_it_never_all_waves_completed():
+    # the next-wave dependency check can never see the last wave: the report is the only gate
+    res = _drive(lambda r: ok_report(r, tp="incomplete") if r == "run2" else ok_report(r))
+    assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE" and res["status"] != "ALL_WAVES_COMPLETED"
+    assert [w["status"] for w in res["waves"]] == ["COMPLETED", "COMPLETED", "ASSETS_NOT_COMPLETE"]
+    assert res["waves"][2]["assets_not_complete"] == ["w2"]
+
+
+@pytest.mark.parametrize("disposition", ["withheld_protected", "deferred_no_writer", "blocked_dependency", "out_of_domain", "dormant", None])
+def test_a_disposition_other_than_build_is_not_a_build(disposition):
+    res = _drive(lambda r: ok_report(r, disposition=disposition))
+    assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE" and "disposition" in res["waves"][0]["not_complete_reasons"]["w0a"]
+
+
+def test_a_missing_report_row_names_the_asset():
+    res = _drive(lambda r: ok_report(r, only=["w0a"]))
+    assert res["waves"][0]["not_complete_reasons"] == {"w0b": "no build_run_assets row was reported for this asset"}
+
+
+def test_the_report_sql_reads_the_disposition_and_the_report_carries_it():
+    assert "bra.disposition" in slw.RUN_ASSETS_SQL
+    rep = slw.asset_wall_time_report([_ra("a", 0, 0, 5, disposition="skip_no_delta")], [["a"]])
+    assert rep["assets"][0]["disposition"] == "skip_no_delta"
+
+
+def test_cli_wave_by_wave_stops_with_exit_5_on_an_incomplete_asset_the_runner_called_complete(env, tmp_path):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
+    real = db.respond
+
+    def respond(sql, params):
+        rows = real(sql, params)
+        if "FROM build_run_assets bra" in sql:
+            for r in rows:
+                r["throughput_state"] = "incomplete"
+        return rows
+    db.respond = respond
+    code, lines_, _ = run_all(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
+                                       "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"),
+                              db, git, dispatch=lambda r: "x", hook=lambda *a: pytest.fail("no pause"), sleep=lambda s: None)
+    assert code == slw.EXIT_CAMPAIGN_STOPPED and lines_[-1]["wave_by_wave"]["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
+    assert any(l["event"] == "wave_assets_not_complete" for l in lines_)
+    assert len(db.inserts("build_runs")) == 1
+
+
+# ── LOW: timeouts, no prompts, no stdin ──
+
+def test_git_never_prompts_never_reads_stdin_and_is_time_limited(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen.update(kw)
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+    monkeypatch.setattr(slw.subprocess, "run", fake_run)
+    cp = slw._git("/repo", ["ls-remote", "origin", "refs/heads/main"])
+    assert seen["timeout"] == slw.GIT_TIMEOUT_SECONDS and seen["stdin"] == subprocess.DEVNULL
+    assert seen["env"]["GIT_TERMINAL_PROMPT"] == "0"
+    assert cp.returncode == 124 and "timed out" in cp.stderr
+    # a timed-out ls-remote reads as unverified, never as fresh
+    st = slw.family_ref_status("/repo", "origin/main", git=lambda repo, args: cp if args[0] == "ls-remote" else
+                               subprocess.CompletedProcess(args, 0, "a" * 40 + "\n", ""))
+    assert st["freshness"] == "unverified"
+
+
+def test_gcloud_dispatch_has_a_timeout_no_stdin_and_the_same_command_as_the_existing_dispatcher(monkeypatch):
+    calls = []
+
+    def runner(cmd, **kw):
+        calls.append((cmd, kw))
+        return subprocess.CompletedProcess(cmd, 0, "executions/e1\n", "")
+    assert slw.dispatch_run_with_timeout(run_id="r1", project="p", region="g", job="j", run_command=runner) == "executions/e1"
+    cmd, kw = calls[0]
+    assert kw["timeout"] == slw.GCLOUD_TIMEOUT_SECONDS and kw["stdin"] == subprocess.DEVNULL
+    assert kw["env"]["CLOUDSDK_CORE_DISABLE_PROMPTS"] == "1"
+    old = _frozen_dispatcher()
+    monkeypatch.setattr(old.subprocess, "run", lambda c, **k: subprocess.CompletedProcess(c, 0, "x\n", "") if calls.append((c, k)) is None else None)
+    old.dispatch_run(run_id="r1", project="p", region="g", job="j")
+    assert calls[1][0] == cmd                                     # byte-for-byte the same gcloud command
+
+
+def test_gcloud_timeout_is_an_error_that_says_the_outcome_is_unknown():
+    def runner(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+    with pytest.raises(RuntimeError, match="outcome unknown"):
+        slw.dispatch_run_with_timeout(run_id="r", project="p", region="g", job="j", run_command=runner)
+    for rc, out, err in ((1, "", "denied"), (0, "", "")):
+        with pytest.raises(RuntimeError):
+            slw.dispatch_run_with_timeout(run_id="r", project="p", region="g", job="j",
+                                          run_command=lambda c, **k: subprocess.CompletedProcess(c, rc, out, err))
+
+
+def test_the_cli_dispatches_through_the_timeout_wrapper_by_default(env, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two"), FakeDB([SMALL], READY), git)
+    sent = []
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: sent.append(kw) or "executions/x")
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"),
+                    FakeDB([SMALL], READY), git)
+    assert code == 0 and sent and sent[0]["job"] == "brahma-build-pipeline-job"
+
+
+# ── LOW: every ls-remote line is parsed ──
+
+@pytest.mark.parametrize("stdout,expect", [
+    (f"{'1' * 40}\trefs/heads/main\n", "stale"),
+    (f"{'2' * 40}\trefs/heads/other\n{sha_of('origin/main')}\trefs/heads/main\n", "fresh"),       # tab/space tolerant, extra line ignored
+    (f"{sha_of('origin/main')}\trefs/heads/main\n{'3' * 40}\trefs/heads/main\n", "unverified"),  # two different tips
+    ("", "unverified"), ("garbage\n", "unverified"), (f"{'z' * 40}\trefs/heads/main\n", "unverified"),
+    (f"{sha_of('origin/main')}\trefs/heads/main\n{sha_of('origin/main')}\trefs/heads/main\n", "fresh"),
+])
+def test_ls_remote_output_is_parsed_line_by_line(stdout, expect):
+    git = FakeGit(remote_stdout=stdout)
+    assert slw.family_ref_status("/r", "origin/main", git=git)["freshness"] == expect
+
+
+# ── LOW: the job-sha file holds exactly one 40-hex sha ──
+
+@pytest.mark.parametrize("text", ["deadbeef", "", "\n", sha_of("x") + "\n" + sha_of("y"), sha_of("x").upper(), sha_of("x") + " trailing",
+                                  sha_of("x")[:39], "0x" + sha_of("x")[:38]])
+def test_a_job_sha_file_that_is_not_exactly_one_40_hex_sha_refuses_at_launch(env, tmp_path, text):
+    repo, git = env
+    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path, text=text)), FakeDB([SMALL], READY), git)   # single-run too
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_FILE_UNREADABLE"
+
+
+def test_a_malformed_job_sha_file_on_a_later_re_read_stops_the_campaign(env, tmp_path):
+    jf = jobfile(tmp_path)
+
+    def corrupt(done, summary, info):
+        pathlib.Path(jf).write_text("deadbeef\n")
+        return True
+    code, lines_, _, db = _full_wbw(env, tmp_path, hook=corrupt, job_file=jf)
+    assert lines_[-1]["wave_by_wave"]["waves"][1]["refusals"][0]["code"] == "JOB_SHA_FILE_UNREADABLE" and len(db.inserts("build_runs")) == 1
+
+
+def test_a_valid_job_sha_file_with_a_trailing_newline_is_accepted(env, tmp_path):
+    repo, git = env
+    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path)), FakeDB([SMALL], READY), git)
+    assert code == 0
+
+
+# ── LOW: a half-written .continue is not a false STOP ──
+
+def test_an_empty_or_partial_continue_file_is_re_polled_before_it_counts_as_wrong(tmp_path):
+    clock = Clock()
+    token = NEXT["continue_token"]
+    steps = iter([token[:10], token[:20], token])
+    state = {"phase": 0}
+
+    def sleeper(s):
+        clock.sleep(s)
+        if state["phase"] == 0:                       # the operator's editor creates the file empty ...
+            (tmp_path / "after-wave-0.continue").write_text("")
+            state["phase"] = 1
+        else:                                          # ... then fills it in over a few reads
+            (tmp_path / "after-wave-0.continue").write_text(next(steps))
+    assert slw.file_stop_hook(tmp_path, sleep=sleeper, monotonic=clock.mono)(0, {}, NEXT) is True
+
+
+def test_a_wrong_but_complete_token_stops_after_a_bounded_number_of_re_reads(tmp_path):
+    clock = Clock()
+    sleeps = []
+
+    def sleeper(s):
+        sleeps.append(s)
+        clock.sleep(s)
+        (tmp_path / "after-wave-0.continue").write_text("CONTINUE_WAVE_1_WRONGWRONG12")
+    hook = slw.file_stop_hook(tmp_path, settle_attempts=4, settle_seconds=0.5, sleep=sleeper, monotonic=clock.mono)
+    assert hook(0, {}, NEXT) is False
+    assert sleeps.count(0.5) == 3                       # attempts - 1 re-polls, then the verdict
+
+
+def test_a_stop_file_created_while_settling_wins(tmp_path):
+    clock = Clock()
+
+    def sleeper(s):
+        clock.sleep(s)
+        (tmp_path / "after-wave-0.continue").write_text("")
+        (tmp_path / "after-wave-0.stop").write_text("")
+    assert slw.file_stop_hook(tmp_path, sleep=sleeper, monotonic=clock.mono)(0, {}, NEXT) is False
+
+
+# ── LOW: private files ──
+
+def test_the_pause_dir_is_0700_and_the_pending_file_0600(tmp_path):
+    pd = tmp_path / "pause"
+    pd.mkdir(mode=0o755)
+    clock = Clock()
+
+    def sleeper(s):
+        clock.sleep(s)
+        (pd / "after-wave-0.stop").write_text("")
+    slw.file_stop_hook(pd, sleep=sleeper, monotonic=clock.mono)(0, {}, NEXT)
+    assert (pd.stat().st_mode & 0o777) == 0o700
+    assert ((pd / "after-wave-0.pending.json").stat().st_mode & 0o777) == 0o600
+    fresh = tmp_path / "new" / "deeper"
+    slw.file_stop_hook(fresh, sleep=sleeper2(fresh), monotonic=Clock().mono)(0, {}, NEXT)
+    assert (fresh.stat().st_mode & 0o777) == 0o700
+
+
+def sleeper2(pd):
+    def s(_):
+        (pd / "after-wave-0.stop").write_text("")
+    return s
+
+
+# ── LOW: wave-by-wave dispatch failure exits 3 (the documented code) ──
+
+def test_a_wave_by_wave_dispatch_failure_exits_3_like_single_run(env, tmp_path):
+    code, lines_, _, _ = _full_wbw(env, tmp_path, dispatch=lambda r: (_ for _ in ()).throw(RuntimeError("gcloud down")))
+    assert code == slw.EXIT_DISPATCH_FAILED == 3
+    assert lines_[-1]["wave_by_wave"]["status"] == "STOPPED_REFUSED"
+    readme = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    assert "| 3 | dispatch failed after the run was committed" in readme and "wave-by-wave too" in readme
+
+
+# ── LOW: out-of-set intermediates that may go stale ──
+
+def test_at_risk_intermediates_name_the_outside_asset_its_in_set_ancestor_and_who_needs_it():
+    deps = {"A": ["E"], "E": ["B"], "B": [], "C": ["F"], "F": ["ga_x"], "ga_x": []}
+    assert slw.at_risk_intermediates(["A", "B", "C"], deps) == [{"asset": "E", "depends_on_in_set": ["B"], "needed_by": ["A"]}]
+    deps2 = {"A": ["E1"], "E1": ["E2"], "E2": ["B"], "B": []}
+    assert slw.at_risk_intermediates(["A", "B"], deps2) == [
+        {"asset": "E1", "depends_on_in_set": ["B"], "needed_by": ["A"]}, {"asset": "E2", "depends_on_in_set": ["B"], "needed_by": ["A"]}]
+    assert slw.at_risk_intermediates(["A", "B"], {"A": ["E"], "B": []}) == []
+    assert slw.at_risk_intermediates(["A"], {"A": ["E"], "E": ["F"], "F": ["E"]}) == []          # a loop outside is finite
+
+
+def test_the_summary_lists_the_at_risk_intermediates_before_the_live_run(tmp_path):
+    rows = [row("x_a", ["ext_mid"]), row("x_b", [])]
+    digests = {r["asset_id"]: _hexdigest(r["asset_id"]) for r in rows}
+    repo = make_repo(tmp_path, digests)
+    git = FakeGit(family_text=family_doc(), deployed=digests)
+    db = FakeDB([rows], {"ext_mid": ("lit", "fresh", "data")}, closure={"ext_mid": ["x_b"]})
+    _, out = run(args_for(repo, "x_a,x_b"), db, git)
+    assert out["out_of_set_intermediates_at_risk"] == [{"asset": "ext_mid", "depends_on_in_set": ["x_b"], "needed_by": ["x_a"]}]
+    _, quiet = run(args_for(make_repo(tmp_path / "q", SMALL_DIGESTS), "a_one,a_two"), FakeDB([SMALL], READY), FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS))
+    assert quiet["out_of_set_intermediates_at_risk"] == []
+
+
+# ── LOW: a COMMIT whose outcome is unknown ──
+
+def test_a_connection_that_drops_during_commit_is_reported_as_outcome_unknown_never_as_not_committed(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], READY, fail_commit_nth=1)
+    code, lines_, _ = run_all(args_for(repo, "a_one,a_two", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"),
+                              db, git, dispatch=lambda r: pytest.fail("must not dispatch an unknown-outcome run"))
+    last = lines_[-1]
+    assert code == slw.EXIT_UNEXPECTED and last["commit_outcome_unknown"] is True and last["run_id"]
+    assert "COMMIT outcome unknown" in last["error"] and "ACTIVE_RUN" in last["error"] and last["run_id"] in last["error"]
+    assert last["warning"] != "no run was committed" and "no run was committed" not in json.dumps(last)
+
+
+def test_wave_by_wave_unknown_commit_stops_with_the_run_id(env, tmp_path):
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")}, fail_commit_nth=1)
+    code, lines_, _, _ = _full_wbw(env, tmp_path, db=db, hook=lambda *a: True)
+    w0 = lines_[-1]["wave_by_wave"]["waves"][0]
+    assert code == slw.EXIT_UNEXPECTED and w0["commit_outcome_unknown"] is True and w0["run_id"] in w0["error"]
+    assert "COMMIT outcome unknown" in w0["error"] and lines_[-1]["committed_runs"] == []
+
+
+# ── LOW: Ctrl-C / SIGTERM between commit and dispatch ──
+
+def test_an_interrupt_between_commit_and_dispatch_prints_the_run_id_and_the_chart_blocking_warning(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two"), FakeDB([SMALL], READY), git)
+
+    def interrupted(run_id):
+        raise KeyboardInterrupt
+    code, lines_, _ = run_all(args_for(repo, "a_one,a_two", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"),
+                              FakeDB([SMALL], READY), git, dispatch=interrupted)
+    last = lines_[-1]
+    run_id = last["committed_runs"][0]["run_id"]
+    assert code == slw.EXIT_INTERRUPTED == 7 and last["event"] == "interrupted"
+    assert run_id in last["warning"] and "BLOCKS chart" in last["warning"] and CHART in last["warning"]
+    assert any(l["event"] == "run_committed" for l in lines_[:-1])
+
+
+def test_an_interrupt_during_a_pause_lists_the_runs_so_far(env, tmp_path):
+    def ctrl_c(*a):
+        raise KeyboardInterrupt
+    code, lines_, _, _ = _full_wbw(env, tmp_path, hook=ctrl_c)
+    last = lines_[-1]
+    assert code == slw.EXIT_INTERRUPTED and len(last["committed_runs"]) == 1 and last["committed_runs"][0]["run_id"] in last["warning"]
+
+
+def test_an_interrupt_before_any_commit_does_not_claim_a_run_exists(env):
+    repo, git = env
+    db = FakeDB([SMALL], READY)
+    real = db.respond
+
+    def respond(sql, params):
+        if sql.startswith("SELECT ar.asset_id, ar.layer"):
+            raise KeyboardInterrupt
+        return real(sql, params)
+    db.respond = respond
+    code, out = run(args_for(repo, "a_one"), db, git)
+    assert code == slw.EXIT_INTERRUPTED and out["committed_runs"] == [] and "no run id is known" in out["warning"]
+
+
+def test_main_turns_sigterm_into_the_same_interrupt_path(monkeypatch):
+    import signal as _signal
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x/y")
+    monkeypatch.setattr(slw, "_psycopg_connect_factory", lambda url: None)
+    seen = {}
+    old = _signal.getsignal(_signal.SIGTERM)
+
+    def fake_run_cli(args, **kw):
+        seen["handler"] = _signal.getsignal(_signal.SIGTERM)
+        return 0
+    monkeypatch.setattr(slw, "run_cli", fake_run_cli)
+    try:
+        assert slw.main(["--chart-id", CHART, "--assets", "a_one"]) == 0
+        with pytest.raises(KeyboardInterrupt):
+            seen["handler"](_signal.SIGTERM, None)
+    finally:
+        _signal.signal(_signal.SIGTERM, old)
+
+
+def test_readme_and_help_document_exit_7_and_the_new_rules():
+    flat = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    assert "| 7 |" in flat and "GOOD_THROUGHPUT_STATES" in flat and "skip_no_delta" in flat
+    assert "exactly one 40-hex" in flat
+    assert "7 interrupted" in " ".join(slw.build_parser().format_help().split())

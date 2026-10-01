@@ -32,7 +32,7 @@ come from is read at `--deployed-sha`; `--deployed-job-sha` is the LIVE deployed
 launch (Exec's LC-1 gate). Use the image / `DEPLOY_SHA`, never a deploy run's `head_sha`: Trap 103, the deploy run's
 `head_sha` metadata can disagree with the real `DEPLOY_SHA`. The script resolves both to full commits and refuses
 (`JOB_SHA_MISMATCH`) unless they are the same commit, and prints the sha on every receipt. For wave-by-wave it re-reads
-`--job-sha-file` (a file the operator's gate keeps holding the live job sha; the script never calls gcloud) before every wave
+`--job-sha-file` (a file the operator's gate keeps holding exactly one 40-hex sha; validated at launch, in every mode, and at every re-read; the script never calls gcloud) before every wave
 and refuses (`JOB_SHA_CHANGED`) if the deployed image changed mid-campaign. A `--deployed-digests-file` has no provenance to
 check, so it works for a dry run only.
 
@@ -63,10 +63,11 @@ traceback, so the operator can always find a running run by its run_id.
 | 0 | dry run done, or every wave completed |
 | 1 | `DATABASE_URL` missing |
 | 2 | bad input, or an internal inconsistency (nothing dispatched) |
-| 3 | dispatch failed after the run was committed (it is terminalised, or the summary carries a chart-blocking warning) |
+| 3 | dispatch failed after the run was committed (it is terminalised, or the summary carries a chart-blocking warning); in wave-by-wave too (`DISPATCH_FAILED`) |
 | 4 | a gate refused (JSON `refusals`) |
 | 5 | wave-by-wave campaign stopped (refusal, operator stop, run or asset not complete) |
-| 6 | unexpected exception or database error (`committed_runs` lists every run committed so far) |
+| 6 | unexpected exception or database error (`committed_runs` lists every run committed so far). A connection that dropped during COMMIT is reported as `COMMIT outcome unknown` with the run id: run the `ACTIVE_RUN` check before relaunching (never read as "no run was committed") |
+| 7 | interrupted (SIGINT / SIGTERM): the summary lists the runs committed so far and the chart-blocking warning: one not yet dispatched is `planned` and BLOCKS the chart until dispatched or terminalised |
 
 ## What it builds
 
@@ -112,11 +113,26 @@ asset's `depends_on`, and wave boundaries are informational. The frozen runner i
   writes `after-wave-<k>.pending.json` (what finished, the wall times, the next wave) and continues only when
   `after-wave-<k>.continue` holds exactly the token in that file. The token is bound to the finished run: its run_id and
   its assets' end times, which exist only once the wave has ended, so no token in the dry-run output, the manifest or a
-  file written beforehand can release a wave. A `.continue` or `.stop` that already exists when the wave is reported
+  file written beforehand can release a wave. The pause directory is created 0700 and `pending.json` 0600. A `.continue` that exists but does not yet hold the token (empty, half-written) is re-read a few times before it counts as a wrong token. A `.continue` or `.stop` that already exists when the wave is reported
   finished, or any `after-wave-*` file in the pause directory at launch, is REFUSED (never deleted: remove it and
-  relaunch). `.stop`, a wrong token or the timeout stop. A run that does not end `completed`, or an asset not `complete`,
-  stops the campaign before the pause. `skipped` is not success unless the asset is named in `--declared-skips`; skipped
-  assets are always reported.
+  relaunch). `.stop`, a wrong token or the timeout stop. A run that does not end `completed` stops the campaign before the pause. An asset counts as built only when
+  `build_run_assets.state` is `complete` AND `asset_throughput.state` is in `GOOD_THROUGHPUT_STATES` (`lit`, `mature`,
+  `dormant`, `service_ok`: the runner's own success allowlist; the runner writes `complete` even for an `incomplete`
+  build, so it proves nothing alone) AND `disposition` is `build`. This holds for the LAST wave too, which no dependency
+  check ever re-reads. A no-delta skip (`disposition = skip_no_delta`, state `complete`) is not success unless the asset is
+  named in `--declared-skips`; skipped assets are always reported. Any other disposition stops the campaign.
+
+## Out-of-set intermediates
+
+The dry-run summary lists `out_of_set_intermediates_at_risk`: outside assets E that a requested asset depends on and that
+themselves depend on a requested asset. Rebuilding that asset can make E's receipt stale, and the dependent's wave would then
+refuse with `DEPENDENCY_NOT_READY`: read the list before the live run.
+
+## Time limits
+
+Every `git` call (including `git ls-remote`, every output line parsed) and the `gcloud` dispatch run with a timeout, no stdin
+and no prompts. A gcloud timeout means the dispatch outcome is unknown: the planned run is terminalised (the runner refuses a
+run that is not planned/running).
 
 ## Wall-time report
 

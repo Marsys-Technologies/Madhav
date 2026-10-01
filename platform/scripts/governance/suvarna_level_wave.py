@@ -80,6 +80,7 @@ import importlib.util
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -790,10 +791,22 @@ EXIT_DISPATCH_FAILED = 3
 REFUSAL_EXIT_CODE = 4
 EXIT_CAMPAIGN_STOPPED = 5
 EXIT_UNEXPECTED = 6
+EXIT_INTERRUPTED = 7        # SIGINT / SIGTERM: the summary lists every run committed so far and the BLOCKS-chart warning
 
 
 class LevelWaveError(Exception):
     """Bad input or an internal inconsistency; nothing was dispatched."""
+
+
+class CommitOutcomeUnknown(Exception):
+    """The connection failed during COMMIT: the run may or may not exist. Never reported as "no run was committed"."""
+
+    def __init__(self, run_id: str, chart_id: str, cause: BaseException):
+        self.run_id, self.chart_id = run_id, chart_id
+        self.detail = (f"COMMIT outcome unknown for run {run_id} (chart {chart_id}): the connection failed during COMMIT "
+                       f"({type(cause).__name__}: {cause}). Run the ACTIVE_RUN check before any relaunch: a planned/running "
+                       f"run for the chart means it committed (find it by run_id), none means it did not.")
+        super().__init__(self.detail)
 
 
 class LevelWaveRefusal(LevelWaveError):
@@ -834,8 +847,19 @@ def parse_asset_scope(values: Sequence[str]) -> list[str]:
 # Family refusals (Pravaha gochara family; never fail open)
 # ---------------------------------------------------------------------------------------------
 
+GIT_TIMEOUT_SECONDS = 30
+GCLOUD_TIMEOUT_SECONDS = 120
+
+
 def _git(repo: str, args: Sequence[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=False)
+    """git in `repo`: never prompts (GIT_TERMINAL_PROMPT=0, stdin closed) and never hangs (timeout). A timeout reads as a
+    failed command (rc 124), which every caller already treats as a refusal or as `unverified`."""
+    try:
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=False,
+                              timeout=GIT_TIMEOUT_SECONDS, stdin=subprocess.DEVNULL,
+                              env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(list(args), 124, "", f"git {args[0]} timed out after {GIT_TIMEOUT_SECONDS}s")
 
 
 def load_family_info(repo: str, ref: str = "origin/main", *, git=_git) -> dict:
@@ -963,6 +987,40 @@ def derive_waves(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]])
     return out
 
 
+def at_risk_intermediates(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> list[dict]:
+    """Out-of-set assets E that an in-set asset A depends on (directly or through other outside assets) and that themselves
+    depend on an in-set asset B. Rebuilding B can make E's receipt stale, and A's DEPENDENCY_NOT_READY at its own wave then
+    follows: the operator sees the risk in the dry run, before the live run. Needs the out-of-set rows in `depends_on`."""
+    inset = set(assets)
+    memo: dict[str, set[str]] = {}
+
+    def below(e: str, stack: frozenset = frozenset()) -> set[str]:
+        if e in memo:
+            return memo[e]
+        found: set[str] = set()
+        for d in depends_on.get(e) or ():
+            if d in inset:
+                found.add(d)
+            elif d not in stack and d != e:
+                found |= below(d, stack | {e})
+        memo[e] = found
+        return found
+
+    needed_by: dict[str, set[str]] = {}
+    for a in sorted(inset):
+        seen: set[str] = set()
+        todo = [d for d in (depends_on.get(a) or ()) if d not in inset]
+        while todo:
+            e = todo.pop()
+            if e in seen:
+                continue
+            seen.add(e)
+            needed_by.setdefault(e, set()).add(a)
+            todo.extend(d for d in (depends_on.get(e) or ()) if d not in inset)
+    return [{"asset": e, "depends_on_in_set": sorted(below(e)), "needed_by": sorted(by)}
+            for e, by in sorted(needed_by.items()) if below(e)]
+
+
 def external_dependencies(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> dict[str, list[str]]:
     """{asset: sorted declared dependencies that are NOT in the requested set} (only assets that have any)."""
     inset = set(assets)
@@ -1074,15 +1132,17 @@ def resolve_commit(repo: str, ref: str, *, git=_git, code: str = "JOB_SHA_UNRESO
 
 
 def read_job_sha_file(path: str | Path) -> str:
-    """The live deployed JOB image sha an operator tool (Exec's LC-1 gate) keeps in a file: its first non-blank line.
-    Unreadable or empty refuses (fail closed)."""
+    """The live deployed JOB image sha an operator tool (Exec's LC-1 gate) keeps in a file. The file must hold exactly one
+    40-hex commit sha (a trailing newline is fine): anything else, empty included, refuses (fail closed)."""
     try:
-        for line in Path(path).read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                return line.strip()
+        text = Path(path).read_text(encoding="utf-8")
     except (OSError, ValueError) as exc:
         raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE", "detail": f"{path}: {exc}"}]) from exc
-    raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE", "detail": f"{path} holds no sha"}])
+    sha = text.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha) or len(text.strip().splitlines()) != 1:
+        raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE",
+                                 "detail": f"{path} must hold exactly one 40-hex commit sha, got {text.strip()[:60]!r}"}])
+    return sha
 
 
 def check_job_sha_binding(repo: str, *, inventory_sha: str, job_sha: str, git=_git) -> dict:
@@ -1107,18 +1167,29 @@ def recheck_job_sha(repo: str, *, pinned_job_sha: str, job_sha_file: str | Path,
 
 
 def family_ref_status(repo: str, ref: str, *, git=_git) -> dict:
-    """The sha of the family ref read, and whether it is the remote's tip (`git ls-remote`, read-only). For a ref that is
-    not `<remote>/<branch>`, or when the remote can not be asked, freshness is not_a_remote_ref / unverified."""
+    """The sha of the family ref read, and whether it is the remote's tip (`git ls-remote`, read-only, time-limited). Every
+    output line is parsed: the one for refs/heads/<branch> must be present and a 40-hex sha. For a ref that is not
+    `<remote>/<branch>`, or when the remote can not be asked or answers unexpectedly, freshness is not_a_remote_ref /
+    unverified."""
     sha = resolve_commit(repo, ref, git=git, code="FAMILY_FILE_UNREADABLE")
     m = re.fullmatch(r"([A-Za-z0-9_.-]+)/(.+)", ref)
     if not m:
         return {"ref": ref, "sha": sha, "freshness": "not_a_remote_ref"}
-    cp = git(str(repo), ["ls-remote", m.group(1), f"refs/heads/{m.group(2)}"])
-    parts = (cp.stdout or "").split()
-    if cp.returncode != 0 or not parts:
+    want = f"refs/heads/{m.group(2)}"
+    cp = git(str(repo), ["ls-remote", m.group(1), want])
+    if cp.returncode != 0:
         return {"ref": ref, "sha": sha, "freshness": "unverified",
                 "detail": f"git ls-remote {m.group(1)} failed ({(cp.stderr or '').strip()[:160]})"}
-    return {"ref": ref, "sha": sha, "remote_sha": parts[0], "freshness": "fresh" if parts[0] == sha else "stale"}
+    tips = set()
+    for line in (cp.stdout or "").splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1] == want and re.fullmatch(r"[0-9a-f]{40}", parts[0]):
+            tips.add(parts[0])
+    if len(tips) != 1:
+        return {"ref": ref, "sha": sha, "freshness": "unverified",
+                "detail": f"git ls-remote {m.group(1)} returned {len(tips)} distinct tips for {want}"}
+    remote = next(iter(tips))
+    return {"ref": ref, "sha": sha, "remote_sha": remote, "freshness": "fresh" if remote == sha else "stale"}
 
 
 def family_ref_refusals(status: Mapping[str, Any], *, committing: bool) -> list[dict]:
@@ -1360,12 +1431,17 @@ def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: s
         if footprint_report is not None:
             receipt["footprint"] = footprint_report
         if commit:
-            conn.commit()
+            try:
+                conn.commit()
+            except Exception as exc:  # noqa: BLE001 -- the outcome of a failed COMMIT is unknown, never "not committed"
+                raise CommitOutcomeUnknown(run_id, chart_id, exc) from exc
             if on_commit is not None:
                 on_commit(receipt)
         else:
             conn.rollback()
         return receipt
+    except CommitOutcomeUnknown:
+        raise
     except BaseException:
         conn.rollback()
         raise
@@ -1472,16 +1548,27 @@ def check_pause_dir_clean(pause_dir: str | Path) -> None:
                                            "(or use a fresh --pause-dir) and relaunch."}])
 
 
+def _write_private(path: Path, text: str) -> None:
+    """Write `text` to `path` with mode 0600 from the first byte."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.chmod(path, 0o600)
+
+
 def file_stop_hook(pause_dir: str | Path, *, poll_seconds: float = 5.0, timeout_seconds: float = 6 * 3600.0,
-                   sleep=time.sleep, monotonic=time.monotonic):
+                   settle_attempts: int = 5, settle_seconds: float = 1.0, sleep=time.sleep, monotonic=time.monotonic):
     """A hook(wave_done, summary, next_info) -> bool. It first REFUSES if this wave's .continue / .stop already exist
-    (stale, or written before the wave finished); then writes <dir>/after-wave-<k>.pending.json (what finished, the wall
-    times, the next wave and its run-bound token) and waits for <dir>/after-wave-<k>.continue whose text is exactly
-    next_info["continue_token"]; .stop, a wrong token or the timeout all STOP (False). Nothing continues by default."""
+    (stale, or written before the wave finished); then writes <dir>/after-wave-<k>.pending.json (mode 0600, in a 0700
+    directory: what finished, the wall times, the next wave and its run-bound token) and waits for
+    <dir>/after-wave-<k>.continue whose text is exactly next_info["continue_token"]. A .continue that exists but does not
+    (yet) hold the token (empty, half-written) is re-read `settle_attempts` times, `settle_seconds` apart, before it counts
+    as a wrong token; .stop, a wrong token or the timeout all STOP (False). Nothing continues by default."""
     root = Path(pause_dir)
 
     def hook(wave_done: int, summary: Mapping[str, Any], next_info: Mapping[str, Any]) -> bool:
-        root.mkdir(parents=True, exist_ok=True)
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(root, 0o700)
         stem = root / f"after-wave-{wave_done}"
         pre = [p.name for p in (stem.with_suffix(".continue"), stem.with_suffix(".stop")) if p.exists()]
         if pre:
@@ -1489,18 +1576,24 @@ def file_stop_hook(pause_dir: str | Path, *, poll_seconds: float = 5.0, timeout_
                                      "detail": f"{pre} existed before wave {wave_done} was reported finished: refused. "
                                                "Remove them and relaunch; the campaign stops here."}])
         token = next_info["continue_token"]
-        stem.with_suffix(".pending.json").write_text(
-            json.dumps({"wave_done": wave_done, "summary": summary, "next": dict(next_info), "continue_token": token,
-                        "to_continue": f"write the token into {stem.with_suffix('.continue')}",
-                        "to_stop": f"create {stem.with_suffix('.stop')}"}, sort_keys=True, default=str, indent=1),
-            encoding="utf-8")
+        _write_private(stem.with_suffix(".pending.json"), json.dumps(
+            {"wave_done": wave_done, "summary": summary, "next": dict(next_info), "continue_token": token,
+             "to_continue": f"write the token into {stem.with_suffix('.continue')}",
+             "to_stop": f"create {stem.with_suffix('.stop')}"}, sort_keys=True, default=str, indent=1))
         deadline = monotonic() + timeout_seconds
         while True:
             if stem.with_suffix(".stop").exists():
                 return False
             go = stem.with_suffix(".continue")
             if go.exists():
-                return go.read_text(encoding="utf-8").strip() == token
+                for attempt in range(settle_attempts):
+                    if stem.with_suffix(".stop").exists():
+                        return False
+                    if go.read_text(encoding="utf-8").strip() == token:
+                        return True
+                    if attempt + 1 < settle_attempts:
+                        sleep(settle_seconds)
+                return False
             if monotonic() >= deadline:
                 return False
             sleep(poll_seconds)
@@ -1528,14 +1621,37 @@ def wait_for_terminal_run(connect, run_id: str, *, poll_seconds: float, timeout_
         sleep(poll_seconds)
 
 
+# asset_throughput.state values that mean "finished successfully": exactly the success states of the runner's own allowlist
+# (runner._SUCCESS_OUTCOMES minus the build_run_assets literal 'complete'). Anything else, 'incomplete' included, is a failure.
+GOOD_THROUGHPUT_STATES = frozenset({"lit", "mature", "dormant", "service_ok"})
+
+
+def _not_built_reason(row: Mapping[str, Any] | None, declared_skip: bool) -> str | None:
+    """Why an asset of a finished wave does not count as built, or None when it does."""
+    if row is None:
+        return "no build_run_assets row was reported for this asset"
+    if row.get("state") != "complete":
+        return f"build_run_assets.state is {row.get('state')!r}, not 'complete'"
+    tp = row.get("throughput_state")
+    if tp not in GOOD_THROUGHPUT_STATES:
+        return (f"asset_throughput.state is {tp!r} (the runner marks build_run_assets 'complete' even for an incomplete "
+                f"build); accepted: {sorted(GOOD_THROUGHPUT_STATES)}")
+    disposition = row.get("disposition")
+    if disposition == "skip_no_delta":
+        return None if declared_skip else "skip_no_delta (nothing was rebuilt) and the asset is not in --declared-skips"
+    if disposition != "build":
+        return f"disposition is {disposition!r}, not 'build'"
+    return None
+
+
 def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, wave_report, hook,
                      declared_skips: Iterable[str] = (), emit=None) -> dict:
     """Drive the waves one run at a time. `dispatch_wave(i)` inserts+dispatches wave i (it re-checks dependencies lit+fresh
     in its own transaction, so wave i+1 only starts once wave i's assets are lit+fresh), `wait_terminal(run_id)` blocks,
     `wave_report(run_id)` returns the wall-time report, `hook(done, summary, next)` is the operator pause.
     Stops at the first wave whose run is not `completed`, whose dispatch refuses or errors, whose assets are not all
-    `complete`, or whose hook says stop. `skipped` is NOT success unless the asset is in `declared_skips`; every skipped
-    asset is reported either way. Any exception (a database error included) stops the campaign with STOPPED_ERROR and the
+    `complete` by the strict test in _not_built_reason, or whose hook says stop. A no-delta skip (disposition
+    'skip_no_delta') is NOT success unless the asset is in `declared_skips`; every skipped asset is reported either way. Any exception (a database error included) stops the campaign with STOPPED_ERROR and the
     run id, never an escaped traceback. `emit(event, **fields)` is called at every dispatch and wave end."""
     emit = emit or (lambda event, **fields: None)
     declared = set(declared_skips)
@@ -1554,6 +1670,10 @@ def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, w
             entry.update(status="REFUSED", refusals=exc.refusals)
             emit("wave_refused", wave=i, refusals=exc.refusals)
             return stop("STOPPED_REFUSED")
+        except CommitOutcomeUnknown as exc:
+            entry.update(status="ERROR", error=exc.detail, commit_outcome_unknown=True, run_id=exc.run_id)
+            emit("wave_error", wave=i, run_id=exc.run_id, error=exc.detail, stage="commit", commit_outcome_unknown=True)
+            return stop("STOPPED_ERROR")
         except Exception as exc:  # noqa: BLE001 -- a database error must still end in a JSON summary
             entry.update(status="ERROR", error=f"{type(exc).__name__}: {exc}")
             emit("wave_error", wave=i, error=entry["error"], stage="dispatch")
@@ -1576,16 +1696,24 @@ def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, w
         if terminal["state"] != "completed":
             entry["status"] = "RUN_NOT_COMPLETED"
             return stop("STOPPED_RUN_NOT_COMPLETED")
-        # Every asset of the wave must be reported `complete`. An asset with no report row, or no report at all, is NOT
-        # complete: a missing reading never passes as a good one. `skipped` passes only when declared.
-        got = {a["asset_id"]: a.get("state") for a in report.get("assets", [])}
-        skipped = sorted(a for a in wave["assets"] if got.get(a) == "skipped")
+        # An asset of the wave counts as built only when ALL of these hold, read from the database after the run:
+        #   build_run_assets.state == 'complete' (the runner writes that literal for every terminal outcome, the
+        #     'incomplete' of SATYA-DIPA included -- so it proves nothing alone);
+        #   asset_throughput.state in GOOD_THROUGHPUT_STATES (what the writer path actually computed; none/NULL fails:
+        #     every asset here is writer-backed);
+        #   disposition == 'build', or 'skip_no_delta' for an asset named in `declared_skips` (a no-delta skip rebuilt
+        #     nothing; any other disposition -- withheld, deferred, blocked, dormant -- is not a build).
+        # A missing report row, or no report at all, fails every asset. The reason is recorded per asset.
+        got = {a["asset_id"]: a for a in report.get("assets", [])}
+        skipped = sorted(a for a in wave["assets"] if (got.get(a) or {}).get("disposition") == "skip_no_delta")
         if skipped:
             entry["assets_skipped"] = skipped
-        bad = [a for a in wave["assets"] if not (got.get(a) == "complete" or (got.get(a) == "skipped" and a in declared))]
-        if bad:
+        reasons = {a: why for a in wave["assets"] if (why := _not_built_reason(got.get(a), a in declared))}
+        if reasons:
             entry["status"] = "ASSETS_NOT_COMPLETE"
-            entry["assets_not_complete"] = bad
+            entry["assets_not_complete"] = sorted(reasons)
+            entry["not_complete_reasons"] = {a: reasons[a] for a in sorted(reasons)}
+            emit("wave_assets_not_complete", wave=i, run_id=run_id, reasons=entry["not_complete_reasons"])
             return stop("STOPPED_ASSETS_NOT_COMPLETE")
         entry["status"] = "COMPLETED"
         if i + 1 < len(per_wave):
@@ -1616,7 +1744,7 @@ def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, w
 # ---------------------------------------------------------------------------------------------
 
 RUN_ASSETS_SQL = """
-SELECT bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error,
+SELECT bra.asset_id, bra.position, bra.state, bra.disposition, bra.started_at, bra.ended_at, bra.error,
        t.state AS throughput_state, t.last_built_at
   FROM build_run_assets bra
   JOIN build_runs br ON br.id = bra.run_id
@@ -1645,7 +1773,7 @@ def asset_wall_time_report(rows: Sequence[Mapping[str, Any]], waves: Sequence[Se
         s, e = _as_dt(r.get("started_at")), _as_dt(r.get("ended_at"))
         wall = (e - s).total_seconds() if s is not None and e is not None and e >= s else None
         entry = {"asset_id": r["asset_id"], "position": r.get("position"), "wave": wave_of.get(r["asset_id"]),
-                 "state": r.get("state"), "started_at": s.isoformat() if s else None,
+                 "state": r.get("state"), "disposition": r.get("disposition"), "started_at": s.isoformat() if s else None,
                  "ended_at": e.isoformat() if e else None, "wall_seconds": wall, "error": r.get("error"),
                  "throughput_state": r.get("throughput_state")}
         assets.append(entry)
@@ -1702,7 +1830,9 @@ HELP_EPILOG = (
     "a split family, an unreadable or stale family file, a non-per_chart asset, an active run on the chart, stale hook files.\n\n"
     "Output is JSON lines, flushed per event; the last line is the summary. Exit codes: 0 ok / dry run done; 1 DATABASE_URL "
     "missing; 2 bad input; 3 dispatch failed after commit (see the warning in the summary); 4 a gate refused; 5 wave-by-wave "
-    "campaign stopped; 6 unexpected exception or database error (the summary lists every run committed so far)."
+    "campaign stopped; 6 unexpected exception or database error (the summary lists every run committed so far; a COMMIT "
+    "that failed mid-way is reported as outcome unknown); 7 interrupted (SIGINT/SIGTERM; the summary lists the runs committed "
+    "so far and the chart-blocking warning)."
 )
 
 
@@ -1731,9 +1861,9 @@ def build_parser() -> argparse.ArgumentParser:
                    "(dry run only: its provenance can not be bound to a job sha)")
     p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's "
                    "head_sha), read by the operator at launch; must equal --deployed-sha")
-    p.add_argument("--job-sha-file", help="a file the operator's gate keeps holding the live deployed job sha; re-read before "
-                   "every wave (required for wave-by-wave --commit)")
-    p.add_argument("--declared-skips", default="", help="comma list of assets whose `skipped` state counts as success")
+    p.add_argument("--job-sha-file", help="a file the operator's gate keeps holding exactly the live deployed job sha (40 hex); "
+                   "validated at launch and re-read before every wave (required for wave-by-wave --commit)")
+    p.add_argument("--declared-skips", default="", help="comma list of assets whose no-delta skip (disposition skip_no_delta) counts as success")
     p.add_argument("--repo", default=str(REPO_ROOT))
     p.add_argument("--family-ref", default="origin/main")
     p.add_argument("--commit", action="store_true", help="commit the run(s); omission is a rollback-only dry run")
@@ -1764,6 +1894,27 @@ def precheck_external(connect, chart_id: str, external: Mapping[str, Sequence[st
         conn.rollback()
     finally:
         conn.close()
+
+
+def dispatch_run_with_timeout(*, run_id: str, project: str, region: str, job: str, run_command=subprocess.run,
+                              timeout: float = GCLOUD_TIMEOUT_SECONDS) -> str:
+    """The same `gcloud run jobs execute ... --async` command dispatch_frozen_rebuild.dispatch_run issues, with a timeout, no
+    stdin and no prompts. After a timeout the execution may or may not have started: the caller terminalises the planned run
+    (the runner refuses a run that is not planned/running), so a late start can not build anything."""
+    try:
+        result = run_command(
+            ["gcloud", "run", "jobs", "execute", job, f"--project={project}", f"--region={region}",
+             f"--args=--run-id,{run_id}", "--async", "--format=value(metadata.name)"],
+            capture_output=True, check=False, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
+            env={**os.environ, "CLOUDSDK_CORE_DISABLE_PROMPTS": "1"})
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"gcloud timed out after {timeout}s: dispatch outcome unknown") from exc
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout or "unknown gcloud error").strip()[:1000])
+    execution = result.stdout.strip()
+    if not execution:
+        raise RuntimeError("gcloud returned no execution name")
+    return execution
 
 
 def _terminalise(connect, run_id: str, error: str, frozen=None) -> None:
@@ -1797,6 +1948,15 @@ def _safe_wall_time_report(connect, run_id: str, waves) -> dict:
         return {"assets": [], "error": str(exc)}
 
 
+def _interrupt_warning(committed: Sequence[Mapping[str, Any]], chart_id: str) -> str:
+    if not committed:
+        return "interrupted before any COMMIT was reported: no run id is known (if the interrupt hit during a COMMIT, run the ACTIVE_RUN check)"
+    ids = ", ".join(r["run_id"] for r in committed)
+    return (f"interrupted after COMMIT: run(s) {ids} exist. One not yet dispatched is committed in state 'planned' and BLOCKS "
+            f"chart {chart_id} until it is dispatched or terminalised; one already dispatched may be running. Find each by "
+            "run_id before any relaunch.")
+
+
 def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time.sleep, monotonic=time.monotonic,
             dispatch=None, hook=None) -> int:
     """The whole command, with every outside contact injected (database, git, gcloud, the operator hook). Output is JSON
@@ -1813,6 +1973,14 @@ def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time
     except LevelWaveError as exc:
         _emit(out, "error", error=str(exc), committed_runs=committed)
         return EXIT_BAD_INPUT
+    except CommitOutcomeUnknown as exc:
+        _emit(out, "error", unexpected=True, commit_outcome_unknown=True, run_id=exc.run_id, chart_id=exc.chart_id,
+              error=exc.detail, committed_runs=committed, warning=exc.detail)
+        return EXIT_UNEXPECTED
+    except KeyboardInterrupt:
+        _emit(out, "interrupted", interrupted=True, committed_runs=committed,
+              warning=_interrupt_warning(committed, args.chart_id))
+        return EXIT_INTERRUPTED
     except Exception as exc:  # noqa: BLE001 -- never an escaped traceback: the operator must see the run ids
         _emit(out, "error", unexpected=True, error=f"{type(exc).__name__}: {exc}", committed_runs=committed,
               warning=("runs listed in committed_runs exist and may be planned/running: find them by run_id before any "
@@ -1880,6 +2048,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
                       "confirm_token": expected_confirmation(w["manifest_digest"], len(w["assets"]))}
                      for w in plan["per_wave"]],
         "external_dependencies": plan["external_dependencies"], "runtime_estimate": estimate, "committed": False,
+        "out_of_set_intermediates_at_risk": at_risk_intermediates(assets, {**outside, **{a: plan["rows"][a].get("depends_on") or [] for a in assets}}),
         "committed_runs": committed,
     }
     if args.commit and args.confirm != token_full:
@@ -1896,7 +2065,7 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
 
     send = None
     if args.commit:
-        send = dispatch or (lambda run_id: frozen.dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job))
+        send = dispatch or (lambda run_id: dispatch_run_with_timeout(run_id=run_id, project=args.project, region=args.region, job=args.job))
 
     def send_or_terminalise(receipt) -> str | None:
         """Dispatch a committed run; on failure terminalise it (or return the chart-blocking warning). Returns the warning
@@ -1964,6 +2133,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
     _emit(out, "summary", **summary)
     if result["status"] == "ALL_WAVES_COMPLETED":
         return 0
+    last_refusals = (result["waves"][-1].get("refusals") or []) if result["waves"] else []
+    if result["status"] == "STOPPED_REFUSED" and any(r.get("code") == "DISPATCH_FAILED" for r in last_refusals):
+        return EXIT_DISPATCH_FAILED          # documented: dispatch failed after the run was committed (3), like single-run
     return EXIT_UNEXPECTED if result["status"] == "STOPPED_ERROR" else EXIT_CAMPAIGN_STOPPED
 
 
@@ -1973,6 +2145,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not database_url:
         print("ERROR: DATABASE_URL required", file=sys.stderr)
         return EXIT_NO_DATABASE_URL
+    def _term(signum, frame):  # noqa: ARG001
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, _term)
     return run_cli(args, connect=_psycopg_connect_factory(database_url))
 
 
