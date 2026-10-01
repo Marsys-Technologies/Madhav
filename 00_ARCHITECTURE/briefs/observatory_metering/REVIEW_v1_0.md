@@ -2,7 +2,7 @@
 
 2026-09-29. Local review evidence only; no hosted acceptance asserted.
 
-Migration guard: revised migration 1126 judged safe after runner-owned transaction, truncate protection, RLS/role grants and pricing constraints were corrected. Static re-review; PostgreSQL runtime evidence belongs to the root's disposable database tests.
+Migration guard: the SQL originally reviewed as migration 1126 was judged safe after runner-owned transaction, truncate protection, RLS/role grants and pricing constraints were corrected. It was renumbered to 1202 and moved to the active migration directory on 2026-10-01; the SQL body is unchanged. The exact protected production execution path is separately reviewed and tested in this release.
 
 Whole-change code/security reviewer: four findings on incomplete input partitions, PostgreSQL cursor precision, fallback turn lineage, and timeout classification were fixed. The first re-review independently passed 63/63 focused tests and found no remaining HIGH or MED issue. Final bounded review of atomic catalog append, unsupported-tariff applicability and large integer UI formatting independently passed 21/21 focused tests; LGTM, no new HIGH or MED findings.
 

@@ -130,7 +130,11 @@
         "platform/scripts/observatory/**",
         "platform/docs/runbooks/observatory-metering.md",
         "platform/migrations/1126_ai_metering_ledger.sql",
-        "platform/supabase/migrations/1202_ai_metering_ledger.sql"
+        "platform/supabase/migrations/1202_ai_metering_ledger.sql",
+        "platform/scripts/migrate.ts",
+        "platform/scripts/__tests__/dispatch_gate.test.ts",
+        "platform/tests/unit/jataka_schema_capability.test.ts",
+        "platform/Dockerfile"
       ],
       "must_not_touch": [
         "01_FACTS_LAYER/**",
@@ -147,6 +151,6 @@
     "mirror_pair_freshness_check": [],
     "native_directive_obligations": [],
     "red_team_due": true,
-    "notes": "Owner explicitly authorized the previously proposed commit/PR/merge/deploy/migration/flag/verification path on 2026-10-01. All prior canonical reading fingerprints remain byte-identical. Existing worktree is isolated; no provider call without bounded justification. This release scope supersedes the prior source-only scope for this exact campaign."
+    "notes": "Owner explicitly authorized the previously proposed commit/PR/merge/deploy/migration/flag/verification path on 2026-10-01. All prior canonical reading fingerprints remain byte-identical. Existing worktree is isolated; no provider call without bounded justification. This release scope supersedes the prior source-only scope for this exact campaign. Scope amended in-session to include the existing protected migration runner and exact workflow-contract tests; these are required because production withholds public-schema CREATE from the routine role. Scope also includes the container build flag so customer navigation appears in the deployed bundle."
   }
 }

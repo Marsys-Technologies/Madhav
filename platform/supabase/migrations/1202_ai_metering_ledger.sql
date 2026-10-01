@@ -1,5 +1,5 @@
--- Migration 1126: immutable AI attempt ledger and rate evidence
--- Created: 2026-09-29. Local candidate; never applied to production by this task.
+-- Migration 1202: immutable AI attempt ledger and rate evidence
+-- Created: 2026-09-29. Apply only through the exact protected deploy window.
 -- Transaction belongs to the migration runner, including tracking.
 
 CREATE TABLE IF NOT EXISTS ai_metering_attempts (

@@ -25,7 +25,7 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
    CREATE TABLE llm_usage_events(id uuid PRIMARY KEY, user_id text,conversation_id uuid,prompt_id text,parent_prompt_id text,channel text,
    provider text,model text,pipeline_stage text,started_at timestamptz,finished_at timestamptz,status text,parameters jsonb,
    input_tokens bigint,output_tokens bigint,cache_read_tokens bigint,cache_write_tokens bigint,reasoning_tokens bigint,provider_request_id text,computed_cost_usd numeric)`)
-  const sql=await readFile('migrations/1126_ai_metering_ledger.sql','utf8')
+  const sql=await readFile('supabase/migrations/1202_ai_metering_ledger.sql','utf8')
   await client.query('BEGIN');await client.query(sql);await client.query('COMMIT')
   await client.query('BEGIN');await client.query(sql);await client.query('COMMIT')
  },30000)

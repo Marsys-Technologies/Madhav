@@ -1,12 +1,11 @@
 # Observatory consumption ledger
 
-Local implementation candidate, 2026-09-29. This document does not authorize deployment, a production migration, provider charges, or customer billing.
+Release candidate, updated 2026-10-01. Production operations require the active scoped coordination lease and the reviewed protected release path. Consumption figures are not customer billing.
 
 ## Review location
 
 Worktree: `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`.
-Branch: `codex/observatory-metering`; base `cbded8e54908aa258277d6a47c6988bca8fbbdbb`.
-Application changes remain uncommitted under the current project execution restriction.
+Branch: `codex/observatory-metering`; rebased on current `main` for the release PR.
 
 ## Product surfaces
 
@@ -21,10 +20,10 @@ API views use `view=summary|events|breakdown|trace|export`; `from` inclusive and
 
 ## Enablement prerequisites
 
-1. Reserve/recheck migration number 1126 against current main and open migration work before integration. Apply `1126_ai_metering_ledger.sql` through the normal runner only after separate deployment authorization. It is additive and has no internal transaction control; the runner must include its tracking insert in the same transaction.
-2. Configure `AI_METERING_RECOVERY_BUCKET` as a dedicated private GCS bucket using the existing runtime service identity. Limit bucket permissions to the accounting server/operators, set retention and encryption policies through normal infrastructure review, and verify write/list/delete permissions with synthetic data before enabling. No prompt, response, credential or arbitrary provider body is stored. Local development may instead set `AI_METERING_RECOVERY_DIR`; filesystem recovery is prohibited in production.
-3. Set `MARSYS_FLAG_AI_METERING_ENABLED=true` on the server. It defaults off. The server refuses a provider call if start persistence or recovery configuration fails. A charged call's terminal receipt must persist to the database or recovery buffer before semantic success is exposed. A hard process termination can still leave an incomplete start; it remains visibly pending and becomes stale after 15 minutes.
-4. Set `NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED=true` at frontend build time to reveal navigation. This is visibility only, never an authorization gate. Administrator APIs additionally require `MARSYS_FLAG_OBSERVATORY_ENABLED=true`.
+1. Recheck reserved migration number 1202 against current `main` before merge. The additive `supabase/migrations/1202_ai_metering_ledger.sql` creates protected public-schema objects. After green exact-SHA CI, dispatch `deploy.yml` with `ai_metering_schema_migration=true`; its temporary grant, exact `--only` application, and unconditional revoke must all succeed before routine migration and service promotion. Verify the file's hash in `_migrations_applied` and that public-schema CREATE was revoked. The ordinary runner refuses this file before the protected window.
+2. Configure `AI_METERING_RECOVERY_BUCKET` as a dedicated private GCS bucket using the existing runtime service identity. Limit object permissions to the accounting server/operators and verify write/list/read/delete permissions with synthetic data before enabling. Do not set an object-retention hold that would prevent deletion after successful replay. No prompt, response, credential or arbitrary provider body is stored. Local development may instead set `AI_METERING_RECOVERY_DIR`; filesystem recovery is prohibited in production.
+3. After the migration and recovery bucket are verified, set `MARSYS_FLAG_AI_METERING_ENABLED=true` on the server and verify its serving revision. It defaults off. The server refuses a provider call if start persistence or recovery configuration fails. A charged call's terminal receipt must persist to the database or recovery buffer before semantic success is exposed. A hard process termination can still leave an incomplete start; it remains visibly pending and becomes stale after 15 minutes.
+4. The production image bakes `NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED=true` at build time to reveal navigation. This is visibility only, never an authorization gate. Administrator APIs additionally require `MARSYS_FLAG_OBSERVATORY_ENABLED=true`.
 5. Import verified rate cards or refresh the official OpenRouter catalog through the administrator operations screen. Do not mistake enabling the flag for live provider verification.
 
 The metering flag is independent of AI Console's BYOK flag. Shared model routing keeps its existing auth, model selection and credential handling. Attribution scope is established after existing route admission using admitted account/turn values. Shared backend SDK calls without authenticated request attribution fail closed when enabled; tests must use the administrator gateway or a trusted internal metering scope.
