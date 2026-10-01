@@ -485,21 +485,55 @@ def test_variant_rows_get_distinct_fact_ids_and_the_same_canonical_ids_as_before
     assert {r["verification_pass_status"] for r in enriched if r["fact_category"] == "graha_gandanta"} == {"single"}
 
 
-def test_structural_fallback_counts_and_logs_an_evaluation_error(monkeypatch, caplog):
-    """Pre-I-22 a bare `except Exception: fires = False` swallowed an import/wiring error and
-    reported 'no gandanta'. Now it is counted in DOSHA_FALLBACK_EVAL_ERRORS and logged with a
-    traceback (the dosha pass still never regresses)."""
-    import logging
+def _structural_fallback(grahas: list[dict]):
+    chart_output = {"grahas": grahas, "ascendant": {"longitude": 10.0, "sign": "Aries", "sign_id": 1}}
+    return struct._build_dosha_rows(MagicMock(), chart_output, "c", "b", "lahiri_chitrapaksha",
+                                    "2026-10-02T00:00:00+00:00", "test", dosha_catalog=None)
 
+
+def test_structural_fallback_raises_when_the_shared_function_fails(monkeypatch):
+    """SS ruling on PR #2892 (CLAUDE.md N.7 item 6): a failed evaluation is not 'no gandanta'.
+    A raise in the shared Gandanta call inside the legacy dosha fallback must fail loudly,
+    naming the dosha and the cause, never return 'not fired'."""
     def boom(sign_num, degree_in_sign):
-        raise RuntimeError("wiring error")
+        raise ValueError("wiring error")
 
     monkeypatch.setattr(struct, "_shared_check_gandanta", boom)
-    monkeypatch.setattr(struct, "DOSHA_FALLBACK_EVAL_ERRORS", {})
-    with caplog.at_level(logging.ERROR, logger=struct.logger.name):
-        assert _structural_gandanta_fires(356.82) is False
-    assert struct.DOSHA_FALLBACK_EVAL_ERRORS == {"GANDANTA_DOSHA": 1}
-    assert any("GANDANTA_DOSHA evaluation raised" in r.getMessage() and r.exc_info for r in caplog.records)
+    with pytest.raises(RuntimeError) as ei:
+        _structural_gandanta_fires(356.82)
+    msg = str(ei.value)
+    assert "GANDANTA_DOSHA could not be evaluated" in msg and "ValueError: wiring error" in msg
+    assert "graha 'Mars'" in msg
+    assert isinstance(ei.value.__cause__, ValueError)
+    assert not hasattr(struct, "DOSHA_FALLBACK_EVAL_ERRORS")      # the count-and-continue counter is gone
+
+
+def test_structural_fallback_raises_on_a_missing_or_bad_longitude():
+    """No invented 0.0 (which would read as exactly on the Meena|Mesha cusp = gandanta)."""
+    for bad in ({"name": "Mars", "house": 12}, {"name": "Mars", "longitude": None, "house": 12}):
+        with pytest.raises(RuntimeError, match="could not be evaluated"):
+            _structural_fallback([bad, {"name": "Sun", "longitude": 100.0, "house": 4, "sign": "Cancer"}])
+
+
+def test_structural_fallback_raises_when_the_import_of_mrityu_bhaga_fails(monkeypatch):
+    import builtins
+    real = builtins.__import__
+
+    def fake(name, *a, **k):
+        if name == "ga_writers.ga_sensitive_degree_writer":
+            raise ImportError("simulated wiring error")
+        return real(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", fake)
+    with pytest.raises(RuntimeError, match="MRITYU_BHAGA_DOSHA could not be evaluated"):
+        _structural_gandanta_fires(356.82)
+
+
+def test_structural_fallback_ordinary_results_are_unchanged():
+    """The ordinary no-gandanta and gandanta results keep working exactly as before."""
+    assert _structural_gandanta_fires(100.0) is False
+    assert _structural_gandanta_fires(356.82) is True
+    assert _structural_gandanta_fires(10.0) is False
 
 
 def test_insert_statement_selection_follows_formula_id():

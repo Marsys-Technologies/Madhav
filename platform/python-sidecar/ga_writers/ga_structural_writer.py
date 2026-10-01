@@ -136,11 +136,6 @@ from brahmagyan.l0_upapada_maitri_rules import (
 
 logger = logging.getLogger(__name__)
 
-#: Process-lifetime count of legacy-fallback dosha evaluations (GANDANTA_DOSHA /
-#: MRITYU_BHAGA_DOSHA) that raised and were reported as "not fired" — keyed by dosha name.
-#: Empty = none raised. Counted + logged instead of swallowed (decision sheet A-4, I-22).
-DOSHA_FALLBACK_EVAL_ERRORS: dict[str, int] = {}
-
 # ── Constants ────────────────────────────────────────────────────────────────
 
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
@@ -3371,6 +3366,7 @@ def _build_dosha_rows(
         elif name in ("GANDANTA_DOSHA", "MRITYU_BHAGA_DOSHA"):
             # WP-2.5/LCA-10: fire from ga_sensitive_degree's cited classical checks,
             # computed inline over the grahas already loaded (no cross-asset dependency).
+            _at = "start"  # what was being evaluated, for the error message
             try:
                 if name == "GANDANTA_DOSHA":
                     _check = None  # the shared module's check_gandanta is used below
@@ -3382,7 +3378,8 @@ def _build_dosha_rows(
                     _gn = _g.get("name")
                     if _gn in (None, "Lagna"):
                         continue
-                    _lon = float(_g.get("longitude", 0.0))
+                    _at = f"graha {_gn!r}"
+                    _lon = float(_g["longitude"])  # a missing longitude is an error, never 0.0
                     _sn = int(_lon // 30) % 12
                     _deg = _lon % 30.0
                     if name == "GANDANTA_DOSHA":
@@ -3395,17 +3392,14 @@ def _build_dosha_rows(
                     fires = True
                     _label = "gandanta sandhi" if name == "GANDANTA_DOSHA" else "mrityu-bhaga"
                     reason = f"{_label}: {', '.join(sorted(set(afflicted)))}"
-            except Exception:
-                # Never regress the dosha pass on a wiring error — but never hide it either
-                # (decision sheet A-4 / I-22): count it and log it with the traceback. A
-                # silent `fires = False` here is indistinguishable from "no gandanta".
-                DOSHA_FALLBACK_EVAL_ERRORS[name] = DOSHA_FALLBACK_EVAL_ERRORS.get(name, 0) + 1
-                logger.error(
-                    "ga_structural legacy dosha fallback: %s evaluation raised; reporting it "
-                    "as NOT fired (error #%d for this dosha in this process)",
-                    name, DOSHA_FALLBACK_EVAL_ERRORS[name], exc_info=True,
-                )
-                fires = False
+            except Exception as exc:
+                # A failed evaluation is NOT "no gandanta": reporting `fires = False` here
+                # would be an invented negative (CLAUDE.md N.7 item 6; SS ruling on PR #2892).
+                # Fail the build loudly, naming the dosha, the item being evaluated and the cause.
+                raise RuntimeError(
+                    f"ga_structural legacy dosha fallback: {name} could not be evaluated "
+                    f"({_at}, chart {chart_id}, {ayanamsha_id}): {type(exc).__name__}: {exc}"
+                ) from exc
 
         if fires:
             _primary = name.split("_")[0]
