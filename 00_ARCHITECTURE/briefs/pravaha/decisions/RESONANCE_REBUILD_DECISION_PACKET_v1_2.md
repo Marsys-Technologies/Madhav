@@ -1,7 +1,7 @@
 ---
 artifact: RESONANCE_REBUILD_DECISION_PACKET
 version: "1.2"
-status: "NATIVE-AUTHORISED REBUILD ATTEMPTED 2026-10-01; production map RESTORED to its original state; fix is PR #2875 (open, not merged); re-run pending"
+status: "CLOSED 2026-10-02 — the re-run landed (steward run 82f8802c, 2026-10-01 23:12Z) and passed every §3 check; see RESONANCE_REBUILD_RESULT_v1_0.md. (Earlier status: NATIVE-AUTHORISED REBUILD ATTEMPTED 2026-10-01; production map RESTORED; fix PR #2875.)"
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 — a record of what happened, written from the tracker notes and the evidence files
 supersedes: "v1.1 (the pre-run decision packet, retained unedited as RESONANCE_REBUILD_DECISION_PACKET_v1_0.md — its frontmatter reads 1.1)"
