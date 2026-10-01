@@ -20,6 +20,8 @@ import {
   canonicalFormulaOf,
   disclosePivotVariants,
   formulaPolicyFor,
+  UNDECLARED_MULTI_FORMULA_REASON,
+  FORMULA_ORDER_NOTE,
   formulaRank,
   formulaRoleOf,
   isMultiFormulaCategory,
@@ -142,6 +144,9 @@ describe('canonical_formulas — ranking, SQL twin, labelling', () => {
     expect(formulaPolicyFor(['graha_position', 'arudha_pada'])).toBeNull()
     const p = formulaPolicyFor(['esoteric_point_mrityu', 'esoteric_point_yogi', 'graha_position'])!
     expect(p.status).toBe('provisional_until_J1')
+    expect(p.order_note).toBe(FORMULA_ORDER_NOTE)
+    expect(FORMULA_ORDER_NOTE).toContain('not a ranking')
+    expect(FORMULA_ORDER_NOTE).toContain('esoteric_point_mrityu')
     expect(p.categories['esoteric_point_yogi']).toEqual({ canonical_formula_id: 'bphs_93_20', variants: ['alt_96_40'] })
     expect(p.categories['esoteric_point_mrityu']).toMatchObject({ canonical_formula_id: null, no_canonical_reason: 'no_canonical_formula' })
     expect(p.categories['graha_position']).toBeUndefined()
@@ -181,5 +186,18 @@ describe('disclosePivotVariants — arrival order can never pick the headline', 
     expect(d.headline).toBeNull()
     expect(d.headline_reason).toBe('canonical_formula_absent')
     expect(d.variants[0]).toMatchObject({ formula_id: 'parashari_rahu_excluded', role: 'variant' })
+  })
+})
+
+describe('disclosePivotVariants — an UNDECLARED category with several formulas is not "no canonical formula"', () => {
+  it('headline null with reason undeclared_multi_formula (distinct from the Mrityu ruling), variants roled undeclared', () => {
+    const d = disclosePivotVariants('some_future_category', [
+      { formula_id: 'b', value: 2, fact_id: 'f2' },
+      { formula_id: 'a', value: 1, fact_id: 'f1' },
+    ])
+    expect(d.headline).toBeNull()
+    expect(d.headline_reason).toBe(UNDECLARED_MULTI_FORMULA_REASON)
+    expect(d.headline_reason).not.toBe(NO_CANONICAL_FORMULA_REASON)
+    expect(d.variants.map(v => [v.formula_id, v.role])).toEqual([['a', 'undeclared'], ['b', 'undeclared']])
   })
 })

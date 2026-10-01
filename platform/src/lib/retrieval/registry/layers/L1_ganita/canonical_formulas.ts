@@ -42,6 +42,18 @@ export const NO_CANONICAL_FORMULA_REASON = 'no_canonical_formula'
 
 export const CANONICAL_FORMULA_STATUS = 'provisional_until_J1'
 
+/**
+ * A key that holds several formula rows in a category NOT declared in this table. There is no
+ * canonical formula to prefer and none was ruled out, so the honest answer is a null headline with
+ * THIS reason (never `no_canonical_formula`, which is a ruling about a declared category: Mrityu).
+ */
+export const UNDECLARED_MULTI_FORMULA_REASON = 'undeclared_multi_formula'
+
+/** Served wherever variants are listed, so a reader cannot take list order for a ranking. */
+export const FORMULA_ORDER_NOTE =
+  'Order is the declared disclosure order, not a ranking: where a canonical formula exists it is listed first; ' +
+  'where none does (esoteric_point_mrityu: bphs_ch39, saravali, tajik_aapamrityu) no formula is preferred over another.'
+
 export const CANONICAL_FORMULAS: Readonly<Record<string, CategoryFormulas>> = {
   karaka_chara_position: { canonical: 'kn_rao_rahu_included', variants: ['parashari_rahu_excluded'] },
   esoteric_point_yogi: { canonical: 'bphs_93_20', variants: ['alt_96_40'] },
@@ -128,7 +140,7 @@ export function multiFormulaCategoriesSqlList(): string {
 export interface FormulaVariantDisclosure {
   formula_id: string
   /** `canonical` | `variant` | `no_canonical_formula` (the category declares no canonical). */
-  role: FormulaRole
+  role: FormulaRole | 'undeclared'
   value: unknown
   fact_id: string | null
 }
@@ -149,7 +161,7 @@ export function disclosePivotVariants(
 ): {
   headline: unknown
   headline_fact_id: string | null
-  headline_reason: typeof NO_CANONICAL_FORMULA_REASON | 'canonical_formula_absent' | null
+  headline_reason: typeof NO_CANONICAL_FORMULA_REASON | 'canonical_formula_absent' | typeof UNDECLARED_MULTI_FORMULA_REASON | null
   variants: FormulaVariantDisclosure[]
 } {
   const ordered = [...rows].sort((a, b) => {
@@ -162,7 +174,7 @@ export function disclosePivotVariants(
   const canonical = canonicalFormulaOf(category)
   const variants: FormulaVariantDisclosure[] = ordered.map(r => ({
     formula_id: r.formula_id,
-    role: formulaRoleOf(category, r.formula_id) ?? 'variant',
+    role: formulaRoleOf(category, r.formula_id) ?? 'undeclared',
     value: r.value,
     fact_id: r.fact_id,
   }))
@@ -176,7 +188,7 @@ export function disclosePivotVariants(
     return {
       headline: null,
       headline_fact_id: null,
-      headline_reason: isMultiFormulaCategory(category) ? 'canonical_formula_absent' : NO_CANONICAL_FORMULA_REASON,
+      headline_reason: isMultiFormulaCategory(category) ? 'canonical_formula_absent' : UNDECLARED_MULTI_FORMULA_REASON,
       variants,
     }
   }
@@ -204,6 +216,7 @@ type CategoryPolicy = { canonical_formula_id: string | null; variants: string[];
  */
 export function formulaPolicyFor(categories: readonly string[]): {
   status: typeof CANONICAL_FORMULA_STATUS
+  order_note: typeof FORMULA_ORDER_NOTE
   categories: Record<string, CategoryPolicy>
 } | null {
   const out: Record<string, CategoryPolicy> = {}
@@ -216,5 +229,5 @@ export function formulaPolicyFor(categories: readonly string[]): {
       ...(spec.canonical === null ? { no_canonical_reason: NO_CANONICAL_FORMULA_REASON } : {}),
     }
   }
-  return Object.keys(out).length > 0 ? { status: CANONICAL_FORMULA_STATUS, categories: out } : null
+  return Object.keys(out).length > 0 ? { status: CANONICAL_FORMULA_STATUS, order_note: FORMULA_ORDER_NOTE, categories: out } : null
 }

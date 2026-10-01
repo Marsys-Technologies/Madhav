@@ -28,7 +28,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { canonicalFirstOrderSql, canonicalFormulaOf, formulaPolicyFor, formulaRoleOf, labelFormulaRoles, NO_CANONICAL_FORMULA_REASON } from './canonical_formulas'
+import { canonicalFirstOrderSql, canonicalFormulaOf, FORMULA_ORDER_NOTE, formulaPolicyFor, formulaRoleOf, labelFormulaRoles, NO_CANONICAL_FORMULA_REASON } from './canonical_formulas'
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
   'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta',
@@ -183,7 +183,8 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
               `${multi_formula.length} point(s) here are computed by MORE THAN ONE classical formula ` +
               `(e.g. AVAYOGI: BPHS Ch.20 vs the alternate 96°40' convention). Both rows are served ` +
               `and disambiguated by formula_id — do NOT pivot on (category,subject,fact_key) alone, ` +
-              `which would silently drop one formula's value.`,
+              `which would silently drop one formula's value. ${FORMULA_ORDER_NOTE} ` +
+              `Mrityu (esoteric_point_mrityu) has NO canonical formula: its three reckonings are all served and none is a headline.`,
           } : {}),
         },
         is_error: false,

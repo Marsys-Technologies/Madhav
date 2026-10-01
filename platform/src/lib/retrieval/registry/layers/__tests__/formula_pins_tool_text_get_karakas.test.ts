@@ -57,6 +57,7 @@ describe('get_karakas — stops hiding formula_id', () => {
     const res = await getKarakas({ categories: ['karaka_chara_position'] })
     expect(res.content['formula_policy']).toEqual({
       status: 'provisional_until_J1',
+      order_note: expect.stringContaining('not a ranking'),
       categories: { karaka_chara_position: { canonical_formula_id: 'kn_rao_rahu_included', variants: ['parashari_rahu_excluded'] } },
     })
   })

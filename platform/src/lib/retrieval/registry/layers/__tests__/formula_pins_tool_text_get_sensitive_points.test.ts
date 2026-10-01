@@ -55,3 +55,15 @@ describe('get_sensitive_points — canonical-first disclosure; Mrityu has no hea
     expect(res.content['formula_policy']).toMatchObject({ categories: { esoteric_point_mrityu: { canonical_formula_id: null, no_canonical_reason: 'no_canonical_formula' } } })
   })
 })
+
+describe('get_sensitive_points — list order is declared order, not a ranking (covers Mrityu, not only Avayogi)', () => {
+  it('multi_formula_note says so and names Mrityu; formula_policy carries the same order_note', async () => {
+    wire([MR_BPHS, MR_SAR, MR_TAJ])
+    const res = await getSensitivePoints({ categories: ['esoteric_point_mrityu'] })
+    const note = String(res.content['multi_formula_note'])
+    expect(note).toContain('not a ranking')
+    expect(note).toContain('esoteric_point_mrityu')
+    expect(note).toContain('NO canonical formula')
+    expect((res.content['formula_policy'] as Row)['order_note']).toContain('not a ranking')
+  })
+})
