@@ -699,6 +699,94 @@ def test_decorator_checks_the_chart_lifetime_before_the_body_and_any_write(hidde
     assert ran == [1]            # the body ran only for the in-window chart
 
 
+# ── 6c. the two WRITE routes raise BEFORE any write when the backend check fails ─
+
+def _no_db(monkeypatch):
+    """psycopg.connect must never be reached; returns the list of attempts."""
+    import psycopg
+
+    attempts: list[str] = []
+
+    def boom(*a, **k):
+        attempts.append("connect")
+        raise AssertionError("a DB connection was opened before the backend check")
+
+    monkeypatch.setattr(psycopg, "connect", boom)
+    return attempts
+
+
+def test_panchanga_daily_writer_raises_before_connecting_or_writing(monkeypatch):
+    from scripts.panchanga_daily_writer import write_window
+
+    attempts = _no_db(monkeypatch)
+    with pytest.raises(SwissBackendError, match="SE_EPHE_PATH is not set"):
+        write_window(datetime.date(2026, 6, 15), datetime.date(2026, 6, 17), dry_run=False)
+    with pytest.raises(ss.OutOfCorpusRangeError):
+        write_window(datetime.date(1750, 6, 15), datetime.date(1750, 6, 16), dry_run=False)
+    assert attempts == []
+
+
+def test_panchanga_refresh_route_writes_nothing_when_the_backend_check_fails(monkeypatch):
+    from fastapi.testclient import TestClient
+    from main import app
+
+    attempts = _no_db(monkeypatch)
+    monkeypatch.delenv("PYTHON_SIDECAR_API_KEY", raising=False)
+    resp = TestClient(app, raise_server_exceptions=False).post("/api/compute/panchanga/refresh", json={})
+    assert resp.status_code == 500 and "SE_EPHE_PATH is not set" in resp.text
+    assert attempts == []
+
+
+def test_prashna_cast_raises_before_the_prashna_charts_insert(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from ga_writers.ga_prashna_cast import cast_prashna_chart
+
+    conn = MagicMock()
+    kwargs = dict(conn=conn, build_id="b", question_text="q", question_class="career",
+                  prashna_lagna_method="question_instant", question_lat=20.27, question_lon=85.84,
+                  question_instant="2026-06-15T10:00:00+05:30")
+    from ga_writers.ga_prashna_cast import VALID_QUESTION_CLASSES
+
+    kwargs["question_class"] = sorted(VALID_QUESTION_CLASSES)[0]
+    with pytest.raises(SwissBackendError, match="SE_EPHE_PATH is not set"):
+        cast_prashna_chart(**kwargs)
+    with pytest.raises(ss.OutOfCorpusRangeError):
+        cast_prashna_chart(**{**kwargs, "question_instant": "1750-06-15T10:00:00+00:00"})
+    conn.cursor.assert_not_called()
+    conn.execute.assert_not_called()
+
+
+def test_prashna_cast_route_opens_no_cursor_and_commits_nothing_when_the_backend_check_fails(monkeypatch):
+    from unittest.mock import MagicMock
+
+    import psycopg
+    from fastapi.testclient import TestClient
+    from ga_writers.ga_prashna_cast import VALID_QUESTION_CLASSES
+    from main import app
+
+    conn = MagicMock()
+    ctx = MagicMock()
+    ctx.__enter__.return_value = conn
+    ctx.__exit__.return_value = False
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **k: ctx)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://unused")
+    monkeypatch.delenv("PYTHON_SIDECAR_API_KEY", raising=False)
+    monkeypatch.setattr("ga_writers.ga_prashna_cast.validate_prashna_question",
+                        lambda text: {"valid": True, "reason": ""})
+    body = {"question_text": "will it work", "question_class": sorted(VALID_QUESTION_CLASSES)[0],
+            "prashna_lagna_method": "question_instant", "question_instant": "2026-06-15T10:00:00+05:30",
+            "question_lat": 20.27, "question_lon": 85.84}
+    resp = TestClient(app, raise_server_exceptions=False).post("/api/compute/prashna/cast", json=body)
+    assert resp.status_code == 500 and "SE_EPHE_PATH is not set" in resp.text
+    conn.cursor.assert_not_called()
+    conn.commit.assert_not_called()
+    resp = TestClient(app, raise_server_exceptions=False).post(
+        "/api/compute/prashna/cast", json={**body, "question_instant": "1750-06-15T10:00:00+00:00"})
+    assert resp.status_code == 422 and "out_of_corpus_range" in resp.text
+    conn.cursor.assert_not_called()
+
+
 # ── 7. no silent default-path reset reintroduced in the routed call sites ─────
 
 def test_no_default_path_reset_or_dead_ephe_dir_in_routed_modules():

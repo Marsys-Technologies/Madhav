@@ -189,6 +189,11 @@ def write_window(date_from: date, date_to: date, dry_run: bool = False) -> int:
     """
     import json
     from panchang_engine import compute_panchang
+    from panchang_engine.swiss_backend import ensure_swiss_backend
+
+    # Fail closed BEFORE connecting / writing: the Swiss .se1 backend must be serving and
+    # the whole window inside the corpus window (out_of_corpus_range).
+    ensure_swiss_backend(date_from.toordinal() + 1721424.5, date_to.toordinal() + 1721424.5)
 
     n = 0
     conn = None

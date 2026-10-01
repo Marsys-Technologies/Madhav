@@ -89,7 +89,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # SS ruling N-28 / TI-ephemeris-fix-001: the sidecar's ephemeris helper fails closed
+      # ADDED BY PR #2860 (TI-ephemeris-fix-001, SS ruling N-28) -- additive: download + env only.
+      # Why: the writers this workflow runs now FAIL CLOSED without the Swiss .se1 corpus; the sidecar's ephemeris helper fails closed
       # (no silent Moshier fallback), so every swisseph-computing writer in this end-to-end
       # build needs the Swiss .se1 corpus.  Same SHA-pinned files as Dockerfile.pipeline;
       # SE_EPHE_PATH is exported to every later step via GITHUB_ENV.

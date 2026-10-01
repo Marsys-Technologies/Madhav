@@ -91,7 +91,9 @@ jobs:
           cd platform/python-sidecar
           pip install -r requirements.txt --quiet
 
-      # SS ruling N-28 / TI-ephemeris-fix-001: ka_kshetra's writer fails closed without the
+      # ADDED BY PR #2860 (TI-ephemeris-fix-001, SS ruling N-28) -- additive: download + env only.
+      # Why: the ka_kshetra writer this workflow runs now FAILS CLOSED without the Swiss .se1 corpus:
+      # ka_kshetra's writer fails closed without the
       # Swiss .se1 corpus (no silent Moshier), and the W2 dynamic CG-1 proof below runs it.
       # Same SHA-pinned files as Dockerfile.pipeline; exported to later steps via GITHUB_ENV.
       - name: Swiss Ephemeris corpus (SHA-pinned)
