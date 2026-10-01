@@ -60,12 +60,14 @@ def test_golden_after_e5_5_invalidation_only_the_untouched_asset_is_elevated(tmp
 def test_golden_the_records_are_the_real_writers_shape(tmp_path):
     rows = [json.loads(ln) for ln in (GOLDEN / "ledger_after_invalidation.jsonl").read_text().splitlines() if ln.strip()]
     kinds = [r.get("kind") for r in rows[1:]]
-    assert kinds.count("gate") == 14 and kinds.count("invalidation") == 7 and kinds.count("watermark") == 2
+    types = [r.get("type") for r in rows[1:]]
+    assert kinds.count("gate") == 14 and types.count("invalidation") == 7 and types.count("watermark") == 2
     gate = next(r for r in rows if r.get("kind") == "gate")
     assert gate["cross_checked"] is True and gate["seq"] == 1 and isinstance(gate["prev_sha256"], str)
     assert gate["writer_hashes_verified"] is True and gate["evidence"]["census_sha256"]
-    wm = [r for r in rows if r.get("kind") == "watermark"][-1]
-    assert wm["asset"] == "_ledger" and wm["events_processed"] == 14 and wm["last_cert_id"] == "ga_beta|gate|Build.reg@1"
+    wm = [r for r in rows if r.get("type") == "watermark"][-1]
+    assert wm["asset"] == "_ledger" and wm["certs_processed"] == 14 and wm["covers_seq"] == 15
+    assert wm["last_cert_id"] == "ga_beta|gate|Build.reg@1" and "cert_key" not in wm
 
 
 def test_golden_a_certificate_after_the_last_watermark_raises(tmp_path):
@@ -122,8 +124,8 @@ try:
     import nikasha_certify as nc
     if mode == "chain":
         try:
-            r = nc._parse(data)
-            out = {"ok": True, "keys": sorted(k for k, v in r[0].items() if v and v[0].get("kind") in ("gate", "addition"))}
+            r = nc.parse_ledger(data)
+            out = {"ok": True, "keys": sorted(k for k, v in r.items() if v and v[0].get("kind") in ("gate", "addition"))}
         except nc.CertificationRefused as e:
             out = {"ok": False, "code": e.code}
         out["declaration_based"] = {k: list(v) for k, v in nc.DECLARATION_BASED.items()}
@@ -135,22 +137,10 @@ try:
             cur = sorted(sc.current_certificates(data, require_watermark=False).keys())
             return {"ok": True, "watermark_ok": ok, "current": cur}
 
-        shimmed = False
         try:
-            try:
-                out = e55_view()
-            except ValueError as e:
-                if "too many values to unpack (expected 2)" not in str(e):
-                    raise
-                # E5.5 not yet rebased: it unpacks E5.1's _parse as 2 values, E5.1 now returns 3. Drop the third
-                # for this one call; a rebased E5.5 never reaches this branch. The decision logic is E5.5's own.
-                shimmed = True
-                real = nc._parse
-                nc._parse = lambda raw: real(raw)[:2]
-                out = e55_view()
+            out = e55_view()
         except sc.StaleCertsError as e:
             out = {"ok": False, "code": e.code}
-        out["shimmed"] = shimmed
 except Exception as e:                                       # the module cannot even be used
     out = {"unusable": f"{type(e).__name__}: {e}"}
 print(json.dumps(out))
@@ -186,10 +176,10 @@ def mine(tmp_path, data: bytes):
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
     try:
-        led, after = T._e63_parse_certs(data, facts)
+        led = T._e63_parse_certs(data, facts)
     except T.ElevatedInputError:
         return False, None, None
-    return True, sorted(led.by_key), after
+    return True, sorted(led.by_key), led.unevaluated
 
 
 def _variants():
@@ -240,7 +230,7 @@ def _e55_or_skip(probe_dir, data):
         pytest.skip("E5.5 (nikasha_stale_certs.py) is not importable here")
     theirs = run_probe(probe_dir, "e55", data)
     if "unusable" in theirs or not theirs.get("ok"):
-        pytest.skip(f"E5.5 cannot yet read E5.1's current ledger (it is being rebased on E5.1): {theirs}")
+        pytest.skip(f"E5.5 cannot yet read E5.1's current ledger (it is still being finished): {theirs}")
     return theirs
 
 
@@ -253,7 +243,8 @@ def test_parity_current_certificates_and_watermark_match_e5_5(probe_dir, tmp_pat
     w.raw[CERTS] = data
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
-    led, after = T._e63_parse_certs(data, facts)
+    led = T._e63_parse_certs(data, facts)
+    after = led.unevaluated
     state = T.LedgerState(str(w.repo), w.last, facts, led.by_key, led.invalidated, led.pos)
     cur = sorted(k for k, recs in led.by_key.items()
                  if recs[-1]["verdict"] in ("PASS", "N/A") and T.is_current(recs[-1], state))
