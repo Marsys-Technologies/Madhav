@@ -7,14 +7,13 @@ produced_on: 2026-10-01
 asset_id: ka_vighnakara
 track_i_item: "TI-L3-NEW: ka_vighnakara Gandanta entry/exit windows"
 ruling: "SS N-28 (2026-10-01) option (b): root-find real windows. SS scope ruling on PR #2839: ANCHOR-SCOPED, not a lifetime sweep."
-rulings_followed: "A-1 (one shared L0 Gandanta module, 3 deg 20 min each side, 0 deg 48 min only as a named variant; TI-L3-26); Q-L3-X1 (no panchanga row on engine failure plus detector_status; TI-L3-28/16); PR #2839 rulings (1) additive window columns plus partial unique index, (2) ph_pratikara no change / ka_kala_darshana joins by overlap, (3) two-component digest spec lands with this work, before the first window build, after 1212 (PR #2826)."
-base_commit: "origin/main 4eb40bec1 (writer at main; PR #2836 tip for the zone fix; 1212 on suvarna/land/TI-i45-provenance-001)"
+rulings_followed: "A-1, Q-L3-X1, and the PR #2839 rulings (columns + partial unique index; ph_pratikara unchanged; darshana joins by overlap; two-component digest spec after 1212)"
+base_commit: "origin/main 4eb40bec1"
 scope: "DOCS ONLY. No code, no migration, no DB write. DB reads as suvarna_reader."
 evidence_dir: "/Users/Dev/suvarna-evidence/TrackI/vighnakara_windows/ (outside the repo); file list in Appendix A"
 changelog:
   - "1.0 (2026-10-01): first draft (lifetime sweep)."
-  - "1.0a: aligned with A-1 and Q-L3-X1."
-  - "1.1 (2026-10-01): SS scope ruling. Lifetime sweep replaced by anchor-scoped windows (a passage is stored only when a scanned anchor's UT day overlaps it). Rewrote sections 3, 4, 5; row estimate recomputed from the writer's real anchor selection; table owner verified; detail moved to Appendix A."
+  - "1.1 (2026-10-01): SS scope ruling: anchor-scoped windows replace the lifetime sweep; sections 3-5 rewritten; row estimate from the writer's real anchors; table owner verified; detail to Appendix A."
 ---
 
 # Design review: Gandanta windows for the anchors `ka_vighnakara` already tests
@@ -36,7 +35,7 @@ Lifetime scan, 2000-01-01..2030-12-31 UT (31.0 y), writer's own `_get_sidereal_l
 | caught by a 00:00 UT sample | **633 = 50.9 %** | 25.5 % |
 
 - 1,876 of 11,323 UT days (**16.6 %**) overlap a passage; the 00:00 UT instant is inside on 633 (5.6 %). So the day-overlap test finds about **3x** the hits of today's instant test.
-- Cross-check: `swe.mooncross_ut` (independent of the writer) agrees with the bisection to a maximum of 0.165 s over 3,732 instants.
+- `swe.mooncross_ut` (independent oracle) agrees with the bisection to a maximum of 0.165 s over 3,732 instants.
 - **Per-anchor algorithm validated against the lifetime scan:** applying it to every UT day of 2000-2030 finds the same 1,876 touched days and the same **1,243** distinct passages (nothing missed, nothing extra).
 
 ## 2. Reuse (do NOT write a new ephemeris)
