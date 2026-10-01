@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "none proposed (evaluation only; family asset: Track F / A.L3f)"
 disposition_proposal_approver: "n/a (no disposition written here; Track A section 6)"
-decisions_applied: "Q-L3-17 (SS 2026-10-01): this evaluation-only brief is kept as an evidence input to A.L3f; it still makes no decision"
-track_i_items: []
+decisions_applied: "Q-L3-17 (SS 2026-10-01): this evaluation-only brief is kept as an evidence input to A.L3f; it still makes no decision of its own. ARGALA OUTCOME consequence (SS 2026-10-02): recorded below as a ruling note, TI-L3-38"
+track_i_items: [TI-L3-38]
 ledger_gap_ids: ["ka_kshetra-Idem.pattern", "ka_kshetra-Build.completion", "ka_kshetra-Earn.build_record", "ka_kshetra-Cost.baseline", "ka_kshetra-Count.floor", "ka_kshetra-Complete.depth", "ka_kshetra-Build.history", "ka_kshetra-Build.dep_liveness", "ka_kshetra-Carr.detector"]
 ---
 
@@ -98,3 +98,11 @@ Census used: saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L
 - Not written here: disposition, fix designs, semantic-fingerprint contract, carriage choice (Track F's sealed brief and A.L3f own them).
 - Not touched: no code, no registry row, no database write; no message to Pravāha or a family session (P11).
 - **SS ruling (2026-10-01), Q-L3-17 — accepted.** This evaluation-only brief is kept in the set as an evidence input to A.L3f; the variance (7) of `INDEX.md` section 12 is acknowledged. Nothing else changes: no disposition and no fix design are written here.
+
+## 5 · SS ruling note: ARGALA OUTCOME consequence and the build state (SS 2026-10-02)
+
+Recorded as ruled by SS; this brief still writes no disposition and no fix design (the design stays with Track F / J1.FO), and the L1 change, G-EPH and PR #2830 below are not in this branch and were not read here.
+
+- **Argala edge outcome (R, provisional until J1).** L1 now emits a canonical `outcome_by_count` of `unobstructed` / `argala_prevails` / `undetermined` (there is no `obstructed`), and L2's `cancelled_flag` for argala ends. `ka_kshetra` `stage2_promise` is the one real behaviour change: `_fetch_cgm_edges` selects `... FROM bodha_cgm_edges WHERE ... AND cancelled_flag = FALSE` (`services/ka_kshetra/stage2_promise.py:336-340`) and reads no edge outcome, so if it only dropped `cancelled_flag` it would treat EVERY argala edge as active. It must read the edge's outcome: `unobstructed` and `argala_prevails` = active argala; `undetermined` = its own state that does NOT contribute as active argala until a strength basis exists. Named Track I item: **TI-L3-38** (writer code, output change; it rebuilds at stage S7 anyway).
+- **Ephemeris fix.** `ka_kshetra` is exposed to the ephemeris fix (it is a decorated writer) and waits for G-EPH.
+- **I-10 substep split.** PR #2830 (the I-10 split of the stage-5 work into smaller substeps, section 0) is in the merge train, last, rebased over the line-pin test.
