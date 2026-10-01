@@ -1,3 +1,8 @@
+-- INTENT ONLY, NOT APPLIED: migration 1252 (to be written at the owner's line). This file is the exact
+-- text of `asset_registry.integrity_check_sql` for ga_medical that migration 1252 would set.
+-- ORDERING RULE: apply BEFORE ga_medical is rebuilt in S-L1, and WITH OR AFTER the writer deploy. An OLD
+-- writer under this NEW clause, or a NEW writer under the OLD clause, FAILS the post-write integrity gate.
+-- (Band table / D1 fallback lane: BAND_X2_LANE_INTENT_v1_0.md section 9.)
 
 -- ga_medical integrity contract (target table: ga_medical)
 -- D-CND-03: chart-partitioned / row-wise, attribution-preserving. No bare count pin (C12).
@@ -36,22 +41,16 @@ SELECT
         )
     )
   )
-  -- (c) FORENSIC gate, re-asserted at the data layer for the canonical chart's own build-time
-  -- check (ga_medical_writer.py:275-300, lahiri_chitrapaksha only): Sun debilitated in
-  -- Capricorn -> condition_score<0.4 -> 'strong'; Saturn exalted in Libra ->
-  -- condition_score must not be in the LOW band (I-28: the cut moved to 0.7; the canonical Saturn
-  -- scores 0.680-0.697 = MID/'moderate'). This is the SAME classical claim F-E5 (cycle 9) corrected;
-  -- nothing previously re-checked the writer's own build-time assertion against what actually
-  -- landed in the table afterward.
+  -- (c) FORENSIC advisory for the canonical chart's Sun, re-asserted at the data layer
+  -- (ga_medical_writer.py, lahiri_chitrapaksha only): Sun in Capricorn (Saturn's sign, Sun's enemy_sign,
+  -- NOT debilitation) -> condition_score<0.4 -> 'strong'. The Saturn conjunct of migration 740 is
+  -- REMOVED (SS ruling 2026-10-02): a label assertion about one chart's Saturn, tied to an unsourced
+  -- cut point, is not a FORENSIC anchor (the seven anchors are positional); Saturn's score and band
+  -- are pinned by a golden test (tests/test_ga_medical_saturn_golden.py) instead.
   AND NOT EXISTS (
     SELECT 1 FROM ga_medical
     WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND ayanamsha_id = 'lahiri_chitrapaksha'
       AND graha = 'Sun' AND indication_strength <> 'strong'
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM ga_medical
-    WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND ayanamsha_id = 'lahiri_chitrapaksha'
-      AND graha = 'Saturn' AND (indication_strength IS NULL OR indication_strength IN ('strong', 'unknown'))
   )
   AS integrity_passed
 

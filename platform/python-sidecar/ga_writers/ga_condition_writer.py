@@ -44,6 +44,7 @@ from ga_writers.ga_condition_bands import (  # noqa: F401  (re-exports)
     BAND_UNKNOWN,
     CUT_LOW_MID,
     CUT_MID_HIGH,
+    DASHA_PERIOD_CONDITION_CUTS,
     SCORE_BANDS,
     score_band,
 )
@@ -983,8 +984,11 @@ def fallback_integrity_violations(conn: Any, chart_id: Optional[str] = None) -> 
 # Condition-score thresholds gating peak vs weak dasha-trajectory classification.
 # Mirrors ga_condition_composite migration comment: peak = "high-condition periods",
 # weak = "low-condition periods" (see migrations/251_ga_condition_composite.sql).
-_PEAK_CONDITION_THRESHOLD = 0.65
-_WEAK_CONDITION_THRESHOLD = 0.35
+# The cut points themselves live in ga_condition_bands.DASHA_PERIOD_CONDITION_CUTS (a SEPARATELY
+# named table: a different concept from the three-band label, values unchanged, provenance
+# `unsourced`; SS ruling 2026-10-02). These module names are kept as aliases of it.
+_PEAK_CONDITION_THRESHOLD = DASHA_PERIOD_CONDITION_CUTS.peak_at_or_above
+_WEAK_CONDITION_THRESHOLD = DASHA_PERIOD_CONDITION_CUTS.weak_at_or_below
 
 
 def _load_dasha_periods(

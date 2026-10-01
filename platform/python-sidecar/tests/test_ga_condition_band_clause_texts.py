@@ -32,9 +32,11 @@ def test_medical_clause_text_uses_the_band_tables_cut_points_and_labels():
     assert _CUT_RE.findall(sql) == [("<", "0.4", "strong"), ("<", "0.7", "moderate")]
     assert "WHEN c.condition_score IS NULL THEN 'unknown'" in sql
     assert "ELSE 'mild'" in sql
-    # the Saturn FORENSIC conjunct is stated against the LOW band, not against 'mild'
-    assert "indication_strength IN ('strong', 'unknown')" in sql
+    # SS ruling 2026-10-02: the Saturn conjunct is REMOVED (no 'mild' assertion, no weakened LOW-band
+    # form either); the Sun advisory conjunct stays
+    assert "graha = 'Saturn'" not in sql
     assert "indication_strength <> 'mild'" not in sql
+    assert "graha = 'Sun' AND indication_strength <> 'strong'" in sql
 
 
 def test_vastu_clause_text_uses_the_band_tables_cut_points_and_never_neutral_for_null():
@@ -59,3 +61,17 @@ def test_ga_condition_clause_texts_carry_the_x2_conjuncts_and_differ_only_in_sco
         assert "row_security_active('public.chart_divisionals')" in sql
     canon_line = "WHERE gc.chart_id = '482012f1-710e-4a25-994a-93821f5871aa'\n      AND COALESCE("
     assert canon_line in scoped and canon_line not in wide
+
+
+def test_every_clause_text_is_marked_intent_only_for_migration_1252_with_the_ordering_rule():
+    for f in sorted(_CLAUSE_DIR.glob("*.sql")):
+        head = f.read_text(encoding="utf-8")[:900]
+        assert head.startswith("-- INTENT ONLY, NOT APPLIED: migration 1252 (to be written at the owner's line)"), f.name
+        assert "BEFORE" in head and "WITH OR AFTER the writer deploy" in head, f.name
+
+
+def test_scoped_variant_says_why_it_is_canonical_scoped_and_that_it_widens_in_s_l1b():
+    sql = _clause("ga_condition_integrity_scoped_canonical_NOT_APPLIED.sql")
+    assert "90 stale D1-fallback rows" in sql
+    assert "WIDENS to all charts" in sql and "REQUIRED step of S-L1b" in sql
+    assert "ga_dashas" in sql

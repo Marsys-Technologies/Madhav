@@ -1772,12 +1772,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1250,
+    1254,
     "\"citation_human\":          f"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1524,
+    1528,
     "f\"{graha} lajjitadi avastha "
    ]
   ],

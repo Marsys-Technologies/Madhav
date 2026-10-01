@@ -1,3 +1,8 @@
+-- INTENT ONLY, NOT APPLIED: migration 1252 (to be written at the owner's line). This file is the exact
+-- text of `asset_registry.integrity_check_sql` for ga_condition that migration 1252 would set.
+-- ORDERING RULE: apply BEFORE ga_condition is rebuilt in S-L1, and WITH OR AFTER the writer deploy. An OLD
+-- writer under this NEW clause, or a NEW writer under the OLD clause, FAILS the post-write integrity gate.
+-- (Band table / D1 fallback lane: BAND_X2_LANE_INTENT_v1_0.md section 9.)
 
 -- ga_condition integrity contract (target table: ga_condition_composite).
 -- D-CND-03: chart-partitioned / row-wise, attribution-preserving. No bare count pin (C12).
@@ -59,6 +64,8 @@ SELECT
   -- (e) X2 / I-29: a composite row that used the D1 fallback (breakdown.varga_fallback_used) on a
   -- chart that HAS divisional rows for that (chart, ayanamsha, graha) is a failure. Same claim the
   -- writer's assert_fallback_legitimate enforces at write time, read here from the stored rows.
+  -- SCOPE: table-wide. Do NOT apply before S-L1b: it fails on the 90 stale D1-fallback rows of
+  -- 1c826d5a and cb73cd3d. It is the form the scoped variant widens to as a required S-L1b step.
   AND NOT EXISTS (
     SELECT 1 FROM ga_condition_composite gc
     WHERE COALESCE((gc.condition_score_breakdown->>'varga_fallback_used') = 'true', false)

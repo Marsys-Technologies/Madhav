@@ -1,3 +1,8 @@
+-- INTENT ONLY, NOT APPLIED: migration 1252 (to be written at the owner's line). This file is the exact
+-- text of `asset_registry.integrity_check_sql` for ga_vastu that migration 1252 would set.
+-- ORDERING RULE: apply BEFORE ga_vastu is rebuilt in S-L1, and WITH OR AFTER the writer deploy. An OLD
+-- writer under this NEW clause, or a NEW writer under the OLD clause, FAILS the post-write integrity gate.
+-- (Band table / D1 fallback lane: BAND_X2_LANE_INTENT_v1_0.md section 9.)
 
 -- ga_vastu integrity contract (target table: ga_vastu_planet_direction_map)
 -- D-CND-03: chart-partitioned / row-wise, attribution-preserving. No bare count pin (C12).

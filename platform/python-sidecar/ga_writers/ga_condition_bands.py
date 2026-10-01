@@ -35,11 +35,11 @@ DIGEST HYGIENE. This is a NEW module imported ONLY by the three writers (`ga_con
 widely-imported L0 module to any writer's local-import closure and moves no digest outside
 those three assets.
 
-NOT a second place for dasha peak/weak thresholds: `ga_condition_writer._PEAK_CONDITION_THRESHOLD`
-(0.65) / `_WEAK_CONDITION_THRESHOLD` (0.35) are a DIFFERENT, un-ruled pair of cut points over the
-same score (they gate which mahadasha periods are stored as peak/weak). They are deliberately NOT
-folded into this table by this lane (the ruling names only the medical and vastu scales); they are
-recorded as an open duplicate in BAND_X2_LANE_INTENT_v1_0.md for SS.
+SEPARATE TABLE, SAME HOME: the dasha peak/weak cut points (`DASHA_PERIOD_CONDITION_CUTS`, 0.65 /
+0.35) live in this module too (SS ruling 2026-10-02, decision b) but are a DIFFERENT concept from the
+three-band label: they gate which mahadasha periods `ga_condition` stores as peak / weak, not a
+label over the score. They do NOT merge into 0.4 / 0.7, their values are unchanged, and they are
+labelled a project convention with provenance `unsourced`.
 """
 from __future__ import annotations
 
@@ -52,6 +52,7 @@ __all__ = [
     "CUT_LOW_MID", "CUT_MID_HIGH",
     "ScoreBand", "SCORE_BANDS", "BAND_NAMES",
     "score_band",
+    "DashaPeriodConditionCuts", "DASHA_PERIOD_CONDITION_CUTS",
 ]
 
 #: Band names. Writers map these to THEIR stored label vocabulary; the names themselves are
@@ -118,6 +119,30 @@ def score_band(score: object) -> Optional[str]:
             return band.name
     # Unreachable for a finite float given the contiguous open-ended table; fail loud, never invent.
     raise AssertionError(f"SCORE_BANDS does not cover finite score {value!r}")  # pragma: no cover
+
+
+@dataclass(frozen=True)
+class DashaPeriodConditionCuts:
+    """Cut points over `condition_score` that classify a graha's own mahadasha periods as PEAK or
+    WEAK in `ga_condition_composite.peak_dasha_periods` / `.weak_dasha_periods`.
+
+    NOT the three-band label table above (different concept, different values; they must never be
+    merged into 0.4 / 0.7). `peak_at_or_above`: score >= this -> peak periods. `weak_at_or_below`:
+    score <= this -> weak periods. Between them (exclusive) -> neither (both fields NULL, a real
+    "no signal"). Values are UNCHANGED from the previous module constants in `ga_condition_writer`.
+    """
+
+    peak_at_or_above: float
+    weak_at_or_below: float
+    provenance: str  # the project's citation-state word for these numbers
+
+
+#: Project convention; no classical passage fixes these numbers (`unsourced`).
+DASHA_PERIOD_CONDITION_CUTS: Final[DashaPeriodConditionCuts] = DashaPeriodConditionCuts(
+    peak_at_or_above=0.65,
+    weak_at_or_below=0.35,
+    provenance="unsourced",
+)
 
 
 def _assert_table_is_contiguous() -> None:

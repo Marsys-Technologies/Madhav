@@ -1,3 +1,8 @@
+-- INTENT ONLY, NOT APPLIED: migration 1252 (to be written at the owner's line). This file is the exact
+-- text of `asset_registry.integrity_check_sql` for ga_condition that migration 1252 would set.
+-- ORDERING RULE: apply BEFORE ga_condition is rebuilt in S-L1, and WITH OR AFTER the writer deploy. An OLD
+-- writer under this NEW clause, or a NEW writer under the OLD clause, FAILS the post-write integrity gate.
+-- (Band table / D1 fallback lane: BAND_X2_LANE_INTENT_v1_0.md section 9.)
 
 -- ga_condition integrity contract (target table: ga_condition_composite).
 -- D-CND-03: chart-partitioned / row-wise, attribution-preserving. No bare count pin (C12).
@@ -59,6 +64,11 @@ SELECT
   -- (e) X2 / I-29: a composite row that used the D1 fallback (breakdown.varga_fallback_used) on a
   -- chart that HAS divisional rows for that (chart, ayanamsha, graha) is a failure. Same claim the
   -- writer's assert_fallback_legitimate enforces at write time, read here from the stored rows.
+  -- SCOPE (SS ruling 2026-10-02): this variant is scoped to the CANONICAL chart for S-L1 because a
+  -- table-wide clause FAILS today on the 90 stale D1-fallback rows of the other two charts
+  -- (1c826d5a, cb73cd3d), which this dispatch never touches (the migration-902 failure mode). It
+  -- WIDENS to all charts (drop the gc.chart_id line) as a REQUIRED step of S-L1b -- the same item as
+  -- fixing ga_dashas' canonical-scoped integrity SQL (migration 882) and conjunct (a) above.
   AND NOT EXISTS (
     SELECT 1 FROM ga_condition_composite gc
     WHERE gc.chart_id = '482012f1-710e-4a25-994a-93821f5871aa'

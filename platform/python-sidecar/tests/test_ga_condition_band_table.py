@@ -10,7 +10,7 @@ Covers:
   * both label vocabularies cover exactly the table's bands; the two consumers always agree on
     which band a score is in (the 0.6-0.7 disagreement this ruling removed);
   * NULL score -> NULL band / 'unknown', never 'neutral', in both consumers;
-  * the Saturn FORENSIC guard is stated against the band table (not `== 'mild'`).
+  * (Saturn: no build-time guard exists any more; see test_ga_medical_saturn_golden.py.)
 
 DB-free: pure functions only.
 """
@@ -177,22 +177,3 @@ def test_vastu_decimal_score_at_the_low_edge_is_mid_not_low():
     compared it to a float, which would bucket a stored 0.4 as 'weakened'."""
     assert vas.compute_direction_impact(Decimal("0.400000")) == "neutral"
     assert vas.compute_direction_impact(Decimal("0.700000")) == "strengthened"
-
-
-# ── Saturn FORENSIC guard: stated against the band table ──────────────────────
-
-@pytest.mark.parametrize("score", [0.6831, 0.6915, 0.6972, 0.68, 0.7, 0.85, 0.4])
-def test_saturn_guard_passes_for_measured_canonical_scores_and_up(score):
-    """The measured canonical Saturn scores (0.680-0.697, MID band) must NOT halt the build."""
-    assert med.saturn_forensic_guard_violation(score) is None
-
-
-@pytest.mark.parametrize("score", [0.0, 0.2, 0.3999999])
-def test_saturn_guard_fires_for_a_low_band_score(score):
-    msg = med.saturn_forensic_guard_violation(score)
-    assert msg is not None and "LOW band" in msg
-
-
-def test_saturn_guard_fires_for_a_null_score():
-    msg = med.saturn_forensic_guard_violation(None)
-    assert msg is not None and "NULL" in msg

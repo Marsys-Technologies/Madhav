@@ -1,13 +1,14 @@
 ---
 artifact: BAND_X2_LANE_INTENT
-version: "1.0"
-status: DRAFT-FOR-REVIEW
+version: "1.1"
+status: DRAFT-FOR-REVIEW (SS rulings a-d of 2026-10-02 applied)
 produced_by: exec-suvarna (worker lane)
 date: 2026-10-02
 decision: SS N-62 (decision sheet L1 v1.2): Q-L1-16(c) = Track I I-28; X2 = Track I I-29 (both MANDATORY before S-L1; provisional until J1; (R) items)
 branch: suvarna/land/TI-l1-band-x2-001 (from origin/main 925e96a5d)
-execution: code + tests + docs on a local branch. NO migration, NO registry write, NO database write (the database was read as the read-only reader only), no push, no PR.
+execution: code + tests + docs on a local branch (draft PR #2890 carries the pushed state; this version is local commits on top, pushed by the coordinator after review). NO migration, NO registry write, NO database write (the database was read as the read-only reader only).
 changelog:
+  - "1.1 (2026-10-02): SS rulings applied. (a) the ga_medical Saturn FORENSIC guard is REMOVED from the writer (not weakened) and replaced by a golden test; (b) the dasha peak/weak cut points 0.65 / 0.35 moved, values unchanged, into ga_condition_bands.py as the separately named DASHA_PERIOD_CONDITION_CUTS; (c) the ga_medical / ga_vastu registry clause texts are marked migration 1252 (to be written at the owner's line; intent only) with the ordering rule, and the medical clause's Saturn conjunct is removed too; (d) the canonical-scoped fallback clause now states why it is scoped and that it widens in S-L1b. Digests re-generated; E6 pins re-moved; supplementary test groups finished."
   - "1.0 (2026-10-02): first version."
 ---
 
@@ -39,16 +40,16 @@ They disagree on 0.6 to 0.7 (medical "mild" = well-placed, vāstu "neutral" = mi
 Three further places hold the same numbers, and they are NOT code the writers import:
 
 1. **The registry `integrity_check_sql` of `ga_medical` (migration 740) and `ga_vastu` (migrations 741/924)** each re-derive the label with their own `CASE` over the cut points (`<0.4`, `<=0.6` / `<0.7`, NULL -> `'unknown'` / `'neutral'`) and a Saturn conjunct on the medical clause (`Saturn ... indication_strength <> 'mild'` must not exist). Live text read 2026-10-02 equals the migration text. After this lane's writers run, **both live clauses FAIL** (section 9). SQL cannot import a Python table, so the cut points stay duplicated there; they are handled as a registry change to apply with the writer deploy.
-2. `ga_condition_writer._PEAK_CONDITION_THRESHOLD = 0.65` and `_WEAK_CONDITION_THRESHOLD = 0.35` gate which mahadasha periods are stored as peak/weak in `peak_dasha_periods` / `weak_dasha_periods`. A different, un-ruled pair of cut points over the same score. **Not folded into the table by this lane** (the ruling names only the medical and vāstu scales); flagged for SS (section 12, D2).
+2. `ga_condition_writer._PEAK_CONDITION_THRESHOLD = 0.65` and `_WEAK_CONDITION_THRESHOLD = 0.35` gate which mahadasha periods are stored as peak/weak in `peak_dasha_periods` / `weak_dasha_periods`. A different concept from the three-band label, over the same score. **SS ruling 2026-10-02 (decision b):** moved, values unchanged, into `ga_condition_bands.py` as the SEPARATELY named `DASHA_PERIOD_CONDITION_CUTS` (provenance `unsourced`, a project convention); they do NOT merge into 0.4 / 0.7; `ga_condition_writer` imports them from there (its old module names are kept as aliases). No output change (section 3).
 3. L2 `bo_pratijna_v4_engine.OCCURRENCE_BANDS` / `CONDITION_BANDS` and `ph_muhurta` `_STRONG_THRESHOLD = 0.75` are bands over THEIR OWN computed quantities (occurrence 0 to 1, a 0 to 10 affliction scale, a muhūrta score), not over `ga_condition_composite.condition_score`. Not duplicates; no change.
 
 ### 2.2 Where `neutral` was invented
 
 Only `ga_vastu_writer.compute_direction_impact(None)` returned `'neutral'` for a NULL score (and the registry clause 741/924 asserted it). `ga_medical` already returned `'unknown'`. Other `neutral` strings in `ga_condition_writer.py` are dignity/friendship vocabulary ("neutral_sign", panchadha) and a lajjitadi context fallback, unrelated to the score. No stored row takes the NULL path today (no `condition_score` is NULL on any of the 135 composite rows), so the fix changes zero stored rows; it removes a latent invention.
 
-### 2.3 A trap the sheet's effect line did not name: the Saturn FORENSIC guard
+### 2.3 A trap the sheet's effect line did not name: the Saturn FORENSIC guard (REMOVED, SS ruling a)
 
-`ga_medical_writer` raised `AssertionError` for the canonical Lahiri build unless Saturn's `indication_strength == 'mild'` (score > 0.6). The measured canonical Saturn scores are **0.6800 / 0.6831 / 0.6915 / 0.6972** (all five ayanamshas below 0.7), i.e. MID band, "moderate", under the ruled table. A literal 0.7 cut with the old guard would **halt every canonical `ga_medical` build** on a number the ruling moved, not on a Saturn regression. Handled in section 3 (decision D1 for SS).
+`ga_medical_writer` raised `AssertionError` for the canonical Lahiri build unless Saturn's `indication_strength == 'mild'` (score > 0.6). The measured canonical Saturn scores are **0.6800 / 0.6831 / 0.6915 / 0.6972** (all five ayanamshas below 0.7), i.e. MID band, "moderate", under the ruled table. A literal 0.7 cut with the old guard would **halt every canonical `ga_medical` build** on a number the ruling moved, not on a Saturn regression. **SS ruling (a), 2026-10-02: the guard is REMOVED from the writer entirely** (the first version of this lane had weakened it to "not in the LOW band"; that was rejected, and the weakened form is gone too). Why: a build-halting assertion about one chart's label, inside a writer that runs for every chart, tied to an unsourced cut point, is not a FORENSIC anchor; the seven anchors are positional. What it was protecting is now pinned by a golden test (section 3), so a future change shows in CI rather than as a production halt.
 
 ### 2.4 Root cause of the X2 fallback (read-only; the sheet said "not established")
 
@@ -64,8 +65,9 @@ Only `ga_vastu_writer.compute_direction_impact(None)` returned `'neutral'` for a
 - **New module** `platform/python-sidecar/ga_writers/ga_condition_bands.py`, owned by `ga_condition`, imports nothing project-local. It holds: `CUT_LOW_MID = 0.4`, `CUT_MID_HIGH = 0.7`, `SCORE_BANDS` (a frozen tuple of three `ScoreBand` rows low/mid/high, `lower <= score < upper`, contiguous, asserted at import), `BAND_LOW/MID/HIGH`, `BAND_UNKNOWN = "unknown"`, and `score_band(score) -> Optional[str]` (None for NULL / NaN / non-numeric). `score_band` converts with `float()` first: `Decimal('0.4') < 0.4` is True in Python, and `ga_vastu` read the score as a `Decimal`, so a stored 0.4 would have been "weakened"; now it is "neutral" (no stored score is exactly 0.4 or 0.7, so no row is affected; the fix is a latent-bug removal).
 - `ga_condition_writer` imports and re-exports the names (`cond.SCORE_BANDS is bands.SCORE_BANDS`), so "the band table is at `ga_condition`" holds as an import path too. `ga_medical_writer` and `ga_vastu_writer` import them and keep ONLY their label maps: `INDICATION_STRENGTH_BY_BAND = {low: strong, mid: moderate, high: mild}`, `DIRECTION_IMPACT_BY_BAND = {low: weakened, mid: neutral, high: strengthened}`. **No stored value is renamed.** NULL: medical `'unknown'` (unchanged), vāstu `'unknown'` (was `'neutral'`); both are a shared constant.
 - **Why a new module and not the table inside `ga_condition_writer.py`:** `ga_medical`/`ga_vastu` would otherwise import the whole `ga_condition_writer` (which imports `ga_positions_writer`), widening their digest closure to that closure; and `ga_condition_writer.py` is imported by `ga_dashas_writer` for `_DIVISIONAL_DIGNITY_NORMALIZE`. The new module is imported only by the three writers and edits no L0 module (section 8).
-- **Saturn FORENSIC guard (decision D1):** `ga_medical_writer.saturn_forensic_guard_violation` now asserts what the classical claim supports, "an exalted planet is not under stress": Saturn's band must exist and must not be LOW (score >= 0.4). Measured canonical Saturn is 0.680-0.697 (MID) so it passes; a NULL or < 0.4 Saturn still HALTS the build (a real detector, tested). It no longer demands "mild", which is a band-edge question (0.7), not an exaltation one. Same reasoning as the `ga_vastu` Saturn gate dropped by migration 924 (#2421).
-- Not changed: the formula, weights, `condition_score` values, the dasha peak/weak thresholds (D2).
+- **Saturn guard REMOVED; golden test instead (SS ruling a).** `saturn_forensic_guard_violation` and the build-halting block are deleted from `ga_medical_writer.py` (the Sun advisory, which is non-fatal, and the Moon log stay). `tests/test_ga_medical_saturn_golden.py` pins, as FIXTURES (values read with SELECT-only as the read-only reader on 2026-10-02; no live DB in the test): canonical Saturn sign Libra from `chart_facts` `graha_position`/`sign` on all five ayanamshas, `dignity_d1` exalted, `condition_score` 0.683108 (lahiri, true_chitra), 0.691486 (krishnamurti), 0.697162 (raman), 0.680000 (surya_siddhanta_classical); the resulting band under the ruled 0.4 / 0.7 table (MID on all five), the new medical label ('moderate'; the stored pre-lane label was 'mild'), vāstu 'neutral' (unchanged), and that the closest score sits 0.002838 below the 0.7 edge (so any move of the edge, the scores or the band logic fails CI). It also asserts the writer has no `saturn_forensic_guard_violation`, no `FORENSIC VIOLATION` and no `raise AssertionError`. NB the score lives in `ga_condition_composite.condition_score`, not in `chart_facts`; the sign is the `chart_facts` part.
+- **Dasha peak/weak cut points (SS ruling b).** `DASHA_PERIOD_CONDITION_CUTS` (frozen `DashaPeriodConditionCuts`: `peak_at_or_above = 0.65`, `weak_at_or_below = 0.35`, `provenance = "unsourced"`) lives in `ga_condition_bands.py` beside, and separate from, `SCORE_BANDS`. `ga_condition_writer` imports it; `_PEAK_CONDITION_THRESHOLD` / `_WEAK_CONDITION_THRESHOLD` remain as aliases of it (existing tests import them). No output change, proven by `tests/test_ga_condition_dasha_cuts.py`: over a 0.0005 score sweep plus both edges and NULL, the classification `_load_dasha_periods` produces equals the previous hard-coded 0.65 / 0.35 rule, and the period payloads at the edges are unchanged. It is a different concept from the three-band label and is NOT merged into 0.4 / 0.7 (a test pins that the values are disjoint from the band edges).
+- Not changed: the formula, weights, `condition_score` values.
 
 ## 4. Design: X2 (I-29)
 
@@ -77,10 +79,10 @@ Only `ga_vastu_writer.compute_direction_impact(None)` returned `'neutral'` for a
 
 ## 5. Files and tests
 
-New: `ga_writers/ga_condition_bands.py`; `tests/test_ga_condition_band_table.py` (49 tests); `tests/test_ga_condition_band_clause_texts.py` (4 tests, pins the clause texts of section 9); `tests/test_ga_condition_fallback_guard.py` (13 tests); `exec/s_l1_attribution_hooks/band_table.json`, `ga_condition_fallback.json`; this folder: this document, `band_x2_old_vs_new.py`, `old_vs_new_output_2026-10-02.txt`, `registry_clause_texts/*.sql` (NOT applied).
+New: `ga_writers/ga_condition_bands.py`; `tests/test_ga_condition_band_table.py` (38 tests after the Saturn-guard tests were removed); `tests/test_ga_condition_band_clause_texts.py` (6 tests, pins the clause texts of section 9); `tests/test_ga_condition_fallback_guard.py` (13 tests); `tests/test_ga_medical_saturn_golden.py` (17 tests, the Saturn golden fixtures); `tests/test_ga_condition_dasha_cuts.py` (5 tests, the dasha cut table and the no-output-change equality); `exec/s_l1_attribution_hooks/band_table.json`, `ga_condition_fallback.json`; this folder: this document, `band_x2_old_vs_new.py`, `old_vs_new_output_2026-10-02.txt`, `registry_clause_texts/*.sql` (NOT applied).
 Edited: `ga_condition_writer.py`, `ga_medical_writer.py`, `ga_vastu_writer.py`; `get_condition_composite.ts` + its test (6 new); `pipeline/orchestrator/writers/__tests__/test_ga_medical.py` (the 0.61 boundary case moves to "moderate"; 0.7 added) and `test_ga_vastu.py` (NULL -> 'unknown'); regenerated `platform/src/generated/nirmana-writer-digests.json`; E6 re-pin of ga_condition line numbers (`asset_declarations.json`, `test_e6_1_declarations.py`, as commit 271290c25 did); census regeneration (section 8).
 
-Golden/boundary coverage: 0.0, 0.3999999, 0.4, 0.4000001, 0.5, 0.6, 0.65, 0.6999999, 0.7, 0.7000001, 1.0, out-of-range, NULL, NaN, non-numeric, `Decimal('0.4')`, `Decimal('0.700000')`, numeric strings; table contiguity on a 0.01 grid (every score in exactly one band); identity `cond.SCORE_BANDS is med.SCORE_BANDS is vas.SCORE_BANDS`; an AST test that neither consumer's executable code contains 0.4 / 0.6 / 0.7; both label maps cover exactly the band names; medical and vastu agree on the band of every score on a 0.001 grid; stored label values unchanged; NULL never 'neutral'; Saturn guard (passes 0.4, 0.68-0.7, 0.85; fires < 0.4 and NULL). Fallback: guard raises with divisionals present, passes when genuinely absent, refuses an RLS-blind empty read, fails closed on a failing read; the build writes nothing when refused (F-C8-class unscorable label and a swallowed-failure None), flags and reasons when legitimate, never consults the guard when the composite is usable; the verifier returns violators and scopes by chart.
+Golden/boundary coverage: 0.0, 0.3999999, 0.4, 0.4000001, 0.5, 0.6, 0.65, 0.6999999, 0.7, 0.7000001, 1.0, out-of-range, NULL, NaN, non-numeric, `Decimal('0.4')`, `Decimal('0.700000')`, numeric strings; table contiguity on a 0.01 grid (every score in exactly one band); identity `cond.SCORE_BANDS is med.SCORE_BANDS is vas.SCORE_BANDS`; an AST test that neither consumer's executable code contains 0.4 / 0.6 / 0.7; both label maps cover exactly the band names; medical and vastu agree on the band of every score on a 0.001 grid; stored label values unchanged; NULL never 'neutral'. Fallback: guard raises with divisionals present, passes when genuinely absent, refuses an RLS-blind empty read, fails closed on a failing read; the build writes nothing when refused (F-C8-class unscorable label and a swallowed-failure None), flags and reasons when legitimate, never consults the guard when the composite is usable; the verifier returns violators and scopes by chart.
 
 ## 6. Old-vs-new on the three charts (offline, read-only; `band_x2_old_vs_new.py`, full output in `old_vs_new_output_2026-10-02.txt`)
 
@@ -127,7 +129,7 @@ Results are quoted in section 2.4 and 6.
 
 ## 8. Digests moved; pins; census
 
-`provenance_inventory --output` before vs after: **3 writer digests moved: `ga_condition`, `ga_medical`, `ga_vastu`** (L1 only). `probe_digest` unchanged; no writer added or removed; **no L0 (`bg_*`), L2 (`bo_*`), L3 (`ka_*`) asset moved**, `verification_vocab.py` and every other L0 module untouched. (Importers of `ga_condition_writer.py`, e.g. `ga_dashas_writer`, did not move: the inventory's closure does not follow them.) `ga_condition` is `asset_frozen` against its live generation (migration 902 note): this change unfreezes it by design; the S-L1 rebuild re-freezes it.
+`provenance_inventory --output` before vs after (re-run after SS rulings a-d, against both the pristine base and the pushed HEAD 77f7a219a): **3 writer digests moved: `ga_condition`, `ga_medical`, `ga_vastu`** (L1 only). `probe_digest` unchanged; no writer added or removed; **no L0 (`bg_*`), L2 (`bo_*`), L3 (`ka_*`) asset moved**, `verification_vocab.py` and every other L0 module untouched. (Importers of `ga_condition_writer.py`, e.g. `ga_dashas_writer`, did not move: the inventory's closure does not follow them.) `ga_condition` is `asset_frozen` against its live generation (migration 902 note): this change unfreezes it by design; the S-L1 rebuild re-freezes it.
 
 Pins: `platform/src/generated/nirmana-analysis-layer-pins.json` was NOT regenerated: `python -m scripts.generate.nirmana_analysis_layer_pins --check` already reports L1, L2 and L3 slices stale and many "artifact commit must be an ancestor of HEAD" errors in this checkout, including L2 and L3 slices no digest of which moved here; the pin regeneration is a convergence-time step that needs a reviewed commit and a database. E6 declaration line pins for `ga_condition` (citation sites 1117 -> 1250, 1391 -> 1524, column list 1201 -> 1334; served read `get_condition_composite.ts:91 -> 121`) were re-pinned; the AST site counts did not change.
 
@@ -135,18 +137,22 @@ Generated artifacts (second commit of the branch): `npm run codegen:capability-e
 
 ## 9. Registry changes to apply LATER by migration (NOT applied; no migration in this branch)
 
-Applying order matters: the registry clauses must be in place BEFORE `ga_medical` / `ga_vastu` are rebuilt with the new writers, or the post-write integrity gate fails (the migration-902 failure mode). Exact assembled texts (live clause + the change) are in `registry_clause_texts/` with SHA-256:
+**Migration number 1252 is allocated for these clause changes ("migration 1252, to be written at the owner's line; intent only").** Nothing here is a migration file; every text in `registry_clause_texts/` carries that header.
+
+**Ordering rule (SS ruling c).** Apply the clause changes BEFORE `ga_medical` / `ga_vastu` are rebuilt in S-L1, and WITH OR AFTER the writer deploy. An OLD writer under the NEW clause, or a NEW writer under the OLD clause, FAILS the post-write integrity gate (the migration-902 failure mode): the old medical writer stores 'mild' for 0.6 to 0.7 and the new clause rejects it; the new writer stores 'moderate' (and, for a NULL score, vāstu 'unknown') and the old clause rejects it.
+
+Exact assembled texts (live clause + the change, with the 1252 intent header and ordering rule as leading SQL comments; the dry-runs are unchanged by the header) are in `registry_clause_texts/` with SHA-256:
 
 | file | sha256 |
 |---|---|
-| `ga_condition_integrity_scoped_canonical_NOT_APPLIED.sql` | `0f71cc59b41f02e48e3f33c1dc0e9a94f7b08b425e014c3cf330c091969b0f42` |
-| `ga_condition_integrity_table_wide_NOT_APPLIED.sql` | `0f956d6ec0594d517bd3c91bbe3317738e73343957543a2e1cd0a249a774c3bc` |
-| `ga_medical_integrity_NOT_APPLIED.sql` | `4f9d8c3d3416bf93ab1b2f02809033214d3804b1a9af86c9d560262fea0a8f85` |
-| `ga_vastu_integrity_NOT_APPLIED.sql` | `218c764f2f328e6f0ba831ef882b08a9f1fd9931579414d1fcb04c71bc63dc22` |
+| `ga_condition_integrity_scoped_canonical_NOT_APPLIED.sql` | `9c9541f95e4433842f361353b5ce8c7c473a24636d370458d129a9453d8980ba` |
+| `ga_condition_integrity_table_wide_NOT_APPLIED.sql` | `4856f55dde3a757074615d48660e1e679affdff2a1e621f58a99709784902e33` |
+| `ga_medical_integrity_NOT_APPLIED.sql` | `791d96bdf632908d27521d8e0bdb125d674a6e4f86dd55a8916a5caa6e7a4b9f` |
+| `ga_vastu_integrity_NOT_APPLIED.sql` | `e07bcd082259ba3f3f051fba84c661c076ce095de2f49a3a03e2dde4c9a44d85` |
 
 ### 9.1 `ga_condition`: add conjuncts (e) and (f) to the live clause (migration 902's text), before `AS integrity_passed`
 
-Variant **S (canonical-scoped; recommended for S-L1)** mirrors conjunct (a)'s existing scope. A table-wide (e) would FAIL on the 90 stale rows of the two S-L1b charts the moment anyone dispatches `ga_condition` for the canonical chart (the integrity SQL takes no chart parameter), repeating the migration-902 incident. Widen to variant W after S-L1b.
+Variant **S (canonical-scoped; the S-L1 form)** mirrors conjunct (a)'s existing scope. **Why it is scoped (SS ruling d):** a table-wide (e) FAILS today on the 90 stale D1-fallback rows of the other two charts (1c826d5a, cb73cd3d), which the S-L1 canonical dispatch never touches (the integrity SQL takes no chart parameter), repeating the migration-902 incident. **It WIDENS to all charts (variant W) as a REQUIRED step of S-L1b**, the same item as fixing `ga_dashas`' canonical-scoped integrity SQL (migration 882) and conjunct (a) of this same clause. The scoped text says this in its own SQL comment.
 
 ```sql
   -- (e) X2 / I-29: a composite row that used the D1 fallback (breakdown.varga_fallback_used) on a
@@ -186,8 +192,8 @@ Dry-run on today's data as the read-only reader (2026-10-02; `psql -f` of the as
 ### 9.2 `ga_medical`: the live clause FAILS after the new writer unless these two edits are applied (migration 740 text)
 
 (b): `WHEN c.condition_score <= 0.6 THEN 'moderate'` becomes `WHEN c.condition_score < 0.7 THEN 'moderate'`.
-(c) Saturn conjunct (FORENSIC): `AND graha = 'Saturn' AND indication_strength <> 'mild'` becomes `AND graha = 'Saturn' AND (indication_strength IS NULL OR indication_strength IN ('strong', 'unknown'))` (Saturn must not be in the LOW band; same claim as the writer guard).
-Dry-run: live clause `t` on today's data; new clause `f` on today's STALE rows (20 rows disagree: 15 canonical + 5 third chart; the canonical Saturn row reads 'mild'); new clause with `ga_medical` overlaid by what the new writer would store (labels recomputed from the stored scores) `t`.
+(c) Saturn conjunct: **REMOVED** (SS ruling a applies to the registry clause as it does to the writer: the migration-740 conjunct `AND graha = 'Saturn' AND indication_strength <> 'mild'` is a label assertion about one chart's Saturn tied to an unsourced cut point; the weakened "not in the LOW band" form is not offered either). The Sun advisory conjunct stays as in migration 740 (the writer keeps the Sun advisory non-fatal; not part of the ruling). Saturn's score and band are pinned by the golden test instead.
+Dry-run (re-run on the final texts): live clause `t` on today's data; new clause `f` on today's STALE rows (20 rows disagree: 15 canonical + 5 third chart); new clause with `ga_medical` overlaid by what the new writer would store (labels recomputed from the stored scores) `t`.
 
 ### 9.3 `ga_vastu`: one edit (migration 924 text)
 
@@ -211,10 +217,10 @@ Recommendation (D5): extend the detector's `TABLES` with `ga_condition_composite
 
 ## 12. Decisions for SS
 
-- **D1 (Saturn FORENSIC guard):** changed from "Saturn must be 'mild'" to "Saturn must not be in the LOW band" (section 3). Needed or every canonical `ga_medical` build halts. SS may prefer to drop the guard (as migration 924 did for vāstu) or to keep a literal-'mild' guard and move Saturn's expectation, which would contradict the ruled 0.7.
-- **D2 (third cut-point pair):** `_PEAK_CONDITION_THRESHOLD 0.65` / `_WEAK_CONDITION_THRESHOLD 0.35` over the same score are not in the ruling. Folding them into the table (peak = high band, weak = low band) would change which dasha periods are stored (0.65 -> 0.7 and 0.35 -> 0.4); not done.
+- **D1 (Saturn guard): RULED (SS, 2026-10-02): REMOVED**, not weakened; replaced by a golden test (section 3). The registry clause's Saturn conjunct goes with it (section 9.2).
+- **D2 (third cut-point pair): RULED (SS, 2026-10-02):** moved, values unchanged, into its own table `DASHA_PERIOD_CONDITION_CUTS`; not merged with 0.4 / 0.7 (section 3).
 - **D3 (SQL duplicates):** the cut points remain written out in the two registry integrity clauses (SQL cannot import the Python table). A migration author must keep them in step. `tests/test_ga_condition_band_table.py` pins the clause TEXTS in `registry_clause_texts/` to the band table's cut points and NULL label (so the texts to be migrated cannot drift from the writers); it cannot see the live registry rows.
-- **D4 (clause scope):** apply (e)+(f) in variant S now, widen to W after S-L1b.
+- **D4 (clause scope): RULED (SS, 2026-10-02):** apply (e)+(f) in variant S for S-L1; widening to W is a REQUIRED step of S-L1b (section 9.1). Migration 1252 is allocated for the clause changes; ordering rule in section 9.
 - **D5:** extend the flip detector's table list (section 11).
 - **D6 (stored column):** X2's stored field is the existing JSON flag + a new `varga_fallback_reason` key; a real boolean column would need a migration (not done; the served field derives from the JSON key).
 - **D7:** one canonical Abhinandan row has `condition_score = 0` (surya_siddhanta Mercury); unchanged, a stored fact of the stale fallback build.
@@ -227,5 +233,6 @@ Recommendation (D5): extend the detector's `TABLES` with `ga_condition_composite
 - The registry clause texts were dry-run only (read-only SELECT of the assembled text); no migration was authored, applied or tested through the migration runner, and the deploy-time application of whatever migration carries them was not verified.
 - `capability_estate_census.json` was regenerated with `--source-revision` of this branch's code commit; the Dens.served census verdict for `ga_condition` after the select/facet change was not re-measured (the E6 declaration tests pass).
 - `nirmana_analysis_layer_pins --check` fails in this checkout independently of this lane (L2/L3 slices stale and missing ancestors); not re-pinned.
+- **Supplementary test groups (finished 2026-10-02, foreground, per file group, `PYTHONPATH=.` from `platform/python-sidecar`):** exact commands and counts are in the PR text. One unrelated group had 3 failures in `tests/l3/gochara/test_wp10_cutover.py` (Kāla gochara cutover subprocess scripts, no import of any ga_* module, not touched by this branch; not run against the base to prove it pre-existing). An earlier whole-`tests/` run under heavy machine load reported 20 failures including `test_wave_scheduler.py` (timing tests); that file passes 10/10 in isolation and in the chunked run, so those were load flakes (the 20-name list was not retained).
 - The cut points 0.4 / 0.7 and the `varga_fallback_reason` key are project conventions (`unsourced`); no classical passage supports them.
 - Whether the sheet's I-29 "Dens facet" is meant to be the `density_contract.facets` entry (done) or an additional census Dens criterion: I implemented the former; the census `Dens.served` criterion itself (a tier column in the served select) is a different, existing check and I did not add a tier column to the select.

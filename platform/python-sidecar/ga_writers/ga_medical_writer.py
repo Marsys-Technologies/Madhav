@@ -28,10 +28,11 @@ FORENSIC guard (canonical chart 482012f1-710e-4a25-994a-93821f5871aa):
          (F-E5 — the prior "debilitated" rationale was factually wrong, even
          though the threshold check it gated happened to still hold).
   Moon = Purva Bhadrapada         → nakshatra_body_part = 'left_side'
-  Saturn = Libra (exalted)        → condition_score must not be in the LOW band (an exalted
-         planet is not "under stress"); measured 0.68-0.70 across ayanamshas, i.e. the MID
-         band ('moderate') under the ruled 0.4 / 0.7 table. The pre-I-28 guard demanded
-         'mild' (score > 0.6); under 0.7 it would halt every canonical build.
+  (Saturn: there is NO build-time Saturn guard. SS ruling 2026-10-02: a build-halting assertion
+         about one chart's label, inside a writer that runs for every chart, tied to an unsourced
+         cut point, is not a FORENSIC anchor -- the seven anchors are positional. Saturn's stored
+         score and band are pinned by a golden TEST instead:
+         tests/test_ga_medical_saturn_golden.py, so a change shows in CI, not as a production halt.)
 
 MEDICAL DISCLAIMER (NON-NEGOTIABLE):
   Every row carries indication_tier = 'jyotish_indication' AND not_diagnosis = TRUE.
@@ -152,39 +153,6 @@ def sun_forensic_guard_warning(sun_score: Optional[float]) -> Optional[str]:
         f"'strong' (Sun sits in Capricorn — Saturn's sign, Sun's classical enemy_sign, "
         f"NOT debilitation; Sun debilitates in Libra), score={sun_score!r}"
     )
-
-
-def saturn_forensic_guard_violation(saturn_score: Optional[float]) -> Optional[str]:
-    """FORENSIC check for the canonical native's Saturn (Libra, exalted). Build-halting.
-
-    Returns a violation message, or None when the check holds.
-
-    What the claim is: an EXALTED planet is not a planet "under stress", so its
-    condition_score must not fall in the LOW band (score < 0.4 -> 'strong' indication), and the
-    score must exist (a NULL score cannot support the claim either way).
-
-    Why it is stated against the band table and not as `== 'mild'`: the pre-I-28 guard demanded
-    'mild' because medical's private cut was `score > 0.6`. Under the ruled single table
-    (0.4 / 0.7) the canonical Saturn scores 0.680-0.697 (MID band, 'moderate') on every
-    ayanamsha, so an `== 'mild'` guard would halt EVERY canonical ga_medical build on a number
-    the ruling moved, not on a regression in Saturn. The classical content (exalted => not
-    stressed) is what the guard still enforces; 'mild' vs 'moderate' for Saturn is a band-edge
-    question (0.7), not an exaltation question. Same reasoning as the ga_vastu Saturn gate
-    removed by migration 924 (#2421).
-    """
-    band = score_band(saturn_score)
-    if band is None:
-        return (
-            f"Saturn condition_score is NULL (cannot support 'exalted => not stressed'), "
-            f"score={saturn_score!r}"
-        )
-    if band == BAND_LOW:
-        return (
-            f"Saturn indication_strength={indication_strength_from_score(saturn_score)!r} "
-            f"(LOW band) but Saturn is exalted in Libra and must not be in the low band, "
-            f"score={saturn_score!r}"
-        )
-    return None
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -340,7 +308,7 @@ def build_ga_medical_substep(
     6. INSERT 9 rows with NOT NULL indication_tier + not_diagnosis enforcement.
 
     FORENSIC log (canonical chart):
-      Sun=Capricorn → 'strong'; Moon=Purva Bhadrapada → left_side; Saturn=Libra → not LOW band.
+      Sun=Capricorn → 'strong' (advisory only); Moon=Purva Bhadrapada → left_side (logged).
 
     Returns: number of rows inserted.
     """
@@ -364,9 +332,9 @@ def build_ga_medical_substep(
     medical_mappings = _load_medical_mappings(conn)
     positions        = _load_graha_positions(conn, chart_id, ayanamsha_id)
 
-    # FORENSIC guard for canonical chart. Saturn: assert-and-halt (the claim is
-    # classically correct). Sun: non-fatal advisory only (F-E5) — see
-    # sun_forensic_guard_warning's docstring for why.
+    # FORENSIC log for the canonical chart. Sun: non-fatal advisory only (F-E5) — see
+    # sun_forensic_guard_warning's docstring for why. There is no Saturn assertion (SS ruling
+    # 2026-10-02; see the module docstring): Saturn's score/band is pinned by a golden test.
     if chart_id == CANONICAL_CHART_ID and ayanamsha_id == "lahiri_chitrapaksha":
         sun_score = condition_scores.get("Sun")
         saturn_score = condition_scores.get("Saturn")
@@ -374,7 +342,7 @@ def build_ga_medical_substep(
         logger.info(
             "[ga_medical_writer] FORENSIC chart=%s aya=%s — "
             "Sun condition_score=%s (expected<0.4→'strong'); "
-            "Saturn condition_score=%s (expected not in the LOW band, i.e. >= 0.4); "
+            "Saturn condition_score=%s (logged only; pinned by tests/test_ga_medical_saturn_golden.py); "
             "Moon nakshatra=%s (expected Purva Bhadrapada)",
             chart_id, ayanamsha_id, sun_score, saturn_score, moon_nak,
         )
@@ -385,14 +353,6 @@ def build_ga_medical_substep(
             logger.warning(
                 "[ga_medical_writer] %s for chart_id=%s ayanamsha=%s",
                 sun_warning, CANONICAL_CHART_ID, ayanamsha_id,
-            )
-        # Saturn = Libra (exalted) → condition_score must not be in the LOW band (an exalted
-        # planet is not "under stress"); see saturn_forensic_guard_violation.
-        saturn_violation = saturn_forensic_guard_violation(saturn_score)
-        if saturn_violation:
-            raise AssertionError(
-                f"FORENSIC VIOLATION: {saturn_violation} "
-                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
             )
 
     # Step 3–5: Build rows
