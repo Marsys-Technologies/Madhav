@@ -17,17 +17,19 @@ Public surface:
   p6          — P6 Moon-channel operators, all testimony
   favourable_houses — P2 per-planet favourable house sets from janma-rāśi
                 (Phaladīpikā XXVI.1–8, PG321–323), cited registry content
+  strength    — sad_bala_sufficient v1.0 (AM-6 Option C): binary ṣaḍbala
+                sufficiency, raw rūpas as typed operand evidence
 """
 from __future__ import annotations
 
 from . import admission, ashtakavarga, dignity, favourable_houses  # noqa: F401
 from . import frames, nature, p6  # noqa: F401
 from . import permission, predicates  # noqa: F401
-from . import records, registry, score, valence, vedha  # noqa: F401
+from . import records, registry, score, strength, valence, vedha  # noqa: F401
 
 __all__ = [
     "admission", "ashtakavarga", "dignity", "favourable_houses",
     "frames", "nature", "p6",
-    "permission", "predicates", "records", "registry", "score", "valence",
-    "vedha",
+    "permission", "predicates", "records", "registry", "score", "strength",
+    "valence", "vedha",
 ]
