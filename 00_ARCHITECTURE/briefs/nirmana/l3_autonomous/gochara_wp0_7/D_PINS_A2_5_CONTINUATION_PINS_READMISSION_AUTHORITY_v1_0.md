@@ -51,3 +51,24 @@ no longer matches source. ASTRA amendment rank 3: regenerate + re-admit.
 
 The immutable approval identity of this authority is the commit that first
 introduced this document: `53a3d1f85abaa581ff5c1441eb7e29584a82d120`.
+
+## v1.1 addendum — second successor under the same continuation (2026-10-01)
+
+The ASTRA v1.1 closure check on #2799 (REJECT, narrowed: A1/A2/A7 partly closed)
+required a further rework of the same four-writer surface, moving the same four
+digests again. The steward's v1.1 verdict (EVENTS.jsonl 2026-10-01T14:04:14Z,
+message M20261001T140414-f44d) closes with the operative clause, verbatim:
+
+> "Then refresh digests/pins/census (continuation authority stands), CI green, report."
+
+Scope of THIS admission, under that standing continuation authority: exactly ONE
+append-only L3 successor over `l3:f6cb3914e7f1:bf1dba54ee01` (archived whole,
+never rewritten) with the same four-writer delta as above —
+`ka_gochara_v4_41_candidate` (`approved_intentional_change`, declared source
+closure) and `ka_gochara_v3_century_materialize` / `ka_moorti_nirnaya` /
+`ka_sangam` (`derived_import_change` via `services/gochara_kernel/episodes.py`
+only) — verified from content-hashed closures of the v1.1 rework tree against
+the predecessor inventory at `8626bb6da`. Membership unchanged (23 `ka_`
+writers); no other layer moves. The source commit is the v1.1 rework's
+digest-re-derivation head, whose committed writer inventory is byte-identical
+to the derived inventory (`provenance_inventory --check` green).
