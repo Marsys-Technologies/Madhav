@@ -1,3 +1,3 @@
 import { ObservatoryDashboard } from '@/components/observatory/ObservatoryDashboard'
 export const dynamic = 'force-dynamic'
-export default function ObservatoryOverviewPage() { return <ObservatoryDashboard view="overview" /> }
+export default function ObservatoryAnalyticsPage() { return <ObservatoryDashboard view="analytics" /> }
