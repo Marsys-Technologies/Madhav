@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "enrich (E)"
 disposition_proposal_approver: "Strategic Suvarṇa (output change, R5)"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: [I-11]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-11, I-24, I-37, I-33]
 ledger_gap_ids: [ga_yoga-Idem.pattern, ga_yoga-Earn.build_record, ga_yoga-Cost.baseline, ga_yoga-Count.floor, ga_yoga-Complete.depth, ga_yoga-Build.history, ga_yoga-Carr.detector]
 ---
 # ga_yoga — Yoga firings (rule evaluation against L1 facts; 233 catalogue yogas) with cancellation (bhaṅga) where a rule is implemented
@@ -169,3 +169,10 @@ natural key `(chart_id, ayanamsha_id, yoga_canonical_id)` (census Vocab key); vo
 
 1. May SS authorise the read-only per-yoga comparison of the last two builds (the 63 → 53 shortfall)?
 2. Are `partial_formation_pct`, `activation_dasha_periods` and a D9 lineage id in scope for the first L1 wave, and by what source-grounded rule?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-02 accepted: declare `ga_yoga -> ga_vargas` (I-24).
+- Q-L1-11 accepted: offline dry run authorised, read-only (I-37, now); `activation_dasha_periods` and the D9 lineage by natural key are OPTIONAL (I-33; Nabhasa yogas null with reason); `partial_formation_pct` deferred; floor = achieved count after S-L1.

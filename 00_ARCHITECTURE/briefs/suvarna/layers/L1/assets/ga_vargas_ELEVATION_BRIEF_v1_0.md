@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); the access fix is Track I item I-11 and any rebuild or F-A2 is an SS REVIEW item (production, output change)"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: [I-11]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-11, I-23, I-31, I-24]
 ledger_gap_ids: [ga_vargas-Idem.pattern, ga_vargas-Build.completion, ga_vargas-Earn.build_record, ga_vargas-Cost.baseline, ga_vargas-Count.floor, ga_vargas-Complete.depth, ga_vargas-Vocab.identity, ga_vargas-Build.history, ga_vargas-Carr.detector]
 ---
 # ga_vargas — Divisional charts D1–D60 per ayanamsha (reads 0 rows for every login role since the migration-1035 ownership change: RLS deny-all; data probably intact, UNVERIFIED)
@@ -174,3 +174,10 @@ natural key as the (to-be-widened) unique index: `(chart_id, graha, ayanamsha_id
 1. Authorise the owner/app-role read of `chart_divisionals` and the access fix (policy for the builder/serving roles, or DISABLE RLS), as Track I I-11 proposes?
 2. Is F-A2 (widen the unique key to `fact_subject`, output change) in scope for any rebuild that the read shows is needed?
 3. Should `ga_dashas` and `ga_yoga` declare a direct edge to `ga_vargas` (Track I left it open), given the declaration changes dispatch order and the dashas' upstream hash (the consumer then executes rather than skips)?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-01 accepted (R): widen the unique key and both `ON CONFLICT` targets to include `fact_subject` (F-A2); non-empty clause in the integrity check; cutover-gate RLS check. Mandatory before S-L1. Track I: I-23. The F-4 build-record gap is a read-only answer to SS before S-L1 (I-31).
+- Q-L1-02 edges accepted: `ga_dashas -> ga_vargas` and `ga_yoga -> ga_vargas` (I-24).

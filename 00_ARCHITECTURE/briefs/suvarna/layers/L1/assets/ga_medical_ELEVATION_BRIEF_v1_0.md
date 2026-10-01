@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: []
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-28, I-40]
 ledger_gap_ids: [ga_medical-Idem.pattern, ga_medical-Earn.build_record, ga_medical-Cost.baseline, ga_medical-Build.history, ga_medical-Carr.detector]
 ---
 # ga_medical — Jyotish medical indications per graha (not a diagnosis)
@@ -135,3 +135,9 @@ natural key `(chart_id, ayanamsha_id, graha)`; volatile: surrogate id, `computed
 
 1. Is `indication_strength` (a threshold grade of a computed score) narration under the SS Null/Narr ruling?
 2. Where should the `condition_score` cut points live, and may the vāstu and medical scales differ?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-16(c) accepted (R): reads the band table at `ga_condition` (0.4 / 0.7); the 15 canonical rows between 0.6 and 0.7 move from "mild" to "moderate" (I-28). Q-L1-05: `indication_strength` declared as narration with golden tests (I-40).

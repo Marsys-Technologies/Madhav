@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "enrich (E)"
 disposition_proposal_approver: "Strategic Suvarṇa (output change, R5); the enrichment waits on SS"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: []
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-36, I-32]
 ledger_gap_ids: [ga_ayurdaya-Idem.pattern, ga_ayurdaya-Earn.build_record, ga_ayurdaya-Cost.baseline, ga_ayurdaya-Complete.depth, ga_ayurdaya-Build.history, ga_ayurdaya-Carr.detector]
 ---
 # ga_ayurdaya — Āyurdāya under three classical methods (method-attributed, not adjudicated)
@@ -161,3 +161,9 @@ natural key `(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key)` (t
 
 1. Is the harana enrichment in scope for the first L1 wave, and may it read `ga_structural`/`ga_condition` facts through new `depends_on` edges?
 2. Is `verification_pass_status = single` the honest tier for the delegated PyJHora result, or should the three methods be cross-checked as a second derivation (D3)?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-10 accepted. NOW (pre-approved, display side): the served totals say they are unreduced base figures, no reductions applied (I-36). OPTIONAL: the harana enrichment only for rules whose passage is at least `sourced_ocr_unverified` (the three Pindayu haranas qualify; astangata and Chakrapata do not until found), additive beside the base totals, each applied reduction named; new `depends_on` edges allowed (I-32).

@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); moving the daridra-cancellation pass (FD-1) is an output change for SS"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-61 (2026-10-02) on the argala block AR-1..AR-6 of the L1 decision sheet (all recommendations accepted; (R) items provisional until J1), recorded in section 4 FD-5 and section 8"
-track_i_items: [I-11, I-13, I-14, I-15, I-16, I-17, I-18, I-20]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-61 (2026-10-02) on the argala block AR-1..AR-6 of the L1 decision sheet (all recommendations accepted; (R) items provisional until J1), recorded in section 4 FD-5 and section 8; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-11, I-13, I-14, I-15, I-16, I-17, I-18, I-20, I-25, I-30, I-22, I-27]
 ledger_gap_ids: [ga_structural-Idem.pattern, ga_structural-Build.completion, ga_structural-Earn.build_record, ga_structural-Cost.baseline, ga_structural-Build.history, ga_structural-Carr.detector]
 ---
 # ga_structural — Structural enumeration (64 categories: aspects, conjunctions, dignity per varga, avasthā, yoga/doṣa labelling, argala, dispositors)
@@ -192,3 +192,11 @@ SS ruled the argala block of the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`,
 - **AR-5**: accepted as written (citation chunk ids, `sourced_ocr_unverified`; rides the rebuild). Track I: I-16.
 - **AR-6 (R)** (a): L1 {2, 4, 5, 11} / {12, 10, 9, 3} canonical, {2, 4, 11} a named filter; L1 adds the graha-level family (D1 only); L2 builds edges from those rows, cites their `fact_id`s and deletes its offset constants, its pairing and its own malefic set; if an edge needs a benefic/malefic label, ONE cited definition in the L0 graha vocabulary (Sun, Saturn, Mars; nodes stated separately) read by both layers; vipareeta / 3rd-house evil argala recorded, not built. Track I: I-14, I-18, I-19.
 - **Sequence (binding):** one `ga_structural` rebuild carrying the argala change AND the ephemeris fix, after G-EPH and G-FLIP, as part of S-L1; then `bo_karanajala` inside the single S-L2 batch; no argala-only L1 rebuild. Migration 1219 is allocated for the `fact_category_ownership` row (and the `count_sql` / floor touch). Track I: I-20.
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-02 accepted (R): Daridra cancellation moves to `ga_vichara`; `ga_structural` keeps detection only; readers of the `dosha_label` bhanga fields are traced first. Mandatory before S-L1. Track I: I-25.
+- Q-L1-04 accepted: `ga_structural` owns `bhava_bala_*` and its 12 unowned categories; ownership rows may ride migration 1219 (I-30).
+- A-4 / X1: the shared L0 Gandanta module replaces the private import (I-22). Q-L1-03: Yogi/tier items do not touch this asset beyond the spelling `single` (I-27).

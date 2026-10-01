@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: []
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-38]
 ledger_gap_ids: [ga_tajaka-Idem.pattern, ga_tajaka-Earn.build_record, ga_tajaka-Cost.baseline, ga_tajaka-Build.history, ga_tajaka-Carr.detector]
 ---
 # ga_tajaka — Vārṣaphal annual charts: Muntha, Vārṣeśa by two methods, Tājika yogas (hybrid window)
@@ -147,3 +147,9 @@ natural key `(chart_id, ayanamsha_id, varsha_year)` (`_idempotency.replace_prior
 ## 7 · Questions for Strategic Suvarṇa
 
 1. Is a clock-dependent hybrid window acceptable for an L1 correctness asset (record the reference year), or must a rebuild of a recorded build reproduce its window?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-14 accepted: accepted as a declared rolling horizon; the reference year is recorded in `WriterResult.notes`; the `rolling_horizon` N/A rule is prepared as an `NA_RULE_DECISIONS` entry (the engine session owns that list) (I-38).

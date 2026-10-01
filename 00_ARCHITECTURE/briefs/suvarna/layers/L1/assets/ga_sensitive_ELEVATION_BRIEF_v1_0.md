@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); the tier fix (FD-1) is an output change for SS"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: [I-12]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-12, I-26, I-21]
 ledger_gap_ids: [ga_sensitive-Idem.pattern, ga_sensitive-Earn.build_record, ga_sensitive-Cost.baseline, ga_sensitive-Complete.depth, ga_sensitive-Build.history, ga_sensitive-Carr.detector]
 ---
 # ga_sensitive — Sensitive points (30 A5 categories: upagrahas, Sphuṭas, KP, Nāḍī, Lāl Kitāb, Yogi system)
@@ -153,3 +153,10 @@ natural key `(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key)` (t
 
 1. After the read-only stored-tier census, may the row-builder default and literal `two_pass_verified` stamps be corrected (output change, L2 salience effect)?
 2. Which Yogi-point category is the authority: `esoteric_point_yogi_system` (here) or `sensitive_point_yogi` (`ga_sensitive_degree`)?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-03 accepted (R): `_make_row` defaults to `UNVERIFIED_DEFAULT`; the 1,780 zero-tolerance default rows are `single`; `two_pass_verified` only for an independent re-derivation compared through `two_pass_verdict`; per-emitter audit of the 6,970 positive-tolerance rows (emitter, rows, second path yes/no, resulting tier) goes to SS BEFORE S-L1. Yogi authority `esoteric_point_yogi` `formula_id = bphs_93_20`; `alt_96_40` a named variant. Track I: I-26.
+- A-3: backend recorded; "Swiss" provenance strings corrected (I-21).

@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: [I-11, I-13]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-11, I-13, I-28, I-29, I-30, I-35]
 ledger_gap_ids: [ga_condition-Idem.pattern, ga_condition-Build.completion, ga_condition-Earn.build_record, ga_condition-Cost.baseline, ga_condition-Complete.depth, ga_condition-Build.history, ga_condition-Carr.detector]
 ---
 # ga_condition — Planetary condition composite (dignity, avasthā, motion, combustion, friendship, 0–1 score) and per-varga avasthās
@@ -167,3 +167,12 @@ composite table: natural key `(chart_id, ayanamsha_id, graha)`; volatile: surrog
 
 1. Do the rows the writer produces on `chart_facts` count as this asset's `rows_written` (FD-1), and does `fact_category_ownership` get the per-varga categories (TG-L1-005)?
 2. Populate or drop the four NULL composite columns?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-16(c) accepted (R): one band table at this asset, cut points 0.4 / 0.7, NULL score = NULL / `unknown`, never `neutral` (I-28). Mandatory before S-L1.
+- X2 accepted (R): the D1 fallback is visible and an integrity clause fails a fallback on a chart that has divisionals (I-29); the two affected charts are rebuilt in S-L1b, after the canonical run.
+- Q-L1-04 accepted: declared multi-table, `count_sql` on the primary table, `rows_written` counts everything it writes (I-30).
+- Q-L1-15 accepted, OPTIONAL: three columns from existing L1 facts; `speed_degrees_per_day` stays NULL, null-by-design, `[EXTERNAL_COMPUTATION_REQUIRED]` until `ga_positions` stores it; the column is not dropped (I-35).

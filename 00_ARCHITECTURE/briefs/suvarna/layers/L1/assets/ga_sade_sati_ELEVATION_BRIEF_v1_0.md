@@ -13,8 +13,8 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
-track_i_items: [I-11]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS; SS ruling N-62 (2026-10-02) on the L1 decision sheet: every recommendation accepted, (R) items provisional until J1, recorded at the end of this brief"
+track_i_items: [I-11, I-26, I-21]
 ledger_gap_ids: [ga_sade_sati-Idem.pattern, ga_sade_sati-Earn.build_record, ga_sade_sati-Cost.baseline, ga_sade_sati-Complete.depth, ga_sade_sati-Build.history, ga_sade_sati-Carr.detector]
 ---
 # ga_sade_sati — Sāḍe-sātī cycles, phases, quarters, dhaiyā periods and overlays (calculation window 1950–2100)
@@ -150,3 +150,9 @@ natural key `(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key)` (t
 ## 7 · Questions for Strategic Suvarṇa
 
 1. Does a consistency invariant that can fail (`two_pass_verify_cycles`) earn `two_pass_verified`, or a lower tier (CF-19)?
+
+## SS rulings (2026-10-02, decision N-62) for this asset
+
+SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
+
+- Q-L1-03 accepted: `two_pass_verify_cycles` (bounds and ordering invariants) earns `classical_match`, not `two_pass_verified` (320 canonical rows) (I-26). A-3: the three `/usr/share/ephe` calls go through the shared helper (I-21).
