@@ -54,4 +54,18 @@ describe('migration 1217 data_plane_builder freshness + transit_moorti grants', 
     }
     expect(code).toMatch(/RAISE EXCEPTION/)
   })
+
+  it('also asserts the negative post-conditions: DELETE/TRUNCATE/REFERENCES/TRIGGER are false on both tables', () => {
+    for (const t of ['asset_freshness', 'bg_transit_moorti']) {
+      for (const p of ['DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) {
+        expect(code).toMatch(
+          new RegExp(`IF\\s+has_table_privilege\\('data_plane_builder', 'public\\.${t}', '${p}'\\)\\s+THEN\\s+excess`)
+        )
+      }
+    }
+    expect(code).toContain('holds privileges beyond INSERT/UPDATE')
+    // No always-false / always-true guard in the self-check.
+    const doBlock = code.match(/DO \$\$[\s\S]*?END \$\$;/)![0]
+    expect(doBlock).not.toMatch(/\b(IF|AND|OR)\s+(false|true)\b/i)
+  })
 })

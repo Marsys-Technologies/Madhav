@@ -56,6 +56,8 @@ const L0_TRANSIT_PY_PATH = path.resolve(__dirname, '../../python-sidecar/brahmag
 
 const BUILDER_ROLE = 'data_plane_builder'
 const OWNER_ROLE = 'm1217_table_owner'
+const NON_OWNER_ROLE = 'm1217_non_owner' // holds SELECT only, no grant option
+const NO_PRIV_ROLE = 'm1217_no_priv' // holds nothing on the tables
 const CHART = '00000000-0000-4000-8000-0000000000cd'
 const ASSET = '_t_m1217_asset'
 
@@ -115,11 +117,11 @@ const moortiParams = (offset: number, name: string, tier: number, brief: string)
   offset, name, tier, brief, 'Phaladeepika Ch.26 §moorti-nirnaya', null,
 ]
 
-async function applyMigrationAsOwner() {
+async function applyMigrationAs(role: string) {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    await client.query(`SET LOCAL ROLE ${OWNER_ROLE}`)
+    await client.query(`SET LOCAL ROLE ${role}`)
     await client.query(fs.readFileSync(GRANT_MIGRATION_PATH, 'utf8'))
     await client.query('COMMIT')
   } catch (error) {
@@ -128,6 +130,21 @@ async function applyMigrationAsOwner() {
   } finally {
     client.release()
   }
+}
+
+const applyMigrationAsOwner = () => applyMigrationAs(OWNER_ROLE)
+
+/** Every ACL entry on the two tables, as `table|grantee|privilege` (grantee 0 = PUBLIC). */
+async function aclEntries() {
+  const r = await pool.query<{ e: string }>(`
+    SELECT c.relname || '|' || COALESCE(g.rolname, 'PUBLIC') || '|' || x.privilege_type AS e
+      FROM pg_class c
+      CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) x
+      LEFT JOIN pg_roles g ON g.oid = x.grantee
+     WHERE c.relnamespace = 'public'::regnamespace
+       AND c.relname IN ('asset_freshness', 'bg_transit_moorti')
+     ORDER BY 1`)
+  return r.rows.map((row) => row.e)
 }
 
 describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshness + bg_transit_moorti — live DB', () => {
@@ -150,9 +167,17 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
         IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${OWNER_ROLE}') THEN
           EXECUTE 'REVOKE ALL ON SCHEMA public FROM ${OWNER_ROLE}';
         END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${NON_OWNER_ROLE}') THEN
+          EXECUTE 'REVOKE ALL ON SCHEMA public FROM ${NON_OWNER_ROLE}';
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${NO_PRIV_ROLE}') THEN
+          EXECUTE 'REVOKE ALL ON SCHEMA public FROM ${NO_PRIV_ROLE}';
+        END IF;
       END $cleanup$;
       DROP ROLE IF EXISTS ${BUILDER_ROLE};
       DROP ROLE IF EXISTS ${OWNER_ROLE};
+      DROP ROLE IF EXISTS ${NON_OWNER_ROLE};
+      DROP ROLE IF EXISTS ${NO_PRIV_ROLE};
 
       -- Minimal parents for asset_freshness's two real foreign keys.
       CREATE TABLE asset_registry (asset_id text PRIMARY KEY);
@@ -172,10 +197,12 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
     await pool.query(`
       CREATE ROLE ${OWNER_ROLE} NOLOGIN;
       CREATE ROLE ${BUILDER_ROLE} NOLOGIN;
+      CREATE ROLE ${NON_OWNER_ROLE} NOLOGIN;
+      CREATE ROLE ${NO_PRIV_ROLE} NOLOGIN;
       ALTER TABLE asset_freshness OWNER TO ${OWNER_ROLE};
       ALTER TABLE bg_transit_moorti OWNER TO ${OWNER_ROLE};
-      GRANT USAGE ON SCHEMA public TO ${OWNER_ROLE}, ${BUILDER_ROLE};
-      GRANT SELECT ON asset_freshness, bg_transit_moorti TO ${BUILDER_ROLE};
+      GRANT USAGE ON SCHEMA public TO ${OWNER_ROLE}, ${BUILDER_ROLE}, ${NON_OWNER_ROLE}, ${NO_PRIV_ROLE};
+      GRANT SELECT ON asset_freshness, bg_transit_moorti TO ${BUILDER_ROLE}, ${NON_OWNER_ROLE};
     `)
   })
 
@@ -185,8 +212,12 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
       DROP TABLE IF EXISTS asset_freshness, bg_transit_moorti, charts, asset_registry CASCADE;
       REVOKE ALL ON SCHEMA public FROM ${BUILDER_ROLE};
       REVOKE ALL ON SCHEMA public FROM ${OWNER_ROLE};
+      REVOKE ALL ON SCHEMA public FROM ${NON_OWNER_ROLE};
+      REVOKE ALL ON SCHEMA public FROM ${NO_PRIV_ROLE};
       DROP ROLE IF EXISTS ${BUILDER_ROLE};
       DROP ROLE IF EXISTS ${OWNER_ROLE};
+      DROP ROLE IF EXISTS ${NON_OWNER_ROLE};
+      DROP ROLE IF EXISTS ${NO_PRIV_ROLE};
     `)
     await pool.end()
   })
@@ -222,6 +253,49 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
     await expect(
       asBuilder((q) => q(MOORTI_UPSERT, moortiParams(1, 'swarna', 1, 'x')))
     ).rejects.toThrow(/permission denied for table bg_transit_moorti/)
+  })
+
+  it('baseline ACL: no PUBLIC entry on either table; only owner + SELECT-only roles before the migration', async () => {
+    const acl = await aclEntries()
+    expect(acl.filter((e) => e.includes('|PUBLIC|'))).toEqual([])
+    expect(acl).not.toContain('asset_freshness|data_plane_builder|INSERT')
+    expect(acl).not.toContain('bg_transit_moorti|data_plane_builder|UPDATE')
+  })
+
+  it('FAIL-CLOSED (kills a neutered DO block): a NON-owner role applying 1217 gets a no-op GRANT, and the DO block RAISES', async () => {
+    // A GRANT by a role without grant option is only a WARNING ("no privileges were granted")
+    // in PostgreSQL — the migration would otherwise be recorded as applied having done nothing.
+    await expect(applyMigrationAs(NON_OWNER_ROLE)).rejects.toThrow(/data_plane_builder grants did not take effect/)
+    // ... and it names every missing privilege.
+    await expect(applyMigrationAs(NON_OWNER_ROLE)).rejects.toThrow(
+      /asset_freshness\.INSERT asset_freshness\.UPDATE bg_transit_moorti\.INSERT bg_transit_moorti\.UPDATE/
+    )
+    const privs = await pool.query(
+      `SELECT has_table_privilege($1,'public.asset_freshness','INSERT') AS i, has_table_privilege($1,'public.bg_transit_moorti','UPDATE') AS u`,
+      [BUILDER_ROLE]
+    )
+    expect(privs.rows[0]).toEqual({ i: false, u: false })
+  })
+
+  it('a role with no privilege at all fails loudly at the GRANT itself', async () => {
+    await expect(applyMigrationAs(NO_PRIV_ROLE)).rejects.toThrow(/permission denied for table asset_freshness/)
+  })
+
+  it('a missing data_plane_builder role fails loudly, applying nothing', async () => {
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(`ALTER ROLE ${BUILDER_ROLE} RENAME TO m1217_renamed_builder`) // transactional; rolled back below
+      await client.query(`SET LOCAL ROLE ${OWNER_ROLE}`)
+      await expect(client.query(fs.readFileSync(GRANT_MIGRATION_PATH, 'utf8'))).rejects.toThrow(
+        /role "data_plane_builder" does not exist/
+      )
+    } finally {
+      await client.query('ROLLBACK').catch(() => {})
+      client.release()
+    }
+    const still = await pool.query(`SELECT count(*)::int AS n FROM pg_roles WHERE rolname = $1`, [BUILDER_ROLE])
+    expect(still.rows[0].n).toBe(1)
   })
 
   it('SUCCEEDS AFTER: applying the REAL 1217 file as the table owner lets both real upserts land', async () => {
@@ -265,6 +339,30 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
     expect(r.rows[0].freshness_state).toBe('fresh')
   })
 
+  it('apply-time least privilege (negative post-conditions): any extra DELETE/TRUNCATE/REFERENCES/TRIGGER on either table makes the migration fail', async () => {
+    for (const tab of ['asset_freshness', 'bg_transit_moorti']) {
+      for (const priv of ['DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) {
+        await pool.query(`GRANT ${priv} ON TABLE public.${tab} TO ${BUILDER_ROLE}`)
+        try {
+          await expect(applyMigrationAsOwner()).rejects.toThrow(
+            new RegExp(`data_plane_builder holds privileges beyond INSERT/UPDATE: ${tab}\\.${priv}`)
+          )
+        } finally {
+          await pool.query(`REVOKE ${priv} ON TABLE public.${tab} FROM ${BUILDER_ROLE}`)
+        }
+      }
+      // The same excess arriving via PUBLIC is caught too (has_table_privilege sees every source).
+      await pool.query(`GRANT DELETE ON TABLE public.${tab} TO PUBLIC`)
+      try {
+        await expect(applyMigrationAsOwner()).rejects.toThrow(/holds privileges beyond INSERT\/UPDATE/)
+      } finally {
+        await pool.query(`REVOKE DELETE ON TABLE public.${tab} FROM PUBLIC`)
+      }
+    }
+    // With every probe revoked, the migration applies cleanly again.
+    await applyMigrationAsOwner()
+  })
+
   it('scope: grants exactly INSERT + UPDATE — no DELETE/TRUNCATE/TRIGGER/REFERENCES, no CREATE, no grant option', async () => {
     const p = await pool.query(
       `SELECT t.tab,
@@ -281,6 +379,17 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
     )
     for (const row of p.rows) {
       expect(row).toMatchObject({ s: true, i: true, u: true, d: false, tr: false, tg: false, rf: false, gi: false })
+    }
+    // Exact ACL after apply: no PUBLIC entry anywhere, and the builder holds exactly
+    // SELECT + INSERT + UPDATE on each table (catches a stray PUBLIC or wider grant at DB level).
+    const acl = await aclEntries()
+    expect(acl.filter((e) => e.includes('|PUBLIC|'))).toEqual([])
+    for (const tab of ['asset_freshness', 'bg_transit_moorti']) {
+      expect(acl.filter((e) => e.startsWith(`${tab}|${BUILDER_ROLE}|`)).sort()).toEqual([
+        `${tab}|${BUILDER_ROLE}|INSERT`,
+        `${tab}|${BUILDER_ROLE}|SELECT`,
+        `${tab}|${BUILDER_ROLE}|UPDATE`,
+      ])
     }
     const schema = await pool.query(`SELECT has_schema_privilege($1, 'public', 'CREATE') AS c`, [BUILDER_ROLE])
     expect(schema.rows[0].c).toBe(false)
