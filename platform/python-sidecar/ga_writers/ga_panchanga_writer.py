@@ -32,6 +32,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from brahmagyan.verification_tiers import SINGLE
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -143,13 +144,14 @@ def _conn():
 # already-computed panchang_engine anga objects (tithi/nakshatra/yoga/karana/
 # vara) — a real, single computation, but NOT independently cross-checked by
 # a second method. `_single_pass_verif()` makes that honest: the class-wide
-# tier for this file is "single_pass" (formulas.py VERIFICATION_RESCALE 0.85
+# tier for this file is SINGLE = "single" (formulas.py VERIFICATION_RESCALE 0.85
 # vs 1.00 for two_pass_verified) unless/until a genuine second-pass
 # cross-check is implemented for a given anga (at which point that specific
 # emit function should compute its own real two_pass_verified tier instead
 # of calling this helper).
 def _single_pass_verif() -> str:
-    return "single_pass"
+    # Q-L1-16(a): canonical spelling; "single_pass" is a deprecated reader-only alias.
+    return SINGLE
 
 
 def _fact_id(category: str, subject: str, key: str,

@@ -404,10 +404,12 @@ class TestAshtakavargaDerivation:
         # bindu arithmetic is internally consistent (SARVA=337, SARVA=sum of
         # 7 graha arrays) — a real check, but not an independent second
         # computation, and it says nothing about the shodhana step (M-3:
-        # sodhita ≡ raw, no real trikona shodhana). Demoted to "single_pass".
+        # sodhita ≡ raw, no real trikona shodhana). Demoted to the canonical
+        # "single" tier (Q-L1-16(a): writers never emit the deprecated alias "single_pass").
+        from brahmagyan.verification_tiers import SINGLE
         from ga_writers.ga_strength_writer import _verify_ashtakavarga
         result = _verify_ashtakavarga(ashtakavarga, tolerance=10)
-        assert result == "single_pass"
+        assert result == SINGLE
 
 
 # ── 29-31: Bhava bala ───────────────────────────────────────────────────────

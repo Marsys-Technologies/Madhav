@@ -99,6 +99,7 @@ from typing import Any, Callable
 import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.verification_tiers import SINGLE
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
 from brahmagyan.aspects import get_graha_aspects
@@ -2477,12 +2478,12 @@ def _build_yoga_rows(
                 # Y-7 fix: this is a single catalog-rule evaluation against L1 facts,
                 # not the redundant two-pass cross-check the rest of this writer's
                 # categories perform — it must not claim the top verification tier.
-                # "single_pass" is verification_vocab.py's declared spelling alias of
-                # "single" (both resolve to formulas.py VERIFICATION_RESCALE = 0.85,
-                # vs 1.00 for two_pass_verified — #1729/D-CND-05), so this correctly
-                # demotes catalog label rows in bo_laksana's salience_formula_v2
-                # rather than inventing a new fabricated status string.
-                verif="single_pass",
+                # SINGLE ("single") is the canonical spelling; the former alias
+                # "single_pass" is deprecated for writers (Q-L1-16(a)). Both resolve to
+                # formulas.py VERIFICATION_RESCALE = 0.85, vs 1.00 for two_pass_verified
+                # (#1729/D-CND-05), so this correctly demotes catalog label rows in
+                # bo_laksana's salience_formula_v2 rather than inventing a new status.
+                verif=SINGLE,
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",
                 citation_human=(
                     f"Yoga {name_en} ({yoga_name}) labels chart {str(chart_id)[:8]} "
@@ -3253,8 +3254,8 @@ def _build_dosha_rows(
                 },
                 # Y-7 fix: same rationale as the yoga_label site above — single
                 # catalog-rule evaluation, not the writer's two-pass cross-check;
-                # demoted to the already-wired "single_pass" verification tier.
-                verif="single_pass",
+                # demoted to the already-wired SINGLE verification tier.
+                verif=SINGLE,
                 source=f"brahma_dosha_catalog.label_pass/{eng_ver}",
                 citation_human=citation_human,
             ))
@@ -4461,7 +4462,7 @@ def _build_structural_relationship_rows(
             "graha_composite_state_classification", subject, "classification",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=classification,
-            verif="single_pass",
+            verif=SINGLE,
             source=f"pyjhora_adapter.composite_state/{eng_ver}",
             citation_human=(
                 f"{g_name} composite state: {classification} "
