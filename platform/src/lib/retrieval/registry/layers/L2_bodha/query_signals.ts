@@ -66,7 +66,7 @@ import {
 } from '../../../address_resolver'
 import { deriveDefect001Note, deriveSignatureTierNote } from '../../../provenance/freshness_notes'
 import { BUILD_FENCE_INPUT, classifyBuildFence, explicitEmptyBuildFenceRefusal } from '../../generation/served_generation'
-
+import { annotateAyurdayaYearRows, ayurdayaDisclosureObject, deriveAyurdayaFigureDisclosure } from '../L1_ganita/ayurdaya_unreduced_base'
 const FRAME_VALUES: ReferenceFrame[] = ['lagna', 'chandra', 'surya', 'arudha', 'karakamsha']
 
 // Internal L1-writer namespace tags (e.g. "[ga_sensitive]", "[ga_structural]") that get
@@ -623,6 +623,13 @@ export const querySignalsCapability: CapabilityDescriptor = {
         deriveSignatureTierNote(chart_id, ayanamsha_id),
       ])
 
+      // SS N-62 Q10 (display-side): L2 `ayurdaya:*` MSR signals carry the bare unreduced-base totals
+      // in signal_summary_text / configuration_jsonb. Disclosed from the FULL fetched columns (before
+      // any projection can drop signal_type_id/configuration_jsonb); each ayurdaya signal is tagged
+      // with its own figure_kind, and the page gets the nested disclosure + closed-vocabulary flag.
+      const ayuDisclosure = deriveAyurdayaFigureDisclosure(signals)
+      signals = annotateAyurdayaYearRows(signals, ayuDisclosure)
+
       // WP-1.3(g)/LCA-7: project served rows down to the requested columns. Done AFTER the
       // internal pipeline (ranking/demotion/freshness read the always-fetched default set)
       // so narrowing the SERVED projection never starves the machinery. projection.serve
@@ -632,6 +639,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         signals = signals.map(s => {
           const picked: Record<string, unknown> = {}
           for (const c of serveCols) if (c in s) picked[c] = s[c]
+          if (s['figure_kind'] !== undefined) { picked['figure_kind'] = s['figure_kind']; picked['reductions_applied'] = s['reductions_applied'] }
           return picked
         })
       }
@@ -702,6 +710,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         frame,
         ...(frameContext ? { frame_context: frameContext } : {}),
         ayanamsha_id,
+        ...(ayuDisclosure ? { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(ayuDisclosure) } : {}),
         signals,
         returned_count: signals.length,
         total_matching_filters,
@@ -764,7 +773,11 @@ export const querySignalsCapability: CapabilityDescriptor = {
               'Served rows omit them until that migration lands (self-healing — no code change needed).',
         },
       }
-      const response = { content: responseContent, is_error: false as const }
+      const response = {
+        content: responseContent,
+        is_error: false as const,
+        ...(ayuDisclosure ? { judgment_flags: [ayuDisclosure.judgment_flag] } : {}),
+      }
       cacheSet(_cacheKey, response)
       return response
     } catch (err) {
