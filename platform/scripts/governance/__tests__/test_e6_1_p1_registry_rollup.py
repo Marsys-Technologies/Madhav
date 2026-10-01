@@ -36,6 +36,9 @@ PINNED_FINGERPRINTS = {
     # 5 (E6 packet c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains
     # no-prose / no-prose-declared (later branches re-pin on rebase: the pins are content-bound)
     5: "b44523131a5e9032f507f4df701af44e096f1b664852e8460a69723094bc5522",
+    # 6 (E6 items g+h on top of packet c): Build.target rev 2 (declared service, PASS by declaration), Build.dag rev 2 (any-layer
+    # unknown dep, cycle, reads-match aligned with dag_edge_guard), Idem.pattern rev 2 (one relative-import resolver)
+    6: "62f08ad67334705860cf9bd4652a89efc4787f5e4eb3f1d0bab4fcad2ac0b8ce",
 }
 
 

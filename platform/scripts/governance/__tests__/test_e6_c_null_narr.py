@@ -49,8 +49,9 @@ def test_no_na_rule_is_declared_and_the_no_prose_causes_are_registered():
         assert "no-prose-declared" in ac.NA_CAUSES[crit], crit
 
 
-def test_the_registry_revision_is_5():
-    assert ac.REGISTRY_REVISION == 5
+def test_the_registry_revision_carries_packet_c():
+    # packet (c) introduced revision 5; the E6 (g)+(h) packet sits on top of it as revision 6
+    assert ac.REGISTRY_REVISION >= 5
 
 
 # ───────────────────────── Narr.agree ─────────────────────────

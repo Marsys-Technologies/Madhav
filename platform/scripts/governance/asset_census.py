@@ -12,8 +12,10 @@ WHAT IT MEASURES, per asset, against the tier-4 template's nine gates:
   Build.registered      exactly one @register('<asset_id>') and the registry agrees it has a writer
   Build.contract        WriterBase; run XOR plan_substeps+run_substep; never commits/closes ctx.db_conn;
                         never WRITES asset_throughput (a docstring promising not to is not a violation)
-  Build.target          target_table declared, or the asset is a declared service / multi-table
-  Build.dag             every depends_on entry exists; no cycle inside the layer
+  Build.target          target_table declared, or the asset is a declared service (PASS by declaration) / multi-table
+  Build.dag             every depends_on id is an active registry asset (every layer); the asset is on no dependency
+                        cycle; the declared edges match what the
+                        writer's SQL reads (reads-match, T4:275)
   Build.count_integrity count_sql present and integrity_check_sql present — each able to fail
   Build.completion      the build record agrees with the live count (rows_written=0 against a populated
                         table is a status with no measurement behind it)
@@ -148,14 +150,14 @@ CRITERION_REGISTRY: dict[str, dict] = {
     # ── auto-measured every run (detector = this module's own measure()) ──
     "Build.registered":      dict(gate="Build", check="registered",       applicability="always (writer-backed or not — a false has_writer is itself the failure)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.contract":        dict(gate="Build", check="contract",         applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Build.target":          dict(gate="Build", check="target",          applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Build.dag":             dict(gate="Build", check="dag",              applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Build.count_integrity": dict(gate="Build", check="count_integrity", applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.completion":      dict(gate="Build", check="completion",       applicability="a count_sql or view target exists", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # R99 bumped: a writer-backed empty table under target_floor=0 now reads PARTIAL, not the R52-era blanket PASS
     "Build.exercised":       dict(gate="Build", check="exercised",        applicability="always",                detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.history":         dict(gate="Build", check="history",          applicability="has been exercised at least once", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Build.dep_liveness":     dict(gate="Build", check="dep_liveness",     applicability="declares at least one depends_on", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Idem.pattern":          dict(gate="Idem",  check="pattern",          applicability="has_writer=true",       detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Earn.build_record":     dict(gate="Earn",  check="build_record",     applicability="has a build/attempt record to grade", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # NOTE: "Cost", "Count", "Complete" and "Reach" are not among the nine gates in
     # ASSET_ELEVATION_TEMPLATE_v2_0.md §4 (Ldgr/Idem/Earn/Null/Vocab/Carr/Narr/Dens/Build) — they
@@ -295,7 +297,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 5     # 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 6     # 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -410,6 +412,18 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         if v == PASS and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
             return dict(criterion=crit, v=PARTIAL, state="MEASURED",
                         reason=f"{crit} is capped at PARTIAL (Null: never PASS alone; fidelity_test: structural only)")
+        basis = meas.get("basis")
+        if basis is not None and basis != "declaration":      # case-exact: 'Declaration' is not 'declaration'
+            return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                        reason=f"unrecognised basis {basis!r} (the only defined basis is 'declaration', case-exact): "
+                               "the verdict is not honoured")
+        if v == PASS and basis == "declaration":
+            return dict(criterion=crit, v=v, state="MEASURED", basis="declaration",
+                        reason="PASS by declaration, not measured: no measurement stands behind this verdict")
+        if v == FAIL and meas.get("transitive_only") is True:
+            return dict(criterion=crit, v=v, state="MEASURED",
+                        reason="measured; transitive_only: every missing edge is already reachable through a declared "
+                               "dependency (ordering holds, the edge is undeclared)", **(dict(inconclusive=True) if infl else {}))
         return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}))
     st = ap["state"]
     if st == "OUT_OF_LAYER":
@@ -447,6 +461,9 @@ def rollup_asset(layer: str, measurements: dict, facts: dict | None = None) -> d
                 checks.append(c)
         cells[gate] = dict(gate=gate, v=rollup_verdicts([c["v"] for c in checks]), checks=checks,
                            registry_revision=REGISTRY_REVISION, registry_fingerprint=fp)
+        declared = [c["criterion"] for c in checks if c.get("basis") == "declaration"]
+        if declared:                  # a cell that rests on a declaration says so (key absent otherwise: no other cell changes)
+            cells[gate]["declared_checks"] = declared
     return cells
 
 
@@ -1948,7 +1965,11 @@ def _import_map(tree: ast.AST, here: Path) -> dict[str, tuple[Path, str | None]]
     """R20: every first-party name a module imports — module-level or inside a function (the L1 adapters
     import their builder inside run()) — as local name -> (module file, imported attribute), or
     (module file, None) when the name IS a module (`from services.mi_bhara import db`). Only files that
-    exist under the python sidecar; third-party imports resolve to nothing."""
+    exist under the python sidecar; third-party imports resolve to nothing.
+
+    `here` is the DIRECTORY of the importing module; a relative import resolves against the importing module's own package
+    (`here` for level 1, its parent for level 2, ...). ONE resolver serves Idem.pattern and the Build.dag reads scan: the
+    earlier base (`here.parents[level - 1]`) sat one directory too high, so package re-exports were silently skipped."""
     out: dict[str, tuple[Path, str | None]] = {}
 
     def mod_file(base: Path, parts: list[str]) -> Path | None:
@@ -1960,7 +1981,10 @@ def _import_map(tree: ast.AST, here: Path) -> dict[str, tuple[Path, str | None]]
 
     for n in ast.walk(tree):
         if isinstance(n, ast.ImportFrom):
-            base = SIDECAR if not n.level else here.parents[n.level - 1]
+            if not n.level:
+                base = SIDECAR
+            else:
+                base = here if n.level == 1 else here.parents[n.level - 2]
             parts = [x for x in (n.module or "").split(".") if x]
             for a in n.names:
                 sub = mod_file(base, parts + [a.name])
@@ -4197,6 +4221,767 @@ def blocking_radius(graph: dict[str, list[str]]) -> dict[str, dict]:
     return out
 
 
+# ─────────── E6 item (h): Build.dag reads-match (T4:275, check 4) ───────────
+#
+# T4:275: "the declared edges match what the asset actually reads". Until this block Build.dag tested RESOLVABILITY
+# only (every depends_on id exists). This reads what the writer's code SELECTs — FROM / JOIN relations of every SQL
+# string in the registered class's delegation scope — and compares it with the asset's DECLARED depends_on edges.
+#
+#   * A read of a table another asset PRODUCES (registry target_table or a table its count_sql names) with no DIRECT
+#     depends_on edge to a producer is a FAIL that names the missing edge and the file:line that reads it. A shared
+#     table (several producers) is covered by an edge to any one of them. An edge that is only transitively present
+#     (ordering still holds through the intermediate asset) is named in the FAIL text, but it is still a missing edge:
+#     T4:275 asks for the DECLARED edges to match.
+#   * "Reads nothing undeclared" is a PASS only when the parse is demonstrably complete (`reads_scan()['incomplete']`
+#     empty): every SQL string parsed, no table named dynamically, every execute() argument traced to a literal, no SQL
+#     one hop past the scan limit. Otherwise NO_DETECTOR — never a PASS by the absence of a parse (CLAUDE.md N.8).
+#   * Static SQL only. A read through a database view or function is not followed (a view over an asset's table is a
+#     read of a relation no asset produces, so it is invisible to the ownership map); the PASS text says so.
+
+# SS ruling 2026-10-01 (alignment with pipeline/orchestrator/dag_edge_guard.py, whose lists this module IMPORTS, never copies):
+#   * L0 BEDROCK reads (table names with the guard's _UNGATED_PREFIXES bg_/reference_/brahma_/sutravali_/classical_, _UNGATED_EXACT
+#     ephemeris_daily, _EXTERNAL_TABLES life_event*) need no declared edge: not a missing-edge FAIL, recorded as `bedrock_exempt`
+#     in the record. THIS IS A PROVISIONAL INTERPRETATION OF T4 (check 4), to be confirmed at the J1 review.
+#   * chart_facts (_SHARED_SOFT_TABLES, a polymorphic read whose producer cannot be named) is satisfied by ANY producer in the
+#     asset's declared transitive closure (the guard's SOFT tier), recorded as `soft_satisfied`; no producer in the closure
+#     keeps the FAIL.
+#   * DEVIATION FROM THE GUARD (stricter, earned-signal-conservative, CLAUDE.md N.8): the guard exempts by table NAME alone. Here
+#     a table is exempt only when it has a bedrock NAME AND every producer that owns it in the registry is an L0 asset (bg_*); a
+#     bedrock-named table with any non-L0 owner (a brahma_* table owned by bo_x, a mixed bg_/bo_ owner set) is an ordinary read
+#     needing an edge and its finding carries `bedrock_name_non_l0_owner`.
+#   * `soft_satisfied` limit: satisfied by ANY chart_facts producer in the declared closure; fact_category is NOT matched
+#     (record: fact_category_matched=False), so it does not prove the READ category is produced upstream.
+#   * The guard counts only per_chart producers: global NON-prefixed L0 tables (vidhi_floor_items, vidhi_intent_floors,
+#     vidhi_primitives) would FAIL here if a writer read them (they match no ungated prefix and no per_chart owner rule); none does today.
+#   * Transitive invariant: for every other table the guard asks for a producer in the transitive closure; this check still
+#     asks for a DIRECT edge (SS: transitive-only findings stay FAIL with `transitive_only`; Track I migration 1202 adds them).
+# Recorded limits and review notes (E6 review of b24e580cc; counts at table level, 2026-10-01):
+#   * Counts are quoted as: "N table-level findings = M distinct (asset, producer-set) pairs, of which B are back-reads; K of the
+#     M-B missing-edge pairs are transitive (a back-read pair cannot be transitive); J assets have only transitive findings".
+#     A pair can carry several tables; a shared table's producer set is one pair. (Saved censuses: 68 findings = 65 pairs,
+#     3 back-read pairs; 41 of 62 missing-edge pairs transitive; 16 assets only-transitive.)
+#   * One-directional: an OVER-declared edge (declared, never read) is never flagged (ka_tulana declares 3 edges, reads
+#     nothing, and reads PASS). The check asks "is every read declared", not "is every edge read".
+#   * Co-owner exemption: another asset registered on the SAME writer class (bg_transit_engine / bg_transit_rules) is not
+#     a producer the asset must depend on.
+#   * chart_facts remedy ambiguity: chart_facts has ten producing ga_* assets, so a missing edge to it reads "needs
+#     ga_ayurdaya | ... (10 assets)"; any ONE edge satisfies the read. A fact_category ownership map could name the right
+#     producer; this check does not.
+#   * The reconstructed registry edges used offline (seed + migrations 913/1084/730/676, inactive dropped) were verified by
+#     the reviewer against the live registry, read-only: md5 of the sorted depends_on of the 127 active rows =
+#     045e811d55d6825cf7c7f1fda329bdc4, identical to the reconstruction.
+READS_DELEGATION_HOPS = 3            # the code a rebuild runs, as far as it can be read statically; a frontier check one hop past
+_EXEC_METHODS = frozenset({"execute", "executemany", "fetch", "fetchrow", "fetchval", "mogrify", "copy_expert", "query"})
+# a call that is not an execute-type METHOD but takes SQL all the same (pandas `read_sql`, a `exec_sql` helper, `execute_values`):
+# when NONE of its arguments is traced to literal SQL the parse is incomplete — the SQL it runs is not in the text.
+_SQL_LIKE_CALLEE = re.compile(r"^(?:read_sql\w*|exec(?:ute)?(?:_\w+)?|run_sql\w*|run_query\w*|raw_sql)$", re.I)
+_SQL_CTX = re.compile(r"\b(?:SELECT|UPDATE|DELETE|INSERT|WITH|MERGE)\b", re.I)
+_FROM_JOIN = re.compile(r"\b(FROM|JOIN|USING)\b", re.I)
+_SQL_IDENT = r'(?:"[^"]+"|[A-Za-z_][A-Za-z0-9_$]*)'
+_SQL_QNAME = re.compile(_SQL_IDENT + r"(?:\s*\.\s*" + _SQL_IDENT + r")*")
+_SQL_ITEM_END = frozenset({
+    "WHERE", "JOIN", "INNER", "LEFT", "RIGHT", "FULL", "CROSS", "NATURAL", "ON", "USING", "GROUP", "ORDER", "LIMIT",
+    "OFFSET", "UNION", "INTERSECT", "EXCEPT", "HAVING", "WINDOW", "FOR", "RETURNING", "SET", "FETCH", "TABLESAMPLE",
+    "WITH", "SELECT", "VALUES", "AS", "LATERAL", "OUTER", "WHEN", "THEN", "ELSE", "END", "AND", "OR", "NOT", "IN"})
+# ONE left-to-right pass, so whichever starts first wins: a `--` inside a string literal is not a comment, and an
+# apostrophe inside a comment does not open a string.
+_SQL_MASK = re.compile(r"'(?:[^']|'')*'|/\*.*?\*/|--[^\n]*", re.S)
+_SQL_CTE = re.compile(r"(?:\bWITH\b(?:\s+RECURSIVE)?|,)\s*(" + _SQL_IDENT + r")\s*(?:\([^()]*\))?\s+AS\s+"
+                      r"(?:NOT\s+)?(?:MATERIALIZED\s*)?\(", re.I)
+# a FROM that is not a relation clause: EXTRACT(field FROM x), SUBSTRING/OVERLAY/POSITION(a FROM b), TRIM([BOTH] [c] FROM x),
+# and the comparison `IS [NOT] DISTINCT FROM`. The surrounding call is kept; only the keyword is dropped.
+_SQL_FROM_NOT_RELATION = [
+    re.compile(r"\bEXTRACT\s*\(\s*[A-Za-z_]+\s+FROM\b", re.I),
+    re.compile(r"\b(?:SUBSTRING|OVERLAY|POSITION)\s*\((?:[^()]|\([^()]*\))*?\s+(?:FROM|IN)\b", re.I),
+    re.compile(r"\bTRIM\s*\(\s*(?:(?:BOTH|LEADING|TRAILING)\s+)?(?:(?:[\w.]+|'')\s+)?FROM\b", re.I),
+]
+_SQL_IS_DISTINCT = re.compile(r"\bIS\s+(?:NOT\s+)?DISTINCT\s+FROM\b", re.I)
+_SQL_DELETE_FROM = re.compile(r"\bDELETE\s+FROM\b", re.I)
+
+
+def _sql_clean(text: str) -> str:
+    """The SQL with comments and string literals blanked, and every `FROM` that does not open a relation clause
+    (EXTRACT / SUBSTRING / TRIM / IS DISTINCT FROM / DELETE FROM — a write target) neutralised."""
+    t = _SQL_MASK.sub(lambda m: "''" if m.group(0)[0] == "'" else " ", text)
+    for rx in _SQL_FROM_NOT_RELATION:
+        t = rx.sub(lambda m: re.sub(r"(?:FROM|IN)$", "_", m.group(0), flags=re.I), t)
+    t = _SQL_IS_DISTINCT.sub(" <> ", t)
+    return _SQL_DELETE_FROM.sub("DELETE _ ", t)
+
+
+def _skip_parens(t: str, i: int) -> int:
+    """`t[i] == '('`: the index just past its matching ')' (end of text when unbalanced)."""
+    depth = 0
+    while i < len(t):
+        if t[i] == "(":
+            depth += 1
+        elif t[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return i
+
+
+def _take_relation(t: str, i: int, ctes: frozenset) -> tuple[str, str, int]:
+    """One relation item at `t[i:]`: (kind, name, next index). kind: `table` | `skip` (a subquery, VALUES, function,
+    CTE, foreign schema, or a token that is not a relation) | `dynamic` (the table name is not in the text)."""
+    n = len(t)
+    while i < n and t[i].isspace():
+        i += 1
+    if i >= n:
+        return "dynamic", "end of the string", i
+    if t[i] in "{%$:" or t.startswith("{?}", i):
+        j = i
+        while j < n and not t[j].isspace() and t[j] not in ",)":
+            j += 1
+        return "dynamic", t[i:j] or t[i], j
+    while True:                                                   # LATERAL / ONLY prefixes
+        m = re.match(r"(?:LATERAL|ONLY)\b\s*", t[i:], re.I)
+        if not m:
+            break
+        i += m.end()
+    if i < n and t[i] == "(":
+        return "skip", "", _skip_parens(t, i)
+    m = _SQL_QNAME.match(t, i)
+    if not m:
+        j = i
+        while j < n and not t[j].isspace() and t[j] not in ",)":
+            j += 1
+        return "skip", "", max(j, i + 1)
+    j = m.end()
+    if j < n and t[j] in "{%$":                                   # `bg_{suffix}` / `t_%s`: a name assembled outside the string
+        k = j
+        while k < n and not t[k].isspace() and t[k] not in ",)":
+            k += 1
+        return "dynamic", t[i:k], k
+    k = j
+    while k < n and t[k].isspace():
+        k += 1
+    if k < n and t[k] == "(":                                     # a function call
+        return "skip", "", _skip_parens(t, k)
+    parts = [p.strip().strip('"') for p in re.split(r"\s*\.\s*", m.group(0))]
+    name = parts[-1].lower()
+    if len(parts) >= 2 and parts[-2].lower() != "public":        # pg_temp / information_schema / pg_catalog: not an asset table
+        return "skip", "", j
+    if name in ctes or name.upper() in _SQL_ITEM_END:
+        return "skip", "", j
+    return "table", name, j
+
+
+def _skip_alias(t: str, i: int) -> int:
+    """Past an optional `[AS] alias [(col, ...)]` after a relation item."""
+    n = len(t)
+    j = i
+    while j < n and t[j].isspace():
+        j += 1
+    m = re.match(r"AS\b\s*", t[j:], re.I)
+    had_as = bool(m)
+    if m:
+        j += m.end()
+    m = re.match(_SQL_IDENT, t[j:])
+    if m and (had_as or m.group(0).upper() not in _SQL_ITEM_END):
+        j += m.end()
+        k = j
+        while k < n and t[k].isspace():
+            k += 1
+        if k < n and t[k] == "(":
+            j = _skip_parens(t, k)
+    return j
+
+
+_SQL_TAIL_TOKEN = re.compile(r"\b(?:WHERE|GROUP|ORDER|LIMIT|UNION|INTERSECT|EXCEPT|HAVING|WINDOW|OFFSET|FETCH|RETURNING|JOIN|INNER|"
+                             r"LEFT|RIGHT|FULL|CROSS|NATURAL)\b|[;,()\[\]]", re.I)
+
+
+def _next_list_comma(t: str, i: int) -> int:
+    """Index of the comma that continues a FROM list after a JOIN's ON/USING condition (`a JOIN b ON x, c`), or -1:
+    the first depth-0 comma before the next clause keyword, JOIN, ';' or an unbalanced ')'."""
+    depth = 0
+    for m in _SQL_TAIL_TOKEN.finditer(t, i):
+        tok = m.group(0)
+        if tok in "([":
+            depth += 1
+        elif tok in ")]":
+            if depth == 0:
+                return -1
+            depth -= 1
+        elif depth == 0:
+            return m.start() if tok == "," else -1
+    return -1
+
+
+def sql_relations(text: str) -> tuple[list[str], list[str]]:
+    """The relations a SQL text READS, as (tables, dynamic): FROM / JOIN targets in order, de-duplicated, lower-cased,
+    `public.` stripped. Not reads: CTE names, functions, subqueries and VALUES lists (their inner FROM/JOIN is read on
+    its own), tables of any schema but `public`, the target of `DELETE FROM`, and the FROM of EXTRACT / SUBSTRING / TRIM
+    / `IS DISTINCT FROM`. A relation after USING IS a read only inside a DELETE / MERGE statement (`DELETE FROM x USING y`, `MERGE ... USING y`);
+    `JOIN b USING (id)` is a column list, and `ALTER ... TYPE x USING c::int` / `EXECUTE stmt USING p` are not relation clauses. `dynamic` names every relation position whose table name is not in the text (`{?}` — an
+    f-string placeholder `_sql_texts` could not resolve — `%s`, `{x}`, a name cut off at the end of the string) and every
+    placeholder that follows a relation where a JOIN could sit: a dynamic position is never guessed, it makes the
+    caller's parse incomplete. Comma lists (`FROM a, b`, also after a JOIN's ON condition) are followed."""
+    t = _sql_clean(text)
+    ctes = frozenset(re.sub(r'^"|"$', "", m.group(1)).lower() for m in _SQL_CTE.finditer(t))
+    tables: list[str] = []
+    dynamic: list[str] = []
+    for m in _FROM_JOIN.finditer(t):
+        i = m.end()
+        if m.group(1).upper() == "USING":
+            j = i
+            while j < len(t) and t[j].isspace():
+                j += 1
+            if j < len(t) and t[j] == "(":        # `JOIN b USING (id)`: a column list; `MERGE ... USING (SELECT ..)`: its inner FROM is read on its own
+                continue
+            if not re.search(r"\b(?:DELETE|MERGE)\b", t[t.rfind(";", 0, m.start()) + 1:m.start()], re.I):
+                continue                          # `ALTER ... TYPE x USING c::int`, `EXECUTE stmt USING p`: not a relation clause
+        while True:
+            kind, name, i = _take_relation(t, i, ctes)
+            if kind == "table" and name not in tables:
+                tables.append(name)
+            elif kind == "dynamic":
+                dynamic.append(name)
+            i = _skip_alias(t, i)
+            j = i
+            while j < len(t) and t[j].isspace():
+                j += 1
+            if j < len(t) and t[j] == ",":
+                i = j + 1
+                continue
+            if m.group(1).upper() == "JOIN":
+                c = _next_list_comma(t, i)
+                if c >= 0:
+                    i = c + 1
+                    continue
+            if j < len(t) and t[j] in "{%":
+                dynamic.append(f"a placeholder {t[j:j + 6].split()[0]!r} follows the relation and may expand to a JOIN or another relation")
+            break
+    return tables, dynamic
+
+
+def _walk_ctx(root: ast.AST, fn=None, cls=None):
+    """(node, enclosing FunctionDef or None, enclosing ClassDef or None) for every node under `root`."""
+    if isinstance(root, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        fn = root
+    elif isinstance(root, ast.ClassDef):
+        cls = root
+    yield root, fn, cls
+    for c in ast.iter_child_nodes(root):
+        yield from _walk_ctx(c, fn, cls)
+
+
+def _lit_str(n: ast.AST) -> bool:
+    """A string expression whose literal parts `_sql_texts` reads: a str constant, an f-string, `a + b`, `a % b`, a
+    conditional of those, or a `.format()/.strip()/…` of one. What such an expression hides (a placeholder) is caught
+    where it sits at a FROM/JOIN position (`dynamic`)."""
+    if isinstance(n, ast.Constant):
+        return isinstance(n.value, str)
+    if isinstance(n, ast.JoinedStr):
+        return True
+    if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Mod)):
+        return _lit_str(n.left) and (isinstance(n.op, ast.Mod) or _lit_str(n.right))
+    if isinstance(n, ast.IfExp):
+        return _lit_str(n.body) and _lit_str(n.orelse)
+    if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in (
+            "format", "strip", "lstrip", "rstrip", "replace", "dedent", "join"):
+        return _lit_str(n.func.value)
+    return False
+
+
+def _callers(name: str, sites: list) -> list:
+    return [s for s in sites if s["callee"] == name]
+
+
+def _sql_arg_traced(a: ast.AST, fn, cls, unit, sites: list, depth: int = 0, seen=None) -> bool:
+    """Is the SQL argument of an execute-type call traced to literal SQL text? A literal expression, a Name whose every
+    assignment in the function is one (or a module-level literal), a `self.X` whose class assigns a literal X, or a
+    parameter of the enclosing function whose every in-scope caller passes a traced argument (at least one caller)."""
+    if _lit_str(a):
+        return True
+    seen = seen or set()
+    if isinstance(a, ast.Attribute) and isinstance(a.value, ast.Name) and a.value.id in ("self", "cls") and cls is not None:
+        vals = [s.value for s in cls.body if isinstance(s, ast.Assign) and any(isinstance(t, ast.Name) and t.id == a.attr for t in s.targets)]
+        vals += [s.value for s in cls.body if isinstance(s, ast.AnnAssign) and isinstance(s.target, ast.Name) and s.target.id == a.attr and s.value is not None]
+        return bool(vals) and all(_lit_str(v) for v in vals)
+    if not isinstance(a, ast.Name):
+        return False
+    local = []
+    if fn is not None:
+        for x in ast.walk(fn):
+            if isinstance(x, ast.Assign) and any(isinstance(t, ast.Name) and t.id == a.id for t in x.targets):
+                local.append(x.value)
+            elif isinstance(x, ast.AnnAssign) and isinstance(x.target, ast.Name) and x.target.id == a.id and x.value is not None:
+                local.append(x.value)
+            elif isinstance(x, ast.AugAssign) and isinstance(x.target, ast.Name) and x.target.id == a.id:
+                local.append(x.value)
+    if local:
+        return all(_lit_str(v) for v in local)
+    top = _top_defs(unit["tree"]).get(a.id)
+    if isinstance(top, ast.Assign) and _lit_str(top.value):
+        return True
+    imported = _import_map(unit["tree"], unit["path"].parent).get(a.id)
+    if imported is not None and imported[1] is not None:         # `from .sql import READ_SQL`: the constant is read as a unit
+        got = _resolve_assign(imported[0], imported[1])
+        if got is not None and isinstance(got[2], ast.Assign) and _lit_str(got[2].value):
+            return True
+    if fn is None or depth >= 3:
+        return False
+    args = fn.args
+    pos = [p.arg for p in args.posonlyargs + args.args]
+    kwonly = [p.arg for p in args.kwonlyargs]
+    if a.id not in pos and a.id not in kwonly:
+        return False
+    key = (id(fn), a.id)
+    if key in seen:
+        return False
+    seen = seen | {key}
+    calls = _callers(fn.name, sites)
+    if not calls:
+        return False
+    is_method = bool(pos) and pos[0] in ("self", "cls")
+    for s in calls:
+        call = s["call"]
+        arg = None
+        if a.id in pos:
+            idx = pos.index(a.id) - (1 if is_method and isinstance(call.func, ast.Attribute) else 0)
+            if 0 <= idx < len(call.args):
+                arg = call.args[idx]
+        if arg is None:
+            arg = next((k.value for k in call.keywords if k.arg == a.id), None)
+        if arg is None or not _sql_arg_traced(arg, s["fn"], s["cls"], s["unit"], sites, depth + 1, seen):
+            return False
+    return True
+
+
+def _resolve_assign(path: Path, name: str):
+    """A module-level `NAME = <expr>` (an imported SQL constant) that `_resolve_def` deliberately skips: (path, tree,
+    assign node) following package re-exports, or None."""
+    for _ in range(4):
+        tree = _parse(path)
+        d = _top_defs(tree).get(name)
+        if isinstance(d, (ast.Assign, ast.AnnAssign)):
+            return path, tree, d
+        nxt = _import_map(tree, path.parent).get(name)
+        if not nxt or nxt[1] is None:
+            return None
+        path, name = nxt
+    return None
+
+
+def _third_party_binding(path: Path, name: str) -> bool:
+    """Is `name` bound in the module at `path` by an import that does NOT resolve to first-party code (a re-exported
+    third-party module such as `from jhora.panchanga import drik`)? Following first-party re-exports, at most 3."""
+    for _ in range(4):
+        tree = _parse(path)
+        bound = None
+        for n in ast.walk(tree):
+            if isinstance(n, ast.ImportFrom) and any((a.asname or a.name) == name for a in n.names):
+                bound = n
+            elif isinstance(n, ast.Import) and any((a.asname or a.name.split(".")[0]) == name for a in n.names):
+                bound = n
+        if bound is None:
+            return False
+        nxt = _import_map(tree, path.parent).get(name)
+        if not nxt:
+            return True
+        if nxt[1] is None:
+            return False
+        path, name = nxt
+    return False
+
+
+def _constant_units(units: list[dict], hops: int) -> tuple[list[dict], list[str]]:
+    """Imported module-level constants the scope uses (`from .sql import READ_SQL`): `_delegation_scope` follows
+    definitions only, so their SQL would be missed silently. Returns (pseudo-units holding the assignment, reasons) — a
+    used first-party name that resolves to neither a definition nor an assignment is a reason (not silently skipped)."""
+    out, why, seen = [], [], set()
+    for u in units:
+        for tp, attr in _external_refs(u["nodes"], _import_map(u["tree"], u["path"].parent)):
+            if _resolve_def(tp, attr) is not None:
+                continue
+            a = _resolve_assign(tp, attr)
+            if a is None and _third_party_binding(tp, attr):
+                continue            # a shim that re-exports a third-party module (`pyjhora_adapter/_jhora.py`): no SQL of ours behind it
+            if a is None:
+                why.append(f"{u['rel']}: the imported name {attr!r} (from {_rel(tp)}) is neither a definition nor a constant "
+                           "this scan can read, so SQL behind it is not resolvable")
+                continue
+            ap, atree, anode = a
+            if (str(ap.resolve()), attr) in seen:
+                continue
+            seen.add((str(ap.resolve()), attr))
+            if u["hop"] + 1 > hops:
+                if any(_SQL_CTX.search(t) and _FROM_JOIN.search(t)
+                       for t, _ln in _sql_texts(dict(rel=_rel(ap), path=ap, tree=atree, nodes=[anode], hop=u["hop"] + 1, via=""))):
+                    why.append(f"{_rel(ap)}: the constant {attr!r} holds SQL that reads a relation {u['hop'] + 1} hop(s) from the "
+                               f"writer ({u['via']}), one past the scan limit of {hops} hop(s)")
+                continue
+            out.append(dict(rel=_rel(ap), path=ap, tree=atree, nodes=[anode], hop=u["hop"] + 1,
+                            via=f"{u['via']} → {_rel(ap)}:{attr}"))
+    return out, why
+
+
+def _scope_sites(units: list[dict]) -> list[dict]:
+    sites = []
+    for u in units:
+        for node in u["nodes"]:
+            for x, fn, cls in _walk_ctx(node):
+                if isinstance(x, ast.Call):
+                    f = x.func
+                    callee = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+                    sites.append(dict(call=x, callee=callee, fn=fn, cls=cls, unit=u))
+    return sites
+
+
+def reads_scan(asset_id: str, files: list[str], hops: int | None = None) -> dict:
+    """What the writer of `asset_id` READS (static SQL), and whether that parse is complete.
+
+    Returns dict(reads={table: [(file, line, chain)]}, incomplete=[reason, ...], units=int, sql_strings=int, hops=int,
+    co_registered=[other asset ids registered on the same writer class]).
+    `reads` is every FROM / JOIN relation of every SQL string (an execute-type call's text, f-strings and `a + b`
+    resolved by `_sql_texts`) in the registered class's delegation scope, `hops` modules deep (the same scope
+    machinery as Idem.pattern; docstrings are not SQL). `incomplete` lists every reason the parse may be missing a
+    read, each with file:line: a registered class not found (the whole module would be in scope), a table named
+    dynamically, an execute-type call whose SQL argument is not traced to a literal, and SQL that reads a relation
+    one hop past the scan limit. Empty `incomplete` = every SQL string in scope was parsed and every relation named."""
+    hops = READS_DELEGATION_HOPS if hops is None else hops
+    units, _beyond = _delegation_scope(asset_id, files, hops=hops)
+    extra_units, unresolved = _constant_units(units, hops)
+    units = units + extra_units
+    reads: dict[str, list[tuple[str, int, str]]] = {}
+    incomplete: list[str] = list(unresolved)
+    n_sql = 0
+    co_registered: set[str] = set()                  # other assets registered on the SAME writer class (bg_transit_engine / bg_transit_rules)
+    for name in files:
+        cls = _writer_class(_writer_path(name), asset_id)
+        if cls is None:
+            incomplete.append(f"{name}: no class registered for {asset_id} found, so the whole module would be in scope")
+            continue
+        consts = _module_constants(_parse(_writer_path(name)))
+        co_registered |= {rid for d in cls.decorator_list if (rid := _register_id(d, consts))} - {asset_id}
+    for u in units:
+        for text, line in _sql_texts(u):
+            if not (_SQL_CTX.search(text) and _FROM_JOIN.search(text)):
+                continue
+            n_sql += 1
+            tables, dynamic = sql_relations(text)
+            for t in tables:
+                loc = (u["rel"], line, u["via"] if u["hop"] else "")
+                if loc not in reads.setdefault(t, []):
+                    reads[t].append(loc)
+            for d in dynamic:
+                incomplete.append(f"{u['rel']}:{line}: a table is named dynamically ({d!r}), so the read is not resolvable")
+    sites = _scope_sites(units)
+    for s in sites:
+        c = s["call"]
+        if isinstance(c.func, ast.Attribute) and c.func.attr in _EXEC_METHODS and c.args \
+                and not _sql_arg_traced(c.args[0], s["fn"], s["cls"], s["unit"], sites):
+            incomplete.append(f"{s['unit']['rel']}:{c.lineno}: {c.func.attr}() is given SQL that is not traced to a "
+                              f"literal ({ast.unparse(c.args[0])[:40]!r}), so what it reads is not resolvable")
+        elif isinstance(c.func, (ast.Attribute, ast.Name)) and c.args:
+            callee = c.func.attr if isinstance(c.func, ast.Attribute) else c.func.id
+            if callee not in _EXEC_METHODS and _SQL_LIKE_CALLEE.match(callee) and not any(
+                    _sql_arg_traced(a, s["fn"], s["cls"], s["unit"], sites) for a in list(c.args) + [k.value for k in c.keywords]):
+                incomplete.append(f"{s['unit']['rel']}:{c.lineno}: {callee}() takes SQL and none of its arguments is traced "
+                                  "to a literal, so what it reads is not resolvable")
+    frontier, _ = _delegation_scope(asset_id, files, hops=hops + 1)
+    for u in frontier:
+        if u["hop"] == hops + 1 and any(_SQL_CTX.search(t) and _FROM_JOIN.search(t) for t, _ln in _sql_texts(u)):
+            incomplete.append(f"{u['rel']}: holds SQL that reads a relation {hops + 1} hop(s) from the writer ({u['via']}), "
+                              f"one past the scan limit of {hops} hop(s)")
+    return dict(reads=reads, incomplete=sorted(set(incomplete)), units=len(units), sql_strings=n_sql, hops=hops,
+                co_registered=sorted(co_registered))
+
+
+def build_table_owners(rows) -> dict[str, list[str]]:
+    """table -> the active WRITER-BACKED assets that PRODUCE it: each row is (asset_id, target_table, count_sql[,
+    has_writer=True]); a table is produced by an asset when it is its target_table or one of the relations its
+    count_sql names (a multi-table asset declares its produced tables there; a partition writer such as ga_strength
+    declares chart_facts there). An asset with no writer (a user_data table such as lel_events, a static table) produces
+    nothing a build waits for: a depends_on edge to it could never reach `lit` (T4 check 9, a permanent DEP-ASSERT
+    trap), so a read of its table is never a missing edge."""
+    out: dict[str, set[str]] = {}
+    for row in rows:
+        aid, target, count_sql = row[0], row[1], row[2]
+        if len(row) > 3 and not row[3]:
+            continue
+        for t in ([target] if target else []) + _count_tables(count_sql or ""):
+            out.setdefault(t.lower(), set()).add(aid)
+    return {t: sorted(a) for t, a in sorted(out.items())}
+
+
+def produced_table_owners() -> dict[str, list[str]]:
+    """Registry-wide (every layer) table -> producing active writer-backed assets, in one JSON read (count_sql holds
+    newlines, so a line-oriented read would split rows). Raises Unknown when the registry cannot be read."""
+    blob = scalar("SELECT coalesce(json_agg(json_build_object('a',asset_id,'t',target_table,'c',coalesce(count_sql,''),"
+                  "'w',coalesce(has_writer,false)) ORDER BY asset_id)::text,'[]') FROM asset_registry "
+                  "WHERE is_active AND NOT coalesce(dead_flag,false)")
+    return build_table_owners((r["a"], r["t"], r["c"], r["w"]) for r in json.loads(blob or "[]"))
+
+
+_DAG_GUARD: list = []
+_DAG_GUARD_PATH = Path(__file__).resolve().parents[2] / "python-sidecar" / "pipeline" / "orchestrator" / "dag_edge_guard.py"
+
+
+def _dag_guard():
+    """The repo's own `pipeline/orchestrator/dag_edge_guard.py`, loaded by file path (it imports nothing heavy at module
+    level: its DB import is deferred). Its exemption lists are the SINGLE source for which tables a read of which needs no
+    declared edge — this module never keeps a second list. Raises Unknown when the guard cannot be loaded."""
+    if not _DAG_GUARD:
+        import importlib.util
+        try:
+            spec = importlib.util.spec_from_file_location("dag_edge_guard_for_census", _DAG_GUARD_PATH)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            for need in ("_UNGATED_PREFIXES", "_UNGATED_EXACT", "_EXTERNAL_TABLES", "_SHARED_SOFT_TABLES"):
+                getattr(mod, need)
+        except Exception as exc:
+            raise Unknown(f"dag_edge_guard could not be loaded from {_DAG_GUARD_PATH}: {type(exc).__name__}: {exc}") from exc
+        _DAG_GUARD.append(mod)
+    return _DAG_GUARD[0]
+
+
+def _is_bedrock(table: str) -> bool:
+    """dag_edge_guard's rule (`_UNGATED_PREFIXES` / `_UNGATED_EXACT` / `_EXTERNAL_TABLES`, pipeline/orchestrator/
+    dag_edge_guard.py:86-89): always-present L0 bedrock (bg_, reference_, brahma_, sutravali_, classical_, ephemeris_daily)
+    and external ingest tables are never gated."""
+    guard = _dag_guard()
+    t = table.lower()
+    return t.startswith(tuple(guard._UNGATED_PREFIXES)) or t in guard._UNGATED_EXACT or t in guard._EXTERNAL_TABLES
+
+
+def _ancestors(graph: dict[str, list[str]] | None, start: str) -> set[str]:
+    out, todo = set(), [start]
+    while todo:
+        for d in (graph or {}).get(todo.pop(), []):
+            if d not in out:
+                out.add(d)
+                todo.append(d)
+    return out
+
+
+def _dep_path(graph: dict[str, list[str]], start: str, goal: str) -> list[str] | None:
+    """The shortest depends_on chain `start -> ... -> goal` (at least one edge, so `start == goal` finds a cycle through
+    `start`), or None. Computed from the registry graph handed in, never assumed."""
+    prev: dict[str, str] = {}
+    todo = []
+    for d in graph.get(start, []):
+        if d not in prev:
+            prev[d] = start
+            todo.append(d)
+    while todo:
+        x = todo.pop(0)
+        if x == goal:
+            path = [goal]
+            while True:
+                path.append(prev[path[-1]])
+                if path[-1] == start:
+                    return path[::-1]
+        for d in graph.get(x, []):
+            if d not in prev:
+                prev[d] = x
+                todo.append(d)
+    return None
+
+
+def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g) -> tuple[str, str, dict]:
+    """The reads-match clause of Build.dag (T4:275): (verdict, text, extra record keys). `g` is the registry-wide
+    depends_on graph with this asset's own edges applied, or None when it could not be read.
+
+    A read of another writer-backed asset's table with no DIRECT declared edge is a finding. Two kinds:
+      missing_edge  declaring `aid -> producer` is possible: the graph stays acyclic (a shared table is satisfied by an
+                    edge to ANY one producer, and only the producers that stay acyclic are named);
+      back_read     every producer of the table already depends on `aid` (directly or through a chain): the code reads a
+                    DOWNSTREAM asset's product, an edge would close a cycle, so it is NOT a missing edge. The cycle test
+                    is computed from the graph plus the candidate edge (`_dep_path`), never listed by name.
+    Both keep the verdict FAIL (the evidence stays visible). `transitive_only` marks a FAIL whose every missing edge is
+    already reachable through a declared dependency (ordering holds, the edge is undeclared) — SS decides later whether
+    that stays a FAIL; the default is FAIL.
+    Findings are counted at table level (one per (asset, table) with a producer set); a distinct (asset, producer-set)
+    pair can carry several tables.
+
+    An incomplete parse with no undeclared read reads PARTIAL when at least one read resolved and every resolved read is
+    covered (the Idem.pattern precedent: a scan that cannot see everything says so), NO_DETECTOR when nothing resolved.
+    DEFAULT PENDING SS."""
+    deps = list(r["depends_on"])
+    if not files:
+        if not r["has_writer"] and not deps:
+            return PASS, ("no writer (registry has_writer=false and no @register found) and no declared edge — no build code "
+                          "reads anything, so there is nothing to match"), {}
+        if not r["has_writer"]:
+            return NO_DET, (f"not established: no writer code to scan (registry has_writer=false) but {len(deps)} declared "
+                            "edge(s) — they cannot be compared with reads"), {}
+        return NO_DET, ("not established: the registry says has_writer=true and no @register file was found "
+                        "(see Build.registered)"), {}
+    try:
+        scan = reads_scan(aid, files)
+    except Exception as exc:
+        return ERRORED, f"check errored: reads-match scan failed: {type(exc).__name__}: {exc}", {}
+    own = set(filter(None, [r["target_table"]])) | set(_count_tables(r["count_sql"]))
+    owners: dict[str, list[str]] = {}
+    if scan["reads"]:
+        try:
+            owners = owners_fn()
+        except Unknown as exc:
+            return ERRORED, (f"check errored: table ownership unreadable, so what the writer reads cannot be attributed to "
+                             f"assets: {exc}"), {}
+    try:
+        guard = _dag_guard() if scan["reads"] else None
+    except Unknown as exc:
+        return ERRORED, f"check errored: {exc}", {}
+    anc = {d: _ancestors(g, d) for d in deps} if g is not None else {}
+    closure = set(deps).union(*anc.values()) if g is not None else None
+    findings, covered, exempt, soft = [], 0, [], []
+    for t, locs in sorted(scan["reads"].items()):
+        prod = [a for a in owners.get(t, []) if a != aid]
+        if not prod or aid in owners.get(t, []) or t in own or any(p in scan["co_registered"] for p in prod):
+            continue                  # nobody produces it / its own table / produced by another asset of the SAME writer class
+        if any(p in deps for p in prod):
+            covered += 1
+            continue
+        f, ln, via = sorted(locs)[0]  # the first location in file order
+        bedrock_name = _is_bedrock(t)
+        non_l0 = bedrock_name and not all(o.startswith(LAYERS["L0"]["prefix"]) for o in owners.get(t, []))
+        if bedrock_name and not non_l0:
+            # SS ruling 2026-10-01 (PROVISIONAL interpretation of T4, to be confirmed at the J1 review): a read of an L0 bedrock
+            # table needs no declared edge. STRICTER THAN dag_edge_guard, which exempts by table NAME alone: here the table must
+            # have a bedrock NAME (the guard's lists) AND every producer that owns it must be an L0 asset (bg_*) — a
+            # `brahma_*` table owned by an L2+ asset is an ordinary read (earned-signal-conservative, CLAUDE.md N.8).
+            # Kept visible as `bedrock_exempt`, never dropped.
+            exempt.append(dict(asset=aid, needs=" | ".join(prod), table=t, file=f, line=ln, via=via, kind="bedrock_exempt"))
+            continue
+        if t in guard._SHARED_SOFT_TABLES and closure is not None and any(p in closure for p in prod):
+            # dag_edge_guard's SOFT tier: a polymorphic multi-producer table (chart_facts) is satisfied by ANY producer in the
+            # declared TRANSITIVE closure; with none in the closure at all it stays a finding (below).
+            soft.append(dict(asset=aid, needs=" | ".join(prod), table=t, file=f, line=ln, via=sorted(p for p in prod if p in closure),
+                             kind="soft_satisfied", fact_category_matched=False))
+            continue
+        chains = {p: _dep_path(g, p, aid) for p in prod} if g is not None else {}
+        viable = [p for p in prod if chains.get(p) is None]
+        if g is not None and not viable:
+            findings.append(dict(asset=aid, needs=" | ".join(prod), table=t, file=f, line=ln, via=via, transitive_via=[],
+                                 kind="back_read", cycle_path=chains[prod[0]], cycle_tested=True))
+        else:
+            need = viable if g is not None else prod
+            findings.append(dict(asset=aid, needs=" | ".join(need), table=t, file=f, line=ln, via=via,
+                                 transitive_via=sorted(d for d in deps if any(p in anc.get(d, ()) for p in need)),
+                                 kind="missing_edge", cycle_tested=g is not None))
+    for fd in findings:
+        if _is_bedrock(fd["table"]) and not all(o.startswith(LAYERS["L0"]["prefix"]) for o in owners.get(fd["table"], [])):
+            fd["bedrock_name_non_l0_owner"] = True
+    if findings:
+        parts = []
+        for fd in findings:
+            at = f"{fd['file']}:{fd['line']}" + (f", via {fd['via']}" if fd["via"] else "")
+            if fd["kind"] == "back_read":
+                parts.append(f"back-read: {aid} reads {fd['table']} ({at}), the product of {fd['needs']}, which already depends on "
+                             f"{aid} (chain {' -> '.join(fd['cycle_path'])}); an edge {aid} -> {fd['needs']} would create a cycle")
+            else:
+                s = f"missing depends_on edge: {aid} -> {fd['needs']} (reads {fd['table']} at {at}"
+                s += (f"; the producer is reachable transitively via {', '.join(fd['transitive_via'])}, so ordering holds but the "
+                      "edge is undeclared") if fd["transitive_via"] else ""
+                s += "; the cycle test did not run: the registry dependency graph was unreadable, so this could be a back-read" \
+                    if not fd["cycle_tested"] else ""
+                s += "; bedrock-named table with a non-L0 owner: not exempt (stricter than dag_edge_guard, which exempts by name alone)" \
+                    if fd.get("bedrock_name_non_l0_owner") else ""
+                parts.append(s + ")")
+        extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft)) if v}
+        miss = [fd for fd in findings if fd["kind"] == "missing_edge"]
+        # transitive_only is claimed only when no back-read is present for the asset: a back-read must stay visible in the
+        # rollup reason (a mix of a back-read and all-transitive missing edges is NOT "transitive only")
+        only_t = bool(miss) and len(miss) == len(findings) and all(fd["transitive_via"] for fd in miss)
+        return FAIL, "FAIL — " + "; ".join(parts), dict(missing_edges=findings, transitive_only=only_t, **extra_ev)
+    extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft)) if v}
+    satisfied = covered + len(exempt) + len(soft)
+    note = ""
+    if exempt:
+        note += (f"; {len(exempt)} read(s) of bedrock-named table(s) owned only by L0 assets ({', '.join(e['table'] for e in exempt)}) "
+                 "need no declared edge (dag_edge_guard exemption list; stricter than the guard, which exempts by table name alone; "
+                 "provisional interpretation of T4, to be confirmed at the J1 review)")
+    if soft:
+        note += (f"; {len(soft)} chart_facts read(s) satisfied by a producer in the declared transitive closure "
+                 f"({', '.join(sorted({v for sf in soft for v in sf['via']}))}; dag_edge_guard SOFT tier): satisfied by ANY chart_facts "
+                 "producer in the declared closure; fact_category is not matched, so this does not prove the READ category is "
+                 "produced upstream")
+    if scan["incomplete"]:
+        why = "; ".join(scan["incomplete"][:3]) + (f"; +{len(scan['incomplete']) - 3} more" if len(scan["incomplete"]) > 3 else "")
+        if satisfied:
+            return PARTIAL, (f"{satisfied} resolved read(s) of other assets' tables are covered by declared edges or exempt (see below), "
+                             f"but the parse is incomplete — {why}{note}"), extra_ev
+        return NO_DET, (f"not established: the parse is incomplete — {why}. Nothing resolved to compare, so the claim has no "
+                        "detector (never a PASS by absence of a parse)"), {}
+    return PASS, (f"{covered} read(s) of other assets' tables, every one covered by a declared edge{note}; static scan of "
+                  f"{scan['units']} code unit(s), {scan['sql_strings']} SQL string(s), hops<={scan['hops']}, every relation "
+                  "named; reads through views and DB functions are not followed"), extra_ev
+
+
+def _measure_dag(aid: str, r: dict, files: list[str], known: set[str], prefix: str, owners_fn, graph) -> dict:
+    """Build.dag (T4:275, check 4: "every depends_on entry exists; no cycle; the declared edges match what the asset
+    actually reads"), three clauses, each stated in the verdict text:
+
+      exists       every depends_on id is an ACTIVE registry asset, in EVERY layer. When the registry-wide graph could not
+                   be read only ids with this layer's prefix can be checked against the layer registry; the others are
+                   NO_DETECTOR for this clause ("not checked"), never a silent PASS.
+      cycle        the asset is on no dependency cycle in the registry graph (the cycle is reported); NO_DETECTOR when the
+                   graph could not be read.
+      reads-match  see `_reads_clause`.
+
+    The verdict is the worst of the three (FAIL > ERRORED > NO_DETECTOR > PARTIAL > PASS). `owners_fn()` is the lazily read
+    registry-wide ownership map (raises Unknown when unreadable); `graph` the registry-wide depends_on map or None."""
+    deps = list(r["depends_on"])
+    g = None if graph is None else {**graph, aid: deps}
+    if g is not None:
+        unknown, unverifiable = [d for d in deps if d not in set(g) | known], []
+    else:
+        unknown = [d for d in deps if d.startswith(prefix) and d not in known]
+        unverifiable = [d for d in deps if not d.startswith(prefix)]
+    if unknown:
+        ev, et = FAIL, f"depends_on references unknown or inactive assets: {unknown}"
+    elif unverifiable:
+        ev, et = NO_DET, (f"cross-layer id(s) {unverifiable} not checked: the registry-wide dependency read was unavailable")
+    else:
+        ev, et = PASS, (f"all {len(deps)} are active registry assets (every layer)" if deps else "no declared edge to resolve")
+    if g is None:
+        cv, ct = NO_DET, "not measured: the registry-wide dependency read was unavailable"
+    else:
+        cyc = _dep_path(g, aid, aid)
+        cv, ct = (FAIL, f"{' -> '.join(cyc)} (a dependency cycle)") if cyc else (PASS, f"{aid} is on no dependency cycle (registry-wide graph)")
+    rv, rt, extra = _reads_clause(aid, r, files, owners_fn, g)
+    v = rollup_verdicts([ev, cv, rv])
+    return dict(v=v, measured=f"{len(deps)} declared edge(s); exists: {et}; cycle: {ct}; reads-match: {rt}", **extra)
+
+
+def _declared_kind(declarations, asset_id: str):
+    """The kind the asset-declarations file declares for `asset_id`, or None (absent asset / null / unknown kind)."""
+    e = (declarations or {}).get(asset_id)
+    k = e.get("kind") if isinstance(e, dict) else None
+    return k if isinstance(k, str) and k in DECLARED_KINDS else None
+
+
+def _measure_target(r: dict, owners, declared_kind) -> dict:
+    """Build.target (T4:274: "a `target_table` set, or service / multi-table declared explicitly").
+
+    E6 item (g): an asset with NO target_table that BOTH the registry (`asset_kind`) and the asset-declarations file
+    declare `service` reads PASS BY DECLARATION. Nothing measures that verdict — no code path tests the declaration,
+    so this branch cannot read false (CLAUDE.md N.8); the text and the record's `basis` say so. Where the file and
+    the registry disagree the registry fact decides and the reading is the one it always was (cause-keyed N/A);
+    `multi-table` is not a kind, it is the measured count_sql table set (`_grade_target_less`)."""
+    if r["target_table"]:
+        return dict(v=PASS, measured=f"target_table={r['target_table']}")
+    if r["asset_kind"] == "service" or not r["has_writer"]:
+        if r["asset_kind"] == "service" and declared_kind == "service":
+            return dict(v=PASS, basis="declaration",
+                        measured="PASS by declaration (T4:274): no target_table, and both the registry (asset_kind='service') and "
+                                 "the asset-declarations file (kind: service) declare a service; no measurement stands behind "
+                                 "this verdict — nothing tests the declaration, so this branch has no fail path (CLAUDE.md N.8)")
+        return _na(f"no target_table; asset_kind='{r['asset_kind']}', has_writer={r['has_writer']}",
+                   "service-no-target-table" if r["asset_kind"] == "service" else "no-writer-no-target-table")
+    try:
+        # R242 (W2-2 OS-B): the registry-wide read happens only when absent (the caller caches it).
+        return _grade_target_less(r, owners)
+    except Unknown as exc:
+        return dict(v=ERRORED, measured=f"check errored: {exc}")
+
+
 def _grade_target_less(r: dict, owners) -> dict:
     """R53 (T1 plant build_target_null; W2-1 OS-1/#18): Build.target for a writer-backed data/artifact
     asset with NO target_table. The FAIL branch used to be dead — `asset_kind` is NOT NULL
@@ -4462,9 +5247,17 @@ def measure(layer_key: str) -> dict:
     # R21: the blocking radius, registry-wide. Fault-isolated: an unreadable graph leaves every asset's
     # radius UNMEASURED (None, with the reason) — never 0, which would read as "an isolated leaf".
     try:
-        radius, radius_note = blocking_radius(dependency_graph()), None
+        dep_graph = dependency_graph()
+        radius, radius_note = blocking_radius(dep_graph), None
     except Unknown as exc:
+        dep_graph = None
         radius, radius_note = {}, f"unmeasured: the dependency read failed ({exc})"
+    # E6 item (g): the asset-declarations file's kinds (a declared service satisfies Build.target by declaration).
+    # An unreadable file leaves every declared kind UNKNOWN: Build.target then reads exactly as before.
+    try:
+        declarations = load_asset_declarations()
+    except DeclarationsError:
+        declarations = None
     # R23: every capability module's SQL, read once per layer run.
     try:
         caps_sql, caps_note = capability_sql(), None
@@ -4486,6 +5279,12 @@ def measure(layer_key: str) -> dict:
     except DeclarationsError as exc:
         prose_decls, prose_vocab = exc, set()
     prose_tests = None
+    produced: dict = {}                                   # E6 (h): registry-wide table -> producers, lazily, once per layer
+
+    def produced_owners():
+        if "map" not in produced:                         # an unreadable map raises and is NOT cached as empty
+            produced["map"] = produced_table_owners()
+        return produced["map"]
     assets = []
     for aid, r in reg.items():
         m: dict[str, dict] = {}
@@ -4509,25 +5308,12 @@ def measure(layer_key: str) -> dict:
                                           [r["target_table"]] + _count_tables(r["count_sql"]))
 
         # Build.target
-        if r["target_table"]:
-            m["Build.target"] = dict(v=PASS, measured=f"target_table={r['target_table']}")
-        elif r["asset_kind"] == "service" or not r["has_writer"]:
-            m["Build.target"] = _na(f"no target_table; asset_kind='{r['asset_kind']}', has_writer={r['has_writer']}",
-                                    "service-no-target-table" if r["asset_kind"] == "service" else "no-writer-no-target-table")
-        else:
-            try:
-                # R242 (W2-2 OS-B): `owners.setdefault("map", target_owners())` evaluated its argument —
-                # the registry-wide read — on EVERY call, whatever the cache held. Read it only when absent.
-                m["Build.target"] = _grade_target_less(
-                    r, lambda: owners["map"] if "map" in owners else owners.setdefault("map", target_owners()))
-            except Unknown as exc:
-                m["Build.target"] = dict(v=ERRORED, measured=f"check errored: {exc}")
+        m["Build.target"] = _measure_target(
+            r, lambda: owners["map"] if "map" in owners else owners.setdefault("map", target_owners()),
+            _declared_kind(declarations, aid))
 
-        missing = [d for d in r["depends_on"] if d not in known and not d.startswith(cfg["prefix"]) is False]
-        unknown_deps = [d for d in r["depends_on"] if d.startswith(cfg["prefix"]) and d not in known]
-        m["Build.dag"] = dict(v=(FAIL if unknown_deps else PASS),
-                              measured=(f"depends_on references unknown {cfg['prefix']}* assets: {unknown_deps}"
-                                        if unknown_deps else f"{len(r['depends_on'])} edge(s), all resolvable"))
+        # Build.dag: resolvability, and (E6 item h, T4:275) the declared edges against what the writer reads
+        m["Build.dag"] = _measure_dag(aid, r, files, known, cfg["prefix"], produced_owners, dep_graph)
 
         ok_ci = bool(r["count_sql"]) and r["has_integrity"]
         ci_text = f"count_sql={'yes' if r['count_sql'] else 'no'}, integrity_check_sql={'yes' if r['has_integrity'] else 'no'}"
