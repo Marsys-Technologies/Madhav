@@ -1,0 +1,969 @@
+"""test_e5_5_stale_certs.py — Suvarna E5.5: the stale-certification detector (`nikasha_stale_certs.py`).
+
+The certification currency contract (Track E brief 7, arch 12.16), each clause with its own tests:
+  (1) the SEMANTIC ROW FINGERPRINT: rows in natural-key order, canonical JSON of the declared semantic columns,
+      volatile columns excluded as declared per asset, embeddings compared under a declared rounding policy;
+      an idempotent rebuild leaves it unchanged; any unreadable input raises (never "not stale");
+  (2) certificate generation ids: an upstream whose latest generation is not the one cited, that is itself stale,
+      invalidated or not passing, makes the dependent stale — transitively, and ONLY what changed;
+  (3) the invalidation WATERMARK: invalidation lines appended to the ledger in a shape E5.1's reader accepts,
+      and `watermark_ok` / `current_certificates` refusing a ledger that holds certificates E5.5 has not evaluated;
+  (4) bounded RE-WALKS: at most two invalidating walks per (layer, acceptance epoch); the third raises with the
+      findings for Strategic Suvarna and writes nothing.
+
+Offline: tmp ledgers, a fake DB-API cursor, a tmp git repo. No database, no network.
+"""
+from __future__ import annotations
+
+import copy
+import datetime as dt
+import decimal
+import hashlib
+import json
+import pathlib
+import subprocess
+import sys
+import uuid
+
+import pytest
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+
+import asset_census as ac  # noqa: E402
+import nikasha_certify as nc  # noqa: E402
+import nikasha_stale_certs as sc  # noqa: E402
+
+RUN = "2026-10-01T10:00:00+05:30"
+NOW = "2026-10-02T09:00:00+05:30"
+COMMIT = "c0ffee0" + "0" * 33
+
+
+def H(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()
+
+
+# ───────────────────────── harness ─────────────────────────
+
+@pytest.fixture
+def ledger(tmp_path):
+    p = tmp_path / "asset_certs.jsonl"
+    p.write_text(json.dumps({"asset": "_schema", "_doc": "test ledger"}) + "\n", encoding="utf-8")
+    return p
+
+
+def layer_of(asset):
+    return {"bg": "L0", "ga": "L1", "bo": "L2", "ka": "L3"}[asset[:2]]
+
+
+def fp_of(asset, n=0):
+    return H(f"fp:{asset}:{n}")
+
+
+def wh_of(asset, n=0):
+    return {f"w/{asset}.py": H(f"w:{asset}:{n}")}
+
+
+def cert(ledger, asset, crit="Build.registered", *, fp=None, wh=None, up=(), verdict="PASS", **over):
+    d = dict(asset=asset, layer=layer_of(asset), criterion=crit, verdict=verdict,
+             evidence=dict(census_run_id=RUN), verified_by="t", ledger_path=ledger, verified_on=NOW,
+             writer_hashes=wh_of(asset) if wh is None else wh,
+             semantic_fingerprint=fp_of(asset) if fp is None else fp, upstream_cert_ids=list(up))
+    if verdict != "PASS":
+        d.update(writer_hashes=None, semantic_fingerprint=None)
+    d.update(over)
+    return nc.write_certification(**d).record["cert_id"]
+
+
+def obs(*assets, **over):
+    """What the world looks like now: every asset unchanged unless `over[asset]` replaces a field."""
+    out = {a: dict(writer_hashes=wh_of(a), semantic_fingerprint=fp_of(a)) for a in assets}
+    for a, o in over.items():
+        out[a] = dict(out.get(a, {}), **o)
+    return out
+
+
+def raw(p):
+    return p.read_bytes()
+
+
+def lines(p):
+    return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+
+
+def run(ledger, observed, **kw):
+    kw.setdefault("epoch", "E1")
+    kw.setdefault("commit", COMMIT)
+    kw.setdefault("now", NOW)
+    return sc.invalidate(ledger, observed, **kw)
+
+
+def chain(ledger):
+    """bg_a <- bg_b <- bg_c, plus an unrelated bg_d. Returns the cert ids."""
+    a = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a])
+    c = cert(ledger, "bg_c", up=[b])
+    d = cert(ledger, "bg_d")
+    return a, b, c, d
+
+
+# ═══════════════ (1) the semantic row fingerprint ═══════════════
+
+DECL_V = dict(table="ph_nimitta", scope="chart", natural_key=["nimitta_id"],
+              volatile_columns=["id", "created_at", "build_id"])
+DECL_S = dict(table="ph_nimitta", scope="chart", natural_key=["nimitta_id"], semantic_columns=["label", "weight"])
+ROWS = [
+    dict(id=1, created_at="2026-10-01T00:00:00", build_id="b1", nimitta_id="n2", label="two", weight=2),
+    dict(id=2, created_at="2026-10-01T00:00:00", build_id="b1", nimitta_id="n1", label="one", weight=1),
+]
+
+
+def fpr(rows, decl=None):
+    return sc.fingerprint_rows(rows, sc.validate_declaration(decl or DECL_V))
+
+
+def test_fingerprint_is_a_sha256_hex_and_deterministic():
+    f = fpr(ROWS)
+    assert len(f) == 64 and set(f) <= set("0123456789abcdef") and f == fpr(copy.deepcopy(ROWS))
+
+
+def test_fingerprint_does_not_depend_on_row_order_or_dict_key_order():
+    shuffled = [dict(reversed(list(r.items()))) for r in reversed(ROWS)]
+    assert fpr(shuffled) == fpr(ROWS)
+
+
+def test_an_idempotent_rebuild_that_changes_only_volatile_columns_keeps_the_fingerprint():
+    rebuilt = [dict(r, id=r["id"] + 100, created_at="2026-12-31T23:59:59", build_id="b2") for r in ROWS]
+    assert fpr(rebuilt) == fpr(ROWS)
+
+
+@pytest.mark.parametrize("change", [
+    lambda r: r.update(label="CHANGED"),
+    lambda r: r.update(weight=3),
+    lambda r: r.update(nimitta_id="n9"),
+])
+def test_a_semantic_change_moves_the_fingerprint(change):
+    rows = copy.deepcopy(ROWS)
+    change(rows[0])
+    assert fpr(rows) != fpr(ROWS)
+
+
+def test_adding_or_dropping_a_row_moves_the_fingerprint():
+    assert fpr(ROWS[:1]) != fpr(ROWS)
+    assert fpr(ROWS + [dict(ROWS[0], nimitta_id="n3")]) != fpr(ROWS)
+
+
+def test_in_volatile_mode_a_new_non_volatile_column_is_a_material_change():
+    assert fpr([dict(r, extra="x") for r in ROWS]) != fpr(ROWS)
+
+
+def test_semantic_columns_mode_reads_only_the_declared_columns_plus_the_key():
+    base = fpr(ROWS, DECL_S)
+    assert fpr([dict(r, label=r["label"], id=77, junk="x") for r in ROWS], DECL_S) == base
+    assert fpr([dict(r, label="z") for r in ROWS], DECL_S) != base
+
+
+def test_the_declaration_is_part_of_the_fingerprint():
+    other = dict(DECL_S, semantic_columns=["label"])
+    assert fpr(ROWS, DECL_S) != fpr(ROWS, other)
+
+
+def test_the_declaration_distinguishes_even_empty_tables():
+    assert fpr([], DECL_V) != fpr([], dict(DECL_V, volatile_columns=["id"]))
+    assert fpr([], DECL_S) != fpr([], dict(DECL_S, semantic_columns=["label"]))
+
+
+def test_an_empty_table_has_a_fingerprint_distinct_from_a_populated_one():
+    assert fpr([]) != fpr(ROWS) and len(fpr([])) == 64
+
+
+def test_embeddings_are_compared_under_the_declared_rounding_policy_never_byte_equal():
+    decl = dict(DECL_S, semantic_columns=["label", "emb"], embedding_policy={"emb": {"decimals": 4}})
+    a = [dict(nimitta_id="n1", label="x", emb=[0.123456, -0.5, 0.0])]
+    near = [dict(nimitta_id="n1", label="x", emb=[0.123461, -0.50001, -0.0])]      # inside 4 decimals' equivalence
+    far = [dict(nimitta_id="n1", label="x", emb=[0.123956, -0.5, 0.0])]            # visible at 4 decimals
+    assert fpr(near, decl) == fpr(a, decl)
+    assert fpr(far, decl) != fpr(a, decl)
+    assert json.dumps(a[0]["emb"]) != json.dumps(near[0]["emb"])                   # bytes differ, fingerprint does not
+
+
+def test_a_pgvector_text_value_and_a_list_are_the_same_embedding():
+    decl = dict(DECL_S, semantic_columns=["emb"], embedding_policy={"emb": {"decimals": 3}})
+    assert fpr([dict(nimitta_id="n1", emb="[0.1,0.2,0.3]")], decl) == fpr([dict(nimitta_id="n1", emb=[0.1, 0.2, 0.3])], decl)
+
+
+def test_without_an_embedding_policy_a_vector_column_is_compared_exactly():
+    decl = dict(DECL_S, semantic_columns=["emb"])
+    assert (fpr([dict(nimitta_id="n1", emb=[0.1234561])], decl) != fpr([dict(nimitta_id="n1", emb=[0.1234562])], decl))
+
+
+def test_database_native_value_types_are_canonicalised():
+    base = [dict(nimitta_id="n1", label="x", weight=decimal.Decimal("1.50"))]
+    same = [dict(nimitta_id="n1", label="x", weight=decimal.Decimal("1.5"))]
+    assert fpr(base, DECL_S) == fpr(same, DECL_S)
+    u = uuid.UUID("12345678-1234-5678-1234-567812345678")
+    t = dt.datetime(2026, 1, 2, 3, 4, 5, tzinfo=dt.timezone.utc)
+    d = dict(DECL_S, semantic_columns=["label", "weight"])
+    assert fpr([dict(nimitta_id=u, label=t, weight={"b": 1, "a": [1, 2]})], d) == \
+        fpr([dict(nimitta_id=str(u), label=t.isoformat(), weight={"a": [1, 2], "b": 1})], d)
+
+
+def test_a_row_missing_a_declared_column_raises():
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(nimitta_id="n1", label="x")], DECL_S)                              # no `weight`
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(label="x", weight=1)], DECL_S)                                     # no natural key
+
+
+def test_duplicate_or_null_natural_keys_raise():
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(nimitta_id="n1", label="a", weight=1), dict(nimitta_id="n1", label="b", weight=2)], DECL_S)
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(nimitta_id=None, label="a", weight=1)], DECL_S)
+
+
+@pytest.mark.parametrize("v", [float("nan"), float("inf"), b"bytes", {1, 2}, object()])
+def test_values_with_no_canonical_form_raise(v):
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(nimitta_id="n1", label=v, weight=1)], DECL_S)
+
+
+def test_a_non_mapping_row_or_non_iterable_rows_raise():
+    with pytest.raises(sc.UnreadableInput):
+        fpr([("n1", "x", 1)], DECL_S)
+    with pytest.raises(sc.UnreadableInput):
+        sc.fingerprint_rows(None, sc.validate_declaration(DECL_S))
+
+
+def test_in_volatile_mode_rows_must_share_one_column_set():
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(ROWS[0]), dict(ROWS[1], extra=1)])
+
+
+def test_a_non_finite_or_malformed_embedding_raises():
+    decl = dict(DECL_S, semantic_columns=["emb"], embedding_policy={"emb": {"decimals": 3}})
+    for bad in ([float("nan")], "not a vector", [1, "x"], 5, None):
+        with pytest.raises(sc.UnreadableInput):
+            fpr([dict(nimitta_id="n1", emb=bad)], decl)
+
+
+@pytest.mark.parametrize("patch,why", [
+    (dict(natural_key=[]), "empty natural key"),
+    (dict(natural_key="nimitta_id"), "natural key not a list"),
+    (dict(volatile_columns=["id"], semantic_columns=["label"]), "both modes"),
+    (dict(volatile_columns=None), "neither mode"),
+    (dict(volatile_columns=["nimitta_id"]), "key is volatile"),
+    (dict(table='x"; DROP TABLE y; --'), "injection in table"),
+    (dict(table="Has Space"), "bad table"),
+    (dict(table="UPPER"), "uppercase table"),
+    (dict(natural_key=["a b"]), "bad key identifier"),
+    (dict(volatile_columns=["id", 'c"d']), "bad volatile identifier"),
+    (dict(scope="everywhere"), "bad scope"),
+    (dict(scope="chart", scope_column="chart id"), "bad scope column"),
+    (dict(embedding_policy={"emb": {"decimals": 99}}), "decimals out of range"),
+    (dict(embedding_policy={"emb": {"decimals": -1}}), "negative decimals"),
+    (dict(embedding_policy={"emb": {"decimals": "3"}}), "decimals not an int"),
+    (dict(embedding_policy={"id": {"decimals": 3}}), "embedding column is volatile"),
+    (dict(embedding_policy={"emb": {"tolerance": 0.1}}), "unknown policy key"),
+    (dict(surprise=1), "unknown declaration key"),
+])
+def test_bad_declarations_are_refused(patch, why):
+    d = dict(DECL_V)
+    d.update(patch)
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declaration(d)
+
+
+def test_semantic_mode_embedding_column_must_be_declared_semantic():
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declaration(dict(DECL_S, embedding_policy={"emb": {"decimals": 3}}))
+
+
+def test_declarations_document_validates_every_asset_and_names_the_bad_one():
+    ok = sc.validate_declarations({"ph_x": dict(DECL_V), "ph_y": dict(DECL_S)})
+    assert set(ok) == {"ph_x", "ph_y"}
+    with pytest.raises(sc.BadDeclaration, match="ph_bad"):
+        sc.validate_declarations({"ph_ok": dict(DECL_V), "ph_bad": dict(DECL_V, natural_key=[])})
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declarations({"Bad Asset": dict(DECL_V)})
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declarations([])
+
+
+# ───────────────────────── the read-only loader ─────────────────────────
+
+class FakeCursor:
+    def __init__(self, cols, rows, fail=None, chunk=2):
+        self.description = [(c,) for c in cols]
+        self.rows, self.fail, self.chunk = list(rows), fail, chunk
+        self.executed = []
+        self.closed = False
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+        if self.fail:
+            raise self.fail
+
+    def fetchmany(self, n):
+        out, self.rows = self.rows[:min(n, self.chunk)], self.rows[min(n, self.chunk):]
+        return out
+
+    def close(self):
+        self.closed = True
+
+
+class FakeConn:
+    def __init__(self, cur):
+        self.cur, self.committed = cur, False
+
+    def cursor(self):
+        return self.cur
+
+    def commit(self):
+        self.committed = True
+
+
+def test_the_select_is_one_of_three_fixed_shapes_with_quoted_validated_identifiers():
+    assert sc.build_select(sc.validate_declaration(DECL_S)) == \
+        'SELECT "nimitta_id", "label", "weight" FROM "ph_nimitta" WHERE "chart_id" = %s'
+    assert sc.build_select(sc.validate_declaration(DECL_V)) == 'SELECT * FROM "ph_nimitta" WHERE "chart_id" = %s'
+    g = sc.validate_declaration(dict(DECL_V, scope="global", table="brahma_ontology"))
+    assert sc.build_select(g) == 'SELECT * FROM "brahma_ontology"'
+    c = sc.validate_declaration(dict(DECL_S, scope_column="subject_chart"))
+    assert sc.build_select(c).endswith('WHERE "subject_chart" = %s')
+
+
+def test_load_rows_executes_exactly_one_parameterised_select_and_returns_dicts():
+    cur = FakeCursor(["id", "created_at", "build_id", "nimitta_id", "label", "weight"],
+                     [tuple(r[k] for k in ("id", "created_at", "build_id", "nimitta_id", "label", "weight")) for r in ROWS])
+    conn = FakeConn(cur)
+    rows = sc.load_rows(conn, sc.validate_declaration(DECL_V), chart_id="482012f1-710e-4a25-994a-93821f5871aa")
+    assert rows == ROWS
+    assert cur.executed == [('SELECT * FROM "ph_nimitta" WHERE "chart_id" = %s', ("482012f1-710e-4a25-994a-93821f5871aa",))]
+    assert cur.executed[0][0].startswith("SELECT ") and not conn.committed
+
+
+def test_the_chart_id_is_only_ever_a_bound_parameter_never_part_of_the_sql():
+    cur = FakeCursor(["nimitta_id", "label", "weight"], [])
+    sc.load_rows(FakeConn(cur), sc.validate_declaration(DECL_S), chart_id="x'; DROP TABLE t; --")
+    sql, params = cur.executed[0]
+    assert "DROP" not in sql and params == ("x'; DROP TABLE t; --",)
+
+
+def test_scope_and_chart_id_must_agree():
+    cur = FakeCursor([], [])
+    with pytest.raises(sc.UnreadableInput):
+        sc.load_rows(FakeConn(cur), sc.validate_declaration(DECL_V))                                  # chart scope, no id
+    with pytest.raises(sc.UnreadableInput):
+        sc.load_rows(FakeConn(cur), sc.validate_declaration(dict(DECL_V, scope="global")), chart_id="x")
+    assert cur.executed == []
+
+
+def test_load_rows_reads_every_chunk():
+    cols = ["nimitta_id", "label", "weight"]
+    rows = [(f"n{i}", "x", i) for i in range(7)]
+    got = sc.load_rows(FakeConn(FakeCursor(cols, rows, chunk=3)), sc.validate_declaration(DECL_S), chart_id="c")
+    assert len(got) == 7 and got[6]["nimitta_id"] == "n6"
+
+
+def test_a_database_error_is_unreadable_input_never_an_empty_table():
+    cur = FakeCursor([], [], fail=RuntimeError("connection reset"))
+    with pytest.raises(sc.UnreadableInput):
+        sc.load_rows(FakeConn(cur), sc.validate_declaration(DECL_S), chart_id="c")
+    with pytest.raises(sc.UnreadableInput):
+        sc.table_fingerprint(FakeConn(cur), sc.validate_declaration(DECL_S), chart_id="c")
+
+
+def test_a_cursor_with_no_description_is_unreadable():
+    cur = FakeCursor(["a"], [(1,)])
+    cur.description = None
+    with pytest.raises(sc.UnreadableInput):
+        sc.load_rows(FakeConn(cur), sc.validate_declaration(DECL_S), chart_id="c")
+
+
+def test_table_fingerprint_equals_fingerprint_rows_of_the_same_rows():
+    cols = ["id", "created_at", "build_id", "nimitta_id", "label", "weight"]
+    cur = FakeCursor(cols, [tuple(r[k] for k in cols) for r in ROWS])
+    decl = sc.validate_declaration(DECL_V)
+    assert sc.table_fingerprint(FakeConn(cur), decl, chart_id="c") == sc.fingerprint_rows(ROWS, decl)
+
+
+# ═══════════════ (2) detection: three comparisons, transitivity, only what changed ═══════════════
+
+def test_nothing_changed_nothing_is_stale(ledger):
+    a, b, c, d = chain(ledger)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert ev.stale == {} and sorted(ev.current) == sorted([a, b, c, d])
+
+
+def test_a_changed_writer_hash_makes_that_asset_stale_and_names_the_path(ledger):
+    a, b, c, d = chain(ledger)
+    o = obs("bg_a", "bg_b", "bg_c", "bg_d", bg_d=dict(writer_hashes=wh_of("bg_d", 1)))
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {d}
+    r = ev.stale[d][0]
+    assert r["code"] == "writer_hash" and r["path"] == "w/bg_d.py"
+    assert r["recorded"] == wh_of("bg_d")["w/bg_d.py"] and r["observed"] == wh_of("bg_d", 1)["w/bg_d.py"]
+
+
+def test_a_changed_semantic_fingerprint_makes_that_asset_stale(ledger):
+    a, b, c, d = chain(ledger)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", "bg_d", bg_d=dict(semantic_fingerprint=fp_of("bg_d", 1))))
+    assert set(ev.stale) == {d} and ev.stale[d][0]["code"] == "semantic_fingerprint"
+    assert ev.stale[d][0]["recorded"] == fp_of("bg_d") and ev.stale[d][0]["observed"] == fp_of("bg_d", 1)
+
+
+def test_a_dependent_citing_a_superseded_upstream_generation_is_stale(ledger):
+    a = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a])
+    a2 = cert(ledger, "bg_a", fp=fp_of("bg_a", 1))                               # bg_a re-certified: generation 2
+    assert a2.endswith("@2")
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    assert set(ev.stale) == {b}
+    r = ev.stale[b][0]
+    assert r["code"] == "upstream_generation" and r["upstream"] == a and r["cited"] == 1 and r["latest"] == 2
+
+
+def test_staleness_propagates_transitively_and_only_to_dependents(ledger):
+    a, b, c, d = chain(ledger)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    assert set(ev.stale) == {a, b, c}, "A changed: B rests on A and C on B; D is unrelated"
+    assert [x["code"] for x in ev.stale[a]] == ["semantic_fingerprint"]
+    assert ev.stale[b][0]["code"] == "upstream_stale" and ev.stale[b][0]["upstream"] == a
+    assert ev.stale[c][0]["code"] == "upstream_stale" and ev.stale[c][0]["upstream"] == b
+    assert ev.current == [d]
+
+
+def test_an_idempotent_rebuild_invalidates_nothing_downstream_end_to_end(ledger):
+    # the asset is rebuilt: every volatile column changes, the semantic fingerprint does not
+    before = fpr(ROWS)
+    rebuilt = fpr([dict(r, id=r["id"] + 9, created_at="2027-01-01", build_id="b9") for r in ROWS])
+    assert before == rebuilt
+    a = cert(ledger, "bg_a", fp=before)
+    b = cert(ledger, "bg_b", up=[a])
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(semantic_fingerprint=rebuilt)))
+    assert ev.stale == {} and sorted(ev.current) == sorted([a, b])
+
+
+def test_a_material_rebuild_invalidates_the_asset_and_its_dependents(ledger):
+    before = fpr(ROWS)
+    changed = fpr([dict(ROWS[0], label="different"), ROWS[1]])
+    a = cert(ledger, "bg_a", fp=before)
+    b = cert(ledger, "bg_b", up=[a])
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(semantic_fingerprint=changed)))
+    assert set(ev.stale) == {a, b}
+
+
+def test_a_stale_dependent_does_not_make_its_upstream_stale(ledger):
+    a, b, c, d = chain(ledger)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", "bg_d", bg_c=dict(writer_hashes=wh_of("bg_c", 1))))
+    assert set(ev.stale) == {c}
+
+
+def test_invalidation_is_remembered_when_the_world_reverts(ledger):
+    a, b, c, d = chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    # the world reverts to what was certified, but A@1 stays invalidated: the ledger remembers
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert ev.stale == {} and ev.current == [d] and set(ev.invalidated) == {a, b, c}
+
+
+def test_a_certificate_resting_on_an_already_invalidated_upstream_is_stale_though_everything_observed_matches(ledger):
+    a = cert(ledger, "bg_a")
+    run(ledger, obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))            # A@1 invalidated
+    b = cert(ledger, "bg_b", up=[a])                                                       # E5.1 cannot know; E5.5 does
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b"))
+    assert set(ev.stale) == {b}
+    assert ev.stale[b][0]["code"] == "upstream_stale" and ev.stale[b][0]["upstream"] == a
+    assert ev.stale[b][0]["why"] == "invalidated"
+
+
+def test_two_independent_reasons_are_both_reported(ledger):
+    a, b, c, d = chain(ledger)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", "bg_d",
+                                      bg_d=dict(writer_hashes=wh_of("bg_d", 1), semantic_fingerprint=fp_of("bg_d", 1))))
+    assert sorted(r["code"] for r in ev.stale[d]) == ["semantic_fingerprint", "writer_hash"]
+
+
+def test_a_pass_citing_a_non_passing_upstream_is_stale(ledger):
+    # E5.1 refuses to write this; the detector must still not call a hand-edited ledger current
+    a = cert(ledger, "bg_a", verdict="FAIL")
+    b = cert(ledger, "bg_b")
+    rec = dict(lines(ledger)[-1], upstream_cert_ids=[a])
+    ledger.write_text("\n".join(json.dumps(x) for x in lines(ledger)[:-1] + [rec]) + "\n")
+    ev = sc.evaluate(raw(ledger), obs("bg_b"))
+    assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_not_passing"
+
+
+def test_the_registry_revision_is_compared_only_when_the_caller_supplies_it(ledger):
+    a = cert(ledger, "bg_a")
+    same = dict(revision=ac.REGISTRY_REVISION, fingerprint=ac.registry_fingerprint())
+    assert sc.evaluate(raw(ledger), obs("bg_a"), registry=same).stale == {}
+    assert sc.evaluate(raw(ledger), obs("bg_a")).stale == {}
+    ev = sc.evaluate(raw(ledger), obs("bg_a"), registry=dict(same, revision=ac.REGISTRY_REVISION + 1))
+    assert ev.stale[a][0]["code"] == "registry"
+    ev = sc.evaluate(raw(ledger), obs("bg_a"), registry=dict(same, fingerprint="f" * 64))
+    assert ev.stale[a][0]["code"] == "registry"
+
+
+def test_only_the_latest_generation_of_a_key_is_evaluated(ledger):
+    a1 = cert(ledger, "bg_a")
+    a2 = cert(ledger, "bg_a", fp=fp_of("bg_a", 1), wh=wh_of("bg_a", 1))
+    ev = sc.evaluate(raw(ledger), obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1), writer_hashes=wh_of("bg_a", 1))))
+    assert ev.stale == {} and ev.current == [a2] and a1 not in ev.current
+
+
+def test_non_passing_records_are_not_certificates_and_need_no_observation(ledger):
+    f = cert(ledger, "bg_a", verdict="FAIL")
+    ev = sc.evaluate(raw(ledger), {})
+    assert ev.stale == {} and ev.current == [] and f in ev.not_certificates
+
+
+def test_a_computed_n_a_with_no_hashes_or_fingerprint_needs_no_observation_and_is_never_stale_by_itself(ledger, monkeypatch):
+    rid = "Ldgr.source_presence#columns_any"
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {rid: "N-22.t"})
+    n = nc.write_certification(asset="bg_a", layer="L0", criterion="Ldgr.source_presence", verdict="N/A",
+                               facts=dict(columns=["id"]), na_rule_id=rid, evidence=dict(census_run_id=RUN),
+                               verified_by="t", ledger_path=ledger, verified_on=NOW).record["cert_id"]
+    ev = sc.evaluate(raw(ledger), {})
+    assert ev.stale == {} and ev.current == [n]
+
+
+# ───────────────────────── honest nulls: unreadable input never reads "not stale" ─────────────────────────
+
+def test_a_missing_observation_for_a_certified_asset_raises(ledger):
+    chain(ledger)
+    with pytest.raises(sc.MissingObservation):
+        sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c"))                       # bg_d absent
+
+
+def test_a_missing_fingerprint_or_writer_path_raises(ledger):
+    cert(ledger, "bg_a")
+    with pytest.raises(sc.MissingObservation):
+        sc.evaluate(raw(ledger), {"bg_a": dict(writer_hashes=wh_of("bg_a"))})
+    with pytest.raises(sc.MissingObservation):
+        sc.evaluate(raw(ledger), {"bg_a": dict(semantic_fingerprint=fp_of("bg_a"))})
+    with pytest.raises(sc.MissingObservation):
+        sc.evaluate(raw(ledger), {"bg_a": dict(writer_hashes={"w/other.py": H("x")}, semantic_fingerprint=fp_of("bg_a"))})
+
+
+@pytest.mark.parametrize("bad", [
+    dict(semantic_fingerprint="nothex"), dict(semantic_fingerprint=None), dict(semantic_fingerprint="A" * 64),
+    dict(semantic_fingerprint=123), dict(writer_hashes={"w/bg_a.py": "short"}), dict(writer_hashes=["w/bg_a.py"]),
+])
+def test_a_malformed_observation_raises_it_is_never_read_as_unchanged(ledger, bad):
+    cert(ledger, "bg_a")
+    with pytest.raises(sc.UnreadableInput):
+        sc.evaluate(raw(ledger), obs("bg_a", bg_a=bad))
+
+
+def test_observed_must_be_a_mapping(ledger):
+    cert(ledger, "bg_a")
+    for bad in (None, [], "x"):
+        with pytest.raises(sc.UnreadableInput):
+            sc.evaluate(raw(ledger), bad)
+
+
+def test_a_missing_observation_writes_nothing(ledger):
+    chain(ledger)
+    before = raw(ledger)
+    with pytest.raises(sc.MissingObservation):
+        run(ledger, obs("bg_a"))
+    assert raw(ledger) == before
+
+
+# ───────────────────────── ledger shape ─────────────────────────
+
+def test_a_ledger_that_e51_would_refuse_is_refused_here(ledger):
+    cert(ledger, "bg_a")
+    ledger.write_text(ledger.read_text() + "{not json\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_a"))
+
+
+def test_an_unknown_record_kind_raises(ledger):
+    cert(ledger, "bg_a")
+    rows = lines(ledger)
+    rows.append(dict(asset="bg_a", kind="mystery", cert_key="bg_a|mystery|x", generation=1, cert_id="bg_a|mystery|x@1",
+                     verdict="PASS"))
+    ledger.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_a"))
+
+
+def test_a_certificate_invalidated_twice_raises(ledger):
+    cert(ledger, "bg_a")
+    run(ledger, obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    rows = lines(ledger)
+    inv = next(x for x in rows if x.get("kind") == "invalidation")
+    ledger.write_text("\n".join(json.dumps(x) for x in rows[:-1] + [dict(inv, cert_id=inv["cert_id"], walk=2)] + rows[-1:]) + "\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_a"))
+
+
+def test_a_certificate_citing_a_later_line_or_a_missing_cert_raises(ledger):
+    a = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a])
+    rows = lines(ledger)
+    ledger.write_text("\n".join(json.dumps(x) for x in [rows[0], rows[2], rows[1]]) + "\n")         # swap: b before a
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_a", "bg_b"))
+    ledger.write_text("\n".join(json.dumps(x) for x in [rows[0], rows[2]]) + "\n")                 # a removed
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_b"))
+
+
+# ═══════════════ (3) invalidation lines and the watermark ═══════════════
+
+def test_invalidate_appends_one_line_per_stale_cert_then_a_watermark_in_the_documented_shape(ledger):
+    a, b, c, d = chain(ledger)
+    r = run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    rows = lines(ledger)
+    inv, wm = rows[-4:-1], rows[-1]
+    assert [x["invalidates"] for x in inv] == [a, b, c]                       # file order = dependency order
+    x = inv[0]
+    assert x["kind"] == "invalidation" and x["asset"] == "bg_a" and x["layer"] == "L0"
+    assert x["cert_key"] == f"bg_a|invalidation|{a}" and x["generation"] == 1 and x["cert_id"] == f"{x['cert_key']}@1"
+    assert x["verdict"] == "INVALIDATED" and x["walk"] == 1 and x["epoch"] == "E1"
+    assert x["reason"][0]["code"] == "semantic_fingerprint" and x["detected_on"] == NOW
+    assert x["detected_by"] == "nikasha_stale_certs.py" and x["record_version"] == 1
+    assert inv[1]["reason"][0]["code"] == "upstream_stale" and inv[1]["reason"][0]["upstream"] == a
+    assert wm["kind"] == "watermark" and wm["asset"] == "_ledger" and wm["cert_key"] == "_ledger|watermark|global"
+    assert wm["generation"] == 1 and wm["cert_id"] == "_ledger|watermark|global@1" and wm["verdict"] == "WATERMARK"
+    assert wm["events_processed"] == 4 and wm["last_cert_id"] == d and wm["commit"] == COMMIT
+    assert wm["evaluated_on"] == NOW and wm["record_version"] == 1
+    assert r.status == "appended" and r.walk == 1 and sorted(r.invalidated) == sorted([a, b, c])
+
+
+def test_the_ledger_stays_readable_by_e51_and_certifying_again_still_works(ledger):
+    a, b, c, d = chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    by_key = nc.read_ledger(ledger)                                            # E5.1's strict reader accepts E5.5's lines
+    assert f"bg_a|invalidation|{a}" in by_key and "_ledger|watermark|global" in by_key
+    r = nc.write_certification(asset="bg_a", layer="L0", criterion="Build.registered", verdict="PASS",
+                               evidence=dict(census_run_id=RUN), verified_by="t", ledger_path=ledger,
+                               writer_hashes=wh_of("bg_a"), semantic_fingerprint=fp_of("bg_a", 1), verified_on=NOW)
+    assert r.record["generation"] == 2
+
+
+def test_invalidate_is_idempotent_a_second_identical_run_appends_nothing_and_uses_no_walk(ledger):
+    chain(ledger)
+    o = obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1)))
+    run(ledger, o)
+    snap = raw(ledger)
+    r = run(ledger, o)
+    assert r.status == "unchanged" and r.invalidated == [] and raw(ledger) == snap
+    assert sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 1}
+
+
+def test_a_clean_ledger_gets_a_watermark_once_and_nothing_after(ledger):
+    chain(ledger)
+    o = obs("bg_a", "bg_b", "bg_c", "bg_d")
+    r1 = run(ledger, o)
+    assert r1.status == "appended" and r1.invalidated == [] and r1.walk is None
+    assert [x["kind"] for x in lines(ledger)[-1:]] == ["watermark"]
+    snap = raw(ledger)
+    assert run(ledger, o).status == "unchanged" and raw(ledger) == snap
+
+
+def test_invalidate_is_append_only(ledger):
+    chain(ledger)
+    before = raw(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    assert raw(ledger).startswith(before) and len(raw(ledger)) > len(before)
+
+
+def test_recertifying_makes_a_key_current_again_and_current_certificates_excludes_the_invalidated(ledger):
+    a, b, c, d = chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    # watermark is current but only D stands
+    cur = sc.current_certificates(raw(ledger))
+    assert [v["cert_id"] for v in cur.values()] == [d]
+    a2 = cert(ledger, "bg_a", fp=fp_of("bg_a", 1))
+    assert a2.endswith("@2")
+    with pytest.raises(sc.WatermarkBehind):                                    # a new certificate E5.5 has not seen
+        sc.current_certificates(raw(ledger))
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    assert sorted(v["cert_id"] for v in sc.current_certificates(raw(ledger)).values()) == sorted([a2, d])
+
+
+def test_invalidate_waits_for_the_ledger_lock(ledger):
+    import fcntl, threading, time
+    chain(ledger)
+    out = []
+    with open(ledger, "rb") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        t = threading.Thread(target=lambda: out.append(run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d")).status))
+        t.start()
+        time.sleep(0.4)
+        blocked = t.is_alive() and not out
+        fcntl.flock(held, fcntl.LOCK_UN)
+    t.join(5)
+    assert blocked and out == ["appended"]
+
+
+# ───────────────────────── the watermark ─────────────────────────
+
+def test_a_ledger_with_no_watermark_is_not_ok(ledger):
+    chain(ledger)
+    assert sc.watermark_ok(raw(ledger)) is False
+    st = sc.watermark_status(raw(ledger))
+    assert st["ok"] is False and st["watermark"] is None and st["unevaluated"] == 4
+
+
+def test_a_schema_only_ledger_has_nothing_unevaluated_but_still_needs_a_watermark(ledger):
+    assert sc.watermark_ok(raw(ledger)) is False
+    run(ledger, {})
+    assert sc.watermark_ok(raw(ledger)) is True and lines(ledger)[-1]["events_processed"] == 0
+
+
+def test_the_watermark_is_ok_exactly_when_no_certificate_follows_it(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert sc.watermark_ok(raw(ledger)) is True
+    cert(ledger, "bg_e")
+    assert sc.watermark_ok(raw(ledger)) is False
+    assert sc.watermark_status(raw(ledger))["unevaluated"] == 1
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", "bg_e"))
+    assert sc.watermark_ok(raw(ledger)) is True
+    assert [x["generation"] for x in lines(ledger) if x.get("kind") == "watermark"] == [1, 2]
+
+
+def test_a_watermark_that_miscounts_the_certificates_before_it_is_a_lie_and_raises(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    rows = lines(ledger)
+    rows[-1]["events_processed"] = 99
+    ledger.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.watermark_ok(raw(ledger))
+    rows[-1].update(events_processed=4, last_cert_id="bg_zzz|gate|Build.registered@1")
+    ledger.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.watermark_ok(raw(ledger))
+
+
+def test_current_certificates_refuses_a_ledger_behind_its_watermark_unless_told_otherwise(ledger):
+    chain(ledger)
+    with pytest.raises(sc.WatermarkBehind) as ei:
+        sc.current_certificates(raw(ledger))
+    assert ei.value.code == "watermark_behind"
+    assert len(sc.current_certificates(raw(ledger), require_watermark=False)) == 4
+
+
+def test_invalidation_lines_for_unknown_or_later_certs_raise(ledger):
+    a = cert(ledger, "bg_a")
+    run(ledger, obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    rows = lines(ledger)
+    bad = [dict(x, invalidates="bg_nobody|gate|Build.registered@1") if x.get("kind") == "invalidation" else x for x in rows]
+    ledger.write_text("\n".join(json.dumps(x) for x in bad) + "\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_a"))
+    inv = next(x for x in rows if x.get("kind") == "invalidation")
+    reordered = [rows[0], inv] + [x for x in rows[1:] if x is not inv]
+    ledger.write_text("\n".join(json.dumps(x) for x in reordered) + "\n")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.evaluate(raw(ledger), obs("bg_a"))
+
+
+def _git(repo, *a):
+    return subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True, text=True,
+                          env={"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                               "GIT_COMMITTER_EMAIL": "t@t", "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin",
+                               "HOME": str(repo)}).stdout
+
+
+def test_watermark_ok_at_ref_reads_the_committed_ledger_not_the_working_tree(tmp_path):
+    repo = tmp_path / "r"
+    (repo / "ctl").mkdir(parents=True)
+    led = repo / "ctl" / "asset_certs.jsonl"
+    led.write_text(json.dumps({"asset": "_schema", "_doc": "t"}) + "\n")
+    _git(repo, "init", "-q")
+    cert(led, "bg_a")
+    run(led, obs("bg_a"))
+    _git(repo, "add", "ctl/asset_certs.jsonl")
+    _git(repo, "commit", "-q", "-m", "ledger evaluated")
+    good = _git(repo, "rev-parse", "HEAD").strip()
+    cert(led, "bg_b")                                                         # dirty working tree: a cert E5.5 has not seen
+    assert sc.watermark_ok(raw(led)) is False
+    assert sc.watermark_ok_at_ref(good, repo, "ctl/asset_certs.jsonl") is True      # the committed ref is what counts
+    _git(repo, "add", "ctl/asset_certs.jsonl")
+    _git(repo, "commit", "-q", "-m", "cert without evaluation")
+    assert sc.watermark_ok_at_ref("HEAD", repo, "ctl/asset_certs.jsonl") is False
+    assert sc.watermark_ok_at_ref(good, repo, "ctl/asset_certs.jsonl") is True
+
+
+def test_a_hostile_ref_or_path_is_refused_before_git_is_ever_run(tmp_path, monkeypatch):
+    def boom(*a, **k):
+        raise AssertionError("git must not be invoked for an invalid ref/path")
+    monkeypatch.setattr(sc.subprocess, "run", boom)
+    for ref, path in (("--output=/tmp/x", "a/b"), ("-x", "a/b"), ("", "a/b"), ("HEAD", "/etc/passwd"), ("HEAD", "../x"),
+                      ("HEAD", "a//b"), ("HEAD", "")):
+        with pytest.raises(sc.UnreadableInput):
+            sc.read_ledger_at_ref(ref, tmp_path, path)
+
+
+def test_a_ref_that_cannot_be_read_raises_never_ok(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    with pytest.raises(sc.UnreadableInput):
+        sc.watermark_ok_at_ref("HEAD", repo, "ctl/asset_certs.jsonl")
+    with pytest.raises(sc.UnreadableInput):
+        sc.watermark_ok_at_ref("--output=/tmp/x", repo, "ctl/asset_certs.jsonl")              # option-shaped ref refused
+    with pytest.raises(sc.UnreadableInput):
+        sc.watermark_ok_at_ref("HEAD", repo, "/etc/passwd")
+    with pytest.raises(sc.UnreadableInput):
+        sc.watermark_ok_at_ref("HEAD", repo, "../x")
+
+
+# ═══════════════ (4) bounded re-walks ═══════════════
+
+def churn(ledger, n, asset="bg_a"):
+    """Recertify `asset` at fingerprint n-1, then change the world to n: the next walk finds it stale."""
+    return cert(ledger, asset, fp=fp_of(asset, n - 1), wh=wh_of(asset, 0))
+
+
+def walk_once(ledger, n, asset="bg_a", **kw):
+    return run(ledger, obs(asset, **{asset: dict(semantic_fingerprint=fp_of(asset, n))}), **kw)
+
+
+def test_two_invalidating_walks_per_layer_are_allowed_and_the_third_is_refused_with_nothing_written(ledger):
+    cert(ledger, "bg_a")
+    assert walk_once(ledger, 1).walk == 1
+    churn(ledger, 2)
+    assert walk_once(ledger, 2).walk == 2
+    churn(ledger, 3)
+    before = raw(ledger)
+    with pytest.raises(sc.RewalkLimitExceeded) as ei:
+        walk_once(ledger, 3)
+    e = ei.value
+    assert e.code == "rewalk_limit" and e.layer == "L0" and e.epoch == "E1" and e.walks == 2
+    assert [x[0] for x in e.stale.items()] == ["bg_a|gate|Build.registered@3"]
+    assert raw(ledger) == before, "a refused third walk must not write an invalidation OR a watermark"
+    assert sc.watermark_ok(raw(ledger)) is False                     # the ledger stays unserviceable until SS reviews
+
+
+def test_a_new_acceptance_epoch_resets_the_count(ledger):
+    cert(ledger, "bg_a")
+    walk_once(ledger, 1)
+    churn(ledger, 2)
+    walk_once(ledger, 2)
+    churn(ledger, 3)
+    r = walk_once(ledger, 3, epoch="E2")
+    assert r.walk == 3 and sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 2, ("L0", "E2"): 1}
+
+
+def test_the_limit_is_per_layer(ledger):
+    cert(ledger, "bg_a")
+    walk_once(ledger, 1)
+    churn(ledger, 2)
+    walk_once(ledger, 2)
+    cert(ledger, "bo_x")                                              # a different layer in the same epoch
+    r = run(ledger, obs("bg_a", "bo_x", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 2)), bo_x=dict(semantic_fingerprint=fp_of("bo_x", 1))))
+    assert [x for x in r.invalidated] == ["bo_x|gate|Build.registered@1"] and r.walk == 3
+    assert sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 2, ("L2", "E1"): 1}
+
+
+def test_a_walk_that_touches_a_capped_layer_through_propagation_is_also_refused(ledger):
+    a = cert(ledger, "bg_a")
+    walk_once(ledger, 1)
+    churn(ledger, 2)
+    walk_once(ledger, 2)
+    a3 = churn(ledger, 3)
+    b = cert(ledger, "bo_b", up=[a3])                                 # an L2 dependent on an L0 asset
+    with pytest.raises(sc.RewalkLimitExceeded) as ei:
+        run(ledger, obs("bg_a", "bo_b", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 3))))
+    assert ei.value.layer == "L0" and set(ei.value.stale) == {a3, b}
+
+
+def test_a_walk_that_invalidates_nothing_does_not_count(ledger):
+    cert(ledger, "bg_a")
+    for _ in range(5):
+        run(ledger, obs("bg_a"))
+    assert sc.rewalk_counts(raw(ledger)) == {}
+
+
+def test_max_rewalks_is_a_parameter_defaulting_to_two(ledger):
+    assert sc.MAX_REWALKS == 2
+    cert(ledger, "bg_a")
+    walk_once(ledger, 1)
+    churn(ledger, 2)
+    with pytest.raises(sc.RewalkLimitExceeded):
+        walk_once(ledger, 2, max_rewalks=1)
+    assert walk_once(ledger, 2, max_rewalks=3).walk == 2
+
+
+def test_the_epoch_and_commit_are_required_text(ledger):
+    cert(ledger, "bg_a")
+    for bad in ("", "  ", None, 3):
+        with pytest.raises(sc.StaleCertsError):
+            run(ledger, obs("bg_a"), epoch=bad)
+        with pytest.raises(sc.StaleCertsError):
+            run(ledger, obs("bg_a"), commit=bad)
+    assert len(lines(ledger)) == 2
+
+
+def test_a_missing_ledger_is_refused_and_not_created(tmp_path):
+    with pytest.raises(sc.UnreadableInput):
+        run(tmp_path / "nope.jsonl", {})
+    assert not (tmp_path / "nope.jsonl").exists()
+
+
+# ───────────────────────── CLI ─────────────────────────
+
+SCRIPT = HERE.parent / "nikasha_stale_certs.py"
+
+
+def cli(*args):
+    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True)
+
+
+def test_cli_invalidate_then_watermark_ok(ledger, tmp_path):
+    a = cert(ledger, "bg_a")
+    of = tmp_path / "obs.json"
+    of.write_text(json.dumps(dict(assets=obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))))
+    p = cli("watermark-ok", "--ledger", str(ledger))
+    assert p.returncode == 2
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--epoch", "E1", "--commit", COMMIT)
+    assert p.returncode == 0, p.stderr
+    out = json.loads(p.stdout)
+    assert out["status"] == "appended" and out["invalidated"] == [a] and out["walk"] == 1
+    assert cli("watermark-ok", "--ledger", str(ledger)).returncode == 0
+
+
+def test_cli_rewalk_limit_exits_3_and_names_the_layer(ledger, tmp_path):
+    cert(ledger, "bg_a")
+    for n in (1, 2):
+        walk_once(ledger, n)
+        churn(ledger, n + 1)
+    of = tmp_path / "obs.json"
+    of.write_text(json.dumps(dict(assets=obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 3))))))
+    before = raw(ledger)
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--epoch", "E1", "--commit", COMMIT)
+    assert p.returncode == 3 and "rewalk_limit" in p.stderr and "L0" in p.stderr
+    assert raw(ledger) == before
+
+
+def test_cli_missing_observation_exits_2_and_writes_nothing(ledger, tmp_path):
+    cert(ledger, "bg_a")
+    of = tmp_path / "obs.json"
+    of.write_text(json.dumps(dict(assets={})))
+    before = raw(ledger)
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--epoch", "E1", "--commit", COMMIT)
+    assert p.returncode == 2 and "missing_observation" in p.stderr and raw(ledger) == before
+
+
+def test_cli_script_error_exits_5(ledger, tmp_path):
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(tmp_path / "absent.json"), "--epoch", "E1",
+            "--commit", COMMIT)
+    assert p.returncode == 5
+
+
+def test_cli_fingerprint_reads_rows_json_with_a_declaration(tmp_path):
+    rf, df = tmp_path / "rows.json", tmp_path / "decl.json"
+    rf.write_text(json.dumps(ROWS))
+    df.write_text(json.dumps({"ph_nimitta": DECL_V}))
+    p = cli("fingerprint", "--declarations", str(df), "--asset", "ph_nimitta", "--rows", str(rf))
+    assert p.returncode == 0, p.stderr
+    assert json.loads(p.stdout) == {"asset": "ph_nimitta", "semantic_fingerprint": fpr(ROWS)}
