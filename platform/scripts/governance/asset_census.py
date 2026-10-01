@@ -70,12 +70,14 @@ from __future__ import annotations
 import argparse
 import ast
 import bisect
+import collections
 import datetime as dt
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import unicodedata
 from pathlib import Path
 
@@ -5246,8 +5248,11 @@ def parse_assets_arg(values) -> list[str]:
         if raw.strip().startswith("@"):
             path = raw.strip()[1:]
             try:
-                text = Path(path).read_text(encoding="utf-8")
-            except OSError as exc:
+                text = Path(path).read_text(encoding="utf-8-sig")      # a UTF-8 BOM is accepted
+            except UnicodeDecodeError as exc:
+                raise ScopeError(f"--assets @{path}: not valid UTF-8 text (a UTF-16 or binary file?) — save the list "
+                                 "as UTF-8, one id per line or comma-separated") from exc
+            except (OSError, ValueError) as exc:
                 raise ScopeError(f"--assets @{path}: cannot read the file ({exc.__class__.__name__})") from exc
             entries = []
             for ln in text.splitlines():
@@ -5268,7 +5273,7 @@ def parse_assets_arg(values) -> list[str]:
         if not _ASSET_ID.fullmatch(e):
             hint = f" — ids are lowercase (did you mean {e.lower()!r}?)" if e != e.lower() and _ASSET_ID.fullmatch(e.lower()) else ""
             raise ScopeError(f"--assets: malformed asset id {e!r}{hint}")
-    dup = sorted({e for e in out if out.count(e) > 1})
+    dup = sorted(e for e, n in collections.Counter(out).items() if n > 1)
     if dup:
         raise ScopeError(f"--assets: duplicate id(s): {', '.join(dup)}")
     return out
@@ -5313,6 +5318,42 @@ def validate_scope(ids: list[str], layer_keys: list[str]) -> dict[str, list[str]
     return {k: sorted(v) for k, v in by_layer.items()}
 
 
+def _is_full_census_path(target, full_out) -> bool:
+    """Is `target` the full census file by ANY route: the same path, a case variant (case-insensitive filesystems), a
+    hardlink or a symlink? An existing target is compared by inode (`os.path.samefile`); a not-yet-existing one by its
+    resolved, normcased, case-folded path (conservative: on a case-sensitive filesystem a case variant is refused too)."""
+    t, f = Path(target), Path(full_out)
+    try:
+        if t.exists() and f.exists() and os.path.samefile(t, f):
+            return True
+    except OSError:
+        pass
+    norm = lambda p: os.path.normcase(str(p.resolve())).casefold()      # noqa: E731
+    return norm(t) == norm(f)
+
+
+def _write_atomic(path, text: str) -> None:
+    """Write `text` to `path` via a temp file in the same directory and `os.replace` — readers and concurrent writers
+    see the old file or the whole new one, never a torn one. The temp file is removed on any failure."""
+    d = os.path.dirname(os.path.abspath(path))
+    fd, tmp = tempfile.mkstemp(prefix=".asset_census_", suffix=".tmp", dir=d)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        um = os.umask(0)
+        os.umask(um)
+        os.chmod(tmp, 0o666 & ~um)          # mkstemp's 0600 is not the mode a plain write_text would have given the file
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def census_scope(obj) -> dict | None:
     """The scope label of a layer census, or None (a full census carries none). Fail-closed on a malformed label."""
     if not isinstance(obj, dict) or "scope" not in obj:
@@ -5335,6 +5376,10 @@ def require_full_census(obj, who: str) -> None:
         if census_scope(o) is not None:
             raise ScopeError(f"{who}: refuses a SCOPED census ({where} carries scope.partial=true) — it needs the full "
                              "population; re-run without --assets")
+        n, pop = (o.get("n_assets"), o.get("population_active")) if isinstance(o, dict) else (None, None)
+        if isinstance(n, int) and isinstance(pop, int) and not isinstance(n, bool) and n < pop:
+            raise ScopeError(f"{who}: refuses a census whose n_assets ({n}) is below the layer's population_active ({pop}) "
+                             f"({where}): a partial census with its scope label stripped — it needs the full population")
 
 
 def load_full_census(path) -> dict:
@@ -5825,7 +5870,10 @@ def measure(layer_key: str, assets=None) -> dict:
                 # R231: the chart every `$1` count_sql was bound to, and how many were.
                 chart_scope=CHART_ID,
                 chart_scoped_count_sql=sum(1 for r in reg_all.values() if _chart_scoped(r["count_sql"])),
-                global_runs=hist["global_runs"], global_runs_touching_layer=hist["global_with_layer"],
+                # E1.9/F4: a scoped run's build history covers the scoped ids only, so its layer-wide run counts would
+                # describe the scope, not the layer — omitted there (the unscoped key order and values are unchanged).
+                **({} if assets_sel is not None else dict(global_runs=hist["global_runs"],
+                                                          global_runs_touching_layer=hist["global_with_layer"])),
                 never_exercised_with_writer=never,
                 registered_ids=len(regd), registry_has_writer=sum(1 for r in reg_all.values() if r["has_writer"]),
                 phantom_registered=extra, local_map_candidates=lmaps, assets=assets,
@@ -6048,9 +6096,6 @@ def main() -> int:
     if a.assets is not None:
         try:
             by_layer = validate_scope(parse_assets_arg(a.assets), keys)
-            if a.out is not None and Path(a.out).resolve() == full_out.resolve():
-                raise ScopeError(f"--out {a.out} is the full census file: a scoped (partial) census never replaces the "
-                                 "full census — name another --out or omit it")
         except ScopeError as exc:
             print(f"asset_census: scope error — {exc}", file=sys.stderr)
             return EXIT_SCOPE
@@ -6059,6 +6104,11 @@ def main() -> int:
             return 4
         keys = [k for k in keys if k in by_layer]
     out_path = a.out if a.out is not None else str(CTRL / "asset_census_scoped.json" if by_layer is not None else full_out)
+    if by_layer is not None and _is_full_census_path(out_path, full_out):
+        print(f"asset_census: scope error — the scoped output path {out_path} is the full census file (same file, "
+              "case variant, hardlink or symlink): a scoped (partial) census never replaces the full census — name "
+              "another --out", file=sys.stderr)
+        return EXIT_SCOPE
 
     out, worst = {}, 0
     for k in keys:
@@ -6088,8 +6138,9 @@ def main() -> int:
                   f"{', '.join(x['asset_id'] for x in c['population_excluded_inactive'])}")
         if c.get("chart_scoped_count_sql"):
             print(f"  chart scope: {c['chart_scoped_count_sql']} chart-scoped count_sql bound to chart {c['chart_scope']}")
-        print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
-              f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
+        if "global_runs" in c:   # absent in a scoped census (F4): never stated about the layer from scoped-only data
+            print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
+                  f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
         if c["never_exercised_with_writer"]:
             print(f"  !! registered with a writer and NEVER run by the orchestrator: {c['never_exercised_with_writer']}")
         if c["phantom_registered"]:
@@ -6125,7 +6176,11 @@ def main() -> int:
                   f"{worst} overridden by 5)", file=sys.stderr)
     if by_layer is not None:    # E1.9: the file header says it is partial, before any layer is read
         out = {"scope": dict(assets=sorted(x for k in keys for x in by_layer[k]), partial=True, layers=list(keys)), **out}
-    Path(out_path).write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
+    text = json.dumps(out, indent=1, default=str) + "\n"
+    if by_layer is not None:
+        _write_atomic(out_path, text)       # E1.9: a scoped file is never torn by a crash or a concurrent scoped run
+    else:
+        Path(out_path).write_text(text, encoding="utf-8")
     print(f"census written: {os.path.relpath(out_path, ROOT)}" + (" (SCOPED: partial census)" if by_layer is not None else ""))
     if rollup_error:
         return 5

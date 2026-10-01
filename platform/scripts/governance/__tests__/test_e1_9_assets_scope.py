@@ -551,3 +551,187 @@ def test_census_scope_rejects_every_malformed_label(sc):
 def test_census_scope_none_without_label_and_returns_a_valid_one():
     assert ac.census_scope({"layer": "L0"}) is None
     assert ac.census_scope({"scope": dict(assets=["a"], partial=True)}) == dict(assets=["a"], partial=True)
+
+
+# ═════════════════════ review corrections (F2 guard bypass, F3 @file encoding, F4 layer facts, F5 stripped label) ═════════════════════
+import os  # noqa: E402
+
+
+def _case_insensitive_fs(d: pathlib.Path) -> bool:
+    probe = d / "CaseProbe.tmp"
+    probe.write_text("x", encoding="utf-8")
+    try:
+        return (d / "caseprobe.tmp").exists()
+    finally:
+        probe.unlink()
+
+
+def _scoped_main(monkeypatch, tmp_path, out=None, extra=()):
+    argv = ["asset_census.py", "--layer", "L0", "--assets", "bg_a", *extra]
+    if out is not None:
+        argv += ["--out", str(out)]
+    monkeypatch.setattr(sys, "argv", argv)
+    return ac.main()
+
+
+def _full_file(tmp_path):
+    f = tmp_path / "asset_census.json"
+    f.write_text("FULL-CENSUS", encoding="utf-8")
+    return f
+
+
+def test_f2_case_variant_of_the_full_census_path_is_refused(monkeypatch, tmp_path, capsys):
+    if not _case_insensitive_fs(tmp_path):
+        pytest.skip("case-sensitive filesystem: ASSET_CENSUS.JSON is a different file here")
+    _stub(monkeypatch, tmp_path)
+    full = _full_file(tmp_path)
+    assert _scoped_main(monkeypatch, tmp_path, out=tmp_path / "ASSET_CENSUS.JSON") == ac.EXIT_SCOPE
+    assert full.read_text(encoding="utf-8") == "FULL-CENSUS"
+
+
+def test_f2_hardlink_to_the_full_census_is_refused(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    full = _full_file(tmp_path)
+    link = tmp_path / "alias.json"
+    os.link(full, link)
+    assert _scoped_main(monkeypatch, tmp_path, out=link) == ac.EXIT_SCOPE
+    assert full.read_text(encoding="utf-8") == "FULL-CENSUS" and link.read_text(encoding="utf-8") == "FULL-CENSUS"
+
+
+def test_f2_symlink_to_the_full_census_is_refused_explicit_and_default(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    full = _full_file(tmp_path)
+    sym = tmp_path / "sym.json"
+    sym.symlink_to(full)
+    assert _scoped_main(monkeypatch, tmp_path, out=sym) == ac.EXIT_SCOPE
+    # the DEFAULT scoped path being a link to the full census is refused too
+    (tmp_path / "asset_census_scoped.json").symlink_to(full)
+    assert _scoped_main(monkeypatch, tmp_path) == ac.EXIT_SCOPE
+    assert full.read_text(encoding="utf-8") == "FULL-CENSUS"
+
+
+def test_f2_default_scoped_path_hardlinked_to_the_full_census_is_refused(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    full = _full_file(tmp_path)
+    os.link(full, tmp_path / "asset_census_scoped.json")
+    assert _scoped_main(monkeypatch, tmp_path) == ac.EXIT_SCOPE
+    assert full.read_text(encoding="utf-8") == "FULL-CENSUS"
+
+
+def test_f2_a_distinct_existing_file_is_still_overwritten(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    _full_file(tmp_path)
+    other = tmp_path / "wave1.json"
+    other.write_text("old", encoding="utf-8")
+    assert _scoped_main(monkeypatch, tmp_path, out=other) in (0, 2, 3)
+    assert json.loads(other.read_text(encoding="utf-8"))["scope"]["partial"] is True
+
+
+def test_f2_scoped_output_is_written_atomically(monkeypatch, tmp_path):
+    """A failure at the final rename leaves the previous scoped file whole and no temp file behind."""
+    _stub(monkeypatch, tmp_path)
+    tgt = tmp_path / "wave.json"
+    tgt.write_text("PREVIOUS", encoding="utf-8")
+    real = os.replace
+    monkeypatch.setattr(os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError("boom")))
+    with pytest.raises(OSError):
+        _scoped_main(monkeypatch, tmp_path, out=tgt)
+    assert tgt.read_text(encoding="utf-8") == "PREVIOUS"
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith(".") or p.suffix == ".tmp") == []
+    monkeypatch.setattr(os, "replace", real)
+    assert _scoped_main(monkeypatch, tmp_path, out=tgt) in (0, 2, 3)
+    assert json.loads(tgt.read_text(encoding="utf-8"))["scope"]["partial"] is True
+    assert [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp") or p.name.startswith(".asset_census")] == []
+
+
+def test_f2_scoped_output_goes_through_a_temp_file_in_the_same_directory(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    seen = []
+    real = os.replace
+    monkeypatch.setattr(os, "replace", lambda s, d: (seen.append((str(s), str(d))), real(s, d))[1])
+    tgt = tmp_path / "wave.json"
+    _scoped_main(monkeypatch, tmp_path, out=tgt)
+    assert len(seen) == 1 and seen[0][1] == str(tgt) and os.path.dirname(seen[0][0]) == str(tmp_path)
+
+
+# F3: @file encoding
+def test_f3_utf8_bom_file_is_accepted(tmp_path):
+    f = tmp_path / "bom.txt"
+    f.write_bytes(b"\xef\xbb\xbfbg_a\nbg_b\n")
+    assert ac.parse_assets_arg([f"@{f}"]) == ["bg_a", "bg_b"]
+
+
+@pytest.mark.parametrize("payload", ["bg_a\nbg_b\n".encode("utf-16"), b"bg_a\n\xff\xfe\x00", b"\x00\x01\x02\xff"])
+def test_f3_non_utf8_file_is_a_clear_scope_error(tmp_path, payload):
+    f = tmp_path / "bad.txt"
+    f.write_bytes(payload)
+    with pytest.raises(ac.ScopeError, match="not valid UTF-8"):
+        ac.parse_assets_arg([f"@{f}"])
+
+
+def test_f3_cli_utf16_file_exits_6_not_5(monkeypatch, tmp_path, capsys):
+    _stub(monkeypatch, tmp_path)
+    f = tmp_path / "u16.txt"
+    f.write_bytes("bg_a\n".encode("utf-16"))
+    monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L0", "--assets", f"@{f}"])
+    assert ac.main() == ac.EXIT_SCOPE
+    assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_f5_parse_duplicate_detection_is_linear():
+    import time
+    ids = [f"bg_{i}" for i in range(60000)]
+    t = time.time()
+    assert ac.parse_assets_arg([",".join(ids)]) == ids
+    assert time.time() - t < 5
+    with pytest.raises(ac.ScopeError, match="duplicate.*bg_7"):
+        ac.parse_assets_arg([",".join(ids + ["bg_7"])])
+
+
+# F4: layer-wide facts are never computed from the scoped ids
+def test_f4_scoped_census_omits_the_scoped_only_build_history_facts(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    s = ac.measure("L0", assets=["bg_a"])
+    assert "global_runs" not in s and "global_runs_touching_layer" not in s
+    full = ac.measure("L0")
+    assert "global_runs" in full and "global_runs_touching_layer" in full
+    assert list(full)[:1] == ["generated"]
+
+
+def test_f4_scoped_cli_never_says_the_global_path_never_exercises_the_layer(monkeypatch, tmp_path, capsys):
+    _stub(monkeypatch, tmp_path)         # the stubbed history says global_with_layer == 0 for whatever ids it is given
+    _scoped_main(monkeypatch, tmp_path, out=tmp_path / "w.json")
+    out = capsys.readouterr().out
+    assert "never exercises" not in out and "build scope:" not in out
+    monkeypatch.setattr(sys, "argv", ["asset_census.py", "--layer", "L0", "--out", str(tmp_path / "full.json")])
+    ac.main()
+    assert "never exercises" in capsys.readouterr().out         # the unscoped message is unchanged
+
+
+# F5: a census whose scope label was stripped
+def test_f5_require_full_census_refuses_a_stripped_label_by_population(monkeypatch, tmp_path):
+    _stub(monkeypatch, tmp_path)
+    c = ac.measure("L0", assets=["bg_a"])
+    c.pop("scope")
+    assert c["n_assets"] < c["population_active"]
+    with pytest.raises(ac.ScopeError, match="n_assets.*population_active"):
+        ac.require_full_census(c, "x")
+    with pytest.raises(ac.ScopeError, match="n_assets.*population_active"):
+        ac.require_full_census({"L0": c}, "x")
+    p = tmp_path / "stripped.json"
+    p.write_text(json.dumps({"L0": c}), encoding="utf-8", )
+    with pytest.raises(ac.ScopeError):
+        ac.load_full_census(p)
+    ac.require_full_census(ac.measure("L0"), "x")        # a genuinely full census passes
+
+
+def test_f2_path_fallback_when_the_full_file_does_not_exist_yet(tmp_path):
+    """No inode to compare: a case variant and a dangling symlink to the full path are still the full census path."""
+    full = tmp_path / "asset_census.json"
+    assert not full.exists()
+    assert ac._is_full_census_path(tmp_path / "Asset_Census.JSON", full)          # case-folded fallback (conservative)
+    sym = tmp_path / "dangling.json"
+    sym.symlink_to(full)
+    assert ac._is_full_census_path(sym, full)                                      # resolve() follows the dangling link
+    assert ac._is_full_census_path(tmp_path / "sub" / ".." / "asset_census.json", full)
+    assert not ac._is_full_census_path(tmp_path / "asset_census_scoped.json", full)
