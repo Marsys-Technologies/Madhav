@@ -5,9 +5,10 @@ Spec: AUDIT_L1_TIERS_PER_EMITTER_v1_0.md (v1.1) §2.1 / §5 (TS-DEFAULT, TS-VERD
 TS-EXT). DB-free: drives the real per-ayanamsha builder with a stubbed `compute_chart`
 (a fixed fixture chart), so every builder runs through the real `_make_row`.
 
-Every assertion here has a named MUTANT (documented in the report and exercised by
-`test_mutants_*`, which re-run the build with the check removed/stubbed and assert the tier
-DROPS or the test would fail) so a tier stamped without the check having run cannot pass.
+Each tier assertion is paired with a mutant: the `*_mutant_*` tests demonstrate in-process that
+the mutation (constant comparison, deleted verdict, restored default) masks the failure the
+assertion is meant to catch; the lane's mutation runs (source text mutated, tests re-run, all
+KILLED) are listed in the lane report.
 """
 from __future__ import annotations
 
