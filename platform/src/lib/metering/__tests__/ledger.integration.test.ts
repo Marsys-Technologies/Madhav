@@ -87,7 +87,7 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
   const store:RecoveryStore={put:async()=>{},list:async()=>[start.attemptId],read:async()=>envelope,remove:async()=>{removed++}}
   expect(await recoverReceipts({db,recovery:store})).toEqual({recovered:1,failed:0})
   expect(await recoverReceipts({db,recovery:store})).toEqual({recovered:1,failed:0});expect(removed).toBe(2)
-  const bad={...envelope,receipt:{...envelope.receipt,usage:{...envelope.receipt.usage,raw:{secret:'credential'}}}}
+  const bad={...envelope,receipt:{...envelope.receipt,usage:{...envelope.receipt.usage,raw:{secret:1}}}}
   store.read=async()=>bad as RecoveryEnvelope
   expect(await recoverReceipts({db,recovery:store})).toEqual({recovered:0,failed:1});expect(removed).toBe(2)
  })

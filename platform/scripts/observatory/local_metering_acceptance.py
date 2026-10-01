@@ -25,7 +25,7 @@ base_env["NEXT_TELEMETRY_DISABLED"] = "1"
 if "AI_METERING_PG_BIN" in os.environ:
     base_env["AI_METERING_PG_BIN"] = os.environ["AI_METERING_PG_BIN"]
 fixture_env = {
-    "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "NEXT_PUBLIC_FIREBASE_API_KEY": "AIza" + "A" * 35,
     "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "example.invalid",
     "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "local-metering-test",
     "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "example.invalid",
