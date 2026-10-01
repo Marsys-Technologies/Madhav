@@ -69,11 +69,11 @@ describe('capability estate census', () => {
       census.denominators.producer_assets.by_catalog_status,
     ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
-      assets_with_any_reviewed_spec: 117,
-      assets_without_any_reviewed_spec: 12,
-      active_assets_without_any_reviewed_spec: 11,
-      current_source_intended_spec_rows: 116,
-      current_source_intended_active_spec_rows: 116,
+      assets_with_any_reviewed_spec: 120,
+      assets_without_any_reviewed_spec: 9,
+      active_assets_without_any_reviewed_spec: 8,
+      current_source_intended_spec_rows: 119,
+      current_source_intended_active_spec_rows: 119,
     })
 
     expect(census.details.reviewed_output_digest_coverage.migration_files_scanned)
@@ -85,12 +85,9 @@ describe('capability estate census', () => {
       .toEqual([
         'bg_ephemeris_engine',
         'bg_panchanga',
-        'ka_dasha_kala',
         'ka_gochara_v3_century_materialize',
         'ka_graha_sancara',
-        'ka_muhurta_seva',
         'ka_tulana',
-        'ka_vighnakara',
         'lel_events',
         'mi_abhilekha',
         'mi_seva',
@@ -109,8 +106,8 @@ describe('capability estate census', () => {
       denominator: 128,
       by_disposition: {
         excluded_nondeterministic: 1,
-        relational_contract_blocked: 2,
-        relational_digest_current_source_intent: 116,
+        relational_contract_blocked: 1,
+        relational_digest_current_source_intent: 117,
         service_effect_contract: 2,
         service_probe: 6,
         user_authored_source_contract: 1,
@@ -119,7 +116,7 @@ describe('capability estate census', () => {
     })
     expect(producerContracts.find((contract) => contract.asset_id === 'ph_nimitta')?.disposition)
       .toBe('excluded_nondeterministic')
-    for (const assetId of ['ka_vighnakara', 'ka_gochara_v3_century_materialize']) {
+    for (const assetId of ['ka_gochara_v3_century_materialize']) {
       const blocked = producerContracts.find((contract) => contract.asset_id === assetId)
       expect(blocked?.disposition).toBe('relational_contract_blocked')
       expect(blocked?.known_gaps.join(' ')).not.toHaveLength(0)
