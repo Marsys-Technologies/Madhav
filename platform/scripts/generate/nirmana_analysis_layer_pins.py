@@ -373,6 +373,21 @@ AUTHORIZED_SOURCE_COMMITS = {
             # scope; ONE successor over the then-current protected baseline.
             # Source = the r5 writer-digest regeneration commit.
             "a7fa8c25e1db78f01c2d33036b1a020501555704",
+            # A5.4 rework r7 (D-PINS-A5.4, 2026-10-01): origin/main advanced
+            # under the r6 successor — #2793 (61e1aa60b, gochara_kernel
+            # F10-F12 geometry) moved ka_moorti_nirnaya and
+            # ka_gochara_v3_century_materialize through their gochara_kernel
+            # import closures and ka_sangam on main itself (admitted on main
+            # by #2800, the D-PINS-A2 continuation), and #2765 (A5.1
+            # migrations) and #2801 followed; main's own movement, admitted
+            # into the branch by the origin/main merge. The A5.4 delta is
+            # unchanged (same decision, same authority, same five-writer
+            # scope); ONE successor over main's new protected baseline
+            # (l3:61e1aa60b508:9844e89ddd17, the #2800 successor). Source =
+            # the origin/main merge commit carrying the regenerated writer
+            # inventory (provenance_inventory --check green on the merged
+            # tree).
+            "4f4a1993c6ada24bf8576206b39742497e3099e3",
         }),
     },
 }
