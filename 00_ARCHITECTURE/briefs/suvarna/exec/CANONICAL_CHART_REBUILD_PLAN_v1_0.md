@@ -1,6 +1,6 @@
 ---
 artifact: CANONICAL_CHART_REBUILD_PLAN
-version: "1.0"
+version: "1.1"
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 date: 2026-10-01
@@ -8,7 +8,9 @@ chart_id: 482012f1-710e-4a25-994a-93821f5871aa
 base_commit: origin/main 3311b0a06 (worktree opened at 0250cbade, fast-forwarded before commit)
 execution: NONE. This is an analysis document. No build, write, admin action, push or PR was made to produce it.
 db_access: read-only, as suvarna_reader (SELECT only). Evidence in /Users/Dev/suvarna-evidence/Rebuild/.
+revised_against: "branches read via git show origin/<branch>: suvarna/land/grant-plan-001 (PR #2825, BUILDER_GRANT_PLAN v1.3), suvarna/land/incident-divisionals-001 (PR #2833), suvarna/land/TI-i45-provenance-001 (PR #2826), suvarna/land/TI-i8-avadhi-integrity-001 (PR #2827), suvarna/land/F3-msr-fk-drop-001 (PR #2828), suvarna/land/TI-i10-kshetra-substeps-001 (PR #2830); all open and unmerged when read, 2026-10-01 about 16:20Z"
 changelog:
+  - "1.1 (2026-10-01, SS rulings): (1) new P0b precondition: chart_divisionals readable and writable by the builder/app roles (the table is RLS-blind since migration 1035), with the ga_vargas decision stated; (2) ka_dasha_kala added to the launch set and ordered ahead of ka_sangam; (3) ka_kshetra gets its own stage S7 with a pre-check, a stop rule and a single-redispatch rule; (4) MSR-before-Kala/Phala ordering invariant (F-3) with the detector scripts, incl. the v4-id charts; (5) grant gates per stage from BUILDER_GRANT_PLAN v1.3 (corrects v1.0 P0.5: S1 and S4 DO need grants); (6) migration gates 1212/1213/1214/1215 mapped to stages; (7) production build remains a REVIEW to SS, no execution authority here. Live values re-read 2026-10-01 about 16:20Z are in Evidence E8; sections changed are listed in the v1.1 box below."
   - "1.0 (2026-10-01): first draft for SS review. Includes the P0 builder-grant precondition and smoke build (coordinator addendum 2) and the I-1/I-2 consumer addendum (coordinator addendum 1)."
 ---
 
@@ -131,6 +133,74 @@ last 24 h and no deploy has changed the job image since (re-run the smoke after 
 target table of the stages being launched (S0-S4 of section 8 need none of the phala_/mimamsa_ grants; S5-S6 do); (3) no `planned/running/paused` run exists;
 (4) the section 5 pre-flight list is green. If (2) fails for the Phala/Mimāṃsā tables the wave can still be launched for
 S0-S4 only (Bodha and Kāla assets, waves 1-6), with `ph_*` and `mi_bhavisya` deferred; that split is SS's call (Q9).
+
+
+## P0b. PRECONDITION 0b: `chart_divisionals` is readable and writable by the builder/app roles (v1.1, SS ruling)
+
+**Precondition P0b (verbatim ruling):** `chart_divisionals` readable and writable by the builder/app roles (Option D,
+`ALTER TABLE ... DISABLE ROW LEVEL SECURITY` via the D6 owner path, or equivalent), verified by an exact owner-path count and the
+`chart_snapshot` canary on the 3 charts (`482012f1-710e-4a25-994a-93821f5871aa`, `1c826d5a-41cb-4450-b4dc-59d440e5f75a`,
+`cb73cd3d-9eba-4220-9902-0de91566e980`).
+
+**Rule (kept and restated): NO `ga_vargas` rebuild, and no refresh of the two `amjis_app`-owned materialized views
+(`mv_chart_vargas_summary`, `mv_chart_super_vargottama_bodies`), before P0b holds.** A `ga_vargas` rebuild under the current blindness
+would probably swallow the per-row insert errors, finish `lit` with 0 rows written and pass its integrity check (inferred from
+code by the incident review, Part III F1: `ga_vargas_writer.py:2762-2776` logs and continues, the four integrity conjuncts are all
+`NOT EXISTS`; not exercised). A refresh of the two views would read through RLS and could bake in zero rows.
+
+### P0b.1 Why this is a precondition and not an option (observed 2026-10-01 about 16:20Z as `suvarna_reader`, Evidence E8)
+
+| Fact | Observation |
+|---|---|
+| Table state | `chart_divisionals`: owner `data_plane_l1_owner` (migration 1035, applied 2026-09-18), `relrowsecurity` true, `relforcerowsecurity` false, **0 policies**, `row_security_active` true for the reader. `SELECT count(*)` as the reader returns **0**. |
+| Builder has the privilege, not the visibility | `has_table_privilege('data_plane_builder','public.chart_divisionals','SELECT')` and `'INSERT'` are both true; RLS default-deny is what blinds it (a non-owner with no policy sees and writes nothing). So the grant plan cannot fix this; the privilege is already there. |
+| Product symptom | per the incident review (PR #2833), observed with `chart_snapshot`: D1 and D9 grids are empty for all three charts. |
+| Status of the fix | The incident review's plan hashes (count `6d9745dd8005fa2a1845aa2326c101472f3d3db12794478db9f08e6ddf02953f`, apply Option D `531c0940ae6eb654972e3401fd317f95cf2051cca10ae7249ff44e420a741aad`) are SS-APPROVED, and the fix is **ON HOLD**: after the owner told Pravaha "don't worry about it, any which way, we will rebuild it" the execution was ordered held. Nothing has been applied (table state above). |
+
+**What the hold means for this plan.** The owner's sentence is correct that no restore is needed (the data is probably intact, below). It
+cannot be read as "rebuild instead of fixing access": **a rebuild cannot succeed while the table is RLS-blind.** The builder is the role
+that runs every writer, so under the current state it neither reads nor lands rows in this table. The access fix is therefore the
+rebuild's precondition, not an optional follow-up. While the hold stands, the stages that touch the table (below) are NOT launchable;
+lifting the hold for the access fix only (not for any rebuild) is the SS/owner decision that unblocks them.
+
+### P0b.2 What is gated by P0b
+
+| Stage / asset | Why | Gate |
+|---|---|---|
+| any `ga_vargas` rebuild (stage S0v, conditional, P0b.4) | writes the table | **P0b holds, then the owner-path count decides whether it runs at all** |
+| S2 `bo_pratijna` (an SS-named asset, in the plan) | its writer reads `chart_divisionals` through `ChartReaderV4` (`bo_pratijna.py:15,143-154`; `brahmagyan/chart_reader_v4.py`: D9/varga placements and house occupants live only in `chart_divisionals`, `fact_category='varga_house_occupant'`) | P0b holds (code-read; what the writer does on a blind read, error or silently degraded rows, was not exercised) |
+| S1a `bo_laksana` (MSR producer, only if it enters a run, section 1.5) | reads D9 dignity from `chart_divisionals` (`bo_laksana.py:2660-2662`) | P0b holds |
+| everything downstream of S2 in the order (`ka_yojaka`, `ka_avadhi`, `ka_kshetra`, S5-S6) | consume `bodha_pratijna`, which would be built from a blind read | inherits the S2 gate |
+| S0 smoke, S1 (`bg_transit_rules`, `ka_muhurta_seva`, `ka_dasha_kala`, `bo_karanajala`) | none of these four writers names `chart_divisionals` (grep of `pipeline/orchestrator/writers`; `ka_dasha_kala` reads `ga_dashas`) | not gated by P0b |
+
+This is wider than the ruling's wording ("precondition of the `ga_vargas` stage"): I extend it to `bo_pratijna` because the
+plan's own asset reads the table (disagreement recorded in the report that accompanies this revision).
+
+### P0b.3 Verification (all must pass before any gated stage launches; the executor does the in-transaction probe, the analysis lane does V1-V3 read-only)
+
+1. **Exact owner-path count** (the incident review's Part II.A statements C1-C5, rolled back, never committed; plan hash
+   `6d9745dd...953f`): per chart, per `(chart, ayanamsha)`, per `(chart, ayanamsha, varga)`, with `build_id` provenance. This settles whether the data is intact. Not run by this lane.
+2. **Catalog (reader):** `SELECT relrowsecurity, row_security_active('public.chart_divisionals') FROM pg_class WHERE relname='chart_divisionals'` must read `false, false` (Option D), or, for an equivalent fix, the reader and the builder-role probe must see rows.
+3. **Reader count equals the owner-path count** per chart and per `(chart, ayanamsha, varga)` (statements C1-C3 run as `suvarna_reader` after the fix).
+4. **Builder/app probe** (executor, in-transaction as the real roles): `count(*)` as `amjis_app`, `data_plane_builder`, `data_plane_verifier` equals the owner count and is > 0 for each of the three charts. Insert/delete visibility for the builder is shown by P0.4 criterion 3 style evidence only after a real writer runs, so the first gated stage doubles as the write-side proof: its post-run row count for the table it owns must be > 0.
+5. **Canary:** `chart_snapshot` for each of the three charts shows non-empty D1 and D9 grids (every graha present in some sign; canonical: Sun in Capricorn, Lagna in Aries in D1, the FORENSIC anchors).
+6. **Gate:** `data-plane-ownership-status.ts` prints `marked` (Option D adds no policy and needs no attestation row; Option P would).
+7. **Nothing moved:** the owner-path count re-run after the commit equals the pre-commit count.
+
+An equivalent to Option D is acceptable only if checks 3, 4 and 5 hold for all three charts; Option P (three policies) leaves
+`data_plane_migrator`, `data_plane_l2_owner` and `suvarna_reader` blind and adds oid-pinned attestation rows (incident review Part II.B).
+
+### P0b.4 The `ga_vargas` stage: does it belong in the minimal plan? (decision, stated honestly)
+
+- **Today it is not in the plan, and the planner does not need it.** `ga_vargas` is an out-of-plan direct dependency of `bo_pratijna` (migration 1210 edge), `bo_laksana`,
+  `bo_vargottama_dhana`, `ga_condition`, `ga_sade_sati`, `ga_strength`, `ga_structural` (live `depends_on`, Evidence E8). Its state: `lit`, freshness `fresh`, 24,400 rows written at
+  2026-09-07 11:03Z (`asset_throughput.rows_written`; a landed count after the F-A3 fix per the incident review), so the planner's pre-flight
+  (lit and fresh) accepts it and the minimal-plan fixpoint of section 1.2 does not add it. That test reads throughput and freshness
+  metadata, **not row visibility**, which is why a blind table passes it.
+- **Decision.** (a) If the owner-path count shows the table intact (the incident review's reading of `reltuples` 71,476, 6,247 heap pages, populated derived columns, no delete path; still a reading), **the `ga_vargas` stage is not needed**: P0b alone unblocks the plan, nothing is rebuilt for this reason, and
+  the 61-asset closure of `ga_vargas` is not rebuilt. (b) If any chart reads 0, the total is far below about 71k, or a single ayanamsha/varga is missing, P0b still comes first, then a `ga_vargas` rebuild
+  for the affected chart(s) becomes a **separate production build with its own REVIEW to SS** (it would stale the downstream closure: `bo_laksana`, `bo_vargottama_dhana`, `ga_condition`, `ga_strength` and the rest, so the MSR-before-Kala rule of section 1.5 binds it), and the delete must be explained before the rebuild. **The owner-path count settles which branch applies; it has not been run, so the branch is open.**
+- The incident review's F-A3 note matters if (b): `rows_written` for the other two charts (38,620 each) is a pre-fix attempted count, about 23.5k live was the expected landed figure; compare with the owner-path count, not with throughput.
 
 
 ## 0. What this review needs you to see first
