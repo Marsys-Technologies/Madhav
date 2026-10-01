@@ -248,6 +248,10 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         rec = ac._grade_earn_cost(attempt, True, None, attempt_linkage_wired=True)[0]
         assert rec["v"] == NA, rec
         observed.add(("Earn.build_record", rec["cause"]))
+    for crit, rec in ac.prose_checks("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
+                                     dict(written={}, vocabulary=set())).items():
+        assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
+        observed.add((crit, rec["cause"]))
     registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
     assert registered - observed == set(), "registered but never emitted by the offline harness"
     assert observed - registered == set(), "emitted but not registered"
