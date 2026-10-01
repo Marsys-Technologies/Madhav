@@ -119,17 +119,18 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Gate it moves:** Null, Complete (information)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent
 
-### FD-3 · Dispatchable writer for the static empty asset (OPEN: Q21)
+### FD-3 · Dispatchable writer that asserts the ruled empty state (Q21 answered yes)
 
 - **Answers:** census `Build.exercised` N/A; layer instance §1.1 finding 5; CF-05
-- **Change:** Q7 decided that static migration-seeded assets get a dispatchable re-seeding writer. This table is empty BY RULING (ADJUDICATION-11), so whether a writer that asserts 0 rows is wanted was not covered by Q7: OPEN question Q21. If SS says yes: a writer that deletes-then-inserts nothing, preserving the school-keyed shape, so Build is measurable; if no: the Build cells read per the Q1/N-22 rules for an asset with no writer.
-- **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_sarvatobhadra_grid.py` (new) + registry `has_writer = true`
-- **Failing-first test and mutation:** n/a
+- **Change:** decided (SS 2026-10-01, Q21): a dispatchable writer for this asset that asserts the ruled empty state (ADJUDICATION-11): delete-then-insert of nothing, `count_sql` expecting 0, the ADJUDICATION-11 citation in the declaration, the school-keyed shape preserved. Build becomes measurable and ELEVATED reachable. No data is seeded.
+- **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_sarvatobhadra_grid.py` (new `@register`, `WriterBase`), registry `has_writer = true` and the `count_sql` expecting 0, declarations entry citing ADJUDICATION-11
+- **Failing-first test and mutation:** failing-first: a dispatch records a `build_run_assets` row and leaves 0 rows; `count_sql` = 0 reads as the expected state; mutation: insert a row by hand → the next dispatch (or the integrity SQL of the FD above) fails
 - **Output change:** none
-- **Blast radius:** no rows exist, so no consumer sees a change; `ka_vedha_gochara` keeps reading the empty table.
-- **Rebuild:** if built: needs production dispatch (0 rows): REVIEW item
+- **Blast radius:** no rows exist, so no consumer sees a change; `ka_vedha_gochara` keeps reading the empty table; the registry row changes (`has_writer`).
+- **Rebuild:** needs production dispatch (0 rows): REVIEW item
 - **Gate it moves:** Earn
-- **Fix class:** writer code; **buildable before J1:** blocked on Q21
+- **Fix class:** writer code; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q21, raised by the review pass; not covered by Q7): yes: `bg_sarvatobhadra_grid` (empty BY RULING, ADJUDICATION-11) gets a DISPATCHABLE WRITER that asserts the ruled empty state (delete-then-insert of nothing; `count_sql` expecting 0; the ADJUDICATION-11 citation in the declaration), which makes Build measurable and ELEVATED reachable.
 
 ### FD-4 · Declare `prose_fields` (Null and Narr gates)
 
@@ -159,12 +160,11 @@ Natural key `(school_tag, cell_kind, cell_index, table_version)`; the fingerprin
 - **Carriage check chosen (T4 §4.1; one only):** none applies while empty (no restatement and no computation); recorded NO_DETECTOR with the reason (T4 §4.1). A D1 against the school’s passage applies once a grid is seated.
 - **Opportunities (never blocking):** `bg_sarvatobhadra_grid-O1/O2` (seat the grid when a passage exists; hold two school grids).
 
-## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01); ONE QUESTION IS OPEN (marked OPEN below)
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
 Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
 
-1. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
-
-**OPEN (raised by the review pass; not covered by Q7): `bg_sarvatobhadra_grid` is empty BY RULING (ADJUDICATION-11), not a migration-seeded static table with rows. Q7 decided that static migration-seeded assets get a dispatchable re-seeding writer; does that apply to an asset whose correct content is zero rows (the writer would assert 0 rows by delete-then-insert of nothing)? Until SS answers, TI-L0-20 builds the writer only for `bg_gochara_citation_resolution`.**
+1. ANSWERED by SS 2026-10-01 (Q21, raised by the review pass; not covered by Q7): yes: `bg_sarvatobhadra_grid` (empty BY RULING, ADJUDICATION-11) gets a DISPATCHABLE WRITER that asserts the ruled empty state (delete-then-insert of nothing; `count_sql` expecting 0; the ADJUDICATION-11 citation in the declaration), which makes Build measurable and ELEVATED reachable.
+2. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-20.
