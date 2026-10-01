@@ -44,6 +44,15 @@ describe('official catalog conversion',()=>{
    {id:'extra',pricing:{prompt:'0.0001',completion:'0.0001',web_search:'0.01'}},
    {id:'openrouter/auto',pricing:{prompt:'0',completion:'0'}}]},new Date('2026-09-29T00:00:00Z'))
   expect(result.skipped).toBe(2);expect(result.cards[1].tokenPricingOnly).toBe(false);expect(result.cards[2].tokenPricingOnly).toBe(false);expect(result.cards[0].inputPerMillion).toBe('0.300000000000')
-  expect(result.cards[0].effectiveFrom).toBe(result.cards[0].observedAt)
+ expect(result.cards[0].effectiveFrom).toBe(result.cards[0].observedAt)
+ })
+ it('skips unsupported catalog prices without dropping valid models',()=>{
+  const result=catalogCards({data:[
+   {id:'openrouter/auto-beta',pricing:{prompt:'-1',completion:'-1'}},
+   {id:'google/too-precise',pricing:{prompt:'0.0000001',completion:'0.0000002',input_cache_write:'0.0000000416666666666667'}},
+   {id:'openai/valid',pricing:{prompt:'0.0000003',completion:'0.000001'}}
+  ]})
+  expect(result.skipped).toBe(2)
+  expect(result.cards.map(card=>card.model)).toEqual(['openai/valid'])
  })
 })
