@@ -422,6 +422,24 @@ jobs:
           M1216_GOCHARA_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1216_gochara_grant_test
         run: npx vitest run tests/integration/gochara_contract_builder_grants.db.test.ts --reporter=verbose
 
+      - name: Pravāha B/1220 — provision the gochara builder function-EXECUTE test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1220_gochara_fn_execute_test;"
+
+      - name: Pravāha B/1220 — gochara builder function EXECUTE against a deployment-faithful role mirror
+        # The 1216 suite built its schema as the superuser (PUBLIC keeps function
+        # EXECUTE), so it could not see that production's builder holds EXECUTE on
+        # none of the ka_gochara_* functions. THIS suite applies the REAL
+        # 1081/1153–1157/1216/1220 files as a role named amjis_app with PUBLIC
+        # EXECUTE revoked by default (the governed bootstrap), and proves:
+        # fails before, succeeds after, exact 18-function set, each grant
+        # individually necessary, builder cannot seal.
+        env:
+          M1220_GOCHARA_FN_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1220_gochara_fn_execute_test
+        run: npx vitest run tests/integration/gochara_contract_builder_function_execute.db.test.ts --reporter=verbose
+
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
           PGPASSWORD: postgres
