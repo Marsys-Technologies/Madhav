@@ -1,4 +1,5 @@
 import 'server-only'
+import { meterSharedModel } from '@/lib/metering/context'
 import { streamText, stepCountIs, smoothStream, jsonSchema, Output } from 'ai'
 import { google } from '@ai-sdk/google'
 import type { Adapter, StreamTextOptions } from './base'
@@ -93,7 +94,7 @@ export const adapterGemini: Adapter = {
     }
 
     return {
-      model: injectedModel ?? google(meta.id),
+      model: injectedModel ?? meterSharedModel(google(meta.id), meta.provider, meta.id, req.callType, req),
       system: req.systemPrompt,
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

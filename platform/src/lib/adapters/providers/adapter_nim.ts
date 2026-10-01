@@ -1,4 +1,5 @@
 import 'server-only'
+import { meterSharedModel } from '@/lib/metering/context'
 import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import type { Adapter, StreamTextOptions } from './base'
@@ -36,7 +37,7 @@ export const adapterNim: Adapter = {
     }
 
     return {
-      model: getNimModel(meta.id),
+      model: meterSharedModel(getNimModel(meta.id), 'nim', meta.id, req.callType, req),
       system: req.systemPrompt,
       messages: req.messages,
       maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,

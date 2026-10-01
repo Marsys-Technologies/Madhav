@@ -1,4 +1,5 @@
 import 'server-only'
+import { meterSharedModel } from '@/lib/metering/context'
 import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import type { Adapter, StreamTextOptions } from './base'
@@ -29,7 +30,7 @@ export const adapterAnthropic: Adapter = {
     }
 
     return {
-      model: injectedModel ?? anthropic(meta.id),
+      model: injectedModel ?? meterSharedModel(anthropic(meta.id), meta.provider, meta.id, req.callType, req),
       system: req.systemPrompt,
       messages: req.messages,
       providerOptions,
