@@ -28,6 +28,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { canonicalFirstOrderSql } from './canonical_formulas'
 
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
@@ -118,7 +119,11 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
         sql += ` AND ayanamsha_id = $${params.length + 1}`
         params.push(args.ayanamsha_id as string)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, formula_id LIMIT $3 OFFSET $4`
+      // TOTAL order (canonical_formulas.ts): the pre-existing `... fact_key, formula_id` left page
+      // boundaries to chance (eight karaka subjects share a key). Adds fact_subject, then the
+      // canonical-first rank so each (subject, key) lists its canonical formula first, then
+      // formula_id and fact_id (the PK).
+      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, ${canonicalFirstOrderSql()}, formula_id, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []

@@ -19,6 +19,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { canonicalFirstOrderSql } from './canonical_formulas'
 
 const KARAKA_CATEGORIES = [
   'karaka_chara_position', 'karakamsa_position', 'swamsa_position', 'arudha_pada',
@@ -105,12 +106,17 @@ export const getKarakasCapability: CapabilityDescriptor = {
         where += ` AND ayanamsha_id = $${filterParams.length + 1}`
         filterParams.push(args.ayanamsha_id as string)
       }
+      // Multi-formula categories (canonical_formulas.ts; INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md):
+      // karaka_chara_position is written once per chara-karaka school (`formula_id`), so one
+      // (subject, key) holds up to two rows; both are served. The ORDER BY is TOTAL (... subject,
+      // canonical-first rank, formula_id, fact_id = the PK) and puts the canonical school's row first
+      // within each (subject, key); page boundaries are therefore reproducible.
       const pageSql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
         ${where}
-        ORDER BY fact_category, ayanamsha_id, fact_key
+        ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, ${canonicalFirstOrderSql()}, formula_id, fact_id
         LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
       const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
