@@ -50,4 +50,4 @@ no longer matches source. ASTRA amendment rank 3: regenerate + re-admit.
 ## Authority identity
 
 The immutable approval identity of this authority is the commit that first
-introduced this document: `AUTHORITY_COMMIT_PLACEHOLDER`.
+introduced this document: `53a3d1f85abaa581ff5c1441eb7e29584a82d120`.
