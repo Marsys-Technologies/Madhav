@@ -878,7 +878,19 @@ def test_window_error_is_named_and_is_both_a_swiss_backend_and_an_out_of_range_e
     assert ss.OutOfCorpusRangeError.code == "out_of_corpus_range"
 
 
-@pytest.mark.parametrize("jd", [JD_1750, JD_2450, 2378496.4, 2597641.6])
+def test_window_is_the_nominal_corpus_span_narrowed_by_a_one_day_margin():
+    nominal_lo, nominal_hi = ss._CORPUS_NOMINAL_JD
+    assert (nominal_lo, nominal_hi) == (2378496.5, 2597641.5)      # 1800-01-01 .. 2400-01-01
+    assert ss.WINDOW_EDGE_MARGIN_DAYS == 1.0
+    assert ss.SWIEPH_WINDOW_JD == (2378497.5, 2597640.5)
+
+
+@pytest.mark.parametrize("jd", [
+    JD_1750, JD_2450,
+    2378496.5, 2378497.4999,      # nominal low edge (Sun/Mars-Pluto were MOSEPH there) and just below the bound
+    2597640.5001, 2597641.5,      # just above the bound and the nominal top edge (file-open dependent)
+    2597641.6,
+])
 def test_helpers_refuse_a_date_outside_the_window_before_any_configuration_check(jd):
     # unset SE_EPHE_PATH: the window error still comes first and is the named one
     with pytest.raises(ss.OutOfCorpusRangeError, match="out_of_corpus_range"):
@@ -929,6 +941,146 @@ def test_decorator_checks_the_chart_lifetime_before_the_body_and_any_write(hidde
         with pytest.raises(ss.OutOfCorpusRangeError):
             W().run(Ctx(iso))
     assert ran == [1]            # the body ran only for the in-window chart
+
+
+_EDGE_PROBE_SCRIPT = """
+import json, os, sys
+import swisseph as swe
+swe.set_ephe_path(%(corpus)r)
+lo, hi = %(window)r
+nominal_lo, nominal_hi = %(nominal)r
+BODIES = ["SUN", "MOON", "MERCURY", "VENUS", "MARS", "JUPITER", "SATURN", "URANUS", "NEPTUNE",
+          "PLUTO", "MEAN_NODE", "TRUE_NODE"]
+
+def not_swieph(jd):
+    bad = []
+    for name in BODIES:
+        _x, fl = swe.calc_ut(jd, getattr(swe, name), swe.FLG_SWIEPH | swe.FLG_SPEED)
+        if not (fl & swe.FLG_SWIEPH) or (fl & swe.FLG_MOSEPH):
+            bad.append(name)
+    return bad
+
+mode = %(mode)r
+out = {}
+if mode == "clean":
+    out["lo"] = not_swieph(lo)
+    out["hi"] = not_swieph(hi)
+    out["inside_lo"] = not_swieph(lo + 0.5)
+    out["inside_hi"] = not_swieph(hi - 0.5)
+    out["nominal_lo"] = not_swieph(nominal_lo)
+elif mode == "after_out_of_window_top":
+    # the VERY FIRST call is out-of-window (the file-open state the nominal top edge depends on)
+    not_swieph(nominal_hi + 10.0)
+    out["nominal_hi"] = not_swieph(nominal_hi)
+    out["hi"] = not_swieph(hi)
+else:
+    not_swieph(nominal_lo - 10.0)
+    out["lo"] = not_swieph(lo)
+print("RESULT:" + json.dumps(out))
+"""
+
+
+@needs_corpus
+def test_every_body_is_swieph_at_both_inclusive_window_bounds_and_the_nominal_edges_are_not_safe(corpus_dir):
+    """Measured (Linux x86-64, py3.11/3.13): every body is swieph from JD 2378496.75 up and
+    from 2597641.45 down; at the nominal low edge (2378496.5) Sun and Mars-Pluto are MOSEPH and at
+    the nominal top edge (2597641.5) every planet is MOSEPH once an out-of-window call has run.
+    The guarded bounds (lo+1 / hi-1) must be swieph for every body, in a clean process and after
+    an out-of-window call; the control fails if the nominal edges ever become safe (then the
+    margin is stale)."""
+    lo, hi = ss.SWIEPH_WINDOW_JD
+
+    def run(mode):
+        script = _EDGE_PROBE_SCRIPT % {
+            "corpus": str(corpus_dir), "window": (lo, hi), "nominal": ss._CORPUS_NOMINAL_JD, "mode": mode,
+        }
+        return json.loads(_run_script(script, extra_env={}))
+
+    clean = run("clean")                      # each mode is a fresh process (file-open state matters)
+    for key in ("lo", "hi", "inside_lo", "inside_hi"):
+        assert clean[key] == [], f"{key}: not swieph for {clean[key]}"
+    assert {"SUN", "MARS"} <= set(clean["nominal_lo"]), "nominal low edge is now safe: margin is stale"
+    top = run("after_out_of_window_top")
+    assert top["hi"] == [], f"guarded top bound not swieph after an out-of-window call: {top['hi']}"
+    assert top["nominal_hi"], "nominal top edge is now safe after an out-of-window call: margin is stale"
+    assert run("after_out_of_window_low")["lo"] == []
+
+
+@needs_corpus
+def test_ensure_accepts_both_inclusive_bounds_and_refuses_just_outside(hidden_env):
+    lo, hi = ss.SWIEPH_WINDOW_JD
+    assert ensure_swiss_backend(lo).name == "swieph"
+    assert ensure_swiss_backend(hi).name == "swieph"
+    assert backend_name(lo, hi) == "swieph"
+    for jd in (lo - 1e-3, hi + 1e-3):
+        with pytest.raises(ss.OutOfCorpusRangeError):
+            ensure_swiss_backend(jd)
+        with pytest.raises(ss.OutOfCorpusRangeError):
+            backend_name(jd)
+
+
+@needs_corpus
+def test_panchang_checks_the_jds_it_actually_samples_not_just_the_date_noon(hidden_env):
+    """A panchang for a day just inside the window samples before/after that day's noon
+    (sunrise search from local noon - 0.75 d, angas to +2 d past sunrise), so a date whose noon is in
+    the window but whose samples leave it must raise out_of_corpus_range, not compute on Moshier."""
+    from panchang_engine import compute_panchang, panchanga_instant
+
+    lo, hi = ss.SWIEPH_WINDOW_JD
+    # noon of 1800-01-02 is JD 2378498.0: inside the bare window (lo = 2378497.5) but its -1.5 d sample
+    # (2378496.5) is not.
+    assert swe.julday(1800, 1, 2, 12.0) - ss.PANCHANG_SAMPLE_BEFORE_DAYS < lo <= swe.julday(1800, 1, 2, 12.0)
+    for fn, arg in ((compute_panchang, datetime.date(1800, 1, 2)),
+                    (panchanga_instant, datetime.datetime(1800, 1, 2, 12, 0))):
+        with pytest.raises(ss.OutOfCorpusRangeError):
+            fn(arg, 20.27, 85.84, 330)
+    # top: 2399-12-30 noon is JD 2597640.0 <= hi, its +3 d sample (2597643.0) is > hi
+    assert swe.julday(2399, 12, 30, 12.0) <= hi < swe.julday(2399, 12, 30, 12.0) + ss.PANCHANG_SAMPLE_AFTER_DAYS
+    with pytest.raises(ss.OutOfCorpusRangeError):
+        compute_panchang(datetime.date(2399, 12, 30), 20.27, 85.84, 330)
+    # a day whose whole sample span is inside computes (and is swieph throughout)
+    compute_panchang(datetime.date(1800, 1, 6), 20.27, 85.84, 330)
+    compute_panchang(datetime.date(2399, 12, 25), 20.27, 85.84, 330)
+    assert backend_name() == "swieph"
+
+
+@needs_corpus
+@pytest.mark.parametrize("tz", [-720, 330, 840])
+def test_panchang_sample_margins_cover_what_the_engines_really_sample(hidden_env, monkeypatch, tz):
+    """Ties PANCHANG_SAMPLE_*_DAYS to the engines: record every JD the engines pass to swisseph
+    (the helper's own J2000 probe excluded) around the date's 12:00 UT and require them all
+    inside (-BEFORE, +AFTER).  Fails if an engine starts sampling further out than the guard checks."""
+    from panchang_engine import compute_panchang, panchanga_instant
+
+    rec: list[float] = []
+    for name in ("calc_ut", "rise_trans", "lun_eclipse_when", "houses_ex", "get_ayanamsa_ut",
+                 "sol_eclipse_when_loc", "pheno_ut", "sidtime"):
+        orig = getattr(swe, name, None)
+        if orig is None:
+            continue
+
+        def make(orig):
+            def wrapped(*a, **k):
+                if a and isinstance(a[0], (int, float)) and "swiss_backend" not in sys._getframe(1).f_code.co_filename:
+                    rec.append(float(a[0]))
+                return orig(*a, **k)
+            return wrapped
+
+        monkeypatch.setattr(swe, name, make(orig))
+
+    for day in (datetime.date(2026, 6, 15), datetime.date(2026, 12, 21)):
+        for lat, lon in ((20.27, 85.84), (64.1, -21.9), (-33.9, 151.2)):
+            rec.clear()
+            compute_panchang(day, lat, lon, tz)
+            noon = swe.julday(day.year, day.month, day.day, 12.0)
+            assert rec, "no swisseph calls recorded: the instrumentation is broken"
+            assert min(rec) - noon > -ss.PANCHANG_SAMPLE_BEFORE_DAYS, (day, lat, min(rec) - noon)
+            assert max(rec) - noon < ss.PANCHANG_SAMPLE_AFTER_DAYS, (day, lat, max(rec) - noon)
+    for inst in (datetime.datetime(2026, 6, 15, 0, 5), datetime.datetime(2026, 6, 15, 23, 55)):
+        rec.clear()
+        panchanga_instant(inst, 20.27, 85.84, tz)
+        noon = swe.julday(inst.year, inst.month, inst.day, 12.0)
+        assert min(rec) - noon > -ss.PANCHANG_SAMPLE_BEFORE_DAYS and max(rec) - noon < ss.PANCHANG_SAMPLE_AFTER_DAYS
 
 
 # ── 6c. the two WRITE routes raise BEFORE any write when the backend check fails ─

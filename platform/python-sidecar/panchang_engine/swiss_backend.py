@@ -52,17 +52,41 @@ precondition instead of ambient process state.
   is the per-thread ensure at each computing entry.
 * Anything other than ``swieph`` raises ``SwissBackendError`` -- never a silent
   fallback.
-* CORPUS WINDOW (SS ruling): the pinned ``*_18.se1`` files cover 1800-01-01 to
-  2400-01-01 only; outside that window the C library silently computes with
-  Moshier even when the files are present (measured: Sun/Moon/Mars flag MOSEPH
-  from 1799-12-31 and from 2450).  The J2000 probe says nothing about other dates,
-  so every entry point that knows its dates passes them in
-  (``ensure_swiss_backend(jd, ...)`` / ``backend_name(jd, ...)``) and a jd outside
-  ``SWIEPH_WINDOW_JD`` raises ``OutOfCorpusRangeError`` (named ``out_of_corpus_range``,
-  a ``SwissBackendError`` AND a ``panchang_engine.OutOfRangeError`` so the existing
-  422 handlers disclose it) -- the helper never reports swieph for such a date.
-  Decorated writers check the chart's lifetime (birth .. birth + 125 years) before
-  their body runs, i.e. before any write.
+* CORPUS WINDOW (SS ruling): the pinned ``*_18.se1`` files nominally cover 1800-01-01 to
+  2400-01-01; outside that window the C library silently computes with Moshier even when
+  the files are present.  The nominal edges are NOT safe (measured on Linux x86-64, python
+  3.11 and 3.13, per body, fresh process and after an out-of-window call): at JD 2378496.5
+  Sun and Mars-Pluto flag MOSEPH while the Moon and TRUE_NODE flag SWIEPH; Uranus is
+  MOSEPH to 2378496.6, Neptune to 2378496.65, Pluto to 2378496.7; from JD 2378496.75 every
+  body is swieph.  At the top, JD 2597641.5 is swieph in a clean process but MOSEPH for all
+  ten planets after a prior out-of-window call (file-open state); from 2597641.45 down it
+  is swieph either way.  ``SWIEPH_WINDOW_JD`` is therefore the nominal span narrowed by
+  ``WINDOW_EDGE_MARGIN_DAYS`` = 1.0 day at each end (inclusive bounds JD 2378497.5 and
+  2597640.5), a margin of >= 0.75 day over the measured worst edge.  The J2000 probe says
+  nothing about other dates, so every entry point that knows its dates passes them in
+  (``ensure_swiss_backend(jd, ...)`` / ``backend_name(jd, ...)``) and a jd outside the
+  window raises ``OutOfCorpusRangeError`` (named ``out_of_corpus_range``, a
+  ``SwissBackendError`` AND a ``panchang_engine.OutOfRangeError`` so the existing 422
+  handlers disclose it) -- the helper never reports swieph for such a date.
+  A panchang for a date samples more than that date's noon: ``compute_panchang`` /
+  ``panchanga_instant`` start the sunrise search at local noon - 0.75 day and run the anga
+  boundary searches up to 2 days past sunrise (measured over tz -720..+840 min: sampled
+  JDs span noon(12:00 UT of the date) - 1.334 .. + 1.847 days), so they check
+  ``panchang_sample_jds(jd)`` = (jd - PANCHANG_SAMPLE_BEFORE_DAYS, jd + PANCHANG_SAMPLE_AFTER_DAYS)
+  = (-1.5, +3.0) days, not the bare noon JD.
+  Decorated writers check the chart's lifetime (birth .. birth + 125 years, with the same
+  panchang margins) before their body runs, i.e. before any write.  A decorated writer
+  whose context carries no parseable ``birth_params['datetime_iso']`` RAISES
+  (``WindowUncheckedError``, ``window_unchecked``): it never records swieph on a window
+  it did not check.
+* ``seas_18.se1`` (asteroids) is pinned and SHA-256-hashed by the ``python -m`` probe below
+  but is NOT exercised by the in-process probe, deliberately: no body that needs it
+  (Chiron, Pholus, Ceres, any ``AST_OFFSET`` body) is computed anywhere in this repository
+  or in PyJHora 4.8.6 (grep of both; the sidecar uses Sun..Pluto and the nodes), and a
+  missing ``seas`` file is not a silent substitution anyway: an asteroid request raises
+  ``SwissEph file 'seas_18.se1' not found`` (measured, Linux), so probing it would only
+  make a corpus without it fail for no consumer.  If an asteroid body is ever added, its
+  call site must probe a body that needs ``seas_18`` (e.g. Chiron) at its own entry.
 * Vocabulary note: ``pipeline/orchestrator/service_probes.py`` (L0 registry health
   probe) uses the label ``swiss_ephemeris_file``, probes the Sun only and reads
   ``SWE_EPHE_PATH``; this module uses ``swieph``, Sun + TRUE_NODE and
@@ -98,8 +122,20 @@ _PINNED_SHA256 = {
 SE_EPHE_PATH_ENV = "SE_EPHE_PATH"
 BACKEND_SWIEPH = "swieph"
 _PROBE_JD_J2000 = 2451545.0
-# JD of 1800-01-01 00:00 and 2400-01-01 00:00: the span of the pinned *_18.se1 files.
-SWIEPH_WINDOW_JD = (2378496.5, 2597641.5)
+# JD of 1800-01-01 00:00 and 2400-01-01 00:00: the NOMINAL span of the pinned *_18.se1 files.
+_CORPUS_NOMINAL_JD = (2378496.5, 2597641.5)
+# The nominal edges are not safe (module docstring: at 2378496.5 Sun and Mars-Pluto are MOSEPH;
+# at 2597641.5 the flag depends on file-open state), so the guarded window is narrowed by this
+# margin at each end.  Measured safe from 2378496.75 / down to 2597641.45; margin 1.0 day.
+WINDOW_EDGE_MARGIN_DAYS = 1.0
+SWIEPH_WINDOW_JD = (
+    _CORPUS_NOMINAL_JD[0] + WINDOW_EDGE_MARGIN_DAYS,
+    _CORPUS_NOMINAL_JD[1] - WINDOW_EDGE_MARGIN_DAYS,
+)
+# compute_panchang / panchanga_instant sample JDs around the date's noon (module docstring):
+# measured -1.334 .. +1.847 days around 12:00 UT of the date over tz -720..+840 minutes.
+PANCHANG_SAMPLE_BEFORE_DAYS = 1.5
+PANCHANG_SAMPLE_AFTER_DAYS = 3.0
 # Writers' chart horizon (dashas 120y, ka_sangam 100y, ka_kshetra 100y, tithi-pravesha 120 rows).
 LIFETIME_HORIZON_YEARS = 125
 
@@ -122,13 +158,20 @@ class OutOfCorpusRangeError(SwissBackendError, OutOfRangeError):
     code = "out_of_corpus_range"
 
 
+def panchang_sample_jds(jd_noon: float) -> tuple[float, float]:
+    """The JD span a panchang for the date whose 12:00 UT is ``jd_noon`` actually samples
+    (conservative; see ``PANCHANG_SAMPLE_BEFORE_DAYS`` / ``..._AFTER_DAYS``)."""
+    return (float(jd_noon) - PANCHANG_SAMPLE_BEFORE_DAYS, float(jd_noon) + PANCHANG_SAMPLE_AFTER_DAYS)
+
+
 def _require_in_window(jds: tuple[float, ...]) -> None:
     lo, hi = SWIEPH_WINDOW_JD
     for jd in jds:
         if not (lo <= float(jd) <= hi):
             raise OutOfCorpusRangeError(
                 f"out_of_corpus_range: JD {float(jd):.1f} is outside the Swiss Ephemeris file "
-                f"window {lo}..{hi} (1800-01-01..2400-01-01); refusing to report swieph for it "
+                f"window {lo}..{hi} (1800-01-01..2400-01-01 narrowed by {WINDOW_EDGE_MARGIN_DAYS} day at each "
+                f"end); refusing to report swieph for it "
                 "(the library would silently use Moshier there)"
             )
 
