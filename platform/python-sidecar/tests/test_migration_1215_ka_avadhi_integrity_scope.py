@@ -14,7 +14,7 @@ DB-FREE (no database of any kind is touched). What this proves, and what it does
   * HAS TEETH: `_scope_findings` is shown to flag a mutated SQL missing the scope in any one conjunct
     (five mutants), a wrong or phantom chart literal, an OR-widened scope and the stale 'chara' literal.
   * DOES NOT PROVE the live registry state (that is the read-only before/after SQL saved next to the
-    Track I evidence) nor the check's boolean result on live rows (needs a DB: out of scope here). The
+    Track I evidence) nor the check's boolean result on live rows (proven on a fixture by the opt-in sibling test_migration_1215_ka_avadhi_integrity_behaviour_db.py). The
     optional pglast test additionally parses the SQL with the real PostgreSQL grammar when pglast is
     installed (skips otherwise: it is a syntax cross-check, not the primary gate).
 """

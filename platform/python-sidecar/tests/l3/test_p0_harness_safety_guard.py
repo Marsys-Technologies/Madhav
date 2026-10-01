@@ -47,6 +47,10 @@ UNSAFE = [
     "postgresql://u@127.0.0.1:5432/kala_harness/",
     "host=db.internal dbname=kala_harness",
     "host=127.0.0.1 dbname=madhav_prod",
+    "service=prod_alias",                                                    # service files can redirect to a remote host
+    "service=prod dbname=kala_harness host=/tmp/kp0",                        # even alongside safe-looking fields
+    "postgresql://u@127.0.0.1:5432/kala_harness?service=prod",
+    "postgresql:///kala_harness?service=prod&host=/tmp/kp0",
     "not a dsn kala_harness",
     "postgresql://u@[::1/kala_harness",                                      # unparseable
     "",

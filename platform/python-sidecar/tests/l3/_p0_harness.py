@@ -89,6 +89,8 @@ def _conninfo(dsn: str) -> dict[str, str]:
 def is_safe_harness_dsn(dsn: str) -> bool:
     """True only for a local host AND a disposable, non-production-looking database name."""
     info = _conninfo(dsn)
+    if info.get("service"):
+        return False  # a pg_service.conf entry can redirect host/dbname to a remote server
     name = info.get("dbname", "")
     if not _SAFE_DB_NAME.match(name) or _PROD_TOKEN.search(name):
         return False
