@@ -1,7 +1,7 @@
 ---
 artifact: RESONANCE_REBUILD_DECISION_PACKET
 version: "1.0"
-status: "DRAFT — re-sync §exact commands/§3 postconditions to the MERGED runbook before native presentation (round-4 adds class-identity acceptance and pre/post refusal certificates)"
+status: "READY FOR NATIVE — re-synced 2026-10-01 to the MERGED runbook (#2769 + #2804 on main); the two certificate queries are re-measured by the native on execution day (production is password-gated to agents)"
 date: 2026-09-30
 author: Stream B (Śāstra), item B6.0
 decision_needed: "Native authorises and personally executes the production resonance-map rebuild (A5.4 runbook). No agent performs any write."
@@ -15,8 +15,11 @@ The production **resonance map** — the table that says which chart factors eac
 class listens to — was built before the WP3c honesty corrections. Independent review
 (FABLE v3.0, finding #9 / T0-12) found that **154 of its 176 sensitive-degree targets point
 at checks that came back negative** ("not_fired", "not_gandanta", …): the map claims
-authority from things that are not true of this chart. The corrected writer (R-1..R-6) is on PR #2769,
-under review; this packet is presented only after it merges and deploys. What then remains
+authority from things that are not true of this chart. The corrected writer (R-1..R-6) is
+merged (#2769) and the runbook's verification layer was hardened by the merged follow-up
+#2804 (mechanism_node `'resolved'` contract; M-6 stored state re-derived from operand
+presence; both proven live by three new detector controls — 16 in all — in the disposable
+rehearsal, counts 1/4/1 against a clean 0/0 baseline). What then remains
 is the **one-time data rebuild** of the production table so the served map becomes honest.
 
 Only you can do this: it is a production write, explicitly native-only. This packet gives
@@ -49,7 +52,7 @@ Chart `482012f1-710e-4a25-994a-93821f5871aa`, table `gochara_resonance_map`:
 ## The options
 
 1. **Rebuild now (recommended).** Run the A5.4 runbook
-   (`resonance_rebuild_R1_R6_runbook.md` on PR #2769) once #2769 merges. Consequence: the
+   (`resonance_rebuild_R1_R6_runbook.md`, merged on main via #2769 + #2804). Consequence: the
    154 negative-keyed rows and the 244 dangling/mis-keyed refs are replaced by an honestly
    keyed map whose every row carries a real resolution state; the postconditions in §3 of
    the runbook MUST all hold (0 negative-keyed rows, identity of the kept set with the
@@ -65,7 +68,7 @@ Chart `482012f1-710e-4a25-994a-93821f5871aa`, table `gochara_resonance_map`:
 ## The exact commands (governed path, you execute)
 
 Full text: `platform/python-sidecar/scripts/kala_gochara_cutover/resonance_rebuild_R1_R6_runbook.md`
-(PR #2769; 351 lines). In outline:
+(merged on main; 704 lines). In outline:
 
 1. **§0 preconditions (read-only):** migration 1080 columns present (already verified
    today); deployed sidecar image carries writer FORMULA_VERSION
@@ -99,8 +102,9 @@ end state.
 
 ## Recommendation
 
-**Option 1, after #2769 merges AND the deployed sidecar image carries
-`ka_gochara_resonance_v2.2` (merge alone is not enough).** The pre-counts above are the
-§1 baseline already measured; on merge day, re-run the two certificate queries, substitute
-the fresh stamp, and proceed. Expected wall time: minutes for the snapshot, one governed
-build for the writer, minutes for §3 verification.
+**Option 1, now that #2769 has merged, as soon as the deployed sidecar image carries
+`ka_gochara_resonance_v2.2` (merge alone is not enough — deploy is Stream A's lane).**
+The pre-counts above were measured 2026-09-30 against production; on execution day,
+re-run the two certificate queries (read-only, but production is password-gated to
+agents — you run them), substitute the fresh stamp, and proceed. Expected wall time:
+minutes for the snapshot, one governed build for the writer, minutes for §3 verification.
