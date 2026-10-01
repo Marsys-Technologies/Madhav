@@ -121,6 +121,7 @@ describe('Protected public-schema migration workflow contract', () => {
   it('requires explicit manual authorization and the protected environment', () => {
     expect(workflow.on.workflow_dispatch.inputs.jataka_schema_migration).toBeTruthy()
     expect(workflow.on.workflow_dispatch.inputs.ai_console_schema_migration).toBeTruthy()
+    expect(workflow.on.workflow_dispatch.inputs.ai_metering_schema_migration).toBeTruthy()
     expect(workflow.on.workflow_dispatch.inputs.gochara_schema_migration).toBeTruthy()
     expect(workflow.on.workflow_dispatch.inputs.gochara_contracts_schema_migration).toBeTruthy()
     const job = workflow.jobs['jataka-protected-migrations']
@@ -128,6 +129,7 @@ describe('Protected public-schema migration workflow contract', () => {
     expect(job.if).toContain("github.event_name == 'workflow_dispatch'")
     expect(job.if).toContain('inputs.jataka_schema_migration == true')
     expect(job.if).toContain('inputs.ai_console_schema_migration == true')
+    expect(job.if).toContain('inputs.ai_metering_schema_migration == true')
     expect(job.if).toContain('inputs.gochara_schema_migration == true')
     expect(job.if).toContain('inputs.gochara_contracts_schema_migration == true')
   })
@@ -189,6 +191,19 @@ describe('Protected public-schema migration workflow contract', () => {
     expect(apply?.run).toContain('migrate.ts --only "$only"')
     expect(revoke?.if).toContain('always()')
     expect(revoke?.run).toContain('jataka-schema-capability.ts revoke')
+  })
+
+  it('keeps AI metering table creation inside its exact protected window', () => {
+    const steps = workflow.jobs['jataka-protected-migrations'].steps ?? []
+    const apply = steps.find((step) => step.name === 'Apply exact protected public-schema migrations')
+    const revoke = steps.find((step) => step.name === 'Revoke temporary public-schema capability')
+    expect(apply?.env?.APPLY_AI_METERING_SCHEMA_MIGRATION).toContain('ai_metering_schema_migration')
+    expect(apply?.run).toContain('if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then')
+    expect(apply?.run).toContain('migrations+=(1202_ai_metering_ledger.sql)')
+    expect(revoke?.if).toContain('always()')
+    expect(() => assertGeneralRunnerMayApplyPublicSchema('1202_ai_metering_ledger.sql', false))
+      .toThrow(/ai_metering_schema_migration=true/)
+    expect(() => assertGeneralRunnerMayApplyPublicSchema('1202_ai_metering_ledger.sql', true)).not.toThrow()
   })
 
   it('holds every deploy behind the completed migration barrier', () => {

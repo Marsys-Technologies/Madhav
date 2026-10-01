@@ -19,6 +19,7 @@ import {
 
 const MAIN_LINKS = [
   { href: '/observatory', label: 'Overview', exact: true, Icon: LayoutDashboard },
+  { href: '/observatory/metering', label: 'Consumption', exact: false, Icon: Gauge },
   { href: '/observatory/events', label: 'Events', exact: false, Icon: ListOrdered },
   { href: '/observatory/budgets', label: 'Budgets', exact: false, Icon: PiggyBank },
   { href: '/observatory/reconciliation', label: 'Reconcile', exact: false, Icon: Scale },
@@ -66,7 +67,7 @@ export function ObservatorySubNav() {
         <p className="px-3 bt-label bt-label-upper text-[rgba(212,175,55,0.35)]">
           ॥ Observatory
         </p>
-        {MAIN_LINKS.map(({ href, label, exact, Icon }) => {
+        {MAIN_LINKS.filter(link => link.href !== '/observatory/metering' || process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED === 'true').map(({ href, label, exact, Icon }) => {
           const active = isActive(href, exact)
           return (
             <Link

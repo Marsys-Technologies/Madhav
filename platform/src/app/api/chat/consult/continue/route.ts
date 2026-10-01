@@ -1,3 +1,4 @@
+import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import 'server-only'
 import { createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { streamText } from 'ai'
@@ -34,6 +35,10 @@ const CONTINUATION_INSTRUCTION =
  * Body: { conversation_id: string, last_message_id: string }
  */
 export async function POST(request: Request) {
+  return meteringRequest(() => executeMeteredRequest(request))
+}
+
+async function executeMeteredRequest(request: Request) {
   const user = await getServerUser()
   if (!user) return res.unauthenticated()
 
@@ -71,6 +76,7 @@ export async function POST(request: Request) {
   }).catch(() => null)
 
   if (!conv) return res.notFound('conversation')
+  setMeteringAttribution({ userId:user.uid,conversationId:conversation_id,turnId:crypto.randomUUID(),channel:'web',purpose:'customer',payer:'platform' })
   // Jātaka chart workspace: history archived by a chart-details correction is read-only.
   if (isCorrectionArchived(conv)) return archivedReadOnlyResponse()
 

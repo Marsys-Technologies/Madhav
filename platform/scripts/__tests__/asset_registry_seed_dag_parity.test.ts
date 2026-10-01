@@ -9,7 +9,9 @@ import {
 } from '../seed/asset_registry_seed'
 
 // Production at migration 615 plus the deterministic dependency rewrites in
-// migrations 619, 626, and 1030. These are the 28 rows whose dependency sets
+// migrations 619, 626, and 1030, plus the direct read edges declared by
+// migration 1210 (Suvarna Track I; each is appended after the pre-existing
+// edges and marked below). These are the 28 rows whose dependency sets
 // are pinned here (migration 1030 supersedes bo_sangati's earlier two-edge
 // entry without changing this denominator).
 const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
@@ -32,8 +34,12 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bo_laksana', 'bo_bimba', 'ga_positions', 'bo_sudarshana',
     'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
     'bo_vargottama_dhana',
+    'ga_vichara', // migration 1210 (chart_vichara read, bo_karanajala.py)
   ],
-  bo_pratijna: ['bo_laksana', 'bo_sangati'],
+  bo_pratijna: [
+    'bo_laksana', 'bo_sangati',
+    'ga_vargas', // migration 1210 (chart_divisionals read, chart_reader_v4.py)
+  ],
   bo_samskara: [
     'bo_arudha', 'bo_laksana', 'bo_nakshatra_semantic',
     'bo_special_lagna', 'bo_sudarshana', 'bo_vargottama_dhana',
@@ -64,14 +70,21 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bo_laksana', 'bo_karanajala', 'bo_sudarshana',
     'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
     'bo_vargottama_dhana',
+    'bo_bimba', 'ga_vichara', // migration 1210 (cgm_nodes + chart_vichara reads, bo_laksana.py rerank writer)
   ],
-  ka_kalasutra: ['ka_yojaka', 'ka_sangam', 'bo_laksana'],
+  ka_kalasutra: [
+    'ka_yojaka', 'ka_sangam', 'bo_laksana',
+    'ga_dashas', // migration 1210 (chart_dashas read via ka_temporal date_resolver)
+  ],
   ka_sangam: [
     'ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva',
     'bo_laksana', 'ga_dashas', 'ga_strength', 'ga_positions',
     'ga_tajaka', 'bg_transit_rules',
   ],
-  ka_vighnakara: ['ka_sangam', 'ka_gochara', 'ka_muhurta_seva', 'ga_positions'],
+  ka_vighnakara: [
+    'ka_sangam', 'ka_gochara', 'ka_muhurta_seva', 'ga_positions',
+    'ga_dashas', // migration 1210 (chart_dashas read via ka_temporal date_resolver)
+  ],
   ka_jivana_parva: [
     'ka_kala_darshana', 'ka_dasha_kala', 'ka_sangam', 'ka_yojaka',
     'ga_dashas',
@@ -204,11 +217,13 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
       'bo_laksana', 'bo_bimba', 'ga_positions', 'bo_sudarshana',
       'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
       'bo_vargottama_dhana',
+      'ga_vichara', // migration 1210
     ])
     expect(rerank?.depends_on).toEqual([
       'bo_laksana', 'bo_karanajala', 'bo_sudarshana',
       'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
       'bo_vargottama_dhana',
+      'bo_bimba', 'ga_vichara', // migration 1210
     ])
     expect(sangati?.depends_on).toEqual([
       'bo_laksana', 'bo_karanajala', 'bo_sudarshana',

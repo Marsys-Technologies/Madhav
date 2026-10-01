@@ -1,4 +1,5 @@
 import 'server-only'
+import { meterSharedModel } from '@/lib/metering/context'
 import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { deepseek } from '@ai-sdk/deepseek'
 import type { Adapter, StreamTextOptions } from './base'
@@ -33,7 +34,7 @@ export const adapterDeepseek: Adapter = {
     }
 
     return {
-      model: injectedModel ?? deepseek(meta.id),
+      model: injectedModel ?? meterSharedModel(deepseek(meta.id), meta.provider, meta.id, req.callType, req),
       system: req.systemPrompt,
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,3 +1,4 @@
+import { meterSharedModel, meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import { streamText, stepCountIs, createIdGenerator, convertToModelMessages } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { NextResponse } from 'next/server'
@@ -25,6 +26,10 @@ async function requireSuperAdmin() {
 }
 
 export async function POST(request: Request) {
+  return meteringRequest(() => executeMeteredRequest(request))
+}
+
+async function executeMeteredRequest(request: Request) {
   const user = await requireSuperAdmin()
   if (!user) return res.forbidden()
 
@@ -93,6 +98,7 @@ export async function POST(request: Request) {
   }
 
   const finalConversationId = conversationId
+  setMeteringAttribution({ userId:user.uid,conversationId:finalConversationId,turnId:crypto.randomUUID(),channel:'web',purpose:'customer',payer:'platform' })
   const pendingConversationInsert: Promise<void> | null = isFirstTurn
     ? insertConversationWithId({
         id: finalConversationId,
@@ -104,7 +110,7 @@ export async function POST(request: Request) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = streamText({
-    model: anthropic('claude-sonnet-4-6'),
+    model: meterSharedModel(anthropic('claude-sonnet-4-6'), 'anthropic', 'claude-sonnet-4-6', 'build'),
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
     tools: buildTools,

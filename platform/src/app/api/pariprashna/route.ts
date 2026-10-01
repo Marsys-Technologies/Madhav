@@ -1,3 +1,4 @@
+import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 /**
  * /api/pariprashna — Paripraśna consult route (lane PB-1/S-1, wave DHĀRĀ).
  *
@@ -80,7 +81,11 @@ import { isByokEvidencePayloadWithinLimit, validateByokUiMessages } from '@/lib/
 
 export const maxDuration = 120
 
-export async function POST(request: Request): Promise<Response> {
+export async function POST(request: Request) {
+  return meteringRequest(() => executeMeteredRequest(request))
+}
+
+async function executeMeteredRequest(request: Request) {
   const requestStartedAt = Date.now()
   const byokEnabled = configService.getFlag('AI_CONSOLE_BYOK')
 
@@ -119,6 +124,7 @@ export async function POST(request: Request): Promise<Response> {
     queryId: turnId,
   }
   const { conversationId } = identity
+  setMeteringAttribution({ userId:user.uid,conversationId,turnId,channel:'web',purpose:'customer',payer:'platform' })
 
   let runtime: TurnRuntime = LEGACY_TURN_RUNTIME
   let params: TurnParams

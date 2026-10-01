@@ -1,3 +1,5 @@
+import { currentMeteringAttribution } from '@/lib/metering/context'
+import { meteringEnabled } from '@/lib/metering/types'
 // persistObservation — apply the active redaction policy, then INSERT one row
 // into llm_usage_events. NEVER throws: observability errors must not break
 // the caller (the chat path keeps working even when telemetry can't write).
@@ -101,7 +103,8 @@ export async function persistObservation(
       request.prompt_text,
       response.response_text,
       request.system_prompt,
-      request.parameters === undefined ? null : JSON.stringify(request.parameters),
+      JSON.stringify({ ...(request.parameters && typeof request.parameters === 'object' ? request.parameters : {}),
+        ...(meteringEnabled() && currentMeteringAttribution() ? { metering_represented: true } : {}) }),
       response.usage.input_tokens,
       response.usage.output_tokens,
       response.usage.cache_read_tokens,

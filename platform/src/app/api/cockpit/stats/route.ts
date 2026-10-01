@@ -7,7 +7,7 @@ import type { AssetState } from './deriveState'
 import { readSqlScalarMetric } from './scalarMetric'
 import { blockedByAssetIdColumnPresent } from '@/lib/db/columnPresence'
 import { DOWNSTREAM_DEPENDENTS_SQL } from '@/lib/cockpit/downstreamDependents'
-import { errorFromThroughput } from './throughputError'
+import { errorFromThroughput, blockersFromBlockedMessage } from './throughputError'
 import type { ThroughputEntry } from './throughputError'
 
 export const dynamic = 'force-dynamic'
@@ -60,6 +60,10 @@ export interface AssetStats {
   // correctly. Surfaced so an operator (or a future UI) can drill straight to the
   // real cause instead of re-deriving it from prose.
   blocked_by_asset_id?: string | null
+  // Track I-3: where blocked_by_asset_id came from — 'column' (build_run_assets, authoritative)
+  // or 'message' (label fallback parsed from the runner's BLOCKED text for pre-1201 history rows).
+  // Only present when state === 'blocked'. Never an input to the blocked decision.
+  blocked_by_source?: 'column' | 'message' | null
   // Packet B2 ("the DAG-derived downstream count"). Sourced from
   // DOWNSTREAM_DEPENDENTS_SQL (@/lib/cockpit/downstreamDependents — a recursive CTE
   // over asset_registry, no database object) — the size of the reverse-
@@ -341,6 +345,14 @@ export async function GET(req: NextRequest) {
     // disposition is ever trusted — an exact timestamp match on a shared fact,
     // never a re-derivation from error TEXT (§N.7 item 1).
     //
+    // Track I-3: the two queries below read the latest `blocked_dependency` row per asset, NOT
+    // the latest build_run_assets row of any kind. The ended_at binding above is the real tie to
+    // the throughput write; "latest row" was only ever a proxy for it, and a LATER queued/aborted
+    // row (which never touches asset_throughput) hid the block that produced the current error,
+    // so a cascade victim read red. Any other disposition is irrelevant here: deriveState only
+    // ever consumes 'blocked_dependency'. A newer genuine error rewrites last_built_at, so the
+    // older blocked row's ended_at then fails the binding and the asset correctly reads 'error'.
+    //
     // C-5(c) (review): throughputMap admits `chart_id = $1 OR chart_id IS NULL`
     // (a global asset's asset_throughput row is chart-independent) but this query
     // originally only admitted `br.chart_id = $1` — a global asset blocked under
@@ -359,6 +371,7 @@ export async function GET(req: NextRequest) {
            FROM build_run_assets bra
            JOIN build_runs br ON br.id = bra.run_id
           WHERE br.chart_id = $1
+            AND bra.state = 'error' AND bra.disposition = 'blocked_dependency'
           ORDER BY bra.asset_id, br.created_at DESC, bra.run_id DESC`,
         [chartId]
       )
@@ -371,6 +384,7 @@ export async function GET(req: NextRequest) {
              FROM build_run_assets bra
              JOIN build_runs br ON br.id = bra.run_id
             WHERE bra.asset_id = ANY($1::text[])
+              AND bra.state = 'error' AND bra.disposition = 'blocked_dependency'
             ORDER BY bra.asset_id, br.created_at DESC, bra.run_id DESC`,
           [globalAssetIds]
         )
@@ -450,6 +464,14 @@ export async function GET(req: NextRequest) {
         ? dispEntry.disposition
         : null
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null, substepsCommitted, eventMatchedDisposition)
+      // Track I-3: names for a 'blocked' asset — the recorded column when present, else (pre-1201
+      // history rows, never backfilled) a label parsed from the runner's own BLOCKED message.
+      // Display detail only: `derivedState === 'blocked'` was already decided structurally above.
+      const blockedByColumn = derivedState === 'blocked' ? (dispEntry?.blocked_by_asset_id ?? null) : null
+      const blockedByFromMessage = derivedState === 'blocked' && !blockedByColumn
+        ? blockersFromBlockedMessage(errorFromThroughput(tp)) : null
+      const blockedBy = blockedByColumn ?? blockedByFromMessage
+      const blockedBySource: 'column' | 'message' | null = blockedByColumn ? 'column' : blockedByFromMessage ? 'message' : null
       // build_state_stale: data is present (count_sql > 0) but asset_throughput says
       // stale/dormant/error/absent — signals the bar to badge "build-state stale".
       // Excludes 'building': an actively-building asset with committed substep rows is not stale.
@@ -469,7 +491,8 @@ export async function GET(req: NextRequest) {
         // Safe to read dispEntry directly here: derivedState can only be 'blocked'
         // when eventMatchedDisposition === 'blocked_dependency', which only happens
         // when dispEntry's ended_at already matched this same write (above).
-        blocked_by_asset_id: derivedState === 'blocked' ? (dispEntry?.blocked_by_asset_id ?? null) : undefined,
+        blocked_by_asset_id: derivedState === 'blocked' ? blockedBy : undefined,
+        blocked_by_source: derivedState === 'blocked' ? blockedBySource : undefined,
         // Packet B2: real value if computed this poll; null (never a fabricated 0)
         // if the downstream-dependents query failed above.
         downstream_dependent_count: downstreamDependentsMap.get(asset.asset_id) ?? null,

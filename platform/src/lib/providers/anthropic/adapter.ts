@@ -1,3 +1,4 @@
+import { meterSharedModel } from '@/lib/metering/context';
 /**
  * anthropic/adapter.ts — Anthropic CapabilityAdapter skeleton (A-S2).
  *
@@ -92,7 +93,7 @@ export class AnthropicAdapter implements CapabilityAdapter {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const streamParams: any = {
-        model: anthropicProvider(request.model),
+        model: meterSharedModel(anthropicProvider(request.model), 'anthropic', request.model, 'capability_chat'),
         messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
         maxOutputTokens: request.maxTokens ?? 8192,
       };

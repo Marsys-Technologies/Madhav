@@ -56,6 +56,11 @@ on:
         type: boolean
         required: false
         default: false
+      ai_metering_schema_migration:
+        description: 'Explicitly authorize the temporary protected schema window for exact AI metering migration 1202'
+        type: boolean
+        required: false
+        default: false
       gochara_schema_migration:
         description: 'Explicitly authorize the temporary protected schema window for exact Gochara migration 1071'
         type: boolean
@@ -149,6 +154,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
             NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=true
+            NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # The regular serving image is distinct from Dockerfile.pipeline. Building it
@@ -945,7 +951,7 @@ jobs:
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
   # JATAKA CCD-019 / AI Console BYOK / Gochara B1 / Pravāha A5.1: migrations 1071,
-  # 1120-1125, 1153-1157, and 1158 alter application-owned tables but also create
+  # 1120-1125, 1153-1157, 1158, and 1202 alter application-owned tables but also create
   # objects in the protected public schema (1071: a generation-guard function and
   # two triggers on kala_gochara_windows; 1153-1157: the FROZEN Gochara contract
   # tables, functions and triggers — the routine runner refuses them, migrate.ts
@@ -959,7 +965,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'workflow_dispatch' &&
-      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true) &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.ai_metering_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true) &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
       needs.migration-state.outputs.data_plane == 'marked' &&
@@ -1043,6 +1049,7 @@ jobs:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           APPLY_JATAKA_SCHEMA_MIGRATIONS: ${{ inputs.jataka_schema_migration }}
           APPLY_AI_CONSOLE_SCHEMA_MIGRATION: ${{ inputs.ai_console_schema_migration }}
+          APPLY_AI_METERING_SCHEMA_MIGRATION: ${{ inputs.ai_metering_schema_migration }}
           APPLY_GOCHARA_SCHEMA_MIGRATION: ${{ inputs.gochara_schema_migration }}
           APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: ${{ inputs.gochara_contracts_schema_migration }}
         run: |
@@ -1069,6 +1076,9 @@ jobs:
             migrations+=(1155_gochara_relationship_record.sql)
             migrations+=(1156_gochara_eval_window.sql)
             migrations+=(1157_gochara_av_polarity_declaration.sql)
+          fi
+          if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
+            migrations+=(1202_ai_metering_ledger.sql)
           fi
           if [ "${#migrations[@]}" -eq 0 ]; then
             echo "::error::No protected public-schema migration was explicitly authorized."
@@ -1338,6 +1348,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
             NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK=true
+            NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED=true
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
@@ -1401,6 +1412,7 @@ jobs:
             GOOGLE_CLOUD_PROJECT=madhav-astrology
             GCS_BUCKET_CHAT_ATTACHMENTS=madhav-astrology-chat-attachments
             GCS_BUCKET_CHART_DOCUMENTS=madhav-astrology-chart-documents
+            AI_METERING_RECOVERY_BUCKET=madhav-astrology-ai-metering-recovery
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             NIRMANA_PROBE_RUNNER_URL=https://amjis-sidecar-938361928218.asia-south1.run.app/internal/nirmana/probe
@@ -1420,6 +1432,7 @@ jobs:
             MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
+            MARSYS_FLAG_AI_METERING_ENABLED=true
             MARSYS_FLAG_AI_CONSOLE_BYOK=true
             MARSYS_AI_ACTIVE_KEK_VERSION=V1
             MARSYS_AI_LOCAL_CLI_EXECUTION_ENABLED=false

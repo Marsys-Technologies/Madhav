@@ -1,4 +1,7 @@
 import 'server-only'
+import { meteringEnabled } from '@/lib/metering/types'
+import { startAttempt, finishAttempt } from '@/lib/metering/service'
+import { normalizeSdkUsage } from '@/lib/metering/usage'
 import { inspect } from 'node:util'
 import { AiConsoleError } from '../errors'
 import { decryptCredential } from '../crypto'
@@ -43,7 +46,24 @@ export async function probeConnectionModel(connection: OwnedProviderConnection, 
   connection = Object.freeze({ ...connection })
   const record = await ownedCredential(connection)
   let key: string | undefined = decryptCredential(record)
-  try { return await getProviderAdapter(connection.providerId).probe(key, model, signal, () => assertConnectionRequestAuthorized(connection), record.workspaceId) }
+  try {
+    const id = crypto.randomUUID()
+    const start = meteringEnabled() ? await startAttempt({ userId: connection.userId, conversationId: null,
+      turnId: id, operationId: id, channel: 'backend', purpose: 'validation', payer: 'user',
+      provider: connection.providerId, model: model.modelId, role: 'connection_validation',
+      connectionId: connection.connectionId, aggregation: 'transport' }) : undefined
+    const settle = async (usage: unknown, status: 'success' | 'error' | 'cancelled') => {
+      if (start) await finishAttempt(start, { attemptId: start.attemptId, finishedAt: new Date().toISOString(), status,
+        usage: normalizeSdkUsage(usage), providerRequestId: null, finishReason: null, firstTokenAt: null, providerCostUsd: null })
+    }
+    let result
+    try { result = await getProviderAdapter(connection.providerId).probe(key, model, signal, () => assertConnectionRequestAuthorized(connection), record.workspaceId) }
+    catch (error) { await settle(undefined, signal.aborted ? 'cancelled' : 'error'); throw error }
+    const outputTokens = connection.providerId === 'google' && result.outputTokens !== null
+      ? result.outputTokens + (result.reasoningTokens ?? 0) : result.outputTokens
+    await settle({ ...result, outputTokens }, 'success')
+    return result
+  }
   finally { key = undefined }
 }
 /** Caller owns disposal in a finally block for the entire request, including streams. */

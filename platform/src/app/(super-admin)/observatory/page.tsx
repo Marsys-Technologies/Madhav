@@ -5,10 +5,12 @@
 // All data fetching happens inside <OverviewClient />, which uses the typed
 // /api/admin/observatory client and re-runs on URL filter changes.
 
+import { UsageDashboard } from '@/components/metering/UsageDashboard'
+import { meteringEnabled } from '@/lib/metering/types'
 import { OverviewClient } from '@/lib/components/observatory/pages/OverviewClient'
 
 export const dynamic = 'force-dynamic'
 
 export default function ObservatoryOverviewPage() {
-  return <OverviewClient />
+  return meteringEnabled() ? <UsageDashboard admin /> : <OverviewClient />
 }
