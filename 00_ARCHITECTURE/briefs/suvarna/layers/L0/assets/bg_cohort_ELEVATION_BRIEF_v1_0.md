@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06, TI-L0-30]
 ledger_gap_ids: [bg_cohort-Earn.build_record, bg_cohort-Cost.baseline, bg_cohort-Carr.detector, bg_cohort-Build.history, bg_cohort-Build.completion]
 ---
 # bg_cohort — Synthetic reference cohort (10,000 charts + 100,000 Mahādaśā rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -74,22 +76,22 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — retained capital with named readers; the open items are build-record attribution (CF-02) and detectors. Not historical: its consumers are live code (`ka_kshetra.py`, `mi_bhara.py`).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Build.completion: build record counts one of two tables
+### FD-1 · Build.completion: scope count_sql to the primary table and declare the asset multi-table
 
 - **Answers:** census `Build.completion` FAIL (rows_written 10,000 vs live 110,000); ledger `bg_cohort-Build.completion`; CF-02
-- **Change:** the writer tracks `rows_written` (cohort) and `md_rows_written` apart (`bg_cohort.py:525-575`) and reports the first. Either report both tables in the returned counts (rows_inserted = cohort + md) or scope the registry count_sql to the target table; the writer already asserts `md = 10 × COHORT_SIZE`, so the sum is exact.
-- **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_cohort.py` (WriterResult return) OR the registry `count_sql` literal (migration + `asset_registry_seed.ts` row `bg_cohort`, seed L553)
+- **Change:** decided (SS 2026-10-01, Q19): scope the registry `count_sql` to `bg_synthetic_cohort` (10,000) so it equals the build record, and declare the asset multi-table (`bg_synthetic_cohort_md`, 100,000 rows) in the declarations. The writer is unchanged (it already asserts `md = 10 × COHORT_SIZE`).
+- **Files / declaration / migration:** registry row via a surgical migration + `asset_registry_seed.ts` (seed L553) + declarations entry
 - **Failing-first test and mutation:** rerun test: `rows_written` of a first build equals live count_sql (110,000) and a converged rerun equals 0 changed rows with the same live count; mutation: drop one md row → integrity/count test fails
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** registry option: none. Writer option: needs production rebuild (110,000 rows, idempotent upsert) to write the new record
+- **Rebuild:** none (registry/declaration only)
 - **Gate it moves:** Build (completion)
 - **Fix class:** writer code or registry/declaration; **buildable before J1:** tier-independent
-- **Question for SS:** Which side (writer reports both tables, or count_sql scoped to the primary table) does SS prefer? Both close the gate.
+- **Decision:** ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
 
 ### FD-2 · Carr detector — D3 independent re-derivation
 
@@ -145,6 +147,13 @@ Natural key `synthetic_id` for `bg_synthetic_cohort`, `(synthetic_id, md_index)`
 - **Carriage check chosen (T4 §4.1; one only):** D3 (a re-derivation of stored positions through the ephemeris, plus seed reproducibility).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Which side of the cohort count mismatch does SS want fixed (writer report or count_sql scope)?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+2. CF-02: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+4. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-30.

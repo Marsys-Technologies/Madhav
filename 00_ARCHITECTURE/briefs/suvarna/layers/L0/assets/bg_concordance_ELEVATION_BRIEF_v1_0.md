@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06]
 ledger_gap_ids: [bg_concordance-Idem.pattern, bg_concordance-Earn.build_record, bg_concordance-Cost.baseline, bg_concordance-Carr.detector]
 ---
 # bg_concordance — Topic × school attribution projection (`classical_attributions`)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -72,7 +74,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — the census has no non-detector cell for it (Build, Idem, Vocab PASS; Dens N/A). The weak point found in the writer, an empty `source_chunk_ids`, is a carriage limit not a registered gap (no detector exists for it); it is raised as a question and a design option below.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -112,18 +114,18 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)
 
-### FD-4 · Chunk-level carriage (design option, not a registered gap)
+### FD-4 · Chunk-level carriage (OPPORTUNITY, deferred by SS 2026-10-01, Q17)
 
 - **Answers:** writer header L11-16 (empty `source_chunk_ids`); no census cell; layer instance §2.7 b
-- **Change:** a pointer to the passage level would let a reader reach the cited chunk from an attribution. It needs a schema change (`source_chunk_ids` as TEXT[] or a join table keyed by `chunk_id`) and a writer change; it is an output change. Not registered as a gap because no detector states the requirement (T4 §5: a gap with no detector is a question).
+- **Change:** text-level carriage (`source_text_ids`) is the contract for now; chunk-level pointers are an opportunity, deferred. Not a Track I item. Recorded design for later: `source_chunk_ids` as TEXT[] or a join table keyed by `chunk_id`, plus a writer change (an output change).
 - **Files / declaration / migration:** a migration on `classical_attributions` + `bg_concordance.py`
 - **Failing-first test and mutation:** a round-trip test: each attribution’s chunk pointers resolve to chunks of the same topic and school; mutation: blank the pointers → test fails
 - **Output change:** `source_chunk_ids` populated; consumers of `classical_attributions` see new pointers (additive)
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none unless SS chooses it; if chosen, a production rebuild of bg_concordance (full replacement, global)
+- **Rebuild:** none now (deferred)
 - **Gate it moves:** Carr (b) and Reach
 - **Fix class:** data (output change) + writer code; **buildable before J1:** tier-dependent: T2 DP02 (rule qualification / witness carriage) wording
-- **Question for SS:** Does SS want chunk-level carriage on the attributions (an output change), or is text-level carriage the L0 contract?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q17): text-level carriage is the contract for now; chunk-level pointers are an opportunity, deferred.
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -140,8 +142,13 @@ Natural key `attribution_id` (census: 0 duplicates); logical key `(topic_id, sch
 
 - **Preserved kernel:** the (topic, school) grouping and the `TEXT_SCHOOL` assignment of each text; the 721-row projection; the rule overlap join.
 - **Carriage check chosen (T4 §4.1; one only):** D2 (witness carriage).
-- **Opportunities (never blocking):** chunk-level pointers (FD-4); the `TEXT_SCHOOL` map is a local name→school map (a Vocab rule 6 candidate: `school` is an ontology class with 8 rows; derive the map from it).
+- **Opportunities (never blocking):** chunk-level pointers (FD-4, deferred by SS); the `TEXT_SCHOOL` map is a local name→school map (a Vocab rule 6 candidate).
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Chunk-level carriage on `classical_attributions`: in scope for L0 or not?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q17): text-level carriage is the contract for now; chunk-level pointers are an opportunity, deferred.
+2. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06.

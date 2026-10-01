@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06, TI-L0-25, TI-L0-27]
 ledger_gap_ids: [bg_class_priors-Idem.pattern, bg_class_priors-Earn.build_record, bg_class_priors-Cost.baseline, bg_class_priors-Dens.served, bg_class_priors-Carr.detector]
 ---
 # bg_class_priors — Judgment and salience priors (171 rows, one partition of `brahma_class_priors`)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -65,7 +67,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_class_priors-Idem.pattern | Idem | stale | ledger row from an earlier run; saved census Idem.pattern reads PASS \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
 | bg_class_priors-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_class_priors-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_class_priors-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 1 module(s): query_class_priors.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_class_priors-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 1 module(s): query_class_priors.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_class_priors-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | census: Ldgr (no reading) | Ldgr | detector | no recognised citation column on the target table; CF-08 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
@@ -74,22 +76,22 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — all applicable Build/Idem/Vocab cells PASS or are detector gaps; the values are ratified judgments (`ratified_by`, `contested` columns), a different authority from the N_e baseline sharing the table (see bg_class_lifetime_counts for the consolidate question).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Carr applicability for judgment seeds
+### FD-1 · Carr for ratified judgment seeds: check-level N/A by cause `ratified_judgment` (R)
 
 - **Answers:** census Carr NO_DETECTOR; CF-07
-- **Change:** no D1/D2/D3 applies to a ratified judgment seed: the rows are not a restatement of a passage nor computable a second way. T4 §4.1 says where none applies the record is NO_DETECTOR with the reason; record the reason in the asset’s declarations so the gate is not left as an unexplained NO_DETECTOR. If SS wants a measurable carriage claim, the candidate is D1 against the seed package’s tables (a file-level correspondence of the 171 literals to the package §2–§4).
-- **Files / declaration / migration:** `asset_declarations.json` (reason string) — Track E file
+- **Change:** declare the fact that the 171 rows are ratified judgments (`ratified_by`, `contested`) so the Carr check reads N/A by cause `ratified_judgment` (decided: SS 2026-10-01, Q13, R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval. No D1/D2/D3 applies to a ratified judgment seed.
+- **Files / declaration / migration:** `asset_declarations.json` (declared fact + cause) — Track E file; the cause is added to the inspector by the E6 detector work
 - **Failing-first test and mutation:** declarations validation; mutation: delete the reason → gate returns to unexplained NO_DETECTOR
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (declaration)
 - **Gate it moves:** Carr
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-02 (carriage assignment) and an N-22 applicability rule
-- **Question for SS:** Is Carr N/A (with a decision id) for a ratified judgment seed, or does SS want the package-to-literals D1?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
 
 ### FD-2 · Declare `prose_fields` (Null and Narr gates)
 
@@ -118,15 +120,15 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-4 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 1 module: `query_class_priors.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -134,7 +136,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* Carr applicability for judgment seeds
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* `citation` column
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* shared module with bg_class_lifetime_counts
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* shared module with bg_class_lifetime_counts
 - **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert, no DELETE found; shares a table with bg_class_lifetime_counts, so any prune must be partition-scoped
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -144,9 +146,15 @@ Natural key `(prior_version, signal_type_class, fact_kind, source_subsystem, sig
 ## 6 · Preserved kernel, carriage check, opportunities
 
 - **Preserved kernel:** the 171 ratified priors with their `ratified_by` and `contested` flags; the sentinel encoding.
-- **Carriage check chosen (T4 §4.1; one only):** none applies as D1/D2/D3 (judgment seed); the reason is recorded (T4 §4.1 'where none applies, NO_DETECTOR with the reason').
+- **Carriage check chosen (T4 §4.1; one only):** none applies as D1/D2/D3 (judgment seed); check-level N/A by cause `ratified_judgment` from a declared fact (R).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Carr for judgment seeds: N/A with a decision id, or a package-correspondence D1?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+2. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+3. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-25, TI-L0-27.

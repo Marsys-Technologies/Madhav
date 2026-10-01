@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25]
 ledger_gap_ids: [bg_class_lifetime_counts-Idem.pattern, bg_class_lifetime_counts-Earn.build_record, bg_class_lifetime_counts-Cost.baseline, bg_class_lifetime_counts-Dens.served, bg_class_lifetime_counts-Carr.detector, bg_class_lifetime_counts-Build.history]
 ---
 # bg_class_lifetime_counts — N_e expected lifetime counts per event class (one partition of `brahma_class_priors`)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -65,7 +67,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_class_lifetime_counts-Idem.pattern | Idem | stale | ledger row from an earlier run; saved census Idem.pattern reads PASS \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
 | bg_class_lifetime_counts-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_class_lifetime_counts-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_class_lifetime_counts-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 1 module(s): query_class_priors.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_class_lifetime_counts-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 1 module(s): query_class_priors.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_class_lifetime_counts-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | bg_class_lifetime_counts-Build.history | Build | history | CF-10: a record of past errors/aborts; the latest run completed \| ledger: measured: latest run complete, but 0 error(s) and 1 abort(s) on record. / required: the Build gate's claim |
 | census: Ldgr (no reading) | Ldgr | detector | no recognised citation column on the target table; CF-08 |
@@ -75,7 +77,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — the census shows no real blocking gap beyond detectors and the Dens applicability question. The layer instance carried **C** (consolidate with `bg_class_priors`: one table, two partitions). The sources read here do not show shared authority: this partition is governed by ADJUDICATION-2 source tiers, `bg_class_priors` by the judgment seed package (`l0_class_priors.py:11`), and the count_sql already scopes each asset to its own rows (seed L580-608). T2 §10.1 C requires tracing callers and semantics before a successor is chosen; nothing found justifies one (smallest sufficient change).
 
-Approver under Track A brief §10: **Steward (G16)**. The divergence from the carried C is a proposal flagged to SS in §7 (a consolidation would be an SS decision under Track A §10).
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -118,15 +120,15 @@ Approver under Track A brief §10: **Steward (G16)**. The divergence from the ca
 ### FD-4 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 1 module: `query_class_priors.ts` (shared with bg_class_priors); CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -134,7 +136,7 @@ Approver under Track A brief §10: **Steward (G16)**. The divergence from the ca
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1/D3 as above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* source columns `citation` / `source_ref`
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* shares `query_class_priors.ts` with bg_class_priors
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* shares `query_class_priors.ts` with bg_class_priors
 - **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* 1 abort on record, latest run complete
 - **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert, no DELETE found; the module is APPEND-ONLY by its own header, so the answer is a declaration, not a prune
 
@@ -148,6 +150,14 @@ Natural key `(prior_version, signal_type_class, fact_kind, source_subsystem, sig
 - **Carriage check chosen (T4 §4.1; one only):** D1 (source correspondence to the published statistic) with D3 on the N-ii arithmetic identities; one detector, one table.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Keep both `bg_class_priors` and `bg_class_lifetime_counts` as separate assets (this brief) or hold the carried C open until the caller trace names a successor?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q10): all dispositions accepted as proposed.
+2. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+3. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+4. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+5. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25.
