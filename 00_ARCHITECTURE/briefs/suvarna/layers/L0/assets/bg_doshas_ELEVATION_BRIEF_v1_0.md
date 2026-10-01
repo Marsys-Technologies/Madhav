@@ -88,7 +88,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/python-sidecar/brahmagyan/l0_doshas.py` (the INSERT near L1989-2002 and the DOSHAS entries); no migration
 - **Failing-first test and mutation:** failing-first: count of `dosha` rows with empty `synonyms` = 79 now, 0 after; `count(*) = count(DISTINCT (entity_class, canonical_id))` unchanged (741); `resolve_entity` on a doṣa alias returns exactly one row. Mutation: blank one set → test fails
 - **Output change:** 79 `brahma_ontology` rows gain synonyms; `bg_doshas` row counts unchanged
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** the rebuild deletes and re-inserts `reference_doshas`, `brahma_dosha_catalog` (79) and the 79 `dosha` ontology rows (`l0_doshas.py:1942-1944`). Readers of the catalogue outside the L0 writers: `bg_parihara_rules` (declared dependent, reads it directly), L2 `bo_laksana.py`, L1 `ga_structural_writer.py`, `coverage_matrix.ts`, `parity_check.ts`. Ids are unchanged by the additive alias sets / state column, so downstream references still resolve.
 - **Rebuild:** needs production rebuild: bg_doshas (global delete-then-insert of 3 tables, ~237 rows), then no dependent rebuild is strictly required for an additive alias (readers resolve at query time)
 - **Gate it moves:** Vocab (alias FAIL → PASS on bg_ontology)
 - **Fix class:** data (output change) + writer code; **buildable before J1:** tier-independent for the sets; the release/normalisation clause is tier-dependent (TGH-T2-12)
@@ -101,7 +101,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a migration adding the column to `brahma_dosha_catalog` + `l0_doshas.py` (derive from `classical_citations`)
 - **Failing-first test and mutation:** counts: 26 `sourced`, 53 `unsourced`, citations unchanged; mutation: change a token to a verse → the state flips
 - **Output change:** one additive column on `brahma_dosha_catalog`
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** the rebuild deletes and re-inserts `reference_doshas`, `brahma_dosha_catalog` (79) and the 79 `dosha` ontology rows (`l0_doshas.py:1942-1944`). Readers of the catalogue outside the L0 writers: `bg_parihara_rules` (declared dependent, reads it directly), L2 `bo_laksana.py`, L1 `ga_structural_writer.py`, `coverage_matrix.ts`, `parity_check.ts`. Ids are unchanged by the additive alias sets / state column, so downstream references still resolve.
 - **Rebuild:** needs production rebuild: bg_doshas (after the migration)
 - **Gate it moves:** Ldgr (qualification), Carr
 - **Fix class:** data (output change); **buildable before J1:** tier-independent for the state
@@ -114,7 +114,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 1 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -126,7 +126,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 1 / transitive 1 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work

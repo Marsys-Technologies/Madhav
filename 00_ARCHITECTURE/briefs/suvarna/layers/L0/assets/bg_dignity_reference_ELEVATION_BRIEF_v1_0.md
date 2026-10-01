@@ -81,12 +81,12 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 ### FD-1 · One authority for combustion orbs: `bg_combustion_orbs` (Track I consolidation item)
 
 - **Answers:** no census cell and no ledger row (no detector exists); found by reading `l0_formula_constants.py:28-48` against `bg_dignity_reference.py` (combustion rows): the same orbs (Moon 12, Mars 17/15, Mercury 14/12, Jupiter 11/9, Venus 10/8, Saturn 15/12, Rahu/Ketu 9/7) are held both in `brahma_formula_constants` (`combustion_orbs`, citing "Already in bg_combustion_orbs; ka_vighnakara must read from here") and in `bg_combustion_orbs`
-- **Change:** decided (SS 2026-10-01, Q15): `bg_combustion_orbs` holds the values and `brahma_formula_constants` (`combustion_orbs`) references it rather than duplicating it; consumers `ga_condition`, `ka_vighnakara`, `ph_sodhana` are repointed. Until the consolidation lands, keep a parity test so the two copies cannot drift.
-- **Files / declaration / migration:** `brahmagyan/l0_formula_constants.py:28-48` (replace the value by a reference), the three consumers, a parity test under `platform/python-sidecar/pipeline/orchestrator/writers/tests/`
+- **Change:** decided (SS 2026-10-01, Q15): `bg_combustion_orbs` is the single authority and `brahma_formula_constants` stops duplicating it. **Consumers, as traced in the repo:** `ga_condition_writer.py:657-663` and `ka_vighnakara.py:295-302` ALREADY read `bg_combustion_orbs`; `ph_sodhana.py` has no combustion or formula-constants reference; no code reader of the `combustion_orbs` constant by id was found (only the generic `query_formula_constants.ts` serves the table), so the constant row’s `consumer_assets` list (`ga_condition`, `ka_vighnakara`, `ph_sodhana`) is untraceable metadata. So the consolidation is: replace or remove the duplicate constant value and correct `consumer_assets`; there is nothing to repoint. Until then keep the parity test.
+- **Files / declaration / migration:** `brahmagyan/l0_formula_constants.py:28-48`, the constant’s `consumer_assets`, a parity test until the consolidation lands
 - **Failing-first test and mutation:** failing-first: perturb one copy in a fixture → test fails
 - **Output change:** the `combustion_orbs` constant becomes a reference; consumers read the orbs table
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild of bg_formula_constants (after the reference lands) and the consumers read the new source
+- **Blast radius:** one row of `brahma_formula_constants`; the traced readers of the orbs already use `bg_combustion_orbs`, so no consumer output changes; untraceable `consumer_assets` metadata is corrected.
+- **Rebuild:** needs production rebuild of bg_formula_constants (one constant changes representation); no consumer rebuild
 - **Gate it moves:** Carr/Vocab (independent-authority check; no registered gate cell yet)
 - **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent (decided)
 - **Decision:** ANSWERED by SS 2026-10-01 (Q15): one authority: `bg_combustion_orbs` holds the values and `brahma_formula_constants` references it rather than duplicating it (Track I consolidation item).
@@ -98,7 +98,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 23 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -110,7 +110,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 23 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -122,7 +122,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `asset_declarations.json` (`carriage`/`read_evidence`)
 - **Failing-first test and mutation:** declarations validation; inspector reads a served read
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 23 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none
 - **Gate it moves:** Dens (NO_DETECTOR → FAIL/PASS/N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: N-22 + TGH-T3-26
