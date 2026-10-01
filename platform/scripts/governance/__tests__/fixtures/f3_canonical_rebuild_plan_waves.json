@@ -1,0 +1,55 @@
+{
+ "_source": "CANONICAL_CHART_REBUILD_PLAN_v1_0.md section 1.3 (suvarna/land/rebuild-plan-001), copied 2026-10-01; the real plan contains no MSR writer",
+ "waves": [
+  [
+   "bg_transit_rules",
+   "ka_muhurta_seva",
+   "bo_karanajala",
+   "bo_pratijna"
+  ],
+  [
+   "bo_drishti",
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "ka_avadhi",
+   "ka_gochara",
+   "ka_yojaka"
+  ],
+  [
+   "bo_anveshana",
+   "bo_upaya",
+   "ka_sangam"
+  ],
+  [
+   "ka_kalasutra",
+   "ka_vighnakara"
+  ],
+  [
+   "ka_kala_darshana"
+  ],
+  [
+   "ka_bhavishya_lekha"
+  ],
+  [
+   "ph_nimitta"
+  ],
+  [
+   "ph_muhurta",
+   "ph_pratikara",
+   "ph_sankrama",
+   "ph_sodhana"
+  ],
+  [
+   "ph_suddha_sodhana"
+  ],
+  [
+   "ph_pramana"
+  ],
+  [
+   "ph_phaladesa"
+  ],
+  [
+   "mi_bhavisya"
+  ]
+ ]
+}
