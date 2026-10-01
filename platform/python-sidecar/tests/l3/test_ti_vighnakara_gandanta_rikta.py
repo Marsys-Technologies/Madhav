@@ -11,10 +11,13 @@ THE DEFECTS in ka_vighnakara (before this change):
      Rikta tithis (19/24/29) were missed.
 
 The fix reads ONE definition of each (CLAUDE.md §N.7 item 3): `check_gandanta` from the L1
-`ga_sensitive_degree_writer`, and `RIKTA_TITHI_IDS` from `panchang_engine.rich_topics`.
+`ga_sensitive_degree_writer`, and the Rikta classification from `panchang_engine.rich_topics`
+(`compute_tithi_attrs`).
 """
 from __future__ import annotations
 
+import ast
+import math
 import re
 from datetime import date
 from pathlib import Path
@@ -65,8 +68,8 @@ def _fires(lon: float) -> bool:
 @pytest.mark.parametrize("water,fire", JUNCTIONS)
 def test_water_sign_fires_only_in_its_last_3deg20(water, fire):
     base = water * 30.0
-    edge = 30.0 - ARC                       # 26°40' — exactly the arc edge, inclusive
-    assert _fires(base + edge)              # exactly 26°40'
+    edge = 30.0 - ARC                       # 26°40' (L1 edge is pinned exactly in the direct tests below)
+    assert _fires(base + edge)              # at 26°40' within the writer's 9-decimal rounding
     assert _fires(base + 28.0)
     assert _fires(base + 29.999)
     assert not _fires(base + edge - 0.01)   # just before the arc
@@ -80,7 +83,7 @@ def test_fire_sign_fires_only_in_its_first_3deg20(water, fire):
     assert _fires(base + 0.0)               # the junction itself
     assert _fires(base + 0.01)
     assert _fires(base + 3.0)
-    assert _fires(base + ARC)               # exactly 3°20' — inclusive edge
+    assert _fires(base + ARC)               # at 3°20' within the writer's 9-decimal rounding
     assert not _fires(base + ARC + 0.01)    # just past the arc
     assert not _fires(base + 15.0)
 
@@ -90,9 +93,13 @@ def test_both_sides_of_each_junction_point_fire_and_name_the_sign(water, fire):
     junction = fire * 30.0 if fire else 360.0
     before = _check_gandanta("2030-01-01", jd=1.0, swe=_MoonSwe((junction - 0.5) % 360.0))
     after = _check_gandanta("2030-01-01", jd=1.0, swe=_MoonSwe((junction + 0.5) % 360.0))
+    # junction_sign keeps its legacy meaning (the WATER sign of the junction) on both sides;
+    # moon_sign is the sign the Moon actually occupies.
     assert before["detail"]["junction_sign"] == SIGNS[water]
+    assert after["detail"]["junction_sign"] == SIGNS[water]
+    assert before["detail"]["moon_sign"] == SIGNS[water]
+    assert after["detail"]["moon_sign"] == SIGNS[fire]
     assert before["detail"]["gandanta_zone"] == f"end_of_{SIGNS[water]}"
-    assert after["detail"]["junction_sign"] == SIGNS[fire]
     assert after["detail"]["gandanta_zone"] == f"start_of_{SIGNS[fire]}"
     assert before["detail"]["distance_to_junction_deg"] == pytest.approx(0.5, abs=1e-3)
 
@@ -119,6 +126,74 @@ def test_writer_reads_the_l1_gandanta_definition_not_a_local_copy():
     r = _check_gandanta("2030-01-01", jd=1.0, swe=_MoonSwe(117.0))
     assert r["detail"]["citation"] == l1.GANDANTA_CITATION
     assert r["detail"]["gandanta_arc_deg"] == round(l1.GANDANTA_ARC, 4)
+
+
+# ── L1 edge inclusivity, pinned directly on the definition the writer reads ─────
+
+@pytest.mark.parametrize("water,fire", JUNCTIONS)
+def test_l1_check_gandanta_edges_are_inclusive_at_exactly_3deg20(water, fire):
+    edge_in_water = 30.0 - l1.GANDANTA_ARC   # 26°40' exactly as the L1 module computes it
+    assert l1.check_gandanta(water, edge_in_water)["fired"]
+    assert not l1.check_gandanta(water, math.nextafter(edge_in_water, 0.0))["fired"]
+    assert l1.check_gandanta(water, 29.999999)["fired"]
+    assert l1.check_gandanta(fire, l1.GANDANTA_ARC)["fired"]
+    assert not l1.check_gandanta(fire, math.nextafter(l1.GANDANTA_ARC, 30.0))["fired"]
+    assert l1.check_gandanta(fire, 0.0)["fired"]
+
+
+def test_writer_effective_edge_is_within_a_nano_degree_of_the_l1_edge():
+    # The writer rounds the in-sign degree to 9 decimals (float hygiene), so its effective edge
+    # sits at most ~5e-10 deg outward of the exact L1 edge. Pinned so it cannot silently widen:
+    # 1e-8 deg past the edge must NOT fire.
+    for water, fire in JUNCTIONS:
+        assert not _fires(water * 30.0 + (30.0 - ARC) - 1e-8)
+        assert not _fires(fire * 30.0 + ARC + 1e-8)
+
+
+# ── Reason / narration text for the zone ────────────────────────────────────────
+
+def test_reason_text_names_end_vs_start_of_sign_and_distance():
+    end = _check_gandanta("2030-01-01", jd=1.0, swe=_MoonSwe(117.0))["detail"]    # Cancer 27 deg
+    start = _check_gandanta("2030-01-01", jd=1.0, swe=_MoonSwe(123.0))["detail"]  # Leo 3 deg
+    assert "end of Cancer" in end["reason"] and "start of" not in end["reason"]
+    assert "3.00° from the water-fire junction" in end["reason"]
+    assert "start of Leo" in start["reason"] and "end of" not in start["reason"]
+    assert "3.00° from the water-fire junction" in start["reason"]
+    assert end["junction_sign"] == start["junction_sign"] == "Cancer"
+    assert (end["moon_sign"], start["moon_sign"]) == ("Cancer", "Leo")
+
+
+# ── The writer FOLLOWS the L1/engine definitions (not just matches them today) ──
+
+def _calls_in(fn_name: str) -> set:
+    tree = ast.parse(WRITER_SRC)
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == fn_name)
+    return {c.func.id for c in ast.walk(fn) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
+
+
+def test_detectors_call_the_shared_definitions():
+    assert "check_gandanta" in _calls_in("_check_gandanta")
+    assert "compute_tithi_attrs" in _calls_in("_is_rikta_tithi")
+    assert "_is_rikta_tithi" in _calls_in("_check_panchanga_obstruction")
+
+
+def test_gandanta_detector_follows_the_l1_definition_when_it_changes(monkeypatch):
+    monkeypatch.setattr(kv, "check_gandanta", lambda sn, d: {"fired": False, "sign": SIGNS[sn]})
+    assert not _fires(117.0)                                   # real gandanta, but L1 says no
+    monkeypatch.setattr(kv, "check_gandanta", lambda sn, d: {
+        "fired": True, "sign": SIGNS[sn], "gandanta_zone": f"end_of_{SIGNS[sn]}",
+        "distance_to_junction_deg": 1.0, "gandanta_arc_deg": 3.3333})
+    assert _fires(45.0)                                        # Taurus: not gandanta, but L1 says yes
+
+
+def test_rikta_detector_follows_the_engine_definition_when_it_changes(monkeypatch):
+    class _Attrs:
+        def __init__(self, t):
+            self.anga_type = "Rikta" if t == 15 else "Poorna"
+
+    monkeypatch.setattr(kv, "compute_tithi_attrs", lambda t: _Attrs(t))
+    assert _tithi_hits(monkeypatch, 15)
+    assert not _tithi_hits(monkeypatch, 4)
 
 
 # ── Rikta ───────────────────────────────────────────────────────────────────────
