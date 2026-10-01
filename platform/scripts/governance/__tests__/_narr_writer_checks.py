@@ -568,7 +568,7 @@ def _datum_index(tree):
     return binds, fdefs
 
 
-def reads_datum(tree, node, _seen=None):
+def reads_datum(tree, node, _seen=None):  # _seen: {id(node): node}; a dict so visited nodes stay alive and their ids unique
     """True when the value of expression `node` depends on a fact DATUM (a read of fact_value_text / fact_value_num /
     fact_value_jsonb / configuration_jsonb): a string constant naming one anywhere in the expression, in a value a name it
     uses is bound from (assignment, loop iterable, the argument a caller binds to a parameter), or in the body of a module
@@ -576,13 +576,13 @@ def reads_datum(tree, node, _seen=None):
     the data dependence, not the variable name, so `name` cannot hide a computed status."""
     binds, fdefs = _datum_index(tree)
     if _seen is None:                      # top-level search: nodes already fully explored with no datum found are not re-walked
-        neg = _DATUM_NEG.setdefault(id(tree), set())
-        seen = set()
+        neg = _DATUM_NEG.setdefault(id(tree), {})
+        seen = {}
         found = _reads_datum(tree, node, seen, binds, fdefs, neg)
         if not found:
-            neg |= seen
+            neg.update(seen)               # id -> node: each entry holds its node, so the address can never be reused
         return found
-    return _reads_datum(tree, node, _seen, binds, fdefs, set())
+    return _reads_datum(tree, node, _seen, binds, fdefs, {})
 
 
 _DATUM_NEG = {}
@@ -591,7 +591,7 @@ _DATUM_NEG = {}
 def _reads_datum(tree, node, _seen, binds, fdefs, neg):
     if id(node) in _seen or id(node) in neg:
         return False
-    _seen.add(id(node))
+    _seen[id(node)] = node
     for x in ast.walk(node):
         if isinstance(x, ast.Constant) and isinstance(x.value, str) and x.value in DATUM_KEYS:
             return True

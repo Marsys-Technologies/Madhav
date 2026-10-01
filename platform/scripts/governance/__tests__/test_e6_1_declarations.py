@@ -2360,6 +2360,19 @@ def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_de
     assert nw.reads_datum(st, ast.parse("cfg['configuration_jsonb']", mode="eval").body) is True
 
 
+def test_reads_datum_negative_cache_is_not_poisoned_by_freed_ad_hoc_nodes():
+    """reads_datum caches "no datum" per tree. Keyed by id(node) without holding the node, a freed throwaway probe's address
+    is later reused by another throwaway probe, which then read as a cached False (flaky by allocator layout / PYTHONHASHSEED).
+    Probes of one tree, freed between calls, must never change a later answer."""
+    st = ast.parse("K = ('a',)\ndef run(cfg):\n    return {'citation_human': f'{K[0]}'}\n")
+    probes = [ast.parse("K[0]", mode="eval").body for _ in range(3000)]     # distinct throwaway "no datum" probes ...
+    assert all(nw.reads_datum(st, q) is False for q in probes)
+    del probes                                                              # ... all freed
+    held = [ast.parse("cfg['configuration_jsonb']", mode="eval").body for _ in range(30000)]   # live: covers the freed blocks
+    bad = [i for i, q in enumerate(held) if nw.reads_datum(st, q) is not True]
+    assert not bad, f"{len(bad)} datum probes read False from a stale negative cache entry at a reused address"
+
+
 def test_citation_forwarded_headline_and_mechanism_name_are_composed_by_their_callers():
     em = _ctree(_SC + "bodha_writers/vargottama_dhana_emitter.py")
     fwd = [s for s in nw.citation_sites(em) if s[2] == "passthrough"]
