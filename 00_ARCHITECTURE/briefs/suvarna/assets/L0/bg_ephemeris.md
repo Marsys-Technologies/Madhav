@@ -1,0 +1,179 @@
+---
+asset_id: bg_ephemeris
+layer: L0 Brahmagyan (bg_*)
+artifact: ASSET_ELEVATION_BRIEF
+version: "1.0-provisional"
+status: "PROVISIONAL — until J1; may register gaps, may not certify"
+produced_by: exec-suvarna
+produced_on: 2026-10-01
+plan_item: A.L0 (briefs, dispositions, designs)
+census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L0.json` (generated 2026-09-30T20:21:19+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access."
+template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
+layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1.md (3.1-rev1, PROVISIONAL)"
+base_commit: "main 0250cbade"
+disposition: "keep (P)"
+disposition_proposal_approver: "Steward (G16)"
+ledger_gap_ids: [bg_ephemeris-G01, bg_ephemeris-G02, bg_ephemeris-G03, bg_ephemeris-G04, bg_ephemeris-G05, bg_ephemeris-G06, bg_ephemeris-O1, bg_ephemeris-O2, bg_ephemeris-O3, bg_ephemeris-O4, bg_ephemeris-Build.completion, bg_ephemeris-Earn.build_record, bg_ephemeris-Cost.baseline, bg_ephemeris-Dens.served, bg_ephemeris-Carr.detector, bg_ephemeris-Earn.build_record, bg_ephemeris-G03, bg_ephemeris-Dens.served, bg_ephemeris-G05, bg_ephemeris-Carr.D3, bg_ephemeris-G02, bg_ephemeris-Carr.detector]
+---
+# bg_ephemeris — Daily ephemeris, 1900-01-01 → 2150-12-31 (825,084 rows)
+
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+
+## 0 · Identity — what the asset is
+
+`ephemeris_daily`: tropical longitudes for 9 bodies (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu) × 91,676 days at a noon-UT epoch, computed with pyswisseph from the pinned file-backed corpus; a governed rebuild fails closed rather than accept the analytic fallback (`platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py:36-45`). Registry description 'Swiss Ephemeris DE441 — raw astronomical positions'; raw tropical stored, five ayanāṃśas derived at read time (seed `asset_registry_seed.ts:185-200`, floor 825,084). Idempotency is a conditional upsert that leaves exact rows untouched, so a rerun reports only inserted or repaired rows (`bg_ephemeris.py:9-12`, `ON CONFLICT (date, body, ayanamsha_id) DO UPDATE` at `:133`). **The node frame is TRUE node, noon UT, declared per row in `node_mode`/`epoch_convention`** (`brahmagyan/l0_ephemeris.py:9-17,66-70`), while the engine service, `routers/ephemeris.py` and `panchang_engine/planets.py` mandate MEAN_NODE as the house standard (same header). Highest-consumption L0 table: 46 non-test py/ts/tsx files reference `ephemeris_daily`. Declared dependents: `bg_gochara_arcs` (an R9 asset) and five Kāla assets (`ka_gochara`, `ka_graha_sancara`, `ka_kota_chakra`, `ka_moorti_nirnaya`, `ka_vedha_gochara`); census direct 6 / transitive 35.
+
+| field | value | source |
+|---|---|---|
+| kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:185` | seed (live may differ by migration) |
+| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py:38`; registry `has_writer` = True | writers dir, census `Build.registered` |
+| target table(s) | `ephemeris_daily`; count_sql tables: `ephemeris_daily` | census CEN-R |
+| live rows / floor | 825084 / 825,084 (Δ +0) | census `live_rows`; floor from layer instance §1.1 table |
+| catalog_status | CURRENT | census |
+| depends_on (intra-L0, live) | none | layer instance §2.5 (Q-02) |
+| blast radius | declared dependents (live, saved census blocking_radius): direct 6 / transitive 35 (every layer); named: `bg_gochara_arcs`, `ka_gochara`, `ka_graha_sancara`, `ka_kota_chakra`, `ka_moorti_nirnaya`, `ka_vedha_gochara` | census `blocking_radius`; names from seed + migrations (reconstruction) |
+| code readers (declared-vs-actual) | `ephemeris_daily`: 46 non-test py/ts/tsx files reference it (35 outside brahmagyan/ and bg_*.py writers): `ephemeris.py`, `panchang.py`, `transit_search.py`, `brahma_pipeline.py`, `ka_moorti_nirnaya.py` +30 | `grep -rlw` over platform/python-sidecar, platform/src, platform-mcp/src (py/ts/tsx, paths containing `test` and `/generated/` excluded; run 2026-10-01) |
+| served surface | `get_graha_yuddha.ts`; `density_contract` declared on 0 of 46 L0 capability modules (layer instance §1.4) | census reach |
+| role / scoring mode | neither (supplies what manifestation and time rest on); fidelity (reference layer: never retired for want of a reader) | layer instance §0.2, §4.4 |
+
+## 1 · Measured state and the nine gates (saved census, per criterion)
+
+Census used: saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L0.json` (generated 2026-09-30T20:21:19+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access.
+
+`†` marks a criterion whose definition changed on main since the saved run (a later re-measure is expected for it): Build.dag rev 1 -> 2 (reads-match clause, any-layer unknown dep, cycle); Build.target rev 1 -> 2 (declared service with no target_table reads PASS by declaration); Idem.pattern rev 1 -> 2 (relative imports resolve; update-only reading); Dens.served rev 1 -> 4 (needs a density_contract AND a tier column in the served select; comment-only mentions no longer count).
+
+| gate | criterion | saved verdict | measured (saved census text) |
+|---|---|---|---|
+| Earn | Earn.build_record | NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04) |
+| Carr | Carr.detector | NO_DETECTOR | no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics |
+| Dens | Dens.served † | FAIL | 4 module(s): query_aspects_at_time.ts, query_planet_position.ts, query_planet_transit.ts, query_retrograde_periods.ts; declaring density_contract: 0 |
+| Build | Build.completion | FAIL | build record says rows_written=0 against live=825084 (global) |
+| Build | Build.dep_liveness | N/A | no declared dependencies |
+| Cost (information, D3) | Cost.baseline | NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04) |
+| Null / Narr | not in saved census | NO_DETECTOR (registered at rev 5) | declarations file 1.6.0: `prose_fields` = null (undeclared: Null/Narr read NO_DETECTOR) |
+
+**PASS cells (compact):** Ldgr.source_presence (source_citation populated on 825084/825084 rows); Idem.pattern † (INSERT … ON CONFLICT into the asset's own table(s) (upsert): ephemeris_daily (bg_ephemeris.py:125)); Vocab.identity (declared key (date, body, ayanamsha_id): 0 duplicate(s)); Build.contract; Build.count_integrity; Build.dag †; Build.exercised (3 executed run(s) of 3 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04); Build.history; Build.registered (@register in bg_ephemeris.py; registry agrees); Build.target †; Count.floor; Complete.depth.
+
+**Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; N/A reads NO_DETECTOR because `NA_RULE_DECISIONS` is empty on main; this is not a re-measure and not a certification): Ldgr PASS · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens FAIL · Build FAIL.
+
+## 2 · Gaps — which are real, which are detector gaps
+
+Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row written by an earlier inspector run that the saved census now reads PASS/N/A; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3).
+
+| gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, or census cell) | gate | class | note |
+|---|---|---|---|
+| bg_ephemeris-G01 | Vocab | real | `body` stored capitalised (`Jupiter`) against lowercase ontology ids (`jupiter`); `integrity_check_sql` pins the capitalised array. Not measured by the census (Vocab.identity reads the declared key only) \| ledger: measured: body is stored as 'Jupiter'/'Ketu'/'Mars' while brahma_ontology planet canonical_ids are lowercase (jupiter, ketu, mars) — every join from the most-read L0 tab… |
+| bg_ephemeris-G02 | Carr | detector | no D3 re-derivation; the integrity SQL asserts shape only |
+| bg_ephemeris-G03 | Build | real (T4 check 6); cause established as the changed-rows convention | the ledger proposes "instrument the COPY path"; the writer docstring (`bg_ephemeris.py:9-12`) says rowcount counts only inserted or repaired rows, so 0 is expected on a converged rerun (whether the latest recorded run was one was not read from build_run_assets); CF-01 |
+| bg_ephemeris-G04 | Complete | information / opportunity | `node_mode` holds one value (`true`); mean-node rows are not held \| ledger: measured: node_mode holds one value ('true'); mean-node positions are not held, while the schema can express both and the data plane warns against erasing true/mean conv… |
+| bg_ephemeris-G05 | Dens | real as measured at rev 1; applicability and re-measure pending | 4 modules, 0 declare a density_contract; CF-04 \| ledger: measured: 4 capability modules expose it, 0 declare a density_contract / required: declared where the capability paginates or facets |
+| bg_ephemeris-G06 | Reach | information | field-level exposure census was not run in the ledger; the saved census records reach for this asset (`Reach.fields`) \| ledger: measured: field-level exposure census NOT RUN for the 4 serving modules / required: measured, not assumed |
+| bg_ephemeris-O1 | NONE | opportunity | mean-node rows or a declared limit (P13) \| ledger: answers P13 for the node, which today cannot be answered from this table |
+| bg_ephemeris-O2 | NONE | opportunity | sub-daily grain decision \| ledger: the grain decision taken deliberately once instead of inherited |
+| bg_ephemeris-O3 | NONE | opportunity | D3 as a standing check \| ledger: a real second opinion on 825,084 computed values |
+| bg_ephemeris-O4 | NONE | opportunity | a rate baseline for the layer’s largest build \| ledger: a baseline for the layer's largest build, without which O2's options cannot be compared |
+| bg_ephemeris-Build.completion | Build | real (T4 §4.2 check 6) | see the fix design \| ledger: measured: build record says rows_written=0 against live=825084 / required: the Build gate's claim |
+| bg_ephemeris-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
+| bg_ephemeris-Cost.baseline | Cost | information | same absent instrument; CF-05 |
+| bg_ephemeris-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | duplicate of G05 after folding (R81) \| ledger: measured: 4 module(s): query_aspects_at_time.ts, query_planet_position.ts, query_planet_transit.ts, query_retrograde_periods.ts; declaring density_contract: 0 / required… |
+| bg_ephemeris-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
+| bg_ephemeris-Carr.D3 | Carr | detector | same as G02 (folded) |
+| census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
+
+## 3 · Disposition
+
+**keep (P)** — the grid is complete (91,676 days × 9 bodies, no missing cell, layer instance Q-14) and every Build cell is PASS except the `rows_written = 0` convention reading. The open items are the vocabulary mismatch, the unproven carriage and a documented node-convention split that is a domain decision, not a defect to fix here.
+
+Approver under Track A brief §10: **Steward (G16)**. 
+
+## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
+
+### FD-1 · Vocab: declare the body-name normalisation once at the authority
+
+- **Answers:** ledger `bg_ephemeris-G01`; census Vocab.identity PASS (declared key only); CF-09 (b)
+- **Change:** recommended first step: do NOT rewrite the 825,084 stored values. Declare the normalisation rule at the ontology (planet ids lowercase; ephemeris stores the display form) and give consumers one resolving function, so no join passes through ad-hoc case handling. The alternative (rewrite `body` to lowercase) must move `integrity_check_sql` in the same migration and changes a column read by up to 46 files and by the R9 arcs.
+- **Files / declaration / migration:** declaration at the authority (ontology/registry, CF-09) + a resolving helper used by consumers; only if SS chooses the rewrite: a migration and `brahmagyan/l0_ephemeris.py`/`bg_ephemeris.py` plus `integrity_check_sql`
+- **Failing-first test and mutation:** failing-first join census: `body` resolves to exactly one ontology `planet` row with no case handling (fails today); mutation: add a body spelling not in the set → raised, not silently matched
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Rebuild:** declaration + helper: none. Rewrite option: needs production rebuild (825,084 rows) AND R9 notification to Pravāha first (arcs consume this table)
+- **Gate it moves:** Vocab (rule 3)
+- **Fix class:** registry/declaration only (recommended) or data; **buildable before J1:** tier-dependent: Vocab rule 3 wording and the release clause (TGH-T2-12)
+- **Question for SS:** Normalise at the authority (no stored-value change) or rewrite stored `body` values (output change, R9)?
+
+### FD-2 · Build.completion: converged rerun reports 0 changed rows
+
+- **Answers:** census `Build.completion` FAIL ("rows_written=0 against live=…"); CF-01
+- **Change:** apply CF-01 option A (or B after the ruling): the writer docstring declares the changed-rows convention (`bg_ephemeris.py:9-12`); the declaration + detector rule of CF-01 A closes it without a rebuild
+- **Files / declaration / migration:** `platform/scripts/governance/asset_census.py` (Build.completion) + the asset’s declarations entry; option B instead edits the seed function’s returned counts
+- **Failing-first test and mutation:** see CF-01
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Rebuild:** A: none. B: needs production rebuild of this asset (idempotent, no data change)
+- **Gate it moves:** Build (completion)
+- **Fix class:** detector/tooling (A) or writer code (B); **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording
+- **Question for SS:** CF-01: is a converged-rerun `rows_written = 0` on a declared changed-rows writer a PASS?
+
+### FD-3 · Carr detector — D3 re-derivation by a second path
+
+- **Answers:** census `Carr.detector` NO_DETECTOR; CF-07
+- **Change:** recompute a stratified sample of stored longitudes with pyswisseph through a different ephemeris route (the analytic Moshier mode, which is independent of the file-backed corpus) and compare within a declared tolerance; add a continuity check (day-to-day delta against the speed implied by neighbouring rows) and a station-sign check against `bg_sky_calendar`. Reproduction by the same pinned corpus is a weaker second check and is stated as such. Seeded error: shift one row by a degree → must be caught. No JH-parity oracle (CLAUDE.md §N.4).
+- **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
+- **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Rebuild:** none (detector only)
+- **Gate it moves:** Carr (NO_DETECTOR → measured)
+- **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
+
+### FD-4 · Declare `prose_fields` (Null and Narr gates)
+
+- **Answers:** census Null/Narr cells NO_DETECTOR (declarations `prose_fields: null`); CF-06
+- **Change:** Read `bg_ephemeris.py`, `brahmagyan/l0_ephemeris.py` for any composed text column; declare `[]` expected (numeric table; `source_citation` is a literal)
+- **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
+- **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Rebuild:** none (declaration only)
+- **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
+
+### FD-5 · Dens: declare density on the served module(s)
+
+- **Answers:** census `Dens.served` FAIL (saved, rev 1): 4 modules: `query_aspects_at_time.ts`, `query_planet_position.ts`, `query_planet_transit.ts`, `query_retrograde_periods.ts`; CF-04
+- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
+- **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Rebuild:** none (TypeScript only)
+- **Gate it moves:** Dens
+- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
+- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+
+### Shared fixes that apply to this asset (full design in `INDEX.md`)
+
+- **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
+- **CF-01** — Build.completion for converged reruns (rows_written = changed rows, not rows present). *This asset:* rows_written = 0 on a converged rerun by the writer’s stated convention
+- **CF-09** — Identity and normalisation reconciliation at the authority (bg_ontology and its consumers). *This asset:* body-name case
+- **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D3 above
+- **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
+- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 4 modules
+- **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* no gap: `source_citation` 825,084/825,084
+
+## 5 · Semantic fingerprint contract (for E5.5)
+
+Natural key `(date, body, ayanamsha_id)` (census, 0 duplicates) over 825,084 rows; the semantic fingerprint is the ordered longitudes (and `node_mode`, `epoch_convention` for the nodes). Volatile columns excluded: `created_at`, any build id. Conditional upsert: a converged rebuild leaves the fingerprint unchanged by construction.
+
+## 6 · Preserved kernel, carriage check, opportunities
+
+- **Preserved kernel:** the 91,676 × 9 grid, the pinned file-backed corpus and fail-closed rule, the noon-UT epoch, the per-row node declaration.
+- **Carriage check chosen (T4 §4.1; one only):** D3 (independent re-derivation by a second ephemeris route plus continuity).
+- **Opportunities (never blocking):** the four ledger opportunities `bg_ephemeris-O1…O4` (mean-node rows or a declared limit; grain decision; standing D3; build-cost baseline).
+
+## 7 · Questions for Strategic Suvarṇa
+
+1. Node convention: the table holds TRUE node while the engine/panchang standard is MEAN_NODE. Is the split intended and declared, or must SS rule one convention for consumers (a domain decision, not made here)?
+2. Body-name normalisation: authority-side declaration or stored-value rewrite (R9: Pravāha reads the arcs built from this table)?
+3. CF-01: is a converged-rerun `rows_written = 0` a Build.completion PASS?
