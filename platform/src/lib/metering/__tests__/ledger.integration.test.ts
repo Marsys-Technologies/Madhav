@@ -22,7 +22,7 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
  beforeAll(async()=>{
   await client.connect()
   await client.query(`CREATE ROLE amjis_app;CREATE ROLE browser_reader;
-   CREATE TABLE llm_usage_events(id uuid PRIMARY KEY, user_id text,conversation_id uuid,prompt_id text,parent_prompt_id text,channel text,
+   CREATE TABLE llm_usage_events(event_id uuid PRIMARY KEY, user_id text,conversation_id text,prompt_id text,parent_prompt_id text,channel text,
    provider text,model text,pipeline_stage text,started_at timestamptz,finished_at timestamptz,status text,parameters jsonb,
    input_tokens bigint,output_tokens bigint,cache_read_tokens bigint,cache_write_tokens bigint,reasoning_tokens bigint,provider_request_id text,computed_cost_usd numeric)`)
   const sql=await readFile('supabase/migrations/1202_ai_metering_ledger.sql','utf8')
@@ -67,7 +67,7 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
  })
  it('does not duplicate a compatibility aggregate and labels historical usage',async()=>{
   const start=attempt();await insertAttempt(start,db)
-  const insert=`INSERT INTO llm_usage_events(id,user_id,prompt_id,provider,model,pipeline_stage,channel,started_at,finished_at,status,input_tokens,output_tokens,computed_cost_usd) VALUES($1,'alice',$2,'openai','old','planner','web','2026-09-29T10:00:00Z','2026-09-29T10:00:01Z','success',2,3,0.2)`
+  const insert=`INSERT INTO llm_usage_events(event_id,user_id,prompt_id,provider,model,pipeline_stage,channel,started_at,finished_at,status,input_tokens,output_tokens,computed_cost_usd) VALUES($1,'alice',$2,'openai','old','planner','web','2026-09-29T10:00:00Z','2026-09-29T10:00:01Z','success',2,3,0.2)`
   await client.query(insert,[crypto.randomUUID(),start.operationId]);await client.query(insert,[crypto.randomUUID(),'historic-operation'])
   const data=await usageEvents(filter(),{ownerId:'alice'},db)
   expect(data.events.filter(row=>row.evidence==='legacy')).toHaveLength(1)
@@ -75,7 +75,7 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
  })
  it('preserves sub-millisecond legacy ordering in cursor pagination',async()=>{
   const ids=[crypto.randomUUID(),crypto.randomUUID()]
-  for(let i=0;i<2;i++)await client.query(`INSERT INTO llm_usage_events(id,user_id,prompt_id,provider,model,pipeline_stage,started_at,finished_at,status,input_tokens,output_tokens)
+  for(let i=0;i<2;i++)await client.query(`INSERT INTO llm_usage_events(event_id,user_id,prompt_id,provider,model,pipeline_stage,started_at,finished_at,status,input_tokens,output_tokens)
    VALUES($1::uuid,'alice',$1::uuid::text,'openai','microsecond','planner',$2,$2,'success',1,1)`,[ids[i],`2026-09-29T11:00:00.12345${6-i}Z`])
   const first=await usageEvents(filter('model=microsecond&limit=1'),{ownerId:'alice'},db)
   const second=await usageEvents(filter(`model=microsecond&limit=1&cursor=${first.nextCursor}`),{ownerId:'alice'},db)
