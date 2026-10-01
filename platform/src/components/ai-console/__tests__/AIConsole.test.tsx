@@ -197,7 +197,7 @@ describe('AI Console', () => {
   })
 
   it('saves a tested Claude CLI model and effort without offering another CLI family', async () => {
-    const { calls } = setup(undefined, { cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'claude_code'
+    const { calls } = setup(undefined, { cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'claude_code' && 'models' in cli
       ? { ...cli, models: [...cli.models, { modelId: 'claude-sonnet-4-6', displayName: 'Sonnet 4.6',
         compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: true,
         supportsStructuredOutput: true, isBuiltinDefault: false }] } : cli) } })
