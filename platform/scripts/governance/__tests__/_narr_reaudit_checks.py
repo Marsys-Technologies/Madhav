@@ -72,6 +72,31 @@ def _assignments(scope, name):
     return out
 
 
+def nonplain_rebinds(scope, name):
+    """Nodes that re-bind the bare name `name` inside `scope` other than by `name = value`: tuple/list unpacking, a for/with/
+    except target, `+=`, `:=`. Each hides what the name holds from a value-flow check, so each is a problem for a bound value."""
+    out = []
+    for n in ast.walk(scope):
+        if isinstance(n, ast.Assign):
+            for t in n.targets:
+                if isinstance(t, (ast.Tuple, ast.List)) and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(t)):
+                    out.append((n.lineno, "tuple/list unpacking"))
+        elif isinstance(n, (ast.For, ast.AsyncFor)) and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(n.target)):
+            out.append((n.lineno, "for-loop target"))
+        elif isinstance(n, ast.comprehension) and any(isinstance(x, ast.Name) and x.id == name for x in ast.walk(n.target)):
+            pass      # a comprehension target is scoped to the comprehension, not a re-binding of the enclosing name
+        elif isinstance(n, (ast.With, ast.AsyncWith)) and any(isinstance(x, ast.Name) and x.id == name for i in n.items
+                                                              if i.optional_vars is not None for x in ast.walk(i.optional_vars)):
+            out.append((n.lineno, "with target"))
+        elif isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == name:
+            out.append((n.lineno, "augmented assignment"))
+        elif isinstance(n, ast.NamedExpr) and isinstance(n.target, ast.Name) and n.target.id == name:
+            out.append((n.lineno, "walrus"))
+        elif isinstance(n, ast.ExceptHandler) and n.name == name:
+            out.append((n.lineno, "except target"))
+    return out
+
+
 def _param_index(fn, name):
     args = [a.arg for a in fn.args.posonlyargs + fn.args.args]
     return (args.index(name) if name in args else None), any(a.arg == name for a in fn.args.kwonlyargs)
@@ -99,6 +124,9 @@ def resolve_composed(tree, expr, _seen=None):
         fn = enclosing_function(expr)
         if fn is not None:
             values = _assignments(fn, expr.id)
+            rebinds = nonplain_rebinds(fn, expr.id)
+            if values and rebinds:
+                return [f"line {ln}: {expr.id!r} is re-bound by {why}" for ln, why in rebinds], []
             if values:
                 probs, leaves = [], []
                 for v in values:
@@ -166,9 +194,23 @@ def named_insert_problems(src, table, col, expect_statements=1):
 
 
 def dict_literal_values(tree, key):
-    """Value expressions of every dict literal in the module that carries the constant key."""
-    return [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
-            if isinstance(k, ast.Constant) and k.value == key]
+    """Value expressions that put `key` into a dict anywhere in the module: a dict literal carrying the constant key, a
+    post-hoc `x[key] = value` store, `x.setdefault(key, value)`, `dict(key=value)` (a later re-binding is as much a bound value
+    as the literal)."""
+    out = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
+           if isinstance(k, ast.Constant) and k.value == key]
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Assign):
+            for t in n.targets:
+                if isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value == key:
+                    out.append(n.value)
+        elif isinstance(n, ast.Call):
+            if (isinstance(n.func, ast.Attribute) and n.func.attr == "setdefault" and len(n.args) == 2
+                    and isinstance(n.args[0], ast.Constant) and n.args[0].value == key):
+                out.append(n.args[1])
+            if isinstance(n.func, ast.Name) and n.func.id == "dict":
+                out += [k.value for k in n.keywords if k.arg == key]
+    return out
 
 
 def emitter_column_problems(emitter_src, col):
@@ -314,3 +356,111 @@ def tuple_return_elements(tree, func, index):
         return []
     return [(r.value.elts[index].lineno, r.value.elts[index]) for r in ast.walk(fns[0])
             if isinstance(r, ast.Return) and isinstance(r.value, ast.Tuple) and len(r.value.elts) > index]
+
+
+# ───────────────────────── "composed AND states a computed value" ─────────────────────────
+# SS definition: text that STATES OR GRADES a computed value. An f-string whose placeholders are only identifiers / class labels
+# / constants ("Signal {signal_type_id} appears unremarkable") is composed syntax but states nothing computed.
+
+NUMERIC_WRAPPERS = {"int", "len", "round", "float", "sum", "min", "max", "abs"}
+
+
+def _placeholders(leaf):
+    out = [n for n in ast.walk(leaf) if isinstance(n, ast.FormattedValue)]
+    for n in ast.walk(leaf):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "format":
+            out += [ast.FormattedValue(value=a, conversion=-1, format_spec=None) for a in n.args]
+        if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Mod):
+            rhs = n.right.elts if isinstance(n.right, ast.Tuple) else [n.right]
+            out += [ast.FormattedValue(value=a, conversion=-1, format_spec=None) for a in rhs]
+    return out
+
+
+def _placeholder_is_computed(p, computed):
+    v = p.value
+    if p.format_spec is not None:
+        return True
+    if isinstance(v, ast.Call) and _called_name(v) in NUMERIC_WRAPPERS:
+        return True
+    if isinstance(v, (ast.IfExp, ast.Compare, ast.BinOp, ast.BoolOp)):
+        return True
+    return ast.unparse(v) in computed
+
+
+def leaf_kind(tree, leaf, computed=frozenset()):
+    """'computed' | 'identifier_only' | 'verbatim_first' for one composed leaf.
+
+    verbatim_first: `loaded or f"fallback"` (the loaded value wins when present: the composed branch is only a fallback).
+    computed: a placeholder is a format-spec'd/numeric value, a derived expression (conditional/comparison/arithmetic), or its
+    source text is in `computed` (the per-column list of computed-value names, recorded in the entry's evidence).
+    A `.join(...)` leaf takes the placeholders of the f-strings in its enclosing function (the parts it assembles)."""
+    if isinstance(leaf, ast.BoolOp) and isinstance(leaf.op, ast.Or) and not directly_composed(leaf.values[0]):
+        return "verbatim_first"
+    if isinstance(leaf, ast.Call) and isinstance(leaf.func, ast.Attribute) and leaf.func.attr == "join" and not any(
+            isinstance(n, ast.JoinedStr) for n in ast.walk(leaf)):
+        fn = enclosing_function(leaf)
+        scope = fn if fn is not None else tree
+        phs = [p for j in ast.walk(scope) if isinstance(j, ast.JoinedStr) for p in _placeholders(j)]
+    else:
+        phs = _placeholders(leaf)
+    return "computed" if any(_placeholder_is_computed(p, computed) for p in phs) else "identifier_only"
+
+
+def column_leaf_kinds(src, col, computed=frozenset()):
+    """{kind: count} over the composed leaves every dict site of `col` resolves to."""
+    tree = parents(ast.parse(src))
+    kinds = {}
+    for v in dict_literal_values(tree, col):
+        for lf in resolve_composed(tree, v)[1]:
+            k = leaf_kind(tree, lf, computed)
+            kinds[k] = kinds.get(k, 0) + 1
+    return kinds
+
+
+def later_rebinds(src, col):
+    """Line numbers where `col` is (re)bound after the fact outside a dict literal: `x[col] = v`, `x.col = v`, `setattr(x, col, v)`,
+    `.setdefault(col, v)`, `.update(col=v)`, `dict(col=v)`."""
+    tree = ast.parse(src)
+    out = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Assign):
+            for t in n.targets:
+                if (isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value == col) or (
+                        isinstance(t, ast.Attribute) and t.attr == col):
+                    out.append(n.lineno)
+        elif isinstance(n, ast.Call):
+            if _called_name(n) == "setattr" and len(n.args) >= 2 and isinstance(n.args[1], ast.Constant) and n.args[1].value == col:
+                out.append(n.lineno)
+            if _called_name(n) in ("update", "dict", "setdefault") and (
+                    any(k.arg == col for k in n.keywords) or (_called_name(n) == "setdefault" and n.args
+                                                              and isinstance(n.args[0], ast.Constant) and n.args[0].value == col)):
+                out.append(n.lineno)
+    return sorted(set(out))
+
+
+def list_rebinds(src, func, list_name):
+    """Line numbers in `func` where the positional-row list is replaced or edited after its appends (`rows = ...` a second time,
+    `rows[i] = ...`, `rows.insert/extend/pop/remove/sort/reverse`, `del rows[...]`)."""
+    tree = ast.parse(src)
+    fns = functions_named(tree, func)
+    if len(fns) != 1:
+        return [-1]
+    out, assigns = [], 0
+    for n in ast.walk(fns[0]):
+        if isinstance(n, (ast.Assign, ast.AnnAssign)):
+            tg = n.targets if isinstance(n, ast.Assign) else [n.target]
+            for t in tg:
+                if isinstance(t, ast.Name) and t.id == list_name:
+                    assigns += 1
+                if isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == list_name:
+                    out.append(n.lineno)
+        elif isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and n.target.id == list_name:
+            out.append(n.lineno)
+        elif isinstance(n, ast.Delete):
+            out.append(n.lineno)
+        elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
+              and n.func.value.id == list_name and n.func.attr in ("insert", "extend", "pop", "remove", "sort", "reverse", "clear")):
+            out.append(n.lineno)
+    if assigns > 1:
+        out.append(-2)
+    return sorted(out)

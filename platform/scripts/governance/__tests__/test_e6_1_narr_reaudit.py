@@ -116,19 +116,23 @@ KEPT = {
         (_WR + "bo_laksana.py", 3067, "INSERT INTO public.bodha_msr_signals"),
         (_WR + "bo_laksana.py", 3107, "%(signal_summary_text)s, %(signal_headline_text)s"),
         (_WR + "bo_laksana.py", 3264, "cur.executemany(_INSERT_SQL, batch)"), (_WR + "bo_laksana.py", 3601, "_batch_insert(conn, signal_rows)")]),
-    "bo_anveshana": dict(table="bodha_discoveries", cols=["surface_reading", "depth_reading", "hypothesis_text"],
+    "bo_anveshana": dict(table="bodha_discoveries", cols=["surface_reading", "depth_reading", "surface_depth_delta", "why_an_acharya_misses_it"],
                          writer=_WR + "bo_anveshana.py", emitter=_WR + "bo_anveshana.py", cites=[
-        (_WR + "bo_anveshana.py", 54, "INSERT INTO public.bodha_discoveries"), (_WR + "bo_anveshana.py", 70, "%(surface_reading)s, %(depth_reading)s"),
-        (_WR + "bo_anveshana.py", 71, "%(hypothesis_text)s"), (_WR + "bo_anveshana.py", 423, '"surface_reading": surface'),
-        (_WR + "bo_anveshana.py", 424, '"depth_reading": depth'), (_WR + "bo_anveshana.py", 426, '"hypothesis_text": hypothesis'),
-        (_WR + "bo_anveshana.py", 511, 'surface=f"Signal {cand'), (_WR + "bo_anveshana.py", 512, 'depth=f"Structurally consequential'),
-        (_WR + "bo_anveshana.py", 514, 'hypothesis=f"Pattern {cand'), (_WR + "bo_anveshana.py", 587, 'surface=f"Signal {sig_info'),
-        (_WR + "bo_anveshana.py", 588, 'depth=f"Embedding distance'), (_WR + "bo_anveshana.py", 590, 'hypothesis=f"Pattern {sig_info'),
-        (_WR + "bo_anveshana.py", 650, 'surface=f"Appears as one of many'), (_WR + "bo_anveshana.py", 651, 'depth=f"Stands {anom'),
-        (_WR + "bo_anveshana.py", 653, 'hypothesis=f"Pattern {anom'), (_WR + "bo_anveshana.py", 734, 'surface=f"{subject} as an individual'),
-        (_WR + "bo_anveshana.py", 735, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 737, 'hypothesis=f"{subject} acts as a structural bridge'),
+        (_WR + "bo_anveshana.py", 54, "INSERT INTO public.bodha_discoveries"), (_WR + "bo_anveshana.py", 67, "%(why_an_acharya_misses_it)s"),
+        (_WR + "bo_anveshana.py", 70, "%(surface_reading)s, %(depth_reading)s, %(surface_depth_delta)s"),
+        (_WR + "bo_anveshana.py", 414, '"why_an_acharya_misses_it": why_misses'), (_WR + "bo_anveshana.py", 423, '"surface_reading": surface'),
+        (_WR + "bo_anveshana.py", 424, '"depth_reading": depth'), (_WR + "bo_anveshana.py", 425, '"surface_depth_delta": delta'),
+        (_WR + "bo_anveshana.py", 509, 'why_misses=f"Low surface salience'), (_WR + "bo_anveshana.py", 511, 'surface=f"Signal {cand'),
+        (_WR + "bo_anveshana.py", 512, 'depth=f"Structurally consequential'), (_WR + "bo_anveshana.py", 513, 'delta=f"Surface hides depth'),
+        (_WR + "bo_anveshana.py", 585, 'why_misses=f"Semantically unusual'), (_WR + "bo_anveshana.py", 587, 'surface=f"Signal {sig_info'),
+        (_WR + "bo_anveshana.py", 588, 'depth=f"Embedding distance'), (_WR + "bo_anveshana.py", 589, 'delta=f"Semantic uniqueness'),
+        (_WR + "bo_anveshana.py", 648, 'why_misses=f"Statistically extreme'), (_WR + "bo_anveshana.py", 650, 'surface=f"Appears as one of many'),
+        (_WR + "bo_anveshana.py", 651, 'depth=f"Stands {anom'), (_WR + "bo_anveshana.py", 652, 'delta=f"σ-deviation'),
+        (_WR + "bo_anveshana.py", 732, 'why_misses=f"Node {subject} bridges'), (_WR + "bo_anveshana.py", 734, 'surface=f"{subject} as an individual'),
+        (_WR + "bo_anveshana.py", 735, 'depth=f"{subject} as a structural BROKER'), (_WR + "bo_anveshana.py", 736, 'delta=f"Broker role'),
         (_WR + "bo_anveshana.py", 829, "_batch_insert(conn, discoveries, _DISCOVERY_INSERT)"),
-        (_L + "L2_bodha/query_discoveries.ts", 122, "surface_reading, depth_reading"), (_L + "L2_bodha/query_discoveries.ts", 123, "hypothesis_text"),
+        (_L + "L2_bodha/query_discoveries.ts", 122, "surface_reading, depth_reading, surface_depth_delta"),
+        (_L + "L2_bodha/query_discoveries.ts", 123, "hypothesis_text, why_an_acharya_misses_it"),
         (_L + "L2_bodha/query_discoveries.ts", 126, "FROM bodha_discoveries")]),
     "mi_darshana": dict(table="mimamsa_insight_units", cols=["statement"], writer=_WR + "mi_darshana.py", emitter=None, cites=[
         (_WR + "mi_darshana.py", 230, "statement = ("), (_WR + "mi_darshana.py", 296, "statement = ("), (_WR + "mi_darshana.py", 303, "statement = ("),
@@ -267,7 +271,8 @@ EXPECT_LEAVES = {      # composed expressions the dict values resolve to (one pe
     ("bo_special_lagna", "signal_summary_text"): 1, ("bo_special_lagna", "signal_headline_text"): 1,
     ("bo_sudarshana", "signal_summary_text"): 1, ("bo_sudarshana", "signal_headline_text"): 3,
     ("bo_vargottama_dhana", "signal_summary_text"): 2, ("bo_vargottama_dhana", "signal_headline_text"): 2,
-    ("bo_anveshana", "surface_reading"): 4, ("bo_anveshana", "depth_reading"): 4, ("bo_anveshana", "hypothesis_text"): 4,
+    ("bo_anveshana", "surface_reading"): 4, ("bo_anveshana", "depth_reading"): 4,
+    ("bo_anveshana", "surface_depth_delta"): 4, ("bo_anveshana", "why_an_acharya_misses_it"): 4,
 }
 
 
@@ -624,3 +629,193 @@ def test_the_file_level_description_no_longer_says_the_thirteen_carry_ddl():
     d = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["description"]
     assert "13 earlier declarations" not in d and "evidence_kind 'writer'" in d
     assert not any(e.get("evidence_kind") == "ddl" for e in _decl().values())
+
+
+# ───────────────────────── (7) composed AND states a computed value; later re-bindings; verbatim-first ─────────────────────────
+# Per asset: the placeholder sources that are computed values (not identifiers/class labels). A placeholder with a format spec, a
+# numeric wrapper (int/len/round/...) or a derived expression (conditional/comparison/arithmetic) is computed without being listed.
+# The evidence of each entry names these ("Computed placeholders: ...").
+_TRI = {f"tri_frame['{k}']" for k in ("class_from_lagna", "class_from_moon", "class_from_sun", "house_from_lagna", "house_from_moon",
+                                      "house_from_sun", "matching_class")}
+COMPUTED = {
+    "bo_arudha": {"al_house", "al_sign", "al_category", "tenor", "pada_house", "pada_sign", "occupants", "tenancy_valence", "', '.join(occupants)"},
+    "bo_nakshatra_semantic": {"chain_length", "gandanta_zone", "is_gandanta", "nakshatra", "nakshatra_lord", "pada", "tara_favorable", "tara_name", "tara_position"},
+    "bo_special_lagna": {"house_d1", "sign", "sign_lord", "nakshatra", "domains", "'/'.join(domains)"},
+    "bo_sudarshana": _TRI | {"agreement"},
+    "bo_vargottama_dhana": {"sign", "house_d1", "house_sign", "house_lord", "lord_house_d1", "tenancy_valence", "vg_verdict.valence", "occupants",
+                            "', '.join(occupants)", "house_num"},
+    "bo_laksana": {"body", "loc", "classification", "d1_text", "d9_text", "valence", "value_num", "value_text"},
+    "bo_anveshana": set(),                      # every computed placeholder carries a format spec or int()
+    "mi_darshana": {"n"},
+    "ph_sankrama": {"bridge_seeds[0].get('mediating_planet', '?')", "bridge_seeds[0].get('house', '?')"},
+    "ph_sodhana": {"sorted(missing)"},
+    "ph_muhurta": set(),
+}
+# composed leaves that state NO computed value (identifier-only fixed text / verbatim-first) per (asset, column): pinned, mixed columns
+PINS = {("bo_anveshana", "surface_reading"): {"identifier_only": 3}, ("bo_laksana", "signal_headline_text"): {"verbatim_first": 1}}
+
+
+@pytest.mark.parametrize("asset_col", NAMED)
+def test_every_composed_leaf_states_a_computed_value_except_the_pinned_mixed_sites(asset_col):
+    asset, col = asset_col
+    kinds = rc.column_leaf_kinds(_read(KEPT[asset]["emitter"]), col, COMPUTED[asset])
+    assert kinds.get("computed", 0) >= 1, (asset, col, kinds)
+    assert {k: v for k, v in kinds.items() if k != "computed"} == PINS.get(asset_col, {}), (asset, col, kinds)
+
+
+def test_bo_anveshana_hypothesis_text_states_nothing_computed_so_it_is_not_declared():
+    kinds = rc.column_leaf_kinds(_read(_WR + "bo_anveshana.py"), "hypothesis_text", COMPUTED["bo_anveshana"])
+    assert kinds == {"identifier_only": 4}                      # four f-strings, every placeholder an identifier/class/domain label
+    assert "hypothesis_text" not in _decl()["bo_anveshana"]["prose_fields"]
+
+
+def _kinds_of(tree, leaves, computed):
+    out = {}
+    for lf in leaves:
+        k = rc.leaf_kind(tree, lf, computed)
+        out[lf.lineno] = k
+    return out
+
+
+def test_other_declared_columns_composed_leaf_kinds_are_pinned():
+    # mi_darshana.statement: seven composed leaves state computed values; the no-evidence text interpolates only the class name
+    src = _read(_WR + "mi_darshana.py")
+    tree = rc.parents(ast.parse(src))
+    fn = rc.functions_named(tree, "_substep_insight_units")[0]
+    kinds = {}
+    for c in ast.walk(fn):
+        if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == "append" and isinstance(c.func.value, ast.Name) \
+                and c.func.value.id == "rows":
+            kinds.update(_kinds_of(tree, rc.resolve_composed(tree, c.args[0].elts[6])[1], COMPUTED["mi_darshana"]))
+    assert sorted(set(kinds.values())) == ["computed", "identifier_only"] and [ln for ln, k in kinds.items() if k != "computed"] == [526]
+    # ph_sankrama.mechanism_text: the seeded branch names the bridge planet/house; the fallback is a label plus a cell-id pointer
+    tr = _engine("ph_sankrama")
+    leaves = rc.resolve_composed(tr, rc.call_kwarg_values(tr, "SankramaRecord", "mechanism_text")[0])[1]
+    assert sorted(_kinds_of(tr, leaves, COMPUTED["ph_sankrama"]).values()) == ["computed", "identifier_only"]
+    # ph_sodhana: three composed detectors state computed values; ph_muhurta: one
+    tr = _engine("ph_sodhana")
+    comp = [rc.resolve_composed(tr, v) for v in rc.call_kwarg_values(tr, "SodhanaRecord", "recommendation_text")]
+    assert sorted(rc.leaf_kind(tr, lf, COMPUTED["ph_sodhana"]) for p, ls in comp if not p for lf in ls) == ["computed"] * 3
+    tr = _engine("ph_muhurta")
+    comp = [rc.resolve_composed(tr, e) for _, e in rc.tuple_return_elements(tr, "classify_verdict", 1)]
+    assert [rc.leaf_kind(tr, lf) for p, ls in comp if not p for lf in ls] == ["computed"]
+
+
+@pytest.mark.parametrize("asset", sorted(KEPT))
+def test_evidence_marks_the_computed_placeholders_and_the_mixed_site_caveats(asset):
+    ev = _decl()[asset]["evidence"]["prose_fields"]
+    assert "Computed placeholders:" in ev, asset
+    for name in COMPUTED.get(asset, ()):
+        assert name in ev, (asset, name)
+
+
+# ── survivors: a later re-binding to a non-composed value, an identifier-only f-string, a verbatim-first fallback ──
+
+def _insert_after_assign(src, target_names, make_stmt):
+    tree = parents_tree = rc.parents(ast.parse(src))
+    done = 0
+    for n in list(ast.walk(parents_tree)):
+        for f in ("body", "orelse"):
+            body = getattr(n, f, None)
+            if not isinstance(body, list):
+                continue
+            for i, st in enumerate(body):
+                if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name) and st.targets[0].id in target_names:
+                    body.insert(i + 1, make_stmt(st.targets[0].id))
+                    done += 1
+                    break
+    ast.fix_missing_locations(tree)
+    return ast.unparse(tree), done
+
+
+_REBINDERS = {
+    "tuple-unpack": lambda n: ast.parse(f"{n}, _extra = loaded_value, 1").body[0],
+    "for-target": lambda n: ast.parse(f"for {n} in loaded_values:\n    pass").body[0],
+    "augmented": lambda n: ast.parse(f"{n} += loaded_value").body[0],
+    "with-target": lambda n: ast.parse(f"with ctx() as {n}:\n    pass").body[0],
+    "walrus": lambda n: ast.parse(f"({n} := loaded_value)").body[0],
+}
+_BOUND_LOCALS = {"signal_summary_text", "signal_headline_text", "summary", "headline"}
+
+
+@pytest.mark.parametrize("how", sorted(_REBINDERS))
+@pytest.mark.parametrize("asset", ["bo_special_lagna", "bo_nakshatra_semantic", "bo_sudarshana", "bo_vargottama_dhana", "bo_laksana"])
+def test_mutation_a_verbatim_rebinding_after_the_fstring_is_caught(asset, how):
+    src = _read(KEPT[asset]["emitter"])
+    mutant, done = _insert_after_assign(src, _BOUND_LOCALS, _REBINDERS[how])
+    assert done >= 1
+    for col in MSR_COLS:
+        base = rc.emitter_column_problems(src, col)[0]
+        assert base == []
+    assert any(rc.emitter_column_problems(mutant, col)[0] for col in MSR_COLS), (asset, how)
+
+
+def test_mutation_a_post_hoc_subscript_store_or_setdefault_or_dict_call_is_a_bound_value():
+    for extra in ("def _late(row, loaded):\n    row['signal_summary_text'] = loaded\n",
+                  "def _late(row, loaded):\n    row.setdefault('signal_summary_text', loaded)\n",
+                  "def _late(loaded):\n    return dict(signal_summary_text=loaded)\n"):
+        mutant = _read(KEPT["bo_arudha"]["emitter"]) + "\n" + extra
+        assert rc.emitter_column_problems(mutant, "signal_summary_text")[0], extra
+    assert rc.emitter_column_problems(_read(KEPT["bo_arudha"]["emitter"]), "signal_summary_text")[0] == []
+
+
+@pytest.mark.parametrize("asset_col", sorted((a, c) for a, v in KEPT.items() for c in v["cols"]))
+def test_writer_and_engine_never_rebind_a_bound_column_after_the_fact(asset_col):
+    asset, col = asset_col
+    spec = KEPT[asset]
+    for path in {spec["writer"], spec["emitter"]} - {None}:
+        assert rc.later_rebinds(_read(path), col) == [], (asset, col, path)
+
+
+def test_mutation_later_rebinding_checkers_catch_attribute_subscript_and_list_edits():
+    w = _read(KEPT["ph_sodhana"]["writer"])
+    assert rc.later_rebinds(w + "\n\ndef _x(rec):\n    rec.recommendation_text = 'x'\n", "recommendation_text")
+    assert rc.later_rebinds(w + "\n\ndef _x(r):\n    setattr(r, 'recommendation_text', 'x')\n", "recommendation_text")
+    assert rc.later_rebinds(w + "\n\ndef _x(r):\n    r['recommendation_text'] = 'x'\n", "recommendation_text")
+    src = _read(_WR + "mi_darshana.py")
+    assert rc.list_rebinds(src, "_substep_insight_units", "rows") == []
+    anchor = "        # Idempotency: delete prior insight units and their embeddings\n"
+    assert src.count(anchor) == 1
+    for edit in ("rows[0] = None\n", "rows.sort()\n", "rows.extend([])\n", "rows = []\n", "del rows[0]\n"):
+        assert rc.list_rebinds(src.replace(anchor, "        " + edit + anchor), "_substep_insight_units", "rows"), edit
+
+
+@pytest.mark.parametrize("asset_col", NAMED)
+def test_mutation_identifier_only_fstring_or_verbatim_first_fallback_changes_the_pinned_kinds(asset_col):
+    asset, col = asset_col
+    src = _read(KEPT[asset]["emitter"])
+    base = rc.column_leaf_kinds(src, col, COMPUTED[asset])
+    n = sum(base.values())
+    for style in ("identifier", "verbatim_first"):
+        for k in range(n):
+            tree = rc.parents(ast.parse(src))
+            leaves = []
+            for v in rc.dict_literal_values(tree, col):
+                leaves += rc.resolve_composed(tree, v)[1]
+            lf = leaves[k]
+            if rc.leaf_kind(tree, lf, COMPUTED[asset]) == ("identifier_only" if style == "identifier" else "verbatim_first"):
+                continue                 # equivalent mutant: the leaf already has that kind (the pinned mixed sites)
+            if style == "identifier":
+                new = ast.JoinedStr(values=[ast.FormattedValue(value=ast.Name(id="label_only", ctx=ast.Load()), conversion=-1, format_spec=None)])
+            else:
+                new = ast.BoolOp(op=ast.Or(), values=[ast.Name(id="loaded_value", ctx=ast.Load()), lf])
+            assert _replace_node(tree, lf, new)
+            mutant = ast.unparse(tree)
+            assert rc.column_leaf_kinds(mutant, col, COMPUTED[asset]) != base, (asset, col, style, k)
+
+
+def test_leaf_kind_unit_behaviour():
+    def kind(code, computed=frozenset()):
+        t = rc.parents(ast.parse(f"def g(a, b, items):\n    x = {code}\n    return {{'k': x}}\n"))
+        p, leaves = rc.resolve_composed(t, rc.dict_literal_values(t, "k")[0])
+        assert p == [], code
+        return rc.leaf_kind(t, leaves[0], computed)
+    assert kind("f'Signal {a} appears unremarkable'") == "identifier_only"
+    assert kind("f'{a}/{b}'") == "identifier_only"
+    assert kind("'{}'.format(a)") == "identifier_only"
+    assert kind("'/'.join(items)") == "identifier_only"
+    assert kind("f'{a:.2f}'") == "computed" and kind("f'{int(a)} domains'") == "computed" and kind("f'{a if b else 1}'") == "computed"
+    assert kind("f'{a} and {b}'", {"b"}) == "computed"
+    assert kind("a or f'fallback {b}'") == "verbatim_first"
+    assert kind("f'{a}' or f'{b:.1f}'") == "computed"
+    assert kind("'%s of %d' % (a, int(b))") == "computed"
