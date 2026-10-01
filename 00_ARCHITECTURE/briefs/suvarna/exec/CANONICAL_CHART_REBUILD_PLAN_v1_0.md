@@ -375,7 +375,8 @@ list the old upstream sets (checked: `bo_pratijna` receipt upstreams are `bo_lak
 
 | Wave | Assets |
 |---|---|
-| 1 | bg_transit_rules and ka_muhurta_seva (both global, need super_admin, see Q3), bo_karanajala, bo_pratijna |
+| 0 (conditional, v1.1; not part of the 26) | `ga_vargas` only if P0b.4 branch (b); then the six MSR producers `bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic` only if any of them must run (section 1.5). Neither is in the v1.0 plan: all six MSR producers read `lit`/`fresh` today (Evidence E8). |
+| 1 | bg_transit_rules and ka_muhurta_seva (both global, need super_admin, see Q3), **ka_dasha_kala (v1.1, per-chart service; must precede `ka_sangam`, section 1.6)**, bo_karanajala, bo_pratijna |
 | 2 | bo_drishti, bo_cgm_motifs, bo_cgm_paths, ka_avadhi, ka_gochara, ka_yojaka |
 | 3 | bo_anveshana, bo_upaya, ka_sangam |
 | 4 | ka_kalasutra, ka_vighnakara |
@@ -393,6 +394,11 @@ I-1 fix is merged and deployed (the digest inventory and the job image must carr
 `ka_vighnakara` after the I-2 fix (PR #2823) and after `ka_sangam` and `ka_yojaka`; `ka_kala_darshana`, `ph_pratikara`,
 `ph_muhurta` read `kala_obstruction` so they must follow `ka_vighnakara`; `mi_bhavisya` strictly last (it freezes one
 prediction per `phala_anchors` row: run before `ph_nimitta` is rebuilt and it would replace 139 predictions with about 4).
+
+v1.1 ordering additions: (i) `ka_dasha_kala` strictly before `ka_sangam` and `ka_kshetra` (section 1.6); (ii) every MSR producer, if it runs at all, strictly before
+every Kala and Phala asset and before the L2 consumers of its signal ids (section 1.5); (iii) `ka_kshetra` is NOT in these 12 waves: it is a separate last stage S7 (section 8.2);
+(iv) `bo_pratijna` (wave 1) is gated on P0b, so wave 1 splits operationally: the assets that do not read `chart_divisionals` (`bg_transit_rules`, `ka_muhurta_seva`, `ka_dasha_kala`,
+`bo_karanajala`) may run before P0b holds, `bo_pratijna` and everything after it may not (P0b.2).
 
 ### 1.4 Cascade: what the orchestrator does to dependents
 
@@ -415,6 +421,54 @@ mi_darshana, mi_gunanaka, mi_pariksha, mi_pramana, mi_sambandha), 1 `dormant` (m
   the 1211 edges and are outside this wave. After the wave they remain blocked by `mi_bhavisya`/`mi_pramana` state, which is
   the pre-existing condition (Track I item I-3), not a regression.
 - No lit asset outside the 5 above changes state through this wave.
+
+### 1.5 Ordering invariant: MSR writers strictly before the Kala and Phala assets (v1.1; F-3 cascade, SS decision 4 of the F-3 review)
+
+**Invariant.** The six MSR producers (`bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic`; the six assets
+in `bodha_msr_signals_producer_asset_check`, migration 1036) run **strictly before** the Kala and Phala assets that carry their signal ids, and no MSR writer
+rebuilds the same chart again in the same window (from the first such dependent's start until the wave ends). "Strictly before" means an earlier wave: the same wave
+is a violation because same-wave assets run in parallel. This is a ledger-level rule, not only a cosmetic order.
+
+**Who is bound (derived from `msr_signal_bearing_tables.json` on PR #2828, not hand-listed).** The 5 Kala assets whose keys 1214 drops (`ka_sangam`, `ka_kalasutra`, `ka_vighnakara`,
+`ka_kala_darshana`, `ka_bhavishya_lekha`), `ka_yojaka`, and the Phala assets: `ph_nimitta` plus the 6 reached through `phala_anchors`'s own cascade keys
+(`ph_pramana`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, `ph_pratikara`, `ph_muhurta`), 7 Phala in all; also the L2 consumers that store signal ids
+(`bo_karanajala`, `bo_bimba`, `bo_samskara`, `bo_sangati`, `bo_cdlm_summary`, `bo_pratijna`). `ph_phaladesa` and `mi_bhavisya` are not in the map. Of the launch set, 15 assets are bound: 2 L2 consumers (`bo_karanajala`, `bo_pratijna`), `ka_yojaka`, the 5 Kala assets, and the 7 Phala assets
+(`bo_karanajala`, `bo_pratijna`, `ka_yojaka`, `ka_sangam`, `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, `ph_nimitta`, `ph_muhurta`, `ph_pratikara`, `ph_sankrama`, `ph_sodhana`, `ph_suddha_sodhana`, `ph_pramana`).
+
+**Why it holds today (mechanism).** Until 1214 is deployed an MSR regeneration CASCADE-deletes the `kala_*` rows (and, through `kala_convergence` and `phala_anchors`, the Phala rows)
+(F-3 proof: 4 rows to 0 on the disposable cluster). After 1214 the same order keeps references valid instead of merely un-deleted: dependents rebuilt AFTER the MSR set see the final ids.
+
+**It applies to the v4-id charts too.** `signal_id` is uuid v5 (deterministic, `bodha_signal_identity`, migration 661) on the canonical chart (50,678 signals, all v5; F-3 measurement),
+but **all uuid v4 on `1c826d5a` (50,171) and `cb73cd3d` (49,875)**: the first v5 regeneration of either chart changes EVERY id and, once 1214 removes the keys, strands 100% of that chart's Kala rows
+silently (1c826d5a: 336,093 `kala_activation` rows). So for those two charts the order guard and the pre-wave check are MANDATORY, and per the F-3 review MSR regeneration for them
+stays frozen until their Kala rows are re-keyed (F3 open question 3, unanswered). This plan rebuilds the canonical chart only; the statement is recorded so a copy of this plan for another chart is not launched blind.
+
+**How long the rule stays.** Until BOTH (a) migration 1214 (PR #2828) AND (b) the L2-owner-path drop of the 3 L2 foreign keys (grant plan v1.3 Part A, PR #2825) are deployed, because
+embeddings and contradictions still cascade until (b) runs. Read live 2026-10-01 about 16:20Z: all 8 keys still exist, neither is deployed (Evidence E8). (Whether (b) is itself safe is
+the F3 section 5 prerequisite flagged in P0c.1; if (b) is not made safe, the rule has no end date.)
+
+**Where it sits in this plan.** The v1.0 plan has no MSR writer: all six read `lit` and `fresh` (Evidence E8), so the rule binds only if one must run. Triggers that would make one run:
+a `ga_vargas` rebuild (P0b.4 branch (b)) stales `bo_laksana` and `bo_vargottama_dhana`, which are direct dependents of `ga_vargas`; `bo_laksana` is then not lit-and-fresh and `bo_pratijna`'s planner
+pre-flight would block on it. Such a run is stage **S0m** (before S1), a separate REVIEW; the six MSR producers go first, then S1 onward as written. A run that contained an MSR producer
+**after** `bo_karanajala` or `bo_pratijna` is exactly the violation the guard prints.
+
+**Detector scripts (PR #2828; read-only; not run against production by this lane).**
+- `platform/scripts/governance/msr_rebuild_order_guard.py` (order guard): `--manifest FILE` checks a plan (`build_runs.plan_manifest` JSON with `waves`, or a bare list of lists) and exits 1 on any violation; `--require-nonvacuous` exits 1 for a plan that orders nothing; `--chart-id UUID` with `DATABASE_URL`
+  runs PF-1 (no in-flight run for the chart) PRE-wave, and with `--post-wave` also PF-2 (every dependent must postdate the last MSR regeneration); `--verify-map` re-reads the live catalog and fails if the dependents map is missing a signal-bearing column.
+  **Because this plan stages its runs separately, each run's own manifest orders only that run: the cross-stage check is the guard run on the CONCATENATED waves of all stages** (I ran that DB-free on a copy of the script: the concatenation S0m, then 1.3 waves 1-12, passes with the six MSR producers listed; the same list with `bo_laksana` placed last prints `MSR_NOT_BEFORE_DEPENDENT` against `bo_karanajala`, `bo_pratijna`, `ka_sangam` and the rest; the 1.3 waves alone print VACUOUS).
+- `platform/scripts/governance/msr_dangling_signal_refs.py` (post-wave detector): per chart and site, rows referencing a signal that no longer exists (`dangling`), another chart's signal (`cross_chart`) or with a NULL `chart_id` (`unattributable`); tiers `fk_dropped` (the five `kala_*` tables; broken rows fail), `l2_internal`, `unconstrained` (`kala_activation_predicates`, `phala_anchors`; advisory); run with `--chart-id` and `--require-nonvacuous` after the wave (a site with zero referencing rows proves nothing and exits 1 under that flag; default exit 3 INCONCLUSIVE).
+  **Limit:** a DELETED referencing row leaves no trace, so the detector cannot see it; that is what the before-state row counts and digests of section 3 (PF-2 of the F-3 review) are for. Live baseline per the F-3 review: 0 dangling over 359k rows on `1c826d5a` and `cb73cd3d`; the canonical chart has zero Kala rows for those tables so every `fk_dropped` site reads vacuous today; `kala_activation_predicates` (never keyed) shows 79 dangling on the canonical chart.
+
+**Pre-flight and post-run additions.** Pre-flight (section 5 rows 14-16): order guard on the concatenated waves, `--verify-map`, PF-1 per chart. Post-run: `msr_rebuild_order_guard.py --chart-id <C> --post-wave` and `msr_dangling_signal_refs.py --chart-id <C> --require-nonvacuous`; on the canonical chart the second is expected to be INCONCLUSIVE/vacuous for the `kala_*` sites until S3-S4 have rebuilt them, and meaningful after.
+
+### 1.6 Ordering constraint: `ka_dasha_kala` precedes the assets that read its output (v1.1)
+
+- **What it is.** `ka_dasha_kala` is a per-chart writer-backed SERVICE (`asset_kind='service'`, `depends_on = {ga_dashas}`, no target table; its writer records a self-test verdict onto its own `asset_registry` row). It is `lit`, `service_health` healthy, last built 2026-09-10 19:26Z, but its latest receipt is `unknown` and its freshness is `unknown` with reasons `output_digest_spec_unavailable` and `output_digest_unavailable` (read 2026-10-01 about 16:20Z, Evidence E8): it has no output-digest spec yet.
+- **Who reads its output (declared `depends_on`, live registry).** `ka_sangam` (in the plan), `ka_kshetra` (stage S7), and `ka_jivana_parva` (outside the plan, stale). `ka_vighnakara` does not declare it directly but declares `ka_sangam`.
+- **The constraint.** `ka_dasha_kala` must be rebuilt, after migration 1213 is deployed and the `selftest_detail` grant exists, **strictly before `ka_sangam`** (and before `ka_kshetra`). Reason (code-derived, per the 1213 header): `compute_upstream_hash` returns NULL when any declared dependency's receipt has no `output_digest`; `ka_sangam` declares both services; a NULL upstream digest makes `ka_sangam`'s receipt `unknown`, which then DEP-ASSERT-blocks its seven in-plan dependents. 1213 gives each service a digest spec, but receipts only change when the services REBUILD; applying 1213 alone changes none. It must also not be re-stamped again after `ka_sangam` builds, because the upstream digest hashes each dependency's whole receipt including `observed_at`.
+- **Where it sits.** Wave 1 of section 1.3, **stage S1** (with `ka_muhurta_seva`, `bg_transit_rules`, `bo_karanajala`), i.e. two runs before `ka_sangam` (S3). Consequently **the launch set is 27 assets (26 of v1.0 plus `ka_dasha_kala`): 25 per-chart and 2 global**; the v1.0 pre-flight row 5 ("`ka_dasha_kala` freshness unknown, accepted") is superseded: the planner accepts that shape for a simulation, but accepting it is what leaves `ka_sangam` unprovable.
+- **If it is skipped.** The v1.0 prediction stands for `ka_sangam` (lit, receipt `unknown`) and for everything behind it.
+
 
 ## 2. EXPECTED ROWS REPLACED
 
