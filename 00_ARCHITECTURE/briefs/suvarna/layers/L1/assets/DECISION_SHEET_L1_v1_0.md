@@ -1,7 +1,7 @@
 ---
 artifact: DECISION_SHEET_L1
 layer: L1 Gaṇita (ga_*)
-version: "1.0"
+version: "1.1"
 status: "RULED (SS 2026-10-02: argala block N-61, the rest N-62); items marked (R) are provisional until the J1 independent review"
 produced_by: exec-suvarna
 produced_on: 2026-10-02
@@ -758,6 +758,10 @@ All rebuilds below ride **S-L1** (after G-EPH and G-FLIP) and, where an L2 reade
 - **F-10 `get_transit_anchors.ts` already resolves lineage at serve time (F-D25);** the brief says the table has none and proposes a column; both are true, the column makes it stored.
 - **F-11 `ga_ayurdaya` serves unreduced longevity totals (98.75, 99.19 years for the native)** with only a `harana_status` note; the Ethical Framework bears on how that is shown.
 - **F-12 `ga_prashna` is not empty:** 5 `ga_prashna_lagna` rows and 2 `prashna_charts` exist for two cast question-moment charts; only the natal-chart build is empty by design.
+
+- **F-13 `chart_fact_identity` has no producing asset and is emptied by every `chart_facts` rewrite (read 2026-10-02):** `fact_id` is `ON DELETE CASCADE` from `chart_facts`; the only populator is the standalone script `build_fact_identity_index.py` (not a `@register` writer); the builder has no privilege on the table. Live: canonical chart 1,205 identity rows of 143,299 facts (0.84%, graha 845 + house 360, no varga or sign kinds), Abhinandan 125,873 of 139,717, third chart 124,390. Only `ChartReaderV4` through `bo_pratijna` reads it; nothing served is empty today (`bodha_pratijna` 135 rows per chart, built 2026-09-09), but a `bo_pratijna` rebuild now would degrade. Ruling (SS): gate G-IDX after S-L1 (and S-L1b), `bo_pratijna` never dispatched unless G-IDX passed since the last `chart_facts` rewrite; a registered asset `ga_fact_identity` is Track I post-J1. A dry run of the script on today's canonical facts: 129,421 identity rows, 13,863 identity-free, 15 unclassifiable (`YOGA_PANCHAKA`, a parser gap), 2.96 s to parse.
+- **F-14 The stored 8-karaka role labels are wrong (N-69, BPHS 32.13-17, sourced_ocr_unverified):** `ga_sensitive_writer.py:1248-1249` labels `kn_rao_rahu_included` ranks 5-8 PUTRA, GNATI, DARA, STRI; the 8-scheme needs PITRI, PUTRA, GNATI, DARA (Strī = Dāra), so the canonical chart's DK is Mercury and GK Jupiter, not Jupiter and Rahu (verified on all 15 chart x ayanamsha sets). `ga_vargas` re-derives its own list (`JAIMINI_KARAKA_NAMES` AK AmK BK MK PK GK DK SK; Rahu ranked by plain degree) and disagrees with `ga_sensitive` (Rahu rank 5 vs 6). 853 canonical `karaka_web_per_varga` facts and 853 L2 signals carry the old role names. S-L1 mandatory lane: fix the role list (STRIKARAKA a labelled alias on DARAKARAKA), `ga_vargas` reads `ga_sensitive`'s kn_rao assignments (edge `ga_vargas -> ga_sensitive` in migration 1220), attribution hook, golden test. J1 by name: "8-karaka role order (BPHS 32.13-17) checked against a print edition".
+- **F-15 The stored L0 Rahu/Ketu daily series is the TRUE node (L0 finding F-L0-01):** L1 is unaffected (no `ga_*` writer reads `ephemeris_daily`; L1 Rahu is `RAH_MEAN` from PyJHora); dead legacy TRUE_NODE code in `brahmagyan/ganita/engine.py` and `l1_positions.py` is not reachable from any chart-build path (Track I I-6).
 
 ## What I could not verify
 
