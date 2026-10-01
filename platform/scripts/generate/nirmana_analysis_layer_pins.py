@@ -213,6 +213,24 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`2292ee6b0cebceedc6fdaa80f0fd428e04231c65`",
     },
+    "D-PINS-A2.5-CONTINUATION": {
+        # Continuation of D-PINS-A2.5 (PR #2799, ASTRA v1.0 rework): the
+        # rework (PUSH 1-3) moved the admitted L3 writer digests, so the
+        # l3:639eece63be3:df2b966b1d97 successor no longer matches source
+        # (ASTRA amendment rank 3: regenerate + re-admit). The steward's
+        # grant (native's 2026-09-30 standing authority, EVENTS.jsonl
+        # 2026-10-01T12:14:51Z, message M20261001T121451-1a8d) is recorded
+        # verbatim in the evidence document. Scope: exactly ONE append-only
+        # L3 successor over l3:639eece63be3:df2b966b1d97 (archived whole,
+        # never rewritten) with exactly the four-writer delta the evidence
+        # doc tabulates. No other layer.
+        "authority_commit": "53a3d1f85abaa581ff5c1441eb7e29584a82d120",
+        "evidence_commit": "eb5d5c70e34d9a16825e89e000dc05a1e133e6ba",
+        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "90e94ee0cc016a6354250aeb236b3b26957eeef728ed6324c37b28d07584c2ef",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`53a3d1f85abaa581ff5c1441eb7e29584a82d120`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -430,6 +448,21 @@ AUTHORIZED_SOURCE_COMMITS = {
     "D-PINS-A2.5": {
         "L3": frozenset({
             "639eece63be38a27fb9840ee778beb4c6c1459fd",
+        }),
+    },
+    # D-PINS-A2.5-CONTINUATION (Pravāha A2.5, PR #2799, ASTRA v1.0 rework):
+    # exactly one source commit — the PUSH 3 head f6cb3914e, whose committed
+    # writer inventory is byte-identical to the reworked tree's derived
+    # inventory (provenance_inventory --check green). The delta against the
+    # l3:639eece63be3:df2b966b1d97 predecessor inventory (at 348c8e7fc) is
+    # exactly four writers: ka_gochara_v4_41_candidate
+    # (approved_intentional_change, declared source closure), and
+    # ka_gochara_v3_century_materialize / ka_moorti_nirnaya / ka_sangam
+    # (derived_import_change via services/gochara_kernel/episodes.py only).
+    # L0, L1, L2, L4, L5 are deliberately absent.
+    "D-PINS-A2.5-CONTINUATION": {
+        "L3": frozenset({
+            "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98",
         }),
     },
 }
