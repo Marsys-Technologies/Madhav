@@ -243,3 +243,33 @@ hold until the fold lands.
 Deferred alongside but NOT contract amendments: the P5c donor matrix (D4,
 awaits the native-authorised `ga_strength` rebuild) and the P5d/P5e forms
 (D5/D6). The `period_running_at` dasha-row source is CONFIRMED (above).
+
+### Design v1.2 (2026-10-01, 3/N part 2 — point solves landed)
+
+`conjunction`/`aspect` transit edges on `point:<λ>` targets now solve:
+roots per relation level via `contacts.find_roots` (dṛṣṭi: body at target −
+angle; N-14 nodes excluded at enumeration), Swiss-refined, ordinals over the
+FULL convention domain (`substrate.assign_occurrence_ordinals`), span = the
+in-orb interval at the pinned WP1 §7 orb (orb_conj_slow / orb_drishti_slow,
+1.0°) derived ARC-LOCALLY around each root — deliberately not
+`episodes.in_orb_intervals`, which resolves one unwrapped representative per
+SEGMENT and silently misses every other revolution's band on stationless
+bodies (reported to the steward 2026-10-01, M20261001T172758-6f81 — ruling
+on the kernel fix's scope/sequencing is pending). Horizon discipline is the
+A2 v1.1 half-open rule: an overlap only at the excluded end is not a span;
+an exact centre outside the horizon with an overlapping interval is a
+TRUNCATED contact (t_exact NULL, clipped_truncated), never absence.
+Class coverage now names conjunction/aspect as searched when the arc index
+is available (resolution includes the 1.0-arcsec index tolerance, N7) and
+the deferral only when it is not. The writer builds one full-domain arc
+index per body lazily per grain (Swiss knots, retflag asserted).
+
+Tests: tests/l3/gochara/test_a53_record_store.py — 18/18 (fake-store:
+conjunction full chain, aspect direction mutation detector, O-RX-1
+retrograde ordinals, truncated-beyond-horizon + excluded-end control,
+no-index deferral, coverage naming; disposable-PG: Swiss-refined Sun
+conjunction through the real CHECK chain, full-domain ordinal 29 for the
+2026 crossing, idempotent rerun). Failing-first: the 7 new point tests +
+2 updated PG tests fail against the pre-change sources (9 failed / 9
+passed). The shared a53 scratch DB's pre-3/N '5.0' rows were wiped (scratch
+only, deterministic identities re-minted).

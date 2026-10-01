@@ -53,14 +53,18 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_kernel import evaluator as gk_evaluator
+from services.gochara_kernel import arcs as gk_arcs
 from services.gochara_kernel.chart_context import (fetch_chart_context,
                                                    require_complete)
-from services.gochara_kernel.knots import calc_sidereal_lon
+from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
 from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
 from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
-from services.gochara_kernel.substrate import SUBSTRATE_BODIES, SkyEventStore
+from services.gochara_kernel.substrate import (SUBSTRATE_BODIES,
+                                               SUBSTRATE_DOMAIN_END,
+                                               SUBSTRATE_DOMAIN_START,
+                                               SkyEventStore)
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +181,7 @@ class GocharaV5Writer(WriterBase):
             steps.extend(
                 SubStep(key=f"{RECORD_SUBSTEP_PREFIX}{event_class}:{pid}",
                         label=f"contact materialisation {event_class}/{pid} "
-                              "(residence + natal facts; point solves 3/N)")
+                              "(residence + point solves + natal facts)")
                 for pid in RECORD_PATHS
             )
         return steps
@@ -271,6 +275,19 @@ class GocharaV5Writer(WriterBase):
 
         house_for = _house_resolver(context)
 
+        # 3/N point solves: one full-domain arc index per body, built lazily
+        # (only grains with conjunction/aspect point edges pay for it); the
+        # Swiss sampler asserts the SWIEPH backend on every call (F-14).
+        arc_cache: dict[str, object] = {}
+
+        def arc_index_for(body: str):
+            if body not in arc_cache:
+                ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
+                                  SUBSTRATE_DOMAIN_END.date(), ephe_path)
+                arc_cache[body] = gk_arcs.build_arc_index(
+                    body, ks.knot_jds, ks.longitudes_deg)
+            return arc_cache[body]
+
         if step.key.startswith(COVERAGE_SUBSTEP_PREFIX):
             event_class = step.key[len(COVERAGE_SUBSTEP_PREFIX):]
             if event_class not in SCORED_CLASSES:
@@ -287,7 +304,7 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, class_edges=class_edges,
                 horizon=horizon, position_at=position_at,
                 sky_convention_id=sky_cid, kala_convention_id=kala_cid,
-                build_id=ctx.build_id)
+                build_id=ctx.build_id, arc_index_available=True)
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"coverage partition {event_class} written "
@@ -304,7 +321,8 @@ class GocharaV5Writer(WriterBase):
             event_class=event_class, path_id=path_id, edges=edges,
             horizon=horizon, position_at=position_at, house_for=house_for,
             sky_convention_id=sky_cid,
-            source_fact_ids=context["source_fact_ids"])
+            source_fact_ids=context["source_fact_ids"],
+            arc_index_for=arc_index_for, ephe_path=ephe_path)
         inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,

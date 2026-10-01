@@ -114,6 +114,9 @@ class FakeStore:
     def insert_contact(self, **kw):
         self.calls.append(("insert_contact", kw))
 
+    def insert_point_contact(self, **kw):
+        self.calls.append(("insert_point_contact", kw))
+
     def insert_record(self, **kw):
         self.calls.append(("insert_record", kw))
 
@@ -358,7 +361,7 @@ def _coverage_kwargs(store, kala_cid, sky_cid):
                 class_edges=ev.enumerate_edges("marriage", "P3", CHART),
                 horizon=HORIZON, position_at=_probe([(10, 200)]),
                 sky_convention_id=sky_cid, kala_convention_id=kala_cid,
-                build_id="test-build-pg")
+                build_id="test-build-pg", arc_index_available=True)
 
 
 def _sky_convention_id(conn) -> str:
@@ -402,7 +405,10 @@ def test_grain_end_to_end_on_disposable_pg(pg):
         "SELECT partition_key, relations_searched, targets_resolved"
         " FROM public.kala_gochara_coverage"
         " WHERE generation = '5.0' AND partition_kind = 'event_class'").fetchone()
-    assert cov == ("marriage", ["residence", "natal_fact"], 11)
+    # 3/N: with the arc index available the class coverage names the point
+    # solves as searched — every one of the 34 P3 edges is resolved
+    assert cov == ("marriage", ["residence", "aspect", "conjunction",
+                                "natal_fact"], 34)
 
 
 def test_grain_rerun_is_idempotent(pg):
@@ -427,5 +433,224 @@ def test_grain_rerun_is_idempotent(pg):
     assert first == second
     n = conn.execute(
         "SELECT count(*) FROM public.ka_gochara_relationship_record"
-        " WHERE generation = '5.0'").fetchone()
+        # scoped to this grain's relation — the shared disposable DB also
+        # carries the point-solve PG test's rows
+        " WHERE generation = '5.0' AND relation = 'residence'").fetchone()
     assert n[0] == first["records"]
+
+
+# ── 3/N: point solves (conjunction/aspect on point:<λ>) ─────────────────────
+#
+# Synthetic arc indexes (linear/piecewise curves reproduced exactly by the
+# cubic, refine=False — the spline-stage root IS the exact root) drive the
+# REAL solve_point_edges + grain; one disposable-PG test refines against
+# checksum-pinned Swiss for the full CHECK chain.
+
+J0 = T0.timestamp() / 86400.0 + 2440587.5
+
+
+def _index(body, curve, lo=-200, hi=800):
+    from services.gochara_kernel import arcs as gk_arcs
+    jds = [float(J0 + i) for i in range(lo, hi)]
+    lons = [curve(jd) % 360.0 for jd in jds]
+    return gk_arcs.build_arc_index(body, jds, lons, tolerance_arcsec=1e-7)
+
+
+def _point_edge(relation="conjunction", lam=200.0, agent="sun"):
+    from services.gochara_kernel.substrate import PhysicalObjectId
+    edges = [e for e in ev.enumerate_edges("marriage", "P3", CHART)
+             if e.transit and e.relation == relation and e.agent == agent]
+    assert edges, f"no {relation} edge for {agent} in marriage/P3"
+    e = edges[0]
+    obj = PhysicalObjectId(
+        body=agent, relation_kind=relation,
+        canonical_target=f"point:{float(lam)!r}",
+        convention_id=e.obj.convention_id)
+    return ev.RecordEdge(**{**e.__dict__, "obj": obj})
+
+
+def test_point_conjunction_solved_and_minted_full_chain():
+    edge = _point_edge("conjunction", 200.0, "sun")
+    # Sun at 100° at T0, +1°/day → crosses 200° at T0+100d; in-orb ±1°.
+    idx = _index("Sun", lambda jd: (jd - J0) + 100.0)
+    store = FakeStore({})
+    counts = _run(store, [edge], arc_index_for=lambda b: idx, refine=False)
+    assert counts["contacts"] == 1 and counts["records"] == 1
+    (occ,) = [kw["occ"] for k, kw in store.calls if k == "insert_point_contact"]
+    assert occ.contact.occurrence_ordinal == 1
+    assert abs((occ.t_exact - (T0 + 100 * DAY)).total_seconds()) < 120
+    assert abs((occ.t_in - (T0 + 99 * DAY)).total_seconds()) < 120
+    assert abs((occ.t_out - (T0 + 101 * DAY)).total_seconds()) < 120
+    assert occ.truncated is False and occ.solver_method == "arc_index_bracket"
+    rec = [kw for k, kw in store.calls if k == "insert_record"][0]
+    assert rec["contact_id"] == str(occ.contact.contact_id)
+    assert rec["support_state"] == "computed"
+    assert rec["support_intervals"][0].startswith("[")
+    assert rec["house_from_frame"] == 7
+
+
+def test_point_aspect_levels_are_target_minus_angle():
+    """Aspect direction (the A2.1 O-AD rule) at the record layer: Mars's
+    aspects on a 0° target occur with the body at (target − angle) —
+    270°/180°/150° for the 4th/7th/8th — never the mirrored level."""
+    edge = _point_edge("aspect", 0.0, "mars")
+    idx = _index("Mars", lambda jd: (jd - J0) * 0.5, lo=0, hi=700)  # < 1 revolution
+    occs = rs.solve_point_edges(
+        [edge], arc_index_for=lambda b: idx,
+        horizon=(T0, T0 + 650 * DAY), refine=False)[id(edge)]
+    exacts = sorted(o.t_exact for o in occs)
+    expect = [T0 + 300 * DAY, T0 + 360 * DAY, T0 + 540 * DAY]  # 150/180/270°
+    assert len(exacts) == 3
+    for got, want in zip(exacts, expect):
+        assert abs((got - want).total_seconds()) < 240
+    assert [o.contact.occurrence_ordinal for o in
+            sorted(occs, key=lambda o: o.t_exact)] == [1, 2, 3]
+    # mutation detector: mirrored levels (target + angle: 90°/210°→ at
+    # +180d/+420d) carry NO occurrence
+    for bad in (T0 + 180 * DAY, T0 + 420 * DAY):
+        assert all(abs((t - bad).total_seconds()) > 3600 for t in exacts)
+
+
+def test_point_retrograde_recrossing_ordinals():
+    """O-RX-1 at the writer: a direct pass, a retrograde re-crossing and the
+    re-return are ordinals 1, 2, 3 of ONE physical object."""
+    edge = _point_edge("conjunction", 200.0, "jupiter")
+
+    def curve(jd):
+        d = jd - J0
+        if d <= 210:
+            return d
+        if d <= 225:
+            return 210.0 - (d - 210)
+        return 195.0 + (d - 225)
+
+    idx = _index("Jupiter", curve, lo=0)
+    occs = rs.solve_point_edges(
+        [edge], arc_index_for=lambda b: idx, horizon=HORIZON,
+        refine=False)[id(edge)]
+    assert len(occs) == 3
+    ordered = sorted(occs, key=lambda o: o.t_exact)
+    assert [o.contact.occurrence_ordinal for o in ordered] == [1, 2, 3]
+    assert len({o.contact.physical_object_id for o in occs}) == 1
+    for occ, day in zip(ordered, (200, 220, 230)):
+        assert abs((occ.t_exact - (T0 + day * DAY)).total_seconds()) < 240
+    # distinct contact ids, one object (NK-2)
+    assert len({str(o.contact.contact_id) for o in occs}) == 3
+
+
+def test_point_exact_beyond_horizon_end_kept_truncated():
+    """N3/Tier-0-G at a point contact: exact centre 0.5d beyond the horizon
+    end, in-orb interval overlapping → the truncated span is KEPT (t_exact
+    NULL, clipped_truncated, t_out = the horizon end); a contact touching
+    only the excluded end instant itself is NOT one."""
+    edge = _point_edge("conjunction", 200.0, "venus")
+    idx = _index("Venus", lambda jd: (jd - J0) - 200.5, hi=700)
+    occs = rs.solve_point_edges(
+        [edge], arc_index_for=lambda b: idx, horizon=HORIZON,
+        refine=False)[id(edge)]
+    # the body also crosses 200° (mod 360) at +40.5d — that one is exact
+    assert len(occs) == 2
+    first, occ = sorted(occs, key=lambda o: o.t_in)
+    assert first.t_exact is not None and first.contact.occurrence_ordinal == 1
+    assert occ.t_exact is None and occ.truncated is True
+    assert occ.contact.occurrence_ordinal == 2
+    assert occ.solver_method == "clipped_truncated"
+    assert occ.t_out == HORIZON[1]
+    assert abs((occ.t_in - (T0 + 399.5 * DAY)).total_seconds()) < 240
+    assert occ.delta_lambda is None and occ.delta_t is None
+
+    # control: exact at T0+401d on a no-wrap index → in-orb [400, 402]
+    # touches only the excluded end → no occurrence at all
+    idx2 = _index("Venus", lambda jd: (jd - J0) - 201.0, lo=300, hi=500)
+    edge2 = _point_edge("conjunction", 200.0, "venus")
+    occs2 = rs.solve_point_edges(
+        [edge2], arc_index_for=lambda b: idx2, horizon=HORIZON,
+        refine=False)
+    assert occs2 == {}
+
+
+def test_point_edges_unsolved_without_arc_index():
+    edge = _point_edge("conjunction", 200.0, "sun")
+    store = FakeStore({})
+    counts = _run(store, [edge], arc_index_for=None)
+    assert counts["contacts"] == 0 and counts["records"] == 0
+    assert not any(k == "insert_point_contact" for k, _ in store.calls)
+
+
+def test_class_coverage_point_solves_searched_with_arc_index():
+    store = FakeStore({})
+    class_edges = ev.enumerate_edges("marriage", "P3", CHART)
+    assert any(e.transit and e.relation in rs.POINT_KERNEL_RELATION
+               for e in class_edges)
+    _run_coverage(store, class_edges, arc_index_available=True)
+    cov = [kw for k, kw in store.calls if k == "write_coverage"][0]
+    assert "conjunction" in cov["relations_searched"]
+    assert "aspect" in cov["relations_searched"]
+    assert rs.DEFERRAL_POINT_SOLVE not in (cov["unsearched_reason"] or "")
+    assert cov["resolution"] >= rs.POINT_SOLVE_INDEX_TOLERANCE_ARCSEC
+
+
+# ── disposable PG: the real SQL chain with a Swiss-refined solve ────────────
+
+def test_point_grain_end_to_end_on_disposable_pg(pg):
+    conn = pg
+    from tests.l3.gochara import conftest as _c
+    if _c._PROBLEMS:
+        pytest.skip(f"NOT_RUN: .se1 ephemeris files: {_c._PROBLEMS}")
+    from services.gochara_kernel import arcs as gk_arcs
+    from services.gochara_kernel.knots import sample_knots
+    from services.gochara_kernel.substrate import (SUBSTRATE_DOMAIN_END,
+                                                   SUBSTRATE_DOMAIN_START)
+    edge = _point_edge("conjunction", 200.0, "sun")
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(conn)
+    store = rs.RecordStore(conn)
+    kala_cid = store.ensure_kala_convention()
+    kw = _coverage_kwargs(store, kala_cid, sky_cid)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(store, **kw)
+
+    ks = sample_knots("Sun", SUBSTRATE_DOMAIN_START.date(),
+                      SUBSTRATE_DOMAIN_END.date(), _c.EPHE_PATH)
+    idx = gk_arcs.build_arc_index("Sun", ks.knot_jds, ks.longitudes_deg)
+    gkw = _grain_kwargs(store, sky_cid)
+    gkw.update(edges=[edge], arc_index_for=lambda b: idx,
+               ephe_path=_c.EPHE_PATH, refine=True)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts = rs.materialise_record_grain(store, **gkw)
+    assert counts["contacts"] >= 1 and counts["records"] == counts["contacts"]
+    rows = conn.execute(
+        "SELECT occurrence_ordinal, t_in, t_out, t_exact, solver_method,"
+        " delta_lambda, delta_t, precision_regime, coverage"
+        " FROM public.ka_gochara_contact"
+        " WHERE generation = '5.0' AND relation_kind = 'conjunction'"
+        " ORDER BY occurrence_ordinal").fetchall()
+    assert len(rows) == counts["contacts"]
+    for ordinal, t_in, t_out, t_exact, solver, dl, dt, regime, cov in rows:
+        assert solver == "swiss_refined" and cov["truncated"] is False
+        assert t_in < t_exact < t_out          # kgc_time_order/span_order
+        assert dl is not None and dt is not None and regime
+        assert HORIZON[0] <= t_exact < HORIZON[1]
+    recs = conn.execute(
+        "SELECT contact_id, house_from_frame, temporal_support_state,"
+        " temporal_support_intervals FROM public.ka_gochara_relationship_record"
+        " WHERE generation = '5.0' AND relation = 'conjunction'").fetchall()
+    assert len(recs) == counts["contacts"]
+    assert all(r[1] == 7 and r[2] == "computed" and r[3] for r in recs)
+    # R3: ordinals are FULL-DOMAIN — the Sun crosses 200° once a year from
+    # the 1998-01-01 domain start, so the single in-horizon (2026)
+    # occurrence is ordinal 29, never renumbered to 1 by the horizon filter
+    assert [r[0] for r in rows] == [29]
+    # pin-4 idempotent rerun: same identities, byte checks pass, no dupes
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts2 = rs.materialise_record_grain(store, **gkw)
+    assert counts2 == counts
+    n = conn.execute(
+        "SELECT count(*) FROM public.ka_gochara_contact"
+        " WHERE generation = '5.0' AND relation_kind = 'conjunction'"
+    ).fetchone()[0]
+    assert n == counts["contacts"]

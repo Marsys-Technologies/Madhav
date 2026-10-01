@@ -21,12 +21,14 @@ Two substep kinds, each one orchestrator transaction:
      (MissingCoverageError) — never an orphaned record.
 
 Scope of THIS slice: `residence` transit edges (spans from the substrate's
-sign_ingress sky events — the A2 global boundary table, read-only) and
-natal-fact edges (transit=False, contact_id NULL). `aspect` / `conjunction`
-transit edges solve through contacts.find_roots in interval_sweep 3/N; the
-class coverage names only what ran in relations_searched and the deferral
-in unsearched_reason — the edges are never silently dropped and never
-minted uncomputed.
+sign_ingress sky events — the A2 global boundary table, read-only),
+natal-fact edges (transit=False, contact_id NULL), and — interval_sweep
+3/N — `conjunction`/`aspect` transit edges on point:<λ> targets, solved
+through the kernel's arc index (`solve_point_edges`: roots per relation
+level, Swiss-refined; full-domain ordinals; span = the in-orb interval at
+the pinned WP1 §7 orb). When the arc index is unavailable the class
+coverage names the deferral — the edges are never silently dropped and
+never minted uncomputed.
 
 Contact-row model (ka_gochara_contact, 1153): coverage.truncated is exactly
 "t_exact IS NULL" (kgc_t_exact_iff_truncated_ck). A span clipped at the
@@ -60,16 +62,183 @@ from datetime import datetime
 from typing import Callable, Sequence
 
 from . import ledger as gk_ledger
-from .evaluator import RecordEdge
+from .contacts import find_roots
+from .convention import ORB_TABLE
+from .evaluator import RecordEdge, record_uuid
 from .materialise import (BoundaryCrossing, ResidenceSpan, mint_natal_record,
                           mint_transit_records, residence_spans)
 from .substrate import (DB_BODY, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START,
                         IdentityCollisionError, PhysicalObjectId,
-                        SubstrateContact)
+                        SubstrateContact, assign_occurrence_ordinals,
+                        jd_to_utc)
+from services.gochara_rules.frames import sign_of
 
 SUPPORT_GRAIN_SPAN = "span"
-DEFERRAL_POINT_SOLVE = ("aspect/conjunction contact solve lands in "
-                        "interval_sweep 3/N (named deferral)")
+DEFERRAL_POINT_SOLVE = ("aspect/conjunction contact solve needs the body's "
+                        "arc index — unavailable in this run (named deferral)")
+
+# Point solves (interval_sweep 3/N): the evaluator's transit point edges —
+# (agent, conjunction|aspect, point:<λ full precision>) — solve through the
+# kernel's arc index: roots per relation level (dṛṣṭi: body at target −
+# angle; nodes cast none, N-14 — excluded at enumeration), Swiss-refined at
+# the instant (plan §4.2), occurrence ordinals over the FULL convention
+# domain (R3 amendment 1), span = the in-orb interval at the pinned
+# relation-class orb (WP1 §7 ORB_TABLE — the same table the kernel emits
+# episodes at; N7 restates the solve's own tolerance on the row).
+POINT_KERNEL_RELATION = {"conjunction": "conjunction", "aspect": "drishti_contact"}
+POINT_ORB_SOURCE = {"conjunction": "orb_conj_slow", "aspect": "orb_drishti_slow"}
+#: The arc-index tolerance the point solve declares on its coverage rows
+#: (arcs.DEFAULT_ROOT_FIND_TOLERANCE_ARCSEC — the writer builds indexes at
+#: the kernel default; N7 restates the solve's own tolerance).
+POINT_SOLVE_INDEX_TOLERANCE_ARCSEC = 1.0
+_JD_UNIX_EPOCH = 2440587.5
+
+
+def _utc_to_jd(t: datetime) -> float:
+    return t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+
+
+@dataclass(frozen=True)
+class PointOccurrence:
+    """One solved point-contact occurrence of a (body, conjunction|aspect,
+    point:<λ>) object: the refined root plus its in-orb span clipped to the
+    requested horizon. t_exact None ⇔ truncated (the exact centre lies
+    outside the requested horizon — the span overlaps it, N3 kept)."""
+
+    contact: SubstrateContact
+    level_deg: float
+    t_in: datetime
+    t_out: datetime
+    t_exact: datetime | None
+    truncated: bool
+    solver_method: str
+    delta_lambda: float | None
+    delta_t: float | None
+    precision_regime: str | None
+
+
+def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]:
+    """The in-orb interval around one refined root, derived from the root's
+    OWN arc (monotone, station-bounded — a turnaround inside the orb closes
+    the interval at the arc's station boundary, E8-2).
+
+    Deliberately NOT episodes.in_orb_intervals: that helper resolves ONE
+    unwrapped representative per SEGMENT (_segment_band_level, nearest the
+    midpoint), so on a multi-revolution segment (any stationless body over
+    years) every band but one is silently missed — reported to the steward
+    2026-10-01 (M20261001T172758-6f81). The arc-local derivation is exact
+    per occurrence by construction.
+    """
+    arc = root.arc
+    tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
+    lon_at_root = arc.unwrapped_longitude_at(root.exact_jd)
+    level_u = root.level_deg + 360.0 * round((lon_at_root - root.level_deg) / 360.0)
+    lo, hi = level_u - orb_deg, level_u + orb_deg
+    span_lo = min(arc.start_lon_unwrapped, arc.end_lon_unwrapped)
+    span_hi = max(arc.start_lon_unwrapped, arc.end_lon_unwrapped)
+
+    def _bisect(jd_a: float, jd_b: float, target_u: float) -> float:
+        fa = index.evaluate(jd_a) - target_u
+        fb = index.evaluate(jd_b) - target_u
+        for _ in range(80):
+            mid = 0.5 * (jd_a + jd_b)
+            fm = index.evaluate(mid) - target_u
+            if abs(fm) <= tol_deg:
+                return mid
+            if (fa < 0) == (fm < 0):
+                jd_a, fa = mid, fm
+            else:
+                jd_b, fb = mid, fm
+        return mid
+
+    a, b = arc.start_jd, arc.end_jd
+    if arc.direction == 1:
+        if span_lo < lo - 1e-12:
+            a = _bisect(arc.start_jd, root.exact_jd, lo)
+        if span_hi > hi + 1e-12:
+            b = _bisect(root.exact_jd, arc.end_jd, hi)
+    else:
+        if span_hi > hi + 1e-12:
+            a = _bisect(arc.start_jd, root.exact_jd, hi)
+        if span_lo < lo - 1e-12:
+            b = _bisect(root.exact_jd, arc.end_jd, lo)
+    return a, b
+
+
+def solve_point_edges(
+    edges: Sequence[RecordEdge],
+    *,
+    arc_index_for: Callable[[str], object] | None,
+    horizon: tuple[datetime, datetime],
+    ephe_path: str | None = None,
+    refine: bool = True,
+) -> dict[int, list[PointOccurrence]]:
+    """Solve the transit point edges (conjunction/aspect on point:<λ>).
+
+    `arc_index_for(body)` yields the body's arc index over the FULL
+    convention domain (injected — built once per body by the caller; the
+    ordinal set is the full-domain ordered crossing set, R3 amendment 1).
+    When arc_index_for is None nothing is solved (the class coverage named
+    the deferral) — the edges are never silently dropped and never minted
+    uncomputed. Returns {id(edge): [PointOccurrence, ...]} for edges whose
+    span overlaps the requested horizon.
+    """
+    out: dict[int, list[PointOccurrence]] = {}
+    if arc_index_for is None:
+        return out
+    h0, h1 = _utc_to_jd(horizon[0]), _utc_to_jd(horizon[1])
+    for edge in edges:
+        if not edge.transit or edge.relation not in POINT_KERNEL_RELATION:
+            continue
+        target = edge.obj.canonical_target
+        assert target.startswith("point:"), target
+        lam = float(target[len("point:"):])
+        body = edge.agent.title()
+        index = arc_index_for(body)
+        kernel_rel = POINT_KERNEL_RELATION[edge.relation]
+        orb = float(ORB_TABLE[POINT_ORB_SOURCE[edge.relation]]["orb_max_deg"])
+        roots = find_roots(index, body, kernel_rel, lam, ephe_path,
+                           refine=refine)
+        contacts = assign_occurrence_ordinals(
+            physical_object_id=edge.obj,
+            t_exact_list=[jd_to_utc(r.exact_jd) for r in roots])
+        occs: list[PointOccurrence] = []
+        for root, contact in zip(roots, contacts):
+            a, b = _in_orb_span_around_root(index, root, orb)
+            if not (a - 1e-9 <= root.exact_jd <= b + 1e-9):
+                raise RuntimeError(
+                    f"{edge.agent} {edge.relation} {target}: refined root at "
+                    f"jd {root.exact_jd} lies outside its own in-orb span "
+                    f"[{a}, {b}] — solver defect, refusing to mint")
+            if b <= h0 or a >= h1:
+                continue  # outside the requested horizon entirely
+            exact_inside = h0 <= root.exact_jd < h1
+            t_in_jd, t_out_jd = max(a, h0), min(b, h1)
+            if not t_in_jd < t_out_jd:
+                # an overlap only AT the excluded end (half-open [h0, h1))
+                # is not a legitimate truncated span — dropped (A2 v1.1)
+                continue
+            occs.append(PointOccurrence(
+                contact=contact,
+                level_deg=root.level_deg,
+                t_in=jd_to_utc(t_in_jd),
+                t_out=jd_to_utc(t_out_jd),
+                t_exact=jd_to_utc(root.exact_jd) if exact_inside else None,
+                truncated=not exact_inside,
+                solver_method=("swiss_refined" if (exact_inside and refine)
+                               else ("arc_index_bracket" if exact_inside
+                                     else "clipped_truncated")),
+                delta_lambda=(index.tolerance_arcsec / 3600.0
+                              if exact_inside else None),
+                delta_t=1e-9 if (exact_inside and refine) else None,
+                precision_regime=(
+                    ("swiss_bisect_tol_1e-9d" if refine
+                     else f"arc_index_bracket_{index.tolerance_arcsec}arcsec")
+                    if exact_inside else None),
+            ))
+        if occs:
+            out[id(edge)] = occs
+    return out
 
 # The WP1 §1.1 convention vector the kala coverage ledger keys on (the same
 # values the '4.1' candidate chain pins in step06_candidate_build.py; the
@@ -333,6 +502,56 @@ class RecordStore:
                           DB_BODY.get(poid.body, poid.body.lower()), "residence"),
                     f"contact {contact.contact_id}")
 
+    # ── point contacts (conjunction/aspect on point:<λ>, 3/N) ─────────────
+
+    def insert_point_contact(self, *, chart_id: str, generation: str,
+                             occ: PointOccurrence, poid: PhysicalObjectId,
+                             convention_id: str) -> None:
+        self._ensure_object(poid)
+        self.conn.execute(
+            "INSERT INTO public.ka_gochara_contact_identity"
+            " (contact_id, physical_object_id, occurrence_ordinal)"
+            " VALUES (%s,%s,%s) ON CONFLICT (contact_id) DO NOTHING",
+            (str(occ.contact.contact_id), str(poid.uuid),
+             occ.contact.occurrence_ordinal),
+        )
+        row = self.conn.execute(
+            "SELECT physical_object_id, occurrence_ordinal"
+            " FROM public.ka_gochara_contact_identity WHERE contact_id = %s",
+            (str(occ.contact.contact_id),),
+        ).fetchone()
+        _byte_check(row, (str(poid.uuid), occ.contact.occurrence_ordinal),
+                    f"contact identity {occ.contact.contact_id}")
+
+        params = (
+            chart_id, generation, str(occ.contact.contact_id), str(poid.uuid),
+            occ.contact.occurrence_ordinal, convention_id,
+            DB_BODY.get(poid.body, poid.body.lower()), poid.relation_kind,
+            occ.t_in, occ.t_out, occ.t_exact,
+            occ.solver_method, occ.delta_lambda, occ.delta_t,
+            occ.precision_regime, _json.dumps({"truncated": occ.truncated}),
+        )
+        self.conn.execute(
+            "INSERT INTO public.ka_gochara_contact ("
+            " chart_id, generation, contact_id, physical_object_id,"
+            " occurrence_ordinal, convention_id, body, relation_kind,"
+            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t,"
+            " precision_regime, coverage)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            " ON CONFLICT (chart_id, generation, contact_id) DO NOTHING",
+            params,
+        )
+        row = self.conn.execute(
+            "SELECT physical_object_id, occurrence_ordinal, body, relation_kind"
+            " FROM public.ka_gochara_contact"
+            " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
+            (chart_id, generation, str(occ.contact.contact_id)),
+        ).fetchone()
+        _byte_check(row, (str(poid.uuid), occ.contact.occurrence_ordinal,
+                          DB_BODY.get(poid.body, poid.body.lower()),
+                          poid.relation_kind),
+                    f"contact {occ.contact.contact_id}")
+
     # ── record rows (kgrr) ────────────────────────────────────────────────
 
     def insert_record(self, *, chart_id: str, generation: str,
@@ -418,6 +637,7 @@ def write_class_coverage(
     sky_convention_id: str,
     kala_convention_id: str,
     build_id: str,
+    arc_index_available: bool = False,
 ) -> None:
     """The `coverage:<event_class>` substep: ONE class-level event_class
     coverage partition (the frozen F7 key convention), written before any
@@ -427,25 +647,40 @@ def write_class_coverage(
     insert-if-absent is consistent):
 
       * relations_searched — the relations this slice actually searches
-        (residence with a probe; natal_fact always); deferred relations
-        (point solves, 3/N) are named in unsearched_reason, never searched
-        silently;
+        (residence with a probe; conjunction/aspect point solves when the
+        arc index is available; natal_fact always); unsolved relations (no
+        arc index in this run) are named in unsearched_reason, never
+        searched silently;
       * targets — edge-level counts over the class's full enumeration:
         resolved = edges under searched relations, unavailable = edges
         under deferred/underivable ones;
       * resolution — the largest solve tolerance (arcsec) of the crossings
-        actually read (N7); 0.0 with a named non-claim when no angular
-        solve happened.
+        actually read plus the point-solve arc-index tolerance when point
+        solves are searched (N7); 0.0 with a named non-claim when no
+        angular solve happened.
     """
     residence = [e for e in class_edges if e.transit and e.relation == "residence"]
     natal = [e for e in class_edges if not e.transit]
+    point = [e for e in class_edges
+             if e.transit and e.relation in POINT_KERNEL_RELATION]
+    point_solved = bool(point) and arc_index_available
     deferred = sorted({e.relation for e in class_edges
-                       if e.transit and e.relation != "residence"})
+                       if e.transit and e.relation != "residence"
+                       and e.relation not in POINT_KERNEL_RELATION})
     relations_searched = (
         (["residence"] if residence and position_at is not None else [])
+        + (sorted({e.relation for e in point}) if point_solved else [])
         + (["natal_fact"] if natal else []))
     unavailable: dict = {}
-    unsearched = DEFERRAL_POINT_SOLVE if deferred else None
+    unsearched_parts: list[str] = []
+    if point and not arc_index_available:
+        unavailable["arc_index"] = ("no arc index in this run — point "
+                                    "contacts unsolved (named, never fabricated)")
+        unsearched_parts.append(DEFERRAL_POINT_SOLVE)
+    if deferred:
+        unsearched_parts.append("relations with no solver: "
+                                + ", ".join(deferred))
+    unsearched = "; ".join(unsearched_parts) or None
     if residence and position_at is None:
         unavailable["position_probe"] = ("ephemeris probe unavailable — no "
                                          "span derived (named, never fabricated)")
@@ -457,12 +692,15 @@ def write_class_coverage(
             eps += [c.delta_lambda * 3600.0
                     for c in store.fetch_crossings(body, sky_convention_id)
                     if c.delta_lambda is not None]
+    if point_solved:
+        eps.append(POINT_SOLVE_INDEX_TOLERANCE_ARCSEC)
     resolution = max(eps) if eps else 0.0
     if not eps:
         unavailable["resolution"] = ("no angular solve in this class's searched "
                                      "relations — resolution not applicable "
                                      "(0.0 is a non-claim)")
-    searched = len(residence if position_at is not None else []) + len(natal)
+    searched = (len(residence if position_at is not None else [])
+                + (len(point) if point_solved else 0) + len(natal))
     total = len(class_edges)
     store.ensure_bridge(kala_convention_id, sky_convention_id)
     store.write_coverage(
@@ -491,6 +729,9 @@ def materialise_record_grain(
     sky_convention_id: str,
     source_fact_ids: list[str],
     prerequisites: list[list[str]] | None = None,
+    arc_index_for: Callable[[str], object] | None = None,
+    ephe_path: str | None = None,
+    refine: bool = True,
 ) -> dict[str, int]:
     """Materialise one `record:<event_class>:<path_id>` grain: contacts,
     then records, bound to the class's ALREADY-WRITTEN coverage partition
@@ -502,13 +743,26 @@ def materialise_record_grain(
     touches an ephemeris). Without it no transit span is derived: nothing
     is minted (the class coverage named the probe's absence), never
     fabricated.
+
+    `arc_index_for(body)` (3/N point solves) yields the body's full-domain
+    arc index for conjunction/aspect edges on point:<λ> targets. Without
+    it no point contact is solved or minted (the class coverage named the
+    deferral), never fabricated.
     """
     residence_edges = [e for e in edges if e.transit and e.relation == "residence"]
+    point_edges = [e for e in edges
+                   if e.transit and e.relation in POINT_KERNEL_RELATION]
     natal_edges = [e for e in edges if not e.transit]
     coverage_key = event_class
     if prerequisites is None:
         rule_version = edges[0].rule_version if edges else "1.0.0"
         prerequisites = store.fetch_path_prerequisites(path_id, rule_version)
+
+    # Point solves (3/N): full-domain roots + ordinals, then the horizon
+    # intersection — solved BEFORE any write, per edge.
+    point_occs = solve_point_edges(
+        point_edges, arc_index_for=arc_index_for, horizon=horizon,
+        ephe_path=ephe_path, refine=refine) if point_edges else {}
 
     # Derive full-domain spans per body (stable ordinals), then intersect
     # with the requested horizon. One crossing read + one span set per body.
@@ -545,6 +799,27 @@ def materialise_record_grain(
                 continue
             work.append((e, m, house))
 
+    # Point occurrences (3/N): house from the TARGET point's sign (the natal
+    # house the transit contacts). An unresolvable anchor ⇒ not minted
+    # (kgrr_evaluated_has_house_ck — a state, never an omission).
+    point_work: list[tuple[RecordEdge, PointOccurrence, str, int]] = []
+    for e in point_edges:
+        occs = point_occs.get(id(e), [])
+        if not occs:
+            continue
+        target = e.obj.canonical_target
+        assert target.startswith("point:"), target
+        sign = sign_of(float(target[len("point:"):]) % 360.0)
+        for occ in occs:
+            house = house_for(e, sign)
+            if house is None:
+                continue
+            key = e.natural_key(
+                chart_id=chart_id, generation=generation,
+                contact_id=str(occ.contact.contact_id),
+                prerequisites=prerequisites, source_text=e.source_text)
+            point_work.append((e, occ, record_uuid(key), house))
+
     coverage_facts = store.stored_coverage_facts_json(
         chart_id=chart_id, generation=generation, event_class=event_class)
     counts = {"contacts": 0, "records": 0, "natal_records": 0,
@@ -576,6 +851,29 @@ def materialise_record_grain(
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites, house_from_frame=house)
         counts["records"] += 1
+    for edge, occ, record_id, house in point_work:
+        store.insert_point_contact(
+            chart_id=chart_id, generation=generation, occ=occ,
+            poid=edge.obj, convention_id=sky_convention_id)
+        counts["contacts"] += 1
+        counts["truncated_contacts"] += 1 if occ.truncated else 0
+        precision = None
+        if occ.t_exact is not None:
+            precision = {
+                "solver_method": occ.solver_method,
+                "delta_lambda": occ.delta_lambda,
+                "delta_t": occ.delta_t,
+            }
+        interval = f"[{occ.t_in.isoformat()},{occ.t_out.isoformat()})"
+        store.insert_record(
+            chart_id=chart_id, generation=generation, edge=edge,
+            record_id=record_id,
+            contact_id=str(occ.contact.contact_id),
+            support_state="computed", support_intervals=[interval],
+            precision=precision, coverage_key=coverage_key,
+            coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
+            prerequisites=prerequisites, house_from_frame=house)
+        counts["records"] += 1
     for edge in natal_edges:
         m = mint_natal_record(edge, chart_id=chart_id, generation=generation,
                               prerequisites=prerequisites)
@@ -599,8 +897,13 @@ __all__ = [
     "DEFERRAL_POINT_SOLVE",
     "KALA_CONVENTION_VECTOR",
     "MissingCoverageError",
+    "POINT_KERNEL_RELATION",
+    "POINT_ORB_SOURCE",
+    "POINT_SOLVE_INDEX_TOLERANCE_ARCSEC",
+    "PointOccurrence",
     "RecordStore",
     "SUPPORT_GRAIN_SPAN",
     "materialise_record_grain",
+    "solve_point_edges",
     "write_class_coverage",
 ]
