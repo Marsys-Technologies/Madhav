@@ -81,15 +81,15 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Build.completion: one writer reports three ids
+### FD-1 · Build.completion: the writer reports this asset’s own partition
 
 - **Answers:** census `Build.completion` FAIL (60 vs 21); ledger `bg_medical_mappings-Build.completion`; CF-02
-- **Change:** report rows per registered id: return this asset’s own partition (`counts["bg_medical_mappings"]`) from `run()` when dispatched as `bg_medical_mappings`, or scope the other two assets’ records separately (they are declared riders). The shared seed already returns per-table counts (`l0_medical.py:416-448`), so no new computation.
+- **Change:** the shared writer returns the sum of three tables (60 = 21 + 27 + 12, `bg_medical_mappings.py:49`) against 21 for this asset’s count_sql. Q1 option A covers only `rows_written = 0`, so this 60-versus-21 disagreement stays a FAIL until the writer reports the asset’s own partition (`counts["bg_medical_mappings"]` from the shared seed, `l0_medical.py:416-448`). Decided here from the code: writer change (TI-L0-32), not a detector change.
 - **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_medical_mappings.py` (WriterResult construction; `ctx` carries the dispatched asset id or the writer keeps `asset_id`)
 - **Failing-first test and mutation:** failing-first: `rows_written` equals the asset’s own count_sql scope after a first build; a seeded row in a sibling table does not move it; mutation: revert → mismatch returns
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none for a detector-side reading (CF-01/CF-02); the writer option, if chosen, needs a production rebuild of the three medical assets (small tables, idempotent) to refresh the records
+- **Blast radius:** record-only: `rows_written` for three asset ids changes; no row changes. Readers of the tables (L1 `ga_medical_writer.py`, `get_medical_indications.ts`, editorial-review modules, `runner.py`) see no difference.
+- **Rebuild:** needs production rebuild of bg_medical_mappings (and its two riders, same writer) to write the new record: 3 small tables, idempotent, no data change
 - **Gate it moves:** Build (completion)
 - **Fix class:** writer code; **buildable before J1:** tier-independent for the writer; the rider semantics (`producer_covered`) are tier-dependent (TGH-T4-01)
 - **Decision:** ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
@@ -101,7 +101,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -113,7 +113,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -125,7 +125,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
