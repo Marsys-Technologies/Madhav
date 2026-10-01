@@ -123,3 +123,60 @@ pin 7) and prerequisite `result` evaluation at materialisation.
 - Production writes only on the governed path; no local century enumeration (ADK-0028).
 - '5.0' is a candidate generation: no flip without D-FLIP; '3.0' stays the rollback surface.
 - Fix the data, not the detector (ADK-0026); a failed gate yields a new candidate, never a patch.
+
+## Step `interval_sweep` — contact materialisation design (v1.0, 2026-10-01)
+
+Plan extension (pin-5 grain): after the body substeps, per-grain record substeps
+`record:<event_class>:<path_id>` over the static enumeration (26 scored classes ×
+P1–P5), then `window:<event_class>:<path_id>` for the sweep itself. One
+substep = one transaction (the orchestrator commits per substep).
+
+Contact materialisation per grain (`record:` substep):
+
+1. Enumerate edges — `evaluator.enumerate_edges(event_class, path, chart)` with
+   the chart context from L1 chart_facts (`chart_context.py`; conflicts/missing
+   NAMED, never defaulted).
+2. Solve contacts per transit edge over the requested horizon:
+   - `residence` on `span:sign:<X>` — from the substrate's `sign_ingress`
+     sky events for that body (the A2 global boundary table, read-only):
+     a span is [ingress into X, egress), re-entering on retrograde loops;
+     a contact overlapping the horizon whose exact instant lies outside is a
+     TRUNCATED span (t_exact NULL per 1152), never absence (Tier-0-G
+     `truncated_contacts_kept`).
+   - `conjunction` / `return` / `drishti_contact` on `point:<λ>` —
+     `contacts.find_roots` with levels per relation (dṛṣṭi: body at
+     target − angle; nodes cast none, N-14), bracketed from the arc index,
+     swiss_refined at the instant (plan §4.2).
+   - natal-fact edges (transit=False) — no solve; one record, contact_id NULL.
+3. Occurrence ordinals — `substrate.assign_occurrence_ordinals` per physical
+   object; contact_id = `ledger.compute_contact_id` over the pinned key.
+4. Records — one per occurrence (transit) / one per edge (natal fact);
+   record_id = `evaluator.record_uuid(natural_key)` (E7); `precision` restated
+   from the contact (N7); `temporal_support_*` = the span (state `computed`),
+   or `computed_empty` where the solve found no occurrence — a state, never an
+   omission; `admission_state` finalised at COMMIT (F5, migration 1155).
+5. Prerequisite `result` evaluation at materialisation into
+   `ka_gochara_record_prerequisite` (the trigger's `result_only` path):
+   `period_running_at` per occurrence against the §4.0 dasha rows (P1);
+   `av_polarity_declaration_exists` joined and recorded in lineage (P5,
+   O-BP-3, migration 1157); `p4_double_transit` overlap of the Jupiter/Saturn
+   contacts (P4, R3-S02).
+6. Coverage FIRST in the same transaction (pin 7): partition_kind
+   `event_class`, key `<event_class>:<path_id>`, horizon + relations_searched +
+   per-state counts + `unavailable_inputs` named (e.g. the P5c donor matrix).
+
+The sweep (`window:` substep): per grain, admitted windows = the union of
+scored-edge support intervals whose prerequisites pass; peaks = interior
+extrema of the activity kernel within each window (§7.2 inv 2); era/month are
+output resolutions of the paths at those grains (§2.3 inv 4 — never a clipped
+curve); day rows only via P6 on demand (M-3) — the `day_on_demand` step.
+
+Open bindings (flagged, never silently resolved):
+
+- D7: P5 `object_role='av_qualifier'` is outside `kgrr_object_role_ck` v1.0 —
+  reported to the steward (M20261001T113409-04cd) for the v1.5 contract fold;
+  P5 grain DB writes hold until then. Enumeration carries the honest name.
+- P5c donor matrix: pending the native-authorised ga_strength rebuild (#2731);
+  D4 stands.
+- `period_running_at` operand: the §4.0 dasha-row source table to be confirmed
+  against the platform's dasha store before the P1 grain writes.
