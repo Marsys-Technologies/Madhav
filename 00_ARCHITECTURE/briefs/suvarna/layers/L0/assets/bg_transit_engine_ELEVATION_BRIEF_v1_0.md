@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-07, TI-L0-08]
 ledger_gap_ids: [bg_transit_engine-Build.registered, bg_transit_engine-Idem.pattern, bg_transit_engine-Earn.build_record, bg_transit_engine-Cost.baseline, bg_transit_engine-Dens.served, bg_transit_engine-Carr.detector]
 ---
 # bg_transit_engine — Transit engine parameters (9 rows; rider on the transit writer)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -69,7 +71,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_transit_engine-Idem.pattern | Idem | stale | saved census Idem.pattern reads PASS (upsert at `l0_transit.py:913`) \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
 | bg_transit_engine-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_transit_engine-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_transit_engine-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 1 module(s): query_transit_engine.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_transit_engine-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 1 module(s): query_transit_engine.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_transit_engine-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
 
@@ -77,14 +79,14 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — complete and cited; the findings are the registry/status contradictions (CF-03) and the rider question (CF-02).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
 ### FD-1 · Registry: `has_writer` false → true
 
 - **Answers:** census `Build.registered` FAIL; ledger `bg_transit_engine-Build.registered`; layer instance C-12; CF-03
-- **Change:** set `has_writer = true` in the same surgical migration as `bg_nakshatra_medical` (guarded by the old value) and the seed literal. Expected cascade (Nikaṣa R61): `Build.exercised` FAIL until the id is dispatched.
+- **Change:** set `has_writer = true` in the same surgical migration as `bg_nakshatra_medical` (guarded by the old value) and the seed literal. Expected cascade (Nikaṣa R61; SS 2026-10-01, Q6: the cascade may stand until the first L0 dispatch): `Build.exercised` FAIL until the id is dispatched.
 - **Files / declaration / migration:** migration (max+1 across all heads and both directories at execution time) + `asset_registry_seed.ts`
 - **Failing-first test and mutation:** failing-first: `Build.registered` PASS after the migration; `Build.exercised` FAIL recorded as the cascade; mutation: revert → FAIL
 - **Output change:** none
@@ -92,20 +94,20 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Rebuild:** none for the flip; clearing the cascade needs a dispatch (production run): REVIEW item for SS
 - **Gate it moves:** Build (registered)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent
-- **Question for SS:** Cascade accepted until first dispatch?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
 
-### FD-2 · Rider dispatch
+### FD-2 · Rider relation declared in the registry (`producer_covered`)
 
 - **Answers:** census `Build.exercised` (never run); CF-02
-- **Change:** decide whether the sibling `bg_transit_rules` dispatch exercises this id (T4 `producer_covered`) or dispatch it through the same writer.
+- **Change:** decided (SS 2026-10-01, Q6): a sibling’s dispatch counts when the registry declares the rider relation. Declare `bg_nakshatra_medical` as a rider of `bg_medical_mappings` (resp. `bg_transit_engine` of `bg_transit_rules`) so the sibling’s run exercises it; no separate dispatch is required.
 - **Files / declaration / migration:** a ruling or the L0 run
 - **Failing-first test and mutation:** one L0 run records both ids
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production dispatch (REVIEW item)
+- **Rebuild:** none (declaration); the first L0 dispatch of the sibling clears the cascade
 - **Gate it moves:** Build (exercised)
-- **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T4-01
-- **Question for SS:** Does the sibling’s dispatch count for a rider?
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
 
 ### FD-3 · Carr detector — D1 on the 9 rows
 
@@ -134,15 +136,15 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-5 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 1 module: `query_transit_engine.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -151,7 +153,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-02** — Producer attribution: rider ids, multi-table writers and multi-producer tables. *This asset:* rider id
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 + mean-motion D3
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 1 module
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* 1 module
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -163,6 +165,13 @@ Natural key `graha` (census, 0 duplicates). Upsert; volatile: `created_at`.
 - **Carriage check chosen (T4 §4.1; one only):** D1 (corpus) with a D3 on mean motion from the ephemeris.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Has_writer flip: cascade accepted until first dispatch?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
+2. CF-02: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+4. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-07, TI-L0-08.

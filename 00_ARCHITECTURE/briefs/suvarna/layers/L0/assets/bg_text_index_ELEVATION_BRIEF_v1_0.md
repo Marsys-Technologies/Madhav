@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "integrate (I)"
 disposition_proposal_approver: "Strategic Suvarṇa"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-01, TI-L0-03, TI-L0-06]
 ledger_gap_ids: [bg_text_index-Idem.pattern, bg_text_index-Build.completion, bg_text_index-Earn.build_record, bg_text_index-Cost.baseline, bg_text_index-Complete.depth, bg_text_index-Dens.served, bg_text_index-Carr.detector]
 ---
 # bg_text_index — Topic-tag index over the corpus (a measurement asset on `classical_text_chunks`)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -69,15 +71,15 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_text_index-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_text_index-Cost.baseline | Cost | information | same absent instrument; CF-05 |
 | bg_text_index-Complete.depth | Complete | information | columns never populated (D3: information, not a blocker) \| ledger: measured: 10651 rows, 26 cols; fully populated 16; NEVER populated ['content_summary', 'cleaned_translation_text'] / required: the Complete gate's claim |
-| bg_text_index-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 2 module(s): query_classical_texts.ts, query_compendium_index.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_text_index-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 2 module(s): query_classical_texts.ts, query_compendium_index.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_text_index-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
 
 ## 3 · Disposition
 
-**integrate (I)** — the carried I stands in a narrower form: the asset is a projection on `bg_texts`'s table with a different grain and unit, so the repair is to declare that grain once (one table, two assets, two stated units), not to change data. Integrate routes to SS (Track A §10).
+**integrate (I)** — the carried I stands in a narrower form: the asset is a projection on `bg_texts`'s table with a different grain and unit, so the repair is to declare that grain once (one table, two assets, two stated units), not to change data. Integrate routes to SS (Track A §10); SS accepted it 2026-10-01 (Q10).
 
-Approver under Track A brief §10: **Strategic Suvarṇa**. 
+Approver under Track A brief §10: **Strategic Suvarṇa**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -92,7 +94,7 @@ Approver under Track A brief §10: **Strategic Suvarṇa**.
 - **Rebuild:** none
 - **Gate it moves:** Build (completion)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T2-05 (one table, several producers/units)
-- **Question for SS:** Keep `bg_text_index` as a separate asset with its own unit (declared), or fold the metric into bg_texts (integrate)?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q10): all dispositions accepted as proposed.
 
 ### FD-2 · Prove the reconcile (Idem)
 
@@ -133,24 +135,24 @@ Approver under Track A brief §10: **Strategic Suvarṇa**.
 ### FD-5 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 2 modules: `query_classical_texts.ts`, `query_compendium_index.ts` (shared with bg_texts); CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
-- **CF-01** — Build.completion for converged reruns (rows_written = changed rows, not rows present). *This asset:* rows changed vs distinct tags (unit mismatch)
+- **CF-01** — Build.completion for converged reruns (rows_written = changed rows): option A decided (R). *This asset:* rows changed vs distinct tags (unit mismatch)
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* referential D1
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* no citation column of its own
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* shared modules
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* shared modules
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -162,6 +164,13 @@ Natural key `chunk_id` (census, 0 duplicates). Fingerprint = the `chunk_id → t
 - **Carriage check chosen (T4 §4.1; one only):** D1 (referential: tags resolve to the vocabulary).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Keep as a distinct asset with a declared unit, or integrate with bg_texts (the carried I)?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q10): all dispositions accepted as proposed.
+2. CF-01: ANSWERED by SS 2026-10-01 (Q1): CF-01 option A (R, PROVISIONAL until the J1 review): a converged rerun with `rows_written = 0` reads Build.completion PASS ONLY IF the writer declares the changed-rows convention AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+4. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+
+**Track I items arising (see INDEX section 8):** TI-L0-01, TI-L0-03, TI-L0-06.

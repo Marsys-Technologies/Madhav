@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-09, TI-L0-10, TI-L0-32]
 ledger_gap_ids: [bg_transit_rules-Idem.pattern, bg_transit_rules-Earn.build_record, bg_transit_rules-Cost.baseline, bg_transit_rules-Dens.served, bg_transit_rules-Carr.detector, bg_transit_rules-Build.completion]
 ---
 # bg_transit_rules — Classical Gochara rules (76 rows; 69 writer-seeded + 7 migration-owned)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -66,7 +68,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_transit_rules-Idem.pattern | Idem | stale | ledger row from an earlier run; saved census Idem.pattern reads PASS \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
 | bg_transit_rules-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_transit_rules-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_transit_rules-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 2 module(s): query_transit_engine.ts, query_transit_vedha.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_transit_rules-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 2 module(s): query_transit_engine.ts, query_transit_vedha.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_transit_rules-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | bg_transit_rules-Build.completion | Build | real (T4 check 6) with a producer-attribution cause | 104 = 9 engine + 68 rules + 27 moorti rows reported by one writer; live 76 includes 7 migration-owned rows; CF-02 \| ledger: measured: build record rows_written=104 disagrees with live=76 (count_sql over the target table; global) / required: the Build gate's claim |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
@@ -76,7 +78,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — the table is complete and its registry row states its own provenance gaps honestly; the 19 refuted citations are a known, declared provenance limit that only a row-by-row verified re-citation can close (a domain act, not an invention). Gochara consumers are the Pravāha campaign’s: any output change is analysed here and its rebuild waits for SS.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -92,18 +94,18 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Build (completion), Earn (count_sql scope)
 - **Fix class:** writer code + registry/declaration; **buildable before J1:** tier-independent; vocabulary tier-dependent (TGH-T2-05)
 
-### FD-2 · Explicit state for the refuted and unsourced citations
+### FD-2 · Attribution state `sourced | unsourced | refuted`; the 19 refuted citations
 
 - **Answers:** registry description (19 + 6 rows); CF-11
-- **Change:** add a queryable `attribution_state` (`verse_cited` / `refuted_pending_reverification` / `unsourced`) so the 19 and 6 rows are visible to readers and to the Ldgr gate; no citation is replaced. Re-citing the 19 rows needs the same row-by-row verified predicate that produced the 36 and is a domain decision with corpus evidence.
+- **Change:** decided (SS 2026-10-01, Q3): add `attribution_state`; the 19 rows citing the refuted "BPHS Ch.29" are `refuted`, the 6 Rahu/Ketu rows `unsourced`, the 51 verse-cited `sourced`; neither `unsourced` nor `refuted` is a PASS. Re-sourcing the 19 from the `bg_texts` corpus, row by row with the verified predicate that produced the 36, is a Track I research item spot-checked at the milestone review.
 - **Files / declaration / migration:** a migration (additive column) + `l0_transit.py`
-- **Failing-first test and mutation:** counts: 19 `refuted_pending_reverification`, 6 `unsourced`, 51 `verse_cited` (76 − 25) stated in advance; mutation: re-cite one row with verification → its state flips
+- **Failing-first test and mutation:** counts: 19 `refuted`, 6 `unsourced`, 51 `sourced` (76 − 25) stated in advance; mutation: re-cite one row with verification → its state flips
 - **Output change:** one additive column
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** needs production rebuild: bg_transit_rules (after the migration; idempotent)
 - **Gate it moves:** Ldgr (qualification), Carr
 - **Fix class:** data (output change); **buildable before J1:** tier-independent for the state
-- **Question for SS:** Add the explicit state now, and who re-verifies the 19 refuted citations (SS/native decision)?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q3): `classical_tradition` is NOT accepted as provenance (B.3: no claim rests on 'per tradition' without a source). Give it an explicit attribution state `sourced | unsourced | refuted`; neither `unsourced` nor `refuted` is a PASS. The 19 refuted 'BPHS Ch.29' transit citations are marked `refuted`; re-sourcing them from the `bg_texts` corpus is a Track I research item, spot-checked at the milestone review.
 
 ### FD-3 · Carr detector — D1 on the verse-cited rows
 
@@ -132,24 +134,24 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-5 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 2 modules: `query_transit_engine.ts`, `query_transit_vedha.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
 - **CF-02** — Producer attribution: rider ids, multi-table writers and multi-producer tables. *This asset:* 104 vs 76
-- **CF-11** — `classical_tradition` provenance made an explicit queryable state (no invented citations). *This asset:* 19 refuted + 6 unsourced citations
+- **CF-11** — `classical_tradition` is not provenance: explicit attribution state `sourced | unsourced | refuted` (no invented citations). *This asset:* 19 refuted + 6 unsourced citations
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above (expected non-zero on the 19)
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 2 modules
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* 2 modules
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -161,6 +163,13 @@ Natural key `(graha, rule_type, primary_house)` (census, 0 duplicates). The fing
 - **Carriage check chosen (T4 §4.1; one only):** D1 (verse-cited rows); the refuted rows are expected detector positives.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Who re-verifies the 19 refuted 'BPHS Ch.29' citations and when (domain act; R9-adjacent Gochara consumers)?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q3): `classical_tradition` is NOT accepted as provenance (B.3: no claim rests on 'per tradition' without a source). Give it an explicit attribution state `sourced | unsourced | refuted`; neither `unsourced` nor `refuted` is a PASS. The 19 refuted 'BPHS Ch.29' transit citations are marked `refuted`; re-sourcing them from the `bg_texts` corpus is a Track I research item, spot-checked at the milestone review.
+2. CF-02: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+4. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-09, TI-L0-10, TI-L0-32.
