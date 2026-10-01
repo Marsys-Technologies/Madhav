@@ -96,7 +96,7 @@ Per chart and system (non-null-capable systems only; the five role-less systems 
 
 **Detector blind spot (stated):** `flip_detector.py` reads `chart_dashas` only as (lord path, start, end) rows, so it cannot see these column changes. The attribution hook `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/karaka_dasha_roles.json` is valid (`flip_detector.py --validate-hooks`) and declares the lane's detector-visible footprint as a zero-second start shift for the five field-carrying systems (so it masks no unattributed row-set change or shift), and carries the column-level expectation and the counts above in its text. A post-rebuild check of these two columns has to be a SQL comparison against the stored kn_rao ranks (the join in the method above), not a detector run.
 
-## 7. Registry edge (migration 1220): addendum text for the intent document
+## 7. Registry edge (migration 1226, formerly numbered 1220): addendum text for the intent document
 
 `00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1220_EDGES_INTENT_v1_0.md` is not on this branch's base (it lives on the local branch `suvarna/exec`), so it was not edited. Paste-ready replacement for the evidence cell of row 6 and an acyclicity line:
 
