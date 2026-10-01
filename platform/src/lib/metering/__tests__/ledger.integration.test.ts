@@ -86,6 +86,19 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
   expect((await usageSummary({...filter(),model:'absent'},{ownerId:'alice'},db)).known_cost_usd).toBeNull()
   const grouped=await usageBreakdown(filter('groupBy=channel'),{ownerId:'alice'},db);expect(grouped.groups[0].name).toBe('web')
  })
+ it('classifies historical authenticated probe calls without rewriting their receipts',async()=>{
+  const probe=attempt('probe-service-account',{conversationId:crypto.randomUUID(),model:'probe-model',role:'planner'})
+  await insertAttempt(probe,db)
+  await insertReceipt(probe,{...receipt(probe),status:'error',usage:normalizeSdkUsage(undefined)},db)
+  const portal={ownerId:null}
+  const query=(params:string)=>parseUsageFilter(new URL(`http://localhost/?from=2026-09-29T00:00:00Z&to=2026-09-30T00:00:00Z&model=probe-model&${params}`),portal)
+  expect(await usageSummary(query('purpose=validation&channel=api'),portal,db)).toMatchObject({transport_attempts:1,validation_attempts:1,customer_attempts:0})
+  expect((await usageSummary(query('purpose=customer'),portal,db)).transport_attempts).toBe(0)
+  const visible=(await usageEvents(query('view=events'),portal,db)).events[0]
+  expect(visible).toMatchObject({user_id:'probe-service-account',channel:'api',purpose:'validation',status:'error'})
+  const stored=(await client.query('SELECT channel,purpose FROM ai_metering_attempts WHERE attempt_id=$1',[probe.attemptId])).rows[0]
+  expect(stored).toMatchObject({channel:'web',purpose:'customer'})
+ })
  it('groups transport leaves once, scopes snippets, and pages tied portal conversations',async()=>{
   const conversationId=crypto.randomUUID()
   await client.query('INSERT INTO conversations(id,user_id,title) VALUES($1,$2,$3)',[conversationId,'alice','A real conversation title'])
