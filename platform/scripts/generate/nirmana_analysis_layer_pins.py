@@ -230,18 +230,10 @@ AUTHORITY_BINDINGS = {
         # digests/pins/census (continuation authority stands)") authorizes
         # ONE further successor over l3:f6cb3914e7f1:bf1dba54ee01 with the
         # identical four-writer delta (evidence doc, v1.1 addendum).
-        # v1.2 (2026-10-01): the in_orb_intervals multi-revolution fix
-        # (steward ruling M20261001T172824-ebbd — "include it in the single
-        # pins re-admission") moved the same four digests again; ONE further
-        # successor over l3:89f788c67827:50e2c3392350. Scope expanded to SIX
-        # classifications (steward ruling M20261001T180917-6bd5):
-        # ka_avadhi/ka_vighnakara = derived_import_change, moved on main by
-        # #2823 without an L3 readmission and carried by the origin/main
-        # merge; not changed by this PR (evidence doc, v1.2 addendum).
         "authority_commit": "53a3d1f85abaa581ff5c1441eb7e29584a82d120",
-        "evidence_commit": "0caa829791e1a86a73ed2989cf0cf106e4d686cf",
+        "evidence_commit": "954014d8213b63840bc6e4a76cf232bd189a9ee3",
         "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY_v1_0.md",
-        "sha256": "c28f9abcda6b0daa0d8b1726f56223d6f23f0ad68003bc7f7ed1490c4a3c2da6",
+        "sha256": "63f243f93a69acfee614fb5cd9b89d2af243dcfef6b70876d351135f697187cc",
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`53a3d1f85abaa581ff5c1441eb7e29584a82d120`",
     },
@@ -483,12 +475,6 @@ AUTHORIZED_SOURCE_COMMITS = {
             # byte-identical to the derived inventory. Same four-writer
             # delta over l3:f6cb3914e7f1:bf1dba54ee01.
             "89f788c67827db3a5dc762f47ae4624f0efdb8f6",
-            # v1.2 (in_orb_intervals multi-revolution fix; steward ruling
-            # M20261001T172824-ebbd, continuation authority stands): the
-            # v1.2 rework's digest re-derivation head, whose committed
-            # writer inventory is byte-identical to the derived inventory.
-            # Same four-writer delta over l3:89f788c67827:50e2c3392350.
-            "16957ec30b97c88e403628cfad5e6a4b869327e1",
         }),
     },
 }
