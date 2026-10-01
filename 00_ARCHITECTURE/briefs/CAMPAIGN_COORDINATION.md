@@ -8440,3 +8440,11 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Evidence: `00_ARCHITECTURE/briefs/observatory_metering/TEST_REPORT_v1_0.md` and `verification/2026-09-30/results.json`. Focused enabled-mode, disposable PostgreSQL, full default-off suite, lint, TypeScript, synthetic build and anonymous HTTP gates passed.
 - Limits: old global flag-on fixture suite is not an enabled acceptance gate; inherited AI Console route audit has zero new findings vs base; three local CLI versions differ from registry pins. No hosted acceptance, provider invoice accuracy, live provider/CLI generation or production operation asserted.
 - No deployment, application push, protected merge, production migration or credential change performed.
+
+---
+
+## 2026-10-01 — Observatory release lease: concurrent main merge observation
+
+- Lease `MADHAV-OBSERVATORY-METERING-RELEASE-20261001` remained active while PR #2807 merged to `main` at 2026-10-01T07:24:11Z as `181326d1596b4f8ffb5aed59f5ee99ae8de3c3c2`. The other campaign's source changed governance tests and `asset_census.py`; no migration number was claimed.
+- Observatory PR #2808 had completed 29 successful and 14 skipped checks on the previous main base. The Observatory branch was immediately rebased onto the new main and force-with-lease pushed as `631629276f5e07a1362e6790e99ee84c841c52b6` for fresh CI. No merge, production migration, or application deployment has occurred under this lease yet.
+- The dedicated private recovery bucket was provisioned in `asia-south1` with bucket-only `roles/storage.objectAdmin` for the existing web runtime service account. A synthetic object write/list/read/delete succeeded using the release operator identity; service-account impersonation was unavailable, so runtime access remains for post-deploy verification. Fresh Cloud SQL backup `1790839159164` completed successfully before any migration.
