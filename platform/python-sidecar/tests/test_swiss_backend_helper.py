@@ -390,7 +390,19 @@ def test_helpers_are_swiss_state_boundaries():
 
 
 @needs_corpus
-def test_ensure_blocks_while_another_thread_holds_the_state_lock(hidden_env):
+def test_ensure_does_not_touch_the_path_while_another_thread_holds_the_state_lock(
+    hidden_env, monkeypatch
+):
+    """Behavioural lock check: the path MUTATION itself (not just the later probe, which
+    is separately locked) must wait for the lock."""
+    path_set = threading.Event()
+    real_set = swe.set_ephe_path
+
+    def recording_set(path):
+        path_set.set()
+        return real_set(path)
+
+    monkeypatch.setattr(swe, "set_ephe_path", recording_set)
     done = threading.Event()
     errors: list[BaseException] = []
 
@@ -405,10 +417,12 @@ def test_ensure_blocks_while_another_thread_holds_the_state_lock(hidden_env):
     with SWISS_STATE_LOCK:
         t = threading.Thread(target=worker)
         t.start()
-        assert not done.wait(0.5), "ensure_swiss_backend ran while the Swiss state lock was held"
+        assert not path_set.wait(0.5), "set_ephe_path ran while the Swiss state lock was held"
+        assert not done.is_set()
     assert done.wait(30)
     t.join()
     assert errors == []
+    assert path_set.is_set()
 
 
 # ── 6. writer decorator: probe before, record after, fail closed ──────────────

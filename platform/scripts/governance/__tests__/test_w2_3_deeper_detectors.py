@@ -513,7 +513,7 @@ def test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified():
     `_check_already_written` is pinned to the current build — neither is a hold, both PASS."""
     ids = {**ac.registered_ids("ka_"), **ac.registered_ids("mi_"), **ac.registered_ids("ga_")}
     v, n = ac.idem_scan("ka_kshetra", ids["ka_kshetra"], "delete_then_insert", ["kala_field"])
-    assert v == ac.FAIL and "services/ka_kshetra/writer.py:545 (raise KshetraReplacementHeld" in n[0], n
+    assert v == ac.FAIL and "services/ka_kshetra/writer.py:547 (raise KshetraReplacementHeld" in n[0], n
     v, n = ac.idem_scan("mi_jivanaghatana", ids["mi_jivanaghatana"], "delete_then_insert", ["mimamsa_event_provenance"] * 2)
     assert v == ac.PASS, n
     v, n = ac.idem_scan("ga_vargas", ids["ga_vargas"], "delete_then_insert", ["chart_divisionals"] * 2)
