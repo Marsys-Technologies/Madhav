@@ -102,6 +102,17 @@ traceback, so the operator can always find a running run by its run_id.
 | `STALE_HOOK_FILES` | the pause directory already holds `after-wave-*` files; nothing is deleted |
 | `CONFIRM_TOKEN_MISMATCH` | `--commit` without the exact token |
 
+### What the family set means, and who is in it (strategist rulings, 2026-10-02)
+
+The family set is what the WAVE tool refuses. Family assets and their readers are rebuilt and certified ONE AT A TIME by the
+production session with the single-asset dispatcher, each under a stage the strategist approves (Pravaha's own assets only by
+Pravaha). The wave tool is for level waves of non-family assets (first use: the 23 bo_* assets).
+
+`FAMILY_ASSETS.json` (draft `0.1-draft`, branch `suvarna/engine-E6.3-family`, 21 members) now includes, beyond the five R8 names
+and the 13 other readers: `ka_yojaka` (Sangam's stale prerequisite), `ka_gochara_v3_century_materialize` (Gochara's century
+writer) and `ka_moorti_nirnaya` (Pravaha's gochara writer, not covered by any name pattern). `ka_kota_chakra` is deliberately not
+in the set (that reader is ours by agreement). None of the 23 bo_* assets is a member; a test pins that.
+
 ## Stop hook between waves
 
 The runner executes every wave of one manifest as one run and has **no hook between waves**: it schedules from each
