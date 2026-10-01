@@ -152,10 +152,14 @@ def _ephe_dirs_stamp(ephe_path: str | None) -> tuple | None:
     return tuple(stamp)
 
 
+@serialized_swiss_state
 def _assert_moon_file_backend(jd_ut: float, ephe_path: str | None) -> None:
     """Fail closed unless the Moon at `jd_ut` is served from the .se1 files.
 
-    Called under SWISS_STATE_LOCK with the ephemeris path already set. TRUE_NODE
+    A serialized Swiss-state owner in its own right (re-entrant: its only caller,
+    calc_sidereal_lon, already holds SWISS_STATE_LOCK with the ephemeris path
+    set — the DP-SD-010 inventory requires every direct calc_ut to be owned).
+    TRUE_NODE
     at the same instant needs the same `semo_*.se1`, and — unlike the Moon's —
     its returned flag reports the substitution (SS N-28 measurement)."""
     stamp = _ephe_dirs_stamp(ephe_path)
