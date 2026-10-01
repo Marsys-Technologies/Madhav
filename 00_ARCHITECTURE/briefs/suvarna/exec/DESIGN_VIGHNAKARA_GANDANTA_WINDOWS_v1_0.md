@@ -10,8 +10,10 @@ ruling: "SS N-28 (2026-10-01), option (b): store real Moon entry/exit windows by
 base_commit: "origin/main 4eb40bec1 (writer read at main; PR #2836 branch suvarna/land/TI-vighnakara-gandanta-rikta-001 read at its tip; PR #2826 migration 1212 read on suvarna/land/TI-i45-provenance-001)"
 scope: "DOCS ONLY. No code, no migration, no DB write. DB reads as suvarna_reader."
 evidence_dir: "/Users/Dev/suvarna-evidence/TrackI/vighnakara_windows/ (outside the repo): vighnakara_windows_evidence.py + .json, tithi_fallback_mismatch.py + .json"
+rulings_read_on_brief_branch: "A.L3 INDEX/brief at 3cecf38ab (PR #2835): A-1 (one shared L0 Gandanta module, 3 deg 20 min each side, 0 deg 48 min only as a named stricter variant; TI-L3-26) and Q-L3-X1 (no panchanga row on engine failure plus `detector_status`; TI-L3-28/16). This design follows both."
 changelog:
   - "1.0 (2026-10-01): first draft for review."
+  - "1.0a (2026-10-01): aligned sections 2, 3, 6 and Q8 with the SS rulings A-1 and Q-L3-X1 found on the PR #2835 branch (they landed after the first draft was read)."
 ---
 
 # Design review: Gandanta windows by entry/exit root-find
@@ -49,14 +51,14 @@ Independent check of the instants: `swe.mooncross_ut` (sidereal; not used by the
 | second bisection precedent | `panchang_engine/angas.py:54 _bisect_boundary` (+/-1 s), `:47 _get_sun_moon_lon` | the writer already imports `panchang_engine`. The helper is private. |
 | lunar-return root-find | `services/ka_tithi_pravesha/logic.py:121 lunar_return` | nearest-to-seed, 30 s tolerance, never raises (returns `converged: False`). Its docstring documents the +/-180 deg wrap trap. Pattern only, not fail-closed enough. |
 | fail-closed backend assertion | `pipeline/orchestrator/writers/bg_sky_calendar.py:231 _require_swiss_file_backend` and `_require_reproducible_write_runtime` | copy the pattern around the new code. |
-| arcs | `GANDANTA_ARC`, `check_gandanta` (L1) | `_WATER_SIGNS` is private; request a public accessor (Q8). |
+| arcs | `GANDANTA_ARC`, `check_gandanta` (L1 today); **per SS ruling A-1 the source becomes ONE shared L0 Gandanta module (TI-L3-26)** | read the levels from that module once it exists; until then from L1. `_WATER_SIGNS` is private, so a public accessor is needed either way (Q8). The 0 deg 48 min stricter variant, if wanted, is a second named level set through the same solver, never the default. |
 | cross-check (tests only) | `swe.mooncross_ut(level, jd, FLG_SIDEREAL)` | independent oracle used in section 1. |
 
 `services/ka_graha_sancara/engine.py:344 get_ephemeris` is daily-noon resolution (bg_ephemeris) or a live path documented as Moshier. Not usable for instants.
 
 ## 3. Proposed algorithm
 
-- **Levels from the L1 constant, never literals.** For each water sign w in {Cancer 3, Scorpio 7, Pisces 11}: entry level `30w + (30 - GANDANTA_ARC)`, cusp `30(w+1) mod 360`, exit level `30(w+1) + GANDANTA_ARC (mod 360)` (116.667 / 120 / 123.333; 236.667 / 240 / 243.333; 356.667 / 0 / 3.333). Edges are inclusive in L1 (`>=`, `<=`), so entry is the first instant inside and exit the last.
+- **Levels from the shared Gandanta definition (L1 `GANDANTA_ARC` today, the A-1 L0 module later), never literals.** For each water sign w in {Cancer 3, Scorpio 7, Pisces 11}: entry level `30w + (30 - GANDANTA_ARC)`, cusp `30(w+1) mod 360`, exit level `30(w+1) + GANDANTA_ARC (mod 360)` (116.667 / 120 / 123.333; 236.667 / 240 / 243.333; 356.667 / 0 / 3.333). Edges are inclusive in L1 (`>=`, `<=`), so entry is the first instant inside and exit the last.
 - **Bracket on level crossings, not on "inside" state.** The Moon never retrogrades (minimum 11.77 deg/day), so unwrapped longitude is strictly increasing and each level is crossed once per 27.3 d revolution. A crossing shows as a change of `floor((u - L)/360)` between consecutive knots. The step therefore need not resolve the dwell. Use **6 h knots**: advance 2.94-3.85 deg per knot, below the 6.67 deg arc, and since the minimum dwell (10.47 h) exceeds 6 h every window must also contain at least one knot, which is a free redundancy assertion. **Fail closed:** any probe error, or any knot-to-knot advance outside (0, 20) deg, raises. Never skip.
 - **Refine** each bracket with `swiss_bisect` to **0.5 s** (about 16 iterations; about 14k roots for birth to 2100, a few seconds). Seam: the Pisces-Aries junction uses levels 356.667 / 0 / 3.333; the wrapped separation is continuous inside a 4 deg bracket.
 - **Pair** each entry with the next exit; the cusp instant is recorded inside the window (it is the exact junction).
@@ -110,7 +112,7 @@ Independent check of the instants: `swe.mooncross_ut` (sidereal; not used by the
 On main: `ka_vighnakara.py:717-719` (`tithi = (peak_date.day % 15) or 15`), Rikta test `:722`, label `:732`. PR #2836 changes the Rikta set to the engine's but **leaves the proxy**.
 
 - The location resolver already raises on main (`_resolve_native_location`, `:349-410`, CR-87), so "resolver fails" is already loud. The silent paths that remain: (i) `KaMuhurtaSevaService` import failure sets `_muhurta=None` (`:229-233`), then the proxy runs for every anchor; (ii) a `compute_panchang` exception is only `logger.debug`-ed (`:714-715`), then the proxy; (iii) the label `'panchang_engine' if muhurta_service else 'day_mod_proxy'` (`:732`) reports the wrong source in case (ii); (iv) `_detect_all` swallows every detector exception at debug level (`:574-575`), so a missing row looks like "no obstruction". `muhurta_service` is only a boolean gate and is never called.
-- **Proposal:** delete the proxy and the label; drop the `muhurta_service` gate; take the tithi from `compute_panchang`; on engine failure **raise** (systemic) and record any per-anchor "engine declined" count in `WriterResult.notes` (never a default tithi). This is the N.7 item 6 / N.8 rule: no row must not read as clear.
+- **Proposal (matches SS ruling Q-L3-X1):** delete the proxy and the label; drop the `muhurta_service` gate; take the tithi from `compute_panchang`. Per-anchor engine failure: **emit no panchanga row** and record `detector_status` (a flag only, never a score, until ruled otherwise) with a count in `WriterResult.notes`; never a default tithi. Systemic failure (location resolver, service import, backend) **raises**, as the resolver already does. N.7 item 6 / N.8: a missing row must carry a status, so it cannot read as clear.
 - Measured, 2000-2030, true tithi from Sun/Moon separation at 00:00 UT: the proxy's Rikta verdict is wrong on **35.3 %** of days against the engine's set (4/9/14/19/24/29), and 31.5 % even against its own 4/9/14 subset. The tithi number is wrong on 93 %. SS's "about 29 %" is not reproduced; the figure depends on the definition.
 
 ## 7. Open questions and unverified items
@@ -122,6 +124,6 @@ On main: `ka_vighnakara.py:717-719` (`tithi = (peak_date.day % 15) or 15`), Rikt
 - **Q5** `ph_pratikara`: exclude standalone windows (recommended) or mitigate per window?
 - **Q6** One constant severity 0.55 per window, or graded by depth (distance to the cusp)? Acharya (CF-27).
 - **Q7** Reuse `gochara_kernel.swiss_bisect` across assets, or a thin local helper?
-- **Q8** L1 must export the water-sign set (or the six edge levels) publicly; `_WATER_SIGNS` is private.
+- **Q8** The shared Gandanta module (A-1, TI-L3-26) must export the water-sign set or the six edge levels publicly; `_WATER_SIGNS` in L1 is private. Sequencing: does the window builder wait for that module or start on L1 `GANDANTA_ARC`?
 - **Q9** Which instant does `compute_panchang(...).tithi` report (sunrise-local?) versus the Moon's UT instant? The Rikta detector and the Gandanta windows may use different time conventions.
 - **Unverified:** (a) the production container's effective ephemeris path for the writer (see section 3: `compute_panchang` resets it, `Dockerfile` sets `SWE_EPHE_PATH=/app/ephe`); (b) the instants on SWIEPH (this run is Moshier; the 0.165 s agreement is for like-with-like); (c) two-component digest spec end-to-end; (d) 1212 retire mechanics (`retired_at` UPDATE permission); (e) PR #2835/#2836/#2826 are unmerged at base; (f) `swiss_bisect` was read, not executed, here (it raises `EphemerisBackendError` on Moshier).
