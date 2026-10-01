@@ -51,6 +51,25 @@ DEGRADING_REASONS = frozenset({"disabled_form", "inputs_unavailable",
 STATE_COMPLETE = "searched_complete"
 STATE_MISSING = "missing_inputs"
 
+#: steward rulings (2026-10-02; Stream B records both under decisions/). The ids pass
+#: 1206's ruling_ref grammar `^[A-Za-z0-9._-]+$` and its basis grammar `ruling:<id>`.
+P5_HOLD_RULING = "ST-P5-HOLD-20261001"          # P5 DB writes hold (migration 1204 + AM-7)
+H_UNKNOWN_RULING = "ST-H-UNKNOWN-20261002"      # H unknown (S:307-312) — P1/P3/P4 ONLY
+
+#: AM-11 pin (e): P1's period-role agent is a ROLE token in the inventory (records keep
+#: the concrete graha). level_n of the Vimśottarī rows each role is cut at (§4.0).
+PERIOD_ROLE_LEVEL = {"md": 1, "ad": 2, "pd": 3}
+
+
+def standing_exclusions() -> tuple[dict, "Exclusion", ]:
+    """The two standing rulings as the planner's exclusion inputs:
+    ({path_id: Exclusion} for P5, the H-unknown Exclusion)."""
+    return (
+        {"P5": Exclusion("tier_withheld_by_ruling", f"ruling:{P5_HOLD_RULING}",
+                         P5_HOLD_RULING)},
+        Exclusion("inputs_unavailable", f"ruling:{H_UNKNOWN_RULING}", H_UNKNOWN_RULING),
+    )
+
 
 class InventoryBlocked(RuntimeError):
     """The inventory cannot be planned honestly without an input the planner does
@@ -129,6 +148,21 @@ class IntervalPlan:
     start: datetime
     end: datetime
     state: str
+    #: a role-token obligation's interval names the concrete agent it was resolved to and
+    #: the pinned daśā row it was cut at (AM-11 pin e). SQL does not check it — a named
+    #: residual; the independent verifier re-derives it.
+    detail: dict | None = None
+
+
+@dataclass(frozen=True)
+class DashaRow:
+    """One pinned Vimśottarī row (§4.0), half-open [start, end)."""
+
+    row_id: str
+    level: int              # 1 MD, 2 AD, 3 PD
+    lord: str               # lowercase graha
+    start: datetime
+    end: datetime
 
 
 @dataclass(frozen=True)
@@ -176,6 +210,60 @@ def _interval_state(o: Obligation, cap: SearchCapability) -> str:
     return STATE_MISSING               # a transit relation this build has no solver for
 
 
+def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
+             cap: SearchCapability, dasha_rows: Sequence[DashaRow] | None):
+    """P1 under the AM-11 role-token form: the obligation agent is
+    `period_lord:md|ad|pd`; each searched interval is cut at the PINNED daśā rows'
+    boundaries (half-open, §4.0) and names the agent it resolved to. The qualified
+    geometry is P1's enumerated TRANSIT edges (its natal-fact rows are not
+    admission-bearing records — pin b — so they are not obligations)."""
+    edges = [e for e in enumerate_edges(event_class, "P1", chart) if e.transit]
+    shapes = sorted({(e.relation, e.object_role, e.obj.canonical_target,
+                      (e.frame_kind if e.frame_arg is None
+                       else f"{e.frame_kind}:{e.frame_arg}"), e.affected_person,
+                      e.rule_version, e.path_id) for e in edges})
+    if not shapes:
+        return (), []
+    if dasha_rows is None:
+        raise InventoryBlocked(
+            f"{event_class}/P1: the role-token obligations are cut at the pinned daśā rows "
+            "(AM-11 pin e) and none were supplied")
+    obligations: list[Obligation] = []
+    intervals: list[IntervalPlan] = []
+    for role, level in PERIOD_ROLE_LEVEL.items():
+        rows = sorted((r for r in dasha_rows if r.level == level), key=lambda r: r.start)
+        pieces: list[tuple[datetime, datetime, DashaRow | None]] = []
+        cursor = lo
+        for r in rows:
+            a, b = max(r.start, lo), min(r.end, hi)
+            if not a < b:
+                continue
+            for what, t in (("start", a), ("end", b)):
+                if t.microsecond:
+                    raise InventoryBlocked(
+                        f"daśā row {r.row_id} {what} {t.isoformat()} is not whole-second; "
+                        "1206's interval CHECK refuses it and rounding would be a silent edit")
+            if a > cursor:
+                pieces.append((cursor, a, None))         # a gap: no pinned row covers it
+            pieces.append((a, b, r))
+            cursor = max(cursor, b)
+        if cursor < hi:
+            pieces.append((cursor, hi, None))
+        for relation, role_, target, frame, person, ver, pid in shapes:
+            o = Obligation(event_class, pid, ver, f"period_lord:{role}", relation, role_,
+                           target, frame, person, transit=True)
+            obligations.append(o)
+            for a, b, r in pieces:
+                if r is None:
+                    intervals.append(IntervalPlan(o.ob_id, a, b, STATE_MISSING,
+                                                  {"resolved_agent": None, "dasha_row_id": None}))
+                else:
+                    intervals.append(IntervalPlan(
+                        o.ob_id, a, b, _interval_state(o, cap),
+                        {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id)}))
+    return tuple(sorted(set(obligations), key=lambda o: o.canonical_bytes)), intervals
+
+
 def plan_class_inventory(
     *,
     event_class: str,
@@ -185,6 +273,7 @@ def plan_class_inventory(
     capability: SearchCapability,
     path_exclusions: Mapping[str, Exclusion] | None = None,
     h_unknown_exclusion: Exclusion | None = None,
+    dasha_rows: Sequence[DashaRow] | None = None,
 ) -> ClassInventory:
     """Plan one class. `sealed_paths` is the registry's sealed (path_id, rule_version)
     set — every one is accounted for (`registry_unaccounted_path`)."""
@@ -216,6 +305,16 @@ def plan_class_inventory(
                                 ruling_ref=h_unknown_exclusion.ruling_ref,
                                 basis=h_unknown_exclusion.basis))
             continue
+        if path_id == "P1":
+            ob_plan, iv_plan = _plan_p1(event_class, chart, lo, hi, capability, dasha_rows)
+            if ob_plan:
+                pins.append(PinPlan(path_id, rule_version, "included", ob_plan))
+                intervals.extend(iv_plan)
+            else:
+                pins.append(PinPlan(
+                    path_id, rule_version, "computed_empty",
+                    basis="spec:GOCHARA_DESIGN_SPECS@1.4#2.2-p1-empty-qualified-set"))
+            continue
         edges = enumerate_edges(event_class, path_id, chart)
         seen: dict[str, Obligation] = {}
         for edge in edges:
@@ -235,7 +334,8 @@ def plan_class_inventory(
                           pins=tuple(pins), intervals=tuple(intervals))
 
 
-__all__ = ["ClassInventory", "DEGRADING_REASONS", "EXCLUSION_REASONS", "Exclusion",
+__all__ = ["ClassInventory", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
+           "P5_HOLD_RULING", "PERIOD_ROLE_LEVEL", "standing_exclusions", "EXCLUSION_REASONS", "Exclusion",
            "H_DEPENDENT_PATHS", "IntervalPlan", "InventoryBlocked", "Obligation",
            "PinPlan", "STATE_COMPLETE", "STATE_MISSING", "SearchCapability",
            "obligation_of_edge", "plan_class_inventory", "require_whole_second_utc"]

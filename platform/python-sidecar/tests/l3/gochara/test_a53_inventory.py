@@ -29,6 +29,25 @@ CHART = base.CHART
 CHART_ID = base.CHART_ID
 FACT_IDS = [f"fact-{n}" for n in ("LAGNA", "SUN", "MOON", "MAR", "MER", "JUP", "VEN",
                                   "SAT", "RAH_MEAN", "KET_MEAN")]
+def _dt(y, m, d):
+    return datetime(y, m, d, tzinfo=UTC)
+
+
+def _row(i, level, lord, a, b):
+    return inv.DashaRow(str(uuid.UUID(int=i)), level, lord, a, b)
+
+
+# Pinned Vimśottarī rows around the class horizon [2025-01-01, 2025-03-01): each level
+# partitions it (the AD row starting before the horizon is clipped, §4.0 half-open).
+DASHA = [
+    _row(1, 1, "saturn", _dt(2024, 6, 1), _dt(2026, 6, 1)),
+    _row(2, 2, "venus", _dt(2024, 12, 1), _dt(2025, 2, 1)),
+    _row(3, 2, "sun", _dt(2025, 2, 1), _dt(2025, 4, 1)),
+    _row(4, 3, "mars", _dt(2024, 12, 20), _dt(2025, 1, 15)),
+    _row(5, 3, "rahu", _dt(2025, 1, 15), _dt(2025, 2, 10)),
+    _row(6, 3, "jupiter", _dt(2025, 2, 10), _dt(2025, 3, 20)),
+]
+DASHA_IDS = [r.row_id for r in DASHA]
 SEALED = [("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0")]
 FULL = inv.SearchCapability(position_probe=True, arc_index=True)
 P5_EXCL = inv.Exclusion("tier_withheld_by_ruling", "ruling:M20261001T121451-1a8d",
@@ -37,6 +56,7 @@ H_UNKNOWN_EXCL = inv.Exclusion("inputs_unavailable", "ruling:TEST-H-UNKNOWN", "T
 
 
 def _plan(cls="marriage", cap=FULL, **kw):
+    kw.setdefault("dasha_rows", DASHA)
     return inv.plan_class_inventory(
         event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=SEALED,
         capability=cap, path_exclusions={"P5": P5_EXCL}, **kw)
@@ -134,10 +154,16 @@ def test_interval_states_follow_the_search_capability_never_assumed():
                    if not obs[iv.ob_id].transit)
 
 
-def test_every_interval_spans_the_class_horizon_and_the_relations_are_the_obligations():
+def test_every_obligations_intervals_partition_the_class_horizon_exactly():
     plan = _plan()
-    assert all((iv.start, iv.end) == (H0, H1) for iv in plan.intervals)
-    assert {iv.ob_id for iv in plan.intervals} == {o.ob_id for o in plan.obligations}
+    by_ob = {}
+    for iv in plan.intervals:
+        by_ob.setdefault(iv.ob_id, []).append(iv)
+    assert set(by_ob) == {o.ob_id for o in plan.obligations}
+    for ivs in by_ob.values():
+        ivs.sort(key=lambda i: i.start)
+        assert ivs[0].start == H0 and ivs[-1].end == H1
+        assert all(a.end == b.start for a, b in zip(ivs, ivs[1:]))      # contiguous, disjoint
     assert plan.relations == sorted({o.relation for o in plan.obligations})
     assert "natal_fact" not in plan.relations            # the REAL relations (kgso_relation_ck)
 
@@ -192,10 +218,11 @@ def _am5_dsn():
                             " fact_subject, fact_key, fact_value_num)"
                             " VALUES (%s,%s,'graha_position',%s,'longitude_sidereal',%s)",
                             (f"fact-{sname}", CHART_ID, sname, lon))
-            cur.execute("INSERT INTO public.chart_dashas(dasha_row_id, chart_id, system_id,"
-                        " level_n, lord_graha, start_iso, end_iso) VALUES"
-                        " (%s,%s,'vimshottari',1,'Saturn','2020-01-01','2030-01-01')",
-                        (str(uuid.UUID(int=1)), CHART_ID))
+            for r in DASHA:
+                cur.execute("INSERT INTO public.chart_dashas(dasha_row_id, chart_id, system_id,"
+                            " level_n, lord_graha, start_iso, end_iso)"
+                            " VALUES (%s,%s,'vimshottari',%s,%s,%s,%s)",
+                            (r.row_id, CHART_ID, r.level, r.lord.title(), r.start, r.end))
         conn.close()
         yield dsn
     finally:
@@ -235,7 +262,7 @@ def _write(conn, store, sky, generation, plan):
         digest = store.insert_snapshot(
             chart_id=CHART_ID, generation=generation, convention_id=sky,
             consumed_fact_ids=FACT_IDS,
-            consumed_dasha_row_ids=[str(uuid.UUID(int=1))])
+            consumed_dasha_row_ids=DASHA_IDS)
         out = store.write_class_inventory(
             chart_id=CHART_ID, generation=generation, plan=plan, input_digest=digest)
     return digest, out
@@ -262,7 +289,8 @@ def test_a_planned_class_is_stored_finalised_and_the_digests_are_the_dbs(am5):
                        " WHERE generation = '5.7'").fetchone()[0]
     n_iv = am5.execute("SELECT count(*) FROM public.ka_gochara_search_interval"
                        " WHERE generation = '5.7' AND state = 'searched_complete'").fetchone()[0]
-    assert n_ob == n_iv == len(plan.obligations)
+    assert n_ob == len(plan.obligations)
+    assert n_iv == sum(1 for i in plan.intervals if i.state == "searched_complete")
     facts = store.finalised_class_facts(CHART_ID, "5.7", "marriage")
     assert facts["relations"] == plan.relations and facts["missing_inputs"] == 0
     assert facts["horizon"] == (H0, H1)
@@ -418,3 +446,157 @@ def test_a_sealed_generation_is_refused_before_any_delete():
     with pytest.raises(rs.SealedGenerationError, match="SEALED"):
         InventoryStore(c).delete_generation_inventory(CHART_ID, "5.0")
     assert not any(s.startswith("DELETE") for s in c.sql)
+
+
+# ── P1 under the AM-11 role-token form ───────────────────────────────────────
+
+def _p1_obs(plan):
+    (p1,) = [p for p in plan.pins if p.path_id == "P1"]
+    return p1, list(p1.obligations)
+
+
+def test_p1_obligation_agents_are_the_role_tokens_and_records_keep_concrete_grahas():
+    plan = _plan()
+    p1, obs = _p1_obs(plan)
+    assert p1.disposition == "included"
+    assert {o.agent for o in obs} == {"period_lord:md", "period_lord:ad", "period_lord:pd"}
+    assert {o.relation for o in obs} == {"residence"}              # P1's transit geometry
+    assert not any(not o.transit for o in obs)                       # natal rows: not obligations
+    for p in plan.pins:                                              # every other path: concrete
+        if p.path_id != "P1":
+            assert not any(o.agent.startswith("period_lord:") for o in p.obligations)
+    shapes = {(o.relation, o.object_role, o.target) for o in obs}
+    assert len(obs) == 3 * len(shapes)                               # the same geometry per role
+
+
+def test_p1_intervals_are_cut_at_the_pinned_dasha_rows_with_the_resolved_agent():
+    plan = _plan()
+    _p1, obs = _p1_obs(plan)
+
+    def cuts(role):
+        ob = next(o for o in obs if o.agent == f"period_lord:{role}")
+        return [(iv.start, iv.end, iv.detail["resolved_agent"], iv.detail["dasha_row_id"],
+                 iv.state) for iv in sorted(plan.intervals, key=lambda i: i.start)
+                if iv.ob_id == ob.ob_id]
+
+    assert cuts("md") == [(H0, H1, "saturn", str(uuid.UUID(int=1)), "searched_complete")]
+    assert cuts("ad") == [
+        (H0, _dt(2025, 2, 1), "venus", str(uuid.UUID(int=2)), "searched_complete"),
+        (_dt(2025, 2, 1), H1, "sun", str(uuid.UUID(int=3)), "searched_complete")]
+    assert cuts("pd") == [
+        (H0, _dt(2025, 1, 15), "mars", str(uuid.UUID(int=4)), "searched_complete"),
+        (_dt(2025, 1, 15), _dt(2025, 2, 10), "rahu", str(uuid.UUID(int=5)), "searched_complete"),
+        (_dt(2025, 2, 10), H1, "jupiter", str(uuid.UUID(int=6)), "searched_complete")]
+
+
+def test_a_dasha_gap_is_a_missing_inputs_interval_never_silently_covered():
+    rows = [r for r in DASHA if r.row_id != str(uuid.UUID(int=5))]
+    plan = _plan(dasha_rows=rows)
+    _p1, obs = _p1_obs(plan)
+    pd = next(o for o in obs if o.agent == "period_lord:pd")
+    gaps = [iv for iv in plan.intervals if iv.ob_id == pd.ob_id and iv.state == "missing_inputs"]
+    assert [(g.start, g.end) for g in gaps] == [(_dt(2025, 1, 15), _dt(2025, 2, 10))]
+    assert gaps[0].detail == {"resolved_agent": None, "dasha_row_id": None}
+
+
+def test_p1_without_the_pinned_rows_or_with_a_subsecond_boundary_is_blocked_by_name():
+    with pytest.raises(inv.InventoryBlocked, match="P1"):
+        _plan(dasha_rows=None)
+    # a fractional boundary INSIDE the horizon (the AD change on 2025-02-01); one before it
+    # is clipped away and never reaches 1206's whole-second CHECK
+    frac = [r if r.row_id != DASHA[2].row_id else inv.DashaRow(
+        r.row_id, r.level, r.lord, datetime(2025, 2, 1, 0, 0, 0, 500, tzinfo=UTC), r.end)
+        for r in DASHA]
+    with pytest.raises(inv.InventoryBlocked, match="whole-second"):
+        _plan(dasha_rows=frac)
+
+
+def test_the_standing_rulings_are_the_exclusions_the_planner_is_given():
+    paths, h_unknown = inv.standing_exclusions()
+    assert paths["P5"].reason == "tier_withheld_by_ruling"
+    assert paths["P5"].ruling_ref == "ST-P5-HOLD-20261001"
+    assert paths["P5"].basis == "ruling:ST-P5-HOLD-20261001"
+    assert (h_unknown.reason, h_unknown.ruling_ref) == ("inputs_unavailable",
+                                                        "ST-H-UNKNOWN-20261002")
+    from services.gochara_rules.registry import signature_houses
+    unknown = [c for c in ev.ROW_MEMBERSHIP
+               if c != "birth_anchor" and signature_houses(c, CHART) is None]
+    for cls in unknown:       # the ruling covers P1/P3/P4 ONLY — P2 still plans
+        plan = inv.plan_class_inventory(
+            event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=SEALED,
+            capability=FULL, path_exclusions=paths, h_unknown_exclusion=h_unknown,
+            dasha_rows=DASHA)
+        by = {p.path_id: p for p in plan.pins}
+        assert {pid for pid, p in by.items() if p.disposition == "excluded"} == {
+            "P1", "P3", "P4", "P5"}, cls
+        assert by["P2"].disposition in ("included", "computed_empty")
+
+
+def test_role_token_interval_detail_is_stored_verbatim(am5):
+    store, sky, _ = _boot(am5, "5.11")
+    _write(am5, store, sky, "5.11", _plan())
+    rows = am5.execute(
+        "SELECT i.detail FROM public.ka_gochara_search_interval i"
+        " JOIN public.ka_gochara_search_obligation o USING (chart_id, generation, event_class, ob_id)"
+        " WHERE i.generation = '5.11' AND o.agent = 'period_lord:ad'").fetchall()
+    assert {r[0]["resolved_agent"] for r in rows} == {"venus", "sun"}
+
+
+def test_the_verifier_reproduces_the_inventory_and_ledger_digests_with_p1_role_tokens(am5):
+    """P1 under the role-token form, from-the-spec: the verifier's inventory digest equals
+    the DB's AND its re-derived LEDGER digest (cuts + resolved agents from the snapshot's
+    consumed daśā rows) equals the stored one — the only independent check on the cuts."""
+    from services.gochara_kernel import inventory_verifier as ver
+    paths = [("P1", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0")]
+    ruled = {"p5": {"reason": "tier_withheld_by_ruling", "basis": "ruling:ST-P5-HOLD-20261001",
+                    "ruling_ref": "ST-P5-HOLD-20261001"}}
+    store, sky, _ = _boot(am5, "5.12")
+    p5, hu = inv.standing_exclusions()
+    for cls in ("marriage", "bereavement", "separation"):
+        plan = inv.plan_class_inventory(
+            event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=paths,
+            capability=FULL, path_exclusions=p5, h_unknown_exclusion=hu, dasha_rows=DASHA)
+        _write(am5, store, sky, "5.12", plan)
+        db_inv, db_led = am5.execute(
+            "SELECT inventory_digest, ledger_digest FROM public.ka_gochara_search_inventory"
+            " WHERE generation = '5.12' AND event_class = %s", (cls,)).fetchone()
+        out = ver.rederive_inventory_digest(
+            am5, chart_id=CHART_ID, generation="5.12", event_class=cls, sealed_paths=paths,
+            path_exclusions=ruled)
+        assert out["obligations"] == sorted(o.canonical_bytes for o in plan.obligations), cls
+        assert out["digest"] == db_inv, cls
+        led = ver.rederive_ledger_digest(
+            am5, chart_id=CHART_ID, generation="5.12", event_class=cls,
+            obligations=out["obligations"],
+            capability={"position_probe": True, "arc_index": True})
+        assert led == db_led, cls
+
+
+def test_the_verifier_ledger_check_catches_a_wrong_cut_that_sql_cannot(am5):
+    """SQL recomputes the ledger digest from the stored rows, so a wrongly-CUT but
+    internally consistent ledger passes every SQL check. The verifier's own derivation
+    does not."""
+    from services.gochara_kernel import inventory_verifier as ver
+    paths = [("P1", "1.0.0"), ("P5", "1.0.0")]
+    store, sky, _ = _boot(am5, "5.13")
+    p5, hu = inv.standing_exclusions()
+    plan = inv.plan_class_inventory(
+        event_class="marriage", chart=CHART, horizon=(H0, H1), sealed_paths=paths,
+        capability=FULL, path_exclusions=p5, h_unknown_exclusion=hu,
+        dasha_rows=[r for r in DASHA if r.level != 2] + [
+            _row(2, 2, "venus", _dt(2024, 12, 1), _dt(2025, 4, 1))])   # AD cut at the wrong place
+    _write(am5, store, sky, "5.13", plan)
+    db_led = am5.execute("SELECT ledger_digest FROM public.ka_gochara_search_inventory"
+                         " WHERE generation = '5.13'").fetchone()[0]
+    assert db_led      # SQL is satisfied: it only recomputes what was stored
+    out = ver.rederive_inventory_digest(
+        am5, chart_id=CHART_ID, generation="5.13", event_class="marriage", sealed_paths=paths,
+        path_exclusions={"p5": {"reason": "tier_withheld_by_ruling",
+                                "basis": "ruling:ST-P5-HOLD-20261001",
+                                "ruling_ref": "ST-P5-HOLD-20261001"}})
+    # the snapshot consumed the (wrong) row ids the builder was handed in `_write` — the
+    # verifier re-derives from the REAL pinned rows in chart_dashas, which disagree
+    real = ver.rederive_ledger_digest(
+        am5, chart_id=CHART_ID, generation="5.13", event_class="marriage",
+        obligations=out["obligations"], capability={"position_probe": True, "arc_index": True})
+    assert real != db_led

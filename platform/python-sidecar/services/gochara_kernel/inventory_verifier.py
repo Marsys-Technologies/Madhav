@@ -14,11 +14,12 @@ INDEPENDENCE RULES (a process property — reviewed, not provable in SQL):
     instead of being copied from one into the other;
   * reads facts straight from `chart_facts` by the snapshot's consumed ids.
 
-WHAT IT CAN VOUCH FOR (honestly): P3 and P4 are derived from the spec's explicit Boolean
-form (S-03 / R3-S02); an `excluded` pin is verified against the rulings the verifier is
-GIVEN (never read back from the pin it is checking). P1, P2 and P5's enumerations are not
-yet independently derivable here: asking for them raises `Unverifiable` — a class that
-includes them gets NO verification row, so it cannot seal. A verifier that cannot derive a
+WHAT IT CAN VOUCH FOR (honestly): P1 (role-token form, AM-11 pin e), P3 and P4 are derived
+from the spec text (S-03 / R3-S02 / §2.2); an `excluded` pin is verified against the rulings
+the verifier is GIVEN (never read back from the pin it is checking); the interval ledger's
+daśā cuts and resolved agents are re-derived from the snapshot's consumed rows. P2's and P5's
+enumerations are not yet independently derivable here: asking for them raises `Unverifiable` —
+a class that includes them gets NO verification row, so it cannot seal. A verifier that cannot derive a
 path must not vouch for it.
 
 The named residual stays named: if this module and the builder share a misreading of the
@@ -71,6 +72,18 @@ _UNKNOWN_H = frozenset({"achievement_recognition", "business_launch",
                         "financial_deception", "foreign_settlement", "parental_event",
                         "property_acquisition", "psychological_arc", "spiritual_turn"})
 _H_DEPENDENT = ("p1", "p3", "p4")
+
+# P1 (spec §2.2; Phaladīpikā XX.34-38): each of the seven grahas' TRANSIT content names its
+# own, exaltation and debilitation signs; Sun and Jupiter additionally ride EVERY graha's
+# exaltation sign. Nodes: no cited transit residence. The verifier's own classical table.
+_OWN = {"sun": ("leo",), "moon": ("cancer",), "mars": ("aries", "scorpio"),
+        "mercury": ("gemini", "virgo"), "jupiter": ("sagittarius", "pisces"),
+        "venus": ("taurus", "libra"), "saturn": ("capricorn", "aquarius")}
+_EXALT = {"sun": "aries", "moon": "taurus", "mars": "capricorn", "mercury": "virgo",
+          "jupiter": "cancer", "venus": "pisces", "saturn": "libra"}
+_DEBIL = {"sun": "libra", "moon": "scorpio", "mars": "cancer", "mercury": "pisces",
+          "jupiter": "capricorn", "venus": "virgo", "saturn": "aries"}
+_ROLE_LEVEL = {"md": 1, "ad": 2, "pd": 3}
 
 
 def _uuidv8(text: str) -> str:
@@ -136,6 +149,22 @@ def _frame_person(event_class: str) -> tuple[str, str]:
     return ("bhavat_bhavam:9", "father") if event_class == "bereavement" else ("lagna", "native")
 
 
+def _p1_obligation_bytes(event_class: str) -> list[str]:
+    """P1 under AM-11 pin (e): the period-role agent is the ROLE token; the qualified
+    geometry is the TRANSIT residence on the signs P1's content names (natal-fact rows are
+    not admission-bearing — pin b — so they are not obligations)."""
+    signs: set[str] = set()
+    for g in _OWN:
+        signs.update(_OWN[g])
+        signs.add(_EXALT[g])
+        signs.add(_DEBIL[g])
+    signs.update(_EXALT.values())          # Sun and Jupiter: every graha's exaltation sign
+    _frame, person = _frame_person(event_class)
+    return sorted({"|".join((event_class, "p1", "1.0.0", f"period_lord:{role}", "residence",
+                             "period_lord", f"span:{_SIGNS.index(sg) + 1}", "dasha_lord",
+                             person)) for role in _ROLE_LEVEL for sg in signs})
+
+
 def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
                          path: str) -> list[str]:
     """Every (agent, relation, role, target) the spec's P3 predicate names, for `path`
@@ -189,10 +218,11 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
         return {"path": p, "version": rule_version.lower(), "disposition": "excluded",
                 "reason": e["reason"], "ruling": e.get("ruling_ref") or "",
                 "basis": e["basis"], "obligations": []}
-    if p not in ("p3", "p4"):
+    if p not in ("p1", "p3", "p4"):
         raise Unverifiable(f"{event_class}/{p}: no independent derivation of this path's "
                            "obligations exists in the verifier yet — refusing to vouch")
-    obs = _p3_obligation_bytes(event_class, chart, p)
+    obs = (_p1_obligation_bytes(event_class) if p == "p1"
+           else _p3_obligation_bytes(event_class, chart, p))
     if obs:
         return {"path": p, "version": rule_version.lower(), "disposition": "included",
                 "reason": "", "ruling": "", "basis": "", "obligations": obs}
@@ -252,6 +282,62 @@ def rederive_inventory_digest(
     return {"digest": _sha(pre), "preimage": pre, "pins": pins, "obligations": obligations}
 
 
+def _utc_ts(t) -> str:
+    return t.astimezone(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def rederive_ledger_digest(
+    conn: Any, *, chart_id: str, generation: str, event_class: str,
+    obligations: Sequence[str], capability: Mapping[str, bool],
+) -> str:
+    """Re-derive the interval LEDGER digest: SQL stores and recomputes it but cannot
+    check that the cuts and resolved agents are the RIGHT ones — this is that check (a
+    process residual named in AM-11 pin e). `capability` = {position_probe, arc_index} as
+    the verifier was independently told."""
+    snap = conn.execute(
+        "SELECT consumed_dasha_row_ids, input_digest FROM"
+        " public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation)).fetchone()
+    hdr = conn.execute(
+        "SELECT lower(horizon), upper(horizon) FROM public.ka_gochara_search_inventory"
+        " WHERE chart_id = %s AND generation = %s AND event_class = %s",
+        (chart_id, generation, event_class)).fetchone()
+    lo, hi = hdr
+    rows = conn.execute(
+        "SELECT level_n, start_iso, end_iso FROM public.chart_dashas"
+        " WHERE dasha_row_id::text = ANY(%s::text[]) ORDER BY level_n, start_iso",
+        (list(snap[0]),)).fetchall()
+    lines = []
+    for ob in obligations:
+        agent, relation = ob.split("|")[3], ob.split("|")[4]
+        transit = relation in ("residence", "aspect", "conjunction")
+        if relation == "residence":
+            state = "searched_complete" if capability["position_probe"] else "missing_inputs"
+        elif relation in ("conjunction", "aspect"):
+            state = "searched_complete" if capability["arc_index"] else "missing_inputs"
+        else:
+            state = "searched_complete"        # an atemporal natal fact
+        oid = _uuidv8(ob)
+        if agent.startswith("period_lord:"):
+            level = _ROLE_LEVEL[agent.split(":")[1]]
+            cursor = lo
+            for lv, a, b in rows:
+                if lv != level:
+                    continue
+                a2, b2 = max(a, lo), min(b, hi)
+                if not a2 < b2:
+                    continue
+                if a2 > cursor:
+                    lines.append(f"{oid}|{_utc_ts(cursor)}|{_utc_ts(a2)}|missing_inputs|{snap[1]}")
+                lines.append(f"{oid}|{_utc_ts(a2)}|{_utc_ts(b2)}|{state}|{snap[1]}")
+                cursor = max(cursor, b2)
+            if cursor < hi:
+                lines.append(f"{oid}|{_utc_ts(cursor)}|{_utc_ts(hi)}|missing_inputs|{snap[1]}")
+        else:
+            lines.append(f"{oid}|{_utc_ts(lo)}|{_utc_ts(hi)}|{state}|{snap[1]}")
+    return _sha("\n".join(sorted(lines)))
+
+
 def write_verification(conn: Any, *, chart_id: str, generation: str, event_class: str,
                        rederived_digest: str) -> None:
     """The verification row (the caller holds the chart lock and the global SHARED key)."""
@@ -274,4 +360,5 @@ def write_verification(conn: Any, *, chart_id: str, generation: str, event_class
 
 __all__ = ["Unverifiable", "VERIFIER_ID", "VERIFIER_VERSION", "derive_path_pin",
            "inventory_preimage", "read_chart", "rederive_inventory_digest",
+           "rederive_ledger_digest",
            "write_verification"]

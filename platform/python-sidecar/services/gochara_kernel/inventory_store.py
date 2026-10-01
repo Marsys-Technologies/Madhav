@@ -186,10 +186,12 @@ class InventoryStore:
         for iv in plan.intervals:
             self.conn.execute(
                 "INSERT INTO public.ka_gochara_search_interval"
-                " (chart_id, generation, event_class, ob_id, search_range, state, input_digest)"
-                " VALUES (%s,%s,%s,%s::uuid,%s::tstzrange,%s,%s)",
+                " (chart_id, generation, event_class, ob_id, search_range, state, detail,"
+                "  input_digest)"
+                " VALUES (%s,%s,%s,%s::uuid,%s::tstzrange,%s,%s::jsonb,%s)",
                 (chart_id, generation, cls, str(iv.ob_id), _range(iv.start, iv.end),
-                 iv.state, input_digest))
+                 iv.state, None if iv.detail is None else _json.dumps(iv.detail),
+                 input_digest))
         inv, led = self.conn.execute(
             "SELECT public.ka_gochara_search_inventory_digest(%s::uuid,%s,%s),"
             "       public.ka_gochara_search_ledger_digest(%s::uuid,%s,%s)",
