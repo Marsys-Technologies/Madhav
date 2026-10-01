@@ -330,13 +330,19 @@ def pg():
 def _seed_saturn_crossings(conn, sky_cid: str):
     """Two sign_ingress sky events for Saturn under the real substrate
     convention: into libra (180°) on day 10, out to scorpio (210°) on day 200."""
+    _seed_libra_crossings(conn, sky_cid, "Saturn")
+
+
+def _seed_libra_crossings(conn, sky_cid: str, body: str):
+    """Libra residence [day 10, day 200) for `body` as two sign_ingress sky
+    events (insert-if-absent; deterministic identities)."""
     from services.gochara_kernel.substrate import (SkyEventStore,
                                                    assign_occurrence_ordinals,
                                                    physical_object_id)
     store = SkyEventStore(conn)
     for level, day in ((180.0, 10), (210.0, 200)):
         poid = physical_object_id(
-            body="Saturn", relation_kind="sign_ingress",
+            body=body, relation_kind="sign_ingress",
             canonical_target=f"point:{level!r}", convention_id=sky_cid)
         store.insert_physical_object(poid)
         (contact,) = assign_occurrence_ordinals(
@@ -803,3 +809,128 @@ def test_p4_double_transit_overlap_true_and_false():
     assert counts["records"] == 1 and counts["prereq_evaluated"] == 1
     calls = [kw for k, kw in store.calls if k == "set_prerequisite_result"]
     assert [c["result"] for c in calls] == ["false"]
+
+
+# ── 3/N part 3b: the prerequisite results through the REAL F5 finalisation ──
+#
+# The fake-store tests above prove the evaluation's values; only the real DB
+# proves the COMMIT-time F5 check (1155): a record's admission_state must equal
+# the state derived from its prerequisite results (any false ⇒ not_admitted;
+# else any unknown/unevaluated ⇒ unqualified; else admitted). Own generation
+# ('5.1') so these rows never mix into the '5.0' rows the tests above select.
+
+PG_GEN = "5.1"
+
+
+def _pg_p1_run(conn, dasha_rows):
+    """Seed + coverage + ONE committed P1 grain (Saturn through Libra, ingress
+    day 10) with the given L1 dasha rows. Returns (counts, committed_records)."""
+    from services.gochara_kernel.rule_registry import RuleRegistryStore
+    RuleRegistryStore(conn).seed()
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(conn)
+        _seed_saturn_crossings(conn, sky_cid)
+    store = rs.RecordStore(conn)
+    kala_cid = store.ensure_kala_convention()
+    edge = _p1_libra_edge("saturn")
+    probe = _probe([(10, 200)])
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(
+            store, chart_id=CHART_ID, generation=PG_GEN, event_class="marriage",
+            class_edges=ev.enumerate_edges("marriage", "P1", CHART),
+            horizon=HORIZON, position_at=probe, sky_convention_id=sky_cid,
+            kala_convention_id=kala_cid, build_id="test-build-pg",
+            arc_index_available=False)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts = rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation=PG_GEN, event_class="marriage",
+            path_id="P1", edges=[edge], horizon=HORIZON, position_at=probe,
+            house_for=_house_from_lagna(CHART["lagna_deg"]),
+            sky_convention_id=sky_cid, source_fact_ids=["fact-1"],
+            dasha_rows_for=lambda agent: dasha_rows.get(agent, []))
+    rows = conn.execute(
+        "SELECT r.admission_state, p.predicate_id, p.result"
+        " FROM public.ka_gochara_relationship_record r"
+        " JOIN public.ka_gochara_record_prerequisite p USING (record_id)"
+        " WHERE r.generation = %s AND r.path_id = 'P1' ORDER BY p.ordinal",
+        (PG_GEN,)).fetchall()
+    return counts, rows
+
+
+@pytest.mark.parametrize("dasha_rows,expect_state,expect_result", [
+    # period not running at the ingress (day 10) ⇒ a false prerequisite ⇒ not_admitted
+    ({"saturn": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}]},
+     "not_admitted", "false"),
+    # running ⇒ true, but the other declared prerequisites stay unevaluated ⇒ unqualified
+    ({"saturn": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}]},
+     "unqualified", "true"),
+    # no L1 rows ⇒ unknown, never false ⇒ unqualified
+    ({}, "unqualified", "unknown"),
+])
+def test_p1_prerequisite_results_survive_the_real_f5_finalisation(
+        pg, dasha_rows, expect_state, expect_result):
+    counts, rows = _pg_p1_run(pg, dasha_rows)    # raises at COMMIT if F5 disagrees
+    assert counts["records"] == 1 and counts["prereq_evaluated"] == 1
+    assert {r[0] for r in rows} == {expect_state}
+    by_pred = {r[1]: r[2] for r in rows}
+    assert by_pred["period_running_at"] == expect_result
+
+
+PG_GEN_P4 = "5.2"
+
+
+def _pg_p4_run(conn, agents):
+    """ONE committed P4 grain over the Libra-residence edges of `agents`
+    (each in Libra [day 10, day 200)); returns the committed
+    (admission_state, predicate_id, result) rows."""
+    from services.gochara_kernel.rule_registry import RuleRegistryStore
+    RuleRegistryStore(conn).seed()
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(conn)
+        for a in ("Saturn", "Jupiter"):
+            _seed_libra_crossings(conn, sky_cid, a)
+    store = rs.RecordStore(conn)
+    kala_cid = store.ensure_kala_convention()
+    edges = [_p4_libra_edge(a) for a in agents]
+    probe = _probe([(10, 200)])
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(
+            store, chart_id=CHART_ID, generation=PG_GEN_P4, event_class="marriage",
+            class_edges=ev.enumerate_edges("marriage", "P4", CHART),
+            horizon=HORIZON, position_at=probe, sky_convention_id=sky_cid,
+            kala_convention_id=kala_cid, build_id="test-build-pg",
+            arc_index_available=False)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts = rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation=PG_GEN_P4, event_class="marriage",
+            path_id="P4", edges=edges, horizon=HORIZON, position_at=probe,
+            house_for=_house_from_lagna(CHART["lagna_deg"]),
+            sky_convention_id=sky_cid, source_fact_ids=["fact-1"])
+    rows = conn.execute(
+        "SELECT r.agent, r.admission_state, p.predicate_id, p.result"
+        " FROM public.ka_gochara_relationship_record r"
+        " JOIN public.ka_gochara_record_prerequisite p USING (record_id)"
+        " WHERE r.generation = %s AND r.path_id = 'P4' ORDER BY r.agent",
+        (PG_GEN_P4,)).fetchall()
+    return counts, rows
+
+
+def test_p4_double_transit_true_is_admitted_through_the_real_f5_finalisation(pg):
+    counts, rows = _pg_p4_run(pg, ["jupiter", "saturn"])
+    assert counts["records"] == 2 and counts["prereq_evaluated"] == 2
+    # P4's ONLY prerequisite is p4_double_transit: overlap ⇒ true ⇒ all results
+    # true ⇒ the one place a record legitimately reaches 'admitted'
+    assert rows == [("jupiter", "admitted", "p4_double_transit", "true"),
+                    ("saturn", "admitted", "p4_double_transit", "true")]
+
+
+def test_p4_other_planet_not_searched_is_unknown_and_unqualified(pg):
+    counts, rows = _pg_p4_run(pg, ["saturn"])        # Jupiter's edge not in the grain
+    assert counts["records"] == 1
+    assert [(r[1], r[3]) for r in rows if r[0] == "saturn"] == [("unqualified", "unknown")]

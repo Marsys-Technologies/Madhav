@@ -59,7 +59,7 @@ Deferrals:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from services.gochara_kernel.substrate import (
     PhysicalObjectId,
@@ -277,9 +277,23 @@ def _maraka_rows(event_class: str, chart: dict, cid: str,
 def enumerate_p4_edges(event_class: str, chart: dict,
                        convention_id: str | None = None) -> list[RecordEdge]:
     """P4 (R3-S02): the P3 house/lord contact edges restricted to agents
-    Jupiter and Saturn. One rule — union within an agent, AND across agents
-    (admission is evaluated over occurrences, not here)."""
-    return [e for e in enumerate_p3_edges(event_class, chart, convention_id)
+    Jupiter and Saturn, carried as P4's OWN records. One rule — union within an
+    agent, AND across agents (admission is evaluated over occurrences, not
+    here).
+
+    The contact GEOMETRY is shared with P3 (one contact_id — §2.1: shared roots
+    count once geometrically) but the INTERPRETATION is once per path: a record
+    evaluates exactly its own path's necessary predicates (1155 F5), and P4's
+    is `p4_double_transit`, not P3's contact predicate. So each edge is stamped
+    with path_id 'P4' and P4's own provenance/ruling/citation (D-P4,
+    uncited_extension) — keeping P3's path_id on a P4 grain's records is a
+    COMMIT-time F5 failure on the real DB (membership ≠ the record's path)."""
+    p4 = rules_registry.RULE_PATHS[("P4", RULE_VERSION)]
+    text, page = _path_citation("P4")
+    return [replace(e, path_id="P4", provenance=p4["provenance"],
+                    ruling_ref=p4["ruling_ref"], source_text=text,
+                    source_page=page)
+            for e in enumerate_p3_edges(event_class, chart, convention_id)
             if e.agent in ("jupiter", "saturn") and e.operator_role == "scored"]
 
 

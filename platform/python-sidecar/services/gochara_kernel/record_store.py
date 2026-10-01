@@ -654,6 +654,27 @@ class RecordStore:
         _byte_check(row, (result,),
                     f"prerequisite result {record_id}/{ordinal} "
                     f"({predicate_id})")
+        # F5 (1155): the record's admission_state must EQUAL the state derived
+        # from its prerequisite results at COMMIT (any false ⇒ not_admitted;
+        # else any unknown/unevaluated ⇒ unqualified; else admitted). Writing
+        # a result without re-deriving the state is a COMMIT-time failure for
+        # every record whose result is not 'unknown'. Derived IN SQL from the
+        # stored results — the finalisation trigger is the detector that
+        # catches this expression drifting from the contract's rule.
+        self.conn.execute(
+            "UPDATE public.ka_gochara_relationship_record SET admission_state ="
+            " (SELECT CASE"
+            "   WHEN count(*) FILTER (WHERE m.result = 'false') > 0"
+            "     THEN 'not_admitted'"
+            "   WHEN count(*) FILTER (WHERE m.result IS DISTINCT FROM 'true'"
+            "                          AND m.result IS DISTINCT FROM 'false') > 0"
+            "     THEN 'unqualified'"
+            "   ELSE 'admitted' END"
+            "  FROM public.ka_gochara_record_prerequisite m"
+            "  WHERE m.record_id = %s)"
+            " WHERE record_id = %s",
+            (str(record_id), str(record_id)),
+        )
 
 
 # ── grain orchestration (one substep = one call = one transaction) ────────

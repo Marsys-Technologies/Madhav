@@ -320,12 +320,29 @@ def test_p1_h_unknown_class_enumerates_empty():
 
 
 def test_p4_is_p3_scored_edges_restricted_to_jupiter_and_saturn():
+    """Same GEOMETRY as P3's Jupiter/Saturn scored edges (one shared contact),
+    but P4's OWN records: path_id 'P4' with P4's provenance/ruling/citation —
+    a record evaluates exactly its path's predicates (1155 F5), so a P4 grain
+    carrying P3's path_id fails finalisation on the real DB (the fake-store
+    suites could not see it; see test_a53_record_store's F5 PG tests)."""
+    from dataclasses import replace
+    from services.gochara_rules import registry as rules_registry
     p3 = [e for e in ev.enumerate_edges("bereavement", "P3", CHART)
           if e.agent in ("jupiter", "saturn") and e.operator_role == "scored"]
     p4 = ev.enumerate_edges("bereavement", "P4", CHART)
-    assert p3 == p4
+    row = rules_registry.RULE_PATHS[("P4", ev.RULE_VERSION)]
+    assert p3 and len(p3) == len(p4)
+    assert p4 == [replace(e, path_id="P4", provenance=row["provenance"],
+                          ruling_ref=row["ruling_ref"],
+                          source_text=row["source_text"],
+                          source_page=row["source_page"]) for e in p3]
     assert {e.agent for e in p4} <= {"jupiter", "saturn"}
     assert all(e.operator_role == "scored" for e in p4)
+    assert {e.path_id for e in p4} == {"P4"}
+    assert {(e.provenance, e.ruling_ref) for e in p4} == {("uncited_extension", "D-P4")}
+    # the geometry is the SAME objects/relations as P3's (shared root, §2.1)
+    assert [(e.agent, e.relation, e.obj, e.object_role) for e in p4] == \
+           [(e.agent, e.relation, e.obj, e.object_role) for e in p3]
 
 
 # ── (d) honesty of empty and excluded grains ──────────────────────────────────
