@@ -1,0 +1,238 @@
+{
+ "registry_revision": 7,
+ "registry_fingerprint": "118c3154f9fc136fb83a33f4568e49688f8cf639336cae346643127e101d52f9",
+ "note": "offline rollup of the SAVED census_L3.json under main rules (rev 7); not a re-measure; per-gate verdicts only",
+ "assets": {
+  "ka_avadhi": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_bhavishya_lekha": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_dasha_kala": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PARTIAL",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "NO_DETECTOR"
+  },
+  "ka_gochara": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PARTIAL",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_gochara_resonance": {
+   "Ldgr": "PARTIAL",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "NO_DETECTOR",
+   "Build": "PARTIAL"
+  },
+  "ka_graha_sancara": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PARTIAL",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "NO_DETECTOR"
+  },
+  "ka_jivana_parva": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "PARTIAL"
+  },
+  "ka_kala_darshana": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_kalasutra": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_kota_chakra": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "PARTIAL"
+  },
+  "ka_kshetra": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "FAIL",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "NO_DETECTOR",
+   "Build": "FAIL"
+  },
+  "ka_moorti_nirnaya": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_muhurta_seva": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PARTIAL",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "NO_DETECTOR"
+  },
+  "ka_sangam": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_sudarshana_varsha": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "PARTIAL"
+  },
+  "ka_taranga": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_tithi_pravesha": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "PARTIAL"
+  },
+  "ka_tulana": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PARTIAL",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "NO_DETECTOR"
+  },
+  "ka_vedha_gochara": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_vighnakara": {
+   "Ldgr": "PASS",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "FAIL"
+  },
+  "ka_yojaka": {
+   "Ldgr": "NO_DETECTOR",
+   "Idem": "PASS",
+   "Earn": "NO_DETECTOR",
+   "Null": "NO_DETECTOR",
+   "Vocab": "NO_DETECTOR",
+   "Carr": "NO_DETECTOR",
+   "Narr": "NO_DETECTOR",
+   "Dens": "FAIL",
+   "Build": "PARTIAL"
+  }
+ }
+}
