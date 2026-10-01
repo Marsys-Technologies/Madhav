@@ -706,6 +706,15 @@ class _Result:
         self.rows_updated = 0
 
 
+class _Ctx:
+    """Minimal writer context: what every per-chart writer gets from the orchestrator
+    (``ctx.config['birth_params']['datetime_iso']``, the native's own birth instant)."""
+
+    def __init__(self, iso: str | None = "1984-02-05T10:43:00+05:30"):
+        bp = {} if iso is None else {"datetime_iso": iso}
+        self.config = {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "birth_params": bp}
+
+
 def test_decorator_refuses_to_run_the_body_when_unconfigured():
     ran: list[int] = []
 
@@ -716,7 +725,7 @@ def test_decorator_refuses_to_run_the_body_when_unconfigured():
             return _Result()
 
     with pytest.raises(SwissBackendError):
-        W().run(object())
+        W().run(_Ctx())
     assert ran == []
 
 
@@ -732,8 +741,8 @@ def test_decorator_appends_the_probed_backend_to_notes(hidden_env):
         def run_substep(self, ctx, step):
             return _Result("", rows=3)
 
-    assert Light().run(object()).notes == "chart_facts=12; ephemeris_backend=swieph"
-    assert Heavy().run_substep(object(), "k").notes == "ephemeris_backend=swieph"
+    assert Light().run(_Ctx()).notes == "chart_facts=12; ephemeris_backend=swieph"
+    assert Heavy().run_substep(_Ctx(), "k").notes == "ephemeris_backend=swieph"
 
 
 @needs_corpus
@@ -743,7 +752,7 @@ def test_decorator_does_not_claim_a_backend_on_a_noop_return(hidden_env):
         def run(self, ctx):
             return _Result("No convergence windows", rows=0)
 
-    assert Noop().run(object()).notes == "No convergence windows"
+    assert Noop().run(_Ctx()).notes == "No convergence windows"
 
 
 @needs_corpus
@@ -755,7 +764,7 @@ def test_decorator_fails_closed_if_the_backend_drifts_during_the_body(hidden_env
             return _Result("x")
 
     with pytest.raises(SwissBackendError, match="moseph"):
-        Drifter().run(object())
+        Drifter().run(_Ctx())
 
 
 @needs_corpus
@@ -770,7 +779,7 @@ def test_decorator_logs_the_probed_backend_because_notes_are_not_persisted(hidde
             return _Result("", rows=0)
 
     with caplog.at_level(logging.INFO, logger="panchang_engine.swiss_backend"):
-        Writer().run(object())
+        Writer().run(_Ctx())
     # logged even for a no-op (the log is the persistent trace; notes are in-memory only)
     assert any("ga_example ephemeris_backend=swieph rows=0" in r.getMessage() for r in caplog.records)
 
@@ -1081,6 +1090,63 @@ def test_panchang_sample_margins_cover_what_the_engines_really_sample(hidden_env
         panchanga_instant(inst, 20.27, 85.84, tz)
         noon = swe.julday(inst.year, inst.month, inst.day, 12.0)
         assert min(rec) - noon > -ss.PANCHANG_SAMPLE_BEFORE_DAYS and max(rec) - noon < ss.PANCHANG_SAMPLE_AFTER_DAYS
+
+
+@needs_corpus
+def test_decorator_raises_before_the_body_when_the_chart_window_cannot_be_checked(hidden_env):
+    """A decorated writer without a parseable birth_params['datetime_iso'] must RAISE
+    (window_unchecked) and never run its body or record swieph on an unchecked window."""
+    ran: list[int] = []
+
+    @records_swiss_backend
+    class W:
+        def run(self, ctx):
+            ran.append(1)
+            return _Result("x")
+
+        def run_substep(self, ctx, step):
+            ran.append(2)
+            return _Result("y")
+
+    class _NoConfig:
+        pass
+
+    bad_contexts = {
+        "no_datetime": _Ctx(None),
+        "empty_string": _Ctx(""),
+        "unparseable": _Ctx("not-a-datetime"),
+        "no_config_attribute": _NoConfig(),
+    }
+    cfg_none = _Ctx()
+    cfg_none.config = {"chart_id": None, "birth_params": None}
+    bad_contexts["birth_params_none"] = cfg_none
+    cfg_global = _Ctx()
+    cfg_global.config = {"chart_id": None, "birth_params": {}}      # global-scope shape
+    bad_contexts["global_scope_empty_birth_params"] = cfg_global
+    for label, ctx in bad_contexts.items():
+        with pytest.raises(ss.WindowUncheckedError, match="window_unchecked"):
+            W().run(ctx)
+        with pytest.raises(ss.WindowUncheckedError):
+            W().run_substep(ctx, "k")
+    assert ran == [], "the body ran on an unchecked window"
+    assert issubclass(ss.WindowUncheckedError, ss.SwissBackendError)
+    assert ss.WindowUncheckedError.code == "window_unchecked"
+    # control: with a parseable datetime the same writer runs and records the backend
+    assert W().run(_Ctx()).notes.endswith("ephemeris_backend=swieph") and ran == [1]
+
+
+@needs_corpus
+def test_decorator_lifetime_check_includes_the_panchang_margin(hidden_env):
+    """Chart born at the very start of the window: the lifetime check includes the panchang
+    sample margin, so 1800-01-02 (noon -1.5 d is outside) is refused and 1800-01-06 is accepted."""
+    @records_swiss_backend
+    class W:
+        def run(self, ctx):
+            return _Result("x")
+
+    with pytest.raises(ss.OutOfCorpusRangeError):
+        W().run(_Ctx("1800-01-02T10:00:00"))
+    assert W().run(_Ctx("1800-01-06T10:00:00")).notes.endswith("ephemeris_backend=swieph")
 
 
 # ── 6c. the two WRITE routes raise BEFORE any write when the backend check fails ─

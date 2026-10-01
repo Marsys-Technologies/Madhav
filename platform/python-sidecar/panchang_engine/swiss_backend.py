@@ -148,6 +148,16 @@ class SwissBackendError(RuntimeError):
     """
 
 
+class WindowUncheckedError(SwissBackendError):
+    """A decorated writer's chart window could not be determined (``window_unchecked``).
+
+    Raised instead of recording swieph for a window nobody checked: the writer's context has
+    no parseable ``birth_params['datetime_iso']``.
+    """
+
+    code = "window_unchecked"
+
+
 class OutOfCorpusRangeError(SwissBackendError, OutOfRangeError):
     """A requested date lies outside the pinned corpus window (``out_of_corpus_range``).
 
@@ -309,22 +319,37 @@ def backend_note(*jds: float) -> str:
 
 
 def _chart_lifetime_jds(ctx: Any) -> tuple[float, ...]:
-    """(birth_jd, birth_jd + LIFETIME_HORIZON_YEARS) from ``ctx.config['birth_params']``
-    when present and parseable, else ``()`` (a writer without birth params, or a unit
-    test's stub context, is simply not date-checked here)."""
-    try:
-        from datetime import datetime
+    """The JD span a decorated chart writer touches: (birth - panchang margin, birth +
+    LIFETIME_HORIZON_YEARS + panchang margin), from ``ctx.config['birth_params']['datetime_iso']``.
 
-        bp = ctx.config.get("birth_params")
-        iso = bp["datetime_iso"] if isinstance(bp, dict) else None
-        if not isinstance(iso, str):
-            return ()
+    RAISES ``WindowUncheckedError`` when that datetime is absent or unparseable: a decorated
+    writer is a per-chart writer, and a window nobody could check must never be recorded as
+    swieph (earned-signal rule: a flag needs a real detector).  The chart date is its local
+    calendar date at 12:00 (the same convention ``panchang_engine`` uses)."""
+    from datetime import datetime
+
+    cfg = getattr(ctx, "config", None)
+    bp = cfg.get("birth_params") if isinstance(cfg, dict) else None
+    iso = bp.get("datetime_iso") if isinstance(bp, dict) else None
+    if not isinstance(iso, str) or not iso.strip():
+        raise WindowUncheckedError(
+            "window_unchecked: the writer context carries no birth_params['datetime_iso'] "
+            f"(chart_id={cfg.get('chart_id') if isinstance(cfg, dict) else None!r}); a "
+            "@records_swiss_backend writer is per-chart and its date window must be checked "
+            "before it runs"
+        )
+    try:
         dt = datetime.fromisoformat(iso)
-    except Exception:
-        return ()
+    except ValueError as exc:
+        raise WindowUncheckedError(
+            f"window_unchecked: birth_params['datetime_iso']={iso!r} is not parseable ({exc}); "
+            "refusing to run a Swiss-backed writer on an unchecked date window"
+        ) from exc
     swe = _import_swisseph()
     birth = swe.julday(dt.year, dt.month, dt.day, 12.0)
-    return (birth, birth + LIFETIME_HORIZON_YEARS * 365.25)
+    lo, _ = panchang_sample_jds(birth)
+    _, hi = panchang_sample_jds(birth + LIFETIME_HORIZON_YEARS * 365.25)
+    return (lo, hi)
 
 
 def records_swiss_backend(cls):
