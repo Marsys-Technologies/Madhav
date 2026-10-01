@@ -10,7 +10,7 @@ execution: NONE. This is an analysis document. No build, write, admin action, pu
 db_access: read-only, as suvarna_reader (SELECT only). Evidence in /Users/Dev/suvarna-evidence/Rebuild/.
 revised_against: "branches read via git show origin/<branch>: suvarna/land/grant-plan-001 (PR #2825, BUILDER_GRANT_PLAN v1.3), suvarna/land/incident-divisionals-001 (PR #2833), suvarna/land/TI-i45-provenance-001 (PR #2826), suvarna/land/TI-i8-avadhi-integrity-001 (PR #2827), suvarna/land/F3-msr-fk-drop-001 (PR #2828), suvarna/land/TI-i10-kshetra-substeps-001 (PR #2830); all open and unmerged when read, 2026-10-01 about 16:20Z"
 changelog:
-  - "1.1 (2026-10-01, SS rulings): (1) new P0b precondition: chart_divisionals readable and writable by the builder/app roles (the table is RLS-blind since migration 1035), with the ga_vargas decision stated; (2) ka_dasha_kala added to the launch set and ordered ahead of ka_sangam; (3) ka_kshetra gets its own stage S7 with a pre-check, a stop rule and a single-redispatch rule; (4) MSR-before-Kala/Phala ordering invariant (F-3) with the detector scripts, incl. the v4-id charts; (5) grant gates per stage from BUILDER_GRANT_PLAN v1.3 (corrects v1.0 P0.5: S1 and S4 DO need grants); (6) migration gates 1212/1213/1214/1215 mapped to stages; (7) production build remains a REVIEW to SS, no execution authority here. Live values re-read 2026-10-01 about 16:20Z are in Evidence E8; sections changed are listed in the v1.1 box below."
+  - "1.1 (2026-10-01, SS rulings): (1) new P0b precondition: chart_divisionals readable and writable by the builder/app roles (the table is RLS-blind since migration 1035), with the ga_vargas decision stated; (2) ka_dasha_kala added to the launch set and ordered ahead of ka_sangam; (3) ka_kshetra gets its own stage S7 with a pre-check, a stop rule and a single-redispatch rule; (4) MSR-before-Kala/Phala ordering invariant (F-3) with the detector scripts, incl. the v4-id charts; (5) grant gates per stage from BUILDER_GRANT_PLAN v1.3 (corrects v1.0 P0.5: S1 and S4 DO need grants); (6) migration gates 1212/1213/1214/1215 mapped to stages; (7) production build remains a REVIEW to SS, no execution authority here. Live values re-read 2026-10-01 about 16:20Z are in Evidence E12; sections changed are listed in the v1.1 box below."
   - "1.0 (2026-10-01): first draft for SS review. Includes the P0 builder-grant precondition and smoke build (coordinator addendum 2) and the I-1/I-2 consumer addendum (coordinator addendum 1)."
 ---
 
@@ -148,7 +148,7 @@ would probably swallow the per-row insert errors, finish `lit` with 0 rows writt
 code by the incident review, Part III F1: `ga_vargas_writer.py:2762-2776` logs and continues, the four integrity conjuncts are all
 `NOT EXISTS`; not exercised). A refresh of the two views would read through RLS and could bake in zero rows.
 
-### P0b.1 Why this is a precondition and not an option (observed 2026-10-01 about 16:20Z as `suvarna_reader`, Evidence E8)
+### P0b.1 Why this is a precondition and not an option (observed 2026-10-01 about 16:20Z as `suvarna_reader`, Evidence E12)
 
 | Fact | Observation |
 |---|---|
@@ -193,7 +193,7 @@ An equivalent to Option D is acceptable only if checks 3, 4 and 5 hold for all t
 ### P0b.4 The `ga_vargas` stage: does it belong in the minimal plan? (decision, stated honestly)
 
 - **Today it is not in the plan, and the planner does not need it.** `ga_vargas` is an out-of-plan direct dependency of `bo_pratijna` (migration 1210 edge), `bo_laksana`,
-  `bo_vargottama_dhana`, `ga_condition`, `ga_sade_sati`, `ga_strength`, `ga_structural` (live `depends_on`, Evidence E8). Its state: `lit`, freshness `fresh`, 24,400 rows written at
+  `bo_vargottama_dhana`, `ga_condition`, `ga_sade_sati`, `ga_strength`, `ga_structural` (live `depends_on`, Evidence E12). Its state: `lit`, freshness `fresh`, 24,400 rows written at
   2026-09-07 11:03Z (`asset_throughput.rows_written`; a landed count after the F-A3 fix per the incident review), so the planner's pre-flight
   (lit and fresh) accepts it and the minimal-plan fixpoint of section 1.2 does not add it. That test reads throughput and freshness
   metadata, **not row visibility**, which is why a blind table passes it.
@@ -206,7 +206,7 @@ An equivalent to Option D is acceptable only if checks 3, 4 and 5 hold for all t
 ## P0c. Dependency gates by stage: grants and migrations (v1.1)
 
 Sources: BUILDER_GRANT_PLAN v1.3 (PR #2825, `suvarna/land/grant-plan-001`), the migration headers of PRs #2826, #2827, #2828, the
-`F3_MSR_FK_DROP_v1_0.md` v1.1 on `suvarna/land/F3-msr-fk-drop-001`, and PR #2830. **Live state read 2026-10-01 about 16:20Z (Evidence E8): none of
+`F3_MSR_FK_DROP_v1_0.md` v1.1 on `suvarna/land/F3-msr-fk-drop-001`, and PR #2830. **Live state read 2026-10-01 about 16:20Z (Evidence E12): none of
 migrations 1212, 1213, 1214, 1215 is applied (`_migrations_applied` latest = 1210); no active output-digest spec exists for `ka_vighnakara`, `ka_dasha_kala`
 or `ka_muhurta_seva`; all eight `bodha_msr_signals` foreign keys still exist; for `data_plane_builder`: `asset_throughput_state_audit` INSERT false,
 `phala_anchors` SELECT false, `bg_combustion_orbs` SELECT false, `asset_registry.selftest_detail` UPDATE false, `phala_rectification` SELECT false.**
@@ -264,7 +264,7 @@ The grant plan's own verification and rollback are its; this plan only consumes 
      path has never been exercised in production.
    - Consequence (code-derived): on today's code a full run lands the Bodha assets, `ka_gochara`, `ka_yojaka`, `ka_avadhi` and
      `ka_sangam` (lit, receipt 'unknown'); then `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, all 8 `ph_*` and
-     `mi_bhavisya` end as `blocked_dependency` errors (their old rows untouched). No 1211 producer reaches gate_ok. The 1211 gate cannot be met until B-1 and B-2 are decided (section 9, Q1-Q2). **v1.1 update:** PR #2826 (migrations 1212, 1213) is the proposed fix for B-1 and B-2 (a digest spec for `ka_vighnakara`; digest specs for the services `ka_dasha_kala` and `ka_muhurta_seva`); it is open and not applied (Evidence E8), so both blockers stand until it is deployed, verified (P0c.1) and the two services have rebuilt (S1). B-1 and B-2 stay code-derived, not observed. Only a spec (B-1) or a
+     `mi_bhavisya` end as `blocked_dependency` errors (their old rows untouched). No 1211 producer reaches gate_ok. The 1211 gate cannot be met until B-1 and B-2 are decided (section 9, Q1-Q2). **v1.1 update:** PR #2826 (migrations 1212, 1213) is the proposed fix for B-1 and B-2 (a digest spec for `ka_vighnakara`; digest specs for the services `ka_dasha_kala` and `ka_muhurta_seva`); it is open and not applied (Evidence E12), so both blockers stand until it is deployed, verified (P0c.1) and the two services have rebuilt (S1). B-1 and B-2 stay code-derived, not observed. Only a spec (B-1) or a
      contract change to the service receipts (B-2) fixes it; running with `ORCHESTRATOR_DEP_ASSERT=warn` would run the
      consumers but still leave their receipts 'unknown' (not gate_ok), so it does not meet the 1211 gate either.
 3. **The active-run slot was occupied minutes before this review.** `build_runs` 8684032d (asset_set `ka_gochara_resonance`,
@@ -376,7 +376,7 @@ list the old upstream sets (checked: `bo_pratijna` receipt upstreams are `bo_lak
 
 | Wave | Assets |
 |---|---|
-| 0 (conditional, v1.1; not part of the 26) | `ga_vargas` only if P0b.4 branch (b); then the six MSR producers `bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic` only if any of them must run (section 1.5). Neither is in the v1.0 plan: all six MSR producers read `lit`/`fresh` today (Evidence E8). |
+| 0 (conditional, v1.1; not part of the 26) | `ga_vargas` only if P0b.4 branch (b); then the six MSR producers `bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic` only if any of them must run (section 1.5). Neither is in the v1.0 plan: all six MSR producers read `lit`/`fresh` today (Evidence E12). |
 | 1 | bg_transit_rules and ka_muhurta_seva (both global, need super_admin, see Q3), **ka_dasha_kala (v1.1, per-chart service; must precede `ka_sangam`, section 1.6)**, bo_karanajala, bo_pratijna |
 | 2 | bo_drishti, bo_cgm_motifs, bo_cgm_paths, ka_avadhi, ka_gochara, ka_yojaka |
 | 3 | bo_anveshana, bo_upaya, ka_sangam |
@@ -445,10 +445,10 @@ silently (1c826d5a: 336,093 `kala_activation` rows). So for those two charts the
 stays frozen until their Kala rows are re-keyed (F3 open question 3, unanswered). This plan rebuilds the canonical chart only; the statement is recorded so a copy of this plan for another chart is not launched blind.
 
 **How long the rule stays.** Until BOTH (a) migration 1214 (PR #2828) AND (b) the L2-owner-path drop of the 3 L2 foreign keys (grant plan v1.3 Part A, PR #2825) are deployed, because
-embeddings and contradictions still cascade until (b) runs. Read live 2026-10-01 about 16:20Z: all 8 keys still exist, neither is deployed (Evidence E8). (Whether (b) is itself safe is
+embeddings and contradictions still cascade until (b) runs. Read live 2026-10-01 about 16:20Z: all 8 keys still exist, neither is deployed (Evidence E12). (Whether (b) is itself safe is
 the F3 section 5 prerequisite flagged in P0c.1; if (b) is not made safe, the rule has no end date.)
 
-**Where it sits in this plan.** The v1.0 plan has no MSR writer: all six read `lit` and `fresh` (Evidence E8), so the rule binds only if one must run. Triggers that would make one run:
+**Where it sits in this plan.** The v1.0 plan has no MSR writer: all six read `lit` and `fresh` (Evidence E12), so the rule binds only if one must run. Triggers that would make one run:
 a `ga_vargas` rebuild (P0b.4 branch (b)) stales `bo_laksana` and `bo_vargottama_dhana`, which are direct dependents of `ga_vargas`; `bo_laksana` is then not lit-and-fresh and `bo_pratijna`'s planner
 pre-flight would block on it. Such a run is stage **S0m** (before S1), a separate REVIEW; the six MSR producers go first, then S1 onward as written. A run that contained an MSR producer
 **after** `bo_karanajala` or `bo_pratijna` is exactly the violation the guard prints.
@@ -464,7 +464,7 @@ pre-flight would block on it. Such a run is stage **S0m** (before S1), a separat
 
 ### 1.6 Ordering constraint: `ka_dasha_kala` precedes the assets that read its output (v1.1)
 
-- **What it is.** `ka_dasha_kala` is a per-chart writer-backed SERVICE (`asset_kind='service'`, `depends_on = {ga_dashas}`, no target table; its writer records a self-test verdict onto its own `asset_registry` row). It is `lit`, `service_health` healthy, last built 2026-09-10 19:26Z, but its latest receipt is `unknown` and its freshness is `unknown` with reasons `output_digest_spec_unavailable` and `output_digest_unavailable` (read 2026-10-01 about 16:20Z, Evidence E8): it has no output-digest spec yet.
+- **What it is.** `ka_dasha_kala` is a per-chart writer-backed SERVICE (`asset_kind='service'`, `depends_on = {ga_dashas}`, no target table; its writer records a self-test verdict onto its own `asset_registry` row). It is `lit`, `service_health` healthy, last built 2026-09-10 19:26Z, but its latest receipt is `unknown` and its freshness is `unknown` with reasons `output_digest_spec_unavailable` and `output_digest_unavailable` (read 2026-10-01 about 16:20Z, Evidence E12): it has no output-digest spec yet.
 - **Who reads its output (declared `depends_on`, live registry).** `ka_sangam` (in the plan), `ka_kshetra` (stage S7), and `ka_jivana_parva` (outside the plan, stale). `ka_vighnakara` does not declare it directly but declares `ka_sangam`.
 - **The constraint.** `ka_dasha_kala` must be rebuilt, after migration 1213 is deployed and the `selftest_detail` grant exists, **strictly before `ka_sangam`** (and before `ka_kshetra`). Reason (code-derived, per the 1213 header): `compute_upstream_hash` returns NULL when any declared dependency's receipt has no `output_digest`; `ka_sangam` declares both services; a NULL upstream digest makes `ka_sangam`'s receipt `unknown`, which then DEP-ASSERT-blocks its seven in-plan dependents. 1213 gives each service a digest spec, but receipts only change when the services REBUILD; applying 1213 alone changes none. It must also not be re-stamped again after `ka_sangam` builds, because the upstream digest hashes each dependency's whole receipt including `observed_at`.
 - **Where it sits.** Wave 1 of section 1.3, **stage S1** (with `ka_muhurta_seva`, `bg_transit_rules`, `bo_karanajala`), i.e. two runs before `ka_sangam` (S3). Consequently **the launch set is 27 assets (26 of v1.0 plus `ka_dasha_kala`): 25 per-chart and 2 global**; the v1.0 pre-flight row 5 ("`ka_dasha_kala` freshness unknown, accepted") is superseded: the planner accepts that shape for a simulation, but accepting it is what leaves `ka_sangam` unprovable.
@@ -686,10 +686,10 @@ NOT verified that is said. No MCP call was made for this review.
 | 11 | Protected set unchanged | `SELECT * FROM build_protected_assets WHERE chart_id=...` | 1 row: `ka_gochara_sweep` (not in plan) |
 | 12 | No Nirmāṇa campaign wave running | native decision 2026-09-28: campaign OFF; `NIRMANA_SUPERSESSION_RECORD_v1_0.md` section 3 | off (not independently re-verified) |
 | 13 | The L1 `ga_dashas` replacement fence is not set | 1070's header mentions a stuck `ga_dashas_replacement_in_progress` guard on the canonical chart; the signal is raised by `ganita_dashas_get` (not a table the reader can see) | unknown; check with one `ganita_dashas_get` call after the smoke |
-| 14 | **P0b holds** (v1.1): `chart_divisionals` readable/writable by builder/app roles; owner-path count per chart recorded; `chart_snapshot` canary on 3 charts | section P0b.3 | **FAIL**: RLS on, 0 policies, reader count 0, fix ON HOLD (Evidence E8) |
-| 15 | Migration gates for the stages being launched (1212, 1213, 1215; 1214 + L2 drop for the end of the MSR rule) | section P0c.1 verify SQL | none of 1212-1215 applied; no output-digest spec for `ka_vighnakara`/`ka_dasha_kala`/`ka_muhurta_seva`; 8 MSR FKs present (Evidence E8) |
-| 16 | Grant gates per stage (`selftest_detail` for S1, `phala_anchors` for S4, full phala set for S5, mimamsa set for S6, `phala_rectification` for S7) | section P0c.2 `has_*_privilege` | all false (Evidence E8) |
-| 17 | MSR order: `msr_rebuild_order_guard.py --manifest <concatenated waves of all stages> --require-nonvacuous`; `--verify-map`; PF-1 on every chart; MSR producers `lit`/`fresh` or S0m planned | section 1.5 | producers lit/fresh (E8); scripts are on PR #2828, not main |
+| 14 | **P0b holds** (v1.1): `chart_divisionals` readable/writable by builder/app roles; owner-path count per chart recorded; `chart_snapshot` canary on 3 charts | section P0b.3 | **FAIL**: RLS on, 0 policies, reader count 0, fix ON HOLD (Evidence E12) |
+| 15 | Migration gates for the stages being launched (1212, 1213, 1215; 1214 + L2 drop for the end of the MSR rule) | section P0c.1 verify SQL | none of 1212-1215 applied; no output-digest spec for `ka_vighnakara`/`ka_dasha_kala`/`ka_muhurta_seva`; 8 MSR FKs present (Evidence E12) |
+| 16 | Grant gates per stage (`selftest_detail` for S1, `phala_anchors` for S4, full phala set for S5, mimamsa set for S6, `phala_rectification` for S7) | section P0c.2 `has_*_privilege` | all false (Evidence E12) |
+| 17 | MSR order: `msr_rebuild_order_guard.py --manifest <concatenated waves of all stages> --require-nonvacuous`; `--verify-map`; PF-1 on every chart; MSR producers `lit`/`fresh` or S0m planned | section 1.5 | producers lit/fresh (E12); scripts are on PR #2828, not main |
 | 18 | `ka_dasha_kala` and `ka_muhurta_seva` ordering: both scheduled in S1, 1213 deployed first | section 1.6 | 1213 not applied |
 | 19 | S7 only: the section 8.2 pre-check (image carries #2830, instance/connector health, ledger state, dependencies, `phala_rectification` ruling) | section 8.2 | #2830 open; `phala_rectification` SELECT false; instance not restarted since 2026-08-17 |
 
@@ -741,7 +741,7 @@ single transaction longer than 15 minutes without a heartbeat is at risk (sectio
 | R-13 | **MSR rebuild cascade / dangling ids** (v1.1): an MSR producer after a dependent strands or deletes Kala/Phala rows; the v4-id charts lose everything silently once 1214 lands | section 1.5; F-3 proof (4 rows to 0) | irreversible loss of `kala_*` rows (delete-then-insert class, section 7.3) | order guard on the concatenated waves, S0m placement, detector post-wave, before-state counts (PF-2); do not regenerate MSR for `1c826d5a`/`cb73cd3d` |
 | R-14 | **`ka_sangam` unprovable if `ka_dasha_kala`/`ka_muhurta_seva` are not rebuilt under 1213** (v1.1) | section 1.6 | S3-S6 cascade-block | 1213 deployed and verified before S1; both in S1; receipts checked `proven` before S3 |
 | R-15 | **`ka_kshetra` connection loss / stall loop** (v1.1): 115 historical run rows, 7+ kill-and-redispatch cycles on 2026-09-11, last run lost its connection | section 8.2 | hours of compute, a partially-written `kala_field`; a repeated loop | own stage S7, last; pre-check; stop rule; ONE redispatch; #2830 bounds the loss to one part but does not prevent the reset |
-| R-16 | **Migrations/grants not yet deployed** (v1.1): 1212-1215, the grant plan, #2830, #2823 are all open PRs | P0c, Evidence E8 | stages launched ahead of their gates fail or silently degrade (S1 services, S4 `phala_anchors`) | per-stage gates in the section 8 table; do not launch a stage whose gate row of section 5 is red |
+| R-16 | **Migrations/grants not yet deployed** (v1.1): 1212-1215, the grant plan, #2830, #2823 are all open PRs | P0c, Evidence E12 | stages launched ahead of their gates fail or silently degrade (S1 services, S4 `phala_anchors`) | per-stage gates in the section 8 table; do not launch a stage whose gate row of section 5 is red |
 
 ### 7.2 What a failed mid-wave state looks like, and how to resume
 
@@ -822,7 +822,7 @@ Post-run for every stage that contains a bound asset (section 1.5): `msr_rebuild
 **Why separate.** `ka_kshetra` (per-chart, `kala_field`, `writer_timeout_seconds` 86400) is a heavy, ledgered writer; nothing in the launch set depends on it (its only dependents are `mi_bhara`
 and `mi_sankalpa`, outside the plan), so it runs LAST and its failure cannot strand any 1211 producer. It is not part of the 27-asset launch set. It currently reads `error` (a cascade victim, section 1.4).
 
-**What happened on 2026-09-11 (read live, Evidence E8).** For this chart, `build_run_assets` holds 115 rows for `ka_kshetra` between 2026-08-05 and 2026-09-11 (86 error, 10 aborted, 11 complete, 8 queued). The last run (`6e47cae4`, 01:48 to 03:50Z) ended `worker_crash: OperationalError: the connection is lost`; the
+**What happened on 2026-09-11 (read live, Evidence E12).** For this chart, `build_run_assets` holds 115 rows for `ka_kshetra` between 2026-08-05 and 2026-09-11 (86 error, 10 aborted, 11 complete, 8 queued). The last run (`6e47cae4`, 01:48 to 03:50Z) ended `worker_crash: OperationalError: the connection is lost`; the
 seven runs before it (the most I read; the query was limited to the 8 newest) were kill-and-redispatch cycles for log stalls (one `last_error` reads "29th application" of the recipe). The writer's resume ledger (`build_substep_progress`) holds 279 completed substeps for the chart, the newest `stage5dhara:major_loss:1` at 03:22Z, so
 the loss fell inside the next, long per-class windows substep. The instance itself was not restarted that day: `pg_postmaster_start_time()` reads 2026-08-17 17:51Z (the failure was a connection, not a database restart; the exact cause, a connector/proxy reset, is the coordinator's reading and is not recorded in `build_runs`).
 
@@ -1266,5 +1266,135 @@ ph_pratikara, ph_sankrama, ph_sodhana, ph_suddha_sodhana (126 specs in total); n
 (`grep -E 'DELETE FROM|INSERT INTO|UPDATE'` per file, list in `writer_files.txt`), `00_ARCHITECTURE/briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`,
 `00_ARCHITECTURE/control/suvarna/plan_model.json` (E5.3, E7.1-E7.3 superseded by S0.C6), branches `suvarna/land/TI-edges-002` (1211 held, 086a0fcc5) and
 `suvarna/land/TI-i12-narration-001` (no commits ahead of main at 14:51Z), `00_ARCHITECTURE/briefs/suvarna/exec/TRACK_I_FIX_ITEMS.md` (I-1, I-2, I-3).
+
+### E12. v1.1 live re-read and branch evidence (2026-10-01T16:27:49Z, `suvarna_reader`, SELECT and catalog reads only)
+
+Branch heads read with `git show origin/<branch>:<path>` (all PRs OPEN, none merged, when read): `suvarna/land/grant-plan-001` 51f55f095 (BUILDER_GRANT_PLAN v1.3, PR #2825); `suvarna/land/incident-divisionals-001` e9231cd7c (INCIDENT_CHART_DIVISIONALS_REVIEW v1.0, status SS-APPROVED-ON-HOLD, PR #2833);
+`suvarna/land/TI-i45-provenance-001` 83826bbc7 (migrations 1212, 1213, PR #2826); `suvarna/land/TI-i8-avadhi-integrity-001` c56e58ee2 (migration 1215, PR #2827); `suvarna/land/F3-msr-fk-drop-001` cef41cd10 (migration 1214, `msr_dangling_signal_refs.py`, `msr_rebuild_order_guard.py`, `F3_MSR_FK_DROP_v1_0.md` v1.1, PR #2828);
+`suvarna/land/TI-i10-kshetra-substeps-001` 39012df06 (ka_kshetra writer, PR #2830). PR states from `gh pr view`. Not re-verified here: any figure those documents carry that this lane did not re-read (for example the 71,476 `reltuples`, 6,247 pages, the F-3 proof outcomes, the 359k-row detector baseline, the 41-of-47 `kala_*` table grant count) stays attributed to its document.
+
+Local DB-free run (no database, copy of the PR #2828 scripts in the scratchpad): `msr_rebuild_order_guard.py --self-test` PASS; `--manifest` on (S0m six MSR producers, then section 1.3 waves 1-12 with `ka_dasha_kala` in wave 1): PASS, 0 violations, six MSR writers listed; the same with `bo_laksana` moved to the last wave: `MSR_NOT_BEFORE_DEPENDENT` against `bo_karanajala`, `bo_pratijna`, `ka_bhavishya_lekha`, `ka_kala_darshana`, `ka_kalasutra`, `ka_sangam` and others; section 1.3 waves without any MSR producer: PASS but VACUOUS ("no MSR writer in the plan").
+
+Live reads, statements:
+```sql
+-- B  chart_divisionals
+select c.relname, pg_get_userbyid(c.relowner) own, c.relrowsecurity, c.relforcerowsecurity, (select count(*) from pg_policy p where p.polrelid=c.oid) policies, row_security_active(c.oid) rsa from pg_class c where c.relname='chart_divisionals' and c.relkind='r';
+select count(*) as reader_count from public.chart_divisionals;
+select has_table_privilege('data_plane_builder','public.chart_divisionals','SELECT') b_select, has_table_privilege('data_plane_builder','public.chart_divisionals','INSERT') b_insert;
+-- C  state (canonical chart, latest freshness row per asset)
+select t.asset_id,t.state,to_char(t.last_built_at,'YYYY-MM-DD HH24:MI') lb,t.rows_written rw,f.freshness_state fr from asset_throughput t left join lateral (select freshness_state from asset_freshness a where a.asset_id=t.asset_id and a.chart_id is not distinct from t.chart_id order by observed_at desc limit 1) f on true where t.chart_id='482012f1-710e-4a25-994a-93821f5871aa' and t.asset_id in ('ga_vargas','bo_laksana','bo_arudha','bo_special_lagna','bo_sudarshana','bo_vargottama_dhana','bo_nakshatra_semantic','ka_dasha_kala','ka_kshetra') order by 1;
+-- D  registry edges
+select asset_id, depends_on from asset_registry where is_active and 'ga_vargas'=any(depends_on) order by 1;
+select asset_id, depends_on from asset_registry where is_active and 'ka_dasha_kala'=any(depends_on) order by 1;
+select asset_id, asset_kind, scope, depends_on from asset_registry where asset_id in ('ka_dasha_kala','ka_kshetra');
+-- E  ka_dasha_kala receipt and freshness
+select asset_id, receipt_state, left(coalesce(output_digest,''),12) od, observed_at from asset_provenance_receipts where asset_id in ('ka_dasha_kala','ka_muhurta_seva');
+select asset_id, freshness_state, reasons, observed_at from asset_freshness where asset_id='ka_dasha_kala' order by observed_at desc limit 1;
+-- F  migrations, specs, keys
+select filename, applied_at from _migrations_applied order by applied_at desc limit 1;
+select count(*) from asset_output_digest_specs where asset_id in ('ka_vighnakara','ka_dasha_kala','ka_muhurta_seva') and retired_at is null;
+select count(*) from pg_constraint where conname in ('kala_convergence_signal_id_fkey','kala_activation_signal_id_fkey','kala_obstruction_signal_id_fkey','kala_darshana_signal_id_fkey','kala_bhavishya_signal_id_fkey','bodha_contradictions_signal_a_id_fkey','bodha_contradictions_signal_b_id_fkey','bodha_signal_embeddings_signal_id_fkey');
+-- G  builder privileges
+select has_table_privilege('data_plane_builder','public.asset_throughput_state_audit','INSERT'), has_table_privilege('data_plane_builder','public.phala_anchors','SELECT'), has_table_privilege('data_plane_builder','public.bg_combustion_orbs','SELECT'), has_column_privilege('data_plane_builder','public.asset_registry','selftest_detail','UPDATE'), has_table_privilege('data_plane_builder','public.phala_rectification','SELECT'), has_table_privilege('data_plane_builder','public.mimamsa_predictions','SELECT');
+-- H  ka_kshetra history, ledger, instance
+select count(*), min(r.created_at)::date, max(r.created_at) from build_runs r join build_run_assets a on a.run_id=r.id where a.asset_id='ka_kshetra' and r.chart_id='482012f1-710e-4a25-994a-93821f5871aa';
+select a.state, count(*) from build_run_assets a join build_runs r on r.id=a.run_id where a.asset_id='ka_kshetra' and r.chart_id='482012f1-710e-4a25-994a-93821f5871aa' group by 1 order by 1;
+select left(r.id::text,8), r.state, r.created_at, r.ended_at, left(a.error,70) from build_runs r join build_run_assets a on a.run_id=r.id where a.asset_id='ka_kshetra' and r.chart_id='482012f1-710e-4a25-994a-93821f5871aa' order by r.created_at desc limit 1;
+select count(*), max(completed_at) from build_substep_progress where asset_id='ka_kshetra' and chart_id='482012f1-710e-4a25-994a-93821f5871aa';
+select pg_postmaster_start_time(), current_setting('max_connections');
+select count(*) from build_runs where state in ('planned','running','paused');
+```
+
+Outputs, verbatim (block labels A-H are the `\echo` markers of the run; E and F carry the section 1.6 and P0c.1 facts):
+```
+-- A. identity and clock
+now|current_user
+2026-10-01 16:27:49.82387+00|suvarna_reader
+(1 row)
+-- B. chart_divisionals catalog and reader count
+relname|own|relrowsecurity|relforcerowsecurity|policies|rsa
+chart_divisionals|data_plane_l1_owner|t|f|0|t
+(1 row)
+reader_count
+0
+(1 row)
+b_select|b_insert
+t|t
+(1 row)
+-- C. ga_vargas, MSR producers, services, ka_kshetra state (canonical chart)
+asset_id|state|lb|rw|fr
+bo_arudha|lit|2026-09-10 00:18|25|fresh
+bo_laksana|lit|2026-09-08 18:22|50529|fresh
+bo_nakshatra_semantic|lit|2026-09-11 12:09|45|fresh
+bo_special_lagna|lit|2026-09-11 12:09|20|fresh
+bo_sudarshana|lit|2026-09-10 00:18|45|fresh
+bo_vargottama_dhana|lit|2026-09-11 12:09|14|fresh
+ga_vargas|lit|2026-09-07 11:03|24400|fresh
+ka_dasha_kala|lit|2026-09-10 19:26|0|unknown
+ka_kshetra|error|2026-09-11 03:31|1183134|
+(9 rows)
+-- D. registry depends_on (ga_vargas dependents, ka_dasha_kala dependents, ka_kshetra deps)
+asset_id|depends_on
+bo_laksana|{bg_rules,ga_positions,ga_strength,ga_sensitive,ga_panchanga,ga_sade_sati,ga_structural,ga_nakshatra,ga_condition,ga_vargas,ga_vichara}
+bo_pratijna|{bo_laksana,bo_sangati,ga_vargas}
+bo_vargottama_dhana|{ga_vargas,ga_positions}
+ga_condition|{ga_positions,ga_vargas,ga_dashas}
+ga_sade_sati|{ga_positions,ga_strength,ga_panchanga,ga_vargas,ga_dashas,ga_structural,ga_nakshatra}
+ga_strength|{ga_positions,ga_vargas}
+ga_structural|{ga_dashas,ga_nakshatra,ga_panchanga,ga_positions,ga_sensitive,ga_strength,ga_vargas}
+(7 rows)
+asset_id|depends_on
+ka_jivana_parva|{ka_kala_darshana,ka_dasha_kala,ka_sangam,ka_yojaka,ga_dashas}
+ka_kshetra|{ka_dasha_kala,ka_gochara_resonance,ga_panchanga,bo_pratijna,bo_sangati,bo_upaya,bg_cohort,bg_class_lifetime_counts,ka_vedha_gochara}
+ka_sangam|{ka_yojaka,ka_dasha_kala,ka_gochara,ka_muhurta_seva,bo_laksana,ga_dashas,ga_strength,ga_positions,ga_tajaka,bg_transit_rules,ka_vedha_gochara}
+(3 rows)
+asset_id|asset_kind|scope|depends_on
+ka_kshetra|data|per_chart|{ka_dasha_kala,ka_gochara_resonance,ga_panchanga,bo_pratijna,bo_sangati,bo_upaya,bg_cohort,bg_class_lifetime_counts,ka_vedha_gochara}
+ka_dasha_kala|service|per_chart|{ga_dashas}
+(2 rows)
+-- E. ka_dasha_kala receipt and freshness
+asset_id|receipt_state|od|observed_at
+ka_dasha_kala|unknown||2026-09-10 19:26:34.768958+00
+(1 row)
+asset_id|freshness_state|reasons|observed_at
+ka_dasha_kala|unknown|["output_digest_spec_unavailable", "output_digest_unavailable"]|2026-09-10 19:26:34.768958+00
+(1 row)
+-- F. migrations, digest specs, foreign keys
+filename|applied_at
+1210_asset_registry_direct_edges.sql|2026-10-01 14:37:09.977838+00
+(1 row)
+active_specs_for_3_assets
+0
+(1 row)
+msr_fk_present_of_8
+8
+(1 row)
+-- G. builder privileges
+audit_insert|phala_anchors_sel|bg_combustion_orbs_sel|selftest_detail_upd|phala_rectification_sel|mimamsa_predictions_sel
+f|f|f|f|f|f
+(1 row)
+-- H. ka_kshetra history (canonical chart)
+runs|first_run|last_run
+115|2026-08-05|2026-09-11 01:48:40.529634+00
+(1 row)
+state|count
+aborted|10
+complete|11
+error|86
+queued|8
+(4 rows)
+run|state|created|ended|asset_error
+6e47cae4|failed|2026-09-11 01:48:41|2026-09-11 03:50:05|worker_crash: OperationalError: the connection is lost
+(1 row)
+ledger_rows|newest
+279|2026-09-11 03:22:12
+(1 row)
+postmaster_start|max_connections
+2026-08-17 17:51:30|50
+(1 row)
+active_runs_any_chart
+0
+(1 row)
+```
 
 *End of document.*
