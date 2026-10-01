@@ -1179,6 +1179,51 @@ def narr_lint_scan(paths) -> dict:
                                  "narration lints (their own allowlists applied)")
 
 
+_QQ = r"(?:ONLY\s+)?(?:public\.)?\"?"
+_INSERT_COLS = re.compile(r"INSERT\s+INTO\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s*(\([^)]*\))?", re.I)
+_UPDATE_SET = re.compile(r"\bUPDATE\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s+SET\s+(.*?)(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|\Z)",
+                         re.I | re.S)
+
+
+def written_columns(units, tables):
+    """table -> the columns the writer's resolved scope INSERTs (column list) or UPDATEs (SET targets) on `tables`.
+    None when a write to one of them cannot be read (no column list, an unresolved `{?}` name): never a guess."""
+    tset = {t.lower() for t in tables if t}
+    out: dict = {}
+    for u in units:
+        for node in u["nodes"]:
+            for text, _ln in _sql_texts(dict(u, nodes=[node])):
+                for m in _INSERT_COLS.finditer(text):
+                    if m.group(1).lower() not in tset:
+                        continue
+                    if not m.group(2) or "{?}" in m.group(2):
+                        return None
+                    out.setdefault(m.group(1).lower(), set()).update(
+                        c.strip().strip('"') for c in m.group(2)[1:-1].split(",") if c.strip())
+                for m in _UPDATE_SET.finditer(text):
+                    if m.group(1).lower() not in tset:
+                        continue
+                    if "{?}" in m.group(2):
+                        return None
+                    for a in _split_top(m.group(2)):
+                        if "=" in a:
+                            out.setdefault(m.group(1).lower(), set()).add(a.split("=", 1)[0].strip().strip('"'))
+    return out
+
+
+def prose_vocabulary(declarations) -> set:
+    """The columns some asset's declaration lists as prose (the file's own narration-column vocabulary)."""
+    return {parse_prose_field(e)[0] for d in (declarations or {}).values() if isinstance(d, dict)
+            for e in (d.get("prose_fields") or [])}
+
+
+def prose_reverse_leg(written, vocabulary) -> list:
+    """`[]`-declared asset: the `table.column` writes that hit a column the declarations treat as narration elsewhere
+    (principle 8: such a column present while prose_fields is empty reads FAIL). Write-column names only: it does not
+    prove 'composes no string' (the AST proofs in test_e6_1_declarations.py do, per asset)."""
+    return sorted(f"{t}.{c}" for t, cols in (written or {}).items() for c in cols if c in vocabulary)
+
+
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
 # and `--layer all` census unrunnable on production. Configurable via env so an operator pointed
