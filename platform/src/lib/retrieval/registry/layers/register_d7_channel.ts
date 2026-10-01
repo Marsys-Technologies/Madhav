@@ -1155,14 +1155,18 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_subject, fact_category, fact_key, ${canonicalFirstOrderSql()}, formula_id, fact_id LIMIT $${rowCapParamIdx}::int`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      // formula_id is read so the pivot below can pick the canonical formula's row; it is NOT served
-      // on rows (stripFormulaId) in this behaviour-only step.
-      const rows = result.rows ?? []
-      const stripFormulaId = (r: Record<string, unknown>) => {
-        const { formula_id: _f, ...rest } = r
-        void _f
-        return rest
-      }
+      // A NULL formula_id is the overwhelmingly common case (every single-formula category) and is
+      // dropped from the served row so those rows serve exactly as before; a non-NULL one is kept
+      // and, for the declared multi-formula categories, labelled `formula_role`.
+      const rows = (result.rows ?? []).map((r) => {
+        if (r['formula_id'] == null) {
+          const { formula_id: _drop, ...rest } = r
+          void _drop
+          return rest
+        }
+        const role = formulaRoleOf(String(r['fact_category']), String(r['formula_id']))
+        return role ? { ...r, formula_role: role } : r
+      })
       // Disclosed-pagination total (see the WP-1.3(f)/LCA-3-EXT snapshot comment above). Run
       // after the main fetch so the main query stays the first query() call for callers/tests
       // that key on call order.
@@ -1179,7 +1183,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
 
       let content: Record<string, unknown>
       if (shape === 'rows') {
-        const servedRows = rows.slice(offset, offset + limit).map(stripFormulaId)
+        const servedRows = rows.slice(offset, offset + limit)
         servedRowsForGrounding = servedRows
         content = {
           chart_id,
@@ -1199,8 +1203,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         // Pivot: group by fact_subject into one wide row of {fact_key: value}.
         // A (subject, key) that carries several non-NULL formula_id rows (multi-formula
         // categories) is NEVER reduced by arrival order: the canonical formula's value is the
-        // headline (null when the category has no canonical formula, e.g. Mrityu).
-        // Single-formula keys behave exactly as before.
+        // headline (null + reason when the category has no canonical formula, e.g. Mrityu), and
+        // EVERY variant is disclosed under `formula_variants[key]`, canonical first, each labelled
+        // with its formula_id. Single-formula keys behave exactly as before.
         const bySubject = new Map<string, {
           fact_category: string
           facts: Record<string, unknown>
@@ -1237,6 +1242,12 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
             const d = disclosePivotVariants(g.category, g.rows)
             entry.facts[key] = d.headline
             if (d.headline_fact_id != null) entry.fact_ids[key] = d.headline_fact_id
+            const variantsByKey = ((entry.facts['formula_variants'] ??= {}) as Record<string, unknown>)
+            variantsByKey[key] = d.variants
+            if (d.headline_reason) {
+              const reasons = ((entry.facts['formula_null_reasons'] ??= {}) as Record<string, string>)
+              reasons[key] = d.headline_reason
+            }
           }
         }
         const servedSubjectEntries = Array.from(bySubject.entries()).slice(offset, offset + limit)
