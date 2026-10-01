@@ -574,6 +574,7 @@ _EXEMPT = {
     "ga_condition": "imports pyjhora_adapter.version only; derives from stored facts",
     "ka_gochara": "Pravaha-owned; kernel fails closed and records its backend",
     "ka_gochara_v3_century_materialize": "Pravaha-owned; kernel fails closed and records its backend",
+    "ka_gochara_sweep": "retired, protected history (Pravaha-owned), outside the active set; never rebuilt",
     "ka_muhurta_seva": "self-test writer (rows=0, service_health only); its compute_panchang call fails closed",
     "ph_rectification": "swe.houses ascendant only (no planetary ephemeris); backend-independent",
 }
@@ -621,9 +622,14 @@ def test_every_swisseph_computing_writer_records_the_backend():
     importing = _directly_importing_assets()
     assert importing, "derivation found nothing: the scan itself is broken"
     undecorated = {a for a in importing if not getattr(WRITER_REGISTRY[a], "records_swiss_backend", False)}
-    assert undecorated == set(_EXEMPT), (
-        "swisseph-importing writers must be @records_swiss_backend or listed in _EXEMPT with a reason; "
-        f"unclassified={sorted(undecorated - set(_EXEMPT))} stale_exempt={sorted(set(_EXEMPT) - undecorated)}")
+    unclassified = sorted(undecorated - set(_EXEMPT))
+    assert unclassified == [], (
+        "swisseph-importing writers must be @records_swiss_backend or listed in _EXEMPT with a "
+        f"reason: {unclassified}")
+    # the registry is import-order dependent (other tests register retired writers), so only
+    # exemptions that CONTRADICT reality (an exempt writer that is in fact decorated) are stale.
+    contradicted = sorted(a for a in _EXEMPT if getattr(WRITER_REGISTRY.get(a), "records_swiss_backend", False))
+    assert contradicted == [], f"_EXEMPT lists decorated writers: {contradicted}"
 
 
 # ── 6b. corpus window: never report swieph outside 1800-2400 ──────────────────
