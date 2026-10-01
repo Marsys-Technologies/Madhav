@@ -1,0 +1,59 @@
+{
+  "_comment": "S-L1 attribution hook for the F-A2 key widening (Q-L1-01, SS N-62; PR #2858). Follows the draft schema of attribution_hooks.json (ruling name + categories + category_regex + note), extended with the exact table, the expected before/after/delta per category and the acceptance criteria. Counts are the canonical chart 482012f1-710e-4a25-994a-93821f5871aa; they come from an offline model of the shipping writer that reproduces the live pre-state per category exactly (see F_A2_KEY_WIDENING_D6_PLAN_v1_0.md section 3). The model is an expectation, not a measurement: the post-run table is the measurement (s_l1_ga_vargas_acceptance_check.sql).",
+  "name": "F-A2",
+  "lane": "suvarna/land/TI-l1-fa2-key-001",
+  "pr": 2858,
+  "asset": "ga_vargas",
+  "table": "chart_divisionals",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "categories": [
+    "varga_ashtakavarga",
+    "varga_house_lord",
+    "varga_d30_lord_per_amsa",
+    "scope_cap"
+  ],
+  "category_regex": [
+    "^varga_ashtakavarga$",
+    "^varga_house_lord$",
+    "^varga_d30_lord_per_amsa$",
+    "^scope_cap$"
+  ],
+  "changes": [
+    {"fact_category": "varga_ashtakavarga", "direction": "increase", "before": 1200, "after": 14400, "delta": 13200,
+     "grain": "96 rows per (ayanamsha, varga) x 5 ayanamshas x 30 vargas; only the Aries/S1 bindus row per graha-varga survived before",
+     "new_rows_differ_in": "fact_subject"},
+    {"fact_category": "varga_house_lord", "direction": "increase", "before": 1050, "after": 1800, "delta": 750,
+     "grain": "12 rows per (ayanamsha, varga); a lord of two houses kept only one before",
+     "new_rows_differ_in": "fact_subject"},
+    {"fact_category": "varga_d30_lord_per_amsa", "direction": "increase", "before": 50, "after": 300, "delta": 250,
+     "grain": "60 rows per ayanamsha (5 lords x 12 signs); 10 survived before",
+     "new_rows_differ_in": "fact_subject"},
+    {"fact_category": "scope_cap", "ayanamsha_id": "INVARIANT", "direction": "increase", "before": 2, "after": 6, "delta": 4,
+     "grain": "D81 sentinel + five floored bodies (Uranus, Neptune, Pluto, Lilith, MC); one row per body",
+     "new_rows_differ_in": "fact_subject"}
+  ],
+  "totals": {"before": 24392, "after": 38596, "delta": 14204},
+  "per_ayanamsha_rows_excluding_invariant": {"before": 4878, "after": 7718, "delta": 2840, "ayanamshas": 5},
+  "expectations": [
+    "every row gained is in one of the four categories above; no other fact_category on chart_divisionals changes its row count",
+    "no existing row changes value: the gained rows are NEW keys that the six-column unique key silently dropped",
+    "no chart_facts, ga_* or any other table changes because of F-A2 (the capture identity widens, which affects only l1_data_plane_* snapshots of chart_divisionals)"
+  ],
+  "other_charts": {
+    "1c826d5a-41cb-4450-b4dc-59d440e5f75a": {"total_before": 23542, "total_after": 38596, "note": "after a rebuild with the current writer; the extra 850 over the canonical delta are the D30 main-loop rows the F-A3 fix restores; krishnamurti and surya_siddhanta_classical VALUES also change (pre-#1053 Lahiri fallback), which belongs to the ephemeris/S-L1b hooks, not to F-A2"},
+    "cb73cd3d-9eba-4220-9902-0de91566e980": {"total_before": 23542, "total_after": 38596, "note": "as above"}
+  },
+  "acceptance": {
+    "script": "00_ARCHITECTURE/briefs/suvarna/exec/f_a2_key_widening/s_l1_ga_vargas_acceptance_check.sql",
+    "criteria": {
+      "C1": "canonical total = 38596",
+      "C2": "7718 rows per ayanamsha",
+      "C3": "6 INVARIANT scope_cap sentinels",
+      "C4": "12 varga_house_lord rows per ayanamsha x varga (150 pairs)",
+      "C5": "96 varga_ashtakavarga rows per ayanamsha x varga (150 pairs)",
+      "C6": "60 varga_d30_lord_per_amsa rows per ayanamsha",
+      "C7": "0 rows sharing the seven-column key"
+    }
+  },
+  "caveat": "C1/C2 include varga_deity_attribution, which follows bg_shashtiamsha_deities (production: 60 rows, deity_name NULL, 135 rows per ayanamsha); a change to that table would move the totals, not the four hooked categories."
+}
