@@ -6,6 +6,7 @@ import { useObservatoryScope } from './ObservatoryScope'
 type View = 'overview' | 'analytics' | 'consumption'
 type Totals = Record<string, number | string | null> & {
   transport_attempts: number; transport_success: number; transport_failed: number; transport_pending: number;
+  customer_attempts: number; validation_attempts: number;
   complete_usage: number; transport_unpriced: number; input_tokens: string | null; output_tokens: string | null;
   known_transport_cost_usd: string | null; legacy_records: number; legacy_estimate_usd: string | null;
   p50_success_ms: number | null
@@ -95,9 +96,9 @@ function FilterBar({ view, channel, setChannel, provider, setProvider, model, se
       </select></label>
       <label className="flex flex-col gap-1 text-xs text-[#ac8a48]">Provider<input aria-label="Provider" value={provider} onChange={event => setProvider(event.target.value)} placeholder="All providers" className="w-36 rounded-md border border-[#4a381c] bg-[#0a0806] px-3 py-2 text-sm text-[#e8dfc9]" /></label>
       <label className="flex flex-col gap-1 text-xs text-[#ac8a48]">Model<input aria-label="Model" value={model} onChange={event => setModel(event.target.value)} placeholder="All models" className="w-44 rounded-md border border-[#4a381c] bg-[#0a0806] px-3 py-2 text-sm text-[#e8dfc9]" /></label>
-      {view === 'consumption' && <label className="flex flex-col gap-1 text-xs text-[#ac8a48]">Purpose<select aria-label="Purpose" value={purpose} onChange={event => setPurpose(event.target.value)} className="rounded-md border border-[#4a381c] bg-[#0a0806] px-3 py-2 text-sm text-[#e8dfc9]">
+      <label className="flex flex-col gap-1 text-xs text-[#ac8a48]">Purpose<select aria-label="Purpose" value={purpose} onChange={event => setPurpose(event.target.value)} className="rounded-md border border-[#4a381c] bg-[#0a0806] px-3 py-2 text-sm text-[#e8dfc9]">
         <option value="">All purposes</option>{['customer', 'admin_test', 'validation', 'evaluation', 'background', 'legacy'].map(value => <option key={value} value={value}>{value.replace('_', ' ')}</option>)}
-      </select></label>}
+      </select></label>
     </>}
   </div>
 }
@@ -152,7 +153,7 @@ export function ObservatoryDashboard({ view, initialFilters }: { view: View; ini
     {ready && !loading && !error && noData && <div className={card}><p className="text-lg text-[#ecc56a]">No AI activity in this period</p><p className="mt-1 text-sm text-[#a99c82]">Try a longer period or another scope.</p></div>}
     {ready && !loading && !error && summary.data && !noData && view === 'overview' && <>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Calls" value={number(summary.data.transport_attempts)} note="Provider attempts, including retries" />
+        <Stat label="Calls" value={number(summary.data.transport_attempts)} note={`${number(summary.data.customer_attempts)} customer ${summary.data.customer_attempts === 1 ? 'call' : 'calls'} · ${number(summary.data.validation_attempts)} validation ${summary.data.validation_attempts === 1 ? 'check' : 'checks'}`} />
         <Stat label="Success rate" value={`${Math.round(summary.data.transport_success / summary.data.transport_attempts * 100)}%`} note={`${number(summary.data.transport_success)} successful · ${number(summary.data.transport_pending)} pending`} />
         <Stat label="Median duration" value={seconds(summary.data.p50_success_ms)} note="Successful provider attempts" />
         <Stat label="Channels" value={number(compare.data?.groups.filter(group => Number(group.transport_attempts) > 0).length)} note="With recorded calls" />
@@ -223,17 +224,17 @@ function ConversationRow({ row, baseUrl, portal, ownerName }: { row: Conversatio
         .sort((a, b) => a.started_at.localeCompare(b.started_at) || a.id.localeCompare(b.id)))
     } catch { setError(true) }
   }
-  const title = row.snippet || (portal ? 'Portal activity' : row.conversation_id ? 'Conversation activity' : `${row.purpose === 'admin_test' ? 'Admin test' : row.channel.toUpperCase() + ' activity'}`)
+  const title = row.snippet || (row.purpose === 'validation' ? 'Automated check' : portal ? 'Portal activity' : row.conversation_id ? 'Conversation activity' : `${row.purpose === 'admin_test' ? 'Admin test' : row.channel.toUpperCase() + ' activity'}`)
   const byTurn = new Map<string, Attempt[]>()
   for (const attempt of attempts ?? []) byTurn.set(attempt.turn_id, [...(byTurn.get(attempt.turn_id) ?? []), attempt])
   return <article className={card}>
     <button aria-expanded={open} onClick={toggle} className="flex w-full flex-wrap items-start justify-between gap-3 text-left"><span><span className="block text-base text-[#e8dfc9]">{title}</span><span className="mt-1 block text-xs text-[#a99c82]">{date(row.last_at)} · {row.channel} · {row.purpose}{portal ? ' · ' + ownerName : ''}</span></span><span className="text-xs text-[#d2a23c]">{open ? 'Hide details' : 'See questions and calls'}</span></button>
-    <p className="mt-3 text-sm text-[#c8bda6]">{row.turns} questions · {row.attempts} calls · {number(row.input_tokens)} input · {number(row.output_tokens)} output · {money(row.known_cost_usd)}</p>
-    {(row.incomplete_usage > 0 || row.unpriced > 0) && <p className="mt-2 text-xs text-[#d2b872]">{row.incomplete_usage > 0 && `${row.incomplete_usage} calls without complete usage`}{row.incomplete_usage > 0 && row.unpriced > 0 && ' · '}{row.unpriced > 0 && `${row.unpriced} calls not priced`}</p>}
+    <p className="mt-3 text-sm text-[#c8bda6]">{row.turns} {row.turns === 1 ? 'question' : 'questions'} · {row.attempts} {row.attempts === 1 ? 'call' : 'calls'} · {number(row.input_tokens)} input · {number(row.output_tokens)} output · {money(row.known_cost_usd)}</p>
+    {(row.incomplete_usage > 0 || row.unpriced > 0) && <p className="mt-2 text-xs text-[#d2b872]">{row.incomplete_usage > 0 && `${row.incomplete_usage} ${row.incomplete_usage === 1 ? 'call' : 'calls'} without complete usage`}{row.incomplete_usage > 0 && row.unpriced > 0 && ' · '}{row.unpriced > 0 && `${row.unpriced} ${row.unpriced === 1 ? 'call' : 'calls'} not priced`}</p>}
     {open && <div className="mt-4 space-y-4 border-t border-[#382b18] pt-4">{error && <p role="alert">Call details could not be loaded.</p>}{!attempts && !error && <p>Loading calls…</p>}{[...byTurn.entries()].map(([turnId, calls], index) => <div key={turnId} className="rounded-md border border-[#382b18] p-3"><h3 className="text-sm text-[#ecc56a]">Question {index + 1} · {calls.length} model {calls.length === 1 ? 'call' : 'calls'}</h3>{calls.map(call => <div key={call.id} className="mt-3 border-l border-[#a87c2a] pl-3 text-xs text-[#c8bda6]"><p className="text-sm text-[#e8dfc9]">{call.provider} · {call.model} · {call.role} · {call.status}</p><p className="mt-1">{date(call.started_at)} · {number(call.usage?.input)} input · {number(call.usage?.output)} output · {money(call.computed_cost_usd)}</p><p className="mt-1">{call.usage?.source === 'unavailable' || !call.usage
       ? call.status === 'pending' ? 'The call is pending; usage has not yet arrived.'
         : call.status === 'success' ? 'The provider did not report usage for this call.'
           : `The call ended as ${call.status} without reported usage.`
-      : `Usage source: ${call.usage.source || 'not reported'}`}{!call.computed_cost_usd ? call.usage?.input == null || call.usage?.output == null ? ' Cost cannot be calculated without complete usage.' : ' No applicable rate was recorded.' : ''}</p><details className="mt-2"><summary className="cursor-pointer text-[#ac8a48]">Technical details</summary><dl className="mt-2 grid gap-1"><div>Attempt: {call.id}</div><div>Turn: {call.turn_id}</div><div>Operation: {call.operation_id}</div>{call.provider_request_id && <div>Provider request: {call.provider_request_id}</div>}{call.pricing_status && <div>Pricing: {call.pricing_status}</div>}{call.usage && <div>Cache read {number(call.usage.cacheRead)} · cache write {number(call.usage.cacheWrite)} · reasoning {number(call.usage.reasoning)}</div>}{call.pricing_snapshot != null && <div>Rate snapshot: {JSON.stringify(call.pricing_snapshot)}</div>}</dl></details></div>)}</div>)}{attempts && attempts.length === 1000 && <p className="text-xs text-[#d2b872]">Showing the first 1,000 calls. Use the scoped export for a complete audit.</p>}</div>}
+      : `Usage source: ${call.usage.source || 'not reported'}`}{!call.computed_cost_usd ? call.usage?.input == null || call.usage?.output == null ? ' Cost cannot be calculated without complete usage.' : ' No applicable rate was recorded.' : ''}</p><details className="mt-2"><summary className="cursor-pointer text-[#ac8a48]">Technical details</summary><dl className="mt-2 grid min-w-0 gap-1 break-all"><div>Attempt: {call.id}</div><div>Turn: {call.turn_id}</div><div>Operation: {call.operation_id}</div>{call.provider_request_id && <div>Provider request: {call.provider_request_id}</div>}{call.pricing_status && <div>Pricing: {call.pricing_status}</div>}{call.usage && <div>Cache read {number(call.usage.cacheRead)} · cache write {number(call.usage.cacheWrite)} · reasoning {number(call.usage.reasoning)}</div>}{call.pricing_snapshot != null && <div>Rate snapshot: {JSON.stringify(call.pricing_snapshot)}</div>}</dl></details></div>)}</div>)}{attempts && attempts.length === 1000 && <p className="text-xs text-[#d2b872]">Showing the first 1,000 calls. Use the scoped export for a complete audit.</p>}</div>}
   </article>
 }
