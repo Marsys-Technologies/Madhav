@@ -57,6 +57,7 @@ stored row is a loud build failure, never a silent dedup.
 from __future__ import annotations
 
 import json as _json
+import uuid as _uuid
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -114,6 +115,22 @@ def _dasharow(row: dict) -> dict:
     def _dt(v):
         return v if isinstance(v, datetime) else datetime.fromisoformat(str(v))
     return {"start_iso": _dt(row["start_iso"]), "end_iso": _dt(row["end_iso"])}
+
+
+
+def _require_minted_record_uuid(record_id) -> None:
+    """Refuse anything but a UUIDv8 (what `evaluator.record_uuid` returns)."""
+    try:
+        value = record_id if isinstance(record_id, _uuid.UUID) else _uuid.UUID(str(record_id))
+    except (ValueError, AttributeError, TypeError):
+        raise ValueError(
+            f"record_id {record_id!r} is not a UUID — records mint ONLY via evaluator.record_uuid "
+            "(the sha256: property of RelationshipRecord is a different type and is never stored; "
+            "IDENTITY_CANONICAL_BYTES_CONTRACT §7)") from None
+    if value.version != 8:
+        raise ValueError(
+            f"record_id {value} is not a UUIDv8 — records mint ONLY via evaluator.record_uuid "
+            "(IDENTITY_CANONICAL_BYTES_CONTRACT §7)")
 
 
 @dataclass(frozen=True)
@@ -735,6 +752,11 @@ class RecordStore:
                       source_fact_ids: list[str],
                       prerequisites: list[list[str]],
                       house_from_frame: int | None = None) -> None:
+        # F-3 §7: a record is minted ONLY through `evaluator.record_uuid` (UUIDv8 over the
+        # canonical natural key). The older `RelationshipRecord.record_id` property returns a
+        # `sha256:`-tagged hex string over the same bytes — a different TYPE; it must never
+        # be stored or compared (the DB column is UUID).
+        _require_minted_record_uuid(record_id)
         params = (
             str(record_id), chart_id, generation, contact_id, edge.event_class,
             edge.affected_person, edge.frame_kind, edge.frame_arg, edge.agent,

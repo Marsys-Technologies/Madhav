@@ -361,7 +361,7 @@ def _seed_libra_crossings(conn, sky_cid: str, body: str):
     store = SkyEventStore(conn)
     for level, day in ((180.0, 10), (210.0, 200)):
         poid = physical_object_id(
-            body=body, relation_kind="sign_ingress",
+            body=body.lower(), relation_kind="sign_ingress",   # identity text is lowercase (F-3 §1)
             canonical_target=f"point:{level!r}", convention_id=sky_cid)
         store.insert_physical_object(poid)
         (contact,) = assign_occurrence_ordinals(
@@ -1341,3 +1341,19 @@ def test_p1_natal_fact_rows_are_not_admission_bearing_records():
     assert counts["records"] == 1
     assert not any(k == "insert_record" and kw_["contact_id"] is None
                    for k, kw_ in store.calls)
+
+
+# ── F-3 §7: records mint ONLY via evaluator.record_uuid ──────────────────────
+
+def test_the_record_store_refuses_a_non_uuid8_record_id():
+    import uuid as _u
+    from services.gochara_kernel.record_store import _require_minted_record_uuid
+    from services.gochara_kernel import evaluator as ev
+
+    minted = ev.record_uuid({"k": "v"})
+    _require_minted_record_uuid(minted)                       # accepted: UUIDv8
+    _require_minted_record_uuid(str(minted))                  # accepted: its string form
+    with pytest.raises(ValueError, match="record_uuid"):
+        _require_minted_record_uuid("sha256:" + "ab" * 32)     # the older RelationshipRecord property
+    with pytest.raises(ValueError, match="UUIDv8"):
+        _require_minted_record_uuid(_u.uuid4())               # a v4 UUID is not a minted identity

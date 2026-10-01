@@ -14,6 +14,8 @@ Read-only: this module never writes.
 """
 from __future__ import annotations
 
+from . import targets
+
 #: L1 subjects of the nine grahas (mean nodes — the pinned chart's node
 #: convention, substrate pin 3) + LAGNA, as stored under
 #: graha_position/longitude_sidereal.
@@ -63,7 +65,13 @@ def fetch_chart_context(conn, chart_id: str,
         subj = str(subj)
         if subj != "LAGNA" and subj not in NATAL_SUBJECTS:
             continue
-        seen.setdefault(subj, set()).add(float(num))
+        try:
+            value = targets.assert_float64_exact(num)
+        except ValueError:
+            # an L1 numeric a float64 cannot carry exactly: named, never quantised (F-3 §3)
+            out["operands_missing"].append(f"graha_position:{subj}:not_float64_exact")
+            continue
+        seen.setdefault(subj, set()).add(value)
         fact_ids.setdefault(subj, str(fid))
     for subj, vals in seen.items():
         if len(vals) != 1:

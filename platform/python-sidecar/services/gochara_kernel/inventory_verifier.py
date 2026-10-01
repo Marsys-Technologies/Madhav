@@ -28,6 +28,7 @@ doctrine, nothing here (or in SQL) can detect it.
 from __future__ import annotations
 
 import hashlib
+from decimal import Decimal
 from typing import Any, Mapping, Sequence
 
 VERIFIER_ID = "ka_gochara_inventory_verifier"
@@ -95,7 +96,6 @@ def _uuidv8(text: str) -> str:
 
 
 def _point(lam: float) -> str:
-    from decimal import Decimal
     text = repr(float(lam) % 360.0)
     if "e" in text or "E" in text:
         text = format(Decimal(text), "f")
@@ -108,6 +108,21 @@ def _sha(text: str) -> str:
 
 # ── facts: straight from chart_facts by the snapshot's consumed ids ──────────
 
+def _exact_float(num: Any, subject: str) -> float:
+    """The F-3 §3 round-trip guard, derived independently of `targets`: a stored L1 numeric
+    must equal what its float64 carries (`Decimal(repr(float(x))) == x.normalize()`),
+    else there is no honest identity text to re-derive from — unverifiable, never rounded."""
+    if isinstance(num, float):
+        return num
+    exact = num if isinstance(num, Decimal) else Decimal(str(num))
+    value = float(exact)
+    if Decimal(repr(value)) != exact.normalize():
+        raise Unverifiable(
+            f"graha_position {subject} = {num!r} is not exactly representable as a float64: "
+            "the identity text would be quantised — refusing to re-derive (F-3 §3)")
+    return value
+
+
 def read_chart(conn: Any, fact_ids: Sequence[str]) -> dict[str, Any]:
     rows = conn.execute(
         "SELECT fact_subject, fact_value_num FROM public.chart_facts"
@@ -117,9 +132,9 @@ def read_chart(conn: Any, fact_ids: Sequence[str]) -> dict[str, Any]:
         if num is None:
             continue
         if subj == "LAGNA":
-            lagna = float(num)
+            lagna = _exact_float(num, subj)
         elif subj in _FACT_SUBJECT:
-            natal[_FACT_SUBJECT[subj]] = float(num)
+            natal[_FACT_SUBJECT[subj]] = _exact_float(num, subj)
     missing = [s for s in ("lagna",) if lagna is None] + [g for g in _GRAHAS if g not in natal]
     if missing:
         raise Unverifiable(f"the snapshot's consumed facts lack {missing}: nothing to derive from")

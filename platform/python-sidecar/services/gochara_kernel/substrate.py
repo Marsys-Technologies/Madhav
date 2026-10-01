@@ -5,9 +5,14 @@ M20261001T015412-6df0; A5_3_REGISTERED_WRITER_BRIEF_v1_0.md).
 
 Identity (pin 4, spec §6.1):
   * canonical identity bytes: `body|relation_kind|canonical_target|convention_id`
-    for the physical object, `…|ordinal` for one contact — rendered with the
-    body/relation/target EXACTLY as given (the serialization is pinned by
-    oracle O-RX-1: 'Mars|conjunction|point:198.52|c0|1').
+    for the physical object, `…|ordinal` for one contact. `body` and
+    `relation_kind` are LOWERCASE tokens — the stored domains of
+    kgpo_body_domain_ck / the event-kind CHECK — and a `PhysicalObjectId` built
+    with any other case is REFUSED (IDENTITY_CANONICAL_BYTES_CONTRACT §1,
+    steward M20261001T223444-51ba): Title-case kernel names ('Mars') are an
+    INPUT convenience mapped by `DB_BODY` at the boundary, never identity text.
+    (The frozen v1.4 oracle O-RX-1 serialised the uppercase 'Mars|…'; its
+    successor O-RX-1a is lowercase.)
   * ids: sha256 over those canonical bytes, first 128 bits as a UUID with
     version-8/variant bits set (kernel canonical_digest precedent; no
     SHA-1/UUIDv5). A collision on insert is a loud build failure, never a
@@ -20,8 +25,7 @@ Identity (pin 4, spec §6.1):
 `physical_object_id(...)` returns a `PhysicalObjectId` — the identity itself:
 it carries the canonical components (so the store and the ordinal assigner
 never re-ask for them) and hashes/compares by its §6.1 UUID. The persistence
-layer stores `.uuid` (and the body lowercased for the kgpo_body_domain_ck
-domain); the serialization always preserves the caller's casing.
+layer stores `.uuid` and the (already lowercase) body.
 
 The WP1 §3.2 scheme (ids.py: floored-minute t_exact inside the hash) is
 explicitly forbidden here by spec §6.1 — rounded-time hashing splits one
@@ -62,6 +66,16 @@ class PhysicalObjectId:
     convention_id: str
 
     def __post_init__(self) -> None:
+        # F-3 §1: body and relation_kind are the STORED lowercase tokens; the
+        # builder refuses any other case rather than hashing casing as identity
+        # (two spellings of one body would otherwise be two objects).
+        for name in ("body", "relation_kind"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value or value != value.lower():
+                raise ValueError(
+                    f"PhysicalObjectId.{name} must be a non-empty LOWERCASE token, got "
+                    f"{value!r} — Title-case names are an input convenience mapped by "
+                    "DB_BODY, never identity text (IDENTITY_CANONICAL_BYTES_CONTRACT §1)")
         # AM-2: the identity builder REJECTS a non-canonical target (the SQL
         # CHECK is looser than the contract for `span:`); no PhysicalObjectId
         # with `span:libra`, `span:13`, `span:07` or `sign:7` can exist.
@@ -381,14 +395,14 @@ class SkyEventStore:
             " physical_object_id, body, relation_kind, canonical_target, convention_id)"
             " VALUES (%s,%s,%s,%s,%s)"
             " ON CONFLICT (body, relation_kind, canonical_target, convention_id) DO NOTHING",
-            (str(obj_uuid), DB_BODY[poid.body], poid.relation_kind,
+            (str(obj_uuid), poid.body, poid.relation_kind,
              poid.canonical_target, poid.convention_id),
         )
         row = self.conn.execute(
             "SELECT physical_object_id FROM public.ka_gochara_physical_object"
             " WHERE body = %s AND relation_kind = %s AND canonical_target = %s"
             " AND convention_id = %s",
-            (DB_BODY[poid.body], poid.relation_kind, poid.canonical_target,
+            (poid.body, poid.relation_kind, poid.canonical_target,
              poid.convention_id),
         ).fetchone()
         if row is None or str(row[0]) != str(obj_uuid):
@@ -413,7 +427,7 @@ class SkyEventStore:
             " delta_t, precision_regime, coverage)"
             " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
             " ON CONFLICT (physical_object_id, occurrence_ordinal) DO NOTHING",
-            (str(event_id), str(poid.uuid), poid.convention_id, DB_BODY[poid.body],
+            (str(event_id), str(poid.uuid), poid.convention_id, poid.body,
              event_kind, contact.occurrence_ordinal,
              None if truncated else contact.t_exact, longitude, solver_method,
              delta_lambda, delta_t, precision_regime, _json.dumps(coverage)),
@@ -483,7 +497,7 @@ class SkyEventStore:
         for relation, event_kind in DB_EVENT_KIND.items():
             for level in gk_contacts.boundary_degrees(relation):
                 poid = physical_object_id(
-                    body=body, relation_kind=event_kind,
+                    body=DB_BODY[body], relation_kind=event_kind,
                     canonical_target=boundary_target(level), convention_id=cid,
                 )
                 self.insert_physical_object(poid)
@@ -496,7 +510,7 @@ class SkyEventStore:
                 by_level.setdefault(root.level_deg, []).append(jd_to_utc(root.exact_jd))
             for level, instants in by_level.items():
                 poid = physical_object_id(
-                    body=body, relation_kind=event_kind,
+                    body=DB_BODY[body], relation_kind=event_kind,
                     canonical_target=boundary_target(level), convention_id=cid,
                 )
                 for contact in assign_occurrence_ordinals(
@@ -515,7 +529,7 @@ class SkyEventStore:
         for jd_station in index.stations:
             lon = float(index.evaluate(jd_station)) % 360.0
             poid = physical_object_id(
-                body=body, relation_kind="station",
+                body=DB_BODY[body], relation_kind="station",
                 canonical_target=boundary_target(lon), convention_id=cid,
             )
             self.insert_physical_object(poid)

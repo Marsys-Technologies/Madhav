@@ -117,7 +117,7 @@ class TestConventionRegistration:
 
 class TestIdentityCollisionHonesty:
     POID = physical_object_id(
-        body="Sun", relation_kind="sign_ingress",
+        body="sun", relation_kind="sign_ingress",
         canonical_target="point:0.0", convention_id="c0",
     )
 
@@ -229,3 +229,19 @@ def test_nakshatra_span_is_13d20m_never_the_decimal_13_20():
     from services.gochara_kernel.substrate import SUBSTRATE_CONVENTION_VECTOR
     assert "nakshatra:13d20m" in SUBSTRATE_CONVENTION_VECTOR["grid"]
     assert "13.20" not in SUBSTRATE_CONVENTION_VECTOR["grid"]
+
+
+class TestBoundaryBuildersMapKernelNamesToTheStoredLowercaseDomain:
+    """Title-case kernel names ('Mars') are an INPUT convenience mapped by DB_BODY at the
+    boundary; the identity text is always the stored lowercase token (F-3 §1)."""
+
+    def test_db_body_maps_every_kernel_body_to_its_lowercase_token(self):
+        from services.gochara_kernel.substrate import DB_BODY
+        assert all(v == v.lower() and v == k.lower() for k, v in DB_BODY.items())
+
+    def test_identity_bytes_never_carry_a_title_case_body(self):
+        from services.gochara_kernel.substrate import DB_BODY
+        poid = physical_object_id(
+            body=DB_BODY["Mars"], relation_kind="sign_ingress",
+            canonical_target="point:30.0", convention_id="c0")
+        assert poid.identity_bytes.startswith("mars|sign_ingress|")

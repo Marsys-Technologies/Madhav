@@ -16,10 +16,16 @@ identity with a non-canonical target can exist in the writer at all. Rejected
 (O-RX-1a negatives): `sign:7` (fails the SQL shape), `span:13`, `span:07`,
 `span:libra` (a sign NAME is not an identity token — it is a rendering).
 
-Point targets carry the solved longitude at FULL precision as one decimal string with
-no exponent (`repr`'s shortest round-trip digits; an exponent form such as `1e-05`
-would fail the CHECK). No quantization happens here — the rounding/seam question is
-the draft's follow-up F-3, not settled in this module.
+Point targets carry the NATAL target's longitude (an L1 value) at FULL precision as one
+decimal string with no exponent (`repr`'s shortest round-trip digits; an exponent form
+such as `1e-05` would fail the CHECK). No quantization happens here and none ever will:
+the six-decimal rule of earlier drafts is WITHDRAWN (IDENTITY_CANONICAL_BYTES_CONTRACT §3,
+steward M20261001T223444-51ba) — `198.5200001` and `198.5200004` are two different
+objects. What replaces it is a ROUND-TRIP GUARD: the L1 numeric must survive the trip
+through a float64 exactly — `Decimal(repr(float(x))) == x.normalize()` — or the builder
+REFUSES it; an L1 value with more digits than a float64 carries would otherwise lose
+precision silently before it was hashed. (`point:198.5200` and `point:198.52` are the same
+object: trailing zeros are never written.)
 """
 from __future__ import annotations
 
@@ -65,9 +71,37 @@ def span_sign_name(target: str) -> str:
     return SIGN_NAMES[span_sign_index(target) - 1]
 
 
-def point_target(longitude_deg: float) -> str:
-    """`point:<λ>` — full precision, decimal, no exponent; λ wrapped to [0, 360)."""
-    lam = float(longitude_deg) % 360.0
+def assert_float64_exact(value) -> float:
+    """The §3 round-trip guard: return `float(value)` iff the value is EXACTLY what that
+    float64 carries — `Decimal(repr(float(x))) == x.normalize()` — else raise.
+
+    A Python float passes trivially (it IS a float64). A Decimal / numeric-string / int that
+    needs more digits than a float64 holds is refused — never quantised, never rounded."""
+    if isinstance(value, bool):
+        raise ValueError(f"not a numeric longitude: {value!r}")
+    if isinstance(value, float):
+        if value != value or value in (float("inf"), float("-inf")):
+            raise ValueError(f"non-finite longitude {value!r}")
+        return value
+    exact = Decimal(str(value)) if not isinstance(value, Decimal) else value
+    lam = float(exact)
+    if Decimal(repr(lam)) != exact.normalize():
+        raise ValueError(
+            f"longitude {value!r} is not exactly representable as a float64 "
+            f"(it would hash as {lam!r}): refusing — no quantisation "
+            "(IDENTITY_CANONICAL_BYTES_CONTRACT §3 round-trip guard)")
+    return lam
+
+
+def point_target(longitude_deg) -> str:
+    """`point:<λ>` — full precision, decimal, no exponent; λ wrapped to [0, 360).
+
+    `360.0 → 0.0` and `-0.0 → 0.0`. The input must pass the §3 round-trip guard
+    (`assert_float64_exact`): a float always does; a Decimal/str/int that a float64
+    cannot carry exactly is refused."""
+    lam = assert_float64_exact(longitude_deg) % 360.0
+    if lam == 0.0:
+        lam = 0.0                       # never '-0.0'
     text = repr(lam)
     if "e" in text or "E" in text:
         text = format(Decimal(text), "f")
@@ -84,5 +118,5 @@ def validate_canonical_target(target: str) -> str:
         "star:1…star:27 (AM-2; kgpo_target_form_ck)")
 
 
-__all__ = ["SIGN_NAMES", "point_target", "span_sign_index", "span_sign_name",
+__all__ = ["SIGN_NAMES", "assert_float64_exact", "point_target", "span_sign_index", "span_sign_name",
            "span_target", "validate_canonical_target"]
