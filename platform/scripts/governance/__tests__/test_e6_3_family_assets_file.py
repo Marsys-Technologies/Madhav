@@ -28,12 +28,13 @@ def test_each_list_is_sorted_unique_asset_ids_and_family_set_is_their_union():
         v = DOC[k]
         assert v == sorted(set(v)) and all(re.fullmatch(r"[a-z][a-z0-9_]*", a) for a in v), k
         union |= set(v)
-    assert DOC["family_set"] == sorted(union) and len(DOC["family_set"]) == 21
+    assert DOC["family_set"] == sorted(union) and len(DOC["family_set"]) == 24
 
 
 def test_the_lists_are_exactly_what_the_focus_families_doc_names():
     # the doc's lists plus the strategist's rulings (Q2: ka_yojaka, ka_gochara_v3_century_materialize; ka_moorti_nirnaya)
-    assert DOC["family_gochara"] == ["ka_gochara", "ka_gochara_resonance", "ka_gochara_v3_century_materialize",
+    assert DOC["family_gochara"] == ["bg_gochara_arcs", "bg_gochara_citation_resolution", "ka_gochara",
+                                     "ka_gochara_resonance", "ka_gochara_sweep", "ka_gochara_v3_century_materialize",
                                      "ka_moorti_nirnaya", "ka_vedha_gochara"]
     assert DOC["family_sangam"] == ["ka_sangam", "ka_yojaka"] and DOC["family_kshetra"] == ["ka_kshetra"]
     assert DOC["family_readers_L3"] == ["ka_bhavishya_lekha", "ka_jivana_parva", "ka_kala_darshana", "ka_kalasutra",
@@ -75,7 +76,8 @@ def test_reader_lists_are_in_their_layer():
 
 
 def test_the_strategist_added_members_say_why_and_ka_kota_chakra_is_not_in_the_set():
-    for a in ("ka_yojaka", "ka_gochara_v3_century_materialize", "ka_moorti_nirnaya"):
+    for a in ("ka_yojaka", "ka_gochara_v3_century_materialize", "ka_moorti_nirnaya", "bg_gochara_arcs",
+              "bg_gochara_citation_resolution", "ka_gochara_sweep"):
         assert a in DOC["family_set"] and DOC["_why"][a], a
     assert "ka_kota_chakra" not in DOC["family_set"]
 
@@ -83,6 +85,7 @@ def test_the_strategist_added_members_say_why_and_ka_kota_chakra_is_not_in_the_s
 def test_the_semantics_are_stated_in_the_file():
     assert DOC["_semantics"].startswith("The family set is what the WAVE tool refuses.")
     assert "ONE AT A TIME" in DOC["_semantics"] and "23 bo_*" in DOC["_semantics"]
+    assert "does not change who admits its L0 pin (Suvarna, N-71)" in DOC["_semantics"]
 
 
 def test_none_of_the_23_bo_writers_is_in_the_family_set():
@@ -95,3 +98,26 @@ def test_none_of_the_23_bo_writers_is_in_the_family_set():
 def test_the_resolved_questions_are_recorded_in_the_file():
     qs = DOC["_resolved_questions"]
     assert len(qs) == 3 and all(isinstance(q, str) and q.startswith(f"Q{i + 1} (ruled):") for i, q in enumerate(qs))
+
+
+# E5.3's FAMILY_NAME_PATTERN (platform/scripts/governance/suvarna_level_wave.py, branch suvarna/engine-E5.3), copied here
+# because that module is not on main yet. Parity: when the E5.3 module is readable (this checkout once it lands, or the
+# sibling worktree), the copy must equal its pattern; the pattern stays as the second line of defence.
+FAMILY_NAME_PATTERN = re.compile(r"^(ka_gochara|ka_vedha_gochara|gochara_|bg_gochara_|kala_gochara_)")
+
+
+def test_the_copied_name_pattern_equals_e5_3s_when_readable():
+    for cand in (REPO / "platform/scripts/governance/suvarna_level_wave.py",
+                 pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-3/platform/scripts/governance/suvarna_level_wave.py")):
+        if cand.exists():
+            m = re.search(r'^FAMILY_NAME_PATTERN = re\.compile\(r"([^"]+)"\)', cand.read_text(encoding="utf-8"), re.M)
+            assert m and m.group(1) == FAMILY_NAME_PATTERN.pattern
+            return
+
+
+def test_every_seed_asset_the_name_pattern_treats_as_family_is_in_the_file():
+    seed = _seed_entries()
+    matched = sorted(a for a in seed if FAMILY_NAME_PATTERN.match(a))
+    assert len(matched) >= 7
+    assert not [a for a in matched if a not in DOC["family_set"]], "file and name pattern disagree"
+    assert {a for a in matched if not seed[a][1]} <= {x["asset"] for x in DOC["_notes"]["inactive"]}
