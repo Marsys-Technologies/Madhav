@@ -398,3 +398,61 @@ real relations (occupancy/ownership/…); coverage is realigned to the real rela
 AM-5 wants period-lord role tokens (`period_lord:md|ad|pd`) while the enumerator yields concrete
 grahas; F-3 (B + A) owns the mapping, so concrete grahas are used and flagged until it lands.
 
+
+### Design v1.5 (2026-10-02) — the window sweep (`window:<event_class>:<path_id>` → `ka_gochara_eval_window` + `_record`)
+
+Read for this note: specs v1.4 §2.1 (eval_window; score algebra), §2.3 inv 3/4, §3.1, §7.2 inv 2 (interior
+extrema + threshold roots; O-SM-4 `f(t)=t(1−t)`), migration 1156 (the typed contract + N10 coverage binding +
+N16 seal-time membership check), `gochara_rules/score.py` (Stream B's algebra), the registry's declared
+soft factors, and what exists in this stack. **Nothing below is implemented yet.**
+
+**What the registry says each path's score is made of** (read from `RULE_PATHS`, version 1.0.0):
+
+| path | soft factors (all `null_state=unqualified`, `uncalibrated_default`) | prerequisites |
+|---|---|---|
+| P3 | `activity_kernel` (linear, degrees), `graduated_drishti` (step) | `p3_contact_house_or_lord` |
+| P4 | `activity_kernel` | `p4_double_transit` (written already, F5) |
+| P2 | `vedha_attenuation` (step) | `house_from_moon` |
+| P1 | `dignity_of_transit_sign`, `combustion`, `agent_nature`, `maitri_compound` | `period_running_at` (written), `natal_bhava_relationship`, `transit_relation` |
+| P5 | `activity_kernel` | `av_polarity_declaration_exists` — **held** (tier_withheld_by_ruling) |
+| P6 | none (testimony; day rows only, never windows) | — |
+
+Because every factor's `null_state` is `unqualified`, a record whose factor operand cannot be evaluated makes
+its path score `unqualified` (never 0, never 1) — so the sweep can only emit a QUALIFIED window for a path whose
+every declared factor is computable. That orders the work: **P3/P4 first** (angular kernel + a per-record step),
+then **P2** (the vedha overlay rows), then **P1** (needs Stream B's dignity/nature/combustion/maitrī evaluated at
+the transit instant). P5 stays held.
+
+**Algorithm (per grain; O(B log B + output), §10.1).** (1) Inputs: the grain's records with their stored temporal
+support intervals (state `computed`; truncated spans carry `t_exact` NULL) and, per record, a `value(t)` built
+from its declared factors; (2) the boundary set B = every support endpoint ∪ every factor breakpoint inside the
+class horizon; between consecutive boundaries each record's value is a smooth function; (3) per piece, the
+extremum is solved — **interior** extrema (bounded scalar maximisation after a bracketed scan) and **threshold
+roots** (Brent) — never endpoint-only (§7.2 inv 2; O-SM-4); (4) per instant, the §2.1 reduction: per root
+`max` over its role records, per path `Σ` over roots per channel, across paths `max`; the three-field valence
+(§3.1) is evaluated at the peak instant from class polarity + record content (never copied from a rule row);
+(5) a window is one connected component of the union of its admitted records' supports, with `peak_instant`,
+`score`, `evidence_for/against`, `outcome_valence_for_native`, `severity`, the member `record_ids`, the
+class's `event_class` coverage reference and `null_states_used[]`; (6) written under the chart lock + global
+SHARED key after its coverage partition (pin 7), delete-then-insert scoped (chart × generation × class × path ×
+version) — membership rows are immutable and the N16 seal check re-validates them.
+
+**Open — needs a ruling before any code** (each is a doctrine/contract choice, not an implementation detail):
+1. **`score` vs `evidence_for_occurrence`.** §2.1 defines the class-instant score as `max` over paths of the
+   *path score*, and the path channel as `Σ over roots` of the per-root `max` — two different quantities. Is
+   `eval_window.score := max over admitted paths of path.evidence_for_occurrence` (with `evidence_against`
+   reported beside it, not netted), or the within-path factor PRODUCT on the best record? The `[0,1]`
+   codomain only holds for the latter.
+2. **Window interval.** Is the window the connected union of its admitted records' supports (my reading — no soft
+   factor zeroes it, §2.3 inv 3), or a threshold-bounded sub-interval where the aggregate exceeds a stated
+   `min_lambda`? The legacy projection used the threshold; the spec's invariants say none.
+3. **Kernel for residence-on-sign records.** `activity = 1 − |Δλ|/orb` is angular (D-RQ2); a `residence` record on
+   `span:<sign>` has no point to be Δ from. Is the kernel 1 across a residence span (a step), or the angular
+   distance to the sign's centre / nearest boundary? (This decides every P3 house edge.)
+4. **`graduated_drishti` input.** The step function `¼/½/¾/1` — keyed on the aspect's house distance
+   (3/10 = ¼, 5/9 = ½, 4/8 = ¾, 7 = 1, specials full)? Which Stream B module is the source of that table, and may
+   the sweep read it, or is it a registry row to bind first?
+5. **Valence/severity inputs** at the peak: `valence.py` takes class polarity + record content — confirm it is the
+   evaluator, and what `severity` is for a window whose path scores are `unqualified` (named null, not 0).
+Also still open from earlier (unchanged): the P1 `dasha_lord` house anchor, the manifest
+`input_generation_vector` content for `'5.0'`, the P2/P5 verifier derivation, and the writer capability flags.
