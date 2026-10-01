@@ -1079,10 +1079,16 @@ def grade_null_blank_rows(entries, counts) -> dict:
     any. PARTIAL (never PASS) when none in >= 1 checkable row; INCONCLUSIVE without row data or checkable rows."""
     if isinstance(counts, dict):
         bad = {e: (None if counts.get(e) is None else int(counts[e].get("blank", 0))) for e in entries}
-        hit = [f"{e}={k}" for e, k in bad.items() if k]
+        ub = {e for e in entries if (counts.get(e) or {}).get("scope") == UPPER_BOUND}
+        hit = [f"{e}={k}" for e, k in bad.items() if k and e not in ub]
+        hit_ub = [f"{e}={k}" for e, k in bad.items() if k and e in ub]
         if hit:
             return dict(v=FAIL, blank=bad, measured="blank or placeholder rows standing in for NULL in declared prose "
-                                                    "column(s): " + ", ".join(hit))
+                                                    "column(s): " + ", ".join(hit)
+                        + (f" (not counted: {', '.join(hit_ub)} in a {UPPER_BOUND})" if hit_ub else ""))
+        if hit_ub:
+            return dict(v=PARTIAL, blank=bad, measured=f"blank or placeholder rows ({', '.join(hit_ub)}) in a {UPPER_BOUND}: "
+                        "they may belong to other charts, so this chart is not failed on them; chart-scope the count to decide")
         if any((counts.get(e) or {}).get("checkable", 0) for e in entries):
             unk = [e for e, k in bad.items() if k is None]
             return dict(v=PARTIAL, blank=bad, measured="no blank or placeholder row among the checkable prose rows"
@@ -4315,7 +4321,14 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             for t, es in groups.items():
                 tail = _count_scope_tail(r["count_sql"], t)
                 if tail is not None:
-                    scope = "chart-scoped by count_sql" if _PARAM_1.search(tail) else "count_sql predicate (not chart-scoped)"
+                    # chart-scoped only when the predicate BINDS chart_id to the census chart (`chart_id = $1`, no OR); a
+                    # parseable count_sql without it on a table that carries chart_id counts every chart: an upper bound
+                    if re.search(r"\bchart_id\s*=\s*\$1(?!\d)", tail) and not re.search(r"\bOR\b", tail, re.I):
+                        scope = "chart-scoped by count_sql"
+                    elif "chart_id" in (own[t][0] or ()):
+                        scope = UPPER_BOUND
+                    else:
+                        scope = "count_sql predicate (not chart-scoped)"
                 elif t in shared:
                     continue
                 else:

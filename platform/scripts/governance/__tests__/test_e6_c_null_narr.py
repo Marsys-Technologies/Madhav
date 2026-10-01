@@ -1198,3 +1198,47 @@ def test_qualifying_tests_that_name_no_declared_field_read_partial_with_the_stat
     r = ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=T_NO_FIELD))
     assert r["v"] == ac.PARTIAL and r["covered"] == [] and "tests call the builder but none names a declared field (direct or indirect)" in r["measured"]
     assert ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=T_NO_ASSERT))["v"] == ac.FAIL   # no qualifying test
+
+
+# ───────────────────────── final review: item 3 (a parseable count_sql is not chart-scoped unless it binds chart_id) ─────────────────────────
+
+@pytest.mark.parametrize("csql", ["SELECT count(*) FROM t_main",
+                                  "SELECT count(*) FROM t_main WHERE kind = 'x'",
+                                  "SELECT count(*) FROM t_main WHERE chart_id = $1 OR kind = 'x'",
+                                  "SELECT count(*) FROM t_main WHERE chart_id IS NOT NULL"])
+def test_a_parseable_count_sql_that_does_not_bind_chart_id_is_an_upper_bound_on_a_chart_table(monkeypatch, csql):
+    cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}))
+    out, _ = _mp(["a"], cat, ["t_main"], monkeypatch=monkeypatch, csql=csql)
+    r = out["Narr.checkable"]
+    assert r["v"] == ac.PARTIAL and r["scope"] == "whole-table upper bound", r
+
+
+def test_a_count_sql_that_binds_chart_id_to_the_census_chart_is_chart_scoped(monkeypatch):
+    cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}))
+    for csql in ("SELECT count(*) FROM t_main WHERE chart_id = $1",
+                 "SELECT count(*) FROM t_main WHERE kind = 'x' AND chart_id = $1"):
+        out, _ = _mp(["a"], cat, ["t_main"], monkeypatch=monkeypatch, csql=csql)
+        assert out["Narr.checkable"]["v"] == ac.PASS and out["Narr.checkable"]["scope"] == "chart-scoped by count_sql", csql
+
+
+def test_a_parseable_count_sql_on_a_table_without_chart_id_keeps_its_own_predicate_scope(monkeypatch):
+    cat = _cat(t_glob=(["id", "a"], {}, {}))
+    out, _ = _mp(["a"], cat, ["t_glob"], monkeypatch=monkeypatch, csql="SELECT count(*) FROM t_glob WHERE kind = 'x'")
+    assert out["Narr.checkable"]["v"] == ac.PASS and out["Narr.checkable"]["scope"] == "count_sql predicate (not chart-scoped)"
+
+
+# ───────────────────────── final review: item 4 (blank rows honour the count's scope) ─────────────────────────
+
+def test_blank_rows_in_a_whole_table_upper_bound_count_never_fail_this_chart():
+    c = {"a": {"checkable": 3, "blank": 2, "scope": "whole-table upper bound"}}
+    r = ac.grade_null_blank_rows(["a"], c)
+    assert r["v"] == ac.PARTIAL and "upper bound" in r["measured"] and "a=2" in r["measured"], r
+    assert ac.grade_null_blank_rows(["a"], {"a": dict(c["a"], scope="chart-scoped by count_sql")})["v"] == ac.FAIL
+    assert ac.grade_null_blank_rows(["a"], {"a": dict(c["a"], scope="whole-table (table has no chart_id column)")})["v"] == ac.FAIL
+    assert ac.grade_null_blank_rows(["a"], {"a": {"checkable": 3, "blank": 2}})["v"] == ac.FAIL
+
+
+def test_a_chart_scoped_blank_row_still_fails_beside_an_upper_bound_entry():
+    c = {"a": {"checkable": 3, "blank": 2, "scope": "whole-table upper bound"}, "b": {"checkable": 3, "blank": 1, "scope": "chart-scoped by count_sql"}}
+    r = ac.grade_null_blank_rows(["a", "b"], c)
+    assert r["v"] == ac.FAIL and "column(s): b=1" in r["measured"] and "not counted: a=2" in r["measured"], r
