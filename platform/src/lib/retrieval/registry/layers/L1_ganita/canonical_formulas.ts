@@ -12,7 +12,7 @@
  * MIRROR + PARITY. The Python mirror is `platform/python-sidecar/brahmagyan/canonical_formulas.py`
  * (a sibling module — brahmagyan/verification_vocab.py and l0_reference.py are frozen L0 digests
  * and are never edited for a constant). `platform/python-sidecar/tests/test_canonical_formulas_parity.py`
- * and `./__tests__/canonical_formulas_parity.test.ts` each read BOTH files and assert equality
+ * and `./__tests__/canonical_formulas.test.ts` each read BOTH files and assert equality
  * including the variants lists, so an edit to one side that is not made on the other fails CI.
  * The table below is deliberately written in a rigid one-entry-per-line shape those tests parse —
  * keep that shape when editing.

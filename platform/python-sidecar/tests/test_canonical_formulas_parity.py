@@ -4,7 +4,7 @@ The constant is mirrored on purpose (a sibling Python module, because brahmagyan
 and l0_reference.py are frozen L0 digests; a TS twin next to the retrieval L1 tools). A mirror with no
 parity check is two facts waiting to drift, so this test READS BOTH FILES and asserts equality of
 every category, the canonical formula, and every variants list (including order), plus the two
-scalar constants. A vitest twin (`canonical_formulas_parity.test.ts`, next to the TS file) does the
+scalar constants. A vitest twin (`__tests__/canonical_formulas.test.ts`, next to the TS file) does the
 same from the other side, so the mirror is checked whichever CI job runs.
 
 The TS table is parsed by a deliberately strict regex (one entry per line, the shape documented in
