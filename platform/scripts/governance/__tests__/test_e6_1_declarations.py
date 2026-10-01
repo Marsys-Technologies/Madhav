@@ -2004,7 +2004,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
-    246,
+    255,
     "return f\"{category}.{subject"
    ]
   ],
@@ -2149,12 +2149,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1202,
+    1287,
     "\"citation_human\": f\"{body} v"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1651,
+    1736,
     "\"citation_human\": (f\"{body} "
    ]
   ],
