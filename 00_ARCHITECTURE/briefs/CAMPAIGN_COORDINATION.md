@@ -190,6 +190,7 @@ this is RELEASED or expired.*
 
 | number | campaign | file | status |
 |---|---|---|---|
+| 1202 | OBSERVATORY / Codex | 1202_ai_metering_ledger.sql | CLAIMED — native-authorized Observatory metering release, pending protected PR and exact-set migration window |
 | 553–555 | SAMPŪRTI | Wave-0 migrations | MERGED to main (#1138) |
 | 556 | UTKARṢA | 556_gochara_generation_schema.sql | CLAIMED (gochara3/w03, unmerged) |
 | 557 | UTKARṢA | 557_utkarsha_builder_role.sql (I6(a) restricted builder DB role) | CLAIMED (per UTKARṢA ledger, gochara3/i6a-role) |
