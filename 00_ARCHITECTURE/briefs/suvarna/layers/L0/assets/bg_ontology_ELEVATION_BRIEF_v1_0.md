@@ -23,7 +23,7 @@ ledger_gap_ids: [bg_ontology-G01, bg_ontology-G02, bg_ontology-G03, bg_ontology-
 
 ## 0 · Identity — what the asset is
 
-The identity authority for everything later: 741 rows in `brahma_ontology` over exactly the 16 classes T2 §4.1 names (planet 11, sign 12, house 12, nakshatra 27, varga 30, karaka 77, aspect_type 13, upagraha 11, yoga 233, dosha 79, dasha_system 20, domain 45, concept 136, remedy_type 12, text 15, school 8), unique under the declared key `(entity_class, canonical_id)` (constraint `brahma_ontology_canonical_unique`; 730 distinct on `canonical_id` alone because 11 ids appear in two classes by design). The writer owns the classes outside `CO_WRITER_ENTITY_CLASSES = {yoga, dosha, dasha_system}` (`platform/python-sidecar/brahmagyan/l0_ontology.py:1066-1068`); those three are seeded by their own writers and written here DO NOTHING (327 of 741 rows, ledger `bg_ontology-G01`). Owned classes use a conditional upsert (`DO UPDATE … WHERE ROW(…) IS DISTINCT FROM ROW(…)`, `:1117-1145`) and PRUNE owned-class rows no longer in `ENTITIES` (`:1160-1173`), so it does not accrete; it reports `inserted = changed + deleted` (`:1183-1190`). Floor 737 against live 741. Declared dependents: `bg_dasha_systems`, `bg_doshas`, `bg_reference`, `bg_yogas` (census direct 4 / transitive 69, the widest in L0). Served by `list_entities.ts` and `resolve_entity.ts`. `source_citation` 741/741. The release/normalisation clause has no home today: the table has no release or version column (layer instance §2.6; TGH-T2-12).
+The identity authority for everything later: 741 rows in `brahma_ontology` over exactly the 16 classes T2 §4.1 names (planet 11, sign 12, house 12, nakshatra 27, varga 30, karaka 77, aspect_type 13, upagraha 11, yoga 233, dosha 79, dasha_system 20, domain 45, concept 136, remedy_type 12, text 15, school 8), unique under the declared key `(entity_class, canonical_id)` (constraint `brahma_ontology_canonical_unique`; 730 distinct on `canonical_id` alone because 11 ids appear in two classes by design). The writer owns the classes outside `CO_WRITER_ENTITY_CLASSES = {yoga, dosha, dasha_system}` (`platform/python-sidecar/brahmagyan/l0_ontology.py:1066-1068`); those three are seeded by their own writers and written here DO NOTHING (332 of 741 rows by class count: yoga 233 + dosha 79 + dasha_system 20; the ledger row `bg_ontology-G01` says 327, which does not match its own class counts). Owned classes use a conditional upsert (`DO UPDATE … WHERE ROW(…) IS DISTINCT FROM ROW(…)`, `:1117-1145`) and PRUNE owned-class rows no longer in `ENTITIES` (`:1160-1173`), so it does not accrete; it reports `inserted = changed + deleted` (`:1183-1190`). Floor 737 against live 741. Declared dependents: `bg_dasha_systems`, `bg_doshas`, `bg_reference`, `bg_yogas` (census direct 4 / transitive 69, the widest in L0). Served by `list_entities.ts` and `resolve_entity.ts`. `source_citation` 741/741. The release/normalisation clause has no home today: the table has no release or version column (layer instance §2.6; TGH-T2-12).
 
 | field | value | source |
 |---|---|---|
@@ -66,10 +66,10 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, or census cell) | gate | class | note |
 |---|---|---|---|
-| bg_ontology-G01 | Earn | real (registry: count_sql credits co-writer rows) | 327 of 741 rows are produced by `l0_yogas.py`, `l0_doshas.py`, `l0_dasha_systems.py`; CF-02 \| ledger: measured: count_sql returns 741, of which 327 rows are produced by l0_yogas.py, l0_doshas.py and l0_dasha_systems.py / required: the cockpit credits an asset with its ow… |
+| bg_ontology-G01 | Earn | real (registry: count_sql credits co-writer rows) | 332 of 741 rows (233 yoga + 79 dosha + 20 dasha_system; the ledger says 327, not reconciled) are produced by `l0_yogas.py`, `l0_doshas.py`, `l0_dasha_systems.py`; CF-02 \| ledger: measured: count_sql returns 741, of which 327 rows are produced by l0_yogas.py, l0_doshas.py and l0_dasha_systems.py / required: the cockpit credits an asset with its ow… |
 | bg_ontology-G02 | Build | real (T4 check 6); cause established as the changed-rows convention | rows_written = 0 on a converged rerun is what `l0_ontology.py:1183-1190` returns when nothing changed; the ledger’s "instrument the seeder" is not needed; CF-01 |
 | bg_ontology-G03 | Vocab | stale (resolved by T2 amendment R03, 2026-09-26) | the rule-1 detector now tests the declared composite key; saved census Vocab.identity reads PASS (741 rows, 0 duplicates); closing needs the detector pass recorded, not an asset change \| ledger: measured: data plane 4.1 rule 1's detector is count(*) = count(DISTINCT canonical_id) ACROSS classes, which reports FAIL against data satisfying its own live constraint … |
-| bg_ontology-G04 | Vocab | real (served surface) | `resolve_entity.ts` returns two rows for the 11 ids present in two classes and applies a hard-coded `ORDER BY (entity_class='varga') DESC` preference whose cited example (navamsa) exists in one class only; CF-09 \| ledger: measured: resolve_entity.ts returns two rows for the 11 ids present in two classes and applies a hard-coded ORDER BY (entity_class='varga') DESC preference — whose cited… |
+| bg_ontology-G04 | Vocab | real (served surface) | `resolve_entity.ts` has `LIMIT 1` and returns `rows[0]` (`:68-71,92`): for the 11 ids present in two classes it silently picks ONE row (the ledger text says it returns two; the code returns one) by a hard-coded `ORDER BY (entity_class='varga') DESC` preference whose cited example (navamsa) exists in one class only; CF-09 \| ledger: measured: resolve_entity.ts returns two rows for the 11 ids present in two classes and applies a hard-coded ORDER BY (entity_class='varga') DESC preference — whose cited… |
 | bg_ontology-G05 | Carr | detector | no D1 detector; CF-07 |
 | bg_ontology-G06 | Dens/Earn | real (served assertion) | `list_entities.ts:23-41,109-115` states that `yoga` has no top-level class and omits `dosha` from `VALID_ENTITY_CLASSES`, against 233 and 79 live rows of those classes; a served reason that is false (CLAUDE.md §N.7 item 6) \| ledger: measured: list_entities returns empty_reason stating entity_class='yoga' has no top-level class in brahma_ontology, against 233 live rows with exactly that class; dosha … |
 | bg_ontology-G07 | Vocab | real | 79/79 dosha alias sets empty; the code that writes them is `l0_doshas.py:2002` (bg_doshas); CF-09 \| ledger: measured: 79 of 79 dosha rows carry an empty synonyms array; the other 15 classes are complete / required: a non-empty closed alias set per entity |
@@ -116,9 +116,9 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Answers:** ledger `bg_ontology-G04` / O1(a)
 - **Change:** resolve on the declared composite key: make `resolve_entity` accept and return an `entity_class` and, when a bare `canonical_id` is ambiguous (11 ids), return both rows explicitly (not an ordering that picks one by a hard-coded varga preference). Option (a) of the ledger’s O1 is the cheapest and matches the live constraint; (b) renames 11 ids, (c) adds a generated `global_id`. **Decided (SS 2026-10-01, Q4): take option (a); if it changes any served id, REVIEW to SS before landing.**
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:50-70` and the consumers that join on `canonical_id` alone (found by the join census)
-- **Failing-first test and mutation:** failing-first join census: every consumer join returns exactly one row for all 741 identities (11 return two today); mutation: drop the class from a join → census FAIL
+- **Failing-first test and mutation:** failing-first join census: every consumer join returns exactly one row for all 741 identities (11 are ambiguous today and are resolved by the silent varga-first preference); mutation: drop the class from a join → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** a read-path change in `resolve_entity.ts` (and any consumer joining on `canonical_id` alone, found by the join census). It changes served output only for the 11 two-class ids (today one row is picked silently); no data change; REVIEW to SS if any served id changes (Q4).
 - **Rebuild:** none (TS) for option (a); (b) needs production rebuild of bg_ontology and its referrers
 - **Gate it moves:** Vocab (rule 2)
 - **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: Vocab rule wording / T2 §4.1 (TGH-T2-12 if a release id is added)
@@ -131,7 +131,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** the `bg_ontology` writer (`brahmagyan/l0_ontology.py`) holds the rule; consumers’ resolver; `bg_remedies` and `ephemeris_daily.body` are the first consumers (CF-09)
 - **Failing-first test and mutation:** failing-first: remedy unresolved count 289 → the number the declared rule predicts (stated in advance: 52 exact + 204 case-only resolve = 256 resolved, 85 remain until the text class is reconciled); mutation: change the rule → the predicted count moves
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** a writer change in bg_ontology: the rebuild reproduces the same 741 ids (the normalisation rule and release are additive metadata). Consumers resolve through the rule: `bg_remedies` source ids, `ephemeris_daily.body` (46 non-test files read the table; they are not changed), `resolve_entity.ts`. The four declared dependents (`bg_dasha_systems`, `bg_doshas`, `bg_reference`, `bg_yogas`) rebuild only if a release column is added to a table they own.
 - **Rebuild:** needs production rebuild of bg_ontology (additive release/declaration; no stored-id change), then dependents by level only if a release column is added
 - **Gate it moves:** Vocab (rule 3)
 - **Fix class:** data (output change) + registry/declaration; **buildable before J1:** tier-dependent: TGH-T2-12 (no tier defines a vocabulary release)
@@ -144,7 +144,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `brahmagyan/l0_ontology.py` (text entries) ; `bg_texts` source manifest as the input
 - **Failing-first test and mutation:** failing-first: the 1.1 cross-check returns 0 in both directions; mutation: add a text to the corpus only → the check reports it
 - **Output change:** text class membership changes (+3 / ± 3)
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** changes the `text` rows of `brahma_ontology` (owned by bg_ontology): +3 corpus-only ids and the ontology-only ids kept or removed. No DB foreign key REFERENCES `brahma_ontology` was found in either migrations directory; readers resolve at read time: `resolve_entity.ts`, `list_entities.ts` (text class), `platform-mcp/src/tools/l0_brahmagyan.ts`, `parity_check.ts`, `kala_sky_pattern.ts`. Beneficiaries: `bg_remedies` (5 source ids) and `bg_rules` (2 text_ids). Removing an ontology-only id changes `list_entities(text)` and anything resolving that id: the referrer census over those readers comes first (Q4: keep any with a consumer).
 - **Rebuild:** needs production rebuild: bg_ontology (identity-mapping class); downstream `bg_remedies` and `bg_rules` text ids then resolve (they are the beneficiaries)
 - **Gate it moves:** Vocab (rules 1, 3), Complete
 - **Fix class:** data (output change) + writer code; **buildable before J1:** tier-dependent: TGH-T2-12
@@ -153,11 +153,11 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 ### FD-5 · Producer attribution (count_sql scope)
 
 - **Answers:** ledger `bg_ontology-G01` / O2; CF-02
-- **Change:** scope the asset’s count_sql to the classes it owns (414 rows: 741 − 327) or declare the table multi-producer with a per-class producer map; the declarations file already marks the co-writer classes through `CO_WRITER_ENTITY_CLASSES`, so the map is derivable from code.
+- **Change:** scope the asset’s count_sql to the classes it owns (409 rows: 741 − 332) or declare the table multi-producer with a per-class producer map; the declarations file already marks the co-writer classes through `CO_WRITER_ENTITY_CLASSES`, so the map is derivable from code.
 - **Files / declaration / migration:** registry row via a surgical migration + `asset_registry_seed.ts` literal
-- **Failing-first test and mutation:** failing-first: per-class producer census; count_sql equals the writer’s declared row count (414); mutation: add a yoga row by the wrong writer → census FAIL
+- **Failing-first test and mutation:** failing-first: per-class producer census; count_sql equals the writer’s declared row count (409); mutation: add a yoga row by the wrong writer → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 4 / transitive 69 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none
 - **Gate it moves:** Earn (count_sql scope), Build (completion)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent; vocabulary tier-dependent (TGH-T2-05)
@@ -169,7 +169,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `asset_declarations.json` entry (convention + writer `file:line`); the verdict rule is `platform/scripts/governance/asset_census.py` (E6 detector work); no writer change
 - **Failing-first test and mutation:** see CF-01
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 4 / transitive 69 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration + detector rule; no rebuild)
 - **Gate it moves:** Build (completion)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided; the criterion change is provisional until the J1 review)
@@ -181,7 +181,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 4 / transitive 69 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -193,7 +193,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 4 / transitive 69 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
@@ -210,7 +210,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
-Natural key `(entity_class, canonical_id)` (census, 0 duplicates). Fingerprint over `(entity_class, canonical_id, canonical_name_en, canonical_name_sa, synonyms, description, source_citation)` for the 414 owned rows; the co-writer classes (327) are fingerprinted by their own assets. Volatile: `created_at`. A release id, if added, is excluded from the fingerprint it identifies.
+Natural key `(entity_class, canonical_id)` (census, 0 duplicates). Fingerprint over `(entity_class, canonical_id, canonical_name_en, canonical_name_sa, synonyms, description, source_citation)` for the 409 owned rows; the co-writer classes (332) are fingerprinted by their own assets. Volatile: `created_at`. A release id, if added, is excluded from the fingerprint it identifies.
 
 ## 6 · Preserved kernel, carriage check, opportunities
 
