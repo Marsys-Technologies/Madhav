@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25]
 ledger_gap_ids: [bg_prashna_rules-Idem.pattern, bg_prashna_rules-Earn.build_record, bg_prashna_rules-Cost.baseline, bg_prashna_rules-Carr.detector]
 ---
 # bg_prashna_rules — Praśna (horary) rule tables (5 tables, 41 rows; multi-table, no single target)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -71,9 +73,9 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 ## 3 · Disposition
 
-**keep (P)** — the carried **I** (declare its table set) rested on the registry having no place for a table set; the census now reads `Build.target` PASS for it and no discovery/projection/join repair is identified. A declared table set is a registry declaration, not an integration of the asset. Divergence from the carried I flagged for SS.
+**keep (P)** — the carried **I** (declare its table set) rested on the registry having no place for a table set; the census now reads `Build.target` PASS for it and no discovery/projection/join repair is identified. A declared table set is a registry declaration, not an integration of the asset. Divergence from the carried I accepted by SS (Q10).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -132,7 +134,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* five tables, citation columns to be named
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* N/A in the saved census; attribution expected on re-measure
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* N/A in the saved census; attribution expected on re-measure
 - **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert over five tables, no DELETE found
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -145,6 +147,14 @@ Five tables with their own keys (read at design time); upsert. Fingerprint over 
 - **Carriage check chosen (T4 §4.1; one only):** D1 (citation correspondence where the source is in the corpus).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Keep (this brief) or integrate (the carried I) for bg_prashna_rules?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q10): all dispositions accepted as proposed.
+2. CF-02: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+4. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+5. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25.

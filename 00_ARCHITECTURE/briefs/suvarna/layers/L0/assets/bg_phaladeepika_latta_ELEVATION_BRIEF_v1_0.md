@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06, TI-L0-25]
 ledger_gap_ids: [bg_phaladeepika_latta-Idem.pattern, bg_phaladeepika_latta-Earn.build_record, bg_phaladeepika_latta-Cost.baseline, bg_phaladeepika_latta-Carr.detector]
 ---
 # bg_phaladeepika_latta — Lattā vedha rule table (Phaladīpikā Adh. XXVI, 8 rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -72,7 +74,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — a model L0 asset: cited verbatim from corpus chunks, with an honest abstention for the one row the source does not support. No failing cell.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -128,3 +130,12 @@ Natural key `(table_version, graha)` (census, 0 duplicates). Upsert; volatile: `
 - **Preserved kernel:** the eight verbatim Lattā counting rules and the Ketu abstention.
 - **Carriage check chosen (T4 §4.1; one only):** D1 (verbatim correspondence to the named chunks).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
+
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
+
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+2. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-25.

@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06, TI-L0-29]
 ledger_gap_ids: [bg_panchanga-G01, bg_panchanga-G02, bg_panchanga-G03, bg_panchanga-G04, bg_panchanga-O1, bg_panchanga-O2, bg_panchanga-Earn.build_record, bg_panchanga-Cost.baseline, bg_panchanga-Dens.served, bg_panchanga-Carr.detector, bg_panchanga-Earn.service_state, bg_panchanga-G01, bg_panchanga-Carr.D3, bg_panchanga-G02, bg_panchanga-Carr.detector]
 ---
 # bg_panchanga — Panchanga engine (service; no table)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -76,7 +78,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_panchanga-O2 | NONE | opportunity | a declared edge where a real one exists \| ledger: a declared edge where a real one exists |
 | bg_panchanga-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_panchanga-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_panchanga-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | 1 module: `call_panchanga_service.ts`; CF-04 \| ledger: measured: 1 module(s): call_panchanga_service.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_panchanga-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | 1 module: `call_panchanga_service.ts`; CF-04 \| ledger: measured: 1 module(s): call_panchanga_service.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_panchanga-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | bg_panchanga-Earn.service_state | Earn | detector | duplicate of G01 after folding \| ledger: measured: the asset's only status is asset_throughput state='lit' with rows_written=0 — identical to what a writer that produced nothing would write; no liveness or corr… |
 | bg_panchanga-Carr.D3 | Carr | detector | duplicate of G02 after folding |
@@ -87,7 +89,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — a service whose output feeds L1; the open items are a probe that can fail, an independent re-derivation of a limb and a missing registry edge. T4's storage/completeness clauses assume a table (TGH-T4-02).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -115,10 +117,10 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
 
-### FD-3 · Registry edge
+### FD-3 · Registry edge: `bg_panchanga → bg_ephemeris_engine`
 
 - **Answers:** ledger `bg_panchanga-G04` / O2; CF-03
-- **Change:** declare the dependency the computation actually has. The ledger proposes `bg_panchanga → bg_ephemeris`, but the engine calls swisseph directly, so the candidate edge is `bg_panchanga → bg_ephemeris_engine` (the pinned-corpus service); confirm by reading the service wiring before the migration. Adding an edge moves DAG order and the upstream hash; Track I’s migration 1210 excluded L0 bedrock edges, so this needs its own review.
+- **Change:** decided (SS 2026-10-01, Q16): declare the dependency on `bg_ephemeris_engine`, which is what the code actually calls (`panchang_engine/__init__.py:59-71,149-150,241` calls swisseph directly). The ledger’s `bg_ephemeris` edge is not taken. Adding an edge moves DAG order and the upstream hash; it needs its own review (Track I’s migration 1210 excluded L0 bedrock edges).
 - **Files / declaration / migration:** a surgical migration (`depends_on`) + seed literal
 - **Failing-first test and mutation:** failing-first: a topological read places the service after its dependency; the dag reads-match scan agrees; mutation: remove the edge → the reads-match detector names it
 - **Output change:** none
@@ -126,7 +128,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Rebuild:** none for the edge; the changed upstream hash may mark `ga_panchanga` stale: confirm in the review (REVIEW item)
 - **Gate it moves:** Build (dag)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (needs review)
-- **Question for SS:** Which asset should `bg_panchanga` depend on: `bg_ephemeris_engine` (code shows swisseph) or `bg_ephemeris` (ledger)?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q16): declare `bg_ephemeris_engine` (what the code actually calls).
 
 ### FD-4 · Declare `prose_fields` (Null and Narr gates)
 
@@ -143,15 +145,15 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-5 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 1 module: `call_panchanga_service.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -159,7 +161,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D3 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-03** — Registry correction batch (one surgical migration + seed literals). *This asset:* the registry edge
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 1 module
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* 1 module
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -171,6 +173,13 @@ No table. Contract: for a pinned `(instant, lat, lon, tz_offset)` the five angas
 - **Carriage check chosen (T4 §4.1; one only):** D3 (a second-route recomputation of tithi/vāra).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Edge target: `bg_ephemeris_engine` or `bg_ephemeris`?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q16): declare `bg_ephemeris_engine` (what the code actually calls).
+2. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+3. CF-03: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
+4. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-29.
