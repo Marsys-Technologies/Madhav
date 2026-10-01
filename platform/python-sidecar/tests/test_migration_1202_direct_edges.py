@@ -134,6 +134,24 @@ def test_migration_shape_and_count():
     assert not any(a == b for a, b in edges), "self-edge"
 
 
+def test_guards_are_scoped_null_safe_and_disclose_consequences():
+    sql = _MIGRATION.read_text()
+    code = "\n".join(l for l in sql.splitlines() if not l.lstrip().startswith("--"))
+    # self-dependency guard must be scoped to the edited assets (a pre-existing self-edge elsewhere
+    # must not fail the deploy for everyone)
+    m = re.search(r"IF EXISTS \(SELECT 1 FROM asset_registry r(.*?)\) THEN", code, re.S)
+    assert m, "self-dependency guard not found"
+    assert "r.asset_id IN (SELECT asset_id FROM _m1202_edges)" in m.group(1), m.group(1)
+    # NULL depends_on is handled everywhere the array is read or extended
+    assert "COALESCE(r.depends_on, '{}'::text[]) || n.deps" in code
+    assert code.count("<> ALL (COALESCE(") == 2
+    assert not re.search(r"<> ALL \((?!COALESCE)", code)
+    # the operational consequences stay disclosed in the header
+    for needle in ("planned/running/paused", "plan_adaptation_required", "assertManifestMatchesRegistryIdentity",
+                   "deps_unsatisfied", "asset_freshness", "nirmana_elevation_monitor_observations"):
+        assert needle in sql, f"header no longer discloses: {needle}"
+
+
 def test_back_reads_are_not_added_anywhere():
     edges = set(_migration_edges())
     assert not (edges & _BACK_READS), edges & _BACK_READS

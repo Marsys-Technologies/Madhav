@@ -36,14 +36,41 @@
 --     facts the signals cite, written by many ga_* assets); no single producer to name.
 --   * 14 assets with direct missing edges NOT covered by any path (different class).
 --
--- BEHAVIOUR / CONSEQUENCES. Appends only, existing array order preserved, other columns untouched.
--- Idempotent: an edge already present is skipped; a fully-covered row is not rewritten. On a
--- database where a consumer row does not exist yet (fresh bootstrap) it is a no-op; the TypeScript
--- seed (asset_registry_seed.ts) carries the same edges for NEW rows (its re-seed never rewrites
--- depends_on of an existing row). Next build of each consumer sees a changed upstream set, so its
--- upstream hash changes once (expected rebuild signal); a producer whose latest receipt is not
--- 'proven' makes that consumer's upstream_digest NULL for that build (see
--- 1202_asset_registry_direct_edges_verify.sql in the evidence dir for the read-only check).
+-- BEHAVIOUR. Appends only, existing array order preserved, other columns untouched. Idempotent: an
+-- edge already present is skipped; a fully-covered row is not rewritten; a NULL depends_on is treated
+-- as empty. On a database where a consumer row does not exist yet (fresh bootstrap) it is a no-op;
+-- the TypeScript seed (asset_registry_seed.ts) carries the same edges for NEW rows (its re-seed never
+-- rewrites depends_on of an existing row).
+--
+-- APPLY ONLY WHEN no build_runs row is in state planned/running/paused. runner.py
+-- `_verify_registry_still_matches_manifest` compares each planned asset's live depends_on against the
+-- run's frozen manifest; any run planned/running across the deploy has its diverged assets (the 15
+-- consumers) terminalized by `_terminalize_diverged_assets`, and their dependents blocked.
+--
+-- CONSEQUENCES (verified in code; read-only checks are in the evidence verify SQL):
+--  1. Nirmana frozen-definition contract. `registryContractFingerprintInput`
+--     (src/lib/nirmana-elevation/definitions.ts) includes depends_on, and
+--     `assertManifestMatchesRegistryIdentity` throws on ANY depends_on change vs the frozen manifest.
+--     6 of the 15 consumers are Nirmana-frozen (NIRMANA_SUPERSESSION_RECORD s2.3): bo_bimba (t3),
+--     bo_karanajala (t3), bo_laksana_rerank (t3), bo_pratijna (t1), bo_yantra_mechanism (t1),
+--     ka_yojaka (t2) = 11 of the 27 edges. Effects: (a) their `asset_analysis_accepted` evidence is
+--     bound to a registry fingerprint that no longer matches (snapshot.ts stale-accepted logic);
+--     (b) snapshot.ts `validManifest` returns null (the assert is caught), and the monitor
+--     (monitor.ts) reports `plan_adaptation_required`; (c) scripts/dispatch_nirmana_campaign_wave.py
+--     raises "live registry contract changed for <asset>: depends_on" and refuses the whole wave.
+--     Mitigating: the Nirmana campaign is OFF (native 2026-09-28; the DB definition row still reads
+--     frozen), and migrations 1084 (ka_kshetra, ka_sangam) and 1091 (ka_gochara) already changed
+--     depends_on after the t3 freeze, so the monitor is probably already red. Confirm with the latest
+--     nirmana_elevation_monitor_observations row BEFORE deploy (verify SQL Q5).
+--  2. Hard dependency gate. asset_runner.deps_unsatisfied (enforce mode) requires every declared dep to
+--     be asset_throughput.state 'lit' (or 'service_ok') AND its latest asset_freshness 'fresh'. A new
+--     direct producer whose state is not lit, or whose freshness is stale/unknown/absent, now BLOCKS
+--     its consumer even though the old transitive path did not check that producer's freshness
+--     directly. Verify SQL Q4 lists state + freshness + receipt per new producer.
+--  3. Upstream hash. `compute_upstream_hash` hashes DECLARED deps: each consumer's next dispatch sees
+--     a changed upstream set (one-time rebuild signal). A producer whose latest receipt is missing or
+--     not 'proven' makes that consumer's upstream_digest NULL for that build.
+--  4. Cockpit direct blocking radius of the producers rises by their new direct consumers.
 --
 -- Transaction ownership belongs to platform/scripts/migrate.ts (BEGIN/COMMIT around this file).
 -- No DDL on a shared table other than row updates; asset_registry is owned by amjis_app.
@@ -102,12 +129,12 @@ END $$;
 
 -- Append only the missing deps, preserving existing order. Rows already covered are not touched.
 UPDATE asset_registry r
-   SET depends_on = r.depends_on || n.deps
+   SET depends_on = COALESCE(r.depends_on, '{}'::text[]) || n.deps
   FROM (
         SELECT e.asset_id, array_agg(e.dep ORDER BY e.dep) AS deps
           FROM _m1202_edges e
           JOIN asset_registry c ON c.asset_id = e.asset_id
-         WHERE e.dep <> ALL (c.depends_on)
+         WHERE e.dep <> ALL (COALESCE(c.depends_on, '{}'::text[]))
          GROUP BY e.asset_id
        ) n
  WHERE r.asset_id = n.asset_id;
@@ -121,12 +148,16 @@ BEGIN
       INTO bad
       FROM _m1202_edges e
       JOIN asset_registry c ON c.asset_id = e.asset_id
-     WHERE e.dep <> ALL (c.depends_on);
+     WHERE e.dep <> ALL (COALESCE(c.depends_on, '{}'::text[]));
     IF bad IS NOT NULL THEN
         RAISE EXCEPTION '1202: edge not present after update: %', bad;
     END IF;
-    IF EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = ANY (depends_on)) THEN
-        RAISE EXCEPTION '1202: self-dependency present in asset_registry.depends_on';
+    -- scoped to the consumers this migration touches: a pre-existing self-edge elsewhere must not
+    -- fail the deploy for everyone (it is reported by verify Q3 instead)
+    IF EXISTS (SELECT 1 FROM asset_registry r
+                WHERE r.asset_id IN (SELECT asset_id FROM _m1202_edges)
+                  AND r.asset_id = ANY (r.depends_on)) THEN
+        RAISE EXCEPTION '1202: self-dependency present in asset_registry.depends_on of an edited asset';
     END IF;
 END $$;
 
