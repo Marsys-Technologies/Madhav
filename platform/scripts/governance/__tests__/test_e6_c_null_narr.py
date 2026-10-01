@@ -41,8 +41,10 @@ def test_the_six_criteria_are_registered_measured_by_the_census_on_every_layer()
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"} == set(NULL)
 
 
-def test_no_na_rule_is_declared_and_the_no_prose_causes_are_registered():
-    assert ac.NA_RULE_DECISIONS == {}
+def test_only_the_narr_no_prose_rules_are_declared_and_the_no_prose_causes_are_registered():
+    # N-22 row 33: the Null criteria carry no N/A rule; row 17 (Narr no-prose) is declared since REGISTRY_REVISION 9 (SS N-65)
+    assert not [i for i in ac.NA_RULE_DECISIONS if i.startswith("Null.")]
+    assert {i for i in ac.NA_RULE_DECISIONS if i.startswith("Narr.")} == {f"{c}#measured:no-prose" for c in NARR}
     for crit in NARR:
         assert "no-prose" in ac.NA_CAUSES[crit], crit
     for crit in NULL:
@@ -468,7 +470,8 @@ def test_every_record_is_a_closed_vocabulary_verdict():
 
 # ───────────────────────── rollup: nothing becomes N/A or PASS by itself ─────────────────────────
 
-def test_the_na_candidates_read_no_detector_in_the_rollup_until_a_rule_is_declared():
+def test_the_na_candidates_read_no_detector_in_the_rollup_until_a_rule_is_declared(monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})       # the UNDECLARED path; the declared Narr rules are tested in test_e6_na_r01_03
     m = ac.prose_checks("a", _decl([]), _ctx(written={"t": set()}))
     cells = ac.rollup_asset("L2", m)
     assert cells["Narr"]["v"] == ac.NO_DET and cells["Null"]["v"] == ac.NO_DET

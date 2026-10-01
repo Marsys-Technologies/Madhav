@@ -64,6 +64,7 @@ def _restore_pre_retirement(monkeypatch):
     reg["Carr.detector"] = dict(OLD_CARR_DETECTOR)
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})      # revision 7 declared no rule (revision 9 declares three: they are fingerprinted)
 
 
 def _no_carriage_causes(monkeypatch):
@@ -98,8 +99,8 @@ def test_the_retirement_is_recorded_with_its_reason_and_decision_and_never_overl
     assert all(v["retired_in_revision"] <= ac.REGISTRY_REVISION for v in ac.RETIRED_CRITERIA.values())
 
 
-def test_registry_revision_is_8_and_its_fingerprint_is_not_the_revision_7_one():
-    assert ac.REGISTRY_REVISION == 8
+def test_registry_revision_is_at_least_8_and_its_fingerprint_is_not_the_revision_7_one():
+    assert ac.REGISTRY_REVISION >= 8
     assert ac.registry_fingerprint() != REV7_FINGERPRINT
 
 

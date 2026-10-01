@@ -729,7 +729,9 @@ def test_r51_stripping_comments_never_turns_a_named_asset_into_a_closable_na(mon
     c = ac.measure("L0")
     ds = w1._m(c, "bg_x", "Dens.served")
     assert ds["v"] == verdict, ds
-    # E6 fix 1: NA_RULE_DECISIONS is empty in production, so an N/A is not released: it closes nothing.
+    # E6 fix 1: with no rule declared an N/A is not released: it closes nothing (REGISTRY_REVISION 9 declares the Dens rule in
+    # production, so this undeclared path is forced here)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     assert ac.emit_gaps(c)[2] == 0
     if verdict == ac.NA:
         # ... and it closes only under a declared, caused rule (the only way an N/A ever closes an OPEN gap)

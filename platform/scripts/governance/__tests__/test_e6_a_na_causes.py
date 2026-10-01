@@ -396,9 +396,10 @@ def test_the_cause_encoding_bumped_the_registry_revision():
     assert ac.REGISTRY_REVISION >= 2, "what a cell means changed (rule ids are cause-keyed): revision must be bumped"
 
 
-def test_na_rule_decisions_is_still_empty():
-    assert ac.NA_RULE_DECISIONS == {}, "the N-22 rule table is not approved: nothing may be declared"
-    ac.validate_na_rule_decisions()    # and the (empty) production table is, trivially, well-formed
+def test_na_rule_decisions_is_exactly_the_approved_set():
+    import test_e6_na_r01_03 as r13
+    assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS, "only the N-65 approved rules may be declared"
+    ac.validate_na_rule_decisions()    # and the production table is well-formed
 
 
 # ───────────────────────── (3b) the declared rule table is validated, not trusted ─────────────────────────

@@ -289,9 +289,26 @@ ROLLUP_ORDER = ("FAIL", "ERRORED", "NO_DETECTOR", "PARTIAL", "PASS")
 # never typed). Rule ids are "<criterion>#columns_any", "<criterion>#asset_kinds" (a supplied fact disproves the
 # pattern) and "<criterion>#measured:<cause>" (the census itself measured N/A, and the inspector named the CAUSE:
 # N-22 ruling principle 2). The uncaused "<criterion>#measured" form is RETIRED: one id per criterion released
-# every measured N/A of that criterion, whatever condition produced it. EMPTY on purpose: per-gate applicability
-# rules are N-22 (Strategic Suvarna), not yet approved. Until a rule id is declared here, an N/A reads NO_DETECTOR.
-NA_RULE_DECISIONS: dict[str, str] = {}
+# every measured N/A of that criterion, whatever condition produced it. Until a rule id is declared here, an N/A reads
+# NO_DETECTOR. REGISTRY_REVISION 9 declares exactly the three approved, already-emitting rules below (SS N-65, from the
+# N-22 / N-22a ruling table, proposal v1.2.3): nothing else may be added without its own ruling, revision bump and pin.
+# Each value is the decision text the rule cites. NOT declared (held by ruling): Null rules (N-22 row 33), Earn rows,
+# Carr no-carriage, rolling_horizon, and the kind-keyed rules (user_data, write-nothing-by-design, ga_prashna cause).
+NA_RULE_DECISIONS: dict[str, str] = {
+    # R01, N-22 row 20 APPROVED (principles 2, 3): never run is Build.exercised's / Build.registered's finding
+    "Build.history#measured:never-run":
+        "N-22/N-22a row 20 (APPROVED, principles 2-3); N-65 (R01)",
+    # R02, N-22 row 19 AMENDED (principle 4: after the Dens scanner repair, E6.1 item d): bg_gochara_arcs,
+    # bg_kota_chakra_rings, bg_kp_sublord_division on the repaired scan
+    "Dens.served#measured:no-served-surface":
+        "N-22/N-22a row 19 (AMENDED, principles 1, 3, 4); N-65 (R02)",
+    # R03, N-22 row 17 AMENDED (principle 8): the assets that declare prose_fields [] (bg_doshas, bg_ontology, bg_yogas,
+    # bo_laksana_rerank; SS: bg_yogas and bg_ontology final); the reverse leg still FAILs a narration column
+    "Narr.agree#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    "Narr.checkable#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    "Narr.lint#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+}
 
 # The causes the inspector may emit on a measured N/A, per criterion. A slug names the CODE CONDITION that produced
 # the N/A (what `measure()` or a helper actually tested), never a semantic the code does not establish; the table
@@ -349,7 +366,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 8     # 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 9     # 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); the registry and every measurement are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -527,8 +544,12 @@ def rollup_excluded(layer: str, measurements: dict) -> dict:
     """Measured criteria whose gate is not one of the nine cell gates: reported here, never silently
     dropped (their owner decision is a campaign question, not a rollup choice). A measured RETIRED criterion
     (a census saved before its retirement) is reported here too, with its verdict as saved: it is not graded,
-    and it is not dropped either."""
-    return {c: mv["v"] for c, mv in measurements.items()
+    and it is not dropped either.
+
+    N/A obeys the SAME release rule as the cells (`_na_released`: a registered cause AND its declared rule id, N-22
+    principle 2): a measured N/A that no declared rule releases is reported as NO_DETECTOR, never as N/A. Every other
+    verdict is reported as measured."""
+    return {c: (NO_DET if mv["v"] == NA and not _na_released(c, mv) else mv["v"]) for c, mv in measurements.items()
             if c in RETIRED_CRITERIA
             or (c in CRITERION_REGISTRY and CRITERION_REGISTRY[c]["gate"] not in CELL_GATES)}
 
