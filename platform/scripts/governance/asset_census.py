@@ -2071,6 +2071,72 @@ def _refusal_guard(units: list[dict], tset=frozenset()) -> tuple[str, int, str, 
     return None
 
 
+_UO_SCOPE_COLS = ("chart_id", "ayanamsha_id", "build_id", "asset_id", "run_id")
+_UO_SET = re.compile(r"\bSET\b(.*?)(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|\Z)", re.I | re.S)
+_UO_WHERE = re.compile(r"\bWHERE\b(.*?)(?=\bRETURNING\b|\Z)", re.I | re.S)
+_UO_ARRAY_ACC = re.compile(r"\barray_(?:append|cat|prepend)\s*\(", re.I)
+_UO_KEYED = re.compile(r"\b([A-Za-z_]\w*)\s*=\s*(?:%s|%\(\w+\)s|\$\d+|ANY\s*\()", re.I)
+
+
+def _update_only_reading(units, tset) -> dict:
+    """Idem.pattern's update-only sub-reading (N-22 ruling 6; SS: Idem stays ONE gate, update-only is not N/A): each
+    own-table UPDATE is read for (a) an ACCUMULATING assignment (`SET c = c + x`, `c * x`, array_append/cat/prepend
+    of c: a second rebuild changes the row again; named update-only:accumulating-assignment) and (b) its row-set
+    predicate shape: keyed, scope (chart/ayanamsha/build/asset), state-conditional (IS [NOT] NULL), guarded (IS DISTINCT
+    FROM), none, other. Whether a rebuild re-derives EVERY row is not provable statically (PASS needs the E5.5
+    semantic-fingerprint comparison on the E5.6 rehearsal database), so the reading never PASSes."""
+    acc, concat, shapes = [], [], {}
+    for u in units:
+        for node in u["nodes"]:
+            for text, ln in _sql_texts(dict(u, nodes=[node])):
+                m = _SQL_UPDATE.search(text)
+                if not m or m.group(1).lower() not in tset:
+                    continue
+                flat = re.sub(r"'(?:[^']|'')*'", "''", re.sub(r"--[^\n]*", "", text))
+                where = _UO_WHERE.search(flat)
+                cite_ = f"{m.group(1).lower()} ({u['rel']}:{ln}{' via ' + u['via'] if u['hop'] else ''})"
+                st = _UO_SET.search(flat)
+                for a in _split_top(st.group(1)) if st else []:
+                    if "=" not in a:
+                        continue
+                    col, expr = (x.strip().strip('"') for x in a.split("=", 1))
+                    if not re.fullmatch(r"[A-Za-z_]\w*", col) or not re.search(rf"\b{re.escape(col)}\b", expr):
+                        continue
+                    if re.search(r"[+\-*/]", re.sub(r"%\(\w+\)s|::\w+", "", expr)) or _UO_ARRAY_ACC.search(expr):
+                        acc.append(f"{col} = {expr[:60]} in {cite_}")
+                    elif "||" in expr:
+                        concat.append(f"{col} in {cite_}")
+                w = where.group(1) if where else None
+                found = []
+                if w is None:
+                    found.append("no-predicate")
+                else:
+                    if re.search(r"\bIS\s+DISTINCT\s+FROM\b", w, re.I):
+                        found.append("guarded")
+                    if re.search(r"\bIS\s+(?:NOT\s+)?NULL\b", w, re.I):
+                        found.append("state-conditional")
+                    lhs = [c.lower() for c in _UO_KEYED.findall(w)]
+                    if any(c not in _UO_SCOPE_COLS for c in lhs):
+                        found.append("keyed")
+                    if any(c in _UO_SCOPE_COLS for c in lhs) or re.search(r"\b(?:" + "|".join(_UO_SCOPE_COLS) + r")\b", w, re.I):
+                        found.append("scope")
+                    if not found:
+                        found.append("other-predicate")
+                for f in found:
+                    shapes.setdefault(f, []).append(cite_)
+    return dict(accumulating=acc, concat=concat, shapes=shapes)
+
+
+def _update_only_text(rd: dict) -> str:
+    slugs = [f"update-only:{k}-row-set-unproven" for k in ("keyed", "scope", "state-conditional", "guarded", "no-predicate",
+                                                          "other-predicate") if k in rd["shapes"]]
+    if rd["concat"]:
+        slugs.append("update-only:self-referencing-concat-type-unread (" + "; ".join(rd["concat"]) + ")")
+    return (" ".join(slugs) + "; no row is added, but whether a rebuild re-derives every row is not proven statically: "
+            "PASS needs the E5.5 semantic-fingerprint comparison across a rebuild on the E5.6 rehearsal database, "
+            "which this scan does not run")
+
+
 def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> tuple[str, list[str]]:
     """§N.3, over real SQL strings (docstrings excluded), measured on the code a rebuild RUNS.
 
@@ -2150,8 +2216,17 @@ def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> t
     if own["insert"]:
         reasons.append(f"plain INSERT into the asset's own table(s) and no replacement found: {cite(own['insert'])}")
     if own["update"] and not (own["upsert"] or own["insert"]):
-        reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — no row is added, "
-                       "but whether a rebuild re-derives every row is not measured")
+        rd = _update_only_reading(units, tset)
+        if rd["accumulating"]:
+            what = "update-only:accumulating-assignment: " + "; ".join(rd["accumulating"])
+            if not unresolved:
+                return FAIL, [f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — {what} — a second "
+                              "rebuild changes the rows again (not idempotent)"]
+            reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — {what} (the scope "
+                           "is not fully read, so this is PARTIAL, not FAIL)")
+        else:
+            reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — "
+                           f"{_update_only_text(rd)}")
     if other and not mismatch:
         reasons.append(f"it replaces only other tables: {', '.join(other)}")
     if not any(own.values()):
