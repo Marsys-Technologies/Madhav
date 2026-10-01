@@ -75,17 +75,76 @@ def test_writer_first_rule_fails_closed() -> None:
     assert problems and line == "UNVERIFIED"
 
 
-def test_the_gate_lists_and_queries_are_copies_of_the_gates_own_source() -> None:
+def _ts_query(name: str) -> str:
+    text = (REPO / "platform/scripts/data-plane-ownership-status.ts").read_text(encoding="utf-8")
+    m = re.search(r"const %s = await pool\.query<\{ unsafe: boolean \}>\(`(.*?)`" % name, text, re.S)
+    assert m, f"{name} not found in data-plane-ownership-status.ts"
+    return m.group(1)
+
+
+def _squash(sql: str) -> str:
+    return re.sub(r"\s+", "", sql)
+
+
+def test_the_gate_queries_equal_the_gates_own_source_after_normalisation() -> None:
+    """Real drift fails: the three queries are compared with the gate's source, placeholders and %% normalised."""
+    ts_shape = _ts_query("triggerShape").replace("$1::text[]", "%(tables)s::text[]")
+    ts_surface = _ts_query("triggerSurface").replace("$1::text[]", "%(tables)s::text[]")
+    ts_fn = _ts_query("functionDigests").replace("$1::text[]", "%(owners)s::text[]").replace("$2::text[]", "%(lifecycle)s::text[]")
+    assert _squash(d6.GATE_TRIGGER_SHAPE.replace("%%", "%")) == _squash(ts_shape.replace("%%", "%"))
+    assert _squash(d6.GATE_TRIGGER_SURFACE) == _squash(ts_surface)
+    assert _squash(d6.GATE_FUNCTION_DIGESTS.replace("%%", "%")) == _squash(ts_fn)
+
+
+def test_the_lifecycle_function_list_equals_the_gates_own_argument() -> None:
+    text = (REPO / "platform/scripts/data-plane-ownership-status.ts").read_text(encoding="utf-8")
+    seg = text[text.index("const functionDigests"):]
+    args = seg[seg.index("`, [") + 3:]               # the parameter arrays that follow the query text
+    lists = re.findall(r"\[([^\[\]]*)\]", args)
+    assert lists[0].count("data_plane_l1_owner") == 1 and lists[0].count("data_plane_l2_owner") == 1
+    names = tuple(re.findall(r"'([a-z0-9_]+)'", lists[1]))
+    assert names == d6.GATE_LIFECYCLE_FUNCTIONS
+
+
+def test_gate_table_lists_are_parsed_strictly() -> None:
     tables = d6.load_gate_tables(REPO)
-    assert "chart_divisionals" in tables and "bodha_msr_signals" in tables and len(tables) > 30
-    status_ts = (REPO / "platform/scripts/data-plane-ownership-status.ts").read_text(encoding="utf-8")
-    for fn in d6.GATE_LIFECYCLE_FUNCTIONS:
-        assert f"'{fn}'" in status_ts, fn
-    # the three queries still spell the gate's comparisons
-    for needle in ("a.definition_digest=e.definition_digest", "t.tgtype<>21", "<> cardinality("):
-        assert needle in d6.GATE_TRIGGER_SURFACE + d6.GATE_TRIGGER_SHAPE
-    assert "encode(digest(pg_get_functiondef(p.oid),'sha256'),'hex')" in d6.GATE_FUNCTION_DIGESTS
-    assert "definition_digest" in status_ts and "pg_get_triggerdef(t.oid,true)" in status_ts
+    assert (tables.count("chart_divisionals"), len(tables)) == (1, 41)
+    assert "bodha_msr_signals" in tables
+
+
+def _fake_root(tmp_path: pathlib.Path, body: str) -> pathlib.Path:
+    f = tmp_path / "platform/scripts"
+    f.mkdir(parents=True)
+    (f / "data-plane-ownership-preflight.ts").write_text(body, encoding="utf-8")
+    return tmp_path
+
+
+def test_gate_table_parse_refuses_empty_missing_or_miscounted_lists(tmp_path: pathlib.Path) -> None:
+    l2 = ", ".join(f"'t{i}'" for i in range(29))
+    l1 = ", ".join(f"'c{i}'" for i in range(11)) + ", 'chart_divisionals'"
+    good = f"export const L1_ACTIVE_TABLES = [{l1}] as const\nexport const L2_ACTIVE_TABLES = [{l2}] as const\n"
+    assert len(d6.load_gate_tables(_fake_root(tmp_path / "ok", good))) == 41
+    with pytest.raises(SystemExit, match="EMPTY"):
+        d6.load_gate_tables(_fake_root(tmp_path / "e", good.replace(f"[{l1}]", "[]")))
+    with pytest.raises(SystemExit, match="chart_divisionals"):
+        d6.load_gate_tables(_fake_root(tmp_path / "m", good.replace("'chart_divisionals'", "'chart_other'")))
+    with pytest.raises(SystemExit, match="unexpected gate table counts"):
+        d6.load_gate_tables(_fake_root(tmp_path / "c", good.replace(", 't28'", "")))
+    # a quoted name inside a comment must not be counted
+    with_comment = good.replace("export const L2", "// 'chart_divisionals' 'ghost'\nexport const L2")
+    assert "ghost" not in d6.load_gate_tables(_fake_root(tmp_path / "k", with_comment))
+
+
+def test_writer_commit_must_be_the_full_sha_and_the_tag_must_equal_it() -> None:
+    for short in ("0", "abcdef0", COMMIT[:12], COMMIT.upper()):
+        problems, line = d6.writer_check(short, _runner(short, d6.WRITER_DIGEST))
+        assert problems and line == "REFUSED", short
+    zero = "0" * 40
+    # a one-character tag (and an empty tag) must not satisfy the check
+    for tag in ("0", "", zero[:12]):
+        problems, _ = d6.writer_check(zero, _runner(tag, d6.WRITER_DIGEST))
+        assert any("not commit" in p for p in problems), tag
+    assert d6.writer_check(zero, _runner(zero, d6.WRITER_DIGEST))[0] == []
 
 
 def test_apply_requires_the_writer_commit_and_the_search_path_keeps_names_unqualified() -> None:
@@ -135,8 +194,11 @@ def _build_model() -> None:
         c.execute(f"GRANT CONNECT ON DATABASE {DB} TO f_a2_admin")
     with psycopg.connect(_dsn(DB), autocommit=True) as c:
         c.execute("CREATE EXTENSION pgcrypto")
+        # live reality: the administrator has no USAGE on schema public (and no table privilege); only the roles that
+        # work in it do
+        c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
         c.execute("GRANT USAGE, CREATE ON SCHEMA public TO data_plane_l1_owner, data_plane_l2_owner")
-        c.execute("GRANT USAGE ON SCHEMA public TO f_a2_admin")
+        c.execute("GRANT USAGE ON SCHEMA public TO amjis_app, data_plane_builder")
         c.execute("SET ROLE data_plane_l1_owner")
         c.execute("""CREATE TABLE public.chart_divisionals (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, chart_id uuid NOT NULL,
                      build_id text NOT NULL DEFAULT 'b', graha text, ayanamsha_id text, varga text, fact_category text,
@@ -155,12 +217,18 @@ def _build_model() -> None:
                   "EXECUTE FUNCTION public.l1_data_plane_capture_row('chart_id','graha','ayanamsha_id','varga','fact_category','fact_key')")
         c.execute("CREATE TRIGGER l1_data_plane_mutation_guard BEFORE INSERT OR UPDATE OR DELETE ON public.chart_divisionals "
                   "FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_guard_active_mutation()")
-        for layer in ("l1", "l2"):
+        # live ACL (read as suvarna_reader): the L1 attestation tables belong to the L1 owner, the L2 ones to the L2 owner,
+        # and data_plane_l1_owner has NO SELECT on the L2 tables; amjis_app has SELECT on all four
+        for layer, owner in (("l1", "data_plane_l1_owner"), ("l2", "data_plane_l2_owner")):
+            c.execute(f"SET ROLE {owner}")
             c.execute(f"""CREATE TABLE public.{layer}_data_plane_trigger_attestations (table_name text NOT NULL, trigger_name text NOT NULL,
                          trigger_type smallint NOT NULL, enabled "char" NOT NULL, function_oid oid NOT NULL,
                          function_signature text NOT NULL, definition_digest text NOT NULL, PRIMARY KEY(table_name, trigger_name))""")
             c.execute(f"""CREATE TABLE public.{layer}_data_plane_function_attestations (function_signature text PRIMARY KEY,
                          definition_digest text NOT NULL, owner_name text NOT NULL, security_definer boolean NOT NULL, config text[])""")
+            c.execute(f"GRANT SELECT ON public.{layer}_data_plane_trigger_attestations, public.{layer}_data_plane_function_attestations TO amjis_app")
+            c.execute("RESET ROLE")
+        c.execute("SET ROLE data_plane_l1_owner")
         # the attestations, computed the way the gate computes them: under the DEFAULT search_path
         c.execute("SET search_path = public")
         c.execute("""INSERT INTO public.l1_data_plane_trigger_attestations
@@ -210,7 +278,6 @@ def _gate_state_under_default_path() -> tuple[bool, bool, bool]:
     import psycopg
     with psycopg.connect(_dsn(DB), autocommit=False) as conn:
         cur = conn.cursor()
-        cur.execute("SET LOCAL ROLE data_plane_l1_owner")
         g = d6.gate_mirror(cur, TABLES)
         stored_matches = (g["trigger_digest_stored"] == g["trigger_digest_gate_side"],
                           g["function_digest_stored"] == g["function_digest_gate_side"],
@@ -273,3 +340,57 @@ def test_apply_is_refused_when_another_chart_has_a_run_or_the_writer_is_not_depl
                      writer_runner=_runner("e" * 40, d6.WRITER_DIGEST))
         conn.rollback()
     assert ok2 is False and any("not commit" in line for line in out2)
+
+
+@needs_pg
+def test_the_model_is_live_faithful_and_would_have_caught_the_l1_owner_gate_role(model) -> None:
+    """F1 (second review): the gate unions the L2 attestation tables, which data_plane_l1_owner cannot read. The model now
+    reflects the live ACLs, so running the gate's query AS the L1 owner fails exactly as production would, while the
+    executor (which runs it as amjis_app) is green."""
+    import psycopg
+    with psycopg.connect(_dsn(DB)) as conn:
+        cur = conn.cursor()
+        cur.execute("SET LOCAL ROLE data_plane_l1_owner")
+        cur.execute("SET LOCAL search_path = public")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="l2_data_plane"):
+            cur.execute(d6.GATE_TRIGGER_SURFACE, {"tables": TABLES})
+        conn.rollback()
+    with psycopg.connect(_dsn(DB, "f_a2_admin")) as conn:
+        cur = conn.cursor()
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            cur.execute("SELECT count(*) FROM public.chart_divisionals")  # the administrator holds no table privilege
+        conn.rollback()
+    assert _gate_state_under_default_path() == (True, True, True)
+
+
+@needs_pg
+def test_a_building_l1_generation_refuses_the_plan(model) -> None:
+    import psycopg
+    with psycopg.connect(_dsn(DB), autocommit=True) as c:
+        c.execute("INSERT INTO public.l1_data_plane_generations(status) VALUES ('building')")
+    ok, out = _apply()
+    assert ok is False and "still 'building'" in out
+
+
+@needs_pg
+def test_a_short_tag_cannot_commit_the_plan(model) -> None:
+    import psycopg
+    zero = "0" * 40
+    with psycopg.connect(_dsn(DB, "f_a2_admin")) as conn:
+        out: list[str] = []
+        ok = d6.run(conn, "apply", out=out.append, writer_commit=zero, gate_tables=TABLES,
+                    writer_runner=_runner("0", d6.WRITER_DIGEST))
+        conn.rollback()
+    assert ok is False and any("not commit" in line for line in out)
+
+
+@needs_pg
+def test_the_exclusive_window_is_kept_short_and_measured(model) -> None:
+    ok, out = _apply()
+    assert ok, out
+    m = re.search(r"ACCESS EXCLUSIVE window \(UTC\): \S+ -> \S+; statements inside it: (\d+)", out)
+    assert m, out
+    assert int(m.group(1)) <= 60, f"{m.group(1)} statements hold ACCESS EXCLUSIVE; keep the window short"
+    # the before-snapshot, the probe inserts and the gate-before check all ran BEFORE the window
+    assert out.index("writer-first check") < out.index("ACCESS EXCLUSIVE window")
+

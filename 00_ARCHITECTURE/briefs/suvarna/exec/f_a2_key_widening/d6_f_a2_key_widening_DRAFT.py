@@ -43,9 +43,13 @@ runs them under GATE_SEARCH_PATH (`public`) before AND after the plan as an expl
 stored, gate-side and executor-path digests in --dry-run.
 
 LOCKS: the dry run is data-safe but NOT lock-free. It takes the same locks as the apply: SHARE on chart_divisionals for the
-index build, then ACCESS EXCLUSIVE at DROP INDEX / DROP TRIGGER; lock_timeout 5s bounds the wait; concurrent reads and
-writes of chart_divisionals block for the duration (an index build over ~71k rows is expected in the low hundreds of ms).
-Run the dry run in the SAME quiet window as the apply (deploy idle, zero runs) and report both windows' timestamps.
+index build, then ACCESS EXCLUSIVE from DROP INDEX / DROP TRIGGER until COMMIT or ROLLBACK. lock_timeout 5s bounds only the
+WAIT for a lock, not the hold. The hold is every statement the transaction still runs after DROP INDEX: the executor keeps
+that to the DDL, the attestation UPDATEs and the read-only post-checks (the before-snapshot, the identity-probe inserts and
+the gate-before check all run BEFORE the exclusive lock), and prints the count and the measured seconds. Each statement is
+a round trip through the Cloud SQL proxy, so expect SECONDS, not the index build's few hundred ms. Concurrent reads and
+writes of chart_divisionals block for that whole window. Run the dry run in the SAME quiet window as the apply (deploy idle,
+zero runs) and report both windows' timestamps.
 
 GUARDS (any failure = print the reason and ROLLBACK; nothing else is touched):
   * ANY build_run in planned/running/paused, on ANY chart (no chart filter), and any L1 generation in 'building';
@@ -167,6 +171,21 @@ ROWDATA_SQL = ("SELECT chart_id::text, count(*), md5(string_agg(id::text, ',' OR
                f"FROM public.{TABLE} GROUP BY chart_id ORDER BY chart_id")
 
 
+class CountingCursor:
+    """Counts the statements issued, so the exclusive-lock window can be measured and bounded."""
+
+    def __init__(self, cur) -> None:
+        self._cur = cur
+        self.n = 0
+
+    def execute(self, *a, **k):
+        self.n += 1
+        return self._cur.execute(*a, **k)
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+
 def utcnow() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
@@ -268,22 +287,38 @@ WHERE a.function_signature=%s
 
 
 def load_gate_tables(root: pathlib.Path = REPO_ROOT) -> list[str]:
-    """L1_ACTIVE_TABLES + L2_ACTIVE_TABLES, parsed from the gate's own source so they cannot drift from it."""
+    """L1_ACTIVE_TABLES + L2_ACTIVE_TABLES, parsed from the gate's own source so they cannot drift from it.
+
+    Comments are stripped first (a quoted name in a comment must not be picked up), and the result is asserted: both lists
+    non-empty, chart_divisionals among the L1 tables, and the expected counts (12 L1 + 29 L2 = 41). A parse that silently
+    yields an empty list would make the gate queries vacuously green."""
     text = (root / "platform/scripts/data-plane-ownership-preflight.ts").read_text(encoding="utf-8")
-    out: list[str] = []
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    text = re.sub(r"//[^\n]*", "", text)
+    lists: dict[str, list[str]] = {}
     for name in ("L1_ACTIVE_TABLES", "L2_ACTIVE_TABLES"):
         m = re.search(r"export const %s = \[(.*?)\] as const" % name, text, re.S)
         if not m:
             raise SystemExit(f"cannot parse {name} from data-plane-ownership-preflight.ts")
-        out += re.findall(r"'([a-z0-9_]+)'", m.group(1))
-    return out
+        lists[name] = re.findall(r"'([a-z0-9_]+)'", m.group(1))
+        if not lists[name]:
+            raise SystemExit(f"{name} parsed EMPTY from data-plane-ownership-preflight.ts")
+    if "chart_divisionals" not in lists["L1_ACTIVE_TABLES"]:
+        raise SystemExit("L1_ACTIVE_TABLES does not contain chart_divisionals: refusing to run the gate mirror on a wrong list")
+    if (len(lists["L1_ACTIVE_TABLES"]), len(lists["L2_ACTIVE_TABLES"])) != (12, 29):
+        raise SystemExit(f"unexpected gate table counts L1={len(lists['L1_ACTIVE_TABLES'])} L2={len(lists['L2_ACTIVE_TABLES'])} "
+                         "(expected 12 + 29); the gate's lists changed: re-review this plan")
+    return lists["L1_ACTIVE_TABLES"] + lists["L2_ACTIVE_TABLES"]
 
 
 def gate_mirror(cur, tables: list[str] | None = None) -> dict:
     """Run the deploy gate's OWN trigger and function digest queries, as the gate's session would resolve names
     (GATE_SEARCH_PATH), and return the three `unsafe` flags plus the capture trigger / function digests."""
     tables = tables if tables is not None else load_gate_tables()
-    cur.execute(f"SET LOCAL ROLE {OWNER}")  # the attestation tables are owner-readable only
+    # As amjis_app, NOT the L1 owner: the gate unions the L1 AND L2 attestation tables, and data_plane_l1_owner has no
+    # SELECT on the two L2 ones (live ACL: only the L2 owner, builder, verifier, migrator, amjis_app and suvarna_reader
+    # do). amjis_app has SELECT on all four and USAGE on public, and is what the gate's own connection resembles.
+    cur.execute(f"SET LOCAL ROLE {APP_OWNER}")
     cur.execute(f"SET LOCAL search_path = {GATE_SEARCH_PATH}")
     out: dict = {}
     cur.execute(GATE_TRIGGER_SHAPE, {"tables": tables})
@@ -320,6 +355,8 @@ def writer_check(commit: str | None, run_cmd=_run_cmd) -> tuple[list[str], str]:
     ga_vargas digest recorded at that commit. Returns (problems, human line)."""
     if not commit:
         return ["--writer-commit <sha> is required: the writer must be deployed BEFORE this plan applies"], "NOT CHECKED"
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        return [f"--writer-commit must be the full 40-hex commit sha (got {commit!r}); a prefix match is not accepted"], "REFUSED"
     try:
         image = run_cmd(["gcloud", "run", "jobs", "describe", WRITER_IMAGE_JOB, "--project", PROJECT,
                          "--region", WRITER_IMAGE_REGION,
@@ -331,8 +368,8 @@ def writer_check(commit: str | None, run_cmd=_run_cmd) -> tuple[list[str], str]:
     except Exception as exc:  # fail closed: an unverifiable writer is not a deployed writer
         return [f"writer image check failed: {type(exc).__name__}: {str(exc)[:160]}"], "UNVERIFIED"
     problems = []
-    if not tag or not (tag == commit or commit.startswith(tag) or tag.startswith(commit)):
-        problems.append(f"job {WRITER_IMAGE_JOB} runs image tag {tag!r}, not commit {commit[:12]}")
+    if tag != commit:  # exact: deploy.yml tags the image with the full DEPLOY_SHA; a short or empty tag proves nothing
+        problems.append(f"job {WRITER_IMAGE_JOB} runs image tag {tag!r}, not commit {commit}")
     if digest != WRITER_DIGEST:
         problems.append(f"ga_vargas digest at {commit[:12]} is {digest[:12]}..., this plan was frozen against {WRITER_DIGEST[:12]}...")
     return problems, f"image tag {tag[:12]!r}; ga_vargas digest at {commit[:12]} = {digest[:12]}..."
@@ -408,17 +445,11 @@ def preconditions(cur) -> list[str]:
     return problems
 
 
-def apply_plan(cur) -> dict:
-    """The statements. Runs as data_plane_l1_owner (caller has done SET LOCAL ROLE)."""
-    # 1. index: build the wider unique index first, drop the old, rename: the name the writer's preflight reads stays.
-    cur.execute(f"CREATE UNIQUE INDEX {NEW_INDEX_TMP} ON public.{TABLE} ({', '.join(NEW_COLS)}) NULLS NOT DISTINCT")
-    cur.execute(f"DROP INDEX public.{INDEX}")
-    cur.execute(f"ALTER INDEX public.{NEW_INDEX_TMP} RENAME TO {INDEX}")
-    # 2. capture trigger: same event/timing/function, seven natural-key arguments
-    cur.execute(f"DROP TRIGGER {TRIGGER} ON public.{TABLE}")
-    args = ", ".join("'%s'" % c for c in NEW_COLS)
-    cur.execute(f"CREATE TRIGGER {TRIGGER} AFTER INSERT OR UPDATE ON public.{TABLE} "
-                f"FOR EACH ROW EXECUTE FUNCTION {CAPTURE_FN.split('(')[0]}({args})")
+def apply_plan(cur, on_exclusive=None) -> dict:
+    """The statements. Runs as data_plane_l1_owner (caller has done SET LOCAL ROLE).
+
+    Ordered so the ACCESS EXCLUSIVE lock on chart_divisionals is taken as late as possible: the function replacement (no
+    table lock) and the new index build (SHARE only) come first; `on_exclusive` is called immediately before DROP INDEX."""
     # 3. capture function: CREATE OR REPLACE from its own live definition with exactly one hunk changed
     cur.execute("SELECT pg_get_functiondef(%s::regprocedure)", (CAPTURE_FN,))
     old_def = cur.fetchone()[0]
@@ -426,6 +457,17 @@ def apply_plan(cur) -> dict:
     new_def = old_def.replace(HUNK_OLD_KEY, HUNK_NEW_KEY)
     assert new_def != old_def and new_def.count("fact_subject=") == 1
     cur.execute(new_def)
+    # 1. index: build the wider unique index first (SHARE), then drop the old and rename (ACCESS EXCLUSIVE from here)
+    cur.execute(f"CREATE UNIQUE INDEX {NEW_INDEX_TMP} ON public.{TABLE} ({', '.join(NEW_COLS)}) NULLS NOT DISTINCT")
+    if on_exclusive:
+        on_exclusive()
+    cur.execute(f"DROP INDEX public.{INDEX}")
+    cur.execute(f"ALTER INDEX public.{NEW_INDEX_TMP} RENAME TO {INDEX}")
+    # 2. capture trigger: same event/timing/function, seven natural-key arguments
+    cur.execute(f"DROP TRIGGER {TRIGGER} ON public.{TABLE}")
+    args = ", ".join("'%s'" % c for c in NEW_COLS)
+    cur.execute(f"CREATE TRIGGER {TRIGGER} AFTER INSERT OR UPDATE ON public.{TABLE} "
+                f"FOR EACH ROW EXECUTE FUNCTION {CAPTURE_FN.split('(')[0]}({args})")
     # 4. re-attest exactly the two rows whose digests moved (append-only trigger off, then on, same transaction)
     cur.execute(f"ALTER TABLE {TRG_ATT} DISABLE TRIGGER {TRG_ATT_IMMUTABLE}")
     cur.execute(
@@ -470,18 +512,34 @@ def probe_rows() -> list[dict]:
     return rows
 
 
-def identity_probe(cur) -> dict:
-    """Reproduce, on a session-local copy of the table, exactly what the live trigger + completion check do.
+def probe_prepare(cur) -> dict:
+    """BEFORE the exclusive lock (caller is the owner): session-local copy of the table with the PLANNED seven-column unique
+    index, and ONE batched INSERT ... ON CONFLICT of the 84 fixture rows. The expensive part of the probe happens here."""
+    for ident in NEW_COLS:
+        assert re.fullmatch(r"[a-z_]+", ident), ident
+    cur.execute(f"CREATE TEMP TABLE fa2_probe (LIKE public.{TABLE} INCLUDING DEFAULTS) ON COMMIT DROP")
+    cur.execute(f"CREATE UNIQUE INDEX fa2_probe_uq ON fa2_probe ({', '.join(NEW_COLS)}) NULLS NOT DISTINCT")
+    fixture = probe_rows()
+    cur.execute(
+        "INSERT INTO fa2_probe (chart_id, ayanamsha_id, build_id, graha, varga, fact_category, fact_key, fact_subject) "
+        "SELECT '00000000-0000-0000-0000-00000000fa20'::uuid, 'fa2_probe', 'fa2-probe', t.graha, t.varga, t.fact_category, "
+        "t.fact_key, t.fact_subject FROM unnest(%(graha)s::text[], %(varga)s::text[], %(cat)s::text[], %(key)s::text[], "
+        "%(subj)s::text[]) AS t(graha, varga, fact_category, fact_key, fact_subject) "
+        f"ON CONFLICT ({', '.join(NEW_COLS)}) DO NOTHING",
+        {"graha": [r["graha"] for r in fixture], "varga": [r["varga"] for r in fixture],
+         "cat": [r["fact_category"] for r in fixture], "key": [r["fact_key"] for r in fixture],
+         "subj": [r["fact_subject"] for r in fixture]})
+    return {"fixture_rows": len(fixture), "landed": cur.rowcount}
 
-    What fires: an INSERT ... ON CONFLICT (<the LIVE unique index's columns>) DO NOTHING of 84 fixture rows; the
-    capture identity of each stored row, built the way l1_data_plane_capture_row builds v_identity (the live trigger's
-    own arguments, `col=value` joined with '|', NULL as '<null>'); then the completion arithmetic: stored rows must equal
-    count(DISTINCT identity). What does NOT fire: the capture function itself and complete_l1_data_plane_partition.
-    The first line of the live capture function is `IF session_user <> 'data_plane_builder' THEN RAISE EXCEPTION`, and a
-    non-superuser administrator cannot SET SESSION AUTHORIZATION, so no administrator transaction can fire it; it also
-    needs an admitted generation (build_runs running + build_run_assets building + a partition context).
-    """
-    cur.execute(f"SET LOCAL ROLE {OWNER}")  # the administrator cannot read chart_divisionals (LIKE needs SELECT)
+
+def probe_verify(cur, prep: dict) -> dict:
+    """AFTER the DDL (caller is the owner): the LIVE index columns and the LIVE trigger arguments must be the seven
+    planned columns, and the capture identity (built the way l1_data_plane_capture_row builds v_identity from the live
+    trigger's own arguments) must give one distinct identity per stored fixture row; under the legacy six, 18.
+
+    What this does not fire: the capture function itself and complete_l1_data_plane_partition. The first statement of the
+    live capture function is `IF session_user <> 'data_plane_builder' THEN RAISE EXCEPTION`, and a non-superuser
+    administrator cannot SET SESSION AUTHORIZATION; it also needs an admitted generation."""
     cur.execute("SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname=%s", (INDEX,))
     live_cols = tuple(c.strip() for c in re.search(r"\(([^)]*)\)", cur.fetchone()[0]).group(1).split(","))
     cur.execute("SELECT pg_get_triggerdef(t.oid,true) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
@@ -490,29 +548,15 @@ def identity_probe(cur) -> dict:
                      re.search(r"l1_data_plane_capture_row\((.*)\)\s*$", cur.fetchone()[0]).group(1).split(","))
     for ident in live_cols + trg_args:
         assert re.fullmatch(r"[a-z_]+", ident), ident
-    cur.execute(f"CREATE TEMP TABLE fa2_probe (LIKE public.{TABLE} INCLUDING DEFAULTS) ON COMMIT DROP")
-    cur.execute(f"CREATE UNIQUE INDEX fa2_probe_uq ON fa2_probe ({', '.join(live_cols)}) NULLS NOT DISTINCT")
-    cols = ("chart_id", "ayanamsha_id", "build_id", "graha", "varga", "fact_category", "fact_key", "fact_subject")
-    sql = (f"INSERT INTO fa2_probe ({', '.join(cols)}) VALUES (%(chart_id)s::uuid, %(ayanamsha_id)s, %(build_id)s, "
-           f"%(graha)s, %(varga)s, %(fact_category)s, %(fact_key)s, %(fact_subject)s) "
-           f"ON CONFLICT ({', '.join(live_cols)}) DO NOTHING")
-    landed = 0
-    fixture = probe_rows()
-    for r in fixture:
-        r = dict(r, chart_id="00000000-0000-0000-0000-00000000fa20", ayanamsha_id="fa2_probe", build_id="fa2-probe")
-        cur.execute(sql, r)
-        landed += cur.rowcount
 
     def distinct_identities(args) -> int:
         parts = ", ".join(f"'{a}=' || COALESCE(to_jsonb(t)->>'{a}', '<null>')" for a in args)
         cur.execute(f"SELECT count(DISTINCT array_to_string(ARRAY[{parts}], '|')) FROM fa2_probe t")
         return cur.fetchone()[0]
 
-    result = {"fixture_rows": len(fixture), "landed": landed, "live_index_cols": live_cols,
-              "trigger_args": trg_args, "identities_live_args": distinct_identities(trg_args),
-              "identities_legacy_6_args": distinct_identities(OLD_COLS)}
-    cur.execute("RESET ROLE")
-    return result
+    return {**prep, "live_index_cols": live_cols, "trigger_args": trg_args,
+            "identities_live_args": distinct_identities(trg_args),
+            "identities_legacy_6_args": distinct_identities(OLD_COLS)}
 
 
 def render_diff(before: dict, after: dict, plan: dict) -> str:
@@ -589,7 +633,7 @@ def check_after(cur, before: dict, after: dict, plan: dict, probe: dict) -> list
 def run(conn, mode: str, out=print, writer_commit: str | None = None, gate_tables: list[str] | None = None,
         writer_runner=_run_cmd) -> bool:
     """Returns True only when the transaction may be committed (mode apply, all checks hold)."""
-    cur = conn.cursor()
+    cur = CountingCursor(conn.cursor())
     started = utcnow()
     out(f"start (UTC): {started}")
     cur.execute(f"SET LOCAL search_path = {SEARCH_PATH}")
@@ -616,13 +660,19 @@ def run(conn, mode: str, out=print, writer_commit: str | None = None, gate_table
     if mode == "count" or problems:
         out(f"end (UTC): {utcnow()}")
         return False
+    # everything that does not need the post-DDL state runs BEFORE the exclusive lock
     before = snap(cur)
     before["membership"] = membership_before
     cur.execute(f"SET LOCAL ROLE {OWNER}")
-    window_start = utcnow()
-    plan = apply_plan(cur)
+    prep = probe_prepare(cur)
+    mark: dict = {}
+
+    def on_exclusive() -> None:
+        mark["t"], mark["n"] = utcnow(), cur.n
+
+    plan = apply_plan(cur, on_exclusive)
+    probe = probe_verify(cur, prep)
     cur.execute("RESET ROLE")
-    probe = identity_probe(cur)
     after = snap(cur)
     after["membership"] = membership_before  # placeholder until the transient grants are revoked below
     bad = check_after(cur, before, after, plan, probe)  # needs the owner role, so it runs before the revoke
@@ -640,8 +690,9 @@ def run(conn, mode: str, out=print, writer_commit: str | None = None, gate_table
     if after["membership"] != membership_before:
         bad.append("role membership differs from the pre-state after the transient grants were revoked")
     window_end = utcnow()
+    held = cur.n - mark["n"]
     out(render_diff(before, after, plan))
-    out("== DEPLOY GATE, run as the gate does (its own queries, search_path = %s) ==" % GATE_SEARCH_PATH)
+    out("== DEPLOY GATE, run as the gate does (its own queries, as amjis_app, search_path = %s) ==" % GATE_SEARCH_PATH)
     for tag, g in (("before the plan", gate_before), ("after the plan ", gate_after)):
         out(f"  {tag}: trigger_shape_unsafe={g['trigger_shape_unsafe']} trigger_surface_unsafe={g['trigger_surface_unsafe']} "
             f"function_digests_unsafe={g['function_digests_unsafe']}")
@@ -652,13 +703,14 @@ def run(conn, mode: str, out=print, writer_commit: str | None = None, gate_table
     out("== IDENTITY PROBE (fixture rows through the widened key; session-local table, rolled back) ==")
     out(f"  live unique index columns : {probe['live_index_cols']}")
     out(f"  live trigger arguments    : {probe['trigger_args']}")
-    out(f"  fixture rows / landed     : {probe['fixture_rows']} / {probe['landed']}  (ON CONFLICT on the live index columns)")
+    out(f"  fixture rows / landed     : {probe['fixture_rows']} / {probe['landed']}  (one batched INSERT before the lock)")
     out(f"  distinct identities, live trigger args   : {probe['identities_live_args']}  "
         f"(completion check needs this == rows_inserted)")
     out(f"  distinct identities, legacy 6 args       : {probe['identities_legacy_6_args']}  "
         f"(what the unwidened trigger would capture: the abort the plan prevents)")
     out("commit conditions: " + ("ALL HOLD" if not bad else f"FAILED {bad}"))
-    out(f"index-swap-to-end window (UTC): {window_start} -> {window_end}")
+    out(f"ACCESS EXCLUSIVE window (UTC): {mark['t']} -> {window_end}; statements inside it: {held} "
+        f"(each is a proxy round trip; lock_timeout bounds only the wait, the lock is held until COMMIT/ROLLBACK)")
     out(f"end (UTC): {utcnow()}")
     return not bad and mode == "apply"
 
