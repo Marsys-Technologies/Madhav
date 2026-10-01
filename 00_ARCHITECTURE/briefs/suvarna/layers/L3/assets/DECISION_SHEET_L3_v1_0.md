@@ -6,7 +6,7 @@ status: "RULED (SS 2026-10-01); items marked (R) are provisional until the J1 in
 produced_by: exec-suvarna
 produced_on: 2026-10-01
 plan_item: A.L3 (decision sheet over the briefs; one pass for Strategic Suvarṇa)
-source_branch: "suvarna/land/A-L3-briefs-001 (PR #2835) at 0945da3f3; this sheet is on suvarna/land/A-L3-decisions-001"
+source_branch: "suvarna/land/A-L3-briefs-001 (PR #2835) at 0945da3f3 (facts read here); the SS rulings are recorded in the briefs and INDEX on suvarna/land/A-L3-briefs-001-rulings (3cecf38ab, a fast-forward of the briefs branch); this sheet (suvarna/land/A-L3-decisions-001) is rebased on that tip"
 source_files: "00_ARCHITECTURE/briefs/suvarna/layers/L3/assets/INDEX.md (section 9, Q-L3-01..17) and the 18 per-asset briefs in the same directory"
 scope: "docs only; no code, registry, migration or database write"
 provisional: "every ruling taken from this sheet is provisional until the J1 independent review"
