@@ -306,3 +306,41 @@ conjunction through the real CHECK chain, full-domain ordinal 29 for the
 2 updated PG tests fail against the pre-change sources (9 failed / 9
 passed). The shared a53 scratch DB's pre-3/N '5.0' rows were wiped (scratch
 only, deterministic identities re-minted).
+
+### Design v1.3 (2026-10-02, 3/N part 3 → v1.5 amendments AM-1/AM-2/AM-3 folded)
+
+The Codex-accepted v1.5 amendment draft (GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT v0.5,
+steward M20261001T201843-5359) supersedes the original pins 3–7. What landed against it,
+and what is waiting:
+
+- **Part 3 (prerequisite results).** period_running_at (P1) and p4_double_transit (P4) are
+  evaluated at materialisation through the 1155 `result_only` path. Two defects only the REAL
+  COMMIT-time F5 finalisation could see were fixed: a result write must re-derive the record's
+  `admission_state` (any false ⇒ not_admitted; else any unknown/unevaluated ⇒ unqualified; else
+  admitted), and P4 records carry `path_id 'P4'` with P4's own provenance/ruling (shared
+  geometry, once-per-path interpretation, §2.1). The §4.0 daśā pin is ONE implementation
+  (`services/gochara_kernel/dasha_read.py`, step06a delegates; AM-10 re-pin rules apply to it).
+- **AM-1.** The convention grid is `nakshatra:13d20m` (never the decimal 13.20); `convention_id`
+  is the draft's `sha256:eac922d4…e7a3`, pinned by test. Caveat for the amendment: the legacy
+  kala convention vector carries no grid/domain, so a future sky-convention correction cannot
+  mint a distinct legacy row as AM-1's bridge-evolution sentence says (the 1:1 bridge refuses a
+  second mapping).
+- **AM-2.** `services/gochara_kernel/targets.py`: span targets are the absolute sign numeral
+  (`span:7` = Libra), validated at `PhysicalObjectId` construction (rejects `span:libra`,
+  `span:13`, `span:07`, `sign:7`, exponent points); one full-precision no-exponent point
+  formatter (quantization stays F-3). The five pinned UUIDv8 vectors reproduce.
+- **AM-3.** Candidate chart × generation rows are REPLACED in FK dependency order (window
+  membership → windows → records → only-orphaned contacts → class coverage); a contact another
+  path still references survives; a sealed generation is refused up front. Global tables stay
+  insert-if-absent. (A rebuild with a new build id used to die on the coverage byte-check.)
+- **Waiting on Stream B's AM-5 storage migration:** search-input snapshot, inventory, path pins
+  with committed obligation sets, obligations, interval ledger, independent verifier. Until the
+  table shapes land the writer keeps only the guard-facing event_class partition.
+- **Open question (to the steward): which prerequisites are evaluated at materialisation.** Only
+  period_running_at and p4_double_transit are. P1/P2/P3 records therefore stay `unqualified`
+  (their other declared prerequisites are NULL) and only P4 can reach `admitted`, so a window
+  sweep today yields admitted windows from P4 alone. `transit_relation` and
+  `p3_contact_house_or_lord` are `declaration_exists` over the stored contacts and `house_from_moon`
+  is `house_from` — each can be evaluated by READ-BACK against the stored rows (not by the minting
+  loop); `natal_bhava_relationship` needs the chart's natal relation of the class period lord.
+
