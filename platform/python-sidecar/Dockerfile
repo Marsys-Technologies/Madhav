@@ -28,6 +28,9 @@ RUN set -e; \
     download_and_verify "$GCS_BASE/seleapsec.txt" /app/ephe/seleapsec.txt   1024; \
     echo "All ephemeris files downloaded and size-verified."
 ENV SWE_EPHE_PATH=/app/ephe
+# SE_EPHE_PATH is the variable the Swiss C library itself reads (SWE_EPHE_PATH is
+# read only by project code). Both are kept; see panchang_engine/swiss_backend.py.
+ENV SE_EPHE_PATH=/app/ephe
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 

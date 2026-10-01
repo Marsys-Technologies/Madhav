@@ -11,14 +11,36 @@ import touches Qt.
 """
 from __future__ import annotations
 
+import logging
 import os
+
+from panchang_engine.swiss_backend import SE_EPHE_PATH_ENV, ensure_swiss_backend
+from panchang_engine.swiss_state import SWISS_STATE_LOCK
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-# Direct-submodule imports — these do NOT import PyQt6.
-from jhora.panchanga import drik  # noqa: E402
-from jhora import utils, const  # noqa: E402
-from jhora.horoscope.chart import charts  # noqa: E402
+# Importing jhora.const executes swe.set_ephe_path(<wheel>/data/ephe) (const.py
+# :262) -- a directory with NO planetary .se1 files, i.e. a silent switch to the
+# Moshier fallback for every later calc in the process.  Hold the Swiss-state
+# lock across the import and re-assert the configured .se1 path (probed,
+# fail-closed) before releasing it, so no other serialized caller can observe the
+# wheel directory.  If SE_EPHE_PATH is not configured there is nothing to
+# re-assert: stay importable (pure-function users, CI without the corpus) but say
+# so loudly; every writer still fails closed on its own ensure_swiss_backend().
+with SWISS_STATE_LOCK:
+    # Direct-submodule imports — these do NOT import PyQt6.
+    from jhora.panchanga import drik  # noqa: E402
+    from jhora import utils, const  # noqa: E402
+    from jhora.horoscope.chart import charts  # noqa: E402
+
+    if os.environ.get(SE_EPHE_PATH_ENV, "").strip():
+        ensure_swiss_backend()
+    else:
+        logging.getLogger(__name__).warning(
+            "%s is not set: PyJHora left swisseph pointed at its .se1-free wheel "
+            "directory (Moshier fallback); writers will refuse to run until it is set",
+            SE_EPHE_PATH_ENV,
+        )
 
 # Pin Rahu/Ketu to the MEAN node (swe.MEAN_NODE) for ALL ayanamshas.
 # Two reasons:

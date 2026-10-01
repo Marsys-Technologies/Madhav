@@ -12,6 +12,7 @@ significator emitter READS it (§N.5) and never re-derives the geometry.
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 import hashlib
 import time
 import json
@@ -392,6 +393,7 @@ def _run_ayanamsha_pass(
 
 @register('ga_nakshatra')
 @l1_producer_contract
+@records_swiss_backend
 class NakshatraWriter(WriterBase):
     asset_id = 'ga_nakshatra'
     has_substeps = True

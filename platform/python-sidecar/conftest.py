@@ -34,6 +34,37 @@ import os
 import pytest
 
 
+def _configure_swiss_corpus_for_tests() -> None:
+    """Point SE_EPHE_PATH at a local Swiss .se1 corpus when one exists.
+
+    The sidecar's ephemeris helper (panchang_engine/swiss_backend.py) fails
+    closed without SE_EPHE_PATH -- there is no silent Moshier fallback.  CI
+    exports it explicitly; for a local run this mirrors the production
+    resolution order of brahmagyan.l0_ephemeris._resolve_ephe_path
+    (SWE_EPHE_PATH, /app/ephe, /tmp/se1) and the explicit override
+    MARSYS_TEST_SE1_DIR.  With no corpus the variable stays unset and the tests
+    that need an ephemeris fail with the helper's explicit error.  Runs at
+    conftest import, i.e. before any test module (and PyJHora) is imported.
+    """
+    if os.environ.get("SE_EPHE_PATH", "").strip():
+        return
+    for candidate in (
+        os.environ.get("MARSYS_TEST_SE1_DIR"),
+        os.environ.get("SWE_EPHE_PATH"),
+        "/app/ephe",
+        "/tmp/se1",
+    ):
+        if candidate and all(
+            os.path.isfile(os.path.join(candidate, name))
+            for name in ("sepl_18.se1", "semo_18.se1")
+        ):
+            os.environ["SE_EPHE_PATH"] = candidate
+            return
+
+
+_configure_swiss_corpus_for_tests()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _isolate_conductor_halt_log(tmp_path_factory: pytest.TempPathFactory):
     """Redirect every ga_writers `_write_halt_log()` call to a tmp dir.

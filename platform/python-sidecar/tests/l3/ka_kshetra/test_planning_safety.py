@@ -363,7 +363,12 @@ def test_actually_empty_discovery_noops_prepare_without_dml() -> None:
     result = writer.run_substep(ctx, steps[0])
 
     assert result.rows_inserted == 0
-    assert result.notes == 'honest_empty:no_event_classes; replacement not required'
+    # The writer's own note, then the uniform backend record appended by
+    # @records_swiss_backend (TI-ephemeris-fix-001).
+    assert result.notes == (
+        'honest_empty:no_event_classes; replacement not required; '
+        'ephemeris_backend=swieph'
+    )
     assert conn.tables == prior_slice
     assert _mutating_statements(conn) == []
     assert conn.deletes == []

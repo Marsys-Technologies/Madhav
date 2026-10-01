@@ -13,6 +13,7 @@ import logging
 import os
 from typing import Any
 
+from panchang_engine.swiss_backend import ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state
 
 from fastapi import APIRouter, HTTPException
@@ -63,19 +64,15 @@ async def compute_natal(birth_data: BirthData) -> dict[str, Any]:
     Returns graha_sthana, bhava_lagna, special_lagnas, vimshottari_dasha.
     This is the BRAHMA L1 Gaṇita endpoint — pure PyJHora computation.
 
-    Ephemeris: reads from SWE_EPHE_PATH env var (default /app/ephe).
+    Ephemeris: Swiss .se1 files at SE_EPHE_PATH, verified fail-closed (500 if
+    the file backend is not serving; never a silent Moshier fallback).
     """
-    # Configure ephemeris path before any PyJHora import
-    ephe_path = os.environ.get("SWE_EPHE_PATH", "/app/ephe")
-    try:
-        import swisseph as swe
-        swe.set_ephe_path(ephe_path)
-    except Exception as exc:
-        logger.warning("[pyhora] Failed to set ephe path %s: %s", ephe_path, exc)
-
     try:
         from pyjhora_adapter.compute import compute_chart
         from pyjhora_adapter.version import ENGINE_VERSION
+
+        # After the PyJHora import (which resets the swisseph path).
+        ensure_swiss_backend()
 
         inputs = {
             "datetime_iso": birth_data.datetime_iso,
@@ -134,16 +131,13 @@ async def smoke_test() -> dict[str, Any]:
 
     Returns pass/fail with actual vs expected values.
     """
-    ephe_path = os.environ.get("SWE_EPHE_PATH", "/app/ephe")
-    try:
-        import swisseph as swe
-        swe.set_ephe_path(ephe_path)
-    except Exception as exc:
-        logger.warning("[pyhora/smoke] ephe path set failed: %s", exc)
-
+    ephe_path = os.environ.get("SE_EPHE_PATH", "")
     try:
         from pyjhora_adapter.compute import compute_chart
         from pyjhora_adapter.version import ENGINE_VERSION
+
+        # After the PyJHora import (which resets the swisseph path).
+        ensure_swiss_backend()
 
         inputs = {
             "datetime_iso": "1984-02-05T10:43:00",

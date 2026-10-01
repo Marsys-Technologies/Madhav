@@ -7,12 +7,14 @@ via ayanamsha_subset). The orchestrator drives each ayanamsha as its own SAVEPOI
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_vargas')
 @l1_producer_contract
+@records_swiss_backend
 class GaVargasWriter(WriterBase):
     asset_id = 'ga_vargas'
     has_substeps = True

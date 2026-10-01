@@ -19,6 +19,7 @@ from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
 from .swiss_state import SWISS_STATE_LOCK, serialized_swiss_state, swiss_state_scope
+from .swiss_backend import SwissBackendError, backend_name, ensure_swiss_backend
 
 
 @serialized_swiss_state
@@ -66,9 +67,10 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     if not (-180 <= lon <= 180):
         raise ValidationError(f"lon out of range: {lon}")
 
-    # Select the built-in/default ephemeris path and Lahiri under one critical
-    # section so a prior request's path cannot leak into this computation.
-    swe.set_ephe_path(None)
+    # Pin the Swiss .se1 backend (fail-closed, probed) and Lahiri under one
+    # critical section so a prior request's path cannot leak into this
+    # computation and Moshier can never substitute silently.
+    ensure_swiss_backend()
     set_ayanamsha("lahiri")
 
     # Sunrise / sunset
@@ -146,7 +148,6 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     ]
 
     # ephemeris version
-    swe.set_ephe_path(None)
     ephe_ver = swe.version
 
     return Panchang(
@@ -247,9 +248,10 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
     if not (-180 <= lon <= 180):
         raise ValidationError(f"lon out of range: {lon}")
 
-    # Select the built-in/default ephemeris path and Lahiri under one critical
-    # section so a prior request's path cannot leak into this computation.
-    swe.set_ephe_path(None)
+    # Pin the Swiss .se1 backend (fail-closed, probed) and Lahiri under one
+    # critical section so a prior request's path cannot leak into this
+    # computation and Moshier can never substitute silently.
+    ensure_swiss_backend()
     set_ayanamsha("lahiri")
 
     # Convert local instant to UTC
@@ -344,7 +346,6 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
         "tithi_attrs", "nakshatra_attrs",
     ]
 
-    swe.set_ephe_path(None)
     ephe_ver = swe.version
 
     return PanchangaInstant(

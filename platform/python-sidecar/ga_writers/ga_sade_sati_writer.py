@@ -55,6 +55,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from panchang_engine.swiss_backend import ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
 
 from brahmagyan.graha_vocabulary import norm_graha
@@ -363,7 +364,7 @@ def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) ->
         )
 
     # Lahiri ayanamsha as transit reference engine (GA9 brief §rails)
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
+    ensure_swiss_backend()
     swe.set_sid_mode(swe.SIDM_LAHIRI)
 
     jd_start = swe.julday(
@@ -436,7 +437,7 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
     except ImportError:
         return []  # Non-fatal; retrograde subset rows will be empty
 
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
+    ensure_swiss_backend()
 
     jd_start = swe.julday(
         window_start.year, window_start.month, window_start.day, 0.0
@@ -1592,7 +1593,7 @@ def _lookup_tara_bala_for_saturn_at(
         return None
 
     with swiss_state_scope():
-        swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
+        ensure_swiss_backend()
         swe.set_sid_mode(swe.SIDM_LAHIRI)
         jd = swe.julday(at_dt.year, at_dt.month, at_dt.day,
                         at_dt.hour + at_dt.minute / 60.0 + at_dt.second / 3600.0)
