@@ -64,7 +64,7 @@ const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: s
   panchang: MoonCrescentIcon,
   cockpit: Gauge,
   'ai-console': SlidersHorizontal,
-  'usage': SlidersHorizontal,
+  observatory: ChartColumn,
   audit: FileSearch,
   performance: ChartColumn,
   admin: Settings2,
