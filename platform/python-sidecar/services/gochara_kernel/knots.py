@@ -26,13 +26,13 @@ The Moon's flag is NOT proof (SS N-28, measured on pyswisseph 2.10.3.2): with th
 Moon file `semo_*.se1` missing, `calc_ut(MOON)` silently computes the Moshier Moon
 but STILL returns the SWIEPH flag. TRUE_NODE is computed from the Moon file and its
 flag does not lie, so every Moon calc is gated by a file-level TRUE_NODE probe at
-the same instant (see `_assert_moon_file_backend`). The other bodies' flags are
+the same instant (see `_assert_moon_file_backend`) — uncached, so each call proves its own
+instant. The other bodies' flags are
 honest (planets come from `sepl_*.se1`; the mean node is analytic and is never
 read for the backend).
 """
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
@@ -117,39 +117,14 @@ def _check_retflag(body: str, retflag: int) -> str:
 
 
 # ── Moon file-level backend probe (SS N-28) ─────────────────────────────────
-# Swiss ephemeris files cover 600-year blocks (semo_18.se1 = 1800–2399): the
-# probe is taken AT the call's own instant, so the block that will actually
-# serve the Moon is the block that is proven, and a success is cached per
-# (path, directory state, block). Only successes are cached; a failure raises
-# every time. An unstat-able path (ambient/None) is never cached — it probes
-# every call, which is slow but cannot be fooled by state that changed under it.
-_MOON_FILE_BLOCK_YEARS = 600.0
-_MOON_FILE_BLOCK_ORIGIN_YEAR = 1800.0
-_J2000_JD = 2451545.0
-_MOON_FILE_PROBE_OK: set[tuple] = set()
-
-
-def _moon_file_block(jd_ut: float) -> int:
-    year = 2000.0 + (jd_ut - _J2000_JD) / 365.2425
-    return int((year - _MOON_FILE_BLOCK_ORIGIN_YEAR) // _MOON_FILE_BLOCK_YEARS)
-
-
-def _ephe_dirs_stamp(ephe_path: str | None) -> tuple | None:
-    """Identity of every directory the C library may read the Moon file from:
-    the explicit path (colon-separated list allowed) plus $SE_EPHE_PATH, which
-    the library also honours. None when any of them cannot be stat'ed."""
-    parts = [p for p in (ephe_path or "").split(os.pathsep) if p]
-    parts += [p for p in os.environ.get("SE_EPHE_PATH", "").split(os.pathsep) if p]
-    if not parts:
-        return None
-    stamp = []
-    try:
-        for part in parts:
-            st = os.stat(part)
-            stamp.append((part, st.st_ino, st.st_mtime_ns))
-    except OSError:
-        return None
-    return tuple(stamp)
+# NO CACHE (ASTRA A2.5 v1.2 R3). A success cache keyed on a calendar-year block and a
+# directory stamp cannot be made sound: Swiss file coverage is not the calendar block
+# (semo_18.se1 ends in January 2400, measured), and directory metadata is not file identity
+# (contents or a symlink target can change under an unchanged stamp). The probe is a single
+# TRUE_NODE calc at the call's own instant — the file that serves the Moon at that jd is the
+# file proven — so it runs on EVERY Moon calc. Cost, measured on the real checksum-pinned
+# files over the 4.1 scored horizon (10,334 daily Moon knots): sample_knots 1.07 s → 1.27 s
+# (+0.20 s, ≈19 %); 6.3 µs per probe vs 2.8 µs per Moon calc. Cheap and trivially correct.
 
 
 @serialized_swiss_state
@@ -159,13 +134,9 @@ def _assert_moon_file_backend(jd_ut: float, ephe_path: str | None) -> None:
     A serialized Swiss-state owner in its own right (re-entrant: its only caller,
     calc_sidereal_lon, already holds SWISS_STATE_LOCK with the ephemeris path
     set — the DP-SD-010 inventory requires every direct calc_ut to be owned).
-    TRUE_NODE
-    at the same instant needs the same `semo_*.se1`, and — unlike the Moon's —
-    its returned flag reports the substitution (SS N-28 measurement)."""
-    stamp = _ephe_dirs_stamp(ephe_path)
-    key = (stamp, _moon_file_block(jd_ut)) if stamp is not None else None
-    if key is not None and key in _MOON_FILE_PROBE_OK:
-        return
+    TRUE_NODE at the same instant needs the same `semo_*.se1`, and — unlike the
+    Moon's — its returned flag reports the substitution (SS N-28 measurement).
+    Nothing is remembered between calls: every call proves its own instant."""
     _xx, retflag = swe.calc_ut(jd_ut, swe.TRUE_NODE, swe.FLG_SWIEPH | swe.FLG_SPEED)
     if (retflag & 4) or not (retflag & 2):
         raise EphemerisBackendError(
@@ -176,8 +147,6 @@ def _assert_moon_file_backend(jd_ut: float, ephe_path: str | None) -> None:
                 f"backend (SS N-28)."
             ),
         )
-    if key is not None:
-        _MOON_FILE_PROBE_OK.add(key)
 
 
 @serialized_swiss_state
