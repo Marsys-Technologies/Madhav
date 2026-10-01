@@ -790,15 +790,44 @@ particular none of protected data).
 **Recommended method: (A), staged, by the native (or an owner/super_admin SS designates), after the P0 gate.** Each stage is its own run, so the
 unique-index guard serialises them and the planner's preflight becomes the gate between stages.
 
-| Run | Request body (`POST /api/cockpit/runs`, `scope:"asset_set"`, `action:"rebuild"`, `chart_id:"482012f1-710e-4a25-994a-93821f5871aa"`) `scope_target` | Gate before next run |
-|---|---|---|
-| S0 smoke | `ka_tithi_pravesha` | P0.4 criteria 1-6 |
-| S1 | `bg_transit_rules,ka_muhurta_seva,bo_karanajala` (`super_admin` required: two global assets) | all three `complete`; `bo_karanajala.output_changed` FALSE (else add the contingency set); F1 |
-| S2 | `bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya` | all `complete`; 1211-verify Q4 for `bo_pratijna` |
-| S3 | `ka_gochara,ka_yojaka,ka_sangam` (+ `ka_avadhi` only after the I-1 fix is merged and deployed) | `ka_yojaka` lit/fresh/proven; `ka_sangam` freshness recorded (B-2: needs `fresh`, else S4+ cannot pass) |
-| S4 | `ka_kalasutra,ka_vighnakara,ka_kala_darshana,ka_bhavishya_lekha` | needs Q1 and Q2 resolved (B-1, B-2) and the I-2 fix deployed |
-| S5 | `ph_nimitta,ph_muhurta,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana,ph_pramana,ph_phaladesa` | needs the phala_ grants (P0.2) and B-1/B-2 resolved; `phala_anchors` about 139 |
-| S6 | `mi_bhavisya` | `mimamsa_*` grants; orphan check = 0; 1211-verify Q4 for all four producers, then 1211 may be proposed |
+| Run | Request body (`POST /api/cockpit/runs`, `scope:"asset_set"`, `action:"rebuild"`, `chart_id:"482012f1-710e-4a25-994a-93821f5871aa"`) `scope_target` | Gate BEFORE the run (v1.1) | Gate before next run |
+|---|---|---|---|
+| S0 smoke | `ka_tithi_pravesha` | P0 (audit grant) | P0.4 criteria 1-6 |
+| S0v (conditional) | `ga_vargas` | P0b holds AND the owner-path count shows the table deleted/partial (P0b.4 branch b); otherwise this stage does not exist. A separate REVIEW (61-asset downstream closure). | owner-path count after equals writer rows written; section 1.5 binds the downstream |
+| S0m (conditional) | the MSR producers that must run, in one run | P0b (for `bo_laksana`); order guard on the concatenated waves passes; 1214 + L2 drop NOT yet deployed means cascade risk (section 1.5) | order guard `--post-wave` and detector pass; every producer `complete` |
+| S1 | `bg_transit_rules,ka_muhurta_seva,ka_dasha_kala,bo_karanajala` (`super_admin` required: two global assets) | P0; **1213 deployed and verified**; **`selftest_detail` grant** (P0c.2) | all four `complete`; `bo_karanajala.output_changed` FALSE (else add the contingency set); both services' latest receipt `proven` with `output_digest`; F1 |
+| S2 | `bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya` | **P0b holds** (`bo_pratijna` reads `chart_divisionals`) | all `complete`; 1211-verify Q4 for `bo_pratijna`; `bodha_pratijna` row count 135-ish, not 0 |
+| S3 | `ka_gochara,ka_yojaka,ka_sangam` (+ `ka_avadhi` only after **1215** and the I-1 fix (#2823) are deployed) | S1 receipts as above (else `ka_sangam` cannot be proven); 1215 for `ka_avadhi` | `ka_yojaka` lit/fresh/proven; `ka_sangam` lit AND freshness `fresh` (B-2 fixed by 1213 + S1; else S4+ cannot pass) |
+| S4 | `ka_kalasutra,ka_vighnakara,ka_kala_darshana,ka_bhavishya_lekha` | **1212 deployed and verified**; I-2 fix (#2823) deployed; **`phala_anchors` SELECT** before this run; `bg_combustion_orbs` SELECT for a non-fallback `ka_vighnakara` | all four `complete`; `ka_vighnakara` receipt `proven` |
+| S5 | `ph_nimitta,ph_muhurta,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana,ph_pramana,ph_phaladesa` | the full phala grant set (P0c.2) and B-1/B-2 resolved | `phala_anchors` about 139 |
+| S6 | `mi_bhavisya` | `mimamsa_*` grants + N-46 guard; orphan check = 0 | 1211-verify Q4 for all four producers, then 1211 may be proposed |
+| S7 | `ka_kshetra` (own stage, section 8.2) | section 8.2 pre-check; #2830 merged and deployed; the held `phala_rectification` ruling; `bo_pratijna`, `bo_upaya`, `ka_dasha_kala` rebuilt (S1-S2) | section 8.2 stop rule |
+
+Post-run for every stage that contains a bound asset (section 1.5): `msr_rebuild_order_guard.py --post-wave --chart-id <C>` and `msr_dangling_signal_refs.py --chart-id <C> --require-nonvacuous`.
+
+### 8.2 Stage S7: `ka_kshetra` (own stage, pre-check, stop rule, single redispatch) (v1.1)
+
+**Why separate.** `ka_kshetra` (per-chart, `kala_field`, `writer_timeout_seconds` 86400) is a heavy, ledgered writer; nothing in the launch set depends on it (its only dependents are `mi_bhara`
+and `mi_sankalpa`, outside the plan), so it runs LAST and its failure cannot strand any 1211 producer. It is not part of the 27-asset launch set. It currently reads `error` (a cascade victim, section 1.4).
+
+**What happened on 2026-09-11 (read live, Evidence E8).** For this chart, `build_run_assets` holds 115 rows for `ka_kshetra` between 2026-08-05 and 2026-09-11 (86 error, 10 aborted, 11 complete, 8 queued). The last run (`6e47cae4`, 01:48 to 03:50Z) ended `worker_crash: OperationalError: the connection is lost`; the
+seven runs before it were kill-and-redispatch cycles for log stalls (one `last_error` reads "29th application" of the recipe). The writer's resume ledger (`build_substep_progress`) holds 279 completed substeps for the chart, the newest `stage5dhara:major_loss:1` at 03:22Z, so
+the loss fell inside the next, long per-class windows substep. The instance itself was not restarted that day: `pg_postmaster_start_time()` reads 2026-08-17 17:51Z (the failure was a connection, not a database restart; the exact cause, a connector/proxy reset, is the coordinator's reading and is not recorded in `build_runs`).
+
+**What PR #2830 does and does not do.** It splits each event class's dhara windows substep (`stage5dhara:{ec}:2`) into 20 time-part substeps (`stage5dhara:{ec}:2:{p}`, `WINDOW_PARTS = 20`), each owning one half-open `t_start` slice, written by natural-key upsert with no
+per-part delete, and keeps a resume ledger so that a redispatch loses at most ONE part; a legacy receipt `stage5dhara:{ec}:2` counts as "all parts of that class done" and `_RESUME_VERSION` is not bumped, so an in-flight ledger stays valid. It **would NOT have prevented the reset**; it only bounds what a reset costs. It changes the writer file, so the digest inventory (`nirmana-writer-digests.json`) moves and the job image must carry it (section 5 row 7). Whether the existing 279-substep ledger's `build_fingerprint` still matches after the change was not verified.
+
+**Pre-check (all read-only, immediately before dispatch; the instance/connector part is an executor act the reader cannot do).**
+1. #2830 merged AND deployed; image tag contains it; the cockpit's `job_image_tag` shown; the fixed writer's digest equals the manifest's.
+2. No `planned/running/paused` run on ANY chart (the unique index only guards per chart; a competing job loads the same instance).
+3. Instance and connector health, by the executor, from the platform side: the Cloud SQL instance `RUNNABLE`, no maintenance window or failover scheduled inside the next 6 hours, no connector/proxy restart or deploy of the job image in progress, and connection headroom against `max_connections` (read 50 at 16:21Z as the reader; the reader cannot see other roles' sessions, so headroom must be read as an admin). If the Cloud Run job is launched through a proxy session, that proxy is freshly started for this run.
+4. Ledger state recorded: count and newest `completed_at` of `build_substep_progress` for (`ka_kshetra`, chart), and the decision resume-vs-replan written down (a resume is only valid if the stored `build_fingerprint` matches; unverified).
+5. Dependencies lit and fresh: `ka_dasha_kala`, `ka_gochara_resonance`, `ga_panchanga`, `bo_pratijna`, `bo_sangati`, `bo_upaya`, `bg_cohort`, `bg_class_lifetime_counts`, `ka_vedha_gochara`. `bg_transit_rules` re-stamp or a changed `bo_karanajala` can stale `ka_gochara_resonance`, `ka_vedha_gochara`, `bo_sangati` (section 1.4): re-read after S3.
+6. `phala_rectification` SELECT resolved (held by migration 1073, grant plan section 3.2): without it the writer's uncertainty stage cannot read it; behavior on denial is not verified, so this is a go/no-go item.
+
+**Stop rule.** Evaluate at fixed intervals while the run is `running`. STOP (request the run's stop; the orchestrator honours stop between substeps, not mid-substep) and report to SS if ANY holds: (a) no new row in `build_substep_progress` for 15 minutes while the run is `running` (an in-flight part should finish in far less; the 2026-09-11 recipe used a 240 s log-silence bar); (b) the run ends `failed` or `error`; (c) a part's rows or the stage-5 class completeness check (`_verify_class_windows_complete`, run by the last part of each class) fails; (d) the instance/connector pre-check regresses mid-run. **No kill-and-redispatch on a stall**: the 09-11 pattern of 29 cycles is exactly what this rule forbids.
+
+**Single-redispatch rule.** At most ONE redispatch of `ka_kshetra` per stage, and only when the failure is a connection loss (the run's error is `OperationalError` / "connection is lost" / `orphaned_by_crash` after such a loss) AND the pre-check items 2, 3 and 5 are re-passed AND the ledger shows progress. The redispatch resumes from the ledger and so loses at most one part (#2830). A second failure of any kind, or a first failure of any other kind (integrity check, `UpstreamStageIncomplete`, timeout, grant error), ends the stage: no third attempt, no re-plan, the state is handed to SS with the ledger count, `build_run_assets.error` and the audit rows.
 
 Clicks (if the cockpit UI is used instead of a raw call): Nirmāṇa cockpit page for the chart -> select the asset list of the stage -> action
 "Rebuild" -> confirm the plan preview (it shows `plan`, `asset_count`, `job_image_tag`) -> submit; do not tick "clear before build". The response
