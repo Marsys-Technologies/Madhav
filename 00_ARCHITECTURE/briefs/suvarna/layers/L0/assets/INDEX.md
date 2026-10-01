@@ -306,7 +306,7 @@ Id, asset(s), fix, class, rebuild needed, source decision. Class set: registry /
 | TI-L0-02 | inspector (all layers) | Build.completion rule: `rows_written = 0` is PASS only if the convention is declared AND count_integrity PASSes on populated rows | detector | n | Q1 (R) |
 | TI-L0-03 | every L0 asset that reaches a served surface (offline Dens list, INDEX section 9) | `uniform_authority: true` declaration for uniform-authority vocabularies; decide table by table which are mixed-authority and need a real tier | declaration | n | Q2 (R) |
 | TI-L0-04 | inspector | Dens: PASS on `density_contract` facets without a tier column when `uniform_authority: true` | detector | n | Q2 (R) |
-| TI-L0-05 | the 23 saved-FAIL Dens assets | `density_contract` facets on the L0 capability modules that paginate or facet | writer code (served TS) | n | Q2 |
+| TI-L0-05 | the 23 offline FAIL or PARTIAL Dens assets (INDEX section 9.1) | `density_contract` facets on the L0 capability modules that paginate or facet | writer code (served TS) | n | Q2 |
 | TI-L0-06 | 35 assets with `prose_fields: null` | prose_fields declarations with writer `file:line` evidence (CF-06) | declaration | n | CF-06 |
 | TI-L0-07 | bg_parihara_rules, bg_nakshatra_medical, bg_transit_engine | one surgical registry migration: parihara floor 449→440, `has_writer` true for the two riders (R61 cascade may stand) | registry | n | Q6 |
 | TI-L0-08 | bg_sign_medical, bg_nakshatra_medical, bg_transit_engine | declare the rider relation (`producer_covered`) in the registry so a sibling’s dispatch counts | registry | n | Q6 |
