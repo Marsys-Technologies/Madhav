@@ -30,11 +30,12 @@ export interface NavItemDescriptor {
   /** Admin surface? Helps tests assert "guest does not see admin." */
   admin?: boolean
   /** Optional public client-side feature visibility gate. */
-  feature?: 'aiConsoleByok'
+  feature?: 'aiConsoleByok' | 'aiMetering'
 }
 
 export interface NavVisibility {
   aiConsoleByok?: boolean
+  aiMetering?: boolean
 }
 
 export interface InformationNavItemDescriptor {
@@ -52,6 +53,7 @@ export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   // Super Admin reaches AI Console through Cockpit's section menu. Guests keep
   // this direct entry because Cockpit itself is an admin-only surface.
   { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['guest'], feature: 'aiConsoleByok' },
+  { key: 'usage', href: '/usage', label: 'My AI usage', roles: ['super_admin','guest'], feature: 'aiMetering' },
   { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
   { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },
@@ -78,6 +80,7 @@ export function visibleNavItems(
   const normalized: NavRole = role === 'super_admin' ? 'super_admin' : 'guest'
   return NAV_ITEMS.filter((item) => {
     if (!(item.roles as readonly string[]).includes(normalized)) return false
+    if (item.feature === 'aiMetering') return visibility.aiMetering === true
     if (item.feature === 'aiConsoleByok') return visibility.aiConsoleByok === true
     return true
   })

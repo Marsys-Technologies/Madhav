@@ -1,3 +1,4 @@
+import { meterSharedModel } from '@/lib/metering/context';
 /**
  * google/adapter.ts — Google (Gemini) CapabilityAdapter (R11.C real SDK wiring).
  *
@@ -134,7 +135,7 @@ export class GoogleAdapter implements CapabilityAdapter {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const streamParams: any = {
-        model: googleProvider(request.model),
+        model: meterSharedModel(googleProvider(request.model), 'google', request.model, 'capability_chat'),
         messages: conversationMessages as Parameters<typeof streamText>[0]['messages'],
         maxOutputTokens: request.maxTokens ?? 8192,
       };

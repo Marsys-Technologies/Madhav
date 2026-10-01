@@ -1,3 +1,4 @@
+import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 import {
   stepCountIs,
   convertToModelMessages,
@@ -264,6 +265,10 @@ async function resolveAttachments(
 }
 
 export async function POST(request: Request) {
+  return meteringRequest(() => executeMeteredRequest(request))
+}
+
+async function executeMeteredRequest(request: Request) {
   // One server-owned date anchor for the whole request. Planner text and model
   // arguments can never supply or move this value.
   const requestContextDate = new Date().toISOString().slice(0, 10)
@@ -443,6 +448,7 @@ export async function POST(request: Request) {
   }
 
   const finalConversationId = conversationId
+  setMeteringAttribution({ userId:user.uid,conversationId:finalConversationId,turnId:crypto.randomUUID(),channel:'web',purpose:'customer',payer:'platform' })
 
   let byokRuntime: ByokTurnRuntime | undefined
   const byokCorrelationId = byokEnabled ? crypto.randomUUID() : undefined

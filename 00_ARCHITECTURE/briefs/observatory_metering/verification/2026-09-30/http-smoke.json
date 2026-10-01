@@ -1,0 +1,16 @@
+{
+  "expected": {
+    "/api/usage": 401,
+    "/api/admin/observatory/metering": 401,
+    "/api/admin/observatory/metering/manage": 401,
+    "/usage": 307,
+    "/observatory/metering": 307
+  },
+  "actual": {
+    "/api/usage": 401,
+    "/api/admin/observatory/metering": 401,
+    "/api/admin/observatory/metering/manage": 401,
+    "/usage": 307,
+    "/observatory/metering": 307
+  }
+}
