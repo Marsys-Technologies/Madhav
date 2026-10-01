@@ -31,7 +31,7 @@ CHECKS = ("Carr.D1", "Carr.D2", "Carr.D3")
 PTR = "writer ga_x.py:12 writes nothing any asset or surface reads"
 
 
-def facts(tbc=PTR, served="absent", direct=0, transitive=0, measured_served=None, radius="ok"):
+def facts(tbc=PTR, served="absent", direct=0, transitive=0, measured_served=ac.NA, radius="ok"):
     f = {}
     if tbc is not None:
         f["declared_terminal_by_construction"] = tbc
@@ -41,7 +41,7 @@ def facts(tbc=PTR, served="absent", direct=0, transitive=0, measured_served=None
         f["blocking_radius"] = dict(direct=direct, transitive=transitive, severity_weight=1 + transitive)
     elif radius != "missing":
         f["blocking_radius"] = radius
-    if measured_served is not None:
+    if measured_served != "missing":
         f["measured_served"] = measured_served
     return f
 
@@ -99,12 +99,44 @@ def test_an_unmeasured_or_malformed_radius_is_no_detector_never_na(radius):
     assert "unmeasured" in r["measured"] and "read as no-carriage" in r["measured"]
 
 
-@pytest.mark.parametrize("tbc", [None, "", "   ", "\n\t", 0, 1, True, False, ["pointer"], {"p": 1}])
+@pytest.mark.parametrize("tbc", [None, "", "   ", "\n\t", 0, 1, True, False, ["pointer"], {"p": 1},
+                                "\u200b", "\u2060", "\ufeff", "\u200c", "\u200d", "\u00ad", " \u200b\u2060\ufeff\u200c\u200d\u00ad ",
+                                "\u00a0", "\u2028", "\u0000"])
 def test_undeclared_or_blank_pointer_is_no_detector_never_na(tbc):
     r = ac.grade_carr_no_carriage(facts(tbc=tbc))
     assert r["v"] == NO_DET and "cause" not in r
     assert "never read as no-carriage" in r["measured"]
     assert "declaration_disagreements" not in r
+
+
+@pytest.mark.parametrize("served", ["true", "false", "True", 1, 0, [], {}, "", 1.0, "yes"])
+def test_a_non_bool_served_surface_is_malformed_no_detector_never_unknown(served):
+    """F5: only None or an explicit bool is an accepted form; anything else is malformed, never 'unknown that does not block'."""
+    r = ac.grade_carr_no_carriage(facts(served=served))
+    assert r["v"] == NO_DET and "cause" not in r
+    assert "malformed" in r["measured"] and "served_surface" in r["measured"]
+
+
+@pytest.mark.parametrize("car", ["x", 1, True, ["served_surface"]])
+def test_a_non_dict_carriage_is_malformed_no_detector(car):
+    f = facts(); f["declared_carriage"] = car
+    r = ac.grade_carr_no_carriage(f)
+    assert r["v"] == NO_DET and "malformed" in r["measured"]
+
+
+def test_a_carriage_dict_without_served_surface_is_unknown_and_does_not_block():
+    f = facts(); f["declared_carriage"] = {}
+    assert ac.grade_carr_no_carriage(f)["v"] == NA
+
+
+def test_a_visible_character_among_invisibles_is_a_pointer():
+    r = ac.grade_carr_no_carriage(facts(tbc="\u200b x \u2060"))
+    assert r["v"] == NA
+
+
+def test_the_grader_docstring_states_the_rule_must_stay_undeclared_until_an_inverse_readers_detector_exists():
+    d = ac.grade_carr_no_carriage.__doc__
+    assert "must stay UNDECLARED" in d and "inverse-readers" in d and "undeclared edges" in d
 
 
 def test_undeclared_with_everything_else_favourable_is_still_no_detector():
@@ -126,10 +158,20 @@ def test_a_measured_served_read_contradicts_the_strict_definition(ms):
     assert r["declaration_disagreements"] == [dict(field="terminal_by_construction", declared=PTR, measured_served=ms)]
 
 
-@pytest.mark.parametrize("ms", [ac.NA, ac.NO_DET, ac.ERRORED, None, "weird"])
-def test_a_served_verdict_that_found_no_read_does_not_block(ms):
+def test_only_a_measured_dens_na_exactly_allows_the_candidate():
+    r = ac.grade_carr_no_carriage(facts(measured_served=ac.NA))
+    assert r["v"] == NA and r["cause"] == "no-carriage" and "Dens.served N/A" in r["measured"]
+
+
+@pytest.mark.parametrize("ms", [ac.NO_DET, ac.ERRORED, None, "missing", "n/a", "N/a", "NA", "na", "N/A ", " N/A", "weird",
+                                "", 0, False, ["N/A"], ac.NOT_GENERIC])
+def test_every_other_served_value_is_no_detector_possibly_served(ms):
+    """F1: NO_DETECTOR/ERRORED/absent mean 'possibly served' (scan not run, module names the table but no served select
+    found, comment-only, outside-roots, unparsed, shared-only): not evidence of no carriage."""
     r = ac.grade_carr_no_carriage(facts(measured_served=ms))
-    assert r["v"] == NA and r["cause"] == "no-carriage"
+    assert r["v"] == NO_DET and "cause" not in r
+    assert "declaration_disagreements" not in r
+    assert "possibly served" in r["measured"] and "read as no-carriage" in r["measured"]
 
 
 def test_every_contradiction_is_listed_together():
@@ -236,7 +278,11 @@ def _decl(**per_asset):
     return {aid: {**base, **kw} for aid, kw in per_asset.items()}
 
 
+SCANNED_NO_REF = dict(scanned=True, modules=[], density=0)       # Dens.served N/A: scanned, no reference
+
+
 def _run(monkeypatch, tmp_path, reg, declarations, graph=None, graph_error=False, **kw):
+    kw.setdefault("cap", dict(SCANNED_NO_REF))
     pa._stub_layer(monkeypatch, tmp_path, reg, **kw)
     monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: declarations)
     if graph_error:
@@ -307,10 +353,26 @@ def test_measure_a_measured_served_read_blocks_the_candidate(monkeypatch, tmp_pa
         assert ms["t"][c]["declaration_disagreements"][0]["measured_served"] == verdict
 
 
-def test_measure_an_unscanned_served_surface_does_not_block_the_candidate(monkeypatch, tmp_path):
-    """Dens.served NO_DETECTOR (the scan did not run) found no read: it neither proves nor blocks; the pointer decides."""
-    ms = _run(monkeypatch, tmp_path, _two(), _decl(t=dict(terminal_by_construction=PTR), u={}), graph=dict(t=[], u=[]))
+@pytest.mark.parametrize("cap", [
+    dict(modules=[], density=0, note="stub"),                                   # the scan did not run
+    dict(scanned=True, modules=["m.ts"], density=0),                             # names the table, no served select found
+    dict(scanned=True, modules=[], density=0, comment_only=["m.ts"]),            # comment-only
+    dict(scanned=True, modules=[], density=0, outside=["x.ts"]),                 # outside the scanned roots
+    dict(scanned=True, modules=[], density=0, unparsed=["x.ts"]),                # unparsed
+    dict(scanned=True, modules=[], density=0, shared_only=["x.ts"], shared_tokens=["s"]),
+])
+def test_measure_an_unscanned_or_possibly_served_surface_must_not_produce_a_candidate(monkeypatch, tmp_path, cap):
+    """F1 (inverts the packet's first version): Dens.served NO_DETECTOR means 'possibly served', never 'not served'."""
+    ms = _run(monkeypatch, tmp_path, _two(), _decl(t=dict(terminal_by_construction=PTR), u={}), graph=dict(t=[], u=[]),
+              cap=cap)
     assert ms["t"]["Dens.served"]["v"] == NO_DET
+    for c in CHECKS:
+        assert ms["t"][c]["v"] == NO_DET and "cause" not in ms["t"][c] and "possibly served" in ms["t"][c]["measured"]
+
+
+def test_measure_a_scanned_no_reference_surface_allows_the_candidate(monkeypatch, tmp_path):
+    ms = _run(monkeypatch, tmp_path, _two(), _decl(t=dict(terminal_by_construction=PTR), u={}), graph=dict(t=[], u=[]))
+    assert ms["t"]["Dens.served"]["v"] == NA
     assert all(ms["t"][c]["v"] == NA for c in CHECKS)
 
 
@@ -346,3 +408,39 @@ def test_a_released_candidate_closes_only_once_the_rule_is_declared(monkeypatch)
     out = ac.carr_checks(facts())
     assert ac._na_released("Carr.D1", out["Carr.D1"]) is True
     assert ac._na_released("Carr.D2", out["Carr.D2"]) is False
+
+
+# ───────────────────────── F4: a pointer must contain a visible character (reader, validator and grader) ─────────────────────────
+
+INVISIBLE = ["​", "⁠", "﻿", "‌", "‍", "­", "​⁠﻿‌‍­", " ", " "]
+
+
+def _vdoc(tbc):
+    return dict(version="1.0.0", kind_enum=list(ac.DECLARED_KINDS), assets=dict(a=dict(terminal_by_construction=tbc)))
+
+
+@pytest.mark.parametrize("tbc", INVISIBLE)
+def test_the_declarations_validator_rejects_an_invisible_only_pointer(tbc):
+    with pytest.raises(ac.DeclarationsError, match="terminal_by_construction"):
+        ac.validate_declarations(_vdoc(tbc))
+
+
+def test_the_declarations_validator_still_accepts_a_real_pointer_and_null():
+    ac.validate_declarations(_vdoc("no reader by design"))
+    ac.validate_declarations(_vdoc(None))
+
+
+@pytest.mark.parametrize("tbc", INVISIBLE)
+def test_declared_facts_does_not_read_an_invisible_only_pointer_as_a_declaration(tbc):
+    f = ac.declared_facts({"a": dict(terminal_by_construction=tbc)}, "a")
+    assert "declared_terminal_by_construction" not in f and "declared_carries_downstream" not in f
+
+
+def test_declared_facts_still_reads_a_real_pointer():
+    f = ac.declared_facts({"a": dict(terminal_by_construction="no reader by design")}, "a")
+    assert f["declared_terminal_by_construction"] == "no reader by design" and f["declared_carries_downstream"] is False
+
+
+@pytest.mark.parametrize("tbc", INVISIBLE)
+def test_carr_checks_emits_nothing_for_an_invisible_only_pointer(tbc):
+    assert ac.carr_checks(facts(tbc=tbc)) == {}

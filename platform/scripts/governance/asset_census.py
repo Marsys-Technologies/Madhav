@@ -698,7 +698,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                 raise DeclarationsError(f"{where}.evidence_kind is set but prose_fields is null (undeclared)")
         tbc = e.get("terminal_by_construction")
         if tbc is not None:
-            if not isinstance(tbc, str) or not tbc.strip() or tbc != tbc.strip():
+            if not isinstance(tbc, str) or _blank_text(tbc) or tbc != tbc.strip():
                 raise DeclarationsError(f"{where}.terminal_by_construction must be null or a non-blank pointer string "
                                         f"(why the asset has no downstream consumer BY CONSTRUCTION)")
             if isinstance(car, dict) and car.get("served_surface") is True:
@@ -807,7 +807,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         elif served is True and measured_served == NA:
             disagree.append(dict(field="carriage.served_surface", declared=True, measured=measured_served))
     tbc = e.get("terminal_by_construction")
-    if isinstance(tbc, str) and tbc.strip():
+    if isinstance(tbc, str) and not _blank_text(tbc):
         facts["declared_terminal_by_construction"] = tbc
         if served is not True:
             facts["declared_carries_downstream"] = False
@@ -901,22 +901,38 @@ def _count(v):
 
 def grade_carr_no_carriage(record_facts) -> dict:
     """The Carr.D1/D2/D3 `no-carriage` reading of one asset, from `record_facts` (pure; no I/O):
-      declared_terminal_by_construction  the positive declared pointer (non-blank str), else undeclared
-      declared_carriage                  {'served_surface': bool}  (absent/null = unknown)
+      declared_terminal_by_construction  the positive declared pointer (a str with at least one visible character), else undeclared
+      declared_carriage                  {'served_surface': bool | None}  (absent/None = unknown; any other form is malformed)
       blocking_radius                    the census radius {'direct': int, 'transitive': int} (absent/None/malformed = unmeasured)
-      measured_served                    optional: the Dens.served verdict of this census run
-    N/A (cause `no-carriage`, a candidate) ONLY when ALL hold: the pointer is declared; measured direct AND transitive
-    dependents are both 0; `served_surface` is not true; and Dens.served did not find a read (PASS/FAIL/PARTIAL). A
-    declaration that a measured fact contradicts is NO_DETECTOR with a `declaration_disagreements` entry (reported,
-    never resolved); an unmeasured radius or no declaration is NO_DETECTOR (never N/A). `served_surface` null does not
-    block: the declared pointer is then the only evidence, and the verdict text says so."""
+      measured_served                    the Dens.served verdict of this census run
+    N/A (cause `no-carriage`, a CANDIDATE) ONLY when ALL hold: the pointer is declared; measured direct AND transitive
+    dependents are both 0; `served_surface` is None or False (true contradicts; a non-bool is malformed); and the
+    measured Dens.served verdict is EXACTLY 'N/A' (the only verdict meaning "scanned, no reference"). Every other
+    Dens.served value (NO_DETECTOR, ERRORED, absent, a case variant) means "possibly served" (the scan did not run, a module
+    names the table but no served select was found, comment-only, outside the scanned roots, unparsed, shared-only), which
+    is not evidence of no carriage: NO_DETECTOR. A declaration that a measured fact contradicts is NO_DETECTOR with a
+    `declaration_disagreements` entry (reported, never resolved); an unmeasured radius or no declaration is NO_DETECTOR.
+    `served_surface` None does not block: the declared pointer is then the evidence, and the verdict text says so.
+
+    LIMIT (N-22 principle 3): no detector exists that still catches a mis-declared terminal asset. D1-D3 are detector NONE,
+    and the contradiction checks here are blind to undeclared edges: the blocking radius counts only DECLARED depends_on
+    edges, so it under-reports an undeclared reader (bg_gochara_arcs is read by ka_gochara.py:412 with no depends_on edge;
+    an L0 reader never adds an edge because Build.dag exempts bedrock reads; 14 of the 40 zero-dependent assets are L0),
+    and to Dens scanner gaps. The `no-carriage` N/A RULE must stay UNDECLARED (NA_RULE_DECISIONS empty) until an
+    inverse-readers detector exists: one that scans the registered writers' reads, bedrock included, for readers of the
+    asset's tables, and gates the candidate on none found."""
     f = record_facts if isinstance(record_facts, dict) else {}
     tbc = f.get("declared_terminal_by_construction")
-    if not (isinstance(tbc, str) and tbc.strip()):
+    if not (isinstance(tbc, str) and not _blank_text(tbc)):
         return dict(v=NO_DET, measured=f"NO_DETECTOR — no terminal_by_construction declared: carriage is unknown, {_CARR_NEVER}")
     car = f.get("declared_carriage")
+    if car is not None and not isinstance(car, dict):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage is malformed ({car!r}: not an object); the "
+                                       f"declared pointer ({tbc!r}) cannot be relied on, {_CARR_NEVER}")
     served = car.get("served_surface") if isinstance(car, dict) else None
-    served = served if isinstance(served, bool) else None
+    if served is not None and not isinstance(served, bool):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — carriage.served_surface is malformed ({served!r}: only null, true or "
+                                       f"false are forms); the declared pointer ({tbc!r}) cannot be relied on, {_CARR_NEVER}")
     br = f.get("blocking_radius")
     direct = _count(br.get("direct")) if isinstance(br, dict) else None
     trans = _count(br.get("transitive")) if isinstance(br, dict) else None
@@ -943,10 +959,16 @@ def grade_carr_no_carriage(record_facts) -> dict:
     if direct is None or trans is None:
         return dict(v=NO_DET, measured=f"NO_DETECTOR — dependents unmeasured (the blocking radius is absent or not a count); "
                                        f"the declared pointer ({tbc!r}) cannot be checked against the DAG, {_CARR_NEVER}")
+    if not (isinstance(ms, str) and ms == NA):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — Dens.served is {ms!r}, not 'N/A' (scanned, no reference): the asset is "
+                                       f"possibly served (scan not run, a served select not found or not attributable), so the "
+                                       f"declared pointer ({tbc!r}) is not corroborated; {_CARR_NEVER}")
     sv = ("served_surface declared false" if served is False else
-          "served_surface not declared (null: the declared pointer is the evidence, nothing measured shows a served read)")
-    return _na(f"declared terminal_by_construction ({tbc!r}); measured dependents direct {direct}, transitive {trans}; {sv}; "
-               "the declared pointer is the evidence (a candidate, not a rule: released only by a declared rule)", "no-carriage")
+          "served_surface not declared (null: the declared pointer is the evidence)")
+    return _na(f"declared terminal_by_construction ({tbc!r}); measured dependents direct {direct}, transitive {trans}; "
+               f"Dens.served N/A (scanned, no reference); {sv}; the declared pointer is the evidence (a candidate, not a "
+               "rule: released only by a declared rule, which must stay undeclared until an inverse-readers detector exists)",
+               "no-carriage")
 
 
 def carr_checks(record_facts) -> dict:
@@ -956,7 +978,7 @@ def carr_checks(record_facts) -> dict:
     asset gets one independent record per check (the same grading: the declared fact covers D1, D2 and D3 alike)."""
     f = record_facts if isinstance(record_facts, dict) else {}
     tbc = f.get("declared_terminal_by_construction")
-    if not (isinstance(tbc, str) and tbc.strip()):
+    if not (isinstance(tbc, str) and not _blank_text(tbc)):
         return {}
     r = grade_carr_no_carriage(f)
     return {c: dict(r, **({"declaration_disagreements": list(r["declaration_disagreements"])}

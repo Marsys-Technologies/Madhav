@@ -253,7 +253,8 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
         observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",
-                                         blocking_radius=dict(direct=0, transitive=0))).items():
+                                         blocking_radius=dict(direct=0, transitive=0),
+                                         measured_served=NA)).items():
         assert rec["v"] == NA, rec           # E6 item (f): the declared no-carriage candidates on Carr.D1-D3
         observed.add((crit, rec["cause"]))
     registered = {(c, k) for c, ks in ac.NA_CAUSES.items() for k in ks}
