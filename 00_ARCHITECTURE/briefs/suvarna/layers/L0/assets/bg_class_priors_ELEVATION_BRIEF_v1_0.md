@@ -23,7 +23,7 @@ ledger_gap_ids: [bg_class_priors-Idem.pattern, bg_class_priors-Earn.build_record
 
 ## 0 · Identity — what the asset is
 
-Seeds `brahma_class_priors` with 171 rows over five axes (17 signal_type_class, 12 source_subsystem, 6 signal_tradition, 30 varga base weights with a domain overlay, 99 graha×domain affinities) from `BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE_v1_0.md` §2–§4 (`platform/python-sidecar/brahmagyan/l0_class_priors.py:1-12`), ON CONFLICT DO UPDATE, five-column primary key with a `'*'` sentinel on inactive axes (`:14-20`). Consumed by `mi_kula` (declared direct 1 / transitive 10). Note a stale comment: the seed row's comment says the table holds '164 signal-salience priors' (`asset_registry_seed.ts:580-583`) while the module header and live count_sql say 171 (non-blocking).
+Seeds `brahma_class_priors` with 171 rows over five axes (17 signal_type_class, 12 source_subsystem, 6 signal_tradition, 30 varga base weights with a domain overlay, 99 graha×domain affinities) from `BEYOND_ACHARYA_W1_JUDGMENT_SEED_PACKAGE_v1_0.md` §2–§4 (`platform/python-sidecar/brahmagyan/l0_class_priors.py:1-12`), ON CONFLICT DO UPDATE, five-column primary key with a `'*'` sentinel on inactive axes (`:14-20`). Consumed by `mi_kula` (declared direct 1 / transitive 10). **Count discrepancy, stated as found:** the five listed axes sum to 17 + 12 + 6 + 30 + 99 = 164, not 171, and the module docstring has the same arithmetic (`l0_class_priors.py:1-10`); the seed row's `volume_explanation` says 24 + 12 + 6 + 30 + 99 = 171 (`asset_registry_seed.ts:760`) while its neighbouring comment says the table holds 164 of these priors (`:580-583`). Live count_sql and the registry floor are 171; the 17-versus-24 `signal_type_class` difference is not reconciled here (per-axis live counts were not read).
 
 | field | value | source |
 |---|---|---|
@@ -74,7 +74,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 ## 3 · Disposition
 
-**keep (P)** — all applicable Build/Idem/Vocab cells PASS or are detector gaps; the values are ratified judgments (`ratified_by`, `contested` columns), a different authority from the N_e baseline sharing the table (see bg_class_lifetime_counts for the consolidate question).
+**keep (P)** — all applicable Build/Idem/Vocab cells PASS or are detector gaps; the values are ratified judgments (`ratified_by`, `contested` columns), a different authority from the N_e baseline sharing the table (the carried consolidation with bg_class_lifetime_counts was not adopted; SS accepted keep, Q10).
 
 Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
@@ -87,7 +87,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `asset_declarations.json` (declared fact + cause) — Track E file; the cause is added to the inspector by the E6 detector work
 - **Failing-first test and mutation:** declarations validation; mutation: delete the reason → gate returns to unexplained NO_DETECTOR
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 10 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration)
 - **Gate it moves:** Carr
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-02 (carriage assignment) and an N-22 applicability rule
@@ -100,7 +100,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 10 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -112,7 +112,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (`carriage`) and, only if no column exists, the writer + a migration
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 10 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)
@@ -124,7 +124,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 1 / transitive 10 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work

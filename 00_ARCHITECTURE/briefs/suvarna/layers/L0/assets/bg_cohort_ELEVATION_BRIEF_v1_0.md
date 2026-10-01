@@ -83,11 +83,11 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 ### FD-1 · Build.completion: scope count_sql to the primary table and declare the asset multi-table
 
 - **Answers:** census `Build.completion` FAIL (rows_written 10,000 vs live 110,000); ledger `bg_cohort-Build.completion`; CF-02
-- **Change:** decided (SS 2026-10-01, Q19): scope the registry `count_sql` to `bg_synthetic_cohort` (10,000) so it equals the build record, and declare the asset multi-table (`bg_synthetic_cohort_md`, 100,000 rows) in the declarations. The writer is unchanged (it already asserts `md = 10 × COHORT_SIZE`).
-- **Files / declaration / migration:** registry row via a surgical migration + `asset_registry_seed.ts` (seed L553) + declarations entry
-- **Failing-first test and mutation:** rerun test: `rows_written` of a first build equals live count_sql (110,000) and a converged rerun equals 0 changed rows with the same live count; mutation: drop one md row → integrity/count test fails
+- **Change:** decided (SS 2026-10-01, Q19): scope the registry `count_sql` to `bg_synthetic_cohort` (10,000) so it equals the build record, and declare the asset multi-table (`bg_synthetic_cohort_md`, 100,000 rows) in the declarations. The writer is unchanged (it already asserts `md = 10 × COHORT_SIZE`). **Floor:** the seed and live `target_floor` are 110000 (`asset_registry_seed.ts:563`); scoping `count_sql` to 10,000 rows without changing the floor would create a NEW Count.floor FAIL (10,000 < 110,000). Change `target_floor` to 10000 in the same migration (migration 606 had asserted `target_floor = 10000` for this asset before the floor was raised to the two-table total).
+- **Files / declaration / migration:** registry row (`count_sql` AND `target_floor` 110000 → 10000) via one surgical migration + `asset_registry_seed.ts` (seed L553-563) + declarations entry
+- **Failing-first test and mutation:** failing-first: `count_sql` returns 10,000 = `rows_written` of a first build, Count.floor reads PASS (live 10,000 ≥ floor 10,000), and the declared second table `bg_synthetic_cohort_md` still holds 100,000; mutation: restore floor 110000 → Count.floor FAIL; drop one cohort row → count/integrity FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** registry-only: the cockpit count and floor for one asset change; readers of the two tables (`writer.py`, `cohort_client.py`, `priority.ts`, `ka_kshetra.py`, `mi_bhara.py`) read the tables, not `count_sql` or the floor.
 - **Rebuild:** none (registry/declaration only)
 - **Gate it moves:** Build (completion)
 - **Fix class:** writer code or registry/declaration; **buildable before J1:** tier-independent
@@ -100,7 +100,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 3 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -112,7 +112,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 3 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -124,7 +124,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `asset_declarations.json` note (Track E)
 - **Failing-first test and mutation:** dep_liveness stays PASS on a fresh census; mutation: remove the service throughput row → the cell must FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 3 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none
 - **Gate it moves:** Build (dep_liveness)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T4-02 (assets with no table)
