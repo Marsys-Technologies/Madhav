@@ -15,7 +15,7 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t1, 2026-09-10"
 decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
-track_i_items: [TI-L2-02, TI-L2-05, TI-L2-13, TI-L2-14, TI-L2-24]
+track_i_items: [TI-L2-43, TI-L2-02, TI-L2-05, TI-L2-13, TI-L2-14, TI-L2-24]
 ledger_gap_ids: [bo_upaya-Idem.pattern, bo_upaya-Build.completion, bo_upaya-Earn.build_record, bo_upaya-Cost.baseline, bo_upaya-Dens.served, bo_upaya-Build.history, bo_upaya-Build.dep_liveness, bo_upaya-Carr.detector]
 ---
 # bo_upaya — Remediation Map (RM): resonances, remedy prescriptions and four ancillary tables
@@ -178,3 +178,4 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-10 (
 - **Q-L2-07 - accepted.** `bo_upaya -> bo_bimba` rides the same migration. No rebuild. TI-L2-05.
 - **Q-L2-11 - accepted.** The 'PASS withheld' annotation lifts only after a live rebuild proves it; that proof is the one coherent L2 rebuild (the B.U wave folds into it) and the annotation is read after it. TI-L2-24.
 - **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
+- **TI-L2-43 (SS decision) - added to the batch.** The duplicate-key reader `_fetch_chara_roles` (`bo_upaya.py:393-406`) is fixed or deleted. SS calls it dead; at this branch it is called (`:1248`) and used (`:1330`), so confirm it feeds nothing live before deleting. This asset's writer therefore changes.

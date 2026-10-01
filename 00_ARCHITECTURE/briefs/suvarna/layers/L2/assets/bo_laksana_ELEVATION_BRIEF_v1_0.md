@@ -15,7 +15,7 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-1's output change needs SS (R5)"
 nirmana_freeze: "t1, 2026-09-08"
 decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
-track_i_items: [TI-L2-04, TI-L2-05, TI-L2-09, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-18, TI-L2-20, TI-L2-21, TI-L2-22, TI-L2-27, TI-L2-28, TI-L2-31, TI-L2-32]
+track_i_items: [TI-L2-41, TI-L2-42, TI-L2-04, TI-L2-05, TI-L2-09, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-18, TI-L2-20, TI-L2-21, TI-L2-22, TI-L2-27, TI-L2-28, TI-L2-31, TI-L2-32]
 ledger_gap_ids: [bo_laksana-Idem.pattern, bo_laksana-Earn.build_record, bo_laksana-Cost.baseline, bo_laksana-Count.floor, bo_laksana-Build.history, bo_laksana-Carr.detector]
 ---
 # bo_laksana — MSR signal store: the root writer of `bodha_msr_signals`
@@ -191,3 +191,4 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-08. 
 - **Q-L2-14 (R) - accepted.** This producer populates the MSR shared-root carrier (`shared_factor_keys_jsonb`, `cross_domain_shared_factor_count`) from the single rule (root = fact subject, plus varga where the subject is a varga sign). Batched. TI-L2-31.
 - **Q-L2-16 (R) - changed.** The MSR set is six producers (the rerank an UPDATE-only dependant). Valence: where a category or keyword rule matched, the value is kept (a matched `neutral` too); where nothing matched and the code falls through to `neutral`, NULL is stored. FIRST every reader of `valence` is traced; if any reader breaks on NULL, SS is asked before coding. Batched after the trace. TI-L2-20, TI-L2-32.
 - **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
+- **TI-L2-41 / 42 (SS decisions) - recorded.** The frozen manifest and receipts of this asset go stale after S-L1 is accepted: accepted, NO refreeze (N-51). The duplicate-key reader is a batch item: `_FETCH_SQL` and `_FETCH_INVARIANT_SQL` (`bo_laksana.py:1875-1901`) select `formula_id` without using it and do not order totally; `formula_id` is carried into the signals and the order made total.

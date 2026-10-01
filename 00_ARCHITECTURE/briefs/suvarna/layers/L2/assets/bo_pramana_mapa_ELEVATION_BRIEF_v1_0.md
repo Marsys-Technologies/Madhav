@@ -15,7 +15,7 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t2, 2026-09-10"
 decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
-track_i_items: [TI-L2-36, TI-L2-03, TI-L2-13, TI-L2-14, TI-L2-24]
+track_i_items: [TI-L2-38, TI-L2-40, TI-L2-36, TI-L2-03, TI-L2-13, TI-L2-14, TI-L2-24]
 ledger_gap_ids: [bo_pramana_mapa-Idem.pattern, bo_pramana_mapa-Earn.build_record, bo_pramana_mapa-Cost.baseline, bo_pramana_mapa-Dens.served, bo_pramana_mapa-Build.history, bo_pramana_mapa-Build.dep_liveness, bo_pramana_mapa-Carr.detector]
 ---
 # bo_pramana_mapa — Synthesis quality scorecard (terminal Bodha writer)
@@ -151,3 +151,4 @@ Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (
 - **Q-L2-20 - accepted.** The three pass-flags (`no_pre_answer_pass`, `ledger_independence_pass`, `discovery_not_fabricated_pass`) already have detector code (`bo_pramana_mapa.py:511-620`, #2607); they are read after the one rebuild (`bo_sangati` before `bo_pramana_mapa` inside it). TI-L2-24.
 - **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
 - **TI-L2-36 (SS, 2026-10-02) - added to the batch.** `_VERIFICATION_TIER_RANKS` (`bo_pramana_mapa.py:430-438`) is aligned with the L1 respelling (`single_pass` = 2 against `single` = 1 is one alias with two ranks); this asset's writer therefore changes. Tier respelling: L1 writers now emit `single`, never `single_pass` (PR #2854); the F-10 tier-inversion count is not read between S-L1 and S-L2 (INDEX 12.4). One rebuild, no asset rebuilt twice.
+- **TI-L2-38 / 40 (SS, argala outcome) - added to the batch.** The scorecard reads the edge's outcome (`unobstructed`, `argala_prevails` active; `undetermined` its own state, not active); the `cancelled_flag` conjunct of `_SIGNED_RELATION_SQL` (`bo_pramana_mapa.py:589-606`) is revised. Reason: argala outcome vocabulary change (L1 N-61 / N-66); one rebuild, no asset rebuilt twice; no migration is written or numbered here (pending the owner's authorisation).
