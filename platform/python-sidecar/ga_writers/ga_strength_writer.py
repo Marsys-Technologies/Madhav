@@ -50,9 +50,13 @@ from pyjhora_adapter import strength as pyjhora_strength
 from pyjhora_adapter._names import SIGN_NAMES
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_tiers import (
+    CLASSICAL_MATCH,
+    COMPUTED_EXTENSION,
     DOCUMENTED_APPROXIMATION,
-    SINGLE,
+    FLOORED,
+    NOT_DEFINED_FOR_NODES,
     TWO_PASS_VERIFIED,
+    UNVERIFIED_DEFAULT,
     emit_tier,
 )
 from ga_writers._idempotency import replace_prior_chart_facts
@@ -721,10 +725,14 @@ def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0
     # correct classical computation. Per M-1, the shadbala engine itself is
     # a toy heuristic (never calls PyJHora). Returning "two_pass_verified"
     # here claimed an independent classical cross-check that never ran.
-    # Demoted to SINGLE ("single"; a real single structural-invariant pass did
-    # run; formulas.py VERIFICATION_RESCALE 0.85 vs 1.00). Fixing the
-    # underlying shadbala engine is M-1's scope, not this lane's.
-    return SINGLE
+    # Q03 / SS N-62: the invariants above ARE a real check (they halt the build on a negative
+    # magnitude sub-bala, a non-finite drik, a non-positive total or a sub-sum/total mismatch)
+    # but they are bounds/consistency guards over PyJHora's own output, not an independent
+    # re-derivation -> `classical_match`, never `two_pass_verified`. The tier is returned only
+    # AFTER every check has run and passed, and the caller applies it ONLY to the rows these
+    # checks examine (graha_shadbala_{sthana,dig,kala,cheshta,drik,total} of the seven classical
+    # grahas); every other ga_strength category stays `single` (audit §6).
+    return CLASSICAL_MATCH
 
 
 def _verify_ashtakavarga(
@@ -734,7 +742,8 @@ def _verify_ashtakavarga(
     Verify ashtakavarga invariants:
     1. Sarvashtakavarga sum = 337 (±tolerance).
     2. SARVA = sum of 7 individual graha bindus per house.
-    Returns 'two_pass_verified' on pass.
+    Returns `classical_match` on pass (a consistency check over the raw bindus, not an
+    independent re-derivation; raises TwoPassVerificationError otherwise).
     """
     failures = []
 
@@ -768,12 +777,22 @@ def _verify_ashtakavarga(
     # trikona shodhana entirely (sodhita ≡ raw, comment admits) and fakes
     # ekadhipatya as bindus−1 — neither is checked here. "two_pass_verified"
     # overstated what was actually verified (raw-bindu arithmetic, not
-    # shodhana correctness). Demoted to SINGLE ("single"). Fixing the shodhana
-    # step itself is M-3's scope, not this lane's.
-    return SINGLE
+    # shodhana correctness).
+    # Q03 / SS N-62: `classical_match`, applied by the caller ONLY to the rows it examines
+    # (ashtakavarga_bindu and ashtakavarga_bindu_sign, which are emitted verbatim from the
+    # checked `bav` arrays). Shodhana, pinda, kakshya, contributor rows are unexamined -> `single`.
+    return CLASSICAL_MATCH
 
 
 # ── Rows builders ────────────────────────────────────────────────────────────
+
+#: The sub-balas `_verify_shadbala` examines on the classical seven (non-negativity of the
+#: magnitude sub-balas, drik finiteness, total > 0, sum(sub-balas) ~= total). `naisargika` is
+#: deliberately NOT in this set: its rows were stamped `classical_match` by hard-coded
+#: assignment with no comparison run (audit §8, SS ruling: `single` unless a real comparison
+#: against the L0 reference table is wired).
+_SHADBALA_EXAMINED_SUBS = frozenset({"sthana", "dig", "kala", "cheshta", "drik", "total"})
+
 
 def _build_shadbala_rows(
     shadbala: dict[str, dict[str, float]],
@@ -783,6 +802,14 @@ def _build_shadbala_rows(
     computed_at: str, eng_ver: str,
     verif_status: str,
 ) -> list[dict[str, Any]]:
+    """Shadbala / ishta-kashta / vimsopaka rows.
+
+    `verif_status` is the tier `_verify_shadbala` EARNED. It is applied ONLY to the rows that
+    verifier actually examines (graha_shadbala_{sthana,dig,kala,cheshta,drik,total} `rupa` of the
+    seven classical grahas, source `compute_shadbala`). Every other row (naisargika, required
+    rupa, ratio, ishta/kashta, vimsopaka, nodal extension rows) carries `UNVERIFIED_DEFAULT`
+    (Q03 / SS N-62: a verdict computed over a subset is never broadcast to the rest).
+    """
     rows = []
     category_map = {
         "sthana": "graha_shadbala_sthana",
@@ -803,7 +830,7 @@ def _build_shadbala_rows(
         for sub_key, category in category_map.items():
             value = sb.get(sub_key, 0.0)
             eff_ayan = "INVARIANT" if sub_key == "naisargika" else ayanamsha_id
-            verif = ("classical_match" if sub_key == "naisargika" else verif_status)
+            verif = verif_status if sub_key in _SHADBALA_EXAMINED_SUBS else UNVERIFIED_DEFAULT
 
             fid = _fact_id(category, subject, "rupa", chart_id, eff_ayan, build_id)
             cref = _citation_ref(category, subject, "rupa", chart_id, eff_ayan, eng_ver)
@@ -852,7 +879,7 @@ def _build_shadbala_rows(
                 f"(classical Parashara minimum, ayanamsha-invariant)."
             ),
             "source_calculation": f"classical_parashara_table/{eng_ver}",
-            "verification_pass_status": "classical_match",
+            "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": eng_ver,
             "computed_at": computed_at,
         })
@@ -889,7 +916,7 @@ def _build_shadbala_rows(
                     f"({ayanamsha_id})."
                 ),
                 "source_calculation": f"achieved_total_div_required_rupa/{eng_ver}",
-                "verification_pass_status": verif_status,
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
@@ -916,7 +943,7 @@ def _build_shadbala_rows(
                 "citation_human": _citation_human_strength(
                     ik_cat, subject, "score", val, ayanamsha_id),
                 "source_calculation": f"computed_extension.ishta_kashta_bphs_sqrt_uchcha_cheshta/{eng_ver}",
-                "verification_pass_status": verif_status,
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
@@ -948,7 +975,7 @@ def _build_shadbala_rows(
                 "citation_human": _citation_human_strength(
                     cat, subject, "score", val, ayanamsha_id),
                 "source_calculation": f"pyjhora_adapter.strength.compute_vimsopaka/{eng_ver}",
-                "verification_pass_status": verif_status,
+                "verification_pass_status": UNVERIFIED_DEFAULT,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
@@ -970,11 +997,12 @@ def _build_shadbala_rows(
             value = sb.get(sub_key, 0.0)
             eff_ayan = "INVARIANT" if sub_key == "naisargika" else ayanamsha_id
             if sub_key in NODAL_UNDEFINED_SUBS:
-                node_verif = "not_defined_for_nodes"
-            elif sub_key in ("sthana", "drik", "total"):
-                node_verif = verif_status
+                node_verif = NOT_DEFINED_FOR_NODES
             else:
-                node_verif = verif_status
+                # sthana / drik / total of a node: a writer-side `computed_extension` (BPHS dignity
+                # table + Parasari aspect matrix), outside the PyJHora shad_bala output the
+                # verifier is about -> no tier is earned here (Q03 / SS N-62, audit §6).
+                node_verif = UNVERIFIED_DEFAULT
             fid = _fact_id(category, subject, "rupa", chart_id, eff_ayan, build_id)
             cref = _citation_ref(category, subject, "rupa", chart_id, eff_ayan, eng_ver)
             chum = _citation_human_strength(category, subject, "rupa", value, eff_ayan)
@@ -1001,6 +1029,10 @@ def _build_shadbala_rows(
     return rows
 
 
+#: The ashtakavarga categories `_verify_ashtakavarga` examines (the raw bindu arrays it checks).
+_AV_EXAMINED_CATEGORIES = frozenset({"ashtakavarga_bindu", "ashtakavarga_bindu_sign"})
+
+
 def _build_ashtakavarga_rows(
     bav: dict[str, list[int]],
     pinda: dict[str, dict[str, int]],
@@ -1010,6 +1042,12 @@ def _build_ashtakavarga_rows(
     prastara: dict[str, dict[str, list[int]]] | None = None,
 ) -> list[dict[str, Any]]:
     """
+    Q03 / SS N-62 tiering: `verif_status` is the tier `_verify_ashtakavarga` EARNED. It is applied
+    ONLY to the rows that check examines -- `ashtakavarga_bindu` and `ashtakavarga_bindu_sign`
+    (emitted verbatim from the checked `bav` arrays; SARVA = 337 and SARVA = sum of the seven
+    arrays). Every other category here (trikona / ekadhipathya shodhana, pinda_*, kakshya
+    boundary, contributor) is unexamined and carries `UNVERIFIED_DEFAULT`.
+
     M-3 fix (see MARSYS_DEFECT_GAP_REGISTER): `pinda` now comes from PyJHora's
     real BPHS shodhana (trikona sodhana + ekadhipatya sodhana + rasimana/
     grahamana gunakara multiplication), NOT `sodhita ≡ raw bindus` /
@@ -1063,6 +1101,7 @@ def _build_ashtakavarga_rows(
 
     def _mk(cat: str, subject: str, key: str, val: float, unit: str,
             *, text: str | None = None, chum: str | None = None) -> None:
+        tier = verif_status if cat in _AV_EXAMINED_CATEGORIES else UNVERIFIED_DEFAULT
         rows.append({
             "fact_id": _fact_id(cat, subject, key, chart_id, ayanamsha_id, build_id),
             "chart_id": chart_id,
@@ -1079,7 +1118,7 @@ def _build_ashtakavarga_rows(
             "citation_human": chum if chum is not None else _citation_human_strength(
                 cat, subject, key, float(val) if val is not None else 0.0, ayanamsha_id),
             "source_calculation": src,
-            "verification_pass_status": verif_status,
+            "verification_pass_status": tier,
             "engine_version": eng_ver,
             "computed_at": computed_at,
         })
@@ -1186,7 +1225,7 @@ def _build_bhava_bala_rows(
     # (adhipathi + dig + drik) — NOT six-source. These rows are ALWAYS stamped
     # documented_approximation regardless of the writer-global verif_status, and
     # cite the 3-component provenance explicitly (never claim six-source).
-    _BB_STATUS = "documented_approximation"
+    _BB_STATUS = DOCUMENTED_APPROXIMATION
     _BB_SOURCE = (
         f"pyjhora.strength.bhava_bala[3-source:adhipathi+dig+drik]/{eng_ver}"
     )
@@ -1435,21 +1474,26 @@ def _build_ashtakavarga_per_varga_rows(
     # Verify SARVA = 337
     sarva_list = bav_varga.get("SARVA", [])
     sarva_total = sum(sarva_list)
+    src_calc = f"python_heuristic_approximation.ashtakavarga_per_varga/{eng_ver}"
+    reason_suffix = ""
     if abs(sarva_total - SARVA_BINDU_TOTAL) > 2:
+        # Q03 / SS N-62: this used to stamp the string "floored_sarva_mismatch", which is NOT a
+        # vocabulary member (the live chart_facts_verification_pass_status_check would reject the
+        # insert). Emit the vocabulary member `floored` and carry the reason separately, in the
+        # row's provenance (`source_calculation`) and citation, not in the tier column.
         logging.warning(
-            "[ga_strength_writer] varga=%s SARVA=%d expected=%d (floored_sarva_mismatch)",
+            "[ga_strength_writer] varga=%s SARVA=%d expected=%d (floored: sarva_mismatch)",
             varga, sarva_total, SARVA_BINDU_TOTAL,
         )
-        bindu_verif = "floored_sarva_mismatch"
+        bindu_verif = FLOORED
+        src_calc = f"{src_calc};floored_reason=sarva_mismatch(SARVA={sarva_total},expected={SARVA_BINDU_TOTAL})"
+        reason_suffix = " [floored: sarva_mismatch]"
     else:
-        # M-22 fix: same class as _verify_ashtakavarga above — a single
-        # structural invariant (SARVA sum=337) is a real check, but not an
-        # independent second computation; the src_calc label two lines
-        # below already honestly says "python_heuristic_approximation".
-        # Demoted to SINGLE to match.
-        bindu_verif = SINGLE
-
-    src_calc = f"python_heuristic_approximation.ashtakavarga_per_varga/{eng_ver}"
+        # The SARVA = 337 check is real but does not make the values exact: the rows are a
+        # documented approximation (`python_heuristic_approximation.ashtakavarga_per_varga`),
+        # so the honest tier is `documented_approximation`, never `single` / a verified tier
+        # (Q03 / SS N-62 ruling R4).
+        bindu_verif = DOCUMENTED_APPROXIMATION
 
     for planet_name, subject in planet_subjects.items():
         bindus_list = bav_varga.get(planet_name, [0] * 12)
@@ -1477,7 +1521,7 @@ def _build_ashtakavarga_per_varga_rows(
                 "citation_ref": cref,
                 "citation_human": (
                     f"{planet_name} ashtakavarga house {house_num} in {varga}: "
-                    f"{int(bindus)} bindu ({ayanamsha_id})."
+                    f"{int(bindus)} bindu ({ayanamsha_id}).{reason_suffix}"
                 ),
                 "source_calculation": src_calc,
                 "verification_pass_status": bindu_verif,
@@ -1504,7 +1548,7 @@ def _build_ashtakavarga_per_varga_rows(
             "unit": "bindu",
             "citation_ref": cref2,
             "citation_human": (
-                f"{planet_name} sarva pinda in {varga}: {int(pinda_val)} ({ayanamsha_id})."
+                f"{planet_name} sarva pinda in {varga}: {int(pinda_val)} ({ayanamsha_id}).{reason_suffix}"
             ),
             "source_calculation": src_calc,
             "verification_pass_status": bindu_verif,
@@ -1643,7 +1687,7 @@ def _build_positional_components_per_varga_rows(
                     f"varga aspect geometry not available ({ayanamsha_id})."
                 ),
                 "source_calculation": f"classical_dignity_table/{eng_ver}",
-                "verification_pass_status": "floored",
+                "verification_pass_status": FLOORED,
                 "engine_version": eng_ver,
                 "computed_at": computed_at,
             })
@@ -1706,7 +1750,7 @@ def _build_kala_cheshta_floor_rows(
                         f"{subj_code} {cat} in {varga}: {floor_text} ({ayanamsha_id})."
                     ),
                     "source_calculation": f"classical_floor/{eng_ver}",
-                    "verification_pass_status": "floored",
+                    "verification_pass_status": FLOORED,
                     "engine_version": eng_ver,
                     "computed_at": computed_at,
                 })
@@ -1852,29 +1896,23 @@ def build_ga_strength(
 
             # ── Two-pass verification ───────────────────────────────────
             try:
+                # Q03 / SS N-62: each verifier's tier goes ONLY to the rows it examined
+                # (shadbala: graha_shadbala_{sthana,dig,kala,cheshta,drik,total}; ashtakavarga:
+                # ashtakavarga_bindu / _bindu_sign). Previously ONE tier (the worse of the two) was
+                # broadcast onto every row of the asset, including categories no check read.
                 sb_verif = _verify_shadbala(shadbala)
                 av_verif = _verify_ashtakavarga(bav)
-                # M-22 fix: this previously hardcoded verif_status =
-                # "two_pass_verified" regardless of what sb_verif/av_verif
-                # actually returned (both variables were computed then
-                # discarded) — the literal lied about the tier even when
-                # the verifiers themselves (now correctly, post-M-1/M-3 fix)
-                # report SINGLE. The row-level stamp must reflect
-                # the WORSE (lowest-confidence) of the two verifier
-                # outputs, not an unconditional top tier.
-                _TIER_RANK = {TWO_PASS_VERIFIED: 2, SINGLE: 1, DOCUMENTED_APPROXIMATION: 0}
-                verif_status = min(
-                    (sb_verif, av_verif), key=lambda t: _TIER_RANK.get(t, 0),
+                summary["two_pass_verified"] = (
+                    sb_verif == TWO_PASS_VERIFIED and av_verif == TWO_PASS_VERIFIED
                 )
-                summary["two_pass_verified"] = (_TIER_RANK.get(verif_status, 0) >= 2)
                 logger.info(
                     "[ga_strength_writer] verification PASS (%s): "
-                    "shadbala=%s ashtakavarga=%s -> row_verif_status=%s",
-                    canonical_id, sb_verif, av_verif, verif_status,
+                    "shadbala=%s (examined shadbala rows) ashtakavarga=%s (examined raw-bindu rows); "
+                    "all other categories %s",
+                    canonical_id, sb_verif, av_verif, UNVERIFIED_DEFAULT,
                 )
             except TwoPassVerificationError as exc:
                 logger.error("[ga_strength_writer] TWO-PASS DIVERGENCE: %s", exc)
-                verif_status = "divergent_flagged"
                 # Do NOT commit any rows — halt per brief §6.2
                 raise
 
@@ -1883,16 +1921,16 @@ def build_ga_strength(
             all_rows.extend(_build_shadbala_rows(
                 shadbala, ishta_kashta, vimsopaka,
                 chart_id, build_id, canonical_id,
-                computed_at, eng_ver, verif_status,
+                computed_at, eng_ver, sb_verif,
             ))
             all_rows.extend(_build_ashtakavarga_rows(
                 bav, av_pinda, chart_id, build_id, canonical_id,
-                computed_at, eng_ver, verif_status, grids=av_grids,
+                computed_at, eng_ver, av_verif, grids=av_grids,
                 prastara=av_prastara,
             ))
             all_rows.extend(_build_bhava_bala_rows(
                 bhava_bala, chart_id, build_id, canonical_id,
-                computed_at, eng_ver, verif_status,
+                computed_at, eng_ver, UNVERIFIED_DEFAULT,
             ))
 
             # ── Amendment 1: Per-varga strength enrichment ─────────────────────────────
@@ -1908,7 +1946,8 @@ def build_ga_strength(
 
             GAP_VARGAS = ["D5","D6","D8","D11","D14","D15"]
             all_rows.extend(_build_positional_components_per_varga_rows(
-                conn, chart_id, build_id, canonical_id, computed_at, eng_ver, GAP_VARGAS, verif_status
+                conn, chart_id, build_id, canonical_id, computed_at, eng_ver, GAP_VARGAS,
+                UNVERIFIED_DEFAULT,  # table lookup (classical_dignity_table); no check ran
             ))
 
             # ── Amendment BA-P3A: per-varga sthana bala for full Shodasavarga ──────────────
@@ -1917,7 +1956,7 @@ def build_ga_strength(
             # BPHS Vimshopaka-bala chapter: sthana bala varies per varga per dignity.
             all_rows.extend(_build_positional_components_per_varga_rows(
                 conn, chart_id, build_id, canonical_id, computed_at, eng_ver,
-                SHODASAVARGA_MINUS_D1, "computed_extension",
+                SHODASAVARGA_MINUS_D1, COMPUTED_EXTENSION,
             ))
 
             FLOOR_VARGAS = SHODASAVARGA_MINUS_D1 + GAP_VARGAS
