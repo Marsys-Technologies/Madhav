@@ -40,7 +40,7 @@ are labelled "estimate". Code-derived predictions (never observed in production)
 > - **State when read:** none of PRs #2825 (grants), #2826 (1212, 1213), #2827 (1215), #2828 (1214), #2830 (`ka_kshetra`), #2833 (incident fix, ON HOLD) was merged or applied; P0, P0b and every P0c gate are red (section 5 rows 1, 14-16).
 
 > **v1.2 box (2026-10-01 about 17:40-17:56Z; read this first).** Docs only; no build, no write; DB reads as `suvarna_reader`. Authority unchanged: a REVIEW to SS, no execution authority.
-> - **Facts supplied by SS/Pravāha (2026-10-01), taken as given and cross-checked read-only where the DB can show them:** (a) Pravāha's builder audit grant migration 1211 is deployed and verified; the S0 smoke build (`ka_tithi_pravesha`, P0.4) is unblocked and pre-approved; Pravāha pipeline run 1865991c passed its first state change at 17:37Z. (b) Our held 5-edge migration is renumbered 1211 -> 1216. (c) `bg_transit_rules` (global L0) moves to the front as stage S0b; Pravāha's pipeline is blocked on its stale receipt. (d) Other non-fresh global receipts: `bg_ephemeris_engine`, `bg_formula_constants`, `bg_vedha_malefic_scale`, `bg_vidhi_primitives` stale, `bg_panchanga` unknown; only `bg_transit_rules` blocks Pravāha today. (e) SS's L0 ruling: before any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha; `bg_ephemeris_engine` is the service, not the table, but is flagged. (f) Trap 103: a `success` deploy run listed for a merge sha may have run a different `DEPLOY_SHA`; verify before treating a migration as applied.
+> - **Facts supplied by SS/Pravāha (2026-10-01), taken as given and cross-checked read-only where the DB can show them:** (a) Pravāha's builder audit grant migration 1211 is deployed and verified; the S0 smoke build (`ka_tithi_pravesha`, P0.4) is unblocked and pre-approved; Pravāha pipeline run 1865991c passed its first state change at 17:37Z. (b) Our held 5-edge migration is renumbered 1211 -> 1216 (v1.4: renumbered again to 1220, because 1216 became Pravāha's applied gochara grants). (c) `bg_transit_rules` (global L0) moves to the front as stage S0b; Pravāha's pipeline is blocked on its stale receipt. (d) Other non-fresh global receipts: `bg_ephemeris_engine`, `bg_formula_constants`, `bg_vedha_malefic_scale`, `bg_vidhi_primitives` stale, `bg_panchanga` unknown; only `bg_transit_rules` blocks Pravāha today. (e) SS's L0 ruling: before any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha; `bg_ephemeris_engine` is the service, not the table, but is flagged. (f) Trap 103: a `success` deploy run listed for a merge sha may have run a different `DEPLOY_SHA`; verify before treating a migration as applied.
 > - **Sections added:** P0.6 (P0 status and the verification steps incl. Trap 103), S0b (`bg_transit_rules`), S0L (L0 freshness stage, optional), Evidence E13. **Amended:** P0.5, P0b.1, P0b.3-4, P0c.1-2, 0 (items 0-1), 0.1 (row 1), 1.1, 1.3, 1.4, 1.6, 2 (bg_transit_rules row), 3.3, 4.1, 5 (rows 1, 8, 9, 14-18; new rows 20-25), 6, 7 (R-9; new R-17 to R-20), 8 (table: S0, S0b, S0L, S0c, S1), 9 (Q3; new Q16-Q19).
 > - **What the order looks like now:** S0 smoke -> **S0b** `bg_transit_rules` -> **S0L** (optional; `bg_vedha_malefic_scale` is required in effect, the rest is not needed by the wave) -> **S0c** (conditional: the Gochara trio `ka_gochara`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, forced by S0b; v1.3.1: `ka_gochara_resonance` is Pravāha's, not in our wave) -> S0v/S0m (conditional) -> S1 (now `ka_muhurta_seva,ka_dasha_kala,bo_karanajala`) -> S2 -> ... -> S7. `bg_transit_rules` is no longer in S1.
 > - **Three findings that change what v1.1 predicted** (each with evidence in S0b, P0.6 and E13): (1) **`bg_transit_rules` will NOT delta-skip**: its writer source digest and its table content both moved since the 2026-09-04 receipt (L0 repair #2727; migration 1078), so the writer executes and records `output_changed` TRUE; v1.1's "expected `skip_no_delta`" (1.1, R-9, 3.3) is withdrawn. (2) The builder cannot write `bg_transit_moorti` (SELECT only; the writer upserts it) and cannot INSERT/UPDATE `asset_freshness` (the receipt path writes it on every completion and every delta-skip): code-derived and catalog-verified, not exercised. (3) Because S0b flips `ka_vedha_gochara` (and `ka_moorti_nirnaya`, `ka_gochara`) stale on the canonical chart, `ka_sangam` is blocked until the Gochara trio is rebuilt, and `ka_vedha_gochara` in turn needs `bg_vedha_malefic_scale` fresh.
@@ -710,6 +710,121 @@ Live registry: 31 non-L2 assets are downstream of the L2 layer. **17 are in the 
 The exact list of output-changing fixes and which writers carry each (the six producers are settled: the six MSR writers); whether any listed fix turns out not to change output (a subset without wave-0/1 writers would shrink the closure); the L2 sheet's own sequencing; run durations after the fixes; whether a single 23-asset run is within the dispatcher's limits (not checked).
 
 
+## LC. Launch checklist for EVERY stage (v1.4; SS N-51 and the freeze-gating investigation)
+
+REVIEW section; no execution authority. **NO REFREEZE anywhere in the campaign (SS N-51): certification replaces the Nirmāṇa freeze, and stale frozen definitions are accepted.** Evidence recorded as given: `INVESTIGATION_FREEZE_GATING_v1_0.md` (branch `origin/suvarna/land/TI-freeze-gating-001`; not on origin when I looked, so not read here): the production build path never reads the frozen definition. This supersedes every earlier concern in this plan about frozen or accepted Nirmāṇa definitions going stale (section 7.4 "Nirmāṇa-frozen assets", the 1210 note that the frozen manifests of `bo_karanajala`, `bo_pratijna`, `ka_yojaka` are stale): they are accepted as they are, and no stage re-freezes anything.
+
+**Three REAL GATES, by name, in the launch checklist of EVERY stage (S0-alt, S0b, S0L, S0c, S-L1, S-L1b, S0c2, S0t, S1, S-L2, S3-S7):**
+
+| Gate | Name | What it means at launch | How it is read |
+|---|---|---|---|
+| **LC-1** | **Image skew** | Dispatch only after the merged PR's image is deployed, **digest equal**: the job image runs the code the plan assumes. | Read the ACTUAL `DEPLOY_SHA` of the deploy run (Trap 103, P0.6), confirm "Build & Deploy Pipeline Job Image" ran, the job image tag contains the merge commit, and the writer's code digest in the image equals the `origin/main` digest inventory entry (the runner's `expected_code_digest` check refuses a skew, fail closed, S0b.8 item 3). |
+| **LC-2** | **Dependency lit + fresh (DEP-ASSERT)** | Every declared direct dependency of every asset in the run is `lit` AND `fresh`, or planned earlier in the same run. | The F1 query of section 3.2 for the dependencies; the planner pre-flight; the runner re-asserts per asset (`deps_unsatisfied`). A violation ends the asset `error` and moves its state, so it is checked, not discovered. |
+| **LC-3** | **No registry edit between dispatch and run start** | No `asset_registry` UPDATE (on `depends_on`, `integrity_check_sql`, `target_floor`, `health_probe` and the other trigger columns) lands between the dispatch and the run's start. | The runner compares each planned asset with the frozen manifest at start and fails a diverged asset (section 1.1); so no migration, deploy or admin edit may run in that window: deploy idle, no pending migration that touches `asset_registry`. |
+
+**Every stage's checklist also carries the standing items:** stage approval and the owner's build-dispatch authorization in the executing session (the owner's standing authorization of 2026-10-01 covers the in-process builder-DSN wrapper, see LC.2); 0 active `build_runs` on any chart; before-state snapshot; the dispatch protocol below. **Exec Suvarṇa is the only one who runs dispatches for real.** The section 8 and section 5 gates are in addition to LC-1..LC-3, never instead of them.
+
+### LC.1 Dispatch protocol (open items 8 and 9 folded in)
+
+1. **Check that the run starts within a minute** of dispatch (`build_runs.started_at` set, first `build_run_assets` row `building`). 53 of 736 runs read `never dispatched` by my count (`last_error ilike '%never dispatched%'`, 20:0xZ; SS says 51): a `planned` run that never started is failed by the watchdog later (the run `59232059`, a `ga_positions` run on 2026-09-19 22:48Z, ended `failed` "orphan-watchdog: run never dispatched" at 23:00Z and was never dispatched).
+2. **Before any re-dispatch** confirm the first run is still not started and **close it through a supported path** so that two runs cannot both execute. **If there is no supported way to close a `planned` run, ASK SS before the first real dispatch.** (Not established here: the supported paths are the dispatcher's `terminalize_dispatch_failure` for a failed dispatch of its own run, and the watchdog; neither is a way to close another session's `planned` run on demand. This is therefore an open question for SS before S0-alt's real dispatch, Q26.)
+3. Record the run id, `build_runs.chart_id` and `scope`, the first state change, and the audit rows; stop and report any divergence.
+
+### LC.2 Tooling fact
+
+Dispatch is `platform/scripts/dispatch_frozen_rebuild.py` through an in-process builder-DSN wrapper, under the owner's standing authorization given in the executing session on 2026-10-01. Dry runs for `ka_tithi_pravesha`, `bg_transit_rules`, `bg_vedha_malefic_scale` and `bg_vidhi_primitives` were accepted (global assets accepted; `build_runs.chart_id` = the canonical chart, `scope` = `asset_set`). The script is single-asset.
+
+
+## SL1. STAGE S-L1: the L1 rebuild on `.se1` (v1.4; SS N-64 and the S-L1 rulings)
+
+REVIEW section; no execution authority. S-L1 is the L1/panchanga rebuild of EPH.6. Recorded as given by SS/coordinator; PR states read with `gh` at about 20:05Z.
+
+### SL1.1 G-FLIP is CLEARED for the canonical chart (N-64)
+
+Zero class flips; the seven FORENSIC anchors hold under `.se1`; the dasha shift is an accuracy refinement (Lahiri: no Mahadasha start crosses a UTC or IST day; Krishnamurti and Raman crossings are expected and attributed). Source: `BOUNDARY_FLIP_REPORT_v1_0.md` v1.2 (branch `origin/suvarna/land/TI-ephemeris-flip-report-001`, PR #2859, read: sections 0A and the detector). It ran on macOS arm64: **G-EPH must still be verified on the deployed Linux image**, by the backend flag recorded per writer in the run (`ephemeris_backend=swieph`). G-FLIP is cleared for the canonical chart only; charts 2 and 3 are S-L1b.
+
+### SL1.2 Scope
+
+- **S-L1 = the canonical chart `482012f1` first.**
+- **S-L1b = charts `1c826d5a` and `cb73cd3d`**: its own REVIEW and its own flip report from actual output; **SS informs the owner before it runs**; snapshots of both charts taken immediately before. The S-L1b brief carries: stale varga rows (5.5 h offset, ayanamsha fallback); razor-edge facts (Saturn Raman 0.52 arcsec; Moon prana lord Lahiri 0.03; Mars prana lord 0.02; Ketu prana lord Raman 0.03); the `ga_dashas` integrity SQL hard-scoped to the canonical chart (**fix before S-L1b**); Lahiri-identical varga positions.
+- The L1 layer is 19 `ganita` assets in 6 dependency waves (E18): `ga_positions` (wave 0); `ga_ayurdaya`, `ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_prashna`, `ga_sensitive`, `ga_sensitive_degree`, `ga_transit_anchors`, `ga_vargas` (1); `ga_condition`, `ga_strength`, `ga_tajaka` (2); `ga_medical`, `ga_structural`, `ga_vastu` (3); `ga_sade_sati`, `ga_yoga` (4); `ga_vichara` (5).
+
+### SL1.3 MANDATORY before launch (each merged AND deployed; LC-1)
+
+| # | Item | Carrier (state read about 20:05Z) |
+|---|---|---|
+| 1 | Ephemeris fix, **G-EPH** (Swiss `.se1` probed and fail-closed; backend recorded per writer) | PR #2860 (`TI-ephemeris-fix-001`) OPEN; verified on the deployed Linux image |
+| 2 | Argala (N-61): graha-level argala rows in `ga_structural` | design REVIEW PR #2850 OPEN; L1 implementation PR #2851 OPEN |
+| 3 | Gandanta: shared L0 module and X1 (3°20′; 0°48′ as `formula_id` `strict_0_48` variant rows) | PR not identified in this lane |
+| 4 | F-A2 key widening on `chart_divisionals` (`fact_subject`) | PR #2858 OPEN, with its D6 owner-path plan **APPROVED FOR DRY RUN ONLY; apply needs a separate approval** |
+| 5 | Q02: the two `ga_vargas` edges, and the Daridra cancellation moved to `ga_vichara` | PR not identified |
+| 6 | Q03 honest tiers | PR #2854 (constants) OPEN, plus the tier-honesty lane |
+| 7 | Q16(a) constants in the sibling module `verification_tiers.py` (**NOT** `verification_vocab.py`) | PR #2854 |
+| 8 | Q16(c) one band table (cut points 0.4 / 0.7; NULL, not neutral) | lane not identified |
+| 9 | X2 fallback made visible, plus an integrity clause | lane not identified |
+| 10 | Q04 ownership: **migration 1219** carries the argala ownership row, the `ga_structural` digest-spec revision, the Q04 ownership rows including the declaration of the seven multi-formula categories. **1219 is a HARD PREREQUISITE**: the `l1_data_plane_mutation_guard` trigger refuses L1 writes to categories with no ownership row | draft, unmerged (owner HOLD below) |
+| 11 | Duplicate-keys mandatory minimum: canonical-formula constant plus 4 reader edits (Mrityu has no canonical); no rebuild needed | branch `TI-l1-dupkeys-001` |
+
+**Optional, only if ready when the gates clear:** Q10 haranas, Q11, Q13, Q15.
+
+**Migration numbers (as given):** **1219** ownership etc.; **1220** the held 5-edge migration (renumbered from 1216, which Pravāha's gochara grants took: applied 19:46Z); **1221** the `a29` argala integrity conjunct, applied with or after the writer deploy, **immediately before S-L1, as a named step**; **1222** the `ga_vargas` non-vacuity clause (e), TRUE on production today, may apply earlier. **1217 and 1218 are merged (19:37Z) and deploying; neither was applied at 20:01Z.** **Owner-protection HOLD:** no migration file is created or modified (12xx pattern) until the owner answers; the drafts 1219-1222 stay unmerged. This plan writes none.
+
+### SL1.4 Acceptance criterion and the attribution hooks
+
+After the run, re-run `flip_detector.py --compare` against the pre-rebuild snapshot (`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/`, PR #2859; snapshot `/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots/pre_rebuild_482012f1_2026-10-01.json.gz`, sha256 `0a92f79249f53103afbb1edac6986e417aaa2368d58336b96aa93451128dc455`). **RE-TAKE the snapshot immediately before S-L1 launches and keep both.** Expected: **zero backend class flips**; every other difference attributed to a named ruled change through the per-lane hook files. **STANDING RULE: every mandatory fix PR adds its own hook file in the same PR; any mandatory fix without a hook is a BLOCKER in the S-L1 REVIEW** (`--validate-hooks --require-lanes`). Today only `argala.json` and `gandanta.json` exist; **`daridra.json` and `tiers.json` are ABSENT** (and the F-A2, band-table, ephemeris and formula-pin hooks are written by their own PRs). **An unattributed class change stops the wave and goes to SS; a changed FORENSIC anchor is an ALERT.** Exit codes: 0 clean, 2 unattributed.
+
+### SL1.5 Sequencing of the F-A2 owner-path change
+
+1. **The writer deploys FIRST** (it fails closed on a missing 7-column index).
+2. **THEN the D6 owner-path plan runs**, with the **gap start and end reported to SS**.
+3. **If another workstream's run appears in the gap, the plan stops and never touches their run.**
+4. The real capture path first fires in S-L1 itself (ga_vargas, below).
+
+### SL1.6 Dispatch: single-asset, in dependency order
+
+S-L1 is **single-asset dispatches in dependency order** (LC.1 each time). **`ga_vargas` goes FIRST and is watched to completion** (the F-A2 capture path), with the **C1-C7 acceptance check** (`s_l1_ga_vargas_acceptance_check.sql`) before continuing: canonical total **38,596**; **7,718 per ayanamsha**; **6 INVARIANT**; **12 `house_lord` and 96 `ashtakavarga` per ayanamsha x varga**; **60 D30 per ayanamsha**; **no 7-column key duplicates**. Reading note (Q27, SS to confirm): `ga_vargas` depends on `ga_positions`, which S-L1 also rebuilds on `.se1`; "`ga_vargas` first" is read here as the first of the dependent assets, immediately after `ga_positions` (otherwise `ga_vargas` is built on the old `ga_positions` and restaled by it). The remaining assets follow in the waves of SL1.2, one dispatch each, with the post-run compare and the C1-C7 result recorded.
+
+### SL1.7 Not verified (S-L1)
+
+The content of the PRs not identified above; the acceptance SQL file (named by SS, not read: its path is not in the repo I read); whether items 3, 5, 8, 9 have carriers; that the Linux image resolves `.se1`; the dependency-order reading of "ga_vargas first".
+
+
+## S0cV. S0c sequence (v1.4, Pravāha via SS, option (a); supersedes the S0c order of the S0c section where they differ)
+
+1. After **S0-alt** passes and SS approves S0b, run **`bg_transit_rules` ALONE** (the proof of a global asset in an `asset_set` manifest on a chart-scoped run).
+2. **The MOMENT its receipt reads `fresh` AND 1217 is verified deployed, tell SS** (do **not** wait for `bg_vedha_malefic_scale`). SS notifies Pravāha, who rebuilds `ka_gochara_resonance` on `482012f1` THEMSELVES and reports `lit` + `fresh` with counts.
+3. **ONLY AFTER SS relays that**, dispatch the trio **ONE AT A TIME**, with **S0L (`bg_vedha_malefic_scale`) done before `ka_vedha_gochara`**. The coordinator's stated order is `ka_gochara`, `ka_moorti_nirnaya`, `ka_vedha_gochara`; **the registry does not allow it**: `ka_gochara` declares `ka_moorti_nirnaya` and `ka_vedha_gochara` directly (live `depends_on`: `{bg_ephemeris, bg_transit_rules, ka_gochara_resonance, ka_vedha_gochara, ka_moorti_nirnaya, ga_positions, ga_dashas, ga_yoga}`), and after S0b flips them stale LC-2 would refuse `ka_gochara` and set it `error`. **The plan therefore uses the dependency order `ka_moorti_nirnaya`, `ka_vedha_gochara` (after S0L), then `ka_gochara`, unless SS confirms otherwise (Q28).** **Do not dispatch `ka_gochara` until SS confirms.**
+4. **Result to report:** before/after row counts (moorti **74** and vedha **171** before; `kala_gochara_windows_v2` generation 2.0 87), and **whether the `ka_moorti_nirnaya` spline fallback fired** (read the run log). Pravāha's #2857 (merged 19:52Z) now records the ingress-root solver method and catches only `EphemerisBackendError` for the fallback, so the result also states the recorded solver method and backend per body; their writer is not edited by this plan.
+5. S0c needs the Pravāha gochara contract grants: migration 1216 (their A2.5) is **applied** (19:46Z; `data_plane_builder` holds INSERT on `kala_gochara_contacts` at 20:01Z), which closes the grant gate of P0.7 for the tables it covers (the deferred `ka_gochara_eval_window*`, `_av_polarity_declaration`, `_generation_seal` have no write path yet, per its header).
+
+
+## L2C. S-L2 in v1.4 (SS rulings; supplements L2B)
+
+**Accepted in principle: one 23-asset batch, but a SEPARATE REVIEW before launch.** The S-L2 REVIEW must carry:
+
+1. **The closed L2 fix list, actually merged and deployed.**
+2. **Dispatcher proof, or the 9 waves in order with no gap for another workstream to interleave.** Multi-asset dispatch is **the ENGINE session's E5.3** (a level-wave script over `dispatch_frozen_rebuild.py`: the same canonical-JSON manifest digest, waves from `depends_on`, **never more than 17 assets in one wave in production**). **Do NOT build a dispatcher lane.** If E5.3 is not merged and rehearsed when S-L2 is otherwise ready, **S-L2 runs asset by asset in dependency order with the stop rules**; SS will not hold S-L2 for tooling. (The widest L2 wave has 6 assets, so the 17-asset ceiling is not a constraint, E16.)
+3. **The R-25 answer (as ruled):** option 1 of `INVESTIGATION_R25_REAPER_VS_L2_v1_0.md` (branch `TI-r25-reaper-001`: no change to the orchestrator, the watchdog or the writers) plus the **1800 s `writer_timeout_seconds` for `bo_grounding` and `bo_laksana_rerank`** (migration 1218, merged 19:37Z, not applied at 20:01Z; it was first ruled 10800 and revised to 1800 the same day). **Stop rule: any asset over 12 minutes with no substep progress: stop further waves.** Watch the wall time of those two. **A `lit` flip while the worker still runs is a watchdog artefact** (the 15-minute watchdog never reads the registry): record it and verify the final state. **No L2 asset is launched until the R-25 answer is in the REVIEW (R-25).**
+4. **The measured tier-inversion numbers:** after the L1 respell, tier inversion goes **0 -> 3,186 on the native chart and 0 -> 76 on `1c826d5a`** until `bo_pramana_mapa`'s rank table is fixed in the L2 batch. **`bo_pramana_mapa` is NEVER dispatched alone between S-L1 and S-L2, and nobody reads the live tier-inversion SQL in that interval.**
+5. **The salience-weight effect of the tier demotions** (Q03) and **per-asset wall times reported afterwards.**
+
+**Tool-text and Pūrṇa pins and the owner-protection HOLD** are in the next section; the S-L2 REVIEW must also name any served-text change its fixes carry.
+
+
+## TT. Tool-text batch, owner-protection HOLD, open items (v1.4)
+
+**Owner-protection HOLD (preface of v1.4; applies to this plan and to everything it triggers).** No writes under `purna_anvesana/**` (`00_ARCHITECTURE/briefs/nirmana/purna_anvesana/**`), `platform/tests/pariprashna/**`, `pariprashna_swarm/**`, `kala_views/**`, `deploy.yml`, or settings; **no migration file creation or modification (12xx pattern) until the owner answers; the drafts 1219 / 1220 / 1221 / 1222 stay unmerged; 1217 and 1218 are merged and deploying.** Nobody in Suvarṇa regenerates `capability_knowledge.snapshot.json`, the `route_golden_stream` baselines or the acceptance report. Pūrṇa's timing constraint: regeneration happens **before their first candidate acceptance run or after their whole corpus, never in between.**
+
+**Tool-text batch.** Pending served-text and contract changes (the `get_argala` text, the `ayurdaya` `source_refs` line, the reader-fix contract changes) are collected in a **'tool-text batch' branch of SOURCE commits only, draft and red**; SS takes the owner's answer. They are not applied to Pūrṇa-guarded paths and are not part of any stage.
+
+**Open items added in v1.4.**
+1. **The cockpit monitor has reported `source_unavailable` since 2026-09-24** (recorded as given; the monitor was not inspected here).
+2. **Ledger anomalies:** run `59232059` (a `ga_positions` run that stayed `planned` and was failed by the watchdog; **never dispatched**) and run `8684032d` (`ka_gochara_resonance`, created 2026-10-01 14:57Z as `planned`, started 15:01:18Z and `failed` at 15:01:19Z with its asset still `queued`: E13 section 0); 51 of 736 runs carry the never-dispatched error (53 by my match, LC.1).
+3. **Dispatch step (every dispatch):** check the run starts within a minute; before any re-dispatch confirm the first run is still not started and close it through a supported path so two runs cannot both execute; **if there is no supported way to close a `planned` run, ASK SS before the first real dispatch** (LC.1, Q26).
+4. **S0-alt status:** still waiting for 1217 and 1218 to deploy (main CI pending behind the merge queue; neither applied at last read, 20:01Z). The **L2 reader grant** (APPROVED, `1ffef1bb...`: SELECT on 10 `bodha_*` tables) and the **F-A2 dry run** follow.
+5. **Decisions of 2026-10-02** (N-51, N-59, N-61, N-64 and the S-L1 rulings) are in the appendix 'Decisions since v1.0'.
+
+
 ## 0. What this review needs you to see first
 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
@@ -1148,7 +1263,7 @@ NOT verified that is said. No MCP call was made for this review.
 | 1 | P0 passed (audit grant, phala/mimamsa grants as needed, smoke build) | section P0.3-P0.6 | **PARTIAL (v1.2, 17:55Z)**: audit grant MET (1211 applied, builder audit row written); phala/mimamsa grants true (about 17:48-17:55Z); smoke pre-approved, NOT run; `asset_freshness` and `bg_transit_moorti` write gaps open (rows 21-22) |
 | 2 | Deploy idle: no `Deploy to Cloud Run` run with event `workflow_run` or `workflow_dispatch` in progress or pending | `gh run list --workflow deploy.yml --json status,conclusion,headSha,createdAt,event` (the `pull_request` runs are build-checks only and do not deploy) | **v1.2 (18:02Z): idle**: the `workflow_run` deploys listed (36896658202 17:04Z, 36898400004 17:18Z, both for 4eb40bec1; 36893699387 16:40Z for ce52cd5c3) are `completed success`; only `pull_request` build-checks run. Trap 103 (row 20) applies before any of them is read as proof; re-check at launch and re-run the smoke after any deploy that rebuilds the job image. (v1.0: not idle at 15:04Z.) |
 | 3 | No in-flight runs for the chart | `SELECT id,state FROM build_runs WHERE chart_id='482012f1-...' AND state IN ('planned','running','paused')` (the unique index enforces this server-side) | 0 at 15:04Z (8684032d failed 15:01); another lane dispatched at 14:57; **v1.2: 0 at 17:58Z** (1865991c, Pravāha, ended 17:36:57Z `failed`); repeat at launch (Q8) |
-| 4 | Registry unchanged since this plan | `SELECT count(*), md5(string_agg(asset_id\|\|'>'\|\|coalesce(depends_on::text,''),',' ORDER BY asset_id)) FROM asset_registry WHERE is_active` | 127 assets, md5 `fb7a1090d5aa3c7dabafc9f9daf1ae6a` (2026-10-01T14:49Z; **v1.2: identical at 18:02Z**); latest `_migrations_applied` filename = `1210_asset_registry_direct_edges.sql` (applied 14:37:09Z; v1.2: latest is now `1211_asset_throughput_state_audit_builder_grants.sql`, 17:35:43Z, with `1214` at 17:16:06Z; neither changes `depends_on`); no 1216. The runner also re-checks each planned asset against the frozen manifest at start (a diverged asset fails and blocks its dependents). |
+| 4 | Registry unchanged since this plan | `SELECT count(*), md5(string_agg(asset_id\|\|'>'\|\|coalesce(depends_on::text,''),',' ORDER BY asset_id)) FROM asset_registry WHERE is_active` | 127 assets, md5 `fb7a1090d5aa3c7dabafc9f9daf1ae6a` (2026-10-01T14:49Z; **v1.2: identical at 18:02Z**); latest `_migrations_applied` filename = `1210_asset_registry_direct_edges.sql` (applied 14:37:09Z; v1.2: latest is now `1211_asset_throughput_state_audit_builder_grants.sql`, 17:35:43Z, with `1214` at 17:16:06Z; neither changes `depends_on`); no held 5-edge migration applied (v1.4: numbered 1220). The runner also re-checks each planned asset against the frozen manifest at start (a diverged asset fails and blocks its dependents). |
 | 5 | Planner preflight clean for the exact request | simulation `preflight_sim.sql` with the 26 ids (Evidence E4); **v1.2: re-run with the live closure, 28 assets today and 30 after S0b (section S0b.5, E13 block K)** | 0 blockers; the only out-of-plan direct deps not 'fresh' are services `ka_dasha_kala` (freshness `unknown`, the exact writer-self-test shape, accepted). **v1.1:** accepted by the planner, but it leaves `ka_sangam` unprovable, so `ka_dasha_kala` is now IN the launch set (section 1.6) and this row is re-run with the 27 ids |
 | 6 | Upstream state of out-of-plan deps | rows lit AND fresh for `bo_laksana`, `bo_bimba`, `bo_samskara`, `bo_sangati`, `ga_dashas`, `ga_positions`, `ga_vargas`, `ga_yoga`, `bg_ghatana`, `bg_dignity_reference`, `mi_kula`, `mi_jivanaghatana` | all lit and latest-row fresh at 14:49Z. Caveat: `bo_laksana` and `ga_positions` also carry older partition rows that are stale/unknown; both the planner and DEP-ASSERT read only the latest-observed row, so they pass, but a new observation row would change that. |
 | 7 | Job image tag = a commit that contains the L3 fixes (I-1, I-2: PR #2823) and the regenerated writer-digest inventory | the cockpit POST response returns `job_image_tag`; or `gcloud run jobs describe brahma-build-pipeline-job --region asia-south1 --format='value(spec.template.spec.template.spec.containers[0].image)'` (a native/CI act; the reader cannot see it). Compare with `git log -1 -- platform/src/generated/nirmana-writer-digests.json` and `git merge-base --is-ancestor <fix sha> <image sha>` | not readable by this lane. The runner refuses the whole run if the job's writer sources do not hash to the manifest's `expected_code_digest` (`_verify_sidecar_code_matches_manifest`), so a stale image fails closed rather than writing old text. |
@@ -1394,6 +1509,22 @@ launch SS reviews this document and records the decision (REVIEW) and the pre-fl
 27. **(v1.4) `ga_vargas` first.** `ga_vargas` depends on `ga_positions`, which S-L1 also rebuilds: confirm "first" means first of the dependents immediately after `ga_positions` (SL1.6).
 28. **(v1.4) S0c order.** The stated order `ka_gochara`, `ka_moorti_nirnaya`, `ka_vedha_gochara` conflicts with `ka_gochara`'s declared dependencies (it needs both others `lit` and `fresh`); confirm the dependency order `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_gochara` (S0cV item 3).
 29. **(v1.4) Migration drafts under the owner HOLD.** 1219 is a HARD PREREQUISITE of S-L1 (the mutation guard refuses L1 writes to categories with no ownership row) and 1221 is a named step before it, while the owner HOLD keeps all 12xx drafts unmerged: when does the owner answer, and does the HOLD lift for 1219/1221 ahead of S-L1?
+
+## Appendix: Decisions since v1.0 (recorded as given; most recent last)
+
+| When | Decision | Where in this plan |
+|---|---|---|
+| 2026-10-01 | v1.1 rulings: `chart_divisionals` access precondition P0b (Option D); `ka_dasha_kala` joins the launch set (27); `ka_kshetra` its own stage S7 with stop rule; MSR-before-Kāla/Phala invariant; grant and migration gates per stage; production build remains a REVIEW to SS | P0b, P0c, 1.5, 1.6, 8.2 |
+| 2026-10-01 | v1.1.1: v1.1 approved as the working plan; stop rules 15 min / 6 h accepted | box v1.1 |
+| 2026-10-01 | v1.2 accepted; held 5-edge migration renumbered; `bg_transit_rules` to the front (S0b); S0L; NL-1 | S0b, S0L |
+| 2026-10-01 | Grant v1.4 (migration 1217) is ours, pre-approved, precondition of S0 and S0b; 1218 `writer_timeout_seconds` | P0.7 |
+| 2026-10-01 | Ephemeris: canonical backend Swiss `.se1`, Moshier never silent; exposed stages held until G-EPH | EPH |
+| 2026-10-01 | N-59: batch every output-changing L2 fix; one L2 rebuild | L2B, L2C |
+| 2026-10-01 | S0 pre-approval withdrawn; S0-alt `bg_vidhi_primitives` approved; order accepted; `ka_gochara_resonance` out of our wave | P0.4, S0b |
+| 2026-10-01/02 | R-25 ruled: option 1 + 1800 s for `bo_grounding` and `bo_laksana_rerank` (first 10800, revised the same day) | L2C |
+| 2026-10-01/02 | **N-51: no refreeze; certification replaces the Nirmāṇa freeze; three real gates in every checklist** | LC |
+| 2026-10-02 | **N-64: G-FLIP cleared for the canonical chart; S-L1 acceptance criterion; S-L1 scope and mandatory set; F-A2 sequencing; dispatch rules; S-L1b** | SL1 |
+| 2026-10-02 | Owner-protection HOLD; tool-text batch; migration numbers 1219-1222 | TT, SL1.3 |
 
 ## Evidence appendix
 
@@ -2508,5 +2639,29 @@ bg_vidhi_primitives: throughput lit; asset_freshness stale ["registry_changed"];
 deploy.yml workflow_run runs: 36905698140 in_progress (57bcef8c9, created 18:17:15Z)
 ```
 Reported by the executing session and recorded as given (not re-observed): dry runs for `ka_tithi_pravesha`, `bg_transit_rules`, `bg_vedha_malefic_scale`, `bg_vidhi_primitives` accepted by `dispatch_frozen_rebuild.py` through the in-process builder-DSN wrapper (global assets accepted; `build_runs.chart_id` canonical, `scope` `asset_set`); `bg_vidhi_primitives` `expected_code_digest` `63f0a35a...99cca`, table `vidhi_primitives` 60 rows, data digest `6efb0971...23e5b` (the executor's digest, not the E13 replica of the output-digest spec, which gave `28eeb20c6abb...` for the same table at 17:44Z); the SS rulings of v1.3.1.
+
+### E18. v1.4 reads (2026-10-01 20:01-20:05Z, `suvarna_reader`, SELECT only; `gh` read-only; repo after the rebase on `origin/main` 2992093bc)
+
+```
+migrations applied, latest six: 1216_gochara_contract_builder_grants (19:46:22Z), 1213 and 1212 (18:28:57Z, 18:28:55Z), 1211 (17:35:43Z), 1214 (17:16:06Z), 1210 (14:37:09Z); no 1217, 1218
+active runs: 0;  data_plane_builder asset_freshness INSERT/UPDATE f/f; bg_transit_moorti INSERT f; kala_gochara_contacts INSERT t
+build_runs total 736; last_error ilike '%never dispatched%': 53 (SS says 51)
+59232059: failed, created 2026-09-19 22:48:37Z, never started, "orphan-watchdog: run never dispatched" 23:00:05Z
+8684032d: failed, created 2026-10-01 14:57:39Z, started 15:01:18Z, ended 15:01:19Z (asset still queued)
+ka_gochara depends_on {bg_ephemeris,bg_transit_rules,ka_gochara_resonance,ka_vedha_gochara,ka_moorti_nirnaya,ga_positions,ga_dashas,ga_yoga}
+ka_moorti_nirnaya {ga_positions,bg_ephemeris,bg_transit_rules};  ka_vedha_gochara {ga_positions,bg_ephemeris,bg_transit_rules,bg_sarvatobhadra_grid,bg_vedha_malefic_scale,bg_phaladeepika_latta}
+PR states: #2842 (1217) MERGED 19:37Z; #2845 (1216) MERGED 19:10Z; #2846 (1218) MERGED 19:37Z; #2857 (Pravaha moorti) MERGED 19:52Z;
+           #2850, #2851 (argala), #2854 (tier constants), #2858 (F-A2), #2859 (flip report + hooks), #2860 (ephemeris fix), #2840 (backend investigation) OPEN
+L1 (ganita) layer, dependency waves, canonical states:
+L1 wave 0 ['ga_positions(lit)']
+L1 wave 1 ['ga_ayurdaya(lit)', 'ga_dashas(lit)', 'ga_nakshatra(lit)', 'ga_panchanga(lit)', 'ga_prashna(lit)', 'ga_sensitive(lit)', 'ga_sensitive_degree(lit)', 'ga_transit_anchors(lit)', 'ga_vargas(lit)']
+L1 wave 2 ['ga_condition(lit)', 'ga_strength(lit)', 'ga_tajaka(lit)']
+L1 wave 3 ['ga_medical(lit)', 'ga_structural(lit)', 'ga_vastu(lit)']
+L1 wave 4 ['ga_sade_sati(lit)', 'ga_yoga(lit)']
+L1 wave 5 ['ga_vichara(lit)']
+non-L1 direct deps of L1: ['bg_kp_sublord_division', 'bg_nakshatra', 'bg_panchanga', 'bg_prashna_rules', 'bg_reference']
+ga_vargas deps ['ga_positions']
+```
+Read from branches: `BOUNDARY_FLIP_REPORT_v1_0.md` v1.2 sections 0A (N-64, snapshot path and sha256, detector and hook rules) on `origin/suvarna/land/TI-ephemeris-flip-report-001`; `INVESTIGATION_R25_REAPER_VS_L2_v1_0.md` section 0 and 7 on `origin/suvarna/land/TI-r25-reaper-001`. Not read (not on origin or not in this lane): `INVESTIGATION_FREEZE_GATING_v1_0.md`, `s_l1_ga_vargas_acceptance_check.sql`, the PRs for Gandanta, Q02, Q03 tier-honesty, Q16(c), X2, 1219-1222. All rulings of v1.4 are recorded as given by SS/the coordinator.
 
 *End of document.*
