@@ -180,7 +180,11 @@ def bound_values(src, table, col, expect_statements=1):
     tuple, or a list of tuples the same function `.append`s (directly, or through a list filled from a loop over another
     such list). The expression returned is the element at the column's position in every such tuple; a star-arg at or
     before that position makes the binding unknowable and is a problem."""
-    tree = _parents(ast.parse(src))
+    return bound_values_tree(_parents(ast.parse(src)), table, col, expect_statements)
+
+
+def bound_values_tree(tree, table, col, expect_statements=1):
+    """bound_values over an already parsed tree (with parent links)."""
     problems, values, n = [], [], 0
     for call in (c for c in ast.walk(tree) if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute)
                  and c.func.attr in ("execute", "executemany") and len(c.args) >= 2):
@@ -456,12 +460,22 @@ def citation_sites(tree):
             return "composed" if _text_composed(fdefs[v.func.id]) else "other"
         return "other"
 
+    def is_key(k):
+        """a constant key spelled citation_human in any case, or a name every assignment of which is such a constant"""
+        if isinstance(k, ast.Constant) and isinstance(k.value, str):
+            return k.value.lower() == "citation_human"
+        if isinstance(k, ast.Name):
+            vals = assigns.get(k.id, [])
+            return bool(vals) and all(isinstance(x, ast.Constant) and isinstance(x.value, str) and x.value.lower() == "citation_human"
+                                      for x in vals)
+        return False
+
     _parents(tree)
     out = []
     for n in ast.walk(tree):
         if isinstance(n, ast.Dict):
             for k, v in zip(n.keys, n.values):
-                if isinstance(k, ast.Constant) and k.value == "citation_human":
+                if k is not None and is_key(k):
                     out.append((v.lineno, "dict", classify(v), ast.unparse(v)))
         elif isinstance(n, ast.keyword) and n.arg == "citation_human":
             out.append((n.value.lineno, "kw", classify(n.value), ast.unparse(n.value)))
@@ -469,8 +483,13 @@ def citation_sites(tree):
             for tg in n.targets:
                 if isinstance(tg, ast.Name) and tg.id in ("citation_human", "chum", "chuman", "l1_citation_human"):
                     out.append((n.lineno, "var", classify(n.value), ast.unparse(n.value)))
-                if (isinstance(tg, ast.Subscript) and isinstance(tg.slice, ast.Constant) and tg.slice.value == "citation_human"):
-                    out.append((n.lineno, "var", classify(n.value), ast.unparse(n.value)))
+                if isinstance(tg, ast.Subscript) and is_key(tg.slice):
+                    out.append((n.value.lineno, "subkey", classify(n.value), ast.unparse(n.value)))
+                if isinstance(tg, ast.Attribute) and tg.attr.lower() == "citation_human":
+                    out.append((n.value.lineno, "attr", classify(n.value), ast.unparse(n.value)))
+        elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "setdefault"
+              and len(n.args) >= 2 and is_key(n.args[0])):
+            out.append((n.args[1].lineno, "setdefault", classify(n.args[1]), ast.unparse(n.args[1])))
         elif isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in helpers:
             for pname, idx in helpers[n.func.id]:
                 v = next((k.value for k in n.keywords if k.arg == pname), None)
@@ -478,6 +497,10 @@ def citation_sites(tree):
                     v = n.args[idx]
                 if v is not None:
                     out.append((v.lineno, "arg", classify(v), ast.unparse(v)))
+    for _, table in citation_inserts(tree):          # a literal parameter tuple of an INSERT that names the column: positional
+        if table != "<columns>":
+            for v in bound_values_tree(tree, table, "citation_human", expect_statements=-1)[1]:
+                out.append((v.lineno, "tuple", classify(v), ast.unparse(v)))
     return sorted(set(out), key=lambda t: (t[0], t[1], t[3]))
 
 
@@ -504,6 +527,106 @@ def site_interpolations(tree, kind="composed"):
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in fdefs:
             grab(fdefs[node.func.id])
     return sorted(out)
+
+
+DATUM_KEYS = frozenset({"fact_value_text", "fact_value_num", "fact_value_jsonb", "configuration_jsonb", "fact_value"})
+
+
+_DATUM_INDEX = {}
+
+
+def _datum_index(tree):
+    """Per-tree index (built once): name -> value expressions it is bound from (assignments, loop and comprehension
+    iterables, caller-bound arguments of a parameter), and module function name -> def."""
+    idx = _DATUM_INDEX.get(id(tree))
+    if idx is not None and idx[0] is tree:
+        return idx[1], idx[2]
+    binds, fdefs = {}, {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.FunctionDef):
+            fdefs[n.name] = n
+        if isinstance(n, ast.Assign):
+            for tt in n.targets:
+                for t in ast.walk(tt):
+                    if isinstance(t, ast.Name):
+                        binds.setdefault(t.id, []).append(n.value)
+        elif isinstance(n, (ast.For, ast.comprehension)):
+            for t in ast.walk(n.target):
+                if isinstance(t, ast.Name):
+                    binds.setdefault(t.id, []).append(n.iter)
+    for c in ast.walk(tree):
+        if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id in fdefs:
+            f = fdefs[c.func.id]
+            params = [p.arg for p in f.args.args + f.args.kwonlyargs]
+            for i, p in enumerate(params):
+                v = next((k.value for k in c.keywords if k.arg == p), None)
+                if v is None and i < len(c.args) and not isinstance(c.args[i], ast.Starred):
+                    v = c.args[i]
+                if v is not None:
+                    binds.setdefault(p, []).append(v)
+    _DATUM_INDEX[id(tree)] = (tree, binds, fdefs)
+    return binds, fdefs
+
+
+def reads_datum(tree, node, _seen=None):
+    """True when the value of expression `node` depends on a fact DATUM (a read of fact_value_text / fact_value_num /
+    fact_value_jsonb / configuration_jsonb): a string constant naming one anywhere in the expression, in a value a name it
+    uses is bound from (assignment, loop iterable, the argument a caller binds to a parameter), or in the body of a module
+    function it calls. A constant, a fixed-list ordinal or an identity key (fact_subject, a graha code) does not. It follows
+    the data dependence, not the variable name, so `name` cannot hide a computed status."""
+    binds, fdefs = _datum_index(tree)
+    if _seen is None:                      # top-level search: nodes already fully explored with no datum found are not re-walked
+        neg = _DATUM_NEG.setdefault(id(tree), set())
+        seen = set()
+        found = _reads_datum(tree, node, seen, binds, fdefs, neg)
+        if not found:
+            neg |= seen
+        return found
+    return _reads_datum(tree, node, _seen, binds, fdefs, set())
+
+
+_DATUM_NEG = {}
+
+
+def _reads_datum(tree, node, _seen, binds, fdefs, neg):
+    if id(node) in _seen or id(node) in neg:
+        return False
+    _seen.add(id(node))
+    for x in ast.walk(node):
+        if isinstance(x, ast.Constant) and isinstance(x.value, str) and x.value in DATUM_KEYS:
+            return True
+        if isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id in fdefs:
+            if _reads_datum(tree, fdefs[x.func.id], _seen, binds, fdefs, neg):
+                return True
+        if isinstance(x, ast.Name) and isinstance(x.ctx, ast.Load):
+            if any(_reads_datum(tree, v, _seen, binds, fdefs, neg) for v in binds.get(x.id, [])):
+                return True
+    return False
+
+
+def interpolation_datum_flags(tree, kind="composed"):
+    """{interpolated expression: reads_datum} over every citation site of `kind` (names followed as in site_interpolations)."""
+    fdefs = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+    out = {}
+
+    def grab(node):
+        for x in ast.walk(node):
+            if isinstance(x, ast.JoinedStr):
+                for v in x.values:
+                    if isinstance(v, ast.FormattedValue):
+                        out[ast.unparse(v.value)] = out.get(ast.unparse(v.value), False) or reads_datum(tree, v.value)
+
+    for _, _, k, u in citation_sites(tree):
+        if k != kind:
+            continue
+        node = ast.parse(u, mode="eval").body
+        grab(node)
+        if isinstance(node, ast.Name):
+            for v in _assign_values(tree, node.id):
+                grab(v)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in fdefs:
+            grab(fdefs[node.func.id])
+    return out
 
 
 _INSERT_COLS_RE = re.compile(r"INSERT\s+INTO\s+(?:public\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)", re.I | re.S)

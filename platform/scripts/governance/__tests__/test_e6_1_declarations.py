@@ -263,9 +263,10 @@ NARR_DECLARED = {
 # citation_human sweep (SS ruling 2026-10-01, definition: a composed string is narration if it states or grades a computed
 # value, counts included; provenance pointers, ordinals and structural labels are not): assets newly declared, and prior
 # (ddl-evidence) declarations that gained the column. The full decision table, with the AST census, is CITATION_DECISIONS.
-CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_human"], "bo_cgm_motifs": ["citation_human"],
+CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_human"], "bo_bimba": ["citation_human"],
+                "bo_cgm_motifs": ["citation_human", "motif_name"],
                 "bo_karanajala": ["citation_human"], "bo_yantra_mechanism": ["citation_human", "mechanism_name"],
-                **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_dashas", "ga_panchanga", "ga_positions",
+                **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_panchanga", "ga_positions",
                                                    "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
                                                    "ga_vargas", "ga_yoga")}}
 CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
@@ -1388,7 +1389,7 @@ CITATION_DECISIONS = json.loads(r"""
   ]
  },
  "bo_bimba": {
-  "decision": "decline",
+  "decision": "declare",
   "sites": {
    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py": [
     4,
@@ -1406,33 +1407,18 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    351,
-    "\"citation_human\": f\"Graha no"
-   ],
-   [
-    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    406,
-    "\"citation_human\": f\"Bhava no"
-   ],
-   [
-    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
-    456,
-    "\"citation_human\": f\"Domain n"
-   ],
-   [
-    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
     523,
     "\"citation_human\": f\"{sig_cla"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    252,
+    "def _yoga_config_name(cfg: d"
    ]
   ],
   "served": null,
-  "fields": null,
-  "labels": [
-   "domain",
-   "graha",
-   "h",
-   "name",
-   "sig_class.capitalize()"
+  "fields": [
+   "citation_human"
   ]
  },
  "bo_cdlm_summary": {
@@ -1502,6 +1488,16 @@ CITATION_DECISIONS = json.loads(r"""
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
     348,
     "f\"Stellium: {len(nodes)} gra"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    342,
+    "\"motif_name\": f\"Stellium in "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    400,
+    "\"motif_name\": f\"Parivartana "
    ]
   ],
   "served": [
@@ -1510,7 +1506,8 @@ CITATION_DECISIONS = json.loads(r"""
    "classical_citation_id, verif"
   ],
   "fields": [
-   "citation_human"
+   "citation_human",
+   "motif_name"
   ]
  },
  "bo_cgm_paths": {
@@ -1575,6 +1572,16 @@ CITATION_DECISIONS = json.loads(r"""
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    785,
+    "\"citation_human\":           "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    1360,
+    "\"citation_human\": ("
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
     1732,
     "\"citation_human\": f\"{node_su"
    ]
@@ -1628,8 +1635,6 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "fields": [
    "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason",
-   "citation_human",
-   "citation_human",
    "citation_human"
   ]
  },
@@ -1786,11 +1791,11 @@ CITATION_DECISIONS = json.loads(r"""
   ]
  },
  "ga_dashas": {
-  "decision": "declare",
+  "decision": "decline",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_dashas_writer.py": [
     29,
-    1,
+    2,
     1,
     0
    ]
@@ -1814,8 +1819,23 @@ CITATION_DECISIONS = json.loads(r"""
    384,
    "`SELECT dasha_row_id::text A"
   ],
-  "fields": [
-   "citation_human"
+  "fields": null,
+  "labels": [
+   "' > '.join(lord_chain)",
+   "' > '.join(lords)",
+   "ayanamsha_id.title()",
+   "chain",
+   "clipped_e",
+   "clipped_s",
+   "level",
+   "lord_name",
+   "md_lord",
+   "sub2_lord",
+   "sub_lord",
+   "varsha_end_d",
+   "varsha_lord",
+   "varsha_num",
+   "varsha_start_d"
   ]
  },
  "ga_panchanga": {
@@ -2147,7 +2167,7 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "declare",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_yoga_writer.py": [
-    6,
+    10,
     16,
     0,
     7
@@ -2185,9 +2205,9 @@ CITATION_DECISIONS = json.loads(r"""
  }
 }
 """)
-CITATION_DIRS = (_SC + "pipeline/orchestrator/writers", _SC + "bodha_writers", _SC + "ga_writers")
-# writer-side files that set a citation_human but belong to no asset's decision: a verifier's constant text
-CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py"}
+# python files that set a citation_human but belong to no asset's decision: a verifier's constant text, and the constant-literal
+# Upapada rule corpus (brahmagyan/l0_upapada_maitri_rules.py) that ga_structural reads into its rows (ga_structural is decided on its own sites)
+CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py"}
 CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_vichara", "ga_transit_anchors")   # writers set no citation_human
 _GW = _SC + "ga_writers/"
 
@@ -2205,20 +2225,27 @@ def _census(path):
 
 def test_citation_sweep_covers_every_writer_file_that_sets_a_citation_human():
     import os
-    owned = {f for d in CITATION_DECISIONS.values() for f in d["sites"]} | CITATION_UNOWNED_FILES
+    owned = {f for d in CITATION_DECISIONS.values() for f in list(d["sites"]) + [d["insert"][0]]} | CITATION_UNOWNED_FILES
     found = set()
-    for d in CITATION_DIRS:
-        for f in sorted(os.listdir(REPO_ROOT / d)):
-            if f.endswith(".py"):
-                rel = f"{d}/{f}"
-                if nw.citation_sites(_ctree(rel)):
-                    found.add(rel)
+    for dirpath, dirs, files in os.walk(REPO_ROOT / _SC):          # the whole sidecar, not only the writer directories
+        dirs[:] = [d for d in dirs if d not in ("tests", "__tests__", "node_modules", "__pycache__")]
+        for f in sorted(files):
+            if not f.endswith(".py") or f.startswith("test_"):
+                continue
+            rel = str((pathlib.Path(dirpath) / f).relative_to(REPO_ROOT))
+            if "itation" not in _read(rel).lower() and "ITATION" not in _read(rel):
+                continue
+            t = _ctree(rel)
+            # a file counts when it names a citation_human key/attribute/INSERT column; a bare `citation=` parameter (a source
+            # citation helper: l0_reference, ka_gochara_resonance, ...) is not the column
+            if any(x[1] != "arg" for x in nw.citation_sites(t)) or any(tb != "<columns>" for _, tb in nw.citation_inserts(t)):
+                found.add(rel)
     assert found == owned, (sorted(found - owned), sorted(owned - found))
     assert len(CITATION_DECISIONS) == 28
     assert sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "declare") == sorted(
         set(CITATION_NEW) | set(CITATION_EXTENDED_PRIOR) | {"bo_upaya"})
     assert sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline") == [
-        "bo_bimba", "bo_cgm_paths", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana", "ga_ayurdaya", "ga_sensitive_degree"]
+        "bo_cgm_paths", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana", "ga_ayurdaya", "ga_dashas", "ga_sensitive_degree"]
     decl = _decl()
     for a in CITATION_NO_SITE_ASSETS:
         assert decl[a]["prose_fields"] is None, a
@@ -2253,8 +2280,9 @@ def test_citation_cites_and_served_reads_are_real_lines_and_cited_in_the_evidenc
         lines = _read(path).splitlines()
         assert line <= len(lines) and needle in lines[line - 1], (asset, path, line, lines[line - 1])
         if d["decision"] == "declare":
-            assert f"{path.rsplit('/', 1)[1]}:{line}" in ev, (asset, path, line)
+            assert f"{path}:{line}" in ev, (asset, path, line)          # the full repo path, not a basename
     if d["decision"] == "declare":
+        assert _decl()[asset].get("evidence_kind") == "writer", asset
         assert "SS ruling 2026-10-01" in ev and ev.count("AST census of the writer's citation_human sites") == 1
 
 
@@ -2275,7 +2303,12 @@ def test_declined_citation_assets_compose_only_labels_or_nothing(asset):
                     for y in ast.walk(x.value):
                         assert not isinstance(y, (ast.BinOp, ast.Compare)), (asset, ln, u)
                         if isinstance(y, ast.Call):
-                            assert isinstance(y.func, ast.Attribute) and y.func.attr == "capitalize", (asset, ln, u)
+                            assert isinstance(y.func, ast.Attribute) and y.func.attr in ("capitalize", "title", "join"), (asset, ln, u)
+    # and no interpolated name depends on a fact DATUM (fact_value_text / fact_value_num / fact_value_jsonb / configuration_jsonb):
+    # a variable called `name` or `display` is followed to where its value comes from, never trusted by its name
+    for f in d["sites"]:
+        flags = nw.interpolation_datum_flags(_ctree(f))
+        assert not any(flags.values()), (asset, {k: v for k, v in flags.items() if v})
 
 
 def test_citation_composed_values_are_really_stated_in_the_declared_assets():
@@ -2302,6 +2335,22 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
         assert any(specs), (path, ln)
 
 
+def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_declared():
+    t = _ctree(_WR + "bo_bimba.py")
+    flags = nw.interpolation_datum_flags(t)
+    assert flags["name"] is True and flags["sig_class.capitalize()"] is True       # followed through _yoga_config_name to fact_value_text
+    fn = next(n for n in t.body if isinstance(n, ast.FunctionDef) and n.name == "_yoga_config_name")
+    assert "fact_value_text" in [c.value for c in ast.walk(fn) if isinstance(c, ast.Constant)]
+    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [523]
+    # the tracer is not fooled by the variable name: the same shape over a constant is not a datum, over a renamed read it is
+    syn = ("K = ('a',)\ndef nm(cfg, d):\n    for k in ('fact_value_text', 'x'):\n        v = cfg.get(k)\n        if v: return v\n    return d\n"
+           "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")
+    st = ast.parse(syn)
+    assert nw.interpolation_datum_flags(st) == {"label": True, "fixed": False}
+    assert nw.reads_datum(st, ast.parse("K[0]", mode="eval").body) is False
+    assert nw.reads_datum(st, ast.parse("cfg['configuration_jsonb']", mode="eval").body) is True
+
+
 def test_citation_forwarded_headline_and_mechanism_name_are_composed_by_their_callers():
     em = _ctree(_SC + "bodha_writers/vargottama_dhana_emitter.py")
     fwd = [s for s in nw.citation_sites(em) if s[2] == "passthrough"]
@@ -2319,7 +2368,17 @@ def test_citation_forwarded_headline_and_mechanism_name_are_composed_by_their_ca
     assert composed[565] == ["display", "label", "verdict.valence"]               # the only mechanism_name that grades a value
     assert set(composed) == {344, 388, 472, 565}
     assert all("valence" not in "".join(v) for ln, v in composed.items() if ln != 565)
-    assert [k.value.lineno for k in names if not isinstance(k.value, ast.JoinedStr)] == [229]     # motif_name passthrough (a label)
+    # :229 forwards bo_cgm_motifs' motif_name, which is itself composed and served: it is declared there, not a label
+    fwd = [k.value for k in names if not isinstance(k.value, ast.JoinedStr)]
+    assert [v.lineno for v in fwd] == [229] and ast.unparse(fwd[0]) == "m['motif_name']"
+    assert "motif_name" in _decl()["bo_cgm_motifs"]["prose_fields"]
+    mm = _ctree(_WR + "bo_cgm_motifs.py")
+    names_m = {}
+    for d in (n for n in ast.walk(mm) if isinstance(n, ast.Dict)):
+        for k, v in zip(d.keys, d.values):
+            if isinstance(k, ast.Constant) and k.value == "motif_name" and isinstance(v, ast.JoinedStr):
+                names_m[v.lineno] = [e for e, _ in nw.fstring_interpolations(v)]
+    assert names_m[342] == ["house_key", "', '.join(labels)"] and names_m[400] == ["depth", "cycle_label"]     # stellium house, chain length
 
 
 def test_the_citation_sites_of_bo_laksana_py_are_outside_the_rerank_class_that_declares_empty():
@@ -2348,11 +2407,52 @@ def run(x, rule):
 """
 
 
+_CITE_SYNTH2 = """
+KEY = "citation_human"
+UP = "CITATION_HUMAN"
+OTHER = "citation_ref"
+SQL = "INSERT INTO t (a, citation_human) VALUES (%s, %s)"
+def run(x, row, d, cur):
+    row.citation_human = f"a{x}"
+    row.Citation_Human = "plain"
+    row.other = f"zz{x}"
+    d.setdefault("citation_human", f"b{x}")
+    d.setdefault("citation_ref", f"no{x}")
+    d[KEY] = f"c{x}"
+    d[OTHER] = f"no{x}"
+    e = {KEY: f"d{x}", OTHER: f"no{x}"}
+    f = {"CITATION_HUMAN": f"e{x}"}
+    g = {UP: f"f{x}"}
+    cur.execute(SQL, (1, f"g{x}"))
+    cur.execute("INSERT INTO u (citation_human, b) VALUES (%s, %s)", (f"h{x}", 2))
+    cur.execute("INSERT INTO v (a, b) VALUES (%s, %s)", (1, f"no{x}"))
+"""
+
+
+def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_keys_and_positional_tuples():
+    got = [(h, k, u) for _, h, k, u in nw.citation_sites(nw._parents(ast.parse(_CITE_SYNTH2)))]
+    assert got == [("attr", "composed", "f'a{x}'"), ("attr", "const", "'plain'"), ("setdefault", "composed", "f'b{x}'"),
+                   ("subkey", "composed", "f'c{x}'"), ("dict", "composed", "f'd{x}'"), ("dict", "composed", "f'e{x}'"),
+                   ("dict", "composed", "f'f{x}'"), ("tuple", "composed", "f'g{x}'"), ("tuple", "composed", "f'h{x}'")], got
+
+
+def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
+    doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
+    assert doc["version"] == "1.6.0"
+    d = doc["description"]
+    for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
+                   "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):
+        assert phrase in d, phrase
+    assert all(a not in _decl() or _decl()[a]["prose_fields"] is None or "fact_value_text" not in _decl()[a]["prose_fields"]
+               for a in _decl()), "the shared fact_value_text column is never declared"
+    assert not any("formula_provenance_text" in (e["prose_fields"] or []) for e in _decl().values())
+
+
 def test_citation_sites_scanner_classifies_dicts_keywords_helpers_names_and_calls():
     got = [(h, k) for _, h, k, _ in nw.citation_sites(nw._parents(ast.parse(_CITE_SYNTH)))]
     # a keyword to a citation-named helper parameter is seen twice (as the helper argument and as the keyword): the census pins that
     assert got == [("dict", "passthrough"), ("arg", "composed"), ("arg", "const"), ("arg", "const"), ("arg", "composed"),
-                   ("kw", "composed"), ("var", "composed"), ("dict", "other"), ("kw", "composed"), ("var", "other"),
+                   ("kw", "composed"), ("var", "composed"), ("dict", "other"), ("kw", "composed"), ("subkey", "other"),
                    ("dict", "const")], got
     assert nw.site_interpolations(ast.parse(_CITE_SYNTH)) == ["x"]
     sql = ("INSERT INTO t (a, citation_human, b) VALUES (%s,%s,%s)", "INSERT INTO u (a) VALUES (%s)")
