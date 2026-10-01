@@ -547,3 +547,118 @@ class TestClassStateSharing:
         w._dhara_windows_state = SimpleNamespace(event_class='A', snapshot_id='x')
         w.plan_substeps(_ctx(FakeConn(F.build_tables())))
         assert w._dhara_windows_state is None
+
+
+# ── review corrections (PR #2830) ────────────────────────────────────────────
+
+class TestProductionHorizonPartition:
+    """At the real horizon (36525 d, 20 parts => edges are exact multiples of
+    1826.25, which is exactly representable), so the edges can be asserted EXACTLY,
+    not approximately. Kills a mutant that rounds an edge."""
+
+    @pytest.fixture(autouse=True)
+    def _prod_horizon(self, monkeypatch):
+        monkeypatch.setattr(W, 'HORIZON_DAYS', 36525.0)
+
+    def test_edges_are_exact_multiples_of_1826_25(self):
+        n = W.WINDOW_PARTS
+        assert n == 20
+        for p in range(1, n):
+            assert W._window_part_bounds(p, n)[0] == p * 1826.25
+            assert W._window_part_bounds(p - 1, n)[1] == p * 1826.25
+
+    def test_every_edge_and_its_float_neighbours_land_in_exactly_one_part(self):
+        import math
+        n = W.WINDOW_PARTS
+        for i in range(0, n + 1):
+            edge = i * 1826.25
+            for t, want in ((edge, min(i, n - 1)),
+                            (math.nextafter(edge, math.inf), min(i, n - 1)),
+                            (math.nextafter(edge, -math.inf), max(i - 1, 0))):
+                hits = [p for p in range(n)
+                        if W._in_window_part(t, *W._window_part_bounds(p, n))]
+                assert hits == [want], (t, hits, want)
+
+    def test_infinities_land_in_the_outer_parts(self):
+        import math
+        n = W.WINDOW_PARTS
+        for t, want in ((-math.inf, 0), (math.inf, n - 1)):
+            hits = [p for p in range(n)
+                    if W._in_window_part(t, *W._window_part_bounds(p, n))]
+            assert hits == [want]
+
+
+class TestRowsAccounting:
+    def test_rows_inserted_summed_over_parts_equals_all_rows_written(self, synthetic):
+        conn = FakeConn(F.build_tables())
+        ctx = _ctx(conn)
+        w = W.KaKshetraWriter()
+        total = 0
+        for step in w.plan_substeps(ctx):
+            res = w.run_substep(ctx, step)
+            parts = step.key.split(':')
+            if parts[0] == 'stage5dhara' and len(parts) == 4:
+                total += res.rows_inserted
+            if step.key.startswith('stage6'):
+                break
+        wins = len(conn.tables['kala_field_windows'])
+        prov = len(conn.tables['kala_field_provenance'])
+        assert wins == len(STARTS) and prov > wins
+        assert total == wins + prov            # provenance rows are counted, not just windows
+
+    def test_each_part_reports_its_own_windows_plus_provenance(self, synthetic):
+        conn = FakeConn(F.build_tables())
+        ctx = _ctx(conn)
+        w = W.KaKshetraWriter()
+        n = W.WINDOW_PARTS
+        for step in w.plan_substeps(ctx):
+            fields = step.key.split(':')
+            if fields[0] == 'stage5dhara' and len(fields) == 4:
+                w_before = len(conn.tables.get('kala_field_windows', []))
+                p_before = len(conn.tables.get('kala_field_provenance', []))
+                res = w.run_substep(ctx, step)
+                dw = len(conn.tables['kala_field_windows']) - w_before
+                dp = len(conn.tables['kala_field_provenance']) - p_before
+                assert res.rows_inserted == dw + dp
+                lo, hi = W._window_part_bounds(int(fields[3]), n)
+                assert dw == sum(1 for s in STARTS if W._in_window_part(s, lo, hi))
+            else:
+                w.run_substep(ctx, step)
+            if step.key.startswith('stage6'):
+                break
+
+
+class TestLegacyGateEdgesAndOrderIndependence:
+    def _tables_with_two_legacy_rows(self):
+        t = F.build_tables()
+        t['kala_gochara_windows'].append(
+            dict(t['kala_gochara_windows'][0], id=992, peak_date='2026-09-01'))
+        return t
+
+    def _build(self, tables):
+        conn = FakeConn(tables)
+        ctx = _ctx(conn)
+        w = W.KaKshetraWriter()
+        for s in w.plan_substeps(ctx):
+            if s.key.startswith('stage6'):
+                break
+            w.run_substep(ctx, s)
+        return conn
+
+    def test_every_window_in_every_part_carries_one_gate_edge_per_legacy_row(self, synthetic):
+        conn = self._build(self._tables_with_two_legacy_rows())
+        wids = {r['window_id'] for r in conn.tables['kala_field_windows']}
+        assert len(wids) == len(STARTS)
+        for wid in wids:
+            gates = sorted(r['term_key'] for r in conn.tables['kala_field_provenance']
+                           if r['target_id'] == wid and r['term_role'] == 'gate')
+            assert gates == ['gate:legacy_sweep_xref:v1:991:agree',
+                             'gate:legacy_sweep_xref:v1:992:agree']
+
+    def test_window_list_order_does_not_change_the_rows(self, synthetic, monkeypatch):
+        forward = _snapshot_tables(self._build(F.build_tables()))
+        monkeypatch.setattr(
+            integrator, 'find_windows',
+            lambda segments, q: list(reversed(_synthetic_windows(sorted(synthetic['starts'])))))
+        reverse = _snapshot_tables(self._build(F.build_tables()))
+        assert forward == reverse
