@@ -2371,6 +2371,23 @@ def _uo_assignments(set_text: str):
             yield lhs.strip('"'), rhs
 
 
+def _uo_shapes(w) -> list:
+    """The row-set predicate shapes of an UPDATE's WHERE text (None = no WHERE)."""
+    found = []
+    if w is None:
+        return ["no-predicate"]
+    if re.search(r"\bIS\s+DISTINCT\s+FROM\b", w, re.I):
+        found.append("guarded")
+    if re.search(r"\bIS\s+(?:NOT\s+)?NULL\b", w, re.I):
+        found.append("state-conditional")
+    lhs = [c.lower() for c in _UO_KEYED.findall(w)]
+    if any(c not in _UO_SCOPE_COLS for c in lhs):
+        found.append("keyed")
+    if any(c in _UO_SCOPE_COLS for c in lhs) or re.search(r"\b(?:" + "|".join(_UO_SCOPE_COLS) + r")\b", w, re.I):
+        found.append("scope")
+    return found or ["other-predicate"]
+
+
 def _update_only_reading(units, tset) -> dict:
     """Idem.pattern's update-only sub-reading (N-22 ruling 6; SS: Idem stays ONE gate, update-only is not N/A): each
     own-table UPDATE is read for (a) an ACCUMULATING assignment (`SET c = c + x`, `c * x`, array_append/cat/prepend
@@ -2392,11 +2409,17 @@ def _update_only_reading(units, tset) -> dict:
                 fns = sorted(((f.lineno, f.end_lineno) for f in ast.walk(node)
                               if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))), key=lambda r: r[1] - r[0])
                 fn = next((r for r in fns if r[0] <= ln <= r[1]), None)
+                shapes_here = _uo_shapes(where.group(1) if where else None)
+                ifs = [(i.lineno, i.end_lineno) for i in ast.walk(node) if isinstance(i, ast.If)]
+                # a reset excuses an accumulation only when UNCONDITIONAL (not inside an `if`) and chart-wide (no keyed,
+                # state-conditional, guarded or other predicate)
+                excuses = (not any(a0 <= ln <= b0 for a0, b0 in ifs)
+                           and not set(shapes_here) & {"keyed", "state-conditional", "guarded", "other-predicate"})
                 for col, expr in (_uo_assignments(st.group(1)) if st else []):
                     if not re.fullmatch(r"[A-Za-z_]\w*", col):
                         continue
                     if not re.search(rf"\b{re.escape(col)}\b", expr):
-                        recs.append(dict(kind="reset", table=m.group(1).lower(), col=col, line=ln, fn=fn, u=u["rel"]))
+                        recs.append(dict(kind="reset", table=m.group(1).lower(), col=col, line=ln, fn=fn, u=u["rel"], ok=excuses))
                     elif re.fullmatch(rf"\s*{re.escape(col)}\s*-\s*{_UO_JSON_DELETE}\s*", expr, re.I):
                         continue                                # jsonb key delete: idempotent
                     elif re.search(r"[+\-*/]", re.sub(r"%\(\w+\)s|::\w+", "", expr)) or _UO_ARRAY_ACC.search(expr):
@@ -2404,27 +2427,12 @@ def _update_only_reading(units, tset) -> dict:
                                          text=f"{col} = {expr[:60]} in {cite_}"))
                     elif "||" in expr:
                         concat.append(f"{col} in {cite_}")
-                w = where.group(1) if where else None
-                found = []
-                if w is None:
-                    found.append("no-predicate")
-                else:
-                    if re.search(r"\bIS\s+DISTINCT\s+FROM\b", w, re.I):
-                        found.append("guarded")
-                    if re.search(r"\bIS\s+(?:NOT\s+)?NULL\b", w, re.I):
-                        found.append("state-conditional")
-                    lhs = [c.lower() for c in _UO_KEYED.findall(w)]
-                    if any(c not in _UO_SCOPE_COLS for c in lhs):
-                        found.append("keyed")
-                    if any(c in _UO_SCOPE_COLS for c in lhs) or re.search(r"\b(?:" + "|".join(_UO_SCOPE_COLS) + r")\b", w, re.I):
-                        found.append("scope")
-                    if not found:
-                        found.append("other-predicate")
+                found = shapes_here
                 for f in found:
                     shapes.setdefault(f, []).append(cite_)
     # an accumulation is excused only by a reset of the SAME column of the SAME table earlier in the SAME function
     for r in recs:
-        if r["kind"] == "acc" and not any(x["kind"] == "reset" and x["table"] == r["table"] and x["col"] == r["col"]
+        if r["kind"] == "acc" and not any(x["kind"] == "reset" and x["ok"] and x["table"] == r["table"] and x["col"] == r["col"]
                                           and x["u"] == r["u"] and r["fn"] is not None and x["fn"] == r["fn"]
                                           and x["line"] < r["line"] for x in recs):
             acc.append(r["text"])

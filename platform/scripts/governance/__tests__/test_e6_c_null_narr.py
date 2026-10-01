@@ -1317,3 +1317,40 @@ def test_skipped_or_xfail_tests_get_no_credit_even_through_an_alias_or_a_class(s
 def test_an_unrelated_decorator_and_a_non_skip_alias_do_not_disable_a_test():
     src = ("import pytest\nmk = pytest.mark.slow\n" + _H + "@mk\ndef test_a():\n    assert build_narration(1)['statement']\n")
     assert _fid(src)["v"] == ac.PARTIAL
+
+
+# ───────────────────────── final review: item 9 (only an unconditional chart-wide reset excuses an accumulation) ─────────────────────────
+
+def _fn_two(monkeypatch, tmp_path, first_stmt, second_stmt, wrap=None, targets=("t_s",)):
+    ind = "        "
+    first = f'{ind}ctx.db_conn.execute("""{first_stmt}""", (1,))\n'
+    if wrap:
+        first = f"{ind}{wrap}:\n    " + first.replace("\n", "\n    ", first.count("\n") - 1)
+    body = first + f'{ind}ctx.db_conn.execute("""{second_stmt}""", (1,))\n'
+    w3._sidecar(monkeypatch, tmp_path, {"pipeline/orchestrator/writers/bo_u.py": w3._HDR + (
+        '@register("bo_u")\nclass U(WriterBase):\n    def run(self, ctx):\n' + body)})
+    return ac.idem_scan("bo_u", ["bo_u.py"], "delete_then_insert", list(targets))
+
+
+def test_an_unconditional_chart_wide_reset_still_excuses_the_accumulation(monkeypatch, tmp_path):
+    assert _fn_two(monkeypatch, tmp_path, RESET, ACC)[0] == ac.PARTIAL
+    assert _fn_two(monkeypatch, tmp_path, "UPDATE t_s SET hits = 0", ACC)[0] == ac.PARTIAL        # no predicate: whole table
+
+
+@pytest.mark.parametrize("reset", [
+    "UPDATE t_s SET hits = 0 WHERE id = %s",                                  # keyed
+    "UPDATE t_s SET hits = 0 WHERE chart_id = %s AND hits IS NOT NULL",       # state-conditional
+    "UPDATE t_s SET hits = 0 WHERE chart_id = %s AND hits IS DISTINCT FROM 0",
+])
+def test_a_keyed_or_conditional_reset_does_not_excuse_the_accumulation(monkeypatch, tmp_path, reset):
+    assert _fn_two(monkeypatch, tmp_path, reset, ACC)[0] == ac.FAIL
+
+
+def test_a_reset_inside_an_if_does_not_excuse_the_accumulation(monkeypatch, tmp_path):
+    assert _fn_two(monkeypatch, tmp_path, RESET, ACC, wrap="if ctx.flag")[0] == ac.FAIL
+
+
+def test_a_reset_of_the_same_column_name_on_a_different_own_table_does_not_excuse_the_accumulation(monkeypatch, tmp_path):
+    other = "UPDATE t_x SET hits = 0 WHERE chart_id = %s"
+    assert _fn_two(monkeypatch, tmp_path, other, ACC, targets=("t_s", "t_x"))[0] == ac.FAIL
+    assert _fn_two(monkeypatch, tmp_path, RESET, ACC, targets=("t_s", "t_x"))[0] == ac.PARTIAL
