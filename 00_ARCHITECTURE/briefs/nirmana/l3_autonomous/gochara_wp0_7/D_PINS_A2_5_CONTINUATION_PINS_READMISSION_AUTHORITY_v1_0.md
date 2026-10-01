@@ -72,3 +72,31 @@ the predecessor inventory at `8626bb6da`. Membership unchanged (23 `ka_`
 writers); no other layer moves. The source commit is the v1.1 rework's
 digest-re-derivation head, whose committed writer inventory is byte-identical
 to the derived inventory (`provenance_inventory --check` green).
+
+## v1.2 addendum — third successor under the same continuation (2026-10-01)
+
+Stream A reported a suspected kernel defect to the steward (message
+M20261001T172758-6f81): `episodes.in_orb_intervals` resolved ONE unwrapped
+band representative per segment (nearest the segment midpoint), so a
+stationless body (Sun — never split by stations, one segment spanning the
+whole domain) emitted at most ONE in-orb band per level; every other
+revolution's occurrence was silently ABSENT (N3-class). The steward's ruling
+(EVENTS.jsonl 2026-10-01T17:28:24Z, message M20261001T172824-ebbd), operative
+clauses verbatim:
+
+> "RULING on the in_orb_intervals finding: FIX NOW, in #2799's current rework
+> push — not deferred to A2.6. … (4) include it in the single pins
+> re-admission. Then CI green → report → Codex closure."
+
+Scope of THIS admission, under that standing continuation authority: exactly
+ONE append-only L3 successor over `l3:89f788c67827:50e2c3392350` (archived
+whole, never rewritten) with the same four-writer delta as above —
+`ka_gochara_v4_41_candidate` (`approved_intentional_change`, declared source
+closure) and `ka_gochara_v3_century_materialize` / `ka_moorti_nirnaya` /
+`ka_sangam` (`derived_import_change` via `services/gochara_kernel/episodes.py`
+only — the multi-revolution band enumeration fix; no own-module edits) —
+verified from content-hashed closures of the v1.2 rework tree against the
+predecessor inventory at `89f788c67`. Membership unchanged (23 `ka_`
+writers); no other layer moves. The source commit is the v1.2 rework's
+digest-re-derivation head, whose committed writer inventory is byte-identical
+to the derived inventory (`provenance_inventory --check` green).
