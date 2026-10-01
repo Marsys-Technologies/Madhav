@@ -7,8 +7,8 @@ Two tiers:
     never fabricated), house_from_frame mandatory on computed rows
     (kgrr_evaluated_has_house_ck — anchor unknown ⇒ not minted, named),
     full-domain ordinals with horizon filtering (R3 amendment 1);
-  * disposable-PG tests (GOCHARA_REMAINDER_DSN; NOT_RUN skip when
-    unreachable): the real SQL against the applied migration chain
+  * disposable-PG tests (their own throwaway database; NOT_RUN skip when
+    the server is unreachable): the real SQL against the applied migration chain
     (1081 + 1152–1157) — coverage row, contact chain, kgrr rows, CHECK
     conformance, and pin-4 idempotent re-run.
 
@@ -261,8 +261,15 @@ def test_natal_fact_mints_uncomputed_with_null_contact():
 
 # ── disposable PG (real SQL; NOT_RUN when unreachable) ────────────────────
 
-DSN = os.environ.get("GOCHARA_A53_DSN",
-                     "postgresql://wp6:local@localhost:55434/a53")
+# The database tests create their OWN throwaway database on the disposable
+# server and drop it afterwards — they never touch a shared scratch database
+# (a shared one carried stale rows across convention corrections: the AM-1
+# 13d20m fix collided with the old convention's immutable bridge row).
+# GOCHARA_A53_ADMIN_DSN names the server's maintenance database; NOT_RUN skip
+# when unreachable.
+ADMIN_DSN = os.environ.get("GOCHARA_A53_ADMIN_DSN",
+                           "postgresql://wp6:local@localhost:55434/postgres")
+DB_PREFIX = "a53t_"
 MIGRATIONS = Path(__file__).resolve().parents[4] / "migrations"
 MIGRATION_CHAIN = [
     "1081_nirmana_l3_gochara_ledger_coverage_publication.sql",
@@ -275,54 +282,44 @@ MIGRATION_CHAIN = [
 ]
 
 
-@pytest.fixture()
-def pg():
-    """The disposable remainder DB with the gochara-5 migration chain applied
-    verbatim (idempotent: the _migrations_applied ledger stub gates re-run).
-    No cleanup of the insert-only tables — every identity is deterministic,
-    so a re-run is exactly the idempotency the writer guarantees."""
+@pytest.fixture(scope="module")
+def _pg_dsn():
+    """A fresh database with the gochara-5 migration chain applied verbatim;
+    dropped at module end. Refuses to drop anything it did not create."""
+    import uuid
     psycopg = pytest.importorskip("psycopg")
+    from psycopg.conninfo import make_conninfo
     try:
-        conn = psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"NOT_RUN: disposable remainder database unreachable ({exc})")
-    with conn.cursor() as cur:
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS public.charts (id uuid PRIMARY KEY)")
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS public._migrations_applied"
-            " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
-        for name in MIGRATION_CHAIN:
-            prefix = name.split("_", 1)[0] + "_"
-            applied = cur.execute(
-                "SELECT 1 FROM public._migrations_applied"
-                " WHERE starts_with(filename, %s) LIMIT 1", (prefix,),
-            ).fetchone()
-            if not applied:
-                # the ledger stub may be younger than an earlier rehearsal —
-                # probe a marker object before re-applying (1152 is NOT
-                # re-runnable: ADD CONSTRAINT without IF NOT EXISTS)
-                marker = {
-                    "1081": "SELECT to_regclass('public.kala_gochara_coverage')",
-                    "1152": "SELECT conname FROM pg_constraint"
-                            " WHERE conname = 'kgc_t_exact_iff_exact_crossing'",
-                }.get(prefix.rstrip("_"))
-                if marker is not None:
-                    applied = cur.execute(marker).fetchone()
-                    if applied and applied[0]:
-                        cur.execute(
-                            "INSERT INTO public._migrations_applied(filename)"
-                            " VALUES (%s) ON CONFLICT DO NOTHING", (name,))
-                        continue
-                    applied = None
-            if applied:
-                continue
-            cur.execute((MIGRATIONS / name).read_text())
+        pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
+    name = f"{DB_PREFIX}{uuid.uuid4().hex[:10]}"
+    admin.execute(f'CREATE DATABASE "{name}"')
+    dsn = make_conninfo(ADMIN_DSN, dbname=name)
+    try:
+        conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
             cur.execute(
-                "INSERT INTO public._migrations_applied(filename) VALUES (%s)"
-                " ON CONFLICT DO NOTHING", (name,))
-        cur.execute("INSERT INTO public.charts(id) VALUES (%s)"
-                    " ON CONFLICT DO NOTHING", (CHART_ID,))
+                "CREATE TABLE public._migrations_applied"
+                " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+            for fname in MIGRATION_CHAIN:
+                cur.execute((MIGRATIONS / fname).read_text())
+                cur.execute("INSERT INTO public._migrations_applied(filename)"
+                            " VALUES (%s)", (fname,))
+            cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
+        conn.close()
+        yield dsn
+    finally:
+        assert name.startswith(DB_PREFIX), name   # never drop what we did not create
+        admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        admin.close()
+
+
+@pytest.fixture()
+def pg(_pg_dsn):
+    import psycopg
+    conn = psycopg.connect(_pg_dsn, autocommit=True, connect_timeout=3)
     yield conn
     conn.close()
 

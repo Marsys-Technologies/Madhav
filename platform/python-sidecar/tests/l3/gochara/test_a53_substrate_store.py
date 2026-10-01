@@ -86,7 +86,7 @@ class FakeConn:
 CID = convention_id_for()
 CONVENTION_ROW = (
     "pyswisseph:20230604/swisseph:2.10.03", "lahiri_chitrapaksha", "mean",
-    "sign:30/nakshatra:13.20/kakshya:3.75/seam:0", "1.0.0",
+    "sign:30/nakshatra:13d20m/kakshya:3.75/seam:0", "1.0.0",
     datetime(1998, 1, 1, tzinfo=timezone.utc),
     datetime(2085, 1, 1, tzinfo=timezone.utc),
 )
@@ -202,3 +202,30 @@ class TestBuildBoundarySubstrate:
     def test_no_moon_rows_via_count(self):
         conn = FakeConn({"count": [(0,)]})
         assert SkyEventStore(conn).count_rows(body="Moon") == 0
+
+
+# ── AM-1 (v1.5 amendments draft v0.5): the convention vector is byte-pinned ───
+
+AM1_CANONICAL_BYTES = (
+    "ayanamsha=lahiri_chitrapaksha|domain_end=2085-01-01T00:00:00Z"
+    "|domain_start=1998-01-01T00:00:00Z"
+    "|ephemeris_generation=pyswisseph:20230604/swisseph:2.10.03"
+    "|grid=sign:30/nakshatra:13d20m/kakshya:3.75/seam:0|method_version=1.0.0"
+    "|node_convention=mean")
+AM1_CONVENTION_ID = (
+    "sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3")
+
+
+def test_convention_id_is_the_am1_pinned_digest():
+    """The id is sha256 over EXACTLY the AM-1 serialization (sorted key=value,
+    single '|', UTF-8) — the independently computed digest of the draft."""
+    import hashlib
+    assert hashlib.sha256(AM1_CANONICAL_BYTES.encode()).hexdigest() == AM1_CONVENTION_ID[7:]
+    assert convention_id_for() == AM1_CONVENTION_ID
+
+
+def test_nakshatra_span_is_13d20m_never_the_decimal_13_20():
+    """13.20° ≠ 13°20′ (= 13⅓°): the deliberate AM-1 correction of 694d16e9c."""
+    from services.gochara_kernel.substrate import SUBSTRATE_CONVENTION_VECTOR
+    assert "nakshatra:13d20m" in SUBSTRATE_CONVENTION_VECTOR["grid"]
+    assert "13.20" not in SUBSTRATE_CONVENTION_VECTOR["grid"]

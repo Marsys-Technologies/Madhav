@@ -156,7 +156,12 @@ SUBSTRATE_CONVENTION_VECTOR = {
     # L1's convention for 482012f1, read from chart_facts (mean node;
     # graha_position subjects RAH_MEAN/KET_MEAN — fact_id c520713087b97470).
     "node_convention": "mean",
-    "grid": "sign:30/nakshatra:13.20/kakshya:3.75/seam:0",
+    # AM-1 (GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT v0.5): the nakṣatra span is
+    # 13°20′ = 13⅓°, rendered `13d20m` — NEVER the decimal `13.20` (13.20° ≠
+    # 13°20′). This deliberately corrects the 694d16e9c vector; it changes the
+    # canonical bytes and therefore the convention_id, so it must land before
+    # any row is written under the id (no production row exists yet).
+    "grid": "sign:30/nakshatra:13d20m/kakshya:3.75/seam:0",
     "method_version": "1.0.0",
     "domain_start": "1998-01-01T00:00:00Z",
     "domain_end": "2085-01-01T00:00:00Z",
