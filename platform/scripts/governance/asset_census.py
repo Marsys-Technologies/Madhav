@@ -254,6 +254,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
     "Count.floor": ("target-floor-zero",),
     "Dens.served": ("no-served-surface",),
+    "Carr.D1": ("no-carriage",), "Carr.D2": ("no-carriage",), "Carr.D3": ("no-carriage",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
@@ -297,7 +298,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 6     # 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 7     # 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -697,7 +698,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                 raise DeclarationsError(f"{where}.evidence_kind is set but prose_fields is null (undeclared)")
         tbc = e.get("terminal_by_construction")
         if tbc is not None:
-            if not isinstance(tbc, str) or not tbc.strip() or tbc != tbc.strip():
+            if not isinstance(tbc, str) or _blank_text(tbc) or tbc != tbc.strip():
                 raise DeclarationsError(f"{where}.terminal_by_construction must be null or a non-blank pointer string "
                                         f"(why the asset has no downstream consumer BY CONSTRUCTION)")
             if isinstance(car, dict) and car.get("served_surface") is True:
@@ -806,7 +807,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         elif served is True and measured_served == NA:
             disagree.append(dict(field="carriage.served_surface", declared=True, measured=measured_served))
     tbc = e.get("terminal_by_construction")
-    if isinstance(tbc, str) and tbc.strip():
+    if isinstance(tbc, str) and not _blank_text(tbc):
         facts["declared_terminal_by_construction"] = tbc
         if served is not True:
             facts["declared_carries_downstream"] = False
@@ -879,6 +880,109 @@ def build_rollup_output(census_by_layer: dict, declarations: dict | None = None)
     return dict(rollup=dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
                             layers=layers),
                 rollup_excluded=excluded)
+
+
+# ─────────────────────────── E6 item (f): Carr `no-carriage` on D1, D2, D3 ───────────────────────────
+# N-22 ruling principle 7 (provisional until the J1 review): "where no D-check fits because the asset carries nothing
+# downstream by construction (a declared fact), that is check-level N/A by cause `no-carriage`. Where a check should
+# fit but none exists, it is NO_DETECTOR (T4:329)." SS strict definition (2026-09-30): the asset has NO DAG dependents
+# AND does not reach a served surface; being served IS downstream carriage. The cause is a CANDIDATE only: it releases
+# nothing until NA_RULE_DECISIONS declares `Carr.D<n>#measured:no-carriage` (empty today, and no asset declares
+# `terminal_by_construction` today, so no census cell changes). An absence is never the evidence (CLAUDE.md N.8): zero
+# measured dependents and a null served_surface are NOT proof of anything; only the positive declared pointer is.
+CARR_D_CHECKS = ("Carr.D1", "Carr.D2", "Carr.D3")
+_CARR_NEVER = "never read as no-carriage"
+
+
+def _count(v):
+    """A measured non-negative integer count, else None (a bool, float, str or negative is not a measurement)."""
+    return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
+
+
+def grade_carr_no_carriage(record_facts) -> dict:
+    """The Carr.D1/D2/D3 `no-carriage` reading of one asset, from `record_facts` (pure; no I/O):
+      declared_terminal_by_construction  the positive declared pointer (a str with at least one visible character), else undeclared
+      declared_carriage                  {'served_surface': bool | None}  (absent/None = unknown; any other form is malformed)
+      blocking_radius                    the census radius {'direct': int, 'transitive': int} (absent/None/malformed = unmeasured)
+      measured_served                    the Dens.served verdict of this census run
+    N/A (cause `no-carriage`, a CANDIDATE) ONLY when ALL hold: the pointer is declared; measured direct AND transitive
+    dependents are both 0; `served_surface` is None or False (true contradicts; a non-bool is malformed); and the
+    measured Dens.served verdict is EXACTLY 'N/A' (the only verdict meaning "scanned, no reference"). Every other
+    Dens.served value (NO_DETECTOR, ERRORED, absent, a case variant) means "possibly served" (the scan did not run, a module
+    names the table but no served select was found, comment-only, outside the scanned roots, unparsed, shared-only), which
+    is not evidence of no carriage: NO_DETECTOR. A declaration that a measured fact contradicts is NO_DETECTOR with a
+    `declaration_disagreements` entry (reported, never resolved); an unmeasured radius or no declaration is NO_DETECTOR.
+    `served_surface` None does not block: the declared pointer is then the evidence, and the verdict text says so.
+
+    LIMIT (N-22 principle 3): no detector exists that still catches a mis-declared terminal asset. D1-D3 are detector NONE,
+    and the contradiction checks here are blind to undeclared edges: the blocking radius counts only DECLARED depends_on
+    edges, so it under-reports an undeclared reader (bg_gochara_arcs is read by ka_gochara.py:412 with no depends_on edge;
+    an L0 reader never adds an edge because Build.dag exempts bedrock reads; 14 of the 40 zero-dependent assets are L0),
+    and to Dens scanner gaps. The `no-carriage` N/A RULE must stay UNDECLARED (NA_RULE_DECISIONS empty) until an
+    inverse-readers detector exists: one that scans the registered writers' reads, bedrock included, for readers of the
+    asset's tables, and gates the candidate on none found."""
+    f = record_facts if isinstance(record_facts, dict) else {}
+    tbc = f.get("declared_terminal_by_construction")
+    if not (isinstance(tbc, str) and not _blank_text(tbc)):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — no terminal_by_construction declared: carriage is unknown, {_CARR_NEVER}")
+    car = f.get("declared_carriage")
+    if car is not None and not isinstance(car, dict):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage is malformed ({car!r}: not an object); the "
+                                       f"declared pointer ({tbc!r}) cannot be relied on, {_CARR_NEVER}")
+    served = car.get("served_surface") if isinstance(car, dict) else None
+    if served is not None and not isinstance(served, bool):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — carriage.served_surface is malformed ({served!r}: only null, true or "
+                                       f"false are forms); the declared pointer ({tbc!r}) cannot be relied on, {_CARR_NEVER}")
+    br = f.get("blocking_radius")
+    direct = _count(br.get("direct")) if isinstance(br, dict) else None
+    trans = _count(br.get("transitive")) if isinstance(br, dict) else None
+    ms = f.get("measured_served")
+    bad = []
+    if served is True:
+        bad.append(dict(field="carriage.served_surface", declared=True, terminal_by_construction=tbc))
+    if direct is not None and trans is not None and (direct > 0 or trans > 0):
+        bad.append(dict(field="terminal_by_construction", declared=tbc,
+                        measured_dependents=dict(direct=direct, transitive=trans)))
+    if ms in (PASS, FAIL, PARTIAL):
+        bad.append(dict(field="terminal_by_construction", declared=tbc, measured_served=ms))
+    if bad:
+        what = []
+        if served is True:
+            what.append("carriage.served_surface is declared true (reaches a served surface)")
+        if direct is not None and trans is not None and (direct > 0 or trans > 0):
+            what.append(f"measured dependents are direct {direct}, transitive {trans}")
+        if ms in (PASS, FAIL, PARTIAL):
+            what.append(f"Dens.served measured {ms} (a served read was found)")
+        return dict(v=NO_DET, declaration_disagreements=bad,
+                    measured=f"NO_DETECTOR — the declared terminal_by_construction pointer ({tbc!r}) is contradicted: "
+                             f"{'; '.join(what)}; {_CARR_NEVER}")
+    if direct is None or trans is None:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — dependents unmeasured (the blocking radius is absent or not a count); "
+                                       f"the declared pointer ({tbc!r}) cannot be checked against the DAG, {_CARR_NEVER}")
+    if not (isinstance(ms, str) and ms == NA):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — Dens.served is {ms!r}, not 'N/A' (scanned, no reference): the asset is "
+                                       f"possibly served (scan not run, a served select not found or not attributable), so the "
+                                       f"declared pointer ({tbc!r}) is not corroborated; {_CARR_NEVER}")
+    sv = ("served_surface declared false" if served is False else
+          "served_surface not declared (null: the declared pointer is the evidence)")
+    return _na(f"declared terminal_by_construction ({tbc!r}); measured dependents direct {direct}, transitive {trans}; "
+               f"Dens.served N/A (scanned, no reference); {sv}; the declared pointer is the evidence (a candidate, not a "
+               "rule: released only by a declared rule, which must stay undeclared until an inverse-readers detector exists)",
+               "no-carriage")
+
+
+def carr_checks(record_facts) -> dict:
+    """measure()'s Carr.D1/D2/D3 records for one asset: {} unless the asset DECLARES a terminal_by_construction pointer
+    (an undeclared asset emits nothing, so its cell reads the rollup's own `not measured` NO_DETECTOR exactly as before;
+    an explicit NO_DETECTOR record per check would change every cell's check text for no new information). A declared
+    asset gets one independent record per check (the same grading: the declared fact covers D1, D2 and D3 alike)."""
+    f = record_facts if isinstance(record_facts, dict) else {}
+    tbc = f.get("declared_terminal_by_construction")
+    if not (isinstance(tbc, str) and not _blank_text(tbc)):
+        return {}
+    r = grade_carr_no_carriage(f)
+    return {c: dict(r, **({"declaration_disagreements": list(r["declaration_disagreements"])}
+                          if "declaration_disagreements" in r else {})) for c in CARR_D_CHECKS}
 
 
 # ─────────────────────────── E6 packet (c): the Null and Narr checks ───────────────────────────
@@ -5646,6 +5750,9 @@ def measure(layer_key: str) -> dict:
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         m["Carr.detector"] = _run_carriage_detector(aid)
+        # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
+        m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
+                                  measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:
             m["Reach.fields"] = dict(v=NOT_GENERIC, measured=("no target table in production to census at field level"
                                                               if tbl else "no target_table declared: no table to census "
