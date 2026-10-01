@@ -687,3 +687,30 @@ def test_prose_checks_uses_the_owned_tables_when_supplied():
     own = {"t": (["id"], {}), "u": (["statement"], {"statement": "text"})}
     got = ac.prose_checks("a", _decl(["statement"]), _ctx(own=own))
     assert got["Narr.agree"]["v"] == ac.PASS
+
+
+def test_measure_scopes_a_shared_table_only_by_its_count_sql_and_reads_an_unshared_one_whole(monkeypatch, tmp_path):
+    odd = "SELECT count(*) FROM {t} WHERE chart_id = $1 AND id IN (SELECT id FROM {t})"
+    reg = {"bo_p": w1._reg_row("bo_p", "t_own", count_sql=odd.format(t="t_own")),
+           "bo_q": w1._reg_row("bo_q", "t_own", count_sql=odd.format(t="t_own")),
+           "bo_r": w1._reg_row("bo_r", "t_solo", count_sql=odd.format(t="t_solo"))}
+    w1._stub_layer(monkeypatch, tmp_path, reg, tables={"t_own": (["id", "statement", "chart_id"], []),
+                                                      "t_solo": (["id", "statement", "chart_id"], [])})
+    decls = {a: _decl(["statement"], "platform/python-sidecar/x.py:1") for a in reg}
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decls)
+    monkeypatch.setattr(ac, "python_tests", lambda *a, **k: [])
+    seen = []
+    base = w1._pg_like_psql({"t_own": 3, "t_solo": 3})
+
+    def psql(sql, sep="\x1f", timeout=None):
+        if "FILTER" in sql:
+            seen.append(sql)
+            return [["4", "0"]]
+        return base(sql, sep, timeout)
+    monkeypatch.setattr(ac, "psql", psql)
+    c = ac.measure("L0")
+    for a in ("bo_p", "bo_q"):
+        m = w1._m(c, a, "Narr.checkable")
+        assert m["v"] == ac.NO_DET and m["inconclusive"] is True, (a, m)
+    assert w1._m(c, "bo_r", "Narr.checkable")["v"] == ac.PASS
+    assert len(seen) == 1 and seen[0].endswith(" FROM t_solo") and "t_own" not in seen[0], seen
