@@ -275,6 +275,10 @@ class FakeCursor:
             self._rows = [{'n': sum(1 for r in t.get('kala_field', [])
                                     if r['event_class'] == params[1])}]
             return
+        # DOCUMENTED LIMIT: this fake ignores the WHERE text and applies the
+        # (chart, event_class, snapshot) filters from the PARAM ORDER, so the real
+        # SQL's event_class / field_snapshot_id clauses are verified by position only,
+        # not executed against Postgres.
         if ('COUNT(DISTINCT window_id) AS n FROM kala_field_windows' in s):
             chart, ec, snap = params[0], params[1], params[2]
             self._rows = [{'n': len({r['window_id'] for r in t.get('kala_field_windows', [])

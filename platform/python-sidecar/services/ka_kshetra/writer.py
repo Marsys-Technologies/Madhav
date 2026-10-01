@@ -988,7 +988,17 @@ class KaKshetraWriter(WriterBase):
                                   f'q={st.null_result.q_threshold!r}')
 
     def _dhara_windows_for_class(self, conn, event_class: str, cctx) -> "_DharaWindowState":
-        """Class-wide inputs shared by every part (loaded once per class per process)."""
+        """Class-wide inputs shared by every part (loaded once per class per process).
+
+        Known properties (I-10 review): (1) `adrishta` uses `ev.lifetime_count`, read
+        once at class-context build (`_class_context`, `load_class_lifetime_count`);
+        it is not part of the resume fingerprint, so a prior changed mid-build is not
+        detected by resume. (2) Parts are split by TIME (equal t_start slices), not by
+        window count, so they can be unbalanced. (3) `_kinematics_ayanamsha_ids` and
+        `_sigma_t_days` swallow exceptions into an empty set / None (pre-existing
+        behaviour, unchanged here): a transient failure there degrades robustness
+        flags instead of failing the part.
+        """
         cached = getattr(self, '_dhara_windows_state', None)
         if (cached is not None and cached.event_class == event_class
                 and cached.snapshot_id == self._snapshot_id):
@@ -1054,6 +1064,11 @@ class KaKshetraWriter(WriterBase):
         Run by the LAST part: counts the distinct committed window ids for this
         class + snapshot and compares to the distinct ids the full derivation
         yields. A part that never ran (stale ledger, wrong plan) reads false here.
+
+        LIMIT (documented, not hidden): this detector is NOT self-healing. If the
+        ledger says parts are done but their rows are missing, the last part fails on
+        every resume until a fresh build (prepare:replace) rebuilds the class; the
+        failure is loud, never a silent partial.
         """
         expected = len({
             integrator.window_id(str(self._chart_id), event_class, w.t_start, w.t_end,
