@@ -471,6 +471,72 @@ class RecordStore:
         return {"windows": windows, "records": records, "contacts": contacts,
                 "coverage": coverage}
 
+    # ── Moon / day tier (AM-4): one durable coverage identity per query ────
+
+    def write_moon_coverage(self, *, chart_id: str, generation: str,
+                            partition_key: str, convention_id: str,
+                            horizon: tuple[datetime, datetime],
+                            resolution: float, relations_searched: list[str],
+                            targets_requested: int, targets_resolved: int,
+                            state_counts: dict, unavailable_inputs: dict,
+                            unsearched_reason: str | None,
+                            build_id: str) -> None:
+        """The `moon_on_demand` partition of ONE query interval. A query-identity
+        row, not build output: insert-if-absent, and a re-issued query must
+        agree on every claimed fact (convention, horizon, relations, counts) or
+        it fails loudly — a durable coverage identity is never overwritten."""
+        rng = f"[{horizon[0].isoformat()},{horizon[1].isoformat()})"
+        self.conn.execute(
+            "INSERT INTO public.kala_gochara_coverage ("
+            " chart_id, generation, partition_kind, partition_key, convention_id,"
+            " requested_horizon, completed_horizon, resolution, relations_searched,"
+            " targets_requested, targets_resolved, targets_unresolved,"
+            " target_resolution_state_counts, unavailable_inputs,"
+            " unsearched_reason, build_id)"
+            " VALUES (%s,%s,'moon_on_demand',%s,%s,%s::tstzrange,%s::tstzrange,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            " ON CONFLICT (chart_id, generation, partition_kind, partition_key)"
+            " DO NOTHING",
+            (chart_id, generation, partition_key, convention_id, rng, rng,
+             resolution, relations_searched, targets_requested, targets_resolved,
+             targets_requested - targets_resolved, _json.dumps(state_counts),
+             _json.dumps(unavailable_inputs), unsearched_reason, build_id))
+        row = self.conn.execute(
+            "SELECT convention_id, relations_searched, targets_requested,"
+            " targets_resolved, resolution::float8 FROM public.kala_gochara_coverage"
+            " WHERE chart_id = %s AND generation = %s"
+            " AND partition_kind = 'moon_on_demand' AND partition_key = %s",
+            (chart_id, generation, partition_key)).fetchone()
+        _byte_check(row, (convention_id, relations_searched, targets_requested,
+                          targets_resolved, float(resolution)),
+                    f"moon coverage {partition_key}")
+
+    def moon_coverage_facts(self, *, chart_id: str, generation: str,
+                            partition_key: str):
+        """The coverage_facts snapshot the answer was given under, computed by
+        the DB's own helper from the stored partition row."""
+        row = self.conn.execute(
+            "SELECT public.ka_gochara_coverage_facts(convention_id,"
+            " completed_horizon, relations_searched)"
+            " FROM public.kala_gochara_coverage"
+            " WHERE chart_id = %s AND generation = %s"
+            " AND partition_kind = 'moon_on_demand' AND partition_key = %s",
+            (chart_id, generation, partition_key)).fetchone()
+        if row is None:
+            raise MissingCoverageError(f"moon coverage {partition_key!r} absent")
+        return row[0]
+
+    def manifest_binding(self, *, chart_id: str, generation: str) -> dict | None:
+        """The generation's manifest id / digest / status for the receipt, or None
+        when it has no manifest row (stated in the receipt, never invented)."""
+        row = self.conn.execute(
+            "SELECT manifest_id, content_digest, status"
+            " FROM public.kala_gochara_publication"
+            " WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation)).fetchone()
+        if row is None:
+            return None
+        return {"manifest_id": str(row[0]), "content_digest": row[1], "status": row[2]}
+
     def write_coverage(self, *, chart_id: str, generation: str,
                        event_class: str,
                        convention_id: str,
