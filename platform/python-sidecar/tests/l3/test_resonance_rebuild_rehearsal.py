@@ -94,7 +94,7 @@ def _passing_ver() -> dict:
                             "weight_changed", "qualifier_transferred",
                             "resolution_state_flipped", "provenance_flipped", "lord_token_wrong",
                             "mechanism_weight_sign_flipped", "mechanism_state_forged",
-                            "m6_operand_missing", "m6_state_forged")},
+                            "m6_operand_missing", "m6_state_forged", "lords_all_unavailable")},
             **{name: {"count_preservation_expected": False, "id_set_preservation_expected": True,
                       "counts_preserved": False, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
@@ -353,11 +353,12 @@ def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
     v["detector_controls"] = {"clean": v["detector_controls"]["clean"], "restored_after_controls": True}
     failures = R.verify_acceptance(v)
     missing = [f for f in failures if "missing detector control record" in f]
-    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 16, failures
+    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 17, failures
     assert set(R.REQUIRED_DETECTOR_CONTROLS) >= {
         "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
         "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
-        "mechanism_state_forged", "m6_operand_missing", "m6_state_forged"}
+        "mechanism_state_forged", "m6_operand_missing", "m6_state_forged",
+        "lords_all_unavailable"}
     # the passing report carries exactly the required names
     names = set(_passing_ver()["detector_controls"]) - {"clean", "restored_after_controls"}
     assert names == set(R.REQUIRED_DETECTOR_CONTROLS)
