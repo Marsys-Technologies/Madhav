@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "dca753889dabf52eac737f8aa5ba7e3d9eae4abe568f4a1cfb26b92e3c8cc91f",
+  "content_sha256": "fd3ddf2cc7c851a0a22b334bd231f4b963ac154f03d48a0092c5f5839fd30752",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20881,14 +20881,14 @@
       ]
     }
   },
-  "generated_at": "2026-10-01T07:06:05.000Z",
+  "generated_at": "2026-10-01T13:04:03.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
       {
         "id": "analysis_layer_pins",
         "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
-        "sha256": "7164e51bf2156096e1c9acf6fdac9a2bf5aee73b37ce051d71eda5a985677379"
+        "sha256": "69aae773e19b064782f4b533010e95330647dda4b8f931e6aef4b8e845edfdfb"
       },
       {
         "id": "canonical_public_faces",
@@ -21272,7 +21272,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "47f8c820fd6f117ab0650bac76fd149d21e7d1f756fc2304bb1dd07eca90f0fa"
+        "sha256": "f187631861167ecd52ab66de02f053b37bfeb0eba8d88f55ec9cfa47f2ffe35c"
       },
       {
         "id": "public_registrar_source_set",
@@ -22326,10 +22326,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "c249136ba69232f3b459ec62cd3ddf63e982cca94fd280de968d0e2d84cd83d9"
+        "sha256": "41acd85ec7219d2b12f5fa8caee1e351ad8e2f7942ab35587ba62214f962354c"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "348c8e7fc97538da53443a3267d5d2d3382c9105"
+  "source_revision": "8626bb6da165faa9a9da4f03954a61fa8a3198c8"
 }
