@@ -93,6 +93,104 @@ def test_service_spec_hashes_health_verdict_not_timestamp(asset) -> None:
     assert not VOLATILE_OR_SURROGATE & set(component["value_columns"])
 
 
+# ── Layer 1b: spec columns exist in the governed DDL (no DB) ─────────────────
+
+_MIG_TREES = (ROOT / "migrations", ROOT / "supabase/migrations")
+
+
+def _all_sql() -> dict[Path, str]:
+    return {p: re.sub(r"--[^\n]*", "", p.read_text()) for t in _MIG_TREES for p in sorted(t.glob("*.sql"))}
+
+
+def _create_table_columns(sql: str, table: str) -> set[str]:
+    """Column names of the LAST `CREATE TABLE <table> (...)` in `sql`."""
+    starts = [m.end() for m in re.finditer(
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?%s\s*\(" % table, sql, re.I)]
+    assert starts, f"no CREATE TABLE {table}"
+    depth, i, parts, cur = 1, starts[-1], [], ""
+    while depth:
+        ch = sql[i]
+        depth += ch == "("
+        depth -= ch == ")"
+        if depth == 1 and ch == ",":
+            parts.append(cur)
+            cur = ""
+        elif depth:
+            cur += ch
+        i += 1
+    parts.append(cur)
+    skip = {"constraint", "primary", "unique", "foreign", "check", "like", "exclude"}
+    cols = set()
+    for part in parts:
+        tok = part.split()[:1]
+        if tok and tok[0].strip('"').lower() not in skip:
+            cols.add(tok[0].strip('"').lower())
+    return cols
+
+
+def _altered_columns(table: str) -> tuple[set[str], list[str]]:
+    """(columns added by ALTER TABLE ... ADD COLUMN, DROP/RENAME COLUMN statements) in either tree."""
+    added, removed = set(), []
+    for path, sql in _all_sql().items():
+        for stmt in re.findall(r"ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?(?:public\.)?%s\b[^;]*;" % table, sql, re.I):
+            added |= {c.lower() for c in re.findall(r"ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?\"?(\w+)", stmt, re.I)}
+            if re.search(r"(DROP|RENAME)\s+COLUMN", stmt, re.I):
+                removed.append(f"{path.name}: {stmt[:80]}")
+    return added, removed
+
+
+def _spec_columns(path: Path, asset: str) -> set[str]:
+    _, spec = _spec(path, asset)
+    cols: set[str] = set()
+    for comp in spec["components"]:
+        cols |= set(comp["key_columns"]) | set(comp["value_columns"])
+        cols |= set(comp.get("where_equals") or {}) | set(comp.get("where_in") or {})
+        cols |= set(comp.get("where_is_null") or [])
+    return cols
+
+
+def test_vighnakara_spec_columns_exist_in_kala_obstruction_ddl() -> None:
+    ddl = _all_sql()[ROOT / "supabase/migrations/245_l3_ka_vighnakara.sql"]
+    cols = _create_table_columns(ddl, "kala_obstruction")
+    added, removed = _altered_columns("kala_obstruction")
+    assert not removed, f"later migration drops/renames kala_obstruction columns: {removed}"
+    # 245 DROPs and re-CREATEs the table; nothing after it may re-create it differently.
+    later_creates = [p.name for p, sql in _all_sql().items()
+                     if re.search(r"CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?(public\.)?kala_obstruction\b", sql, re.I)
+                     and p.name not in ("245_l3_ka_vighnakara.sql", "brahma_kala_obstruction.sql",
+                                        "0001_brahma_baseline.sql", "0000_seed_legacy_applied.sql",
+                                        "0000b_seed_legacy_v2.sql", "_pre_squash_schema_snapshot.psql")]
+    assert not later_creates, later_creates
+    missing = _spec_columns(MIG_VIGHNAKARA, "ka_vighnakara") - (cols | added)
+    assert not missing, f"spec names columns absent from kala_obstruction DDL: {sorted(missing)}"
+
+
+@pytest.mark.parametrize("asset", ["ka_dasha_kala", "ka_muhurta_seva"])
+def test_service_spec_columns_exist_in_asset_registry_ddl(asset) -> None:
+    base = _create_table_columns(_all_sql()[ROOT / "supabase/migrations/167_asset_registry.sql"], "asset_registry")
+    added, removed = _altered_columns("asset_registry")
+    assert not removed, f"later migration drops/renames asset_registry columns: {removed}"
+    missing = _spec_columns(MIG_SERVICES, asset) - (base | added)
+    assert not missing, f"spec names columns absent from asset_registry DDL: {sorted(missing)}"
+
+
+def test_ddl_column_parser_finds_the_known_columns() -> None:
+    """Guard the parser itself: it must see real columns, else the checks above are vacuous."""
+    ddl = _all_sql()[ROOT / "supabase/migrations/245_l3_ka_vighnakara.sql"]
+    assert {"id", "chart_id", "signal_id", "obstruction_detail", "computed_at"} <= \
+        _create_table_columns(ddl, "kala_obstruction")
+    added, _ = _altered_columns("asset_registry")
+    assert {"service_health", "selftest_detail", "last_selftest_at"} <= added
+
+
+@pytest.mark.parametrize("path,asset", [(MIG_VIGHNAKARA, "ka_vighnakara"), (MIG_SERVICES, "ka_dasha_kala"),
+                                        (MIG_SERVICES, "ka_muhurta_seva")])
+def test_literal_sha_equals_canonical_digest_of_spec(path, asset) -> None:
+    from pipeline.orchestrator.provenance import canonical_digest
+    sha, spec = _spec(path, asset)
+    assert canonical_digest(spec) == sha
+
+
 # ── Layer 2: real compute_output_digest on a disposable Postgres ─────────────
 
 DDL = """

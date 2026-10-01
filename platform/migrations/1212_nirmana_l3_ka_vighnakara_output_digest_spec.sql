@@ -38,8 +38,28 @@
 --     to the canonical chart via where_equals. Other charts' receipts for this asset
 --     digest the canonical chart's rows until the contract gains a chart parameter.
 --
--- Tests: platform/python-sidecar/tests/l3/test_i4_i5_output_digest_specs.py (real
--- compute_output_digest on a disposable Postgres: stable across identical rebuilds with
+-- KNOWN LIMITS (independent review of PR #2826, all accepted, none a blocker):
+--   (a) Canonical-chart pin. The spec is pinned to chart 482012f1 via where_equals
+--       (1018/1024 precedent). A rebuild of ANY OTHER chart now gets a 'proven' receipt
+--       whose digest is the canonical chart's rows; before this migration it got
+--       'unknown' (fail-closed). A known gap, now extended to a fifth asset; it closes
+--       only when the digest contract gains a chart parameter.
+--   (b) ka_vighnakara's depends_on includes ka_muhurta_seva (migration 730, header line 7). Its upstream digest
+--       stays NULL, so its receipt stays 'unknown', until ka_muhurta_seva has rebuilt
+--       under migration 1213 (and ka_dasha_kala too for ka_sangam). This spec alone does
+--       not make ka_vighnakara 'proven'; the rebuild order does the rest.
+--   (d) NULL signal_id. The reviewed-key NULL preflight raises, and in _run_data_writer
+--       (asset_runner.py:1385-1425) that goes through mark_asset_error: the build ERRORS
+--       rather than writing an 'unknown' receipt. The writer never emits NULL signal_id
+--       (FK ON DELETE CASCADE since 403) but the column is nullable.
+--   (e) Builder grants. No grant migration gives data_plane_builder SELECT on
+--       kala_obstruction (646 grants nirmana_evidence_ingress_writer only). The digest
+--       query reads it under the build role; ka_vighnakara already DELETEs/INSERTs there
+--       so a grant likely exists live, but that is unverified here. Not in this PR.
+--
+-- Tests: platform/python-sidecar/tests/l3/test_i4_i5_output_digest_specs.py (static DDL/sha
+-- checks always; real compute_output_digest on a disposable Postgres only when
+-- I45_DIGEST_DSN is set: stable across identical rebuilds with
 -- new ids / reversed order, moves on every hashed column, NULL-key negative).
 --
 -- Post-apply verification (CLAUDE.md N.4, never trust a silent no-op): expect 1 row

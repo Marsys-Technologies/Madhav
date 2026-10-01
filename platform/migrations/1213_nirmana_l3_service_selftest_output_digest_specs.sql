@@ -37,7 +37,25 @@
 -- in the 26-asset plan today). Same class, not covered here (no declared dependent in
 -- scope): ka_graha_sancara, ka_tulana, bg_panchanga.
 --
--- Tests: platform/python-sidecar/tests/l3/test_i4_i5_output_digest_specs.py.
+-- KNOWN LIMITS (independent review of PR #2826, all accepted, none a blocker):
+--   (b) Rebuild order. ka_sangam's upstream digest, and ka_vighnakara's (it also depends
+--       on ka_muhurta_seva, 730:39), stay NULL until BOTH services have rebuilt under
+--       this migration. Applying it alone changes no receipt.
+--   (c) Proven service receipts now delta-skip. ka_dasha_kala declares source_paths (its
+--       package) but ka_muhurta_seva declares NONE, so a change to panchang_engine/ or
+--       muhurat/ is not hashed into its code digest and a stale 'healthy' is possible.
+--       FOLLOW-UP (not here): declare source_paths on ka_muhurta_seva.
+--   (e) Builder grant gap. Migration 1070 grants data_plane_builder UPDATE only on
+--       asset_registry (service_health, last_invoked_at, last_selftest_at);
+--       selftest_detail is NOT granted. ka_dasha_kala/writer.py:92-97 writes it unguarded
+--       (permission denied -> asset error); ka_muhurta_seva/writer.py:293-298 writes it
+--       and swallows the exception, which leaves the transaction aborted. Under the
+--       builder role neither service can complete until
+--       GRANT UPDATE (selftest_detail) ON public.asset_registry TO data_plane_builder
+--       lands (BUILDER_GRANT_PLAN v1.1; deliberately not this PR).
+--
+-- Tests: platform/python-sidecar/tests/l3/test_i4_i5_output_digest_specs.py (static
+-- DDL/sha checks always; behavioural digest tests only when I45_DIGEST_DSN is set).
 --
 -- Post-apply verification (CLAUDE.md N.4): expect 2 rows
 --   SELECT asset_id FROM asset_output_digest_specs
