@@ -158,6 +158,33 @@ digest, baseline counts) before proceeding. If the real negative count
 differs from 154 that divergence is evidence to record, not a blocker —
 §3's threshold (0) is absolute either way.
 
+### §1a — FILE-MODE variant: the certified file backup (native decision 2026-10-01)
+
+The §1 snapshot TABLE is the preferred anchor only while a role that can
+CREATE in schema public is reachable. On the current data plane no such
+role is reachable (even Cloud SQL `postgres` gets `permission denied for
+schema public`), so the native chose a **certified file backup** instead —
+taken read-only, so it is no longer a production write at all:
+
+- `gochara_resonance_map_482012f1_<stamp>.jsonl` — one
+  `row_to_json(t)::text` line per row, ordered by id (exactly the §1
+  certificate's serialisation and order);
+- `gochara_resonance_map_482012f1_<stamp>.jsonl.sha256` — the coreutils
+  `sha256sum` sidecar (first token is the file's sha256 hex).
+
+Because the file's lines ARE the certificate's row texts, **the md5 of the
+lines joined by `\n` is the full-row preimage certificate itself** — file
+and database stay comparable exactly. Record (line count, joined-md5) in
+the evidence file exactly as §1 records (row_count, full_row_digest);
+verify the pair equals the live §1 certificate and the count is > 0 before
+proceeding (same STOP rule).
+
+Taken by the steward (read-only) on 2026-10-01 for the canonical chart:
+`/Users/Dev/pravaha/run/backups/gochara_resonance_map_482012f1_20261001071822.jsonl`
+(+ `.sha256`), mirrored to `gs://gochara-century-stream/backups/resonance_map/` —
+765 lines, certificate **(765, 3d270ef0a2db00b240a2acb4d45171c0)**, equal
+to the live §1 pair measured the same day. Its rollback procedure is §4a.
+
 ## 2. Governed rebuild (native executes)
 
 The writer is per-chart delete-then-insert (§N.3 idempotent) inside the
@@ -694,6 +721,51 @@ Restoring the snapshot restores the PRE-WP3c (dishonest) rows — rollback is a
 pause for diagnosis, never the end state. The fix direction is always data
 forward, never a weakened guard. Drop the snapshot table only after the
 rebuilt map has soaked.
+
+### §4a — FILE-MODE rollback: resonance_restore_from_file.py
+
+When §1 was the certified FILE backup (§1a), rollback is
+`resonance_restore_from_file.py` (this directory). It carries the same
+refuse-unless-verified discipline as the SQL block above, enforced in
+Python and in one transaction:
+
+- **before any DELETE** — the file's sha256 equals the first token of its
+  `.sha256` sidecar; the line count equals the recorded count; the md5 of
+  the lines joined by `\n` equals the recorded full-row digest; every line
+  is one JSON object with a unique integer id whose `chart_id` IS the
+  chart being restored;
+- **one transaction** — every other chart's full-row certificate is taken
+  (the untouched baseline); DELETE the chart's partition; INSERT each file
+  row via `json_populate_record(NULL::gochara_resonance_map, line)` (the
+  exact preimage, ids and computed_at included); re-anchor the id sequence
+  at max(id); recompute the live full-row certificate and ROLL BACK unless
+  it equals the recorded pair; re-take every other chart's certificate and
+  require it unchanged.
+
+The DSN comes from the environment only (`RESONANCE_RESTORE_DATABASE_URL`
+— the **data_plane_builder** role: DELETE/INSERT on the table, USAGE on
+the id sequence; no triggers on the table), never argv, never printed.
+**The default is a dry-run**: the entire procedure executes inside the
+transaction and is then deliberately rolled back — a full dress rehearsal
+against the real endpoint that commits nothing. `--execute` commits.
+
+```text
+  RESONANCE_RESTORE_DATABASE_URL=<data_plane_builder dsn; env only, never argv, never printed> \
+  python3 resonance_restore_from_file.py \
+      --chart-id 482012f1-710e-4a25-994a-93821f5871aa \
+      --file gochara_resonance_map_482012f1_<stamp>.jsonl \
+      --expect-count <count recorded at backup> --expect-md5 <full-row digest recorded at backup> [--execute]
+```
+
+Rehearsed on a disposable PG against the migration-derived schema
+(`resonance_restore_from_file_rehearsal.py`, exit 1 on any failure): the
+successful restore reproduces the recorded certificate exactly and leaves
+the foreign chart's certificate byte-identical; the tampered-file,
+truncated-file, wrong-chart-line, digest-mismatch and sha-mismatch
+controls each REFUSE with the live partition provably untouched; and the
+steward's real certified backup verifies against the recorded pair
+(765, 3d270ef0a2db00b240a2acb4d45171c0). Pure controls and this drift
+guard: `tests/l3/test_resonance_restore_from_file.py`.
 
 ## 5. What this runbook deliberately does NOT do
 
