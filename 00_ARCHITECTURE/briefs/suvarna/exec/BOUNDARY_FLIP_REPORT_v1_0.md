@@ -1,6 +1,6 @@
 ---
 artifact: BOUNDARY_FLIP_REPORT
-version: 1.1
+version: 1.2
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 date: 2026-10-02
@@ -11,6 +11,7 @@ precondition_for: any L1 / panchanga_daily rebuild after the ephemeris-backend f
 gate: G-FLIP CLEARED for the canonical chart (SS decision N-64, recorded in section 0A)
 evidence_dir: /Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/ (not in the repo; README.md there lists every script and output)
 changelog:
+  - "1.2 (2026-10-02): detector, per-lane attribution hooks, schema README and self-test committed in the repo (s_l1_attribution_hooks/); SS standing rule: every S-L1 fix PR adds its own hook; guessed Daridra regex removed, no placeholder hooks."
   - "1.1 (2026-10-02): SS N-64 rulings recorded (section 0A): dasha shift = accuracy refinement; Mahadasha day-crossing verified; S-L1 acceptance criterion; detector packaged (--snapshot / --compare); pre-rebuild snapshot of 482012f1 taken (path and sha256 below); G-EPH Linux check recorded; S-L1b hand-offs."
   - "1.0 (2026-10-02): first full comparison of production-state Moshier vs pinned Swiss .se1 for the three charts and the stored panchanga_daily window."
 ---
@@ -57,11 +58,12 @@ Ruling: every dasha-start change is the arithmetic consequence of the Moon movin
 
 After the S-L1 run, re-run the same class-flip detector on the ACTUAL rebuilt canonical output versus the pre-rebuild snapshot. Expected: **zero class flips from the backend**; every other difference attributed to a named ruled change (argala, tiers, Gandanta, F-A2, Daridra, band table). **Any unattributed class change: stop the wave and go to SS. A changed FORENSIC anchor = ALERT.**
 
-Detector packaged as a documented entry point: `/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/flip_detector.py` (read-only as `suvarna_reader`; usage in its docstring and in the evidence README):
-- `--snapshot native|<chart uuid>`: captures the current production class-level state (every `chart_facts` row with its verification tier, every `chart_divisionals` row, every `chart_dashas` row as (ayanamsha, system, level, lord path, start, end), and `panchanga_daily`) into a gzip JSON plus a `.sha256`.
-- `--compare <snapshot>`: reads production again and prints every class change (value change, key appeared / disappeared, occurrence-count change for keys the writers emit twice) with attribution by fact category via `attribution_hooks.json`; continuous values, timestamps and verification-tier changes are reported separately; dasha starts are checked against the ruled backend shift table (`expected_dasha_shifts_native.json`, e.g. Lahiri Vimshottari +6,993 s; use `--no-expected-shift` for a pre-rebuild self-test). Exit 0 = clean; **2 = unattributed class change (stop, go to SS)**; **3 = FORENSIC anchor changed (ALERT; wins over 2)**.
-- Hooks: `argala` (argala_natal_matrix, virodha_argala_natal_matrix, net_argala_per_varga) and `gandanta` (graha_gandanta) are grounded in the stored categories. **F-A2, Daridra, the band table and tiers have no category list yet; the S-L1 brief must fill `attribution_hooks.json` in before the run**, otherwise their changes will (correctly) show as UNATTRIBUTED.
-- Self-tests: `flip_detector_selftest.py` (offline mutation test: identical -> 0 changes; injected argala/Gandanta changes are attributed, injected pada and Lagna-sign changes are UNATTRIBUTED, tier and continuous changes are separated, the Lagna mutation raises the anchor ALERT) passes; a live `--compare` of the fresh snapshot against production reports 0 class changes, 0 continuous changes, 0 tier changes, 0 dasha rows added or removed, anchors 7 of 7 OK (so production was unchanged between snapshot and compare).
+Detector, hooks and self-test are committed in the repo: **`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/`** (`flip_detector.py`, `README.md` with the exact hook schema, `test_flip_detector.py`, one `<lane>.json` per lane). Standing rule (SS): **every S-L1 mandatory fix PR adds its own hook file in that folder in the same PR**; a lane with no hook file is a blocker the S-L1 REVIEW must flag (`--require-lanes` fails the run). The detector is read-only (SELECT only) with the same entry points:
+- `--snapshot native|<chart uuid>` captures the current production class-level state (every `chart_facts` row with its verification tier, every `chart_divisionals` row, every `chart_dashas` row, `panchanga_daily`) into a gzip JSON plus a `.sha256`.
+- `--compare <snapshot>` reads production again, attributes every class / tier / dasha-row-set difference to a lane via ALL `*.json` hooks in the folder (exact table, category, fact key, ayanamsha, change type; optional `expected_count`; `dasha_shift` entries declare the ruled start shifts), and reports continuous values and timestamps separately. Exit **0** clean; **2** unattributed change, unattributed dasha shift, expectation mismatch, invalid hook, or missing required lane (stop, go to SS); **3** FORENSIC anchor changed (ALERT, wins over 2).
+- `--validate-hooks [--require-lanes ...]` lints the hook files without database access.
+- Seeded with the two lanes whose categories are grounded in the stored data: `argala.json` (argala_natal_matrix, virodha_argala_natal_matrix, net_argala_per_varga) and `gandanta.json` (graha_gandanta / is_gandanta). The earlier guessed Daridra pattern is removed; F-A2, Daridra, band table, tiers, ephemeris and formula-pin hooks are **absent on purpose** and are written by their own fix PRs. The ephemeris lane declares the ruled backend dasha shift through a `dasha_shift` entry (e.g. Lahiri Vimshottari 6,990 to 6,996 s); without it the shift is UNATTRIBUTED.
+- Self-tests: `test_flip_detector.py` (12 offline tests: identical -> clean; attributed change names its lane; unattributed class change, tier change, dasha shift and dasha row-set change stop the wave; continuous / timestamp changes are separated; expectation mismatch stops; anchor change is an ALERT that wins over unattributed and is native-only; chart-scoped hooks; strict hook validation rejecting empty placeholders, patterns, wrong stems and unknown fields; read-only guard refusing non-SELECT) passes; a live `--compare` of the repo detector against the fresh snapshot reports 0 changes, 0 unattributed, anchors 7 of 7 OK, exit 0 (production unchanged between snapshot and compare).
 
 **Pre-rebuild snapshot of the canonical chart `482012f1` (taken now, read-only):**
 - path: `/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots/pre_rebuild_482012f1_2026-10-01.json.gz`
