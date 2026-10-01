@@ -1,0 +1,53 @@
+---
+artifact: D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY
+version: 1.0
+status: PINS_READMISSION_AUTHORIZED
+date: 2026-10-01
+decision: D-PINS-A2.5-CONTINUATION
+campaign: pravaha
+item: A2.5
+---
+
+# D-PINS-A2.5-CONTINUATION — pins re-admission authority (PR #2799, ASTRA v1.0 rework successor)
+
+## The decision, verbatim
+
+From `/Users/Dev/pravaha/run/EVENTS.jsonl`, 2026-10-01T12:14:51+00:00, actor `steward`, message
+M20261001T121451-1a8d — the grant clause:
+
+> "(1) D-PINS-A2.5 continuation GRANTED: admit ONE append-only L3 successor over
+> l3:639eece63be3:df2b966b1d97 with exactly the delta you listed (candidate =
+> approved_intentional_change with the declared source closure; v3_century_materialize /
+> moorti_nirnaya / sangam = derived_import_change via episodes.py only), #2793-continuation
+> mechanics; delivery-check residual lines byte-identical to main's."
+
+Recorded by the steward on the native's standing authority of 2026-09-30 (the autonomy
+addendum). Quoted verbatim; nothing paraphrased.
+
+## Scope of the authority granted
+
+Exactly one operation: fail-closed successor admission
+(`nirmana_analysis_layer_pins.py --admit-successor`) of ONE L3 successor over the pin
+admitted under D-PINS-A2.5 (`l3:639eece63be3:df2b966b1d97`, archived whole with its writer
+snapshot, never rewritten). The delta — verified from content-hashed closures of
+`f6cb3914e` (ASTRA v1.0 PUSH 3 head) against the predecessor inventory at `348c8e7fc`:
+
+| writer | classification | why |
+|---|---|---|
+| `ka_gochara_v4_41_candidate` | `approved_intentional_change` | ASTRA v1.0 rework PUSH 1–3; complete source closure now declared via source_paths (own module + 4 step06 modules + gochara_kernel/ledger.py + legacy_semantics.py) |
+| `ka_gochara_v3_century_materialize` | `derived_import_change` | import closure via services/gochara_kernel/episodes.py only (A2 half-open backstop); no own-module edits |
+| `ka_moorti_nirnaya` | `derived_import_change` | same closure |
+| `ka_sangam` | `derived_import_change` | same closure |
+
+Membership is unchanged (23 `ka_` writers before and after); no other layer moves.
+
+## Why the pin went stale
+
+The ASTRA v1.0 review of PR #2799 (findings A1–A10) required a rework that changed the
+admitted writer inventory's digests; the admitted successor `l3:639eece63be3:df2b966b1d97`
+no longer matches source. ASTRA amendment rank 3: regenerate + re-admit.
+
+## Authority identity
+
+The immutable approval identity of this authority is the commit that first
+introduced this document: `AUTHORITY_COMMIT_PLACEHOLDER`.
