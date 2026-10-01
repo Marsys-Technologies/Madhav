@@ -444,6 +444,23 @@ describe('postProcessAyurdayaDisclosure (registry safety net)', () => {
       warn.mockRestore()
     })
 
+    it('when the walk hits its bound the page-level wording is used (rows beyond it are untagged, so no "each carries" claim)', () => {
+      __resetAyurdayaWarningsForTests()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const content = {
+        chart_id: 'c',
+        rows: [total('PINDAYU', BASE), total('AMSAYU', 'other')],
+        deep: nest(total('NISARGAYU', BASE), WALK_MAX_DEPTH + 1),
+      }
+      const out = run({ content, is_error: false })
+      const d = out.content['ayurdaya_figure_disclosure'] as Row
+      expect(d['caveat']).toBe(AYURDAYA_MIXED_PAGE_CAVEAT)
+      expect(String(d['caveat'])).not.toMatch(/read each row/i)
+      expect(String(d['applies_to'])).not.toMatch(/each carries its own figure_kind/)
+      expect(String(d['applies_to'])).toMatch(/not individually marked/)
+      warn.mockRestore()
+    })
+
     it('stops at the object-count bound (rows past it are not found) and warns', () => {
       __resetAyurdayaWarningsForTests()
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

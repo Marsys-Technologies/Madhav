@@ -479,15 +479,19 @@ export function postProcessAyurdayaDisclosure<T>(result: T): T {
       finalFigures.set(row, f)
       fresh.set(row, { ...row, figure_kind: f.figure_kind, reductions_applied: f.reductions_applied })
     }
-    const disclosure = summarize(finalFigures)
-    if (!disclosure) return result
-
+    // Row annotation first: the disclosure wording must reflect what actually happened. A failed
+    // rewrite, or a walk that hit its bound (rows beyond it are untagged), means NOT every row carries
+    // its own figure_kind, so the wording falls back to the page-level form (rowsMarked=false).
     let body: unknown = c
+    let rowsMarked = !boundHit
     try {
       body = rewrite(c, fresh)
     } catch (err) {
+      rowsMarked = false
       warnOnce(`row annotation failed (${err instanceof Error ? err.message : String(err)}); page-level disclosure attached without per-row tags`)
     }
+    const disclosure = summarize(finalFigures, rowsMarked)
+    if (!disclosure) return result
     const bodyObj = (body && typeof body === 'object' && !Array.isArray(body) ? body : c) as Row
     const { judgment_flags: contentFlags, ...bodyRest } = bodyObj
     // content.judgment_flags is what MCP-bridged tools read; keep any non-array value untouched.
