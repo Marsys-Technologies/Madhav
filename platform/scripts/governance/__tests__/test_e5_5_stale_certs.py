@@ -1039,6 +1039,59 @@ def test_a_chain_through_a_same_output_bump_is_followed_all_the_way(ledger):
     assert c in sc.evaluate(raw(ledger), o).stale
 
 
+# ───────────────────────── a citation cycle has no verdict ─────────────────────────
+
+def test_a_citation_cycle_through_a_same_output_bump_is_a_refusal_not_a_recursion_error(ledger):
+    a1 = cert(ledger, "bg_a")
+    b1 = cert(ledger, "bg_b", up=[a1])
+    a2 = cert(ledger, "bg_a", n=1, up=[b1])             # E5.1 accepts it: b@1 is the latest of its key, and passes
+    assert a2.endswith("@2")
+    with pytest.raises(sc.StaleCertsError) as ei:
+        sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1),
+                                                                writer_paths=list(wh_of("bg_a", 1)))))
+    assert ei.value.code == "upstream_cycle" and not isinstance(ei.value, RecursionError)
+    before = raw(ledger)
+    with pytest.raises(sc.StaleCertsError):
+        run(ledger, obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1), writer_paths=list(wh_of("bg_a", 1)))))
+    assert raw(ledger) == before
+
+
+def test_a_very_deep_bump_chain_is_refused_not_a_raw_recursion_error(ledger):
+    # resolution recurses only through same-output generation bumps (the latest generation of an upstream lies LATER in
+    # the file than the cert that cites an older one). Build k such links: Y_k@1 cites Y_{k-1}@1, whose latest is Y_{k-1}@2,
+    # which cites Y_{k-2}@1, whose latest is Y_{k-2}@2, ...
+    k = 20
+    ids = [cert(ledger, "bg_y0")]
+    for i in range(1, k + 1):
+        ids.append(cert(ledger, f"bg_y{i}", up=[ids[-1]]))
+    for i in range(k - 1, -1, -1):                                              # descending: each cites the @1 below it
+        cert(ledger, f"bg_y{i}", n=1, up=([f"bg_y{i - 1}|gate|Build.registered@1"] if i else []))
+    names = [f"bg_y{i}" for i in range(k + 1)]
+    o = {a: dict(writer_hashes=wh_of(a, 1), writer_paths=list(wh_of(a, 1)), semantic_fingerprint=fp_of(a)) for a in names}
+    o[f"bg_y{k}"] = dict(writer_hashes=wh_of(f"bg_y{k}", 0), writer_paths=list(wh_of(f"bg_y{k}", 0)),
+                         semantic_fingerprint=fp_of(f"bg_y{k}"))
+    assert sc.evaluate(raw(ledger), o).stale == {}                              # fine at the normal recursion limit
+    import inspect
+    import sys as _sys
+    old = _sys.getrecursionlimit()
+    _sys.setrecursionlimit(len(inspect.stack()) + 12)
+    try:
+        with pytest.raises(sc.StaleCertsError) as ei:
+            sc.evaluate(raw(ledger), o)
+        assert ei.value.code == "upstream_chain_too_deep"
+    finally:
+        _sys.setrecursionlimit(old)
+
+
+def test_a_datetime_at_the_calendar_edge_is_a_refusal_not_an_overflow():
+    ist = dt.timezone(dt.timedelta(hours=5, minutes=30))
+    west = dt.timezone(dt.timedelta(hours=-5))
+    for v in (dt.datetime.min.replace(tzinfo=ist), dt.datetime.max.replace(tzinfo=west)):
+        with pytest.raises(sc.UnreadableInput):
+            one(v)
+    assert one(dt.datetime(1, 1, 2, tzinfo=ist))                     # one day in from the edge is fine
+
+
 # ───────────────────────── honest nulls: unreadable input never reads "not stale" ─────────────────────────
 
 def test_a_missing_observation_for_a_certified_asset_raises(ledger):
@@ -1744,19 +1797,49 @@ def test_after_a_reset_the_limit_applies_again_to_the_new_count(ledger):
     assert raw(ledger) == before and sc.rewalk_counts(raw(ledger)) == {"L0": 2}
 
 
+def two_layers_at_the_edge(ledger):
+    three_walks_setup(ledger)                                         # L0: two walks, a third pending
+    cert(ledger, "bo_x")
+    run(ledger, obs("bg_a", "bo_x", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 2)),
+                    bo_x=dict(semantic_fingerprint=fp_of("bo_x", 1))))            # L2: one walk
+
+
 def test_a_reset_for_one_layer_never_resets_another(ledger):
-    three_walks_setup(ledger)
+    two_layers_at_the_edge(ledger)
     sc.new_epoch(ledger, "L2", "N-28")
     with pytest.raises(sc.RewalkLimitExceeded):
         walk_once(ledger, 3)
 
 
 def test_a_reset_only_restarts_walks_before_it_not_after(ledger):
-    three_walks_setup(ledger)
+    two_layers_at_the_edge(ledger)
     sc.new_epoch(ledger, "L0", "N-28")
     walk_once(ledger, 3)
     sc.new_epoch(ledger, "L2", "N-29")                                           # a later reset of ANOTHER layer
     assert sc.rewalk_counts(raw(ledger)) == {"L0": 1}
+
+
+def test_new_epoch_for_a_layer_with_no_walks_is_refused_and_writes_nothing(ledger):
+    cert(ledger, "bg_a")
+    for layer in ("L0", "L3"):                                                   # never walked
+        before = raw(ledger)
+        with pytest.raises(sc.StaleCertsError) as ei:
+            sc.new_epoch(ledger, layer, "N-28")
+        assert ei.value.code == "no_walks_to_reset" and raw(ledger) == before
+    three_walks_setup(ledger)
+    sc.new_epoch(ledger, "L0", "N-28")                                           # reset once...
+    with pytest.raises(sc.StaleCertsError) as ei:
+        sc.new_epoch(ledger, "L0", "N-29")                                       # ...nothing left to reset
+    assert ei.value.code == "no_walks_to_reset"
+
+
+def test_new_epoch_needs_a_tz_aware_timestamp(ledger):
+    three_walks_setup(ledger)
+    before = raw(ledger)
+    for bad in ("2026-10-01T10:00:00", "yesterday", 5):
+        with pytest.raises(sc.StaleCertsError) as ei:
+            sc.new_epoch(ledger, "L0", "N-28", now=bad)
+        assert ei.value.code == "bad_timestamp" and raw(ledger) == before
 
 
 @pytest.mark.parametrize("layer,decision", [("L9", "N-28"), ("l0", "N-28"), ("", "N-28"), (None, "N-28"), ("L0", ""),
@@ -1779,10 +1862,14 @@ def test_new_epoch_on_a_missing_ledger_is_refused(tmp_path):
 def test_a_malformed_epoch_reset_in_the_ledger_is_refused_on_read(ledger):
     cert(ledger, "bg_a")
     rows = lines(ledger)
-    for bad in (dict(type="epoch_reset", asset="_ledger", layer="L9", decision="N-28"),
-                dict(type="epoch_reset", asset="_ledger", layer="L0", decision="whatever"),
-                dict(type="epoch_reset", asset="bg_a", layer="L0", decision="N-28"),
-                dict(type="epoch_reset", asset="_ledger", decision="N-28")):
+    ok = dict(type="epoch_reset", asset="_ledger", layer="L0", decision="N-28", reset_on=NOW, record_version=1)
+    write_chained(ledger, rows + [ok])
+    assert sc.rewalk_counts(raw(ledger)) == {}                                    # control: a well-formed one reads
+    for bad in (dict(ok, layer="L9"), dict(ok, decision="whatever"), dict(ok, asset="bg_a"),
+                {k: v for k, v in ok.items() if k != "layer"},
+                {k: v for k, v in ok.items() if k != "reset_on"},
+                dict(ok, reset_on="2026-10-01T10:00:00"), dict(ok, reset_on="soon"), dict(ok, reset_on=5),
+                dict(ok, reset_on=None)):
         write_chained(ledger, rows + [bad])
         with pytest.raises(sc.LedgerShapeError):
             sc.rewalk_counts(raw(ledger))
@@ -1917,6 +2004,13 @@ def test_cli_new_epoch_refuses_a_bad_decision(ledger):
     assert p.returncode == 2 and "bad_decision" in p.stderr and raw(ledger) == before
     p = cli("new-epoch", "--ledger", str(ledger), "--layer", "L8", "--decision", "N-28")
     assert p.returncode == 2 and "bad_layer" in p.stderr and raw(ledger) == before
+
+
+def test_cli_new_epoch_for_a_layer_with_no_walks_is_refused(ledger):
+    cert(ledger, "bg_a")
+    before = raw(ledger)
+    p = cli("new-epoch", "--ledger", str(ledger), "--layer", "L0", "--decision", "N-28")
+    assert p.returncode == 2 and "no_walks_to_reset" in p.stderr and raw(ledger) == before
 
 
 def test_cli_missing_observation_exits_2_and_writes_nothing(ledger, tmp_path):

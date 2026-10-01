@@ -307,7 +307,10 @@ def _canon(v, path: str, naive_utc: bool = False):
                 raise UnreadableInput(f"{path}: a naive datetime has no instant: declare the column in "
                                       "naive_utc_columns if it is stored as UTC without a zone")
             v = v.replace(tzinfo=_UTC)
-        return v.astimezone(_UTC).isoformat()                        # the same instant is the same value
+        try:
+            return v.astimezone(_UTC).isoformat()                    # the same instant is the same value
+        except OverflowError:
+            raise UnreadableInput(f"{path}: a datetime too close to the calendar's edge to express in UTC") from None
     if isinstance(v, dt.date):
         return v.isoformat()
     if isinstance(v, dt.time):
@@ -568,10 +571,15 @@ def _check_invalidation(r: dict, lg: Ledger, n: int) -> None:
 
 
 def _check_epoch_reset(r: dict, n: int) -> None:
-    d = r.get("decision")
+    d, on = r.get("decision"), r.get("reset_on")
+    try:
+        aware = isinstance(on, str) and dt.datetime.fromisoformat(on).tzinfo is not None
+    except ValueError:
+        aware = False
     if (r.get("asset") != "_ledger" or r.get("layer") not in ac.LAYERS or not isinstance(d, str)
-            or not _DECISION.fullmatch(d)):
-        raise LedgerShapeError(f"seq {n}: malformed epoch_reset (needs asset _ledger, a layer and a decision id N-xx)")
+            or not _DECISION.fullmatch(d) or not aware):
+        raise LedgerShapeError(f"seq {n}: malformed epoch_reset (needs asset _ledger, a layer, a decision id N-xx and "
+                               "a tz-aware reset_on)")
 
 
 def _check_watermark_line(r: dict, lg: Ledger, n: int) -> None:
@@ -685,11 +693,17 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
     ev = Evaluation(stale={}, current=[], invalidated=[], not_certificates=[])
     status: dict[str, str] = {}
     reasons_of: dict[str, list] = {}
+    in_progress: set[str] = set()
 
     def resolve(rec: dict) -> str:
         cid = rec["cert_id"]
         if cid in status:
             return status[cid]
+        if cid in in_progress:
+            # E5.1 accepts a citation that points at a LATER generation's own citations (a@2 cites b@1, b@1 cites a@1,
+            # and a same-output bump makes a@1 resolve through a@2): a cycle has no staleness verdict to give
+            raise StaleCertsError(f"upstream citation cycle through {cid}", "upstream_cycle")
+        in_progress.add(cid)
         if cid in lg.inv_targets:
             status[cid] = "invalidated"
             return "invalidated"
@@ -747,12 +761,17 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
                 reasons.append(dict(code="upstream_stale", upstream=latest["cert_id"], why=st, **extra))
         status[cid] = "stale" if reasons else "current"
         reasons_of[cid] = reasons
+        in_progress.discard(cid)
         return status[cid]
 
     for rec in lg.certs:
         if lg.by_key[rec["cert_key"]][-1] is not rec:
             continue                                            # superseded generation
-        cid, st = rec["cert_id"], resolve(rec)
+        try:
+            cid, st = rec["cert_id"], resolve(rec)
+        except RecursionError:
+            raise StaleCertsError("the upstream citation chain is deeper than this evaluator will follow",
+                                  "upstream_chain_too_deep") from None
         if st == "invalidated":
             ev.invalidated.append(cid)
         elif st == "not_cert":
@@ -923,16 +942,26 @@ def invalidate(ledger_path, observed, *, commit, registry=None, now=None, observ
 def new_epoch(ledger_path, layer: str, decision: str, *, now=None) -> dict:
     """Append an `epoch_reset` event: the layer's invalidating-walk count restarts. This is the STRATEGIST'S act (the
     cap exists so that a third re-walk gets reviewed before any further rebuild); `decision` is the decision id
-    (N-xx) recorded with it. The ledger and git history are the audit: this function cannot know who runs it."""
+    (N-xx) recorded with it. Refused for a layer with no walks since its last reset (nothing to reset). The ledger and git history are the audit: this function cannot know who runs it."""
     if layer not in ac.LAYERS:
         raise StaleCertsError(f"layer must be one of {sorted(ac.LAYERS)}", "bad_layer")
     if not isinstance(decision, str) or not _DECISION.fullmatch(decision):
         raise StaleCertsError(f"decision {decision!r} is not a decision id (N-<number>...)", "bad_decision")
-    ev = dict(type="epoch_reset", asset="_ledger", layer=layer, decision=decision,
-              reset_on=now or dt.datetime.now().astimezone().isoformat(timespec="seconds"),
+    stamp = now or dt.datetime.now().astimezone().isoformat(timespec="seconds")
+    try:
+        if dt.datetime.fromisoformat(stamp).tzinfo is None:
+            raise ValueError
+    except (TypeError, ValueError):
+        raise StaleCertsError(f"now {stamp!r} is not a tz-aware ISO timestamp", "bad_timestamp") from None
+    path = nc.resolve_ledger_path(ledger_path)
+    walks = rewalk_counts(read_ledger_file(path)).get(layer, 0)
+    if walks == 0:
+        raise StaleCertsError(f"layer {layer} has no invalidating walks since its last epoch reset: there is nothing "
+                              "to reset", "no_walks_to_reset")
+    ev = dict(type="epoch_reset", asset="_ledger", layer=layer, decision=decision, reset_on=stamp,
               record_version=RECORD_VERSION)
     try:
-        nc.append_records(nc.resolve_ledger_path(ledger_path), [ev])
+        nc.append_records(path, [ev])
     except nc.CertificationRefused as e:
         raise _wrap(e) from e
     return ev
