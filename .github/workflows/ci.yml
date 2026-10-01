@@ -403,6 +403,21 @@ jobs:
           M1211_AUDIT_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1211_audit_grant_test
         run: npx vitest run tests/integration/asset_throughput_state_audit_grants.db.test.ts --reporter=verbose
 
+      - name: C1/1223 — provision the ka_gochara count_sql re-scope test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1223_ka_gochara_rescope_test;"
+
+      - name: C1/1223 — ka_gochara count_sql 4.0→4.1 re-scope against real Postgres
+        # The TASK C1 proof for migration 1223: a real asset_registry row carrying
+        # EXACTLY the 1091 count_sql text is re-scoped to '4.1' by the REAL 1223
+        # file — plus idempotency, unrecognised-prior-text and missing-row
+        # fail-closed controls (§N.8).
+        env:
+          M1223_KA_GOCHARA_RESCOPE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1223_ka_gochara_rescope_test
+        run: npx vitest run tests/integration/ka_gochara_count_sql_rescope_1223.db.test.ts --reporter=verbose
+
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
           PGPASSWORD: postgres
