@@ -19,7 +19,7 @@ changelog:
 
 Scope asked by SS (2026-10-01): rebuild the stale and errored producers `ph_phaladesa`, `ph_pramana`, `mi_bhavisya`,
 `ph_nimitta`, `bo_pratijna`, `ka_yojaka`, plus the I-1/I-2 consumers `ka_avadhi` and `ka_vighnakara`, so that
-(a) live rows are corrected once the L3 writer fixes merge and (b) migration 1211 (5 held `depends_on` edges, branch
+(a) live rows are corrected once the L3 writer fixes merge and (b) migration 1216 (5 held `depends_on` edges, branch
 TI-edges-002) can be applied after its gate (each of `bo_pratijna`, `ka_yojaka`, `mi_bhavisya`, `ph_nimitta` lit and
 fresh and proven, "gate_ok").
 
@@ -259,7 +259,7 @@ The grant plan's own verification and rollback are its; this plan only consumes 
    lit and fresh, or be planned earlier in the same run) gives a **26-asset minimal plan: 24 per-chart assets plus two
    global assets, `bg_transit_rules` (L0) and `ka_muhurta_seva` (L3 service)** (section 1, Evidence E4). The minimal plan is computed, not guessed; it is the
    smallest set for which the planner accepts the run (simulation of the planner's preflight on all 26: no out-of-plan blocker remains). **v1.1:** the launch set is these 26 plus `ka_dasha_kala` (27: 25 per-chart, 2 global), section 1.6; every later reference to "the 26" means the v1.0 computed set. `ga_vargas` is not added (P0b.4); `ka_kshetra` is a separate last stage (section 8.2).
-2. **Two structural blockers stop `gate_ok` for the four 1211 producers. Both are code-derived, not yet observed.**
+2. **Two structural blockers stop `gate_ok` for the four 1216 producers. Both are code-derived, not yet observed.**
    - **B-1 `ka_vighnakara` can never be 'proven'.** It has no output-digest spec (`asset_output_digest_specs` has no row;
      migration 1034's header calls it an explicit blocked contract: `kala_obstruction` has no stable non-null unique key).
      After a rebuild its receipt is 'unknown', so its freshness is 'unknown', and `asset_runner.deps_unsatisfied`
@@ -272,9 +272,9 @@ The grant plan's own verification and rollback are its; this plan only consumes 
      path has never been exercised in production.
    - Consequence (code-derived): on today's code a full run lands the Bodha assets, `ka_gochara`, `ka_yojaka`, `ka_avadhi` and
      `ka_sangam` (lit, receipt 'unknown'); then `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, all 8 `ph_*` and
-     `mi_bhavisya` end as `blocked_dependency` errors (their old rows untouched). No 1211 producer reaches gate_ok. The 1211 gate cannot be met until B-1 and B-2 are decided (section 9, Q1-Q2). **v1.1 update:** PR #2826 (migrations 1212, 1213) is the proposed fix for B-1 and B-2 (a digest spec for `ka_vighnakara`; digest specs for the services `ka_dasha_kala` and `ka_muhurta_seva`); it is open and not applied (Evidence E12), so both blockers stand until it is deployed, verified (P0c.1) and the two services have rebuilt (S1). B-1 and B-2 stay code-derived, not observed. Only a spec (B-1) or a
+     `mi_bhavisya` end as `blocked_dependency` errors (their old rows untouched). No 1216 producer reaches gate_ok. The 1216 gate cannot be met until B-1 and B-2 are decided (section 9, Q1-Q2). **v1.1 update:** PR #2826 (migrations 1212, 1213) is the proposed fix for B-1 and B-2 (a digest spec for `ka_vighnakara`; digest specs for the services `ka_dasha_kala` and `ka_muhurta_seva`); it is open and not applied (Evidence E12), so both blockers stand until it is deployed, verified (P0c.1) and the two services have rebuilt (S1). B-1 and B-2 stay code-derived, not observed. Only a spec (B-1) or a
      contract change to the service receipts (B-2) fixes it; running with `ORCHESTRATOR_DEP_ASSERT=warn` would run the
-     consumers but still leave their receipts 'unknown' (not gate_ok), so it does not meet the 1211 gate either.
+     consumers but still leave their receipts 'unknown' (not gate_ok), so it does not meet the 1216 gate either.
 3. **The active-run slot was occupied minutes before this review.** `build_runs` 8684032d (asset_set `ka_gochara_resonance`,
    action rebuild, `triggered_by = l3-lane-frozen-manifest-rebuild`) was created 2026-10-01 14:57:39Z as `planned`; at
    15:04Z it reads `failed` (started 15:01:18, ended 15:01:19, its one asset still `queued`, `last_error` NULL). Another lane is evidently trying to
@@ -323,7 +323,7 @@ Frozen: Nirmāṇa-frozen definition (tier), source `NIRMANA_SUPERSESSION_RECORD
 | 14 | **ka_vighnakara** | I-2 consumer; stale; B-1 | 4 | 0 | 536 | 0.3 / 1.4 | no | 4.2 I-2 reason; kala_bundle_get |
 | 15 | ka_kala_darshana | reads `kala_obstruction`; dep of `ka_bhavishya_lekha` | 5 | 0 | 750 | 0.0 / 0.1 | no | 4.2 SQL; kala_bundle_get |
 | 16 | ka_bhavishya_lekha | dep of `ph_nimitta`; stale | 6 | 0 | 100 | 0.0 / 0.0 | no | 4.2 SQL; kala_projections_get |
-| 17 | **ph_nimitta** | SS wave; stale; 1211 producer | 7 | 4 | 139 | 0.0 / 1.0 | no | 4.3 SQL |
+| 17 | **ph_nimitta** | SS wave; stale; 1216 producer | 7 | 4 | 139 | 0.0 / 1.0 | no | 4.3 SQL |
 | 18 | ph_muhurta | reads `kala_obstruction`; dep of `ph_pramana` | 8 | 134 | 139 | 0.0 / 0.3 | no | 4.3 SQL |
 | 19 | ph_pratikara | reads `kala_obstruction`; dep of `ph_pramana` | 8 | 536 | 536 | 0.0 / 0.9 | no | 4.3 SQL |
 | 20 | ph_sankrama | dep of `ph_pramana` | 8 | 155 | 2510 | 0.0 / 3.5 | no | 4.3 SQL |
@@ -427,7 +427,7 @@ mi_darshana, mi_gunanaka, mi_pariksha, mi_pramana, mi_sambandha), 1 `dormant` (m
   `ka_gochara_resonance`, `ka_moorti_nirnaya` for the L0 asset) has been added. The writers are deterministic
   (estimate: output unchanged on an unchanged input), but 1210 changed the upstream set, so this is checked, not assumed.
 - The 8 `error` cascade victims stay `error` until their own rebuild; `mi_gunanaka` and `mi_pariksha` are the consumers of
-  the 1211 edges and are outside this wave. After the wave they remain blocked by `mi_bhavisya`/`mi_pramana` state, which is
+  the 1216 edges and are outside this wave. After the wave they remain blocked by `mi_bhavisya`/`mi_pramana` state, which is
   the pre-existing condition (Track I item I-3), not a regression.
 - No lit asset outside the 5 above changes state through this wave.
 
@@ -576,7 +576,7 @@ WHERE (t.chart_id='482012f1-710e-4a25-994a-93821f5871aa' OR (t.chart_id IS NULL 
   AND t.asset_id = ANY(string_to_array('<the 26 ids of section 1.3>',','))
 ORDER BY 1;
 
--- F2  the 1211 gate (verify SQL Q4, /Users/Dev/suvarna-evidence/TrackI/1211_asset_registry_direct_edges_held_verify.sql): gate_ok per producer
+-- F2  the 1216 gate (verify SQL Q4, /Users/Dev/suvarna-evidence/TrackI/1211_asset_registry_direct_edges_held_verify.sql): gate_ok per producer
 -- F3  row counts: the registry's own count_sql per asset (script counts.py) + the extra tables of section 2
 -- F4  per-table content digest (chart-scoped; excludes volatile columns; a table with a surrogate/uuid key needs that key added to the exclusion list first)
 SELECT count(*), md5(string_agg((to_jsonb(t) - 'build_id' - 'computed_at' - 'created_at' - 'updated_at' - 'id')::text, E'\n'
@@ -592,7 +592,7 @@ The before-state F1 and F3 for the plan assets were captured now for reference (
 
 ### 3.3 Expected AFTER state
 
-Target state for the 1211 gate (and for every asset that has a spec): `asset_throughput.state = 'lit'`, latest `asset_freshness` =
+Target state for the 1216 gate (and for every asset that has a spec): `asset_throughput.state = 'lit'`, latest `asset_freshness` =
 `fresh`, receipt `proven`, `output_digest` written, `build_run_assets.state = 'complete'`.
 
 | Asset group | Target after | Predicted on today's code |
@@ -605,8 +605,8 @@ Target state for the 1211 gate (and for every asset that has a spec): `asset_thr
 | `ph_*` (8) and `mi_bhavisya` | lit, fresh, proven | blocked by `ka_sangam`/`ka_vighnakara` (`blocked_dependency`) |
 | Downstream outside the plan | the 5 lit ones stay lit; the stale/error ones unchanged | unchanged |
 
-If B-1 and B-2 are resolved before launch, the target column is the expectation; the 1211 gate (`gate_ok` = state lit AND freshness fresh,
-per the 1211 verify SQL's query Q4) additionally requires, for the new consumers' own later builds, that each producer's receipt is proven (that query prints `receipt_state`).
+If B-1 and B-2 are resolved before launch, the target column is the expectation; the 1216 gate (`gate_ok` = state lit AND freshness fresh,
+per the 1216 verify SQL's query Q4) additionally requires, for the new consumers' own later builds, that each producer's receipt is proven (that query prints `receipt_state`).
 
 ## 4. CANARY READS
 
@@ -684,12 +684,12 @@ NOT verified that is said. No MCP call was made for this review.
 | 1 | P0 passed (audit grant, phala/mimamsa grants as needed, smoke build) | section P0.3-P0.5 | **FAIL**: audit INSERT and sequence USAGE false; 10 phala_/mimamsa_ tables unreadable/unwritable for the builder; no smoke |
 | 2 | Deploy idle: no `Deploy to Cloud Run` run with event `workflow_run` or `workflow_dispatch` in progress or pending | `gh run list --workflow deploy.yml --json status,conclusion,headSha,createdAt,event` (the `pull_request` runs are build-checks only and do not deploy) | **NOT idle**: a `workflow_run` deploy for main 3311b0a06 was `in_progress` at 15:04:39Z; the previous one (0250cbade) succeeded 14:25:28Z. Re-check, and re-run the smoke after it lands (image change). |
 | 3 | No in-flight runs for the chart | `SELECT id,state FROM build_runs WHERE chart_id='482012f1-...' AND state IN ('planned','running','paused')` (the unique index enforces this server-side) | 0 at 15:04Z (8684032d failed 15:01); another lane dispatched at 14:57, so repeat at launch (Q8) |
-| 4 | Registry unchanged since this plan | `SELECT count(*), md5(string_agg(asset_id\|\|'>'\|\|coalesce(depends_on::text,''),',' ORDER BY asset_id)) FROM asset_registry WHERE is_active` | 127 assets, md5 `fb7a1090d5aa3c7dabafc9f9daf1ae6a` (2026-10-01T14:49Z); latest `_migrations_applied` filename = `1210_asset_registry_direct_edges.sql` (applied 14:37:09Z); no 1211. The runner also re-checks each planned asset against the frozen manifest at start (a diverged asset fails and blocks its dependents). |
+| 4 | Registry unchanged since this plan | `SELECT count(*), md5(string_agg(asset_id\|\|'>'\|\|coalesce(depends_on::text,''),',' ORDER BY asset_id)) FROM asset_registry WHERE is_active` | 127 assets, md5 `fb7a1090d5aa3c7dabafc9f9daf1ae6a` (2026-10-01T14:49Z); latest `_migrations_applied` filename = `1210_asset_registry_direct_edges.sql` (applied 14:37:09Z); no 1216. The runner also re-checks each planned asset against the frozen manifest at start (a diverged asset fails and blocks its dependents). |
 | 5 | Planner preflight clean for the exact request | simulation `preflight_sim.sql` with the 26 ids (Evidence E4) | 0 blockers; the only out-of-plan direct deps not 'fresh' are services `ka_dasha_kala` (freshness `unknown`, the exact writer-self-test shape, accepted). **v1.1:** accepted by the planner, but it leaves `ka_sangam` unprovable, so `ka_dasha_kala` is now IN the launch set (section 1.6) and this row is re-run with the 27 ids |
 | 6 | Upstream state of out-of-plan deps | rows lit AND fresh for `bo_laksana`, `bo_bimba`, `bo_samskara`, `bo_sangati`, `ga_dashas`, `ga_positions`, `ga_vargas`, `ga_yoga`, `bg_ghatana`, `bg_dignity_reference`, `mi_kula`, `mi_jivanaghatana` | all lit and latest-row fresh at 14:49Z. Caveat: `bo_laksana` and `ga_positions` also carry older partition rows that are stale/unknown; both the planner and DEP-ASSERT read only the latest-observed row, so they pass, but a new observation row would change that. |
 | 7 | Job image tag = a commit that contains the L3 fixes (I-1, I-2: PR #2823) and the regenerated writer-digest inventory | the cockpit POST response returns `job_image_tag`; or `gcloud run jobs describe brahma-build-pipeline-job --region asia-south1 --format='value(spec.template.spec.template.spec.containers[0].image)'` (a native/CI act; the reader cannot see it). Compare with `git log -1 -- platform/src/generated/nirmana-writer-digests.json` and `git merge-base --is-ancestor <fix sha> <image sha>` | not readable by this lane. The runner refuses the whole run if the job's writer sources do not hash to the manifest's `expected_code_digest` (`_verify_sidecar_code_matches_manifest`), so a stale image fails closed rather than writing old text. |
 | 8 | I-1/I-2 merged | PR #2823 on `suvarna/land/TI-i12-narration-001` | not merged at the time `origin/main` was read (branch has no commits ahead of main at 14:51Z; the coordinator reports ACCEPT and merge imminent). `ka_avadhi` and `ka_vighnakara` must not run before the merge AND the deploy. |
-| 9 | Held migration 1211 not applied; its gate SQL ready | `1211_asset_registry_direct_edges_held_verify.sql` 1211-verify Q4/Q6 | 1211 held (branch TI-edges-002, commit 086a0fcc5) |
+| 9 | Held migration 1216 not applied; its gate SQL ready | `1211_asset_registry_direct_edges_held_verify.sql` 1216-verify Q4/Q6 | 1216 held (branch TI-edges-002, commit 086a0fcc5) |
 | 10 | Before-state captured (F1, F3, F4, F5) and stored | section 3 | not yet (re-capture at launch) |
 | 11 | Protected set unchanged | `SELECT * FROM build_protected_assets WHERE chart_id=...` | 1 row: `ka_gochara_sweep` (not in plan) |
 | 12 | No Nirmāṇa campaign wave running | native decision 2026-09-28: campaign OFF; `NIRMANA_SUPERSESSION_RECORD_v1_0.md` section 3 | off (not independently re-verified) |
@@ -703,8 +703,8 @@ NOT verified that is said. No MCP call was made for this review.
 
 **Post-run checks:** the run is `completed` with every asset `complete` (or `error` only as predicted in section 3.3); F1 expected states;
 F3/F4 counts and digests against section 2 and section 4 canaries; audit rows for each state change (`db_user`); no asset left `building`;
-`ph_nimitta`, `bo_pratijna`, `ka_yojaka`, `mi_bhavisya` gate SQL (1211-verify Q4) printed; other-chart canaries (F5) identical; the 25 downstream assets
-(F6) in the states of section 1.4; the 1211 gate decision recorded.
+`ph_nimitta`, `bo_pratijna`, `ka_yojaka`, `mi_bhavisya` gate SQL (1216-verify Q4) printed; other-chart canaries (F5) identical; the 25 downstream assets
+(F6) in the states of section 1.4; the 1216 gate decision recorded.
 
 ## 6. EXPECTED DURATION
 
@@ -735,7 +735,7 @@ single transaction longer than 15 minutes without a heartbeat is at risk (sectio
 | # | Risk | Evidence / mechanism | Impact | Mitigation in this plan |
 |---|---|---|---|---|
 | R-1 | The builder cannot complete any run (audit trigger) or write phala_/mimamsa_ tables | P0.1, P0.2 | No data changes; runs end `failed`; Stages 4-6 impossible | P0 gate; smoke build first |
-| R-2 | **B-1 / B-2 / B-3: the wave cannot reach 'proven' for the Phala/Mimāṃsā half** | section 0 items 1-2 (code-derived) | Predicted partial result: S0-S3 land except `ka_kalasutra`; `ka_sangam` lit with receipt 'unknown'; `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, `ph_*`, `mi_bhavisya` end `error` with `blocked_dependency` (their old rows untouched); the 1211 gate stays closed | Decide Q1/Q2 before S4; rehearse off production (E5.6 style) or run Stages 1-3 only |
+| R-2 | **B-1 / B-2 / B-3: the wave cannot reach 'proven' for the Phala/Mimāṃsā half** | section 0 items 1-2 (code-derived) | Predicted partial result: S0-S3 land except `ka_kalasutra`; `ka_sangam` lit with receipt 'unknown'; `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, `ph_*`, `mi_bhavisya` end `error` with `blocked_dependency` (their old rows untouched); the 1216 gate stays closed | Decide Q1/Q2 before S4; rehearse off production (E5.6 style) or run Stages 1-3 only |
 | R-3 | A delete-then-insert replaces rows in place and is not reversible by this lane | writers (section 2) | If new rows are wrong, old rows are gone | before-state digests (section 3) prove WHAT changed but are not a backup; need a native-held restore point (Q6) |
 | R-4 | `ka_avadhi` integrity failure again | 3 failures on 2026-09-10; conjuncts (c),(e) false on today's data | asset `error`; light writer rolls back, so prior 1169 rows are preserved | run after `bo_pratijna` and after I-1/M4 is deployed; if it fails read `build_run_assets.error` before retry |
 | R-5 | `bo_karanajala` output changes, staling `bo_sangati` etc. mid-plan | section 1.4 | S2 assets (`bo_pratijna`, `bo_drishti`, `bo_anveshana`, `bo_upaya`, then `ka_yojaka`, `ph_nimitta`, `ph_sankrama`) fail DEP-ASSERT `bo_sangati(stale)` | S1 isolates `bo_karanajala`; read `output_changed` before Stage 2; contingency set pre-computed |
@@ -816,11 +816,11 @@ unique-index guard serialises them and the planner's preflight becomes the gate 
 | S0v (conditional) | `ga_vargas` | P0b holds AND the owner-path count shows the table deleted/partial (P0b.4 branch b); otherwise this stage does not exist. A separate REVIEW (61-asset downstream closure). | owner-path count after equals writer rows written; section 1.5 binds the downstream |
 | S0m (conditional) | the MSR producers that must run, in one run | P0b (for `bo_laksana`); order guard on the concatenated waves passes; 1214 + L2 drop NOT yet deployed means cascade risk (section 1.5) | order guard `--post-wave` and detector pass; every producer `complete` |
 | S1 | `bg_transit_rules,ka_muhurta_seva,ka_dasha_kala,bo_karanajala` (`super_admin` required: two global assets) | P0; **1213 deployed and verified**; **`selftest_detail` grant** (P0c.2) | all four `complete`; `bo_karanajala.output_changed` FALSE (else add the contingency set); both services' latest receipt `proven` with `output_digest`; F1 |
-| S2 | `bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya` | **P0b holds** (`bo_pratijna` reads `chart_divisionals`) | all `complete`; 1211-verify Q4 for `bo_pratijna`; `bodha_pratijna` row count 135-ish, not 0 |
+| S2 | `bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya` | **P0b holds** (`bo_pratijna` reads `chart_divisionals`) | all `complete`; 1216-verify Q4 for `bo_pratijna`; `bodha_pratijna` row count 135-ish, not 0 |
 | S3 | `ka_gochara,ka_yojaka,ka_sangam` (+ `ka_avadhi` only after **1215** and the I-1 fix (#2823) are deployed) | S1 receipts as above (else `ka_sangam` cannot be proven); 1215 for `ka_avadhi` | `ka_yojaka` lit/fresh/proven; `ka_sangam` lit AND freshness `fresh` (B-2 fixed by 1213 + S1; else S4+ cannot pass) |
 | S4 | `ka_kalasutra,ka_vighnakara,ka_kala_darshana,ka_bhavishya_lekha` | **1212 deployed and verified**; I-2 fix (#2823) deployed; **`phala_anchors` SELECT** before this run; `bg_combustion_orbs` SELECT for a non-fallback `ka_vighnakara` | all four `complete`; `ka_vighnakara` receipt `proven` |
 | S5 | `ph_nimitta,ph_muhurta,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana,ph_pramana,ph_phaladesa` | the full phala grant set (P0c.2) and B-1/B-2 resolved | `phala_anchors` about 139 |
-| S6 | `mi_bhavisya` | `mimamsa_*` grants + N-46 guard; orphan check = 0 | 1211-verify Q4 for all four producers, then 1211 may be proposed |
+| S6 | `mi_bhavisya` | `mimamsa_*` grants + N-46 guard; orphan check = 0 | 1216-verify Q4 for all four producers, then 1216 may be proposed |
 | S7 | `ka_kshetra` (own stage, section 8.2) | section 8.2 pre-check; #2830 merged and deployed; the held `phala_rectification` ruling; `bo_pratijna`, `bo_upaya`, `ka_dasha_kala` rebuilt (S1-S2) | section 8.2 stop rule |
 
 Post-run for every stage that contains a bound asset (section 1.5): `msr_rebuild_order_guard.py --post-wave --chart-id <C>` and `msr_dangling_signal_refs.py --chart-id <C> --require-nonvacuous`.
@@ -828,7 +828,7 @@ Post-run for every stage that contains a bound asset (section 1.5): `msr_rebuild
 ### 8.2 Stage S7: `ka_kshetra` (own stage, pre-check, stop rule, single redispatch) (v1.1)
 
 **Why separate.** `ka_kshetra` (per-chart, `kala_field`, `writer_timeout_seconds` 86400) is a heavy, ledgered writer; nothing in the launch set depends on it (its only dependents are `mi_bhara`
-and `mi_sankalpa`, outside the plan), so it runs LAST and its failure cannot strand any 1211 producer. It is not part of the 27-asset launch set. It currently reads `error` (a cascade victim, section 1.4).
+and `mi_sankalpa`, outside the plan), so it runs LAST and its failure cannot strand any 1216 producer. It is not part of the 27-asset launch set. It currently reads `error` (a cascade victim, section 1.4).
 
 **What happened on 2026-09-11 (read live, Evidence E12).** For this chart, `build_run_assets` holds 115 rows for `ka_kshetra` between 2026-08-05 and 2026-09-11 (86 error, 10 aborted, 11 complete, 8 queued). The last run (`6e47cae4`, 01:48 to 03:50Z) ended `worker_crash: OperationalError: the connection is lost`; the
 seven runs before it (the most I read; the query was limited to the 8 newest) were kill-and-redispatch cycles for log stalls (one `last_error` reads "29th application" of the recipe). The writer's resume ledger (`build_substep_progress`) holds 279 completed substeps for the chart, the newest `stage5dhara:major_loss:1` at 03:22Z, so
@@ -861,7 +861,7 @@ launch SS reviews this document and records the decision (REVIEW) and the pre-fl
 
 1. **B-1.** `ka_vighnakara` has no output-digest spec (migration 1034 calls it a blocked contract: no stable non-null unique key in `kala_obstruction`). Decide:
    design a key and spec (a migration; not drafted here), or change the contract so `ka_bhavishya_lekha` and the consumers need not hold a proven
-   `ka_vighnakara` (which also changes 1211's premise). Without one of these `ph_nimitta`, `ph_pramana`, `ph_phaladesa`, `mi_bhavisya` cannot become proven. **v1.1:** PR #2826 migration 1212 is the first option (a spec over the whole projection); it is open, unapplied; SS decides whether to land it.
+   `ka_vighnakara` (which also changes 1216's premise). Without one of these `ph_nimitta`, `ph_pramana`, `ph_phaladesa`, `mi_bhavisya` cannot become proven. **v1.1:** PR #2826 migration 1212 is the first option (a spec over the whole projection); it is open, unapplied; SS decides whether to land it.
 2. **B-2.** `ka_sangam` declares services `ka_muhurta_seva` and `ka_dasha_kala` whose receipts carry no `output_digest`, so its upstream digest is NULL and its
    receipt 'unknown'. Is the intended contract that a healthy writer-backed service yields a probe digest (the `compute_upstream_hash` comment says so)? If yes, those two
    service receipts need to be produced; if no, the gate for `ka_sangam` consumers must be re-stated. A one-asset rehearsal of this path off production is cheap. **v1.1:** PR #2826 migration 1213 is the 'produce the digest' option (specs over each service's own `asset_registry` row); it only takes effect after both services rebuild, so `ka_dasha_kala` joins S1 (section 1.6). Two caveats it records itself: `ka_muhurta_seva` declares no `source_paths`, so a change to the panchang/muhurta engines is not hashed into its code digest (a stale 'healthy' is possible), and the canonical-chart pin on the 1212 spec means other charts' `ka_vighnakara` receipts digest the canonical chart's rows.
@@ -901,7 +901,7 @@ select count(*), md5(string_agg(asset_id||'>'||coalesce(depends_on::text,''),','
 -- 127 | fb7a1090d5aa3c7dabafc9f9daf1ae6a
 select filename, applied_at from _migrations_applied order by applied_at desc limit 2;
 -- 1210_asset_registry_direct_edges.sql | 2026-10-01 14:37:09.977838+00 ; 1203_ai_metering_receipt_fk_permission.sql | 2026-10-01 10:47:25
-select asset_id, depends_on, writer_timeout_seconds from asset_registry where asset_id in (<the 8 named>);   -- live depends_on as read; held 1211 edges are NOT present
+select asset_id, depends_on, writer_timeout_seconds from asset_registry where asset_id in (<the 8 named>);   -- live depends_on as read; held 1216 edges are NOT present
 ```
 
 ### E3. State of the 8 named assets and the planner-preflight simulation for exactly those 8 (2026-10-01T15:13:05Z)
@@ -1272,7 +1272,7 @@ ph_pratikara, ph_sankrama, ph_sodhana, ph_suddha_sodhana (126 specs in total); n
 `platform/python-sidecar/pipeline/orchestrator/{runner,asset_runner,provenance,staleness,output_digest}.py`, `platform/src/app/api/cockpit/watchdog/route.ts`,
 `platform/migrations/{1034,1070,1210}_*.sql`, `platform/supabase/migrations/{586,1036}_*.sql`, writers `platform/python-sidecar/pipeline/orchestrator/writers/<asset>.py`
 (`grep -E 'DELETE FROM|INSERT INTO|UPDATE'` per file, list in `writer_files.txt`), `00_ARCHITECTURE/briefs/nirmana/NIRMANA_SUPERSESSION_RECORD_v1_0.md`,
-`00_ARCHITECTURE/control/suvarna/plan_model.json` (E5.3, E7.1-E7.3 superseded by S0.C6), branches `suvarna/land/TI-edges-002` (1211 held, 086a0fcc5) and
+`00_ARCHITECTURE/control/suvarna/plan_model.json` (E5.3, E7.1-E7.3 superseded by S0.C6), branches `suvarna/land/TI-edges-002` (1216 held, 086a0fcc5) and
 `suvarna/land/TI-i12-narration-001` (no commits ahead of main at 14:51Z), `00_ARCHITECTURE/briefs/suvarna/exec/TRACK_I_FIX_ITEMS.md` (I-1, I-2, I-3).
 
 ### E12. v1.1 live re-read and branch evidence (2026-10-01T16:27:49Z, `suvarna_reader`, SELECT and catalog reads only)
