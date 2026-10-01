@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.6
+version: 0.7
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -634,8 +634,8 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 > `convention=<id>` · `horizon=[<lo>,<hi>)` (UTC, `Z`) · `input=<input_digest>` ·
 > one `pin=<path>|<rule_version>|<disposition>|<reason>|<ruling_ref>|<basis>|<committed ids, comma-joined>`
 > per pin (absent fields rendered empty; **`reason`, `ruling_ref` and `basis` are inside the verified preimage**, v1.4 F-2) · one `ob=<canonical bytes>` per stored obligation.
-> `ledger_digest` preimage: `<ob_id>|<lower>|<upper>|<state>|<input_digest>` rows,
-> sorted. `inventories_digest` = sha256 over sorted
+> `ledger_digest` preimage: `input=<input_digest>` then `<ob_id>|<lower>|<upper>|<state>|<input_digest>` rows,
+> sorted (v0.7: the header line input-binds an EMPTY ledger too). `inventories_digest` = sha256 over sorted
 > `(event_class, inventory_digest, ledger_digest)` triples.
 >
 > **4. Mandatory independent verification before publication.** Before
@@ -792,10 +792,10 @@ ob=marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self
 ob=marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self
 ```
 
-* **H1** (A searched January only, B February only) — ledger preimage → `ledger_digest = ddbd5a44d0745682d402b5c1118439e9f4fca95b90bf4676984e818e6bc5bd82`:
+* **H1** (A searched January only, B February only) — ledger preimage → `ledger_digest = bfab922403c857b66ff2eef99f63a45b6882cba31f61f8e7d448c6099fee01ce` (v0.7 input-bound preimage; the v0.6 value `ddbd5a44…` is withdrawn):
   `60b22060-…|2025-02-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c…` and
   `b08c2264-…|2025-01-01T00:00:00Z|2025-02-01T00:00:00Z|searched_complete|800d572c…`.
-* **H2** (both January–February) → `ledger_digest = 62c4224ee2a0eb23416769c3aa8cc3ccab4a6452bedb09f893d0368df6d2f1a7`
+* **H2** (both January–February) → `ledger_digest = b43e3157f320d15b19074b21d35bdd0546cc4901087632eb313faed1421d82a6` (v0.7; `62c4224e…` withdrawn)
   (full rows in `am5_cases_output.txt`).
 * Under v0.3 the two histories were one row (same relations, counts, interval
   union); here they differ. Serving a January–February query with zero windows:
@@ -846,6 +846,18 @@ helpers, the write guard, the two violation functions, the seal-trigger function
 on an existing table. It touches no live CHECK but **does** need the protected schema-capability
 route (no `CREATE` on `public` for the ordinary role: `deploy.yml:953–962`,
 `jataka-schema-capability.ts:54–67`); exact wiring is F-1.
+
+**Review-driven corrections (v0.7, Codex review of migration 1206, R1–R5).** (R1) commitment equality is exact per
+the FULL key chart/generation/class/**path/version** — another path's or version's obligations never satisfy a pin;
+(R2) the snapshot's sky convention is bound to the publication's AND every claimed event_class partition's legacy
+convention through the immutable bridge (`convention_bridge_missing` / `convention_mismatch`); (R3) an excluded
+pin needs a non-NULL reason, CHECKs are total booleans; (R4) live-input digests pin TimeZone/extra_float_digits,
+exclude the ACTUAL audit column `computed_at`, key rows by chart, and read dasha ids as `uuid[]`; (R5) CI requires
+the live suite and runs a reproducible mutation harness; builder and seal principals are tested separately —
+**sealing needs a separately authorised principal** (1216 withholds INSERT on the seal table; not widened).
+Stricter than stated earlier: the seal requires EVERY verification row of a class to equal the stored digest (a stale
+disagreeing row vetoes sealing until a candidate deletes it). A class absent from both coverage and inventory is not a
+violation — serving must report it `not_searched`.
 
 **Implementation record (F-1) — migration `1206_gochara_search_inventory_completeness.sql`,
 HOLD, same protected window as 1204.** Written as new files only (1153–1157 untouched; a live-DB

@@ -30,6 +30,9 @@ PASS M5 writer under-declares (non-degrading) what verifier derives as degrading
 PASS M6a degrading exclusion without ruling_ref refused (for that reason) -> ('REFUSED', 'pin CHECK: ruling_ref iff degrading reason')
 PASS M6b basis outside the closed grammar refused -> ('REFUSED', 'pin CHECK: basis grammar (spec:<artifact>@<ver>#<anchor> | ruling:<id>')
 PASS M6c ruling_ref on a non-degrading reason refused -> ('REFUSED', 'pin CHECK: ruling_ref iff degrading reason')
+PASS R1 cross-path borrowed commitment -> ['committed_set_mismatch']
+PASS R3 excluded pin, NULL reason, ruling=None -> ('REFUSED', 'pin CHECK: closed exclusion reason')
+PASS R3 excluded pin, NULL reason, ruling=R-9 -> ('REFUSED', 'pin CHECK: closed exclusion reason')
 ---- INPUT PREIMAGE
 av_declarations=1157:lahiri_av_v1:f6493ca574a3
 convention_id=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
@@ -47,12 +50,14 @@ ob=marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self
 ob=marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self
 inventory_digest=fb278bb92edce1505d649c6aabab96a01f65622fd00e6437a3a33c30836d07db
 ---- LEDGER PREIMAGE H1
+input=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 60b22060-4b9c-892b-9d19-f05eb3b2f70b|2025-02-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 b08c2264-6ddc-8323-8476-8d8fcb71c463|2025-01-01T00:00:00Z|2025-02-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
-ledger_digest=ddbd5a44d0745682d402b5c1118439e9f4fca95b90bf4676984e818e6bc5bd82
+ledger_digest=bfab922403c857b66ff2eef99f63a45b6882cba31f61f8e7d448c6099fee01ce
 ---- LEDGER PREIMAGE H2
+input=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 60b22060-4b9c-892b-9d19-f05eb3b2f70b|2025-01-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
 b08c2264-6ddc-8323-8476-8d8fcb71c463|2025-01-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
-ledger_digest=62c4224ee2a0eb23416769c3aa8cc3ccab4a6452bedb09f893d0368df6d2f1a7
+ledger_digest=b43e3157f320d15b19074b21d35bdd0546cc4901087632eb313faed1421d82a6
 
 ALL ASSERTIONS PASS

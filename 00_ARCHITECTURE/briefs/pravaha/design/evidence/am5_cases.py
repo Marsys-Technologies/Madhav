@@ -101,6 +101,17 @@ expect("M6b basis outside the closed grammar refused",m6b,lambda g:g[0]=="REFUSE
 def m6c():
     d=base(p6=False); d.registry.add(("p6x","1.0")); d.put_pin("marriage","p6x","1.0","excluded",reason="on_demand_tier",ruling="R-9",basis=B_P6)
 expect("M6c ruling_ref on a non-degrading reason refused",m6c,lambda g:g[0]=="REFUSED" and "ruling_ref" in g[1])
+# R1 (Codex v1.0): cross-path borrowing - P5a commits P1's ids and stores none; P1's obligations must NOT satisfy it
+def r1():
+    d=DB(); d.registry={("p1","1.0"),("p5a","1.0")}; d.put_snapshot(COMP); d.put_inventory("marriage",H,d.snapshot['digest'])
+    ids=commit("p1","1.0",[P1A,P1B])
+    d.put_pin("marriage","p1","1.0","included",ids); d.put_pin("marriage","p5a","1.0","included",ids)
+    for o in (P1A,P1B): i=d.put_ob("marriage","p1","1.0",o); d.put_iv("marriage",i,H,"searched_complete")
+    d.inv['marriage']['partition']=True; refresh(d); return d.violations()
+expect("R1 cross-path borrowed commitment",r1,["committed_set_mismatch"])
+# R3: an excluded pin with a NULL reason is refused in both variants
+for rs,rl in ((None,None),(None,"R-9")):
+    expect("R3 excluded pin, NULL reason, ruling=%s"%rl,(lambda rs=rs,rl=rl:(lambda d:(d.registry.add(("p6","1.0")),d.put_snapshot(COMP),d.put_inventory("marriage",H,d.snapshot['digest']),d.put_pin("marriage","p6","1.0","excluded",reason=rs,ruling=rl,basis=B_P6)))(DB())),lambda g:g[0]=="REFUSED")
 # W1 vectors
 d=DB(); d.registry={("p1","1.0"),("p6","1.0")}; d.put_snapshot(COMP); d.put_inventory("marriage",H,d.snapshot['digest'])
 d.put_pin("marriage","p1","1.0","included",commit("p1","1.0",[P1A,P1B])); d.put_pin("marriage","p6","1.0","excluded",reason="on_demand_tier",basis=B_P6)
@@ -108,5 +119,5 @@ for o in (P1A,P1B): d.put_ob("marriage","p1","1.0",o)
 pre,dg=input_digest(COMP); print("---- INPUT PREIMAGE\n"+pre+"\ninput_digest="+dg)
 ip=inv_preimage(d.inv['marriage']); print("---- INVENTORY PREIMAGE\n"+ip+"\ninventory_digest="+sha(ip))
 for nm,rows in (("H1",[(uid(ob_bytes("marriage","p1","1.0",*P1A)),*J),(uid(ob_bytes("marriage","p1","1.0",*P1B)),*F)]),("H2",[(uid(ob_bytes("marriage","p1","1.0",*P1A)),*H),(uid(ob_bytes("marriage","p1","1.0",*P1B)),*H)])):
-    s2="\n".join(sorted(f"{i}|{a}|{b}|searched_complete|{dg}" for i,a,b in rows)); print("---- LEDGER PREIMAGE "+nm+"\n"+s2+"\nledger_digest="+sha(s2))
+    s2="input="+dg+"\n"+"\n".join(sorted(f"{i}|{a}|{b}|searched_complete|{dg}" for i,a,b in rows)); print("---- LEDGER PREIMAGE "+nm+"\n"+s2+"\nledger_digest="+sha(s2))
 print("\n%d assertion(s) failed"%len(FAILS) if FAILS else "\nALL ASSERTIONS PASS"); sys.exit(1 if FAILS else 0)
