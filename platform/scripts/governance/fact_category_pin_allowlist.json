@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_fact_category_pinning.py (brief §5 C.7, SUDDHA-VACA Phase C lane:ci-lint). Every entry requires: file (repo-relative POSIX path, must match a Violation.file exactly), EITHER line (int, matched exactly against the violation's line number) OR pattern (a string matched as a regex, falling back to a plain substring match, against the violation's snippet text) — line is preferred when known since it is unambiguous; pattern is for cases where line drift is expected, and justification (a non-empty, specific, human-readable reason — 'pre-existing' alone is not sufficient, say WHY it's safe or why it's out of scope). An entry with neither line nor pattern never matches anything (fails closed, not open). Populated 2026-07-28 during the initial rollout scan against the live repo tree (this worktree, base main, before this wave's other lanes landed) — see the ci-lint lane's session report for the full disposition rationale of every entry.",
   "generated_by": "check_fact_category_pinning.py initial-rollout scan, 2026-07-28",
-  "entry_count": 72,
+  "entry_count": 75,
   "entries": [
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -21,6 +21,12 @@
       "line": null,
       "pattern": "WITH handler_page AS \\( SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, verification_pass_status",
       "justification": "AUDITED source-query availability probe for get_tara_chandra_bala, not a value read or one-row reduction. `handler_page` deliberately reproduces the handler's complete two-category source scope (`tara_bala_natal_baseline` plus `chandra_bala_natal_baseline`) while `LIMIT 0` guarantees that no fact row is selected; the sibling `handler_count` is an aggregate over that same complete scope, and the outer CROSS JOIN returns zero rows. Availability is earned solely by authenticated query success, including a legitimate empty category set. Adding an arbitrary fact_key predicate would narrow the real handler contract and could report availability while a valid baseline measurement is unreadable. The chart binding and intentional zero-row/count semantics are exercised by the source-query availability contract tests."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "line": null,
+      "pattern": "WITH handler_page AS \\( SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, formula_id",
+      "justification": "AUDITED source-query availability probe for get_karakas (2026-10-02, formula-pins lane). Previously matched by the tara_chandra_bala entry above through an identical snippet prefix; the probe now mirrors the handler's projection (+fact_subject, +formula_id) so it needs its own entry. `handler_page` reproduces the handler's complete category set while LIMIT 0 guarantees no fact row is selected, collapsed or reduced; the sibling `handler_count` is an aggregate. It also satisfies the multi-formula rule by disclosure (formula_id selected and ORDER BY ... formula_id, fact_id) and is exempt as a zero-row probe."
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
@@ -374,8 +380,9 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-      "line": 110,
-      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [line 99->110, cycle 182: F-B32 slice 9 added a docstring paragraph + 2 SP_CATEGORIES entries earlier in the file — same query, verified via diff.]"
+      "line": null,
+      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [line 99->110, cycle 182: F-B32 slice 9 added a docstring paragraph + 2 SP_CATEGORIES entries earlier in the file — same query, verified via diff.] [2026-10-02, formula-pins lane: switched from line 110 to a snippet pattern because the file's own edits (canonical_formulas import) shift this literal's line; the query is unchanged in kind. It now also satisfies the multi-formula rule by DISCLOSURE: formula_id selected and ORDER BY ... canonical-first rank, formula_id, fact_id (a total order) -- INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md.]",
+      "pattern": "SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, formula_id,"
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",

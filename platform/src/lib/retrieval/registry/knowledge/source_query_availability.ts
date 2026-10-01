@@ -153,8 +153,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     parameter_binding: 'chart_with_active_build_context',
     empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
-            SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
-                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+            SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+                   fact_value_text, fact_value_jsonb, unit, formula_id, verification_pass_status, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
                AND fact_category = ANY(ARRAY[
@@ -163,7 +163,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                  'kp_cuspal_significators', 'kp_ruling_planets_natal', 'jaimini_tri_deva_role_per_graha'
                ]::text[])
                AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
-             ORDER BY fact_category, ayanamsha_id, fact_key
+             ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, formula_id, fact_id
              LIMIT 0 OFFSET 0
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM chart_facts
@@ -176,7 +176,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND (NULL::text IS NULL OR ayanamsha_id = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:103-123',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts:104-126',
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
@@ -1592,10 +1592,10 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                'bhrigu_nadi_point', 'lal_kitab_special_point', 'maharsi_specific_point', 'midpoint',
                'saham_position', 'saturn_derived_point', 'nakshatra_pada_sensitive'
              ]::text[])
-           ORDER BY fact_category, ayanamsha_id, fact_key, formula_id
+           ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, formula_id, fact_id
            LIMIT 0 OFFSET 0`,
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-124',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:90-127',
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
     ],
   },
@@ -2265,11 +2265,11 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     empty_semantics: 'query_success_is_available',
     sql: `WITH fact_page_probe AS (
             SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
-                   fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+                   fact_value_text, fact_value_jsonb, unit, formula_id, verification_pass_status, citation_ref
               FROM chart_facts
              WHERE chart_id = $1::uuid
                AND ayanamsha_id IN ('lahiri_chitrapaksha', 'INVARIANT')
-             ORDER BY fact_category, fact_subject, fact_key
+             ORDER BY fact_subject, fact_category, fact_key, formula_id, fact_id
              LIMIT 0
           ), divisional_page_probe AS (
             SELECT id, chart_id, ayanamsha_id, varga, graha, sign, house, fact_category, fact_key
@@ -2282,8 +2282,8 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           SELECT 1 FROM fact_page_probe CROSS JOIN divisional_page_probe`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:770-829',
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1008',
-      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1128-1189',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:972-1013',
+      'platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1133-1259',
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
       'platform/migrations/002_ganita_divisionals.sql:31-65',
     ],

@@ -55,7 +55,7 @@ import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME
 import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
 import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
-
+import { canonicalFirstOrderSql, disclosePivotVariants, formulaRoleOf } from './L1_ganita/canonical_formulas'
 // Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
 // not themselves exist as a fact_category but have an obvious real-category family behind them.
 // 'panchanga' is not a stored fact_category — the real data lives under panchanga_tithi,
@@ -1009,9 +1009,14 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // So no served value changes. If you ADD a new INVARIANT key, re-check it does not destructively
       // collide with a per-ayanamsha key of the same (fact_subject, fact_key). `IN ($2,'INVARIANT')`
       // de-dupes automatically when $2 is 'INVARIANT'.
+      // Multi-formula categories (INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md; canonical_formulas.ts):
+      // `ga_sensitive` writes one row per classical `formula_id` for seven categories, so one
+      // (subject, key) can legitimately hold several rows. formula_id is therefore SELECTED here
+      // (it was not before, which is why the pivot below could not tell the variants apart) and the
+      // ORDER BY ends in a TOTAL tiebreak (canonical-first rank, formula_id, fact_id = the PK).
       let sql = `
         SELECT fact_id, fact_category, fact_subject, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+               fact_value_text, fact_value_jsonb, unit, formula_id, verification_pass_status, citation_ref
         FROM chart_facts
         WHERE chart_id = $1 AND ayanamsha_id IN ($2, 'INVARIANT')
       `
@@ -1146,10 +1151,21 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // `.slice(0, limit)` never advanced past row 0 — page 2 === page 1 for every caller.
       params.push((offset + limit) * 20)
       const rowCapParamIdx = params.length
-      sql += ` ORDER BY fact_subject, fact_category, fact_key LIMIT $${rowCapParamIdx}::int`
+      sql += ` ORDER BY fact_subject, fact_category, fact_key, ${canonicalFirstOrderSql()}, formula_id, fact_id LIMIT $${rowCapParamIdx}::int`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      // A NULL formula_id is the overwhelmingly common case (every single-formula category) and is
+      // dropped from the served row so those rows serve exactly as before; a non-NULL one is kept
+      // and, for the declared multi-formula categories, labelled `formula_role`.
+      const rows = (result.rows ?? []).map((r) => {
+        if (r['formula_id'] == null) {
+          const { formula_id: _drop, ...rest } = r
+          void _drop
+          return rest
+        }
+        const role = formulaRoleOf(String(r['fact_category']), String(r['formula_id']))
+        return role ? { ...r, formula_role: role } : r
+      })
       // Disclosed-pagination total (see the WP-1.3(f)/LCA-3-EXT snapshot comment above). Run
       // after the main fetch so the main query stays the first query() call for callers/tests
       // that key on call order.
@@ -1183,18 +1199,55 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           more_available: offset + servedRows.length < total,
         }
       } else {
-        // Pivot: group by fact_subject into one wide row of {fact_key: value}
-        const bySubject = new Map<string, { fact_category: string; facts: Record<string, unknown>; fact_ids: Record<string, string> }>()
+        // Pivot: group by fact_subject into one wide row of {fact_key: value}.
+        // A (subject, key) that carries several non-NULL formula_id rows (multi-formula
+        // categories) is NEVER reduced by arrival order: the canonical formula's value is the
+        // headline (null + reason when the category has no canonical formula, e.g. Mrityu), and
+        // EVERY variant is disclosed under `formula_variants[key]`, canonical first, each labelled
+        // with its formula_id. Single-formula keys behave exactly as before.
+        const bySubject = new Map<string, {
+          fact_category: string
+          facts: Record<string, unknown>
+          fact_ids: Record<string, string>
+          formulaRows: Map<string, { category: string; rows: Array<{ formula_id: string; value: unknown; fact_id: string | null }> }>
+        }>()
         for (const row of rows) {
           const subject = String(row['fact_subject'])
           if (!bySubject.has(subject)) {
-            bySubject.set(subject, { fact_category: String(row['fact_category']), facts: {}, fact_ids: {} })
+            bySubject.set(subject, { fact_category: String(row['fact_category']), facts: {}, fact_ids: {}, formulaRows: new Map() })
           }
           const entry = bySubject.get(subject)!
           const key = String(row['fact_key'])
           const value = row['fact_value_num'] ?? row['fact_value_text'] ?? row['fact_value_jsonb'] ?? null
+          if (row['formula_id'] != null) {
+            let g = entry.formulaRows.get(key)
+            if (!g) { g = { category: String(row['fact_category']), rows: [] }; entry.formulaRows.set(key, g) }
+            g.rows.push({ formula_id: String(row['formula_id']), value, fact_id: row['fact_id'] == null ? null : String(row['fact_id']) })
+            continue
+          }
           entry.facts[key] = value
           entry.fact_ids[key] = String(row['fact_id'])
+        }
+        for (const entry of bySubject.values()) {
+          for (const [key, g] of entry.formulaRows) {
+            const distinct = new Set(g.rows.map((r) => r.formula_id))
+            const declared = formulaRoleOf(g.category, g.rows[0]!.formula_id) !== null
+            if (distinct.size === 1 && !declared) {
+              // One formula, undeclared category: an ordinary single-valued fact.
+              entry.facts[key] = g.rows[0]!.value
+              entry.fact_ids[key] = String(g.rows[0]!.fact_id)
+              continue
+            }
+            const d = disclosePivotVariants(g.category, g.rows)
+            entry.facts[key] = d.headline
+            if (d.headline_fact_id != null) entry.fact_ids[key] = d.headline_fact_id
+            const variantsByKey = ((entry.facts['formula_variants'] ??= {}) as Record<string, unknown>)
+            variantsByKey[key] = d.variants
+            if (d.headline_reason) {
+              const reasons = ((entry.facts['formula_null_reasons'] ??= {}) as Record<string, string>)
+              reasons[key] = d.headline_reason
+            }
+          }
         }
         const servedSubjectEntries = Array.from(bySubject.entries()).slice(offset, offset + limit)
         const servedSubjects = new Set(servedSubjectEntries.map(([subject]) => subject))

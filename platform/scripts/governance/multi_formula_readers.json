@@ -1,0 +1,56 @@
+{
+  "schema_version": "2.0",
+  "$comment": "Readers of the declared multi-formula chart_facts categories (platform/python-sidecar/brahmagyan/canonical_formulas.py) whose category set is DYNAMIC, so a regex cannot see which categories their SQL reads. check_fact_category_pinning.py enforces, per listed reader: (1) the file references canonical_formulas; (2) EVERY chart_facts SELECT containing one of select_markers is formula-aware (mode 'pin': formula_id = / IN in its WHERE; mode 'disclose': formula_id, or a bare *, in its select list); (3) the file holds an ORDER BY fragment naming formula_id AND every order_tokens entry (canonical-first rank, subject, fact_id = the PK), so a total canonical-first order cannot be silently dropped. A marker that matches nothing is itself a violation (re-aim it). `known_open_readers` is NOT enforced: it records, honestly, the readers that were verified to take a caller-supplied category set (or otherwise touch the declared categories) and are NOT yet formula-aware, so the gap is a list and not a surprise. Source: INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md; SS decision 2026-10-01; PR #2866 independent review.",
+  "readers": [
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
+      "mode": "disclose",
+      "select_markers": ["ayanamsha_id IN ($2, 'INVARIANT')"],
+      "order_tokens": ["canonicalFirstOrderSql", "fact_subject", "fact_id"],
+      "why": "chart_facts_query: category is a caller-supplied filter, so any of the seven categories can be read; default shape=pivoted reduces (subject, key) to one value and must pick the canonical formula."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
+      "mode": "disclose",
+      "select_markers": ["fact_value_jsonb, unit"],
+      "order_tokens": ["canonicalFirstOrderSql", "fact_subject", "fact_id"],
+      "why": "get_karakas: category list is an array bound as a parameter (karaka_chara_position is one of them); serves both chara-karaka schools."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
+      "mode": "disclose",
+      "select_markers": ["fact_value_jsonb"],
+      "order_tokens": ["canonicalFirstOrderSql", "fact_subject", "fact_id"],
+      "why": "get_sensitive_points: category list is an array bound as a parameter (six of the seven declared esoteric_point_* categories are in it); serves every formula variant."
+    },
+    {
+      "file": "platform/src/lib/retrieval/address_resolver.ts",
+      "mode": "pin",
+      "select_markers": ["fact_category = 'karaka_chara_position'"],
+      "order_tokens": ["fact_key", "fact_id"],
+      "why": "address_resolver.fetchKarakaRow reduces karaka_chara_position to one value per karaka: must pin the chara-karaka school it labels (mode pin: formula_id = ANY(...) in the WHERE)."
+    }
+  ],
+  "known_open_readers": [
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts", "status": "OPEN", "why": "Verified: `fact_category = ANY($2)` over a caller-supplied `categories` (:130/:151); formula_id not selected; ORDER BY fact_category, ayanamsha_id, fact_key (:191) is not total. A declared category named in `categories` returns both variants unlabelled. Defaults exclude the seven declared categories."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:82) into `fact_category = ANY($2)` (:92); no formula_id; ORDER BY ... fact_subject, fact_key (:98) not total across formulas."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:69) into ANY (:78); no formula_id; ORDER BY :88 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:66) into ANY (:71); no formula_id; ORDER BY :85 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:75) into ANY (:80); no formula_id; ORDER BY :98 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:77) into ANY (:94); no formula_id; ORDER BY :105 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:94) into ANY (:104); no formula_id; ORDER BY :166 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:129) into ANY (:139); no formula_id; ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key (:145) is not total across formulas. (ga_structural itself encodes variants in fact_key, not formula_id.)"},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:61) into ANY (:74); no formula_id; ORDER BY :84 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:57) into ANY (:64); no formula_id; ORDER BY :74 not total."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:84) into ANY (:101); formula_id not selected, so variants would be unlabelled; ORDER BY ... fact_subject, fact_id (:113) IS total (deterministic) but not canonical-first."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts", "status": "OPEN", "why": "Verified: caller-supplied `categories` (:102) into ANY (:109); no formula_id; ORDER BY :115 not total."},
+    {"file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py", "status": "OPEN_L2_BATCH", "why": "_FETCH_SQL (:1875-1882) reads every category: ORDER BY fact_category, fact_key is not total, and formula_id is selected but unused; every variant row becomes its own MSR signal (541 of 50,678 native signals cite these facts). Digest-pinned writer: belongs to the L2 batch."},
+    {"file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py", "status": "OPEN_L2_BATCH", "why": "_fetch_chara_roles (:393) is dead code (graha = fact_key.split(':')[0] never matches assigned_graha/sign/...; bodha_rm_resonances.is_chara_karaka_role is NULL on all 45 native rows). If repaired it MUST pin formula_id (kn_rao_rahu_included), or it becomes last-wins across schools. L2 batch."},
+    {"file": "platform/migrations/209_ga5_sensitive_points_mv.sql", "status": "OPEN_UNREAD", "why": "mv_chart_sensitive_points_summary GROUPs BY chart, aya, category, subject, build_id with max(CASE fact_key ...): collapses the formula variants into a hybrid row (max longitude from one formula, max sign text from another). No code consumer found; unread. Needs an owner-path migration to change (not in this lane)."},
+    {"file": "platform/migrations/207_ga3_materialized_views.sql", "status": "OPEN_UNREAD", "why": "mv_cross_ayanamsha_consensus groups by chart, build, category, subject, key: all_ayanamshas_agree conflates formula variance with ayanamsha variance for the seven categories. No code consumer found; unread."},
+    {"file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts", "status": "COSMETIC", "why": ":80-92 GROUP BY fact_category, fact_subject counts rows per subject, so a multi-formula subject shows a doubled row_count (cosmetic; not a value read)."},
+    {"file": "platform/src/lib/ganita/facts_store.ts", "status": "DEAD", "why": "Legacy reader: selects columns (category, is_stale, value_text) absent from live chart_facts; cannot run against it."},
+    {"file": "platform/src/lib/schools/chart_data_adapter.ts", "status": "DEAD", "why": "Legacy schools adapter reading chart_facts; no live caller on the multi-formula categories found."},
+    {"file": "platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts", "status": "DEAD", "why": "Legacy assets route reading chart_facts generically; no declared-category consumer found."}
+  ]
+}
