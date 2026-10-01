@@ -105,9 +105,16 @@ def test_2_a_chain_takes_the_state_of_its_terminal_target_open(w):
     assert got(w) == ALL - {"ga_alpha"}
 
 
-def test_2_a_chain_takes_the_state_of_its_terminal_target_closed(w):
+def test_2_a_chain_into_a_closed_terminal_row_cannot_hide_an_open_origin(w):
     w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="A", superseded_by="B"),
                gap("ga_alpha", "Idem.pat", gap_id="B", superseded_by="C"),
+               gap("ga_alpha", "Idem.pat", gap_id="C", state="CLOSED")]
+    raises(w, "malformed")
+
+
+def test_2_a_closed_chain_into_a_closed_terminal_row_is_fine(w):
+    w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="A", superseded_by="B", state="CLOSED"),
+               gap("ga_alpha", "Idem.pat", gap_id="B", superseded_by="C", state="CLOSED"),
                gap("ga_alpha", "Idem.pat", gap_id="C", state="CLOSED")]
     assert got(w) == ALL
 

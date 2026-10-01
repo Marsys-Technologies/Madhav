@@ -315,8 +315,8 @@ def main():
 # lifecycle()/scan() above is NOT this function and is not an authority for ELEVATED (E6.3t switches the tracker's
 # own caller to this one).
 #
-# THE RULE. An asset is ELEVATED when it is TERMINALLY dispositioned (retire/consolidate WITH a reason), or when all
-# four hold:
+# THE RULE. An asset is ELEVATED when it is TERMINALLY dispositioned (retire/consolidate WITH a decision id and a reason),
+# or when all four hold (`elevated_report` says which, per asset; `elevated_assets` is its key set):
 #   (1) every criterion of every core gate its layer requires -- the asset_census.CRITERION_REGISTRY entries whose
 #       gate is in CELL_GATES and whose `layers` holds the asset's layer, exactly the rows the census rollup counts --
 #       has a CURRENT satisfying certificate: a PASS (detector not NONE, not inconclusive, not capped, `basis` absent,
@@ -358,10 +358,14 @@ def main():
 #   core-gate row, or a declared addition's) may only be folded into a kind=gap row of a REGISTERED criterion of the same
 #   gate (or the same declared addition), and never from OPEN into a CLOSED/WITHDRAWN row; non-gate rows fold freely. A core-gate or
 #   declared-addition criterion re-keyed `kind: info` raises.
-# asset_dispositions.jsonl (storage location provisional: the plan names none): asset (a registry asset), disposition
-#   (keep|integrate|enrich|qualify|consolidate|historical|retire|unresolved), reason, additions (REQUIRED on every
-#   row). The LATEST row governs disposition and reason; the declared additions are the UNION over all of the asset's
-#   rows, so a later row without them cannot un-declare one: removing a declaration is a reviewed edit of the history.
+# asset_dispositions.jsonl: APPEND-ONLY and chained like the certificate ledger (first line {"asset":"_schema"}, then
+#   `seq` 1..N and `prev_sha256`, verified by the same chain check). Each line is {asset (a registry asset), disposition
+#   (keep|integrate|enrich|qualify|consolidate|historical|retire|unresolved; anything else raises), reason, decision_id
+#   (the strategist's decision, N-<n>..., or null: a null reads `unresolved`; a malformed one raises), decided_on
+#   (tz-aware ISO), additions (REQUIRED key)}. The LATEST row governs disposition, reason and decision id; the declared
+#   additions are the UNION over all of the asset's rows, so a later row without them cannot un-declare one. NOBODY but a
+#   strategist-approved PR writes this file (the layer-sheet letters are loaded by such a PR, never inferred here); this
+#   module has no writer. A retire/consolidate counts as TERMINAL only with a decision id AND a visible reason.
 # platform/scripts/governance/asset_census.py (read as SOURCE with ast, never imported): LAYERS[*].prefix,
 #   CRITERION_REGISTRY[*].{gate,layers,detector,revision}, CELL_GATES, NA_RULE_DECISIONS, and the PARTIAL cap rule in
 #   `_check_contribution`. The WHOLE module is walked: a second assignment of, a mutation of, an alias of or a dynamic
@@ -376,7 +380,7 @@ def main():
 # output invalidates nothing downstream); a
 # PASS (or measured N/A) carries a semantic fingerprint (comparing it with the live rows is E5.5's job, delivered as an
 # invalidation line); a gate record's criterion_version equals the registry revision at `ref`.
-import ast as _ast, dataclasses as _dc, hashlib as _hashlib, re as _re, unicodedata as _unicodedata
+import ast as _ast, dataclasses as _dc, datetime as _dt, hashlib as _hashlib, re as _re, unicodedata as _unicodedata
 
 E63_CONTROL_DIR = "00_ARCHITECTURE/control"
 E63_CERTS_PATH = E63_CONTROL_DIR + "/asset_certs.jsonl"
@@ -565,14 +569,30 @@ def _e63_lines(data, path):
     return rows
 
 
+def _e63_chain_check(r, where, nrec, prev):
+    """E5.1's chain rule, shared by every chained ledger here: seq runs 1..N over the records and prev_sha256 is the
+    sha256 of the previous line's bytes (the `_schema` row's for the first)."""
+    if not _e63_int(r.get("seq")) or r["seq"] != nrec + 1:
+        _e63_fail("malformed", f"{where}: seq is {r.get('seq')!r}, expected {nrec + 1} (seq runs 1..N over the records)")
+    if r.get("prev_sha256") != prev:
+        _e63_fail("malformed", f"{where}: the hash chain is broken (prev_sha256 is not the sha256 of the previous "
+                               "line): an earlier line was edited, deleted or reordered")
+
+
 def _e63_nonblank(v):
     return isinstance(v, str) and bool(v.strip())
 
 
+# Characters that render as nothing although they are letters/symbols, not format characters: the Hangul fillers (U+115F,
+# U+1160, U+3164, U+FFA0) and the Braille blank (U+2800). A reason made only of these is blank.
+_E63_FILLERS = frozenset("\u115f\u1160\u3164\uffa0\u2800")
+
+
 def _e63_clean(s):
-    """What a human reads: NFKC, format/control/private/unassigned characters dropped, stripped."""
+    """What a human reads: NFKC, format/control/private/unassigned characters and invisible fillers dropped, stripped."""
     s = _unicodedata.normalize("NFKC", s)
-    return "".join(ch for ch in s if _unicodedata.category(ch) not in ("Cf", "Cc", "Co", "Cn")).strip()
+    return "".join(ch for ch in s if _unicodedata.category(ch) not in ("Cf", "Cc", "Co", "Cn")
+                   and ch not in _E63_FILLERS).strip()
 
 
 def _e63_is_none(detector):
@@ -986,11 +1006,7 @@ def _e63_parse_certs(data, facts):
             _e63_fail("malformed", f"{where}: not a record this reader can trust (a certificate needs cert_key/"
                                    "generation/cert_id/verdict; any other line needs a `type` in "
                                    f"{E63_EVENT_TYPES} and no certificate field)")
-        if not _e63_int(r.get("seq")) or r["seq"] != nrec + 1:
-            _e63_fail("malformed", f"{where}: seq is {r.get('seq')!r}, expected {nrec + 1} (seq runs 1..N over the records)")
-        if r.get("prev_sha256") != prev:
-            _e63_fail("malformed", f"{where}: the hash chain is broken (prev_sha256 is not the sha256 of the previous "
-                                   "line): an earlier line was edited, deleted or reordered")
+        _e63_chain_check(r, where, nrec, prev)
         prev, nrec = _e63_sha(raw), nrec + 1
         if is_cert:
             key, gen = r["cert_key"], r["generation"]
@@ -1100,10 +1116,19 @@ def _e63_parse_gaps(data, known, facts, additions):
 
 
 def _e63_parse_dispositions(data, facts, registry):
+    """asset -> {disposition (as written), effective (`unresolved` unless the line carries a decision id), reason,
+    decision_id, additions (the UNION over every row)}. Chained exactly like the certificate ledger (`seq`,
+    `prev_sha256`); a line is {asset, disposition, reason, decision_id, decided_on, additions}. The LATEST row governs
+    the disposition; a row without a decision id (null) reads `unresolved`; a malformed decision id raises."""
     rows = _e63_lines(data, E63_DISPOSITIONS_PATH)
     latest, adds = {}, {}
-    for n, _raw, r in rows[1:]:
+    prev, nrec = _e63_sha(rows[0][1]), 0
+    for n, raw, r in rows[1:]:
         where = f"{E63_DISPOSITIONS_PATH} line {n}"
+        if r.get("asset") == "_schema":
+            _e63_fail("malformed", f"{where}: a second `_schema` row")
+        _e63_chain_check(r, where, nrec, prev)
+        prev, nrec = _e63_sha(raw), nrec + 1
         asset, disp = r.get("asset"), r.get("disposition")
         if not (isinstance(asset, str) and _E63_ASSET.fullmatch(asset)):
             _e63_fail("malformed", f"{where}: bad asset {asset!r}")
@@ -1114,15 +1139,26 @@ def _e63_parse_dispositions(data, facts, registry):
             _e63_fail("malformed", f"{where}: disposition {disp!r} is outside {sorted(E63_DISPOSITIONS)}")
         if r.get("reason") is not None and not isinstance(r.get("reason"), str):
             _e63_fail("malformed", f"{where}: reason must be text")
-        if "additions" not in r:
-            _e63_fail("malformed", f"{where}: `additions` is required on every row (an empty list is the honest "
-                                   "'none declared'; a missing key could un-declare silently)")
+        for key in ("decision_id", "decided_on", "additions"):
+            if key not in r:
+                _e63_fail("malformed", f"{where}: `{key}` is required on every row (decision_id may be null: that reads "
+                                       "`unresolved`; an empty additions list is the honest 'none declared')")
+        dec = r["decision_id"]
+        if dec is not None and not (isinstance(dec, str) and _E63_DECISION.fullmatch(dec)):
+            _e63_fail("malformed", f"{where}: decision_id {dec!r} is not a decision id (N-<n>...) or null")
+        try:
+            aware = isinstance(r["decided_on"], str) and _dt.datetime.fromisoformat(r["decided_on"]).tzinfo is not None
+        except ValueError:
+            aware = False
+        if not aware:
+            _e63_fail("malformed", f"{where}: decided_on must be a timezone-aware ISO-8601 timestamp")
         a = r["additions"]
         if (not isinstance(a, list) or any(not isinstance(x, str) or not _E63_ADDITION.fullmatch(x)
                                            or x in facts.criteria for x in a) or len(set(a)) != len(a)):
             _e63_fail("malformed", f"{where}: additions must be unique addition ids that do not shadow a registered criterion")
         adds.setdefault(asset, set()).update(a)
-        latest[asset] = dict(disposition=disp, reason=_e63_clean(r.get("reason") or ""))
+        latest[asset] = dict(disposition=disp, effective=disp if dec is not None else "unresolved",
+                             reason=_e63_clean(r.get("reason") or ""), decision_id=dec)
     return {a: dict(d, additions=tuple(sorted(adds[a]))) for a, d in latest.items()}
 
 
@@ -1236,26 +1272,33 @@ def _e63_gap_blocks(g, additions, info_families):
     return crit.split(".", 1)[0] not in info_families
 
 
-def _e63_asset_state(asset, state, disp, gaps):
-    """(elevated?, terminal?) for one asset."""
+def _e63_asset_report(asset, state, disp, gaps):
+    """None when the asset is not elevated, else HOW it is: {basis: "terminal_disposition" | "measured",
+    declaration_based_pass_cells, ruled_na_cells, terminal}."""
     d = disp.get(asset)
-    if d is not None and d["disposition"] in E63_TERMINAL_DISPOSITIONS and d["reason"]:
-        return True, True                                                     # TERMINAL
-    if d is None or d["disposition"] == "unresolved":                          # (4)
-        return False, False
+    if d is not None and d["effective"] in E63_TERMINAL_DISPOSITIONS and d["reason"]:       # TERMINAL (decision id + reason)
+        return dict(basis="terminal_disposition", declaration_based_pass_cells=0, ruled_na_cells=[],
+                    terminal=dict(disposition=d["effective"], reason=d["reason"], decision_id=d["decision_id"]))
+    if d is None or d["effective"] == "unresolved":                                          # (4)
+        return None
     layer = _e63_layer_of(asset, state.facts, f"asset {asset}")
-    for gate, crits in state.facts.required(layer).items():                    # (1) (the floor guarantees crits != [])
+    declared, ruled = 0, []
+    for gate, crits in state.facts.required(layer).items():                                  # (1) (the floor: crits != [])
         for c in crits:
             rec = (state.by_key.get(f"{asset}|gate|{c}") or [None])[-1]
             if rec is None or not _e63_satisfies(rec, state, addition=False):
-                return False, False
-    for a in d["additions"]:                                                   # (2)
+                return None
+            if rec["verdict"] == "N/A":
+                ruled.append(dict(criterion=c, rule_id=rec["na"]["rule_id"], decision_id=rec["na"]["decision_id"]))
+            elif rec.get("basis") == E63_BASIS_DECLARATION:
+                declared += 1
+    for a in d["additions"]:                                                                 # (2)
         rec = (state.by_key.get(f"{asset}|addition|{a}") or [None])[-1]
         if rec is None or not _e63_satisfies(rec, state, addition=True):
-            return False, False
+            return None
     if any(_e63_gap_blocks(g, d["additions"], state.facts.info_families) for g in gaps.get(asset, ())):   # (3)
-        return False, False
-    return True, False
+        return None
+    return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled, terminal=None)
 
 
 def _e63_check_info_rekeys(gap_rows, disp, facts):
@@ -1270,8 +1313,15 @@ def _e63_check_info_rekeys(gap_rows, disp, facts):
                                    "addition criterion, which may not be re-keyed to kind: info")
 
 
-def elevated_assets(ref: str, repo: str) -> set:
-    """The asset ids ELEVATED (plan 1.1) or terminally dispositioned, as of the ledgers committed at `ref`.
+def elevated_report(ref: str, repo: str) -> dict:
+    """Which assets are ELEVATED and HOW, as of the ledgers committed at `ref`: {asset: {basis, ...}}.
+
+    basis "measured": every core gate (and declared addition) by a current measured PASS or a ruled N/A;
+    `declaration_based_pass_cells` counts the PASS-by-declaration cells among them and `ruled_na_cells` lists the N/A
+    cells with their rule and decision ids. basis "terminal_disposition": retire/consolidate, honoured only when its line
+    carries a decision id and a visible reason (`terminal` = {disposition, reason, decision_id}). The two are never
+    summed into one flat figure by this function: a dashboard shows "elevated by measurement" and "closed by
+    retirement" separately.
 
     Reads only `git -C repo show <ref>:<path>`; never the working tree or a database; no side effects. Raises
     ElevatedInputError (WatermarkOlderThanLedger when E5.5's watermark does not cover every certificate) on any
@@ -1295,7 +1345,18 @@ def elevated_assets(ref: str, repo: str) -> set:
         gaps.setdefault(g["asset"], []).append(g)
     state = LedgerState(repo, sha, facts, led.by_key, led.invalidated, led.pos, registry)
     population = {k.split("|", 1)[0] for k in led.by_key} | set(disp)
-    return {a for a in sorted(population) if _e63_asset_state(a, state, disp, gaps)[0]}
+    out = {}
+    for a in sorted(population):
+        rep_ = _e63_asset_report(a, state, disp, gaps)
+        if rep_ is not None:
+            out[a] = rep_
+    return out
+
+
+def elevated_assets(ref: str, repo: str) -> set:
+    """The asset ids ELEVATED (plan 1.1) or terminally dispositioned: exactly the keys of `elevated_report` (one
+    implementation, so the two cannot disagree). Same inputs, same raises."""
+    return set(elevated_report(ref, repo))
 
 
 if __name__=="__main__": main()

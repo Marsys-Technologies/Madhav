@@ -190,8 +190,10 @@ def epoch_reset(layer="L1", decision="N-28"):
     return dict(type="epoch_reset", asset="_ledger", layer=layer, decision=decision, reset_on=RUN_ID, record_version=1)
 
 
-def disp(asset, disposition="keep", reason="", additions=()):
-    return dict(asset=asset, disposition=disposition, reason=reason, additions=list(additions))
+def disp(asset, disposition="keep", reason="", additions=(), decision_id="N-70", decided_on=RUN_ID):
+    """One disposition line (chained when rendered). `decision_id=None` reads `unresolved`."""
+    return dict(asset=asset, disposition=disposition, reason=reason, decision_id=decision_id, decided_on=decided_on,
+                additions=list(additions))
 
 
 def gap(asset, crit, state="OPEN", kind="gap", gap_id=None, **over):
@@ -283,7 +285,7 @@ class World:
         return out
 
     def render(self):
-        files = {CERTS: self.certs_text(), GAPS: jsonl(self.gaps), DISP: jsonl(self.disps), CENSUS: self.census,
+        files = {CERTS: self.certs_text(), GAPS: jsonl(self.gaps), DISP: chained(self.disps), CENSUS: self.census,
                  SEED: seed_text(self.seed_assets()), GENERATOR: (REPO / GENERATOR).read_text(encoding="utf-8")}
         if self.level_map is not None:
             files[LEVEL_MAP] = self.level_map

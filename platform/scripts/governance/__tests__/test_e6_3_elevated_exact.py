@@ -243,8 +243,17 @@ def test_c3_a_regression_row_after_a_closure_reopens_it(w):
     assert got(w) == ALL - {"ga_alpha"}
 
 
-def test_c3_a_row_folded_into_a_closed_gap_is_carried_by_its_target(w):
+def test_c3_an_open_row_folded_into_a_closed_gap_is_refused_not_silently_resolved(w):
+    # (final delta review) the open state of a gap must not vanish by folding it into a closed row
     w.gaps.append(gap("ga_alpha", "Idem.pat", gap_id="old", superseded_by="new"))
+    w.gaps.append(gap("ga_alpha", "Idem.pat", gap_id="new", state="CLOSED"))
+    w.commit()
+    with pytest.raises(T.ElevatedInputError):
+        w.elevated(T)
+
+
+def test_c3_a_closed_row_folded_into_a_closed_gap_is_fine(w):
+    w.gaps.append(gap("ga_alpha", "Idem.pat", gap_id="old", superseded_by="new", state="CLOSED"))
     w.gaps.append(gap("ga_alpha", "Idem.pat", gap_id="new", state="CLOSED"))
     assert got(w) == ALL
 
