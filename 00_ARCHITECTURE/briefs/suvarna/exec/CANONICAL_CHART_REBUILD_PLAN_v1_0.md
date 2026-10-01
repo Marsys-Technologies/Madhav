@@ -225,7 +225,7 @@ lifting the hold for the access fix only (not for any rebuild) is the SS/owner d
 | S2 `bo_pratijna` (an SS-named asset, in the plan) | its writer reads `chart_divisionals` through `ChartReaderV4` (`bo_pratijna.py:15,143-154`; `brahmagyan/chart_reader_v4.py`: D9/varga placements and house occupants live only in `chart_divisionals`, `fact_category='varga_house_occupant'`) | P0b holds (code-read; what the writer does on a blind read, error or silently degraded rows, was not exercised) |
 | S1a `bo_laksana` (MSR producer, only if it enters a run, section 1.5) | reads D9 dignity from `chart_divisionals` (`bo_laksana.py:2660-2662`) | P0b holds |
 | everything downstream of S2 in the order (`ka_yojaka`, `ka_avadhi`, `ka_kshetra`, S5-S6) | consume `bodha_pratijna`, which would be built from a blind read | inherits the S2 gate |
-| S0 smoke, S1 (`bg_transit_rules`, `ka_muhurta_seva`, `ka_dasha_kala`, `bo_karanajala`) | none of these four writers names `chart_divisionals` (grep of `pipeline/orchestrator/writers`; `ka_dasha_kala` reads `ga_dashas`) | not gated by P0b |
+| S0 smoke, S0b (`bg_transit_rules`), S0L (L0 assets), S1 (`ka_muhurta_seva`, `ka_dasha_kala`, `bo_karanajala`) | none of these writers names `chart_divisionals` (grep of `pipeline/orchestrator/writers`; v1.2: also `l0_transit.py`, `l0_phaladeepika_vedha.py`, the vidhi and formula writers and `service_probes.py`; `ka_dasha_kala` reads `ga_dashas`) | not gated by P0b |
 
 This is wider than the ruling's wording ("precondition of the `ga_vargas` stage"): I extend it to `bo_pratijna` because the
 plan's own asset reads the table (disagreement recorded in the report that accompanies this revision).
@@ -449,12 +449,13 @@ REVIEW section. For each asset: whether the 27-asset wave (and what S0b forces) 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
    cannot insert into the audit table or use its sequence, and the same role holds no privilege on any `phala_*` or `mimamsa_*`
    table. The plan therefore starts with a smoke build on a leaf asset (`ka_tithi_pravesha`) and a go/no-go gate.
+   **v1.2:** the audit-grant half is fixed (migration 1211, applied 17:35:43Z; P0.6); the smoke is pre-approved and not yet run; the `phala_*`/`mimamsa_*` grants appeared at 17:49-17:55Z (P0c.2). Two other builder write-path gaps remain (`asset_freshness`, `bg_transit_moorti`; P0.6, S0b.4), both code-derived and unexercised.
 1. **The wave SS named is not a launchable set.** A run for exactly those eight assets is refused by the planner
    (`UPSTREAM_BLOCKED`): 12 out-of-plan direct dependencies are not lit and fresh (Evidence E3). Closing that
    set under the rule the planner and the runner both enforce (every declared dependency of a planned asset must be
    lit and fresh, or be planned earlier in the same run) gives a **26-asset minimal plan: 24 per-chart assets plus two
    global assets, `bg_transit_rules` (L0) and `ka_muhurta_seva` (L3 service)** (section 1, Evidence E4). The minimal plan is computed, not guessed; it is the
-   smallest set for which the planner accepts the run (simulation of the planner's preflight on all 26: no out-of-plan blocker remains). **v1.1:** the launch set is these 26 plus `ka_dasha_kala` (27: 25 per-chart, 2 global), section 1.6; every later reference to "the 26" means the v1.0 computed set. `ga_vargas` is not added (P0b.4); `ka_kshetra` is a separate last stage (section 8.2).
+   smallest set for which the planner accepts the run (simulation of the planner's preflight on all 26: no out-of-plan blocker remains). **v1.1:** the launch set is these 26 plus `ka_dasha_kala` (27: 25 per-chart, 2 global), section 1.6; every later reference to "the 26" means the v1.0 computed set. `ga_vargas` is not added (P0b.4); `ka_kshetra` is a separate last stage (section 8.2). **v1.2:** `bg_transit_rules` is no longer in S1: it is stage S0b (first after the smoke). After S0b flips three canonical assets stale, the live fixpoint adds `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara` and, through the last, `bg_vedha_malefic_scale` (S0b.5, S0L): the set grows from 27 to 31 assets, of which 3 are Gochara-family Kāla assets (stage S0c, Q18) and 1 is L0 (stage S0L). Live today the set already needs 1 addition, `ka_gochara_resonance` (`error` since 17:36:56Z).
 2. **Two structural blockers stop `gate_ok` for the four 1216 producers. Both are code-derived, not yet observed.**
    - **B-1 `ka_vighnakara` can never be 'proven'.** It has no output-digest spec (`asset_output_digest_specs` has no row;
      migration 1034's header calls it an explicit blocked contract: `kala_obstruction` has no stable non-null unique key).
@@ -501,7 +502,7 @@ Frozen: Nirmāṇa-frozen definition (tier), source `NIRMANA_SUPERSESSION_RECORD
 
 | # | Asset | Why in the plan | Wave | Rows today | Last real | Est. min (med/max) | Frozen | Canary (section 4) |
 |---|---|---|---|---|---|---|---|---|
-| 1 | bg_transit_rules (GLOBAL L0) | `ka_yojaka` dep; receipt stale `registry_changed` | 1 | 76 | 104 | 0 / 0 (skip) | t0 | 4.1 L0 note |
+| 1 | bg_transit_rules (GLOBAL L0) | `ka_yojaka`, `ka_sangam`, `ka_gochara` dep; receipt stale `registry_changed`; **stage S0b (v1.2)** | S0b (was 1) | 76 | 104 (v1.2: 105 expected) | 0.04 / 0.04 s writer (2 builds); **executes, not skip** (S0b.2) | t0 | S0b.6 |
 | 1b | ka_muhurta_seva (GLOBAL L3 service) | lit but no `asset_freshness` row: planner service exception fails, blocks `ka_sangam`, `ka_vighnakara` (B-3) | 1 | 0 (no data table) | 0 | 0.0 / 0.0 | t0 | 4.2 note |
 | 1c | **ka_dasha_kala (per-chart L3 service; v1.1)** | declared dep of `ka_sangam`; receipt `unknown` (no output digest) makes `ka_sangam` unprovable; must rebuild under 1213 before `ka_sangam` (section 1.6) | 1 | 0 (no data table) | 0 | not read (service self-test) | not read | 4.2 note: after S1 its latest receipt is `proven` with a digest |
 | 2 | bo_karanajala | receipt stale `registry_changed` (1210 edge); dep of `bo_anveshana`, `bo_cgm_paths` | 1 | 849 | 864 | 0.3 / 18.2 | t3 | 4.1 SQL; bodha_graph_traverse_get |
@@ -556,8 +557,8 @@ Delta-skip detail that matters here: the upstream digest hashes each declared de
 upstream-most assets whose inputs did not change can skip. Migration 1210 added a declared dependency to `bo_karanajala`
 (`ga_vichara`), `bo_pratijna` (`ga_vargas`), `ka_yojaka` (`ga_yoga`) and `ka_vighnakara` (`ga_dashas`); their stored receipts
 list the old upstream sets (checked: `bo_pratijna` receipt upstreams are `bo_laksana, bo_sangati`; `ka_yojaka` has no
-`ga_yoga`), so these four will EXECUTE, not skip. `bg_transit_rules` (no dependencies) is the one asset likely to skip
-(estimate: code and config unchanged; its stale flag reads `registry_changed` only).
+`ga_yoga`), so these four will EXECUTE, not skip. `bg_transit_rules` (no dependencies) was predicted in v1.0/v1.1 as the one asset likely to skip
+(estimate: code and config unchanged; its stale flag reads `registry_changed` only). **v1.2 correction:** that prediction is withdrawn. The writer source digest differs from the 09-04 receipt (stored `9812db139d56`, `origin/main` `824c6d7d7237`) and the table content moved too (S0b.2), so the pre-execution gate cannot pass and the writer executes; `bg_vedha_malefic_scale` and `bg_vidhi_primitives` likewise execute, `bg_formula_constants` would skip (S0L).
 
 ### 1.2 Closure and minimal plan (computed from the live registry, 127 active assets)
 
@@ -581,7 +582,7 @@ list the old upstream sets (checked: `bo_pratijna` receipt upstreams are `bo_lak
 | Wave | Assets |
 |---|---|
 | 0 (conditional, v1.1; not part of the 26) | `ga_vargas` only if P0b.4 branch (b); then the six MSR producers `bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic` only if any of them must run (section 1.5). Neither is in the v1.0 plan: all six MSR producers read `lit`/`fresh` today (Evidence E12). |
-| 1 | bg_transit_rules and ka_muhurta_seva (both global, need super_admin, see Q3), **ka_dasha_kala (v1.1, per-chart service; must precede `ka_sangam`, section 1.6)**, bo_karanajala, bo_pratijna |
+| 1 | ka_muhurta_seva (global, needs super_admin), **ka_dasha_kala (v1.1, per-chart service; must precede `ka_sangam`, section 1.6)**, bo_karanajala, bo_pratijna. **v1.2: `bg_transit_rules` moved out to stage S0b, before this wave; stages S0L and S0c (conditional) also come before S3, see section 8.** |
 | 2 | bo_drishti, bo_cgm_motifs, bo_cgm_paths, ka_avadhi, ka_gochara, ka_yojaka |
 | 3 | bo_anveshana, bo_upaya, ka_sangam |
 | 4 | ka_kalasutra, ka_vighnakara |
@@ -602,8 +603,8 @@ prediction per `phala_anchors` row: run before `ph_nimitta` is rebuilt and it wo
 
 v1.1 ordering additions: (i) `ka_dasha_kala` strictly before `ka_sangam` and `ka_kshetra` (section 1.6); (ii) every MSR producer, if it runs at all, strictly before
 every Kala and Phala asset and before the L2 consumers of its signal ids (section 1.5); (iii) `ka_kshetra` is NOT in these 12 waves: it is a separate last stage S7 (section 8.2);
-(iv) `bo_pratijna` (wave 1) is gated on P0b, so wave 1 splits operationally: the assets that do not read `chart_divisionals` (`bg_transit_rules`, `ka_muhurta_seva`, `ka_dasha_kala`,
-`bo_karanajala`) may run before P0b holds, `bo_pratijna` and everything after it may not (P0b.2).
+(iv) `bo_pratijna` (wave 1) is gated on P0b, so wave 1 splits operationally: the assets that do not read `chart_divisionals` (`ka_muhurta_seva`, `ka_dasha_kala`,
+`bo_karanajala`, and the L0 stages S0b/S0L) may run before P0b holds, `bo_pratijna` and everything after it may not (P0b.2).
 
 ### 1.4 Cascade: what the orchestrator does to dependents
 
@@ -612,16 +613,17 @@ Assets downstream of the plan and NOT in it (25 of them, from the live registry)
 mi_abhilekha, mi_seva, ph_rectification), 8 `error` that are cascade victims (ka_kshetra, mi_adhilepa, mi_bhara,
 mi_darshana, mi_gunanaka, mi_pariksha, mi_pramana, mi_sambandha), 1 `dormant` (mi_sankalpa) and **5 currently `lit`**:
 `bo_laksana_rerank`, `bo_sangati`, `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara`.
+**v1.2 (17:55Z):** 4 are `lit` now: `ka_gochara_resonance` is `error` (Pravāha's run 1865991c, 17:36:56Z, `DEP-ASSERT ... bg_transit_rules(receipt:stale)`), which makes the `error` cascade-victim count 9.
 
 - If a plan asset completes with `output_changed` TRUE (or not recorded), the 5 lit ones that are downstream of it flip to
   `stale`. Two are direct dependencies of planned assets and would then fail DEP-ASSERT: **`bo_sangati`** (downstream of
   `bo_karanajala`; direct dep of `bo_pratijna`, `bo_drishti`, `bo_anveshana`, `bo_upaya`, `ka_yojaka`, `ph_nimitta`, `ph_sankrama`) and
   **`ka_vedha_gochara`** (downstream of `bg_transit_rules`; direct dep of `ka_sangam`). `ka_gochara_resonance` and
-  `ka_moorti_nirnaya` (deps of `ka_gochara`) likewise follow `bg_transit_rules`.
+  `ka_moorti_nirnaya` (deps of `ka_gochara`) likewise follow `bg_transit_rules`. **v1.2: for the L0 asset this is expected, not contingent**: its `output_changed` is TRUE (S0b.2), so after S0b `ka_moorti_nirnaya`, `ka_vedha_gochara` (and `ka_gochara`, which S3 rebuilds) read `stale` on the canonical chart and `ka_gochara_resonance` is already `error`; all must be lit and fresh again before S3 (stage S0c).
 - Mitigation built into the plan: run `bo_karanajala` first (S1 in section 8), read `build_run_assets.output_changed` for it,
   and only continue if it is FALSE or the contingency set (`bo_laksana_rerank`, `bo_sangati`, with `ka_vedha_gochara`,
   `ka_gochara_resonance`, `ka_moorti_nirnaya` for the L0 asset) has been added. The writers are deterministic
-  (estimate: output unchanged on an unchanged input), but 1210 changed the upstream set, so this is checked, not assumed.
+  (estimate: output unchanged on an unchanged input), but 1210 changed the upstream set, so this is checked, not assumed. **v1.2:** for `bg_transit_rules` the contingency set is the planned stage S0c, not an if.
 - The 8 `error` cascade victims stay `error` until their own rebuild; `mi_gunanaka` and `mi_pariksha` are the consumers of
   the 1216 edges and are outside this wave. After the wave they remain blocked by `mi_bhavisya`/`mi_pramana` state, which is
   the pre-existing condition (Track I item I-3), not a regression.
@@ -671,7 +673,7 @@ pre-flight would block on it. Such a run is stage **S0m** (before S1), a separat
 - **What it is.** `ka_dasha_kala` is a per-chart writer-backed SERVICE (`asset_kind='service'`, `depends_on = {ga_dashas}`, no target table; its writer records a self-test verdict onto its own `asset_registry` row). It is `lit`, `service_health` healthy, last built 2026-09-10 19:26Z, but its latest receipt is `unknown` and its freshness is `unknown` with reasons `output_digest_spec_unavailable` and `output_digest_unavailable` (read 2026-10-01 about 16:20Z, Evidence E12): it has no output-digest spec yet.
 - **Who reads its output (declared `depends_on`, live registry).** `ka_sangam` (in the plan), `ka_kshetra` (stage S7), and `ka_jivana_parva` (outside the plan, stale). `ka_vighnakara` does not declare it directly but declares `ka_sangam`.
 - **The constraint.** `ka_dasha_kala` must be rebuilt, after migration 1213 is deployed and the `selftest_detail` grant exists, **strictly before `ka_sangam`** (and before `ka_kshetra`). Reason (code-derived, per the 1213 header): `compute_upstream_hash` returns NULL when any declared dependency's receipt has no `output_digest`; `ka_sangam` declares both services; a NULL upstream digest makes `ka_sangam`'s receipt `unknown`, which then DEP-ASSERT-blocks its seven in-plan dependents. 1213 gives each service a digest spec, but receipts only change when the services REBUILD; applying 1213 alone changes none. It must also not be re-stamped again after `ka_sangam` builds, because the upstream digest hashes each dependency's whole receipt including `observed_at`.
-- **Where it sits.** Wave 1 of section 1.3, **stage S1** (with `ka_muhurta_seva`, `bg_transit_rules`, `bo_karanajala`), i.e. two runs before `ka_sangam` (S3). Consequently **the launch set is 27 assets (26 of v1.0 plus `ka_dasha_kala`): 25 per-chart and 2 global**; the v1.0 pre-flight row 5 ("`ka_dasha_kala` freshness unknown, accepted") is superseded: the planner accepts that shape for a simulation, but accepting it is what leaves `ka_sangam` unprovable.
+- **Where it sits.** Wave 1 of section 1.3, **stage S1** (with `ka_muhurta_seva` and `bo_karanajala`; v1.2: `bg_transit_rules` moved to S0b), i.e. two runs before `ka_sangam` (S3). Consequently **the launch set is 27 assets (26 of v1.0 plus `ka_dasha_kala`): 25 per-chart and 2 global**; the v1.0 pre-flight row 5 ("`ka_dasha_kala` freshness unknown, accepted") is superseded: the planner accepts that shape for a simulation, but accepting it is what leaves `ka_sangam` unprovable.
 - **If it is skipped.** The v1.0 prediction stands for `ka_sangam` (lit, receipt `unknown`) and for everything behind it.
 
 
@@ -687,7 +689,7 @@ assets with an unproven or changed upstream can differ).
 
 | Asset | Tables written | Delete predicate (all chart-scoped) | Rows today (deleted) | Reference inserted |
 |---|---|---|---|---|
-| bg_transit_rules (global) | `bg_transit_engine`, `bg_transit_rules` | none: `seed_transit_rules` upserts, `ON CONFLICT DO UPDATE` (L0 standard); shared by every chart | 76 (`bg_transit_rules`) | 104 (rows_written, both tables) |
+| bg_transit_rules (global) | `bg_transit_engine`, `bg_transit_rules`, **`bg_transit_moorti` (v1.2)** | none: `seed_transit_rules` upserts, `ON CONFLICT DO UPDATE` (L0 standard); shared by every chart; v1.2: source = live, 0 rows would change, 0 retired (S0b.3) | 76 + 9 + 27 (the registry `count_sql` counts the first only) | 105 (9 + 69 + 27; last real 104) |
 | ka_muhurta_seva (global) | none: `services/ka_muhurta_seva/writer.py` does a FORENSIC self-test and a service-health write, `rows_inserted = 0` | none | n/a | 0 |
 | bo_karanajala | `bodha_cgm_edges`, `bodha_contradictions`; UPDATEs 4 centrality columns on `bodha_cgm_nodes` (bo_bimba's table) | `replace_prior_cgm_edges` / `replace_prior_contradictions`: `chart_id` + `ayanamsha_id` (5 ayanamshas) | edges 849; contradictions n/r | 864 |
 | bo_drishti | `bodha_question_lenses` | `chart_id` | 60 | 60 |
@@ -726,7 +728,7 @@ Totals (canonical chart, live today, readable tables only): 59,368 rows deleted 
 - **Other charts' rows are not touched.** Every delete in the table above carries `chart_id = <canonical>`. Other charts hold
   `kala_obstruction` 1c826d5a=741 / cb73cd3d=6, `kala_convergence` 1c826d5a=17957 / cb73cd3d=2540, `kala_activation` 1c826d5a=336093
   / cb73cd3d=1055, and so on (`counts_all_charts_before.txt`); none is a delete target.
-- **Shared tables:** `bg_transit_engine`/`bg_transit_rules` (global, upsert) is the only shared table in the plan.
+- **Shared tables:** `bg_transit_engine`/`bg_transit_rules`/`bg_transit_moorti` (global, upsert) are the only shared tables in the plan (v1.2: stage S0L would add `bg_vedha_malefic_scale` and `vidhi_primitives`, also upserts).
   `kala_gochara_windows_v2` is shared with another writer but the predicate `generation = '2.0'` excludes its rows.
   `build_protected_assets` for this chart names only `ka_gochara_sweep` (not in the plan; its v1 corpus is untouched).
 - **`data_plane_*_owner` tables ARE written, by design.** All `bodha_*` tables are owned by `data_plane_l2_owner` (45 tables
@@ -793,7 +795,7 @@ Target state for the 1216 gate (and for every asset that has a spec): `asset_thr
 
 | Asset group | Target after | Predicted on today's code |
 |---|---|---|
-| `bg_transit_rules` | lit, fresh, proven, digest 1983611685a8 unchanged (re-stamped, `skip_no_delta`) | as target (estimate) |
+| `bg_transit_rules` (S0b) | lit, fresh, proven; receipt output digest `ca19407a3e37` (the content already moved since the 09-04 receipt `1983611685a8`); `output_changed` TRUE. **v1.2 withdraws "unchanged, `skip_no_delta`"** | as target if the builder can write `bg_transit_moorti` and `asset_freshness`; otherwise the asset ends `error` (S0b.4, P0.6) |
 | Bodha assets (7) | lit, fresh, proven; new `output_digest` only if rows changed | as target if `bo_karanajala` is output-unchanged; else contingency (section 1.4) |
 | `ka_avadhi`, `ka_yojaka`, `ka_gochara` | lit, fresh, proven | as target (`ka_avadhi` integrity risk, section 7) |
 | `ka_sangam` | lit, fresh, proven | **lit but receipt 'unknown'** (B-2) |
@@ -817,7 +819,7 @@ NOT verified that is said. No MCP call was made for this review.
 | bo_pratijna | `SELECT count(*), md5(string_agg(...)) FROM bodha_pratijna WHERE chart_id=...` (F4); `SELECT event_class_id, status, round(grade::numeric,3) FROM bodha_pratijna WHERE chart_id=... ORDER BY 1,2` | 135 rows before and after; content unchanged if inputs unchanged (estimate); new `output_digest` only if content differs | `bodha_pratijna_get` (maps to `query_pratijna`, verified) |
 | bo_karanajala | `SELECT count(*) FROM bodha_cgm_edges WHERE chart_id=...` (849) | 849 edges, same digest; `output_changed` FALSE is the gate for continuing | `bodha_graph_traverse_get` (`traverse_chart_graph`, verified) |
 | bo_drishti, bo_anveshana, bo_cgm_motifs, bo_cgm_paths, bo_upaya | counts in section 2; F4 digests | unchanged counts (60 / 4437 / 600 / 45 / 180+) | `bodha_remedies_get` -> `query_remedies` (verified, for `bo_upaya`); the others: SQL only (tool mapping not verified) |
-| bg_transit_rules | `SELECT count(*) FROM bg_transit_rules` (76) + digest | unchanged | none (L0, shared by every chart) |
+| bg_transit_rules | counts 76 / 9 / 27 of the three tables and the content digest (S0b.6) | rows unchanged; receipt digest `1983611685a8` -> `ca19407a3e37`; 3 canonical assets lit -> stale | `ref_transit_rules_get` (mapping not verified); S0b.6 |
 
 ### 4.2 Kāla assets (include the I-1/I-2 consumers named by the coordinator)
 
