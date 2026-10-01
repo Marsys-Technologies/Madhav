@@ -70,3 +70,10 @@ Not edited: the stale "every FK is ON DELETE CASCADE / closure crosses layers" c
 2. Keep `assert_l2_msr_delete_safe` unchanged (recommended) or replace it without the re-arm (owner-path + re-attestation)?
 3. Wire `msr_dangling_signal_refs` into the five Kala assets' `integrity_check_sql` (registry migration), or keep it a post-wave check run by the wave runner?
 4. Which migration directory: placed in `supabase/migrations` (active directory per its README); the Suvarna 1210 went to `platform/migrations`.
+
+## SS decisions (2026-10-01)
+
+1. **The three L2 keys owned by `data_plane_l2_owner`** (`bodha_contradictions_signal_{a,b}_id_fkey`, `bodha_signal_embeddings_signal_id_fkey`): go in ONE REVIEW together with the phala/mimamsa builder grants (same D6 in-process executor, run after SS's `APPROVED <plan hash>`); the plan includes a read-only check that `data-plane-ownership-status.ts` / the deploy preflights do not pin those constraints (if they do, the gate amendment goes first). Tracked in `BUILDER_GRANT_PLAN` v1.1.
+2. **`assert_l2_msr_delete_safe` is kept as is. Track E §4a's "remove the re-arm" is DECLINED**, with the reason: the function's catalogue-driven refusal re-arms only if a cross-layer foreign key into `bodha_msr_signals` is re-added, which is exactly the right fail-safe; removing it would make a re-added key silent again.
+3. **The dangling-reference detector** (`msr_dangling_signal_refs.py`) runs as a **post-wave check**; wiring it into the five Kāla `integrity_check_sql` blobs waits until there is a green baseline on the canonical chart.
+4. **The plan invariant (MSR writers strictly before the Kāla and Phala assets, none rebuilt later in the same window) stays in force until BOTH migration 1214 AND the L2 owner-path drop are deployed**, because embeddings and contradictions still cascade until the owner-path drop runs.
