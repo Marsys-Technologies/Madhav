@@ -192,37 +192,16 @@ def check_pushkara(sign_num: int, degree_in_sign: float) -> dict:
 
 
 # ── gandanta (water→fire sandhi; nakshatra-gandanta junctions) ────────────────────
-# Water signs Cancer(3), Scorpio(7), Pisces(11); fire signs Leo(4), Sag(8), Aries(0).
-# Gandanta = last 3°20' of a water sign + first 3°20' of the following fire sign =
-# the Ashlesha–Magha / Jyeshtha–Mula / Revati–Ashwini nakshatra junctions.
-GANDANTA_ARC = 30.0 / 9.0  # 3°20'
-_WATER_SIGNS = {3, 7, 11}
-_FIRE_SIGNS = {4, 8, 0}
-GANDANTA_CITATION = (
-    "Classical gandanta (BPHS / Sarvartha Chintamani): last 3°20' of a water sign "
-    "and first 3°20' of the succeeding fire sign — the Ashlesha-Magha, Jyeshtha-Mula "
-    "and Revati-Ashwini nakshatra sandhi."
+# The width (3°20' each side), the three water|fire junctions, the citation and the zone
+# test live in ONE shared module, `brahmagyan.gandanta` (decision sheet A-4 / X1, SS N-62,
+# I-22). They are re-exported here under their historical names so every existing importer
+# (`ga_structural`, `ka_vighnakara`, the unit tests) keeps working with no change in shape
+# or value: `GANDANTA_ARC`, `GANDANTA_CITATION`, `check_gandanta`.
+from brahmagyan.gandanta import (  # noqa: E402,F401  (shared definition; do not re-declare here)
+    GANDANTA_ARC,
+    GANDANTA_CITATION,
+    check_gandanta,
 )
-
-
-def check_gandanta(sign_num: int, degree_in_sign: float) -> dict:
-    """Proximity to nearest gandanta point (junction). Fired iff within a gandanta arc."""
-    dist = None
-    zone = None
-    if sign_num in _WATER_SIGNS and degree_in_sign >= (30.0 - GANDANTA_ARC):
-        dist = 30.0 - degree_in_sign          # distance to the sign-end junction
-        zone = f"end_of_{SIGNS[sign_num]}"
-    elif sign_num in _FIRE_SIGNS and degree_in_sign <= GANDANTA_ARC:
-        dist = degree_in_sign                  # distance from the sign-start junction
-        zone = f"start_of_{SIGNS[sign_num]}"
-    return {
-        "fired": dist is not None,
-        "gandanta_zone": zone,
-        "distance_to_junction_deg": round(dist, 4) if dist is not None else None,
-        "gandanta_arc_deg": round(GANDANTA_ARC, 4),
-        "graha_deg_in_sign": round(degree_in_sign, 4),
-        "sign": SIGNS[sign_num],
-    }
 
 
 # ── kartari (papa / shubha hemming from the graha) ────────────────────────────────

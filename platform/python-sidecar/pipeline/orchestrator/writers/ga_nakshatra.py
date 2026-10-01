@@ -69,9 +69,16 @@ NAK_LORD_STR_TO_BODY: dict[str, str] = {
 
 
 def _fact_id(category: str, subject: str, key: str,
-             chart_id: str, ayanamsha_id: str, build_id: str) -> str:
+             chart_id: str, ayanamsha_id: str, build_id: str,
+             formula_id: str | None = None) -> str:
     # build_id is observation provenance, never semantic fact identity.
     raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
+    if formula_id:
+        # A named variant (e.g. graha_gandanta `strict_0_48`) shares (category, subject,
+        # key) with its canonical twin, so formula_id is part of ITS identity — otherwise
+        # the two would collide on the primary key. Canonical rows (formula_id NULL) keep
+        # the exact id they always had.
+        raw += f"|{formula_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -184,8 +191,11 @@ def _enrich_rows(
         value_text  = r.get("fact_value_text")
         value_num   = r.get("fact_value_num")
 
-        fid  = _fact_id(category, subject, key, chart_id, ay, build_id)
+        formula_id = r.get("formula_id")
+        fid  = _fact_id(category, subject, key, chart_id, ay, build_id, formula_id)
         cref = f"{category}.{subject}.{key}@chart={chart_id}:ay={ay}:eng={eng_ver}"
+        if formula_id:
+            cref += f":formula={formula_id}"
         # Simple human-readable citation
         if value_text is not None:
             chum = f"{subject} {key}: {value_text} [{category}]"
@@ -193,6 +203,8 @@ def _enrich_rows(
             chum = f"{subject} {key}: {value_num} [{category}]"
         else:
             chum = f"{subject} {key} [{category}]"
+        if formula_id:
+            chum += f" (variant {formula_id})"
 
         claim = _ATTRIBUTION_ROWS.get((category, key))
         # An emitter that ran its OWN detector may set the status on the row itself
@@ -300,6 +312,65 @@ def _forensic_gate(chart_output: dict, ayanamsha_id: str) -> None:
         )
 
 
+#: Canonical rows (formula_id NULL) — the statement this writer has always used, unchanged.
+_INSERT_CANONICAL_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at)
+    VALUES
+      (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+       %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+       %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+       %(unit)s, %(citation_ref)s, %(citation_human)s,
+       %(source_calculation)s, %(verification_pass_status)s,
+       %(engine_version)s, %(computed_at)s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
+    WHERE formula_id IS NULL
+    DO UPDATE SET
+      fact_id                  = EXCLUDED.fact_id,
+      fact_value_text          = EXCLUDED.fact_value_text,
+      fact_value_num           = EXCLUDED.fact_value_num,
+      citation_ref             = EXCLUDED.citation_ref,
+      citation_human           = EXCLUDED.citation_human,
+      engine_version           = EXCLUDED.engine_version,
+      computed_at              = EXCLUDED.computed_at
+"""
+
+#: Named-variant rows (formula_id set, e.g. graha_gandanta `strict_0_48`): same columns plus
+#: formula_id, arbitrated on the `chart_facts_unique_with_formula` partition
+#: (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id, formula_id).
+_INSERT_VARIANT_SQL = """
+    INSERT INTO chart_facts
+      (fact_id, chart_id, ayanamsha_id, build_id,
+       fact_category, fact_subject, fact_key,
+       fact_value_text, fact_value_num, fact_value_jsonb,
+       unit, citation_ref, citation_human,
+       source_calculation, verification_pass_status,
+       engine_version, computed_at, formula_id)
+    VALUES
+      (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
+       %(fact_category)s, %(fact_subject)s, %(fact_key)s,
+       %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
+       %(unit)s, %(citation_ref)s, %(citation_human)s,
+       %(source_calculation)s, %(verification_pass_status)s,
+       %(engine_version)s, %(computed_at)s, %(formula_id)s)
+    ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id, formula_id)
+    WHERE formula_id IS NOT NULL
+    DO UPDATE SET
+      fact_id                  = EXCLUDED.fact_id,
+      fact_value_text          = EXCLUDED.fact_value_text,
+      fact_value_num           = EXCLUDED.fact_value_num,
+      citation_ref             = EXCLUDED.citation_ref,
+      citation_human           = EXCLUDED.citation_human,
+      engine_version           = EXCLUDED.engine_version,
+      computed_at              = EXCLUDED.computed_at
+"""
+
+
 def _run_ayanamsha_pass(
     ctx: ContextSpec, canonical_id: str, adapter_id: str,
     nak_rows: dict, pada_rows: dict,
@@ -353,33 +424,7 @@ def _run_ayanamsha_pass(
     replace_prior_chart_facts(ctx.db_conn, all_rows)
     for r in all_rows:
         ctx.db_conn.execute(
-            """
-            INSERT INTO chart_facts
-              (fact_id, chart_id, ayanamsha_id, build_id,
-               fact_category, fact_subject, fact_key,
-               fact_value_text, fact_value_num, fact_value_jsonb,
-               unit, citation_ref, citation_human,
-               source_calculation, verification_pass_status,
-               engine_version, computed_at)
-            VALUES
-              (%(fact_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
-               %(fact_category)s, %(fact_subject)s, %(fact_key)s,
-               %(fact_value_text)s, %(fact_value_num)s, %(fact_value_jsonb)s,
-               %(unit)s, %(citation_ref)s, %(citation_human)s,
-               %(source_calculation)s, %(verification_pass_status)s,
-               %(engine_version)s, %(computed_at)s)
-            ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
-            WHERE formula_id IS NULL
-            DO UPDATE SET
-              fact_id                  = EXCLUDED.fact_id,
-              fact_value_text          = EXCLUDED.fact_value_text,
-              fact_value_num           = EXCLUDED.fact_value_num,
-              citation_ref             = EXCLUDED.citation_ref,
-              citation_human           = EXCLUDED.citation_human,
-              engine_version           = EXCLUDED.engine_version,
-              computed_at              = EXCLUDED.computed_at
-            """,
-            r,
+            _INSERT_VARIANT_SQL if r.get("formula_id") else _INSERT_CANONICAL_SQL, r,
         )
 
     logger.info("ga_nakshatra %s: %d rows inserted", canonical_id, len(all_rows))

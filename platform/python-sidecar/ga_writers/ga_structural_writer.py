@@ -114,6 +114,10 @@ from ga_writers.ga_positions_writer import (
     _conn,
 )
 from brahmagyan.graha_vocabulary import norm_graha
+# ONE shared Gandanta definition (3°20' each side) — imported, never re-declared here
+# (decision sheet A-4 / X1, SS N-62, I-22). Imported at module level so a wiring error
+# fails loudly at import time instead of silently reporting "no gandanta".
+from brahmagyan.gandanta import check_gandanta as _shared_check_gandanta
 from brahmagyan.l0_upapada_maitri_rules import (
     UPAPADA_RULES,
     TEMPORAL_FRIEND_HOUSES,
@@ -131,6 +135,11 @@ from brahmagyan.l0_upapada_maitri_rules import (
 )
 
 logger = logging.getLogger(__name__)
+
+#: Process-lifetime count of legacy-fallback dosha evaluations (GANDANTA_DOSHA /
+#: MRITYU_BHAGA_DOSHA) that raised and were reported as "not fired" — keyed by dosha name.
+#: Empty = none raised. Counted + logged instead of swallowed (decision sheet A-4, I-22).
+DOSHA_FALLBACK_EVAL_ERRORS: dict[str, int] = {}
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -3363,9 +3372,11 @@ def _build_dosha_rows(
             # WP-2.5/LCA-10: fire from ga_sensitive_degree's cited classical checks,
             # computed inline over the grahas already loaded (no cross-asset dependency).
             try:
-                from ga_writers.ga_sensitive_degree_writer import (
-                    check_gandanta, check_mrityu_bhaga,
-                )
+                if name == "GANDANTA_DOSHA":
+                    _check = None  # the shared module's check_gandanta is used below
+                else:
+                    from ga_writers.ga_sensitive_degree_writer import check_mrityu_bhaga
+                    _check = check_mrityu_bhaga
                 afflicted: list[str] = []
                 for _g in grahas_data:
                     _gn = _g.get("name")
@@ -3375,17 +3386,26 @@ def _build_dosha_rows(
                     _sn = int(_lon // 30) % 12
                     _deg = _lon % 30.0
                     if name == "GANDANTA_DOSHA":
-                        if check_gandanta(_sn, _deg)["fired"]:
+                        if _shared_check_gandanta(_sn, _deg)["fired"]:
                             afflicted.append(_gn)
                     else:
-                        if check_mrityu_bhaga(_gn, _sn, _deg).get("fired"):
+                        if _check(_gn, _sn, _deg).get("fired"):
                             afflicted.append(_gn)
                 if afflicted:
                     fires = True
                     _label = "gandanta sandhi" if name == "GANDANTA_DOSHA" else "mrityu-bhaga"
                     reason = f"{_label}: {', '.join(sorted(set(afflicted)))}"
             except Exception:
-                fires = False  # never regress the dosha pass on a wiring error
+                # Never regress the dosha pass on a wiring error — but never hide it either
+                # (decision sheet A-4 / I-22): count it and log it with the traceback. A
+                # silent `fires = False` here is indistinguishable from "no gandanta".
+                DOSHA_FALLBACK_EVAL_ERRORS[name] = DOSHA_FALLBACK_EVAL_ERRORS.get(name, 0) + 1
+                logger.error(
+                    "ga_structural legacy dosha fallback: %s evaluation raised; reporting it "
+                    "as NOT fired (error #%d for this dosha in this process)",
+                    name, DOSHA_FALLBACK_EVAL_ERRORS[name], exc_info=True,
+                )
+                fires = False
 
         if fires:
             _primary = name.split("_")[0]

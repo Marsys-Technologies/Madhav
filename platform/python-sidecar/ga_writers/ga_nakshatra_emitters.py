@@ -14,8 +14,9 @@ import json
 from typing import Any
 
 from brahmagyan.graha_vocabulary import norm_graha
+from brahmagyan.gandanta import GANDANTA_STRICT_FORMULA_ID
 from ga_writers.ga_nakshatra_compute import (
-    compute_kp_lords, compute_gandanta, compute_tara,
+    compute_kp_lords, compute_gandanta, compute_gandanta_strict, compute_tara,
     compute_dispositor_chain, compute_center_of_gravity,
     PLANET_CYCLE, TARA_NAMES,
 )
@@ -34,8 +35,8 @@ PLANET_TO_SUBJECT: dict[str, str] = {
 def _row(chart_id: str, ayanamsha_id: str, build_id: str,
          fact_category: str, fact_subject: str, fact_key: str,
          value_text: str | None = None, value_num: float | None = None,
-         source: str = "ga_nakshatra") -> dict:
-    return {
+         source: str = "ga_nakshatra", formula_id: str | None = None) -> dict:
+    row = {
         "chart_id":       chart_id,
         "ayanamsha_id":   ayanamsha_id,
         "build_id":       build_id,
@@ -46,6 +47,12 @@ def _row(chart_id: str, ayanamsha_id: str, build_id: str,
         "fact_value_num":  value_num,
         "source_calculation": source,
     }
+    if formula_id is not None:
+        # Only a NAMED VARIANT row carries the key (e.g. "strict_0_48"): it puts the row in
+        # the `chart_facts_unique_with_formula` partition beside its canonical twin. Every
+        # canonical row keeps exactly the shape it always had (formula_id NULL).
+        row["formula_id"] = formula_id
+    return row
 
 
 def emit_nakshatra_join(
@@ -187,7 +194,14 @@ def emit_gandanta_flags(
     chart_id: str, ayanamsha_id: str, build_id: str,
     chart_output: dict,
 ) -> list[dict]:
-    """Gaṇḍānta + degree flags (gandanta severity, vargottama-via-pada)."""
+    """Gaṇḍānta + degree flags (gandanta severity, vargottama-via-pada).
+
+    `graha_gandanta` canonical rows (formula_id NULL) follow the ONE shared definition,
+    3°20' each side (`brahmagyan.gandanta`, decision sheet A-4 / X1, SS N-62). The former
+    0°48' reading is emitted beside them as the named variant `strict_0_48`
+    (formula_id set): the same four keys, same junction and side semantics, for every body
+    (`is_gandanta` true/false, plus arc_minutes/junction/side when true).
+    """
     rows: list[dict] = []
     asc    = chart_output.get("ascendant", {})
     grahas = chart_output.get("grahas", [])
@@ -214,6 +228,24 @@ def emit_gandanta_flags(
                              "junction_type", value_text=g["junction_type"], source=src))
             rows.append(_row(chart_id, ayanamsha_id, build_id, "graha_gandanta", subj,
                              "side", value_text=g["side"], source=src))
+
+        # Named stricter variant (0°48' each side) — variant rows, never the plain keys.
+        gs = compute_gandanta_strict(float(long))
+        src_s = f"ga_nakshatra:gandanta:{GANDANTA_STRICT_FORMULA_ID}:longitude={long:.4f}"
+        rows.append(_row(chart_id, ayanamsha_id, build_id, "graha_gandanta", subj, "is_gandanta",
+                         value_text=str(gs["is_gandanta"]).lower(), source=src_s,
+                         formula_id=GANDANTA_STRICT_FORMULA_ID))
+        if gs["is_gandanta"]:
+            rows.append(_row(chart_id, ayanamsha_id, build_id, "graha_gandanta", subj,
+                             "arc_minutes_from_junction",
+                             value_num=gs["arc_minutes_from_junction"], source=src_s,
+                             formula_id=GANDANTA_STRICT_FORMULA_ID))
+            rows.append(_row(chart_id, ayanamsha_id, build_id, "graha_gandanta", subj,
+                             "junction_type", value_text=gs["junction_type"], source=src_s,
+                             formula_id=GANDANTA_STRICT_FORMULA_ID))
+            rows.append(_row(chart_id, ayanamsha_id, build_id, "graha_gandanta", subj,
+                             "side", value_text=gs["side"], source=src_s,
+                             formula_id=GANDANTA_STRICT_FORMULA_ID))
 
         # Vargottama-via-pada: pada navamsa sign == D1 sign
         pada_nav = body_data.get("pada_navamsa_sign")
