@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import random
 import sys
 import threading
@@ -281,7 +282,7 @@ def test_empty_edge_list_is_incomplete_never_an_empty_clean_reading():
     assert fp["fk_closure_status"] == "INCOMPLETE"
     assert [u["table"] for u in fp["unknown_tables"]] == ["s.a", "s.b"]
     assert fp["counts"]["edges_considered"] == 0
-    assert any("empty" in r.lower() for r in fp["incomplete_reasons"])
+    assert any("no FK edges in catalog" in r for r in fp["incomplete_reasons"])
     assert fp["delete_cascades"] == [] and fp["has_blockers"] is False
 
 
@@ -293,10 +294,15 @@ def test_known_tables_distinguishes_confirmed_no_fk_from_not_in_catalog():
     assert fp["universe"]["source"] == "catalog_table_list"
 
 
-def test_empty_edge_list_with_known_tables_is_a_computed_zero():
-    fp = slw.transitive_footprint(["s.a"], [], known_tables=["s.a"])
-    assert fp["no_fk_edges_tables"] == ["s.a"] and fp["unknown_tables"] == []
-    assert fp["fk_closure_status"] == "COMPLETE"   # catalog listed, the table really has no FK edges
+def test_empty_edge_list_with_known_tables_is_still_incomplete_never_a_computed_zero():
+    fp = slw.transitive_footprint(["s.a"], [], known_tables=["s.a", "s.b"])
+    assert fp["fk_closure_status"] == "INCOMPLETE"
+    assert ("no FK edges in catalog; implausible for a populated plane, verify catalog access"
+            in fp["incomplete_reasons"])
+    assert fp["no_fk_edges_tables"] == []                      # absence of edges is not established
+    assert [u["table"] for u in fp["unknown_tables"]] == ["s.a"]
+    text = "\n".join(slw.impact_statement_footprint_section(fp))
+    assert "INCOMPLETE" in text and "verify catalog access" in text
 
 
 def test_without_known_tables_a_fk_free_table_is_unknown_because_the_universe_is_edges_only():
@@ -486,14 +492,15 @@ class FakeConn:
 
 
 _EDGE_ROWS = [
-    # conname, child, parent, confdeltype, confupdtype, child_columns, child_columns_not_null
+    # constraint, child, parent, confdeltype, confupdtype, child_cols, child_cols_not_null,
+    # deferrable, deferred, inherited_from_table, inherited_from_constraint, child_is_partition, parent_is_partition
     ("kala_activation_signal_id_fkey", "public.kala_activation", "public.bodha_msr_signals", "c", "a",
-     ["signal_id"], ["signal_id"]),
+     ["signal_id"], ["signal_id"], False, False, None, None, False, False),
     ("kala_bhavishya_convergence_id_fkey", "public.kala_bhavishya", "public.kala_convergence", "n", "a",
-     ["convergence_id"], []),
-    ("x_fkey", "public.x", "public.y", "r", "a", ["y_id"], []),
-    ("z_fkey", "public.z", "public.y", "a", "c", ["y_id"], []),
-    ("d_fkey", "public.d", "public.y", "d", "n", ["y_id"], []),
+     ["convergence_id"], [], False, False, None, None, False, False),
+    ("x_fkey", "public.x", "public.y", "r", "a", ["y_id"], [], False, False, None, None, False, False),
+    ("z_fkey", "public.z", "public.y", "a", "c", ["y_id"], [], True, True, None, None, False, False),
+    ("d_fkey", "public.d", "public.y", "d", "n", ["y_id"], [], False, False, None, None, False, False),
 ]
 
 
@@ -503,7 +510,8 @@ def test_loader_maps_catalog_rows_to_edges():
     assert edges[0] == {
         "constraint": "kala_activation_signal_id_fkey", "child_table": "public.kala_activation",
         "parent_table": "public.bodha_msr_signals", "on_delete": "CASCADE", "on_update": "NO ACTION",
-        "columns": ["signal_id"], "child_columns_not_null": ["signal_id"]}
+        "columns": ["signal_id"], "child_columns_not_null": ["signal_id"], "deferrable": False,
+        "deferred": False, "inherited_from": None, "child_is_partition": False, "parent_is_partition": False}
     assert [e["on_delete"] for e in edges] == ["CASCADE", "SET NULL", "RESTRICT", "NO ACTION", "SET DEFAULT"]
     assert [e["on_update"] for e in edges] == ["NO ACTION"] * 3 + ["CASCADE", "SET NULL"]
     # the edge list feeds the footprint directly
@@ -587,3 +595,319 @@ def test_loader_refuses_to_execute_a_non_select_statement(monkeypatch):
 def test_shipped_catalog_sql_passes_its_own_select_only_check():
     slw.assert_select_only(slw.FK_EDGES_SQL)
     slw.assert_select_only(slw.TABLES_SQL)
+
+
+# ═════════════════════════ review follow-up (E5.9 review: ACCEPT-WITH-CHANGES) ═════════════════════════
+
+# ───────────────────────── 1. lexer-ordered select-only guard ─────────────────────────
+
+@pytest.mark.parametrize("sql", [
+    "SELECT '--' ; DROP TABLE x; SELECT '--'",                    # '--' inside a string must not start a comment
+    "SELECT '/*' ; DELETE FROM x; SELECT '*/'",                   # '/*' inside a string must not start a comment
+    "SELECT $$a$$ ; DROP TABLE x; SELECT $$b$$",                  # dollar-quoted literals around real statements
+    "SELECT $t$ ; $t$ ; DROP TABLE x; SELECT $t$ x $t$",
+    "SELECT $$--$$ ; DROP TABLE x; SELECT $$--$$",
+    "SELECT 1 /* /* */ */ ; DROP TABLE x",                        # nested comment closed, then a real statement
+    "SELECT 1 /* a */ /* b */ ; DELETE FROM x",
+    "SELECT \"--\" ; DROP TABLE x; SELECT \"--\"",                # quoted identifier holding a comment opener
+    "SELECT 1 -- note ;\n; DROP TABLE x",                         # the ';' on the next line is real
+    r"SELECT E'\'' ; DROP TABLE x; SELECT E'\''",                 # E-string: backslash-escaped quote
+    r"SELECT '\'' ; DROP TABLE x; --'",                           # backslash in a plain string is refused outright
+    "SELECT 'abc",                                                # unterminated constructs
+    "SELECT /* never closed",
+    'SELECT "abc',
+    "SELECT $$abc",
+    "SELECT 1 /* /* x */",
+    "SELECT pg_sleep(10)",                                        # blocklist additions
+    "SELECT pg_advisory_lock(1)",
+    "SELECT pg_notify('a', 'b')",
+    "SELECT 1; ; ",
+])
+def test_lexer_rejects_hidden_statements_and_unterminated_constructs(sql):
+    with pytest.raises(ValueError):
+        slw.assert_select_only(sql)
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT '--' AS a, '/*' AS b",
+    "SELECT $$; DROP TABLE x;$$ AS note",                         # all inside one dollar-quoted literal
+    "SELECT $tag$ ; DROP TABLE x; $tag$",
+    "SELECT 1 /* a /* b */ ; DROP TABLE x; */",                   # PostgreSQL nests comments: one comment
+    'SELECT "a;b" FROM t',
+    r"SELECT E'\'' AS q",
+    "SELECT a$b$ FROM t",                                         # '$' inside an identifier is not a quote
+    "SELECT $1",
+    "SELECT 'it''s' AS q;",
+    "SELECT 1 -- trailing ; comment",
+])
+def test_lexer_accepts_literals_and_comments_that_only_look_dangerous(sql):
+    slw.assert_select_only(sql)
+
+
+def test_only_module_constants_reach_the_cursor_and_loaders_take_no_sql():
+    import inspect
+    conn = FakeConn({"pg_constraint": [], "pg_class": []})
+    slw.fk_edges_from_catalog(conn)
+    slw.tables_from_catalog(conn)
+    executed = [sql for c in conn.cursors for sql in c.executed]
+    assert executed == [slw.FK_EDGES_SQL, slw.TABLES_SQL]
+    for fn in (slw.fk_edges_from_catalog, slw.tables_from_catalog):
+        assert list(inspect.signature(fn).parameters) == ["conn"]
+    assert not hasattr(slw, "run_select")                       # the executor stays private
+    assert all(not re.match(r"\s*(SET|BEGIN|COMMIT|ROLLBACK)\b", q, re.I) for q in executed)
+    assert conn.committed is False and conn.rolled_back is False and conn.closed is False
+
+
+def test_docs_say_plainly_the_guard_is_not_a_sandbox_and_the_connection_enforces_read_only():
+    assert "NOT a general sandbox" in " ".join(slw.assert_select_only.__doc__.split())
+    assert "suvarna_reader" in slw.__doc__ and "READ ONLY transaction" in slw.__doc__
+    assert "NOT a general SQL sandbox" in " ".join(slw.__doc__.split())
+
+
+# ───────────────────────── 2. partitions ─────────────────────────
+
+def _clone(child, parent, root_child, root_constraint, constraint, on_delete="CASCADE", columns=("p_id",)):
+    return dict(E(child, parent, on_delete, list(columns), constraint=constraint),
+                inherited_from={"table": root_child, "constraint": root_constraint})
+
+
+def test_child_side_partition_clones_are_collapsed_into_the_root_edge():
+    edges = [E("s.child", "s.p", "CASCADE", ["p_id"], constraint="child_p_fk"),
+             _clone("s.child_1", "s.p", "s.child", "child_p_fk", "child_1_p_fk"),
+             _clone("s.child_2", "s.p", "s.child", "child_p_fk", "child_2_p_fk"),
+             _clone("s.child_1_a", "s.p", "s.child_1", "child_1_p_fk", "child_1_a_p_fk")]   # two levels deep
+    fp = slw.transitive_footprint(["s.p"], edges)
+    assert _names(fp["delete_cascades"]) == ["s.child"]          # not child + 3 partitions
+    assert fp["counts"]["delete_cascades"] == 1 and fp["counts"]["edges_considered"] == 1
+    assert fp["counts"]["inherited_partition_edges_collapsed"] == 3
+    inh = fp["inherited_partition_edges"]
+    assert [r["child_table"] for r in inh] == ["s.child_1", "s.child_1_a", "s.child_2"]
+    assert all(r["collapsed"] and r["root"]["child_table"] == "s.child" and r["root"]["constraint"] == "child_p_fk"
+               for r in inh)
+    assert fp["fk_closure_status"] == "COMPLETE"
+
+
+def test_referenced_side_clone_is_kept_so_a_write_set_naming_a_partition_still_sees_its_edges():
+    edges = [E("s.child", "s.p", "CASCADE", ["p_id"], constraint="child_p_fk"),
+             _clone("s.child", "s.p_1", "s.child", "child_p_fk", "child_p_1_fk")]
+    fp = slw.transitive_footprint(["s.p_1"], edges)
+    assert _names(fp["delete_cascades"]) == ["s.child"]
+    assert fp["delete_cascades"][0]["inherited_edge_in_path"] is True
+    assert fp["delete_cascades"][0]["path"][0]["inherited"] is True
+    assert fp["counts"]["inherited_partition_edges_kept"] == 1
+    assert fp["counts"]["entries_via_inherited_edges"] == 1
+    assert fp["inherited_partition_edges"][0]["collapsed"] is False
+    # naming the root table instead uses the root edge, not the clone
+    fp2 = slw.transitive_footprint(["s.p"], edges)
+    assert fp2["delete_cascades"][0]["inherited_edge_in_path"] is False
+
+
+def test_write_set_naming_a_collapsed_partition_directly_is_not_unknown():
+    edges = [E("s.child", "s.p", "CASCADE", ["p_id"], constraint="child_p_fk"),
+             _clone("s.child_1", "s.p", "s.child", "child_p_fk", "child_1_p_fk")]
+    fp = slw.transitive_footprint(["s.child_1"], edges)
+    assert fp["unknown_tables"] == [] and fp["fk_closure_status"] == "COMPLETE"
+
+
+def test_unresolvable_clone_is_kept_and_flagged_not_dropped():
+    edges = [_clone("s.child_1", "s.p", "s.ghost", "nope_fk", "child_1_p_fk")]
+    fp = slw.transitive_footprint(["s.p"], edges)
+    assert _names(fp["delete_cascades"]) == ["s.child_1"]
+    assert fp["inherited_partition_edges"] == [
+        {"child_table": "s.child_1", "parent_table": "s.p", "constraint": "child_1_p_fk",
+         "collapsed": False, "root": None}]
+
+
+def test_inherited_clone_cycle_does_not_hang():
+    a = _clone("s.c1", "s.p", "s.c2", "k2", "k1")
+    b = _clone("s.c2", "s.p", "s.c1", "k1", "k2")
+    fp = _run_with_timeout(lambda: slw.transitive_footprint(["s.p"], [a, b]))
+    assert fp["counts"]["inherited_partition_edges_kept"] == 2
+
+
+def test_loader_carries_inheritance_and_partition_flags():
+    rows = [("c1_p_fk", "public.c1", "public.p", "c", "a", ["p_id"], [], False, False,
+             "public.c", "c_p_fk", True, False)]
+    edge = slw.fk_edges_from_catalog(FakeConn({"pg_constraint": rows}))[0]
+    assert edge["inherited_from"] == {"table": "public.c", "constraint": "c_p_fk"}
+    assert edge["child_is_partition"] is True and edge["parent_is_partition"] is False
+
+
+def test_loader_rejects_a_row_of_the_wrong_width():
+    with pytest.raises(ValueError):
+        slw.fk_edges_from_catalog(FakeConn({"pg_constraint": [("a", "b")]}))
+
+
+def test_catalog_sql_reads_partition_and_deferral_columns_and_never_confdelsetcols():
+    for needle in ("conparentid", "relispartition", "condeferrable", "condeferred"):
+        assert needle in slw.FK_EDGES_SQL
+    assert "confdelsetcols" not in slw.FK_EDGES_SQL           # PG15+: server version unknown
+
+
+# ───────────────────────── 3. empty edge list ─────────────────────────
+
+def test_empty_edge_list_incomplete_for_both_known_tables_modes():
+    for kt in (None, [], ["s.a"]):
+        fp = slw.transitive_footprint(["s.a"], [], known_tables=kt)
+        assert fp["fk_closure_status"] == "INCOMPLETE" and fp["no_fk_edges_tables"] == []
+
+
+# ───────────────────────── 4. deferrable ─────────────────────────
+
+def test_deferrable_no_action_is_flagged_apart_but_still_a_blocker():
+    edges = [dict(E("s.d", "s.a", "NO ACTION", ["a_id"]), deferrable=True, deferred=True),
+             E("s.i", "s.a", "NO ACTION", ["a_id"]),
+             dict(E("s.r", "s.a", "RESTRICT", ["a_id"]), deferrable=True)]   # RESTRICT cannot be deferred
+    fp = slw.transitive_footprint(["s.a"], edges)
+    assert [r["child_table"] for r in fp["refusing_deferrable"]] == ["s.d"]
+    assert fp["refusing_deferrable"][0]["deferrable"] is True and fp["refusing_deferrable"][0]["deferred"] is True
+    assert [(r["child_table"], r["deferrable"]) for r in fp["refusing"]] == [("s.i", False), ("s.r", False)]
+    assert fp["counts"]["refusing"] == 2 and fp["counts"]["refusing_deferrable"] == 1
+    assert fp["has_blockers"] is True and fp["has_immediate_blockers"] is True
+
+
+def test_only_deferrable_blockers_keeps_has_blockers_true_but_not_immediate():
+    fp = slw.transitive_footprint(["s.a"], [dict(E("s.d", "s.a", "NO ACTION", ["a_id"]), deferrable=True)])
+    assert fp["refusing"] == [] and fp["has_blockers"] is True and fp["has_immediate_blockers"] is False
+    text = "\n".join(slw.impact_statement_footprint_section(fp))
+    assert "DEFERRABLE NO ACTION" in text and "s.d" in text
+
+
+def test_set_null_on_not_null_stays_immediate_even_if_the_edge_is_deferrable():
+    edge = dict(E("s.n", "s.a", "SET NULL", ["a_id"], not_null=["a_id"]), deferrable=True)
+    fp = slw.transitive_footprint(["s.a"], [edge])
+    assert [r["kind"] for r in fp["refusing"]] == ["SET_NULL_ON_NOT_NULL"] and fp["refusing_deferrable"] == []
+
+
+def test_missing_deferrable_key_reads_as_immediate_the_conservative_side():
+    fp = slw.transitive_footprint(["s.a"], [E("s.c", "s.a", "NO ACTION", ["a_id"])])
+    assert fp["counts"]["refusing"] == 1 and fp["counts"]["refusing_deferrable"] == 0
+
+
+# ───────────────────────── 5. limitations ─────────────────────────
+
+def test_limitations_list_is_present_and_names_confdelsetcols():
+    fp = slw.transitive_footprint(["s.a"], [E("s.b", "s.a")])
+    assert fp["limitations"] and fp["limitations"] == list(slw.LIMITATIONS)
+    assert any("confdelsetcols" in x and "SET_NULL_ON_NOT_NULL" in x and "safe direction" in x
+               for x in fp["limitations"])
+    assert "  Limitations of this reading:" in slw.impact_statement_footprint_section(fp)
+
+
+# ───────────────────────── 6. low items ─────────────────────────
+
+def test_tables_sql_has_no_backslash_escape_and_excludes_toast_and_temp_schemas():
+    assert "\\" not in slw.TABLES_SQL
+    assert "pg_(toast|temp_)" in slw.TABLES_SQL
+
+
+def test_known_non_fk_reference_with_a_missing_key_is_a_value_error():
+    for bad in ({"column": "c", "referenced_table": "a"}, {"referencing_table": "t", "referenced_table": "a"},
+                {"referencing_table": "t", "column": "c"}):
+        with pytest.raises(ValueError):
+            slw.transitive_footprint(["a"], [E("b", "a")], known_non_fk_references=[bad])
+
+
+def test_as_list_parses_postgres_array_text_with_quoted_commas_and_escapes():
+    assert slw._as_list('{a,"b,c","d\\"e","f\\\\g"}') == ["a", "b,c", 'd"e', "f\\g"]
+    assert slw._as_list("{}") == [] and slw._as_list(None) == []
+    assert slw._as_list(["x", "y"]) == ["x", "y"] and slw._as_list(("x",)) == ["x"]
+    for bad in ('{a,"b}', "a,b", "{a,}", "{a,NULL}", '{"a"b}'):
+        with pytest.raises(ValueError):
+            slw._as_list(bad)
+
+
+def test_loader_accepts_array_text_rows():
+    rows = [("k", "public.c", "public.p", "c", "a", '{"a,b",c}', "{c}", False, False, None, None, False, False)]
+    edge = slw.fk_edges_from_catalog(FakeConn({"pg_constraint": rows}))[0]
+    assert edge["columns"] == ["a,b", "c"] and edge["child_columns_not_null"] == ["c"]
+
+
+# ───────────────────────── 7. additional semantics ─────────────────────────
+
+def test_multi_column_set_null_any_not_null_column_makes_the_delete_fail():
+    def run(nn):
+        return slw.transitive_footprint(["s.a"], [E("s.c", "s.a", "SET NULL", ["x", "y"], not_null=nn)])
+    mixed = run(["x"])                                    # ANY NOT NULL column is enough
+    assert mixed["set_null"][0]["violates_not_null"] is True and mixed["set_null"][0]["not_null_columns"] == ["x"]
+    assert [r["kind"] for r in mixed["refusing"]] == ["SET_NULL_ON_NOT_NULL"]
+    both = run(["y", "x"])
+    assert both["set_null"][0]["not_null_columns"] == ["x", "y"] and both["set_null"][0]["violates_not_null"] is True
+    none = run([])
+    assert none["set_null"][0]["violates_not_null"] is False and none["refusing"] == []
+
+
+def test_set_default_on_not_null_neither_violates_nor_refuses():
+    fp = slw.transitive_footprint(["s.a"], [E("s.c", "s.a", "SET DEFAULT", ["a_id"], not_null=["a_id"])])
+    assert fp["set_default"][0]["violates_not_null"] is False
+    assert fp["set_default"][0]["not_null_columns"] == ["a_id"]
+    assert fp["refusing"] == [] and fp["refusing_deferrable"] == [] and fp["has_blockers"] is False
+
+
+def test_set_null_on_a_child_that_is_also_cascade_deleted():
+    edges = [E("s.b", "s.a", "CASCADE", ["x"], constraint="b_x"), E("s.b", "s.a", "SET NULL", ["y"], constraint="b_y")]
+    fp = slw.transitive_footprint(["s.a"], edges)
+    assert _names(fp["delete_cascades"]) == ["s.b"]
+    assert fp["set_null"][0]["child_also_deleted"] is True and fp["set_null"][0]["columns"] == ["y"]
+
+
+def test_two_fks_between_the_same_pair_both_survive():
+    edges = [E("s.b", "s.a", "SET NULL", ["x"], constraint="b_x"), E("s.b", "s.a", "SET NULL", ["y"], constraint="b_y"),
+             E("s.r", "s.a", "RESTRICT", ["x"], constraint="r_x"), E("s.r", "s.a", "RESTRICT", ["y"], constraint="r_y")]
+    fp = slw.transitive_footprint(["s.a"], edges)
+    assert [e["constraint"] for e in fp["set_null"]] == ["b_x", "b_y"]
+    assert [e["constraint"] for e in fp["refusing"]] == ["r_x", "r_y"]
+    assert fp["counts"]["edges_considered"] == 4
+
+
+def test_write_table_inside_another_write_tables_cascade_closure_is_dropped_but_its_children_traversed():
+    fp = slw.transitive_footprint(["s.a", "s.b"], [E("s.b", "s.a"), E("s.c", "s.b")])
+    assert _names(fp["delete_cascades"]) == ["s.c"]
+    assert _hop_tables(fp["delete_cascades"][0]["path"]) == ["s.b", "s.c"]     # from b, a write table itself
+
+
+# ───────────────────────── schema contract ─────────────────────────
+
+_TOP_KEYS = {"schema", "write_tables", "universe", "fk_closure_status", "incomplete_reasons", "unknown_tables",
+             "no_fk_edges_tables", "delete_cascades", "set_null", "set_default", "refusing", "refusing_deferrable",
+             "has_blockers", "has_immediate_blockers", "inherited_partition_edges", "dangling_after_rewrite",
+             "limitations", "counts"}
+_HOP_KEYS = {"from", "to", "constraint", "columns", "on_delete", "inherited"}
+_CASCADE_KEYS = {"table", "depth", "path", "inherited_edge_in_path"}
+_NULLISH_KEYS = {"table", "parent_table", "constraint", "columns", "depth", "path", "child_in_write_set",
+                 "child_also_deleted", "inherited_edge_in_path", "not_null_columns", "violates_not_null"}
+_REFUSAL_KEYS = {"kind", "child_table", "parent_table", "constraint", "columns", "path", "child_in_write_set",
+                 "child_also_deleted", "deferrable", "deferred", "inherited_edge_in_path"}
+_COUNT_KEYS = {"write_tables", "delete_cascades", "set_null", "set_default", "refusing", "refusing_deferrable",
+               "unknown_tables", "no_fk_edges_tables", "edges_considered", "inherited_partition_edges_collapsed",
+               "inherited_partition_edges_kept", "entries_via_inherited_edges"}
+
+
+def test_json_schema_contract_pins_every_key_set():
+    assert slw.SCHEMA == "suvarna.e5_9.transitive_footprint/2"
+    edges = (FIXTURE_2026_09_30 + [E("s.n", "s.a", "SET NULL", ["x"], not_null=["x"]),
+                                   E("s.r", "s.a", "RESTRICT", ["x"]),
+                                   dict(E("s.d", "s.a", "NO ACTION", ["x"]), deferrable=True),
+                                   E("s.f", "s.a", "SET DEFAULT", ["x"]), E("s.cc", "s.a"),
+                                   _clone("s.cc_1", "s.a", "s.cc", "cc_a_id_fkey", "cc_1_fk")])
+    fp = slw.transitive_footprint([MSR, "s.a", "s.ghost"], edges)
+    assert set(fp) == _TOP_KEYS and fp["schema"] == slw.SCHEMA
+    assert set(fp["counts"]) == _COUNT_KEYS
+    assert set(fp["universe"]) == {"source", "edge_tables", "tables"}
+    assert set(fp["dangling_after_rewrite"]) == {"status", "note", "write_tables_with_no_inbound_fk",
+                                                 "known_non_fk_references"}
+    assert set(fp["unknown_tables"][0]) == {"table", "reason"}
+    assert set(fp["inherited_partition_edges"][0]) == {"child_table", "parent_table", "constraint", "collapsed", "root"}
+    assert set(fp["inherited_partition_edges"][0]["root"]) == {"child_table", "parent_table", "constraint"}
+    for key, keys in (("delete_cascades", _CASCADE_KEYS), ("set_null", _NULLISH_KEYS),
+                      ("set_default", _NULLISH_KEYS), ("refusing", _REFUSAL_KEYS),
+                      ("refusing_deferrable", _REFUSAL_KEYS)):
+        assert fp[key], key
+        assert all(set(e) == keys for e in fp[key]), key
+        assert all(set(h) == _HOP_KEYS for e in fp[key] for h in e["path"]), key
+    assert json.loads(slw.footprint_to_json(fp)) == fp
+
+
+def test_each_footprint_entry_type_is_json_serialisable_and_sorted_stably():
+    fp = slw.transitive_footprint([MSR], FIXTURE_2026_09_30)
+    assert slw.footprint_to_json(fp) == slw.footprint_to_json(json.loads(slw.footprint_to_json(fp)))
