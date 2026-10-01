@@ -81,6 +81,13 @@ Not edited: the stale "every FK is ON DELETE CASCADE / closure crosses layers" c
 
 ## 6. Open questions for SS
 1. Owner-path drop of the three L2 keys: blocked by the section 5 prerequisite; who owns the writer change (child deletes scoped by the guard's receipt) and the administrator step?
-2. Keep `assert_l2_msr_delete_safe` unchanged (recommended) or replace it without the re-arm (owner-path plus re-attestation)? With the Kala keys gone it protects nothing for Kala; ordering is the control.
+2. (Decided, see SS decisions below: keep `assert_l2_msr_delete_safe` unchanged.) With the Kala keys gone it protects nothing for Kala; ordering is the control.
 3. Charts 1c826d5a and cb73cd3d (all v4 ids): re-key their Kala rows, or freeze MSR regeneration for them?
 4. Placement: the migration is in `supabase/migrations` (active directory); Suvarna 1210 went to `platform/migrations`.
+
+## SS decisions (2026-10-01)
+
+1. **The three L2 keys owned by `data_plane_l2_owner`** (`bodha_contradictions_signal_{a,b}_id_fkey`, `bodha_signal_embeddings_signal_id_fkey`): go in ONE REVIEW together with the phala/mimamsa builder grants (same D6 in-process executor, run after SS's `APPROVED <plan hash>`); the plan includes a read-only check that `data-plane-ownership-status.ts` / the deploy preflights do not pin those constraints (if they do, the gate amendment goes first). Tracked in `BUILDER_GRANT_PLAN` v1.1.
+2. **`assert_l2_msr_delete_safe` is kept as is. Track E §4a's "remove the re-arm" is DECLINED**, with the reason: the function's catalogue-driven refusal re-arms only if a cross-layer foreign key into `bodha_msr_signals` is re-added, which is exactly the right fail-safe; removing it would make a re-added key silent again.
+3. **The dangling-reference detector** (`msr_dangling_signal_refs.py`) runs as a **post-wave check**; wiring it into the five Kāla `integrity_check_sql` blobs waits until there is a green baseline on the canonical chart.
+4. **The plan invariant (MSR writers strictly before the Kāla and Phala assets, none rebuilt later in the same window) stays in force until BOTH migration 1214 AND the L2 owner-path drop are deployed**, because embeddings and contradictions still cascade until the owner-path drop runs.
