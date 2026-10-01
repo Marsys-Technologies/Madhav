@@ -215,16 +215,32 @@ def test_o_p6_tara_class_6_twins_fixture():
     assert r["class"] != 7
 
 
-@pytest.mark.xfail(
-    reason="A5.5 FINDING: no name→index normalisation exists on the P6 path "
-           "(tara() takes ints; the case-mismatch defect #5 lives in a "
-           "normaliser that is not built); spec §2/O-P6-TARA",
-    strict=True)
 def test_o_p6_tara_name_to_index_normalisation():
-    # the null-key (case-mismatch) guard asserted against the REAL normaliser:
-    # a case-variant nakṣatra key must map to the pinned indices (natal 24,
-    # transit 20) and never to None. No such function exists on the merged
-    # path today — strict xfail records the gap.
-    from services.gochara_rules.p6 import nakshatra_index  # expected emitter
-    assert nakshatra_index("SHATABHISHA".lower()) == 24   # natal star (twins)
-    assert nakshatra_index("purvashadha".upper()) == 20   # day star (twins)
+    # the null-key (case-mismatch, defect #5) guard asserted against the REAL
+    # normaliser: case-variant canonical names map to the pinned indices (natal 24,
+    # day star 20) and never to None; the result feeds tara() unchanged.
+    from services.gochara_rules.p6 import nakshatra_index
+    for variant in ("Shatabhisha", "SHATABHISHA", "shatabhisha", " ShataBhisha ", "Shata-bhisha"):
+        assert nakshatra_index(variant) == 24, variant            # natal star (twins)
+    for variant in ("Purva Ashadha", "PURVA ASHADHA", "purva ashadha", "Purva-Ashadha", "purvaashadha"):
+        assert nakshatra_index(variant) == 20, variant            # day star (twins)
+    r = tara(nakshatra_index("shatabhisha"), nakshatra_index("PURVA ASHADHA"))
+    assert r["class"] == 6 and r["class_name"] == "sadhaka"       # the O-P6-TARA fixture end to end
+
+
+def test_nakshatra_index_is_exact_not_fuzzy_and_raises_on_a_miss():
+    from services.gochara_rules.ashtakavarga import NAKSHATRAS
+    from services.gochara_rules.p6 import nakshatra_index
+    # all 27 canonical names round-trip in order, under any case
+    assert [nakshatra_index(n) for n in NAKSHATRAS] == list(range(1, 28))
+    assert [nakshatra_index(n.upper()) for n in NAKSHATRAS] == list(range(1, 28))
+    assert nakshatra_index("Ashwini") == 1 and nakshatra_index("REVATI") == 27
+    # combining diacritics on a canonical spelling are ignored (Revatī -> revati)
+    assert nakshatra_index("Revat\u012b") == 27
+    # NO alias and NO fuzzy matching: a different spelling is a miss, not a guess
+    for miss in ("purvashadha", "PURVASHADHA", "Satabhisha", "nonsense", "", "  ", "Revatii", "Ashwin"):
+        with pytest.raises(ValueError):
+            nakshatra_index(miss)
+    for bad in (None, 24, 20.0, ["Ashwini"], b"Ashwini"):
+        with pytest.raises(TypeError):
+            nakshatra_index(bad)
