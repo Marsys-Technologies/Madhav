@@ -121,3 +121,35 @@ def test_every_seed_asset_the_name_pattern_treats_as_family_is_in_the_file():
     assert len(matched) >= 7
     assert not [a for a in matched if a not in DOC["family_set"]], "file and name pattern disagree"
     assert {a for a in matched if not seed[a][1]} <= {x["asset"] for x in DOC["_notes"]["inactive"]}
+
+
+# ---- round trip: the committed file is exactly what the generator makes from the committed input ----------------------
+# The generator (00_ARCHITECTURE/control/generate_level_map.py) lives on suvarna/engine-E6.3 and is NOT in this small PR.
+# The test runs against it where it is readable (this checkout once the E6.3 PR lands, or the sibling worktree) and is
+# SKIPPED with a visible reason where it is not. TODO (E6.3 PR): when the generator lands on main this skip disappears.
+def _generator():
+    import importlib.util
+    for cand in (REPO / "00_ARCHITECTURE/control/generate_level_map.py",
+                 pathlib.Path("/Users/Dev/suvarna-engine-lane-e6-3/00_ARCHITECTURE/control/generate_level_map.py")):
+        if cand.exists():
+            spec = importlib.util.spec_from_file_location("generate_level_map_roundtrip", cand)
+            mod = importlib.util.module_from_spec(spec)
+            import sys
+            sys.modules["generate_level_map_roundtrip"] = mod
+            spec.loader.exec_module(mod)
+            if hasattr(mod, "family_inactive_allowed"):         # the version that accepts _notes.inactive
+                return mod
+    return None
+
+
+def test_the_committed_file_is_byte_identical_to_what_the_generator_makes_from_the_committed_input():
+    g = _generator()
+    if g is None:
+        import pytest
+        pytest.skip("generate_level_map.py (suvarna/engine-E6.3, with family_inactive_allowed) is not readable here: "
+                    "round trip not run; TODO on the E6.3 PR")
+    rows = g.load_registry_from_seed(SEED)
+    inp = g.load_family_input(REPO / "00_ARCHITECTURE/control/family_lists_input.json")
+    doc = g.build_family_assets(inp, rows, version=DOC["version"], frozen_at=DOC["frozen_at"],
+                                registry_revision=DOC["registry_revision"])
+    assert json.dumps(doc, indent=2, ensure_ascii=False) + "\n" == FILE.read_text(encoding="utf-8")
