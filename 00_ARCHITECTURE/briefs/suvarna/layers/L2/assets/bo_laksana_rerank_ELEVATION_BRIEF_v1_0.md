@@ -27,7 +27,7 @@ The only UPDATE-only writer in the layer and the one registered MSR target that 
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
-| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2011` | seed (live may differ by migration) |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2011`; seed `catalog_status` DRAFT, live CURRENT | seed (live may differ by migration) |
 | writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3821`; registry `has_writer` = True | writers dir, census `Build.registered` |
 | target table(s) | `bodha_msr_signals`; count_sql tables: `bodha_msr_signals` | census CEN-R |
 | live rows / floor | 11094 / 1 (chart 482012f1, count_sql scope) — count_sql counts `graph_node_strength_contribution_jsonb IS NOT NULL` (11,094 of 50,678 chart rows) | census `live_rows`, `Count.floor` |

@@ -27,7 +27,7 @@ Promotes already-detected structure into first-class `bodha_mechanisms` rows (CR
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
-| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:1968` | seed (live may differ by migration) |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:1968`; seed `catalog_status` DRAFT, live CURRENT | seed (live may differ by migration) |
 | writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:590`; registry `has_writer` = True | writers dir, census `Build.registered` |
 | target table(s) | `bodha_mechanisms`; count_sql tables: `bodha_mechanisms` | census CEN-R |
 | live rows / floor | 615 / 1 (chart 482012f1, count_sql scope) | census `live_rows`, `Count.floor` |

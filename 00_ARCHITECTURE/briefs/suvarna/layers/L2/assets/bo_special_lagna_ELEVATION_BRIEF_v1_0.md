@@ -27,7 +27,7 @@ Pure L2 derivation (CR-76) over L1 `special_lagna` facts (`ga_sensitive`): one `
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
-| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2038` | seed (live may differ by migration) |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2038`; seed `catalog_status` DRAFT, live CURRENT | seed (live may differ by migration) |
 | writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:105`; registry `has_writer` = True | writers dir, census `Build.registered` |
 | target table(s) | `bodha_msr_signals`; count_sql tables: `bodha_msr_signals` | census CEN-R |
 | live rows / floor | 20 / 20 (chart 482012f1, count_sql scope) | census `live_rows`, `Count.floor` |

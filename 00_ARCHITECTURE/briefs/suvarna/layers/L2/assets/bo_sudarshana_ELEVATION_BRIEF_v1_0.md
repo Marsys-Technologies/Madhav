@@ -27,7 +27,7 @@ Pure L2 derivation (D-1.5b Lane B-3, CR-100): for each of the nine grahas it rea
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
-| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:1928` | seed (live may differ by migration) |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:1928`; seed `catalog_status` DRAFT, live CURRENT | seed (live may differ by migration) |
 | writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:167`; registry `has_writer` = True | writers dir, census `Build.registered` |
 | target table(s) | `bodha_msr_signals`; count_sql tables: `bodha_msr_signals` | census CEN-R |
 | live rows / floor | 45 / 45 (chart 482012f1, count_sql scope) | census `live_rows`, `Count.floor` |

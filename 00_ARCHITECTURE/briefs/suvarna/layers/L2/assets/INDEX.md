@@ -1,0 +1,383 @@
+---
+artifact: ASSET_ELEVATION_BRIEF_INDEX
+layer: L2 Bodha (bo_*)
+version: "1.0-provisional"
+status: "PROVISIONAL — until J1; may register gaps, may not certify"
+produced_by: exec-suvarna
+produced_on: 2026-10-01
+plan_item: A.L2 (briefs, dispositions, designs)
+base_commit: "main 3311b0a06"
+census_revision_used: "after-grant census `00_ARCHITECTURE/briefs/suvarna/layers/census/after_reader_grant/census_L2.json` (generated 2026-09-30T20:30:56+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION). The first run (`census/census_L2.json`, 20:23:30) differs in exactly six cells (Build.completion and Count.floor of bo_anveshana, bo_sangati, bo_upaya, ERRORED then). NOT re-measured: main is at REGISTRY_REVISION 6 and the lane has no DB access."
+template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
+layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L2/L2_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
+briefs: 23 (one per L2 asset in the census, `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` in this directory, per Track A brief §8)
+---
+
+# L2 asset briefs — layer index (provisional)
+
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Every figure is from the repository or the saved census (B.10). Nothing in this directory certifies a gate or approves a disposition: dispositions are proposals under Track A brief §10, and every fix marked **needs production rebuild** is a REVIEW item for Strategic Suvarṇa. The L2 campaign state (Nirmāṇa cycles #73-#82 of 2026-09-09 on `campaign/nirmana-autonomous`, which froze `bo_vargottama_dhana`, then `bo_laksana` under "live t1" and submitted `bo_bimba` W1; superseded 2026-09-28) is context only: commit subjects were read, no content was used.
+
+## 1 · What this index rests on, and what is stale
+
+- **Census used:** the after-grant saved census (above); first-run differences: six cells. **Not re-measured.**
+- **Layer instance:** `L2_LAYER_INSTANCE_v1_0.md` (1.1) is the draft these briefs continue; it assigns no disposition (TG-L2-017) and its figures are the saved census's.
+- **Gap ids** are ledger `asset_gaps.jsonl` ids from the census checkout (`/Users/Dev/suvarna-census/00_ARCHITECTURE/control/asset_gaps.jsonl` @ 2a78ec64d: 132 `bo_*` rows from the 2026-09-27 run, not on main). They predate the 2026-09-30 census; where the saved census now reads differently (the Idem rows, which read `ON CONFLICT where the layer convention is delete-then-insert` for assets that delete-then-insert) the briefs mark them **stale**.
+- **Offline re-measure of the rollup (labelled, not a census):** main's `asset_census.py` `build_rollup_output` (REGISTRY_REVISION 6, `cea32d77b`) was run over the saved measurements (`/Users/Dev/suvarna-evidence/A_L2/rollup_saved_L2.json`; first-run variant `rollup_saved_L2_first_run.json`). It mixes old measurements with new rules.
+- **Offline static re-scans on main's code (indicative, labelled):** `asset_census.py`'s own `idem_scan` (rev 2) and `capability_scan`/`_grade_dens` (rev 4) were called over the repository for the 23 assets (`/Users/Dev/suvarna-evidence/A_L2/idem_offline_rev2_L2.txt`, `dens_offline_rev4_L2.txt`). They use the writer files and serving modules on main; the Dens run takes the column map from the saved census reach (built columns) instead of the live catalog, and takes shared-table status from the layer's own target tables. Idem: 21 PASS and 2 PARTIAL, identical verdicts to the saved run (the rerank's note changed to the update-only reading). **Dens: PASS 1 (`bo_drishti`), PARTIAL 4 (`bo_anveshana`, `bo_chart_gestalt`, `bo_pratijna`, `bo_yantra_mechanism`), FAIL 4 (`bo_cgm_motifs`, `bo_cgm_paths`, `bo_pramana_mapa`, `bo_sangati`), NO_DETECTOR 14** (six MSR assets: shared table, no producer attribution by code; `bo_laksana`: the scanner loses sync on `platform-mcp/src/tools/register_p1_synthesis.ts`; `bo_bimba`, `bo_karanajala`, `bo_samvada`, `bo_upaya`: it loses sync on `platform-mcp/src/tools/registry_bridge.ts`; `bo_cdlm_summary`, `bo_samskara`: no served `SELECT … FROM` found; `bo_grounding`: no reader). The saved rev-1 reading (PASS 14, FAIL 8, N/A 1) does not carry over.
+
+**Criteria whose definition changed on main since the saved run (gates affected: Build, Dens, Idem; Null and Narr did not exist):**
+
+- `Build.dag`: rev 1 -> 2 (reads-match clause, any-layer unknown dep, cycle)
+- `Build.target`: rev 1 -> 2 (declared service with no target_table reads PASS by declaration)
+- `Idem.pattern`: rev 1 -> 2 (relative imports resolve; update-only reading)
+- `Dens.served`: rev 1 -> 4 (needs a density_contract AND a tier column in the served select; comment-only mentions no longer count)
+- `Narr.agree/checkable/fidelity_test/lint` and `Null.schema_default/blank_rows` (new at rev 5): not in the saved census. Declarations file 1.6.0 gives `prose_fields` for 16 of the 23 L2 assets (15 non-empty, 1 `[]` = `bo_laksana_rerank`); 7 are `null` (`bo_cgm_paths`, `bo_chart_gestalt`, `bo_drishti`, `bo_grounding`, `bo_pramana_mapa`, `bo_samskara`, `bo_samvada`), so those cells read NO_DETECTOR (CF-06). The Null/Narr checks need the catalog and chart data, so none could be run offline.
+- `NA_RULE_DECISIONS` is empty on main (`asset_census.py:243`): a measured N/A (here `Count.floor` on 4 assets with floor 0, and `bo_grounding`'s Dens) reads NO_DETECTOR in the rollup.
+- Registry and code moved since the census (2026-09-30 → main 3311b0a06): **PR #2773** (merged 2026-09-30T15:55Z, after the census at ~15:00Z) restores the `bo_upaya` legacy-table delete (R244): the layer instance records it as open; **migration 1210** (12 direct `depends_on` edges, Track I): L2 consumers `bo_karanajala` (+`ga_vichara`), `bo_laksana_rerank` (+`bo_bimba`, `ga_vichara`), `bo_pratijna` (+`ga_vargas`), `bo_yantra_mechanism` (+`bo_bimba`) and L5 consumers `mi_darshana` (+`bo_laksana`, `bo_sangati`), `mi_pariksha` (+`bo_laksana`): blast radii in the briefs are seed-derived post-1210 (the seed carries 1210 for new rows; `/Users/Dev/suvarna-evidence/A_L2/closure_L2.json`); migration **1211** (5 held edges, including `ph_nimitta → bo_pratijna`) is not applied; migrations 1200/1201 (build-engine timing and the blocked-dependency disposition: the census Build.history text already excludes cascade-only rows). Live production was not re-read.
+
+## 2 · Rollup counts
+
+**Dispositions proposed (23):** keep 21, qualify 1 (`bo_samvada`), integrate 1 (`bo_grounding`); enrich 0, consolidate 0, historical 0, retire 0, unresolved 0. (The layer instance assigns none, TG-L2-017.)
+
+**Gap rows across the 23 briefs (168 rows):** real 26 · real-or-SS-question 12 · detector 67 · other (history, information, stale, ordering) 63.
+
+**Saved census cells over the layer (452):** FAIL 15 · PARTIAL 46 · NO_DETECTOR 70 · ERRORED 0 · PASS 270 · N/A 5 · NOT_GENERIC 46. FAIL by criterion: Dens.served 8 · Build.completion 5 · Count.floor 2.
+
+**Nine-gate cells, offline rollup of the saved measurements under main's rules (assets of 23; not a re-measure, not a certification):**
+
+| gate | Ldgr | Idem | Earn | Null | Vocab | Carr | Narr | Dens | Build |
+|---|---|---|---|---|---|---|---|---|---|
+| rollup | NO_DETECTOR 7 · PASS 16 | PARTIAL 2 · PASS 21 | NO_DETECTOR 23 | NO_DETECTOR 23 | NO_DETECTOR 23 | NO_DETECTOR 23 | NO_DETECTOR 23 | FAIL 8 · NO_DETECTOR 1 · PASS 14 | FAIL 5 · NO_DETECTOR 1 · PARTIAL 17 |
+
+Reading notes: the saved census JSON carries no per-asset `columns` or `asset_kind` facts, so every applicability-dependent criterion reads "not measured (target-table columns not supplied — applicability undecidable)" in the offline rollup. Vocab reads NO_DETECTOR on all 23 because `Vocab.identity` is PASS on 22 (none for `bo_samvada`) but `Vocab.alias` is unmeasured; Ldgr NO_DETECTOR ×7 are the assets with no census cell (no recognised citation column, CF-08); Dens PASS/FAIL are the saved rev-1 readings (the offline rev-4 reading is above); Build PARTIAL ×17 is `Build.history` (recorded errors on all 23) with, for six assets, `Build.dep_liveness` as well; Build FAIL ×5 is Build.completion (CF-02); Null and Narr did not exist in the saved census.
+
+## 3 · The MSR set measured as one group
+
+Seven registered assets target `bodha_msr_signals`: `bo_arudha`, `bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`. Six INSERT and replace rows through `replace_prior_msr_for_chart` (`platform/python-sidecar/bodha_writers/_idempotency.py:136`, scoped to each writer's owned `signal_type_class` list); `bo_laksana_rerank` is UPDATE-only and owns no row (MF-L2-010). Chart 482012f1: 50,678 rows = 45 (`bo_sudarshana`) + 14 (`bo_vargottama_dhana`) + 20 (`bo_special_lagna`) + 25 (`bo_arudha`) + 45 (`bo_nakshatra_semantic`) + 50,529 (`bo_laksana`); the rerank's 11,094 is a count of rows it enriched, not rows it owns. Table-wide 150,724 rows, 85 columns, 40 fully populated, printed identically under all seven `Complete.depth` cells (MF-L2-004).
+
+**Producer attribution and the served facet.** `producer_asset_id` (migration 1036, NOT NULL, trigger-maintained) is in every MSR asset's `reach.dark` list: the default served projection does not select it, so a per-producer reading of the served table is impossible through the capability. The census therefore reads per-asset cells from each registry `count_sql` partition (`signal_type_class` filters; the rerank's `graph_node_strength_contribution_jsonb IS NOT NULL`), and **every MSR Narr declaration attributes through the served `signal_type_class` facet** (`query_signals.ts:448-450`, applied in the WHERE before the salience cap), as the declaration evidence states, not through `producer_asset_id`. The offline Dens re-scan cannot attribute a module to a producer for the same reason (NO_DETECTOR ×7); CF-04 proposes the attribution rule.
+
+| gate (saved census) | reading over the seven |
+|---|---|
+| Build.completion | PASS ×7 (record equals the producer partition) |
+| Count.floor | PASS ×6; FAIL ×1 (`bo_laksana`, 50,529 vs floor 60,000; information) |
+| Idem.pattern | PASS † ×6 (R243 chart-conditional: annotation `chart_scope: 482012f1 only; refused via assert_l2_msr_delete_safe on <charts>`); PARTIAL ×1 (`bo_laksana_rerank`, update-only) |
+| Ldgr | PASS ×7 (`citation_ref` 150,724/150,724, table-wide) |
+| Build.dep_liveness | PASS ×7 |
+| Build.history | PARTIAL ×7 (errors/aborts: laksana 39/7, arudha 1/3, sudarshana 1/3, nakshatra_semantic 0/3, special_lagna 0/3, vargottama_dhana 0/3, rerank 2/3) |
+| Dens (rev 1 / offline rev 4) | PASS ×7 / NO_DETECTOR ×7 |
+| Earn, Carr | NO_DETECTOR ×7 (CF-05, CF-07) |
+
+Group-level findings: (1) the R243 annotations (CF-13); (2) five emitters feed the shared salience formula identical neutral constants (`orb_tightness=1.0`, `shadbala_norm=1.0`, `dignity_score=0.50`, `ashtakavarga_bindus=4`) labelled `documented_approximation` (CF-20), and `bo_laksana` has three constant-`2` corroboration sites (its FD-1); (3) the shared-root carrier columns are empty table-wide (CF-16); (4) 44,479 of 50,678 chart valences come from `keyword_heuristic_v1` (layer instance §2.1, [Q3b]; rerank brief); (5) a rebuild of any producer deletes `bodha_contradictions` rows tied to its signals and cascades `bodha_signal_embeddings` (§7).
+
+## 4 · Assets × disposition × gaps × fix class × rebuild
+
+Columns: **real** = a shortfall in rows/writer/registry/declaration/served surface; **SSq** = observed in code and needing a ruling (`real-or-SS-question`); **detector** = absent or definition-open instrument; **other** = history, information, stale ledger rows, ordering; **rebuild** y = a fix needs a production rebuild, cond = only under one option, n = none.
+
+| asset | disposition | real | SSq | detector | other | fix class | rebuild | shared fixes |
+|---|---|---:|---:|---:|---:|---|---|---|
+| [bo_anveshana](bo_anveshana_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 2 | 3 | 3 | detector/tooling; registry/declaration; writer code | y | CF-03, CF-04, CF-05, CF-07, CF-08, CF-10, CF-14, CF-17 |
+| [bo_arudha](bo_arudha_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | data (output change); detector/tooling; writer code | n | CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-16, CF-17, CF-20 |
+| [bo_bimba](bo_bimba_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 2 | 3 | detector/tooling; registry/declaration; writer code | y | CF-02, CF-03, CF-04, CF-05, CF-07, CF-10, CF-14, CF-17, CF-19 |
+| [bo_cdlm_summary](bo_cdlm_summary_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 3 | detector/tooling; registry/declaration | n | CF-02, CF-04, CF-05, CF-07, CF-10, CF-14, CF-17 |
+| [bo_cgm_motifs](bo_cgm_motifs_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 2 | 2 | detector/tooling; registry/declaration; served surface | n | CF-02, CF-04, CF-05, CF-07, CF-10, CF-14 |
+| [bo_cgm_paths](bo_cgm_paths_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 2 | 2 | detector/tooling; registry/declaration; served surface | n | CF-03, CF-04, CF-05, CF-06, CF-07, CF-10, CF-14 |
+| [bo_chart_gestalt](bo_chart_gestalt_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 0 | 3 | 2 | detector/tooling; registry/declaration; served surface | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-17 |
+| [bo_drishti](bo_drishti_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 2 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-10 |
+| [bo_grounding](bo_grounding_ELEVATION_BRIEF_v1_0.md) | integrate (I) | 1 | 1 | 3 | 2 | detector/tooling; registry; registry/declaration; served surface | n | CF-03, CF-05, CF-06, CF-07, CF-08, CF-10 |
+| [bo_karanajala](bo_karanajala_ELEVATION_BRIEF_v1_0.md) | keep (P) | 4 | 1 | 1 | 4 | detector/tooling; registry/declaration; writer code | cond | CF-02, CF-03, CF-04, CF-05, CF-07, CF-10, CF-12, CF-14, CF-15, CF-17, CF-19 |
+| [bo_laksana](bo_laksana_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 5 | data (output change); detector/tooling; registry/declaration; writer code | cond | CF-03, CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-16, CF-17 |
+| [bo_laksana_rerank](bo_laksana_rerank_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 4 | 1 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-17, CF-19 |
+| [bo_nakshatra_semantic](bo_nakshatra_semantic_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | data (output change); detector/tooling; writer code | n | CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-16, CF-17, CF-20 |
+| [bo_pramana_mapa](bo_pramana_mapa_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 3 | detector/tooling; registry/declaration; served surface | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-17 |
+| [bo_pratijna](bo_pratijna_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 0 | 4 | 1 | detector/tooling; registry/declaration; served surface | n | CF-03, CF-04, CF-05, CF-07, CF-08, CF-10, CF-14, CF-15 |
+| [bo_samskara](bo_samskara_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 3 | declaration; detector/tooling; registry/declaration; served surface | n | CF-03, CF-04, CF-05, CF-06, CF-07, CF-08, CF-10 |
+| [bo_samvada](bo_samvada_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 4 | 0 | 2 | 2 | detector/tooling; registry/declaration | n | CF-03, CF-04, CF-05, CF-06, CF-07, CF-10, CF-15 |
+| [bo_sangati](bo_sangati_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 0 | 2 | 3 | data (output change); detector/tooling; registry/declaration; served surface | n | CF-02, CF-04, CF-05, CF-07, CF-10, CF-14, CF-16, CF-17 |
+| [bo_special_lagna](bo_special_lagna_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | data (output change); detector/tooling; writer code | n | CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-16, CF-17, CF-20 |
+| [bo_sudarshana](bo_sudarshana_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | data (output change); detector/tooling; writer code | n | CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-16, CF-17, CF-20 |
+| [bo_upaya](bo_upaya_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 0 | 2 | 4 | detector/tooling; rebuild proof; registry/declaration | y | CF-02, CF-04, CF-05, CF-07, CF-10, CF-14, CF-15, CF-17 |
+| [bo_vargottama_dhana](bo_vargottama_dhana_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | data (output change); detector/tooling; writer code | n | CF-04, CF-05, CF-07, CF-10, CF-13, CF-14, CF-16, CF-17, CF-20 |
+| [bo_yantra_mechanism](bo_yantra_mechanism_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 3 | detector/tooling; registry/declaration; served surface | n | CF-04, CF-05, CF-07, CF-10, CF-14, CF-15 |
+
+**Rebuild needed (y):** `bo_bimba`, `bo_anveshana`, `bo_upaya` (the live proof of R244, plan item B.U). **Option-dependent (cond):** `bo_laksana` (only if FD-1 chooses NULL), `bo_karanajala` (only if the argala ruling changes the edge set). All others: none. The shared fixes CF-13 and CF-20 would need MSR rebuilds if SS rules an output change.
+
+## 5 · Cross-asset fixes, ordered by value for J1 (Tracks I and B)
+
+Order rule: assets served × gate movement, then tier-independence and absence of a rebuild first (Track I can start tier-independent designs before J1: Track A §10). CF ids reuse the L0 index's where the same fix applies (CF-02, 03, 04, 05, 06, 07, 08, 10, 12); CF-13…CF-20 are new for L2. Each shared fix is designed once here; each brief states how it applies.
+
+### 1. CF-03 — Registry correction batch (one surgical migration + seed literals)
+
+- **Why this rank:** smallest, tier-independent, no rebuild: one surgical migration plus seed literals; fixes a count that cannot read false and five registry statements the code contradicts.
+- **Gate:** Earn (count_sql), Build (target/dag), Count (information); assets: 8 — `bo_samvada`, `bo_anveshana`, `bo_karanajala`, `bo_pratijna`, `bo_bimba`, `bo_cgm_paths`, `bo_laksana`/`bo_samskara` (floors), and the seed-literal alignment for all
+- **Evidence:** (a) `bo_samvada` live `count_sql` is the constant `SELECT 0 AS count` (MF-L2-007) while the seed (`asset_registry_seed.ts:1832-1850`) and the writer docstring (`bo_samvada.py:30-32`) state a chart-scoped `count(*)` over the view; `asset_kind` data vs declarations `view`. (b) `natural_key_partition` blank for `bo_anveshana`, `bo_karanajala`, `bo_samvada` (MF-L2-009). (c) `bo_pratijna`: description, volume formula (22 × 5) and floor (110) describe the retired v3 engine (code and live: 27 × 5 = 135), `bo_pratijna.py` docstring. (d) `bo_bimba` declares `storage_type = pgvector` and a `VECTOR(768)` embedding while `node_embedding_vec` is never populated. (e) seed literals disagree with the live values the census read: seven seed rows say `catalog_status DRAFT` where live reads CURRENT (`bo_sudarshana`, `bo_nakshatra_semantic`, `bo_yantra_mechanism`, `bo_arudha`, `bo_laksana_rerank`, `bo_special_lagna`, `bo_vargottama_dhana`), seed floors differ (`bo_anveshana` 5,770 vs 500, `bo_sangati` 84 vs 70, `bo_pratijna` 110 vs 0, `bo_cgm_paths` 5 vs 9, `bo_chart_gestalt` and `bo_cdlm_summary` 5 vs 1, `bo_samvada` 5 vs 0) and the live `count_sql` of `bo_karanajala` (edges only, seed: edges + paths) and `bo_sangati` (cells + triangulation, seed: cells + convergence + contradictions) name different tables than the seed. (f) `Count.floor` FAIL for `bo_laksana` (50,529 vs 60,000) and `bo_samskara` (50,678 vs 60,000): CLAUDE.md §N.4 says the floor equals the achieved count after a build.
+- **Design:** One migration, number = max+1 across every origin head and both migration directories at execution time (never trusted from this document; Suvarṇa migration range per Track E): `UPDATE asset_registry SET … WHERE asset_id = … AND <old value>` guards and an in-migration check for (a)-(d), plus the same literals in `platform/scripts/seed/asset_registry_seed.ts` for (a)-(e); (f) is **not** in the first migration: refresh the two floors only after a coherent L2 rebuild. Verify by production structure, never by the runner's report. The `bo_pratijna` edge removal (CF-15) is a separate DAG review.
+- **Failing-first test and mutation:** Failing-first: `bo_samvada`'s `count_sql` returns 5 on the canonical chart and 0 on a chart with no signal rows; every edited column equals its new literal; mutation: restore the constant → the count test fails.
+- **Blast radius:** Registry rows only. Each edit of `count_sql`/`natural_key_partition`/`depends_on`/`catalog_status`/`target_table`/`integrity_check_sql` enters `registryContractFingerprintInput` and stales that asset's Nirmāṇa frozen manifest (§6); the cockpit count of the named assets changes (cosmetic); no consumer reads `target_floor`.
+- **Rebuild:** none (registry only).
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent for (a)-(e); (f) waits for the rebuild.
+- **Question for SS:** May the seven seed `catalog_status` literals (DRAFT) be corrected to the live CURRENT by seed edit only (a re-seed never rewrites existing rows), and the two 60,000 floors refreshed only after a coherent rebuild?
+
+### 2. CF-02 — Producer attribution: multi-table writers, rider rows and shared tables (count scope)
+
+- **Why this rank:** five Build.completion FAILs in one gate, all explained by the same shape in code; no rebuild; the fix is a declaration plus a detector clause.
+- **Gate:** Build (completion); assets: 5 FAIL + the shared tables — `bo_bimba`, `bo_cdlm_summary`, `bo_karanajala`, `bo_sangati`, `bo_upaya`; shared tables `bodha_msr_signals` (seven producers) and `bodha_cgm_nodes` (two)
+- **Evidence:** Saved record versus live: `bo_bimba` 255 vs 385 (the 130 difference is `bo_karanajala`'s arudha 95 + special_lagna 35 nodes in the same table: verified, layer instance Q7); `bo_cdlm_summary` 70 vs 5; `bo_karanajala` 864 vs 849; `bo_sangati` 535 vs 475; `bo_upaya` 240 vs 180. By the writers' own return expressions each writer sums every table it writes (`bo_cdlm_summary.py:464`: summary + rollups + clusters; `bo_karanajala.py:1921`: edges + contradictions; `bo_sangati.py:511`: cells + convergence + triangulation; `bo_upaya.py:1987`: resonances + prescriptions + three ancillary tables) while the live `count_sql` names fewer tables (migration 326 narrowed them deliberately for the cockpit), so the gaps (65, 15, 60, 60) are consistent with the unnamed tables. The tables are unreadable to the census login (MF-L2-002), so the equalities are **not verified**; the layer instance (§6.5) calls the 60-row gaps unexplained, this reading explains them statically.
+- **Design:** Option **A (recommended, detector/declaration):** declare each asset's produced-table set and have Build.completion compare `rows_written` with the chart-scoped count over that set (T4 §4.2 check 6 then compares like with like); `count_sql` stays the narrowed cockpit count. Option B (writer code): none; the orchestrator contract returns one total (`WriterResult.rows_inserted`) and is FROZEN (raise to the Steward as R2, not designed around). Option C: widen `count_sql` to every produced table (a registry change that reverses migration 326's narrowing and stales the manifests). For the shared tables, attribute by producer (`producer_asset_id` for MSR; `node_type` partition for `bodha_cgm_nodes`).
+- **Failing-first test and mutation:** Failing-first: for each of the five assets `rows_written` equals the count over its declared set on a fixture, and differs when one extra-table row is deleted; a seeded row in a sibling producer's partition must not move this asset's count. Mutation: shrink a declared set → the completion test fails. **First step (read-only, J1-independent):** grant `suvarna_reader` SELECT on the 8 unreadable `bodha_*` tables (Q4 re-run: `bodha_cdlm_domain_rollups`, `bodha_cdlm_pattern_clusters`, `bodha_cgm_chart_topology_summary`, `bodha_cgm_sub_graphs`, `bodha_contradictions`, `bodha_convergence`, `bodha_rm_chart_summary`, `bodha_rm_dosha_remedy_bundles`, `bodha_rm_pattern_remedies`) and confirm the four gaps.
+- **Blast radius:** Declaration and detector only for A; none for assets.
+- **Rebuild:** none (A).
+- **Fix class:** registry/declaration + detector/tooling; **buildable before J1:** declaration part tier-independent; the detector clause is tier-dependent (T4 §4.2 check 6 wording; TGH-T2-05 one table, several producers; TGH-T4-01 `kind` vocabulary).
+- **Question for SS:** Option A, or widen `count_sql` (reverses the migration-326 narrowing)?
+
+### 3. CF-06 — prose_fields declarations for the L2 assets that have none (Null and Narr gates)
+
+- **Why this rank:** moves two gates (Null, Narr) on 7 assets with a declarations-file edit only; tier-independent, no rebuild, no data risk.
+- **Gate:** Null, Narr; assets: 7 undeclared — `bo_cgm_paths`, `bo_chart_gestalt`, `bo_drishti`, `bo_grounding`, `bo_pramana_mapa`, `bo_samskara`, `bo_samvada`
+- **Evidence:** `platform/scripts/governance/asset_declarations.json` (1.6.0): `prose_fields: null` = undeclared, so Null and Narr read NO_DETECTOR; `[]` is a positive declaration needing an `evidence.prose_fields` pointer to writer code as `path:line`; JSONB narrative is declared as `column.$.key` paths. The 15 already-declared L2 entries are the worked examples (e.g. `bo_laksana_rerank` `[]` with an AST guard; `bo_pratijna` three `derivation.$…` paths).
+- **Design:** Per asset, read the writer for any string composed from a computed value and bound to a column: proposals from this lane's reading: `bo_drishti` `[]` (`bo_drishti.py:258-275`: ids, floats, constants and an identifier `citation_ref`); `bo_chart_gestalt` `[]` after reading the headline/watch-list builders (strings at `:277`, `:466-474` are constants with an interpolated threshold); `bo_pramana_mapa` `[]` after reading the `notes` builder; `bo_grounding` `[]` after reading `grounding_matcher.py`'s evidence builders; `bo_samvada` `[]` (no writer text; kind view); `bo_cgm_paths` `["path_label_human"]` or `[]` (the label states "self-ruling / final dispositor", `bo_cgm_paths.py:181`; SS rule); `bo_samskara` `["embedding_input_summary"]` (`bo_samskara.py:105-111`; a composed string of computed values, though an embedding input). A declarations-file edit owned by Track E.
+- **Failing-first test and mutation:** `__tests__/test_e6_1_declarations.py` validation passes; mutation: declare `[]` for an asset whose writer composes text → `Narr.agree`/`Narr.lint` must flag it.
+- **Blast radius:** none (census inputs only).
+- **Rebuild:** none
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01 defines narration; file schema 1.6.0 exists).
+- **Question for SS:** Is `path_label_human` narration or a structural label; is `embedding_input_summary` narration or an embedding input?
+
+### 4. CF-19 — cross_asset_writes declarations (writes into rows another asset owns)
+
+- **Why this rank:** two assets write into rows another asset owns and declare nothing; a declaration edit, tier-independent.
+- **Gate:** Idem, Build (and the E5.5 fingerprint partition); assets: 2 — `bo_karanajala`, `bo_laksana_rerank`
+- **Evidence:** `asset_declarations.json` defines `cross_asset_writes` as the list of `table.column` an asset writes outside its own table (null = unknown); every L2 entry is null. `bo_karanajala` upserts 130 `arudha`/`special_lagna` nodes into `bodha_cgm_nodes` (`bo_karanajala.py:1532-1650`) and UPDATEs its centrality columns (`:1878`); `bo_laksana_rerank` UPDATEs six columns of rows owned by six producers (`bo_laksana.py:3748-3948`).
+- **Design:** Declare the columns with `evidence` pointers; add a declaration-versus-writer check (INSERT/UPDATE/DELETE into a table outside `target_table ∪ produced set` must be declared).
+- **Failing-first test and mutation:** Declarations validation passes; mutation: add a seventh UPDATE column in the writer → the check flags the undeclared column.
+- **Blast radius:** none.
+- **Rebuild:** none
+- **Fix class:** registry/declaration + detector/tooling; **buildable before J1:** tier-independent (field exists); the check is tier-dependent (TGH-T4-01).
+- **Question for SS:** Does `valence` belong to the producer or to the rerank for fingerprint ownership?
+
+### 5. CF-04 — Dens (serving density) on the L2 served modules
+
+- **Why this rank:** Dens is the layer's most movable gate (8 saved FAIL, 4 offline rev-4 FAIL) and the one with real served-surface fixes; applicability is not in doubt for L2 (its surfaces are served and the modules already declare contracts).
+- **Gate:** Dens; assets: 4 FAIL on main's code — `bo_cgm_motifs`, `bo_cgm_paths`, `bo_pramana_mapa`, `bo_sangati`; 4 PARTIAL — `bo_anveshana`, `bo_chart_gestalt`, `bo_pratijna`, `bo_yantra_mechanism`; the shared MSR table (7); 6 unreadable by the scanner
+- **Evidence:** Offline rev-4 re-scan (§1): `bo_cgm_motifs`/`bo_cgm_paths`: a tier column is selected without a contract (`query_cgm_motifs.ts`, `query_cgm_paths.ts`; limit-only pagination); `bo_pramana_mapa`: no contract (`query_quality_scorecard.ts`); `bo_sangati`: 6 served selects over 4 modules, none declares a contract; PARTIAL: contract declared but no tier column in the served select (`query_chart_gestalt.ts`, `query_pratijna.ts`) or tier carriage not established (run-time select: `query_discoveries.ts`, `query_mechanisms.ts`). Seven L2 modules declare a contract today (`query_cdlm_summary`, `query_chart_gestalt`, `query_discoveries`, `query_pratijna`, `query_mechanisms`, `query_question_lenses`, `query_signals`). NO_DETECTOR ×14 is an instrument problem: the string scanner desyncs on `platform-mcp/src/tools/registry_bridge.ts` and `register_p1_synthesis.ts`; the shared MSR table cannot be attributed to a producer.
+- **Design:** (1) Re-measure with the real catalog first. (2) Declare `density_contract` on the four FAIL modules stating what the handler does (the standard: `query_question_lenses.ts:55-61`, an auto-stamped `empty_reason` is an unbacked claim); where a module only truncates by `limit`, say `paginated: false` or add offset/total. (3) Add a tier column to the PARTIAL modules' served selects. (4) Fix the scanner's string handling on the two TS files (Track E) so 14 NO_DETECTORs become readings. (5) Attribution rule for the MSR table: a producer's served surface is the `signal_type_class` facet of `query_signals.ts`, so Dens for an MSR producer is read from that facet's contract.
+- **Failing-first test and mutation:** Per module: a response-shape test that the declared `empty_reason` is emitted on an empty page and that a trim keeps the dense layer (`response_budget.ts` `hardFloor`). Mutation: drop the declaration → the census Dens cell reads FAIL again.
+- **Blast radius:** Additive response fields on the L2 retrieval tools; none identified that parse strictly. No data change.
+- **Rebuild:** none (TypeScript only).
+- **Fix class:** served surface (TS) + detector/tooling; **buildable before J1:** tier-dependent: TGH-T3-26 (who owns a Dens FAIL; serving is [TRANSFERS]) and the N-22 applicability rules.
+- **Question for SS:** May a limit-only module declare `paginated: false`, or must offset/total be added first?
+
+### 6. CF-14 — Narr fidelity (golden-value) tests per L2 narration writer
+
+- **Why this rank:** 16 assets declare prose columns and none has a measured fidelity test; Track A §5 asks for a golden test per narration writer; tier-independent, no rebuild.
+- **Gate:** Narr; assets: 16 — the 15 with non-empty declarations plus the rerank's AST guard
+- **Evidence:** Declared prose: MSR emitters (`signal_headline_text`, `signal_summary_text`, `citation_human`), `bo_bimba`, `bo_cdlm_summary`, `bo_cgm_motifs`, `bo_karanajala`, `bo_sangati`, `bo_yantra_mechanism` (`citation_human`, `motif_name`, `mechanism_name`), `bo_anveshana` (four columns), `bo_pratijna` (three ledger paths), `bo_upaya` (maraka reason). Existing test shapes to extend: `tests/l2/test_nar_bo_bimba_dignity.py` (reproduces live garbage shapes), `test_bo_sudarshana.py`, `test_n8_earned_signal_detectors.py`. Whether `Narr.fidelity_test` already finds them is not measured offline.
+- **Design:** One golden-value test file per writer: a hand-written fixture of L1 facts whose expected strings are written out by hand; the test asserts every numeric or graded token in the narrated string equals the cited fact's value; plus the `check_no_raw_token_in_narrative.py` lint. Register each test in the declaration's `evidence.prose_fields`.
+- **Failing-first test and mutation:** Failing-first: the test fails on a writer whose narrated value differs from the cited fact; mutation: change one composed value → fail.
+- **Blast radius:** none.
+- **Rebuild:** none
+- **Fix class:** detector/tooling (tests); **buildable before J1:** tier-independent.
+- **Question for SS:** Which of the 16 first? (by blast radius: `bo_laksana`, `bo_karanajala`, `bo_bimba`)
+
+### 7. CF-13 — MSR replacement: R243 annotation and F-3 cascade-key retirement
+
+- **Why this rank:** input for Track I/F3: the six chart-conditional PASSes and the MSR replacement guard decide when any MSR producer can be rebuilt.
+- **Gate:** Idem (annotation); assets: 7 — the MSR set
+- **Evidence:** R243: six `Idem.pattern` PASSes are earned only on charts where no L3 dependent rows exist; the live guard `public.assert_l2_msr_delete_safe` (SECURITY DEFINER) refuses the replacement on `1c826d5a` / `cb73cd3d` (layer instance §6.2-6.3). Eight `ON DELETE CASCADE` keys from seven tables reference `bodha_msr_signals.signal_id` (`bodha_contradictions` ×2, `bodha_signal_embeddings`, and five `kala_*` tables); on the canonical chart `bodha_signal_embeddings` holds 50,678 referencing rows, the five `kala_*` tables hold none and `bodha_contradictions` was not measured (permission denied). R243's chart list and W2-3_REVIEW's per-asset list disagree for four assets (MF-L2-011; both shown in layer instance §6.3).
+- **Design:** Emit each of the six PASSes with `chart_scope: 482012f1 only; refused via assert_l2_msr_delete_safe on <charts>`; carry the annotation until F-3 drops the eight keys and retires the refusal (F3.FK, F3.GUARD, F3.PROOF; the MSR waves and the L2 full-layer rebuild wait for F3.FK and F3.GUARD). The rerank is not one of the six.
+- **Failing-first test and mutation:** n/a (annotation); F3.PROOF owns the rebuild proof.
+- **Blast radius:** none for the annotation; F-3 itself is Track I/F.
+- **Rebuild:** none for the annotation.
+- **Fix class:** registry/declaration (annotation); **buildable before J1:** tier-independent.
+- **Question for SS:** Is R243's chart list or W2-3_REVIEW's authoritative per asset?
+
+### 8. CF-15 — depends_on audit: declared edges versus what each writer reads
+
+- **Why this rank:** a writer ordered behind assets it never reads is blocked by them (concrete on record); no detector looks for it.
+- **Gate:** Build (dag, history); assets: 2 certain — `bo_pratijna` (2 unread edges), `bo_samvada` (5 edges, a no-op writer); 1 to audit — `bo_upaya` (reads `bodha_cgm_nodes`, no direct `bo_bimba` edge; not among 1210's edges)
+- **Evidence:** `bo_pratijna.py:133-134`: the v4 engine "never reads `bodha_msr_signals` at all"; it declares `bo_laksana`, `bo_sangati` (+`ga_vargas` by 1210); the latest error on record is `BLOCKED: upstream dependency(ies) bo_laksana, bo_sangati did not complete` (2026-08-06). `bo_samvada.py:139-160`: the writer is a no-op while the registry declares five upstream assets. The E6 reads-match detector (rev 2) finds undeclared reads; it does not find declared-but-unread edges. Layer instance §3.4 found no undeclared intra-L2 read.
+- **Design:** Remove edges the writer provably never reads (separate DAG review: Track I's 1210 only added); add an information-level check to the reads scan that lists declared-unread edges. Acyclic by construction (edges only removed); `compute_upstream_hash` hashes declared deps, so the next dispatch sees a changed upstream set once.
+- **Failing-first test and mutation:** Failing-first: the over-declaration report names `bo_pratijna → bo_laksana, bo_sangati` before the migration and nothing after; mutation: re-add an edge → reported.
+- **Blast radius:** the DAG and one upstream hash per affected asset; frozen manifests of the affected assets are stale (already stale for `bo_pratijna` by 1210).
+- **Rebuild:** none (migration); next dispatch is a one-time rebuild signal.
+- **Fix class:** registry/declaration + detector/tooling; **buildable before J1:** tier-independent in content, but a DAG change: needs its own review.
+- **Question for SS:** May a provably unread declared edge be removed (the converse of 1210)?
+
+### 9. CF-08 — Ldgr: assets with no recognised citation column (no census cell)
+
+- **Why this rank:** declaration-only for most of 7 assets; tier-dependent on the Ldgr source definition.
+- **Gate:** Ldgr; assets: 7 with no census cell — `bo_anveshana`, `bo_chart_gestalt`, `bo_grounding`, `bo_pramana_mapa`, `bo_pratijna`, `bo_samskara`, `bo_samvada`
+- **Evidence:** MF-L2-003, register R128 (open): the target table has no column in `CITATION_COLUMNS`. The carrying columns exist under other names (`constituent_refs_jsonb`/`provenance` on discoveries, `derivation` on `bodha_pratijna`, `matched_rule_id`/`derivation_chain` on grounding, pointer columns on the gestalt, `signal_id` on embeddings, counts on the scorecard); the view has none.
+- **Design:** Per asset name the carrying column (a `carriage` declaration) so the inspector can read it; where a table carries none the gap is real and an output change. Briefs state which case applies.
+- **Failing-first test and mutation:** Inspector: `Ldgr.source_presence` reads PASS/FAIL (not no reading) after the declaration; a row with a blank carrier must read FAIL.
+- **Blast radius:** none for declaration-only cases.
+- **Rebuild:** none
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the gate map's Ldgr source is undefined).
+
+### 10. CF-20 — Neutral-constant salience inputs in the five MSR satellite emitters
+
+- **Why this rank:** a ruling that touches every satellite MSR row's stored salience; output change, so SS first.
+- **Gate:** Null (and Carr); assets: 5 satellites — `bo_arudha`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana` (+ `bo_laksana`'s three constant-2 sites, its FD-1)
+- **Evidence:** `bodha_writers/arudha_emitter.py:96-100`, `special_lagna_emitter.py:96-100`, `vargottama_dhana_emitter.py:119-123`, `sudarshana_emitter.py:241-245`, `nakshatra_semantic_emitter.py:232-236`: `orb_tightness=1.0`, `shadbala_norm=1.0`, `dignity_score=0.50`, `ashtakavarga_bindus=4` for terms the emitter does not compute, `verification_pass_status="documented_approximation"`; `salience_pctl_in_class` is None in all five (`bo_sudarshana.py:51-54`: absolute tier thresholds by design). Prior-campaign finding L-07 (2026-09-05): `salience_inputs_complete = false` on every row; status on main not re-verified.
+- **Design:** Option 1: record the constants as ratified approximations with a decision id (no change). Option 2: pass NULL for uncomputed terms and let the formula define its neutral input (an output change). Option 3: compute the terms from the L1 facts the writers already read where an L1 authority exists (shadbala, dignity: an output change).
+- **Failing-first test and mutation:** Failing-first (options 2/3): a fixture signal stores NULL / the computed term and `computed_salience` equals the documented function; mutation: restore the constant → fail.
+- **Blast radius:** stored `computed_salience` on 149 satellite chart rows (45 + 14 + 20 + 25 + 45); `bo_laksana_rerank` centrality, `bo_samskara` embeddings input, `bo_sangati`/`bo_karanajala` consume salience.
+- **Rebuild:** needs production rebuild of the five satellites and the whole downstream chain for options 2/3 (REVIEW item for SS); none for option 1.
+- **Fix class:** writer code (+ SS ruling); **buildable before J1:** tier-dependent: the Null rule for a constant standing for an uncomputed term (SS 2026-10-01).
+- **Question for SS:** Option 1, 2 or 3?
+
+### 11. CF-07 — Carr (source carriage and reproduction) detectors, one check per asset
+
+- **Why this rank:** the largest gate count (Carr 23) but tooling work for Track E; per-asset designs are in the briefs; not a J1 input.
+- **Gate:** Carr; assets: 23 of 23 NO_DETECTOR
+- **Evidence:** Census `Carr.detector` NO_DETECTOR ×23. L2 asserts structure over L1 facts, so the carriage claim is the §N.5 trap (MSR_COMPUTED_VALUE_DRIFT_HANDOFF: an L2 signal must reference the L1 `fact_id`, never restate its value) and the contamination trap (MSR_UCN_CONTAMINATION_AUDIT). Existing anchor: `platform/scripts/governance/msr_referential_integrity.py` (every `constituent_facts_array` id resolves to `chart_facts.fact_id`; self-test is the CI gate, live mode only at W3 rebuild verification).
+- **Design:** Deterministic-first (CLAUDE.md §N.4: no JH-parity oracle; internal consistency + classical-rule re-derivation). **D3** (re-derive a stratified sample a second way): the MSR satellites (closed-form from L1 facts: e.g. the Sudarśana modular house formula is exact), `bo_laksana` (salience formula on stored inputs), `bo_laksana_rerank`, `bo_bimba`, `bo_karanajala`, `bo_cgm_motifs`, `bo_cgm_paths` (dispositor chains), `bo_yantra_mechanism`, `bo_sangati`, `bo_cdlm_summary`, `bo_drishti`, `bo_pratijna` (engine re-run), `bo_anveshana`, `bo_pramana_mapa`, `bo_samskara` (input text), `bo_samvada` (view aggregates). **D1** (source correspondence): `bo_upaya` (corpus remedy rows), `bo_grounding` (rule and chunk). **D2/D3**: `bo_chart_gestalt` (pointer resolution). A twin of the §N.5 resolver for `constituent_fact_ids_array` on edges. Each detector ships a seeded mismatch it must catch.
+- **Failing-first test and mutation:** Failing-first per detector: non-zero mismatch on a seeded corrupted copy, zero on the real table; the proof is the seeded case.
+- **Blast radius:** none for the assets; Track E tooling.
+- **Rebuild:** none
+- **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment (TGH-T3-02); the detectors need no tier clause.
+- **Question for SS:** Is a stratified re-derivation sample, with the §N.5 resolver as the reference leg, an acceptable L2 carriage detector?
+
+### 12. CF-12 — Idem: an orphan census for upsert-only writes (a PASS on the delete does not test accretion elsewhere)
+
+- **Why this rank:** one asset: an upsert-only write inside an otherwise delete-then-insert writer.
+- **Gate:** Idem; assets: 1 — `bo_karanajala` (node upsert, 130 rows)
+- **Evidence:** `bo_karanajala.py:1532-1650` inserts `arudha`/`special_lagna` nodes `ON CONFLICT (node_id)`; `replace_prior_cgm_nodes` (`_idempotency.py:343`) deletes only the five node types `bo_bimba` owns, so nothing deletes these nodes if an L1 fact disappears. The L0 CF-12 orphan census applies.
+- **Design:** Run the node builder in `ctx.dry_run`, compare the produced `(node_type, node_subject)` set with the live `arudha`/`special_lagna` nodes and report orphans; if any can occur, a prune scoped to those two node types in the owner's replace helper (never table-wide).
+- **Failing-first test and mutation:** Fixture: remove an L1 arudha fact → census FAIL naming the node; after the prune → PASS. Mutation: widen the prune to all node types → bimba's nodes die and the shared-table test fails.
+- **Blast radius:** Detector: none. A prune changes data only if orphans exist.
+- **Rebuild:** none for the detector; a prune is exercised by the next rebuild.
+- **Fix class:** detector/tooling (+ writer code, only if orphans exist); **buildable before J1:** tier-dependent: TGH-T3-18 (what Idem means for upsert writes).
+- **Question for SS:** Where does ownership of the arudha/special_lagna nodes belong (`bo_karanajala` or `bo_bimba`)?
+
+### 13. CF-16 — Shared-root carriers (T1 3.4): the empty columns and their counting rule
+
+- **Why this rank:** the layer's defining rule ("shared roots visible", T1 §3.4) cannot be measured because its carriers are empty; tier-dependent, so not a J1 input.
+- **Gate:** Carr/Complete (information); assets: the MSR table (7) and `bo_sangati`
+- **Evidence:** `shared_factor_keys_jsonb` and `cross_domain_shared_factor_count` on `bodha_msr_signals`, and `shared_factor_keys_jsonb`, `shared_signals_high_convergence_count` on `bodha_cdlm_cells`, are NEVER populated; both MSR columns are null on 50,678/50,678 chart rows (layer instance §2.1 row 5). A different pair, `system_convergence_count`/`cross_system_consensus_count`, is filled by the rerank over signals sharing a `chart_facts.fact_subject` (non-null on 50,023 of 50,678). TG-L2-021: the unit (a placement) is supplied by T1 222, T3 681, T4 506; the carrier field and the counting rule are not.
+- **Design:** After the reopen supplies the counting rule: populate the carrier with the L1 placements a signal rests on (references, never values), or retire the columns; the rerank's pair is the starting derivation.
+- **Failing-first test and mutation:** Failing-first: two signals from one placement report one independent support; mutation: count them as two → fail.
+- **Blast radius:** adds data to existing columns (output change).
+- **Rebuild:** needs production rebuild of the MSR producers and `bo_sangati` after the rule exists.
+- **Fix class:** data (output change) + writer code; **buildable before J1:** tier-dependent: TG-L2-021.
+- **Question for SS:** What is the counting rule for independent support?
+
+### 14. CF-17 — Complete.depth: never-populated columns (declare, populate or drop)
+
+- **Why this rank:** information only: 15 PARTIAL `Complete.depth` cells name never-populated columns; each needs a declare/populate/drop decision, none blocks.
+- **Gate:** Complete (information); assets: 15 PARTIAL
+- **Evidence:** Examples: `bodha_cgm_nodes`: 13 columns (including `node_embedding_vec`); `bodha_cgm_edges`: 8 (including `cancelled_by_jsonb`); `bodha_chart_gestalt.pivot_ids`; `synthesis_quality_scorecard`: 4 (three honest NULL flags); `bodha_discoveries.calibration_hook`, `novelty_class_id`; `bodha_cdlm_cells`: `dynamic_*` L3 hooks, `subdomain_*`, `contradicting_signal_pairs_jsonb`; MSR table: `aspect_modifier`, `argala_modifier`, `varga_provenance_jsonb` and others.
+- **Design:** Per column: declare NULL-by-design with its owner (L3 hooks, a future detector), populate from an L1 authority (an output change) or drop from the contract. Never fill with a neutral default (CLAUDE.md §N.7 item 6).
+- **Failing-first test and mutation:** `Complete.depth` reads PASS or the column is declared; mutation: write a neutral default → the Null test flags it.
+- **Blast radius:** none (declaration) / output change (populate).
+- **Rebuild:** as the option.
+- **Fix class:** registry/declaration or data; **buildable before J1:** tier-dependent: the Complete rules.
+
+### 15. CF-10 — Build.history PARTIAL is a record of past errors; no edit changes it
+
+- **Why this rank:** a definition question; no edit changes a history record.
+- **Gate:** Build (history); assets: 23 of 23 PARTIAL
+- **Evidence:** Each reads "latest run complete, but N error(s) and M abort(s) on record" (T4 §4.2 check 8): from 0/3 (`bo_nakshatra_semantic`, `bo_special_lagna`, `bo_vargottama_dhana`) to 39/7 (`bo_laksana`). Most latest errors are `BLOCKED: upstream … did not complete` cascade skips; real defects on record include `UniqueViolation … bodha_cgm_nodes_pkey` (`bo_karanajala`), `integrity_check_sql … there is no parameter $1` (`bo_pramana_mapa`), `Decimal is not JSON serializable` (`bo_laksana_rerank`, fixed, test exists), `provenance receipt … more than 100 arguments` (`bo_sudarshana`).
+- **Design:** None for the assets. A clean run raises the count of complete runs but never removes an error from history. Definition: look only at runs since the last change to the asset's writer or registry row.
+- **Failing-first test and mutation:** n/a (definition).
+- **Blast radius:** none.
+- **Rebuild:** none
+- **Fix class:** detector/tooling (definition); **buildable before J1:** tier-dependent: T4 §4.2 check 8 wording.
+- **Question for SS:** Should Build.history count only runs since the last writer/registry change?
+
+### 16. CF-05 — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094)
+
+- **Why this rank:** Track E instrument; nothing to change in any L2 asset.
+- **Gate:** Earn (and Cost, information); assets: 23 of 23 NO_DETECTOR
+- **Evidence:** Every L2 `Earn.build_record` and `Cost.baseline` reads "NO_DETECTOR — instrument absent (migration 1094)". The claims an L2 asset emits that need a detector able to read false: `asset_throughput.state = 'lit'`, `count_sql` (one is a constant: `bo_samvada`), `integrity_check_sql` (present on all 23; observed failing: two `integrity_check_sql` errors on record), the floor, and the scorecard flags of `bo_pramana_mapa`.
+- **Design:** Track E (the Nikaṣa engine) owns the instrument; the asset side is a declaration of which emitted statuses are claims.
+- **Failing-first test and mutation:** Track E's own: a seeded false status must read FAIL.
+- **Blast radius:** none.
+- **Rebuild:** none
+- **Fix class:** detector/tooling; **buildable before J1:** tier-independent.
+
+## 6 · Nirmāṇa-frozen assets: what a rebuild or a registry edit does to their frozen manifests
+
+`NIRMANA_SUPERSESSION_RECORD §2.3` lists 22 of the 23 L2 assets as frozen (all but `bo_grounding`), by the definition revision of their last freeze: **8 under the final definition t3** (`bo_bimba`, `bo_karanajala`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_samskara`, `bo_sangati`, `bo_special_lagna`, `bo_vargottama_dhana`) and 14 under t1/t2. The campaign is OFF (native, 2026-09-28); the DB row `nirmana_evidence.nirmana_elevation_campaign_definitions` for `t3-2026-09-11-8b884eac` still reads `frozen`. A freeze is prior work, not certification (record §2). Consequences for this lane's designs:
+
+- **Registry-contract fingerprint.** `registryContractFingerprintInput` (`src/lib/nirmana-elevation/definitions.ts`) includes `depends_on`, `count_sql`, `integrity_check_sql`, `catalog_status` and `target_table` (migration 1210 header; L2_W2_DECIDE §6); `assertManifestMatchesRegistryIdentity` throws on any change against the frozen manifest, the snapshot's `asset_analysis_accepted` evidence stops matching, the monitor reports `plan_adaptation_required` and `dispatch_nirmana_campaign_wave.py` refuses the wave. **Already stale by migration 1210:** `bo_karanajala`, `bo_laksana_rerank`, `bo_pratijna`, `bo_yantra_mechanism` (the fifth frozen consumer, `ka_yojaka`, is L3). Every registry edit in CF-03/CF-15 stales more manifests (named in the briefs); a code-only rebuild does not.
+- **Live gate (`egate.sql -v layer=L2`, layer instance §2.5):** 14 L2 assets read BLOCKED-ANCESTORS with no W2 analysis recorded (the t1/t2 assets); the 8 t3 assets carry an `asset_frozen` event. This is Nirmāṇa tooling and plan v1.5 §1.1 says "Frozen by Nirmāṇa is not elevated": recorded as measured facts, not used as a gate.
+- **Rebuilds and freezes are separate:** rebuilding a frozen asset is not blocked by the freeze (the campaign is off); it can change the asset's output, so Nirmāṇa's recorded evidence for it (including its output-digest specs, e.g. migration 939 for the rerank) would no longer describe live data; nothing running reads that evidence while the campaign is off (an inference, not verified). The Nikaṣa/Suvarṇa re-measure judges every asset afresh.
+
+| asset | last freeze revision | date | stale after migration 1210 | blast radius (seed-derived, post-1210) |
+|---|---|---|---|---|
+| `bo_anveshana` | t2 | 2026-09-10 | not stale by 1210 (no edge added to this row) | 3 direct / 21 transitive |
+| `bo_arudha` | t1 | 2026-09-10 | not stale by 1210 (no edge added to this row) | 6 direct / 48 transitive |
+| `bo_bimba` | t3 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 10 direct / 45 transitive |
+| `bo_cdlm_summary` | t1 | 2026-09-09 | not stale by 1210 (no edge added to this row) | 0 direct / 0 transitive |
+| `bo_cgm_motifs` | t1 | 2026-09-09 | not stale by 1210 (no edge added to this row) | 2 direct / 19 transitive |
+| `bo_cgm_paths` | t1 | 2026-09-09 | not stale by 1210 (no edge added to this row) | 3 direct / 20 transitive |
+| `bo_chart_gestalt` | t2 | 2026-09-10 | not stale by 1210 (no edge added to this row) | 0 direct / 0 transitive |
+| `bo_drishti` | t1 | 2026-09-09 | not stale by 1210 (no edge added to this row) | 2 direct / 22 transitive |
+| `bo_karanajala` | t3 | 2026-09-11 | stale after 1210 (row edge added) | 10 direct / 44 transitive |
+| `bo_laksana` | t1 | 2026-09-08 | not stale by 1210 (no edge added to this row) | 24 direct / 48 transitive |
+| `bo_laksana_rerank` | t3 | 2026-09-11 | stale after 1210 (row edge added) | 1 direct / 40 transitive |
+| `bo_nakshatra_semantic` | t3 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 6 direct / 48 transitive |
+| `bo_pramana_mapa` | t2 | 2026-09-10 | not stale by 1210 (no edge added to this row) | 1 direct / 1 transitive |
+| `bo_pratijna` | t1 | 2026-09-09 | stale after 1210 (row edge added) | 5 direct / 31 transitive |
+| `bo_samskara` | t3 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 3 direct / 22 transitive |
+| `bo_samvada` | t2 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 0 direct / 0 transitive |
+| `bo_sangati` | t3 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 13 direct / 39 transitive |
+| `bo_special_lagna` | t3 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 6 direct / 48 transitive |
+| `bo_sudarshana` | t1 | 2026-09-10 | not stale by 1210 (no edge added to this row) | 6 direct / 48 transitive |
+| `bo_upaya` | t1 | 2026-09-10 | not stale by 1210 (no edge added to this row) | 4 direct / 17 transitive |
+| `bo_vargottama_dhana` | t3 | 2026-09-11 | not stale by 1210 (no edge added to this row) | 6 direct / 48 transitive |
+| `bo_yantra_mechanism` | t1 | 2026-09-09 | stale after 1210 (row edge added) | 0 direct / 0 transitive |
+
+## 7 · Rebuild consequences Track B needs (facts found while reading the writers)
+
+These are not gaps; they are what an L2 layer rebuild must plan for (impact statement, rebuild plan, pre/post fingerprints). The registry DAG gives L2 levels 1-14; its own internal depth is 0-8 (layer instance §2.5): MSR producers (levels 1-6: `bo_sudarshana`, `bo_vargottama_dhana`, `bo_special_lagna`, `bo_arudha`, `bo_nakshatra_semantic`, `bo_laksana`) → `bo_bimba`, `bo_grounding`, `bo_samskara` (7) → `bo_karanajala` (8) → `bo_cgm_motifs`, `bo_cgm_paths`, `bo_laksana_rerank` (9) → `bo_sangati`, `bo_yantra_mechanism` (10) → `bo_cdlm_summary`, `bo_drishti`, `bo_pratijna`, `bo_upaya` (11) → `bo_anveshana` (12) → `bo_chart_gestalt`, `bo_pramana_mapa` (13) → `bo_samvada` (14).
+
+- **MSR replacement (any of six producers):** `replace_prior_msr_for_chart` deletes the producer's owned classes and the `bodha_contradictions` rows whose signals fall in them (`_idempotency.py:200-206`); the FK cascade removes the same signals' `bodha_signal_embeddings`; `assert_l2_msr_delete_safe` refuses on non-canonical charts with L3 dependents (R243); afterwards `bo_samskara`, `bo_karanajala`, `bo_laksana_rerank` and everything downstream re-run (instance §6.1). The F-3 migration (drop the eight keys, retire the refusal) gates MSR waves and the L2 full-layer rebuild.
+- **`bo_upaya` (R244):** code fixed on main (#2773, after the census); the live rebuild is its own wave (B.U) and has not run; read the legacy child rows and the FK-referencing rows (the register's "5 referencing rows") before it; `bo_pramana_mapa` and `bo_samvada` re-run after.
+- **Stale upstream at the census (six `Build.dep_liveness` PARTIAL):** `bo_anveshana` (`bo_drishti`), `bo_chart_gestalt` (`bo_cgm_paths`, `bo_anveshana`), `bo_pramana_mapa` (`bo_upaya`, `bo_drishti`, `bo_anveshana`), `bo_samvada` (`bo_upaya`, `bo_pramana_mapa`), `bo_upaya` (`bo_cgm_motifs`), `bo_yantra_mechanism` (`bo_cgm_motifs`, `bo_cgm_paths`): a coherent L2 rebuild in level order clears them; none is an asset defect.
+- **Shared `bodha_cgm_nodes`:** `bo_bimba` replaces its five node types; `bo_karanajala` upserts arudha/special_lagna nodes and back-fills centrality onto bimba's rows: run bimba then karanajala. Node ids are deterministic functions of `(chart, ayanamsha, node_type, node_subject)` (`bodha_cgm_node_identity()`, migration 714): changing a node's `node_subject` derivation is an identity change (the `bo_bimba` FD-1 deliberately keeps it).
+- **Cost:** `bo_samskara` re-embeds only changed inputs (a row-snapshot reuse key) at a Vertex AI call per changed signal; `bo_laksana` is the longest writer (3,967 lines, ~50k rows).
+- **Services and views:** `bo_samvada` is a no-op writer; its rebuild changes nothing.
+- **Shared-root and calibration hooks** (`dasha_activation_proximity_score`, `calibration_hook`, `dynamic_*`) are L3/L5-owned and NULL by design; a rebuild must not fill them with defaults.
+
+## 8 · Dispositions and the layer instance
+
+The layer instance assigns no disposition (TG-L2-017: no tier maps evidence to a disposition). This index proposes: **keep (P)** for 21 assets; **qualify (Q)** for `bo_samvada` (a documented no-op writer for a legacy view: narrow its claims, N/A rules by N-22, a real chart-scoped `count_sql`; consolidation into a versioned projection is a later SS decision); **integrate (I)** for `bo_grounding` (50,731 rows, DRAFT, no reader; connect to the grounding spine and attribution catalogue, then promote). No asset is proposed for enrich, consolidate, historical or retire. Where a fix is an output change (`bo_bimba` FD-1, `bo_karanajala` FD-2, `bo_anveshana` FD-1/FD-2, `bo_laksana` FD-1, CF-20, CF-16, `bo_grounding` FD-1) it goes to SS (R5) regardless of the disposition.
+
+**Approval under Track A §10:** keep, qualify and enrich (with or without fix designs) go to the Steward (G16); integrate (`bo_grounding`) goes to SS; **any output change goes to SS (R5)**. Provisional approval before J1 covers only tier-independent designs.
+
+## 9 · Questions for Strategic Suvarṇa (consolidated)
+
+Curated from the per-asset questions (the full lists stay in each brief, §8). Ordered by how many assets or gates the answer unblocks.
+1. **CF-02 (5 assets, Build):** declared produced-table set with a detector clause (recommended), or widen `count_sql` (reverses migration 326)? Grant `suvarna_reader` SELECT on the 8 unreadable `bodha_*` tables so the four static explanations (65, 15, 60, 60) can be confirmed.
+2. **CF-04 (8 + 7 assets, Dens):** may a limit-only module declare `paginated: false`; is the MSR attribution rule (the served `signal_type_class` facet) accepted; is the scanner fix for `registry_bridge.ts` / `register_p1_synthesis.ts` a Track E item before the re-measure?
+3. **CF-20 (5 satellites + `bo_laksana` FD-1):** are the neutral-constant salience inputs (`documented_approximation`) accepted, or must uncomputed terms be NULL / computed from L1 (output change)?
+4. **`bo_karanajala` FD-2:** which argala convention does the L2 edge state: BPHS Ch.28 {2, 4, 11} (`bo_karanajala.py:386-391`) or L1's Jaimini {2, 4, 5, 11} (`ga_structural_writer.py:615-616`), and must the edge read L1's `argala_natal_matrix`? A domain decision with an output change.
+5. **`bo_anveshana` FD-1/FD-2:** null the stored `confidence`/`ayanamsha_fragility`/`falsifier` until earned (they are `consequence + 0.1`, a literal `low` and one constant sentence), and may `why_an_acharya_misses_it` assert what an acharya would miss, or must the claim be defined or dropped?
+6. **`bo_bimba` FD-1:** display-name-only fix for yoga/dosha nodes whose label is a status text or timestamp; and run the read-only collision measurement (distinct yoga/dosha signals versus node subjects) before approval?
+7. **CF-15:** may a declared edge the writer provably never reads be removed (`bo_pratijna` → `bo_laksana`, `bo_sangati`)? It is the converse of migration 1210 and a DAG change.
+8. **`bo_grounding`:** integrate (which consumers first), keep as substrate (`unresolved`), or retire (discards D-NATIVE-09)? Is adjudication #1726 (the `sruti` tier) still open?
+9. **`bo_samvada`:** confirm qualify (view kind, real `count_sql`, N/A rules by N-22) and whether to consolidate the view into a versioned projection later; which build record is intended for a passive boundary (the saved record says 1, the code now returns 0)?
+10. **CF-13:** is R243's chart list or W2-3_REVIEW's authoritative per asset (MF-L2-011), and is the annotation carried until F-3 retires the guard?
+11. **`bo_upaya`:** lift the "PASS withheld" annotation for emits now that #2773 is on main, or only after B.U proves it live?
+12. **CF-03:** may the seven seed `catalog_status` literals (DRAFT in the seed, CURRENT live) be corrected by seed edit only, and the 60,000 floors refreshed only after a coherent rebuild?
+13. **CF-06:** is `path_label_human` narration or a structural label; is `embedding_input_summary` narration or an embedding input?
+14. **CF-16 (TG-L2-021):** what is the counting rule for independent support so the empty shared-root carriers can be filled or retired?
+15. **CF-12 / CF-19:** does ownership of the arudha/special_lagna nodes stay with `bo_karanajala` (declared cross-asset write, orphan census) or move to `bo_bimba`; does `valence` belong to the producer or to the rerank for fingerprint ownership?
+16. **`bo_laksana_rerank` / arch §12.9:** correct the definition of the L2 MSR set (writers whose rebuild replaces rows) to six, with the rerank an UPDATE-only dependant (MF-L2-010)? Is the keyword-heuristic valence (44,479 of 50,678 chart rows) an accepted approximation?
+17. **`bo_samskara`:** is the embedding table a navigation aid with no served surface (declare it, drop the `semantic_query` wording and the `coverage_matrix.ts:709` pointer), or must the semantic query be built?
+18. **CF-10:** should Build.history count only runs since the last change to the asset's writer or registry row?
+19. **CF-07:** is a stratified re-derivation sample, with the §N.5 resolver as the reference leg, an acceptable L2 carriage detector (D1 for `bo_upaya` and `bo_grounding`)?
+20. **`bo_chart_gestalt` / `bo_pramana_mapa`:** `pivot_ids` NULL-by-design or removed; is the open detector backlog (three NULL pass-flags) in scope for the first L2 wave?
+
+## 10 · Notes on method and path
+
+- **Path:** per Track A brief §8: `00_ARCHITECTURE/briefs/suvarna/layers/L2/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` (revalidation bumps to v1.1). **Fix designs live inside each brief (§4)**, as in the L0 set; `INDEX.md` sits beside the briefs.
+- **Gap classification** (real / SSq / detector / other) is this lane's reading of the saved census, the 2026-09-27 ledger and main's code; no tier supplies a rule mapping evidence to a disposition (TGH-T3-03). Items marked real-or-SS-question were read in code and are not measured by any census criterion.
+- **Prior-campaign findings (Nirmāṇa L2_W2_DECIDE, 2026-09-05) were used only as pointers** and each was re-checked against main's code before being stated: several are already fixed (`or 28` default, the stored `vargottama_amplification` column, `cross_system_consensus_count` ≡ 1, `integrity_check_sql` absence: all 23 carry one), so they are not asserted.
+- **Fixes go in the asset, the registry or a declaration, never in the frozen orchestrator** (T4 §4.2): the options that would need an orchestrator change (a per-table rows split in `WriterResult`, CF-02) are flagged R2 and not designed.
+- **Facts not established offline** are marked as such in the briefs: the contents of the 8 unreadable tables; the node-subject collision measurement; whether the L1/L2 argala difference is deliberate; live column lists; the second-pass Dens run uses approximate columns.
+
+## 11 · Format used (shared with the L0 set)
+
+Each brief is `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` with: frontmatter (asset_id, layer, artifact, version, status, produced_by, produced_on, plan_item, census_revision_used, template_revision, layer_instance, base_commit, disposition, disposition_proposal_approver, nirmana_freeze, ledger_gap_ids); §0 identity (cited file:line) and field table; §1 measured state and the nine gates (saved census per criterion, offline rollup, offline static re-scans); §2 gaps; §3 disposition; §4 fix designs (one FD per real gap, plus an auto-derived Narr golden-test FD and Carr detector FD) and the shared fixes that apply; §5 semantic fingerprint contract; §6 preserved kernel, carriage check, opportunities; §7 rebuild and frozen-manifest consequences; §8 questions for SS. L2 adds `nirmana_freeze` and §7, and the MSR group reading (§3 here).

@@ -27,7 +27,7 @@ Pure L2 derivation (CR-36) over L1 `vargottama_per_varga` and `graha_position` f
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
-| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2058` | seed (live may differ by migration) |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2058`; seed `catalog_status` DRAFT, live CURRENT | seed (live may differ by migration) |
 | writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:115`; registry `has_writer` = True | writers dir, census `Build.registered` |
 | target table(s) | `bodha_msr_signals`; count_sql tables: `bodha_msr_signals` | census CEN-R |
 | live rows / floor | 14 / 10 (chart 482012f1, count_sql scope) | census `live_rows`, `Count.floor` |
