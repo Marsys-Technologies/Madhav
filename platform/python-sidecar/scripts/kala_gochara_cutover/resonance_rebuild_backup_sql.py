@@ -325,7 +325,11 @@ def _m6_role_state_sql(role: str) -> str:
         offset = _M6_HOUSE_LORD_OFFSETS[role]
         return (f"CASE WHEN (SELECT n FROM lagna) IS NULL THEN 'unavailable'"
                 f" WHEN NOT (SELECT ok FROM lords_complete) THEN 'unqualified'"
-                f" WHEN NOT EXISTS (SELECT 1 FROM reference_signs rs JOIN graha g ON g.name = rs.lord"
+                # The L0 table `reference_signs` stores lords in LOWERCASE (brahmagyan/
+                # l0_reference.py:269 SIGNS: 'mars'); this VALUES list is Title-case. A bare
+                # `g.name = rs.lord` matched NOTHING, so this check agreed with the writer's
+                # equally-wrong lookup (real rebuild run 9863849f) — compared case-insensitively.
+                f" WHEN NOT EXISTS (SELECT 1 FROM reference_signs rs JOIN graha g ON lower(g.name) = lower(rs.lord)"
                 f"                    JOIN graha_signs gs ON gs.fact_subject = g.subject"
                 f"                   WHERE rs.sign_id = (((SELECT n FROM lagna) - 1) + {offset}) % 12 + 1)"
                 f"      THEN 'unavailable' ELSE 'resolved' END")
@@ -337,7 +341,7 @@ def _m6_role_state_sql(role: str) -> str:
         # natal nakṣatra counts as the 1st, so the 5th is natal+4; the lord
         # is Vimśottari[(5th - 1) % 9] — derived_points.nakshatra_lord.
         return (f"CASE WHEN (SELECT n FROM moon_nak) IS NULL THEN 'unavailable'"
-                f" WHEN NOT EXISTS (SELECT 1 FROM vim_lords v JOIN graha g ON g.name = v.lord"
+                f" WHEN NOT EXISTS (SELECT 1 FROM vim_lords v JOIN graha g ON lower(g.name) = lower(v.lord)"
                 f"                    JOIN graha_signs gs ON gs.fact_subject = g.subject"
                 f"                   WHERE v.idx = (((SELECT n FROM moon_nak) - 1 + 4) % 27) % 9)"
                 f"      THEN 'unavailable' ELSE 'resolved' END")
@@ -630,7 +634,7 @@ def value_invariants_sql(chart_id: str) -> str:
             f"              WHEN m.target_ref !~ '^[0-9]+L$' OR (substring(m.target_ref from '^([0-9]+)L$'))::int NOT BETWEEN 1 AND 12\n"
             f"                   THEN 'unavailable'\n"
             f"              WHEN NOT (SELECT ok FROM lords_complete) THEN 'unqualified'\n"
-            f"              WHEN NOT EXISTS (SELECT 1 FROM reference_signs rs JOIN graha g ON g.name = rs.lord\n"
+            f"              WHEN NOT EXISTS (SELECT 1 FROM reference_signs rs JOIN graha g ON lower(g.name) = lower(rs.lord)\n"
             f"                                 JOIN present p ON p.fact_subject = g.subject\n"
             f"                                WHERE rs.sign_id = (((SELECT n FROM lagna) - 1)\n"
             f"                                     + ((substring(m.target_ref from '^([0-9]+)L$'))::int - 1)) % 12 + 1)\n"
