@@ -303,6 +303,147 @@ The grant plan's own verification and rollback are its; this plan only consumes 
 **S4 needs `phala_anchors` SELECT** (and `bg_combustion_orbs` for a non-fallback run); S5 needs the full phala set; S6 the mimamsa set and guard; S7 the held `phala_rectification` ruling. Q9 (split decision) is restated in section 9.
 
 
+## S0b. STAGE S0b: `bg_transit_rules` (GLOBAL L0), first stage after the S0 smoke (v1.2, SS ordering)
+
+REVIEW section; no execution authority. Every figure was read at 2026-10-01 17:40-17:58Z as `suvarna_reader` (E13) or recomputed from `origin/main` (4eb40bec1) sources; "code-derived" means read from code and not exercised in production.
+
+**Why it moves to the front.** Pravāha's pipeline run 1865991c failed with `DEP-ASSERT ... bg_transit_rules (receipt:stale)`. The same predicate blocks any build of the six direct dependents (`ka_gochara`, `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_sangam`, `ka_vedha_gochara`, `ka_yojaka`) on every chart. The asset is global, so one rebuild clears it for all charts.
+
+### S0b.1 Before-state (read-only, E13 blocks C, F, G)
+
+| Item | Value |
+|---|---|
+| Registry | `bg_transit_rules`: layer `brahmagyan`, `scope` global, `domain` shared, `asset_kind` data, `has_writer` true, `depends_on` `{}`, `target_floor` 76, `writer_timeout_seconds` 10800, `natural_key_partition` NULL, integrity SQL present (pins 9 / 76 / 27 rows and three content hashes) |
+| Rows (table, live) | `bg_transit_rules` 76 (69 writer-owned: 43 favourable + 26 unfavourable; 7 migration-owned `double_transit`), `bg_transit_engine` 9, `bg_transit_moorti` 27 |
+| Throughput (global row, `chart_id` NULL) | `lit`, `last_built_at` 2026-09-04 20:07:52.531797Z, `rows_written` 104 (= 9 + 68 + 27, before the 69th rule existed) |
+| Freshness | `__whole_asset__` **stale**, reasons `["registry_changed"]`, `observed_at` 2026-09-23 21:17:23.869511Z |
+| Receipt | `proven`, version `nirmana-provenance-receipt-v2`, `build_id` 440c1ae6 (the 2026-09-04 20:07 run), `observed_at` 2026-09-04 20:07:52.531797Z; code digest `9812db139d56`, output digest `1983611685a8`, spec `b704673aa584` (three components: rules, engine, moorti), upstream `dbdd6eea6880`, config `c15fddb4f943`, partition `595f36c1f29d` |
+| Last builds | `build_run_assets`: 2 completed, both on the canonical chart as `asset_set` runs of L0 assets (2026-09-04 19:42:12 and 20:07:52Z), dispositions `build` / `build`, `output_changed` true then false, 0.04 s and 0.03 s. None since. |
+| Integrity SQL today | executed read-only: **true** |
+| `bg_transit_engine` | a registry asset of its own (`has_writer` false, lit 2026-08-02, no freshness row); it is written by this same writer and digested inside this asset's spec; it is not separately dispatchable |
+
+### S0b.2 What makes the receipt stale (registry_changed): what exactly changed
+
+The trigger `nirmana_registry_receipt_invalidation` fires on an UPDATE of `depends_on`, `natural_key_partition`, `health_probe`, `integrity_check_sql`, `target_floor`, `asset_kind`, `asset_type`, `scope`, `has_writer`, `is_active` or `target_table`, and sets every `asset_freshness` row of the asset to `stale` with reason `registry_changed` (it does not touch the receipt). The freshness `observed_at` equals the `applied_at` of migration **1078** (2026-09-23 21:17:23.869Z). 1078 (L0 repair, PR #2727) updated the registry row: `target_floor` 75 -> 76 and `integrity_check_sql` re-pinned (both are trigger columns), plus `english_description` and `volume_explanation` (not trigger columns). Migration 1079 (22:03:22Z) changed `english_description` only, so it did not fire the trigger and did not touch the flag. No other registry event touched this row since 2026-09-04.
+
+**The flag is not a false alarm; three things moved under the 09-04 receipt:**
+
+| What | Receipt (09-04) | Now | How known |
+|---|---|---|---|
+| Writer source (code digest) | `9812db139d56` | `824c6d7d7237` (`origin/main` digest inventory; recomputed locally with `get_writer_source_hash`: equal) | `l0_transit.py` changed in #2727 (b6690928f) |
+| Table content (output digest) | `1983611685a8` | `ca19407a3e37` (replica of `compute_output_digest`, E13) | L0 repair items 1-3: 35 rows re-cited, 3 Venus `vedha_house` values corrected, the Mercury 8th->1st pair inserted (75 -> 76 rows), 6 Rahu/Ketu rows marked unsourced |
+| Registry contract | 75 rows, old hash | 76 rows, new hash (1078) | migration 1078 |
+
+The content change was applied outside any build run (no `build_run_assets` row after 09-04 for this asset; how the repair writer ran is not recorded in the tables read). Upstream, config and partition digests recompute to the stored values exactly, so the writer source and the content are the only differences.
+
+### S0b.3 What a rebuild writes (writer read in full)
+
+`writers/bg_transit_rules.py` -> `brahmagyan/l0_transit.py seed_transit_rules` (registered for both `bg_transit_rules` and `bg_transit_engine`). One transaction, `ON CONFLICT DO UPDATE` upserts on natural keys (L0 standard, no delete-then-insert because `bg_transit_rules.id` is serial and `gochara_resonance_map.source_rule_id` references it):
+
+| Table | Upserted rows | Key |
+|---|---|---|
+| `bg_transit_engine` | 9 | `graha` |
+| `bg_transit_rules` | 69 (writer-owned categories) | `(graha, rule_type, primary_house)` |
+| `bg_transit_moorti` | 27 | `nakshatra_offset` |
+
+Total 105 (reference `rows_written` 105; last real 104). A retirement sweep (F-145) deletes owned-category rows absent from the source; the 7 migration-owned `double_transit` rows are never candidates. **Read-only comparison of the source lists against the live rows (E13): 0 engine rows, 0 rule rows, 0 moorti rows would change, 0 rows would be retired, 0 inserted.** So the rebuild changes no table content; what it changes is the receipt, the freshness and the throughput. Side effect: the serial sequence of `bg_transit_rules.id` advances by 69 (ids already assigned do not change). No L1 table, no per-chart table, no other global table is written.
+
+### S0b.4 BLOCKER found read-only: the builder cannot write `bg_transit_moorti`
+
+`has_table_privilege('data_plane_builder','public.bg_transit_moorti', 'INSERT' | 'UPDATE')` = false (also false at column level; ACL has `data_plane_builder=r`); migration 1073 granted SELECT only, for Kāla reads. The writer's third upsert is `INSERT INTO bg_transit_moorti ... ON CONFLICT DO UPDATE`, which needs INSERT and UPDATE. **Code-derived outcome (not exercised):** the writer raises `permission denied for table bg_transit_moorti`, the light writer's transaction rolls back (engine and rules upserts included), the asset ends `error` and its throughput row goes **lit -> error**, which makes Pravāha's block worse (their DEP-ASSERT would then read `bg_transit_rules(error)`). No data change. The other L0 data writers' tables are fully granted to the builder (`bg_vedha_malefic_scale`, `brahma_formula_constants`, `vidhi_primitives`: S, I, U, D). The grant needed is `INSERT, UPDATE ON public.bg_transit_moorti TO data_plane_builder` (the table has no sequence); it is not in the grant plan v1.3 or in 1073; not drafted here (a separate act, Pravāha/grant owner). The `asset_freshness` gap of P0.6 item 1 applies on top of this.
+
+### S0b.5 Effect on other charts and on per-chart assets (live registry)
+
+- **Downstream closure of `bg_transit_rules`: 34 per-chart assets, 0 global.** 16 are in the 27-asset launch set (`ka_gochara`, `ka_yojaka`, `ka_sangam`, `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, 8 `ph_*`, `mi_bhavisya`), 18 are outside it (`ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_jivana_parva`, `ka_kshetra`, `ka_taranga`, `ka_tulana`, `mi_abhilekha`, `mi_adhilepa`, `mi_bhara`, `mi_darshana`, `mi_gunanaka`, `mi_pariksha`, `mi_pramana`, `mi_sambandha`, `mi_sankalpa`, `mi_seva`, `ph_rectification`).
+- **Mechanism (code-derived):** after the asset completes, `runner.py on_complete` calls `staleness.propagate_downstream_staleness` with **the run's `chart_id`**; it reads `build_run_assets.output_changed` and, if TRUE (or unrecorded), sets every downstream asset not in the run's plan and currently `lit`/`service_ok` to `stale` **for that chart only** (`WHERE chart_id = <run chart>`). For a global asset the run's chart is just the chart the request was made on.
+- **Expected `output_changed` TRUE**: the new output digest (`ca19407a3e37`) differs from the stored one (`1983611685a8`). v1.1's "expected `skip_no_delta`, digest unchanged" (1.1, R-9, 3.3) is **withdrawn**: the code digest differs, so the delta-skip gate cannot pass and the writer executes.
+- **Canonical chart, states of the 34 now:** 3 `lit` (`ka_gochara`, `ka_moorti_nirnaya`, `ka_vedha_gochara`), 20 `stale`, 10 `error`, 1 `dormant`. **Run on the canonical chart, S0b flips exactly those 3 lit rows to `stale`** (the S0b plan contains only `bg_transit_rules`; `ka_gochara` is rebuilt later in S3 anyway). The other 31 stay as they are.
+- **Other charts are not touched by a canonical-chart run.** `1c826d5a` holds 4 `lit` rows among the 34 (`ka_gochara`, `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_yojaka`), `cb73cd3d` holds 1 (`ka_gochara_resonance`); they stay `lit` although built against the old receipt (propagation is run-chart-scoped), so for them `lit` is no evidence of currency. Their next build recomputes the upstream digest (a rebuilt dependency changes the receipt's `observed_at`), so those consumers will execute, not delta-skip. Running S0b under another chart would instead flip that chart's rows and leave the canonical chart's stale-by-content rows marked `lit`: not recommended (S0b.8).
+- **What S0b forces next (not in v1.1).** `ka_sangam` declares `ka_vedha_gochara` (direct), and `ka_gochara` declares `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara` (direct). Live fixpoint with the planner's rule (E13): **today** the 27-asset set needs 1 addition (`ka_gochara_resonance`, `error` since 17:36:56Z, set by run 1865991c); **after S0b** it needs 4: `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara` and, through `ka_vedha_gochara`, **`bg_vedha_malefic_scale`** (stale; section S0L). With `bg_vedha_malefic_scale` fresh first it needs the Gochara trio only. These are Gochara-family assets (Pravāha's lane, Q5, Q18); the plan carries them as stage S0c (conditional).
+
+### S0b.6 Expected result, canaries, rollback
+
+**Expected (estimate for run mechanics, code-derived for digests):** `build_run_assets` disposition `build`, `output_changed` TRUE; `asset_throughput` `lit`, `rows_written` 105; receipt `proven`, code digest `824c6d7d7237`, **output digest `ca19407a3e37`** (checkable: it must equal the live replica digest, because the rebuild changes no row), spec `b704673aa584`, `build_id` the new run; `asset_freshness` `fresh`, reasons `[]`, `observed_at` the run time. The receipt reads fresh/proven because the digests are all available (no declared dependency, spec present).
+
+| Canary (read-only) | Before (17:40-17:55Z) | After (expected) |
+|---|---|---|
+| `SELECT count(*) FROM bg_transit_rules / bg_transit_engine / bg_transit_moorti` | 76 / 9 / 27 | 76 / 9 / 27 |
+| Replica of `compute_output_digest` (E13) | `ca19407a3e374505...` | identical, and equal to the new receipt's `output_digest` |
+| Registry integrity SQL (`\gexec`) | true | true |
+| Receipt / freshness / throughput (F1 query, global row) | proven `1983611685a8` / stale `registry_changed` / lit 104 | proven `ca19407a3e37` / fresh `[]` / lit 105 |
+| Canonical rows of the 34 (state) | 3 lit, 20 stale, 10 error, 1 dormant | `ka_gochara`, `ka_moorti_nirnaya`, `ka_vedha_gochara` `stale`; the other 31 unchanged |
+| Other charts, the 34 (state counts) | `1c826d5a` 4 lit, `cb73cd3d` 1 lit | identical |
+| `asset_throughput_state_audit` | one builder row (17:36:56Z) | rows for `bg_transit_rules` (lit -> building -> lit) and the 3 flips, `db_user` of the job |
+| Served reader `ref_transit_rules_get` (tool-to-table mapping not verified) | not called by this lane (production MCP call; the DB canary above is authoritative) | the same 76-row content |
+
+**Rollback / what it cannot undo.** Data: nothing to roll back (0 rows change). A failed run rolls back whole (light writer, single transaction; integrity SQL gates success) and leaves the old receipt, but sets the asset `error` (S0b.4). Cannot be undone by this lane: the replaced receipt (old values recorded above and in E13), the overwritten freshness and throughput rows, append-only `build_runs` / audit rows, the serial sequence advance, and the **three canonical lit -> stale flips**, which only a rebuild of those assets reverses.
+
+**Duration.** The writer took 0.03-0.04 s in both completed builds; run-level overhead dominates: single-asset completed runs since 2026-09-01 took a median 25 s from creation to end (min 6 s, max 1675 s, n=128; E6). Allow 5 minutes before calling it hung. The run takes the global-assets lock; a concurrent run holding global assets defers it (exit 3).
+
+### S0b.7 The exact request (global asset rebuild)
+
+`POST /api/cockpit/runs` by a signed-in **super_admin who also has write access to the chart** (code: `route.ts`, `computeNonCandidateAssetIds`, `plan.ts`):
+
+```json
+{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","scope":"asset_set","scope_target":"bg_transit_rules","action":"rebuild"}
+```
+
+No `clear_before`, no `force_l0`. This is the shape the 2026-09-04 L0 runs used (`asset_set` on the canonical chart naming the L0 assets). Other shapes do not reach it: `scope:'asset'` on a global asset is refused for everyone (403 `FORBIDDEN_L0`, "Global assets must be built at scope=global"); `scope:'global'` excludes `brahmagyan`-layer assets from the candidates; `scope:'layer'`+`brahmagyan` sweeps skip `domain='shared'` assets (this one is shared) and need super_admin; a non-super_admin sees global assets as non-candidates (planner error). `action:'build'` would also select it (receipt not fresh) but `rebuild` is used for consistency. Planner pre-flight: no dependencies, so no blockers. The one-active-run-per-chart index and the chart advisory lock apply to the canonical chart; the global-assets lock applies to the run.
+
+### S0b.8 Gate before launching S0b (all read-only, repeat at launch)
+
+1. P0 audit grant met (P0.6); **the S0 smoke has run and its outcome is known**, in particular that the `asset_freshness` write path works (P0.6 item 1).
+2. **`INSERT, UPDATE ON bg_transit_moorti` granted** (P0c.2; S0b.4). Check: the P0.6 SQL, columns `moorti_ins`, `moorti_upd` true.
+3. The pipeline-job image carries #2727 (b6690928f) and `platform/src/generated/nirmana-writer-digests.json`'s entry for `bg_transit_rules` (`824c6d7d7237...`); otherwise the runner's manifest code-digest check refuses the run (fail closed, no write). Read the cockpit response's `job_image_tag` (or the job description); the deploy run that carried 1211 skipped the job-image build (P0.6, Trap 103), so this is not assured.
+4. No `planned/running/paused` run on any chart (0 at 17:58Z); global-assets lock free.
+5. **Pravāha is told before the run**: they are the beneficiary, their run will need the same chart slot, and S0b flips three of their canonical assets stale (`ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_gochara`). S0b does not touch `bg_ephemeris` or `bg_texts`, so SS's L0 notification rule is not triggered by this stage itself.
+6. Chart for the run: canonical (S0b.5).
+7. Before-state captured: S0b.6 canaries, F1 for the 34.
+
+**Not verified here (S0b):** the job's actual DB role path for the receipt writes; the job image content; that the repair writer's run left the content exactly as the source lists (compared: yes, equal); the behaviour of the runner on the permission-denied exceptions; the exact `ref_transit_rules_get` payload.
+
+
+## S0L. STAGE S0L (optional): L0 freshness for `bg_vedha_malefic_scale`, `bg_vidhi_primitives`, `bg_formula_constants`, `bg_ephemeris_engine`, `bg_panchanga` (v1.2)
+
+REVIEW section. For each asset: whether the 27-asset wave (and what S0b forces) needs it fresh, what a rebuild touches, whether a digest-spec fix must come first. "Needed" is computed with the planner and DEP-ASSERT rule (only **direct** declared dependencies of an asset that runs are asserted; the live registry; E13) and the live fixpoint of S0b.5.
+
+| Asset | Kind | Receipt / freshness now (reason, since) | Needed by the 27? | Rebuild touches | Canonical lit flips | Digest-spec fix first? |
+|---|---|---|---|---|---|---|
+| `bg_vedha_malefic_scale` | data, writer | proven 2026-09-03 / **stale** `registry_changed`, 2026-09-23 21:17:23.507Z (migration 1077) | **Not directly; required in effect once S0b flips `ka_vedha_gochara`** (it is a direct dep of `ka_vedha_gochara` only) | 5 rows of `bg_vedha_malefic_scale` (source = live, 0 rows change) | `ka_gochara`, `ka_vedha_gochara` (already flipped by S0b) | no (spec `16a4946da003` exists) |
+| `bg_vidhi_primitives` | data, writer | proven 2026-09-04 / **stale** `registry_changed`, 2026-09-06 19:52:18.78Z (migration 706), partition `primitive_id` | no (only consumer is `bg_vidhi_floors`, global, outside the closure) | 60 rows of `vidhi_primitives` (source = live, 0 rows change, 0 deleted) | none | no (spec `179ab2c22fad`) |
+| `bg_formula_constants` | data, writer | `constant_id` partition **fresh** (2026-09-07); legacy `__whole_asset__` row (receipt v1, 2026-08-25) **stale** `registry_changed`, 2026-08-26 04:08:54.54Z (migration 615) | no (consumers `mi_gunanaka`, `mi_pariksha`, `mi_pramana`, all outside the plan) | nothing: delta-skip expected | none | no (spec `126465c083e5`) |
+| `bg_ephemeris_engine` | **service**, legacy health probe, `has_writer` false | `unknown` receipt (08-27) / **stale** `output_digest_spec_unavailable` + `registry_changed`, 2026-09-23 21:07:36.17Z (migration 1075) | no (direct dependent `bg_cohort`, global; `ka_kshetra`, `mi_bhara`, `mi_sankalpa` through it) | no table; registry `service_health`/`last_invoked_at`/`last_selftest_at`, receipt, freshness, throughput | none (the 3 per-chart dependents are `error`/`dormant`) | **yes, and a spec alone is not enough** (below) |
+| `bg_panchanga` | **service**, legacy health probe, `has_writer` false | `unknown` / **unknown** `output_digest_spec_unavailable`, 2026-08-27 | no (only transitively, through `ga_panchanga`) | same as above | **15** (`bo_laksana`, `bo_sangati`, `bo_karanajala`, `bo_bimba`, `bo_arudha`, `bo_nakshatra_semantic`, `bo_samskara`, `bo_grounding`, `bo_laksana_rerank`, `ga_panchanga`, `ga_yoga`, `ga_structural`, `ga_sade_sati`, `ga_vichara`, `ka_gochara`) | yes (same) |
+
+**Does the 27-asset wave need any of them fresh?** Direct L0 dependencies of the 27 (E13 blocks I-K, from `asset_registry.depends_on`): `bg_transit_rules` (by `ka_gochara`, `ka_sangam`, `ka_yojaka`), `bg_ephemeris` (the table asset, by `ka_gochara`; lit and fresh), `bg_ghatana` (`ka_avadhi`, `ka_yojaka`; fresh), `bg_dignity_reference` (`ka_vighnakara`; fresh). None of the five assets above is a direct dependency of any of the 27. Transitive closure only: `bg_panchanga` (24 of the 27, through `ga_*`) and `bg_vedha_malefic_scale` (15 of the 27, through `ka_vedha_gochara`); the runner does not assert transitive dependencies. The one real need arises from S0b: **`bg_vedha_malefic_scale` is required in effect** (S0b.5).
+
+**Per asset.**
+
+1. **`bg_vedha_malefic_scale`** (writer `bg_phaladeepika_vedha.py`, `seed_vedha_malefic_scale`, 5-row upsert on `(table_version, malefic_count)`). The registry flag comes from 1077 (integrity reseal after repair item 5's `effect_description` correction). Code digest moved (stored `9170aa9ea036`, `origin/main` inventory `2e3a372e2df6`), output digest moved (live `b1d78defec70`, stored `e76e087dbaf7`): it executes, `output_changed` TRUE, 0 rows change; integrity SQL true today. Builder grants complete. Propagation (canonical): `ka_gochara`, `ka_vedha_gochara` lit -> stale (both already stale after S0b, or being rebuilt in S0c/S3). It is a global asset: same request shape as S0b (`scope_target:'bg_vedha_malefic_scale'`, or `bg_transit_rules,bg_vedha_malefic_scale` in one run if SS wants a single slot). Duration: 0.04-0.06 s writer.
+2. **`bg_vidhi_primitives`** (writer `bg_vidhi_primitives.py`: upsert-if-distinct, then `DELETE ... WHERE NOT primitive_id = ANY(source)`; source 60 = live 60, so 0 inserted/updated/deleted). Flag from 706. Code digest moved (stored `93469b4c6394`, inventory `63f0a35a4be7`), output digest moved (live `28eeb20c6abb`, stored `93bc7a13c3cc`): executes, `output_changed` TRUE; its only dependent `bg_vidhi_floors` is global, and propagation is chart-scoped, so no flip is recorded. Not needed by the wave; cheap and safe; optional. Grants complete.
+3. **`bg_formula_constants`**: **nothing to rebuild.** The planner and DEP-ASSERT read the latest-observed freshness row per asset (`runPreparation.ts`, `asset_runner.deps_unsatisfied`), which is the `constant_id` partition row: **fresh**. The stale row is a legacy `__whole_asset__` partition (receipt version v1, observed 2026-08-25/26, before partitions were declared). The current receipt's code digest equals the inventory (`54c8bbee62cb`), its output digest equals the live replica (`2c6ebbe3e7a4`), and upstream/config/partition recompute equal, so a rebuild would delta-skip and re-stamp only `constant_id`; **it cannot clear the legacy row** (the writer's partition is `constant_id`). Clearing it is a data decision (delete the orphan receipt and freshness row), not a build; not drafted here.
+4. **`bg_ephemeris_engine`** (SS's flagged asset). It is the engine **service**, not the table `bg_ephemeris` (`ephemeris_daily`, 825,084 rows per its integrity contract, lit and fresh, consumed by `ka_gochara`, `ka_moorti_nirnaya`, `ka_vedha_gochara`). A rebuild runs `service_probes.run_health_probe` (migration 1075's degree-level mean-node anchor; the probe source changed with it, stored code digest `fa59f213376c` is the old probe digest, the digest inventory's `probe_digest` `997985c1d56a`, presumed to be the same quantity, not recomputed) and writes no table. Risks: the probe needs the pinned Swiss Ephemeris files in the job container (not verifiable here); a red probe sets the asset `error`. A GREEN probe leaves `unknown` / `output_digest_spec_unavailable` (the registry_changed reason is cleared; the state is not `fresh`). **SS's L0 rule: notify Pravāha before this stage runs**, even though it does not touch `ephemeris_daily`; the wave does not need it, so the recommendation is not to run it as part of this plan.
+5. **`bg_panchanga`**: **do not rebuild in this wave.** A probe records no `output_changed`; propagation then fails open and would mark 15 canonical lit assets stale (list above), including the MSR producer `bo_laksana` and `bo_sangati`, which would break the MSR-before-Kala/Phala invariant (section 1.5) and the DEP-ASSERT of S2/S3. This is the reason P0.4 avoids it for the smoke. Code-derived, not exercised.
+
+**The digest-spec gap (services with `output_digest_spec_unavailable`).** Of the five, exactly two: `bg_ephemeris_engine` (stale) and `bg_panchanga` (unknown). Both are legacy health-probe services (no `WriterBase` writer), unlike 1213's `ka_dasha_kala` and `ka_muhurta_seva` (writer-backed services, whose receipts take `compute_output_digest`). The gap is three links, all code-derived:
+
+1. **No spec row** in `asset_output_digest_specs` for either asset (E13 block F).
+2. **A spec row alone changes nothing:** `_persist_probe_receipt` (`asset_runner.py:430-470`) calls `capture_and_persist_receipt` without `output_digest_spec_sha256` and with a probe digest that embeds `run_id`; `compute_output_digest` is never called on this path. The receipt would still carry `output_digest_spec_unavailable`. Making it `proven` needs a change to that function in the FROZEN orchestrator (the authorized-exception route used by SATYA-DĪPA, CLAUDE.md N.8), not only a migration.
+3. **The planner's legacy-probe exception is unreachable:** `plan.ts` accepts a service dependency with exactly `{output_digest_spec_unavailable}` only when its throughput state is `service_ok`, but the probe path writes `lit` and **no `asset_throughput` row holds `service_ok`** (live histogram: lit 162, stale 73, error 29, dormant 3, incomplete 1). So a plan that lists either service as an out-of-plan direct dependency is refused at pre-flight, while DEP-ASSERT at run time exempts services from freshness. Only `bg_cohort` (global) and `ga_panchanga` depend directly on them; none is in the 27.
+
+**Proposed spec shape (not a migration; not written):** one component over the service's own registry row, excluding the volatile timestamps and mirroring 1213's pattern, but digesting the pinned probe contract because probes do not write `selftest_detail` (NULL on both rows, observed):
+
+```json
+{"version":"nirmana-output-digest-spec-v1","components":[{"name":"service_probe_contract","relation":"asset_registry","key_columns":["asset_id"],"where_equals":{"asset_id":"bg_ephemeris_engine"},"value_columns":["asset_id","service_health","health_probe"]}]}
+```
+
+(and the same with `bg_panchanga`). `spec_sha256` must be `canonical_digest` of that object (the author computes it, as 1213 did). It would make a changed probe contract or a non-healthy state visible in the digest. Combined with the orchestrator change in link 2 it would let both receipts reach `proven`; without it, nothing changes. Neither is needed by the 27-asset wave.
+
+**Recommendation.** Minimal S0L = `bg_vedha_malefic_scale` only (required in effect). Optional: `bg_vidhi_primitives` (cheap, no flips). Do not run `bg_panchanga`; do not run `bg_ephemeris_engine` unless SS wants the probe re-recorded (and then notify Pravāha first, and expect `unknown`, not `fresh`). `bg_formula_constants` needs no build. Gate for S0L: S0b complete; the S0 smoke passed; `asset_freshness` write path proven; no active run; super_admin; the global-assets lock free. Rollback/limits as S0b.6 (no row changes; flag changes are not undoable).
+
+**Not verified here (S0L):** whether the job container can run the ephemeris probe; the runner's handling of exceptions on the receipt path; the SS/Pravāha-side meaning of "stale" for `bg_formula_constants` (the legacy row is the only stale one I can find); any consumer reading `bg_panchanga` beyond the registry.
+
+
 ## 0. What this review needs you to see first
 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
