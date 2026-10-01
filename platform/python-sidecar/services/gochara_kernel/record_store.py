@@ -72,6 +72,7 @@ from .substrate import (DB_BODY, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START,
                         SubstrateContact, assign_occurrence_ordinals,
                         jd_to_utc)
 from services.gochara_rules.frames import sign_of
+from services.gochara_rules import predicates as rule_predicates
 
 SUPPORT_GRAIN_SPAN = "span"
 DEFERRAL_POINT_SOLVE = ("aspect/conjunction contact solve needs the body's "
@@ -96,6 +97,15 @@ _JD_UNIX_EPOCH = 2440587.5
 
 def _utc_to_jd(t: datetime) -> float:
     return t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+
+
+def _dasharow(row: dict) -> dict:
+    """Normalise an L1 chart_dashas read for the predicate evaluator:
+    start/end as datetimes (the defensive reader hands dicts whose values
+    may be str or datetime depending on the driver's row shape)."""
+    def _dt(v):
+        return v if isinstance(v, datetime) else datetime.fromisoformat(str(v))
+    return {"start_iso": _dt(row["start_iso"]), "end_iso": _dt(row["end_iso"])}
 
 
 @dataclass(frozen=True)
@@ -622,6 +632,29 @@ class RecordStore:
         _byte_check(stored, [tuple(p) for p in prerequisites],
                     f"record {record_id} prerequisite membership")
 
+    def set_prerequisite_result(self, *, record_id, ordinal: int,
+                                predicate_id: str, predicate_version: str,
+                                result: str) -> None:
+        """The trigger's result_only path (1155: ONLY `result` may change on
+        UPDATE). A rerun computing a DIFFERENT result for the same row is
+        nondeterminism — loud failure, never a silent overwrite."""
+        assert result in ("true", "false", "unknown"), result
+        self.conn.execute(
+            "UPDATE public.ka_gochara_record_prerequisite SET result = %s"
+            " WHERE record_id = %s AND ordinal = %s AND predicate_id = %s"
+            " AND predicate_rule_version = %s",
+            (result, str(record_id), ordinal, predicate_id,
+             predicate_version),
+        )
+        row = self.conn.execute(
+            "SELECT result FROM public.ka_gochara_record_prerequisite"
+            " WHERE record_id = %s AND ordinal = %s",
+            (str(record_id), ordinal),
+        ).fetchone()
+        _byte_check(row, (result,),
+                    f"prerequisite result {record_id}/{ordinal} "
+                    f"({predicate_id})")
+
 
 # ── grain orchestration (one substep = one call = one transaction) ────────
 
@@ -732,6 +765,7 @@ def materialise_record_grain(
     arc_index_for: Callable[[str], object] | None = None,
     ephe_path: str | None = None,
     refine: bool = True,
+    dasha_rows_for: Callable[[str], list[dict]] | None = None,
 ) -> dict[str, int]:
     """Materialise one `record:<event_class>:<path_id>` grain: contacts,
     then records, bound to the class's ALREADY-WRITTEN coverage partition
@@ -823,7 +857,18 @@ def materialise_record_grain(
     coverage_facts = store.stored_coverage_facts_json(
         chart_id=chart_id, generation=generation, event_class=event_class)
     counts = {"contacts": 0, "records": 0, "natal_records": 0,
-              "truncated_contacts": 0}
+              "truncated_contacts": 0, "prereq_evaluated": 0}
+    # Per-record evaluation context for the prerequisite result pass below
+    # (v1.0 item 5): the occurrence instant (t_exact; the observed span
+    # start for a truncated contact — flagged v1.5 binding) and the support
+    # interval. Natal rows carry neither — atemporal claims.
+    evaluated: list[dict] = []
+    supports_by_agent: dict[str, list[tuple[datetime, datetime]]] = {}
+    searched_agents: set[str] = set()
+    if position_at is not None:
+        searched_agents |= {e.agent for e in residence_edges}
+    if arc_index_for is not None:
+        searched_agents |= {e.agent for e in point_edges}
     for edge, m, house in work:
         span = m["span"]
         crossing = crossings_by_body.get(edge.agent, {}).get(span.t_exact) if span.t_exact else None
@@ -851,6 +896,12 @@ def materialise_record_grain(
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites, house_from_frame=house)
         counts["records"] += 1
+        evaluated.append({
+            "record_id": m["record_id"], "edge": edge,
+            "instant": span.t_exact or span.t_in,
+            "support": (span.t_in, span.t_out or h_end)})
+        supports_by_agent.setdefault(edge.agent, []).append(
+            (span.t_in, span.t_out or h_end))
     for edge, occ, record_id, house in point_work:
         store.insert_point_contact(
             chart_id=chart_id, generation=generation, occ=occ,
@@ -874,6 +925,12 @@ def materialise_record_grain(
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites, house_from_frame=house)
         counts["records"] += 1
+        evaluated.append({
+            "record_id": record_id, "edge": edge,
+            "instant": occ.t_exact or occ.t_in,
+            "support": (occ.t_in, occ.t_out)})
+        supports_by_agent.setdefault(edge.agent, []).append(
+            (occ.t_in, occ.t_out))
     for edge in natal_edges:
         m = mint_natal_record(edge, chart_id=chart_id, generation=generation,
                               prerequisites=prerequisites)
@@ -885,6 +942,64 @@ def materialise_record_grain(
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites)
         counts["natal_records"] += 1
+
+    # Prerequisite result evaluation at materialisation (design v1.0 item 5;
+    # the 1155 trigger's result_only path — only `result` ever UPDATEs).
+    # Scope is exactly the brief's named set: period_running_at (P1) and
+    # p4_double_transit (P4). Every other declared prerequisite stays NULL
+    # (not evaluated ⇒ unknown ⇒ 'unqualified' at the F5 COMMIT
+    # finalisation — a state, never a guess). Natal rows carry no occurrence
+    # instant and are not evaluated here.
+    def _ordinal_of(predicate: str) -> int | None:
+        for i, (pid, _pv) in enumerate(prerequisites, start=1):
+            if pid == predicate:
+                return i
+        return None
+
+    if path_id == "P1" and dasha_rows_for is not None:
+        oi = _ordinal_of("period_running_at")
+        if oi is not None:
+            for rec in evaluated:
+                rows = dasha_rows_for(rec["edge"].agent)
+                if not rows:
+                    result = "unknown"   # L1 dasha rows absent — never false
+                else:
+                    result = rule_predicates.evaluate(
+                        "period_running_at",
+                        {"rows": [_dasharow(r) for r in rows],
+                         "t": rec["instant"]})
+                store.set_prerequisite_result(
+                    record_id=rec["record_id"], ordinal=oi,
+                    predicate_id="period_running_at",
+                    predicate_version=rec["edge"].rule_version,
+                    result=result)
+                counts["prereq_evaluated"] += 1
+
+    if path_id == "P4":
+        oi = _ordinal_of("p4_double_transit")
+        if oi is not None:
+            for rec in evaluated:
+                agent = rec["edge"].agent
+                other = {"jupiter": "saturn", "saturn": "jupiter"}.get(agent)
+                assert other is not None, (
+                    f"P4 record on non-Jupiter/Saturn agent {agent!r} — "
+                    "O-RP-3 violated upstream, refusing to evaluate")
+                if other not in searched_agents:
+                    result = "unknown"   # the other planet was not searched
+                else:
+                    a = rec["support"]
+                    result = rule_predicates.FALSE
+                    for b_span in supports_by_agent.get(other, []):
+                        if rule_predicates.evaluate(
+                                "overlaps", {"a": a, "b": b_span}) == "true":
+                            result = rule_predicates.TRUE
+                            break
+                store.set_prerequisite_result(
+                    record_id=rec["record_id"], ordinal=oi,
+                    predicate_id="p4_double_transit",
+                    predicate_version=rec["edge"].rule_version,
+                    result=result)
+                counts["prereq_evaluated"] += 1
     return counts
 
 

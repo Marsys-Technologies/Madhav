@@ -117,6 +117,9 @@ class FakeStore:
     def insert_point_contact(self, **kw):
         self.calls.append(("insert_point_contact", kw))
 
+    def set_prerequisite_result(self, **kw):
+        self.calls.append(("set_prerequisite_result", kw))
+
     def insert_record(self, **kw):
         self.calls.append(("insert_record", kw))
 
@@ -189,7 +192,7 @@ def test_grain_binds_the_stored_class_partition():
     assert "write_coverage" not in kinds  # the coverage substep owns that row
     assert "stored_coverage_facts_json" in kinds
     assert counts == {"contacts": 1, "records": 1, "natal_records": 0,
-                      "truncated_contacts": 0}
+                      "truncated_contacts": 0, "prereq_evaluated": 0}
     rec = [kw for k, kw in store.calls if k == "insert_record"][0]
     assert rec["coverage_key"] == "marriage"  # the frozen F7 key convention
 
@@ -390,7 +393,7 @@ def test_grain_end_to_end_on_disposable_pg(pg):
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         counts = rs.materialise_record_grain(store, **_grain_kwargs(store, sky_cid))
     assert counts == {"contacts": 1, "records": 1, "natal_records": 0,
-                      "truncated_contacts": 0}
+                      "truncated_contacts": 0, "prereq_evaluated": 0}
     row = conn.execute(
         "SELECT temporal_support_state, temporal_support_grain,"
         " house_from_frame, admission_state, outcome_valence_for_native"
@@ -654,3 +657,149 @@ def test_point_grain_end_to_end_on_disposable_pg(pg):
         " WHERE generation = '5.0' AND relation_kind = 'conjunction'"
     ).fetchone()[0]
     assert n == counts["contacts"]
+
+
+# ── 3/N part 3: prerequisite result evaluation (design v1.0 item 5) ─────────
+#
+# period_running_at (P1, per occurrence against the §4.0 vimshottari rows)
+# and p4_double_transit (P4, Jupiter/Saturn support overlap) are evaluated at
+# materialisation through the 1155 result_only UPDATE path; everything else
+# stays NULL (not evaluated ⇒ unknown ⇒ unqualified at COMMIT, F5).
+
+P1_PREREQS = [["period_running_at", "1.0.0"],
+              ["natal_bhava_relationship", "1.0.0"],
+              ["transit_relation", "1.0.0"]]
+P4_PREREQS = [["p4_double_transit", "1.0.0"]]
+
+
+def _p1_libra_edge(agent: str) -> ev.RecordEdge:
+    edges = [e for e in ev.enumerate_edges("marriage", "P1", CHART)
+             if e.transit and e.relation == "residence" and e.agent == agent
+             and e.obj.canonical_target == "span:libra"]
+    assert len(edges) == 1
+    return edges[0]
+
+
+def _p4_libra_edge(agent: str) -> ev.RecordEdge:
+    edges = [e for e in ev.enumerate_edges("marriage", "P4", CHART)
+             if e.transit and e.relation == "residence" and e.agent == agent
+             and e.obj.canonical_target == "span:libra"]
+    assert len(edges) == 1
+    return edges[0]
+
+
+def _p1_kwargs(store, edges, rows_by_agent):
+    return dict(chart_id=CHART_ID, generation="5.0", event_class="marriage",
+                path_id="P1", edges=edges, horizon=HORIZON,
+                position_at=_probe([(10, 200)]),
+                house_for=_house_from_lagna(CHART["lagna_deg"]),
+                sky_convention_id=SKY_CID, source_fact_ids=["fact-1"],
+                prerequisites=P1_PREREQS,
+                dasha_rows_for=lambda agent: rows_by_agent.get(agent, []))
+
+
+def test_p1_period_running_at_true_false_unknown():
+    edges = [_p1_libra_edge(a) for a in ("saturn", "jupiter", "venus")]
+    crossings = {a: [_crossing(10, 180.0), _crossing(200, 210.0)]
+                 for a in ("saturn", "jupiter", "venus")}
+    store = FakeStore(crossings)
+    counts = rs.materialise_record_grain(store, **_p1_kwargs(
+        store, edges,
+        {"saturn": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}],      # running at the ingress
+         "jupiter": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}],  # not running
+         "venus": []}))                                                 # no L1 rows → unknown
+    assert counts["records"] == 3 and counts["prereq_evaluated"] == 3
+    calls = [kw for k, kw in store.calls if k == "set_prerequisite_result"]
+    assert len(calls) == 3
+    by_predicate = {c["predicate_id"] for c in calls}
+    assert by_predicate == {"period_running_at"}  # the named scope only
+    results = sorted(c["result"] for c in calls)
+    assert results == ["false", "true", "unknown"]
+    # ordinal 1 = period_running_at in the declared membership
+    assert all(c["ordinal"] == 1 for c in calls)
+
+
+def test_p1_period_running_at_domain_start_truncated_uses_observed_span_start():
+    """Spans are derived over the FULL substrate domain (R3), so the only
+    truncated span (t_exact None) is one already in the sign at the domain
+    start: it has no observed ingress, so the occurrence instant is the
+    observed span start (flagged v1.5 binding). Dasha row covering that start
+    ⇒ true; a row that does not ⇒ false (never silently the exact-less 'unknown'
+    — rows exist, the question is answerable)."""
+    edge = _p1_libra_edge("saturn")
+    domain_start_rel_days = (rs.SUBSTRATE_DOMAIN_START - T0) / DAY   # negative
+
+    def run(row):
+        store = FakeStore({"saturn": [_crossing(200, 210.0)]})   # only the EXIT
+        kw = _p1_kwargs(store, [edge], {"saturn": [row]})
+        kw["position_at"] = _probe([(domain_start_rel_days - 1, 200)])
+        counts = rs.materialise_record_grain(store, **kw)
+        calls = [c for k, c in store.calls if k == "set_prerequisite_result"]
+        return counts, [c["result"] for c in calls]
+
+    covers = {"start_iso": rs.SUBSTRATE_DOMAIN_START - 10 * DAY,
+              "end_iso": rs.SUBSTRATE_DOMAIN_START + 10 * DAY}
+    misses = {"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}
+    counts, results = run(covers)
+    assert counts["records"] == 1 and counts["truncated_contacts"] == 1
+    assert results == ["true"]
+    counts, results = run(misses)
+    assert counts["truncated_contacts"] == 1 and results == ["false"]
+
+
+def test_p1_period_running_at_ingress_before_horizon_uses_the_exact_ingress():
+    """An ingress BEFORE the horizon is not truncated under the full-domain
+    derivation: its exact instant is known, and period_running_at is judged at
+    THAT instant — not at the clipped horizon start."""
+    edge = _p1_libra_edge("saturn")
+    store = FakeStore({"saturn": [_crossing(-500, 180.0),
+                                  _crossing(200, 210.0)]})
+    kw = _p1_kwargs(
+        store, [edge],
+        # running at the horizon start, NOT at the ingress 500 d earlier
+        {"saturn": [{"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}]})
+    kw["position_at"] = _probe([(-500, 200)])
+    counts = rs.materialise_record_grain(store, **kw)
+    assert counts["records"] == 1 and counts["truncated_contacts"] == 0
+    calls = [c for k, c in store.calls if k == "set_prerequisite_result"]
+    assert [c["result"] for c in calls] == ["false"]
+
+
+def test_p1_no_dasha_reader_no_evaluation():
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, [_p1_libra_edge("saturn")], {})
+    kw["dasha_rows_for"] = None
+    counts = rs.materialise_record_grain(store, **kw)
+    assert counts["records"] == 1 and counts["prereq_evaluated"] == 0
+    assert not any(k == "set_prerequisite_result" for k, _ in store.calls)
+
+
+def test_p4_double_transit_overlap_true_and_false():
+    jup, sat = _p4_libra_edge("jupiter"), _p4_libra_edge("saturn")
+
+    def run(saturn_crossings):
+        store = FakeStore({
+            "jupiter": [_crossing(10, 180.0), _crossing(200, 210.0)],
+            "saturn": saturn_crossings})
+        return store, rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation="5.0",
+            event_class="marriage", path_id="P4", edges=[jup, sat],
+            horizon=HORIZON, position_at=_probe([(10, 200), (100, 300),
+                                                 (500, 700)]),
+            house_for=_house_from_lagna(CHART["lagna_deg"]),
+            sky_convention_id=SKY_CID, source_fact_ids=["fact-1"],
+            prerequisites=P4_PREREQS)
+
+    # overlapping: jupiter in libra [10,200), saturn [100,300) → both true
+    store, counts = run([_crossing(100, 180.0), _crossing(300, 210.0)])
+    assert counts["records"] == 2 and counts["prereq_evaluated"] == 2
+    calls = [kw for k, kw in store.calls if k == "set_prerequisite_result"]
+    assert sorted(c["result"] for c in calls) == ["true", "true"]
+
+    # non-overlapping: saturn's libra residence [500,700) is entirely
+    # outside the horizon (minted nothing) — jupiter's record: the other
+    # planet WAS searched, no overlap ⇒ false (never unknown)
+    store, counts = run([_crossing(500, 180.0), _crossing(700, 210.0)])
+    assert counts["records"] == 1 and counts["prereq_evaluated"] == 1
+    calls = [kw for k, kw in store.calls if k == "set_prerequisite_result"]
+    assert [c["result"] for c in calls] == ["false"]

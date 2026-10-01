@@ -54,6 +54,7 @@ from pipeline.orchestrator.writers import (
 )
 from services.gochara_kernel import evaluator as gk_evaluator
 from services.gochara_kernel import arcs as gk_arcs
+from services.gochara_kernel.dasha_read import make_period_rows_for
 from services.gochara_kernel.chart_context import (fetch_chart_context,
                                                    require_complete)
 from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
@@ -316,20 +317,29 @@ class GocharaV5Writer(WriterBase):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown record grain {step.key!r}")
         edges = gk_evaluator.enumerate_edges(event_class, path_id, chart)
+        # P1's period_running_at reads L1 chart_dashas under the §4.0 pin; the
+        # read is lazy (only P1 grains with a period_running_at prerequisite
+        # ever trigger it) and its build is recorded in the notes below.
+        dasha_rows_for, dasha_contract = make_period_rows_for(
+            ctx.db_conn, chart_id)
         counts = materialise_record_grain(
             store, chart_id=chart_id, generation=GENERATION,
             event_class=event_class, path_id=path_id, edges=edges,
             horizon=horizon, position_at=position_at, house_for=house_for,
             sky_convention_id=sky_cid,
             source_fact_ids=context["source_fact_ids"],
-            arc_index_for=arc_index_for, ephe_path=ephe_path)
+            arc_index_for=arc_index_for, ephe_path=ephe_path,
+            dasha_rows_for=dasha_rows_for)
         inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
             notes=(f"{event_class}/{path_id}: {counts['records']} transit "
                    f"records ({counts['contacts']} contacts, "
                    f"{counts['truncated_contacts']} truncated kept), "
-                   f"{counts['natal_records']} natal facts"))
+                   f"{counts['natal_records']} natal facts; "
+                   f"{counts['prereq_evaluated']} prerequisite results "
+                   f"evaluated; dasha_build="
+                   f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"))
 
     # ------------------------------------------------------------------
 

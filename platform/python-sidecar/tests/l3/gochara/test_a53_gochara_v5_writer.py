@@ -241,7 +241,7 @@ def _record_phase_fakes(monkeypatch):
         writer_mod, "materialise_record_grain",
         lambda store, **kw: calls["grain"].append(kw)
         or {"contacts": 2, "records": 2, "natal_records": 1,
-            "truncated_contacts": 1})
+            "truncated_contacts": 1, "prereq_evaluated": 2})
     return calls
 
 
@@ -276,6 +276,34 @@ def test_record_grain_dispatches_with_context_and_reports_counts(
     assert kw["house_for"](edge, "libra") == 7
     assert "2 transit records" in result.notes
     assert "1 natal facts" in result.notes
+    # the §4.0-pinned L1 dasha reader is handed to the grain (lazy: this fake
+    # materialiser never calls it, so the notes honestly say no build was read)
+    assert callable(kw["dasha_rows_for"])
+    assert "2 prerequisite results evaluated" in result.notes
+    assert "dasha_build=not_read" in result.notes
+
+
+def test_record_grain_records_the_dasha_build_the_read_actually_used(
+        _record_phase_fakes, monkeypatch):
+    contract = {"build_id": None, "read": False}
+
+    def rows_for(agent):
+        contract.update(build_id="build-xyz", read=True)   # the lazy read happens
+        return []
+
+    monkeypatch.setattr(writer_mod, "make_period_rows_for",
+                        lambda conn, chart_id: (rows_for, contract))
+    # the grain (faked) triggers the read through the injected callable
+    def _grain(store, **kw):
+        _record_phase_fakes["grain"].append(kw)
+        kw["dasha_rows_for"]("saturn")
+        return {"contacts": 0, "records": 0, "natal_records": 0,
+                "truncated_contacts": 0, "prereq_evaluated": 0}
+
+    monkeypatch.setattr(writer_mod, "materialise_record_grain", _grain)
+    result = writer_mod.GocharaV5Writer().run_substep(
+        _ctx(), SubStep(key="record:marriage:P1", label=""))
+    assert "dasha_build=build-xyz" in result.notes
 
 
 def test_p5_and_unknown_grains_are_refused_by_name(_record_phase_fakes):
