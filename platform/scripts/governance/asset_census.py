@@ -2248,8 +2248,44 @@ def _refusal_guard(units: list[dict], tset=frozenset()) -> tuple[str, int, str, 
 _UO_SCOPE_COLS = ("chart_id", "ayanamsha_id", "build_id", "asset_id", "run_id")
 _UO_SET = re.compile(r"\bSET\b(.*?)(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|\Z)", re.I | re.S)
 _UO_WHERE = re.compile(r"\bWHERE\b(.*?)(?=\bRETURNING\b|\Z)", re.I | re.S)
-_UO_ARRAY_ACC = re.compile(r"\barray_(?:append|cat|prepend)\s*\(", re.I)
+_UO_ARRAY_ACC = re.compile(r"\b(?:array_(?:append|cat|prepend)|concat|jsonb_insert)\s*\(", re.I)
 _UO_KEYED = re.compile(r"\b([A-Za-z_]\w*)\s*=\s*(?:%s|%\(\w+\)s|\$\d+|ANY\s*\()", re.I)
+
+
+_UO_JSON_DELETE = r"(?:''|ARRAY\s*\[[^\]]*\]|(?:%s|%\(\w+\)s)\s*::\s*text(?:\[\])?)"
+
+
+def _split_top_br(s: str) -> list:
+    """_split_top that also keeps `[...]` (array constructors) whole."""
+    parts, depth, cur = [], 0, []
+    for ch in s:
+        depth += ch in "(["
+        depth -= ch in ")]"
+        if ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    return parts + ["".join(cur)]
+
+
+def _uo_assignments(set_text: str):
+    """(column, expression) pairs of a SET clause; a tuple form `(a, b) = (x, y)` / `= ROW(x, y)` is paired by
+    position (an unpairable right side is attributed whole to each column)."""
+    for a in _split_top_br(set_text):
+        if "=" not in a:
+            continue
+        lhs, rhs = (x.strip() for x in a.split("=", 1))
+        if lhs.startswith("(") and lhs.endswith(")"):
+            cols = [c.strip().strip('"') for c in lhs[1:-1].split(",")]
+            r = rhs[3:].strip() if rhs.upper().startswith("ROW") else rhs
+            exprs = _split_top(r[1:-1]) if r.startswith("(") and r.endswith(")") else None
+            if exprs and len(exprs) == len(cols):
+                yield from zip(cols, (x.strip() for x in exprs))
+            else:
+                yield from ((c, rhs) for c in cols)
+        else:
+            yield lhs.strip('"'), rhs
 
 
 def _update_only_reading(units, tset) -> dict:
@@ -2259,7 +2295,7 @@ def _update_only_reading(units, tset) -> dict:
     predicate shape: keyed, scope (chart/ayanamsha/build/asset), state-conditional (IS [NOT] NULL), guarded (IS DISTINCT
     FROM), none, other. Whether a rebuild re-derives EVERY row is not provable statically (PASS needs the E5.5
     semantic-fingerprint comparison on the E5.6 rehearsal database), so the reading never PASSes."""
-    acc, concat, shapes = [], [], {}
+    acc, concat, shapes, recs = [], [], {}, []
     for u in units:
         for node in u["nodes"]:
             for text, ln in _sql_texts(dict(u, nodes=[node])):
@@ -2270,14 +2306,19 @@ def _update_only_reading(units, tset) -> dict:
                 where = _UO_WHERE.search(flat)
                 cite_ = f"{m.group(1).lower()} ({u['rel']}:{ln}{' via ' + u['via'] if u['hop'] else ''})"
                 st = _UO_SET.search(flat)
-                for a in _split_top(st.group(1)) if st else []:
-                    if "=" not in a:
+                fns = sorted(((f.lineno, f.end_lineno) for f in ast.walk(node)
+                              if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))), key=lambda r: r[1] - r[0])
+                fn = next((r for r in fns if r[0] <= ln <= r[1]), None)
+                for col, expr in (_uo_assignments(st.group(1)) if st else []):
+                    if not re.fullmatch(r"[A-Za-z_]\w*", col):
                         continue
-                    col, expr = (x.strip().strip('"') for x in a.split("=", 1))
-                    if not re.fullmatch(r"[A-Za-z_]\w*", col) or not re.search(rf"\b{re.escape(col)}\b", expr):
-                        continue
-                    if re.search(r"[+\-*/]", re.sub(r"%\(\w+\)s|::\w+", "", expr)) or _UO_ARRAY_ACC.search(expr):
-                        acc.append(f"{col} = {expr[:60]} in {cite_}")
+                    if not re.search(rf"\b{re.escape(col)}\b", expr):
+                        recs.append(dict(kind="reset", table=m.group(1).lower(), col=col, line=ln, fn=fn, u=u["rel"]))
+                    elif re.fullmatch(rf"\s*{re.escape(col)}\s*-\s*{_UO_JSON_DELETE}\s*", expr, re.I):
+                        continue                                # jsonb key delete: idempotent
+                    elif re.search(r"[+\-*/]", re.sub(r"%\(\w+\)s|::\w+", "", expr)) or _UO_ARRAY_ACC.search(expr):
+                        recs.append(dict(kind="acc", table=m.group(1).lower(), col=col, line=ln, fn=fn, u=u["rel"],
+                                         text=f"{col} = {expr[:60]} in {cite_}"))
                     elif "||" in expr:
                         concat.append(f"{col} in {cite_}")
                 w = where.group(1) if where else None
@@ -2298,6 +2339,12 @@ def _update_only_reading(units, tset) -> dict:
                         found.append("other-predicate")
                 for f in found:
                     shapes.setdefault(f, []).append(cite_)
+    # an accumulation is excused only by a reset of the SAME column of the SAME table earlier in the SAME function
+    for r in recs:
+        if r["kind"] == "acc" and not any(x["kind"] == "reset" and x["table"] == r["table"] and x["col"] == r["col"]
+                                          and x["u"] == r["u"] and r["fn"] is not None and x["fn"] == r["fn"]
+                                          and x["line"] < r["line"] for x in recs):
+            acc.append(r["text"])
     return dict(accumulating=acc, concat=concat, shapes=shapes)
 
 

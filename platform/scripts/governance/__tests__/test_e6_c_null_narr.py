@@ -989,3 +989,59 @@ def test_prose_row_counts_passes_the_column_types_through(monkeypatch):
     monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: seen.append(sql) or [["1", "0"]])
     ac.prose_row_counts("t", ["arr"], "", types={"arr": "ARRAY"})
     assert "(FALSE)" in seen[0]
+
+
+# ───────────────────────── review round: F9 (update-only: no false FAIL, more accumulating forms) ─────────────────────────
+
+@pytest.mark.parametrize("expr", ["payload - 'key'", "payload - ARRAY['a','b']", "payload - %s::text"])
+def test_update_only_jsonb_key_delete_is_idempotent_not_accumulating(monkeypatch, tmp_path, expr):
+    v, n = _upd(monkeypatch, tmp_path, f"UPDATE t_s SET payload = {expr} WHERE chart_id = %s")
+    assert v == ac.PARTIAL and "accumulating" not in n[0], (v, n)
+
+
+def _two(monkeypatch, tmp_path, first, second, same_fn=True):
+    body = (f'        ctx.db_conn.execute("""{first}""", (1,))\n'
+            + ('' if same_fn else '    def other(self, ctx):\n')
+            + f'        ctx.db_conn.execute("""{second}""", (1,))\n')
+    w3._sidecar(monkeypatch, tmp_path, {"pipeline/orchestrator/writers/bo_u.py": w3._HDR + (
+        '@register("bo_u")\nclass U(WriterBase):\n    def run(self, ctx):\n' + body)})
+    return ac.idem_scan("bo_u", ["bo_u.py"], "delete_then_insert", ["t_s"])
+
+
+RESET = "UPDATE t_s SET hits = 0 WHERE chart_id = %s"
+ACC = "UPDATE t_s SET hits = hits + 1 WHERE chart_id = %s"
+
+
+def test_update_only_a_reset_of_the_same_column_earlier_in_the_same_function_is_not_accumulating(monkeypatch, tmp_path):
+    v, n = _two(monkeypatch, tmp_path, RESET, ACC)
+    assert v == ac.PARTIAL and "accumulating" not in n[0], (v, n)
+
+
+def test_update_only_a_reset_after_the_accumulation_or_in_another_function_does_not_excuse_it(monkeypatch, tmp_path):
+    assert _two(monkeypatch, tmp_path, ACC, RESET)[0] == ac.FAIL
+    assert _two(monkeypatch, tmp_path, RESET, ACC, same_fn=False)[0] == ac.FAIL
+
+
+def test_update_only_a_reset_of_a_different_column_does_not_excuse_it(monkeypatch, tmp_path):
+    assert _two(monkeypatch, tmp_path, "UPDATE t_s SET other = 0 WHERE chart_id = %s", ACC)[0] == ac.FAIL
+
+
+@pytest.mark.parametrize("sql", [
+    "UPDATE t_s SET hits = concat(hits, %s) WHERE chart_id = %s",
+    "UPDATE t_s SET doc = jsonb_insert(doc, '{a}', %s::jsonb) WHERE chart_id = %s",
+    "UPDATE t_s SET (a, hits) = (%s, hits + 1) WHERE chart_id = %s",
+    "UPDATE t_s SET (hits, b) = ROW(hits + 1, %s) WHERE chart_id = %s",
+])
+def test_update_only_more_accumulating_forms_fail(monkeypatch, tmp_path, sql):
+    v, n = _upd(monkeypatch, tmp_path, sql)
+    assert v == ac.FAIL and "accumulating-assignment" in n[0], (v, n)
+
+
+def test_update_only_a_tuple_assignment_without_self_reference_is_not_accumulating(monkeypatch, tmp_path):
+    v, n = _upd(monkeypatch, tmp_path, "UPDATE t_s SET (a, b) = (%s, %s) WHERE chart_id = %s")
+    assert v == ac.PARTIAL and "accumulating" not in n[0], (v, n)
+
+
+def test_update_only_self_referencing_concat_is_named_with_the_type_unread_slug(monkeypatch, tmp_path):
+    v, n = _upd(monkeypatch, tmp_path, "UPDATE t_s SET tags = tags || %s WHERE chart_id = %s")
+    assert v == ac.PARTIAL and "update-only:self-referencing-concat-type-unread" in n[0], (v, n)
