@@ -1,6 +1,57 @@
--- 1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_digest.sql
+---
+artifact: MIGRATION_1219_1221_INTENT
+version: "1.0"
+status: INTENT ONLY (owner hold: no file under platform/migrations/ is created or modified by this change)
+produced_by: exec-suvarna
+produced_on: 2026-10-02
+for: PR #2851 (ga_structural argala) and design note DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md (#2850)
+tests: platform/python-sidecar/tests/test_argala_migration_intent_sql.py executes both SQL blocks below against a disposable local Postgres
+changelog:
+  - "1.0 (2026-10-02): first version; replaces the pending edits to the 1219 draft and the 1221 split, held for the owner."
+---
+
+# Migration 1219 / 1221: intended text (held)
+
+## 1. Status
+
+By the owner hold, no migration file is created or modified. The 1219 draft already on branch `suvarna/land/TI-argala-l1-001` (commit `9c038a663`) stays exactly as pushed; it is **superseded by block A below** once the owner answers. Block B is the integrity conjunct, split out as SS decided (it was part of 1219 in that draft). When the owner relays the answer, block A becomes the text of 1219 (re-check the number is free), block B becomes the next free number (allocated: 1221), each applied with the normal runner and verified after (CLAUDE.md N.4).
+
+## 2. What block A changes against the pushed 1219 draft
+
+1. The integrity conjunct (a29) leaves 1219 (it is block B).
+2. **No floor is touched** (`target_floor` is in the column list of the live trigger `nirmana_registry_receipt_invalidation`; floors are re-declared from achieved counts after S-L1 in one registry migration).
+3. `ga_strength.count_sql` is narrowed so that no row is counted by two assets: it drops the 420 `bhava_bala_*` rows, the 35 `vimsopaka_bala_per_graha` rows and the 35 `graha_saptavargaja_bala_component` rows, which `ga_structural` emits and owns. Guard: md5 of the live text.
+4. `ga_condition.count_sql`: only the stale `graha_yuddha` clause is removed (`ga_structural` emits and owns `graha_yuddha`; the clause double-counts it on charts that have it). The earlier draft cut it to the composite table (45); the independent review points out that this would hide the 2,925 `chart_facts` rows it owns (CLAUDE.md N.4, cockpit truth). **For SS:** Q-L1-04's text says "`count_sql` on the primary table"; I followed the review and left the multi-table count shape to I-30. One line to change if SS prefers the ruling's text.
+5. Ownership: the five panchanga categories (216 rows) are **dropped from `ga_structural`** (it never emits them) and owned by `ga_panchanga`; the three categories a writer emits with no ownership row (`ashtakavarga_bindu_contributor`; `graha_degree_flags`, `nakshatra_exchange`) and the three inert `esoteric_point_trisphuta` / `chatushphuta` / `panchasphuta` are added. Derivation: `derive_q04_ownership.py` (predicate and live data) and `derive_writer_categories.py` (writer source), outside the repo in `/Users/Dev/suvarna-evidence/TrackI/argala_l1/`. After block A every live category (all charts) and every category a `ga_*` chart_facts writer emits has an owner (the 62 other writer-source hits are reads, GA3-overlap lists and `chart_divisionals` categories).
+
+The live trigger `l1_data_plane_mutation_guard` refuses an L1 write to a `chart_facts` category with no ownership row for that asset, so block A is a hard prerequisite of the S-L1 `ga_structural` rebuild.
+
+## 3. Canonical chart, chart_facts-based counts, before to after block A
+
+  asset                 before    after    change
+  ga_structural        102,037  106,707    +4,670  (+4,816 the 12 unowned categories, +70 vimsopaka_bala_per_graha
+                                                     and graha_saptavargaja_bala_component, -216 the five panchanga
+                                                     categories; equals its 106,707 build record)
+  ga_strength           14,141   13,651      -490  (-420 bhava_bala_*, -70 vimsopaka / saptavarga component)
+  ga_condition           2,970    2,970         0  (only the graha_yuddha clause leaves its predicate: 0 canonical rows)
+  ga_panchanga             437      437         0  (the five categories were already inside its predicate)
+  ga_nakshatra 2,847; ga_positions 1,205; ga_sade_sati 6,287; ga_sensitive 8,775; ga_sensitive_degree 335;
+  ga_ayurdaya 130: unchanged.
+The narrowed ga_strength predicate was also run as SQL against the live canonical chart (read-only): 13,651.
+
+Before block A the double claims on the canonical chart are the 420 `bhava_bala_*` rows (`ga_structural` by ownership, `ga_strength` by predicate) and the 216 panchanga rows (`ga_structural` by ownership, `ga_panchanga` by predicate): 636 rows. After it, none (`count_claims_before_after.py`). `count_sql` is not in the trigger's column list, so no freshness is staled; it is in the Nirmana registry-contract fingerprint, so the frozen manifests of `ga_strength` and `ga_condition` go to `evidence_refresh_required` (design note, section 5).
+
+## 4. Application order
+
+- Block A applies before the S-L1 launch (it is a prerequisite of it).
+- Block B ((a29), `integrity_check_sql`) applies as a **named step of S-L1, immediately before the `ga_structural` launch, with or after the writer deploy**: (a29) reads red on live canonical data until S-L1 writes the NULL cells; `UPDATE OF integrity_check_sql` stales `ga_structural`'s freshness (trigger 596); and after (a29) a `ga_structural` rebuild by the OLD writer image fails its post-write integrity check, so block B must never precede the writer deploy.
+
+## 5. Block A: intended text of 1219
+
+```sql 1219-intent
+-- 1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_digest.sql  (INTENDED TEXT; see MIGRATION_1219_1221_INTENT_v1_0.md)
 --
--- DRAFT, NOT APPLIED. Suvarna Track I (SS decision N-61, 2026-10-01, approved with changes
+-- DRAFT, NOT APPLIED, NOT A FILE UNDER platform/migrations/ (owner hold). Suvarna Track I (SS decision N-61, 2026-10-01, approved with changes
 -- 2026-10-02; design note 00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md;
 -- Q-L1-04 / I-30 of DECISION_SHEET_L1_v1_0.md). The reviewer/operator applies it through the PR and
 -- verifies it (CLAUDE.md N.4: never trust a silent no-op). Re-check at arm time that 1219 is still free.
@@ -14,9 +65,12 @@
 -- categories the writer emits without an ownership row today, and every other L1 producer's categories
 -- must be owned before the rebuild runs.
 --
--- Four parts, in order:
+-- Three parts, in order. The integrity conjunct (a29) is NOT here: it is migration 1221 (own file, applied
+-- as a named step immediately before the S-L1 launch, with or after the writer deploy). Floors are NOT touched here: target_floor is in the
+-- columns of the live trigger nirmana_registry_receipt_invalidation (it would stale the asset's freshness),
+-- and floors are re-declared from achieved counts after S-L1 in one registry migration.
 --
---   1. fact_category_ownership (the mechanism of 410 / 842): 166 rows, ON CONFLICT DO NOTHING.
+--   1. fact_category_ownership (the mechanism of 410 / 842): 172 rows added, ON CONFLICT DO NOTHING.
 --      * argala_graha_natal -> ga_structural (the new category).
 --      * Q-L1-04: ga_structural owns bhava_bala_* (already owned, 842) and every category its writer
 --        emits that lacks a row: the 22 categories in migration 914's digest spec without an ownership
@@ -24,23 +78,58 @@
 --        predicate-claimed ones: ashtakavarga_anubindu, bhava_chalit_rasi_divergence,
 --        combustion_relationship, dosha_fires, graha_saptavargaja_bala_component, graha_yuddha,
 --        parivartana_pairs, retrograde_aspect_modification, vimsopaka_bala_per_graha, yoga_fires).
---      * Q-L1-04: the other producers' categories, assigned by their live count_sql predicate (138
+--      * Q-L1-04: the other producers' categories, assigned by their live count_sql predicate (136
 --        categories; derivation and writer cross-check in
---        /Users/Dev/suvarna-evidence/TrackI/argala_l1/derive_q04_ownership.py). ga_panchanga is also given
---        the five categories 842-era ownership put on ga_structural alone (bhadra_flag,
---        chandra_bala_natal_baseline, eclipse_proximity_natal, panchaka_flag, tara_bala_natal_baseline).
---      A guard refuses the insert if a listed category is already owned by an asset other than the
---      ones named for it here, except the five ga_panchanga ones, which are deliberately dual-owned.
+--        /Users/Dev/suvarna-evidence/TrackI/argala_l1/derive_q04_ownership.py), plus six categories a
+--        writer emits that no live row yet needs (independent review; derive_writer_categories.py):
+--        ashtakavarga_bindu_contributor (ga_strength, not yet live), graha_degree_flags and
+--        nakshatra_exchange (ga_nakshatra, conditional emission, named in migration 872's partition), and
+--        esoteric_point_trisphuta / chatushphuta / panchasphuta (ga_sensitive, inert today because
+--        sunrise_jd is never passed). Without a row the next build that emits one raises
+--        'cannot mutate chart_facts category'. After 1219 every live category and every category a
+--        ga_* chart_facts writer names as emitted has an owner.
+--      * Five panchanga categories (bhadra_flag, chandra_bala_natal_baseline, eclipse_proximity_natal,
+--        panchaka_flag, tara_bala_natal_baseline; 216 canonical rows) are written only by ga_panchanga
+--        (ga_panchanga_writer.py) and inside its count_sql predicate, yet 410 owns them under
+--        ga_structural, so both assets count them today. They move to ga_panchanga: the ga_structural
+--        rows are DELETED here (the only deletion in this migration; guarded to exactly those five).
+--      A guard refuses the insert if a listed category is already owned by an asset other than the one
+--      named for it here (the five above excepted).
 --
---   2. asset_registry (Q-L1-04). count_sql of ga_strength narrowed so it no longer claims the 420
---      ga_structural bhava_bala_* rows ('%bhava_bala%' to 'house_bhava_bala_%', 14,141 to 13,721 on the
---      canonical chart); ga_condition's count_sql moved to its primary table (ga_condition_composite)
---      only, and its aspirational target_floor re-declared from the achieved counts (13,721 and 45; floors
---      are aspirational, CLAUDE.md N.4). ga_structural's own count_sql already joins the ownership table
---      (410), so part 1 is its count change; its floor re-baselines after the S-L1 rebuild. Guards: each
---      UPDATE refuses to run unless the live text / floor is exactly what was read.
---      NOT done here (I-30 writer and declaration work): ga_condition's declared multi-table shape and
---      its rows_written counting everything it writes.
+--   2. asset_registry.count_sql (Q-L1-04), so that NO ROW IS COUNTED BY TWO ASSETS after 1219:
+--      * ga_strength: the 420 ga_structural bhava_bala_* rows ('%bhava_bala%' to 'house_bhava_bala_%'),
+--        the 35 vimsopaka_bala_per_graha rows ('%vimsopaka%' to 'graha_vimsopaka_%') and the 35
+--        graha_saptavargaja_bala_component rows (clause removed) leave its predicate: they are
+--        ga_structural's (it is the emitter).
+--      * ga_condition: only the stale graha_yuddha clause leaves its predicate (ga_structural emits and owns
+--        graha_yuddha; the clause double-counts it on charts that have it; 0 rows on the canonical chart).
+--        It keeps counting the 2,925 chart_facts rows it owns (CLAUDE.md N.4 cockpit truth). NOTE for SS:
+--        Q-L1-04's text says "count_sql on the primary table (45)"; counting only the composite table
+--        would hide 2,925 rows it writes, so the multi-table count shape is left to I-30 (writer and
+--        declaration work). Its floor is not touched.
+--      * ga_structural: its count_sql already joins the ownership table (410), so part 1 is its change.
+--      Each UPDATE refuses to run unless the live count_sql is exactly the text read (md5 guard).
+--      count_sql is not in the columns of nirmana_registry_receipt_invalidation, so no freshness is staled;
+--      it is in the Nirmana registry-contract fingerprint (definitions.ts), so the frozen manifests of
+--      ga_strength and ga_condition go to evidence_refresh_required (design note, section 5).
+--
+--      Canonical chart (482012f1) chart_facts-based counts, from the live category table, before / after:
+--        asset                 before    after    change
+--        ga_structural        102,037  106,707    +4,670  (+4,816 the 12 unowned categories, +70 vimsopaka_bala_per_graha
+--                                                           and graha_saptavargaja_bala_component, -216 the five panchanga
+--                                                           categories; equals its 106,707 build record)
+--        ga_strength           14,141   13,651      -490  (-420 bhava_bala_*, -70 vimsopaka / saptavarga component)
+--        ga_condition           2,970    2,970         0  (only the graha_yuddha clause leaves its predicate: 0 canonical rows)
+--        ga_panchanga             437      437         0  (the five categories were already inside its predicate)
+--        ga_nakshatra 2,847; ga_positions 1,205; ga_sade_sati 6,287; ga_sensitive 8,775; ga_sensitive_degree 335;
+--        ga_ayurdaya 130: unchanged.
+--      The narrowed ga_strength predicate was also run as SQL against the live canonical chart (read-only): 13,651.
+--      Before 1219 the double claims on the canonical chart are the 420 bhava_bala_* rows (ga_structural by
+--      ownership, ga_strength by predicate) and the five panchanga categories (216 rows; ga_structural by
+--      ownership, ga_panchanga by predicate): 636 rows. After 1219 no chart_facts row is claimed by two assets
+--      (check: /Users/Dev/suvarna-evidence/TrackI/argala_l1/count_claims_before_after.py; without the
+--      narrowing the 70 vimsopaka / saptavargaja rows owned here would have joined that list). Rows of the
+--      new argala_graha_natal category appear after S-L1 (156 expected, pre-ephemeris estimate).
 --
 --   3. asset_output_digest_specs. ga_structural has ONE active spec (migration 914, sha b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6,
 --      81 categories); a category outside its where_in is not digested, so a change to the new rows would
@@ -48,26 +137,14 @@
 --      spec_sha256 = canonical_digest (pipeline.orchestrator.provenance), which reproduces 914's stored
 --      sha exactly. Retired, not deleted (609 / 1086 precedent).
 --
---   4. ga_structural.integrity_check_sql: one new conjunct, (a29), argala NULL <=> empty source sign
---      (CLAUDE.md N.8: conjunct (e27) is vacuously true on a NULL score). Applied as a guarded
---      replace() of the live text at its single `AS integrity_passed` anchor, not a 200 KB re-statement
---      of migration 904's text; it refuses unless (g28) is present, the anchor occurs exactly once and
---      (a29) is not already there, and it asserts the result afterwards. (a29) is scoped to the canonical
---      chart (904's tradeoff) and is EXPECTED RED until the S-L1 rebuild writes the NULL cells.
---
--- Open for SS (flagged, not decided here): vimsopaka_bala_per_graha (35 rows) and
--- graha_saptavargaja_bala_component (35 rows) are emitted by ga_structural_writer but fall inside
--- ga_strength's count_sql predicate; here ga_structural owns them (the guard needs it) and both assets
--- count them until that predicate is narrowed further.
---
 -- Post-apply verification (each should return the stated value):
 --   SELECT count(*) FROM fact_category_ownership
 --    WHERE fact_category = 'argala_graha_natal' AND owning_asset_id = 'ga_structural';            -- 1
+--   SELECT count(*) FROM fact_category_ownership
+--    WHERE fact_category IN ('bhadra_flag', 'panchaka_flag') AND owning_asset_id = 'ga_structural'; -- 0
 --   SELECT spec_sha256 FROM asset_output_digest_specs
 --    WHERE asset_id = 'ga_structural' AND retired_at IS NULL;                                     -- d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620
---   SELECT position('(a29)' in integrity_check_sql) > 0 FROM asset_registry
---    WHERE asset_id = 'ga_structural';                                                           -- t
---   SELECT count_sql NOT LIKE '%bhava_bala%' OR count_sql LIKE '%house_bhava_bala_%'
+--   SELECT count_sql LIKE '%house_bhava_bala_%' AND count_sql NOT LIKE '%saptavargaja%'
 --     FROM asset_registry WHERE asset_id = 'ga_strength';                                         -- t
 
 -- ── 1. ownership ─────────────────────────────────────────────────────────────────────────────
@@ -83,6 +160,7 @@ BEGIN
     ('graha_avastha_lajjitadi_per_varga', 'ga_condition'),
     ('graha_avastha_sayanadi_per_varga', 'ga_condition'),
     ('cusp_kp_lords', 'ga_nakshatra'),
+    ('graha_degree_flags', 'ga_nakshatra'),
     ('graha_gandanta', 'ga_nakshatra'),
     ('graha_kp_lords', 'ga_nakshatra'),
     ('graha_nakshatra_join', 'ga_nakshatra'),
@@ -94,6 +172,7 @@ BEGIN
     ('nakshatra_conjunction', 'ga_nakshatra'),
     ('nakshatra_cross_ayanamsha', 'ga_nakshatra'),
     ('nakshatra_dispositor', 'ga_nakshatra'),
+    ('nakshatra_exchange', 'ga_nakshatra'),
     ('nakshatra_statistics', 'ga_nakshatra'),
     ('bhadra_flag', 'ga_panchanga'),
     ('chandra_bala_natal_baseline', 'ga_panchanga'),
@@ -160,12 +239,15 @@ BEGIN
     ('esoteric_point_avayogi', 'ga_sensitive'),
     ('esoteric_point_bhrigu_bindu', 'ga_sensitive'),
     ('esoteric_point_brahma', 'ga_sensitive'),
+    ('esoteric_point_chatushphuta', 'ga_sensitive'),
     ('esoteric_point_mrityu', 'ga_sensitive'),
+    ('esoteric_point_panchasphuta', 'ga_sensitive'),
     ('esoteric_point_pranapada_sphuta', 'ga_sensitive'),
     ('esoteric_point_shiva', 'ga_sensitive'),
     ('esoteric_point_sphuta_fertility', 'ga_sensitive'),
     ('esoteric_point_sri_yantra_position', 'ga_sensitive'),
     ('esoteric_point_trikona_dasha_sphuta', 'ga_sensitive'),
+    ('esoteric_point_trisphuta', 'ga_sensitive'),
     ('esoteric_point_vishnu', 'ga_sensitive'),
     ('esoteric_point_yogi', 'ga_sensitive'),
     ('esoteric_point_yogi_system', 'ga_sensitive'),
@@ -190,6 +272,7 @@ BEGIN
     ('sensitive_degree_check', 'ga_sensitive_degree'),
     ('sensitive_point_yogi', 'ga_sensitive_degree'),
     ('ashtakavarga_bindu', 'ga_strength'),
+    ('ashtakavarga_bindu_contributor', 'ga_strength'),
     ('ashtakavarga_bindu_per_varga', 'ga_strength'),
     ('ashtakavarga_bindu_sign', 'ga_strength'),
     ('ashtakavarga_ekadhipathya_shodhana', 'ga_strength'),
@@ -248,7 +331,9 @@ BEGIN
   FROM _own_1219 n
   JOIN fact_category_ownership o ON o.fact_category = n.fact_category
   WHERE o.owning_asset_id <> n.owning_asset_id
-    AND NOT (n.owning_asset_id = 'ga_panchanga' AND o.owning_asset_id = 'ga_structural');
+    AND NOT (n.owning_asset_id = 'ga_panchanga' AND o.owning_asset_id = 'ga_structural'
+             AND n.fact_category IN ('bhadra_flag', 'chandra_bala_natal_baseline', 'eclipse_proximity_natal',
+                                     'panchaka_flag', 'tara_bala_natal_baseline'));
   IF conflicting <> 0 THEN
     RAISE EXCEPTION 'ownership 1219 refused: % category(ies) already owned by a different asset', conflicting;
   END IF;
@@ -257,41 +342,53 @@ BEGIN
   SELECT fact_category, owning_asset_id FROM _own_1219
   ON CONFLICT (fact_category, owning_asset_id) DO NOTHING;
 
+  -- the five panchanga categories: ga_panchanga now owns them (inserted above), ga_structural does not
+  DELETE FROM fact_category_ownership
+   WHERE owning_asset_id = 'ga_structural'
+     AND fact_category IN ('bhadra_flag', 'chandra_bala_natal_baseline', 'eclipse_proximity_natal',
+                           'panchaka_flag', 'tara_bala_natal_baseline');
+
   IF NOT EXISTS (SELECT 1 FROM fact_category_ownership
                   WHERE fact_category = 'argala_graha_natal' AND owning_asset_id = 'ga_structural') THEN
     RAISE EXCEPTION 'ownership 1219 failed: argala_graha_natal row missing';
   END IF;
 END $$;
 
--- ── 2. count_sql / floors (Q-L1-04) ──────────────────────────────────────────────────────────
+-- ── 2. count_sql (Q-L1-04) ───────────────────────────────────────────────────────────────────
 DO $$
 DECLARE
   n integer;
+  strength_new constant text := $cs$
+  SELECT count(*) AS count FROM chart_facts
+  WHERE chart_id = $1
+    AND (
+      fact_category LIKE 'graha_shadbala_%'
+      OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
+      OR fact_category LIKE 'graha_vimsopaka_%'
+      OR fact_category LIKE 'ashtakavarga_%'
+      OR fact_category LIKE 'house_bhava_bala_%'
+      OR fact_category LIKE 'graha_%_bala_per_varga'
+    )
+$cs$;
+  condition_new constant text := $cc$SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)
+       + (SELECT count(*) FROM chart_facts
+          WHERE chart_id = $1
+            AND (fact_category LIKE 'graha_avastha_%_per_varga'
+                 OR fact_category = 'graha_avastha_sayanadi'
+                 OR fact_category = 'graha_avastha_lajjitadi')) AS count$cc$;
 BEGIN
-  UPDATE asset_registry
-     SET count_sql = replace(count_sql, '%bhava_bala%', 'house_bhava_bala_%'),
-         target_floor = 13721
-   WHERE asset_id = 'ga_strength'
-     AND (length(count_sql) - length(replace(count_sql, 'LIKE ''%bhava_bala%''', ''))) = length('LIKE ''%bhava_bala%''')
-     AND target_floor = 13621;
+  UPDATE asset_registry SET count_sql = strength_new
+   WHERE asset_id = 'ga_strength' AND md5(count_sql) = '1660f637c6e08c1ffe1f944776fd1618';
   GET DIAGNOSTICS n = ROW_COUNT;
-  IF n <> 1 AND NOT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'ga_strength'
-                              AND count_sql LIKE '%house_bhava_bala_%' AND target_floor = 13721) THEN
-    RAISE EXCEPTION 'ga_strength count_sql narrowing refused: live count_sql / floor is not the one read (rows %)', n;
+  IF n <> 1 AND NOT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'ga_strength' AND count_sql = strength_new) THEN
+    RAISE EXCEPTION 'ga_strength count_sql narrowing refused: live count_sql is not the text read (rows %)', n;
   END IF;
 
-  UPDATE asset_registry
-     SET count_sql = 'SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1',
-         target_floor = 45
-   WHERE asset_id = 'ga_condition'
-     AND count_sql LIKE '%FROM ga_condition_composite%'
-     AND count_sql LIKE '%FROM chart_facts%'
-     AND target_floor = 2880;
+  UPDATE asset_registry SET count_sql = condition_new
+   WHERE asset_id = 'ga_condition' AND md5(count_sql) = '75de1a479cbfeba37383aefdbfd83355';
   GET DIAGNOSTICS n = ROW_COUNT;
-  IF n <> 1 AND NOT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'ga_condition'
-                              AND count_sql = 'SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1'
-                              AND target_floor = 45) THEN
-    RAISE EXCEPTION 'ga_condition count_sql re-declaration refused: live count_sql / floor is not the one read (rows %)', n;
+  IF n <> 1 AND NOT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'ga_condition' AND count_sql = condition_new) THEN
+    RAISE EXCEPTION 'ga_condition count_sql re-declaration refused: live count_sql is not the text read (rows %)', n;
   END IF;
 END $$;
 
@@ -344,12 +441,57 @@ BEGIN
       active_new_count;
   END IF;
 END $$;
+```
 
--- ── 4. integrity conjunct (a29) ──────────────────────────────────────────────────────────────
+## 6. Block B: intended text of 1221
+
+```sql 1221-intent
+-- 1221_nirmana_l1_ga_structural_integrity_a29_argala_null.sql  (INTENDED TEXT; see MIGRATION_1219_1221_INTENT_v1_0.md)
+--
+-- DRAFT, NOT APPLIED, NOT A FILE UNDER platform/migrations/ (owner hold). Suvarna Track I (SS decision N-61; split out of migration 1219 by SS, 2026-10-02).
+-- Design note 00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md, sections 1 and 5.
+-- Re-check at arm time that 1221 is still free. Transaction ownership belongs to platform/scripts/migrate.ts:
+-- no BEGIN/COMMIT here. Verify after applying (CLAUDE.md N.4).
+--
+-- WHEN TO APPLY: as a NAMED STEP of the S-L1 stage, IMMEDIATELY BEFORE the ga_structural rebuild launches,
+-- not with 1219. Reasons (design note, section 5):
+--   * (a29) reads RED on the live canonical chart from the moment it applies until S-L1 writes the NULL
+--     cells (every empty-source argala cell is stored 1.0 today). The integrity_check_sql is read at
+--     build time (asset_runner post-write gate), by the Nirmana `integrity_verified` acceptance detector
+--     (definitions.ts), and is part of the registry-contract fingerprint; nothing else gates on the verdict,
+--     but a standing red on ga_structural for days is a false alarm with no purpose.
+--   * UPDATE OF integrity_check_sql is in the column list of the live trigger
+--     nirmana_registry_receipt_invalidation (migration 596): it marks ga_structural's asset_freshness
+--     'stale' (reason registry_changed), so ga_structural's direct dependents fail DEP-ASSERT
+--     ('ga_structural(receipt:stale)') until the next governed ga_structural receipt. Applied immediately
+--     before S-L1 that costs nothing, because S-L1 rebuilds ga_structural anyway.
+--
+-- ORDERING HAZARD (independent review): after (a29), a ga_structural rebuild by the OLD writer image (which still
+-- writes 1.0 on empty cells) fails the post-write integrity check. 1221 therefore applies only WITH or AFTER the writer
+-- deploy, never before it.
+--
+-- WHAT IT DOES: adds ONE conjunct, (a29) [SS N-61, AR-3; CLAUDE.md N.8], to ga_structural's
+-- integrity_check_sql: for every argala-offset cell of argala_natal_matrix, NULL with fact_value_text
+-- 'no_occupant' exactly when the source sign holds no graha, a non-NULL score with no text when it does.
+-- Conjunct (e27) is vacuously true on a NULL score (NULL <> x is not true), so before this a NULL on an
+-- occupied cell, or a stale 1.0 on an empty one, passed. Scoped to the canonical chart (migration 904's
+-- disclosed tradeoff: the other charts still hold pre-AR-3 rows until they rebuild).
+--
+-- HOW: a guarded replace() of the live text at its single `AS integrity_passed` anchor, not a 200 KB
+-- re-statement of migration 904's text. It refuses unless (g28) is present and the anchor occurs exactly
+-- once, is a no-op when (a29) is already there, and asserts the result afterwards.
+--
+-- Tests: platform/python-sidecar/tests/test_argala_migration_intent_sql.py runs this text and the conjunct
+-- against a disposable local Postgres: six mutants are killed, including the one (e27) passes.
+--
+-- Post-apply verification:
+--   SELECT position('(a29)' in integrity_check_sql) > 0 FROM asset_registry WHERE asset_id = 'ga_structural';  -- t
+
 DO $$
 DECLARE
   anchor constant text := E'\n  AS integrity_passed';
   conjunct constant text := $conj$
+
   -- (a29) [SS N-61, AR-3; CLAUDE.md N.8] argala NULL <=> empty source sign. For every argala-offset
   -- cell (2, 4, 5, 11) of argala_natal_matrix, the cell must be NULL with fact_value_text
   -- 'no_occupant' exactly when its source sign holds no graha, and a non-NULL score with no text
@@ -423,3 +565,4 @@ BEGIN
     RAISE EXCEPTION 'ga_structural integrity patch failed to apply';
   END IF;
 END $$;
+```
