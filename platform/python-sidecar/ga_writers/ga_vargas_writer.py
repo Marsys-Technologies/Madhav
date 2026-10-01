@@ -75,6 +75,10 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from pyjhora_adapter._names import SIGN_NAMES, SIGN_LORDS
 from ga_writers._idempotency import replace_prior_chart_divisionals
+from ga_writers._karaka_roles import (
+    KARAKA_ABBREVIATIONS_8,
+    KARAKA_SCHOOL_KN_RAO,
+)
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
     CANONICAL_CHART_ID,
@@ -301,12 +305,14 @@ LAL_KITAB_PAKKA_GHAR = {
     "Venus": 7, "Saturn": 8, "Rahu": 12, "Ketu": 6,
 }
 
-# 8 Jaimini Chara Karakas (Rahu in/out = 8 or 7 karakas — we use 8-karaka system)
-JAIMINI_KARAKA_NAMES = ["AK", "AmK", "BK", "MK", "PK", "GK", "DK", "SK"]
+# 8 Jaimini Chara Karakas — the kn_rao_rahu_included (8-karaka) scheme, rank order
+# AK AmK BK MK PiK PK GK DK (BPHS 32.13-17, sourced_ocr_unverified). ga_vargas does NOT
+# derive them: it READS ga_sensitive's kn_rao assignments (see _read_jaimini_karakas).
+JAIMINI_KARAKA_NAMES = list(KARAKA_ABBREVIATIONS_8)
 JAIMINI_KARAKA_FULL = {
     "AK": "Atmakaraka", "AmK": "Amatya_Karaka", "BK": "Bhratri_Karaka",
-    "MK": "Matru_Karaka", "PK": "Pitri_Karaka", "GK": "Gnati_Karaka",
-    "DK": "Dara_Karaka", "SK": "Saptama_Karaka",
+    "MK": "Matru_Karaka", "PiK": "Pitri_Karaka", "PK": "Putra_Karaka",
+    "GK": "Gnati_Karaka", "DK": "Dara_Karaka",
 }
 
 # Batch configuration for context-decay protection
@@ -646,23 +652,102 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
     return aspects
 
 
-def _compute_jaimini_karakas(varga_positions: dict[str, int], d1_longitudes: dict[str, float]) -> dict[str, dict]:
-    """
-    Compute 8 Jaimini Chara karakas from D1 longitudes (degrees within sign).
-    AK = highest degrees, AmK = 2nd, ..., SK = 8th (excluding Rahu+Ketu for 7-karaka or including for 8).
-    Returns {karaka_name: {graha, sign_in_varga, dignity_in_varga}}.
-    """
-    # Use 7 classical grahas for karaka assignment (8-karaka includes Rahu)
-    eligible = {g: d1_longitudes.get(g, 0.0) % 30.0 for g in CLASSICAL_7_GRAHAS}
-    # Add Rahu for 8-karaka system (Rahu's degree within sign)
-    eligible["Rahu"] = d1_longitudes.get("Rahu", 0.0) % 30.0
+class KarakaDependencyMissing(RuntimeError):
+    """ga_sensitive's kn_rao karaka_chara_position rows are absent or malformed for the
+    (chart, ayanamsha) ga_vargas is building. ga_vargas does not recompute karakas."""
 
-    # Sort by degree within sign descending
-    sorted_grahas = sorted(eligible.items(), key=lambda x: x[1], reverse=True)
 
+def _read_jaimini_karakas(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
+    """READ the 8 Jaimini chara-karaka assignments from ga_sensitive's L1 rows.
+
+    Returns ``{abbreviation: graha}`` for AK AmK BK MK PiK PK GK DK, e.g.
+    ``{"AK": "Moon", ..., "PK": "Rahu", ...}``.
+
+    ga_sensitive owns the derivation (`karaka_chara_position`); this writer inherits the
+    value and never re-derives it (CLAUDE.md N.5 / N.7 item 3). The previous in-writer
+    derivation ranked Rahu by raw degree-in-sign, which disagreed with ga_sensitive's
+    KN Rao reckoning (30 - long % 30) and mislabelled ranks 5-8.
+
+    Rows are pinned on fact_category + fact_key (assigned_graha, karaka_rank) + the
+    canonical school formula_id, with a total ORDER BY. The rank -> abbreviation mapping
+    is by the stored `karaka_rank`, not by subject-name parsing.
+
+    Raises KarakaDependencyMissing (never silently recomputes) when ga_sensitive has not
+    built this chart/ayanamsha, or its rows are not a clean 8-rank permutation.
+    """
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute(
+            """
+            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+            FROM chart_facts
+            WHERE chart_id = %s
+              AND ayanamsha_id = %s
+              AND fact_category = 'karaka_chara_position'
+              AND fact_key IN ('assigned_graha', 'karaka_rank')
+              AND formula_id = %s
+            ORDER BY fact_subject, fact_key, fact_id
+            """,
+            (chart_id, ayanamsha_id, KARAKA_SCHOOL_KN_RAO),
+        )
+        fetched = cur.fetchall()
+    return _karakas_from_rows(fetched, chart_id, ayanamsha_id)
+
+
+def _karakas_from_rows(
+    fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
+) -> dict[str, str]:
+    """Pure core of _read_jaimini_karakas: (subject, key, text, num) rows -> {abbr: graha}."""
+    where = (
+        f"chart_id={chart_id} ayanamsha={ayanamsha_id} "
+        f"(ga_sensitive karaka_chara_position, formula_id={KARAKA_SCHOOL_KN_RAO})"
+    )
+    if not fetched:
+        raise KarakaDependencyMissing(
+            f"[ga_vargas] ga_sensitive dependency missing: no kn_rao karaka_chara_position rows "
+            f"for {where}. Build ga_sensitive for this chart first; ga_vargas does not "
+            f"recompute karakas."
+        )
+    graha_by_subject: dict[str, str] = {}
+    rank_by_subject: dict[str, int] = {}
+    for subject, key, text, num in fetched:
+        if key == "assigned_graha":
+            bucket, value = graha_by_subject, text
+        else:  # karaka_rank
+            bucket, value = rank_by_subject, (int(num) if num is not None else None)
+        if value is None or subject in bucket:
+            raise KarakaDependencyMissing(
+                f"[ga_vargas] malformed ga_sensitive karaka rows ({key} for subject {subject!r} is "
+                f"{'duplicated' if value is not None else 'NULL'}) for {where}."
+            )
+        bucket[subject] = value
+    if set(graha_by_subject) != set(rank_by_subject):
+        raise KarakaDependencyMissing(
+            f"[ga_vargas] malformed ga_sensitive karaka rows: assigned_graha subjects "
+            f"{sorted(graha_by_subject)} != karaka_rank subjects {sorted(rank_by_subject)} for {where}."
+        )
+    ranks = sorted(rank_by_subject.values())
+    if ranks != list(range(1, len(JAIMINI_KARAKA_NAMES) + 1)):
+        raise KarakaDependencyMissing(
+            f"[ga_vargas] ga_sensitive kn_rao karaka ranks {ranks} are not a 1..{len(JAIMINI_KARAKA_NAMES)} "
+            f"permutation for {where}."
+        )
+    return {
+        JAIMINI_KARAKA_NAMES[rank - 1]: graha_by_subject[subject]
+        for subject, rank in rank_by_subject.items()
+    }
+
+
+def _resolve_karakas_in_varga(
+    varga_positions: dict[str, int], karaka_assignments: dict[str, str],
+) -> dict[str, dict]:
+    """Place each already-assigned karaka graha in one varga.
+
+    ``karaka_assignments`` is the ga_sensitive-read {abbr: graha} map. Returns
+    {karaka_name: {graha, sign, sign_id, dignity}} in rank order.
+    """
     karakas = {}
-    for i, (graha, _) in enumerate(sorted_grahas[:8]):
-        k_name = JAIMINI_KARAKA_NAMES[i]
+    for k_name in JAIMINI_KARAKA_NAMES:
+        graha = karaka_assignments[k_name]
         varga_sign = varga_positions.get(graha)
         dignity = _compute_dignity(graha, varga_sign) if varga_sign is not None else "Unknown"
         karakas[k_name] = {
@@ -1886,14 +1971,18 @@ def _build_saptavargaja_rows(
 
 def _build_karaka_rows(
     chart_id: str, ayanamsha_id: str, build_id: str,
-    varga_n: int, vid: str, varga_data: dict, d1_longitudes: dict,
+    varga_n: int, vid: str, varga_data: dict, karaka_assignments: dict[str, str],
 ) -> list[dict]:
-    """Build karaka_per_varga: 8 Jaimini karakas × all 30 vargas."""
+    """Build karaka_per_varga: 8 Jaimini karakas × all 30 vargas.
+
+    ``karaka_assignments`` = {AK..DK: graha} READ from ga_sensitive (kn_rao school) by
+    _read_jaimini_karakas — never derived here.
+    """
     rows = []
     now = datetime.now(timezone.utc).isoformat()
-    karakas = _compute_jaimini_karakas(
+    karakas = _resolve_karakas_in_varga(
         {b: varga_data[b]["sign_idx"] for b in CLASSICAL_BODIES if b in varga_data},
-        d1_longitudes,
+        karaka_assignments,
     )
 
     for k_name, k_data in karakas.items():
@@ -1936,7 +2025,7 @@ def _build_karaka_rows(
             "near_sign_boundary_flag": None,
             "near_nakshatra_boundary_flag": None,
             "vargottama_flag_at_point": None,
-            "formula_provenance_text": "Jaimini_8_karaka_rahu_included",
+            "formula_provenance_text": "Jaimini_8_karaka_kn_rao_rahu_included_read_from_ga_sensitive",
             "cross_ayanamsha_divergence_arcsec": None,
         })
 
@@ -2931,6 +3020,12 @@ def build_ga_vargas(
             if owns_conn:
                 conn.commit()
 
+            # karaka_per_varga inherits ga_sensitive's kn_rao karaka assignments (no
+            # recomputation). Raises KarakaDependencyMissing if ga_sensitive has not built
+            # this chart/ayanamsha — build ga_sensitive first (registry edge:
+            # ga_vargas depends_on ga_sensitive; see KARAKA_ROLES_LANE_INTENT).
+            karaka_assignments = _read_jaimini_karakas(conn, chart_id, ayan_id)
+
             for batch_idx, batch_vargas in enumerate(VARGA_BATCHES):
                 batch_rows = []
                 batch_label = f"batch_{batch_idx+1}"
@@ -2995,7 +3090,7 @@ def build_ga_vargas(
 
                     # 9. karaka_per_varga
                     varga_rows.extend(_build_karaka_rows(
-                        chart_id, ayan_id, build_id, varga_n, vid, varga_data, d1_longitudes))
+                        chart_id, ayan_id, build_id, varga_n, vid, varga_data, karaka_assignments))
 
                     # 10. varga_rollup
                     varga_rows.extend(_build_rollup_rows(

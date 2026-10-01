@@ -4030,11 +4030,12 @@
         "AMATYAKARAKA",
         "BHRATRIKARAKA",
         "MATRIKARAKA",
+        "PITRIKARAKA",
         "PUTRAKARAKA",
         "GNATIKARAKA",
-        "DARAKARAKA",
-        "STRIKARAKA"
+        "DARAKARAKA"
       ],
+      "subject_note": "Per-school role lists (ga_writers/_karaka_roles.py). parashari_rahu_excluded: 7 subjects, ranks 1-7 = ATMA, AMATYA, BHRATRI, MATRI, PUTRA, GNATI, DARA (no PITRIKARAKA; the Matrikaraka doubles as Pitrikaraka). kn_rao_rahu_included (headline school): 8 subjects, ranks 1-8 = ATMA, AMATYA, BHRATRI, MATRI, PITRI, PUTRA, GNATI, DARA (BPHS 32.13-17, sourced_ocr_unverified). STRIKARAKA is NOT a subject: it is the labelled alias fact_key strikaraka_alias on the DARAKARAKA subject (kn_rao school only).",
       "two_pass_methodology": "rahu_excluded_sort vs rahu_included_sort both emitted if karaka_order_differs; AK_divergence halts build",
       "section_b_enrichment": true,
       "allowed_keys": {
@@ -4086,6 +4087,15 @@
             "parashari_rahu_excluded",
             "kn_rao_rahu_included"
           ],
+          "verification_min": "two_pass_verified"
+        },
+        "strikaraka_alias": {
+          "value_type": "text_enum",
+          "enum": [
+            "STRIKARAKA"
+          ],
+          "applies_only_to": "DARAKARAKA subject, formula_id kn_rao_rahu_included",
+          "note": "Labelled alias of the Darakaraka in the 8-karaka scheme (same graha as DARAKARAKA.assigned_graha); not a ninth subject row.",
           "verification_min": "two_pass_verified"
         },
         "karaka_rank": {
@@ -5786,7 +5796,7 @@
       "ayanamsha_dependent": true,
       "target_table": "chart_divisionals",
       "verification_min": "two_pass_verified",
-      "note": "8 Jaimini Chara karakas x 30 vargas; Rahu included (8-karaka school)",
+      "note": "8 Jaimini Chara karakas x 30 vargas, kn_rao_rahu_included school. Subjects '<varga>.<AK|AmK|BK|MK|PiK|PK|GK|DK>' (rank 1-8). The assigned grahas are READ from ga_sensitive's karaka_chara_position kn_rao rows (assigned_graha + karaka_rank); ga_vargas never recomputes them.",
       "allowed_keys": {
         "assigned_graha": {
           "value_type": "text"
