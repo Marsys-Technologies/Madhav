@@ -605,6 +605,62 @@ Totals over the 31: **4 EXPOSED** (`ka_muhurta_seva`, `ka_sangam`, `ka_vighnakar
 The fix PR's content; whether `bg_vedha_malefic_scale`/`bg_transit_rules` closures stay untouched by it (expected, not read); dynamic imports and runtime-injected `swe` objects (a static closure can miss a call and, for shared modules, over-report one); the six MSR producers' closures (S0m); `ka_gochara`'s legacy `find_*_events` use; the realised thread interleaving (investigation 8); the size of the effect on `kala_tithi_pravesha` (not quantified); the investigation's own unverified list (live job env, Linux-image reproduction, only the native chart's Moon and Sun compared).
 
 
+## L2B. L2 and the batch (v1.3 addendum; SS ruling N-59 of the L2 decision sheet, BINDING on sequencing)
+
+REVIEW section; no execution authority. The set below is derived from the live registry (E16, read about 18:25Z); the exact list of fixes comes from the L2 decision sheet and is not in this lane.
+
+### L2B.1 The ruling and the pending fixes
+
+**N-59 (SS, as given): batch every output-changing L2 fix, then ONE coherent canonical L2 rebuild on `main`'s code; no L2 asset is rebuilt twice for these.** Pending fixes as listed by the coordinator (exact list from the L2 sheet): `bo_laksana` (orb, shadbala and dignity made optional, plus one formula version bump); `bo_bimba` (name and identity fix); `bo_sangati` and `bo_laksana_rerank` (root = fact subject rule); `bo_karanajala` (argala fix, **after the L1 ruling**); valence NULL fall-through on six producers (`bo_vargottama_dhana` and others; I read "six producers" as the six MSR producers `bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic`, inferred, not stated); `bo_upaya`; `bo_pramana_mapa` flags; "etc."
+
+### L2B.2 The batch set (live registry)
+
+The `bodha` layer has 23 active assets in 9 dependency waves (a dependency inside the layer forces the later wave):
+
+| L2 wave | Assets | Canonical state (throughput / freshness) |
+|---|---|---|
+| 0 | `bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic` (the six MSR producers) | all `lit` / `fresh` |
+| 1 | `bo_bimba`, `bo_grounding`, `bo_samskara` | `lit` / `fresh` |
+| 2 | `bo_karanajala` | `lit` / **stale** |
+| 3 | `bo_cgm_motifs`, `bo_cgm_paths`, `bo_laksana_rerank` | `stale` / fresh; `stale` / fresh; `lit` / **stale** |
+| 4 | `bo_sangati`, `bo_yantra_mechanism` | `lit` / fresh; `stale` / stale |
+| 5 | `bo_cdlm_summary`, `bo_drishti`, `bo_pratijna`, `bo_upaya` | `stale` (`bo_pratijna` freshness stale) |
+| 6 | `bo_anveshana` | `stale` |
+| 7 | `bo_chart_gestalt`, `bo_pramana_mapa` | `stale` |
+| 8 | `bo_samvada` | `stale` / stale |
+
+Because `bo_laksana` (wave 0) is among the changed writers, **the downstream closure is the whole layer: 23 assets**. Seven are in the 31-asset wave (`bo_karanajala`, `bo_pratijna`, `bo_drishti`, `bo_cgm_motifs`, `bo_cgm_paths`, `bo_anveshana`, `bo_upaya`); **16 are not** (`bo_laksana`, `bo_arudha`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_nakshatra_semantic`, `bo_bimba`, `bo_grounding`, `bo_samskara`, `bo_sangati`, `bo_laksana_rerank`, `bo_cdlm_summary`, `bo_chart_gestalt`, `bo_pramana_mapa`, `bo_samvada`, `bo_yantra_mechanism`). Counting the batch, the wave is 47 assets. Any final fix list that contains a wave-0 or wave-1 writer yields the same whole-layer closure; the set is re-derived at freeze. Non-L2 direct dependencies of the layer (must be lit and fresh at launch): `bg_rules`, `ga_condition`, `ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sade_sati`, `ga_sensitive`, `ga_strength`, `ga_structural`, `ga_vargas`, `ga_vichara`, `ga_yoga`.
+
+### L2B.3 Which stages of the wave rebuild an L2 asset, and must WAIT for the batch
+
+| Stage (v1.2.1) | L2 assets in it | v1.3 verdict |
+|---|---|---|
+| S0m (conditional) | the MSR producers and `bo_laksana` | **absorbed into the batch** (L2 waves 0-1); no separate S0m |
+| S1 | `bo_karanajala` (with `ka_muhurta_seva`, `ka_dasha_kala`) | `bo_karanajala` **leaves S1 and WAITS for the batch**; S1 is `ka_muhurta_seva`, `ka_dasha_kala` only |
+| S2 | `bo_pratijna`, `bo_drishti`, `bo_cgm_motifs`, `bo_cgm_paths`, `bo_anveshana`, `bo_upaya` | **absorbed into the batch and WAIT** (this supersedes EPH.5's "not held by ruling 2" for them; N-59 binds on sequencing) |
+
+### L2B.4 Which non-L2 assets depend on L2 outputs that change (so they follow the batch, not precede it)
+
+Live registry: 31 non-L2 assets are downstream of the L2 layer. **17 are in the wave and all of them follow the batch** (direct L2 dependencies in brackets): `ka_avadhi` (`bo_pratijna`), `ka_yojaka` (`bo_bimba`, `bo_laksana`, `bo_pratijna`, `bo_sangati`), `ka_sangam` (`bo_laksana`), `ka_kalasutra` (`bo_laksana`), `ka_vighnakara` (none direct; 11 L2 ancestors), `ka_kala_darshana` (none direct), `ka_bhavishya_lekha` (`bo_laksana`), `ka_kshetra` (`bo_pratijna`, `bo_sangati`, `bo_upaya`), `ph_nimitta` (`bo_anveshana`, `bo_bimba`, `bo_cgm_paths`, `bo_karanajala`, `bo_laksana`, `bo_samskara`, `bo_sangati`), `ph_muhurta`, `ph_pramana`, `ph_suddha_sodhana` (none direct), `ph_pratikara` (`bo_upaya`), `ph_sankrama` (`bo_sangati`), `ph_sodhana`, `ph_phaladesa` (`bo_laksana`), `mi_bhavisya` (`bo_laksana`). The other 14, outside the wave and all `stale`/`error`/`dormant` today, also follow: `ka_jivana_parva`, `ka_taranga`, `ka_tulana`, `ph_rectification`, `mi_abhilekha`, `mi_adhilepa`, `mi_bhara`, `mi_darshana`, `mi_gunanaka`, `mi_pariksha`, `mi_pramana`, `mi_sambandha`, `mi_sankalpa`, `mi_seva`. So **S3, S4, S5, S6 and S7 all follow the batch**.
+
+**Wave assets with no L2 ancestor (may precede the batch):** `bg_transit_rules`, `bg_vedha_malefic_scale`, `ka_dasha_kala`, `ka_gochara`, `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_muhurta_seva`, `ka_tithi_pravesha`, `ka_vedha_gochara`. Their own gates (ephemeris, grants, Pravāha) still apply.
+
+### L2B.5 What "one coherent canonical L2 rebuild" means in stage terms: stage S-L2
+
+- **One frozen run.** One cockpit `POST /api/cockpit/runs` with `scope:"asset_set"`, `action:"rebuild"`, the canonical chart and the 23 asset ids (no global asset in it, so an owner session with write access suffices; `dispatch_frozen_rebuild.py` is single-asset and does not fit). The orchestrator orders it in the 9 waves of L2B.2. Nothing in it is rebuilt twice: if an asset fails, only that asset and its blocked dependents are retried (`action:"build"` selects the non-fresh ones), never a second full pass; a failure is reported to SS before any retry.
+- **Preconditions (all):** (i) the L2 sheet is closed and **every output-changing fix is merged AND in the job image** (digest inventory regenerated; Trap 103; S0b.8 item 3); (ii) **ephemeris:** G-EPH met, G-FLIP read, and S-L1 complete or SS has ruled the L1 stays as it is, because L2 reads L1 `chart_facts` and a later L1 rebuild would restale all 23 assets, and because `bo_karanajala`'s argala fix waits for the L1 ruling (the L2 closures themselves contain no swisseph call, EPH.3); (iii) **P0b verified** (owner-path count, builder probe, canary): `bo_laksana` and `bo_pratijna` read `chart_divisionals` (P0b.2); (iv) **MSR order:** the manifest has the six MSR producers in waves 0 and 1 of the run, strictly before every L2 consumer, and the batch precedes every Kāla/Phala stage; `msr_rebuild_order_guard.py --manifest <the run's plan_manifest> --require-nonvacuous` before, `--post-wave` and `msr_dangling_signal_refs.py --require-nonvacuous` after (1214 and the L2 foreign-key drop are applied, observed 17:55Z: a changed signal set no longer cascade-deletes, it leaves unresolved ids, which the detector reads); (v) the 13 non-L2 direct dependencies lit and fresh (they are after S-L1); Grant v1.4 (1217); (vi) no active run, stage approval, and the owner's build-dispatch authorization in the executing session.
+- **Cost (estimate from canonical history, E16):** serial sum of medians about 21 minutes, of maxima about 100 minutes. **Watchdog exposure (R-7):** light writers with no mid-run heartbeat: `bo_samskara` median 776 s and max 1218 s, `bo_laksana` max 1286 s, `bo_laksana_rerank` max 1233 s, `bo_karanajala` max 1091 s: each can exceed the 15-minute reaper; this is a risk of the batch, not of the stages it replaces.
+- **After it:** `bo_laksana` regenerates the MSR signals; the Kāla and Phala assets that carry their ids (L2B.4) are then rebuilt in S3-S7 on the final ids.
+
+### L2B.6 Re-ordered plan
+
+1217 -> S0-alt -> S0b -> S0L -> S0c (Pravāha-confirmed) -> fix deploys -> G-EPH -> G-FLIP -> S-L1 (if zero flips) -> **report the L1 `.se1` rebuild completion to SS** -> S0c2 (conditional on S-L1) -> S0t -> S1 (`ka_muhurta_seva`, `ka_dasha_kala`) -> **S-L2 (the batch, absorbing S0m, `bo_karanajala` and S2)** -> S3 -> S4 -> S5 -> S6 -> S7. The L2 batch can also run before the L1 stage only if SS rules the L1 stays unchanged (G-FLIP outcome other than "rebuild"); otherwise it follows S-L1. Detail in EPH.6.
+
+### L2B.7 Not verified (L2B)
+
+The exact list of output-changing fixes, which writers carry each, and which of the six producers are meant; whether any listed fix turns out not to change output (a subset without wave-0/1 writers would shrink the closure); the L2 sheet's own sequencing; run durations after the fixes; whether a single 23-asset run is within the dispatcher's limits (not checked).
+
+
 ## 0. What this review needs you to see first
 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
@@ -2275,5 +2331,115 @@ select root, count(distinct d) filter (where d like 'ga\_%') n_l1_ancestors, str
 from up group by root order by root;
 ```
 Result: `bg_transit_rules`, `bg_vedha_malefic_scale`, `bg_vidhi_primitives`, `ka_gochara_resonance`, `ka_muhurta_seva` 0; `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_tithi_pravesha` 1 (`ga_positions`); `ka_dasha_kala` 2; `ka_gochara` 9; `bo_*`, `ka_avadhi`, `ka_yojaka`, `ka_kshetra` 12; `ka_sangam`, `ka_vighnakara`, `ka_kalasutra`, `ka_kala_darshana`, `ka_bhavishya_lekha`, `ph_*`, `mi_bhavisya` 13. Investigation read: `git show origin/suvarna/land/TI-ephemeris-backend-001:00_ARCHITECTURE/briefs/suvarna/exec/INVESTIGATION_EPHEMERIS_BACKEND_v1_0.md` (188 lines, status DRAFT_FOR_REVIEW); its figures are cited, not re-measured.
+
+### E16. v1.3 addendum: L2 batch derivation (2026-10-01 about 18:25Z, `suvarna_reader`, SELECT only)
+
+Statements and script (read-only; layer = `bodha`; L2 waves = longest dependency chain inside the layer; downstream = transitive dependents in the live registry; canonical states from `asset_throughput` for chart `482012f1`). Output:
+```
+L2 assets 23
+ wave 0 ['bo_arudha', 'bo_laksana', 'bo_nakshatra_semantic', 'bo_special_lagna', 'bo_sudarshana', 'bo_vargottama_dhana']
+ wave 1 ['bo_bimba', 'bo_grounding', 'bo_samskara']
+ wave 2 ['bo_karanajala']
+ wave 3 ['bo_cgm_motifs', 'bo_cgm_paths', 'bo_laksana_rerank']
+ wave 4 ['bo_sangati', 'bo_yantra_mechanism']
+ wave 5 ['bo_cdlm_summary', 'bo_drishti', 'bo_pratijna', 'bo_upaya']
+ wave 6 ['bo_anveshana']
+ wave 7 ['bo_chart_gestalt', 'bo_pramana_mapa']
+ wave 8 ['bo_samvada']
+non-L2 direct deps of the L2 layer: ['bg_rules', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_strength', 'ga_structural', 'ga_vargas', 'ga_vichara', 'ga_yoga']
+non-L2 assets downstream of the L2 layer: 31
+  ka_avadhi                wave=Y state=error    direct L2: bo_pratijna | n L2 anc 11
+  ka_bhavishya_lekha       wave=Y state=stale    direct L2: bo_laksana | n L2 anc 11
+  ka_jivana_parva          wave=- state=stale    direct L2: - | n L2 anc 11
+  ka_kala_darshana         wave=Y state=stale    direct L2: - | n L2 anc 11
+  ka_kalasutra             wave=Y state=stale    direct L2: bo_laksana | n L2 anc 11
+  ka_kshetra               wave=Y state=error    direct L2: bo_pratijna,bo_sangati,bo_upaya | n L2 anc 13
+  ka_sangam                wave=Y state=stale    direct L2: bo_laksana | n L2 anc 11
+  ka_taranga               wave=- state=stale    direct L2: bo_pratijna | n L2 anc 11
+  ka_tulana                wave=- state=stale    direct L2: - | n L2 anc 11
+  ka_vighnakara            wave=Y state=stale    direct L2: - | n L2 anc 11
+  ka_yojaka                wave=Y state=stale    direct L2: bo_bimba,bo_laksana,bo_pratijna,bo_sangati | n L2 anc 11
+  mi_abhilekha             wave=- state=stale    direct L2: - | n L2 anc 17
+  mi_adhilepa              wave=- state=error    direct L2: bo_laksana | n L2 anc 17
+  mi_bhara                 wave=- state=error    direct L2: - | n L2 anc 13
+  mi_bhavisya              wave=Y state=error    direct L2: bo_laksana | n L2 anc 17
+  mi_darshana              wave=- state=error    direct L2: bo_laksana,bo_pratijna,bo_sangati | n L2 anc 17
+  mi_gunanaka              wave=- state=error    direct L2: - | n L2 anc 17
+  mi_pariksha              wave=- state=error    direct L2: bo_laksana | n L2 anc 17
+  mi_pramana               wave=- state=error    direct L2: - | n L2 anc 17
+  mi_sambandha             wave=- state=error    direct L2: - | n L2 anc 17
+  mi_sankalpa              wave=- state=dormant  direct L2: - | n L2 anc 13
+  mi_seva                  wave=- state=stale    direct L2: - | n L2 anc 17
+  ph_muhurta               wave=Y state=stale    direct L2: - | n L2 anc 15
+  ph_nimitta               wave=Y state=stale    direct L2: bo_anveshana,bo_bimba,bo_cgm_paths,bo_karanajala,bo_laksana,bo_samskara,bo_sangati | n L2 anc 15
+  ph_phaladesa             wave=Y state=stale    direct L2: bo_laksana | n L2 anc 17
+  ph_pramana               wave=Y state=stale    direct L2: - | n L2 anc 17
+  ph_pratikara             wave=Y state=stale    direct L2: bo_upaya | n L2 anc 17
+  ph_rectification         wave=- state=stale    direct L2: - | n L2 anc 15
+  ph_sankrama              wave=Y state=stale    direct L2: bo_sangati | n L2 anc 15
+  ph_sodhana               wave=Y state=stale    direct L2: bo_laksana | n L2 anc 15
+  ph_suddha_sodhana        wave=Y state=stale    direct L2: - | n L2 anc 15
+wave assets with NO L2 ancestor: ['bg_transit_rules', 'bg_vedha_malefic_scale', 'ka_dasha_kala', 'ka_gochara', 'ka_gochara_resonance', 'ka_moorti_nirnaya', 'ka_muhurta_seva', 'ka_tithi_pravesha', 'ka_vedha_gochara']
+```
+```python
+import json, subprocess
+CH='482012f1-710e-4a25-994a-93821f5871aa'
+def q(sql):
+    o=subprocess.run(["/opt/homebrew/bin/psql","-X","-A","-t","-c",sql],capture_output=True,text=True,timeout=60)
+    assert o.returncode==0,o.stderr[:200]
+    return [json.loads(l) for l in o.stdout.split('\n') if l.strip()]
+reg={r['asset_id']:r for r in q("select row_to_json(t)::text from (select asset_id, layer, coalesce(depends_on,'{}') depends_on from asset_registry where is_active) t")}
+st={r['asset_id']:r['state'] for r in q(f"select row_to_json(t)::text from (select asset_id, state from asset_throughput where chart_id='{CH}') t")}
+wave=set("bg_transit_rules,bg_vedha_malefic_scale,ka_muhurta_seva,ka_dasha_kala,bo_karanajala,bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya,ka_avadhi,ka_gochara,ka_yojaka,ka_sangam,ka_kalasutra,ka_vighnakara,ka_kala_darshana,ka_bhavishya_lekha,ph_nimitta,ph_muhurta,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana,ph_pramana,ph_phaladesa,mi_bhavisya,ka_moorti_nirnaya,ka_vedha_gochara,ka_gochara_resonance,ka_tithi_pravesha,ka_kshetra".split(','))
+l2=[a for a,r in reg.items() if r['layer']=='bodha']
+# L2 waves
+waves={}
+def w(a):
+    if a in waves: return waves[a]
+    ds=[d for d in reg[a]['depends_on'] if d in l2]
+    waves[a]=0 if not ds else 1+max(w(d) for d in ds); return waves[a]
+for a in l2: w(a)
+byw={}
+for a,k in waves.items(): byw.setdefault(k,[]).append(a)
+print('L2 assets',len(l2)); 
+for k in sorted(byw): print(' wave',k,sorted(byw[k]))
+# non-L2 direct deps of L2 assets
+nl=set()
+for a in l2:
+    for d in reg[a]['depends_on']:
+        if d not in l2: nl.add(d)
+print('non-L2 direct deps of the L2 layer:',sorted(nl))
+# downstream (non-L2) of any L2 asset, transitive
+dn={}
+rev={}
+for a,r in reg.items():
+    for d in r['depends_on']: rev.setdefault(d,set()).add(a)
+def down(a):
+    seen=set(); q_=[a]
+    while q_:
+        x=q_.pop()
+        for y in rev.get(x,()):
+            if y not in seen: seen.add(y); q_.append(y)
+    return seen
+alld=set()
+direct_l2={}
+for a in l2: alld|=down(a)
+nonl2=sorted(x for x in alld if reg[x]['layer']!='bodha')
+print('non-L2 assets downstream of the L2 layer:',len(nonl2))
+for x in nonl2:
+    dl=sorted(d for d in reg[x]['depends_on'] if d in l2)
+    anc=set()
+    # transitive L2 ancestors
+    stack=list(reg[x]['depends_on']); seen=set()
+    while stack:
+        y=stack.pop()
+        if y in seen: continue
+        seen.add(y)
+        if y in l2: anc.add(y)
+        stack.extend(reg[y]['depends_on'])
+    print(f"  {x:24s} wave={'Y' if x in wave else '-'} state={st.get(x,'-'):8s} direct L2: {','.join(dl) or '-'} | n L2 anc {len(anc)}")
+print('wave assets with NO L2 ancestor:', sorted(a for a in wave if a not in alld and reg.get(a,{}).get('layer')!='bodha'))
+```
+Timing (canonical chart, `build_run_assets` completed non-skip rows, median / max seconds, n = 1 to 24): `bo_laksana` 118.0 / 1286.3, `bo_laksana_rerank` 174.4 / 1233.1, `bo_samskara` 775.8 / 1217.9, `bo_karanajala` 20.6 / 1091.4, `bo_anveshana` 24.4 / 373.8, `bo_drishti` 74.0 / 175.7, `bo_yantra_mechanism` 12.1 / 137.8, `bo_cgm_motifs` 8.0 / 100.0, `bo_upaya` 12.9 / 75.7, `bo_bimba` 13.4 / 54.6, `bo_pratijna` 15.0 / 52.1, `bo_sangati` 12.4 / 43.2, `bo_pramana_mapa` 3.6 / 27.8, `bo_cgm_paths` 1.3 / 25.5, `bo_cdlm_summary` 2.7 / 16.7, `bo_chart_gestalt` 1.6 / 12.2, `bo_nakshatra_semantic` 0.9 / 11.5, `bo_sudarshana` 0.7 / 10.3, `bo_special_lagna` 0.4 / 8.8, `bo_vargottama_dhana` 0.9 / 8.2, `bo_arudha` 0.8 / 7.5, `bo_samvada` 0.2 / 2.4, `bo_grounding` 0.1 / 0.1. Serial sum of medians 1274 s (about 21 min); of maxima 5973 s (about 100 min); last completed builds 2026-09-08 to 2026-09-12. `bo_laksana` `rows_written` 50,529 (the other five MSR producers 14 to 45). The coordinator's fix list and the SS decision N-59 are recorded as given and were not independently verifiable.
 
 *End of document.*
