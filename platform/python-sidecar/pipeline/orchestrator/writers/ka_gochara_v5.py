@@ -329,14 +329,19 @@ class GocharaV5Writer(WriterBase):
             sky_convention_id=sky_cid,
             source_fact_ids=context["source_fact_ids"],
             arc_index_for=arc_index_for, ephe_path=ephe_path,
-            dasha_rows_for=dasha_rows_for)
+            dasha_rows_for=dasha_rows_for, chart=chart)
         inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
             notes=(f"{event_class}/{path_id}: {counts['records']} transit "
                    f"records ({counts['contacts']} contacts, "
                    f"{counts['truncated_contacts']} truncated kept), "
-                   f"{counts['natal_records']} natal facts; "
+                   f"{counts['natal_records']} natal facts "
+                   f"({counts.get('skipped_natal_p1', 0)} P1 natal rows not "
+                   f"admission-bearing, {counts.get('unwritable_testimony', 0)} "
+                   f"testimony-licence transit records unwritable, "
+                   f"{counts.get('p3_enumeration_defects', 0)} P3 enumeration "
+                   f"defects); "
                    f"{counts['prereq_evaluated']} prerequisite results "
                    f"evaluated; dasha_build="
                    f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"))

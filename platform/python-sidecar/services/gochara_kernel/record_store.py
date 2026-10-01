@@ -57,6 +57,7 @@ stored row is a loud build failure, never a silent dedup.
 from __future__ import annotations
 
 import json as _json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Sequence
@@ -74,6 +75,12 @@ from .substrate import (DB_BODY, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START,
                         jd_to_utc)
 from services.gochara_rules.frames import sign_of
 from services.gochara_rules import predicates as rule_predicates
+from services.gochara_rules import admission as rules_admission
+from services.gochara_rules import favourable_houses as rules_favourable
+from services.gochara_rules import permission as rules_permission
+from services.gochara_rules import registry as rules_registry
+
+logger = logging.getLogger(__name__)
 
 SUPPORT_GRAIN_SPAN = "span"
 DEFERRAL_POINT_SOLVE = ("aspect/conjunction contact solve needs the body's "
@@ -386,6 +393,16 @@ class RecordStore:
         _byte_check(row, (sky_convention_id,), f"convention bridge {kala_convention_id}")
 
     # ── coverage FIRST (pin 7) ────────────────────────────────────────────
+
+    def stored_contact_keys(self, *, chart_id: str, generation: str) -> set[tuple]:
+        """The `transit_relation` declarations: (body, relation_kind, physical_object_id)
+        of every contact row stored for this chart × generation — READ BACK from the
+        database, never built from the minting loop."""
+        rows = self.conn.execute(
+            "SELECT body, relation_kind, physical_object_id::text"
+            " FROM public.ka_gochara_contact WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation)).fetchall()
+        return {(r[0], r[1], r[2]) for r in rows}
 
     # ── candidate replacement in dependency order (AM-3; §N.3) ───────────
     #
@@ -933,6 +950,7 @@ def materialise_record_grain(
     ephe_path: str | None = None,
     refine: bool = True,
     dasha_rows_for: Callable[[str], list[dict]] | None = None,
+    chart: dict | None = None,
 ) -> dict[str, int]:
     """Materialise one `record:<event_class>:<path_id>` grain: contacts,
     then records, bound to the class's ALREADY-WRITTEN coverage partition
@@ -954,6 +972,34 @@ def materialise_record_grain(
     point_edges = [e for e in edges
                    if e.transit and e.relation in POINT_KERNEL_RELATION]
     natal_edges = [e for e in edges if not e.transit]
+    skipped_natal_p1 = 0
+    if path_id == "P1":
+        # AM-11 pin (b): P1's natal-fact rows (contact_id NULL) are NOT admission-
+        # bearing records — F5 demands every declared prerequisite and 1155 has no
+        # "not applicable". Prerequisite (2) is evaluated on the TRANSIT record.
+        skipped_natal_p1, natal_edges = len(natal_edges), []
+    unwritable_testimony = 0
+    _licence_cache: dict[str, dict] = {}
+
+    def _p1_relation(agent: str) -> dict | None:
+        """P1 prerequisite (2) via Stream B's permission.period_lord_relation over L1
+        natal positions + sign lordship + the H truth table. None = not evaluable."""
+        if chart is None:
+            return None
+        if agent not in _licence_cache:
+            try:
+                _licence_cache[agent] = rules_permission.period_lord_relation(
+                    agent.title(), event_class, chart)
+            except KeyError:           # the lord's natal position is unreadable
+                _licence_cache[agent] = {"relation": "unknown", "licence": "none"}
+        return _licence_cache[agent]
+
+    def _unwritable(agent: str) -> bool:
+        """A TESTIMONY-licence period lord (non-node dispositorship/association) has no
+        ruling_ref to satisfy kgrr_ruling_ck (D3): its transit records are not minted —
+        named in the counts, never silently dropped."""
+        rel = _p1_relation(agent) if path_id == "P1" else None
+        return bool(rel and rel["licence"] == "testimony")
     coverage_key = event_class
     if prerequisites is None:
         rule_version = edges[0].rule_version if edges else "1.0.0"
@@ -998,6 +1044,9 @@ def materialise_record_grain(
             house = house_for(e, span.sign)
             if house is None:
                 continue
+            if _unwritable(e.agent):
+                unwritable_testimony += 1
+                continue
             work.append((e, m, house))
 
     # Point occurrences (3/N): house from the TARGET point's sign (the natal
@@ -1014,6 +1063,9 @@ def materialise_record_grain(
         for occ in occs:
             house = house_for(e, sign)
             if house is None:
+                continue
+            if _unwritable(e.agent):
+                unwritable_testimony += 1
                 continue
             key = e.natural_key(
                 chart_id=chart_id, generation=generation,
@@ -1034,7 +1086,10 @@ def materialise_record_grain(
         path_id=path_id,
         rule_version=edges[0].rule_version if edges else RULE_VERSION)
     counts = {"contacts": 0, "records": 0, "natal_records": 0,
-              "truncated_contacts": 0, "prereq_evaluated": 0}
+              "truncated_contacts": 0, "prereq_evaluated": 0,
+              "skipped_natal_p1": skipped_natal_p1,
+              "unwritable_testimony": unwritable_testimony,
+              "p3_enumeration_defects": 0}
     # Per-record evaluation context for the prerequisite result pass below
     # (v1.0 item 5): the occurrence instant (t_exact; the observed span
     # start for a truncated contact — flagged v1.5 binding) and the support
@@ -1074,7 +1129,8 @@ def materialise_record_grain(
             prerequisites=prerequisites, house_from_frame=house)
         counts["records"] += 1
         evaluated.append({
-            "record_id": m["record_id"], "edge": edge,
+            "record_id": m["record_id"], "edge": edge, "kind": "transit",
+            "house": house,
             "instant": span.t_exact or span.t_in,
             "support": (span.t_in, span.t_out or h_end)})
         supports_by_agent.setdefault(edge.agent, []).append(
@@ -1103,7 +1159,8 @@ def materialise_record_grain(
             prerequisites=prerequisites, house_from_frame=house)
         counts["records"] += 1
         evaluated.append({
-            "record_id": record_id, "edge": edge,
+            "record_id": record_id, "edge": edge, "kind": "transit",
+            "house": house,
             "instant": occ.t_exact or occ.t_in,
             "support": (occ.t_in, occ.t_out)})
         supports_by_agent.setdefault(edge.agent, []).append(
@@ -1119,64 +1176,124 @@ def materialise_record_grain(
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites)
         counts["natal_records"] += 1
+        evaluated.append({"record_id": m["record_id"], "edge": edge, "kind": "natal",
+                          "house": None, "instant": None, "support": None})
 
-    # Prerequisite result evaluation at materialisation (design v1.0 item 5;
-    # the 1155 trigger's result_only path — only `result` ever UPDATEs).
-    # Scope is exactly the brief's named set: period_running_at (P1) and
-    # p4_double_transit (P4). Every other declared prerequisite stays NULL
-    # (not evaluated ⇒ unknown ⇒ 'unqualified' at the F5 COMMIT
-    # finalisation — a state, never a guess). Natal rows carry no occurrence
-    # instant and are not evaluated here.
-    def _ordinal_of(predicate: str) -> int | None:
-        for i, (pid, _pv) in enumerate(prerequisites, start=1):
-            if pid == predicate:
-                return i
-        return None
+    # Prerequisite result evaluation at materialisation (steward 2026-10-02, from
+    # Stream B's PREREQUISITE_EVALUATION_ANSWER; AM-11): EVERY declared prerequisite of
+    # the path is evaluated — none hard-coded, none left NULL on a decidable predicate
+    # ("unevaluated" is not "unknown", §N.8; an undecidable one is stored as an EXPLICIT
+    # 'unknown'). The 1155 trigger's result_only path; the record's admission_state is
+    # re-derived with each result (F5). The rule logic is Stream B's
+    # (gochara_rules.permission / registry / favourable_houses / admission): called,
+    # never re-implemented here.
+    contact_keys = (store.stored_contact_keys(chart_id=chart_id, generation=generation)
+                    if any(r["kind"] == "transit" for r in evaluated) else set())
 
-    if path_id == "P1" and dasha_rows_for is not None:
-        oi = _ordinal_of("period_running_at")
-        if oi is not None:
-            for rec in evaluated:
-                rows = dasha_rows_for(rec["edge"].agent)
-                if not rows:
-                    result = "unknown"   # L1 dasha rows absent — never false
-                else:
-                    result = rule_predicates.evaluate(
-                        "period_running_at",
-                        {"rows": [_dasharow(r) for r in rows],
-                         "t": rec["instant"]})
-                store.set_prerequisite_result(
-                    record_id=rec["record_id"], ordinal=oi,
-                    predicate_id="period_running_at",
-                    predicate_version=rec["edge"].rule_version,
-                    result=result)
-                counts["prereq_evaluated"] += 1
+    def _period_running_at(rec):
+        if dasha_rows_for is None or rec["kind"] != "transit":
+            return "unknown"           # no L1 dasha reader / atemporal row
+        rows = dasha_rows_for(rec["edge"].agent)
+        if not rows:
+            return "unknown"           # L1 dasha rows absent — never false
+        return rule_predicates.evaluate(
+            "period_running_at",
+            {"rows": [_dasharow(r) for r in rows], "t": rec["instant"]})
 
-    if path_id == "P4":
-        oi = _ordinal_of("p4_double_transit")
-        if oi is not None:
-            for rec in evaluated:
-                agent = rec["edge"].agent
-                other = {"jupiter": "saturn", "saturn": "jupiter"}.get(agent)
-                assert other is not None, (
-                    f"P4 record on non-Jupiter/Saturn agent {agent!r} — "
-                    "O-RP-3 violated upstream, refusing to evaluate")
-                if other not in searched_agents:
-                    result = "unknown"   # the other planet was not searched
-                else:
-                    a = rec["support"]
-                    result = rule_predicates.FALSE
-                    for b_span in supports_by_agent.get(other, []):
-                        if rule_predicates.evaluate(
-                                "overlaps", {"a": a, "b": b_span}) == "true":
-                            result = rule_predicates.TRUE
-                            break
-                store.set_prerequisite_result(
-                    record_id=rec["record_id"], ordinal=oi,
-                    predicate_id="p4_double_transit",
-                    predicate_version=rec["edge"].rule_version,
-                    result=result)
-                counts["prereq_evaluated"] += 1
+    def _p4_double_transit(rec):
+        agent = rec["edge"].agent
+        other = {"jupiter": "saturn", "saturn": "jupiter"}.get(agent)
+        assert other is not None, (
+            f"P4 record on non-Jupiter/Saturn agent {agent!r} — "
+            "O-RP-3 violated upstream, refusing to evaluate")
+        if other not in searched_agents:
+            return "unknown"           # the other planet was not searched
+        for b_span in supports_by_agent.get(other, []):
+            if rule_predicates.evaluate(
+                    "overlaps", {"a": rec["support"], "b": b_span}) == "true":
+                return rule_predicates.TRUE
+        return rule_predicates.FALSE
+
+    def _natal_bhava_relationship(rec):
+        rel = _p1_relation(rec["edge"].agent)
+        if rel is None or rel["relation"] == "unknown":
+            return "unknown"           # H unknown / lord's natal position unreadable
+        # scored AND testimony kinds store 'true' (AM-11 pin a): the record's ROLE, not
+        # the result, stops a testimony kind admitting; 'none' is a real false.
+        return "true" if rel["licence"] in ("scored", "testimony") else "false"
+
+    def _transit_relation(rec):
+        if rec["kind"] != "transit":
+            return "unknown"           # a natal annotation has no transit contact
+        obj = rec["edge"].obj
+        # READ-BACK of the stored contact rows — never a literal true (AM-11 pin b)
+        return rule_predicates.evaluate(
+            "declaration_exists",
+            {"declarations": contact_keys,
+             "key": (obj.body, obj.relation_kind, str(obj.uuid))})
+
+    def _house_from_moon(rec):
+        edge = rec["edge"]
+        if (chart is None or "Moon" not in (chart.get("natal") or {})
+                or edge.frame_kind != "moon" or rec["house"] is None):
+            return "unknown"           # natal Moon unreadable / not a Moon-frame row
+        agent = edge.agent.title()
+        try:
+            cited = set(rules_favourable.favourable_houses(agent))
+        except (KeyError, ValueError):
+            return "unknown"           # no cited set for this graha
+        # AM-11 pin (c): h in the cited favourable ∪ adverse set; POLARITY (the D-RQ5
+        # evidence channel) belongs to the valence step, not to admission.
+        if agent in rules_admission.ADVERSE_RESIDENCE_BODIES:
+            cited |= set(rules_admission.ADVERSE_RESIDENCE_HOUSES)
+        return "true" if rec["house"] in cited else "false"
+
+    def _p3_contact_house_or_lord(rec):
+        edge = rec["edge"]
+        if chart is None or rec["kind"] != "transit":
+            return "unknown"
+        houses = rules_registry.signature_houses(event_class, chart)
+        if houses is None:
+            return "unknown"           # H unknown (the eight classes)
+        lords = rules_registry.signature_lords(event_class, chart) or frozenset()
+        target = edge.obj.canonical_target
+        if edge.object_role == "signature_house":
+            ok = (edge.relation in ("residence", "aspect")
+                  and target in {targets.span_target(sg) for sg in houses})
+        elif edge.object_role == "lord":
+            if any(lord not in chart["natal"] for lord in lords):
+                return "unknown"       # a lord's natal position is unreadable
+            ok = (edge.relation in ("conjunction", "aspect")
+                  and target in {targets.point_target(chart["natal"][lord])
+                                 for lord in lords})
+        else:
+            ok = False
+        if not ok:
+            # an enumeration defect: the record names an object outside H ∪ L(H) or a
+            # relation not permitted for its kind — reported loudly, never absorbed
+            counts["p3_enumeration_defects"] += 1
+            logger.error("[ka_gochara_v5] P3 enumeration defect: %s %s %s %s not in H ∪ L(H)",
+                         event_class, edge.agent, edge.relation, target)
+        return "true" if ok else "false"
+
+    _EVALUATORS = {
+        "period_running_at": _period_running_at,
+        "p4_double_transit": _p4_double_transit,
+        "natal_bhava_relationship": _natal_bhava_relationship,
+        "transit_relation": _transit_relation,
+        "house_from_moon": _house_from_moon,
+        "p3_contact_house_or_lord": _p3_contact_house_or_lord,
+    }
+    for rec in evaluated:
+        for ordinal, (pid, _pv) in enumerate(prerequisites, start=1):
+            fn = _EVALUATORS.get(pid)
+            if fn is None:
+                # P5/P6 predicates: no P5/P6 record is materialised by this grain
+                continue
+            store.set_prerequisite_result(
+                record_id=rec["record_id"], ordinal=ordinal, predicate_id=pid,
+                predicate_version=rec["edge"].rule_version, result=fn(rec))
+            counts["prereq_evaluated"] += 1
     return counts
 
 
