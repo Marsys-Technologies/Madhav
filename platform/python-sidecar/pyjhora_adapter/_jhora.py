@@ -35,6 +35,8 @@ from jhora.horoscope.chart import charts  # noqa: E402
 # lock, is logged loudly and the import continues; the fail-closed raise stays at use, in
 # each writer's / endpoint's own ensure_swiss_backend().  With SE_EPHE_PATH in the
 # environment (both images) the C library also finds the files from any path state.
+# This re-assert pins only the IMPORTING thread (on Linux the Swiss path is thread-local,
+# see panchang_engine/swiss_backend.py DESIGN RULE); every computing thread pins itself.
 reassert_swiss_backend_nowait()
 
 # Pin Rahu/Ketu to the MEAN node (swe.MEAN_NODE) for ALL ayanamshas.

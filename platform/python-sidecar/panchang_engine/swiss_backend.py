@@ -33,6 +33,23 @@ precondition instead of ambient process state.
   variable set (as in both images) the files are found from any path state.
   The explicit set + probe remain the defence for environments where it is not
   set or is wrong, and make the backend recorded, not assumed.
+* DESIGN RULE -- the assertion is per THREAD (measured, pyswisseph 2.10.3.2): on LINUX the
+  swisseph C state (the ephemeris path, and the sidereal mode) is THREAD-LOCAL.  A
+  ``set_ephe_path`` in one thread leaves a fresh thread on its own default state (a probe
+  there reports ``moseph``); on macOS the same state is process-wide, so a macOS-only run
+  can never show the problem.  Consequently ``ensure_swiss_backend`` pins only the CALLING
+  thread and ``backend_name`` probes only the calling thread: the assertion is only
+  meaningful in the thread that COMPUTES, and every worker entry (pool initializer, or the
+  first line of the task) that computes with swisseph must call ``ensure_swiss_backend()``
+  itself.  The places that do: ``@records_swiss_backend`` writers (the orchestrator's asset
+  worker threads, ``pipeline/orchestrator/runner.py``), ``compute_panchang`` /
+  ``panchanga_instant`` (which every sidecar request thread reaches), the pyhora routes,
+  ``panchanga_daily_writer``, ``ga_prashna_cast`` and the fork-pool initializer in
+  ``pyjhora_adapter/_isolation.py``.  ``SE_EPHE_PATH`` in the environment is what keeps a
+  thread that never ran ``ensure_swiss_backend`` on swieph (measured on Linux: with the
+  variable set, a fresh thread, ``set_ephe_path('/empty')`` and ``set_ephe_path(None)`` all
+  still probe swieph; both images set it).  That is the safety net, not the guard: the guard
+  is the per-thread ensure at each computing entry.
 * Anything other than ``swieph`` raises ``SwissBackendError`` -- never a silent
   fallback.
 * CORPUS WINDOW (SS ruling): the pinned ``*_18.se1`` files cover 1800-01-01 to
@@ -156,7 +173,9 @@ def ensure_swiss_backend(*jds: float) -> SwissBackend:
     variable is unset or the probe shows anything other than ``swieph``, and
     ``OutOfCorpusRangeError`` when any given Julian day lies outside the corpus
     window (see the module docstring: the J2000 probe cannot vouch for other dates).
-    Idempotent and cheap enough to call at every entry point; it deliberately
+    THREAD-SCOPED (module docstring, DESIGN RULE): on Linux the path it sets is thread-local, so
+    this pins and verifies the CALLING thread only; a worker thread/process that computes must
+    call it itself.  Idempotent and cheap enough to call at every entry point; it deliberately
     re-sets the path every time because other code (PyJHora at import, legacy
     writers) mutates the same process-global.
     """
@@ -187,6 +206,8 @@ def backend_name(*jds: float) -> str:
     """Return ``'swieph'`` iff the process is CURRENTLY serving from ``.se1`` files
     for the given Julian days (none given = the J2000 probe only).
 
+    Probes the CALLING thread's live state only (on Linux the path is thread-local: a thread
+    that never ran ``ensure_swiss_backend`` is not covered by another thread's pin).
     A real probe of live state (it does not set the path), so a writer that
     records this in its notes is reporting what the process was doing, not what
     it was configured to do.  Raises ``SwissBackendError`` otherwise and

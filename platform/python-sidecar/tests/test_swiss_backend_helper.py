@@ -11,6 +11,12 @@ mechanism that keeps the process on that backend:
   ``.se1``-free wheel directory) must not flip the backend;
 * a threaded run with mixed callers (``compute_panchang``, ``panchanga_instant``,
   a PyJHora call whose FIRST import happens inside a worker) stays on ``swieph``;
+* on Linux the Swiss path is THREAD-local (a main-thread pin does not cover a fresh thread;
+  macOS is process-wide): the assertion is per thread, every computing worker ensures itself
+  (strict threaded test, fork-pool test) and SE_EPHE_PATH in the environment is the net for a
+  thread that never did (``test_fresh_thread_with_se_ephe_path_in_env_reads_swieph``);
+* the guarded window is the nominal span narrowed by a day at each end (measured per body), a
+  panchang checks the JDs it samples, and a decorated writer with no checkable chart window raises;
 * the helper really holds ``SWISS_STATE_LOCK`` and really probes (mutation-proofed).
 
 Corpus: the three ``.se1`` files pinned (SHA-256) in ``Dockerfile.pipeline``.
@@ -390,6 +396,12 @@ def run(fn):
         gate.wait(timeout=30)
     except threading.BrokenBarrierError:
         pass
+    if %(ensure)r:
+        # Design rule (swiss_backend.py DESIGN RULE): on Linux the Swiss path is THREAD-local,
+        # so the assertion is only meaningful in the thread that computes.  Strict mode (no
+        # SE_EPHE_PATH in the environment to rescue an unpinned thread) pins THIS worker
+        # thread first, exactly as every real worker entry does.
+        ss.ensure_swiss_backend()
     out = fn()
     ss.backend_name()          # still swieph right after the call (raises otherwise)
     return fn.__name__, out
@@ -417,7 +429,10 @@ def test_threaded_mixed_callers_stay_on_swieph_and_match_single_threaded(corpus_
     """Production-like: SE_EPHE_PATH set (as in both images), PyJHora's FIRST import happens
     inside a worker thread concurrently with compute_panchang / panchanga_instant."""
     env = {"SE_EPHE_PATH": str(corpus_dir)}
-    spec = {"hidden": "SE_EPHE_PATH", "eager": False}
+    # SE_EPHE_PATH in the environment, no per-worker ensure: a worker that never pinned itself
+    # is rescued by the variable (the production guarantee for such threads, see
+    # test_fresh_thread_with_se_ephe_path_in_env_reads_swieph).
+    spec = {"hidden": "SE_EPHE_PATH", "eager": False, "ensure": False}
     threaded = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": False}, extra_env=env))
     sequential = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": True}, extra_env=env))
     assert threaded.keys() == sequential.keys() and len(threaded) >= 27
@@ -428,14 +443,214 @@ def test_threaded_mixed_callers_stay_on_swieph_and_match_single_threaded(corpus_
 @needs_corpus
 def test_threaded_mixed_callers_strict_no_env_hint_with_pyjhora_imported_first(corpus_dir):
     """Strict: the C library gets NO environment hint (only the helper's explicit set_ephe_path
-    can put the process on swieph).  PyJHora is imported in the main thread first: the short
-    window between jhora.const's path reset and the re-assert during a worker's FIRST import is
-    by design only harmless when SE_EPHE_PATH is in the environment (covered above)."""
+    can put a thread on swieph).  PyJHora is imported in the main thread first, and every worker
+    calls ``ensure_swiss_backend()`` first thing (the design rule: on Linux the path is
+    thread-local, so only the thread that computes can be asserted; a worker that never ensured
+    would probe ``moseph`` here on Linux, see test_thread_local_state_...)."""
     env = {_HIDDEN_ENV: str(corpus_dir)}
-    spec = {"hidden": _HIDDEN_ENV, "eager": True}
+    spec = {"hidden": _HIDDEN_ENV, "eager": True, "ensure": True}
     threaded = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": False}, extra_env=env))
     sequential = json.loads(_run_script(_THREAD_SCRIPT % {**spec, "single": True}, extra_env=env))
     assert threaded == sequential and len(threaded) >= 27
+
+
+# ── 4b. thread-local state on Linux: the design rule, documented and proven ────
+
+_THREAD_LOCAL_SCRIPT = """
+import json, sys, threading
+import swisseph as swe
+corpus = %(corpus)r
+
+def probe():
+    seen = set()
+    for body in (swe.SUN, swe.TRUE_NODE):
+        _x, rf = swe.calc_ut(2451545.0, body, swe.FLG_SWIEPH | swe.FLG_SPEED)
+        seen.add("swieph" if rf & swe.FLG_SWIEPH else "moseph" if rf & swe.FLG_MOSEPH else "other")
+    return sorted(seen)
+
+def in_fresh_thread(fn):
+    box = []
+    t = threading.Thread(target=lambda: box.append(fn()))
+    t.start(); t.join()
+    return box[0]
+
+out = {"platform": sys.platform, "swisseph": swe.version}
+swe.set_ephe_path(corpus)
+out["main_after_set"] = probe()
+out["fresh_thread_after_main_set"] = in_fresh_thread(probe)
+
+def pin_then_probe():
+    swe.set_ephe_path(corpus)
+    return probe()
+
+out["thread_that_pins_itself"] = in_fresh_thread(pin_then_probe)
+out["another_fresh_thread_after_that"] = in_fresh_thread(probe)
+print("RESULT:" + json.dumps(out))
+"""
+
+
+@needs_corpus
+def test_thread_local_state_on_linux_a_main_thread_pin_does_not_cover_a_fresh_thread(corpus_dir):
+    """DESIGN RULE evidence (swiss_backend.py): on Linux the swisseph C state (the ephemeris path) is
+    THREAD-local, so a ``set_ephe_path`` in one thread leaves a fresh thread on its own default
+    (moseph); on macOS it is process-wide (swieph).  This is why ``ensure_swiss_backend`` and
+    ``backend_name`` are per-thread and every computing worker must call ensure itself.  No
+    SE_EPHE_PATH in the environment here (it would rescue the fresh thread, next test)."""
+    out = json.loads(_run_script(_THREAD_LOCAL_SCRIPT % {"corpus": str(corpus_dir)}, extra_env={}))
+    assert out["main_after_set"] == ["swieph"]
+    assert out["thread_that_pins_itself"] == ["swieph"]
+    if sys.platform == "linux":
+        assert out["fresh_thread_after_main_set"] == ["moseph"], out
+        assert out["another_fresh_thread_after_that"] == ["moseph"], out   # one thread's pin never leaks
+    elif sys.platform == "darwin":
+        assert out["fresh_thread_after_main_set"] == ["swieph"], out       # process-wide: masks the issue
+        assert out["another_fresh_thread_after_that"] == ["swieph"], out
+    else:
+        pytest.skip(f"thread-locality of the Swiss state not characterised on {sys.platform}")
+
+
+_ENV_GUARANTEE_SCRIPT = """
+import json, sys, threading
+import swisseph as swe
+
+def probe():
+    seen = set()
+    for body in (swe.SUN, swe.TRUE_NODE):
+        _x, rf = swe.calc_ut(2451545.0, body, swe.FLG_SWIEPH | swe.FLG_SPEED)
+        seen.add("swieph" if rf & swe.FLG_SWIEPH else "moseph" if rf & swe.FLG_MOSEPH else "other")
+    return sorted(seen)
+
+def in_fresh_thread(fn):
+    box = []
+    t = threading.Thread(target=lambda: box.append(fn()))
+    t.start(); t.join()
+    return box[0]
+
+def empty_dir():
+    swe.set_ephe_path("/nonexistent-empty-ephe-dir"); return probe()
+
+def none_path():
+    swe.set_ephe_path(None); return probe()
+
+out = {
+    "fresh_thread_never_set_a_path": in_fresh_thread(probe),
+    "fresh_thread_set_ephe_path_to_an_empty_dir": in_fresh_thread(empty_dir),
+    "fresh_thread_set_ephe_path_none": in_fresh_thread(none_path),
+}
+print("RESULT:" + json.dumps(out))
+"""
+
+
+@needs_corpus
+def test_fresh_thread_with_se_ephe_path_in_env_reads_swieph(corpus_dir):
+    """The production guarantee for a thread that never ran ensure_swiss_backend (both images set
+    SE_EPHE_PATH): with the variable in the process environment the C library finds the files in a
+    fresh thread, after ``set_ephe_path(<empty dir>)`` and after ``set_ephe_path(None)``.  This is the
+    safety net; the guard is the per-thread ensure at each computing entry."""
+    out = json.loads(_run_script(_ENV_GUARANTEE_SCRIPT, extra_env={"SE_EPHE_PATH": str(corpus_dir)}))
+    assert out == {
+        "fresh_thread_never_set_a_path": ["swieph"],
+        "fresh_thread_set_ephe_path_to_an_empty_dir": ["swieph"],
+        "fresh_thread_set_ephe_path_none": ["swieph"],
+    }
+
+
+_PER_THREAD_HELPER_SCRIPT = """
+import json, sys, threading
+import panchang_engine.swiss_backend as ss
+ss.SE_EPHE_PATH_ENV = %(hidden)r          # hide the hint from the C library
+
+def in_fresh_thread(fn):
+    box = []
+    def run():
+        try:
+            box.append(fn())
+        except ss.SwissBackendError as exc:
+            box.append("refused")
+    t = threading.Thread(target=run); t.start(); t.join()
+    return box[0]
+
+ss.ensure_swiss_backend()                  # pins the MAIN thread only
+out = {"platform": sys.platform, "main": ss.backend_name()}
+out["fresh_thread_backend_name"] = in_fresh_thread(ss.backend_name)
+out["fresh_thread_after_its_own_ensure"] = in_fresh_thread(lambda: (ss.ensure_swiss_backend(), ss.backend_name())[1])
+print("RESULT:" + json.dumps(out))
+"""
+
+
+@needs_corpus
+def test_helper_assertion_is_per_thread_a_fresh_thread_must_ensure_itself(corpus_dir):
+    out = json.loads(_run_script(_PER_THREAD_HELPER_SCRIPT % {"hidden": _HIDDEN_ENV},
+                                 extra_env={_HIDDEN_ENV: str(corpus_dir)}))
+    assert out["main"] == "swieph"
+    assert out["fresh_thread_after_its_own_ensure"] == "swieph"
+    if sys.platform == "linux":
+        assert out["fresh_thread_backend_name"] == "refused", out    # the pin is not inherited
+    elif sys.platform == "darwin":
+        assert out["fresh_thread_backend_name"] == "swieph", out
+    else:
+        pytest.skip(f"thread-locality of the Swiss state not characterised on {sys.platform}")
+
+
+# ── 4c. fork-pool workers (pyjhora_adapter/_isolation.py) pin themselves ──────
+
+_FORK_POOL_SCRIPT = """
+import json, sys, threading, time
+import pyjhora_adapter._jhora            # resets the path to jhora's .se1-free wheel dir at import
+import panchang_engine.swiss_backend as ss
+from pyjhora_adapter._isolation import AYANAMSHAS, per_ayanamsha
+from panchang_engine.swiss_state import SWISS_STATE_LOCK
+ss.SE_EPHE_PATH_ENV = %(hidden)r          # the parent (and so every forked child) starts unpinned
+
+def worker_backend(jd_ut, ayanamsha_id=None):
+    return ss.backend_name()              # runs INSIDE the forked worker
+
+mode = %(mode)r
+if mode == "pins":
+    # another thread holds the Swiss lock when per_ayanamsha is called: it must wait, then fork
+    # while the lock is free (a child that inherited it held would deadlock in ensure)
+    started = threading.Event()
+    def holder():
+        with SWISS_STATE_LOCK:
+            started.set(); time.sleep(1.0)
+    threading.Thread(target=holder).start(); started.wait()
+    res = per_ayanamsha(worker_backend, 2451545.0)
+    print("RESULT:" + json.dumps({"ayanamshas": sorted(res), "backends": sorted(set(res.values()))}))
+elif mode == "refuses":
+    try:
+        per_ayanamsha(worker_backend, 2451545.0)
+        print("RESULT:" + json.dumps("no-error"))
+    except ss.SwissBackendError:
+        print("RESULT:" + json.dumps("refused"))
+else:                                      # window
+    try:
+        per_ayanamsha(worker_backend, 2300000.0)    # ~1600: outside the corpus window
+        print("RESULT:" + json.dumps("no-error"))
+    except ss.OutOfCorpusRangeError:
+        print("RESULT:" + json.dumps("out_of_corpus_range"))
+"""
+
+
+@needs_corpus
+def test_fork_pool_workers_pin_the_backend_themselves(corpus_dir):
+    """per_ayanamsha's workers are forked from a parent that is unpinned (jhora import reset the
+    path; no env hint): each worker's first line must ensure_swiss_backend, so the worker's own
+    backend_name() is swieph (a forked child on Linux inherits only the forking thread's state)."""
+    out = json.loads(_run_script(_FORK_POOL_SCRIPT % {"hidden": _HIDDEN_ENV, "mode": "pins"},
+                                 extra_env={_HIDDEN_ENV: str(corpus_dir)}))
+    assert out == {"ayanamshas": sorted(["lahiri", "true_chitra", "kp", "raman", "surya_siddhanta"]),
+                   "backends": ["swieph"]}
+
+
+@needs_corpus
+def test_fork_pool_fails_closed_without_a_corpus_and_outside_the_window(corpus_dir, tmp_path_factory):
+    # no usable corpus: the worker's ensure raises, per_ayanamsha raises (not a hang, not a value)
+    out = json.loads(_run_script(_FORK_POOL_SCRIPT % {"hidden": _HIDDEN_ENV, "mode": "refuses"},
+                                 extra_env={_HIDDEN_ENV: str(tmp_path_factory.mktemp("empty_ephe"))}))
+    assert out == "refused"
+    out = json.loads(_run_script(_FORK_POOL_SCRIPT % {"hidden": _HIDDEN_ENV, "mode": "window"},
+                                 extra_env={_HIDDEN_ENV: str(corpus_dir)}))
+    assert out == "out_of_corpus_range"
 
 
 # ── 5. the helper really holds the lock and really probes (mutation guards) ───
