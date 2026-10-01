@@ -1,7 +1,7 @@
 ---
 artifact: DECISION_SHEET_L3
 layer: L3 Kāla (ka_*)
-version: "1.1"
+version: "1.2"
 status: "RULED (SS 2026-10-01); items marked (R) are provisional until the J1 independent review"
 produced_by: exec-suvarna
 produced_on: 2026-10-01
@@ -12,7 +12,7 @@ scope: "docs only; no code, registry, migration or database write"
 provisional: "every ruling taken from this sheet is provisional until the J1 independent review"
 ruled_on: 2026-10-01
 ruled_head: "eed194785 (PR #2838) at the time of the ruling"
-changelog: "1.1 (2026-10-01): SS rulings recorded (section Rulings, a ruling line per item, summary column); citations relabelled under the SS citations rule; Track I list added at the end. 1.0: DRAFT-FOR-RULING."
+changelog: "1.2 (2026-10-02): ARGALA OUTCOME consequence for ka_kshetra recorded (TI-L3-38). 1.1 (2026-10-01): SS rulings recorded (section Rulings, a ruling line per item, summary column); citations relabelled under the SS citations rule; Track I list added at the end. 1.0: DRAFT-FOR-RULING."
 ---
 
 # L3 Kāla decision sheet (for one ruling pass by Strategic Suvarṇa)
@@ -52,7 +52,9 @@ SS ruled this sheet on 2026-10-01 (PR #2838, HEAD `eed194785` at the time). **Al
 
 **Citations rule (SS, all layers).** An OCR text-search hit not checked against print is `sourced_ocr_unverified` (a distinct attribution state, neither `sourced` nor `unsourced`). A passage not found is `unsourced`. Only a citation verified at passage level counts toward a PASS on Ldgr. *Applied in this version:* every `[corpus]` passage in this sheet (BPHS, Yavana Jataka, Brihat Samhita, Phaladeepika, Uttara Kalamrita, Hora Sara) is relabelled `sourced_ocr_unverified`; every "not found" item is relabelled `unsourced` (the fire-side Gandanta width, the 0°48' width, the degree conversion of two ghatikas, Rahu and Ketu significations, Mudda / Naisargika / chara_karaka sources, BPHS Ch. 11 house significations, Tithi-Praveśa, the writer's "Muhurta-Chintamani Rikta" and "Phaladeepika ch.2" pointers, and the `reference_karakas` "BPHS Ch.27" label); nothing in this sheet is `sourced`. The relabelled lines carry the state in the "Citation" paragraph of each item and in "What I could not verify".
 
-**Where the rulings are recorded elsewhere.** In the per-asset briefs (section 7, FD-level ruling lines) and in `INDEX.md` (sections 9, 10, 11) on the briefs branch (PR #2835); Track I items TI-L3-26 to TI-L3-37 are listed at the end of this sheet.
+**Further SS decision, 2026-10-02: ARGALA OUTCOME consequence for L3 (R, provisional until J1).** L1 now emits a canonical `outcome_by_count` of `unobstructed` / `argala_prevails` / `undetermined` (no `obstructed`), and L2's `cancelled_flag` for argala ends. `ka_kshetra` `stage2_promise` is the one real behaviour change: it selects argala edges with `cancelled_flag = FALSE` (`services/ka_kshetra/stage2_promise.py:336-340` `[code]`) and reads no edge outcome, so dropping the flag alone would treat EVERY argala edge as active. It must read the edge's outcome: `unobstructed` and `argala_prevails` = active argala; `undetermined` = its own state that does NOT contribute as active argala until a strength basis exists. Named Track I item: TI-L3-38 (it rebuilds at stage S7 anyway). Also recorded: `ka_kshetra` is exposed to the ephemeris fix (a decorated writer) and waits for G-EPH; its I-10 substep split, PR #2830, is in the merge train, last, rebased over the line-pin test. (The L1 `outcome_by_count` change, G-EPH and PR #2830 are not in this branch and were not read here.)
+
+**Where the rulings are recorded elsewhere.** In the per-asset briefs (section 7, FD-level ruling lines) and in `INDEX.md` (sections 9, 10, 11) on the briefs branch (PR #2835); Track I items TI-L3-26 to TI-L3-38 are listed at the end of this sheet.
 
 ---
 
@@ -603,7 +605,7 @@ select asset_id, service_health, last_selftest_at, selftest_detail from asset_re
 
 ## Track I items arising from the rulings (continuing the numbering of INDEX section 10)
 
-Original items TI-L3-01 to TI-L3-25 keep their ids; their status after the rulings is in `INDEX.md` section 10. New items start at TI-L3-26. Class set as in the INDEX: registry / declaration / writer code / detector / research. All are provisional until J1; (R) marks an output-changing or verdict-defining ruling.
+Original items TI-L3-01 to TI-L3-25 keep their ids; their status after the rulings is in `INDEX.md` section 10. New items are TI-L3-26 to TI-L3-37 (rulings of 2026-10-01) and TI-L3-38 (ruling of 2026-10-02). Class set as in the INDEX: registry / declaration / writer code / detector / research. All are provisional until J1; (R) marks an output-changing or verdict-defining ruling.
 
 | id | asset(s) | item | class | rebuild | from |
 |---|---|---|---|---|---|
@@ -619,5 +621,6 @@ Original items TI-L3-01 to TI-L3-25 keep their ids; their status after the rulin
 | TI-L3-35 | ka_kota_chakra, ka_moorti_nirnaya | submit the `rolling_horizon` N/A rule through `NA_RULE_DECISIONS` for SS approval; window declared in the registry; as-of pin recorded | declaration + detector | n | Q-L3-12 (R) |
 | TI-L3-36 | ka_graha_sancara | REVIEW packet for SS for the global-scope self-test dispatch | research (process REVIEW) | dispatch | Q-L3-11 |
 | TI-L3-37 | ka_moorti_nirnaya, ka_tithi_pravesha | SS notifies Pravāha before any wave that rebuilds these assets | research (process REVIEW) | n | Q-L3-13 |
+| TI-L3-38 | ka_kshetra (family; Track F owns the design, J1.FO the implementation owner) | `stage2_promise` reads the argala edge's L1 `outcome_by_count`, not `cancelled_flag`: `unobstructed` and `argala_prevails` = active argala; `undetermined` = its own state, not active argala until a strength basis exists | writer code (output) | y (rebuilds at S7 anyway) | ARGALA OUTCOME ruling, SS 2026-10-02 (R) |
 
 **Existing items accepted as designed or amended by the rulings:** TI-L3-03 (Q-L3-07, (R)), TI-L3-04 (FD-2 pin accepted; FD-1 half superseded by TI-L3-31), TI-L3-06 (Q-L3-05: SS rules the map), TI-L3-07 and TI-L3-08 (Q-L3-08), TI-L3-12 (Q-L3-10), TI-L3-13 (Q-L3-12, with TI-L3-35), TI-L3-14 (Q-L3-02, (R)), TI-L3-15 (Q-L3-04, (R)), TI-L3-16 (Q-L3-X1, see TI-L3-28), TI-L3-17 (Q-L3-01), TI-L3-18 (Q-L3-06, (R)), TI-L3-23 (superseded by TI-L3-26 to TI-L3-30), TI-L3-25 (Q-L3-14, rename branch).
