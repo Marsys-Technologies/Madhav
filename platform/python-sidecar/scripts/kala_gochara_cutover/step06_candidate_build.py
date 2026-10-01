@@ -83,13 +83,26 @@ CONVENTION_VECTOR = {
 }
 
 
+_LEDGER_MODULE = None
+
+
 def _load_ledger():
     """Load ledger.py by file path (same discipline as test_wp6_ledger.py:
-    the WP3a package __init__ is a sibling workstream's surface)."""
-    spec = importlib.util.spec_from_file_location("cutover_step06_ledger", _LEDGER_PATH)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    the WP3a package __init__ is a sibling workstream's surface).
+
+    CACHED (ASTRA A2.5 A6): a fresh module object per call mints a DISTINCT
+    PublishedGenerationRefusal class each time, so the CLI's
+    `except _load_ledger().PublishedGenerationRefusal` could never catch the
+    class the core actually raises — the refusal escaped as exit 1 instead
+    of the pinned exit 6. One module instance ⇒ one exception class ⇒ the
+    handler catches what build_candidate_core raises."""
+    global _LEDGER_MODULE
+    if _LEDGER_MODULE is None:
+        spec = importlib.util.spec_from_file_location("cutover_step06_ledger", _LEDGER_PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _LEDGER_MODULE = module
+    return _LEDGER_MODULE
 
 
 def _coerce_episode_times(episodes: list[dict]) -> list[dict]:

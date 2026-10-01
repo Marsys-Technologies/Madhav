@@ -180,8 +180,11 @@ class HorizonViolation(Exception):
     BEFORE any DML (fail-closed backstop; never clamped, never served)."""
 
 
-def _require_pinned_chart(chart_id: str) -> None:
-    if chart_id != PINNED_CHART_ID:
+def _require_pinned_chart(chart_id) -> None:
+    """Fail-closed chart guard (ASTRA A2.5 A1: the runner passes chart_id as
+    a UUID object; the standalone CLI and dispatch pass strings — BOTH are
+    accepted by comparing the canonical string form)."""
+    if str(chart_id) != PINNED_CHART_ID:
         raise ChartRefusal(
             f"{ASSET_ID}: chart_id {chart_id!r} is not the pinned A2.5 "
             f"candidate chart {PINNED_CHART_ID} — refusing (fail-closed; "
@@ -247,6 +250,14 @@ class GocharaV41CandidateWriter(WriterBase):
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         chart_id = ctx.config["chart_id"]
         _require_pinned_chart(chart_id)
+        if ctx.dry_run:
+            # ASTRA A2.5 A8: dry_run is honoured BEFORE every DML path — the
+            # inherited run() aggregates through this method, so this single
+            # gate covers both entry points; nothing is staged, solved or
+            # written.
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=0,
+                notes=f"dry_run: {step.key} not executed, nothing written")
         ephe_path = ctx.config.get("ephe_path", DEFAULT_EPHE_PATH)
         if step.key == MANIFEST_SUBSTEP:
             return self._run_manifest(ctx, chart_id)

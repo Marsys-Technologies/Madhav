@@ -1652,8 +1652,17 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
 # ── DB surface ───────────────────────────────────────────────────────────────
 
 
+def _cell(row, index: int, name: str):
+    """row[name] on a dict row, row[index] on a tuple row (ASTRA A2.5 A1:
+    the governed runner's connection is dict_row; standalone CLI fixtures
+    use tuples — both are accepted through the whole projection chain)."""
+    if isinstance(row, dict):
+        return row[name]
+    return row[index]
+
+
 def _table_columns(conn, table: str) -> set[str]:
-    return {r[0] for r in conn.execute(
+    return {_cell(r, 0, "column_name") for r in conn.execute(
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_name = %s", (table,)).fetchall()}
 
@@ -1671,8 +1680,21 @@ def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
         " WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchall()
     out = []
-    for (cid, body, relation, ttype, tref, tlon, t_in, t_exact, t_out,
-         orb_max, completeness, aspect_deg, independence_group, branch) in rows:
+    for r in rows:
+        cid = _cell(r, 0, "contact_id")
+        body = _cell(r, 1, "body")
+        relation = _cell(r, 2, "relation")
+        ttype = _cell(r, 3, "target_type")
+        tref = _cell(r, 4, "target_ref")
+        tlon = _cell(r, 5, "target_longitude_deg")
+        t_in = _cell(r, 6, "t_in")
+        t_exact = _cell(r, 7, "t_exact")
+        t_out = _cell(r, 8, "t_out")
+        orb_max = _cell(r, 9, "orb_max_deg")
+        completeness = _cell(r, 10, "completeness_state")
+        aspect_deg = _cell(r, 11, "aspect_deg")
+        independence_group = _cell(r, 12, "independence_group")
+        branch = _cell(r, 13, "branch")
         out.append({
             "contact_id": cid, "body": body, "relation": relation,
             "target_type": ttype, "target_ref": tref,
@@ -1697,8 +1719,10 @@ def fetch_contacts(conn, chart_id: str, generation: str) -> list[dict]:
 
 def fetch_map_rows(conn, chart_id: str) -> list[dict]:
     return [
-        {"event_class": r[0], "target_type": r[1], "target_ref": r[2],
-         "weight": float(r[3])}
+        {"event_class": _cell(r, 0, "event_class"),
+         "target_type": _cell(r, 1, "target_type"),
+         "target_ref": _cell(r, 2, "target_ref"),
+         "weight": float(_cell(r, 3, "weight"))}
         for r in conn.execute(
             "SELECT event_class, target_type, target_ref, weight"
             " FROM gochara_resonance_map WHERE chart_id = %s"
@@ -1720,12 +1744,14 @@ def fetch_vedha_rows(conn, chart_id: str) -> list[dict]:
            " classical_citation" + (", formula_version" if has_fv else ", NULL")
            + " FROM kala_vedha_gochara WHERE chart_id = %s")
     return [
-        {"window_start": str(r[0]), "window_end": str(r[1]),
-         "vedha_kind": r[2], "graha": r[3],
-         "detail": r[4] if isinstance(r[4], dict) else {},
-         "classical_citation": r[5],
+        {"window_start": str(_cell(r, 0, "window_start")),
+         "window_end": str(_cell(r, 1, "window_end")),
+         "vedha_kind": _cell(r, 2, "vedha_kind"),
+         "graha": _cell(r, 3, "graha"),
+         "detail": (lambda d: d if isinstance(d, dict) else {})(_cell(r, 4, "detail")),
+         "classical_citation": _cell(r, 5, "classical_citation"),
          # rule identity (the writer's FORMULA_VERSION) — ASTRA v1.2 P1-2
-         "formula_version": r[6]}
+         "formula_version": _cell(r, 6, "formula_version")}
         for r in conn.execute(sql, (chart_id,)).fetchall()
     ]
 
@@ -1733,12 +1759,14 @@ def fetch_vedha_rows(conn, chart_id: str) -> list[dict]:
 def fetch_malefic_scale(conn) -> dict[int, str]:
     if not _table_exists(conn, "bg_vedha_malefic_scale"):
         return {}
-    return {int(r[0]): r[1] for r in conn.execute(
+    return {int(_cell(r, 0, "malefic_count")): _cell(r, 1, "effect_grade")
+            for r in conn.execute(
         "SELECT malefic_count, effect_grade FROM bg_vedha_malefic_scale").fetchall()}
 
 
 def _table_exists(conn, table: str) -> bool:
-    return conn.execute("SELECT to_regclass(%s)", (table,)).fetchone()[0] is not None
+    row = conn.execute("SELECT to_regclass(%s)", (table,)).fetchone()
+    return _cell(row, 0, "to_regclass") is not None
 
 
 # ── vedha interval gate (GOCHARA_DESIGN_SPECS_v1_4 §5; ASTRA P1-3) ───────────
@@ -1863,7 +1891,7 @@ def write_windows(conn, chart_id: str, generation: str,
                 f"INSERT INTO kala_gochara_windows ({', '.join(cols)})"
                 f" VALUES ({placeholders}) RETURNING id",
                 _values(row))
-            rid = cur.fetchone()[0]
+            rid = _cell(cur.fetchone(), 0, "id")
             id_by_key[row["window_key"]] = rid
             seen_natural[natural] = rid
     if skipped_dupes:
@@ -2088,8 +2116,10 @@ def project_windows_core(conn, *, chart_id: str, generation: str,
     vedha_rows = fetch_vedha_rows(conn, chart_id)
     malefic_scale = fetch_malefic_scale(conn)
     baseline_rows = [
-        {"event_class": r[0], "peak_date": r[1], "raw_intensity": float(r[2]),
-         "signed_intensity": float(r[3])}
+        {"event_class": _cell(r, 0, "event_class"),
+         "peak_date": _cell(r, 1, "peak_date"),
+         "raw_intensity": float(_cell(r, 2, "raw_intensity")),
+         "signed_intensity": float(_cell(r, 3, "signed_intensity"))}
         for r in conn.execute(
             "SELECT event_class, peak_date, raw_intensity, signed_intensity"
             " FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s",

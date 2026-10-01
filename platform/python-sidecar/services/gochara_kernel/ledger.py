@@ -223,12 +223,27 @@ _EPISODE_DEFAULTS = {
 }
 
 
+def _scalar(row):
+    """One-column SELECT result on EITHER row shape (ASTRA A2.5 A1: the
+    governed runner's connection is dict_row; standalone CLIs and the
+    disposable fixtures use tuple rows — both are accepted)."""
+    if isinstance(row, dict):
+        return next(iter(row.values()))
+    return row[0]
+
+
 def _manifest_row(conn, chart_id: str, generation: str):
-    return conn.execute(
+    """SELECT manifest_id, status — returned as a (manifest_id, status)
+    TUPLE on either connection row shape (A1: the runner passes dict rows;
+    every caller below stays positional against this normalised shape)."""
+    row = conn.execute(
         "SELECT manifest_id, status FROM kala_gochara_publication "
         "WHERE chart_id = %s AND generation = %s",
         (chart_id, generation),
     ).fetchone()
+    if isinstance(row, dict):
+        return (row["manifest_id"], row["status"])
+    return row
 
 
 def _require_not_published(conn, chart_id: str, generation: str, op: str) -> None:
@@ -401,10 +416,10 @@ def write_contacts(conn, chart_id: str, generation: str, convention_id: str,
     """
     _require_not_published(conn, chart_id, generation, "write_contacts")
     manifest_id = _candidate_manifest_id(conn, chart_id, generation)
-    method_version = conn.execute(
+    method_version = _scalar(conn.execute(
         "SELECT method_version FROM kala_gochara_convention WHERE convention_id = %s",
         (convention_id,),
-    ).fetchone()[0]
+    ).fetchone())
     rows = [
         _normalize_episode(ep, chart_id, generation, convention_id,
                            method_version, manifest_id, build_id)
@@ -510,7 +525,7 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
     ephem = canonical_json(ephemeris_backend) if isinstance(ephemeris_backend, dict) else ephemeris_backend
     vector = canonical_json(input_generation_vector) if isinstance(input_generation_vector, dict) else input_generation_vector
     if row is None:
-        manifest_id = conn.execute(
+        manifest_id = _scalar(conn.execute(
             """
             INSERT INTO kala_gochara_publication (
               chart_id, generation, writer_asset_id, convention_id,
@@ -522,7 +537,7 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
             """,
             (chart_id, generation, writer_asset_id, convention_id,
              vector, ephem, horizon),
-        ).fetchone()[0]
+        ).fetchone())
         return str(manifest_id)
     if row[1] != "candidate":
         raise PublishedGenerationRefusal(
@@ -557,7 +572,7 @@ def _canonical_row_set(conn, chart_id: str, generation: str) -> str:
         (chart_id, generation),
     ).fetchall()
     canon = sorted(
-        canonical_json(r[0]) for r in list(contact_rows) + list(coverage_rows)
+        canonical_json(_scalar(r)) for r in list(contact_rows) + list(coverage_rows)
     )
     return sha256_tag(canonical_json(
         {"chart_id": str(chart_id), "generation": generation, "rows": canon}
@@ -584,28 +599,28 @@ def publish(conn, chart_id: str, generation: str) -> str:
         )
     digest = _canonical_row_set(conn, chart_id, generation)
     counts = {
-        "contacts": conn.execute(
+        "contacts": _scalar(conn.execute(
             "SELECT count(*) FROM kala_gochara_contacts "
             "WHERE chart_id = %s AND generation = %s",
             (chart_id, generation),
-        ).fetchone()[0],
-        "coverage": conn.execute(
+        ).fetchone()),
+        "coverage": _scalar(conn.execute(
             "SELECT count(*) FROM kala_gochara_coverage "
             "WHERE chart_id = %s AND generation = %s",
             (chart_id, generation),
-        ).fetchone()[0],
+        ).fetchone()),
         "windows": (
             # Honest count of the projection's relation when it exists
             # (kala_gochara_windows is not WP6-owned; 0 when the table is
             # absent, e.g. in ledger-only fixtures).
-            conn.execute(
+            _scalar(conn.execute(
                 "SELECT count(*) FROM kala_gochara_windows "
                 "WHERE chart_id = %s AND generation = %s",
                 (chart_id, generation),
-            ).fetchone()[0]
-            if conn.execute(
+            ).fetchone())
+            if _scalar(conn.execute(
                 "SELECT to_regclass('kala_gochara_windows') IS NOT NULL"
-            ).fetchone()[0]
+            ).fetchone())
             else 0
         ),
     }

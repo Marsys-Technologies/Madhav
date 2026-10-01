@@ -702,3 +702,201 @@ def test_dispatch_script_help_prints_docstring(capsys):
     assert out.returncode == 0
     assert "TEARDOWN" in out.stdout
     assert "ka_gochara_v4_41_candidate" in out.stdout
+
+
+# ── ASTRA v1.0 PUSH 1: A1 (runner's real types), A6 (CLI exit 6), A8 (dry_run) ─
+
+
+class DictFakeConn(FakeConn):
+    """FakeConn returning DICT rows — the governed runner's connection uses
+    psycopg.rows.dict_row (ASTRA A2.5 A1). Same steering as FakeConn."""
+
+    def _fetchone(self):
+        sql = self._last_sql
+        if "FROM kala_gochara_publication" in sql:
+            if self.manifest_status is None:
+                return None
+            return {"manifest_id": uuid.uuid4(), "status": self.manifest_status}
+        if "RETURNING manifest_id" in sql:
+            return {"manifest_id": uuid.uuid4()}
+        if "method_version FROM kala_gochara_convention" in sql:
+            return {"method_version": "1.0.0"}
+        if "count(*)" in sql:
+            return {"count": 0}
+        if "to_regclass" in sql:
+            return {"to_regclass": None}
+        if "row_to_json" in sql:
+            return {"row_to_json": {}}
+        if "RETURNING id" in sql:
+            return {"id": 1}
+        return None
+
+
+def test_chart_guard_accepts_the_runners_uuid_and_the_clis_string():
+    """A1: runner.load_run() passes a psycopg UUID; the CLI passes a string.
+    BOTH name the pinned chart; a foreign value of EITHER type refuses."""
+    writer_mod._require_pinned_chart(CHART_ID)                      # CLI str
+    writer_mod._require_pinned_chart(uuid.UUID(CHART_ID))           # runner UUID
+    with pytest.raises(writer_mod.ChartRefusal):
+        writer_mod._require_pinned_chart(uuid.uuid4())
+    with pytest.raises(writer_mod.ChartRefusal):
+        writer_mod._require_pinned_chart("not-the-chart")
+
+
+def test_plan_and_refusal_behave_identically_for_uuid_chart():
+    w = writer_mod.GocharaV41CandidateWriter()
+    conn = FakeConn()
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="t",
+                      db_conn=conn, config={"chart_id": uuid.UUID(CHART_ID)})
+    keys = [s.key for s in w.plan_substeps(ctx)]
+    assert keys[0] == "manifest" and len(keys) == 10
+
+
+def test_ledger_manifest_path_accepts_dict_rows():
+    """A1: the manifest lifecycle (create → candidate guard → replace) runs
+    on a dict-row connection with no KeyError — and the refusal still fires."""
+    ledger = writer_mod.ledger
+    conn = DictFakeConn(manifest_status=None)
+    mid = ledger.publish_candidate(conn, CHART_ID, "4.1", "conv-1",
+                                   {"k": "v"}, {"backend": "swieph"},
+                                   "[2020-01-01,2030-01-01)")
+    assert mid
+    conn.manifest_status = "candidate"
+    assert ledger._candidate_manifest_id(conn, CHART_ID, "4.1")
+    conn.manifest_status = "published"
+    with pytest.raises(ledger.PublishedGenerationRefusal):
+        ledger._require_not_published(conn, CHART_ID, "4.1", "write_contacts")
+    with pytest.raises(ledger.PublishedGenerationRefusal):
+        ledger.publish_candidate(conn, CHART_ID, "4.1", "conv-1", {}, {},
+                                 "[2020-01-01,2030-01-01)")
+
+
+def test_ledger_write_and_publish_paths_accept_dict_rows():
+    """A1: write_contacts' method_version read, publish()'s row_to_json and
+    count(*) reads, and the to_regclass probe all run on dict rows."""
+    ledger = writer_mod.ledger
+    conn = DictFakeConn(manifest_status="candidate")
+    episode = writer_mod.step06_build._synthetic_episodes()[0]
+    episode["orb_max_deg"] = 5.0
+    ledger.write_contacts(conn, CHART_ID, "4.1", "conv-1", [episode], "b1",
+                          bodies=["Saturn"])
+    conn.manifest_status = "candidate"
+    mid = ledger.publish(conn, CHART_ID, "4.1")
+    assert mid
+
+
+def test_step06b_fetchers_accept_dict_rows():
+    """A1: the projection's contact/map/vedha/baseline reads run on dict rows."""
+    mod = writer_mod.step06b_windows
+    conn = DictFakeConn()
+    cols = ("contact_id", "body", "relation", "target_type", "target_ref",
+            "target_longitude_deg", "t_in", "t_exact", "t_out", "orb_max_deg",
+            "completeness_state", "aspect_deg", "independence_group", "branch")
+    t = datetime(2021, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+    row = dict(zip(cols, ("c1", "Saturn", "residence", "sign", "libra",
+                          200.0, t, t, t, 5.0, "exact", 0.0, "g1", "b")))
+    conn_rows = [row]
+
+    class _C(DictFakeConn):
+        def _fetchall(self):
+            return conn_rows
+    out = mod.fetch_contacts(_C(), CHART_ID, "4.1")
+    assert out[0]["body"] == "Saturn" and out[0]["_orb_deg"] == 5.0
+
+    class _M(DictFakeConn):
+        def _fetchall(self):
+            return [{"event_class": "marriage", "target_type": "sign",
+                     "target_ref": "libra", "weight": 1.0}]
+    assert mod.fetch_map_rows(_M(), CHART_ID)[0]["event_class"] == "marriage"
+
+
+def test_dry_run_suppresses_every_dml_path(fresh_gate):
+    """A8: dry_run=True issues NO DML — through the inherited run() (whole
+    plan) and through a direct run_substep() call."""
+    w = writer_mod.GocharaV41CandidateWriter()
+    conn = FakeConn()
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="t",
+                      db_conn=conn, config={"chart_id": CHART_ID},
+                      dry_run=True)
+    result = w.run(ctx)  # inherited: aggregates plan_substeps × run_substep
+    dml = [s for s, _ in conn.statements
+           if any(k in s for k in ("INSERT", "UPDATE", "DELETE"))]
+    assert dml == []
+    conn2 = FakeConn()
+    ctx2 = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="t",
+                       db_conn=conn2, config={"chart_id": CHART_ID},
+                       dry_run=True)
+    r = w.run_substep(ctx2, SubStep(key="manifest", label="m"))
+    assert r.rows_inserted == 0 and "dry_run" in r.notes
+    assert conn2.statements == [] or not [
+        s for s, _ in conn2.statements
+        if any(k in s for k in ("INSERT", "UPDATE", "DELETE"))]
+    assert result is not None
+
+
+def _load_step06_build_from_git(revision: str, name: str, tmp_path: Path):
+    """The merge-base CLI, loaded from git — the A6 comparison's baseline."""
+    import subprocess
+    import importlib.util
+    blob = subprocess.run(
+        ["git", "-C", str(SIDECAR.parent.parent), "show",
+         f"{revision}:platform/python-sidecar/scripts/kala_gochara_cutover/"
+         "step06_candidate_build.py"],
+        capture_output=True, text=True, check=True).stdout
+    path = tmp_path / f"{name}.py"
+    path.write_text(blob)
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    # the baseline's _LEDGER_PATH resolves against its tmp location — point
+    # it at the real ledger so the comparison exercises the same core.
+    mod._LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
+    return mod
+
+
+def _run_cli_refusal(mod, conn, monkeypatch, capsys):
+    """Drive one step06_candidate_build main() against a published-manifest
+    fake conn; return (exit_code, stderr)."""
+    monkeypatch.setattr(mod, "connect", lambda *a, **k: conn)
+    monkeypatch.setattr(sys, "argv",
+                        ["step06_candidate_build.py", "--dsn", "fake",
+                         "--chart-id", CHART_ID, "--generation", "4.1",
+                         "--rehearse-synthetic"])
+    try:
+        code = mod.main()
+    except SystemExit as exc:  # an uncaught refusal escaping via sys.exit
+        code = exc.code
+    except Exception as exc:  # an uncaught refusal escaping as a traceback
+        code = f"RAISED:{type(exc).__name__}"
+    return code, capsys.readouterr().err
+
+
+def test_cli_published_refusal_exit6_baseline_vs_refactored(tmp_path,
+                                                            monkeypatch,
+                                                            capsys):
+    """A6: the published-generation refusal exits 6 with REFUSED on BOTH the
+    merge-base CLI and this commit's CLI — the exception class caught is the
+    class the core raises (a fresh _load_ledger() per call mints a distinct
+    class and the refusal escapes)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "a25_test_step06_current",
+        CUTOVER / "step06_candidate_build.py")
+    current = importlib.util.module_from_spec(spec)
+    sys.modules["a25_test_step06_current"] = current
+    spec.loader.exec_module(current)
+    baseline = _load_step06_build_from_git(
+        "2b3e096739b3501395a74c079846433c1bee3992",
+        "a25_test_step06_baseline", tmp_path)
+
+    for mod in (current, baseline):
+        mod._LEDGER_MODULE = None  # isolate the comparison per module
+    results = {}
+    for label, mod in (("baseline", baseline), ("current", current)):
+        conn = FakeConn(manifest_status="published")
+        code, err = _run_cli_refusal(mod, conn, monkeypatch, capsys)
+        results[label] = (code, err)
+    assert results["baseline"][0] == 6, results
+    assert "REFUSED" in results["baseline"][1]
+    assert results["current"] == results["baseline"], results

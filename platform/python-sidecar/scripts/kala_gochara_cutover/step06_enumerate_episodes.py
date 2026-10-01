@@ -1206,7 +1206,11 @@ def enumerate_core(conn, *, chart_id: str, generation: str,
         "moorti": reports["moorti"].current,
     }
 
-    with conn.cursor() as cur:
+    # ASTRA A2.5 A1: the runner's connection is dict_row — this module's
+    # contract for the map read is positional, so the cursor's row shape is
+    # pinned EXPLICITLY (never inherited from the connection).
+    import psycopg.rows
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
         cur.execute(_FETCH_MAP_ROWS_SQL, (chart_id,))
         map_rows = [
             {
