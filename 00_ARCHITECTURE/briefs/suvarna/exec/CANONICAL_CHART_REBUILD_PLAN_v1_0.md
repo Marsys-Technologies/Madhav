@@ -39,7 +39,7 @@ are labelled "estimate". Code-derived predictions (never observed in production)
 > - **Sections added:** P0.6 (P0 status and the verification steps incl. Trap 103), S0b (`bg_transit_rules`), S0L (L0 freshness stage, optional), Evidence E13. **Amended:** P0.5, P0b.1, P0b.3-4, P0c.1-2, 0 (items 0-1), 0.1 (row 1), 1.1, 1.3, 1.4, 1.6, 2 (bg_transit_rules row), 3.3, 4.1, 5 (rows 1, 8, 9, 14-18; new rows 20-25), 6, 7 (R-9; new R-17 to R-20), 8 (table: S0, S0b, S0L, S0c, S1), 9 (Q3; new Q16-Q19).
 > - **What the order looks like now:** S0 smoke -> **S0b** `bg_transit_rules` -> **S0L** (optional; `bg_vedha_malefic_scale` is required in effect, the rest is not needed by the wave) -> **S0c** (conditional: the Gochara trio `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, forced by S0b) -> S0v/S0m (conditional) -> S1 (now `ka_muhurta_seva,ka_dasha_kala,bo_karanajala`) -> S2 -> ... -> S7. `bg_transit_rules` is no longer in S1.
 > - **Three findings that change what v1.1 predicted** (each with evidence in S0b, P0.6 and E13): (1) **`bg_transit_rules` will NOT delta-skip**: its writer source digest and its table content both moved since the 2026-09-04 receipt (L0 repair #2727; migration 1078), so the writer executes and records `output_changed` TRUE; v1.1's "expected `skip_no_delta`" (1.1, R-9, 3.3) is withdrawn. (2) The builder cannot write `bg_transit_moorti` (SELECT only; the writer upserts it) and cannot INSERT/UPDATE `asset_freshness` (the receipt path writes it on every completion and every delta-skip): code-derived and catalog-verified, not exercised. (3) Because S0b flips `ka_vedha_gochara` (and `ka_moorti_nirnaya`, `ka_gochara`) stale on the canonical chart, `ka_sangam` is blocked until the Gochara trio is rebuilt, and `ka_vedha_gochara` in turn needs `bg_vedha_malefic_scale` fresh.
-> - **Observed in the same re-read, not in SS's message (flagged, evidence E13):** migration 1214 is APPLIED (17:16:06Z); the five `kala_*` MSR keys are gone; between 17:49Z and 17:55Z the grant-plan grants appeared on `data_plane_builder` (phala/mimamsa tables, `selftest_detail`, `bg_combustion_orbs`, `phala_anchor_identity*`, `life_events`) and the three L2 foreign keys disappeared, with no new `_migrations_applied` row and PR #2825 still OPEN (applied outside a migration, by whom and how not read); `chart_divisionals` RLS is OFF and the reader sees 71,476 rows; #2823 (I-1/I-2) is merged; the pipeline-job image build was SKIPPED in the deploy run that carried 1211; `ka_gochara_resonance` is `error` (set by run 1865991c). 1212, 1213, 1215 are not applied; `phala_rectification` SELECT is still false.
+> - **Observed in the same re-read, not in SS's message (flagged, evidence E13):** migration 1214 is APPLIED (17:16:06Z); the five `kala_*` MSR keys are gone; between about 17:48Z and 17:55Z the grant-plan grants appeared on `data_plane_builder` (phala/mimamsa tables, `selftest_detail`, `bg_combustion_orbs`, `phala_anchor_identity*`, `life_events`) and the three L2 foreign keys disappeared, with no new `_migrations_applied` row and PR #2825 still OPEN (applied outside a migration, by whom and how not read); `chart_divisionals` RLS is OFF and the reader sees 71,476 rows; #2823 (I-1/I-2) is merged; the pipeline-job image build was SKIPPED in the deploy run that carried 1211; `ka_gochara_resonance` is `error` (set by run 1865991c). 1212, 1213, 1215 are not applied; `phala_rectification` SELECT is still false.
 > - **State when read (17:55Z):** P0 audit-grant gate MET; S0 smoke pre-approved and not yet run; P0b access restored (catalog) with verification items 3-7 not done by this lane; the P0c migration gates 1212/1213/1215 are red; grant gates S1/S4/S5/S6 read true, S7 false; the two new gaps above are red.
 
 ## P0. PRECONDITION 0: the builder audit grant is deployed AND one smoke build completes
@@ -165,7 +165,7 @@ S0-S4 only (Bodha and Kāla assets, waves 1-6), with `ph_*` and `mi_bhavisya` de
 
 **What "the audit grant is deployed" does not prove (two further builder write-path gaps, read-only, E13 block D; both code-derived outcomes, neither exercised):**
 
-1. **`asset_freshness` (affects the smoke and every stage).** The builder has SELECT only: INSERT and UPDATE are false at table level and at column level. `provenance.py` `_upsert_freshness_row` (`INSERT INTO asset_freshness ... ON CONFLICT DO UPDATE`, present since 2026-08-25, commit cfa098d33) runs from `persist_successful_receipt` (every completed data writer and probe) and from `reattribute_unchanged_receipt` (every delta-skip, which is what the smoke is expected to do). Migration 1070's verb map lists the table as "SELECT (asset_runner.py, provenance.py: read only)", which does not match the code. If no other path writes it, a run as `data_plane_builder` raises `permission denied for table asset_freshness` at the receipt step: a light writer rolls back (data unchanged) and the asset ends `error`; in the delta-skip path the call sits in `_skip_no_delta` without a try block, so the smoke asset `ka_tithi_pravesha` would flip lit -> error (recoverable by one later successful build; no data change). How the runner records that exception (asset `error` versus run `failed`) was not read. What this lane cannot see: whether the job writes receipts through another role or a function. The smoke is the only end-to-end proof; to avoid spending it on a known-red check, run the P0.3 check 1b below and ask Pravāha first. SS may still fire the pre-approved smoke and expect that outcome.
+1. **`asset_freshness` (affects the smoke and every stage).** The builder has SELECT only: INSERT and UPDATE are false at table level and at column level. `provenance.py` `_upsert_freshness_row` (`INSERT INTO asset_freshness ... ON CONFLICT DO UPDATE`, present since 2026-08-25, commit cfa098d33) runs from `persist_successful_receipt` (every completed data writer and probe) and from `reattribute_unchanged_receipt` (every delta-skip, which is what the smoke is expected to do). Migration 1070's verb map lists the table as "SELECT (asset_runner.py, provenance.py: read only)", which does not match the code. If no other path writes it, a run as `data_plane_builder` raises `permission denied for table asset_freshness` at the receipt step: a light writer's receipt capture sits in a try/except that rolls back (data unchanged) and sets the asset `error`. The delta-skip path, which is what the smoke is expected to take, is messier: `_skip_no_delta` is called inside the delta-skip gate's try/except in `_run_data_writer`, which logs and falls through to normal execution, but the failed statement has already aborted the transaction (no savepoint around it), so the next statement raises and the worker's crash handler (`runner.py` `worker`) tries to write `error` on the same aborted connection. Code-derived and only partly traced: the run fails and the smoke asset `ka_tithi_pravesha` ends `error` or is left `building` until the watchdog (15 min) or the next dispatch's orphan cleanup reaps it; no data change either way (recoverable by one later successful build). What this lane cannot see: whether the job writes receipts through another role or a function. The smoke is the only end-to-end proof; to avoid spending it on a known-red check, run the P0.3 check 1b below and ask Pravāha first. SS may still fire the pre-approved smoke and expect that outcome.
 2. **`bg_transit_moorti` (affects S0b only).** Builder SELECT only (migration 1073 granted the read for Kāla); the `bg_transit_rules` writer upserts it. See S0b.
 
 ```sql
@@ -271,7 +271,7 @@ All six PRs (#2826, #2827, #2828, #2830, #2825, #2833) were OPEN and unmerged at
 is in `_migrations_applied` AND its own post-apply SQL returns the stated result (CLAUDE.md N.4: never trust a silent no-op), or, for a grant, the
 `has_*_privilege` check in the table is true for `data_plane_builder`.
 
-**v1.2 re-read (17:40-17:56Z, E13 blocks B-E).** Migrations: 1214 and 1211 (Pravāha's audit grant) are applied; 1212, 1213, 1215 are not; the held 5-edge migration is now numbered **1216** (not applied; the number 1211 in v1.0-v1.1 meant this one). Grants: between 17:49Z and 17:55Z the grant-plan grants appeared (see P0c.2) and the three L2 foreign keys vanished, with no new `_migrations_applied` row and PR #2825 still OPEN; applied outside a migration, the apply record was not read. Trap 103 applies to every "deployed" claim (P0.6).
+**v1.2 re-read (17:40-17:56Z, E13 blocks B-E).** Migrations: 1214 and 1211 (Pravāha's audit grant) are applied; 1212, 1213, 1215 are not; the held 5-edge migration is now numbered **1216** (not applied; the number 1211 in v1.0-v1.1 meant this one). Grants: between about 17:48Z and 17:55Z the grant-plan grants appeared (see P0c.2) and the three L2 foreign keys vanished, with no new `_migrations_applied` row and PR #2825 still OPEN; applied outside a migration, the apply record was not read. Trap 103 applies to every "deployed" claim (P0.6).
 
 ### P0c.1 Migrations
 
@@ -289,7 +289,7 @@ is in `_migrations_applied` AND its own post-apply SQL returns the stated result
 
 | Grant (BUILDER_GRANT_PLAN v1.3 Part B unless noted) | Needed by | Gates | Today |
 |---|---|---|---|
-| `GRANT UPDATE (selftest_detail) ON asset_registry` | the four service writers `ka_dasha_kala`, `ka_muhurta_seva`, `ka_tulana`, `ka_graha_sancara`: the first two are in the launch set (`ka_dasha_kala` unguarded write: permission denied, asset error; `ka_muhurta_seva`'s write is outside any try and its exception fails the asset; both code-derived, grant plan section 3.1) | **S1 and S0m-onward**: this is a **correction to v1.0 P0.5**, which said S0-S4 needed no grant beyond the audit grant; `ka_muhurta_seva` already sits in S1 | **true at 17:55Z (v1.2)**; was false at 17:49Z; applied outside a migration |
+| `GRANT UPDATE (selftest_detail) ON asset_registry` | the four service writers `ka_dasha_kala`, `ka_muhurta_seva`, `ka_tulana`, `ka_graha_sancara`: the first two are in the launch set (`ka_dasha_kala` unguarded write: permission denied, asset error; `ka_muhurta_seva`'s write is outside any try and its exception fails the asset; both code-derived, grant plan section 3.1) | **S1 and S0m-onward**: this is a **correction to v1.0 P0.5**, which said S0-S4 needed no grant beyond the audit grant; `ka_muhurta_seva` already sits in S1 | **true at 17:55Z (v1.2)**; was false at about 17:47Z; applied outside a migration |
 | `GRANT SELECT ON bg_combustion_orbs` | `ka_vighnakara.py:302`, which falls back silently to constants when it cannot read the table (grant plan: the 8 table values equal the 8 fallback constants today, observed there) | **S4**, soft: not blocking, but without it the output silently depends on the fallback | **true at 17:55Z (v1.2)** |
 | `GRANT SELECT ... ON phala_anchors` | `ka_bhavishya_lekha.py:249-280` reads `phala_anchors.bhavishya_id` to refuse deleting referenced stale projection ids; the read runs only when `kala_bhavishya` already holds rows for the chart (0 on the canonical chart today), so the first S4 pass may not touch it but **any retry or later run does** | **must precede S4** (the stage that builds `ka_bhavishya_lekha`): the phala grant is not only an S5 need | **true at 17:55Z (v1.2)** (SELECT, INSERT, DELETE; UPDATE false) |
 | `phala_*` x8 tables (`phala_anchors`, `_muhurta`, `_mitigation`, `_sankrama`, `_sodhana`, `_suddha_sodhana`, `_pramana`, `_phaladesa`), `EXECUTE` on `phala_anchor_identity(...)` and `phala_anchor_identity_namespace()`, `life_events` (5 columns), `brahma_activity_ontology` SELECT | the eight `ph_*` writers | **S5** | **true at 17:55Z (v1.2)**: S, I, D on all eight; UPDATE only on `phala_phaladesa` and `phala_suddha_sodhana`; `EXECUTE` on both `phala_anchor_identity*` functions true; `life_events` any-column SELECT true (the five specific columns not checked); `brahma_activity_ontology` SELECT true. Whether any `ph_*` writer UPDATEs a table whose UPDATE is false was not re-derived. |
@@ -449,7 +449,7 @@ REVIEW section. For each asset: whether the 27-asset wave (and what S0b forces) 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
    cannot insert into the audit table or use its sequence, and the same role holds no privilege on any `phala_*` or `mimamsa_*`
    table. The plan therefore starts with a smoke build on a leaf asset (`ka_tithi_pravesha`) and a go/no-go gate.
-   **v1.2:** the audit-grant half is fixed (migration 1211, applied 17:35:43Z; P0.6); the smoke is pre-approved and not yet run; the `phala_*`/`mimamsa_*` grants appeared at 17:49-17:55Z (P0c.2). Two other builder write-path gaps remain (`asset_freshness`, `bg_transit_moorti`; P0.6, S0b.4), both code-derived and unexercised.
+   **v1.2:** the audit-grant half is fixed (migration 1211, applied 17:35:43Z; P0.6); the smoke is pre-approved and not yet run; the `phala_*`/`mimamsa_*` grants appeared at about 17:48-17:55Z (P0c.2). Two other builder write-path gaps remain (`asset_freshness`, `bg_transit_moorti`; P0.6, S0b.4), both code-derived and unexercised.
 1. **The wave SS named is not a launchable set.** A run for exactly those eight assets is refused by the planner
    (`UPSTREAM_BLOCKED`): 12 out-of-plan direct dependencies are not lit and fresh (Evidence E3). Closing that
    set under the rule the planner and the runner both enforce (every declared dependency of a planned asset must be
@@ -879,7 +879,7 @@ NOT verified that is said. No MCP call was made for this review.
 
 | # | Check | How | State at review time (2026-10-01) |
 |---|---|---|---|
-| 1 | P0 passed (audit grant, phala/mimamsa grants as needed, smoke build) | section P0.3-P0.6 | **PARTIAL (v1.2, 17:55Z)**: audit grant MET (1211 applied, builder audit row written); phala/mimamsa grants true (17:49-17:55Z); smoke pre-approved, NOT run; `asset_freshness` and `bg_transit_moorti` write gaps open (rows 21-22) |
+| 1 | P0 passed (audit grant, phala/mimamsa grants as needed, smoke build) | section P0.3-P0.6 | **PARTIAL (v1.2, 17:55Z)**: audit grant MET (1211 applied, builder audit row written); phala/mimamsa grants true (about 17:48-17:55Z); smoke pre-approved, NOT run; `asset_freshness` and `bg_transit_moorti` write gaps open (rows 21-22) |
 | 2 | Deploy idle: no `Deploy to Cloud Run` run with event `workflow_run` or `workflow_dispatch` in progress or pending | `gh run list --workflow deploy.yml --json status,conclusion,headSha,createdAt,event` (the `pull_request` runs are build-checks only and do not deploy) | **v1.2 (18:02Z): idle**: the `workflow_run` deploys listed (36896658202 17:04Z, 36898400004 17:18Z, both for 4eb40bec1; 36893699387 16:40Z for ce52cd5c3) are `completed success`; only `pull_request` build-checks run. Trap 103 (row 20) applies before any of them is read as proof; re-check at launch and re-run the smoke after any deploy that rebuilds the job image. (v1.0: not idle at 15:04Z.) |
 | 3 | No in-flight runs for the chart | `SELECT id,state FROM build_runs WHERE chart_id='482012f1-...' AND state IN ('planned','running','paused')` (the unique index enforces this server-side) | 0 at 15:04Z (8684032d failed 15:01); another lane dispatched at 14:57; **v1.2: 0 at 17:58Z** (1865991c, Pravāha, ended 17:36:57Z `failed`); repeat at launch (Q8) |
 | 4 | Registry unchanged since this plan | `SELECT count(*), md5(string_agg(asset_id\|\|'>'\|\|coalesce(depends_on::text,''),',' ORDER BY asset_id)) FROM asset_registry WHERE is_active` | 127 assets, md5 `fb7a1090d5aa3c7dabafc9f9daf1ae6a` (2026-10-01T14:49Z; **v1.2: identical at 18:02Z**); latest `_migrations_applied` filename = `1210_asset_registry_direct_edges.sql` (applied 14:37:09Z; v1.2: latest is now `1211_asset_throughput_state_audit_builder_grants.sql`, 17:35:43Z, with `1214` at 17:16:06Z; neither changes `depends_on`); no 1216. The runner also re-checks each planned asset against the frozen manifest at start (a diverged asset fails and blocks its dependents). |
@@ -899,7 +899,7 @@ NOT verified that is said. No MCP call was made for this review.
 | 18 | `ka_dasha_kala` and `ka_muhurta_seva` ordering: both scheduled in S1, 1213 deployed first | section 1.6 | 1213 not applied (17:55Z) |
 | 19 | S7 only: the section 8.2 pre-check (image carries #2830, instance/connector health, ledger state, dependencies, `phala_rectification` ruling) | section 8.2 | #2830 open; `phala_rectification` SELECT false; instance not restarted since 2026-08-17 |
 | 20 | **Trap 103 (v1.2): a "deployed" claim is verified, not read off the run list** (migration, grant, writer change) | P0.6, "Post-deploy verification" | two `workflow_run` deploys listed for 4eb40bec1, both `success`; the carrying run skipped the pipeline-job image build; 1211 verified by catalog |
-| 21 | **Builder write path for receipts (v1.2): `asset_freshness` INSERT and UPDATE for `data_plane_builder`** (gates the S0 smoke and every stage) | P0.3 check 1b | **false** (17:55Z); code-derived outcome: `error` at the receipt step; ask Pravāha whether another path writes it |
+| 21 | **Builder write path for receipts (v1.2): `asset_freshness` INSERT and UPDATE for `data_plane_builder`** (gates the S0 smoke and every stage) | P0.3 check 1b | **false** (17:55Z); code-derived outcome: `error` (or stuck `building` on the delta-skip path) at the receipt step; ask Pravāha whether another path writes it |
 | 22 | **S0b only (v1.2): `INSERT, UPDATE ON bg_transit_moorti`** | P0.3 check 1b, S0b.4 | **false** (17:55Z); S0b would end `error` |
 | 23 | **S0b only (v1.2): the job image carries #2727 (b6690928f) and the digest-inventory entry `824c6d7d7237...` for `bg_transit_rules`** | cockpit `job_image_tag` / job description; S0b.8 item 3 | not readable by this lane; the 1211-carrying deploy skipped the job-image build |
 | 24 | **S0b / S0L (v1.2): no active run on any chart, global-assets lock free, Pravāha told before the run, `super_admin` session** | `SELECT ... FROM build_runs WHERE state IN ('planned','running','paused')`; S0b.8 items 4-5 | 0 active at 17:58Z |
@@ -956,7 +956,7 @@ single transaction longer than 15 minutes without a heartbeat is at risk (sectio
 | R-14 | **`ka_sangam` unprovable if `ka_dasha_kala`/`ka_muhurta_seva` are not rebuilt under 1213** (v1.1) | section 1.6 | S3-S6 cascade-block | 1213 deployed and verified before S1; both in S1; receipts checked `proven` before S3 |
 | R-15 | **`ka_kshetra` connection loss / stall loop** (v1.1): 115 historical run rows, 7+ kill-and-redispatch cycles on 2026-09-11, last run lost its connection | section 8.2 | hours of compute, a partially-written `kala_field`; a repeated loop | own stage S7, last; pre-check; stop rule; ONE redispatch; #2830 bounds the loss to one part but does not prevent the reset |
 | R-16 | **Migrations/grants not yet deployed** (v1.1): 1212-1215, the grant plan, #2830, #2823 are all open PRs | P0c, Evidence E12 | stages launched ahead of their gates fail or silently degrade (S1 services, S4 `phala_anchors`) | per-stage gates in the section 8 table; do not launch a stage whose gate row of section 5 is red (v1.2: 1214, 1211 and the grant-plan grants are applied; 1212, 1213, 1215, #2830, #2825 are not) |
-| R-17 | **The builder cannot write `asset_freshness` (v1.2)**: receipts persist and delta-skip re-stamp both upsert it | P0.6 item 1; `provenance.py` `_upsert_freshness_row` since 2026-08-25; builder INSERT/UPDATE false (table and column) | every stage, including the S0 smoke, ends `error` at the receipt step (code-derived); light writers roll back, no data change; the smoke asset flips lit -> error | P0.3 check 1b before the smoke; ask Pravāha for the receipt-write path; a grant (not drafted here) clears it |
+| R-17 | **The builder cannot write `asset_freshness` (v1.2)**: receipts persist and delta-skip re-stamp both upsert it | P0.6 item 1; `provenance.py` `_upsert_freshness_row` since 2026-08-25; builder INSERT/UPDATE false (table and column) | every stage, including the S0 smoke, ends `error` at the receipt step (code-derived); light writers roll back, no data change; the smoke asset ends `error` or stuck `building` until reaped | P0.3 check 1b before the smoke; ask Pravāha for the receipt-write path; a grant (not drafted here) clears it |
 | R-18 | **The builder cannot write `bg_transit_moorti` (v1.2)**: the `bg_transit_rules` writer upserts 27 rows into it | S0b.4; ACL `data_plane_builder=r` | S0b ends `error`, `bg_transit_rules` throughput lit -> error (worse for Pravāha), no data change | grant `INSERT, UPDATE` first; gate row 22 |
 | R-19 | **Job image not rebuilt / not known (v1.2)**: the deploy that carried 1211 skipped "Build & Deploy Pipeline Job Image"; Trap 103 | P0.6, run 36898400004 | the run is refused at the manifest code-digest check (fail closed) or runs a writer older than #2727 | S0b.8 item 3; read `job_image_tag`; row 23 |
 | R-20 | **S0b forces follow-on rebuilds (v1.2)**: 3 canonical assets flip stale, `ka_gochara_resonance` is `error`, `ka_vedha_gochara` needs `bg_vedha_malefic_scale` fresh | S0b.5, S0L | `ka_sangam` and `ka_gochara` (S3) blocked until S0c; Gochara-family assets belong to Pravāha's lane | stage S0c, S0L (`bg_vedha_malefic_scale`); tell Pravāha before S0b; Q18 |
@@ -1622,5 +1622,410 @@ active_runs_any_chart
 0
 (1 row)
 ```
+
+### E13. v1.2 live re-read (2026-10-01 17:40-18:04Z, `suvarna_reader`, SELECT and catalog reads only; repo reads from `origin/main` 4eb40bec1; `gh` read-only)
+
+Supersedes E12 where the two differ (E12 stays as the 16:27Z record). Credentials were never printed. The helper scripts (read-only Python over `psql`) lived in the session scratchpad and are reproduced below, not archived. The numbers in S0b and S0L can be re-derived from the statements and scripts here.
+
+**Blocks A-H** (script `e13.sql`, run 17:55:15Z; statements are the `select` lines visible in the output labels; `\gexec` blocks execute each asset's own `integrity_check_sql` as a read-only SELECT). Between about 17:48Z and 17:55Z the grant-plan grants appeared and the three L2 FKs disappeared (a read at about 17:47Z showed `selftest_detail`, `phala_anchors`, `bg_combustion_orbs` false; block D shows them true):
+```
+-- A. identity and clock
+now|current_user
+2026-10-01 17:55:15.478538+00|suvarna_reader
+(1 row)
+-- B. migrations applied since 12:00Z; latest
+filename|applied_at
+1210_asset_registry_direct_edges.sql|2026-10-01 14:37:09.977838+00
+1214_f3_drop_kala_msr_signal_fks.sql|2026-10-01 17:16:06.208274+00
+1211_asset_throughput_state_audit_builder_grants.sql|2026-10-01 17:35:43.051967+00
+(3 rows)
+m1212_1213_1215_1216_applied
+0
+(1 row)
+-- C. audit grant and the first builder audit row
+ins|seq
+t|t
+(1 row)
+asset_id|old_state|new_state|db_user|triggered_by|changed_at
+ka_gochara_resonance|lit|error|data_plane_builder|asset_runner|2026-10-01 17:36:56.984149+00
+(1 row)
+run|state|scope_target|triggered_by|created_at|started_at|ended_at
+1865991c|failed|ka_gochara_resonance|l3-lane-frozen-manifest-rebuild|2026-10-01 17:36:25.934937+00|2026-10-01 17:36:55.032961+00|2026-10-01 17:36:57.078162+00
+(1 row)
+asset_id|state|err
+ka_gochara_resonance|error|DEP-ASSERT: declared dependency(ies) not lit before run: bg_transit_rules(receipt:stale) — refused to build on incomplete/missing upstream data
+(1 row)
+-- D. builder grants on the tables the receipt path and the L0 writers use
+t|s|i|u|d|any_col_ins|any_col_upd
+asset_freshness|t|f|f|f|f|f
+asset_provenance_receipts|t|t|t|f|t|t
+asset_throughput|t|t|t|t|t|t
+bg_transit_engine|t|t|t|t|t|t
+bg_transit_moorti|t|f|f|f|f|f
+bg_transit_rules|t|t|t|t|t|t
+bg_vedha_malefic_scale|t|t|t|t|t|t
+brahma_formula_constants|t|t|t|t|t|t
+vidhi_primitives|t|t|t|t|t|t
+(9 rows)
+svc_health_upd|selftest_upd
+t|t
+(1 row)
+phala_anchors_sel|mimamsa_sel|orbs_sel|rect_sel
+t|t|t|f
+(1 row)
+-- E. chart_divisionals, specs, foreign keys
+relname|own|relrowsecurity|relforcerowsecurity|policies|rsa
+chart_divisionals|data_plane_l1_owner|f|f|0|f
+(1 row)
+reader_count
+71476
+(1 row)
+chart_id|count
+1c826d5a-41cb-4450-b4dc-59d440e5f75a|23542
+482012f1-710e-4a25-994a-93821f5871aa|24392
+cb73cd3d-9eba-4220-9902-0de91566e980|23542
+(3 rows)
+active_specs_3
+0
+(1 row)
+conname
+(0 rows)
+-- F. the six non-fresh L0 assets: registry kind, throughput, freshness (all partitions), receipt
+asset_id|asset_kind|has_writer|natural_key_partition|target_table|target_floor|service_health
+bg_ephemeris_engine|service|f||||healthy
+bg_formula_constants|data|t|constant_id|brahma_formula_constants|17|
+bg_panchanga|service|f||||healthy
+bg_transit_rules|data|t||bg_transit_rules|76|
+bg_vedha_malefic_scale|data|t||bg_vedha_malefic_scale|5|
+bg_vidhi_primitives|data|t|primitive_id|vidhi_primitives|60|
+(6 rows)
+asset_id|state|last_built_at|rows_written
+bg_ephemeris_engine|lit|2026-08-27 06:09:30.00249+00|0
+bg_formula_constants|lit|2026-09-07 20:28:41.051122+00|10
+bg_panchanga|lit|2026-08-27 12:07:18.473855+00|0
+bg_transit_rules|lit|2026-09-04 20:07:52.531797+00|104
+bg_vedha_malefic_scale|lit|2026-09-04 01:19:09.057713+00|5
+bg_vidhi_primitives|lit|2026-09-04 20:07:56.018983+00|0
+(6 rows)
+asset_id|partition_key|freshness_state|reasons|observed_at
+bg_ephemeris_engine|__whole_asset__|stale|["output_digest_spec_unavailable", "registry_changed"]|2026-09-23 21:07:36.166003+00
+bg_formula_constants|constant_id|fresh|[]|2026-09-07 20:28:41.051122+00
+bg_formula_constants|__whole_asset__|stale|["registry_changed"]|2026-08-26 04:08:54.542971+00
+bg_panchanga|__whole_asset__|unknown|["output_digest_spec_unavailable"]|2026-08-27 12:07:18.473855+00
+bg_transit_rules|__whole_asset__|stale|["registry_changed"]|2026-09-23 21:17:23.869511+00
+bg_vedha_malefic_scale|__whole_asset__|stale|["registry_changed"]|2026-09-23 21:17:23.507304+00
+bg_vidhi_primitives|primitive_id|stale|["registry_changed"]|2026-09-06 19:52:18.782971+00
+(7 rows)
+asset_id|partition_key|receipt_version|receipt_state|code|out|spec|observed_at|build_id
+bg_ephemeris_engine|__whole_asset__|nirmana-provenance-receipt-v2|unknown|fa59f213376c|e5b75504595b||2026-08-27 06:09:30.00249+00|cd79def6-c40d-42c5-9414-7d40895bac5c
+bg_formula_constants|constant_id|nirmana-provenance-receipt-v2|proven|54c8bbee62cb|2c6ebbe3e7a4|126465c083e5|2026-09-07 20:28:41.051122+00|10182981-c4c0-4a07-91a0-45cb520bf578
+bg_formula_constants|__whole_asset__|nirmana-provenance-receipt-v1|proven|6441652129a1|16ac38966ff8||2026-08-25 14:57:06.992267+00|7db8aca3-1d63-4184-8131-553b1bbcf200
+bg_panchanga|__whole_asset__|nirmana-provenance-receipt-v2|unknown|fa59f213376c|cabe9f5ff28c||2026-08-27 12:07:18.473855+00|759b43c7-b2d6-40a9-b9ef-8d1987ac898d
+bg_transit_rules|__whole_asset__|nirmana-provenance-receipt-v2|proven|9812db139d56|1983611685a8|b704673aa584|2026-09-04 20:07:52.531797+00|440c1ae6-c1bb-4c25-ab74-3af414139850
+bg_vedha_malefic_scale|__whole_asset__|nirmana-provenance-receipt-v2|proven|9170aa9ea036|e76e087dbaf7|16a4946da003|2026-09-03 14:29:18.472927+00|fed384b4-ec89-40de-86bd-2ce2e41f34ae
+bg_vidhi_primitives|primitive_id|nirmana-provenance-receipt-v2|proven|93469b4c6394|93bc7a13c3cc|179ab2c22fad|2026-09-04 20:07:56.018983+00|440c1ae6-c1bb-4c25-ab74-3af414139850
+(7 rows)
+asset_id|spec
+bg_formula_constants|126465c083e5
+bg_transit_rules|b704673aa584
+bg_vedha_malefic_scale|16a4946da003
+bg_vidhi_primitives|179ab2c22fad
+(4 rows)
+-- G. integrity SQL of the four L0 data assets (executed read-only via gexec)
+?column?
+t
+(1 row)
+?column?
+t
+(1 row)
+?column?
+t
+(1 row)
+?column?
+t
+(1 row)
+-- H. throughput state histogram (no row holds service_ok)
+state|count
+dormant|3
+error|29
+incomplete|1
+lit|162
+stale|73
+(5 rows)
+```
+Block D was re-read at 17:55:36Z for the full phala/mimamsa matrix and the grant-plan extras: `phala_anchors|t|t|f|t`, `phala_mitigation|t|t|f|t`, `phala_muhurta|t|t|f|t`, `phala_pramana|t|t|f|t`, `phala_sankrama|t|t|f|t`, `phala_sodhana|t|t|f|t`, `phala_phaladesa|t|t|t|t`, `phala_suddha_sodhana|t|t|t|t`, `mimamsa_predictions|t|t|f|t`, `mimamsa_manifestation_sets|t|t|f|t` (columns S, I, U, D), `life_events` any-column SELECT true (table-level false), `brahma_activity_ontology` S true, `bg_combustion_orbs` S true, `phala_rectification` all false; `EXECUTE` true on `phala_anchor_identity_namespace()` and `phala_anchor_identity(uuid,text,text,text,text,text,date,date,date,text)`; trigger `mimamsa_predictions_builder_guard` enabled on `mimamsa_predictions`; `_migrations_applied` latest = 1211 (17:35:43Z), 1214 (17:16:06Z); `pg_constraint` shows none of the three L2 FK names.
+
+**Block I: direct bg_ dependencies of the 27-asset launch set, and the transitive closure restricted to the six L0 assets** (script `q1.sql`, 18:04Z):
+```
+-- direct bg_ deps of the 27
+dep|consumers|count
+bg_dignity_reference|ka_vighnakara|1
+bg_ephemeris|ka_gochara|1
+bg_ghatana|ka_avadhi,ka_yojaka|2
+bg_transit_rules|ka_gochara,ka_sangam,ka_yojaka|3
+(4 rows)
+-- transitive closure of 27 restricted to the 6 L0
+dep|n_roots|roots
+bg_panchanga|24|bo_anveshana,bo_cgm_motifs,bo_cgm_paths,bo_drishti,bo_karanajala,bo_pratijna,bo_upaya,ka_avadhi,ka_bhavishya_lekha,ka_gochara,ka_kala_darshana,ka_kalasutra,ka_sangam,ka_vighnakara,ka_yojaka,mi_bhavisya,ph_muhurta,ph_nimitta,ph_phaladesa,ph_pramana,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana
+bg_transit_rules|17|bg_transit_rules,ka_bhavishya_lekha,ka_gochara,ka_kala_darshana,ka_kalasutra,ka_sangam,ka_vighnakara,ka_yojaka,mi_bhavisya,ph_muhurta,ph_nimitta,ph_phaladesa,ph_pramana,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana
+bg_vedha_malefic_scale|15|ka_bhavishya_lekha,ka_gochara,ka_kala_darshana,ka_kalasutra,ka_sangam,ka_vighnakara,mi_bhavisya,ph_muhurta,ph_nimitta,ph_phaladesa,ph_pramana,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana
+(3 rows)
+```
+**Block J: replica of `output_digest.compute_output_digest` (read-only) and the source-versus-live comparisons.** The replica reproduces the stored receipt digest of `bg_formula_constants` (`constant_id` partition) exactly (`2c6ebbe3e7a4904c...`), which validates it; it then gives, for the other three assets, digests that differ from their stored receipts (bg_transit_rules stored `1983611685a84b76eabe90baf20746bbefd4f4914afdd7f2e7d73fbf454dcc33`; bg_vedha_malefic_scale stored `e76e087dbaf7da4600a9879851060fc8157ee746cf353018959b3263fd4266c3`; bg_vidhi_primitives stored `93bc7a13c3ccccd67c5ad355529e939572f983bc72e36ec2660e289c153c4628`). Output (18:04Z):
+```
+bg_transit_rules live_output_digest= ca19407a3e374505d4342b208c383250ef2c6517cbc7c9aa62c1ce1160737a26 spec= b704673aa584 {'bg_transit_rules': 76, 'bg_transit_engine': 9, 'bg_transit_moorti': 27}
+bg_vedha_malefic_scale live_output_digest= b1d78defec700f0614b223fb56cd6144bc260aad33874162577b6c1a4254ae2e spec= 16a4946da003 {'bg_vedha_malefic_scale': 5}
+bg_vidhi_primitives live_output_digest= 28eeb20c6abb95dc7699023e727a9fe13811e264b9518b16bc828bda318572c5 spec= 179ab2c22fad {'vidhi_primitives': 60}
+bg_formula_constants live_output_digest= 2c6ebbe3e7a4904ca65ba3e46a60ae83cb47b92655d78d4b7d40c2a8c394e3fe spec= 126465c083e5 {'brahma_formula_constants': 17}
+```
+```python
+#!/usr/bin/env python3
+"""Read-only replica of pipeline/orchestrator/output_digest.compute_output_digest.
+Runs SELECTs through psql as the already-sourced suvarna_reader; never prints credentials."""
+import hashlib, json, subprocess, sys
+
+def psql(sql):
+    out = subprocess.run(["/opt/homebrew/bin/psql", "-X", "-A", "-t", "-c", sql],
+                         capture_output=True, text=True, timeout=120)
+    if out.returncode != 0:
+        raise SystemExit("psql error: " + out.stderr[:300])
+    return out.stdout
+
+def digest_for(asset_id):
+    row = psql(f"select spec_sha256 || '|' || spec::text from asset_output_digest_specs where asset_id='{asset_id}' and retired_at is null").strip()
+    sha, spec_text = row.split("|", 1)
+    spec = json.loads(spec_text)
+    d = hashlib.sha256()
+    d.update(b"nirmana-output-content-v1\\0")
+    d.update(sha.encode("ascii"))
+    counts = {}
+    for comp in spec["components"]:
+        d.update(comp["name"].encode("ascii"))
+        d.update(b"\\0")
+        pairs = []
+        for c in comp["value_columns"]:
+            pairs += [f"'{c}'", f'source."{c}"']
+        order = ", ".join(f'source."{c}"' for c in comp["key_columns"])
+        sql = f'SELECT jsonb_build_object({", ".join(pairs)})::text AS row_json FROM public."{comp["relation"]}" AS source ORDER BY {order}'
+        # psql -A -t prints one row per line; row_json text has no raw newlines (jsonb escapes them)
+        lines = [l for l in psql(sql).split("\n") if l != ""]
+        n = 0
+        for l in lines:
+            e = l.encode("utf-8")
+            d.update(len(e).to_bytes(8, "big"))
+            d.update(e)
+            n += 1
+        d.update(n.to_bytes(8, "big"))
+        counts[comp["relation"]] = n
+    return d.hexdigest(), sha, counts
+
+if __name__ == "__main__":
+    for a in sys.argv[1:]:
+        h, sha, counts = digest_for(a)
+        print(a, "live_output_digest=", h, "spec=", sha[:12], counts)
+```
+Source-versus-live comparisons (import the seed lists from `origin/main` modules, compare to the live rows, SELECT only):
+```
+source counts: engine 9 rules 69 moorti 27
+engine rows that would change: 0 | db-only keys: []
+rules: source 69 db 76 | rows the upsert would change: 0 | rows it would INSERT: 0 | owned rows it would RETIRE (DELETE): 0
+changed sample: [] missing sample: [] stale sample: []
+db rows outside src (not owned, kept): 7
+moorti: source 27 db 27 rows that would change: 0
+vedha: source rows 5 db rows 5 rows the upsert would change: 0
+vidhi: source 60 db 60 would change: 0 [] would delete: []
+```
+Code digests: local `get_writer_source_hash('bg_transit_rules')` = `824c6d7d7237ae812cff52b98473228e0c8fc6233d23f976351420a2b63470e1` = the `origin/main` inventory entry (`platform/src/generated/nirmana-writer-digests.json`, `probe_digest` `997985c1d56a3027...`); stored receipt `code_digest` `9812db139d568ba645c67c3c920d22bb6fac6c08a6222731a59b07bc2593f1aa`. Inventory entries versus stored: `bg_vedha_malefic_scale` `2e3a372e2df64199...` vs `9170aa9ea0368e6f...`; `bg_vidhi_primitives` `63f0a35a4be711d2...` vs `93469b4c639431b9...`; `bg_formula_constants` `54c8bbee62cbe3ff...` = stored (`constant_id` partition). Upstream, config and partition digests of all four recompute (via `provenance.canonical_digest` / `build_receipt` with `config={'chart_id': None, 'birth_params': {}}`) to the stored values: upstream `dbdd6eea68` / `ee8e86b0b2` / `353a683acb` / `29ed81d5ac`, config `c15fddb4f9` (all), partition `595f36c1f2` / `595f36c1f2` / `419b80f86e` / `04ede568fa` for transit, vedha, vidhi, formula.
+
+**Block K: planner fixpoint against the live registry** (script below; readiness = throughput in `lit`/`service_ok` AND latest-observed freshness `fresh`, with the planner's service exception; "after S0b" is a modelled scenario: `bg_transit_rules` fresh, `ka_gochara`/`ka_moorti_nirnaya`/`ka_vedha_gochara` stale; 18:04Z):
+```
+## NOW (live), start=BASE27: plan size 28; added beyond start: 1
+   + ka_gochara_resonance (required by ka_gochara; throughput=error, freshness=fresh)
+## AFTER S0b (bg_transit_rules fresh; ka_gochara/ka_moorti_nirnaya/ka_vedha_gochara stale), start=BASE27 minus bg_transit_rules: plan size 30; added beyond start: 4
+   + ka_gochara_resonance (required by ka_gochara; throughput=error, freshness=fresh)
+   + ka_vedha_gochara (required by ka_gochara; throughput=stale, freshness=fresh)
+   + ka_moorti_nirnaya (required by ka_gochara; throughput=stale, freshness=fresh)
+   + bg_vedha_malefic_scale (required by ka_vedha_gochara; throughput=lit, freshness=stale)
+## AFTER S0b + bg_vedha_malefic_scale fresh: plan size 29; added beyond start: 3
+   + ka_gochara_resonance (required by ka_gochara; throughput=error, freshness=fresh)
+   + ka_vedha_gochara (required by ka_gochara; throughput=stale, freshness=fresh)
+   + ka_moorti_nirnaya (required by ka_gochara; throughput=stale, freshness=fresh)
+direct deps of the gochara-family assets:
+   ka_gochara [('bg_ephemeris', 'lit', 'fresh'), ('bg_transit_rules', 'lit', 'stale'), ('ka_gochara_resonance', 'error', 'fresh'), ('ka_vedha_gochara', 'lit', 'fresh'), ('ka_moorti_nirnaya', 'lit', 'fresh')]
+   ka_gochara_resonance [('bg_transit_rules', 'lit', 'stale')]
+   ka_moorti_nirnaya [('bg_ephemeris', 'lit', 'fresh'), ('bg_transit_rules', 'lit', 'stale')]
+   ka_vedha_gochara [('bg_ephemeris', 'lit', 'fresh'), ('bg_transit_rules', 'lit', 'stale'), ('bg_sarvatobhadra_grid', 'lit', 'fresh'), ('bg_vedha_malefic_scale', 'lit', 'stale'), ('bg_phaladeepika_latta', 'lit', 'fresh')]
+   ka_sangam [('ka_gochara', 'lit', 'stale'), ('bg_transit_rules', 'lit', 'stale'), ('ka_vedha_gochara', 'lit', 'fresh')]
+   ka_yojaka [('bg_transit_rules', 'lit', 'stale'), ('bg_ghatana', 'lit', 'fresh')]
+```
+```python
+#!/usr/bin/env python3
+"""Read-only minimal-plan fixpoint (planner preflight rule) against LIVE registry/throughput/freshness.
+ready(dep) = throughput in (lit, service_ok) AND latest freshness == fresh (planner: latest-observed row,
+chart-scoped preferred, else global), with the planner's service exception. Optionally apply scenario overrides."""
+import json, subprocess, sys
+CH = "482012f1-710e-4a25-994a-93821f5871aa"
+
+def q(sql):
+    o = subprocess.run(["/opt/homebrew/bin/psql", "-X", "-A", "-t", "-c", sql], capture_output=True, text=True, timeout=60)
+    if o.returncode: raise SystemExit(o.stderr[:300])
+    return [json.loads(l) for l in o.stdout.split("\n") if l.strip()]
+
+reg = {r["asset_id"]: r for r in q("select row_to_json(t)::text from (select asset_id, layer, scope, asset_kind, has_writer, service_health, coalesce(depends_on,'{}') depends_on from asset_registry where is_active) t")}
+thr = {}
+for r in q(f"select row_to_json(t)::text from (select distinct on (asset_id) asset_id, state from asset_throughput where chart_id='{CH}' or chart_id is null order by asset_id, (chart_id='{CH}') desc nulls last) t"):
+    thr[r["asset_id"]] = r["state"]
+fr = {}
+for r in q(f"select row_to_json(t)::text from (select distinct on (asset_id) asset_id, freshness_state fs, reasons from asset_freshness where chart_id='{CH}' or chart_id is null order by asset_id, (chart_id='{CH}') desc nulls last, observed_at desc) t"):
+    fr[r["asset_id"]] = (r["fs"], r["reasons"])
+
+BASE27 = "bg_transit_rules,ka_muhurta_seva,ka_dasha_kala,bo_karanajala,bo_pratijna,bo_drishti,bo_cgm_motifs,bo_cgm_paths,bo_anveshana,bo_upaya,ka_avadhi,ka_gochara,ka_yojaka,ka_sangam,ka_kalasutra,ka_vighnakara,ka_kala_darshana,ka_bhavishya_lekha,ph_nimitta,ph_muhurta,ph_pratikara,ph_sankrama,ph_sodhana,ph_suddha_sodhana,ph_pramana,ph_phaladesa,mi_bhavisya".split(",")
+
+def ready(a, thr, fr):
+    t = thr.get(a); f = fr.get(a)
+    if t not in ("lit", "service_ok"): return False
+    if f and f[0] == "fresh": return True
+    e = reg[a]
+    reasons = set(f[1]) if f else set()
+    if e["asset_kind"] == "service" and e["service_health"] == "healthy" and f and f[0] == "unknown":
+        if not e["has_writer"] and t == "service_ok" and reasons == {"output_digest_spec_unavailable"}: return True
+        if e["has_writer"] and t == "lit" and reasons == {"output_digest_unavailable", "output_digest_spec_unavailable"}: return True
+    if e["asset_kind"] == "service" and f is None: return False
+    return False
+
+def fixpoint(start, thr, fr):
+    P = list(start); added = []
+    changed = True
+    while changed:
+        changed = False
+        for a in list(P):
+            for d in reg[a]["depends_on"]:
+                if d in P: continue
+                if not ready(d, thr, fr):
+                    P.append(d); added.append((d, a, thr.get(d), fr.get(d, (None,))[0])); changed = True
+    return P, added
+
+def show(title, start, thr_, fr_):
+    P, added = fixpoint(start, thr_, fr_)
+    print(f"## {title}: plan size {len(P)}; added beyond start: {len(added)}")
+    for d, a, t, f in added:
+        print(f"   + {d} (required by {a}; throughput={t}, freshness={f})")
+
+show("NOW (live), start=BASE27", BASE27, thr, fr)
+
+# scenario: after S0b alone (bg_transit_rules fresh; canonical downstream lit -> stale)
+thr2 = dict(thr); fr2 = dict(fr)
+fr2["bg_transit_rules"] = ("fresh", [])
+for a in ("ka_gochara", "ka_moorti_nirnaya", "ka_vedha_gochara"):
+    thr2[a] = "stale"
+show("AFTER S0b (bg_transit_rules fresh; ka_gochara/ka_moorti_nirnaya/ka_vedha_gochara stale), start=BASE27 minus bg_transit_rules",
+     [a for a in BASE27 if a != "bg_transit_rules"], thr2, fr2)
+
+# scenario: S0b + bg_vedha_malefic_scale fresh
+fr3 = dict(fr2); fr3["bg_vedha_malefic_scale"] = ("fresh", [])
+show("AFTER S0b + bg_vedha_malefic_scale fresh", [a for a in BASE27 if a != "bg_transit_rules"], thr2, fr3)
+
+print("direct deps of the gochara-family assets:")
+for a in ("ka_gochara", "ka_gochara_resonance", "ka_moorti_nirnaya", "ka_vedha_gochara", "ka_sangam", "ka_yojaka"):
+    print("  ", a, [(d, thr.get(d), fr.get(d, (None,))[0]) for d in reg[a]["depends_on"] if d.startswith(("bg_", "ka_gochara", "ka_moorti", "ka_vedha"))])
+```
+**Block L: downstream closure of `bg_transit_rules` with canonical and other-chart states, and of each L0 asset with its canonical lit members** (scripts `q3.sql`, `q4.sql`; 18:04Z):
+```
+-- bg_transit_rules downstream closure with canonical-chart throughput state, in-plan flag, and the two other charts
+a|canon|c1c82|ccb73|in_plan
+ka_bhavishya_lekha|stale|stale|error|t
+ka_gochara|lit|lit|-|t
+ka_kala_darshana|stale|stale|stale|t
+ka_kalasutra|stale|stale|stale|t
+ka_sangam|stale|stale|stale|t
+ka_vighnakara|stale|stale|stale|t
+ka_yojaka|stale|lit|error|t
+mi_bhavisya|error|stale|-|t
+ph_muhurta|stale|stale|-|t
+ph_nimitta|stale|stale|error|t
+ph_phaladesa|stale|stale|error|t
+ph_pramana|stale|stale|-|t
+ph_pratikara|stale|stale|-|t
+ph_sankrama|stale|stale|-|t
+ph_sodhana|stale|stale|-|t
+ph_suddha_sodhana|stale|stale|-|t
+ka_gochara_resonance|error|lit|lit|f
+ka_jivana_parva|stale|stale|stale|f
+ka_kshetra|error|stale|error|f
+ka_moorti_nirnaya|lit|lit|-|f
+ka_taranga|stale|stale|error|f
+ka_tulana|stale|stale|stale|f
+ka_vedha_gochara|lit|dormant|-|f
+mi_abhilekha|stale|stale|-|f
+mi_adhilepa|error|stale|error|f
+mi_bhara|error|error|-|f
+mi_darshana|error|stale|error|f
+mi_gunanaka|error|stale|-|f
+mi_pariksha|error|stale|error|f
+mi_pramana|error|stale|-|f
+mi_sambandha|error|stale|-|f
+mi_sankalpa|dormant|-|-|f
+mi_seva|stale|stale|-|f
+ph_rectification|stale|stale|-|f
+(34 rows)
+-- summary: canonical chart, outside the plan, by state
+state|count|string_agg
+dormant|1|mi_sankalpa
+error|9|ka_gochara_resonance,ka_kshetra,mi_adhilepa,mi_bhara,mi_darshana,mi_gunanaka,mi_pariksha,mi_pramana,mi_sambandha
+lit|2|ka_moorti_nirnaya,ka_vedha_gochara
+stale|6|ka_jivana_parva,ka_taranga,ka_tulana,mi_abhilekha,mi_seva,ph_rectification
+(4 rows)
+```
+```
+-- per L0 asset: downstream closure, per-chart count, canonical lit/service_ok members (would flip if output_changed true or unknown), other 2 charts lit counts (NOT flipped by a canonical-chart run)
+root|total|per_chart|global_|canon_lit|canon_lit_ids
+bg_ephemeris_engine|4|3|1|0|
+bg_formula_constants|7|7|0|0|
+bg_panchanga|57|57|0|15|bo_arudha,bo_bimba,bo_grounding,bo_karanajala,bo_laksana,bo_laksana_rerank,bo_nakshatra_semantic,bo_samskara,bo_sangati,ga_panchanga,ga_sade_sati,ga_structural,ga_vichara,ga_yoga,ka_gochara
+bg_transit_rules|34|34|0|3|ka_gochara,ka_moorti_nirnaya,ka_vedha_gochara
+bg_vedha_malefic_scale|31|31|0|2|ka_gochara,ka_vedha_gochara
+bg_vidhi_primitives|1|0|1|0|
+(6 rows)
+-- global downstream members
+root|a|scope|asset_kind|glob_state
+bg_ephemeris_engine|bg_cohort|global|data|lit
+bg_vidhi_primitives|bg_vidhi_floors|global|data|lit
+(2 rows)
+-- bg_ephemeris_engine per-chart downstream
+a|scope|canon
+bg_cohort|global|
+ka_kshetra|per_chart|error
+mi_bhara|per_chart|error
+mi_sankalpa|per_chart|dormant
+(4 rows)
+-- bg_formula_constants downstream
+a|scope|canon
+mi_adhilepa|per_chart|error
+mi_darshana|per_chart|error
+mi_gunanaka|per_chart|error
+mi_pariksha|per_chart|error
+mi_pramana|per_chart|error
+mi_sambandha|per_chart|error
+mi_seva|per_chart|stale
+(7 rows)
+-- global-row freshness of other L0 assets in thepsql:/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/8201ea38-2c77-469c-afac-0d364a9fae85/scratchpad/rb12/q4.sql:25: error: unterminated quoted string
+
+asset_id|freshness_state|reasons
+bg_class_lifetime_counts|fresh|[]
+bg_cohort|fresh|[]
+bg_dignity_reference|fresh|[]
+bg_ephemeris|fresh|[]
+bg_ghatana|fresh|[]
+bg_phaladeepika_latta|fresh|[]
+bg_rules|fresh|[]
+bg_sarvatobhadra_grid|fresh|["empty_by_ruling:ADJUDICATION-11", "conductor_ruling:#2393"]
+bg_vidhi_floors|fresh|[]
+(9 rows)
+```
+**Block M: repo and CI facts (`gh`, read-only).** PR states: #2823 MERGED 2026-10-01T15:37:54Z (066c58587); #2828 MERGED 16:49:57Z (9f02ed504); #2834 MERGED 17:00:24Z (4eb40bec1); #2825, #2826, #2827, #2830, #2833 OPEN; #2824 (this plan) OPEN. Deploy runs with event `workflow_run`: 36898400004 (4eb40bec1, created 17:18:25Z, `completed success`; jobs: Gate and detect 17:24:34-17:25:22Z success, Inspect DB Migration State 17:25:27-17:29:01Z success, **Apply Routine DB Migrations 17:29:03-17:35:54Z success**, Build and Deploy Web 17:35:59-17:43:34Z success, **Build and Deploy Pipeline Job Image skipped (17:35:55Z)**, Build and Deploy Sidecar skipped, Build and Deploy MCP skipped, Require earned deployment outcome success 17:43:59Z); 36896658202 (4eb40bec1, 17:04:16Z, success); 36893699387 (ce52cd5c3, 16:40:01Z, success). `deploy.yml:95`: `DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}`; checkout steps compare `ACTUAL_SHA` to `DEPLOY_SHA`.
+
+**Block N: attribution of the `registry_changed` flags** (`_migrations_applied.applied_at` against `asset_freshness.observed_at`; the trigger writes `now()` of the migration transaction, slightly earlier than the row insert): 1075 (21:07:36.370Z) <-> `bg_ephemeris_engine` (21:07:36.166Z, health probe re-anchored); 1077 (21:17:23.507Z) <-> `bg_vedha_malefic_scale` (21:17:23.507Z); 1078 (21:17:23.869Z) <-> `bg_transit_rules` (21:17:23.869Z); 1079 (22:03:22.783Z, `english_description` only) fired nothing; 706 (2026-09-06 19:52:18.783Z) <-> `bg_vidhi_primitives` (19:52:18.783Z); 615 (2026-08-26 04:08:54.543Z) <-> `bg_formula_constants` legacy `__whole_asset__` row (04:08:54.543Z). Run history of the six L0 assets: `build_run_assets` completed rows, 2026-07-04 to 2026-09-07; `bg_transit_rules` 2 (build, build; 0.04/0.04 s), `bg_vedha_malefic_scale` 4 (two `skip_no_delta`), `bg_vidhi_primitives` 7, `bg_formula_constants` 6 (two `skip_no_delta`, writer 0.03-0.06 s), `bg_ephemeris_engine` 1 and `bg_panchanga` 1 (2026-08-27, 0.03-0.04 s). The two 2026-09-04 `bg_transit_rules` runs were `asset_set` runs on the canonical chart with `triggered_by nirmana-elevation:t0-2026-09-01-0e5b06fb:L0:wave-0:...` naming 16-17 L0 assets.
+
+**What v1.2 could not verify (consolidated).** (1) Whether the pipeline job writes receipts and freshness through a role or path other than `data_plane_builder`; the runner's handling of the permission-denied exceptions; (2) the content of the current pipeline-job image and which deploy built it (the 1211-carrying run skipped that job); (3) who applied the grant-plan grants, the L2 FK drop and the `chart_divisionals` access fix at about 17:48-17:55Z and earlier, and that none of it was a migration; (4) P0b.3 checks 1, 3 (owner side), 4-7 (owner-path count, builder probe, `chart_snapshot` canary, ownership gate); (5) whether the `ph_*`/`mi_bhavisya` writers need UPDATE on tables where UPDATE is false, the N-46 guard's specification, and the five-column `life_events` grant; (6) target-table grants for `ka_moorti_nirnaya` and `ka_vedha_gochara` (only `gochara_resonance_map` was re-checked); (7) whether the job container can run the ephemeris probe (pinned Swiss Ephemeris files); (8) the run durations of the Gochara trio; (9) `ref_transit_rules_get` and any MCP/app reader (no production MCP call was made); (10) every code-derived outcome above (S0b.4, P0.6 item 1, S0L `bg_panchanga` flips, the probe-path spec gap) was derived from code and catalog state, none exercised; (11) which commit the held 1216 branch sits on (not on origin); (12) E1-E12 figures not named in the v1.2 box remain as of their original read times.
 
 *End of document.*
