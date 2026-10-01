@@ -98,6 +98,11 @@ def main() -> int:
     check("POST /api/compute/panchanga (Moon 57.71916715 +-5e-6)", s, j, lambda p: near(
         p["panchang"]["planets"]["moon"]["longitude_sidereal"], 57.71916715, 5e-6))
 
+    # Outside the Swiss file window (1800-2400) the service must DISCLOSE, never serve Moshier.
+    s, j = call(base, key, "POST", "/api/compute/panchanga", {"date": "1750-06-01", **LOC})
+    results.append(("POST /api/compute/panchanga 1750-06-01 (422 out_of_corpus_range)",
+                    s == 422 and "out_of_corpus_range" in json.dumps(j), f"HTTP {s}"))
+
     s, j = call(base, key, "POST", "/api/compute/panchanga/range",
                 {"date_from": "2026-06-15", "date_to": "2026-06-17", **LOC})
     check("POST /api/compute/panchanga/range (3 days)", s, j, lambda p: p.get("ok") and p.get("count") == 3)
