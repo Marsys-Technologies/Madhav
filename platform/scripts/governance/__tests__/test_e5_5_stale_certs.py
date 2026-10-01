@@ -949,6 +949,14 @@ def test_the_full_writer_path_set_must_be_observed_and_well_formed(ledger):
             sc.evaluate(raw(ledger), obs("bg_a", bg_a=dict(writer_paths=bad)))
 
 
+def test_a_recorded_writer_file_that_is_still_listed_but_has_no_observed_hash_raises(ledger):
+    cert(ledger, "bg_a", files=2)
+    o = {"bg_a": dict(writer_hashes={wpath("bg_a"): wh_of("bg_a")[wpath("bg_a")]},          # no hash for bg_a_2
+                      writer_paths=[wpath("bg_a"), wpath("bg_a_2")], semantic_fingerprint=fp_of("bg_a"))}
+    with pytest.raises(sc.MissingObservation):
+        sc.evaluate(raw(ledger), o)
+
+
 def test_a_certificate_that_recorded_no_writer_hashes_still_sees_an_added_writer_file(ledger):
     a = cert(ledger, "bg_a")
     rows = lines(ledger)
@@ -1445,7 +1453,8 @@ def test_a_watermark_that_miscounts_the_certificates_it_covers_is_a_lie_and_rais
     chain(ledger)
     run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
     good = lines(ledger)
-    for patch in (dict(certs_processed=99), dict(last_cert_id="bg_zzz|gate|Build.registered@1"), dict(last_cert_id=None),
+    own_seq = good[-1]["seq"]
+    for patch in (dict(certs_processed=99), dict(covers_seq=own_seq), dict(last_cert_id="bg_zzz|gate|Build.registered@1"), dict(last_cert_id=None),
                   dict(covers_seq=3), dict(covers_seq=0), dict(covers_seq=-1), dict(covers_seq=999),
                   dict(covers_seq="4"), dict(commit=""), dict(asset="bg_a")):
         rows = [dict(x) for x in good]
@@ -1784,6 +1793,19 @@ def test_a_capped_run_does_not_judge_certificates_written_after_the_cap(ledger):
     assert r.invalidated == [] and [x for x in lines(ledger) if x.get("type") == "invalidation"] == []
     run(ledger, obs("bg_a", "bg_b", bg_b=dict(semantic_fingerprint=fp_of("bg_b", 3))))
     assert sc.watermark_ok(raw(ledger)) is True
+
+
+def test_an_invalidation_appended_after_the_cap_is_not_appended_again(ledger):
+    # run 1 invalidates a stale certificate; a second run whose observations were taken BEFORE run 1's lines (cap below
+    # them) must still see that invalidation, not mint a duplicate and burn a walk
+    cert(ledger, "bg_a")
+    head, _ = nc.chain_head(raw(ledger))
+    o = obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1)))
+    assert run(ledger, o).walk == 1
+    snap = raw(ledger)
+    r = run(ledger, o, observed_at_seq=head)
+    assert r.status == "unchanged" and raw(ledger) == snap
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 1}
 
 
 def test_a_capped_run_is_unchanged_when_the_watermark_already_covers_the_cap(ledger):
