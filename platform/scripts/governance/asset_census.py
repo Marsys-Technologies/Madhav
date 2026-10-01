@@ -3789,6 +3789,24 @@ def build_history(prefix: str, ids=None) -> dict:
     return dict(per=per, global_runs=glob, global_with_layer=glob_l0)
 
 
+def _cascade_skip_note(rec_state: str, h: dict | None) -> str:
+    """Suvarna Track I-3: when an asset's `asset_throughput` record reads 'error' only because the frozen
+    runner's `_mark_asset_blocked` wrote a cascade skip there (it records `state='error'` for a consumer
+    whose upstream did not complete), say so in Build.completion's measured text. The verdict is NOT
+    changed here — a skipped consumer genuinely has no completed build record — only mis-attribution is
+    removed: the test for "cascade" is the structural `disposition='blocked_dependency'` on the latest
+    build_run_assets attempt (build_history's last_*), never the BLOCKED message text. Empty for a
+    genuine error, a non-'error' record, or no history. Note: build_history is not chart-scoped, so this
+    reads the latest attempt on any chart, said so in the note."""
+    if rec_state != "error" or not h:
+        return ""
+    if h.get("last_state") == "error" and h.get("last_disposition") == "blocked_dependency":
+        return ("; the throughput 'error' may be a cascade skip, not this asset's own failure: its latest recorded "
+                f"build_run_assets attempt ({h.get('last_when') or 'undated'}, any chart) is blocked_dependency — an "
+                "upstream did not complete, so the writer never ran on that attempt")
+    return ""
+
+
 def latest_attempts(ids) -> tuple[dict[str, dict[str, dict]], float | None]:
     """D6 item 2 (R55, with R44/R45/R49): the latest STARTED build_run_assets attempt per
     (asset, run chart) — `{asset_id: {chart_id: attempt}}` — plus the start of the disposition era.
@@ -5404,7 +5422,8 @@ def measure(layer_key: str) -> dict:
         elif t.get("state") not in COMPLETED_STATES:
             m["Build.completion"] = dict(v=FAIL, measured=f"build record state='{t.get('state')}' is not a completed "
                                                          f"build (rows_written={rw}, live={live}, {rec_scope}) — see "
-                                                         "Build.history")
+                                                         "Build.history"
+                                                         + _cascade_skip_note(t.get("state"), hist["per"].get(aid)))
         elif int(rw) == 0 and live > 0:
             m["Build.completion"] = dict(v=FAIL, measured=f"build record says rows_written=0 against live={live} ({rec_scope})")
         elif int(rw) != live:

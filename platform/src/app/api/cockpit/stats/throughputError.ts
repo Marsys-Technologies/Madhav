@@ -35,3 +35,18 @@ export interface ThroughputEntry {
 export function errorFromThroughput(tp: ThroughputEntry | undefined): string | null {
   return tp?.state === 'error' ? (tp.last_error ?? null) : null
 }
+
+// Suvarna Track I-3 (display side): LABEL fallback for the blocker names of a cascade-skipped
+// asset whose build_run_assets.blocked_by_asset_id is NULL (every row recorded before migration
+// 1201 — history is never backfilled). The runner's _mark_asset_blocked writes the SAME sorted,
+// comma-joined list into both blocked_by_asset_id and this message, so the message names the
+// immediate blockers. This is used ONLY to name them for display; whether an asset is
+// 'blocked' is decided exclusively by the structural disposition='blocked_dependency' row
+// (deriveState), never by this text (CLAUDE.md §N.7 item 1 / §N.8).
+const BLOCKED_MESSAGE_RE = /^BLOCKED: upstream dependency\(ies\) (.+?) did not complete in this run;/
+
+export function blockersFromBlockedMessage(message: string | null | undefined): string | null {
+  const m = message ? BLOCKED_MESSAGE_RE.exec(message) : null
+  const ids = m ? m[1].trim() : ''
+  return ids.length > 0 ? ids : null
+}

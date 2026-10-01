@@ -185,3 +185,31 @@ def test_build_history_separates_blocked_from_genuine_error(monkeypatch):
     )
     assert h["sample_blocked"].startswith("BLOCKED:")
     assert h["last_state"] == "complete" and h["last_disposition"] == ""
+
+
+# ── Suvarna Track I-3: Build.completion must say a cascade skip is not the asset's own failure ──
+
+def test_cascade_skip_note_names_the_cascade_for_throughput_error_with_blocked_latest_attempt():
+    """Canonical mi_bhavisya: asset_throughput.state='error' written by the frozen runner's
+    _mark_asset_blocked, latest build_run_assets attempt blocked_dependency. Build.completion keeps
+    its verdict (the build record is not a completed build) but its text must say why."""
+    h = _h(runs=27, error=27, blocked=27, last_state="error", last_disposition="blocked_dependency",
+           last_when="2026-08-21")
+    note = asset_census._cascade_skip_note("error", h)
+    assert "blocked_dependency" in note and "cascade" in note and "not this asset's own failure" in note
+
+
+def test_cascade_skip_note_is_empty_for_a_genuine_error():
+    """Negative: a genuine error (latest attempt error, no blocked_dependency disposition) gets no note."""
+    h = _h(runs=3, error=3, blocked=0, last_state="error", last_disposition="", last_when="2026-08-21",
+           sample_error="boom")
+    assert asset_census._cascade_skip_note("error", h) == ""
+
+
+def test_cascade_skip_note_is_empty_when_throughput_state_is_not_error_or_no_history():
+    """Negative: the note is only about a throughput 'error' whose latest attempt is a cascade skip —
+    a blocked latest attempt behind a stale/lit record, or no history at all, says nothing."""
+    h = _h(runs=2, error=2, blocked=2, last_state="error", last_disposition="blocked_dependency")
+    assert asset_census._cascade_skip_note("stale", h) == ""
+    assert asset_census._cascade_skip_note("error", None) == ""
+    assert asset_census._cascade_skip_note("error", {}) == ""
