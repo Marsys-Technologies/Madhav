@@ -170,4 +170,4 @@ natural key `(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key)` (t
 
 SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every recommendation is ACCEPTED with the specifics below; (R) items are provisional until the J1 review. S-L1 is the canonical chart first; the other two charts are the later stage S-L1b (separate REVIEW); S-L1 never waits for an optional item.
 
-- Q-L1-16(a) accepted: emit `single`, never the alias `single_pass` (176 canonical rows) (I-27). A-3: the four `set_ephe_path(None)` calls in `panchang_engine` go through the shared helper (I-21).
+- Q-L1-16(a) accepted: emit `single`, never the alias `single_pass` (176 canonical rows) (I-27). Q-L1-16(a) is satisfied by the sibling module `brahmagyan/verification_tiers.py` (PR #2854; `emit_tier()` rejects the `single_pass` alias), not by editing `verification_vocab.py` (deviation accepted by SS, 2026-10-02). A-3: the four `set_ephe_path(None)` calls in `panchang_engine` go through the shared helper (I-21).

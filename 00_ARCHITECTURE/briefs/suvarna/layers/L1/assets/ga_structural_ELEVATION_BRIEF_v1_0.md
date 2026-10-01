@@ -199,4 +199,4 @@ SS ruled the L1 decision sheet (`DECISION_SHEET_L1_v1_0.md`, PR #2844). Every re
 
 - Q-L1-02 accepted (R): Daridra cancellation moves to `ga_vichara`; `ga_structural` keeps detection only; readers of the `dosha_label` bhanga fields are traced first. Mandatory before S-L1. Track I: I-25.
 - Q-L1-04 accepted: `ga_structural` owns `bhava_bala_*` and its 12 unowned categories; ownership rows may ride migration 1219 (I-30).
-- A-4 / X1: the shared L0 Gandanta module replaces the private import (I-22). Q-L1-03: Yogi/tier items do not touch this asset beyond the spelling `single` (I-27).
+- A-4 / X1: the shared L0 Gandanta module replaces the private import (I-22). Q-L1-03: Yogi/tier items do not touch this asset beyond the spelling `single` (I-27). Q-L1-16(a) is satisfied by the sibling module `brahmagyan/verification_tiers.py` (PR #2854; `emit_tier()` rejects the `single_pass` alias), not by editing `verification_vocab.py` (deviation accepted by SS, 2026-10-02).
