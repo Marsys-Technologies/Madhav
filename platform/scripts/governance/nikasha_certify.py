@@ -4,44 +4,58 @@
 A certification record is what an asset's ELEVATED state rests on (plan 1.1), so this writer is mostly a set of
 REFUSALS; every PASS or N/A it can emit has a code path that could have made it read otherwise (CLAUDE.md N.8):
 
-  * for kind=gate the VERDICT IS NOT A CALLER ASSERTION. The census record is mandatory: the writer reads the
-    verdict, basis, N/A cause and applicability facts from the census cell of that asset and criterion. It refuses
-    when no census is supplied, when it is not a FILE under the control directory (`asset_census.CTRL`) or a census
-    archive (`--census-archive-dir` / $NIKASHA_CENSUS_ARCHIVE; default none), when the file lacks that asset or cell,
-    when `evidence.census_run_id` differs from the census's own `generated`, when the census head carries a registry
-    revision/fingerprint other than the current one, or when a caller-passed verdict/basis/facts differ from the
-    census (a caller verdict is only a cross-check). The census file's sha256 is recorded in `evidence.census_sha256`
-    and `cross_checked: true` is writer-set on every gate record. kind=addition has no census cell: its verdict is
-    the caller's, its N/A is always refused, its basis can never be typed;
+  * for kind=gate the VERDICT IS NOT A CALLER ASSERTION. The census is mandatory: the writer reads the verdict,
+    basis, N/A cause and applicability facts from the census cell of that asset and criterion. The census is a FILE,
+    either the flat single-layer form or the real multi-layer `asset_census.json` ({"L0": {...}, ..., "rollup": ...};
+    the layer object is selected by the asset's layer, `rollup` is ignored), and it must be COMMITTED under the one
+    constant trusted root `TRUSTED_CENSUS_ROOT` (repo-relative; working tree AND tracked-or-staged in git, the state
+    is recorded). It is refused when it is not, when it lacks that asset or cell, when `evidence.census_run_id`
+    differs from the layer object's own `generated`, when the layer head carries no registry revision / fingerprint /
+    tool_commit (`census_unbound`) or a revision or fingerprint other than the current registry
+    (`census_registry_mismatch`), or when a caller-passed verdict/basis/facts differ from the census (a caller
+    verdict is only a cross-check). The sha256 of the WHOLE census file is recorded in `evidence.census_sha256`,
+    `cross_checked: true` is writer-set on every gate record. kind=addition has no census cell: its verdict is the
+    caller's, its N/A is always refused, its basis can never be typed;
+  * `verify_ledger_census_hashes(repo, ref)` (CLI `--verify-census-hashes`, run by CI on every PR) re-reads every
+    cited census file with `git show <ref>:<path>`, recomputes the sha256 and FAILS on a mismatch, a file that is not
+    committed, or one outside the root; it reports NO_DETECTOR (never PASS) when there is nothing to verify;
   * a PASS (or any verdict but NO_DETECTOR) whose criterion has `detector: NONE` is refused;
-  * a record with no census run id in its evidence is refused (the id is the census's own `generated` timestamp;
-    hand_row_provenance.py), PASS or not;
-  * an N/A is never typed: it is recorded only when the registry computes it. Fact-disproved applicability is
-    recomputed here through `asset_census.criterion_applicability` from the CENSUS RECORD's facts; a measured-cause
-    N/A needs the census cell that measured it. Both need the rule id declared in `asset_census.NA_RULE_DECISIONS`
-    (empty today, so every N/A is refused until N-22 declares a rule — the rollup reads such an N/A as NO_DETECTOR);
-  * the registry, not the caller, supplies the gate, detector, criterion revision and registry fingerprint. Today's
-    census heads carry no registry revision/fingerprint, so the record says `registry_binding: "census_unbound"`
-    (the registry stamped is the one at WRITE time, not provably the one the census ran under);
+  * a record with no census run id in its evidence is refused (the id is the census's own `generated` timestamp);
+  * an N/A is never typed: it is recorded only when the registry computes it (applicability from the census RECORD's
+    facts; a measured cause from the census cell), and only under a rule declared in `asset_census.NA_RULE_DECISIONS`
+    (empty today, so every N/A is refused until N-22 declares a rule);
+  * the registry, not the caller, supplies the gate, detector, criterion revision and registry fingerprint;
   * a PASS the census rollup itself would not honour (Null.* and Narr.fidelity_test capped at PARTIAL, an
     INCONCLUSIVE record, an unrecognised basis, a basis `declaration` the registry does not define for that
     criterion and asset kind) is refused;
   * a PASS without a semantic fingerprint and VERIFIED writer file hashes (or a documented, census-corroborated
-    reason for having none) could never go stale, so it is refused. Typed hashes count only when verified against
-    the repository (`--writer-repo`/`--writer-ref`) or computed here (`--writer-file`); upstream certification ids
-    must exist, be the latest generation, and pass.
+    reason for having none) could never go stale, so it is refused. Writer files are bound to the asset: a hashed file
+    must be one the census record lists as that asset's writer (`asset_census._writer_path`), and the census must not
+    be older than the commit time of the writer (`census_older_than_writer`; undeterminable => `writer_time_unknown`).
+    Upstream certification ids must exist, be the latest generation, and pass.
 
-The ledger is append-only and hash-chained: each record carries `prev_sha256`, the sha256 of the previous line's
-bytes (the `_schema` row for the first record); the chain is verified on every read and write (an edit to any
-earlier line is refused `bad_ledger`; a torn last line `torn_ledger`). A record is identified by `cert_key` =
-`<asset>|<gate|addition>|<criterion>`, numbered by `generation` from 1, with `cert_id` = `<cert_key>@<generation>`.
-Re-writing a measurement whose CURRENCY fields are unchanged appends nothing; a changed one appends generation+1.
-Currency fields are the ones E5.5 invalidates on (verdict, criterion/registry revision and binding, detector, writer
-hashes and whether they were verified, upstream ids, semantic fingerprint, N/A computation, basis, inconclusive,
-transitive_only); `evidence`, `verified_by`, `verified_on`, `job_image_tag`, `cross_checked` and `prev_sha256` are
-recorded with the first generation and do not make a new one, because a rebuild that changes no semantic column must
-leave every downstream certificate current (arch 12.16). E5.5 reads these records; it also decides when a record has
-gone stale. This writer only guarantees that it was honest when written and that the history is intact.
+The ledger is append-only and hash-chained: each record carries `seq` (1-based, 1..N) and `prev_sha256` (the sha256
+of the previous line's bytes; the `_schema` row for the first record), verified on every read and write (a torn
+last line is `torn_ledger`; `--repair-torn-tail` is the explicit, printed repair). Reads take a shared lock, writes an
+exclusive one. A record is identified by `cert_key` = `<asset>|<gate|addition>|<criterion>`, numbered by `generation`
+from 1, with `cert_id` = `<cert_key>@<generation>`. Re-writing a measurement whose CURRENCY fields are unchanged
+appends nothing; a changed one appends generation+1. Currency fields are the ones E5.5 invalidates on (verdict,
+criterion/registry revision, detector, writer hashes and whether they were verified, upstream ids, semantic
+fingerprint, N/A computation, basis, inconclusive, transitive_only); `evidence`, `verified_by`, `verified_on`,
+`job_image_tag`, `cross_checked`, `seq` and `prev_sha256` are provenance of the generation that first carried them.
+
+PUBLIC API for sibling writers (E5.5 appends invalidation / watermark lines to the same ledger): `append_records(ledger_path,
+records) -> int` (the one write path: exclusive lock, whole-ledger verification, `seq`/`prev_sha256` filled, canonical
+serialisation, one append, never an edit; `write_certification` uses it too), `chain_head(data) -> (last_seq,
+last_line_sha)`, `parse_ledger(data)` (cert index), `parse_records(data)` / `read_records(path)` (every line, events
+included), `read_ledger(path)`. A non-certificate line is an event: it carries a `type` (not "cert") and no cert_key.
+
+RESIDUALS (honest scope; the threat model is accident and agent shortcut, not a hostile writer): the hash chain gives
+NO tamper evidence against anyone who can rewrite or truncate the whole file (there is no head anchor); tamper
+evidence against a whole-file rewrite is git history on main, not the chain. Census authenticity is: committed under
+the trusted root, sha256 stored, CI recomputes it; git history is the anchor. An edit of the last line is visible only
+once another record follows. E5.5 reads these records and decides when one has gone stale; this writer only
+guarantees it was honest when written and the history intact.
 
 Ledger path: `--ledger` / `ledger_path`, else $NIKASHA_CERTS_LEDGER, else <control dir>/asset_certs.jsonl
 (`asset_census.CTRL`, itself overridable with NIKASHA_CONTROL_DIR). A missing ledger is refused unless `--init`; a
@@ -49,10 +63,12 @@ symlink or directory at the ledger path is refused (never followed); a zero-byte
 
 Usage:
   nikasha_certify.py --asset bg_ontology --layer L0 --criterion Build.registered \
-      --census <control>/census.json --writer-repo . --writer-file platform/python-sidecar/.../bg_ontology.py \
+      --census 00_ARCHITECTURE/control/census/asset_census.json --writer-file platform/python-sidecar/.../bg_ontology.py \
       --writer-ref <commit> --semantic-fingerprint <sha256> --verified-by census-run
-Exit: 0 appended or unchanged (stdout: JSON) · 2 refused (stderr: `REFUSED <code>: ...`; nothing written) ·
-      5 script error.
+  nikasha_certify.py --verify-census-hashes --repo . --ref origin/main      (CI)
+  nikasha_certify.py --repair-torn-tail --ledger <path>                     (explicit, prints what it removes)
+Exit: 0 appended / unchanged / verified (stdout: JSON) · 2 refused (stderr: `REFUSED <code>: ...`; nothing written)
+      · 3 verify: NO_DETECTOR (skipped with a reason) · 5 script error.
 """
 
 from __future__ import annotations
@@ -78,12 +94,16 @@ RECORD_VERSION = 1
 VERDICTS = ("PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "ERRORED", "N/A")
 KINDS = ("gate", "addition")
 ENV_LEDGER = "NIKASHA_CERTS_LEDGER"
-ENV_CENSUS_ARCHIVE = "NIKASHA_CENSUS_ARCHIVE"
+# The ONE trusted census root (repo-relative, inside the git work tree). A constant, never a request field, flag or env
+# var. A cert may cite only a census file committed (or staged for the same PR) under it.
+TRUSTED_CENSUS_ROOT = "00_ARCHITECTURE/control/census/"
+LEDGER_RELPATH = "00_ARCHITECTURE/control/asset_certs.jsonl"
+MAX_JSON_DEPTH = 64
 CALLER_EVIDENCE_KEYS = ("census_run_id", "measured", "inspector_commit", "note")
-WRITER_EVIDENCE_KEYS = ("census_file", "census_sha256")      # set by this writer from the census file it read; never typed
+WRITER_EVIDENCE_KEYS = ("census_file", "census_sha256", "census_git", "census_tool_commit")   # writer-set from the census file; never typed
 # Fields E5.5 invalidates on (and so the only fields whose change makes a new generation). Everything else on a
 # record is provenance for the generation that first carried it.
-CURRENCY_FIELDS = ("verdict", "criterion_version", "registry_revision", "registry_fingerprint", "registry_binding",
+CURRENCY_FIELDS = ("verdict", "criterion_version", "registry_revision", "registry_fingerprint",
                    "detector", "writer_hashes", "writer_hashes_verified", "writer_hashes_reason", "upstream_cert_ids",
                    "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only")
 # The documented reasons a PASS may have no writer file when the census record does not state `has_writer`.
@@ -100,16 +120,19 @@ _DECLARATION = "declaration"        # the one recognised `basis` (asset_census._
 
 SCHEMA_DOC = (
     "Certification ledger (arch 12.16; plan 1.1). Append-only and hash-chained: lines are only ever added, never "
-    "edited or deleted; each record's prev_sha256 is the sha256 of the previous line's bytes (this row for the first). "
-    "One JSON object per line after this one, written only by nikasha_certify.py. Fields: asset, layer, kind "
-    "(gate|addition), gate, criterion, criterion_version, registry_revision, registry_fingerprint, registry_binding "
-    "(census_bound|census_unbound|null), detector, verdict (PASS|FAIL|PARTIAL|NO_DETECTOR|ERRORED|N/A; a gate's is "
-    "read from the census cell), basis, na {rule_id, decision_id, basis, cause, facts}, inconclusive, transitive_only, "
-    "evidence {census_run_id (required), measured, inspector_commit, note, census_file, census_sha256 (the last two "
-    "writer-set)}, cross_checked, job_image_tag, writer_hashes {path: sha256}, writer_hashes_verified, "
-    "writer_hashes_reason, upstream_cert_ids, semantic_fingerprint, cert_key, generation, cert_id, prev_sha256, "
-    "verified_by, verified_on, record_version. The current record of a cert_key is its highest generation; whether it "
-    "is still CURRENT (writer hashes, upstream generations, semantic fingerprint, registry revision) is E5.5's decision."
+    "edited or deleted; each record carries seq (1..N) and prev_sha256, the sha256 of the previous line's bytes (this "
+    "row for the first). The chain gives no tamper evidence against a whole-file rewrite or truncation: that anchor is "
+    "git history on main. One JSON object per line after this one, written only by nikasha_certify.py. Fields: asset, "
+    "layer, kind (gate|addition), gate, criterion, criterion_version, registry_revision, registry_fingerprint, "
+    "detector, verdict (PASS|FAIL|PARTIAL|NO_DETECTOR|ERRORED|N/A; a gate's is read from the census cell), basis, na "
+    "{rule_id, decision_id, basis, cause, facts}, inconclusive, transitive_only, evidence {census_run_id (required), "
+    "measured, inspector_commit, note, and writer-set census_file (repo-relative, committed under the trusted census "
+    "root), census_sha256, census_git, census_tool_commit}, cross_checked, job_image_tag, writer_hashes {path: "
+    "sha256}, writer_hashes_verified, writer_hashes_reason, upstream_cert_ids, semantic_fingerprint, cert_key, "
+    "generation, cert_id, seq, prev_sha256, verified_by, verified_on, record_version. The current record of a cert_key "
+    "is its highest generation; whether it is still CURRENT (writer hashes, upstream generations, semantic "
+    "fingerprint, registry revision) is E5.5's decision. A line without cert_key carries a `type` (an event, "
+    "e.g. E5.5's invalidation); it is chained and sequenced like every line."
 )
 
 
@@ -138,7 +161,8 @@ class CertResult:
 class _CensusSource:
     obj: dict
     sha256: str
-    path: str
+    path: str          # repo-relative, posix
+    git: str           # "committed" | "staged"
 
 
 # ─────────────────────────── strict JSON ───────────────────────────
@@ -156,9 +180,36 @@ def _no_constant(name):
     raise ValueError(f"non-finite constant {name}")
 
 
+def _max_depth(text: str) -> int:
+    depth = best = 0
+    in_str = esc = False
+    for ch in text:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+        elif ch in "[{":
+            depth += 1
+            best = max(best, depth)
+        elif ch in "]}":
+            depth -= 1
+    return best
+
+
 def strict_json_loads(text: str):
-    """json.loads that refuses duplicate object keys and NaN/Infinity (ValueError, incl. JSONDecodeError)."""
-    return json.loads(text, object_pairs_hook=_no_dup_keys, parse_constant=_no_constant)
+    """json.loads that refuses duplicate object keys, NaN/Infinity and nesting deeper than MAX_JSON_DEPTH
+    (ValueError, incl. JSONDecodeError; a RecursionError is a ValueError too, never a crash)."""
+    if _max_depth(text) > MAX_JSON_DEPTH:
+        raise ValueError(f"nesting deeper than {MAX_JSON_DEPTH}")
+    try:
+        return json.loads(text, object_pairs_hook=_no_dup_keys, parse_constant=_no_constant)
+    except RecursionError as e:
+        raise ValueError("nesting too deep") from e
 
 
 def _sha(b: bytes) -> str:
@@ -180,13 +231,41 @@ def cert_key_of(asset: str, kind: str, criterion: str) -> str:
     return f"{asset}|{kind}|{criterion}"
 
 
-def _parse(data: bytes):
-    """(cert_key -> its records in file order, sha256 of the last non-blank line's bytes). Strict: an unreadable or
-    non-UTF-8 line, a duplicate key, a first line that is not the `_schema` row, a second `_schema` row, a record
-    with no generation (legacy shape), a cert_id that is not `<cert_key>@<generation>`, a generation sequence that
-    is not 1..n, or a `prev_sha256` chain that does not hold all raise `bad_ledger`; a last line with no newline
-    that is not valid JSON is a torn write and raises `torn_ledger`. A ledger this writer cannot reason about is not
-    appended to."""
+_EVENT_TYPE = re.compile(r"[a-z][a-z0-9_]*")
+
+
+def _is_cert_line(r: dict) -> bool:
+    key, gen = r.get("cert_key"), r.get("generation")
+    return (isinstance(key, str) and not isinstance(gen, bool) and isinstance(gen, int) and gen >= 1
+            and r.get("cert_id") == f"{key}@{gen}" and isinstance(r.get("verdict"), str))
+
+
+def _is_event_line(r: dict) -> bool:
+    """A non-certification record (E5.5's invalidation / watermark lines): it names its `type` (not "cert") and has no
+    cert_key. It is chained and sequenced like every line, but is not a certificate and is not in the cert index."""
+    t = r.get("type")
+    return isinstance(t, str) and t != "cert" and bool(_EVENT_TYPE.fullmatch(t)) and "cert_key" not in r
+
+
+@dataclass(frozen=True)
+class _Parsed:
+    by_key: dict          # cert_key -> certificate records in file order
+    records: list         # EVERY record line (certificates and events) in file order, schema row excluded
+    prev: str             # sha256 of the last non-blank line's bytes (the head of the chain)
+    n: int                # number of record lines = the last seq
+
+
+def _dump(obj) -> bytes:
+    """The ONE canonical serialisation of a ledger line (no trailing newline)."""
+    return json.dumps(obj, ensure_ascii=False, allow_nan=False).encode("utf-8")
+
+
+def _parse_full(data: bytes) -> _Parsed:
+    """Strict reading of a ledger. Refuses (`bad_ledger`): an unreadable or non-UTF-8 line, a duplicate key, a first
+    line that is not the `_schema` row, a second `_schema` row, a line that is neither a certificate (cert_key /
+    generation / cert_id / verdict) nor an event (`type`), a generation sequence that is not 1..n per cert_key, a `seq`
+    that is not 1..N over the record lines, or a `prev_sha256` chain that does not hold. A last line with no newline
+    that is not valid JSON is a torn write: `torn_ledger`. A ledger this writer cannot reason about is not appended to."""
     if not data:
         _refuse("bad_ledger", "the ledger is empty (no `_schema` row)")
     parts = data.split(b"\n")
@@ -201,35 +280,62 @@ def _parse(data: bytes):
         except (UnicodeDecodeError, ValueError) as e:
             if tail and n == len(raw_lines):
                 _refuse("torn_ledger", f"line {n} (no trailing newline) is a partial write ({e}): the ledger is torn; "
-                                       "it is neither extended nor repaired")
+                                       "it is neither extended nor silently repaired: see --repair-torn-tail")
             _refuse("bad_ledger", f"line {n} is not readable JSON ({e})")
     if not rows or not isinstance(rows[0][2], dict) or rows[0][2].get("asset") != "_schema":
         _refuse("bad_ledger", "the first line must be the `_schema` row")
     by_key: dict[str, list[dict]] = {}
+    records: list[dict] = []
     prev = _sha(rows[0][1])
+    n_rec = 0
     for n, raw, r in rows[1:]:
         if not isinstance(r, dict):
             _refuse("bad_ledger", f"line {n} is not a JSON object")
         if r.get("asset") == "_schema":
             _refuse("bad_ledger", f"line {n}: a second `_schema` row")
-        key, gen, cid = r.get("cert_key"), r.get("generation"), r.get("cert_id")
-        if (not isinstance(key, str) or isinstance(gen, bool) or not isinstance(gen, int) or gen < 1
-                or cid != f"{key}@{gen}" or not isinstance(r.get("verdict"), str)):
-            _refuse("bad_ledger", f"line {n} is not a record this writer can read (cert_key/generation/cert_id)")
+        cert = _is_cert_line(r)
+        if not cert and not _is_event_line(r):
+            _refuse("bad_ledger", f"line {n} is not a record this writer can read (a certificate needs cert_key/"
+                                  "generation/cert_id/verdict; any other line needs a `type`)")
+        if isinstance(r.get("seq"), bool) or r.get("seq") != n_rec + 1:
+            _refuse("bad_ledger", f"line {n}: seq is {r.get('seq')!r}, expected {n_rec + 1} (seq runs 1..N over the records)")
         if r.get("prev_sha256") != prev:
             _refuse("bad_ledger", f"line {n}: the hash chain is broken (prev_sha256 is not the sha256 of the previous "
                                   "line): an earlier line was edited, deleted or reordered")
         prev = _sha(raw)
-        by_key.setdefault(key, []).append(r)
+        n_rec += 1
+        records.append(r)
+        if cert:
+            by_key.setdefault(r["cert_key"], []).append(r)
     for key, recs in by_key.items():
         if [r["generation"] for r in recs] != list(range(1, len(recs) + 1)):
             _refuse("bad_ledger", f"{key}: generations are not 1..{len(recs)} in order")
-    return by_key, prev
+    return _Parsed(by_key, records, prev, n_rec)
+
+
+def _parse(data: bytes):
+    """(cert_key -> certificate records, sha256 of the last line, record count): the pre-`_Parsed` private shape."""
+    p = _parse_full(data)
+    return p.by_key, p.prev, p.n
 
 
 def parse_ledger(data: bytes) -> dict[str, list[dict]]:
-    """cert_key -> its records in file order (see `_parse` for what is refused)."""
-    return _parse(data)[0]
+    """PUBLIC. cert_key -> its certificate records in file order, from the ledger's bytes; verifies the whole chain, seq
+    and generations (see `_parse_full` for what is refused). Event lines are verified but not returned here: use
+    `parse_records` for every line."""
+    return _parse_full(data).by_key
+
+
+def parse_records(data: bytes) -> list[dict]:
+    """PUBLIC. EVERY record line (certificates and `type`d events) in file order, after the same verification."""
+    return list(_parse_full(data).records)
+
+
+def chain_head(data: bytes) -> tuple[int, str]:
+    """PUBLIC. (last_seq, sha256 of the last non-blank line's bytes) of a ledger given as bytes, after verifying it.
+    A ledger holding only the `_schema` row is (0, sha256 of that row)."""
+    p = _parse_full(data)
+    return p.n, p.prev
 
 
 def read_ledger(path) -> dict[str, list[dict]]:
@@ -238,7 +344,25 @@ def read_ledger(path) -> dict[str, list[dict]]:
     p = Path(path)
     if not p.exists():
         _refuse("ledger_missing", f"{p} does not exist")
-    return parse_ledger(p.read_bytes())
+    return parse_ledger(_read_shared(p))
+
+
+def _read_shared(p: Path) -> bytes:
+    try:
+        with open(p, "rb") as f:
+            fcntl.flock(f, fcntl.LOCK_SH)          # never see a concurrent append half written
+            return f.read()
+    except OSError as e:
+        _refuse("bad_ledger", f"{p} cannot be read ({e})")
+
+
+def read_records(path) -> list[dict]:
+    """PUBLIC read-only helper: every record line (certificates and events) of the ledger at `path`, verified, read
+    under a shared lock."""
+    p = Path(path)
+    if not p.exists():
+        _refuse("ledger_missing", f"{p} does not exist")
+    return parse_records(_read_shared(p))
 
 
 # ─────────────────────────── field validation ───────────────────────────
@@ -367,61 +491,120 @@ def _upstream_ids(ids, own_key: str) -> list[str]:
 
 # ─────────────────────────── the census gate ───────────────────────────
 
-def _trusted_roots(archive_dir):
-    roots = [Path(ac.CTRL)]
-    a = archive_dir if archive_dir is not None else (os.environ.get(ENV_CENSUS_ARCHIVE) or None)
-    if a is not None:
-        roots.append(Path(a))
-    return [os.path.realpath(r) for r in roots]
+def _git(repo, *args):
+    """CompletedProcess of `git -C repo <args>`, or None when git cannot be run."""
+    try:
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+    except OSError:
+        return None
 
 
-def _load_census(census_path, census, archive_dir) -> _CensusSource:
-    """The census, read from a FILE under the control dir or a census archive (symlinks resolved first). Its sha256
-    is of the bytes read. A dict is accepted only together with its source file and must equal what the file holds."""
+def _blob_sha(data: bytes) -> str:
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()           # git's object id of a blob
+
+
+def _trusted_root_rel() -> str:
+    r = TRUSTED_CENSUS_ROOT
+    if (not isinstance(r, str) or not r or r.startswith("/") or not r.endswith("/") or "\\" in r
+            or ".." in r.split("/")):
+        _refuse("census_untrusted", f"TRUSTED_CENSUS_ROOT {r!r} is not a repo-relative directory ending in '/'")
+    return r
+
+
+def _census_git_state(root: str, rel: str, blob: bytes) -> str:
+    """`committed` (the work-tree bytes are the HEAD blob) or `staged` (in the index, same bytes, not at HEAD);
+    otherwise the census is not tracked (`census_untracked`) or differs from what git holds (`census_modified`)."""
+    r = _git(root, "ls-files", "-s", "--", rel)
+    if r is None or r.returncode != 0:
+        _refuse("census_untracked", f"git could not be asked about {rel}")
+    entries = [ln.partition("\t")[0].split() for ln in r.stdout.decode("utf-8", "replace").splitlines() if ln.strip()]
+    stage0 = [e for e in entries if len(e) == 3 and e[2] == "0"]
+    if len(stage0) != 1:
+        _refuse("census_untracked", f"{rel} is neither committed nor staged in git: a census a cert cites must be "
+                                    "committed under the trusted root (git add it for the same PR)")
+    idx_sha = stage0[0][1]
+    if idx_sha != _blob_sha(blob):
+        _refuse("census_modified", f"{rel} differs from the version git holds: commit or stage the census as it is")
+    h = _git(root, "ls-tree", "HEAD", "--", rel)
+    head = h.stdout.decode("utf-8", "replace").partition("\t")[0].split() if h is not None and h.returncode == 0 else []
+    return "committed" if len(head) == 3 and head[2] == idx_sha else "staged"
+
+
+def _load_census(census_path, census) -> _CensusSource:
+    """The census, read from a FILE committed under TRUSTED_CENSUS_ROOT (symlinks resolved first; tracked or staged in
+    git). Its sha256 is of the WHOLE file's bytes. A dict is accepted only together with its source file and must
+    equal what the file holds."""
     if census_path is None:
         if census is not None:
             _refuse("census_unsourced", "a census dict without its source file cannot be hashed: a census is read "
-                                        "from a file under the control dir or a census archive")
+                                        "from a file committed under the trusted census root")
         _refuse("census_required", "a gate verdict is read from the census record, not asserted: supply the census "
                                    "file (--census) for this asset and criterion")
     if not isinstance(census_path, (str, os.PathLike)):
         _refuse("bad_census", "the census path must be a path")
+    root = os.path.realpath(ac.ROOT)
+    troot_rel = _trusted_root_rel()
+    troot = os.path.realpath(os.path.join(root, troot_rel))
     rp = os.path.realpath(census_path)
-    if not any(rp == root or rp.startswith(root.rstrip(os.sep) + os.sep) for root in _trusted_roots(archive_dir)):
-        _refuse("census_untrusted", f"{rp} is not under the control directory ({ac.CTRL}) or a census archive "
-                                    f"(--census-archive-dir / ${ENV_CENSUS_ARCHIVE}): a census written elsewhere "
-                                    "could have been made up")
-    if not os.path.isfile(rp):
-        _refuse("bad_census", f"{rp} is not a file")
-    blob = Path(rp).read_bytes()
+    try:
+        inside = rp != troot and os.path.commonpath([rp, troot]) == troot
+    except ValueError:
+        inside = False
+    if not inside:
+        _refuse("census_untrusted", f"{rp} is not under the trusted census root {troot_rel} of this repository: a "
+                                    "census written elsewhere could have been made up")
+    try:
+        if not os.path.isfile(rp):
+            _refuse("bad_census", f"{rp} is not a file")
+        blob = Path(rp).read_bytes()
+    except OSError as e:
+        _refuse("bad_census", f"{rp} cannot be read ({e})")
+    rel = os.path.relpath(rp, root).replace(os.sep, "/")
+    state = _census_git_state(root, rel, blob)
     try:
         obj = strict_json_loads(blob.decode("utf-8"))
     except (UnicodeDecodeError, ValueError) as e:
-        _refuse("bad_census", f"{rp} is not strict JSON ({e})")
+        _refuse("bad_census", f"{rel} is not strict JSON ({e})")
     if not isinstance(obj, dict):
         _refuse("bad_census", "the census must be a JSON object")
     if census is not None and census != obj:
         _refuse("census_mismatch", "the supplied census dict is not what its source file holds")
-    return _CensusSource(obj, _sha(blob), rp)
+    return _CensusSource(obj, _sha(blob), rel, state)
 
 
-def _check_census_head(c: dict, layer: str, run_id: str, need_binding: bool):
-    """Run id, layer and (gates) the registry the census says it ran under. Returns the registry_binding word."""
+def _select_layer(obj: dict, layer: str) -> dict:
+    """The census object of `layer`: the real multi-layer asset_census.json ({"L0": {...}, "rollup": ...}) is indexed
+    by the layer key (`rollup`, `scope` are ignored), the flat single-layer form is the object itself."""
+    if "assets" in obj and "generated" in obj:
+        return obj
+    c = obj.get(layer)
+    if not isinstance(c, dict):
+        _refuse("census_mismatch", f"the census file has no {layer!r} layer object (keys: {sorted(map(str, obj))[:8]})")
+    return c
+
+
+def _check_census_head(c: dict, layer: str, run_id: str, need_stamp: bool):
+    """Run id, layer and (gates) the stamp the census tool put on its head: registry revision + fingerprint (must be
+    the current registry) and tool_commit. A census without them is `census_unbound`."""
     if c.get("generated") != run_id or not _valid_run_id(c.get("generated")):
         _refuse("census_run_id_mismatch", f"evidence.census_run_id {run_id!r} is not the census's own `generated` "
                                           f"{c.get('generated')!r}")
     if c.get("layer") != layer:
         _refuse("census_mismatch", f"census layer {c.get('layer')!r} is not {layer!r}")
-    if not need_binding:
+    if not need_stamp:
         return None
-    rr, rf = c.get("registry_revision"), c.get("registry_fingerprint")
-    if rr is None and rf is None:
-        return "census_unbound"
+    rr, rf, tc = c.get("registry_revision"), c.get("registry_fingerprint"), c.get("tool_commit")
+    if rr is None or rf is None or tc is None:
+        _refuse("census_unbound", "the census head carries no registry_revision / registry_fingerprint / tool_commit "
+                                  "stamp: it is not provably the registry this record is stamped with")
+    if not isinstance(tc, str) or not re.fullmatch(r"[0-9a-f]{7,64}", tc):
+        _refuse("census_unbound", f"tool_commit {tc!r} is not a git commit id")
     if (isinstance(rr, bool) or not isinstance(rr, int) or rr != ac.REGISTRY_REVISION
             or not isinstance(rf, str) or rf != ac.registry_fingerprint()):
-        _refuse("census_mismatch", f"the census ran under registry revision {rr!r} / fingerprint {str(rf)[:12]!r}.., "
-                                   f"not the current {ac.REGISTRY_REVISION} / {ac.registry_fingerprint()[:12]}..")
-    return "census_bound"
+        _refuse("census_registry_mismatch", f"the census ran under registry revision {rr!r} / fingerprint "
+                                            f"{str(rf)[:12]!r}.., not the current {ac.REGISTRY_REVISION} / "
+                                            f"{ac.registry_fingerprint()[:12]}..")
+    return tc
 
 
 def _census_record_and_cell(c: dict, asset: str, crit: str):
@@ -435,6 +618,38 @@ def _census_record_and_cell(c: dict, asset: str, crit: str):
     if cell is not None and not isinstance(cell, dict):
         _refuse("census_mismatch", f"census cell {crit} is not an object")
     return recs[0], cell
+
+
+def _allowed_writer_paths(record: dict) -> set:
+    """Repo-relative paths of the asset's writer files, as the census itself lists them (names relative to writers/ or
+    the sidecar root), resolved by asset_census's own `_writer_path`."""
+    names = record.get("writer_files")
+    out = set()
+    if isinstance(names, list):
+        root = os.path.realpath(ac.ROOT)
+        for n in names:
+            if _check_relpath(n):
+                rel = os.path.relpath(os.path.realpath(str(ac._writer_path(n))), root)
+                if not rel.startswith(".."):
+                    out.add(rel.replace(os.sep, "/"))
+    return out
+
+
+def _writer_commit_time(repo, ref, path):
+    """Commit time of the last commit that touched `path` at `ref` (HEAD when no ref; then an uncommitted change to
+    the file is undeterminable), or None."""
+    r = _git(repo, "log", "-1", "--format=%cI", ref or "HEAD", "--", path)
+    if r is None or r.returncode != 0 or not r.stdout.strip():
+        return None
+    if ref is None:
+        st = _git(repo, "status", "--porcelain", "--", path)
+        if st is None or st.returncode != 0 or st.stdout.strip():
+            return None
+    try:
+        t = dt.datetime.fromisoformat(r.stdout.decode().strip())
+    except ValueError:
+        return None
+    return t if t.tzinfo is not None else None
 
 
 def _norm_fact(k, v):
@@ -506,7 +721,7 @@ def _computed_na(criterion, layer, facts, na_rule_id, cell):
 
 def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None, kind="gate", gate=None, detector=None,
                  criterion_version=None, facts=None, na_rule_id=None, census=None, census_path=None,
-                 census_archive_dir=None, job_image_tag=None, writer_hashes=None, writer_files=None, writer_repo=None,
+                 job_image_tag=None, writer_hashes=None, writer_files=None, writer_repo=None,
                  writer_ref=None, writer_hashes_reason=None, upstream_cert_ids=(), semantic_fingerprint=None,
                  basis=None, inconclusive=False, verified_on=None) -> dict:
     """Validate everything that needs no ledger and return the record without cert_id/generation/prev_sha256. Raises
@@ -523,8 +738,8 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
         try:
             ok = isinstance(facts, dict)
             if ok:
-                json.dumps(facts, allow_nan=False)
-        except (TypeError, ValueError):
+                ok = _max_depth(json.dumps(facts, allow_nan=False)) <= MAX_JSON_DEPTH
+        except (TypeError, ValueError, RecursionError):
             ok = False
         if not ok:
             _refuse("bad_facts", "facts must be a JSON-serialisable mapping (columns / asset_kind) or None")
@@ -598,14 +813,15 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
                                 f"typed (got {unknown or 'non-text'})")
 
     # R8: the census gate. A gate reads its verdict from the census cell; an addition may cite a census for its run id
-    src, meas, record, binding = None, None, None, None
+    src, meas, record, tool_commit, head = None, None, None, None, None
     if kind == "gate" or census_path is not None or census is not None:
-        src = _load_census(census_path, census, census_archive_dir)
-        binding = _check_census_head(src.obj, layer, run_id, need_binding=(kind == "gate"))
+        src = _load_census(census_path, census)
+        head = _select_layer(src.obj, layer)
+        tool_commit = _check_census_head(head, layer, run_id, need_stamp=(kind == "gate"))
     cfacts = {}
     transitive_only = False
     if kind == "gate":
-        record, meas = _census_record_and_cell(src.obj, asset, criterion)
+        record, meas = _census_record_and_cell(head, asset, criterion)
         cfacts = _facts_from_census(record, facts)
         if meas is not None and (not isinstance(meas.get("v"), str) or meas["v"] not in VERDICTS):
             _refuse("census_mismatch", f"the census cell {criterion} for {asset} reads {meas.get('v')!r}, which is not "
@@ -672,6 +888,23 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
         _refuse("missing_fingerprint", "a PASS (or measured N/A) read rows: without a semantic fingerprint a "
                                        "change to those rows could never invalidate it")
     wh, wh_verified = _resolve_writer_hashes(writer_hashes, writer_files, writer_repo, writer_ref)
+    if kind == "gate" and wh:
+        stray = sorted(set(wh) - _allowed_writer_paths(record))
+        if stray:
+            _refuse("writer_file_unbound", f"{stray} is not a writer file of {asset} according to the census record "
+                                           "(its writer_files): a hash of some other file proves nothing about this asset")
+        if wh_verified:
+            repo = writer_repo if writer_repo is not None else ac.ROOT
+            gen_t = dt.datetime.fromisoformat(run_id)
+            for pth in wh:
+                t = _writer_commit_time(repo, writer_ref, pth)
+                if t is None:
+                    _refuse("writer_time_unknown", f"the commit time of {pth} (at {writer_ref or 'HEAD'}) cannot be "
+                                                   "determined (untracked, uncommitted change, or no git): a census "
+                                                   "cannot be shown to postdate the writer")
+                if gen_t < t:
+                    _refuse("census_older_than_writer", f"the census ({run_id}) is older than the last commit of "
+                                                        f"{pth} ({t.isoformat()}): it measured an earlier writer")
     has_writer = record.get("has_writer") if record is not None and isinstance(record.get("has_writer"), bool) else None
     wh_reason = _writer_evidence(wh, wh_verified, writer_hashes_reason, verdict, na_measured, kind, has_writer)
 
@@ -679,10 +912,12 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     ups = _upstream_ids(upstream_cert_ids, cert_key)
     ev = dict(evidence)
     if src is not None:
-        ev["census_file"], ev["census_sha256"] = src.path, src.sha256
+        ev["census_file"], ev["census_sha256"], ev["census_git"] = src.path, src.sha256, src.git
+        if tool_commit is not None:
+            ev["census_tool_commit"] = tool_commit
     rec = dict(
         asset=asset, layer=layer, kind=kind, gate=gate_name, criterion=criterion, criterion_version=crit_version,
-        registry_revision=reg_rev, registry_fingerprint=reg_fp, registry_binding=binding, detector=det,
+        registry_revision=reg_rev, registry_fingerprint=reg_fp, detector=det,
         verdict=verdict, basis=basis, na=na, inconclusive=bool(inconclusive), transitive_only=transitive_only,
         evidence=ev, cross_checked=(kind == "gate"),
         job_image_tag=job_image_tag.strip() if job_image_tag else None, writer_hashes=wh,
@@ -716,7 +951,7 @@ def _check_upstream(rec: dict, by_key: dict) -> None:
             _refuse("upstream_not_passing", f"{u} reads {recs[-1]['verdict']}: a PASS cannot rest on it")
 
 
-def _open_ledger(path: Path, init: bool, rec: dict):
+def _open_ledger(path: Path, init: bool, precheck):
     """(file object, created_new). Never follows a symlink at `path` (a link, even a dangling one, is refused; the
     open itself refuses to follow as well, so a link swapped in after the check cannot redirect the write). A ledger
     that does not exist is created only under `init`, and only after the request was validated against an empty
@@ -734,7 +969,7 @@ def _open_ledger(path: Path, init: bool, rec: dict):
             if e.errno in (errno.ELOOP, errno.EISDIR):
                 _refuse("bad_ledger_path", f"{path} is not a regular file ({os.strerror(e.errno)})")
             raise
-        _check_upstream(rec, {})                       # a fresh ledger: upstream ids can only be unknown
+        precheck()                                     # validated against an EMPTY ledger before anything is created
         try:
             return os.fdopen(os.open(path, base | os.O_CREAT | os.O_EXCL, 0o644), "a+b"), True
         except FileExistsError:
@@ -748,43 +983,47 @@ def _open_ledger(path: Path, init: bool, rec: dict):
     _refuse("bad_ledger_path", f"{path} could not be opened as a regular file")
 
 
-def write_certification(*, ledger_path=None, init: bool = False, **fields) -> CertResult:
-    """Validate, then append one record (or report the identical latest generation). See build_record for the
-    fields. The ledger is never rewritten: it is opened for append, under an exclusive lock that also covers the
-    read the generation number, the hash chain and the idempotence check depend on."""
-    try:
-        rec = build_record(**fields)
-    except CertificationRefused:
-        raise
-    except (TypeError, ValueError, AttributeError, KeyError, OverflowError) as e:
-        _refuse("bad_request", f"the request is malformed ({type(e).__name__}: {e})")
-    path = resolve_ledger_path(ledger_path)
-    f, created_new = _open_ledger(path, init, rec)
+def _locked_append(path: Path, init: bool, precheck, build):
+    """THE write path: every line the ledger ever receives goes through here. Opens `path` (never following a symlink;
+    created only under `init` and only after `precheck()` accepted an empty ledger), takes the exclusive lock, reads and
+    VERIFIES the whole ledger (chain, seq, generations; torn => `torn_ledger`), calls `build(parsed) -> (records,
+    outcome)`, fills `seq` and `prev_sha256` into each record in order, serialises each with `_dump`, appends them in
+    ONE write to the append-only descriptor, fsyncs, and returns `(outcome, written_records)`. It never edits an
+    existing byte. A refused request leaves the ledger bytes identical; only a file THIS call created, and only while
+    still empty, is removed."""
+    f, created_new = _open_ledger(path, init, precheck)
     try:
         with f:
             fcntl.flock(f, fcntl.LOCK_EX)
             f.seek(0)
             data = f.read()
-            schema_line = json.dumps({"asset": "_schema", "_doc": SCHEMA_DOC}, ensure_ascii=False).encode("utf-8")
+            schema_line = _dump({"asset": "_schema", "_doc": SCHEMA_DOC})
             fresh = not data
             if fresh and not init:
                 _refuse("bad_ledger", f"{path} is empty (no `_schema` row); pass init=True / --init to initialise it")
-            by_key, prev = ({}, _sha(schema_line)) if fresh else _parse(data)
-            _check_upstream(rec, by_key)
-            latest = (by_key.get(rec["cert_key"]) or [None])[-1]
-            if latest is not None and _identity(latest) == _identity(rec):
-                return CertResult("unchanged", latest, latest["cert_id"], path)
-            gen = 1 if latest is None else latest["generation"] + 1
-            rec = dict(rec, generation=gen, cert_id=f"{rec['cert_key']}@{gen}", prev_sha256=prev)
-            line = (json.dumps(rec, ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
+            parsed = _Parsed({}, [], _sha(schema_line), 0) if fresh else _parse_full(data)
+            records, outcome = build(parsed)
+            if not records:
+                return outcome, []
+            prev, n, buf, written = parsed.prev, parsed.n, b"", []
+            for r in records:
+                n += 1
+                full = dict(r, seq=n, prev_sha256=prev)
+                try:
+                    line = _dump(full)
+                except (TypeError, ValueError, RecursionError) as e:
+                    _refuse("bad_record", f"a record cannot be serialised as strict JSON ({e})")
+                buf += line + b"\n"
+                prev = _sha(line)
+                written.append(full)
             if fresh:
-                line = schema_line + b"\n" + line
+                buf = schema_line + b"\n" + buf
             elif not data.endswith(b"\n"):
-                line = b"\n" + line
-            f.write(line)                  # one write of a fully serialised line, to an append-only descriptor
+                buf = b"\n" + buf
+            f.write(buf)                   # one write of fully serialised lines, to an append-only descriptor
             f.flush()
             os.fsync(f.fileno())
-            return CertResult("appended", rec, rec["cert_id"], path)
+            return outcome, written
     except BaseException:
         if created_new:                    # only a file THIS call created, and only while it is still empty
             try:
@@ -793,6 +1032,156 @@ def write_certification(*, ledger_path=None, init: bool = False, **fields) -> Ce
             except OSError:
                 pass
         raise
+
+
+def _appendable(r) -> None:
+    """Structural check of one record offered to `append_records` (nothing about certification semantics)."""
+    if not isinstance(r, dict):
+        _refuse("bad_record", "a ledger record must be a JSON object")
+    if r.get("asset") == "_schema":
+        _refuse("bad_record", "the `_schema` row is written once, by the writer")
+    if "seq" in r or "prev_sha256" in r:
+        _refuse("bad_record", "seq and prev_sha256 are filled in by the writer, never given")
+    if not (_is_cert_line(r) or _is_event_line(r)):
+        _refuse("bad_record", "a record is either a certificate (cert_key/generation/cert_id/verdict) or an event "
+                              "(a `type` that is not \"cert\" and no cert_key)")
+
+
+def append_records(ledger_path, records, *, init: bool = False) -> int:
+    """PUBLIC. Append `records` (a list of dicts) to the ledger as the next lines and return how many were written.
+    Takes the exclusive lock, verifies the whole ledger first (chain, seq, generations; a torn ledger is refused
+    `torn_ledger`; a symlink or directory at the path `bad_ledger_path`; a missing ledger `ledger_missing` unless
+    `init`), fills `seq` and `prev_sha256` for each record (giving either is refused), serialises with the one canonical
+    serialisation, appends all of them in a single write, and never edits an existing line. A record is a certificate
+    (cert_key/generation/cert_id/verdict; its generation must continue its key's sequence) or an event (a `type`
+    other than "cert", no cert_key: E5.5's invalidation / watermark lines). Structural checks only: certification
+    semantics live in `write_certification`. All-or-nothing: if any record is refused nothing is written. An empty
+    list writes nothing and returns 0 without touching the ledger. `write_certification` uses the same path."""
+    recs = list(records)
+    for r in recs:
+        _appendable(r)
+    if not recs:
+        return 0
+
+    def check(parsed: _Parsed):
+        seen = {k: len(v) for k, v in parsed.by_key.items()}
+        for r in recs:
+            if _is_cert_line(r):
+                key = r["cert_key"]
+                if r["generation"] != seen.get(key, 0) + 1:
+                    _refuse("bad_record", f"{r['cert_id']}: the next generation of {key} is {seen.get(key, 0) + 1}")
+                seen[key] = r["generation"]
+        return recs, None
+
+    _, written = _locked_append(resolve_ledger_path(ledger_path), init, lambda: check(_Parsed({}, [], "", 0)), check)
+    return len(written)
+
+
+def write_certification(*, ledger_path=None, init: bool = False, **fields) -> CertResult:
+    """Validate, then append one record (or report the identical latest generation). See build_record for the
+    fields. The ledger is never rewritten: it goes through `_locked_append` (exclusive lock; the read the generation
+    number, the hash chain and the idempotence check depend on is under the same lock)."""
+    try:
+        rec = build_record(**fields)
+    except CertificationRefused:
+        raise
+    except (TypeError, ValueError, AttributeError, KeyError, OverflowError, RecursionError) as e:
+        _refuse("bad_request", f"the request is malformed ({type(e).__name__}: {e})")
+    path = resolve_ledger_path(ledger_path)
+
+    def decide(parsed: _Parsed):
+        _check_upstream(rec, parsed.by_key)
+        latest = (parsed.by_key.get(rec["cert_key"]) or [None])[-1]
+        if latest is not None and _identity(latest) == _identity(rec):
+            return [], ("unchanged", latest)
+        gen = 1 if latest is None else latest["generation"] + 1
+        return [dict(rec, generation=gen, cert_id=f"{rec['cert_key']}@{gen}")], ("appended", None)
+
+    (status, latest), written = _locked_append(path, init, lambda: _check_upstream(rec, {}), decide)
+    if status == "unchanged":
+        return CertResult("unchanged", latest, latest["cert_id"], path)
+    return CertResult("appended", written[0], written[0]["cert_id"], path)
+
+
+# ─────────────────────────── CI verification and the explicit torn-tail repair ───────────────────────────
+
+def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
+    """For every gate record of the ledger AT `ref`, re-read the census file it cites with `git show <ref>:<path>`,
+    recompute the sha256 and compare. Raises CertificationRefused on a mismatch (`census_hash_mismatch`), a cited file
+    that is not committed at `ref` (`census_not_committed`), one outside TRUSTED_CENSUS_ROOT (`census_outside_root`),
+    a gate record that cites none (`census_citation_missing`), an unreadable ledger (`bad_ledger`) or an unknown ref
+    (`bad_ref`). Returns {status: "PASS", ...} only when at least one record was verified; when the ledger does not
+    exist yet at `ref`, or holds no gate record, it returns {status: "NO_DETECTOR", reason: ...}: nothing was
+    verified, so nothing is reported clean."""
+    rel = ledger_relpath or LEDGER_RELPATH
+    ok_ref = _git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+    if ok_ref is None or ok_ref.returncode != 0:
+        _refuse("bad_ref", f"{ref!r} is not a commit in {repo}")
+    r = _git(repo, "show", f"{ref}:{rel}")
+    if r is None or r.returncode != 0:
+        return dict(status="NO_DETECTOR", checked=0, ref=ref, ledger=rel,
+                    reason=f"{rel} does not exist at {ref}: there is no ledger to verify yet")
+    by_key = parse_ledger(r.stdout)
+    troot = _trusted_root_rel()
+    cache: dict[str, str | None] = {}
+    failures, checked = [], 0
+    for key in sorted(by_key):
+        for rec in by_key[key]:
+            if rec.get("kind") != "gate":
+                continue
+            checked += 1
+            ev = rec.get("evidence") if isinstance(rec.get("evidence"), dict) else {}
+            f, h = ev.get("census_file"), ev.get("census_sha256")
+            if not isinstance(f, str) or not isinstance(h, str):
+                failures.append((rec["cert_id"], "census_citation_missing", "cites no census_file / census_sha256"))
+                continue
+            norm = os.path.normpath(f).replace(os.sep, "/")
+            if f.startswith("/") or norm.startswith("..") or not norm.startswith(troot) or norm != f:
+                failures.append((rec["cert_id"], "census_outside_root", f"{f!r} is not a path under {troot}"))
+                continue
+            if f not in cache:
+                g = _git(repo, "show", f"{ref}:{f}")
+                cache[f] = _sha(g.stdout) if g is not None and g.returncode == 0 else None
+            if cache[f] is None:
+                failures.append((rec["cert_id"], "census_not_committed", f"{f} is not committed at {ref}"))
+            elif cache[f] != h:
+                failures.append((rec["cert_id"], "census_hash_mismatch",
+                                 f"{f} at {ref} hashes to {cache[f][:12]}.., the cert recorded {h[:12]}.."))
+    if failures:
+        detail = "; ".join(f"{c}: {code}: {m}" for c, code, m in failures[:10])
+        _refuse(failures[0][1], f"{len(failures)} of {checked} gate record(s) fail census verification at {ref}: {detail}")
+    if not checked:
+        return dict(status="NO_DETECTOR", checked=0, ref=ref, ledger=rel,
+                    reason="the ledger holds no gate record: nothing was verified")
+    return dict(status="PASS", checked=checked, files=len(cache), ref=ref, ledger=rel)
+
+
+def repair_torn_tail(ledger_path, out=None) -> dict:
+    """The explicit repair for a torn ledger: truncate an INCOMPLETE final line (no newline, not valid JSON), printing
+    it first to `out` (default stdout). Never silent; touches nothing else; refuses (nothing truncated) when the
+    ledger without that tail is still unreadable."""
+    out = sys.stdout if out is None else out
+    path = Path(ledger_path)
+    if os.path.islink(path) or not path.is_file():
+        _refuse("bad_ledger_path", f"{path} is not a regular file")
+    with open(path, "r+b") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        data = f.read()
+        tail = data.rsplit(b"\n", 1)[-1] if data else b""
+        if not tail:
+            return dict(status="nothing_to_repair", removed_bytes=0)
+        try:
+            strict_json_loads(tail.decode("utf-8"))
+            return dict(status="nothing_to_repair", removed_bytes=0,
+                        note="the final line is a complete record that lacks its newline (the writer handles that)")
+        except (UnicodeDecodeError, ValueError):
+            pass
+        _parse(data[:len(data) - len(tail)])        # refuses (bad_ledger) before anything is truncated
+        print(f"TORN TAIL ({len(tail)} bytes) removed from {path}: {tail!r}", file=out, flush=True)
+        f.truncate(len(data) - len(tail))
+        f.flush()
+        os.fsync(f.fileno())
+    return dict(status="repaired", removed_bytes=len(tail))
 
 
 # ─────────────────────────── CLI ───────────────────────────
@@ -810,10 +1199,8 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--detector", default=None, help="additions only; a gate's detector is the registry's")
     ap.add_argument("--verdict", default=None, help="a gate's verdict is read from the census; this is only a "
                                                     "cross-check that must equal it (required for an addition)")
-    ap.add_argument("--census", default=None, help="the census JSON FILE (under the control dir or a census archive) "
-                                                    "the verdict is read from; required for a gate")
-    ap.add_argument("--census-archive-dir", default=None, help=f"an extra trusted census directory "
-                                                                f"(default: ${ENV_CENSUS_ARCHIVE}, else none)")
+    ap.add_argument("--census", default=None, help="the census JSON FILE (committed under the trusted census root "
+                                                    f"{TRUSTED_CENSUS_ROOT}) the verdict is read from; required for a gate")
     ap.add_argument("--census-run-id", default=None, help="must equal the census's own `generated`; defaults to it")
     ap.add_argument("--measured", default=None)
     ap.add_argument("--inspector-commit", default=None)
@@ -836,7 +1223,32 @@ def _parser() -> argparse.ArgumentParser:
     return ap
 
 
+def _special_main(argv):
+    ap = argparse.ArgumentParser(description="E5.1 ledger maintenance modes")
+    ap.add_argument("--verify-census-hashes", action="store_true")
+    ap.add_argument("--repair-torn-tail", action="store_true")
+    ap.add_argument("--repo", default=".")
+    ap.add_argument("--ref", default="HEAD")
+    ap.add_argument("--ledger", default=None)
+    ap.add_argument("--ledger-relpath", default=None)
+    a = ap.parse_args(argv)
+    try:
+        if a.verify_census_hashes:
+            res = verify_ledger_census_hashes(a.repo, a.ref, a.ledger_relpath)
+            print(json.dumps(res))
+            return 0 if res["status"] == "PASS" else 3
+        res = repair_torn_tail(resolve_ledger_path(a.ledger))
+        print(json.dumps(res))
+        return 0
+    except CertificationRefused as e:
+        print(f"REFUSED {e.code}: {e.message}", file=sys.stderr)
+        return 2
+
+
 def main(argv=None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if "--verify-census-hashes" in argv or "--repair-torn-tail" in argv:
+        return _special_main(argv)
     a = _parser().parse_args(argv)
     try:
         run_id = a.census_run_id
@@ -845,7 +1257,9 @@ def main(argv=None) -> int:
                 head = strict_json_loads(Path(a.census).read_text(encoding="utf-8"))
             except (OSError, UnicodeDecodeError, ValueError) as e:
                 _refuse("bad_census", f"{a.census} cannot be read as strict JSON ({e})")
-            run_id = head.get("generated") if isinstance(head, dict) else None
+            if not isinstance(head, dict):
+                _refuse("bad_census", "the census must be a JSON object")
+            run_id = _select_layer(head, a.layer).get("generated") if a.layer in ac.LAYERS else None
         evidence = {k: v for k, v in dict(census_run_id=run_id, measured=a.measured,
                                           inspector_commit=a.inspector_commit).items() if v is not None}
         wh = {}
@@ -859,7 +1273,7 @@ def main(argv=None) -> int:
         r = write_certification(
             ledger_path=a.ledger, init=a.init, asset=a.asset, layer=a.layer, kind=a.kind, gate=a.gate,
             criterion=a.criterion, criterion_version=a.criterion_version, detector=a.detector, verdict=a.verdict,
-            evidence=evidence, census_path=a.census, census_archive_dir=a.census_archive_dir,
+            evidence=evidence, census_path=a.census,
             job_image_tag=a.job_image_tag, writer_hashes=wh, writer_files=a.writer_file, writer_repo=a.writer_repo,
             writer_ref=a.writer_ref, writer_hashes_reason=a.writer_hashes_reason, upstream_cert_ids=a.upstream,
             semantic_fingerprint=a.semantic_fingerprint, verified_by=a.verified_by, verified_on=a.verified_on,
