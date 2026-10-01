@@ -10,7 +10,9 @@ What this file proves:
   (b) hard chart refusal: any chart_id ≠ the pinned A5.3 candidate chart
       raises ChartRefusal on BOTH the planning path and the execution path —
       before any other behaviour;
-  (c) phase-1 plan (pin 5): 'convention' → 'body:<Body>' ×8, Moon absent;
+  (c) plan (pin 5): 'rules' (rule_binding) → 'convention' → 'body:<Body>'
+      ×8, Moon absent; the rules substep seeds the P1–P5 catalogue under the
+      global family key with NO chart lock (N13);
   (d) substep behaviour: the chart family key precedes every write (steward
       ruling B / N13), the convention substep registers the convention row,
       each body substep drives SkyEventStore.build_boundary_substrate for
@@ -98,10 +100,29 @@ class _FakeStore:
         return {"objects": 135, "events": 135, "stations": 0}
 
 
+class _FakeRuleStore:
+    """Recording double for RuleRegistryStore (no DB)."""
+
+    instances: list["_FakeRuleStore"] = []
+
+    def __init__(self, conn):
+        self.conn = conn
+        self.seeds = 0
+        _FakeRuleStore.instances.append(self)
+
+    def seed(self):
+        self.seeds += 1
+        return {"predicates": 8, "factors": 11, "paths": 5,
+                "prerequisites": 7, "soft_factors": 9, "seals": 5,
+                "reused": 0}
+
+
 @pytest.fixture(autouse=True)
 def _fake_store(monkeypatch):
     _FakeStore.instances = []
+    _FakeRuleStore.instances = []
     monkeypatch.setattr(writer_mod, "SkyEventStore", _FakeStore)
+    monkeypatch.setattr(writer_mod, "RuleRegistryStore", _FakeRuleStore)
     yield
 
 
@@ -157,20 +178,42 @@ def test_run_substep_refuses_any_other_chart_before_delegation():
         w.run_substep(_ctx(OTHER_CHART_ID), SubStep(key=writer_mod.ASSET_ID))
 
 
-# ── (c) phase-1 plan (pin 5) ──────────────────────────────────────────────────
+# ── (c) plan (pin 5): rules → convention → bodies ────────────────────────────
 
 
-def test_plan_is_convention_then_eight_bodies_moon_excluded():
+def test_plan_is_rules_then_convention_then_eight_bodies_moon_excluded():
     w = writer_mod.GocharaV5Writer()
     steps = w.plan_substeps(_ctx())
     keys = [s.key for s in steps]
-    assert keys[0] == writer_mod.CONVENTION_SUBSTEP
-    assert keys[1:] == [f"body:{b}" for b in SUBSTRATE_BODIES]
+    assert keys[0] == writer_mod.RULES_SUBSTEP
+    assert keys[1] == writer_mod.CONVENTION_SUBSTEP
+    assert keys[2:] == [f"body:{b}" for b in SUBSTRATE_BODIES]
     assert "Moon" not in SUBSTRATE_BODIES
     assert not any("moon" in k.lower() for k in keys)
 
 
 # ── (d) substep behaviour ─────────────────────────────────────────────────────
+
+
+def test_rules_substep_seeds_the_catalogue_without_the_chart_lock():
+    """rule_binding: the registry tables ride the Gochara-5 GLOBAL family key
+    (their write-guard triggers), so the writer must NOT take the chart
+    family key in this substep (N13 mutual exclusion)."""
+    conn = _RecordingConn()
+    w = writer_mod.GocharaV5Writer()
+    result = w.run_substep(_ctx(conn=conn), SubStep(key=writer_mod.RULES_SUBSTEP))
+    store = _FakeRuleStore.instances[-1]
+    assert store.seeds == 1
+    assert not any("ka_gochara_lock_chart" in s[0] for s in conn.statements)
+    assert result.rows_inserted == 8 + 11 + 5 + 7 + 9 + 5
+
+
+def test_rules_substep_dry_run_suppresses_the_seed():
+    w = writer_mod.GocharaV5Writer()
+    result = w.run_substep(_ctx(dry_run=True),
+                           SubStep(key=writer_mod.RULES_SUBSTEP))
+    assert result.rows_inserted == 0
+    assert _FakeRuleStore.instances == []
 
 
 def test_chart_lock_precedes_every_write():

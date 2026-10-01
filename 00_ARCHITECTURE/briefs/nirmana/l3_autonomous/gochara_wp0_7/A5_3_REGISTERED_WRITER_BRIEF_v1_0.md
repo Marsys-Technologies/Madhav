@@ -63,6 +63,28 @@ delete-then-insert scoped **chart × generation × its grain**.
 **(7) Coverage partitions.** Owned by the `ka_gochara_v5` writer, written in the SAME transaction
 **before** the records/windows that FK them.
 
+## Step `rule_binding` (landed 2026-10-01)
+
+Design and encoding decisions live with the code in
+`services/gochara_kernel/rule_registry.py` (E1–E6; deferrals D1/D2). Summary:
+
+- New substep **`rules`**, FIRST in the plan (`rules` → `convention` → `body:<Body>` ×8).
+  It binds Stream B's P1–P5 catalogue (`services/gochara_rules/registry.py`, rule_version
+  `1.0.0`) into migration 1154's tables — 8 predicates, 11 factors, 5 paths, 7 prerequisite
+  + 9 soft-factor membership rows, 5 F3 seals — insert-if-absent with full-field equality;
+  ANY divergence is a loud `RegistryDivergenceError` (ADK-0026).
+- Lock order (N13): the `rules` substep takes **no chart lock** — the registry tables ride
+  the Gochara-5 GLOBAL family key (write-guard triggers), mutually exclusive with any chart
+  key. The orchestrator commits per substep, so this substep is its own transaction.
+- **Deferred (flagged to the steward):** P6 (frame "per the admitting path's objects" is no
+  `ka_gochara_frame_ok` value; binds with `day_on_demand`) and `sad_bala_summary` (units
+  "rupas" violates `kgf_units_ck`; spec fold for v1.5 — never a silent re-unit).
+- **Phase-2 record grain (pin 5):** record/window-producing substeps are scoped
+  per **(event_class × path_id, rule_version)** — idempotent delete-then-insert scoped
+  chart × generation × event_class × path. The static enumeration is the 26 scored classes
+  (27 minus `birth_anchor`, O-CF-N6) × the bound paths P1–P5; the H-unknown eight admit
+  `unqualified` (§2.2). This grain lands with `window_evaluator` / `interval_sweep`.
+
 ## Delivery sequence (steward M20261001T015412-6df0)
 
 1. This brief.
