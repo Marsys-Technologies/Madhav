@@ -182,3 +182,344 @@ __all__ = [
     "convention_id_for",
     "physical_object_id",
 ]
+
+
+# ── Sky-event store (persistence over migration 1153's §6.1 tables) ──────────
+
+import json as _json
+import os as _os
+from typing import Any as _Any
+
+
+class ConventionDivergenceError(RuntimeError):
+    """Pin 3: a convention row exists under this convention_id with ANY
+    different field — loud failure, never a silent reuse."""
+
+
+class IdentityCollisionError(RuntimeError):
+    """Pin 4: an id collision where the stored row is not byte-identical —
+    loud build failure, never a silent dedup."""
+
+
+#: Kernel body name → substrate (DB) body domain value (kgpo/kgse body checks).
+DB_BODY = {
+    "Sun": "sun", "Mars": "mars", "Mercury": "mercury", "Jupiter": "jupiter",
+    "Venus": "venus", "Saturn": "saturn", "Rahu": "rahu", "Ketu": "ketu",
+    "Moon": "moon",
+}
+
+#: Kernel boundary relation → §6.1 event_kind (kgse_event_kind_ck).
+DB_EVENT_KIND = {
+    "sign_ingress": "sign_ingress",
+    "nakshatra_ingress": "nakshatra_ingress",
+    "kakshya_cell_crossing": "kakshya_crossing",
+}
+
+#: The global substrate bodies — every body but the Moon (pin 6: Moon is
+#: EPHEMERAL, generated on demand; kgse_body_domain_ck enforces it at the DB).
+SUBSTRATE_BODIES = ("Sun", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
+
+JD_UNIX_EPOCH = 2440587.5
+
+
+def jd_to_utc(jd: float) -> datetime:
+    return datetime.fromtimestamp((float(jd) - JD_UNIX_EPOCH) * 86400.0, tz=timezone.utc)
+
+
+def boundary_target(level_deg: float) -> str:
+    """§6.1 canonical target of a boundary crossing: `point:<λ full precision>`
+    (boundary events are enumerated per body and joined to targets afterwards
+    — §6.2 inv 5 — so the physical target is the boundary itself)."""
+    return f"point:{float(level_deg)!r}"
+
+
+@dataclass(frozen=True)
+class SkyEvent:
+    event_id: uuid.UUID
+    physical_object_id: uuid.UUID
+    convention_id: str
+    body: str
+    event_kind: str
+    occurrence_ordinal: int
+    t_exact: datetime | None
+    longitude: float | None
+    solver_method: str
+    delta_lambda: float | None
+    delta_t: float | None
+    precision_regime: str | None
+    coverage: dict
+
+
+class SkyEventStore:
+    """Persistence over ka_gochara_sky_convention / ka_gochara_physical_object /
+    ka_gochara_sky_event (migration 1153, spec §6.1).
+
+    Write side honours pin 3 (convention row: idempotent under the chart lock,
+    any field divergence = loud failure) and pin 4 (id collision with a
+    non-identical stored row = loud build failure). The tables are
+    insert-only (triggers): idempotency here means insert-if-absent with a
+    byte-equality check, never delete-then-insert.
+    """
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    @classmethod
+    def from_env(cls) -> "SkyEventStore":
+        import psycopg
+
+        dsn = _os.environ.get("DATABASE_URL")
+        if not dsn:
+            raise RuntimeError("SkyEventStore.from_env: DATABASE_URL not set")
+        return cls(psycopg.connect(dsn))
+
+    # ── read side ────────────────────────────────────────────────────────
+
+    def count_rows(self, *, body: str | None = None) -> int:
+        if body is None:
+            row = self.conn.execute(
+                "SELECT count(*) FROM public.ka_gochara_sky_event"
+            ).fetchone()
+        else:
+            row = self.conn.execute(
+                "SELECT count(*) FROM public.ka_gochara_sky_event WHERE body = %s",
+                (DB_BODY.get(body, body.lower()),),
+            ).fetchone()
+        return int(row[0])
+
+    def events(self, *, event_kind: str | None = None, body: str | None = None) -> list[SkyEvent]:
+        sql = ("SELECT event_id, physical_object_id, convention_id, body, event_kind,"
+               " occurrence_ordinal, t_exact, longitude, solver_method, delta_lambda,"
+               " delta_t, precision_regime, coverage FROM public.ka_gochara_sky_event")
+        clauses, params = [], []
+        if event_kind is not None:
+            clauses.append("event_kind = %s")
+            params.append(event_kind)
+        if body is not None:
+            clauses.append("body = %s")
+            params.append(DB_BODY.get(body, body.lower()))
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY t_exact NULLS LAST, event_id"
+        out = []
+        for r in self.conn.execute(sql, tuple(params)).fetchall():
+            out.append(SkyEvent(
+                event_id=r[0], physical_object_id=r[1], convention_id=r[2],
+                body=r[3], event_kind=r[4], occurrence_ordinal=r[5],
+                t_exact=r[6], longitude=r[7], solver_method=r[8],
+                delta_lambda=r[9], delta_t=r[10], precision_regime=r[11],
+                coverage=r[12],
+            ))
+        return out
+
+    # ── convention (pin 3) ───────────────────────────────────────────────
+
+    def register_convention(self, vector: dict[str, str] | None = None) -> str:
+        """Insert the convention row idempotently UNDER THE CHART LOCK (the
+        caller's transaction declares gochara5.chart / holds the chart family
+        key — the substrate chart-lock trigger enforces it). A row that
+        already exists with ANY different field is a loud failure."""
+        v = vector if vector is not None else SUBSTRATE_CONVENTION_VECTOR
+        cid = convention_id_for(v)
+        row = self.conn.execute(
+            "SELECT ephemeris_generation, ayanamsha, node_convention, grid,"
+            " method_version, domain_start, domain_end"
+            " FROM public.ka_gochara_sky_convention WHERE convention_id = %s",
+            (cid,),
+        ).fetchone()
+        if row is not None:
+            stored = {
+                "ephemeris_generation": row[0], "ayanamsha": row[1],
+                "node_convention": row[2], "grid": row[3], "method_version": row[4],
+                "domain_start": row[5].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "domain_end": row[6].strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            declared = {k: v[k] for k in stored}
+            if stored != declared:
+                raise ConventionDivergenceError(
+                    f"convention {cid}: stored row diverges from the declared "
+                    f"vector — stored {stored} vs declared {declared}"
+                )
+            return cid
+        self.conn.execute(
+            "INSERT INTO public.ka_gochara_sky_convention ("
+            " convention_id, ephemeris_generation, ayanamsha, node_convention,"
+            " grid, method_version, domain_start, domain_end)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (convention_id) DO NOTHING",
+            (cid, v["ephemeris_generation"], v["ayanamsha"], v["node_convention"],
+             v["grid"], v["method_version"], v["domain_start"], v["domain_end"]),
+        )
+        return cid
+
+    # ── identity-bearing inserts (pin 4: collision = loud failure) ───────
+
+    def insert_physical_object(self, poid: PhysicalObjectId) -> uuid.UUID:
+        obj_uuid = poid.uuid
+        self.conn.execute(
+            "INSERT INTO public.ka_gochara_physical_object ("
+            " physical_object_id, body, relation_kind, canonical_target, convention_id)"
+            " VALUES (%s,%s,%s,%s,%s)"
+            " ON CONFLICT (body, relation_kind, canonical_target, convention_id) DO NOTHING",
+            (str(obj_uuid), DB_BODY[poid.body], poid.relation_kind,
+             poid.canonical_target, poid.convention_id),
+        )
+        row = self.conn.execute(
+            "SELECT physical_object_id FROM public.ka_gochara_physical_object"
+            " WHERE body = %s AND relation_kind = %s AND canonical_target = %s"
+            " AND convention_id = %s",
+            (DB_BODY[poid.body], poid.relation_kind, poid.canonical_target,
+             poid.convention_id),
+        ).fetchone()
+        if row is None or str(row[0]) != str(obj_uuid):
+            raise IdentityCollisionError(
+                f"physical object {poid.identity_bytes}: stored id "
+                f"{row[0] if row else None} != derived {obj_uuid}"
+            )
+        return obj_uuid
+
+    def insert_event(self, contact: SubstrateContact, *, event_kind: str,
+                     longitude: float | None, solver_method: str,
+                     delta_lambda: float | None, delta_t: float | None,
+                     precision_regime: str | None,
+                     coverage: dict) -> uuid.UUID:
+        event_id = contact.contact_id
+        poid = contact.physical_object_id
+        truncated = bool(coverage.get("truncated", False))
+        self.conn.execute(
+            "INSERT INTO public.ka_gochara_sky_event ("
+            " event_id, physical_object_id, convention_id, body, event_kind,"
+            " occurrence_ordinal, t_exact, longitude, solver_method, delta_lambda,"
+            " delta_t, precision_regime, coverage)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            " ON CONFLICT (physical_object_id, occurrence_ordinal) DO NOTHING",
+            (str(event_id), str(poid.uuid), poid.convention_id, DB_BODY[poid.body],
+             event_kind, contact.occurrence_ordinal,
+             None if truncated else contact.t_exact, longitude, solver_method,
+             delta_lambda, delta_t, precision_regime, _json.dumps(coverage)),
+        )
+        row = self.conn.execute(
+            "SELECT event_id FROM public.ka_gochara_sky_event"
+            " WHERE physical_object_id = %s AND occurrence_ordinal = %s",
+            (str(poid.uuid), contact.occurrence_ordinal),
+        ).fetchone()
+        if row is None or str(row[0]) != str(event_id):
+            raise IdentityCollisionError(
+                f"event {contact_identity_bytes(contact)}: stored id "
+                f"{row[0] if row else None} != derived {event_id}"
+            )
+        return event_id
+
+    # ── phase-1 build: per-body boundary substrate + stations (pin 5) ────
+
+    def build_boundary_substrate(
+        self,
+        body: str,
+        *,
+        index=None,
+        ephe_path: str | None = None,
+        refine: bool = True,
+        convention_id: str | None = None,
+    ) -> dict[str, int]:
+        """Solve and persist one body's boundary events + stations over the
+        pinned convention domain (1998-01-01 → 2085-01-01 UTC).
+
+        The Moon is REFUSED (pin 6: EPHEMERAL; kgse_body_domain_ck also
+        enforces it). Idempotent: every insert is insert-if-absent with a
+        byte-identity check (pin 4), so a re-run of a completed body is a
+        no-op and a partial earlier run resumes where it stopped.
+
+        `index` may inject a prebuilt ArcIndex (tests); otherwise knots are
+        sampled over the full domain and indexed per the kernel's defaults.
+        Stations are always Swiss-refined (§7.1 / O-SM-3).
+        """
+        if body == "Moon":
+            raise ValueError(
+                "Moon boundary events are EPHEMERAL (pin 6 / §6.1): generated "
+                "on demand with a moon_on_demand coverage record, never "
+                "materialised into the global substrate"
+            )
+        if body not in SUBSTRATE_BODIES:
+            raise ValueError(f"{body}: not a substrate body {SUBSTRATE_BODIES}")
+        from services.gochara_kernel import arcs as gk_arcs
+        from services.gochara_kernel import contacts as gk_contacts
+        from services.gochara_kernel.knots import sample_knots
+
+        cid = convention_id or self.register_convention()
+        if index is None:
+            ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(),
+                              SUBSTRATE_DOMAIN_END.date(), ephe_path)
+            index = gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
+
+        solver_method = "swiss_refined" if refine else "arc_index_bracket"
+        precision_regime = (
+            "swiss_bisect_tol_1e-9d" if refine
+            else f"arc_index_bracket_{index.tolerance_arcsec}arcsec"
+        )
+        delta_lambda = index.tolerance_arcsec / 3600.0
+        delta_t = 1e-9 if refine else None
+
+        counts = {"objects": 0, "events": 0, "stations": 0}
+        for relation, event_kind in DB_EVENT_KIND.items():
+            for level in gk_contacts.boundary_degrees(relation):
+                poid = physical_object_id(
+                    body=body, relation_kind=event_kind,
+                    canonical_target=boundary_target(level), convention_id=cid,
+                )
+                self.insert_physical_object(poid)
+                counts["objects"] += 1
+            roots = gk_contacts.find_boundary_roots(
+                index, body, relation, ephe_path, refine=refine
+            )
+            by_level: dict[float, list[datetime]] = {}
+            for root in roots:
+                by_level.setdefault(root.level_deg, []).append(jd_to_utc(root.exact_jd))
+            for level, instants in by_level.items():
+                poid = physical_object_id(
+                    body=body, relation_kind=event_kind,
+                    canonical_target=boundary_target(level), convention_id=cid,
+                )
+                for contact in assign_occurrence_ordinals(
+                    physical_object_id=poid, t_exact_list=instants
+                ):
+                    self.insert_event(
+                        contact, event_kind=event_kind, longitude=level % 360.0,
+                        solver_method=solver_method, delta_lambda=delta_lambda,
+                        delta_t=delta_t, precision_regime=precision_regime,
+                        coverage={"truncated": False},
+                    )
+                    counts["events"] += 1
+
+        # Stations — each at its own solved longitude (one object, ordinal 1);
+        # ALWAYS swiss_refined (§7.1: δt unstable near a station).
+        for jd_station in index.stations:
+            lon = float(index.evaluate(jd_station)) % 360.0
+            poid = physical_object_id(
+                body=body, relation_kind="station",
+                canonical_target=boundary_target(lon), convention_id=cid,
+            )
+            self.insert_physical_object(poid)
+            counts["objects"] += 1
+            (contact,) = assign_occurrence_ordinals(
+                physical_object_id=poid, t_exact_list=[jd_to_utc(jd_station)]
+            )
+            self.insert_event(
+                contact, event_kind="station", longitude=lon,
+                solver_method="swiss_refined", delta_lambda=delta_lambda,
+                delta_t=1e-9, precision_regime="swiss_bisect_tol_1e-9d",
+                coverage={"truncated": False},
+            )
+            counts["stations"] += 1
+        return counts
+
+
+__all__ += [
+    "ConventionDivergenceError",
+    "DB_BODY",
+    "DB_EVENT_KIND",
+    "IdentityCollisionError",
+    "SUBSTRATE_BODIES",
+    "SkyEvent",
+    "SkyEventStore",
+    "boundary_target",
+    "jd_to_utc",
+]
