@@ -238,3 +238,18 @@ def test_compute_stage_rows_are_never_pre_stamped_verified(raw_vim, raw_mudda):
     vim, kp = raw_vim
     for rows in (vim, kp, raw_mudda):
         assert {r["verification_pass_status"] for r in rows} == {T.SINGLE}
+
+
+def test_every_tier_the_dashas_post_pass_emits_passes_emit_tier_for_chart_dashas(monkeypatch, raw_mudda, raw_vim):
+    """chart_dashas has the narrow CHECK vocabulary (RESTRICTED_TABLE_VOCAB): classical_match, single,
+    two_pass_verified must all be accepted by emit_tier(table='chart_dashas'); the l1 tajik table has no
+    restriction."""
+    _, mudda = _build_capturing(monkeypatch, "mudda", patch_compute={"compute_mudda_system": _cached(raw_mudda)})
+    vim, kp = raw_vim
+    _, vrows = _build_capturing(monkeypatch, "vimshottari", patch_compute={
+        "compute_vimshottari": _cached(vim), "compute_kp_subperiods": lambda *a, **k: copy.deepcopy(kp)})
+    tiers = {r["verification_pass_status"] for r in mudda + vrows}
+    assert {T.CLASSICAL_MATCH, T.SINGLE, T.TWO_PASS_VERIFIED} <= tiers
+    for t in tiers:
+        T.emit_tier(t, table="chart_dashas")
+    T.emit_tier(T.CLASSICAL_MATCH, table="l1_tajik_varsha_year_lords")

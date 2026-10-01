@@ -82,6 +82,8 @@ def test_build_ga_panchanga_every_row_is_single(monkeypatch):
     summary = P.build_ga_panchanga("chart-q03-not-canonical", "build-q03", conn=object(), birth_params=bp)
     assert summary["status"] == "PASS" and len(captured) > 100
     assert {r["verification_pass_status"] for r in captured} == {T.SINGLE}
+    for r in captured:
+        T.emit_tier(r["verification_pass_status"], table="chart_facts")
 
 
 def test_panchanga_tier_mutant_is_caught(monkeypatch):

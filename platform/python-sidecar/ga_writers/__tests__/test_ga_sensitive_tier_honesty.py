@@ -331,3 +331,10 @@ def test_divergent_upagraha_halts_the_persist_path(monkeypatch):
         W.build_ga_sensitive_for_ayanamsha(
             AYA_KEY, "lahiri", CHART_ID, BUILD_ID, None, dict(_BIRTH), {}, "e",
         )
+
+
+def test_every_tier_ga_sensitive_emits_passes_emit_tier_for_chart_facts(rows):
+    """floored / computed_extension / two_pass_verified / single / no-value tiers are all
+    vocabulary members the chart_facts choke-point accepts (`data_error` is no longer emitted)."""
+    for r in rows:
+        T.emit_tier(r["verification_pass_status"], table="chart_facts")

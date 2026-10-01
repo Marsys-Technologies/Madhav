@@ -116,15 +116,7 @@ _BARE_LITERAL_BASELINE: dict[str, int] = {
 #: Strings assigned to a `*verif*` / `verification_pass_status` target that are NOT vocabulary
 #: members. Key = (file, value); value = why. Deliberately tiny: each is a defect or a label,
 #: not a tier a writer may invent. Stale entries are harmless (a lane that fixes one may delete it).
-_NON_MEMBER_VERIF_ALLOWLIST: dict[tuple[str, str], str] = {
-    ("ga_writers/ga_strength_writer.py", "floored_sarva_mismatch"): (
-        "fixed by the Q03 tier-honesty lane (not a vocabulary member; Q03 removes this entry)"
-    ),
-    ("ga_writers/ga_sensitive_writer.py", "data_error"): (
-        "KP_PARSE_ERROR error-path row stamps a non-vocabulary tier (assert_legal / the chart_facts "
-        "CHECK would reject it); ga_sensitive is the Q03 tier-honesty lane's file -- fix there"
-    ),
-}
+_NON_MEMBER_VERIF_ALLOWLIST: dict[tuple[str, str], str] = {}  # both pre-existing exceptions fixed by Q03
 #: Prose descriptions keyed `verification_pass_status` (documentation dicts, not stored tiers).
 _VERIF_PROSE_FILES = frozenset({"ga_writers/_vimshottari_independent_verifier.py"})
 

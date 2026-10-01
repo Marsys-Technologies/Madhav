@@ -388,6 +388,8 @@ def test_build_wiring_applies_each_verifier_tier_to_its_own_examined_rows(monkey
     assert "floored_sarva_mismatch" not in {r["verification_pass_status"] for r in rows}
     allowed = _constraint_members()
     assert {r["verification_pass_status"] for r in rows} <= allowed
+    for r in rows:  # the writer's real insert choke point calls exactly this
+        T.emit_tier(r["verification_pass_status"], table="chart_facts")
 
 
 def test_build_mutant_stubbed_verifiers_drop_the_examined_rows(monkeypatch):
