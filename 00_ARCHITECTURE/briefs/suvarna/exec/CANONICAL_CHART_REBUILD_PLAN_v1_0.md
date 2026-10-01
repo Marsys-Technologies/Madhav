@@ -203,6 +203,43 @@ An equivalent to Option D is acceptable only if checks 3, 4 and 5 hold for all t
 - The incident review's F-A3 note matters if (b): `rows_written` for the other two charts (38,620 each) is a pre-fix attempted count, about 23.5k live was the expected landed figure; compare with the owner-path count, not with throughput.
 
 
+## P0c. Dependency gates by stage: grants and migrations (v1.1)
+
+Sources: BUILDER_GRANT_PLAN v1.3 (PR #2825, `suvarna/land/grant-plan-001`), the migration headers of PRs #2826, #2827, #2828, the
+`F3_MSR_FK_DROP_v1_0.md` v1.1 on `suvarna/land/F3-msr-fk-drop-001`, and PR #2830. **Live state read 2026-10-01 about 16:20Z (Evidence E8): none of
+migrations 1212, 1213, 1214, 1215 is applied (`_migrations_applied` latest = 1210); no active output-digest spec exists for `ka_vighnakara`, `ka_dasha_kala`
+or `ka_muhurta_seva`; all eight `bodha_msr_signals` foreign keys still exist; for `data_plane_builder`: `asset_throughput_state_audit` INSERT false,
+`phala_anchors` SELECT false, `bg_combustion_orbs` SELECT false, `asset_registry.selftest_detail` UPDATE false, `phala_rectification` SELECT false.**
+All six PRs (#2826, #2827, #2828, #2830, #2825, #2833) were OPEN and unmerged at that time. "Deployed and verified" below means: the migration's file
+is in `_migrations_applied` AND its own post-apply SQL returns the stated result (CLAUDE.md N.4: never trust a silent no-op), or, for a grant, the
+`has_*_privilege` check in the table is true for `data_plane_builder`.
+
+### P0c.1 Migrations
+
+| Migration (PR) | What it does | Gates which stage | Verify (read-only) |
+|---|---|---|---|
+| **1212** (#2826, I-4) | one `asset_output_digest_specs` row for `ka_vighnakara` (resolves B-1: the asset can then be 'proven') | **S4** (`ka_vighnakara` and its four direct dependents `ka_kala_darshana`, `ka_bhavishya_lekha`, `ph_muhurta`, `ph_pratikara`, hence all of S5-S6). Without it S4 ends `blocked_dependency` exactly as section 0 item 2 predicts. | `SELECT spec_sha256 FROM asset_output_digest_specs WHERE asset_id='ka_vighnakara' AND retired_at IS NULL` = `a731cb0c49546583b12dd24f1366389b99eb695aed4142f16560cea08b88f117` (1 row) |
+| **1213** (#2826, I-5) | two spec rows, for the services `ka_dasha_kala` and `ka_muhurta_seva` (resolves B-2: `ka_sangam`'s NULL upstream digest) | **S1** (it must be deployed BEFORE S1 runs: the services' receipts only gain a digest when they REBUILD under it; applying it changes no receipt by itself) and therefore **S3** (`ka_sangam`) and everything after | `SELECT asset_id, spec_sha256 FROM asset_output_digest_specs WHERE asset_id IN ('ka_dasha_kala','ka_muhurta_seva') AND retired_at IS NULL` = 2 rows (`c5dfe575...681d`, `dbcdba8a...9ed4`); after S1, the latest receipt of both has `receipt_state='proven'` and a non-null `output_digest` |
+| **1215** (#2827, I-8) | rewrites `ka_avadhi`'s `integrity_check_sql`: scoped to the canonical chart, `chara_karaka` vocabulary fix, non-vacuity conjunct (f) | **S3, `ka_avadhi` only** (the failure it cures, `post-write integrity check failed`, is the 2026-09-10 error of section 0 item 6). It updates `integrity_check_sql`, which fires `nirmana_registry_receipt_invalidation`, so `ka_avadhi`'s receipt reads `registry_changed` afterwards (it is in the plan anyway). | its own `$post$` assertions (canonical-chart literal and `'chara_karaka'` present, `'chara',` absent, conjunct (f) present): `SELECT position('482012f1-710e-4a25-994a-93821f5871aa' IN integrity_check_sql) > 0, position('''chara_karaka''' IN integrity_check_sql) > 0 FROM asset_registry WHERE asset_id='ka_avadhi'` |
+| **1214** (#2828, F-3) | drops the five `kala_*` `signal_id` foreign keys into `bodha_msr_signals` | **No stage in this plan.** The plan contains no MSR writer, so nothing in it triggers the cascade the keys carry. It governs the **lifetime of the MSR-before-Kala/Phala rule (section 1.5)** and is the pre-condition for any later MSR regeneration; if an MSR producer is added (S0m) with the keys still present, its replace CASCADE-deletes `kala_*` rows (F-3 proof: 4 rows to 0). Its own pre-merge gates (F3 doc section 2: no in-flight run on any chart, an idle deploy window, no long read on `bodha_msr_signals`) apply to the deploy that carries it. | the five constraint names absent from `pg_constraint`; `msr_dangling_signal_refs.py --require-nonvacuous` post-wave; note the migration lives in `platform/supabase/migrations/` while 1210 lives in `platform/migrations/` (F3 doc open question 4): confirm the deploy actually applied it |
+| **L2 FK drop** (grant plan v1.3 Part A, owner-path, PR #2825) | drops `bodha_contradictions_signal_{a,b}_id_fkey` and `bodha_signal_embeddings_signal_id_fkey` (owner `data_plane_l2_owner`) | **No stage.** Same role as 1214: ends the cascade into `bodha_signal_embeddings`/`bodha_contradictions`. F3 doc section 5 records a PREREQUISITE (the L2 writers' child deletes are scoped by `pg_temp.bodha_msr_signals`, a snapshot that is empty for a root writer such as `bo_laksana`, so dropping the keys without scoping the child deletes strands 4 embeddings and 1 contradiction in its proof); I could not find where grant plan v1.3 discharges it, so this lane does not treat the L2 drop as safe, only as planned. | `pg_constraint` shows none of the three names |
+
+### P0c.2 Grants (all `data_plane_builder`; the audit-table grant is Pravaha's and is P0, not repeated)
+
+| Grant (BUILDER_GRANT_PLAN v1.3 Part B unless noted) | Needed by | Gates | Today |
+|---|---|---|---|
+| `GRANT UPDATE (selftest_detail) ON asset_registry` | the four service writers `ka_dasha_kala`, `ka_muhurta_seva`, `ka_tulana`, `ka_graha_sancara`: the first two are in the launch set (`ka_dasha_kala` unguarded write: permission denied, asset error; `ka_muhurta_seva`'s write is outside any try and its exception fails the asset; both code-derived, grant plan section 3.1) | **S1 and S0m-onward**: this is a **correction to v1.0 P0.5**, which said S0-S4 needed no grant beyond the audit grant; `ka_muhurta_seva` already sits in S1 | false |
+| `GRANT SELECT ON bg_combustion_orbs` | `ka_vighnakara.py:302`, which falls back silently to constants when it cannot read the table (grant plan: the 8 table values equal the 8 fallback constants today, observed there) | **S4**, soft: not blocking, but without it the output silently depends on the fallback | false |
+| `GRANT SELECT ... ON phala_anchors` | `ka_bhavishya_lekha.py:249-280` reads `phala_anchors.bhavishya_id` to refuse deleting referenced stale projection ids; the read runs only when `kala_bhavishya` already holds rows for the chart (0 on the canonical chart today), so the first S4 pass may not touch it but **any retry or later run does** | **must precede S4** (the stage that builds `ka_bhavishya_lekha`): the phala grant is not only an S5 need | false |
+| `phala_*` x8 tables (`phala_anchors`, `_muhurta`, `_mitigation`, `_sankrama`, `_sodhana`, `_suddha_sodhana`, `_pramana`, `_phaladesa`), `EXECUTE` on `phala_anchor_identity(...)` and `phala_anchor_identity_namespace()`, `life_events` (5 columns), `brahma_activity_ontology` SELECT | the eight `ph_*` writers | **S5** | all false (v1.0 P0.2) |
+| `mimamsa_predictions`, `mimamsa_manifestation_sets` (SELECT, INSERT, DELETE) with the N-46 `BEFORE INSERT OR DELETE` guard (Part A2) | `mi_bhavisya` | **S6** | false |
+| `kala_*` target tables | every `ka_*` writer in the plan | none outstanding: grant plan section 3.2 re-measured all 18 distinct `ka_*` target tables as fully granted (S, I, U, D) and the identity sequences as USAGE; 41 of 47 `kala_*`/`gochara_*` tables fully writable; the gochara-kernel tables are Pravaha's and no registered S0-S4 writer names them | none |
+| `phala_rectification` SELECT | `ka_kshetra` (`uncertainty.py:185-196` via `stage3_clocks.py:1012`) | **S7**: **held** by migration 1073 on a design ruling and not part of the grant plan | false |
+
+The grant plan's own verification and rollback are its; this plan only consumes the post-apply `has_*_privilege` results. P0.5 check 2 is amended: S0 needs the audit grant only; **S1 needs the audit grant plus `selftest_detail`**; S2-S3 need the same;
+**S4 needs `phala_anchors` SELECT** (and `bg_combustion_orbs` for a non-fallback run); S5 needs the full phala set; S6 the mimamsa set and guard; S7 the held `phala_rectification` ruling. Q9 (split decision) is restated in section 9.
+
+
 ## 0. What this review needs you to see first
 
 0. **Nothing can complete yet (P0 above).** The audit trigger on `asset_throughput` is not SECURITY DEFINER and `data_plane_builder`
