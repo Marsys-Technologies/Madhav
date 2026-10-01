@@ -45,21 +45,35 @@ Execution happens separately, after steward go:
 
 Prints ONLY the run_id (UUID) to stdout on success, for shell capture.
 
-TEARDOWN (exact):
-  DELETE FROM build_run_assets WHERE run_id IN
-    (SELECT id FROM build_runs WHERE triggered_by = 'pravaha-a25-v41-candidate');
-  DELETE FROM build_runs WHERE triggered_by = 'pravaha-a25-v41-candidate';
-  DELETE FROM asset_throughput WHERE asset_id = 'ka_gochara_v4_41_candidate';
-  DELETE FROM asset_registry   WHERE asset_id = 'ka_gochara_v4_41_candidate';
-  -- candidate rows themselves (generation '4.1' only — never 'v1'/'3.0'):
-  DELETE FROM kala_gochara_windows   WHERE generation = '4.1';
-  DELETE FROM kala_gochara_contacts  WHERE generation = '4.1';
-  DELETE FROM kala_gochara_coverage  WHERE generation = '4.1';
-  DELETE FROM kala_gochara_publication WHERE generation = '4.1';
+TEARDOWN (--teardown): ONE transaction, chart/run-scoped, fail-closed —
+  1. REFUSES when any of these holds (loudly, nothing deleted):
+     * a kala_gochara_publication row for the PINNED chart at generation
+       '4.1' has status 'published' (a published generation is immutable —
+       plan §4.7/N-7);
+     * kala_gochara_authority names '4.1' as the pinned chart's
+       authoritative_generation (a SERVING generation is never torn down);
+     * a build_runs row for this asset on the pinned chart is
+       planned/running/paused (active execution — stop it first);
+  2. then deletes, in one commit:
+       DELETE FROM build_run_assets WHERE run_id IN
+         (SELECT id FROM build_runs WHERE triggered_by = 'pravaha-a25-v41-candidate'
+            AND chart_id = '<pinned>');
+       DELETE FROM build_runs WHERE triggered_by = 'pravaha-a25-v41-candidate'
+         AND chart_id = '<pinned>';
+       DELETE FROM asset_throughput WHERE asset_id = 'ka_gochara_v4_41_candidate'
+         AND chart_id = '<pinned>';
+       DELETE FROM asset_registry   WHERE asset_id = 'ka_gochara_v4_41_candidate';
+       -- candidate rows for the PINNED CHART ONLY, generation '4.1' only —
+       -- never another chart's '4.1', never 'v1'/'3.0':
+       DELETE FROM kala_gochara_windows   WHERE chart_id = '<pinned>' AND generation = '4.1';
+       DELETE FROM kala_gochara_contacts  WHERE chart_id = '<pinned>' AND generation = '4.1';
+       DELETE FROM kala_gochara_coverage  WHERE chart_id = '<pinned>' AND generation = '4.1';
+       DELETE FROM kala_gochara_publication WHERE chart_id = '<pinned>' AND generation = '4.1';
 
 Usage:
   cd <repo-root>/platform
   python3 scripts/dispatch_a25_v41_candidate_job.py          # stages + prints run_id
+  python3 scripts/dispatch_a25_v41_candidate_job.py --teardown  # refuse-or-delete (above)
   python3 scripts/dispatch_a25_v41_candidate_job.py --help   # this text
 """
 from __future__ import annotations
@@ -129,6 +143,134 @@ INSERT INTO asset_registry (
 ) ON CONFLICT (asset_id) DO NOTHING
 """
 
+# ASTRA A2.5 A10: the shape a registry row for this asset MUST have before
+# staging. ON CONFLICT DO NOTHING preserves a pre-existing (e.g. seeded) row,
+# so the insert alone proves nothing — validate the landed row field by field.
+# A seeded default writer_timeout_seconds=600 would silently cap this
+# two-hour job at ten minutes (the runner reads the registry timeout).
+EXPECTED_REGISTRY_ROW = {
+    "scope": "per_chart",
+    "is_active": False,
+    "has_writer": True,
+    "has_substeps": True,
+    "writer_timeout_seconds": 7200,
+    "depends_on": [],
+}
+
+
+def _validate_registry_row(cur) -> None:
+    cur.execute(
+        """SELECT scope, is_active, has_writer, has_substeps,
+                  writer_timeout_seconds, depends_on
+           FROM asset_registry WHERE asset_id = %s""",
+        (ASSET_ID,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise RuntimeError(f"asset_registry insert for {ASSET_ID} did not land")
+    for field, expected in EXPECTED_REGISTRY_ROW.items():
+        actual = row[field]
+        if field == "depends_on":
+            actual = list(actual or [])
+        if actual != expected:
+            raise RuntimeError(
+                f"{ASSET_ID}.{field} is {actual!r}, expected {expected!r} — "
+                "a pre-existing non-conforming registry row would change how "
+                "this build is scheduled or budgeted; fix the row before "
+                "dispatching")
+
+
+# A4: candidate-row teardown, chart/run-scoped, ONE transaction, fail-closed.
+# The DELETE list is executed only after every refusal check passes.
+TEARDOWN_DELETES = (
+    # build bookkeeping for THIS asset on THIS chart staged by THIS dispatch
+    """DELETE FROM build_run_assets WHERE run_id IN
+         (SELECT id FROM build_runs WHERE triggered_by = %s
+            AND chart_id = %s)""",
+    "DELETE FROM build_runs WHERE triggered_by = %s AND chart_id = %s",
+    "DELETE FROM asset_throughput WHERE asset_id = %s AND chart_id = %s",
+    "DELETE FROM asset_registry WHERE asset_id = %s",
+    # candidate rows for the PINNED CHART ONLY, generation '4.1' only —
+    # never another chart's '4.1', never 'v1'/'3.0'
+    "DELETE FROM kala_gochara_windows   WHERE chart_id = %s AND generation = '4.1'",
+    "DELETE FROM kala_gochara_contacts  WHERE chart_id = %s AND generation = '4.1'",
+    "DELETE FROM kala_gochara_coverage  WHERE chart_id = %s AND generation = '4.1'",
+    "DELETE FROM kala_gochara_publication WHERE chart_id = %s AND generation = '4.1'",
+)
+
+
+def teardown() -> None:
+    import psycopg
+    import psycopg.rows
+
+    database_url = os.environ["DATABASE_URL"]
+    conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+    conn.autocommit = False
+    cur = conn.cursor()
+    try:
+        # Refusal 1: a PUBLISHED '4.1' manifest for the pinned chart is
+        # immutable (plan §4.7/N-7) — never torn down.
+        cur.execute(
+            """SELECT manifest_id, status FROM kala_gochara_publication
+               WHERE chart_id = %s AND generation = '4.1'
+                 AND status = 'published'""",
+            (CHART_ID,),
+        )
+        published = cur.fetchone()
+        if published:
+            raise RuntimeError(
+                f"teardown refused: kala_gochara_publication has a PUBLISHED "
+                f"'4.1' manifest {published['manifest_id']} for chart "
+                f"{CHART_ID} — a published generation is immutable")
+
+        # Refusal 2: a SERVING generation is never torn down.
+        cur.execute(
+            """SELECT authoritative_generation FROM kala_gochara_authority
+               WHERE chart_id = %s""",
+            (CHART_ID,),
+        )
+        authority = cur.fetchone()
+        if authority and authority["authoritative_generation"] == "4.1":
+            raise RuntimeError(
+                f"teardown refused: kala_gochara_authority names '4.1' as the "
+                f"authoritative_generation for chart {CHART_ID} — a serving "
+                "generation is never torn down")
+
+        # Refusal 3: active execution for this asset on this chart — stop it
+        # first; tearing down underneath a running build corrupts the run.
+        cur.execute(
+            """SELECT id, state FROM build_runs
+               WHERE chart_id = %s AND scope = 'asset_set'
+                 AND scope_target = %s
+                 AND state IN ('planned', 'running', 'paused')""",
+            (CHART_ID, ASSET_ID),
+        )
+        active = cur.fetchall()
+        if active:
+            raise RuntimeError(
+                f"teardown refused: active build_runs {[(str(r['id']), r['state']) for r in active]} "
+                f"for asset {ASSET_ID} on chart {CHART_ID} — stop active "
+                "execution first")
+
+        for sql in TEARDOWN_DELETES:
+            if "build_run_assets" in sql or "FROM build_runs" in sql:
+                cur.execute(sql, (TRIGGERED_BY, CHART_ID))
+            elif "asset_throughput" in sql:
+                cur.execute(sql, (ASSET_ID, CHART_ID))
+            elif "asset_registry" in sql:
+                cur.execute(sql, (ASSET_ID,))
+            else:
+                cur.execute(sql, (CHART_ID,))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        raise
+    conn.close()
+    print(f"[teardown] removed staged run bookkeeping, registry row and ALL "
+          f"'4.1' candidate rows for chart {CHART_ID} in one transaction",
+          file=sys.stderr)
+
 
 def main() -> None:
     import psycopg
@@ -153,21 +295,15 @@ def main() -> None:
             f"{ASSET_ID} in depends_on — the asset must stay dependency-free "
             "so no existing DAG build ever schedules it")
 
-    cur.execute(REGISTRY_INSERT)
-    cur.execute(
-        "SELECT depends_on FROM asset_registry WHERE asset_id = %s",
-        (ASSET_ID,),
-    )
-    row = cur.fetchone()
-    if row is None:
+    try:
+        cur.execute(REGISTRY_INSERT)
+        # A10: the insert is ON CONFLICT DO NOTHING — validate the LANDED
+        # row (pre-existing or new) field by field before staging anything.
+        _validate_registry_row(cur)
+    except Exception:
+        conn.rollback()
         conn.close()
-        raise RuntimeError(f"asset_registry insert for {ASSET_ID} did not land")
-    if row["depends_on"]:
-        conn.close()
-        raise RuntimeError(
-            f"{ASSET_ID}.depends_on is {row['depends_on']}, expected '{{}}' — "
-            "a pre-existing row with dependencies would let DAG builds "
-            "schedule it; investigate before dispatching")
+        raise
 
     run_id = None
     try:
@@ -242,4 +378,7 @@ if __name__ == "__main__":
     if any(a in ("-h", "--help") for a in sys.argv[1:]):
         print(__doc__)
         sys.exit(0)
-    main()
+    if "--teardown" in sys.argv[1:]:
+        teardown()
+    else:
+        main()

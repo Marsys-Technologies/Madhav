@@ -2278,6 +2278,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // itself hard-refuses any chart other than the pinned candidate chart.
     scope: 'per_chart', is_active: false, estimated_seconds: null,
     has_writer: true, has_substeps: true,
+    // ASTRA A2.5 A10: the dispatch stages this heavy job with a 7200s budget;
+    // the seed must agree — the registry insert is ON CONFLICT DO NOTHING, so
+    // a seeded 600 (the default) would silently cap the run at ten minutes.
+    writer_timeout_seconds: 7200,
     asset_kind: 'data',
   },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──

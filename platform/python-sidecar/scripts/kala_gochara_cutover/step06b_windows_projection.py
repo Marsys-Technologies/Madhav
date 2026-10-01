@@ -185,6 +185,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import connect, resolve_dsn, step_parser, write_evidence  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[2]
+# CLI robustness: several evaluator delegations below (ka_vedha_gochara.gate,
+# gochara_rules/*, gochara_intensity/*) import `services.*` lazily. When the
+# module runs as a SCRIPT the sidecar root is not on sys.path (only the
+# script's own dir, above) and those imports fail with ModuleNotFoundError —
+# the in-process pytest path never sees this because conftest already puts
+# the sidecar on sys.path. Insert it once, guarded, at import time.
+if str(SIDECAR) not in sys.path:
+    sys.path.insert(0, str(SIDECAR))
 _LEDGER_PATH = SIDECAR / "services" / "gochara_kernel" / "ledger.py"
 _LEGACY_PATH = SIDECAR / "services" / "gochara_kernel" / "legacy_semantics.py"
 

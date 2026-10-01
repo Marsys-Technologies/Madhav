@@ -26,6 +26,11 @@ describe('A2.5 candidate asset planner inertness', () => {
     expect(row!.is_active).toBe(false)
     expect(row!.depends_on ?? []).toEqual([])
     expect(row!.has_writer).toBe(true)
+    // ASTRA A2.5 A10: the seed must carry the same timeout the dispatch stages
+    // (7200s) — ON CONFLICT DO NOTHING preserves the seeded value, and the
+    // runner reads the registry timeout, so a seeded default (600) would
+    // silently cap this two-hour job at ten minutes.
+    expect((row as unknown as { writer_timeout_seconds?: number }).writer_timeout_seconds).toBe(7200)
   })
 
   it("runPreparation's predicate (is_active = true) does not select it", () => {

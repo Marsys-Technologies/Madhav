@@ -521,12 +521,14 @@ def test_dispatch_script_registry_insert_is_idempotent_and_dependency_free():
     assert "json.dumps([ASSET_ID])" in src
     assert "'dormant'" in src
     assert "print(run_id, flush=True)" in src
-    # exact teardown DELETEs ship in --help (the module docstring)
-    assert "--help" in src
+    # the A4 teardown ships in --help (the module docstring): chart-scoped,
+    # generation-'4.1'-only, with the three refusals documented
+    assert "--help" in src and "--teardown" in src
     assert ("DELETE FROM asset_registry   WHERE asset_id = "
             "'ka_gochara_v4_41_candidate';") in src
     assert ("DELETE FROM asset_throughput WHERE asset_id = "
-            "'ka_gochara_v4_41_candidate';") in src
+            "'ka_gochara_v4_41_candidate'\n         AND chart_id = '<pinned>';") in src
+    assert "REFUSES when any of these holds" in src
 
 
 def test_dispatch_script_inserts_the_row_inert_and_restores_inertness():
@@ -540,15 +542,16 @@ def test_dispatch_script_inserts_the_row_inert_and_restores_inertness():
     # the INSERT itself carries is_active = false (inert to all planners)
     values = src.split(") VALUES (", 1)[1]
     assert "0, 'per_chart', false, true, true," in values
-    flip_true = src.index(
+    main_src = src.split("def main()", 1)[1]
+    flip_true = main_src.index(
         "UPDATE asset_registry SET is_active = true WHERE asset_id = %s")
-    flip_false = src.index(
+    flip_false = main_src.index(
         "UPDATE asset_registry SET is_active = false WHERE asset_id = %s")
-    commit = src.index("conn.commit()")
+    commit = main_src.index("conn.commit()")
     # flip true precedes flip false, and the ONLY commit lands after both —
     # a single transaction for the whole staging window
     assert flip_true < flip_false < commit
-    assert src.count("conn.commit()") == 1
+    assert main_src.count("conn.commit()") == 1
     # belt: a pre-commit failure rolls back (nothing staged, nothing flipped)
     assert "except Exception:" in src and "conn.rollback()" in src
     # --help documents the single-transaction flip/restore and the manual
@@ -577,8 +580,10 @@ def test_dispatch_single_transaction_committed_end_state_is_inert():
             return []
 
         def fetchone(self):
-            if "SELECT depends_on FROM asset_registry" in self._last:
-                return {"depends_on": []}
+            if "FROM asset_registry WHERE asset_id" in self._last:
+                return {"scope": "per_chart", "is_active": False,
+                        "has_writer": True, "has_substeps": True,
+                        "writer_timeout_seconds": 7200, "depends_on": []}
             if "_load_candidate" in self._last or "has_cowriters" in self._last:
                 return {
                     "asset_id": "ka_gochara_v4_41_candidate",
@@ -1054,3 +1059,250 @@ def test_swieph_backend_through_the_resolved_path():
     ks = sample_knots("Sun", date(2020, 1, 1), date(2020, 2, 1), _c.EPHE_PATH)
     assert ks.ephemeris_backend["backend"] == "swieph"
     assert len(ks.knot_jds) > 0
+
+
+# ── ASTRA v1.0 PUSH 3: A4 (teardown), A10 (registry row validation) ──────────
+
+
+class _DispatchCur:
+    """Cursor for dispatch-script tests: records statements, answers from a
+    steering dict keyed by a substring of the SQL."""
+
+    def __init__(self, conn, answers):
+        self._conn = conn
+        self._answers = answers
+        self._last = ""
+
+    def execute(self, sql, params=None):
+        self._conn.statements.append((sql, params))
+        self._last = sql
+
+    def fetchone(self):
+        for key, val in self._answers.items():
+            if key in self._last:
+                return val[0] if isinstance(val, list) else val
+        return None
+
+    def fetchall(self):
+        for key, val in self._answers.items():
+            if key in self._last:
+                return val if isinstance(val, list) else [val]
+        return []
+
+
+class _DispatchConn:
+    def __init__(self, answers):
+        self.statements: list[tuple[str, object]] = []
+        self.commits = 0
+        self.rollbacks = 0
+        self._answers = answers
+
+    def cursor(self):
+        return _DispatchCur(self, self._answers)
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
+
+    def close(self):
+        pass
+
+
+def _run_dispatch(answers, argv, monkeypatch):
+    """Run the dispatch script against a recording fake psycopg; returns
+    (module, conn). `argv[0]` selects the mode: [] stages, ['--teardown']
+    tears down."""
+    import types
+
+    conn = _DispatchConn(answers)
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_rows = types.ModuleType("psycopg.rows")
+    fake_rows.dict_row = object()
+    fake_psycopg.rows = fake_rows
+    fake_psycopg.connect = lambda *a, **k: conn
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    monkeypatch.setitem(sys.modules, "psycopg.rows", fake_rows)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+    monkeypatch.setattr(sys, "argv", ["dispatch_a25_v41_candidate_job.py"] + argv)
+    sys.path.insert(0, str(DISPATCH.parent))
+    try:
+        import importlib
+        import dispatch_a25_v41_candidate_job as dispatch
+        importlib.reload(dispatch)
+        yield_dispatch = dispatch
+        if "--teardown" in argv:
+            yield_dispatch.teardown()
+        else:
+            yield_dispatch.main()
+    finally:
+        sys.path.remove(str(DISPATCH.parent))
+        sys.modules.pop("dispatch_a25_v41_candidate_job", None)
+    return conn
+
+
+_REGROW_OK = {
+    "FROM asset_registry WHERE asset_id": {
+        "scope": "per_chart", "is_active": False, "has_writer": True,
+        "has_substeps": True, "writer_timeout_seconds": 7200,
+        "depends_on": []},
+    "has_cowriters": {
+        "asset_id": "ka_gochara_v4_41_candidate", "layer": "kala",
+        "scope": "per_chart", "asset_kind": "data", "depends_on": [],
+        "natural_key_partition": None, "has_cowriters": True},
+}
+
+
+def test_teardown_refuses_a_published_generation(monkeypatch):
+    """A4: a published '4.1' manifest for the pinned chart → loud refusal,
+    NOTHING deleted, no commit."""
+    answers = {"FROM kala_gochara_publication":
+               {"manifest_id": str(uuid.uuid4()), "status": "published"}}
+    with pytest.raises(RuntimeError, match="published"):
+        _run_dispatch(answers, ["--teardown"], monkeypatch)
+
+
+def test_teardown_refuses_a_serving_generation(monkeypatch):
+    """A4: kala_gochara_authority naming '4.1' for the pinned chart → refuse."""
+    answers = {"FROM kala_gochara_authority":
+               {"authoritative_generation": "4.1"}}
+    with pytest.raises(RuntimeError, match="authoritative"):
+        _run_dispatch(answers, ["--teardown"], monkeypatch)
+
+
+def test_teardown_refuses_an_active_run(monkeypatch):
+    """A4: a planned/running/paused build_run for this asset+chart → refuse."""
+    answers = {"FROM build_runs": [{"id": str(uuid.uuid4()), "state": "running"}]}
+    with pytest.raises(RuntimeError, match="active"):
+        _run_dispatch(answers, ["--teardown"], monkeypatch)
+
+
+def test_teardown_deletes_chart_scoped_in_one_transaction(monkeypatch):
+    """A4 happy path: every candidate-row DELETE is scoped to the pinned
+    chart AND generation '4.1'; build-run/throughput deletes are chart- and
+    run-scoped; ONE commit; no other generation is touched."""
+    conn = _run_dispatch({}, ["--teardown"], monkeypatch)
+    deletes = [s for s, _ in conn.statements if s.lstrip().upper().startswith("DELETE")]
+    assert conn.commits == 1 and conn.rollbacks == 0
+    assert deletes, "teardown issued no DELETEs"
+    kala = [s for s in deletes if "kala_gochara" in s]
+    assert len(kala) == 4  # windows, contacts, coverage, publication
+    for s in kala:
+        assert "chart_id" in s and "'4.1'" in s, s
+    assert any("build_run_assets" in s for s in deletes)
+    assert any("FROM build_runs" in s and "chart_id" in s for s in deletes)
+    assert any("asset_throughput" in s and "chart_id" in s for s in deletes)
+    assert any("asset_registry" in s for s in deletes)
+    # never another generation
+    assert not any("'3.0'" in s or "'v1'" in s for s in deletes)
+
+
+def test_teardown_flag_dispatches_to_teardown(monkeypatch):
+    """A4: `--teardown` on the CLI runs the teardown path, not staging."""
+    conn = _run_dispatch({}, ["--teardown"], monkeypatch)
+    assert not any("INSERT INTO build_runs" in s for s, _ in conn.statements)
+
+
+def test_dispatch_refuses_a_preexisting_row_with_wrong_timeout(monkeypatch):
+    """A10: ON CONFLICT DO NOTHING preserves a seeded row; if that row carries
+    writer_timeout_seconds=600 (or any non-conforming field), staging REFUSES
+    before the is_active flip — the runner would otherwise read the seeded
+    ten-minute budget for this two-hour job."""
+    answers = dict(_REGROW_OK)
+    answers["FROM asset_registry WHERE asset_id"] = dict(
+        answers["FROM asset_registry WHERE asset_id"],
+        writer_timeout_seconds=600)
+    conn_holder = {}
+
+    def _connect(*a, **k):
+        c = _DispatchConn(answers)
+        conn_holder["c"] = c
+        return c
+
+    import types
+    fake_psycopg = types.ModuleType("psycopg")
+    fake_rows = types.ModuleType("psycopg.rows")
+    fake_rows.dict_row = object()
+    fake_psycopg.rows = fake_rows
+    fake_psycopg.connect = _connect
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    monkeypatch.setitem(sys.modules, "psycopg.rows", fake_rows)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake/fake")
+    monkeypatch.setattr(sys, "argv", ["dispatch_a25_v41_candidate_job.py"])
+    sys.path.insert(0, str(DISPATCH.parent))
+    try:
+        import importlib
+        import dispatch_a25_v41_candidate_job as dispatch
+        importlib.reload(dispatch)
+        with pytest.raises(RuntimeError, match="writer_timeout_seconds"):
+            dispatch.main()
+    finally:
+        sys.path.remove(str(DISPATCH.parent))
+        sys.modules.pop("dispatch_a25_v41_candidate_job", None)
+    # refused BEFORE the transient activation: no is_active flip, no staging
+    stmts = [s for s, _ in conn_holder["c"].statements]
+    assert not any("SET is_active = true" in s for s in stmts)
+    assert not any("INSERT INTO build_runs" in s for s in stmts)
+    assert conn_holder["c"].commits == 0
+
+
+# ── ASTRA v1.0 PUSH 3: A3 (complete executable source closure) ───────────────
+
+
+def test_writer_source_closure_covers_dynamically_loaded_modules():
+    """A3: the frozen hasher follows static imports; this writer loads four
+    cutover modules and two kernel modules BY PATH. The declared source_paths
+    closure must cover all of them, so a change to any invalidates the
+    writer's expected code digest."""
+    from pipeline.orchestrator.asset_runner import (
+        _writer_source_files,
+        _writer_source_paths,
+    )
+    files = {p for p, _ in _writer_source_files(
+        _writer_source_paths(writer_mod.ASSET_ID))}
+    for frag in (
+        "writers/ka_gochara_v4_41_candidate.py",
+        "kala_gochara_cutover/step06_enumerate_episodes.py",
+        "kala_gochara_cutover/step06_candidate_build.py",
+        "kala_gochara_cutover/step06a_class_context.py",
+        "kala_gochara_cutover/step06b_windows_projection.py",
+        "gochara_kernel/ledger.py",
+        "gochara_kernel/legacy_semantics.py",
+    ):
+        assert any(f.endswith(frag) for f in files), frag
+
+
+def test_writer_source_closure_digest_covers_the_closure():
+    """A3: two independent proofs in one — (1) the closure is non-trivial
+    (the reviewer's run found 35 files WITHOUT the cutover/ledger modules;
+    the declared closure must be strictly larger), and (2) mutating a
+    dynamically loaded module changes the digest."""
+    import hashlib
+    from pipeline.orchestrator.asset_runner import (
+        _writer_source_files,
+        _writer_source_paths,
+        get_writer_source_hash,
+    )
+    paths = _writer_source_paths(writer_mod.ASSET_ID)
+    files = _writer_source_files(paths)
+    assert len(files) > 35
+    assert any("step06_candidate_build.py" in p for p, _ in files)
+
+    digest = get_writer_source_hash(writer_mod.ASSET_ID)
+    # recompute with one closure file's content perturbed → different digest
+    perturbed = hashlib.sha256()
+    import pipeline.orchestrator.asset_runner as ar
+    orig = ar._writer_source_files
+    try:
+        def _tampered(paths_):
+            out = []
+            for p, c in orig(paths_):
+                if p.endswith("step06_candidate_build.py"):
+                    c = c + b"\n# tampered\n"
+                out.append((p, c))
+            return out
+        ar._writer_source_files = _tampered
+        assert get_writer_source_hash(writer_mod.ASSET_ID) != digest
+    finally:
+        ar._writer_source_files = orig

@@ -294,6 +294,27 @@ class GocharaV41CandidateWriter(WriterBase):
     asset_id = ASSET_ID
     has_substeps = True
 
+    # ASTRA A2.5 A3: the frozen hasher (asset_runner._writer_source_files)
+    # follows STATIC imports only — but this writer loads its implementation
+    # by importlib-by-path (scripts/ is not a package). Declare the COMPLETE
+    # executable source closure so a change to any of these files invalidates
+    # this writer's expected code digest:
+    #   - this module (planning, guards, substeps);
+    #   - the four step06 cutover modules loaded at lines ~150-163;
+    #   - gochara_kernel/ledger.py (loaded here AND re-loaded inside
+    #     step06_candidate_build._load_ledger / step06b_windows_projection);
+    #   - gochara_kernel/legacy_semantics.py (loaded by step06b as `leg`).
+    # The hasher extends each root through its static local imports.
+    source_paths = [
+        "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v4_41_candidate.py",
+        "platform/python-sidecar/scripts/kala_gochara_cutover/step06_enumerate_episodes.py",
+        "platform/python-sidecar/scripts/kala_gochara_cutover/step06_candidate_build.py",
+        "platform/python-sidecar/scripts/kala_gochara_cutover/step06a_class_context.py",
+        "platform/python-sidecar/scripts/kala_gochara_cutover/step06b_windows_projection.py",
+        "platform/python-sidecar/services/gochara_kernel/ledger.py",
+        "platform/python-sidecar/services/gochara_kernel/legacy_semantics.py",
+    ]
+
     # ------------------------------------------------------------------
     # FROZEN CONTRACT: plan_substeps
     # ------------------------------------------------------------------
