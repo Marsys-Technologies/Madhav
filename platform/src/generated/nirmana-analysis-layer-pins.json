@@ -1501,6 +1501,74 @@
           "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
           "ka_yojaka": "11576f295562d9a2e1b0be31da4baf47798f83bf0be470eb67bb6b3a2ff49f22"
         }
+      },
+      {
+        "generation_id": "l3:f6cb3914e7f1:bf1dba54ee01",
+        "historical_snapshot_commit": "8626bb6da165faa9a9da4f03954a61fa8a3198c8",
+        "pin": {
+          "admission": {
+            "authority_commit": "53a3d1f85abaa581ff5c1441eb7e29584a82d120",
+            "authority_decision": "D-PINS-A2.5-CONTINUATION",
+            "changed_assets": [
+              "ka_gochara_v3_century_materialize",
+              "ka_gochara_v4_41_candidate",
+              "ka_moorti_nirnaya",
+              "ka_sangam"
+            ],
+            "delta_classifications": {
+              "ka_gochara_v3_century_materialize": "derived_import_change",
+              "ka_gochara_v4_41_candidate": "approved_intentional_change",
+              "ka_moorti_nirnaya": "derived_import_change",
+              "ka_sangam": "derived_import_change"
+            },
+            "reason": "Pravaha A2.5 (PR #2799, ASTRA v1.0 rework, D-PINS-A2.5-CONTINUATION): the PUSH 1-3 rework moved exactly four L3 writer digests \u2014 ka_gochara_v4_41_candidate (approved_intentional_change, declared source closure), ka_gochara_v3_century_materialize / ka_moorti_nirnaya / ka_sangam (derived_import_change via services/gochara_kernel/episodes.py only). Append-only over l3:639eece63be3:df2b966b1d97, archived whole, never rewritten.",
+            "review_artifacts": [
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+                "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98"
+          },
+          "asset_prefix": "ka_",
+          "convergence_commit": "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98",
+          "generation_id": "l3:f6cb3914e7f1:bf1dba54ee01",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "supersedes_generation_id": "l3:639eece63be3:df2b966b1d97",
+          "writer_inventory_sha256": "bf1dba54ee01d25264bbeae821a9001e6d56115c4450623b6aecd4e9d9d8c89e"
+        },
+        "superseded_by_generation_id": "l3:89f788c67827:50e2c3392350",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "bdfcc2ce782557560f4b7fa31d8a5738f9713ed8298e70b2db07a33e70a399ff",
+          "ka_gochara_resonance": "a8879cf145b86a9e528b083acc10f8cbe050c627cffba34bf613925fa9043b41",
+          "ka_gochara_v3_century_materialize": "2e6304e7ce82e44dc869694b2959168dd1ef3833b90110bc7761788f5b5473bc",
+          "ka_gochara_v4_41_candidate": "5a2478d58a39f7baa7fe0eca42f8520805482a18c3217fb579c0abae1e14fe3a",
+          "ka_graha_sancara": "6fbe9a03736635048e115678304d9e7ab9f04d62f3deee9f927a046f5011c65b",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "599d4b7cc65f855691c4d4399964c3c004c534794287a0159526f1e6191aec77",
+          "ka_kshetra": "84a0eb3c63ff43409d8ddc22462a660bba63eb3a8ed0c205d6ce8bdf91184441",
+          "ka_moorti_nirnaya": "0fdfe14b9f29b34eef884db81cca7476d9d72ba359f2973a9a140d584298c5f7",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "9fbdea5d11d397b28d423631d3da207e6916029d090b227effd4349265765691",
+          "ka_sudarshana_varsha": "493203944025a6585aff723553cadb7ae1598bc563c1ec8daed142b7f610bdac",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "0144e45f97297b7b1546e40aea7cf75b4cb24a6a5e00ceb8d55400918ef8bacd",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "11576f295562d9a2e1b0be31da4baf47798f83bf0be470eb67bb6b3a2ff49f22"
+        }
       }
     ],
     "L4": [
@@ -1749,7 +1817,7 @@
           "ka_moorti_nirnaya": "derived_import_change",
           "ka_sangam": "derived_import_change"
         },
-        "reason": "Pravaha A2.5 (PR #2799, ASTRA v1.0 rework, D-PINS-A2.5-CONTINUATION): the PUSH 1-3 rework moved exactly four L3 writer digests \u2014 ka_gochara_v4_41_candidate (approved_intentional_change, declared source closure), ka_gochara_v3_century_materialize / ka_moorti_nirnaya / ka_sangam (derived_import_change via services/gochara_kernel/episodes.py only). Append-only over l3:639eece63be3:df2b966b1d97, archived whole, never rewritten.",
+        "reason": "Pravaha A2.5 (PR #2799, ASTRA v1.1 closure rework, D-PINS-A2.5-CONTINUATION v1.1): the v1.1 rework (A1 dict/tuple row access, A2 half-open horizon in episodes.py, A7 evidence, disposable-DB fixture) moved exactly four L3 writer digests \u2014 ka_gochara_v4_41_candidate (approved_intentional_change, declared source closure), ka_gochara_v3_century_materialize / ka_moorti_nirnaya / ka_sangam (derived_import_change via services/gochara_kernel/episodes.py only). Append-only over l3:f6cb3914e7f1:bf1dba54ee01, archived whole, never rewritten.",
         "review_artifacts": [
           {
             "commit": "5142109f7f219ea860f859e322646f79d875bee8",
@@ -1759,17 +1827,17 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98"
+        "source_commit": "89f788c67827db3a5dc762f47ae4624f0efdb8f6"
       },
       "asset_prefix": "ka_",
-      "convergence_commit": "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98",
-      "generation_id": "l3:f6cb3914e7f1:bf1dba54ee01",
+      "convergence_commit": "89f788c67827db3a5dc762f47ae4624f0efdb8f6",
+      "generation_id": "l3:89f788c67827:50e2c3392350",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "supersedes_generation_id": "l3:639eece63be3:df2b966b1d97",
-      "writer_inventory_sha256": "bf1dba54ee01d25264bbeae821a9001e6d56115c4450623b6aecd4e9d9d8c89e"
+      "supersedes_generation_id": "l3:f6cb3914e7f1:bf1dba54ee01",
+      "writer_inventory_sha256": "50e2c3392350b2f4d13b9a33c9785cd3cc267e963dbaa97c8efbcd8d9910aaea"
     },
     "L4": {
       "admission": {

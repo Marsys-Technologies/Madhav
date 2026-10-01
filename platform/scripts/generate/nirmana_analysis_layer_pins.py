@@ -224,10 +224,16 @@ AUTHORITY_BINDINGS = {
         # L3 successor over l3:639eece63be3:df2b966b1d97 (archived whole,
         # never rewritten) with exactly the four-writer delta the evidence
         # doc tabulates. No other layer.
+        # v1.1 (2026-10-01): the ASTRA v1.1 closure rework moved the same
+        # four digests again; the steward's v1.1 verdict (EVENTS.jsonl
+        # 2026-10-01T14:04:14Z, message M20261001T140414-f44d — "refresh
+        # digests/pins/census (continuation authority stands)") authorizes
+        # ONE further successor over l3:f6cb3914e7f1:bf1dba54ee01 with the
+        # identical four-writer delta (evidence doc, v1.1 addendum).
         "authority_commit": "53a3d1f85abaa581ff5c1441eb7e29584a82d120",
-        "evidence_commit": "eb5d5c70e34d9a16825e89e000dc05a1e133e6ba",
+        "evidence_commit": "954014d8213b63840bc6e4a76cf232bd189a9ee3",
         "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY_v1_0.md",
-        "sha256": "90e94ee0cc016a6354250aeb236b3b26957eeef728ed6324c37b28d07584c2ef",
+        "sha256": "63f243f93a69acfee614fb5cd9b89d2af243dcfef6b70876d351135f697187cc",
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`53a3d1f85abaa581ff5c1441eb7e29584a82d120`",
     },
@@ -463,6 +469,12 @@ AUTHORIZED_SOURCE_COMMITS = {
     "D-PINS-A2.5-CONTINUATION": {
         "L3": frozenset({
             "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98",
+            # v1.1 (ASTRA v1.1 closure rework; steward M20261001T140414-f44d,
+            # continuation authority stands): the v1.1 rework's digest
+            # re-derivation head, whose committed writer inventory is
+            # byte-identical to the derived inventory. Same four-writer
+            # delta over l3:f6cb3914e7f1:bf1dba54ee01.
+            "89f788c67827db3a5dc762f47ae4624f0efdb8f6",
         }),
     },
 }
