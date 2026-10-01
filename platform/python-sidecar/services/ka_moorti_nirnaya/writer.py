@@ -171,22 +171,46 @@ def _config_horizon_date(value: Any) -> date | None:
     return date.fromisoformat(str(value))
 
 
+# §N.8 — the method that produced each body's ingress roots is recorded, never
+# implied. 'swiss_refined' is only claimed when a Swiss-refined root was
+# actually produced (every refine call asserts retflag & 2); 'spline_unrefined'
+# is the kernel's own arc-spline root, used ONLY after the kernel reported its
+# ephemeris backend unavailable (EphemerisBackendError). A body with no ingress
+# root in the horizon never called Swiss, so it claims neither.
+SOLVER_SWISS_REFINED = "swiss_refined"
+SOLVER_SPLINE_UNREFINED = "spline_unrefined"
+SOLVER_NO_ROOTS = "no_ingress_roots"
+
+
+def _backend_from_error(exc: Any) -> str:
+    """The ephemeris backend the kernel reported on a failed SWIEPH gate —
+    read from the error's own retflag (Moshier iff retflag & 4), never assumed."""
+    retflag = int(getattr(exc, "retflag", 0))
+    return f"{'moshier' if retflag & 4 else 'not_swieph'}(retflag={retflag})"
+
+
 def _build_kernel_arcs(
     daily_by_body: dict[str, list[tuple[date, float]]], bodies: tuple[str, ...],
-) -> tuple[dict[str, Any], dict[str, list[Any]]]:
+) -> tuple[dict[str, Any], dict[str, list[Any]], dict[str, dict[str, str]]]:
     """WP9 5.3: decompose each body's daily series into the kernel's arc
     substrate and solve its sign_ingress boundary roots — the TRUE ingress
     instants the instant-grade moorti path is graded at. Built from the SAME
     daily rows the day-grade path reads (no second data source). Roots are
-    Swiss-refined where the ephemeris backend is available; otherwise the
-    kernel's spline roots over its own arcs stand (still a solved sub-day
-    instant, never a civil-date claim). Per-body failures are honest
-    fallbacks (that body simply grades day-grain)."""
+    Swiss-refined where the ephemeris backend is available; when the kernel
+    reports the backend unavailable (EphemerisBackendError — and ONLY that),
+    the kernel's spline roots over its own arcs stand (still a solved sub-day
+    instant, never a civil-date claim) and the fallback is RECORDED in the
+    returned per-body solver map ({body: {"method", "backend"}}). Any other
+    failure while solving roots propagates — it is not a backend gap. A
+    per-body arc-build failure remains an honest day-grain fallback (that
+    body simply grades day-grain; its rows carry precision_regime='date_grain')."""
     from services.gochara_kernel import arcs as kernel_arcs
     from services.gochara_kernel.contacts import find_boundary_roots
+    from services.gochara_kernel.knots import EphemerisBackendError
 
     index_by_body: dict[str, Any] = {}
     roots_by_body: dict[str, list[Any]] = {}
+    solver_by_body: dict[str, dict[str, str]] = {}
     for body in bodies:
         daily = daily_by_body.get(body) or []
         if len(daily) < 4:
@@ -195,18 +219,47 @@ def _build_kernel_arcs(
         lons = [lon for _d, lon in daily]
         try:
             idx = kernel_arcs.build_arc_index(body, jds, lons)
-            try:
-                roots = find_boundary_roots(idx, body, "sign_ingress", refine=True)
-            except Exception:  # noqa: BLE001 — no Swiss backend in this env
-                roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
-            roots_by_body[body] = roots
-            index_by_body[body] = idx
         except Exception as exc:  # noqa: BLE001 — honest per-body fallback
             logger.warning(
                 "[ka_moorti_nirnaya] kernel arc build failed for %s: %s — "
                 "that body grades day-grain", body, exc,
             )
-    return index_by_body, roots_by_body
+            continue
+        try:
+            roots = find_boundary_roots(idx, body, "sign_ingress", refine=True)
+            solver = (
+                {"method": SOLVER_SWISS_REFINED, "backend": "swieph"}
+                if roots else {"method": SOLVER_NO_ROOTS, "backend": "not_probed"}
+            )
+        except EphemerisBackendError as exc:
+            logger.warning(
+                "[ka_moorti_nirnaya] Swiss refinement unavailable for %s (%s) — "
+                "ingress roots fall back to the kernel's UNREFINED spline roots "
+                "(recorded in the build notes)", body, exc,
+            )
+            roots = find_boundary_roots(idx, body, "sign_ingress", refine=False)
+            solver = {
+                "method": SOLVER_SPLINE_UNREFINED,
+                "backend": _backend_from_error(exc),
+            }
+        roots_by_body[body] = roots
+        index_by_body[body] = idx
+        solver_by_body[body] = solver
+    return index_by_body, roots_by_body, solver_by_body
+
+
+def _solver_notes(solver_by_body: dict[str, dict[str, str]]) -> str:
+    """Build-notes fragment recording, per body, the solver method that produced
+    its ingress roots and the ephemeris backend the kernel reported."""
+    per_body = ",".join(
+        f"{body}:{info['method']}|{info['backend']}"
+        for body, info in sorted(solver_by_body.items())
+    )
+    degraded = sum(
+        1 for info in solver_by_body.values()
+        if info["method"] == SOLVER_SPLINE_UNREFINED
+    )
+    return f"ingress_solver={per_body or 'none'};ingress_solver_degraded={degraded}"
 
 
 def _match_ingress_instant(
@@ -327,11 +380,13 @@ class KaMoortiNirnayaWriter(WriterBase):
 
         arc_index_by_body: dict[str, Any] = {}
         ingress_roots_by_body: dict[str, list[Any]] = {}
+        solver_by_body: dict[str, dict[str, str]] = {}
         if KERNEL_INSTANT_GRADING:
-            arc_index_by_body, ingress_roots_by_body = _build_kernel_arcs(
+            arc_index_by_body, ingress_roots_by_body, solver_by_body = _build_kernel_arcs(
                 daily_by_body, bodies_needed,
             )
         instant_graded = 0
+        instant_graded_unrefined = 0
         day_grade_misclassified = 0
 
         all_rows: list[dict] = []
@@ -400,6 +455,8 @@ class KaMoortiNirnayaWriter(WriterBase):
                         moon_nak_idx = int(moon_lon // NAK_SIZE_DEG) % 27
                         graded_regime = "instant_grain"
                         instant_graded += 1
+                        if (solver_by_body.get(graha) or {}).get("method") == SOLVER_SPLINE_UNREFINED:
+                            instant_graded_unrefined += 1
                         day_nak = moon_nak_by_date.get(run["start_date"])
                         if day_nak is not None and day_nak != moon_nak_idx:
                             day_grade_misclassified += 1
@@ -472,6 +529,8 @@ class KaMoortiNirnayaWriter(WriterBase):
                   f"moorti_computed={computed_count}/{len(all_rows)};"
                   f"horizon={horizon_start}..{horizon_end};"
                   f"kernel_instant_graded={instant_graded};"
+                  f"kernel_instant_graded_spline_unrefined={instant_graded_unrefined};"
+                  f"{_solver_notes(solver_by_body)};"
                   f"day_grade_misclassified={day_grade_misclassified};"
                   f"day_grade_misclassification_rate={misclass_rate:.4f}",
         )
