@@ -270,7 +270,7 @@ def test_a_true_duplicate_key_is_counted_sampled_and_not_called_a_success() -> N
     landed = w._write_rows_batch(db, [_row("D30.S1"), _row("D30.S1", fact_value_text="x")], set(), stats)
     assert landed == 1, "only the row that landed may be counted"
     assert stats["attempted"] == 2 and stats["landed"] == 1
-    assert stats["collided"] == 1 and stats["db_skipped"] == 1
+    assert stats["collided"] == 1 and stats["db_skipped"] == 0, "a colliding row is counted once, in collided"
     assert stats["collision_samples"][0][-1] == "D30.S1"
 
 
@@ -282,6 +282,70 @@ def test_a_collision_with_an_earlier_batch_of_the_same_run_is_detected() -> None
     w._write_rows_batch(db, [_row("D30.S1")], cleared, stats)
     w._write_rows_batch(db, [_row("D30.S1")], cleared, stats)
     assert stats["collided"] == 1 and stats["landed"] == 1 and stats["attempted"] == 2
+
+
+class _BatchBroken(FakeDB):
+    """executemany fails, so _write_rows_batch takes the per-row fallback path."""
+
+    def cursor(self, **_kw: Any) -> "_Cursor":
+        cur = super().cursor()
+
+        def boom(sql: str, rows: Any) -> None:
+            raise RuntimeError("batch refused")
+
+        cur.executemany = boom  # type: ignore[method-assign]
+        return cur
+
+
+def test_per_row_path_counts_stored_rows_not_attempted_ones() -> None:
+    """Mutants M2b/M5b: the per-row fallback once counted every attempted row as written."""
+    w = _w()
+    db = _BatchBroken(SEVEN)
+    stats = w.new_write_stats()
+    landed = w._write_rows_batch(db, [_row("A"), _row("A"), _row("B")], set(), stats)
+    assert landed == 2, "the duplicate was skipped by the database: it did not land"
+    assert (stats["attempted"], stats["landed"], stats["collided"], stats["db_skipped"], stats["failed"]) == (3, 2, 1, 0, 0)
+    assert len(db.rows) == 2
+
+
+def test_per_row_path_reports_an_unexplained_skip_as_db_skipped() -> None:
+    w = _w()
+    db = _BatchBroken(SEVEN)
+    stale = _row("A")
+    db.rows[tuple(stale[c] for c in SEVEN)] = stale          # a row the delete scope did not clear
+    stats = w.new_write_stats()
+    cleared = {(CHART, "lahiri_chitrapaksha", "D30")}        # scope already cleared this run: no DELETE
+    landed = w._write_rows_batch(db, [_row("A"), _row("B")], cleared, stats)
+    assert landed == 1
+    assert (stats["landed"], stats["collided"], stats["db_skipped"]) == (1, 0, 1)
+
+
+def test_batch_path_counts_an_unexplained_skip_once() -> None:
+    w = _w()
+    db = FakeDB(SEVEN)
+    stale = _row("A")
+    db.rows[tuple(stale[c] for c in SEVEN)] = stale
+    stats = w.new_write_stats()
+    cleared = {(CHART, "lahiri_chitrapaksha", "D30")}
+    w._write_rows_batch(db, [_row("A"), _row("B"), _row("B")], cleared, stats)
+    # A: skipped by the database (unexplained); second B: a detected collision, also skipped (explained)
+    assert (stats["landed"], stats["collided"], stats["db_skipped"]) == (1, 1, 1)
+    assert stats["attempted"] - stats["landed"] == stats["collided"] + stats["db_skipped"] + stats["failed"]
+
+
+def test_per_row_path_rejections_raise_after_counting() -> None:
+    w = _w()
+
+    class _RejectB(_BatchBroken):
+        def insert(self, sql: str, row: dict) -> int:
+            if row["fact_subject"] == "B":
+                raise RuntimeError("check constraint")
+            return super().insert(sql, row)
+
+    stats = w.new_write_stats()
+    with pytest.raises(RuntimeError, match="1 of 2 rows were rejected"):
+        w._write_rows_batch(_RejectB(SEVEN), [_row("A"), _row("B")], set(), stats)
+    assert (stats["landed"], stats["failed"]) == (1, 1)
 
 
 def test_find_key_collisions_is_pure_and_order_independent() -> None:

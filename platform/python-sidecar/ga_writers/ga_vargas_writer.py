@@ -2696,7 +2696,9 @@ def new_write_stats() -> dict:
     collided     rows whose UNIQUE_KEY_COLUMNS key was already emitted earlier in
                  THIS run (a deterministic, pre-write detection: two distinct rows
                  sharing one key means one of them can never be stored)
-    db_skipped   rows the database skipped on conflict (attempted - landed)
+    db_skipped   rows the database skipped on conflict BEYOND those `collided` already
+                 explains (e.g. a stale row outside the delete scope); a colliding row
+                 is counted once, in `collided`
     failed       rows rejected by the database on the per-row fallback path
     """
     return {
@@ -2870,7 +2872,7 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
                 )
                 affected = len(rows)
             elif affected < len(rows):
-                stats["db_skipped"] += len(rows) - affected
+                stats["db_skipped"] += max(len(rows) - affected - len(dups), 0)
                 logger.warning(
                     "[ga_vargas] %d of %d rows landed (%d skipped on conflict)",
                     affected, len(rows), len(rows) - affected,
@@ -2882,6 +2884,7 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
             cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_batch_sp")
             logger.warning("[ga_vargas] batch write failed (%s), falling back to per-row", batch_exc)
             written = 0
+            skipped_rows = 0
             first_error: str | None = None
             for row in rows:
                 try:
@@ -2892,7 +2895,7 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
                     if getattr(cur, "rowcount", 1) != 0:
                         written += 1
                     else:
-                        stats["db_skipped"] += 1
+                        skipped_rows += 1
                     cur.execute("RELEASE SAVEPOINT ga_vargas_row_sp")
                 except Exception as exc:
                     cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_row_sp")
@@ -2901,6 +2904,7 @@ def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None,
                         first_error = f"{type(exc).__name__}: {str(exc)[:200]}"
                     logger.warning("[ga_vargas] Row write failed: %s | row keys=%s",
                                    exc, list(row.keys())[:5])
+            stats["db_skipped"] += max(skipped_rows - len(dups), 0)
             stats["landed"] += written
             if first_error is not None:
                 # Rows the database REJECTED (as opposed to skipped on a key
