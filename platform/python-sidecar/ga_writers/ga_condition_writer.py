@@ -11,6 +11,11 @@ Rows per chart: 9 grahas × 5 ayanamshas = 45
 Idempotency: L1 pattern — DELETE (chart_id, ayanamsha_id) then INSERT.
 FORENSIC guard: Sun in Capricorn must NOT be exalted/own/moolatrikona.
 
+Band table (I-28): `condition_score` is bucketed into bands (0.4 / 0.7) by ONE table, defined in
+`ga_writers/ga_condition_bands.py`, re-exported here, read by ga_medical and ga_vastu.
+D1 fallback (X2 / I-29): `condition_score_breakdown.varga_fallback_used` marks a score computed on
+D1 dignity alone; the build RAISES if that would happen on a chart that has divisional rows.
+
 Classical sources:
     BPHS    = Brihat Parashara Hora Shastra
     JP      = Jataka Parijata
@@ -29,6 +34,19 @@ import psycopg.rows
 from brahmagyan.graha_vocabulary import to_title
 
 from ga_writers.data_plane_contracts import stable_fact_id
+# I-28 / Q-L1-16(c): the ONE band table over condition_score. Defined in its own module (so
+# ga_medical / ga_vastu can import it without pulling this writer's closure into their
+# digests) and RE-EXPORTED here: ga_condition is the score's owner and the table's home.
+from ga_writers.ga_condition_bands import (  # noqa: F401  (re-exports)
+    BAND_HIGH,
+    BAND_LOW,
+    BAND_MID,
+    BAND_UNKNOWN,
+    CUT_LOW_MID,
+    CUT_MID_HIGH,
+    SCORE_BANDS,
+    score_band,
+)
 from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, PLANET_TO_SUBJECT
 from pyjhora_adapter.version import ENGINE_VERSION
 
@@ -847,6 +865,121 @@ def _compute_varga_composite(spread: Optional[dict]) -> Optional[float]:
     return round(total_s / total_w, 6)
 
 
+# ── X2 / I-29: a D1-fallback composite on a chart that HAS divisionals is a failure ───────
+#
+# `compute_condition_score_v1` substitutes the D1 dignity score for a missing varga composite and
+# records `breakdown["varga_fallback_used"] = True`. That substitution is legitimate ONLY when the
+# chart genuinely has no divisional rows to read. Two of three charts were built on the fallback
+# with divisionals present (decision sheet X2 / F-7: 90 rows, `varga_dignity_composite` NULL while
+# `varga_dignity_spread` was populated on the SAME row). Root cause, established read-only
+# (BAND_X2_LANE_INTENT_v1_0.md): the pre-F-C8 label bug (PR #1853, 2026-09-06) -- not an RLS
+# window -- and nothing detected it, because the flag was only a JSON key nothing read.
+#
+# The guard below is a real detector (CLAUDE.md N.8): it asks the table directly whether the
+# chart has divisional rows, and it can only pass when that answer is a trustworthy "no".
+
+#: Stored in `condition_score_breakdown["varga_fallback_reason"]` whenever the fallback was used.
+VARGA_FALLBACK_REASON_NO_DIVISIONALS = "no_divisionals_for_chart"
+
+#: The chart_divisionals categories `_load_varga_dignity_spread` reads; their presence is what
+#: "this chart has divisionals" means for the composite.
+_DIVISIONAL_EVIDENCE_CATEGORIES = ("varga_position", "varga_dignity")
+
+
+class VargaFallbackWithDivisionalsError(RuntimeError):
+    """The D1 fallback would be used for a chart that has divisional rows (or whose divisional
+    table cannot be proven empty). The build fails; the composite is never written on D1 alone."""
+
+
+def count_visible_divisional_rows(conn: Any, chart_id: str, ayanamsha_id: str, graha: str) -> int:
+    """Rows of chart_divisionals this connection can SEE for (chart, ayanamsha, graha).
+
+    Deliberately NOT swallowed: if the read fails, the guard fails with it (fail closed). RLS-blind
+    visibility (rows exist but are hidden from this role) is handled by `divisional_table_rls_active`.
+    """
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute(
+            """
+            SELECT count(*)
+            FROM chart_divisionals
+            WHERE chart_id     = %s
+              AND ayanamsha_id = %s
+              AND graha        = %s
+              AND fact_category IN ('varga_position', 'varga_dignity')
+            """,
+            (chart_id, ayanamsha_id, graha),
+        )
+        row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
+def divisional_table_rls_active(conn: Any) -> bool:
+    """True when row-level security applies to the CURRENT role on chart_divisionals.
+
+    The 2026-09-18 incident (INCIDENT_CHART_DIVISIONALS_REVIEW): RLS on with zero policies made the
+    table read as EMPTY to every non-owner. An empty read under active RLS proves nothing."""
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("SELECT row_security_active('public.chart_divisionals')")
+        row = cur.fetchone()
+    return bool(row and row[0])
+
+
+def assert_fallback_legitimate(
+    conn: Any, chart_id: str, ayanamsha_id: str, graha: str, varga_spread: Optional[dict] = None,
+) -> None:
+    """Raise `VargaFallbackWithDivisionalsError` unless using the D1 fallback for this graha is
+    legitimate: the chart has NO visible divisional rows AND the table is not RLS-blind to us.
+
+    Called ONLY when `compute_condition_score_v1` reports `varga_fallback_used` (i.e. a score is
+    being computed on D1 alone), so it measures the claim "a fallback is being used"."""
+    visible = count_visible_divisional_rows(conn, chart_id, ayanamsha_id, graha)
+    if visible > 0:
+        raise VargaFallbackWithDivisionalsError(
+            f"ga_condition D1 fallback refused for chart={chart_id} ayanamsha={ayanamsha_id} "
+            f"graha={graha}: chart_divisionals has {visible} divisional row(s) for it "
+            f"(spread vargas loaded={len(varga_spread or {})}) but no usable varga composite was "
+            f"derived. The composite must read divisional dignity, not fall back to D1 "
+            f"(X2 / I-29; the F-C8 class: a stored dignity label the composite could not score)."
+        )
+    if divisional_table_rls_active(conn):
+        raise VargaFallbackWithDivisionalsError(
+            f"ga_condition D1 fallback refused for chart={chart_id} ayanamsha={ayanamsha_id} "
+            f"graha={graha}: chart_divisionals reads empty but row-level security is ACTIVE for "
+            f"this role, so the empty read cannot prove the chart has no divisionals "
+            f"(2026-09-18 chart_divisionals RLS incident class)."
+        )
+
+
+#: The violation predicate (alias `gc` = ga_condition_composite): a stored composite row whose
+#: breakdown says the D1 fallback was used, on a chart that HAS divisional rows for that
+#: (chart, ayanamsha, graha). This is the SAME claim `assert_fallback_legitimate` enforces at write
+#: time, as a read-side detector. The registry `integrity_check_sql` clause (intent document, not a
+#: migration) is `NOT EXISTS (SELECT 1 FROM ga_condition_composite gc WHERE <scope> AND <this>)`.
+FALLBACK_VIOLATION_PREDICATE_SQL = """COALESCE((gc.condition_score_breakdown->>'varga_fallback_used') = 'true', false)
+      AND EXISTS (
+        SELECT 1 FROM chart_divisionals cd
+        WHERE cd.chart_id = gc.chart_id AND cd.ayanamsha_id = gc.ayanamsha_id AND cd.graha = gc.graha
+          AND cd.fact_category IN ('varga_position', 'varga_dignity')
+      )"""
+
+
+def fallback_integrity_violations(conn: Any, chart_id: Optional[str] = None) -> list[tuple]:
+    """Verifier side of X2: (chart_id, ayanamsha_id, graha) of every stored composite row that used
+    the D1 fallback on a chart with divisionals. Empty list = the invariant holds.
+
+    `chart_id=None` checks every chart in the table (what the table-wide registry clause would do).
+    """
+    sql = (
+        "SELECT gc.chart_id, gc.ayanamsha_id, gc.graha FROM ga_condition_composite gc WHERE "
+        + FALLBACK_VIOLATION_PREDICATE_SQL
+        + ("" if chart_id is None else " AND gc.chart_id = %s")
+        + " ORDER BY gc.chart_id, gc.ayanamsha_id, gc.graha"
+    )
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute(sql, () if chart_id is None else (chart_id,))
+        return [tuple(r) for r in cur.fetchall()]
+
+
 # Condition-score thresholds gating peak vs weak dasha-trajectory classification.
 # Mirrors ga_condition_composite migration comment: peak = "high-condition periods",
 # weak = "low-condition periods" (see migrations/251_ga_condition_composite.sql).
@@ -1425,7 +1558,8 @@ def build_ga_condition_substep(
     Steps:
       1. Load reference tables (dignity, combustion orbs, naisargika friendship)
       2. Load graha positions from chart_facts
-      3. Load varga dignity spread from chart_divisionals (best-effort)
+      3. Load varga dignity spread from chart_divisionals (best-effort; a D1 fallback
+         is REFUSED -- the build raises -- when the chart has divisional rows: X2 / I-29)
       4. Compute all condition fields for each graha
       5. Detect graha yuddha pairs
       6. FORENSIC assertion for canonical chart
@@ -1572,6 +1706,14 @@ def build_ga_condition_substep(
             is_retrograde    = is_retrograde,
             varga_score      = varga_composite,
         )
+
+        # ── X2 / I-29: refuse a D1 fallback on a chart that has divisionals ──────────
+        # `varga_fallback_used` is set by compute_condition_score_v1 only when a score is
+        # actually computed on D1 alone. Whether that is legitimate is asked of the table,
+        # not assumed: raise unless the chart genuinely has no divisional rows.
+        if breakdown.get("varga_fallback_used"):
+            assert_fallback_legitimate(conn, chart_id, ayanamsha_id, graha, varga_spread)
+            breakdown["varga_fallback_reason"] = VARGA_FALLBACK_REASON_NO_DIVISIONALS
 
         # ── Dasha trajectory ──────────────────────────────────────────────────
         peak_periods, weak_periods = _load_dasha_periods(

@@ -14,7 +14,7 @@ Covers:
       a value, never changes not_diagnosis semantics
   10. indication_tier='jyotish_indication' constant enforced in every row schema
   11. FORENSIC: Sun=Capricorn (debilitated) → indication_strength='strong';
-      Saturn=Libra (exalted) → indication_strength='mild'
+      Saturn=Libra (exalted) → indication_strength='mild' at an exaltation-level score
   12. dry_run=True → 0 rows, no DB calls
   13. plan_substeps returns exactly 5 steps (one per ayanamsha)
   14. indication_strength_from_score boundary conditions
@@ -271,8 +271,10 @@ def test_forensic_sun_capricorn_strong():
 
 def test_forensic_saturn_libra_mild():
     """
-    FORENSIC: Saturn = Libra (exalted) → condition_score expected high (>0.6)
-    → indication_strength = 'mild'.
+    FORENSIC: Saturn = Libra (exalted) → condition_score expected high (>= 0.7 under the
+    I-28 single band table) → indication_strength = 'mild'. (The build-time guard itself
+    asserts the weaker, classical claim -- not in the LOW band -- see
+    tests/test_ga_condition_band_table.py.)
 
     We test with a representative exaltation-level score.
     """
@@ -386,7 +388,10 @@ class TestIndicationStrengthFromScore:
         (0.4,   "moderate"),
         (0.5,   "moderate"),
         (0.6,   "moderate"),
-        (0.61,  "mild"),
+        # I-28: the cut moved 0.6 -> 0.7 (the ONE band table); 0.61 and 0.69 are now MID.
+        (0.61,  "moderate"),
+        (0.699999, "moderate"),
+        (0.7,   "mild"),
         (1.0,   "mild"),
     ])
     def test_score_to_strength(self, score, expected):

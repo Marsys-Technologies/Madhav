@@ -10,9 +10,11 @@ Algorithm:
   1. Load graha condition_scores from ga_condition_composite (already built by ga_condition).
   2. Load Ayurvedic mappings from bg_medical_mappings (L0 seed table).
   3. For each graha: derive indication_strength from condition_score:
-       condition_score < 0.4  → 'strong'   (planet under stress → heightened indication)
-       0.4 <= score <= 0.6    → 'moderate'
-       condition_score > 0.6  → 'mild'      (planet strong → indication diminished)
+       condition_score < 0.4        → 'strong'   (planet under stress → heightened indication)
+       0.4 <= score < 0.7           → 'moderate'
+       condition_score >= 0.7       → 'mild'     (planet strong → indication diminished)
+     The cut points are the ONE band table in ga_writers/ga_condition_bands.py
+     (I-28 / Q-L1-16(c); shared with ga_vastu) -- they are NOT defined in this file.
      If condition_score is NULL: indication_strength = 'unknown'
   4. For Moon: also look up nakshatra_body_part from bg_nakshatra_medical.
   5. INSERT with indication_tier='jyotish_indication' and not_diagnosis=TRUE.
@@ -26,7 +28,10 @@ FORENSIC guard (canonical chart 482012f1-710e-4a25-994a-93821f5871aa):
          (F-E5 — the prior "debilitated" rationale was factually wrong, even
          though the threshold check it gated happened to still hold).
   Moon = Purva Bhadrapada         → nakshatra_body_part = 'left_side'
-  Saturn = Libra (exalted)        → condition_score expected high → 'mild'
+  Saturn = Libra (exalted)        → condition_score must not be in the LOW band (an exalted
+         planet is not "under stress"); measured 0.68-0.70 across ayanamshas, i.e. the MID
+         band ('moderate') under the ruled 0.4 / 0.7 table. The pre-I-28 guard demanded
+         'mild' (score > 0.6); under 0.7 it would halt every canonical build.
 
 MEDICAL DISCLAIMER (NON-NEGOTIABLE):
   Every row carries indication_tier = 'jyotish_indication' AND not_diagnosis = TRUE.
@@ -43,6 +48,19 @@ from typing import Any, Optional
 import psycopg.rows
 
 from brahmagyan.graha_vocabulary import to_title
+
+# ONE band table for condition_score, owned by ga_condition (I-28 / Q-L1-16(c)): the cut
+# points (0.4 / 0.7) live there, not here. This writer only maps a band to ITS label.
+# SCORE_BANDS is re-exported (not used for logic) so the "one table object" identity with
+# ga_condition and ga_vastu is directly checkable.
+from ga_writers.ga_condition_bands import (  # noqa: F401  (SCORE_BANDS: re-export)
+    BAND_HIGH,
+    BAND_LOW,
+    BAND_MID,
+    BAND_UNKNOWN,
+    SCORE_BANDS,
+    score_band,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +90,17 @@ MEDICAL_GA_CITATION = (
 
 # ── indication_strength from condition_score ──────────────────────────────────
 
+#: Band -> stored indication_strength label (medical polarity: a LOW condition_score is a
+#: HEIGHTENED indication). The CUT POINTS are not here: they are `SCORE_BANDS` (ga_condition).
+INDICATION_STRENGTH_BY_BAND: dict[str, str] = {
+    BAND_LOW:  "strong",
+    BAND_MID:  "moderate",
+    BAND_HIGH: "mild",
+}
+
+#: NULL condition_score -> 'unknown' (unchanged stored value; the same label ga_vastu now stores).
+INDICATION_STRENGTH_UNKNOWN: str = BAND_UNKNOWN
+
 def indication_strength_from_score(condition_score: Optional[float]) -> str:
     """
     Derive Ayurvedic indication strength from the planetary condition_score.
@@ -81,21 +110,22 @@ def indication_strength_from_score(condition_score: Optional[float]) -> str:
     energy is disturbed or afflicted. A strong, well-placed planet's Ayurvedic
     signatures are in equilibrium (mild indication only).
 
-    condition_score < 0.4  → 'strong'    (stressed/afflicted → heightened)
-    0.4 ≤ score ≤ 0.6     → 'moderate'
-    condition_score > 0.6  → 'mild'      (well-placed → equilibrium)
-    None                   → 'unknown'   (condition_score not available)
+    The cut points are NOT defined here: they are the single band table in
+    `ga_writers.ga_condition_bands` (score < 0.4 low; 0.4 <= score < 0.7 mid; score >= 0.7 high):
+
+    low   (score < 0.4)         → 'strong'    (stressed/afflicted → heightened)
+    mid   (0.4 <= score < 0.7)  → 'moderate'
+    high  (score >= 0.7)        → 'mild'      (well-placed → equilibrium)
+    NULL                        → 'unknown'   (condition_score not available)
 
     Source logic: BPHS Ch.18 disease-causation framework — planets in debility
-    or with enemies are chief causers of their associated ailments.
+    or with enemies are chief causers of their associated ailments. The numeric
+    cut points are project conventions (`unsourced`), not classical.
     """
-    if condition_score is None:
-        return "unknown"
-    if condition_score < 0.4:
-        return "strong"
-    if condition_score <= 0.6:
-        return "moderate"
-    return "mild"
+    band = score_band(condition_score)
+    if band is None:
+        return INDICATION_STRENGTH_UNKNOWN
+    return INDICATION_STRENGTH_BY_BAND[band]
 
 
 def sun_forensic_guard_warning(sun_score: Optional[float]) -> Optional[str]:
@@ -122,6 +152,39 @@ def sun_forensic_guard_warning(sun_score: Optional[float]) -> Optional[str]:
         f"'strong' (Sun sits in Capricorn — Saturn's sign, Sun's classical enemy_sign, "
         f"NOT debilitation; Sun debilitates in Libra), score={sun_score!r}"
     )
+
+
+def saturn_forensic_guard_violation(saturn_score: Optional[float]) -> Optional[str]:
+    """FORENSIC check for the canonical native's Saturn (Libra, exalted). Build-halting.
+
+    Returns a violation message, or None when the check holds.
+
+    What the claim is: an EXALTED planet is not a planet "under stress", so its
+    condition_score must not fall in the LOW band (score < 0.4 -> 'strong' indication), and the
+    score must exist (a NULL score cannot support the claim either way).
+
+    Why it is stated against the band table and not as `== 'mild'`: the pre-I-28 guard demanded
+    'mild' because medical's private cut was `score > 0.6`. Under the ruled single table
+    (0.4 / 0.7) the canonical Saturn scores 0.680-0.697 (MID band, 'moderate') on every
+    ayanamsha, so an `== 'mild'` guard would halt EVERY canonical ga_medical build on a number
+    the ruling moved, not on a regression in Saturn. The classical content (exalted => not
+    stressed) is what the guard still enforces; 'mild' vs 'moderate' for Saturn is a band-edge
+    question (0.7), not an exaltation question. Same reasoning as the ga_vastu Saturn gate
+    removed by migration 924 (#2421).
+    """
+    band = score_band(saturn_score)
+    if band is None:
+        return (
+            f"Saturn condition_score is NULL (cannot support 'exalted => not stressed'), "
+            f"score={saturn_score!r}"
+        )
+    if band == BAND_LOW:
+        return (
+            f"Saturn indication_strength={indication_strength_from_score(saturn_score)!r} "
+            f"(LOW band) but Saturn is exalted in Libra and must not be in the low band, "
+            f"score={saturn_score!r}"
+        )
+    return None
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -277,7 +340,7 @@ def build_ga_medical_substep(
     6. INSERT 9 rows with NOT NULL indication_tier + not_diagnosis enforcement.
 
     FORENSIC log (canonical chart):
-      Sun=Capricorn → 'strong'; Moon=Purva Bhadrapada → left_side; Saturn=Libra → 'mild'.
+      Sun=Capricorn → 'strong'; Moon=Purva Bhadrapada → left_side; Saturn=Libra → not LOW band.
 
     Returns: number of rows inserted.
     """
@@ -311,7 +374,7 @@ def build_ga_medical_substep(
         logger.info(
             "[ga_medical_writer] FORENSIC chart=%s aya=%s — "
             "Sun condition_score=%s (expected<0.4→'strong'); "
-            "Saturn condition_score=%s (expected>0.6→'mild'); "
+            "Saturn condition_score=%s (expected not in the LOW band, i.e. >= 0.4); "
             "Moon nakshatra=%s (expected Purva Bhadrapada)",
             chart_id, ayanamsha_id, sun_score, saturn_score, moon_nak,
         )
@@ -323,12 +386,12 @@ def build_ga_medical_substep(
                 "[ga_medical_writer] %s for chart_id=%s ayanamsha=%s",
                 sun_warning, CANONICAL_CHART_ID, ayanamsha_id,
             )
-        # Saturn = Libra (exalted) → condition_score must be > 0.6 → 'mild'
-        sat_strength = indication_strength_from_score(saturn_score)
-        if sat_strength != "mild":
+        # Saturn = Libra (exalted) → condition_score must not be in the LOW band (an exalted
+        # planet is not "under stress"); see saturn_forensic_guard_violation.
+        saturn_violation = saturn_forensic_guard_violation(saturn_score)
+        if saturn_violation:
             raise AssertionError(
-                f"FORENSIC VIOLATION: Saturn indication_strength={sat_strength!r} "
-                f"but expected 'mild' (Saturn exalted in Libra, score={saturn_score!r}) "
+                f"FORENSIC VIOLATION: {saturn_violation} "
                 f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
             )
 

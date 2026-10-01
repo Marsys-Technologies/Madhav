@@ -1,0 +1,19 @@
+{
+  "lane": "ga_condition_fallback",
+  "ruling": "ga_condition D1 fallback (SS N-62, X2, I-29)",
+  "pr": "branch suvarna/land/TI-l1-band-x2-001",
+  "charts": ["482012f1"],
+  "description": "ga_condition's D1 fallback is made visible (condition_score_breakdown.varga_fallback_used + a new varga_fallback_reason key, served as varga_fallback_used with a Dens facet) and the build RAISES if a fallback would be used on a chart that has divisional rows. On the canonical chart the composite already reads divisional dignity on all 45 rows (varga_fallback_used = false, varga_dignity_composite non-null); an offline re-derivation of the composite from the stored varga_dignity_spread reproduces all 45 stored condition_scores, so this lane predicts NO composite change on the canonical chart. The two charts that actually ran on the fallback (1c826d5a, cb73cd3d: 90 rows) are S-L1b, not compared here. THE OUTPUT THIS LANE TOUCHES (ga_condition_composite.condition_score_breakdown, .condition_score) IS NOT IN ANY TABLE THIS DETECTOR READS, so no detector-visible change is attributed. The entry below is a regression claim: the ga_condition re-run re-emits the floored lajjitadi per-varga category (constant text, 45 rows, fact_key D_ALL) byte-identically. See BAND_X2_LANE_INTENT_v1_0.md sections 4, 6 and 11.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_avastha_lajjitadi_per_varga"],
+      "fact_keys": ["D_ALL"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha", "krishnamurti", "true_chitra", "raman", "surya_siddhanta_classical"],
+      "change_types": ["value", "appeared", "disappeared", "occurrence_count", "tier"],
+      "expected_direction": "none. INTRINSICALLY_D1_AVASTHAS floor rows (verification_pass_status 'floored', fixed reason text); the fallback guard sits on the composite write path and does not touch ga_condition's chart_facts output.",
+      "expected_count": {"exact": 0},
+      "note": "Regression claim only. Disjoint from band_table.json's categories so the two lanes never co-claim a change."
+    }
+  ]
+}
