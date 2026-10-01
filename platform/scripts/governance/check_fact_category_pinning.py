@@ -74,6 +74,25 @@ platform/src/**/*.ts):
           (a deterministic tiebreak establishing total order before the
           reduction to one element).
 
+MULTI-FORMULA RULE (formula-pins lane, INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md; SS decision
+2026-10-01). `fact_key` pinning closes fact_key-level ambiguity but cannot see the FORMULA
+dimension: `ga_sensitive` writes one row per classical `formula_id` for seven categories (declared in
+ONE place, platform/python-sidecar/brahmagyan/canonical_formulas.py, which this lint loads by path),
+so a (subject, key) pair legitimately holds several rows and a reader that pins fact_category +
+fact_key still serves a physical-order-dependent winner. A `SELECT ... FROM chart_facts` that
+names one of the declared categories as a quoted literal must therefore EITHER
+  (a) pin the formula: `formula_id = ...` / `formula_id IN (...)` / `formula_id = ANY(...)` in the
+      WHERE (an occurrence inside ORDER BY, e.g. a `CASE WHEN formula_id = 'x'` canonical-first
+      rank, is NOT a pin), OR
+  (b) disclose ALL variants: `formula_id` (or `*`) in the SELECT list AND `formula_id` in the
+      ORDER BY (so the variants are served, labelled, in a total order).
+Exempt: zero-row availability probes (`LIMIT 0`) and aggregate-only `SELECT COUNT(...)`.
+A SECOND, structural check covers readers whose category set is dynamic (so no literal is visible
+to a regex): every file listed in multi_formula_readers.json must reference the canonical_formulas
+module and contain at least one chart_facts SELECT that satisfies (a) or (b). That is the honest
+scope: it stops a listed reader from regressing to ignoring the formula dimension; it does not
+prove every dynamically-assembled query. Add a new dynamic multi-formula reader to that file.
+
 Known false-negative boundary (be honest about this — this is a regex/
 bracket-matching scanner, not semantic analysis):
   - Dynamic query building (string concatenation / template interpolation
@@ -136,6 +155,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent.parent  # platform/scripts/governance -> repo root
 FIXTURE_DIR = SCRIPT_DIR / "fact_category_pin_fixtures"
 ALLOWLIST_PATH = SCRIPT_DIR / "fact_category_pin_allowlist.json"
+READERS_PATH = SCRIPT_DIR / "multi_formula_readers.json"
+CANONICAL_FORMULAS_PY = REPO_ROOT / "platform" / "python-sidecar" / "brahmagyan" / "canonical_formulas.py"
 
 DEFAULT_PY_GLOBS = ["platform/python-sidecar/**/*.py"]
 DEFAULT_TS_GLOBS = ["platform-mcp/src/**/*.ts", "platform/src/**/*.ts"]
@@ -310,6 +331,202 @@ def _is_unsafe_sql_block(sql: str) -> bool:
     return not (has_fact_key or has_order_limit or has_distinct_on)
 
 
+# ---------------------------------------------------------------------------
+# Multi-formula rule (formula_id pin / all-variants disclosure)
+# ---------------------------------------------------------------------------
+
+_MULTI_FORMULA_CACHE: List[str] = []
+
+
+def load_multi_formula_categories(path: Path = CANONICAL_FORMULAS_PY) -> List[str]:
+    """The declared multi-formula categories, read from the ONE declaration (the Python canonical-
+    formula module, loaded by file path; stdlib-only so this works with no package install). Raises
+    RuntimeError when the declaration cannot be read -- an unreadable table must fail the lint loudly
+    (exit 2), never degrade to "nothing is multi-formula"."""
+    if _MULTI_FORMULA_CACHE and path == CANONICAL_FORMULAS_PY:
+        return list(_MULTI_FORMULA_CACHE)
+    import importlib.util
+
+    try:
+        spec = importlib.util.spec_from_file_location("_canonical_formulas_for_lint", path)
+        mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        cats = list(mod.CANONICAL_FORMULAS)
+    except Exception as exc:  # noqa: BLE001 -- surface any load failure as a config error
+        raise RuntimeError(f"cannot load multi-formula declaration {path}: {exc}") from exc
+    if not cats:
+        raise RuntimeError(f"multi-formula declaration {path} lists no categories")
+    if path == CANONICAL_FORMULAS_PY:
+        _MULTI_FORMULA_CACHE[:] = cats
+    return cats
+
+
+_RE_FROM_CHART_FACTS = re.compile(r"\bFROM\s+chart_facts\b", re.IGNORECASE)
+_RE_SELECT_KW = re.compile(r"\bSELECT\b", re.IGNORECASE)
+_RE_ORDER_BY_SPLIT = re.compile(r"\bORDER\s+BY\b", re.IGNORECASE)
+_RE_ZERO_ROW = re.compile(r"\bLIMIT\s+0\b", re.IGNORECASE)
+_RE_COUNT_ONLY = re.compile(r"^\s*COUNT\s*\(", re.IGNORECASE)
+_RE_FORMULA_PIN = re.compile(r"\bformula_id\s*(=|<>|!=|\bIN\b|\bIS\b)", re.IGNORECASE)
+_RE_FORMULA_WORD = re.compile(r"\bformula_id\b", re.IGNORECASE)
+# A bare `*` / `alias.*` select-list item (NOT the star inside COUNT(*), which selects no column).
+_RE_SELECT_STAR_ITEM = re.compile(r"(?:^|,)\s*(?:\w+\.)?\*\s*(?:,|$)")
+
+
+def _select_list_has_formula_id(select_list: str) -> bool:
+    return bool(_RE_FORMULA_WORD.search(select_list)) or bool(_RE_SELECT_STAR_ITEM.search(select_list))
+
+
+def _names_declared_category(sql: str, categories: Sequence[str]) -> bool:
+    return any(re.search(r"['\"]" + re.escape(c) + r"['\"]", sql) for c in categories)
+
+
+def _chart_facts_selects(sql: str):
+    """Yield (select_list, tail) for each `SELECT <list> FROM chart_facts <tail>` in the text."""
+    for m in _RE_FROM_CHART_FACTS.finditer(sql):
+        starts = [k.start() for k in _RE_SELECT_KW.finditer(sql, 0, m.start())]
+        if not starts:
+            continue
+        yield sql[starts[-1] + len("SELECT") : m.start()], sql[m.end() :]
+
+
+def _select_satisfies_formula_rule(select_list: str, tail: str) -> bool:
+    """True iff this one chart_facts SELECT pins formula_id (a) or discloses all variants (b)."""
+    parts = _RE_ORDER_BY_SPLIT.split(tail, maxsplit=1)
+    where_part = parts[0]
+    order_part = parts[1] if len(parts) > 1 else ""
+    # (a) a pin is a formula_id comparison in the WHERE; an occurrence inside ORDER BY (a CASE WHEN
+    # formula_id = 'x' canonical-first rank) is deliberately NOT a pin.
+    if _RE_FORMULA_PIN.search(where_part):
+        return True
+    # (b) all-variants disclosure: formula_id (or *) selected AND ordered by.
+    selected = _select_list_has_formula_id(select_list)
+    ordered = bool(_RE_FORMULA_WORD.search(order_part))
+    return selected and ordered
+
+
+def _is_formula_unpinned_block(sql: str, categories: Sequence[str]) -> bool:
+    """Pure predicate: True iff this SQL text selects from chart_facts, names a declared
+    multi-formula category as a quoted literal, and satisfies NEITHER (a) a formula_id pin NOR
+    (b) all-variants disclosure. Zero-row probes and aggregate-only counts are exempt."""
+    if not _RE_FROM_CHART_FACTS.search(sql):
+        return False
+    if not _names_declared_category(sql, categories):
+        return False
+    if _RE_ZERO_ROW.search(sql):
+        return False
+    selects = list(_chart_facts_selects(sql))
+    if not selects:
+        return False
+    if all(_RE_COUNT_ONLY.search(sel) for sel, _tail in selects):
+        return False
+    return not any(_select_satisfies_formula_rule(sel, tail) for sel, tail in selects)
+
+
+def scan_python_formula_text(text: str, categories: Sequence[str] = ()) -> List[tuple]:
+    """(line, snippet) for Python SQL string literals that break the multi-formula rule."""
+    cats = list(categories) or load_multi_formula_categories()
+    hits: List[tuple] = []
+    for m in _PY_STRING_RE.finditer(text):
+        content = next((g for g in m.groups() if g is not None), "")
+        if not content or "chart_facts" not in content.lower():
+            continue
+        if _is_formula_unpinned_block(content, cats):
+            line = text.count("\n", 0, m.start()) + 1
+            hits.append((line, " ".join(content.split())[:160]))
+    return hits
+
+
+_RE_TS_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+_RE_TS_LINE_COMMENT = re.compile(r"^[ \t]*//[^\n]*$", re.M)
+
+
+def _strip_ts_comments(text: str) -> str:
+    """Blank out block comments and full-line `//` comments, KEEPING every newline so line numbers
+    are unchanged. Required before pairing backticks: prose comments routinely quote identifiers in
+    backticks (`formula_id`), and an unpaired comment backtick would misalign every template literal
+    that follows it, silently hiding real SQL from the scanner."""
+    def blank(m: "re.Match[str]") -> str:
+        return re.sub(r"[^\n]", " ", m.group(0))
+
+    return _RE_TS_LINE_COMMENT.sub(blank, _RE_TS_BLOCK_COMMENT.sub(blank, text))
+
+
+def scan_ts_formula_text(text: str, categories: Sequence[str] = ()) -> List[tuple]:
+    """(line, kind, snippet) for TS SQL template literals that break the multi-formula rule."""
+    cats = list(categories) or load_multi_formula_categories()
+    text = _strip_ts_comments(text)
+    hits: List[tuple] = []
+    for m in re.finditer(r"`[^`]*`", text, re.S):
+        sql = m.group(0)
+        if _is_formula_unpinned_block(sql, cats):
+            line = text.count("\n", 0, m.start()) + 1
+            hits.append((line, "formula_unpinned_sql", " ".join(sql.split())[:160]))
+    return hits
+
+
+def _has_qualifying_formula_select(text: str) -> bool:
+    """True iff the file contains a formula-aware chart_facts SELECT -- via a template literal (TS)
+    or a quoted/triple-quoted string (Python). Used by the reader-contract check.
+
+    Two accepted shapes. (1) ONE literal satisfying the strict rule (a pin, or formula_id selected AND
+    ordered by in the same literal). (2) SPLIT assembly -- the pattern real readers use, building the
+    ORDER BY in a later `sql += ...` fragment: a literal that selects formula_id from chart_facts AND,
+    elsewhere in the file, an `ORDER BY` whose list names formula_id."""
+    literals: List[str] = [m.group(0) for m in re.finditer(r"`[^`]*`", _strip_ts_comments(text), re.S)]
+    for m in _PY_STRING_RE.finditer(text):
+        content = next((g for g in m.groups() if g is not None), "")
+        if content:
+            literals.append(content)
+    selects = [pair for lit in literals for pair in _chart_facts_selects(lit)]
+    if any(_select_satisfies_formula_rule(sel, tail) for sel, tail in selects):
+        return True
+    selects_formula = any(_select_list_has_formula_id(sel) for sel, _tail in selects)
+    orders_by_formula = any(
+        _RE_FORMULA_WORD.search(part)
+        for lit in literals
+        for part in _RE_ORDER_BY_SPLIT.split(lit)[1:]
+    )
+    return bool(selects_formula and orders_by_formula)
+
+
+def load_reader_contract(path: Path = READERS_PATH) -> List[dict]:
+    if not path.exists():
+        raise RuntimeError(f"multi-formula reader list missing: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"cannot read {path}: {exc}") from exc
+    readers = data.get("readers")
+    if not isinstance(readers, list) or not readers:
+        raise RuntimeError(f"{path} must list at least one reader under 'readers'")
+    for r in readers:
+        if not isinstance(r, dict) or not r.get("file") or not r.get("why"):
+            raise RuntimeError(f"{path}: every reader needs a 'file' and a non-empty 'why'")
+    return readers
+
+
+def check_reader_contract(root: Path, readers: Sequence[dict]) -> List["Violation"]:
+    """Structural check for dynamic-category readers (see the module docstring)."""
+    out: List[Violation] = []
+    for r in readers:
+        rel = r["file"]
+        path = root / rel
+        if not path.is_file():
+            out.append(Violation(rel, 1, "typescript", "reader_contract", "(missing file)",
+                                 f"listed multi-formula reader {rel} does not exist; fix or remove the entry in multi_formula_readers.json."))
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "canonical_formulas" not in text:
+            out.append(Violation(rel, 1, "typescript", "reader_contract", "(no canonical_formulas reference)",
+                                 "listed multi-formula reader does not reference the canonical_formulas module: it cannot be choosing "
+                                 "a canonical formula or labelling variants."))
+        if not _has_qualifying_formula_select(text):
+            out.append(Violation(rel, 1, "typescript", "reader_contract", "(no formula-aware chart_facts SELECT)",
+                                 "listed multi-formula reader has no chart_facts SELECT that pins formula_id or discloses all variants "
+                                 "(formula_id selected AND ordered by)."))
+    return out
+
+
 def scan_python_text(text: str) -> List[tuple]:
     """Return list of (line, snippet) for unsafe fact_category SQL blocks."""
     hits: List[tuple] = []
@@ -425,6 +642,15 @@ def scan_ts_text(text: str) -> List[tuple]:
 # ---------------------------------------------------------------------------
 
 
+FORMULA_MESSAGE = (
+    "SELECT against chart_facts names a declared multi-formula category (canonical_formulas.py) "
+    "without pinning formula_id (`formula_id = ...` in the WHERE) and without disclosing all "
+    "variants (formula_id selected AND in ORDER BY). `ga_sensitive` writes one row per formula_id, "
+    "so fact_category + fact_key alone still returns a physical-order-dependent winner "
+    "(INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md; SS decision 2026-10-01)."
+)
+
+
 def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> List[Violation]:
     violations: List[Violation] = []
 
@@ -452,6 +678,18 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
                 )
             )
 
+    for path in expand_globs(root, py_globs):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = path.relative_to(root).as_posix()
+        for line, snippet in scan_python_formula_text(text):
+            violations.append(
+                Violation(file=rel, line=line, lang="python", kind="formula_unpinned_sql",
+                          snippet=snippet, message=FORMULA_MESSAGE)
+            )
+
     for path in expand_globs(root, ts_globs):
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -476,6 +714,18 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
                 )
             )
 
+        for line, kind, snippet in scan_ts_formula_text(text):
+            violations.append(
+                Violation(
+                    file=rel,
+                    line=line,
+                    lang="typescript",
+                    kind=kind,
+                    snippet=snippet,
+                    message=FORMULA_MESSAGE,
+                )
+            )
+
         for line, kind, snippet in scan_ts_sql_text(text):
             violations.append(
                 Violation(
@@ -493,6 +743,8 @@ def scan_repo(root: Path, py_globs: Sequence[str], ts_globs: Sequence[str]) -> L
                     ),
                 )
             )
+
+    violations.extend(check_reader_contract(root, load_reader_contract()))
 
     return violations
 
@@ -559,39 +811,40 @@ def run_self_test() -> int:
 
     failures: List[str] = []
 
-    for fixture in sorted(pass_dir.iterdir()):
-        if not fixture.is_file():
-            continue
+    try:
+        cats = load_multi_formula_categories()
+    except RuntimeError as exc:
+        print(f"check_fact_category_pinning: SELF-TEST — {exc}", file=sys.stderr)
+        return 2
+
+    def _hits(fixture: Path) -> List[tuple]:
         text = fixture.read_text(encoding="utf-8")
+        formula_only = fixture.name.startswith("formula_pin__")
         if fixture.suffix == ".py":
-            hits = scan_python_text(text)
-        elif fixture.suffix == ".ts":
-            # Both TS scanners, so a fixture exercising SQL template literals is
-            # actually covered. Running only scan_ts_text here is how the F-C14
-            # gap could have shipped a green self-test alongside a blind scanner.
-            hits = [
-                (line, snippet)
-                for line, _kind, snippet in (scan_ts_text(text) + scan_ts_sql_text(text))
+            old = [] if formula_only else scan_python_text(text)
+            return old + scan_python_formula_text(text, cats)
+        if fixture.suffix == ".ts":
+            # Both TS scanners, so a fixture exercising SQL template literals is actually covered.
+            # Running only scan_ts_text here is how the F-C14 gap could have shipped a green
+            # self-test alongside a blind scanner. `formula_pin__*` fixtures exercise ONLY the
+            # multi-formula rule (they pin fact_key, so the older rule is silent on them anyway).
+            old = [] if formula_only else [
+                (line, snippet) for line, _k, snippet in (scan_ts_text(text) + scan_ts_sql_text(text))
             ]
-        else:
+            return old + [(line, snippet) for line, _k, snippet in scan_ts_formula_text(text, cats)]
+        return []
+
+    for fixture in sorted(pass_dir.iterdir()):
+        if not fixture.is_file() or fixture.suffix not in (".py", ".ts"):
             continue
+        hits = _hits(fixture)
         if hits:
             failures.append(f"PASS-fixture '{fixture.name}' was flagged (false positive): {hits}")
 
     for fixture in sorted(fail_dir.iterdir()):
-        if not fixture.is_file():
+        if not fixture.is_file() or fixture.suffix not in (".py", ".ts"):
             continue
-        text = fixture.read_text(encoding="utf-8")
-        if fixture.suffix == ".py":
-            hits = scan_python_text(text)
-        elif fixture.suffix == ".ts":
-            hits = [
-                (line, snippet)
-                for line, _kind, snippet in (scan_ts_text(text) + scan_ts_sql_text(text))
-            ]
-        else:
-            continue
-        if not hits:
+        if not _hits(fixture):
             failures.append(f"FAIL-fixture '{fixture.name}' produced NO violation (false negative)")
 
     if failures:
@@ -625,7 +878,11 @@ def main(argv: List[str]) -> int:
         return run_self_test()
 
     root = Path(args.root).resolve()
-    violations = scan_repo(root, DEFAULT_PY_GLOBS, DEFAULT_TS_GLOBS)
+    try:
+        violations = scan_repo(root, DEFAULT_PY_GLOBS, DEFAULT_TS_GLOBS)
+    except RuntimeError as exc:
+        print(f"check_fact_category_pinning: CONFIG ERROR — {exc}", file=sys.stderr)
+        return 2
     allowlist = load_allowlist(ALLOWLIST_PATH)
     allowed, new = partition_allowlisted(violations, allowlist)
 

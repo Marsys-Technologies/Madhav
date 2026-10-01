@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "$comment": "Readers of the declared multi-formula chart_facts categories (platform/python-sidecar/brahmagyan/canonical_formulas.py) whose category set is DYNAMIC, so a regex cannot see which categories their SQL reads. check_fact_category_pinning.py requires each listed file to (1) reference the canonical_formulas module and (2) contain at least one chart_facts SELECT that pins formula_id or discloses all variants (formula_id selected AND in ORDER BY). Add a new dynamic multi-formula reader here. Source: INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md; SS decision 2026-10-01.",
+  "readers": [
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
+      "why": "chart_facts_query: category is a caller-supplied filter, so any of the seven categories can be read; default shape=pivoted reduces (subject, key) to one value and must pick the canonical formula."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
+      "why": "get_karakas: category list is an array bound as a parameter (karaka_chara_position is one of them); serves both chara-karaka schools."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
+      "why": "get_sensitive_points: category list is an array bound as a parameter (six of the seven declared esoteric_point_* categories are in it); serves every formula variant."
+    },
+    {
+      "file": "platform/src/lib/retrieval/address_resolver.ts",
+      "why": "address_resolver.fetchKarakaRow reduces karaka_chara_position to one value per karaka: must pin the chara-karaka school it labels."
+    }
+  ]
+}

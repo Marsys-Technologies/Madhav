@@ -374,8 +374,9 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
-      "line": 110,
-      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [line 99->110, cycle 182: F-B32 slice 9 added a docstring paragraph + 2 SP_CATEGORIES entries earlier in the file — same query, verified via diff.]"
+      "line": null,
+      "justification": "Newly VISIBLE, not newly broken: TS SQL template literals were never scanned by this guard until F-C14 (issue #1750) — the scanner only read .find()/.filter()[0]. This query does NOT reduce to one row, so it cannot exhibit the shadbala defect the tightened reduction rule targets; its safety depends instead on the consumer keying results by (fact_subject, fact_key) application-side. That per-file audit is real work owned by the file's layer session, tracked in issue #1758. Allowlisted so the guard starts blocking NEW instances immediately rather than waiting on 18 audits. [line 99->110, cycle 182: F-B32 slice 9 added a docstring paragraph + 2 SP_CATEGORIES entries earlier in the file — same query, verified via diff.] [2026-10-02, formula-pins lane: switched from line 110 to a snippet pattern because the file's own edits (canonical_formulas import) shift this literal's line; the query is unchanged in kind. It now also satisfies the multi-formula rule by DISCLOSURE: formula_id selected and ORDER BY ... canonical-first rank, formula_id, fact_id (a total order) -- INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md.]",
+      "pattern": "SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num, fact_value_text, fact_value_jsonb, unit, formula_id,"
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
