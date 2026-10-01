@@ -76,16 +76,7 @@ ALLOWED_DELTA_CLASSIFICATIONS = frozenset(
 # receipt_count arithmetic, while remaining IN writer_inventory_sha256: a
 # supporting writer's code change must still fail the spine closed and force
 # a reviewed re-pin, exactly like any other writer in the layer.
-# D-NATIVE-11 (#2258, native-ruled 2026-09-07): supporting infrastructure
-# writers register in the DAG (seed row + digest inventory) but are NOT
-# elevation-denominator assets — receipt membership excludes them so the
-# 128-identity denominator is undisturbed. Adding a name here requires its
-# own native ruling. Pravāha A2.5 (steward-directed, PR #2799;
-# M20260930T195042-a4a0 Option A; SUPPORTING_WRITER_IDS addition flagged for
-# native ruling in REVIEW_REQUEST_A2_5_V41_CANDIDATE_WRITER_v1_1 §3):
-# ka_gochara_v4_41_candidate is a candidate-only writer, is_active=false in
-# the seed (inert to all planners), never an elevation-denominator identity.
-SUPPORTING_WRITERS = frozenset({"bo_grounding", "ka_gochara_v4_41_candidate"})
+SUPPORTING_WRITERS = frozenset({"bo_grounding"})
 NON_WRITER_PREFIX_EXCEPTIONS = {"L5": frozenset({"lel_events"})}
 
 LAYER_PREFIX = {
@@ -194,48 +185,6 @@ AUTHORITY_BINDINGS = {
         "sha256": "d50a9d8e19fe2ddec33ce55f9c61f2c2770eb0d7cbe88ae6732d28e7c9bf0765",
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`e47d0b274ebf234ada8be7cfe82a34d5446384eb`",
-    },
-    "D-PINS-A2.5": {
-        # Pins re-admission for the pravaha/a25-v41-candidate-writer merge (PR
-        # #2799, Pravāha A2.5). The steward's decision (on the native's
-        # 2026-09-30 standing authority, EVENTS.jsonl 2026-10-01T06:46:16Z,
-        # message M20261001T064616-8eed) is recorded verbatim in the evidence
-        # document; the authority identity is the commit that first introduced
-        # that document. Scope: exactly one L3 successor admission over the
-        # A2.5 changeset — the ONE membership change the PR carries (the new
-        # candidate writer ka_gochara_v4_41_candidate) — on top of main's
-        # protected baseline l3:4f4a1993c6ad:1ddd6f117934 (the D-PINS-A5.4 r7
-        # successor, never rewritten). No other layer.
-        "authority_commit": "2292ee6b0cebceedc6fdaa80f0fd428e04231c65",
-        "evidence_commit": "8f1844cd2255eae2d2bda650c1ef73db9e9a7b33",
-        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_PINS_READMISSION_AUTHORITY_v1_0.md",
-        "sha256": "e1a2c79c18967b5a21f7b391a76e4db3ffe69e6c8f008e3041c295d57e216a17",
-        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
-        "authority_identity_binding": "`2292ee6b0cebceedc6fdaa80f0fd428e04231c65`",
-    },
-    "D-PINS-A2.5-CONTINUATION": {
-        # Continuation of D-PINS-A2.5 (PR #2799, ASTRA v1.0 rework): the
-        # rework (PUSH 1-3) moved the admitted L3 writer digests, so the
-        # l3:639eece63be3:df2b966b1d97 successor no longer matches source
-        # (ASTRA amendment rank 3: regenerate + re-admit). The steward's
-        # grant (native's 2026-09-30 standing authority, EVENTS.jsonl
-        # 2026-10-01T12:14:51Z, message M20261001T121451-1a8d) is recorded
-        # verbatim in the evidence document. Scope: exactly ONE append-only
-        # L3 successor over l3:639eece63be3:df2b966b1d97 (archived whole,
-        # never rewritten) with exactly the four-writer delta the evidence
-        # doc tabulates. No other layer.
-        # v1.1 (2026-10-01): the ASTRA v1.1 closure rework moved the same
-        # four digests again; the steward's v1.1 verdict (EVENTS.jsonl
-        # 2026-10-01T14:04:14Z, message M20261001T140414-f44d — "refresh
-        # digests/pins/census (continuation authority stands)") authorizes
-        # ONE further successor over l3:f6cb3914e7f1:bf1dba54ee01 with the
-        # identical four-writer delta (evidence doc, v1.1 addendum).
-        "authority_commit": "53a3d1f85abaa581ff5c1441eb7e29584a82d120",
-        "evidence_commit": "954014d8213b63840bc6e4a76cf232bd189a9ee3",
-        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY_v1_0.md",
-        "sha256": "63f243f93a69acfee614fb5cd9b89d2af243dcfef6b70876d351135f697187cc",
-        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
-        "authority_identity_binding": "`53a3d1f85abaa581ff5c1441eb7e29584a82d120`",
     },
 }
 
@@ -439,42 +388,6 @@ AUTHORIZED_SOURCE_COMMITS = {
             # inventory (provenance_inventory --check green on the merged
             # tree).
             "4f4a1993c6ada24bf8576206b39742497e3099e3",
-        }),
-    },
-    # D-PINS-A2.5 (Pravāha A2.5, PR #2799): exactly one source commit, for
-    # exactly the one layer (L3) whose writer inventory changes on
-    # pravaha/a25-v41-candidate-writer — the ONE membership change the PR
-    # carries (the new candidate writer ka_gochara_v4_41_candidate; every
-    # other writer's digest is unchanged, verified from content-hashed
-    # closures of HEAD vs origin/main). The source commit is the origin/main
-    # merge commit: its committed writer inventory is byte-identical to the
-    # merged tree's derived inventory (provenance_inventory --check green).
-    # L0, L1, L2, L4, L5 verify clean in delivery topology on this branch and
-    # are deliberately absent.
-    "D-PINS-A2.5": {
-        "L3": frozenset({
-            "639eece63be38a27fb9840ee778beb4c6c1459fd",
-        }),
-    },
-    # D-PINS-A2.5-CONTINUATION (Pravāha A2.5, PR #2799, ASTRA v1.0 rework):
-    # exactly one source commit — the PUSH 3 head f6cb3914e, whose committed
-    # writer inventory is byte-identical to the reworked tree's derived
-    # inventory (provenance_inventory --check green). The delta against the
-    # l3:639eece63be3:df2b966b1d97 predecessor inventory (at 348c8e7fc) is
-    # exactly four writers: ka_gochara_v4_41_candidate
-    # (approved_intentional_change, declared source closure), and
-    # ka_gochara_v3_century_materialize / ka_moorti_nirnaya / ka_sangam
-    # (derived_import_change via services/gochara_kernel/episodes.py only).
-    # L0, L1, L2, L4, L5 are deliberately absent.
-    "D-PINS-A2.5-CONTINUATION": {
-        "L3": frozenset({
-            "f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98",
-            # v1.1 (ASTRA v1.1 closure rework; steward M20261001T140414-f44d,
-            # continuation authority stands): the v1.1 rework's digest
-            # re-derivation head, whose committed writer inventory is
-            # byte-identical to the derived inventory. Same four-writer
-            # delta over l3:f6cb3914e7f1:bf1dba54ee01.
-            "89f788c67827db3a5dc762f47ae4624f0efdb8f6",
         }),
     },
 }
