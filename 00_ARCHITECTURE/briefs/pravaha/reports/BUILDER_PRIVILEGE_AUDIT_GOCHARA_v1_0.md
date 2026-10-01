@@ -1,11 +1,11 @@
 ---
 artifact: BUILDER_PRIVILEGE_AUDIT_GOCHARA
-version: "1.1"
+version: "1.2"
 status: CURRENT
 date: 2026-10-02
-author: Stream C (Kimi), TASK C2 (steward M20261001T221019-7dbe); v1.1 extension TASK C3 PART B (steward M20261001T222338-763f)
+author: Stream C (Kimi), TASK C2 (steward M20261001T221019-7dbe); v1.1 extension TASK C3 PART B (steward M20261001T222338-763f); v1.2 extension TASK C4 (steward M20261001T224706-93e2)
 writes: "NONE — every production query below was a SELECT through the read-only credential (amjis_app, default_transaction_read_only=on)"
-changelog: "v1.1 (2026-10-02): C3 PART B — extended to the helper services (gochara_grammar, gochara_intensity, ka_gochara_sweep, gochara_rules, all of gochara_kernel); 0 new gaps; 1 NOT PRESENT relation."
+changelog: "v1.1 (2026-10-02): C3 PART B — helper services; 0 new gaps; 1 NOT PRESENT relation. v1.2 (2026-10-02): C4 — FUNCTION EXECUTE audit over the writer-DML tables + the 1153–1157 contract tables; 22 function gaps; sequence addendum to v1.0."
 ---
 
 # data_plane_builder privilege audit — Gochara writer family
@@ -263,3 +263,123 @@ needs no sequence USAGE.
   `_vedha_pairs_from_db`, whose callers treat a missing table as the
   no-DB-fallback path; flagged here so the migration that eventually creates it
   also grants the builder SELECT.
+
+---
+
+# v1.2 extension (TASK C4) — FUNCTION EXECUTE privileges on the writer-DML path
+
+Codex found the class v1.0/v1.1 missed: **function EXECUTE**. Production
+baseline (steward-verified, re-verified here): `data_plane_builder` holds
+EXECUTE on **0 of 42** `public.ka_gochara*` user functions — all owned by
+`amjis_app`, all SECURITY INVOKER; the deployment bootstrap revokes PUBLIC
+execute.
+
+**Method.** For every table the gochara-family writers INSERT/UPDATE/DELETE
+(the v1.1 list — `gochara_resonance_map`, `kala_moorti_nirnaya`,
+`kala_vedha_gochara`, `bg_gochara_arcs`, `kala_gochara_windows_v2`,
+`kala_gochara_v2_build_state`, `kala_gochara_windows`,
+`kala_gochara_convention`, `kala_gochara_publication`, `kala_gochara_contacts`,
+`kala_gochara_coverage`, `build_substep_progress` — plus the 18 contract tables
+of migrations 1153–1157, `ka_gochara_*`), SELECT-only probes listed every
+function reached by that DML: CHECK constraints (`pg_get_constraintdef` →
+function references), column DEFAULT expressions, row triggers (`pg_trigger` →
+`tgfoid`), and one level of functions named in those functions' `prosrc`
+(callees of callees **not traced** — noted where relevant). For each function:
+owner, `prosecdef`, `has_function_privilege('data_plane_builder', oid,
+'EXECUTE')`. All 30 tables exist in production (MISSING: none). No function
+reference failed to resolve.
+
+**Interpretation rule (per the task, stated for the reader):** a trigger
+function itself does NOT need EXECUTE by the DML role — but functions called
+from CHECK constraints, from column defaults, and from inside SECURITY INVOKER
+functions DO. Every trigger function below is INVOKER, so their callees need
+EXECUTE.
+
+## Functions that NEED builder EXECUTE and do NOT have it — 22 gaps
+
+All: owner `amjis_app`, SECURITY INVOKER, `EXECUTE = false` for
+`data_plane_builder`.
+
+| function | reached via | from tables |
+|---|---|---|
+| ka_gochara_finite_nonneg_ok(double) | check | ka_gochara_contact, ka_gochara_eval_window, ka_gochara_relationship_record, ka_gochara_sky_event |
+| ka_gochara_finite_ok(double) | check | ka_gochara_eval_window, ka_gochara_factor, ka_gochara_relationship_record |
+| ka_gochara_frame_ok(text,text) | check | ka_gochara_relationship_record, ka_gochara_rule_path |
+| ka_gochara_generation_governed(text) | check + callee | ka_gochara_contact, ka_gochara_eval_window, ka_gochara_eval_window_record, ka_gochara_generation_seal, ka_gochara_record_prerequisite, ka_gochara_relationship_record |
+| ka_gochara_horizon_finite_ok(tstzrange) | check + callee | ka_gochara_eval_window, ka_gochara_relationship_record |
+| ka_gochara_intervals_ok(tstzrange[]) | check + callee | ka_gochara_relationship_record |
+| ka_gochara_named_operands_ok(jsonb) | check | ka_gochara_factor, ka_gochara_predicate |
+| ka_gochara_object_selector_consistent_ok(jsonb,jsonb,jsonb) | check | ka_gochara_rule_path |
+| ka_gochara_precision_ok(jsonb) | check + callee | ka_gochara_relationship_record |
+| ka_gochara_string_array_ok(jsonb) | check + callee | ka_gochara_factor, ka_gochara_relationship_record, ka_gochara_rule_path |
+| ka_gochara_text_array_ok(text[],integer) | check | ka_gochara_av_polarity_declaration, ka_gochara_eval_window |
+| ka_gochara_vocab_array_ok(jsonb,text[]) | check | ka_gochara_rule_path |
+| ka_gochara_generation_is_sealed(uuid,text) | callee | ka_gochara_contact, ka_gochara_eval_window, ka_gochara_eval_window_record, ka_gochara_record_prerequisite, ka_gochara_relationship_record |
+| ka_gochara_lock_chart(uuid) | callee | all 12 chart-scoped contract tables (av_polarity_declaration, contact, contact_identity, convention_bridge, eval_window, eval_window_record, generation_seal, physical_object, record_prerequisite, relationship_record, sky_convention, sky_event) |
+| ka_gochara_lock_global() | callee | ka_gochara_factor, ka_gochara_predicate, ka_gochara_rule_path, ka_gochara_rule_path_prerequisite, ka_gochara_rule_path_seal, ka_gochara_rule_path_soft_factor |
+| ka_gochara_lock_global_shared() | callee | ka_gochara_eval_window, ka_gochara_relationship_record |
+| ka_gochara_coverage_drift(uuid,text) | callee | ka_gochara_generation_seal |
+| ka_gochara_coverage_facts(text,tstzrange,text[]) | callee | ka_gochara_eval_window, ka_gochara_relationship_record |
+| ka_gochara_membership_violation(jsonb,uuid,text,jsonb,tstzrange[]) | callee | ka_gochara_eval_window_record |
+| ka_gochara_membership_violations(uuid,text) | callee | ka_gochara_generation_seal |
+| ka_gochara_object_selector_ok(jsonb) | callee | ka_gochara_rule_path |
+| ka_gochara_selector_token_ok(text) | callee | ka_gochara_factor, ka_gochara_predicate |
+
+(Generation-lock callees' own callees were not traced beyond one level; if
+`ka_gochara_lock_chart`/`ka_gochara_generation_is_sealed` call further user
+functions, those need EXECUTE too — Stream B's grant migration should prefer a
+complete `ka_gochara%` function grants over this checklist alone.)
+
+## Trigger functions — reached directly, do NOT need EXECUTE (20)
+
+`ka_gochara_chart_statement_lock`, `ka_gochara_chart_write_guard`,
+`ka_gochara_contact_guard`, `ka_gochara_contact_identity_supersede_guard`,
+`ka_gochara_contact_propagate_precision`, `ka_gochara_generation_seal_guard`,
+`ka_gochara_global_write_guard`, `ka_gochara_insert_only`,
+`ka_gochara_membership_guard`, `ka_gochara_record_coverage_guard`,
+`ka_gochara_record_finalize_check`, `ka_gochara_refuse_truncate`,
+`ka_gochara_require_sealed_rule_path`, `ka_gochara_sky_event_guard`,
+`ka_gochara_sky_event_supersede_guard`, `ka_gochara_substrate_chart_lock`,
+`ka_gochara_window_coverage_guard`, `ka_gochara_window_membership_guard`,
+`kala_gochara_convention_no_mutation`, `kala_gochara_generation_guard`.
+
+(Also owner `amjis_app`, INVOKER, EXECUTE=false — no gap per the
+interpretation rule, but listed because any DML fires them.)
+
+## Non-gochara functions reached (no gap)
+
+- `public.gen_random_uuid()` — owner `postgres`, INVOKER, builder EXECUTE =
+  **true** (used in defaults, e.g. manifest ids).
+- pg_catalog builtins (`now()`, `nextval(regclass)`, `lower`, `upper`,
+  `isempty`, `lower_inf`, `upper_inf`, `jsonb_*`, `array_length`,
+  `array_position`, `cardinality`, `btrim`, `count`, `current_setting`,
+  `set_config`, `to_jsonb`, `to_regprocedure`, `unnest`, `version`, `format`):
+  EXECUTE to PUBLIC by default — no gap.
+
+## Sequence addendum to v1.0 (correction of method, not of result)
+
+v1.0's `pg_get_serial_sequence` probe found no owned sequences on INSERT
+targets. C4's default-expression scan shows five INSERT targets DO have
+`nextval` column defaults — the sequences exist but are not OWNED BY the
+columns, which is why the ownership-based probe missed them. Direct
+`has_sequence_privilege` checks: **USAGE granted** on all five
+(`gochara_resonance_map_id_seq`, `kala_gochara_windows_id_seq`,
+`kala_gochara_windows_v2_id_seq`, `kala_moorti_nirnaya_id_seq`,
+`kala_vedha_gochara_id_seq`). No gap; the v1.0 conclusion stands, now for the
+right reason.
+
+## v1.2 GAPS
+
+**22 function-EXECUTE gaps** (the table above), all on the 1153–1157 contract
+tables' DML path: 12 reached via CHECK constraints, 15 via callees of INVOKER
+trigger functions (overlap 5). No function gaps on the v1.0/v1.1 writer-owned
+tables (their checks/defaults/triggers reference builtins only, plus the two
+trigger-only `kala_gochara_*` guards). No migration written — Stream B owns
+the grant; this section is its checklist.
+
+## Running totals (v1.0 + v1.1 + v1.2)
+
+- Table-privilege gaps: 1 (`bg_transit_av_gates` SELECT — C3-A migration 1225,
+  PR #2879).
+- Function-EXECUTE gaps: 22.
+- Sequence gaps: 0. NOT PRESENT relations: 1 (`l1_sarvatobhadra_vedha`).
